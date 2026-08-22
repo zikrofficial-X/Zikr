@@ -93,6 +93,7 @@ jobs:
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/zikr-signing/zikr-release.keystore"
           cat > android/keystore.properties <<EOF
           storeFile=$RUNNER_TEMP/zikr-signing/zikr-release.keystore
+          storeType=jks
           storePassword=$ANDROID_KEYSTORE_PASSWORD
           keyAlias=$ANDROID_KEY_ALIAS
           keyPassword=$ANDROID_KEY_PASSWORD
