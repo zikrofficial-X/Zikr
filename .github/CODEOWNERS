@@ -1,0 +1,15 @@
+# Sensitive project areas require review from the repository owner.
+* @mohamedalaa7785-cpu
+
+/app/auth/ @mohamedalaa7785-cpu
+/app/api/ @mohamedalaa7785-cpu
+/app/admin/ @mohamedalaa7785-cpu
+/lib/supabase/ @mohamedalaa7785-cpu
+/supabase/ @mohamedalaa7785-cpu
+/android/ @mohamedalaa7785-cpu
+/ios/ @mohamedalaa7785-cpu
+/.github/ @mohamedalaa7785-cpu
+/.circleci/ @mohamedalaa7785-cpu
+capacitor.config.json @mohamedalaa7785-cpu
+vercel.json @mohamedalaa7785-cpu
+.env.example @mohamedalaa7785-cpu

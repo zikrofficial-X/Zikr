@@ -117,3 +117,11 @@ turbo
 
 # Android/Gradle local state
 android/.gradle/
+android/local.properties
+android/keystore.properties
+android/**/*.jks
+android/**/*.keystore
+android/**/*.p12
+android/**/*.pem
+android/app/build/
+
