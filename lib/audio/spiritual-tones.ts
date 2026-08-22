@@ -88,7 +88,7 @@ export function playAzanTone(): void {
 /**
  * Real audio clip URLs.
  * - Azan: full adhan (call to prayer) recitation.
- * - Salawat: a short local Arabic voice clip saying "صل على سيدنا محمد".
+ * - Salawat: a local Arabic voice clip containing salawat and short authentic dhikr phrases.
  * Both clips are packaged locally so foreground playback also works offline.
  */
 export const AZAN_CLIP_URL = "/audio/adhan.wav";
@@ -160,7 +160,7 @@ export function stopSalawatClip(): void {
 }
 
 /**
- * Play a single soft bell tone to signal the Salawat reminder.
+ * Play a soft synthesized fallback tone to signal the Salawat reminder.
  * 528 Hz (solfeggio MI tone), ~1.5 sec.
  */
 export function playSalawatTone(): void {

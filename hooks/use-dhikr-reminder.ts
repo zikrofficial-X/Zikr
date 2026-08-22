@@ -78,7 +78,7 @@ export function useDhikrReminder(): DhikrReminderReturn {
       }
       const text = pickDhikr(rotationRef.current);
       rotationRef.current += 1;
-      playSalawatClip(); // soft chime (shared, offline-safe tone)
+      playSalawatClip(); // spoken salawat/dhikr clip with offline-safe synthesized fallback
       showDhikrNotification(text);
       // Also dispatch via SW for background delivery
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
