@@ -434,7 +434,13 @@ export default function HomePage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoaded, setAuthLoaded] = useState(false);
   const [libraryStats, setLibraryStats] = useState<Record<string, number | null> | null>(null);
-  const [homepageSetting, setHomepageSetting] = useState<{ title?: string | null; body?: string | null } | null>(null);
+  const [homepageSetting, setHomepageSetting] = useState<{
+    title?: string | null;
+    body?: string | null;
+    showQuran?: boolean;
+    showHadith?: boolean;
+    showProphets?: boolean;
+  } | null>(null);
 
   useEffect(() => {
     let interval: number | undefined;
@@ -464,7 +470,13 @@ export default function HomePage() {
         .then(async response => {
           if (!response.ok) return;
           const payload = (await response.json()) as {
-            data?: { title?: string | null; body?: string | null } | null;
+            data?: {
+              title?: string | null;
+              body?: string | null;
+              showQuran?: boolean;
+              showHadith?: boolean;
+              showProphets?: boolean;
+            } | null;
           };
           if (!cancelled && payload.data) setHomepageSetting(payload.data);
         })
@@ -560,6 +572,15 @@ export default function HomePage() {
     },
     [searchQuery, router]
   );
+
+  const visibleFeaturedSections = useMemo(() => {
+    const visibility: Record<string, boolean | undefined> = {
+      "/quran": homepageSetting?.showQuran,
+      "/hadith": homepageSetting?.showHadith,
+      "/prophets": homepageSetting?.showProphets,
+    };
+    return featuredSections.filter((section) => visibility[section.href] !== false);
+  }, [homepageSetting]);
 
   const displayStats = useMemo(() => {
     const liveValues = [
@@ -983,7 +1004,7 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {featuredSections.map(sec => (
+            {visibleFeaturedSections.map(sec => (
               <Link
                 key={sec.href}
                 href={sec.href}
