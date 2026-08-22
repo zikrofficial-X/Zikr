@@ -434,6 +434,7 @@ export default function HomePage() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoaded, setAuthLoaded] = useState(false);
   const [libraryStats, setLibraryStats] = useState<Record<string, number | null> | null>(null);
+  const [homepageSetting, setHomepageSetting] = useState<{ title?: string | null; body?: string | null } | null>(null);
 
   useEffect(() => {
     let interval: number | undefined;
@@ -456,6 +457,16 @@ export default function HomePage() {
           if (!response.ok) return;
           const payload = (await response.json()) as { data?: Record<string, number | null> };
           if (!cancelled && payload.data) setLibraryStats(payload.data);
+        })
+        .catch(() => undefined);
+
+      void fetch("/api/site-settings", { headers: { Accept: "application/json" } })
+        .then(async response => {
+          if (!response.ok) return;
+          const payload = (await response.json()) as {
+            data?: { title?: string | null; body?: string | null } | null;
+          };
+          if (!cancelled && payload.data) setHomepageSetting(payload.data);
         })
         .catch(() => undefined);
 
@@ -652,15 +663,19 @@ export default function HomePage() {
               }}
               dir="rtl"
             >
-              ذِكرٌ
+              {!isEnglish && homepageSetting?.title?.trim()
+                ? homepageSetting.title.trim()
+                : "ذِكرٌ"}
             </h1>
             <p
               className="text-brand-cream/55 text-base md:text-xl tracking-widest"
               style={{ fontFamily: "var(--font-amiri)" }}
             >
-              {isEnglish
-                ? "Your complete spiritual platform"
-                : "منصتك الروحانية الشاملة"}
+              {!isEnglish && homepageSetting?.body?.trim()
+                ? homepageSetting.body.trim()
+                : isEnglish
+                  ? "Your complete spiritual platform"
+                  : "منصتك الروحانية الشاملة"}
             </p>
 
             {/* Live clock: reserve the final height before idle initialization. */}

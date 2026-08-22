@@ -108,7 +108,16 @@ if (!supabaseUrl) add("fail", "NEXT_PUBLIC_SUPABASE_URL", "missing");
 if (!anonKey) add("fail", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "missing");
 
 if (siteUrl) {
-  const publicRoutes = ["/", "/quran", "/quran/1", "/hadith", "/dua", "/search", "/settings"];
+  const publicRoutes = [
+    "/",
+    "/quran",
+    "/quran/1",
+    "/hadith",
+    "/dua",
+    "/search",
+    "/settings",
+    "/api/site-settings",
+  ];
   for (const route of publicRoutes) {
     await checkRoute(siteUrl, route, [200]);
   }

@@ -359,11 +359,11 @@ export default async function AdminPage() {
         />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {[
-            { label: "القرآن والسور", value: quranSurahsCount, href: "/quran" },
-            { label: "الأحاديث", value: hadithCount, href: "/hadith" },
+            { label: "القرآن والسور", value: quranSurahsCount, href: "/admin/knowledge" },
+            { label: "الأحاديث", value: hadithCount, href: "/admin/knowledge" },
             { label: "الأنبياء", value: prophetsCount, href: "/admin/prophets" },
-            { label: "الصحابة", value: companionsCount, href: "/companions" },
-            { label: "العلماء", value: scholarsCount, href: "/scholars" },
+            { label: "الصحابة", value: companionsCount, href: "/admin/knowledge" },
+            { label: "العلماء", value: scholarsCount, href: "/admin/knowledge" },
             { label: "الغزوات", value: battlesCount, href: "/admin/battles" },
             { label: "الفتوحات", value: conquestsCount, href: "/conquests" },
             { label: "محتوى الأطفال", value: kidsCount, href: "/admin/kids" },
@@ -412,6 +412,12 @@ export default async function AdminPage() {
               title="إدارة المحتوى"
               desc="نشر وإخفاء وحذف القصص والمقالات"
               badge="محتوى"
+            />
+            <QuickLink
+              href="/admin/knowledge"
+              title="المعرفة الإسلامية"
+              desc="تحرير الصحابة والعلماء والسور والأحاديث مع المصادر"
+              badge="مراجعة"
             />
             <QuickLink
               href="/admin/sections"
