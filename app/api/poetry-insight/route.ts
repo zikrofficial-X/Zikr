@@ -1,4 +1,5 @@
 import { generateGeminiText } from '@/lib/services/gemini-client';
+import { getSupabaseUser } from '@/lib/supabase/server';
 
 /**
  * @openapi
@@ -20,24 +21,31 @@ import { generateGeminiText } from '@/lib/services/gemini-client';
  *     Body: { insight: string } - AI-generated analysis in Arabic
  *   400:
  *     Body: { error: "Missing poem or title" }
+ *   401:
+ *     Body: { error: "Authentication required." }
  *   500:
  *     Body: { error: "Failed to generate insight" | "Internal server error" }
  */
 export async function POST(request: Request) {
   try {
+    const user = await getSupabaseUser();
+    if (!user) {
+      return Response.json({ error: 'Authentication required.' }, { status: 401 });
+    }
+
     let body: unknown;
     try {
       body = await request.json();
     } catch {
       return Response.json(
         { error: 'Malformed JSON request body.' },
-        { status: 400 }
+        { status: 400 },
       );
     }
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
       return Response.json(
         { error: 'Request body must be a JSON object.' },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const { poem, title } = body as { poem?: unknown; title?: unknown };
@@ -45,17 +53,17 @@ export async function POST(request: Request) {
     if (typeof poem !== 'string' || typeof title !== 'string' || !poem.trim() || !title.trim()) {
       return Response.json(
         { error: 'Missing poem or title' },
-        { status: 400 }
+        { status: 400 },
       );
     }
     if (title.length > 200 || poem.length > 12000) {
       return Response.json(
         { error: 'The poem or title is too long.' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const prompt = `أنت متخصص في النقد الأدبي والشعر الإسلامي. 
+    const prompt = `أنت متخصص في النقد الأدبي والشعر الإسلامي.
 قصيدة بعنوان: "${title}"
 النص: "${poem}"
 
@@ -71,7 +79,7 @@ export async function POST(request: Request) {
     if (!insight) {
       return Response.json(
         { error: 'Failed to generate insight' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -80,7 +88,7 @@ export async function POST(request: Request) {
     console.error('[poetry-insight] Error:', error);
     return Response.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
