@@ -181,6 +181,25 @@ export default function PlatformPage() {
           ))}
         </div>
 
+        {/* Official Android app */}
+        <section className="rounded-2xl border border-brand-gold/20 bg-brand-emerald/10 p-8 text-center space-y-4" aria-labelledby="android-download-title">
+          <h2 id="android-download-title" className="text-2xl font-bold text-brand-gold">تطبيق ذِكرٌ لنظام Android</h2>
+          <p className="text-brand-cream/70 leading-7">
+            حمّل الإصدار الرسمي من مستودع ZIKR الموثوق على GitHub. افحص قيمة SHA-256 المنشورة مع كل إصدار قبل التثبيت.
+          </p>
+          <a
+            href="https://github.com/mohamedalaa7785-cpu/Zikr/releases/latest/download/app-release.apk"
+            className="inline-flex items-center justify-center rounded-full bg-brand-gold px-8 py-3 font-bold text-black hover:bg-brand-gold/90 transition-colors"
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            تنزيل APK الرسمي
+          </a>
+          <p className="text-xs text-brand-cream/50">
+            لا تثبّت ملفات APK من روابط غير رسمية. قد يطلب Android السماح بالتثبيت من هذا المصدر.
+          </p>
+        </section>
+
         {/* Support CTA */}
         <section className="rounded-2xl border border-brand-gold/20 bg-gradient-to-br from-black/30 to-brand-emerald/10 p-10 text-center space-y-5">
           <h2 className="text-2xl font-bold text-brand-gold">هل تحتاج مساعدة إضافية؟</h2>
