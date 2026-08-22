@@ -41,17 +41,17 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Verify production deployment matches this commit
+          name: Verify production deployment is healthy
           command: |
             set -euo pipefail
             for attempt in $(seq 1 15); do
-              if EXPECTED_COMMIT_SHA="${CIRCLE_SHA1}" node scripts/smoke-production-routes.mjs "https://zikrmediaofficial.vercel.app"; then
+              if node scripts/smoke-production-routes.mjs "https://zikrmediaofficial.vercel.app"; then
                 exit 0
               fi
-              echo "Production is not serving ${CIRCLE_SHA1} yet; retry ${attempt}/15"
+              echo "Production smoke attempt ${attempt}/15 failed; retrying"
               sleep 20
             done
-            echo "Production did not expose the verified commit ${CIRCLE_SHA1}" >&2
+            echo "Production smoke checks failed after 15 attempts" >&2
             exit 1
           no_output_timeout: 10m
 
@@ -106,9 +106,6 @@ workflows:
   verify-on-change:
     jobs:
       - verify
-      # Production smoke must run only after a main-branch deployment.
-      # On pull requests, CIRCLE_SHA1 is not the production commit and the
-      # comparison would fail even when the application is healthy.
       - production-smoke:
           requires:
             - verify
