@@ -7,6 +7,17 @@ export type SiteSettingValue = {
   logoUrl?: string | null;
   youtubeChannelUrl?: string | null;
   pinnedMessage?: string | null;
+  showQuran?: boolean;
+  showHadith?: boolean;
+  showProphets?: boolean;
+  showCompanions?: boolean;
+  showKids?: boolean;
+  showPoetry?: boolean;
+  showPrayerTimes?: boolean;
+  showMemorization?: boolean;
+  facebookPageUrl?: string | null;
+  twitterUrl?: string | null;
+  instagramUrl?: string | null;
 };
 
 export type PinnedMessage = {
