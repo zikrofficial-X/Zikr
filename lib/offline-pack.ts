@@ -75,7 +75,9 @@ export async function hydrateOfflineContent(options: { force?: boolean } = {}): 
       continue;
     }
     try {
-      const response = await fetch(definition.path, { cache: 'force-cache' });
+      const response = await fetch(definition.path, {
+        cache: options.force ? 'no-store' : 'force-cache',
+      });
       if (!response.ok) {
         failedDatasets.push(dataset);
         continue;

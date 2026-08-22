@@ -15,6 +15,7 @@ import {
   type SalawatInterval,
 } from "@/hooks/use-salawat-reminder";
 import { isAudioUnlocked } from "@/lib/audio/spiritual-tones";
+import { hydrateOfflineContent } from "@/lib/offline-pack";
 
 function Toggle({
   checked,
@@ -104,6 +105,8 @@ export default function SettingsPage() {
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [pushMessage, setPushMessage] = useState<string | null>(null);
+  const [isRefreshingOfflineData, setIsRefreshingOfflineData] = useState(false);
+  const [offlineRefreshMessage, setOfflineRefreshMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setAudioUnlocked(isAudioUnlocked());
@@ -141,13 +144,38 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSkipWaiting = () => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistration().then(reg => {
-        if (reg?.waiting) {
-          reg.waiting.postMessage({ type: "SKIP_WAITING" });
+  const handleSkipWaiting = async () => {
+    if (!navigator.onLine) {
+      setOfflineRefreshMessage("اتصل بالإنترنت أولًا لتحديث البيانات المخزنة.");
+      return;
+    }
+
+    setIsRefreshingOfflineData(true);
+    setOfflineRefreshMessage(null);
+    try {
+      const result = await hydrateOfflineContent({ force: true });
+      if (!result) {
+        setOfflineRefreshMessage("تعذر الوصول إلى حزمة البيانات الآن.");
+      } else if (result.complete) {
+        setOfflineRefreshMessage("تم تحديث البيانات المخزنة بنجاح.");
+      } else {
+        setOfflineRefreshMessage(
+          `اكتمل التحديث جزئيًا؛ تعذر تحديث: ${result.failedDatasets.join(", ")}.`,
+        );
+      }
+
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration?.waiting) {
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
         }
-      });
+        await registration?.update();
+      }
+    } catch (error) {
+      console.warn("[Settings] Offline data refresh failed", error);
+      setOfflineRefreshMessage("تعذر تحديث البيانات المخزنة. حاول مرة أخرى.");
+    } finally {
+      setIsRefreshingOfflineData(false);
     }
   };
 
@@ -390,10 +418,16 @@ export default function SettingsPage() {
         <Button
           variant="secondary"
           onClick={handleSkipWaiting}
+          disabled={isRefreshingOfflineData}
           className="w-full text-sm"
         >
-          تحديث البيانات المخزنة
+          {isRefreshingOfflineData ? "جارٍ تحديث البيانات..." : "تحديث البيانات المخزنة"}
         </Button>
+        {offlineRefreshMessage && (
+          <p role="status" className="text-center text-sm text-brand-cream/70">
+            {offlineRefreshMessage}
+          </p>
+        )}
       </SectionCard>
     </Container>
   );
