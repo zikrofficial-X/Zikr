@@ -188,7 +188,7 @@ export default function PlatformPage() {
             حمّل الإصدار الرسمي من مستودع ZIKR الموثوق على GitHub. افحص قيمة SHA-256 المنشورة مع كل إصدار قبل التثبيت.
           </p>
           <a
-            href="https://github.com/mohamedalaa7785-cpu/Zikr/releases/latest/download/app-release.apk"
+            href="https://github.com/mohamedalaa7785-cpu/Zikr-Android-Releases/releases/latest/download/app-release.apk"
             className="inline-flex items-center justify-center rounded-full bg-brand-gold px-8 py-3 font-bold text-black hover:bg-brand-gold/90 transition-colors"
             target="_blank"
             rel="noreferrer noopener"
