@@ -34,6 +34,8 @@ type CapacitorWindow = Window & {
     requestNotificationPermission: () => Promise<unknown>;
     checkExactNotificationSetting: () => Promise<unknown>;
     changeExactNotificationSetting: () => Promise<unknown>;
+    getAppInfo: () => Promise<{ version?: string; build?: string }>;
+    openExternalUrl: (url: string) => Promise<void>;
     cancelLocalNotifications: (ids: number[]) => Promise<void>;
   };
 };
@@ -111,6 +113,17 @@ function installNativeFacade(
     },
     async changeExactNotificationSetting() {
       return plugins.LocalNotifications?.changeExactNotificationSetting?.();
+    },
+    async getAppInfo() {
+      const info = await plugins.App?.getInfo?.();
+      return (info as { version?: string; build?: string } | undefined) ?? {};
+    },
+    async openExternalUrl(url) {
+      if (plugins.Browser?.open) {
+        await plugins.Browser.open({ url });
+        return;
+      }
+      window.location.assign(url);
     },
     async cancelLocalNotifications(ids) {
       if (!ids.length) return;
