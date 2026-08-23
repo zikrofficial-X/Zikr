@@ -6,6 +6,7 @@ const RELEASE_DOWNLOAD_BASE =
   "https://github.com/mohamedalaa7785-cpu/Zikr-Android-Releases/releases/download";
 
 export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const response = await fetch(RELEASES_API, {

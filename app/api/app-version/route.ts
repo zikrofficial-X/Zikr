@@ -6,6 +6,7 @@ const RELEASE_DOWNLOAD_BASE =
   "https://github.com/mohamedalaa7785-cpu/Zikr-Android-Releases/releases/download";
 
 export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 type ReleaseResponse = {
   tag_name?: string;
@@ -67,8 +68,3 @@ export async function GET() {
 export function HEAD() {
   return new NextResponse(null, { status: 204 });
 }
-
-export const dynamic = "force-static";
-
-void RELEASES_API;
-void RELEASE_DOWNLOAD_BASE;
