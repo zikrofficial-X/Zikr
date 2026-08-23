@@ -1,7 +1,7 @@
 import { getPublicEnv, getServerEnv } from '@/lib/env';
 import { assertSupabaseConnection } from '@/lib/supabase/server';
 import { generateGeminiText } from '@/lib/services/gemini-client';
-import { getYoutubeChannelFeed } from '@/lib/services/youtube';
+import { getYoutubeChannelFeed, isYoutubeQuotaError } from '@/lib/services/youtube';
 
 export type ApiHealthStatus = 'ok' | 'warning' | 'error';
 
@@ -36,7 +36,16 @@ export async function runApiHealthChecks(): Promise<ApiHealthCheck[]> {
     timed('YouTube channel API', async () => {
       const feed = await getYoutubeChannelFeed(3);
       if (!feed.configured) return { name: 'YouTube channel API', status: 'warning', message: feed.error ?? 'YouTube is not configured.' };
-      if (feed.error) return { name: 'YouTube channel API', status: 'error', message: feed.error };
+      if (feed.error) {
+        if (isYoutubeQuotaError(feed)) {
+          return {
+            name: 'YouTube channel API',
+            status: 'warning',
+            message: 'YouTube API quota is temporarily exhausted. The channel feed will recover after the quota window resets; local video content remains available.',
+          };
+        }
+        return { name: 'YouTube channel API', status: 'error', message: feed.error };
+      }
       return { name: 'YouTube channel API', status: 'ok', message: `Loaded ${feed.videos.length} videos and ${feed.playlists.length} playlists from ${feed.channelId}.` };
     }),
     timed('Public site URL', async () => ({

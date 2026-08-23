@@ -26,10 +26,16 @@ export async function GET(request: NextRequest) {
 
     if (error || !data.url) {
       loginUrl.searchParams.set("error", "google_oauth_unavailable");
-      return NextResponse.redirect(loginUrl);
+      const response = NextResponse.redirect(loginUrl);
+      response.headers.set('Cache-Control', 'private, no-store, max-age=0');
+      return response;
     }
 
-    return NextResponse.redirect(data.url);
+    const response = NextResponse.redirect(data.url);
+    // OAuth redirects contain per-session state and must never be cached or
+    // replayed by a CDN, browser history layer, or shared WebView cache.
+    response.headers.set('Cache-Control', 'private, no-store, max-age=0');
+    return response;
   } catch (error) {
     console.error("[auth/google] OAuth start failed:", error);
     loginUrl.searchParams.set("error", "google_oauth_failed");

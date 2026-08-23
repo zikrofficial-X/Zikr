@@ -37,7 +37,21 @@ export type YoutubeChannelFeed = {
   videos: YoutubeVideo[];
   playlists: YoutubePlaylist[];
   error?: string;
+  errorCode?: 'quota_exceeded' | 'http_error' | 'unknown';
 };
+
+function getYoutubeErrorCode(error: unknown): YoutubeChannelFeed['errorCode'] {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  if (/\b429\b|quota exceeded|quotaExceeded|dailyLimitExceeded/i.test(message)) {
+    return 'quota_exceeded';
+  }
+  if (/YouTube API failed \(\d{3}\)/i.test(message)) return 'http_error';
+  return 'unknown';
+}
+
+export function isYoutubeQuotaError(feed: Pick<YoutubeChannelFeed, 'error' | 'errorCode'>) {
+  return feed.errorCode === 'quota_exceeded' || /\b429\b|quota exceeded|quotaExceeded|dailyLimitExceeded/i.test(feed.error ?? '');
+}
 
 function pickThumbnail(snippet: YoutubeSnippet) {
   return snippet.thumbnails?.maxres?.url ?? snippet.thumbnails?.high?.url ?? snippet.thumbnails?.medium?.url ?? snippet.thumbnails?.default?.url ?? null;
@@ -125,6 +139,7 @@ export async function getYoutubeChannelFeed(maxResults = 24): Promise<YoutubeCha
       videos: [],
       playlists: [],
       error: error instanceof Error ? error.message : 'Unknown YouTube API error.',
+      errorCode: getYoutubeErrorCode(error),
     };
   }
 }

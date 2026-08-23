@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
@@ -13,7 +12,6 @@ export function GoogleOAuthButton({
   next,
   label,
 }: GoogleOAuthButtonProps) {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,9 +25,12 @@ export function GoogleOAuthButton({
           ? next
           : '/profile';
 
-      // The Route Handler creates the Supabase OAuth URL server-side, avoiding
-      // missing/placeholder public keys in the browser.
-      router.push(`/auth/google?next=${encodeURIComponent(safeNext)}`);
+      // Use a full browser navigation for OAuth. Client-side router navigation
+      // can treat the redirect response as an RSC request and is less reliable
+      // for preserving the browser cookie that stores the Supabase PKCE verifier.
+      const oauthUrl = new URL('/auth/google', window.location.origin);
+      oauthUrl.searchParams.set('next', safeNext);
+      window.location.assign(oauthUrl.toString());
 
     } catch (err) {
       const message =
