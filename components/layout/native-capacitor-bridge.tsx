@@ -30,6 +30,9 @@ type CapacitorWindow = Window & {
       sound?: string;
       channelId?: string;
     }) => Promise<void>;
+    requestNotificationPermission: () => Promise<unknown>;
+    checkExactNotificationSetting: () => Promise<unknown>;
+    changeExactNotificationSetting: () => Promise<unknown>;
     cancelLocalNotifications: (ids: number[]) => Promise<void>;
   };
 };
@@ -77,7 +80,11 @@ function installNativeFacade(
       return plugins.Network?.getStatus?.();
     },
     async scheduleLocalNotification(notification) {
-      await plugins.LocalNotifications?.schedule?.({
+      const localNotifications = plugins.LocalNotifications;
+      if (!localNotifications?.schedule) {
+        throw new Error("Capacitor LocalNotifications plugin is unavailable");
+      }
+      await localNotifications.schedule({
         notifications: [
           {
             id: notification.id,
@@ -86,11 +93,23 @@ function installNativeFacade(
             sound: notification.sound,
             channelId: notification.channelId,
             schedule: notification.scheduleAt
-              ? { at: new Date(notification.scheduleAt) }
+              ? {
+                  at: new Date(notification.scheduleAt),
+                  allowWhileIdle: true,
+                }
               : undefined,
           },
         ],
       });
+    },
+    async requestNotificationPermission() {
+      return plugins.LocalNotifications?.requestPermissions?.();
+    },
+    async checkExactNotificationSetting() {
+      return plugins.LocalNotifications?.checkExactNotificationSetting?.();
+    },
+    async changeExactNotificationSetting() {
+      return plugins.LocalNotifications?.changeExactNotificationSetting?.();
     },
     async cancelLocalNotifications(ids) {
       if (!ids.length) return;
@@ -117,26 +136,38 @@ export function NativeCapacitorBridge() {
     const network = plugins.Network;
     const localNotifications = plugins.LocalNotifications;
 
-    void localNotifications?.createChannel?.({
-      id: "zikr-prayer-adhan",
-      name: "أوقات الصلاة والأذان",
-      description: "تنبيهات أوقات الصلاة بصوت الأذان",
-      importance: 5,
-      sound: "adhan",
-      vibration: true,
-      visibility: 1,
-    });
-    void localNotifications?.createChannel?.({
-      id: "zikr-salawat",
-      name: "الصلاة على النبي",
-      description: "تذكيرات الصلاة على سيدنا محمد",
-      importance: 3,
-      sound: "salawat",
-      vibration: true,
-      visibility: 1,
-    });
+    void (async () => {
+      try {
+        await localNotifications?.createChannel?.({
+          id: "zikr-prayer-adhan-v2",
+          name: "أوقات الصلاة والأذان",
+          description: "تنبيهات أوقات الصلاة بصوت الأذان",
+          importance: 5,
+          sound: "adhan.wav",
+          vibration: true,
+          visibility: 1,
+        });
+        await localNotifications?.createChannel?.({
+          id: "zikr-salawat-v2",
+          name: "الصلاة على النبي",
+          description: "تذكيرات الصلاة على سيدنا محمد",
+          importance: 3,
+          sound: "salawat.wav",
+          vibration: true,
+          visibility: 1,
+        });
 
-    void localNotifications?.requestPermissions?.();
+        // Android 13+ permission is returned asynchronously; the native facade
+        // exposes it to the web layer instead of pretending it is always granted.
+        await localNotifications?.requestPermissions?.();
+      } catch (error) {
+        console.warn("[native-bridge] Local notification initialization failed", error);
+      } finally {
+        // Do not let prayer hooks race channel creation. They can now safely
+        // schedule background alarms when this event is dispatched.
+        window.dispatchEvent(new CustomEvent("zikr:native-ready"));
+      }
+    })();
     void plugins.PushNotifications?.requestPermissions?.();
 
     const syncNetworkState = async () => {

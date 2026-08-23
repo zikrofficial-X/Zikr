@@ -11,6 +11,7 @@ export interface NotificationPreference {
 }
 
 type NativeNotificationFacade = {
+  requestNotificationPermission?: () => Promise<unknown>;
   scheduleLocalNotification?: (notification: {
     id: number;
     title: string;
@@ -50,24 +51,40 @@ async function showNativeNotification(
 
   const isPrayer = tag.startsWith("prayer-");
   const isSalawat = tag === "salawat-reminder";
-  await native.scheduleLocalNotification({
-    id: notificationId(tag),
-    title,
-    body,
-    sound: isPrayer ? "adhan.wav" : isSalawat ? "salawat.wav" : undefined,
-    channelId: isPrayer
-      ? "zikr-prayer-adhan"
-      : isSalawat
-        ? "zikr-salawat"
-        : undefined,
-  });
-  return true;
+  try {
+    await native.scheduleLocalNotification({
+      id: notificationId(tag),
+      title,
+      body,
+      sound: isPrayer ? "adhan.wav" : isSalawat ? "salawat.wav" : undefined,
+      channelId: isPrayer
+        ? "zikr-prayer-adhan-v2"
+        : isSalawat
+          ? "zikr-salawat-v2"
+          : undefined,
+    });
+    return true;
+  } catch (error) {
+    console.warn("[notifications] Native notification failed", error);
+    return false;
+  }
 }
 
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
   if (typeof window === "undefined") return "unsupported";
 
   const native = (window as NativeNotificationWindow).zikrNative;
+  if (native?.requestNotificationPermission) {
+    try {
+      const result = await native.requestNotificationPermission();
+      const display = (result as { display?: string } | undefined)?.display;
+      if (display === "granted" || display === "denied" || display === "prompt") {
+        return display === "prompt" ? "default" : (display as NotificationPermission);
+      }
+    } catch {
+      return "denied";
+    }
+  }
   if (native) return "granted";
 
   if (!("Notification" in window)) return "unsupported";

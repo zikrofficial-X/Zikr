@@ -25,6 +25,7 @@ export interface SalawatSettings {
 }
 
 const SETTINGS_KEY = "zikr_salawat_settings";
+const SALAWAT_CHANNEL_ID = "zikr-salawat-v2";
 
 const DEFAULT_SETTINGS: SalawatSettings = {
   enabled: false, // opt-in: user must explicitly enable
@@ -104,7 +105,9 @@ function scheduleNativeSalawatReminders(settings: SalawatSettings): void {
         body: "صل على سيدنا محمد",
         scheduleAt: next.toISOString(),
         sound: "salawat.wav",
-        channelId: "zikr-salawat",
+        channelId: SALAWAT_CHANNEL_ID,
+      }).catch(error => {
+        console.warn("[salawat-reminder] Native notification scheduling failed", error);
       });
       scheduledCount += 1;
     }
@@ -148,8 +151,19 @@ export function useSalawatReminder(): SalawatReminderReturn {
   }, []);
 
   // Set up native reminders whenever settings change; these continue when the app is closed.
+  // Re-run after the Capacitor bridge is ready and whenever Android resumes the
+  // WebView so cancelled/expired alarms are replenished.
   useEffect(() => {
-    scheduleNativeSalawatReminders(settings);
+    const schedule = () => scheduleNativeSalawatReminders(settings);
+    schedule();
+    window.addEventListener("zikr:native-ready", schedule);
+    window.addEventListener("zikr:native-app-state", schedule);
+    document.addEventListener("visibilitychange", schedule);
+    return () => {
+      window.removeEventListener("zikr:native-ready", schedule);
+      window.removeEventListener("zikr:native-app-state", schedule);
+      document.removeEventListener("visibilitychange", schedule);
+    };
   }, [settings]);
 
   // Set up the foreground interval whenever settings change.

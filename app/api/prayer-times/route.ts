@@ -79,6 +79,10 @@ export async function GET(request: NextRequest) {
     : address
       ? 'timingsByAddress'
       : 'timings';
+  const upstreamDate = date
+    ? `${date.slice(8, 10)}-${date.slice(5, 7)}-${date.slice(0, 4)}`
+    : null;
+  const endpointPath = upstreamDate ? `${endpoint}/${upstreamDate}` : endpoint;
   const params = new URLSearchParams({ method });
   if (city) {
     params.set('city', city);
@@ -89,12 +93,10 @@ export async function GET(request: NextRequest) {
     params.set('latitude', latitude);
     params.set('longitude', longitude);
   }
-  if (date) params.set('date', date);
-
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
-    const upstream = await fetch(`${ALADHAN_API_BASE}/${endpoint}?${params.toString()}`, {
+    const upstream = await fetch(`${ALADHAN_API_BASE}/${endpointPath}?${params.toString()}`, {
       headers: { 'User-Agent': 'Zikr-App/1.0 (Prayer Times)' },
       signal: controller.signal,
       next: { revalidate: 3600 },
