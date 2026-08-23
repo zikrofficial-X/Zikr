@@ -38,6 +38,19 @@ import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 
+const VIDEO_CATEGORIES = new Set([
+  "quran",
+  "hadith",
+  "story",
+  "dua",
+  "adhkar",
+  "prophets",
+  "companions",
+  "scholars",
+  "educational",
+  "other",
+]);
+
 const VIDEO_GENERATION_CATEGORIES = new Set([
   "quran",
   "hadith",
@@ -62,6 +75,17 @@ function platforms(formData: FormData): SocialPlatform[] {
     (platform): platform is SocialPlatform =>
       formData.get(`share_${platform}`) === "on"
   );
+}
+
+function videoSlugFromTitle(title: string): string {
+  const base = title
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 72);
+  const suffix = crypto.randomUUID().slice(0, 8);
+  return `${base || "video"}-${suffix}`;
 }
 
 async function queueSocialPublish(input: {
@@ -226,11 +250,14 @@ export async function saveArticleAction(formData: FormData) {
 export async function saveVideoPostAction(formData: FormData) {
   await requireAdmin();
   const title = String(formData.get("title") ?? "").trim();
-  const slug = String(formData.get("slug") ?? "").trim();
-  if (!title || !slug)
-    throw new Error("عنوان الفيديو والرابط المختصر مطلوبان.");
+  if (!title) throw new Error("عنوان الفيديو مطلوب.");
 
+  const slug = value(formData, "slug") ?? videoSlugFromTitle(title);
   const description = value(formData, "description");
+  const category = value(formData, "category") ?? "other";
+  if (!VIDEO_CATEGORIES.has(category)) {
+    throw new Error("يرجى اختيار تصنيف صحيح للفيديو.");
+  }
   const caption = value(formData, "caption") ?? description;
   const youtubeId = value(formData, "youtubeId");
   const videoUrl = value(formData, "uploadedVideoUrl");
@@ -256,6 +283,7 @@ export async function saveVideoPostAction(formData: FormData) {
         autoShare: selectedPlatforms.length > 0,
         source: "admin",
         caption,
+        category,
         sourceVideoUrl: videoUrl,
         sourceStorageKey: videoStorageKey,
       },
@@ -264,8 +292,7 @@ export async function saveVideoPostAction(formData: FormData) {
   });
 
   if (bool(formData, "generateVideo")) {
-    const category = value(formData, "category");
-    if (!category || !VIDEO_GENERATION_CATEGORIES.has(category)) {
+    if (!VIDEO_GENERATION_CATEGORIES.has(category)) {
       throw new Error("يرجى اختيار تصنيف صحيح لتوليد الفيديو.");
     }
 
@@ -302,12 +329,14 @@ export async function saveVideoPostAction(formData: FormData) {
     videoUrl,
     targetPlatforms: selectedPlatforms,
     scheduledAt: value(formData, "scheduledAt"),
-    metadata: {
-      publicPath: `/videos/${slug}`,
-      caption,
-      sourceStorageKey: videoStorageKey,
-      sourceVideoUrl: videoUrl,
-    },
+          metadata: {
+        publicPath: `/videos/${slug}`,
+        caption,
+        category,
+        sourceStorageKey: videoStorageKey,
+        sourceVideoUrl: videoUrl,
+      },
+
   });
 
   revalidatePath("/admin");

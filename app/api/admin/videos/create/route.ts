@@ -10,36 +10,41 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { title, description, category, content } = body;
+    const { title, description, category, narration, content } = body;
     
-    // Validate required fields
-    if (!title || !description || !category || !content) {
+    if (typeof title !== 'string' || !title.trim() || typeof description !== 'string' || !description.trim() || typeof category !== 'string' || !category.trim()) {
       return NextResponse.json(
-        { error: 'Missing required fields: title, description, category, content' },
+        { error: 'العنوان والوصف والتصنيف حقول مطلوبة.' },
         { status: 400 }
       );
     }
-    
-    let contentObject: Record<string, unknown>;
-    try {
-      const parsed = typeof content === 'string' ? JSON.parse(content) : content;
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid content');
-      contentObject = parsed as Record<string, unknown>;
-    } catch {
-      return NextResponse.json({ error: 'Content must be valid JSON.' }, { status: 400 });
+
+    let contentObject: Record<string, unknown> = {};
+    // The simple UI sends narration directly. Keep parsing legacy content only for
+    // existing clients; the JSON field is no longer required from administrators.
+    if (content !== undefined) {
+      try {
+        const parsed = typeof content === 'string' ? JSON.parse(content) : content;
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid content');
+        contentObject = parsed as Record<string, unknown>;
+      } catch {
+        return NextResponse.json({ error: 'بيانات المحتوى القديمة غير صالحة.' }, { status: 400 });
+      }
     }
 
-    const narration = ['prompt', 'script', 'text']
-      .map((field) => contentObject[field])
-      .find((value): value is string => typeof value === 'string' && value.trim().length > 0)
-      ?.replace(/\s+/g, ' ')
-      .trim() ?? '';
-    if (narration.length < 30) {
+    const narrationText = typeof narration === 'string' && narration.trim()
+      ? narration
+      : ['prompt', 'script', 'text']
+          .map((field) => contentObject[field])
+          .find((value): value is string => typeof value === 'string' && value.trim().length > 0) ?? '';
+    const normalizedNarration = narrationText.replace(/\s+/g, ' ').trim();
+    if (normalizedNarration.length < 30) {
       return NextResponse.json(
-        { error: 'An explicit narration of at least 30 characters is required.' },
+        { error: 'اكتب نصًا صوتيًا واضحًا لا يقل عن 30 حرفًا.' },
         { status: 400 },
       );
     }
+    contentObject = { ...contentObject, type: category, text: normalizedNarration, prompt: normalizedNarration };
 
     // Validate category
     const validCategories = ['quran', 'hadith', 'story', 'dua', 'adhkar', 'other'];
@@ -51,8 +56,8 @@ export async function POST(request: NextRequest) {
     }
     
     const result = await createVideoGenerationRequest({
-      title,
-      description,
+      title: title.trim(),
+      description: description.trim(),
       category,
       content: contentObject,
     });

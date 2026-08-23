@@ -605,97 +605,85 @@ export default async function AdminPage() {
               نشر فيديو أو صورة
             </h2>
             <form action={saveVideoPostAction} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <Field name="title" label="عنوان الفيديو" required />
-                <Field
-                  name="slug"
-                  label="الرابط المختصر"
-                  required
-                  placeholder="video-slug"
-                />
-              </div>
-              <Field name="description" label="الوصف" textarea />
+              <Field name="title" label="عنوان الفيديو" required />
+              <p className="-mt-2 text-xs text-brand-cream/45" dir="rtl">
+                سيُنشئ النظام الرابط المختصر تلقائيًا من العنوان؛ لا تحتاج إلى كتابته.
+              </p>
+              <Field name="description" label="وصف الفيديو" textarea />
               <Field
                 name="caption"
-                label="الكابشن / نص المنشور على Facebook"
+                label="وصف النشر على المنصات (اختياري)"
                 textarea
-                placeholder="النص الذي سيظهر مع المنشور على Facebook وReels"
+                placeholder="اتركه فارغًا لاستخدام وصف الفيديو نفسه على Facebook وYouTube"
               />
               <VideoUploadField />
-              <Field
-                name="youtubeId"
-                label="YouTube Video ID"
-                placeholder="مثال: dQw4w9WgXcQ"
-              />
-              <CloudinaryImageUploadField name="thumbnailUrl" label="الصورة المصغرة" folder="videos" />
-              <Field
-                name="script"
-                label="نص الفيديو (اختياري عند طلب التوليد)"
-                placeholder="اكتب النص المراجَع الذي سيُستخدم في الفيديو"
-                textarea
-              />
-              <Field
-                name="scheduledAt"
-                label="موعد النشر التلقائي"
-                type="datetime-local"
-              />
-              <div className="grid grid-cols-2 gap-3">
+              <CloudinaryImageUploadField name="thumbnailUrl" label="الصورة المصغرة (اختياري)" folder="videos" />
+              <div className="grid gap-4 sm:grid-cols-2">
                 <label className="grid gap-1 text-sm text-brand-cream/65">
-                  <span>التصنيف</span>
+                  <span>نوع المحتوى</span>
                   <select
                     name="category"
                     defaultValue="story"
                     className="rounded-lg border border-brand-gold/30 bg-black/30 px-3 py-2 text-brand-cream focus:border-brand-gold focus:outline-none"
                   >
-                    <option value="quran">القرآن</option>
-                    <option value="hadith">الحديث</option>
+                    <option value="quran">القرآن الكريم</option>
+                    <option value="hadith">الحديث الشريف</option>
                     <option value="story">قصة إسلامية</option>
                     <option value="dua">دعاء</option>
                     <option value="adhkar">أذكار</option>
+                    <option value="prophets">قصص الأنبياء</option>
+                    <option value="companions">قصص الصحابة</option>
+                    <option value="scholars">العلماء</option>
+                    <option value="educational">تعليمي</option>
+                    <option value="other">أخرى</option>
                   </select>
                 </label>
-                <label className="flex items-center gap-2 pt-7 text-sm text-brand-cream/65">
-                  <input
-                    name="generateVideo"
-                    type="checkbox"
-                    className="accent-brand-gold"
-                  />
-                  توليد فيديو تلقائي
-                </label>
+                <Field
+                  name="scheduledAt"
+                  label="موعد النشر (اختياري)"
+                  type="datetime-local"
+                />
               </div>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-brand-cream/65">
-                <Published />
-                <label>
-                  <input
-                    name="share_facebook"
-                    type="checkbox"
-                    className="ml-2 accent-brand-gold"
-                  />
-                  مشاركة فيسبوك
-                </label>
-                <label>
-                  <input
-                    name="share_facebook_reels"
-                    type="checkbox"
-                    className="ml-2 accent-brand-gold"
-                  />
-                  نشر Reel على فيسبوك
-                </label>
-                <label>
-                  <input
-                    name="share_youtube"
-                    type="checkbox"
-                    className="ml-2 accent-brand-gold"
-                  />
-                  نشر/رفع يوتيوب Shorts
-                </label>
-                <p className="basis-full text-xs text-brand-cream/50">
-                  ارفع ملف الفيديو من الحقل السابق، أو فعّل التوليد التلقائي بعد إدخال نص مراجع. لا حاجة لإدخال أي رابط فيديو يدويًا.
+              <div className="space-y-3 rounded-xl border border-brand-gold/15 bg-black/20 p-4 text-sm text-brand-cream/70" dir="rtl">
+                <p className="font-semibold text-brand-gold">قنوات النشر</p>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      name="share_facebook"
+                      type="checkbox"
+                      defaultChecked
+                      className="w-4 h-4 accent-brand-gold"
+                    />
+                    Facebook
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      name="share_facebook_reels"
+                      type="checkbox"
+                      className="w-4 h-4 accent-brand-gold"
+                    />
+                    Facebook Reels
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      name="share_youtube"
+                      type="checkbox"
+                      defaultChecked
+                      className="w-4 h-4 accent-brand-gold"
+                    />
+                    YouTube
+                  </label>
+                </div>
+                <p className="text-xs text-brand-cream/45">
+                  ارفع الفيديو، اكتب العنوان والوصف، اختر النوع، ثم اضغط حفظ وتجهيز النشر. لا تحتاج إلى إدخال رابط فيديو أو JSON.
                 </p>
               </div>
-              <Button type="submit" className="w-full">
-                حفظ وتجهيز النشر
-              </Button>
+              <div className="flex items-center justify-between gap-4">
+                <Published />
+                <Button type="submit" className="flex-1">
+                  رفع وحفظ وتجهيز النشر
+                </Button>
+              </div>
             </form>
           </Card>
 
