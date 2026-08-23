@@ -13,18 +13,22 @@
 }
 
 html {
+  min-height: 100%;
   scroll-behavior: smooth;
-  overflow-x: clip;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body {
   min-width: 0;
+  min-height: 100%;
   background: #000000;
   color: #f5f5f0;
   font-family: var(--font-arabic), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  overflow-y: visible;
 }
 
 /* Custom background pattern overlay */
@@ -159,11 +163,28 @@ p {
 
 /* Capacitor native shell refinements: preserve the premium dark RTL web design
    while respecting native safe areas and bottom system navigation. */
+.capacitor-native {
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .capacitor-native body {
+  min-height: 100%;
   background: #000;
-  overscroll-behavior-y: none;
+  overflow-x: hidden;
+  overflow-y: visible;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.capacitor-native main,
+.capacitor-native [data-scroll-container] {
+  touch-action: pan-y;
 }
 
 @media (max-width: 639px) {

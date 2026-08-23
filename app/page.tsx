@@ -613,7 +613,7 @@ export default function HomePage() {
     : "";
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-clip bg-brand-emeraldDeep text-brand-cream">
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-brand-emeraldDeep text-brand-cream">
       {/* ═══════════════════════════════════════════════════════════════════════
           SECTION 1 — HERO
       ══════════════════════════════════════════════════════════════════════ */}

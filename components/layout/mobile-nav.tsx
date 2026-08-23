@@ -65,7 +65,7 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
 
       {/* Slide-in Drawer */}
       <nav
-        className={`fixed top-0 end-0 z-[60] h-dvh max-h-dvh w-[min(18rem,calc(100vw-1rem))] bg-brand-emeraldDeep border-s border-brand-gold/15 shadow-xl md:hidden transition-all duration-300 ease-in-out overflow-y-auto overscroll-contain ${open ? 'translate-x-0 visible' : dir === 'rtl' ? 'translate-x-full invisible' : '-translate-x-full invisible'}`}
+        className={`fixed top-0 end-0 z-[60] h-dvh max-h-dvh w-[min(18rem,calc(100vw-1rem))] bg-brand-emeraldDeep border-s border-brand-gold/15 shadow-xl md:hidden transition-all duration-300 ease-in-out overflow-y-auto overscroll-contain touch-pan-y ${open ? 'translate-x-0 visible pointer-events-auto' : dir === 'rtl' ? 'translate-x-full invisible pointer-events-none' : '-translate-x-full invisible pointer-events-none'}`}
         aria-label={isEnglish ? 'Primary navigation' : 'القائمة الرئيسية'}
         aria-hidden={!open}
       >
