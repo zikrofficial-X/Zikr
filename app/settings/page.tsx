@@ -91,6 +91,7 @@ export default function SettingsPage() {
     unlockAudio,
     requestPermission,
     enableServerPush,
+    requestNativeExactAlarmPermission,
     testAzan,
   } = usePrayerAlert();
 
@@ -106,7 +107,9 @@ export default function SettingsPage() {
   const [isOnline, setIsOnline] = useState(true);
   const [pushMessage, setPushMessage] = useState<string | null>(null);
   const [isRefreshingOfflineData, setIsRefreshingOfflineData] = useState(false);
-  const [offlineRefreshMessage, setOfflineRefreshMessage] = useState<string | null>(null);
+  const [offlineRefreshMessage, setOfflineRefreshMessage] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     setAudioUnlocked(isAudioUnlocked());
@@ -129,9 +132,23 @@ export default function SettingsPage() {
   const handleEnableServerPush = async () => {
     setPushMessage(null);
     try {
+      const native = (window as Window & {
+        zikrNative?: { isNative?: boolean };
+      }).zikrNative;
+      const nativeAlarm = await requestNativeExactAlarmPermission();
       const result = await enableServerPush();
       if (result.status === "registered") {
-        setPushMessage("تم تفعيل تنبيهات الصلاة في الخلفية لهذا الجهاز.");
+        setPushMessage(
+          nativeAlarm === "opened"
+            ? "تم تسجيل التنبيهات. فعّل السماح بالإنذارات الدقيقة في إعدادات Android ثم ارجع للتطبيق."
+            : "تم تفعيل تنبيهات الصلاة في الخلفية لهذا الجهاز."
+        );
+      } else if (native?.isNative && nativeAlarm !== "unsupported") {
+        setPushMessage(
+          nativeAlarm === "opened"
+            ? "تم تجهيز تنبيهات الجهاز. فعّل الإنذارات الدقيقة من إعدادات Android ثم ارجع للتطبيق."
+            : "تم تفعيل تنبيهات الصلاة المحلية. ستعمل عند إغلاق التطبيق بعد حفظ مواقيت موقعك."
+        );
       } else if (result.status === "unsupported") {
         setPushMessage("هذا المتصفح لا يدعم إشعارات الدفع الآمنة.");
       } else {
@@ -160,7 +177,7 @@ export default function SettingsPage() {
         setOfflineRefreshMessage("تم تحديث البيانات المخزنة بنجاح.");
       } else {
         setOfflineRefreshMessage(
-          `اكتمل التحديث جزئيًا؛ تعذر تحديث: ${result.failedDatasets.join(", ")}.`,
+          `اكتمل التحديث جزئيًا؛ تعذر تحديث: ${result.failedDatasets.join(", ")}.`
         );
       }
 
@@ -421,7 +438,9 @@ export default function SettingsPage() {
           disabled={isRefreshingOfflineData}
           className="w-full text-sm"
         >
-          {isRefreshingOfflineData ? "جارٍ تحديث البيانات..." : "تحديث البيانات المخزنة"}
+          {isRefreshingOfflineData
+            ? "جارٍ تحديث البيانات..."
+            : "تحديث البيانات المخزنة"}
         </Button>
         {offlineRefreshMessage && (
           <p role="status" className="text-center text-sm text-brand-cream/70">

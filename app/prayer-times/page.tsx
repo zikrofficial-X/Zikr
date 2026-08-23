@@ -59,6 +59,7 @@ export default function PrayerTimesPage() {
               cachedAt: Date.now(),
             }),
           );
+          window.dispatchEvent(new Event('zikr:prayer-location-updated'));
         } catch {
           // Offline cache can be unavailable in private browsing contexts.
         }
@@ -121,6 +122,7 @@ export default function PrayerTimesPage() {
               cachedAt: Date.now(),
             }),
           );
+          window.dispatchEvent(new Event('zikr:prayer-location-updated'));
         } catch {
           // Offline cache can be unavailable in private browsing contexts.
         }

@@ -16,6 +16,7 @@ import {
   type PushSubscriptionRegistrationResult,
 } from "@/lib/push-subscription";
 import { getPrayerTimes } from "@/lib/services/prayer-times";
+import { getNativeAudio } from "@/lib/audio/config";
 
 export type PrayerKey = "Fajr" | "Dhuhr" | "Asr" | "Maghrib" | "Isha";
 
@@ -36,7 +37,6 @@ const SETTINGS_KEY = "zikr_azan_settings";
 const LOCATION_KEY = "zikr_prayer_location";
 const PRAYER_NATIVE_ID_BASE = 7000;
 const PRAYER_SCHEDULE_DAYS = 4;
-const PRAYER_CHANNEL_ID = "zikr-prayer-adhan-v2";
 
 const DEFAULT_SETTINGS: AzanSettings = {
   enabledPrayers: {
@@ -68,7 +68,9 @@ function saveSettings(s: AzanSettings): void {
 type CachedPrayerLocation = {
   lat?: number;
   lon?: number;
+  city?: string;
   timings?: Record<string, string>;
+  date?: unknown;
   cachedAt?: number;
 };
 
@@ -95,7 +97,9 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function parsePrayerTime(value: string): { hours: number; minutes: number } | null {
+function parsePrayerTime(
+  value: string
+): { hours: number; minutes: number } | null {
   const match = /^(\d{1,2}):(\d{2})/.exec(value);
   if (!match) return null;
   const hours = Number(match[1]);
@@ -117,6 +121,50 @@ function alreadyFired(prayer: PrayerKey): boolean {
 function markFired(prayer: PrayerKey): void {
   if (typeof window === "undefined") return;
   sessionStorage.setItem(getAlertKey(prayer), "1");
+}
+
+async function getTimingsForNativeScheduling(): Promise<Record<
+  string,
+  string
+> | null> {
+  const cached = getCachedPrayerLocation();
+  if (cached?.timings && typeof cached.timings === "object")
+    return cached.timings;
+  if (typeof navigator === "undefined" || !navigator.geolocation) return null;
+
+  return new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        void getPrayerTimes(position.coords.latitude, position.coords.longitude)
+          .then(response => {
+            const timings =
+              (response?.data?.timings as Record<string, string> | undefined) ??
+              null;
+            if (timings && typeof window !== "undefined") {
+              try {
+                window.localStorage.setItem(
+                  LOCATION_KEY,
+                  JSON.stringify({
+                    ...cached,
+                    lat: position.coords.latitude,
+                    lon: position.coords.longitude,
+                    timings,
+                    date: response?.data?.date,
+                    cachedAt: Date.now(),
+                  })
+                );
+              } catch {
+                // Private browsing or storage limits must not block native alarms.
+              }
+            }
+            resolve(timings);
+          })
+          .catch(() => resolve(null));
+      },
+      () => resolve(null),
+      { enableHighAccuracy: false, maximumAge: 60 * 60 * 1000, timeout: 10_000 }
+    );
+  });
 }
 
 async function scheduleNativePrayerNotifications(
@@ -143,13 +191,14 @@ async function scheduleNativePrayerNotifications(
 
   const nativeIds = Array.from(
     { length: PRAYER_SCHEDULE_DAYS * PRAYERS.length },
-    (_, index) => PRAYER_NATIVE_ID_BASE + index,
+    (_, index) => PRAYER_NATIVE_ID_BASE + index
   );
   await native.cancelLocalNotifications?.(nativeIds);
   if (!PRAYERS.some(prayer => settings.enabledPrayers[prayer])) return;
 
   const cachedLocation = getCachedPrayerLocation();
   const now = new Date();
+  const nativeAudio = getNativeAudio("prayer");
   for (let dayOffset = 0; dayOffset < PRAYER_SCHEDULE_DAYS; dayOffset += 1) {
     const date = new Date(now);
     date.setHours(0, 0, 0, 0);
@@ -165,7 +214,7 @@ async function scheduleNativePrayerNotifications(
       const response = await getPrayerTimes(
         cachedLocation.lat,
         cachedLocation.lon,
-        formatLocalDate(date),
+        formatLocalDate(date)
       );
       dayTimings =
         (response?.data?.timings as Record<string, string> | undefined) ?? null;
@@ -181,18 +230,24 @@ async function scheduleNativePrayerNotifications(
       scheduled.setHours(parsed.hours, parsed.minutes, 0, 0);
       if (scheduled <= now) continue;
 
-      const id = PRAYER_NATIVE_ID_BASE + dayOffset * PRAYERS.length + PRAYERS.indexOf(prayer);
+      const id =
+        PRAYER_NATIVE_ID_BASE +
+        dayOffset * PRAYERS.length +
+        PRAYERS.indexOf(prayer);
       try {
         await native.scheduleLocalNotification({
           id,
           title: `حان وقت صلاة ${PRAYER_NAMES_AR[prayer]}`,
           body: "الصلاة خير من النوم — حافظ على صلاتك",
           scheduleAt: scheduled.toISOString(),
-          sound: "adhan.wav",
-          channelId: PRAYER_CHANNEL_ID,
+          sound: nativeAudio.sound,
+          channelId: nativeAudio.channelId,
         });
       } catch (error) {
-        console.warn("[prayer-alert] Native notification scheduling failed", error);
+        console.warn(
+          "[prayer-alert] Native notification scheduling failed",
+          error
+        );
       }
     }
   }
@@ -205,6 +260,9 @@ export interface PrayerAlertReturn {
   unlockAudio: () => void;
   requestPermission: () => Promise<void>;
   enableServerPush: () => Promise<PushSubscriptionRegistrationResult>;
+  requestNativeExactAlarmPermission: () => Promise<
+    "granted" | "opened" | "unsupported"
+  >;
   testAzan: () => void;
   onAlertFired: (cb: (prayer: PrayerKey) => void) => void;
 }
@@ -229,9 +287,12 @@ export function usePrayerAlert(): PrayerAlertReturn {
   useEffect(() => {
     let disposed = false;
     const schedule = () => {
-      const timings = getTimings();
-      if (!timings || disposed) return;
-      void scheduleNativePrayerNotifications(settings, timings).catch(error => {
+      if (disposed) return;
+      void (async () => {
+        const timings = getTimings() ?? (await getTimingsForNativeScheduling());
+        if (!timings || disposed) return;
+        await scheduleNativePrayerNotifications(settings, timings);
+      })().catch(error => {
         console.warn("[prayer-alert] Native schedule refresh failed", error);
       });
     };
@@ -251,14 +312,19 @@ export function usePrayerAlert(): PrayerAlertReturn {
         const parsed = parsePrayerTime(prayerTime);
         const [nh, nm] = hhmm.split(":").map(Number);
         if (!parsed || !Number.isFinite(nh) || !Number.isFinite(nm)) continue;
-        const diff = Math.abs(parsed.hours * 60 + parsed.minutes - (nh * 60 + nm));
+        const diff = Math.abs(
+          parsed.hours * 60 + parsed.minutes - (nh * 60 + nm)
+        );
 
         if (diff <= 1 && !alreadyFired(prayer)) {
           markFired(prayer);
           playAzanClip();
           showPrayerNotification(PRAYER_NAMES_AR[prayer]);
           alertCallbackRef.current?.(prayer);
-          if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+          if (
+            "serviceWorker" in navigator &&
+            navigator.serviceWorker.controller
+          ) {
             navigator.serviceWorker.controller.postMessage({
               type: "SHOW_PRAYER_NOTIFICATION",
               prayerName: PRAYER_NAMES_AR[prayer],
@@ -277,12 +343,14 @@ export function usePrayerAlert(): PrayerAlertReturn {
     };
     window.addEventListener("zikr:native-ready", schedule);
     window.addEventListener("zikr:native-app-state", handleResume);
+    window.addEventListener("zikr:prayer-location-updated", schedule);
     document.addEventListener("visibilitychange", handleResume);
     return () => {
       disposed = true;
       clearInterval(interval);
       window.removeEventListener("zikr:native-ready", schedule);
       window.removeEventListener("zikr:native-app-state", handleResume);
+      window.removeEventListener("zikr:prayer-location-updated", schedule);
       document.removeEventListener("visibilitychange", handleResume);
     };
   }, [settings]);
@@ -338,6 +406,39 @@ export function usePrayerAlert(): PrayerAlertReturn {
       });
     }, [settings.enabledPrayers]);
 
+  const requestNativeExactAlarmPermission = useCallback(async (): Promise<
+    "granted" | "opened" | "unsupported"
+  > => {
+    if (typeof window === "undefined") return "unsupported";
+    const native = (
+      window as Window & {
+        zikrNative?: {
+          checkExactNotificationSetting?: () => Promise<unknown>;
+          changeExactNotificationSetting?: () => Promise<unknown>;
+        };
+      }
+    ).zikrNative;
+    if (!native?.checkExactNotificationSetting) return "unsupported";
+
+    try {
+      const status = await native.checkExactNotificationSetting();
+      const exact = status as
+        { exact_alarm?: string; exactAlarm?: string } | undefined;
+      if (exact?.exact_alarm === "granted" || exact?.exactAlarm === "granted")
+        return "granted";
+      if (native.changeExactNotificationSetting) {
+        await native.changeExactNotificationSetting();
+        return "opened";
+      }
+    } catch (error) {
+      console.warn(
+        "[prayer-alert] Exact alarm permission request failed",
+        error
+      );
+    }
+    return "unsupported";
+  }, []);
+
   const testAzan = useCallback(() => {
     unlockAudioContext();
     playAzanClip();
@@ -354,6 +455,7 @@ export function usePrayerAlert(): PrayerAlertReturn {
     unlockAudio,
     requestPermission,
     enableServerPush,
+    requestNativeExactAlarmPermission,
     testAzan,
     onAlertFired,
   };
