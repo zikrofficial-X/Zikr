@@ -13,6 +13,7 @@ import { getPrayerTimes, getPrayerTimesByCity, getNextPrayer, getCurrentPrayer, 
 import type { PrayerTimesResponse } from '@/lib/services/prayer-times';
 import { unlockAudioContext, isAudioUnlocked } from '@/lib/audio/spiritual-tones';
 import { usePrayerAlert, PRAYER_NAMES_AR } from '@/hooks/use-prayer-alert';
+import { resolveLocationLabel } from '@/lib/location/reverse-geocode';
 
 // Cairo fallback coords (used when geo is denied or unavailable)
 const CAIRO = { lat: 30.0444, lon: 31.2357, city: 'القاهرة (افتراضي)' };
@@ -86,7 +87,8 @@ export default function PrayerTimesPage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        await loadForCoords(latitude, longitude, 'موقعك الحالي');
+        const city = await resolveLocationLabel(latitude, longitude);
+        await loadForCoords(latitude, longitude, city ?? 'موقعك الحالي');
       },
       async () => {
         // Geo denied — silently fall back to Cairo

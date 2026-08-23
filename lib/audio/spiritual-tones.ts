@@ -5,6 +5,8 @@
  * Call unlockAudioContext() inside a click/touch handler to prime the context.
  */
 
+import { getAudioUrl } from '@/lib/audio/config';
+
 let ctx: AudioContext | null = null;
 let masterVolume = 0.7; // 0.0 – 1.0
 
@@ -95,19 +97,26 @@ export const AZAN_CLIP_URL = "/audio/adhan.wav";
 export const SALAWAT_CLIP_URL = "/audio/salawat.wav";
 
 let azanEl: HTMLAudioElement | null = null;
+let dhikrEl: HTMLAudioElement | null = null;
 let salawatEl: HTMLAudioElement | null = null;
-
-function getClipEl(kind: "azan" | "salawat"): HTMLAudioElement | null {
+function getClipEl(kind: "azan" | "dhikr" | "salawat"): HTMLAudioElement | null {
   if (typeof window === "undefined") return null;
   if (kind === "azan") {
     if (!azanEl) {
-      azanEl = new Audio(AZAN_CLIP_URL);
+      azanEl = new Audio(getAudioUrl('prayer') || AZAN_CLIP_URL);
       azanEl.preload = "none";
     }
     return azanEl;
   }
+  if (kind === 'dhikr') {
+    if (!dhikrEl) {
+      dhikrEl = new Audio(getAudioUrl('dhikr') || SALAWAT_CLIP_URL);
+      dhikrEl.preload = 'none';
+    }
+    return dhikrEl;
+  }
   if (!salawatEl) {
-    salawatEl = new Audio(SALAWAT_CLIP_URL);
+    salawatEl = new Audio(getAudioUrl('salawat') || SALAWAT_CLIP_URL);
     salawatEl.preload = "none";
   }
   return salawatEl;
@@ -140,6 +149,17 @@ export function stopAzanClip(): void {
  * Play the real "صلي على رسول الله" salawat clip.
  * Falls back to the soft bell tone if playback fails.
  */
+export function playDhikrClip(): void {
+  const el = getClipEl('dhikr');
+  if (!el) {
+    playSalawatTone();
+    return;
+  }
+  el.volume = masterVolume;
+  el.currentTime = 0;
+  el.play().catch(() => playSalawatTone());
+}
+
 export function playSalawatClip(): void {
   const el = getClipEl("salawat");
   if (!el) {

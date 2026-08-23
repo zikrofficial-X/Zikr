@@ -1,4 +1,5 @@
-import { playAzanClip } from "@/lib/audio/spiritual-tones";
+import { playAzanClip, playDhikrClip } from "@/lib/audio/spiritual-tones";
+import { getAudioSlotForNotification, getNativeAudio } from '@/lib/audio/config';
 
 export type NotificationPermission =
   "granted" | "denied" | "default" | "unsupported";
@@ -49,21 +50,15 @@ async function showNativeNotification(
   const native = (window as NativeNotificationWindow).zikrNative;
   if (!native?.scheduleLocalNotification) return false;
 
-  const isPrayer = tag.startsWith("prayer-");
-  // Dhikr reminders use the same intentional voice clip as salawat reminders.
-  // Both must use the dedicated Android channel so background delivery has audio.
-  const hasSpiritualAudio = tag === "salawat-reminder" || tag === "dhikr-reminder";
+  const audioSlot = getAudioSlotForNotification(tag);
+  const nativeAudio = audioSlot ? getNativeAudio(audioSlot) : null;
   try {
     await native.scheduleLocalNotification({
       id: notificationId(tag),
       title,
       body,
-      sound: isPrayer ? "adhan.wav" : hasSpiritualAudio ? "salawat.wav" : undefined,
-      channelId: isPrayer
-        ? "zikr-prayer-adhan-v2"
-        : hasSpiritualAudio
-          ? "zikr-salawat-v2"
-          : undefined,
+      sound: nativeAudio?.sound,
+      channelId: nativeAudio?.channelId,
     });
     return true;
   } catch (error) {
@@ -192,6 +187,7 @@ export function showDhikrNotification(text: string): void {
 
   const title = "تذكير بالذكر";
   const tag = "dhikr-reminder";
+  playDhikrClip();
 
   void showNativeNotification(title, text, tag).then(handled => {
     if (handled) return;

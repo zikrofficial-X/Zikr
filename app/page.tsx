@@ -14,8 +14,11 @@ import {
 import { offlineDb } from "@/lib/offline-db";
 import type { PrayerTimes } from "@/lib/types/prayer";
 import { useLanguage } from "@/components/layout/language-provider";
+import { resolveLocationLabel } from '@/lib/location/reverse-geocode';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
+const DEFAULT_PRAYER_CITY = 'Cairo';
+
 const prayerNames = [
   { key: "Fajr", label: "الفجر", labelEn: "Fajr", icon: "🌙" },
   { key: "Sunrise", label: "الشروق", labelEn: "Sunrise", icon: "🌅" },
@@ -426,7 +429,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [prayerTimes, setPrayerTimes] = useState<PrayerTimes | null>(null);
   const prayerTimesRef = useRef<PrayerTimes | null>(null);
-  const [prayerCity, setPrayerCity] = useState("Cairo");
+  const [prayerCity, setPrayerCity] = useState("");
   const [cityInput, setCityInput] = useState("");
   const [usingLocation, setUsingLocation] = useState(false);
   const [loadingPrayer, setLoadingPrayer] = useState(false);
@@ -537,12 +540,17 @@ export default function HomePage() {
   );
 
   useEffect(() => {
+    if (usingLocation || !prayerCity) return;
     if (!prayerTimesRef.current) setLoadingPrayer(true);
     void fetchPrayerByCity(prayerCity, { keepExisting: Boolean(prayerTimesRef.current) });
-  }, [prayerCity, fetchPrayerByCity]);
+  }, [usingLocation, prayerCity, fetchPrayerByCity]);
 
   const requestPrayerByLocation = useCallback(() => {
-    if (!("geolocation" in navigator)) return;
+    if (!("geolocation" in navigator)) {
+      setUsingLocation(false);
+      setPrayerCity(DEFAULT_PRAYER_CITY);
+      return;
+    }
 
     setLoadingPrayer(true);
     navigator.geolocation.getCurrentPosition(
@@ -551,6 +559,8 @@ export default function HomePage() {
           const res = await getPrayerTimes(latitude, longitude);
           if (res?.data?.timings) {
             setPrayerTimes(res.data.timings as PrayerTimes);
+            const locationLabel = await resolveLocationLabel(latitude, longitude);
+            setPrayerCity(locationLabel ?? (isEnglish ? 'Your current location' : 'موقعك الحالي'));
             setUsingLocation(true);
           }
         } catch (error) {
@@ -559,10 +569,14 @@ export default function HomePage() {
           setLoadingPrayer(false);
         }
       },
-      () => setLoadingPrayer(false),
+      () => {
+        setLoadingPrayer(false);
+        setUsingLocation(false);
+        setPrayerCity(DEFAULT_PRAYER_CITY);
+      },
       { timeout: 6000, maximumAge: 300000 }
     );
-  }, []);
+  }, [isEnglish]);
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {

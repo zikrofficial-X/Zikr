@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { getNativeAudio, loadAudioSettings } from '@/lib/audio/config';
 
 type CapacitorPlugin = Record<
   string,
@@ -138,24 +139,27 @@ export function NativeCapacitorBridge() {
 
     void (async () => {
       try {
-        await localNotifications?.createChannel?.({
-          id: "zikr-prayer-adhan-v2",
-          name: "أوقات الصلاة والأذان",
-          description: "تنبيهات أوقات الصلاة بصوت الأذان",
-          importance: 5,
-          sound: "adhan.wav",
-          vibration: true,
-          visibility: 1,
-        });
-        await localNotifications?.createChannel?.({
-          id: "zikr-salawat-v2",
-          name: "الصلاة على النبي",
-          description: "تذكيرات الصلاة على سيدنا محمد",
-          importance: 3,
-          sound: "salawat.wav",
-          vibration: true,
-          visibility: 1,
-        });
+        await loadAudioSettings();
+        const prayerAudio = getNativeAudio('prayer');
+        const dhikrAudio = getNativeAudio('dhikr');
+        const salawatAudio = getNativeAudio('salawat');
+        const channels = [
+          { ...prayerAudio, name: 'أوقات الصلاة والأذان', description: 'تنبيهات أوقات الصلاة بالصوت المختار', importance: 5 },
+          { ...dhikrAudio, name: 'تذكير الذكر', description: 'تذكيرات الذكر بالصوت المختار', importance: 3 },
+          { ...salawatAudio, name: 'الصلاة على النبي', description: 'تذكيرات الصلاة على النبي بالصوت المختار', importance: 3 },
+        ];
+        const uniqueChannels = Array.from(new Map(channels.map(channel => [channel.channelId, channel])).values());
+        for (const channel of uniqueChannels) {
+          await localNotifications?.createChannel?.({
+            id: channel.channelId,
+            name: channel.name,
+            description: channel.description,
+            importance: channel.importance,
+            sound: channel.sound,
+            vibration: true,
+            visibility: 1,
+          });
+        }
 
         // Android 13+ permission is returned asynchronously; the native facade
         // exposes it to the web layer instead of pretending it is always granted.

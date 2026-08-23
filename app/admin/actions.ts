@@ -33,7 +33,8 @@
  * Request (FormData): title, cadence, targetRef, prompt, tajweedFocus, published
  */
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/services/admin";
+import { requireAdmin } from '@/lib/services/admin';
+import { DEFAULT_AUDIO_SETTINGS, isAudioChoiceKey, type AudioSlot } from '@/lib/audio/config';
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
@@ -151,13 +152,36 @@ export async function saveSiteSettingAction(formData: FormData) {
     ["instagramUrl", value(formData, "instagramUrl")],
   ];
 
+  const hasAudioFields = ['audioPrayer', 'audioDhikr', 'audioSalawat'].some(field => formData.has(field));
+  const audioSettings: Record<AudioSlot, string> = {
+    prayer: String(formData.get('audioPrayer') ?? '').trim() || DEFAULT_AUDIO_SETTINGS.prayer,
+    dhikr: String(formData.get('audioDhikr') ?? '').trim() || DEFAULT_AUDIO_SETTINGS.dhikr,
+    salawat: String(formData.get('audioSalawat') ?? '').trim() || DEFAULT_AUDIO_SETTINGS.salawat,
+  };
+  if (hasAudioFields) {
+    for (const slot of Object.keys(audioSettings) as AudioSlot[]) {
+      if (!isAudioChoiceKey(audioSettings[slot])) {
+        throw new Error('اختيار ملف صوتي غير صالح.');
+      }
+    }
+  }
+
   const valueObj: JsonRecord = {};
+  if (!hasAudioFields && key === 'homepage') {
+    const existing = await supabaseServerAdminRequest<Array<{ value?: JsonRecord }>>(
+      `/rest/v1/site_settings?select=value&key=eq.${encodeURIComponent(key)}&limit=1`,
+      { method: 'GET' },
+    );
+    const existingValue = existing[0]?.value;
+    if (existingValue && typeof existingValue === 'object') Object.assign(valueObj, existingValue);
+  }
   for (const [k, v] of stringEntries) {
     if (v !== null) valueObj[k] = v;
   }
   for (const [k, v] of sectionEntries) {
     valueObj[k] = v;
   }
+  if (hasAudioFields) valueObj.audioSettings = audioSettings;
 
   const payload: JsonRecord = {
     key,

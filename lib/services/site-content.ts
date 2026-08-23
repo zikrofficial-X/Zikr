@@ -18,6 +18,11 @@ export type SiteSettingValue = {
   facebookPageUrl?: string | null;
   twitterUrl?: string | null;
   instagramUrl?: string | null;
+  audioSettings?: {
+    prayer?: string | null;
+    dhikr?: string | null;
+    salawat?: string | null;
+  } | null;
 };
 
 export type PinnedMessage = {

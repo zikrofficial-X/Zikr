@@ -4,6 +4,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { VideoUploadField } from "@/components/admin/video-upload-field";
 import { CloudinaryImageUploadField } from "@/components/admin/cloudinary-image-upload-field";
+import { AudioChoiceField } from "@/components/admin/audio-choice-field";
+import { normalizeAudioSettings } from '@/lib/audio/config';
+import { getSiteSetting } from '@/lib/services/site-content';
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { requireAdmin } from "@/lib/services/admin";
@@ -241,6 +244,7 @@ export default async function AdminPage() {
     quranSurahsCount,
     hadithCount,
     publishingConfig,
+    homepageSetting,
   ] = await Promise.all([
     runApiHealthChecks(),
     countTable("stories"),
@@ -261,8 +265,10 @@ export default async function AdminPage() {
     countTable("quran_surahs"),
     countTable("hadiths"),
     getVideoPublishingConfig(),
+    getSiteSetting('homepage'),
   ]);
 
+  const audioSettings = normalizeAudioSettings(homepageSetting?.audioSettings);
   const maxContent = Math.max(
     storiesCount,
     articlesCount,
@@ -503,6 +509,15 @@ export default async function AdminPage() {
               <Field name="body" label="وصف الصفحة الرئيسية" textarea />
               <CloudinaryImageUploadField name="imageUrl" label="صورة الهيرو" folder="homepage" />
               <CloudinaryImageUploadField name="logoUrl" label="اللوجو" folder="branding" />
+              <div className="space-y-3 rounded-2xl border border-brand-gold/15 bg-brand-gold/5 p-4" dir="rtl">
+                <div>
+                  <h3 className="text-sm font-bold text-brand-gold">أصوات التذكيرات</h3>
+                  <p className="mt-1 text-xs leading-5 text-brand-cream/45">اختر الملف لكل نوع ثم اضغط حفظ إعدادات الموقع. سيُستخدم الاختيار في الويب والتنبيهات المحلية بعد مزامنة التطبيق.</p>
+                </div>
+                <AudioChoiceField name="audioPrayer" label="صوت الأذان لمواقيت الصلاة" defaultValue={audioSettings.prayer} hint="يُستخدم في إشعارات الفجر والظهر والعصر والمغرب والعشاء." />
+                <AudioChoiceField name="audioDhikr" label="صوت تذكير الذكر" defaultValue={audioSettings.dhikr} hint="يُستخدم في تذكيرات الذكر العامة." />
+                <AudioChoiceField name="audioSalawat" label="صوت الصلاة على النبي" defaultValue={audioSettings.salawat} hint="يُستخدم في تذكيرات الصلاة على النبي." />
+              </div>
               <Field
                 name="youtubeChannelUrl"
                 label="رابط قناة يوتيوب"
