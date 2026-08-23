@@ -1,6 +1,6 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { getServerEnv } from '@/lib/env';
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { getServerEnv } from "@/lib/env";
 
 // Lazy accessors — read at call-time, not at module-evaluation time.
 // This prevents build-time / CI errors when env vars are absent.
@@ -11,10 +11,14 @@ function getEnv() {
   const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url) {
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL on the server).');
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL on the server)."
+    );
   }
   if (!anonKey) {
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_ANON_KEY on the server).');
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_ANON_KEY on the server)."
+    );
   }
   return { url, anonKey, serviceKey };
 }
@@ -41,7 +45,9 @@ export function isSupabaseConfigured(): boolean {
 export function createAdminClient() {
   const { url, serviceKey } = getEnv();
   if (!serviceKey) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY for admin Supabase client.');
+    throw new Error(
+      "Missing SUPABASE_SERVICE_ROLE_KEY for admin Supabase client."
+    );
   }
   return createServerClient(url, serviceKey, {
     cookies: { getAll: () => [], setAll: () => {} },
@@ -88,36 +94,42 @@ export async function getSupabaseUser() {
 // These wrap the Supabase REST API directly, used by older services that
 // have not yet been migrated to the supabase-js client.
 
+type RestRequestInit = RequestInit & {
+  /** Maximum time allowed for the upstream REST request. */
+  timeoutMs?: number;
+};
+
 async function restRequest<T>(
   path: string,
-  init?: RequestInit,
+  init?: RestRequestInit,
   apiKey?: string
 ): Promise<T> {
   const { url, anonKey } = getEnv();
   const key = apiKey ?? anonKey;
+  const { timeoutMs = 8000, ...fetchInit } = init ?? {};
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   let res: Response;
   try {
     res = await fetch(`${url}${path}`, {
-      ...init,
+      ...fetchInit,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         apikey: key,
         Authorization: `Bearer ${key}`,
-        ...(init?.headers || {}),
+        ...(fetchInit.headers || {}),
       },
-      cache: init?.cache ?? 'no-store',
-      signal: init?.signal ?? controller.signal,
+      cache: fetchInit.cache ?? "no-store",
+      signal: fetchInit.signal ?? controller.signal,
     });
   } finally {
     clearTimeout(timeoutId);
   }
 
   if (!res.ok) {
-    const body = await res.text().catch(() => '');
+    const body = await res.text().catch(() => "");
     throw new Error(`Supabase REST ${res.status}: ${body}`);
   }
   if (res.status === 204) return undefined as T;
@@ -127,15 +139,22 @@ async function restRequest<T>(
 }
 
 /** Authenticated REST request using the anon key. */
-export const supabaseServerAnonRequest = <T>(path: string, init?: RequestInit) =>
-  restRequest<T>(path, init);
+export const supabaseServerAnonRequest = <T>(
+  path: string,
+  init?: RestRequestInit
+) => restRequest<T>(path, init);
 
 /** Authenticated REST request using the service-role key (bypasses RLS). */
-export const supabaseServerAdminRequest = <T>(path: string, init?: RequestInit) =>
+export const supabaseServerAdminRequest = <T>(
+  path: string,
+  init?: RestRequestInit
+) =>
   (() => {
     const { serviceKey } = getEnv();
     if (!serviceKey) {
-      throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY for server-admin Supabase request.');
+      throw new Error(
+        "Missing SUPABASE_SERVICE_ROLE_KEY for server-admin Supabase request."
+      );
     }
     return restRequest<T>(path, init, serviceKey);
   })();
@@ -147,26 +166,28 @@ export const supabaseServerAdminRequest = <T>(path: string, init?: RequestInit) 
 export async function supabaseServerAdminCount(table: string): Promise<number> {
   const { url, serviceKey } = getEnv();
   if (!serviceKey) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY for server-admin Supabase count.');
+    throw new Error(
+      "Missing SUPABASE_SERVICE_ROLE_KEY for server-admin Supabase count."
+    );
   }
   const key = serviceKey;
   try {
     const res = await fetch(`${url}/rest/v1/${table}?select=id`, {
-      method: 'HEAD',
+      method: "HEAD",
       headers: {
         apikey: key,
         Authorization: `Bearer ${key}`,
-        Prefer: 'count=exact',
+        Prefer: "count=exact",
       },
-      cache: 'no-store',
+      cache: "no-store",
     });
     if (!res.ok) {
       console.error(`[supabase] Count failed for ${table}: HTTP ${res.status}`);
       return 0;
     }
     // Content-Range: 0-24/3573 → total after the slash
-    const range = res.headers.get('content-range') ?? '';
-    const total = Number(range.split('/')[1]);
+    const range = res.headers.get("content-range") ?? "";
+    const total = Number(range.split("/")[1]);
     return Number.isFinite(total) ? total : 0;
   } catch (error) {
     console.error(`[supabase] Count failed for ${table}:`, error);
@@ -177,7 +198,7 @@ export async function supabaseServerAdminCount(table: string): Promise<number> {
 /** Legacy: check Supabase connectivity. */
 export async function assertSupabaseConnection() {
   try {
-    await restRequest('/rest/v1/');
+    await restRequest("/rest/v1/");
     return true;
   } catch {
     return false;
