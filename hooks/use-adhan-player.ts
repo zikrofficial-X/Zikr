@@ -1,7 +1,11 @@
 'use client';
 
 import { useCallback, useRef, useState, useEffect } from 'react';
-import { playAzanTone, unlockAudioContext } from '@/lib/audio/spiritual-tones';
+import {
+  AZAN_CLIP_URL,
+  playAzanTone,
+  unlockAudioContext,
+} from '@/lib/audio/spiritual-tones';
 
 export type AdhanVoice = 'makkah' | 'madinah';
 
@@ -71,6 +75,23 @@ export function useAdhanPlayer(): UseAdhanPlayerReturn {
     };
   }, []);
 
+  const playLocalAdhan = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.dataset.voice = 'local';
+    audio.src = AZAN_CLIP_URL;
+    audio.load();
+
+    try {
+      await audio.play();
+      setIsPlaying(true);
+    } catch {
+      playAzanTone();
+      setIsPlaying(false);
+    }
+  }, []);
+
   const play = useCallback(async (voice: AdhanVoice = currentVoice) => {
     if (!audioRef.current) return;
 
@@ -95,12 +116,10 @@ export function useAdhanPlayer(): UseAdhanPlayerReturn {
       await audio.play();
       setIsPlaying(true);
     } catch {
-      // The optional MP3 files may not be packaged in every deployment.
-      // Keep the feature usable with the built-in, offline-safe tone.
-      playAzanTone();
-      setIsPlaying(false);
+      // Keep the adhan usable offline when an optional remote reciter is unavailable.
+      await playLocalAdhan();
     }
-  }, [currentVoice]);
+  }, [currentVoice, playLocalAdhan]);
 
   const pause = useCallback(() => {
     if (audioRef.current) {
@@ -142,12 +161,11 @@ export function useAdhanPlayer(): UseAdhanPlayerReturn {
       audioRef.current.load();
       if (wasPlaying) {
         audioRef.current.play().catch(() => {
-          playAzanTone();
-          setIsPlaying(false);
+          void playLocalAdhan();
         });
       }
     }
-  }, [isPlaying]);
+  }, [isPlaying, playLocalAdhan]);
 
   return {
     isPlaying,

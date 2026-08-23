@@ -50,16 +50,18 @@ async function showNativeNotification(
   if (!native?.scheduleLocalNotification) return false;
 
   const isPrayer = tag.startsWith("prayer-");
-  const isSalawat = tag === "salawat-reminder";
+  // Dhikr reminders use the same intentional voice clip as salawat reminders.
+  // Both must use the dedicated Android channel so background delivery has audio.
+  const hasSpiritualAudio = tag === "salawat-reminder" || tag === "dhikr-reminder";
   try {
     await native.scheduleLocalNotification({
       id: notificationId(tag),
       title,
       body,
-      sound: isPrayer ? "adhan.wav" : isSalawat ? "salawat.wav" : undefined,
+      sound: isPrayer ? "adhan.wav" : hasSpiritualAudio ? "salawat.wav" : undefined,
       channelId: isPrayer
         ? "zikr-prayer-adhan-v2"
-        : isSalawat
+        : hasSpiritualAudio
           ? "zikr-salawat-v2"
           : undefined,
     });
