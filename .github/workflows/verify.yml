@@ -1,8 +1,8 @@
 name: ZIKR verify
 
-# GitHub-hosted runners are temporarily unavailable for this account.
-# Vercel and CircleCI run verification automatically; this workflow remains
-# available as a manual fallback when GitHub Actions access is restored.
+# GitHub-hosted runners are unavailable for this account without billing access.
+# Verification is performed automatically by CircleCI and Vercel.
+# Keep this workflow manual-only so it never triggers a runner/billing failure.
 on:
   workflow_dispatch:
 
