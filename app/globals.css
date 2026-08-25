@@ -4,8 +4,7 @@
 
 :root {
   --font-noto-arabic: "Noto Naskh Arabic";
-  --font-amiri:
-    var(--font-noto-arabic), "Amiri", "Times New Roman", serif;
+  --font-amiri: var(--font-noto-arabic), "Amiri", "Times New Roman", serif;
   --font-arabic:
     var(--font-noto-arabic), var(--font-amiri), "Scheherazade New", "Segoe UI",
     Tahoma, Arial, sans-serif;
@@ -221,4 +220,43 @@ p {
   font-size: 0.8rem;
   backdrop-filter: blur(16px);
   box-shadow: 0 0 28px rgba(216, 183, 91, 0.18);
+}
+
+/* Android WebView touch/performance tuning: keep scrolling native and avoid
+   compositing-heavy effects that delay input on lower-memory devices. */
+html.capacitor-native {
+  scroll-behavior: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.capacitor-native body::before,
+html.capacitor-native body::after {
+  display: none;
+}
+
+html.capacitor-native .glass {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgba(0, 0, 0, 0.68);
+}
+
+html.capacitor-native button,
+html.capacitor-native a,
+html.capacitor-native [role="button"],
+html.capacitor-native input,
+html.capacitor-native select,
+html.capacitor-native textarea {
+  touch-action: manipulation;
+}
+
+html.capacitor-native .animate-pulse,
+html.capacitor-native .animate-fadeIn,
+html.capacitor-native .animate-slideUp {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
