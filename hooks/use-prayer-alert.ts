@@ -37,6 +37,7 @@ const SETTINGS_KEY = "zikr_azan_settings";
 const LOCATION_KEY = "zikr_prayer_location";
 const PRAYER_NATIVE_ID_BASE = 7000;
 const PRAYER_SCHEDULE_DAYS = 4;
+const SETTINGS_UPDATED_EVENT = "zikr:prayer-settings-updated";
 
 const DEFAULT_SETTINGS: AzanSettings = {
   enabledPrayers: {
@@ -267,7 +268,10 @@ export interface PrayerAlertReturn {
   onAlertFired: (cb: (prayer: PrayerKey) => void) => void;
 }
 
-export function usePrayerAlert(): PrayerAlertReturn {
+export function usePrayerAlert(
+  options: { passive?: boolean } = {}
+): PrayerAlertReturn {
+  const passive = options.passive ?? false;
   const [settings, setSettings] = useState<AzanSettings>(DEFAULT_SETTINGS);
   const [notificationPermission, setNotificationPermission] =
     useState<PermResult>("default");
@@ -281,10 +285,21 @@ export function usePrayerAlert(): PrayerAlertReturn {
     }
   }, []);
 
+  // Keep every hook instance synchronized with settings changes. The page
+  // instance is passive, while the app-shell instance reacts by rescheduling
+  // native alarms without creating a second scheduler.
+  useEffect(() => {
+    const syncSettings = () => setSettings(loadSettings());
+    window.addEventListener(SETTINGS_UPDATED_EVENT, syncSettings);
+    return () =>
+      window.removeEventListener(SETTINGS_UPDATED_EVENT, syncSettings);
+  }, []);
+
   // Keep the foreground loop for the open browser, but use native alarms for
   // Android background delivery. Reschedule after native initialization and
   // whenever the app returns from the background.
   useEffect(() => {
+    if (passive) return;
     let disposed = false;
     const schedule = () => {
       if (disposed) return;
@@ -353,7 +368,7 @@ export function usePrayerAlert(): PrayerAlertReturn {
       window.removeEventListener("zikr:prayer-location-updated", schedule);
       document.removeEventListener("visibilitychange", handleResume);
     };
-  }, [settings]);
+  }, [settings, passive]);
 
   const togglePrayer = useCallback((p: PrayerKey) => {
     setSettings(prev => {
@@ -365,6 +380,7 @@ export function usePrayerAlert(): PrayerAlertReturn {
         },
       };
       saveSettings(next);
+      window.dispatchEvent(new Event(SETTINGS_UPDATED_EVENT));
       return next;
     });
   }, []);
@@ -374,6 +390,7 @@ export function usePrayerAlert(): PrayerAlertReturn {
     setSettings(prev => {
       const next = { ...prev, audioUnlocked: isAudioUnlocked() };
       saveSettings(next);
+      window.dispatchEvent(new Event(SETTINGS_UPDATED_EVENT));
       return next;
     });
   }, []);

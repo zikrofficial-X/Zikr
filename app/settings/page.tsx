@@ -27,14 +27,15 @@ function Toggle({
   label: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-4">
+    <div className="flex items-center justify-between gap-4">
       <span className="text-sm text-brand-cream/80">{label}</span>
       <button
+        type="button"
         role="switch"
         aria-checked={checked}
         aria-label={label}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${
+        className={`relative inline-flex min-h-11 min-w-11 h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${
           checked
             ? "border-brand-gold bg-brand-gold/20"
             : "border-brand-cream/20 bg-transparent"
@@ -46,7 +47,7 @@ function Toggle({
           }`}
         />
       </button>
-    </label>
+    </div>
   );
 }
 
@@ -60,7 +61,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="space-y-5 p-6">
+    <Card className="settings-section space-y-5 p-6">
       <div className="border-b border-brand-gold/15 pb-4">
         <h2 className="text-xl font-bold text-brand-gold" dir="rtl">
           {title}
@@ -93,7 +94,7 @@ export default function SettingsPage() {
     enableServerPush,
     requestNativeExactAlarmPermission,
     testAzan,
-  } = usePrayerAlert();
+  } = usePrayerAlert({ passive: true });
 
   const {
     settings: salawatSettings,
@@ -101,7 +102,7 @@ export default function SettingsPage() {
     setIntervalMinutes,
     setQuietHours,
     testReminder,
-  } = useSalawatReminder();
+  } = useSalawatReminder({ passive: true });
 
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -132,9 +133,11 @@ export default function SettingsPage() {
   const handleEnableServerPush = async () => {
     setPushMessage(null);
     try {
-      const native = (window as Window & {
-        zikrNative?: { isNative?: boolean };
-      }).zikrNative;
+      const native = (
+        window as Window & {
+          zikrNative?: { isNative?: boolean };
+        }
+      ).zikrNative;
       const nativeAlarm = await requestNativeExactAlarmPermission();
       const result = await enableServerPush();
       if (result.status === "registered") {

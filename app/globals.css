@@ -4,8 +4,7 @@
 
 :root {
   --font-noto-arabic: "Noto Naskh Arabic";
-  --font-amiri:
-    var(--font-noto-arabic), "Amiri", "Times New Roman", serif;
+  --font-amiri: var(--font-noto-arabic), "Amiri", "Times New Roman", serif;
   --font-arabic:
     var(--font-noto-arabic), var(--font-amiri), "Scheherazade New", "Segoe UI",
     Tahoma, Arial, sans-serif;
@@ -221,4 +220,18 @@ p {
   font-size: 0.8rem;
   backdrop-filter: blur(16px);
   box-shadow: 0 0 28px rgba(216, 183, 91, 0.18);
+}
+
+/* Cards use Tailwind blur utilities directly, not only the `.glass` class. */
+html.capacitor-native [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html.capacitor-native [class*="transition-all"] {
+  transition-property: opacity, transform !important;
+}
+
+html.capacitor-native .settings-section {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
 }

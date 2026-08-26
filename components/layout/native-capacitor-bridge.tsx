@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { getNativeAudio, loadAudioSettings } from '@/lib/audio/config';
+import { getNativeAudio, loadAudioSettings } from "@/lib/audio/config";
 
 type CapacitorPlugin = Record<
   string,
@@ -36,6 +36,7 @@ type CapacitorWindow = Window & {
     changeExactNotificationSetting: () => Promise<unknown>;
     getAppInfo: () => Promise<{ version?: string; build?: string }>;
     openExternalUrl: (url: string) => Promise<void>;
+    startGoogleOAuth: (nextPath?: string) => Promise<void>;
     cancelLocalNotifications: (ids: number[]) => Promise<void>;
   };
 };
@@ -125,6 +126,31 @@ function installNativeFacade(
       }
       window.location.assign(url);
     },
+    async startGoogleOAuth(nextPath = "/profile") {
+      const safeNext =
+        nextPath.startsWith("/") && !nextPath.startsWith("//")
+          ? nextPath
+          : "/profile";
+      const startUrl = new URL("/auth/google", window.location.origin);
+      startUrl.searchParams.set("native", "1");
+      startUrl.searchParams.set("next", safeNext);
+      const response = await fetch(startUrl, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        url?: string;
+        error?: string;
+      } | null;
+      if (!response.ok || !payload?.url) {
+        throw new Error(payload?.error ?? "تعذر بدء تسجيل الدخول عبر Google.");
+      }
+      if (plugins.Browser?.open) {
+        await plugins.Browser.open({ url: payload.url });
+        return;
+      }
+      window.location.assign(payload.url);
+    },
     async cancelLocalNotifications(ids) {
       if (!ids.length) return;
       await plugins.LocalNotifications?.cancel?.({
@@ -141,8 +167,12 @@ export function NativeCapacitorBridge() {
 
     installNativeFacade(plugins);
     document.documentElement.classList.add("capacitor-native");
-
+    // Next.js uses this attribute to coordinate router scrolling. Smooth
+    // scrolling feels delayed in the native WebView, so keep native navigation
+    // and touch scrolling immediate.
+    document.documentElement.dataset.scrollBehavior = "auto";
     void plugins.StatusBar?.setStyle?.({ style: "DARK" });
+
     void plugins.StatusBar?.setBackgroundColor?.({ color: "#000000" });
     void plugins.SplashScreen?.hide?.();
 
@@ -153,15 +183,34 @@ export function NativeCapacitorBridge() {
     void (async () => {
       try {
         await loadAudioSettings();
-        const prayerAudio = getNativeAudio('prayer');
-        const dhikrAudio = getNativeAudio('dhikr');
-        const salawatAudio = getNativeAudio('salawat');
+        const prayerAudio = getNativeAudio("prayer");
+        const dhikrAudio = getNativeAudio("dhikr");
+        const salawatAudio = getNativeAudio("salawat");
         const channels = [
-          { ...prayerAudio, name: 'أوقات الصلاة والأذان', description: 'تنبيهات أوقات الصلاة بالصوت المختار', importance: 5 },
-          { ...dhikrAudio, name: 'تذكير الذكر', description: 'تذكيرات الذكر بالصوت المختار', importance: 3 },
-          { ...salawatAudio, name: 'الصلاة على النبي', description: 'تذكيرات الصلاة على النبي بالصوت المختار', importance: 3 },
+          {
+            ...prayerAudio,
+            name: "أوقات الصلاة والأذان",
+            description: "تنبيهات أوقات الصلاة بالصوت المختار",
+            importance: 5,
+          },
+          {
+            ...dhikrAudio,
+            name: "تذكير الذكر",
+            description: "تذكيرات الذكر بالصوت المختار",
+            importance: 3,
+          },
+          {
+            ...salawatAudio,
+            name: "الصلاة على النبي",
+            description: "تذكيرات الصلاة على النبي بالصوت المختار",
+            importance: 3,
+          },
         ];
-        const uniqueChannels = Array.from(new Map(channels.map(channel => [channel.channelId, channel])).values());
+        const uniqueChannels = Array.from(
+          new Map(
+            channels.map(channel => [channel.channelId, channel])
+          ).values()
+        );
         for (const channel of uniqueChannels) {
           await localNotifications?.createChannel?.({
             id: channel.channelId,
@@ -178,7 +227,10 @@ export function NativeCapacitorBridge() {
         // exposes it to the web layer instead of pretending it is always granted.
         await localNotifications?.requestPermissions?.();
       } catch (error) {
-        console.warn("[native-bridge] Local notification initialization failed", error);
+        console.warn(
+          "[native-bridge] Local notification initialization failed",
+          error
+        );
       } finally {
         // Do not let prayer hooks race channel creation. They can now safely
         // schedule background alarms when this event is dispatched.
@@ -218,12 +270,17 @@ export function NativeCapacitorBridge() {
         parsed.protocol === "com.zikr.app:" &&
         parsed.hostname === "auth" &&
         parsed.pathname.startsWith("/callback");
-      const target =
-        parsed.protocol === "com.zikr.app:" && next
+      // The callback must win over `next`: it carries the one-time OAuth code
+      // (and state) that the server must exchange before any navigation occurs.
+      // The previous order dropped that code whenever next=/profile existed.
+      if (isCustomAuthCallback) {
+        void plugins.Browser?.close?.();
+      }
+      const target = isCustomAuthCallback
+        ? `/auth/callback${parsed.search}${parsed.hash}`
+        : parsed.protocol === "com.zikr.app:" && next
           ? next
-          : isCustomAuthCallback
-            ? `/auth/callback${parsed.search}${parsed.hash}`
-            : `${parsed.pathname || "/"}${parsed.search}${parsed.hash}`;
+          : `${parsed.pathname || "/"}${parsed.search}${parsed.hash}`;
       window.location.assign(target.startsWith("/") ? target : "/");
     });
 

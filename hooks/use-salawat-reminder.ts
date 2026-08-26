@@ -26,6 +26,7 @@ export interface SalawatSettings {
 
 const SETTINGS_KEY = "zikr_salawat_settings";
 const SALAWAT_CHANNEL_ID = "zikr-salawat-v2";
+const SETTINGS_UPDATED_EVENT = "zikr:salawat-settings-updated";
 
 const DEFAULT_SETTINGS: SalawatSettings = {
   enabled: false, // opt-in: user must explicitly enable
@@ -99,16 +100,21 @@ function scheduleNativeSalawatReminders(settings: SalawatSettings): void {
   let attempts = 0;
   while (scheduledCount < SALAWAT_NATIVE_IDS.length && attempts < 160) {
     if (!isQuietAt(next, settings.quietHours)) {
-      void native.scheduleLocalNotification({
-        id: SALAWAT_NATIVE_IDS[scheduledCount],
-        title: "تذكير بالصلاة على النبي",
-        body: "صل على سيدنا محمد",
-        scheduleAt: next.toISOString(),
-        sound: "salawat.wav",
-        channelId: SALAWAT_CHANNEL_ID,
-      }).catch(error => {
-        console.warn("[salawat-reminder] Native notification scheduling failed", error);
-      });
+      void native
+        .scheduleLocalNotification({
+          id: SALAWAT_NATIVE_IDS[scheduledCount],
+          title: "تذكير بالصلاة على النبي",
+          body: "صل على سيدنا محمد",
+          scheduleAt: next.toISOString(),
+          sound: "salawat.wav",
+          channelId: SALAWAT_CHANNEL_ID,
+        })
+        .catch(error => {
+          console.warn(
+            "[salawat-reminder] Native notification scheduling failed",
+            error
+          );
+        });
       scheduledCount += 1;
     }
     next = new Date(next.getTime() + intervalMs);
@@ -124,13 +130,17 @@ export interface SalawatReminderReturn {
   testReminder: () => void;
 }
 
-export function useSalawatReminder(): SalawatReminderReturn {
+export function useSalawatReminder(
+  options: { passive?: boolean } = {}
+): SalawatReminderReturn {
+  const passive = options.passive ?? false;
   const [settings, setSettings] = useState<SalawatSettings>(DEFAULT_SETTINGS);
 
   // Load local settings immediately, then reconcile with the authenticated
   // server preference so the background worker uses the same configuration.
   useEffect(() => {
     setSettings(loadSettings());
+    if (passive) return;
     void fetch("/api/reminders/background", { cache: "no-store" })
       .then(response => (response.ok ? response.json() : null))
       .then(data => {
@@ -148,12 +158,20 @@ export function useSalawatReminder(): SalawatReminderReturn {
         setSettings(next);
       })
       .catch(() => undefined);
+  }, [passive]);
+
+  useEffect(() => {
+    const syncSettings = () => setSettings(loadSettings());
+    window.addEventListener(SETTINGS_UPDATED_EVENT, syncSettings);
+    return () =>
+      window.removeEventListener(SETTINGS_UPDATED_EVENT, syncSettings);
   }, []);
 
   // Set up native reminders whenever settings change; these continue when the app is closed.
   // Re-run after the Capacitor bridge is ready and whenever Android resumes the
   // WebView so cancelled/expired alarms are replenished.
   useEffect(() => {
+    if (passive) return;
     const schedule = () => scheduleNativeSalawatReminders(settings);
     schedule();
     window.addEventListener("zikr:native-ready", schedule);
@@ -164,11 +182,11 @@ export function useSalawatReminder(): SalawatReminderReturn {
       window.removeEventListener("zikr:native-app-state", schedule);
       document.removeEventListener("visibilitychange", schedule);
     };
-  }, [settings]);
+  }, [settings, passive]);
 
   // Set up the foreground interval whenever settings change.
   useEffect(() => {
-    if (!settings.enabled || settings.intervalMinutes === 0) return;
+    if (passive || !settings.enabled || settings.intervalMinutes === 0) return;
 
     const fire = () => {
       if (
@@ -191,12 +209,13 @@ export function useSalawatReminder(): SalawatReminderReturn {
 
     const interval = setInterval(fire, settings.intervalMinutes * 60 * 1000);
     return () => clearInterval(interval);
-  }, [settings]);
+  }, [settings, passive]);
 
   const update = useCallback((partial: Partial<SalawatSettings>) => {
     setSettings(prev => {
       const next = { ...prev, ...partial };
       saveSettings(next);
+      window.dispatchEvent(new Event(SETTINGS_UPDATED_EVENT));
       void fetch("/api/reminders/background", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
