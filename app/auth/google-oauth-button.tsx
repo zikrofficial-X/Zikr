@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type GoogleOAuthButtonProps = {
@@ -18,6 +18,24 @@ type NativeAuthWindow = Window & {
 export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleBrowserFinished = () => {
+      // If the user backs out of the system Custom Tab without completing
+      // OAuth, make the button usable again instead of leaving it disabled.
+      setLoading(false);
+    };
+
+    window.addEventListener(
+      "zikr:native-browser-finished",
+      handleBrowserFinished
+    );
+    return () =>
+      window.removeEventListener(
+        "zikr:native-browser-finished",
+        handleBrowserFinished
+      );
+  }, []);
 
   const onClick = async () => {
     setLoading(true);

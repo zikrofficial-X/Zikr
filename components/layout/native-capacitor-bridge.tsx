@@ -177,6 +177,7 @@ export function NativeCapacitorBridge() {
     void plugins.SplashScreen?.hide?.();
 
     const app = plugins.App;
+    const browser = plugins.Browser;
     const network = plugins.Network;
     const localNotifications = plugins.LocalNotifications;
 
@@ -238,6 +239,12 @@ export function NativeCapacitorBridge() {
       }
     })();
     void plugins.PushNotifications?.requestPermissions?.();
+
+    // Browser emits this when the user closes the system Custom Tab. Notify
+    // the login button so an interrupted OAuth flow never leaves the UI stuck.
+    void browser?.addListener?.("browserFinished", () => {
+      window.dispatchEvent(new CustomEvent("zikr:native-browser-finished"));
+    });
 
     const syncNetworkState = async () => {
       const status = (await network?.getStatus?.()) as
