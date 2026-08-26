@@ -211,7 +211,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ### 📞 Support & Contact
 
 - **Email**: contact@zikr.app
-- **Website**: https://zikr.vercel.app
+- **Website**: https://zikrmediaofficial.vercel.app
 - **GitHub Issues**: Report bugs and request features
 
 ### 🙏 Acknowledgments

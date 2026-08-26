@@ -5,7 +5,7 @@ const RELEASES_API =
 const RELEASE_DOWNLOAD_BASE =
   "https://github.com/mohamedalaa7785-cpu/Zikr-Android-Releases/releases/download";
 
-export const revalidate = 300;
+export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
 type ReleaseResponse = {
@@ -22,7 +22,7 @@ export async function GET() {
       Accept: "application/vnd.github+json",
       "User-Agent": "ZIKR-platform-version-check",
     },
-    next: { revalidate: 300 },
+    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -58,8 +58,7 @@ export async function GET() {
     },
     {
       headers: {
-        "Cache-Control":
-          "public, max-age=300, s-maxage=300, stale-while-revalidate=600",
+        "Cache-Control": "private, no-store",
       },
     }
   );

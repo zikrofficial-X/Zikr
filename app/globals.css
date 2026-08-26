@@ -222,10 +222,23 @@ p {
   box-shadow: 0 0 28px rgba(216, 183, 91, 0.18);
 }
 
-/* Cards use Tailwind blur utilities directly, not only the `.glass` class. */
+/* Android WebView touch/performance tuning: keep scrolling native and avoid
+   compositing-heavy effects that delay input on lower-memory devices. */
+html.capacitor-native {
+  scroll-behavior: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.capacitor-native body::before,
+html.capacitor-native body::after {
+  display: none;
+}
+
+html.capacitor-native .glass,
 html.capacitor-native [class*="backdrop-blur"] {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
+  background: rgba(0, 0, 0, 0.68);
 }
 
 html.capacitor-native [class*="transition-all"] {
@@ -234,4 +247,25 @@ html.capacitor-native [class*="transition-all"] {
 
 html.capacitor-native .settings-section {
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+html.capacitor-native button,
+html.capacitor-native a,
+html.capacitor-native [role="button"],
+html.capacitor-native input,
+html.capacitor-native select,
+html.capacitor-native textarea {
+  touch-action: manipulation;
+}
+
+html.capacitor-native .animate-pulse,
+html.capacitor-native .animate-fadeIn,
+html.capacitor-native .animate-slideUp {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
