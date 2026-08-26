@@ -48,6 +48,7 @@ const requiredRoutes = [
   'app/about/page.tsx',
   'app/contact/page.tsx',
   'app/privacy/page.tsx',
+  'app/editorial-policy/page.tsx',
   'app/terms/page.tsx',
   'app/faq/page.tsx',
   'app/platform/page.tsx',

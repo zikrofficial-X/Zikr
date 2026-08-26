@@ -238,6 +238,47 @@ export type Database = {
           },
         ]
       }
+      background_reminder_preferences: {
+        Row: {
+          dhikr_enabled: boolean
+          dhikr_interval_minutes: number
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          salawat_enabled: boolean
+          salawat_interval_minutes: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          dhikr_enabled?: boolean
+          dhikr_interval_minutes?: number
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          salawat_enabled?: boolean
+          salawat_interval_minutes?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          dhikr_enabled?: boolean
+          dhikr_interval_minutes?: number
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          salawat_enabled?: boolean
+          salawat_interval_minutes?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "background_reminder_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       battle_events: {
         Row: {
           battle_id: string
@@ -673,6 +714,149 @@ export type Database = {
           read?: boolean
           subject?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      content_agent_queue: {
+        Row: {
+          body: string | null
+          content_hash: string
+          content_type: string
+          created_at: string
+          error_message: string | null
+          external_id: string
+          id: string
+          is_machine_generated: boolean
+          metadata: Json
+          source_id: string
+          source_retrieved_at: string
+          source_url: string
+          status: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          body?: string | null
+          content_hash: string
+          content_type: string
+          created_at?: string
+          error_message?: string | null
+          external_id: string
+          id?: string
+          is_machine_generated?: boolean
+          metadata?: Json
+          source_id: string
+          source_retrieved_at: string
+          source_url: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string | null
+          content_hash?: string
+          content_type?: string
+          created_at?: string
+          error_message?: string | null
+          external_id?: string
+          id?: string
+          is_machine_generated?: boolean
+          metadata?: Json
+          source_id?: string
+          source_retrieved_at?: string
+          source_url?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_agent_queue_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "content_agent_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_agent_runs: {
+        Row: {
+          details: Json
+          failed_count: number
+          fetched_count: number
+          finished_at: string | null
+          id: string
+          queued_count: number
+          skipped_count: number
+          started_at: string
+          status: string
+        }
+        Insert: {
+          details?: Json
+          failed_count?: number
+          fetched_count?: number
+          finished_at?: string | null
+          id?: string
+          queued_count?: number
+          skipped_count?: number
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          details?: Json
+          failed_count?: number
+          fetched_count?: number
+          finished_at?: string | null
+          id?: string
+          queued_count?: number
+          skipped_count?: number
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      content_agent_sources: {
+        Row: {
+          api_key_secret_name: string | null
+          base_url: string
+          created_at: string
+          enabled: boolean
+          fetch_url: string | null
+          id: string
+          last_checked_at: string | null
+          name: string
+          next_run_at: string
+          parser_key: string
+          requires_api_key: boolean
+          source_type: string
+        }
+        Insert: {
+          api_key_secret_name?: string | null
+          base_url: string
+          created_at?: string
+          enabled?: boolean
+          fetch_url?: string | null
+          id?: string
+          last_checked_at?: string | null
+          name: string
+          next_run_at?: string
+          parser_key: string
+          requires_api_key?: boolean
+          source_type: string
+        }
+        Update: {
+          api_key_secret_name?: string | null
+          base_url?: string
+          created_at?: string
+          enabled?: boolean
+          fetch_url?: string | null
+          id?: string
+          last_checked_at?: string | null
+          name?: string
+          next_run_at?: string
+          parser_key?: string
+          requires_api_key?: boolean
+          source_type?: string
         }
         Relationships: []
       }
@@ -1470,6 +1654,8 @@ export type Database = {
           error_message: string | null
           failed_at: string | null
           id: string
+          notification_kind: string
+          notification_text: string | null
           prayer_name: string
           processed_at: string | null
           processing_at: string | null
@@ -1487,6 +1673,8 @@ export type Database = {
           error_message?: string | null
           failed_at?: string | null
           id?: string
+          notification_kind?: string
+          notification_text?: string | null
           prayer_name: string
           processed_at?: string | null
           processing_at?: string | null
@@ -1504,6 +1692,8 @@ export type Database = {
           error_message?: string | null
           failed_at?: string | null
           id?: string
+          notification_kind?: string
+          notification_text?: string | null
           prayer_name?: string
           processed_at?: string | null
           processing_at?: string | null
@@ -3608,6 +3798,10 @@ export type Database = {
         }[]
       }
       is_admin_user: { Args: never; Returns: boolean }
+      plan_background_reminder_deliveries: {
+        Args: { now_at?: string }
+        Returns: number
+      }
     }
     Enums: {
       category:

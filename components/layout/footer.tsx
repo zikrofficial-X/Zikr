@@ -161,7 +161,7 @@ export function Footer() {
                 variant="outline"
                 className="border-brand-gold/20 text-brand-gold/40 text-[10px]"
               >
-                Version 1.2.0-stable
+                Version 1.1.1-stable
               </Badge>
             </li>
           </ul>
