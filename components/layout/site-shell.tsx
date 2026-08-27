@@ -4,6 +4,7 @@ import { InstallPrompt } from './install-prompt';
 import { OfflineIndicator } from '../offline-indicator';
 import { LanguageProvider } from './language-provider';
 import { NotificationPermissionBanner } from './notification-permission-banner';
+import { AppUpdateChecker } from './app-update-checker';
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   return (
@@ -18,6 +19,8 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         <InstallPrompt />
         {/* Offline status indicator */}
         <OfflineIndicator />
+        {/* Native Android update notice; no-op on web and PWA. */}
+        <AppUpdateChecker />
       </div>
     </LanguageProvider>
   );

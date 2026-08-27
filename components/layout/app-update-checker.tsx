@@ -46,14 +46,18 @@ function isNewerVersion(latest: string, current: string) {
 export function AppUpdateChecker() {
   const [update, setUpdate] = useState<VersionResponse | null>(null);
   const [checking, setChecking] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    let started = false;
 
     const check = async () => {
       const native = (window as UpdateWindow).zikrNative;
-      if (!native?.isNative) return;
+      if (!native?.isNative || started || cancelled) return;
+      started = true;
       setChecking(true);
       try {
         const [appInfo, response] = await Promise.all([
@@ -67,8 +71,9 @@ export function AppUpdateChecker() {
           cancelled ||
           !latest.version ||
           !isNewerVersion(latest.version, current)
-        )
+        ) {
           return;
+        }
 
         setUpdate(latest);
         const notificationKey = `zikr:update-notified:${latest.version}`;
@@ -87,12 +92,35 @@ export function AppUpdateChecker() {
       }
     };
 
+    const handleNativeReady = () => {
+      void check();
+    };
+
+    window.addEventListener("zikr:native-ready", handleNativeReady);
     const timer = window.setTimeout(() => void check(), 2500);
+
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      window.removeEventListener("zikr:native-ready", handleNativeReady);
     };
   }, []);
+
+  const handleOpenUpdate = async () => {
+    const native = (window as UpdateWindow).zikrNative;
+    if (!native || opening || !update) return;
+
+    setOpening(true);
+    setOpenError(false);
+    try {
+      await native.openExternalUrl(update.apkUrl);
+    } catch (error) {
+      console.warn("[app-update] failed to open APK URL", error);
+      setOpenError(true);
+    } finally {
+      setOpening(false);
+    }
+  };
 
   if (!update || dismissed || checking) return null;
 
@@ -111,17 +139,20 @@ export function AppUpdateChecker() {
           الإصدار {update.version} متاح الآن مع تحسينات وإصلاحات جديدة. اضغط
           «تحديث الآن» لتنزيل النسخة الرسمية.
         </p>
+        {openError && (
+          <p className="text-sm text-red-200" role="alert">
+            تعذر فتح رابط التحديث. افتح صفحة الإصدار وحمّل APK يدويًا.
+          </p>
+        )}
         <div className="flex flex-wrap gap-2 pt-1">
           <button
             type="button"
-            className="rounded-lg bg-brand-gold px-4 py-2 text-sm font-semibold text-brand-emeraldDeep transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
-            onClick={() =>
-              void (window as UpdateWindow).zikrNative?.openExternalUrl(
-                update.apkUrl
-              )
-            }
+            className="rounded-lg bg-brand-gold px-4 py-2 text-sm font-semibold text-brand-emeraldDeep transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold disabled:cursor-wait disabled:opacity-60"
+            onClick={() => void handleOpenUpdate()}
+            disabled={opening}
+            aria-busy={opening}
           >
-            تحديث الآن
+            {opening ? "جارٍ فتح التحديث..." : "تحديث الآن"}
           </button>
           <button
             type="button"
