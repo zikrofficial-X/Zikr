@@ -89,7 +89,7 @@ test("server XP calculation is bounded and non-negative", () => {
 
 test("secure result migration keeps persistence behind the server role", () => {
   const here = dirname(fileURLToPath(import.meta.url));
-  const migration = readFileSync(join(here, "../../supabase/migrations/20260827210000_kids_world_secure_result_processor.sql"), "utf8");
+  const migration = readFileSync(join(here, "../../supabase/migrations/20260827185900_kids_world_secure_result_processor.sql"), "utf8");
   assert.match(migration, /kids_record_game_result_internal/);
   assert.match(migration, /p_user_id uuid/);
   assert.match(migration, /grant execute[\s\S]+to service_role/);
