@@ -256,6 +256,16 @@ html.capacitor-native input,
 html.capacitor-native select,
 html.capacitor-native textarea {
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Native WebView controls should acknowledge taps immediately. The web
+   experience keeps its transitions; Android avoids delayed compositing on
+   lower-memory devices. */
+html.capacitor-native button,
+html.capacitor-native a,
+html.capacitor-native [role="button"] {
+  transition-duration: 0ms !important;
 }
 
 html.capacitor-native .animate-pulse,

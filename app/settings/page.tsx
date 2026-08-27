@@ -106,6 +106,9 @@ export default function SettingsPage() {
 
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [isEnablingPush, setIsEnablingPush] = useState(false);
+  const [isTestingAzan, setIsTestingAzan] = useState(false);
+  const [isTestingReminder, setIsTestingReminder] = useState(false);
   const [pushMessage, setPushMessage] = useState<string | null>(null);
   const [isRefreshingOfflineData, setIsRefreshingOfflineData] = useState(false);
   const [offlineRefreshMessage, setOfflineRefreshMessage] = useState<
@@ -131,6 +134,8 @@ export default function SettingsPage() {
   };
 
   const handleEnableServerPush = async () => {
+    if (isEnablingPush) return;
+    setIsEnablingPush(true);
     setPushMessage(null);
     try {
       const native = (
@@ -161,7 +166,23 @@ export default function SettingsPage() {
       setPushMessage(
         error instanceof Error ? error.message : "تعذر تفعيل إشعارات الخلفية."
       );
+    } finally {
+      setIsEnablingPush(false);
     }
+  };
+
+  const handleTestAzan = () => {
+    if (isTestingAzan) return;
+    setIsTestingAzan(true);
+    testAzan();
+    window.setTimeout(() => setIsTestingAzan(false), 900);
+  };
+
+  const handleTestReminder = () => {
+    if (isTestingReminder) return;
+    setIsTestingReminder(true);
+    testReminder();
+    window.setTimeout(() => setIsTestingReminder(false), 900);
   };
 
   const handleSkipWaiting = async () => {
@@ -259,11 +280,13 @@ export default function SettingsPage() {
 
         {/* Test button */}
         <Button
+          type="button"
           variant="secondary"
-          onClick={testAzan}
-          className="w-full text-sm"
+          onClick={handleTestAzan}
+          disabled={isTestingAzan}
+          className="w-full touch-manipulation text-sm"
         >
-          اختبار صوت الأذان
+          {isTestingAzan ? "جارٍ تشغيل الأذان..." : "اختبار صوت الأذان"}
         </Button>
 
         {/* Notification permission */}
@@ -299,11 +322,13 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <Button
+                  type="button"
                   variant="secondary"
                   onClick={() => void handleEnableServerPush()}
-                  className="text-sm"
+                  disabled={isEnablingPush}
+                  className="touch-manipulation text-sm"
                 >
-                  تفعيل
+                  {isEnablingPush ? "جارٍ التفعيل..." : "تفعيل"}
                 </Button>
               </div>
               {pushMessage && (
@@ -336,8 +361,10 @@ export default function SettingsPage() {
                 {INTERVAL_OPTIONS.map(opt => (
                   <button
                     key={opt.value}
+                    type="button"
+                    aria-pressed={salawatSettings.intervalMinutes === opt.value}
                     onClick={() => setIntervalMinutes(opt.value)}
-                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                    className={`touch-manipulation rounded-lg border px-3 py-2 text-sm transition-colors ${
                       salawatSettings.intervalMinutes === opt.value
                         ? "border-brand-gold bg-brand-gold/15 text-brand-gold"
                         : "border-brand-cream/15 text-brand-cream/60 hover:border-brand-gold/40"
@@ -350,11 +377,15 @@ export default function SettingsPage() {
             </div>
 
             <Button
+              type="button"
               variant="secondary"
-              onClick={testReminder}
-              className="w-full text-sm"
+              onClick={handleTestReminder}
+              disabled={isTestingReminder}
+              className="w-full touch-manipulation text-sm"
             >
-              اختبار التذكير الآن
+              {isTestingReminder
+                ? "جارٍ تشغيل التذكير..."
+                : "اختبار التذكير الآن"}
             </Button>
           </>
         )}

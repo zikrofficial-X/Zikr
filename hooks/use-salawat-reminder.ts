@@ -85,14 +85,25 @@ function isQuietAt(date: Date, quietHours: QuietHours): boolean {
     : current >= from || current < to;
 }
 
-function scheduleNativeSalawatReminders(settings: SalawatSettings): void {
+let salawatScheduleGeneration = 0;
+
+async function scheduleNativeSalawatReminders(
+  settings: SalawatSettings
+): Promise<void> {
   if (typeof window === "undefined") return;
   const native = (window as Window & { zikrNative?: NativeSalawatFacade })
     .zikrNative;
   if (!native?.scheduleLocalNotification) return;
 
-  void native.cancelLocalNotifications?.(SALAWAT_NATIVE_IDS);
-  if (!settings.enabled || settings.intervalMinutes === 0) return;
+  const generation = ++salawatScheduleGeneration;
+  await native.cancelLocalNotifications?.(SALAWAT_NATIVE_IDS);
+  if (
+    generation !== salawatScheduleGeneration ||
+    !settings.enabled ||
+    settings.intervalMinutes === 0
+  ) {
+    return;
+  }
 
   const intervalMs = settings.intervalMinutes * 60 * 1000;
   let next = new Date(Date.now() + intervalMs);
@@ -100,22 +111,23 @@ function scheduleNativeSalawatReminders(settings: SalawatSettings): void {
   let attempts = 0;
   while (scheduledCount < SALAWAT_NATIVE_IDS.length && attempts < 160) {
     if (!isQuietAt(next, settings.quietHours)) {
-      void native
-        .scheduleLocalNotification({
+      if (generation !== salawatScheduleGeneration) return;
+      try {
+        await native.scheduleLocalNotification({
           id: SALAWAT_NATIVE_IDS[scheduledCount],
           title: "تذكير بالصلاة على النبي",
           body: "صل على سيدنا محمد",
           scheduleAt: next.toISOString(),
           sound: "salawat.wav",
           channelId: SALAWAT_CHANNEL_ID,
-        })
-        .catch(error => {
-          console.warn(
-            "[salawat-reminder] Native notification scheduling failed",
-            error
-          );
         });
-      scheduledCount += 1;
+        scheduledCount += 1;
+      } catch (error) {
+        console.warn(
+          "[salawat-reminder] Native notification scheduling failed",
+          error
+        );
+      }
     }
     next = new Date(next.getTime() + intervalMs);
     attempts += 1;
@@ -172,7 +184,14 @@ export function useSalawatReminder(
   // WebView so cancelled/expired alarms are replenished.
   useEffect(() => {
     if (passive) return;
-    const schedule = () => scheduleNativeSalawatReminders(settings);
+    const schedule = () => {
+      void scheduleNativeSalawatReminders(settings).catch(error => {
+        console.warn(
+          "[salawat-reminder] Native schedule refresh failed",
+          error
+        );
+      });
+    };
     schedule();
     window.addEventListener("zikr:native-ready", schedule);
     window.addEventListener("zikr:native-app-state", schedule);
@@ -211,26 +230,36 @@ export function useSalawatReminder(
     return () => clearInterval(interval);
   }, [settings, passive]);
 
-  const update = useCallback((partial: Partial<SalawatSettings>) => {
-    setSettings(prev => {
-      const next = { ...prev, ...partial };
-      saveSettings(next);
-      window.dispatchEvent(new Event(SETTINGS_UPDATED_EVENT));
-      void fetch("/api/reminders/background", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          salawat_enabled: next.enabled,
-          salawat_interval_minutes: next.intervalMinutes,
-          quiet_hours_start: next.quietHours.enabled
-            ? next.quietHours.from
-            : null,
-          quiet_hours_end: next.quietHours.enabled ? next.quietHours.to : null,
-        }),
-      }).catch(() => undefined);
-      return next;
-    });
-  }, []);
+  const update = useCallback(
+    (
+      partial:
+        | Partial<SalawatSettings>
+        | ((prev: SalawatSettings) => Partial<SalawatSettings>)
+    ) => {
+      setSettings(prev => {
+        const patch = typeof partial === "function" ? partial(prev) : partial;
+        const next = { ...prev, ...patch };
+        saveSettings(next);
+        window.dispatchEvent(new Event(SETTINGS_UPDATED_EVENT));
+        void fetch("/api/reminders/background", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            salawat_enabled: next.enabled,
+            salawat_interval_minutes: next.intervalMinutes,
+            quiet_hours_start: next.quietHours.enabled
+              ? next.quietHours.from
+              : null,
+            quiet_hours_end: next.quietHours.enabled
+              ? next.quietHours.to
+              : null,
+          }),
+        }).catch(() => undefined);
+        return next;
+      });
+    },
+    []
+  );
 
   const setEnabled = useCallback(
     (v: boolean) => update({ enabled: v }),
@@ -242,8 +271,8 @@ export function useSalawatReminder(
   );
   const setQuietHours = useCallback(
     (v: Partial<QuietHours>) =>
-      update({ quietHours: { ...settings.quietHours, ...v } }),
-    [update, settings.quietHours]
+      update(prev => ({ quietHours: { ...prev.quietHours, ...v } })),
+    [update]
   );
 
   const testReminder = useCallback(() => {
