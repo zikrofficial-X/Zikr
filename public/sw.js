@@ -1,5 +1,5 @@
 // Service Worker for Zikr PWA
-const CACHE_NAME = 'zikr-v7';
+const CACHE_NAME = 'zikr-v8';
 
 // Public, non-personalized content APIs that are safe to cache for offline reading.
 // Authenticated and mutation APIs remain network-only to avoid leaking private data.
@@ -13,6 +13,7 @@ const PUBLIC_CONTENT_API_PREFIXES = [
   '/api/quran/surahs',
   '/api/search',
   '/api/tawasheeh',
+  '/api/kids/games/verse',
 ];
 
 function isPublicContentApi(url) {

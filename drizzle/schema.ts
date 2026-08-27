@@ -1,5 +1,6 @@
 import {
   boolean,
+  bigint,
   date,
   index,
   integer,
@@ -883,6 +884,51 @@ export const kidsGameResults = pgTable(
 
 export type KidsGameResult = typeof kidsGameResults.$inferSelect;
 export type NewKidsGameResult = typeof kidsGameResults.$inferInsert;
+
+export const kidsPlayerProgress = pgTable("kids_player_progress", {
+  userId: uuid("user_id").primaryKey().references(() => profiles.id, { onDelete: "cascade" }),
+  xp: integer("xp").notNull().default(0),
+  level: smallint("level").notNull().default(1),
+  totalGames: integer("total_games").notNull().default(0),
+  totalScore: bigint("total_score", { mode: "number" }).notNull().default(0),
+  totalCollectibles: bigint("total_collectibles", { mode: "number" }).notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const kidsGameProgress = pgTable("kids_game_progress", {
+  userId: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  gameId: text("game_id").notNull(),
+  bestScore: integer("best_score").notNull().default(0),
+  bestDistance: integer("best_distance").notNull().default(0),
+  bestLevel: smallint("best_level").notNull().default(0),
+  playCount: integer("play_count").notNull().default(0),
+  bestCombo: integer("best_combo").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => ({
+  primary: uniqueIndex("kids_game_progress_user_game_unique").on(t.userId, t.gameId),
+  gameScore: index("kids_game_progress_game_score_idx").on(t.gameId, t.bestScore),
+  userUpdated: index("kids_game_progress_user_updated_idx").on(t.userId, t.updatedAt),
+}));
+
+export const kidsAchievements = pgTable("kids_achievements", {
+  id: text("id").primaryKey(),
+  titleAr: text("title_ar").notNull(),
+  titleEn: text("title_en").notNull(),
+  descriptionAr: text("description_ar").notNull(),
+  descriptionEn: text("description_en").notNull(),
+  icon: text("icon").notNull(),
+  criteria: jsonb("criteria").notNull().default({}),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const kidsUserAchievements = pgTable("kids_user_achievements", {
+  userId: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  achievementId: text("achievement_id").notNull().references(() => kidsAchievements.id, { onDelete: "cascade" }),
+  unlockedAt: timestamp("unlocked_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => ({ primary: uniqueIndex("kids_user_achievements_user_achievement_unique").on(t.userId, t.achievementId) }));
 
 export const companions = pgTable("companions", {
   id: uuid("id").defaultRandom().primaryKey(),

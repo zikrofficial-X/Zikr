@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { KidsShare } from "@/components/kids/kids-share";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { KidsGameShell } from "@/components/kids/games/game-shell";
+import { KidsWorldGameShell } from "@/components/kids/games/game-shell";
 import { parseGameContentMetadata } from "@/lib/games/registry";
 import {
   getKidsItemBySlug,
@@ -216,7 +216,7 @@ export default function KidsDetailPage() {
 
       {content.type === "game" && (
         gameConfig ? (
-          <KidsGameShell />
+          <KidsWorldGameShell gameId={gameConfig.gameId} initialDifficulty={gameConfig.difficulty} />
         ) : (
           <Card className="border-red-400/30 bg-red-950/20 p-6 text-center" role="alert">
             <h2 className="text-xl font-bold text-brand-gold">اللعبة غير متاحة حاليًا</h2>

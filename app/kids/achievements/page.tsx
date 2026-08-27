@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';
 import KidsAchievementsBoard from '@/components/kids/kids-achievements-board';
+import KidsProgressDashboard from '@/components/kids/games/progress-dashboard';
 
 export const dynamic = 'force-static';
 
@@ -11,5 +12,8 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default function KidsAchievementsPage() {
-  return <KidsAchievementsBoard />;
+  return <>
+    <KidsProgressDashboard />
+    <KidsAchievementsBoard />
+  </>;
 }

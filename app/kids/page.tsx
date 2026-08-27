@@ -173,6 +173,13 @@ export default async function KidsPage() {
             <p className="mt-2 text-sm leading-relaxed text-brand-cream/70">شارات ونجوم ولوحة شرف محلية تحتفل بالتقدم دون مقارنة.</p>
           </Card>
         </Link>
+        <Link href="/kids/games" className="group">
+          <Card className="h-full border-brand-gold/30 bg-gradient-to-br from-brand-gold/10 to-transparent p-5 transition-transform group-hover:-translate-y-1">
+            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-brand-gold/70">العالم الجديد</p>
+            <h3 className="text-xl font-bold text-brand-gold">عالم ألعاب ذِكر</h3>
+            <p className="mt-2 text-sm leading-relaxed text-brand-cream/70">اثنتا عشرة لعبة أصلية للحركة والذاكرة والتعلم والإبداع.</p>
+          </Card>
+        </Link>
       </section>
 
       {Object.entries(ageGroupLabels).map(([age, label]) => {
