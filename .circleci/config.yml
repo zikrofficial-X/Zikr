@@ -44,16 +44,18 @@ jobs:
           name: Verify production deployment is healthy
           command: |
             set -euo pipefail
-            for attempt in $(seq 1 15); do
+            echo "Waiting 90s for Vercel deployment to propagate..."
+            sleep 90
+            for attempt in $(seq 1 20); do
               if node scripts/smoke-production-routes.mjs "https://zikrmediaofficial.vercel.app"; then
                 exit 0
               fi
-              echo "Production smoke attempt ${attempt}/15 failed; retrying"
-              sleep 20
+              echo "Production smoke attempt ${attempt}/20 failed; retrying"
+              sleep 45
             done
-            echo "Production smoke checks failed after 15 attempts" >&2
+            echo "Production smoke checks failed after 20 attempts" >&2
             exit 1
-          no_output_timeout: 10m
+          no_output_timeout: 30m
 
   automate-content:
     docker:
