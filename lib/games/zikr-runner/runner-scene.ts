@@ -75,16 +75,37 @@ export class ZikrRunnerScene extends Phaser.Scene {
 
     const roadWidth = Math.min(width * 0.92, 520);
     const roadLeft = (width - roadWidth) / 2;
-    const road = this.add.rectangle(width / 2, height / 2, roadWidth, height, COLORS.road, 1);
+    const road = this.add.rectangle(
+      width / 2,
+      height / 2,
+      roadWidth,
+      height,
+      COLORS.road,
+      1
+    );
     road.setDepth(-2);
 
     for (let i = 1; i < this.laneCount; i += 1) {
       const x = roadLeft + (roadWidth / this.laneCount) * i;
-      const divider = this.add.rectangle(x, height / 2, 3, height, COLORS.lane, 0.85);
+      const divider = this.add.rectangle(
+        x,
+        height / 2,
+        3,
+        height,
+        COLORS.lane,
+        0.85
+      );
       divider.setDepth(-1);
     }
 
-    this.player = this.add.rectangle(this.laneX(this.laneIndex), height - 118, 42, 58, COLORS.emerald, 1);
+    this.player = this.add.rectangle(
+      this.laneX(this.laneIndex),
+      height - 118,
+      42,
+      58,
+      COLORS.emerald,
+      1
+    );
     this.player.setStrokeStyle(4, COLORS.gold, 1);
     this.physics.add.existing(this.player);
     this.playerBody = this.player.body as Phaser.Physics.Arcade.Body;
@@ -93,25 +114,56 @@ export class ZikrRunnerScene extends Phaser.Scene {
     this.playerBody.setCollideWorldBounds(true);
     this.playerBody.setSize(38, 54);
 
-    this.obstacles = this.physics.add.group({ allowGravity: false, immovable: true });
-    this.stars = this.physics.add.group({ allowGravity: false, immovable: true });
-    this.physics.add.overlap(this.player, this.obstacles, this.handleObstacleHit, undefined, this);
-    this.physics.add.overlap(this.player, this.stars, this.handleStarCollect, undefined, this);
+    this.obstacles = this.physics.add.group({
+      allowGravity: false,
+      immovable: true,
+    });
+    this.stars = this.physics.add.group({
+      allowGravity: false,
+      immovable: true,
+    });
+    this.physics.add.overlap(
+      this.player,
+      this.obstacles,
+      this.handleObstacleHit,
+      undefined,
+      this
+    );
+    this.physics.add.overlap(
+      this.player,
+      this.stars,
+      this.handleStarCollect,
+      undefined,
+      this
+    );
 
     this.cursors = this.input.keyboard!.createCursorKeys();
-    this.leftKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A);
-    this.rightKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+    this.leftKey = this.input.keyboard!.addKey(
+      Phaser.Input.Keyboard.KeyCodes.A
+    );
+    this.rightKey = this.input.keyboard!.addKey(
+      Phaser.Input.Keyboard.KeyCodes.D
+    );
     this.upKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W);
-    this.downKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+    this.downKey = this.input.keyboard!.addKey(
+      Phaser.Input.Keyboard.KeyCodes.S
+    );
 
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      this.touchStart = { x: pointer.x, y: pointer.y, time: pointer.event.timeStamp || Date.now() };
+      this.touchStart = {
+        x: pointer.x,
+        y: pointer.y,
+        time: pointer.event.timeStamp || Date.now(),
+      };
     });
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
       if (!this.touchStart) return;
       const dx = pointer.x - this.touchStart.x;
       const dy = pointer.y - this.touchStart.y;
-      const elapsed = Math.max(1, (pointer.event.timeStamp || Date.now()) - this.touchStart.time);
+      const elapsed = Math.max(
+        1,
+        (pointer.event.timeStamp || Date.now()) - this.touchStart.time
+      );
       this.touchStart = undefined;
       if (elapsed > 700 || Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
       if (Math.abs(dx) > Math.abs(dy)) this.moveLane(dx > 0 ? 1 : -1);
@@ -119,8 +171,18 @@ export class ZikrRunnerScene extends Phaser.Scene {
       else this.slide();
     });
 
-    this.spawnTimer = this.time.addEvent({ delay: 850, loop: true, callback: this.spawnRow, callbackScope: this });
-    this.hudTimer = this.time.addEvent({ delay: 100, loop: true, callback: this.emitHud, callbackScope: this });
+    this.spawnTimer = this.time.addEvent({
+      delay: 850,
+      loop: true,
+      callback: this.spawnRow,
+      callbackScope: this,
+    });
+    this.hudTimer = this.time.addEvent({
+      delay: 100,
+      loop: true,
+      callback: this.emitHud,
+      callbackScope: this,
+    });
     this.running = true;
     this.callbacks.onReady(this);
     this.emitHud();
@@ -134,10 +196,27 @@ export class ZikrRunnerScene extends Phaser.Scene {
     this.score = Math.floor(this.distance) + this.collectibles * 50;
     this.speed = Math.min(620, 230 + Math.floor(this.runTime / 4_000) * 18);
 
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.left) || Phaser.Input.Keyboard.JustDown(this.leftKey)) this.moveLane(-1);
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.right) || Phaser.Input.Keyboard.JustDown(this.rightKey)) this.moveLane(1);
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.upKey) || Phaser.Input.Keyboard.JustDown(this.cursors.space!)) this.jump();
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.down) || Phaser.Input.Keyboard.JustDown(this.downKey)) this.slide();
+    if (
+      Phaser.Input.Keyboard.JustDown(this.cursors.left) ||
+      Phaser.Input.Keyboard.JustDown(this.leftKey)
+    )
+      this.moveLane(-1);
+    if (
+      Phaser.Input.Keyboard.JustDown(this.cursors.right) ||
+      Phaser.Input.Keyboard.JustDown(this.rightKey)
+    )
+      this.moveLane(1);
+    if (
+      Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
+      Phaser.Input.Keyboard.JustDown(this.upKey) ||
+      Phaser.Input.Keyboard.JustDown(this.cursors.space!)
+    )
+      this.jump();
+    if (
+      Phaser.Input.Keyboard.JustDown(this.cursors.down) ||
+      Phaser.Input.Keyboard.JustDown(this.downKey)
+    )
+      this.slide();
 
     const targetX = this.laneX(this.laneIndex);
     this.player.x = Phaser.Math.Linear(this.player.x, targetX, 0.24);
@@ -161,6 +240,7 @@ export class ZikrRunnerScene extends Phaser.Scene {
   toggleMute() {
     this.muted = !this.muted;
     this.sound.mute = this.muted;
+    this.tone.setMuted(this.muted);
     return this.muted;
   }
 
@@ -183,31 +263,60 @@ export class ZikrRunnerScene extends Phaser.Scene {
   private moveLane(direction: -1 | 1) {
     const now = this.time.now;
     if (!this.running || now - this.lastMoveAt < 120) return;
+    const nextLane = Phaser.Math.Clamp(
+      this.laneIndex + direction,
+      0,
+      this.laneCount - 1
+    );
+    if (nextLane === this.laneIndex) return;
     this.lastMoveAt = now;
-    this.laneIndex = Phaser.Math.Clamp(this.laneIndex + direction, 0, this.laneCount - 1);
+    this.laneIndex = nextLane;
+    this.tone.playEvent("move");
   }
 
   private jump() {
-    if (!this.running || this.gameOverSent || this.playerBody.blocked.down || this.playerBody.touching.down) return;
+    if (
+      !this.running ||
+      this.gameOverSent ||
+      this.playerBody.blocked.down ||
+      this.playerBody.touching.down
+    )
+      return;
     this.playerBody.setVelocityY(-560);
+    this.tone.playEvent("jump");
   }
 
   private slide() {
-    if (!this.running || this.gameOverSent || !this.playerBody.blocked.down) return;
+    if (!this.running || this.gameOverSent || !this.playerBody.blocked.down)
+      return;
     this.player.setScale(1, 0.65);
+    this.tone.playEvent("move");
     this.time.delayedCall(420, () => this.player?.setScale(1, 1));
   }
 
   private spawnRow() {
     if (!this.running || this.gameOverSent) return;
     const lane = Phaser.Math.Between(0, this.laneCount - 1);
-    const obstacle = this.add.rectangle(this.laneX(lane), -42, 48, 42, COLORS.obstacle, 1);
+    const obstacle = this.add.rectangle(
+      this.laneX(lane),
+      -42,
+      48,
+      42,
+      COLORS.obstacle,
+      1
+    );
     obstacle.setStrokeStyle(3, COLORS.gold, 0.8);
     this.obstacles.add(obstacle);
 
     if (Phaser.Math.FloatBetween(0, 1) > 0.28) {
       const starLane = Phaser.Math.Between(0, this.laneCount - 1);
-      const star = this.add.circle(this.laneX(starLane), -120, 15, COLORS.gold, 1);
+      const star = this.add.circle(
+        this.laneX(starLane),
+        -120,
+        15,
+        COLORS.gold,
+        1
+      );
       star.setStrokeStyle(3, COLORS.cream, 0.8);
       this.stars.add(star);
     }
@@ -231,7 +340,7 @@ export class ZikrRunnerScene extends Phaser.Scene {
 
   private handleObstacleHit() {
     if (this.gameOverSent) return;
-    this.tone.play(180, 0.12);
+    this.tone.playEvent("gameOver");
     this.gameOverSent = true;
     this.running = false;
     this.spawnTimer?.remove(false);
@@ -243,10 +352,15 @@ export class ZikrRunnerScene extends Phaser.Scene {
   }
 
   private handleStarCollect(_: unknown, starObject: unknown) {
-    if (!starObject || typeof starObject !== "object" || !("destroy" in starObject)) return;
+    if (
+      !starObject ||
+      typeof starObject !== "object" ||
+      !("destroy" in starObject)
+    )
+      return;
     (starObject as Phaser.GameObjects.GameObject).destroy();
     this.collectibles += 1;
-    this.tone.play(520, 0.07);
+    this.tone.playEvent("collect");
     this.score = Math.floor(this.distance) + this.collectibles * 50;
   }
 
