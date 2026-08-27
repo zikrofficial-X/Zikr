@@ -181,6 +181,38 @@ export function NativeCapacitorBridge() {
     const network = plugins.Network;
     const localNotifications = plugins.LocalNotifications;
 
+    let handledAuthCallback = false;
+    const handleAppUrl = (url: string) => {
+      if (!url) return;
+
+      let parsed: URL;
+      try {
+        parsed = new URL(url);
+      } catch {
+        return;
+      }
+
+      const next = parsed.searchParams.get("next");
+      const isCustomAuthCallback =
+        parsed.protocol === "com.zikr.app:" &&
+        parsed.hostname === "auth" &&
+        parsed.pathname.startsWith("/callback");
+
+      if (isCustomAuthCallback) {
+        if (handledAuthCallback) return;
+        handledAuthCallback = true;
+        void browser?.close?.();
+      }
+
+      const target = isCustomAuthCallback
+        ? `/auth/callback${parsed.search}${parsed.hash}`
+        : parsed.protocol === "com.zikr.app:" && next
+          ? next
+          : `${parsed.pathname || "/"}${parsed.search}${parsed.hash}`;
+
+      window.location.assign(target.startsWith("/") ? target : "/");
+    };
+
     void (async () => {
       try {
         await loadAudioSettings();
@@ -268,30 +300,23 @@ export function NativeCapacitorBridge() {
     });
 
     void app?.addListener?.("appUrlOpen", (event: unknown) => {
-      const url = (event as { url?: string })?.url;
-      if (!url) return;
-
-      const parsed = new URL(url);
-      const next = parsed.searchParams.get("next");
-      const isCustomAuthCallback =
-        parsed.protocol === "com.zikr.app:" &&
-        parsed.hostname === "auth" &&
-        parsed.pathname.startsWith("/callback");
-      // The callback must win over `next`: it carries the one-time OAuth code
-      // (and state) that the server must exchange before any navigation occurs.
-      // The previous order dropped that code whenever next=/profile existed.
-      if (isCustomAuthCallback) {
-        void plugins.Browser?.close?.();
-      }
-      const target = isCustomAuthCallback
-        ? `/auth/callback${parsed.search}${parsed.hash}`
-        : parsed.protocol === "com.zikr.app:" && next
-          ? next
-          : `${parsed.pathname || "/"}${parsed.search}${parsed.hash}`;
-      window.location.assign(target.startsWith("/") ? target : "/");
+      handleAppUrl((event as { url?: string })?.url ?? "");
     });
 
+    // appUrlOpen is not guaranteed to fire after a cold start. When Android
+    // launches/reuses the activity directly from the OAuth custom scheme,
+    // recover the pending URL explicitly or the browser appears stuck.
+    void (async () => {
+      const launch = (await app?.getLaunchUrl?.()) as
+        { url?: string } | undefined;
+      if (launch?.url) handleAppUrl(launch.url);
+    })();
+
     void app?.addListener?.("appStateChange", (state: unknown) => {
+      const isActive = (state as { isActive?: boolean })?.isActive === true;
+      if (isActive) {
+        window.dispatchEvent(new CustomEvent("zikr:native-resumed"));
+      }
       window.dispatchEvent(
         new CustomEvent("zikr:native-app-state", { detail: state })
       );

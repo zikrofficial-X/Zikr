@@ -20,26 +20,28 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleBrowserFinished = () => {
-      // If the user backs out of the system Custom Tab without completing
-      // OAuth, make the button usable again instead of leaving it disabled.
-      setLoading(false);
-    };
+    const handleNativeBrowserFinished = () => setLoading(false);
+    const handleNativeResumed = () => setLoading(false);
 
     window.addEventListener(
       "zikr:native-browser-finished",
-      handleBrowserFinished
+      handleNativeBrowserFinished
     );
-    return () =>
+    window.addEventListener("zikr:native-resumed", handleNativeResumed);
+    return () => {
       window.removeEventListener(
         "zikr:native-browser-finished",
-        handleBrowserFinished
+        handleNativeBrowserFinished
       );
+      window.removeEventListener("zikr:native-resumed", handleNativeResumed);
+    };
   }, []);
 
   const onClick = async () => {
     setLoading(true);
     setError(null);
+    const resetTimer = window.setTimeout(() => setLoading(false), 45_000);
+    let nativeFlowStarted = false;
 
     try {
       const safeNext =
@@ -50,6 +52,7 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
         // Google blocks embedded WebViews on many Android builds. The native
         // bridge first obtains the OAuth URL in this WebView (preserving the
         // Supabase PKCE cookie), then opens it in the system Custom Tab.
+        nativeFlowStarted = true;
         await native.startGoogleOAuth(safeNext);
         return;
       }
@@ -68,6 +71,10 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
 
       setError(message);
       setLoading(false);
+    } finally {
+      // Keep the safety timeout alive while the external browser is open. It
+      // is cleared only after a synchronous start failure or normal web nav.
+      if (!nativeFlowStarted) window.clearTimeout(resetTimer);
     }
   };
 
