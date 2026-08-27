@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { getAllSurahs } from '@/lib/services/quran';
+import { getCanonicalAyahCount } from '@/lib/utils/surah-mapping';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -11,7 +12,17 @@ export async function GET() {
       .order('id', { ascending: true }); // id = surah number
 
     if (!error && surahs?.length) {
-      return NextResponse.json(surahs);
+      // Keep the public DB-shaped response compatible while correcting legacy
+      // rows whose ayahs_count is missing or zero. The UI mapper already uses
+      // the canonical table; this route must not leak invalid counts to clients.
+      const normalizedSurahs = surahs.map((surah) => ({
+        ...surah,
+        ayahs_count:
+          typeof surah.ayahs_count === 'number' && surah.ayahs_count > 0
+            ? surah.ayahs_count
+            : getCanonicalAyahCount(Number(surah.id)),
+      }));
+      return NextResponse.json(normalizedSurahs);
     }
   } catch (error) {
     console.warn('[api/quran/surahs] Supabase unavailable; using Quran API fallback:', error);
