@@ -14,6 +14,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MIG_DIR = join(ROOT, 'supabase', 'migrations');
+const files = readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql')).sort();
+const LEGACY_REPLAY_START = '20260705000019_0019_safe_guards.sql';
 
 const db = new PGlite({ extensions: { pg_trgm, uuid_ossp } });
 
@@ -65,43 +67,9 @@ END $do$;
 await db.exec(stubs);
 console.log('Supabase stubs installed');
 
-// SIMULATE_LEGACY=1 reproduces the production drift that caused
-// `column "searchable" does not exist`: content tables pre-existing from the
-// legacy schema WITHOUT the generated tsvector column. The migration chain
-// must handle this via its ADD COLUMN IF NOT EXISTS guards.
-if (process.env.SIMULATE_LEGACY === '1') {
-  await db.exec(`
-    CREATE TABLE quran_surahs (
-      id int PRIMARY KEY, name_ar text NOT NULL, name_en text NOT NULL,
-      ayah_count int NOT NULL, revelation_place text NOT NULL,
-      "order" int NOT NULL, slug text UNIQUE NOT NULL
-    );
-    CREATE TABLE quran_ayahs (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      surah_id int NOT NULL REFERENCES quran_surahs(id) ON DELETE CASCADE,
-      ayah_number int NOT NULL, text_uthmani text NOT NULL, text_simple text NOT NULL,
-      page int, juz int, hizb int, rub int, sajda boolean DEFAULT false,
-      UNIQUE(surah_id, ayah_number)
-    );
-    CREATE TABLE hadith_books (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid(), slug text UNIQUE NOT NULL,
-      name_ar text NOT NULL, name_en text, source text NOT NULL
-    );
-    CREATE TABLE hadiths (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      book_id uuid NOT NULL REFERENCES hadith_books(id) ON DELETE CASCADE,
-      hadith_number text NOT NULL, text_ar text NOT NULL,
-      narrator text, grade text, chapter text, ref text,
-      UNIQUE(book_id, hadith_number)
-    );
-  `);
-  console.log('Legacy drift simulated: quran_ayahs/hadiths WITHOUT searchable');
-}
-
-const files = readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql')).sort();
 const versions = new Map();
 for (const file of files) {
-  const match = /^(\\d+)_/.exec(file);
+  const match = /^(\d+)_/.exec(file);
   if (match && versions.has(match[1])) {
     throw new Error(`Duplicate migration version ${match[1]}: ${versions.get(match[1])} and ${file}`);
   }
@@ -110,13 +78,38 @@ for (const file of files) {
 if (files.length === 0) throw new Error(`No migrations found in ${MIG_DIR}`);
 console.log('Applying', files.length, 'migrations in order');
 
-let failed = 0;
-for (const f of files) {
+function migrationSql(file) {
   // pgcrypto is not shipped with PGlite, but gen_random_uuid() is built in.
-  const sql = readFileSync(join(MIG_DIR, f), 'utf8')
+  return readFileSync(join(MIG_DIR, file), 'utf8')
     .replace(/create extension if not exists "?pgcrypto"?;?/gi, '');
+}
+
+// SIMULATE_LEGACY=1 reproduces the relevant production drift without
+// discarding the rest of the canonical schema. The old harness created only
+// four tables before replaying the whole chain, which produced dozens of
+// unrelated missing-table/column failures and never reached the FTS guards.
+// The canonical migrations through 0018 create the legacy content shape; the
+// replay then starts at 0019, where the compatibility guards must add the
+// generated searchable columns and indexes safely.
+let startIndex = 0;
+if (process.env.SIMULATE_LEGACY === '1') {
+  startIndex = files.indexOf(LEGACY_REPLAY_START);
+  if (startIndex < 0) {
+    throw new Error(`Legacy replay start migration not found: ${LEGACY_REPLAY_START}`);
+  }
+
+  for (const file of files.slice(0, startIndex)) {
+    await db.exec(migrationSql(file));
+  }
+  console.log(
+    `Legacy drift simulated from the pre-0019 schema; replay starts at ${LEGACY_REPLAY_START}`,
+  );
+}
+
+let failed = 0;
+for (const f of files.slice(startIndex)) {
   try {
-    await db.exec(sql);
+    await db.exec(migrationSql(f));
     console.log('OK  ', f);
   } catch (e) {
     failed++;

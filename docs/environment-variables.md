@@ -17,7 +17,7 @@ The following environment variables are required for the application to function
 
 ## Optional Integration Environment Variables
 
-The following environment variables are optional and are used for integrating with external services. File uploads use the Supabase Storage buckets configured in `supabase/config.toml`; no AWS S3 variables are required.
+The following environment variables are optional and are used for integrating with external services. Hadith reads Supabase first and uses the configured external provider only when the database is unavailable. File uploads use the Supabase Storage buckets configured in `supabase/config.toml`; no AWS S3 variables are required.
 
 | Variable Name             | Description                                                                 | Type     |
 | :------------------------ | :-------------------------------------------------------------------------- | :------- |
@@ -25,7 +25,7 @@ The following environment variables are optional and are used for integrating wi
 | `GEMINI_MODEL`                  | Optional Gemini model override (recommended: `gemini-2.5-flash`).           | Server   |
 | `QURAN_API_BASE_URL`            | Base URL for the Quran API.                                                 | Server   |
 | `QURAN_AUDIO_CDN_URL`           | CDN URL for Quran audio files.                                              | Server   |
-| `HADITH_API_BASE_URL`           | Base URL for the Hadith API.                                                | Server   |
+| `HADITH_API_BASE_URL`          | Base URL for the Hadith API; defaults to `https://ummahapi.com/api/hadith` and can be overridden with a provider exposing the configured contract. | Server   |
 | `YOUTUBE_API_KEY`               | API key for YouTube services.                                               | Server   |
 | `YOUTUBE_CHANNEL_ID`            | YouTube channel ID.                                                         | Server   |
 | `YOUTUBE_PLAYLIST_ID`           | YouTube playlist ID.                                                        | Server   |
