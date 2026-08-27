@@ -57,7 +57,7 @@ export async function registerAction(formData: FormData) {
   const supabase = await createClient();
   const requestOrigin = (await headers()).get('origin');
   const siteUrl = getCanonicalAuthBaseUrl(
-    requestOrigin || getServerEnv().NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    requestOrigin || getServerEnv().NEXT_PUBLIC_SITE_URL || 'https://zikrmediaofficial.vercel.app',
   );
   const { data, error } = await supabase.auth.signUp({
     email,

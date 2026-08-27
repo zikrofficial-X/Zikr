@@ -1,4 +1,4 @@
-const base = process.argv[2] ?? "https://zikr-git-main-zikr.vercel.app";
+const base = process.argv[2] ?? "https://zikrmediaofficial.vercel.app";
 const routes = [
   "/", "/quran", "/mushaf", "/hadith", "/adhkar", "/dua", "/prophets",
   "/companions", "/scholars", "/articles", "/stories", "/battles", "/conquests",
