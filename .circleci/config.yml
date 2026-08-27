@@ -116,7 +116,7 @@ jobs:
             done
             mkdir -p "$CIRCLE_WORKING_DIRECTORY/.circleci-signing"
             printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$CIRCLE_WORKING_DIRECTORY/.circleci-signing/zikr-release.keystore"
-            cat > android/keystore.properties <<EOF
+            cat > android/keystore.properties <<'EOF'
             storeFile=$CIRCLE_WORKING_DIRECTORY/.circleci-signing/zikr-release.keystore
             storeType=jks
             storePassword=$ANDROID_KEYSTORE_PASSWORD
