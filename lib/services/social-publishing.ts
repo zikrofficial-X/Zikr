@@ -32,11 +32,15 @@ type PlatformResult = {
 };
 
 function siteUrl() {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.VERCEL_URL ||
-    "https://zikrmediaofficial.vercel.app"
-  ).replace(/\/$/, "");
+  const configured = process.env.NEXT_PUBLIC_SITE_URL;
+  const isProduction = process.env.VERCEL_ENV === "production";
+  const fallback = isProduction
+    ? "https://zikrmediaofficial.vercel.app"
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "https://zikrmediaofficial.vercel.app";
+
+  return (isProduction ? "https://zikrmediaofficial.vercel.app" : configured || fallback).replace(/\/$/, "");
 }
 
 function publicUrl(item: SocialPublishQueueItem) {
