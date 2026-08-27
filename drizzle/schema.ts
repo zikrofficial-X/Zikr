@@ -1,6 +1,7 @@
 import {
   boolean,
   date,
+  index,
   integer,
   jsonb,
   numeric,
@@ -834,6 +835,54 @@ export const kidsContent = pgTable("kids_content", {
     .defaultNow()
     .notNull(),
 });
+
+export const kidsGameResults = pgTable(
+  "kids_game_results",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    gameId: text("game_id").notNull(),
+    clientSubmissionId: text("client_submission_id").notNull(),
+    score: integer("score").notNull().default(0),
+    collectibles: integer("collectibles").notNull().default(0),
+    distance: integer("distance").notNull().default(0),
+    xpAwarded: smallint("xp_awarded").notNull().default(0),
+    difficulty: text("difficulty").notNull().default("easy"),
+    playedAt: timestamp("played_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    metadata: jsonb("metadata").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => ({
+    userClientUnique: uniqueIndex("kids_game_results_user_client_unique").on(
+      t.userId,
+      t.clientSubmissionId
+    ),
+    userGameIndex: index("kids_game_results_user_game_idx").on(
+      t.userId,
+      t.gameId
+    ),
+    gameScoreIndex: index("kids_game_results_game_score_idx").on(
+      t.gameId,
+      t.score
+    ),
+    gamePlayedAtIndex: index("kids_game_results_game_played_at_idx").on(
+      t.gameId,
+      t.playedAt
+    ),
+  })
+);
+
+export type KidsGameResult = typeof kidsGameResults.$inferSelect;
+export type NewKidsGameResult = typeof kidsGameResults.$inferInsert;
 
 export const companions = pgTable("companions", {
   id: uuid("id").defaultRandom().primaryKey(),

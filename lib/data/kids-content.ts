@@ -48,6 +48,9 @@ export interface KidsItem {
     shareMessage?: string;
     likes?: number;
     shares?: number;
+    gameId?: string;
+    version?: number;
+    difficulty?: "easy" | "normal" | "hard";
   };
 }
 
@@ -911,6 +914,24 @@ export const kidsContent: KidsItem[] = [
       value: "الكرم والانتباه لسلامة الآخرين",
       reward: "قلب العطاء",
       familyPrompt: "اختاروا شيئًا آمنًا يمكن مشاركته مع شخص يحتاجه، بعد سؤال ولي الأمر.",
+    },
+  },
+  {
+    id: "zikr-runner",
+    title_ar: "ذِكر رانر",
+    title_en: "ZIKR Runner",
+    slug: "zikr-runner",
+    type: "game",
+    age_group: "6-8",
+    content_ar: "اجمع النجوم وتجاوز العوائق في رحلة جري آمنة ولطيفة. استخدم اللعبة للتعلم والمرح، وخذ استراحة متى شئت.",
+    metadata: {
+      category: "ألعاب الحركة الآمنة",
+      gameId: "zikr-runner",
+      version: 1,
+      difficulty: "easy",
+      value: "التركيز والمثابرة",
+      reward: "نجوم التعلم",
+      safetyNote: "لا تطلب اللعبة أي بيانات شخصية، والنتائج اختيارية ويمكن لعبها دون تسجيل الدخول.",
     },
   },
   {
