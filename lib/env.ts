@@ -159,7 +159,7 @@ const rawEnv: Record<string, string | undefined> = {
     "https://api.alquran.cloud/v1",
   NEXT_PUBLIC_HADITH_API:
     pick("NEXT_PUBLIC_HADITH_API", "HADITH_API_BASE_URL") ||
-    "https://hadithapi.com/api",
+    "https://ummahapi.com/api/hadith",
 
   // ── Facebook ──────────────────────────────────────────────────────────────
   FACEBOOK_APP_ID: pick("FACEBOOK_APP_ID"),
@@ -200,7 +200,7 @@ export function getServerEnv() {
       validatedEnv.QURAN_AUDIO_CDN_URL ||
       "https://cdn.islamic.network/quran/audio",
     HADITH_API_BASE_URL:
-      validatedEnv.HADITH_API_BASE_URL || "https://hadithapi.com/api",
+      validatedEnv.HADITH_API_BASE_URL || "https://ummahapi.com/api/hadith",
     YOUTUBE_API_KEY: validatedEnv.YOUTUBE_API_KEY || "",
     YOUTUBE_CHANNEL_ID: validatedEnv.YOUTUBE_CHANNEL_ID || "",
     YOUTUBE_REFRESH_TOKEN: validatedEnv.YOUTUBE_REFRESH_TOKEN || "",
