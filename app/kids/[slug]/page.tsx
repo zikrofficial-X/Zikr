@@ -9,6 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { KidsShare } from "@/components/kids/kids-share";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { KidsGameShell } from "@/components/kids/games/game-shell";
+import { parseGameContentMetadata } from "@/lib/games/registry";
 import {
   getKidsItemBySlug,
   normalizeKidsContentRow,
@@ -49,6 +51,9 @@ interface KidsContent {
     summary_ar?: string;
     safetyNote?: string;
     objective?: string;
+    gameId?: string;
+    version?: number;
+    difficulty?: "easy" | "normal" | "hard";
   } | null;
 }
 
@@ -114,6 +119,7 @@ export default function KidsDetailPage() {
     () => getQuizQuestions(content?.quiz_data),
     [content?.quiz_data]
   );
+  const gameConfig = content?.type === "game" ? parseGameContentMetadata(content.metadata) : null;
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -208,7 +214,18 @@ export default function KidsDetailPage() {
         </div>
       </div>
 
-      {content.featured_image_url && (
+      {content.type === "game" && (
+        gameConfig ? (
+          <KidsGameShell />
+        ) : (
+          <Card className="border-red-400/30 bg-red-950/20 p-6 text-center" role="alert">
+            <h2 className="text-xl font-bold text-brand-gold">اللعبة غير متاحة حاليًا</h2>
+            <p className="mt-2 text-brand-cream/70">لم يتم العثور على إعداد صالح لهذه اللعبة. جرّب نشاطًا آخر من قسم الأطفال.</p>
+          </Card>
+        )
+      )}
+
+      {content.type !== "game" && content.featured_image_url && (
         <div className="w-full h-96 rounded-lg overflow-hidden">
           <Image
             src={content.featured_image_url}
@@ -234,7 +251,7 @@ export default function KidsDetailPage() {
         </div>
       )}
 
-      {content.content_ar && (
+      {content.type !== "game" && content.content_ar && (
         <Card className="p-8 bg-black/30 border-brand-gold/30">
           <p
             dir="rtl"
@@ -245,7 +262,7 @@ export default function KidsDetailPage() {
         </Card>
       )}
 
-      {content.metadata && (
+      {content.type !== "game" && content.metadata && (
           <Card className="p-6 space-y-5 bg-brand-gold/10 border-brand-gold/30">
             <h2 className="text-2xl font-bold text-brand-gold text-center">
               بطاقة التعلم والتشجيع

@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = 'ZikrOfflineDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 interface DbStore {
   name: string;
@@ -66,6 +66,14 @@ const STORES: DbStore[] = [
     name: 'cache',
     keyPath: 'url',
     indexes: [{ name: 'timestamp', keyPath: 'timestamp' }],
+  },
+  {
+    name: 'gameResultsQueue',
+    keyPath: 'clientSubmissionId',
+    indexes: [
+      { name: 'nextAttemptAt', keyPath: 'nextAttemptAt' },
+      { name: 'gameId', keyPath: 'gameId' },
+    ],
   },
 ];
 

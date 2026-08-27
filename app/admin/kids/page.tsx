@@ -176,6 +176,16 @@ export default async function AdminKidsPage() {
             label="رابط فيديو تعليمي"
             placeholder="https://www.youtube.com/embed/..."
           />
+          <label className="block space-y-1 text-sm text-brand-cream/80">
+            <span>معرف اللعبة (لنشاط من نوع لعبة)</span>
+            <select
+              name="game_id"
+              defaultValue="zikr-runner"
+              className="w-full rounded-lg bg-black/20 border border-brand-gold/20 p-2 text-brand-cream focus:outline-none focus:border-brand-gold"
+            >
+              <option value="zikr-runner">ZIKR Runner — ذِكر رانر</option>
+            </select>
+          </label>
           <Field
             name="memorization_target"
             label="هدف الحفظ"
