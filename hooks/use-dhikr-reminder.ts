@@ -93,13 +93,21 @@ export function useDhikrReminder(): DhikrReminderReturn {
     return () => clearInterval(interval);
   }, [settings]);
 
-  const update = useCallback((partial: Partial<DhikrReminderSettings>) => {
-    setSettings((prev) => {
-      const next = { ...prev, ...partial };
-      void fetch('/api/reminders/background', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dhikr_enabled: next.enabled, dhikr_interval_minutes: next.intervalMinutes, quiet_hours_start: next.quietHours.enabled ? next.quietHours.from : null, quiet_hours_end: next.quietHours.enabled ? next.quietHours.to : null }) }).catch(() => undefined);
-      return next;
-    });
-  }, []);
+  const update = useCallback(
+    (
+      partial:
+        | Partial<DhikrReminderSettings>
+        | ((prev: DhikrReminderSettings) => Partial<DhikrReminderSettings>)
+    ) => {
+      setSettings(prev => {
+        const patch = typeof partial === "function" ? partial(prev) : partial;
+        const next = { ...prev, ...patch };
+        void fetch('/api/reminders/background', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dhikr_enabled: next.enabled, dhikr_interval_minutes: next.intervalMinutes, quiet_hours_start: next.quietHours.enabled ? next.quietHours.from : null, quiet_hours_end: next.quietHours.enabled ? next.quietHours.to : null }) }).catch(() => undefined);
+        return next;
+      });
+    },
+    []
+  );
 
   const setEnabled = useCallback((v: boolean) => update({ enabled: v }), [update]);
   const setIntervalMinutes = useCallback(
@@ -108,8 +116,8 @@ export function useDhikrReminder(): DhikrReminderReturn {
   );
   const setQuietHours = useCallback(
     (v: Partial<DhikrQuietHours>) =>
-      update({ quietHours: { ...settings.quietHours, ...v } }),
-    [update, settings.quietHours]
+      update(prev => ({ quietHours: { ...prev.quietHours, ...v } })),
+    [update]
   );
 
   const testReminder = useCallback(() => {
