@@ -17,11 +17,7 @@ coverage
 .DS_Store
 
 # Web deployment does not execute native projects, database migrations, or test tooling.
-/android/
-/ios/
 /.github/
-/__tests__/
 /drizzle/
 /docs/
-/mobile/
 /v0_memories/
