@@ -103,7 +103,7 @@ export function ZikrRunnerGame({
   return (
     <div
       ref={mountRef}
-      className="relative min-h-[480px] w-full overflow-hidden rounded-2xl border border-brand-gold/30 bg-[#071b24] shadow-2xl"
+      className="relative min-h-[480px] w-full touch-none overflow-hidden rounded-2xl border border-brand-gold/30 bg-[#071b24] shadow-2xl"
       role="application"
       aria-label="لعبة ذِكر رانر"
     />

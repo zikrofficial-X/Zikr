@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/services/admin";
 import { kidsContent } from "@/lib/data/kids-content";
 import { saveKidsContentAction } from "./actions";
 import { CloudinaryImageUploadField } from "@/components/admin/cloudinary-image-upload-field";
+import { GAME_REGISTRY } from "@/lib/games/registry";
 
 const typeLabels: Record<string, string> = {
   story: "قصة",
@@ -183,7 +184,11 @@ export default async function AdminKidsPage() {
               defaultValue="zikr-runner"
               className="w-full rounded-lg bg-black/20 border border-brand-gold/20 p-2 text-brand-cream focus:outline-none focus:border-brand-gold"
             >
-              <option value="zikr-runner">ZIKR Runner — ذِكر رانر</option>
+              {Object.values(GAME_REGISTRY).map(game => (
+                <option key={game.id} value={game.id}>
+                  {game.titleEn} — {game.titleAr}
+                </option>
+              ))}
             </select>
           </label>
           <Field

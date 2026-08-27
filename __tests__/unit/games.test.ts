@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   GAME_REGISTRY,
@@ -10,6 +13,7 @@ import {
 import { validateGameResultPayload } from "../../lib/games/validation";
 import { enqueueGameResult } from "../../lib/games/offline-queue";
 import { getVerifiedWuduSteps } from "../../lib/games/verified-content";
+import { isVerseOrderComplete, shuffleVerseTokens, shuffleWuduSteps } from "../../lib/games/gameplay-helpers";
 
 test("game registry resolves ZIKR Runner and rejects unknown IDs", () => {
   assert.equal(isRegisteredGameId("zikr-runner"), true);
@@ -32,6 +36,21 @@ test("verified Wudu content exposes the approved numbered steps", () => {
   assert.equal(steps[0]?.order, 1);
   assert.match(steps[0]?.text ?? "", /النية/);
   assert.equal(steps[8]?.order, 9);
+});
+
+test("Wudu choices are shuffled without changing approved wording", () => {
+  const steps = getVerifiedWuduSteps().slice(0, 6);
+  const shuffled = shuffleWuduSteps(steps, "test-seed");
+  assert.deepEqual(shuffled.map(step => step.text).sort(), steps.map(step => step.text).sort());
+  assert.deepEqual(shuffleWuduSteps(steps, "test-seed"), shuffled);
+});
+
+test("verse tokens retain source indexes and handle duplicate words", () => {
+  const tokens = shuffleVerseTokens(["رب", "رب", "العالمين"], "test-seed");
+  assert.deepEqual(tokens.map(token => token.index).sort((a, b) => a - b), [0, 1, 2]);
+  assert.equal(tokens.filter(token => token.text === "رب").length, 2);
+  assert.equal(isVerseOrderComplete([0, 1, 2], 3), true);
+  assert.equal(isVerseOrderComplete([0, 2, 1], 3), false);
 });
 
 test("game metadata accepts only registered IDs", () => {
@@ -66,6 +85,16 @@ test("score validation rejects spoofed, negative, fractional, and impossible val
 test("server XP calculation is bounded and non-negative", () => {
   assert.equal(calculateBoundedXp({ score: 0, collectibles: 0, distance: 0 }), 0);
   assert.equal(calculateBoundedXp({ score: 100000, collectibles: 10000, distance: 1000000, completed: true }), 100);
+});
+
+test("secure result migration keeps persistence behind the server role", () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const migration = readFileSync(join(here, "../../supabase/migrations/20260827210000_kids_world_secure_result_processor.sql"), "utf8");
+  assert.match(migration, /kids_record_game_result_internal/);
+  assert.match(migration, /p_user_id uuid/);
+  assert.match(migration, /grant execute[\s\S]+to service_role/);
+  assert.match(migration, /revoke all[\s\S]+from public, anon, authenticated/);
+  assert.doesNotMatch(migration, /p_xp_awarded/);
 });
 
 test("offline enqueue degrades safely when IndexedDB is unavailable", async () => {

@@ -44,8 +44,7 @@ export function ArcadeGame({ gameId, muted, onReady, onHud, onGameOver, onError 
         const scene = new ArcadeGameScene(gameId, {
           onReady: readyScene => {
             sceneRef.current = readyScene;
-            readyScene.toggleMute();
-            if (!mutedRef.current) readyScene.toggleMute();
+            readyScene.setMuted(mutedRef.current);
             onReadyRef.current(readyScene);
           },
           onHud: hud => onHudRef.current(hud),
@@ -82,11 +81,8 @@ export function ArcadeGame({ gameId, muted, onReady, onHud, onGameOver, onError 
   }, [gameId]);
 
   useEffect(() => {
-    if (sceneRef.current) {
-      const sceneMuted = Boolean(sceneRef.current.sound.mute);
-      if (sceneMuted !== muted) sceneRef.current.toggleMute();
-    }
+    sceneRef.current?.setMuted(muted);
   }, [muted]);
 
-  return <div ref={mountRef} className="relative min-h-[420px] w-full overflow-hidden rounded-2xl border border-brand-gold/30 bg-[#071b24] shadow-2xl" role="application" aria-label="لعبة تفاعلية من عالم ذِكر" />;
+  return <div ref={mountRef} className="relative min-h-[420px] w-full touch-none overflow-hidden rounded-2xl border border-brand-gold/30 bg-[#071b24] shadow-2xl" role="application" aria-label="لعبة تفاعلية من عالم ذِكر" />;
 }

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { calculateBoundedXp } from "@/lib/games/registry";
 import { validateGameResultPayload, type ValidatedGameResultPayload } from "@/lib/games/validation";
 import { requireSupabaseAuth } from "@/lib/supabase/guard";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   const unavailable = requireSupabaseAuth();
@@ -20,15 +19,15 @@ export async function POST(request: NextRequest) {
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const xpAwarded = calculateBoundedXp(payload);
-    const { data, error } = await supabase.rpc("kids_record_game_result", {
+    const admin = createAdminClient();
+    const { data, error } = await admin.rpc("kids_record_game_result_internal", {
+      p_user_id: authData.user.id,
       p_game_id: payload.gameId,
       p_client_submission_id: payload.clientSubmissionId,
       p_score: payload.score,
       p_collectibles: payload.collectibles,
       p_distance: payload.distance,
       p_difficulty: payload.difficulty,
-      p_xp_awarded: xpAwarded,
       p_level: payload.level,
       p_combo: payload.combo,
       p_completed: payload.completed,

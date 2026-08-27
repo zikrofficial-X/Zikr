@@ -1,4 +1,5 @@
 import * as Phaser from "phaser";
+import { ToneFeedback } from "@/lib/games/tone-feedback";
 
 export type RunnerHud = {
   score: number;
@@ -30,7 +31,8 @@ const COLORS = {
 };
 
 export class ZikrRunnerScene extends Phaser.Scene {
-  private callbacks!: RunnerSceneCallbacks;
+  private callbacks: RunnerSceneCallbacks;
+  private readonly tone = new ToneFeedback();
   private player!: Phaser.GameObjects.Rectangle;
   private playerBody!: Phaser.Physics.Arcade.Body;
   private obstacles!: Phaser.Physics.Arcade.Group;
@@ -169,6 +171,7 @@ export class ZikrRunnerScene extends Phaser.Scene {
   setMuted(value: boolean) {
     this.muted = value;
     this.sound.mute = value;
+    this.tone.setMuted(value);
   }
 
   private laneX(index: number) {
@@ -228,6 +231,7 @@ export class ZikrRunnerScene extends Phaser.Scene {
 
   private handleObstacleHit() {
     if (this.gameOverSent) return;
+    this.tone.play(180, 0.12);
     this.gameOverSent = true;
     this.running = false;
     this.spawnTimer?.remove(false);
@@ -235,12 +239,14 @@ export class ZikrRunnerScene extends Phaser.Scene {
     this.playerBody.setVelocity(0, 0);
     this.cameras.main.shake(180, 0.008);
     this.callbacks.onGameOver(this.currentHud());
+    this.tone.dispose();
   }
 
   private handleStarCollect(_: unknown, starObject: unknown) {
     if (!starObject || typeof starObject !== "object" || !("destroy" in starObject)) return;
     (starObject as Phaser.GameObjects.GameObject).destroy();
     this.collectibles += 1;
+    this.tone.play(520, 0.07);
     this.score = Math.floor(this.distance) + this.collectibles * 50;
   }
 

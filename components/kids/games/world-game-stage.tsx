@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { GameDifficulty, GameId, GameResultPayload } from "@/lib/games/registry";
 import { getVerifiedKidsQuizQuestions, getVerifiedWuduSteps, type VerifiedQuizQuestion } from "@/lib/games/verified-content";
+import { isVerseOrderComplete, shuffleVerseTokens, shuffleWuduSteps, type IndexedVerseToken } from "@/lib/games/gameplay-helpers";
 import { ArcadeGame } from "@/components/kids/games/arcade-game";
 import type { ArcadeGameScene, ArcadeHud } from "@/lib/games/arcade/arcade-scene";
 import { ZikrRunnerGame } from "@/components/kids/games/zikr-runner-game";
@@ -35,6 +36,7 @@ export type StageController = {
   resume: () => void;
   restart: () => void;
   toggleMute: () => boolean;
+  setMuted: (value: boolean) => void;
   isPaused: () => boolean;
 };
 
@@ -66,6 +68,15 @@ export function WorldGameStage(props: WorldGameStageProps) {
     onReady(null);
   }, [gameId, onReady]);
 
+  const handleRunnerReady = useCallback((scene: ZikrRunnerScene) => {
+    setRunnerScene(scene);
+    onPausedChange(false);
+  }, [onPausedChange]);
+  const handleArcadeReady = useCallback((scene: ArcadeGameScene) => {
+    setArcadeScene(scene);
+    onPausedChange(false);
+  }, [onPausedChange]);
+
   useEffect(() => {
     const controller = runnerScene
       ? {
@@ -73,6 +84,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
           resume: () => runnerScene.resumeGame(),
           restart: () => runnerScene.restartGame(),
           toggleMute: () => runnerScene.toggleMute(),
+          setMuted: (value: boolean) => runnerScene.setMuted(value),
           isPaused: () => runnerScene.scene.isPaused(),
         }
       : arcadeScene
@@ -81,10 +93,11 @@ export function WorldGameStage(props: WorldGameStageProps) {
             resume: () => arcadeScene.resumeGame(),
             restart: () => arcadeScene.restartGame(),
             toggleMute: () => arcadeScene.toggleMute(),
+            setMuted: (value: boolean) => arcadeScene.setMuted(value),
             isPaused: () => arcadeScene.scene.isPaused(),
           }
         : !isRunner && !isArcade
-        ? { pause: () => undefined, resume: () => undefined, restart: () => undefined, toggleMute: () => false, isPaused: () => false }
+        ? { pause: () => undefined, resume: () => undefined, restart: () => undefined, toggleMute: () => false, setMuted: () => undefined, isPaused: () => false }
         : null;
     onReady(controller);
   }, [arcadeScene, isArcade, isRunner, onReady, runnerScene]);
@@ -106,7 +119,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
     return (
       <ZikrRunnerGame
         muted={muted}
-        onReady={scene => { setRunnerScene(scene); onPausedChange(false); }}
+        onReady={handleRunnerReady}
         onHud={hud => onHud(runnerHud(hud))}
         onGameOver={hud => onResult(runnerHud(hud))}
         onError={onError}
@@ -119,7 +132,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
       <ArcadeGame
         gameId={gameId}
         muted={muted}
-        onReady={scene => { setArcadeScene(scene); onPausedChange(false); }}
+        onReady={handleArcadeReady}
         onHud={hud => onHud(arcadeHud(hud))}
         onGameOver={hud => onResult(arcadeHud(hud))}
         onError={onError}
@@ -206,6 +219,7 @@ function createMemoryCards(pairCount: number) {
 function OrderingGame({ difficulty, restartToken, paused, onHud, onResult }: LocalGameProps) {
   const source = useMemo(() => getVerifiedWuduSteps(), []);
   const steps = difficulty === "easy" ? source.slice(0, 6) : source;
+  const choices = useMemo(() => shuffleWuduSteps(steps, `${difficulty}:${restartToken}`), [difficulty, restartToken, steps]);
   const [order, setOrder] = useState<number[]>([]);
   const [mistakes, setMistakes] = useState(0);
   const [feedback, setFeedback] = useState("");
@@ -220,32 +234,38 @@ function OrderingGame({ difficulty, restartToken, paused, onHud, onResult }: Loc
   const hud = { score: Math.max(0, order.length * 220 - mistakes * 30), collectibles: order.length, distance: 0, combo: Math.max(0, order.length - mistakes), level: difficulty === "easy" ? 1 : 2, completed };
   useEffect(() => { onHud(hud); if (completed) onResult(hud); }, [completed, mistakes, onHud, onResult, order.length, hud.score, hud.combo, hud.level]);
   if (steps.length === 0) return <Unavailable text="لا تتوفر خطوات الوضوء المعتمدة حاليًا." />;
-  return <div className="space-y-4 rounded-2xl border border-brand-gold/30 bg-[#071b24] p-5"><p className="text-sm text-brand-cream/70">اختر الخطوة التالية بالترتيب الصحيح.</p><div className="grid gap-3">{steps.map(step => <button key={step.order} type="button" onClick={() => choose(step.order)} disabled={order.includes(step.order)} className={`rounded-xl border p-4 text-right transition ${order.includes(step.order) ? "border-brand-emerald/40 bg-brand-emerald/10 opacity-60" : "border-brand-cream/15 bg-black/20 hover:border-brand-gold"}`}><span className="ml-2 text-brand-gold">{step.order}</span>{step.text}</button>)}</div>{feedback && <p className="text-sm text-brand-emerald" role="status">{feedback}</p>}</div>;
+  return <div className="space-y-4 rounded-2xl border border-brand-gold/30 bg-[#071b24] p-5"><p className="text-sm text-brand-cream/70">اختر الخطوة التالية بالترتيب الصحيح. تظهر الخيارات بترتيب متغير، والنص المعتمد محفوظ كما هو.</p><div className="grid gap-3">{choices.map(step => <button key={step.order} type="button" onClick={() => choose(step.order)} disabled={order.includes(step.order)} className={`rounded-xl border p-4 text-right transition ${order.includes(step.order) ? "border-brand-emerald/40 bg-brand-emerald/10 opacity-60" : "border-brand-cream/15 bg-black/20 hover:border-brand-gold"}`}>{step.text}</button>)}</div>{feedback && <p className="text-sm text-brand-emerald" role="status">{feedback}</p>}</div>;
 }
 
 function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onResult }: LocalGameProps) {
-  const [words, setWords] = useState<string[]>([]);
-  const [answer, setAnswer] = useState<string[]>([]);
+  const [tokens, setTokens] = useState<IndexedVerseToken[]>([]);
+  const [answer, setAnswer] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [available, setAvailable] = useState(true);
   useEffect(() => {
     let active = true;
-    setLoading(true); setAnswer([]);
+    setLoading(true); setAnswer([]); setTokens([]);
     fetch(`/api/kids/games/verse?difficulty=${difficulty}`, { credentials: "include" })
       .then(response => response.ok ? response.json() as Promise<{ words?: string[] }> : Promise.reject(new Error("unavailable")))
-      .then(data => { if (active) { setWords(Array.isArray(data.words) ? data.words : []); setAvailable(Array.isArray(data.words) && data.words.length > 0); } })
+      .then(data => {
+        if (!active) return;
+        const words = Array.isArray(data.words) ? data.words : [];
+        setTokens(shuffleVerseTokens(words, `${difficulty}:${restartToken}`));
+        setAvailable(words.length > 0);
+      })
       .catch(() => { if (active) setAvailable(false); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [difficulty, restartToken]);
-  const completed = words.length > 0 && answer.length === words.length && answer.every((word, index) => word === words[index]);
-  const choose = (word: string, index: number) => { if (paused || answer.includes(`${index}:${word}`)) return; setAnswer(value => [...value, word]); };
+  const completed = tokens.length > 0 && isVerseOrderComplete(answer, tokens.length);
+  const choose = (tokenIndex: number) => { if (paused || answer.includes(tokenIndex)) return; setAnswer(value => [...value, tokenIndex]); };
+  const selectedTokens = answer.map(index => tokens.find(token => token.index === index)?.text ?? "");
   const score = Math.max(0, answer.length * 180 - Math.max(0, answer.length - 1) * 12);
   const hud = { score, collectibles: answer.length, distance: 0, combo: answer.length, level: difficulty === "hard" ? 3 : difficulty === "normal" ? 2 : 1, completed };
   useEffect(() => { onHud(hud); if (completed) onResult(hud); }, [answer.length, completed, onHud, onResult, score, hud.combo, hud.level]);
   if (loading) return <div className="grid min-h-[280px] place-items-center rounded-2xl border border-brand-gold/30 bg-[#071b24] text-brand-cream/70" role="status">جاري تجهيز نص موثق...</div>;
   if (!available) return <Unavailable text="لغز الآية يحتاج إلى نص قرآني موثق متاح من قاعدة المعرفة." />;
-  return <div className="space-y-5 rounded-2xl border border-brand-gold/30 bg-[#071b24] p-5"><p className="text-sm text-brand-cream/70">اضغط الكلمات بالترتيب. النص مأخوذ كما هو من المصدر الموثق.</p><div className="min-h-16 rounded-xl border border-brand-emerald/30 bg-brand-emerald/5 p-4 text-center leading-10 text-brand-gold">{answer.join(" ")}</div><div className="flex flex-wrap justify-center gap-2">{words.map((word, index) => <button key={`${word}-${index}`} type="button" onClick={() => choose(word, index)} disabled={answer.length > index} className="rounded-lg border border-brand-cream/20 bg-black/20 px-3 py-2 text-brand-cream disabled:opacity-30">{word}</button>)}</div></div>;
+  return <div className="space-y-5 rounded-2xl border border-brand-gold/30 bg-[#071b24] p-5"><p className="text-sm text-brand-cream/70">اضغط الكلمات بالترتيب. النص مأخوذ كما هو من المصدر الموثق، وكل كلمة تحتفظ بموقعها الأصلي حتى تتكرر بأمان.</p><div className="min-h-16 rounded-xl border border-brand-emerald/30 bg-brand-emerald/5 p-4 text-center leading-10 text-brand-gold">{selectedTokens.join(" ")}</div><div className="flex flex-wrap justify-center gap-2">{tokens.map(token => <button key={token.id} type="button" onClick={() => choose(token.index)} disabled={answer.includes(token.index)} className="rounded-lg border border-brand-cream/20 bg-black/20 px-3 py-2 text-brand-cream disabled:opacity-30">{token.text}</button>)}</div></div>;
 }
 
 function QuizGame({ difficulty, restartToken, paused, onHud, onResult }: LocalGameProps) {
@@ -298,13 +318,27 @@ function ColoringGame({ restartToken, onHud, onResult }: LocalGameProps) {
   const colors = ["#f3c969", "#5fd1a6", "#e28a5a", "#8ab6e2", "#d7a7e8"];
   const [selected, setSelected] = useState(colors[0]);
   const [cells, setCells] = useState<string[]>(() => loadDrawing());
-  useEffect(() => { if (restartToken > 0) setCells([]); }, [restartToken]);
-  const paint = (index: number) => setCells(value => { const next = [...value]; next[index] = selected; localStorage.setItem("zikr-kids-coloring-v1", JSON.stringify(next)); return next; });
-  const clear = () => { setCells([]); localStorage.removeItem("zikr-kids-coloring-v1"); };
+  const [history, setHistory] = useState<string[][]>([]);
+  useEffect(() => { if (restartToken > 0) { setCells([]); setHistory([]); localStorage.removeItem("zikr-kids-coloring-v1"); } }, [restartToken]);
+  const paint = (index: number) => setCells(value => {
+    setHistory(previous => [...previous.slice(-19), value]);
+    const next = [...value]; next[index] = selected;
+    localStorage.setItem("zikr-kids-coloring-v1", JSON.stringify(next));
+    return next;
+  });
+  const undo = () => setHistory(previous => {
+    const last = previous.at(-1);
+    if (!last) return previous;
+    setCells(last);
+    localStorage.setItem("zikr-kids-coloring-v1", JSON.stringify(last));
+    return previous.slice(0, -1);
+  });
+  const clear = () => { setHistory(previous => [...previous.slice(-19), cells]); setCells([]); localStorage.removeItem("zikr-kids-coloring-v1"); };
   const filled = cells.filter(Boolean).length;
   const hud = { score: filled * 100, collectibles: filled, distance: 0, combo: filled, level: 1, completed: filled === 12 };
   useEffect(() => { onHud(hud); if (hud.completed) onResult(hud); }, [filled, onHud, onResult, hud.score, hud.combo, hud.completed]);
-  return <div className="space-y-4 rounded-2xl border border-brand-gold/30 bg-[#071b24] p-5"><p className="text-sm text-brand-cream/70">تلوين محلي على هذا الجهاز؛ لا يحتاج إلى حساب.</p><div className="flex flex-wrap gap-2" aria-label="الألوان">{colors.map(color => <button key={color} type="button" onClick={() => setSelected(color)} aria-label={`اختيار اللون ${color}`} aria-pressed={selected === color} className="h-10 w-10 rounded-full border-2 border-brand-cream/50" style={{ backgroundColor: color }} />)}</div><div className="grid grid-cols-4 gap-2 rounded-xl border border-brand-emerald/20 p-4">{Array.from({ length: 12 }, (_, index) => <button key={index} type="button" onClick={() => paint(index)} aria-label={`منطقة تلوين ${index + 1}`} className="aspect-square rounded-lg border border-brand-cream/20" style={{ backgroundColor: cells[index] || "#14313a" }} />)}</div><button type="button" onClick={clear} className="rounded-lg border border-brand-cream/20 px-4 py-2 text-sm text-brand-cream">مسح الرسم</button></div>;
+  const regionFill = (index: number) => cells[index] || "#14313a";
+  return <div className="space-y-4 rounded-2xl border border-brand-gold/30 bg-[#071b24] p-5"><p className="text-sm text-brand-cream/70">لوحة مسجد وهلال أصلية، والتلوين محفوظ محليًا على هذا الجهاز دون حساب.</p><div className="flex flex-wrap gap-2" aria-label="الألوان">{colors.map(color => <button key={color} type="button" onClick={() => setSelected(color)} aria-label={`اختيار اللون ${color}`} aria-pressed={selected === color} className="h-10 w-10 rounded-full border-2 border-brand-cream/50" style={{ backgroundColor: color }} />)}</div><div className="overflow-hidden rounded-xl border border-brand-emerald/20 bg-[#0b2832] p-3"><svg viewBox="0 0 360 240" className="mx-auto h-auto w-full max-w-xl select-none touch-none" role="img" aria-label="رسم مسجد وهلال للتلوين"><rect x="12" y="12" width="336" height="216" rx="24" fill="#102f3a" stroke="#39776f" strokeWidth="4" /><circle cx="280" cy="58" r="27" fill={regionFill(0)} stroke="#f3c969" strokeWidth="3" /><circle cx="291" cy="48" r="27" fill="#102f3a" /><path d="M48 194h264M70 194v-62h220v62M92 132v-45h176v45M132 87l48-44 48 44Z" fill={regionFill(1)} stroke="#f3c969" strokeWidth="4" /><path d="M163 194v-48h34v48Z" fill={regionFill(2)} stroke="#f3c969" strokeWidth="3" /><path d="M75 132h25v62H75zM260 132h25v62h-25z" fill={regionFill(3)} stroke="#f3c969" strokeWidth="3" /><path d="M177 43V25h6v18M171 25h18" fill="none" stroke="#f3c969" strokeWidth="3" /><circle cx="48" cy="54" r="10" fill={regionFill(4)} stroke="#5fd1a6" strokeWidth="3" /><path d="M36 194c8-21 18-21 26 0M300 194c8-21 18-21 26 0" fill={regionFill(5)} stroke="#5fd1a6" strokeWidth="3" /><path d="M30 212h300" stroke="#d7a7e8" strokeWidth="5" /><g fill={regionFill(6)} stroke="#8ab6e2" strokeWidth="2"><circle cx="92" cy="212" r="7"/><circle cx="122" cy="212" r="7"/><circle cx="238" cy="212" r="7"/><circle cx="268" cy="212" r="7"/></g><g fill={regionFill(7)} stroke="#e28a5a" strokeWidth="2"><path d="M32 92l12-12 12 12-12 12z"/><path d="M304 108l12-12 12 12-12 12z"/></g>{Array.from({ length: 4 }, (_, index) => <rect key={index} x={101 + index * 42} y="102" width="22" height="20" rx="4" fill={regionFill(8 + index)} stroke="#f3c969" strokeWidth="2" />)}</svg></div><div className="flex flex-wrap justify-center gap-2"><button type="button" onClick={undo} disabled={history.length === 0} className="rounded-lg border border-brand-cream/20 px-4 py-2 text-sm text-brand-cream disabled:opacity-40">تراجع</button><button type="button" onClick={clear} className="rounded-lg border border-brand-cream/20 px-4 py-2 text-sm text-brand-cream">مسح الرسم</button></div></div>;
 }
 
 function loadDrawing() {
