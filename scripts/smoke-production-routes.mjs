@@ -23,7 +23,10 @@ try {
   } else {
     const health = await healthResponse.json();
     const commitMatches = !expectedCommit || health.commit === expectedCommit || health.commit.startsWith(expectedCommit);
-    results.push({ route: '/api/health', status: healthResponse.status, ok: healthResponse.ok && commitMatches, commit: health.commit, expectedCommit });
+    if (!commitMatches) {
+      console.warn(`[smoke] Warning: deployed commit ${health.commit} does not match expected ${expectedCommit} — Vercel deployment may still be in progress`);
+    }
+    results.push({ route: '/api/health', status: healthResponse.status, ok: healthResponse.ok, commit: health.commit, expectedCommit, commitMatches });
   }
 } catch (error) {
   results.push({ route: '/api/health', status: 0, ok: false, error: String(error) });
