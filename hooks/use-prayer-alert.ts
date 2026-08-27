@@ -133,6 +133,32 @@ async function getTimingsForNativeScheduling(): Promise<Record<
     return cached.timings;
   if (typeof navigator === "undefined" || !navigator.geolocation) return null;
 
+  try {
+    const native = (
+      window as Window & {
+        zikrNative?: {
+          isNative?: boolean;
+          requestLocationPermission?: () => Promise<unknown>;
+        };
+      }
+    ).zikrNative;
+    if (native?.isNative && native.requestLocationPermission) {
+      const permission = (await native.requestLocationPermission()) as
+        | {
+            location?: string;
+          }
+        | undefined;
+      if (
+        permission?.location === "denied" ||
+        permission?.location === "prompt"
+      ) {
+        return null;
+      }
+    }
+  } catch {
+    // Fall back to the browser geolocation prompt when native permissions are unavailable.
+  }
+
   return new Promise(resolve => {
     navigator.geolocation.getCurrentPosition(
       position => {

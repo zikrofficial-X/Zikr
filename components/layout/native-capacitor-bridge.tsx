@@ -32,6 +32,7 @@ type CapacitorWindow = Window & {
       channelId?: string;
     }) => Promise<void>;
     requestNotificationPermission: () => Promise<unknown>;
+    requestLocationPermission: () => Promise<unknown>;
     checkExactNotificationSetting: () => Promise<unknown>;
     changeExactNotificationSetting: () => Promise<unknown>;
     getAppInfo: () => Promise<{ version?: string; build?: string }>;
@@ -108,6 +109,9 @@ function installNativeFacade(
     },
     async requestNotificationPermission() {
       return plugins.LocalNotifications?.requestPermissions?.();
+    },
+    async requestLocationPermission() {
+      return plugins.Geolocation?.requestPermissions?.();
     },
     async checkExactNotificationSetting() {
       return plugins.LocalNotifications?.checkExactNotificationSetting?.();
