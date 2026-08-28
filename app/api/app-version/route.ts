@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 
-const RELEASES_API =
-  "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr-Android-Releases/releases/latest";
+const RELEASES_API_BASE =
+  "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/releases";
 const RELEASE_DOWNLOAD_BASE =
-  "https://github.com/mohamedalaa7785-cpu/Zikr-Android-Releases/releases/download";
+  "https://github.com/mohamedalaa7785-cpu/Zikr/releases/download";
+const MAX_RELEASE_PAGES = 3;
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
@@ -13,55 +14,123 @@ type ReleaseResponse = {
   name?: string;
   html_url?: string;
   published_at?: string;
+  draft?: boolean;
+  prerelease?: boolean;
   assets?: Array<{ name?: string }>;
 };
 
-export async function GET() {
-  const response = await fetch(RELEASES_API, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      "User-Agent": "ZIKR-platform-version-check",
-    },
-    cache: "no-store",
+function versionParts(value: string) {
+  return value
+    .trim()
+    .replace(/^v/i, "")
+    .split(/[.-]/)
+    .map(part => Number.parseInt(part, 10))
+    .map(part => (Number.isFinite(part) ? part : 0));
+}
+
+function compareVersions(a: string, b: string) {
+  const left = versionParts(a);
+  const right = versionParts(b);
+  const length = Math.max(left.length, right.length, 3);
+  for (let index = 0; index < length; index += 1) {
+    const diff = (left[index] ?? 0) - (right[index] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+async function getLatestStableReleaseWithApk(): Promise<ReleaseResponse | null> {
+  const releases: ReleaseResponse[] = [];
+
+  for (let page = 1; page <= MAX_RELEASE_PAGES; page += 1) {
+    const response = await fetch(
+      `${RELEASES_API_BASE}?per_page=100&page=${page}`,
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          "User-Agent": "ZIKR-platform-version-check",
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) return null;
+
+    const batch = (await response.json()) as ReleaseResponse[];
+    if (!Array.isArray(batch) || batch.length === 0) break;
+
+    releases.push(...batch);
+    if (batch.length < 100) break;
+  }
+
+  const stableWithApk = releases.filter(
+    release =>
+      !release.draft &&
+      !release.prerelease &&
+      Boolean(release.tag_name?.trim()) &&
+      release.assets?.some(asset =>
+        asset.name?.toLowerCase().endsWith(".apk"),
+      ),
+  );
+
+  stableWithApk.sort((a, b) => {
+    const versionDiff = compareVersions(b.tag_name ?? "", a.tag_name ?? "");
+    if (versionDiff !== 0) return versionDiff;
+
+    const aDate = a.published_at ? Date.parse(a.published_at) : 0;
+    const bDate = b.published_at ? Date.parse(b.published_at) : 0;
+    return bDate - aDate;
   });
 
-  if (!response.ok) {
+  return stableWithApk[0] ?? null;
+}
+
+export async function GET() {
+  try {
+    const release = await getLatestStableReleaseWithApk();
+    const tag = release?.tag_name?.trim();
+    const apk = release?.assets?.find(asset =>
+      asset.name?.toLowerCase().endsWith(".apk"),
+    );
+
+    if (!tag || !apk?.name) {
+      return NextResponse.json(
+        { error: "لا يوجد APK منشور في أحدث إصدار حاليًا." },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        version: tag.replace(/^v/i, ""),
+        tag,
+        apkUrl: `${RELEASE_DOWNLOAD_BASE}/${encodeURIComponent(tag)}/${encodeURIComponent(apk.name)}`,
+        releaseUrl:
+          release.html_url ??
+          `https://github.com/mohamedalaa7785-cpu/Zikr/releases/tag/${encodeURIComponent(tag)}`,
+        publishedAt: release.published_at ?? null,
+        name: release.name ?? `ZIKR Android ${tag}`,
+      },
+      {
+        headers: {
+          "Cache-Control": "private, no-store, no-cache, must-revalidate",
+          Pragma: "no-cache",
+        },
+      },
+    );
+  } catch (error) {
+    console.error("[app-version] release lookup failed:", error);
     return NextResponse.json(
       { error: "تعذر التحقق من أحدث إصدار حاليًا." },
-      { status: 503, headers: { "Cache-Control": "no-store" } }
-    );
-  }
-
-  const release = (await response.json()) as ReleaseResponse;
-  const tag = release.tag_name?.trim();
-  const apk = release.assets?.find(asset =>
-    asset.name?.toLowerCase().endsWith(".apk")
-  );
-
-  if (!tag || !apk?.name) {
-    return NextResponse.json(
-      { error: "لا يوجد APK منشور في أحدث إصدار حاليًا." },
-      { status: 503, headers: { "Cache-Control": "no-store" } }
-    );
-  }
-
-  return NextResponse.json(
-    {
-      version: tag.replace(/^v/i, ""),
-      tag,
-      apkUrl: `${RELEASE_DOWNLOAD_BASE}/${encodeURIComponent(tag)}/${encodeURIComponent(apk.name)}`,
-      releaseUrl:
-        release.html_url ??
-        `https://github.com/mohamedalaa7785-cpu/Zikr-Android-Releases/releases/tag/${encodeURIComponent(tag)}`,
-      publishedAt: release.published_at ?? null,
-      name: release.name ?? `ZIKR Android ${tag}`,
-    },
-    {
-      headers: {
-        "Cache-Control": "private, no-store",
+      {
+        status: 503,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          Pragma: "no-cache",
+        },
       },
-    }
-  );
+    );
+  }
 }
 
 export function HEAD() {
