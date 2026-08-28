@@ -26,6 +26,8 @@ const requiredFiles = [
   "ios/App/App/Resources/adhan.wav",
   "ios/App/App/Resources/salawat.wav",
   "app/manifest.ts",
+  "public/offline-content/v1/manifest.json",
+  "lib/offline-pack.ts",
 ];
 
 const failures = [];
@@ -33,14 +35,12 @@ const releaseCheck = process.env.MOBILE_RELEASE_CHECK === "1";
 const releasePlatform = process.env.MOBILE_RELEASE_PLATFORM || "all";
 
 for (const file of requiredFiles) {
-  if (!existsSync(file)) failures.push(`Missing required mobile file: ${file}`);
+  if (!existsSync(file)) failures.push(`Missing required mobile/offline file: ${file}`);
 }
 
 const read = file => (existsSync(file) ? readFileSync(file, "utf8") : "");
 const capacitor = JSON.parse(read("capacitor.config.json"));
-const capacitorDeps = JSON.parse(
-  read("mobile/capacitor-dependencies.json") || "{}"
-);
+const capacitorDeps = JSON.parse(read("mobile/capacitor-dependencies.json") || "{}");
 const packageJson = JSON.parse(read("package.json"));
 const packageDependencies = {
   ...(packageJson.dependencies || {}),
@@ -51,9 +51,8 @@ if (capacitor.appId !== "com.zikr.app")
   failures.push("Capacitor appId must be com.zikr.app");
 if (capacitor.appName !== "ZIKR | ذِكرٌ")
   failures.push("Capacitor appName must be ZIKR | ذِكرٌ");
-if (capacitor.server?.url !== "https://zikrmediaofficial.vercel.app") {
+if (capacitor.server?.url !== "https://zikrmediaofficial.vercel.app")
   failures.push("Capacitor server.url must point at the production SSR origin");
-}
 
 for (const dependency of [
   "@capacitor/core",
@@ -61,27 +60,18 @@ for (const dependency of [
   "@capacitor/ios",
   "@capacitor/app",
 ]) {
-  if (
-    !capacitorDeps.dependencies?.[dependency] &&
-    !capacitorDeps.devDependencies?.[dependency]
-  ) {
+  if (!capacitorDeps.dependencies?.[dependency] && !capacitorDeps.devDependencies?.[dependency]) {
     failures.push(`Mobile dependency manifest missing ${dependency}`);
   }
   if (!packageDependencies[dependency]) {
-    failures.push(
-      `package.json is missing installed mobile dependency ${dependency}`
-    );
+    failures.push(`package.json is missing installed mobile dependency ${dependency}`);
   }
 }
 if (!packageDependencies["@capacitor/cli"]) {
-  failures.push(
-    "package.json is missing @capacitor/cli; native sync cannot run from the repository"
-  );
+  failures.push("package.json is missing @capacitor/cli; native sync cannot run from the repository");
 }
 if (capacitorDeps.dependencies?.["@capacitor-community/biometric-auth"]) {
-  failures.push(
-    "Mobile dependency manifest references the nonexistent @capacitor-community/biometric-auth package"
-  );
+  failures.push("Mobile dependency manifest references the nonexistent @capacitor-community/biometric-auth package");
 }
 
 for (const host of [
@@ -105,8 +95,7 @@ for (const token of [
   'android:scheme="com.zikr.app"',
   'android:supportsRtl="true"',
 ]) {
-  if (!androidManifest.includes(token))
-    failures.push(`Android manifest missing ${token}`);
+  if (!androidManifest.includes(token)) failures.push(`Android manifest missing ${token}`);
 }
 
 const plist = read("ios/App/App/Info.plist");
@@ -133,8 +122,7 @@ for (const token of [
   "salawat.wav in Resources",
   "CODE_SIGN_ENTITLEMENTS = App/App.entitlements;",
 ]) {
-  if (!pbxproj.includes(token))
-    failures.push(`iOS Xcode project missing ${token}`);
+  if (!pbxproj.includes(token)) failures.push(`iOS Xcode project missing ${token}`);
 }
 
 const bridge = read("components/layout/native-capacitor-bridge.tsx");
@@ -151,6 +139,50 @@ for (const token of [
   "createChannel",
 ]) {
   if (!bridge.includes(token)) failures.push(`Native bridge missing ${token}`);
+}
+
+const offlineManifestPath = "public/offline-content/v1/manifest.json";
+try {
+  const manifest = JSON.parse(read(offlineManifestPath));
+  if (!manifest.version || !manifest.generatedAt) failures.push("Offline manifest is missing version/generatedAt");
+  if (!manifest.datasets || typeof manifest.datasets !== "object") failures.push("Offline manifest has no datasets map");
+  if (!Array.isArray(manifest.routes) || manifest.routes.length < 20) failures.push("Offline manifest must contain the public route inventory");
+  for (const [dataset, definition] of Object.entries(manifest.datasets || {})) {
+    if (!definition?.path || !definition?.count) {
+      failures.push(`Offline dataset ${dataset} is missing path/count metadata`);
+      continue;
+    }
+    if (!definition.path.startsWith("/offline-content/")) {
+      failures.push(`Offline dataset ${dataset} path is outside /offline-content/`);
+      continue;
+    }
+    const localPath = definition.path.replace(/^\//, "");
+    if (!existsSync(`public/${localPath}`)) {
+      failures.push(`Offline dataset file missing: public/${localPath}`);
+    }
+  }
+} catch (error) {
+  failures.push(`Offline manifest is invalid JSON: ${error instanceof Error ? error.message : "unknown error"}`);
+}
+
+const offlinePack = read("lib/offline-pack.ts");
+for (const token of [
+  "offline_manifest",
+  "requestOfflineRouteCache",
+  "cacheRoutes?: boolean",
+  "VERSION_KEY = 'offline-content-version-v3'",
+]) {
+  if (!offlinePack.includes(token)) failures.push(`Offline pack is missing ${token}`);
+}
+
+const serviceWorker = read("public/sw.js");
+for (const token of [
+  "CACHE_NAME = 'zikr-v9'",
+  "OFFLINE_CONTENT_PREFIX",
+  "CACHE_OFFLINE_ROUTES",
+  "cacheReferencedStaticAssets",
+]) {
+  if (!serviceWorker.includes(token)) failures.push(`Service worker missing ${token}`);
 }
 
 if (
@@ -180,4 +212,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log("✅ Mobile readiness configuration checks passed");
+console.log("✅ Mobile readiness and offline pack checks passed");
