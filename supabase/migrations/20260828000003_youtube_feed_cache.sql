@@ -1,3 +1,4 @@
+-- YouTube feed cache schema. Version 00000 conflicted with the already-applied site audio migration; 00003 is the canonical new version.
 create table if not exists public.youtube_feed_cache (
   video_id text primary key,
   channel_id text not null,
