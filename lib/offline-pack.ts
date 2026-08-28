@@ -32,12 +32,12 @@ const STORE_BY_DATASET: Record<string, string> = {
 
 const MANIFEST_URL = '/offline-content/v1/manifest.json';
 const MANIFEST_DB_KEY = 'offline_manifest';
-const VERSION_KEY = 'offline-content-version-v3';
+const COMPLETION_DB_KEY = 'offline_completion_v1';
+const VERSION_KEY = 'offline-content-version-v5';
 const ROUTE_CACHE_REQUEST = 'CACHE_OFFLINE_ROUTES';
 
 // Public, non-personalized routes that should be available after the user
-// explicitly downloads the complete offline pack. Personalized/admin routes
-// are intentionally excluded.
+// explicitly downloads the complete offline pack.
 const ESSENTIAL_ROUTES = [
   '/',
   '/mushaf',
@@ -74,7 +74,34 @@ const ESSENTIAL_ROUTES = [
   '/editorial-policy',
   '/settings',
   '/offline-library',
+  '/scholars/ahmad-ibn-hanbal',
+  '/scholars/albani',
+  '/scholars/bukhari',
+  '/scholars/ibn-baz',
+  '/scholars/ibn-qayyim',
+  '/scholars/ibn-taymiyyah',
+  '/scholars/malik-ibn-anas',
+  '/scholars/nawawi',
+  '/scholars/saadi',
+  '/scholars/shaarawi',
+  '/scholars/shafii',
+  '/scholars/uthaymin',
+  '/videos/importance-of-prayer',
+  '/videos/lecture-tawakkul',
+  '/videos/morning-evening-adhkar',
+  '/videos/quran-duas-collection',
+  '/videos/story-of-musa-full',
+  '/videos/story-of-yusuf-full',
+  '/videos/tafsir-al-baqarah-uthaymin',
+  '/videos/tafsir-al-fatihah-shaarawi',
+  '/videos/tafsir-ya-sin-shaarawi',
 ];
+
+type OfflineCompletion = {
+  version: string;
+  datasetCounts: Record<string, number>;
+  cachedRoutes: string[];
+};
 
 export type OfflineHydrationResult = {
   manifest: OfflineManifest;
@@ -111,6 +138,14 @@ async function persistManifest(manifest: OfflineManifest): Promise<void> {
   }
 }
 
+async function persistCompletion(completion: OfflineCompletion): Promise<void> {
+  try {
+    await offlineDb.saveSetting(COMPLETION_DB_KEY, completion);
+  } catch (error) {
+    console.warn('[OfflinePack] Failed to persist completion marker', error);
+  }
+}
+
 async function readPersistedManifest(): Promise<OfflineManifest | null> {
   try {
     await offlineDb.initialize();
@@ -128,6 +163,22 @@ async function readPersistedManifest(): Promise<OfflineManifest | null> {
   }
 
   return null;
+}
+
+async function verifyCompletedDatasets(manifest: OfflineManifest): Promise<boolean> {
+  try {
+    const completion = await offlineDb.getSetting<OfflineCompletion>(COMPLETION_DB_KEY);
+    if (!completion || completion.version !== manifest.version) return false;
+
+    for (const [dataset, definition] of Object.entries(manifest.datasets)) {
+      const storeName = STORE_BY_DATASET[dataset];
+      if (!storeName || completion.datasetCounts[storeName] !== definition.count) return false;
+      if (await offlineDb.count(storeName) !== definition.count) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function fetchOfflineManifest(): Promise<OfflineManifest | null> {
@@ -178,10 +229,7 @@ export async function requestOfflineRouteCache(
         });
       };
 
-      worker.postMessage(
-        { type: ROUTE_CACHE_REQUEST, routes },
-        [channel.port2],
-      );
+      worker.postMessage({ type: ROUTE_CACHE_REQUEST, routes }, [channel.port2]);
     });
   } catch {
     return { cachedRoutes: 0, failedRoutes: routes };
@@ -196,18 +244,6 @@ export async function hydrateOfflineContent(
   const manifest = await fetchOfflineManifest();
   if (!manifest) return null;
 
-  const previousVersion = window.localStorage.getItem(VERSION_KEY);
-  if (!options.force && previousVersion === manifest.version && offlineDb.isReady()) {
-    return {
-      manifest,
-      complete: true,
-      failedDatasets: [],
-      cachedRoutes: 0,
-      failedRoutes: [],
-    };
-  }
-
-  const failedDatasets: string[] = [];
   try {
     await offlineDb.initialize();
   } catch (error) {
@@ -220,6 +256,21 @@ export async function hydrateOfflineContent(
       failedRoutes: mergedRoutes(manifest),
     };
   }
+
+  if (!options.force && await verifyCompletedDatasets(manifest)) {
+    const completion = await offlineDb.getSetting<OfflineCompletion>(COMPLETION_DB_KEY);
+    const cachedRoutes = completion?.cachedRoutes ?? [];
+    return {
+      manifest,
+      complete: true,
+      failedDatasets: [],
+      cachedRoutes: cachedRoutes.length,
+      failedRoutes: [],
+    };
+  }
+
+  const failedDatasets: string[] = [];
+  const datasetCounts: Record<string, number> = {};
 
   for (const [dataset, definition] of Object.entries(manifest.datasets)) {
     const storeName = STORE_BY_DATASET[dataset];
@@ -242,6 +293,8 @@ export async function hydrateOfflineContent(
         continue;
       }
       await offlineDb.setMany(storeName, rows);
+      datasetCounts[storeName] = await offlineDb.count(storeName);
+      if (datasetCounts[storeName] !== definition.count) failedDatasets.push(dataset);
     } catch (error) {
       failedDatasets.push(dataset);
       console.warn(`[OfflinePack] Failed to hydrate ${dataset}`, error);
@@ -249,24 +302,41 @@ export async function hydrateOfflineContent(
   }
 
   const complete = failedDatasets.length === 0;
-  if (complete) {
-    window.localStorage.setItem(VERSION_KEY, manifest.version);
-    await persistManifest(manifest);
-  }
-
-  let cachedRoutes = 0;
+  let cachedRoutes: string[] = [];
   let failedRoutes: string[] = [];
+
   if (complete && options.cacheRoutes) {
     const result = await requestOfflineRouteCache(mergedRoutes(manifest));
-    cachedRoutes = result.cachedRoutes;
+    cachedRoutes = mergedRoutes(manifest).filter(route => !result.failedRoutes.includes(route));
     failedRoutes = result.failedRoutes;
+  }
+
+  if (complete && failedRoutes.length === 0) {
+    await persistManifest(manifest);
+    await persistCompletion({
+      version: manifest.version,
+      datasetCounts,
+      cachedRoutes,
+    });
+    try {
+      window.localStorage.setItem(VERSION_KEY, manifest.version);
+    } catch {
+      // IndexedDB completion is authoritative when Web Storage is restricted.
+    }
+  } else {
+    try {
+      await offlineDb.delete('settings', COMPLETION_DB_KEY);
+      window.localStorage.removeItem(VERSION_KEY);
+    } catch {
+      // Preserve already-downloaded datasets but do not keep a stale completion marker.
+    }
   }
 
   return {
     manifest,
     complete,
     failedDatasets,
-    cachedRoutes,
+    cachedRoutes: cachedRoutes.length,
     failedRoutes,
   };
 }
