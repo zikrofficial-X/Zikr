@@ -121,6 +121,25 @@ jobs:
               > "$PROPERTIES_PATH"
             chmod 600 "$PROPERTIES_PATH"
       - run:
+          name: Resolve Android release version
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            VERSION_NAME="$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' android/app/build.gradle | head -1)"
+            test -n "$VERSION_NAME"
+            if [[ "${CIRCLE_TAG:-}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              RELEASE_TAG="$CIRCLE_TAG"
+            elif [[ "${CIRCLE_BRANCH:-}" =~ ^android-release-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+              RELEASE_TAG="v${BASH_REMATCH[1]}"
+            else
+              echo "Could not determine Android release tag" >&2
+              exit 1
+            fi
+            EXPECTED_VERSION="${RELEASE_TAG#v}"
+            test "$VERSION_NAME" = "$EXPECTED_VERSION"
+            echo "export ANDROID_RELEASE_TAG=$RELEASE_TAG" >> "$BASH_ENV"
+            echo "Verified Android release: $RELEASE_TAG"
+      - run:
           name: Build signed APK and AAB
           shell: /bin/bash
           command: |
@@ -131,7 +150,7 @@ jobs:
             ./gradlew :app:bundleRelease --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
           no_output_timeout: 30m
       - run:
-          name: Verify APK, AAB, signature and version
+          name: Verify APK, AAB and signature
           shell: /bin/bash
           command: |
             set -euo pipefail
@@ -143,13 +162,7 @@ jobs:
             APKANALYZER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name apkanalyzer | sort -V | tail -1)"
             "$APKSIGNER" verify --verbose "$APK"
             "$APKANALYZER" manifest application-id "$APK" | grep -Fx 'com.zikr.app'
-            VERSION_NAME="$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' android/app/build.gradle | head -1)"
-            test -n "$VERSION_NAME"
-            if [[ "${CIRCLE_TAG:-}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              EXPECTED_VERSION="${CIRCLE_TAG#v}"
-              test "$VERSION_NAME" = "$EXPECTED_VERSION"
-            fi
-            echo "Verified APK version: $VERSION_NAME"
+            "$APKANALYZER" manifest version-name "$APK" | grep -Fx "${ANDROID_RELEASE_TAG#v}"
             sha256sum "$APK" "$AAB" > SHA256SUMS
             cat SHA256SUMS
       - run:
@@ -165,9 +178,8 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            test -n "${CIRCLE_TAG:-}"
             REPO="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
-            RELEASE_TAG="$CIRCLE_TAG"
+            RELEASE_TAG="$ANDROID_RELEASE_TAG"
             APK="android/app/build/outputs/apk/release/app-release.apk"
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
             if gh release view "$RELEASE_TAG" --repo "$REPO" >/dev/null 2>&1; then
@@ -191,6 +203,7 @@ workflows:
       - android-rebuild:
           filters:
             branches:
-              ignore: /.*/
+              only:
+                - /^android-release-v[0-9]+\.[0-9]+\.[0-9]+$/
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
