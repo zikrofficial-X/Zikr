@@ -15,12 +15,15 @@ This checklist reflects the current production architecture. GitHub Actions is m
 | Supabase | Production project is `ACTIVE_HEALTHY`; local and remote migration versions match |
 | Authentication | Supabase redirect URLs and Google OAuth credentials use the canonical production callback `/auth/callback` |
 | Secrets | Service-role, OAuth refresh, provider, VAPID, and scheduler secrets exist only in server-side stores |
+| CircleCI Android | Set `MOBILE_RELEASE_PLATFORM=android` for Android-only releases; require the Android keystore variables and `ANDROID_APP_LINKS_SHA256` without requiring the iOS App ID |
 
 ## Vercel deployment
 
 Confirm that `vercel.json` uses `pnpm install --frozen-lockfile` and `pnpm verify`. Push the intended commit to `main`, then verify that the resulting production deployment is `READY`, points to the intended commit, and serves `zikrmediaofficial.vercel.app` without password protection.
 
 The custom production domain must remain reachable for OAuth callbacks. Non-custom preview protection may remain enabled. Do not treat a preview deployment as production evidence.
+
+CircleCI Android release jobs must run `MOBILE_RELEASE_CHECK=1 MOBILE_RELEASE_PLATFORM=android pnpm mobile:check`; an iOS release job should use `MOBILE_RELEASE_PLATFORM=ios` and its own Apple Team ID variable.
 
 ## Supabase schema and security
 
