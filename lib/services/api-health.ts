@@ -1,7 +1,7 @@
 import { getPublicEnv, getServerEnv } from '@/lib/env';
 import { assertSupabaseConnection } from '@/lib/supabase/server';
 import { generateGeminiText } from '@/lib/services/gemini-client';
-import { getYoutubeChannelFeed, isYoutubeQuotaError } from '@/lib/services/youtube';
+import { getYoutubeSyncHealth } from '@/lib/services/youtube';
 
 export type ApiHealthStatus = 'ok' | 'warning' | 'error';
 
@@ -34,19 +34,33 @@ export async function runApiHealthChecks(): Promise<ApiHealthCheck[]> {
       return { name: 'Gemini Quran/Voice AI', status: text ? 'ok' : 'warning', message: text ? 'Gemini responded successfully.' : 'Gemini key exists but no text was returned.' };
     }),
     timed('YouTube channel API', async () => {
-      const feed = await getYoutubeChannelFeed(3);
-      if (!feed.configured) return { name: 'YouTube channel API', status: 'warning', message: feed.error ?? 'YouTube is not configured.' };
-      if (feed.error) {
-        if (isYoutubeQuotaError(feed)) {
-          return {
-            name: 'YouTube channel API',
-            status: 'warning',
-            message: 'YouTube API quota is temporarily exhausted. The channel feed will recover after the quota window resets; local video content remains available.',
-          };
-        }
-        return { name: 'YouTube channel API', status: 'error', message: feed.error };
+      const health = await getYoutubeSyncHealth();
+      if (!health.configured) {
+        return { name: 'YouTube channel API', status: 'warning', message: 'YouTube is not configured.' };
       }
-      return { name: 'YouTube channel API', status: 'ok', message: `Loaded ${feed.videos.length} videos and ${feed.playlists.length} playlists from ${feed.channelId}.` };
+      if (health.status === 'ok') {
+        const suffix = health.lastSuccessAt ? ` Last successful sync: ${health.lastSuccessAt}.` : '';
+        return { name: 'YouTube channel API', status: 'ok', message: `Cached YouTube feed is healthy.${suffix}` };
+      }
+      if (health.status === 'quota_exceeded') {
+        return {
+          name: 'YouTube channel API',
+          status: 'warning',
+          message: 'YouTube API quota is temporarily exhausted. Cached channel content remains available; no live quota-consuming check is performed here.',
+        };
+      }
+      if (health.status === 'error') {
+        return {
+          name: 'YouTube channel API',
+          status: 'warning',
+          message: health.lastError ?? 'Last YouTube synchronization failed; cached content remains available when present.',
+        };
+      }
+      return {
+        name: 'YouTube channel API',
+        status: 'warning',
+        message: 'YouTube feed has not been synchronized yet. Run the controlled sync job once configuration is ready.',
+      };
     }),
     timed('Public site URL', async () => ({
       name: 'Public site URL',
