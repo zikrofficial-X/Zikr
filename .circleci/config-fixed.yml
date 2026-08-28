@@ -1,0 +1,695 @@
+version: 2.1
+
+parameters:
+  run_automation:
+    type: boolean
+    default: false
+
+jobs:
+  # ============================================================
+  # General verification
+  # ============================================================
+  verify:
+    docker:
+      - image: cimg/node:22.13
+    resource_class: medium
+
+    steps:
+      - checkout
+
+      - run:
+          name: Enable pnpm
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            sudo corepack enable
+            corepack prepare pnpm@9.15.0 --activate
+
+            node --version
+            pnpm --version
+
+      - restore_cache:
+          keys:
+            - zikr-pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
+            - zikr-pnpm-v1-
+
+      - run:
+          name: Install dependencies
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile
+
+      - save_cache:
+          key: zikr-pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
+          paths:
+            - ~/.local/share/pnpm/store
+
+      - run:
+          name: Run full verification suite
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm verify
+          no_output_timeout: 20m
+
+
+  # ============================================================
+  # Production smoke checks
+  # ============================================================
+  production-smoke:
+    docker:
+      - image: cimg/node:22.13
+    resource_class: small
+
+    steps:
+      - checkout
+
+      - run:
+          name: Verify production deployment is healthy
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            PRODUCTION_URL="https://zikrmediaofficial.vercel.app"
+
+            echo "Waiting 90 seconds for Vercel deployment to propagate..."
+            sleep 90
+
+            for attempt in $(seq 1 20); do
+              echo "Production smoke attempt ${attempt}/20"
+
+              if node scripts/smoke-production-routes.mjs "$PRODUCTION_URL"; then
+                echo "Production smoke checks passed."
+                exit 0
+              fi
+
+              if [[ "$attempt" -lt 20 ]]; then
+                echo "Attempt ${attempt}/20 failed; retrying in 45 seconds..."
+                sleep 45
+              fi
+            done
+
+            echo "Production smoke checks failed after 20 attempts." >&2
+            exit 1
+
+          no_output_timeout: 30m
+
+
+  # ============================================================
+  # Android release
+  # ============================================================
+  android-release:
+    docker:
+      - image: cimg/android:2026.08.1-node
+
+    resource_class: medium
+
+    environment:
+      GRADLE_OPTS: >-
+        -Dorg.gradle.daemon=false
+        -Dorg.gradle.workers.max=1
+        -Dorg.gradle.jvmargs=-Xmx1536m
+        -XX:MaxMetaspaceSize=384m
+        -Dfile.encoding=UTF-8
+
+    steps:
+      - checkout
+
+
+      # ----------------------------------------------------------
+      # Node / pnpm
+      # ----------------------------------------------------------
+      - run:
+          name: Enable pnpm
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            sudo corepack enable
+            corepack prepare pnpm@9.15.0 --activate
+
+            node --version
+            pnpm --version
+
+
+      # ----------------------------------------------------------
+      # GitHub CLI
+      # ----------------------------------------------------------
+      - run:
+          name: Install GitHub CLI
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            if command -v gh >/dev/null 2>&1; then
+              echo "GitHub CLI is already installed."
+              gh --version
+              exit 0
+            fi
+
+            echo "Installing GitHub CLI..."
+
+            sudo apt-get update
+
+            sudo apt-get install -y --no-install-recommends \
+              ca-certificates \
+              curl \
+              gnupg
+
+            sudo mkdir -p -m 755 /etc/apt/keyrings
+
+            curl -fsSL \
+              https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+              | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+              >/dev/null
+
+            sudo chmod go+r \
+              /etc/apt/keyrings/githubcli-archive-keyring.gpg
+
+            ARCH="$(dpkg --print-architecture)"
+
+            echo "deb [arch=${ARCH} signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+              | sudo tee /etc/apt/sources.list.d/github-cli.list \
+              >/dev/null
+
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends gh
+
+            gh --version
+
+
+      # ----------------------------------------------------------
+      # Android SDK
+      # ----------------------------------------------------------
+      - run:
+          name: Install Android SDK packages
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            yes | sdkmanager --licenses >/dev/null || true
+
+            sdkmanager \
+              "platform-tools" \
+              "platforms;android-35" \
+              "build-tools;34.0.0"
+
+
+      # ----------------------------------------------------------
+      # Node dependencies
+      # ----------------------------------------------------------
+      - restore_cache:
+          keys:
+            - zikr-pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
+            - zikr-pnpm-v1-
+
+      - run:
+          name: Install dependencies
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile
+
+      - save_cache:
+          key: zikr-pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
+          paths:
+            - ~/.local/share/pnpm/store
+
+
+      # ----------------------------------------------------------
+      # Verify web application
+      # ----------------------------------------------------------
+      - run:
+          name: Verify web application
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm verify
+          no_output_timeout: 20m
+
+
+      # ----------------------------------------------------------
+      # Build web assets + Capacitor
+      # ----------------------------------------------------------
+      - run:
+          name: Build web assets and sync Capacitor
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            pnpm build
+            pnpm mobile:prepare
+            pnpm exec cap sync android
+
+          no_output_timeout: 20m
+
+
+      # ----------------------------------------------------------
+      # Mobile configuration validation
+      # ----------------------------------------------------------
+      - run:
+          name: Verify mobile configuration
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            if [[ -z "${ANDROID_APP_LINKS_SHA256:-}" ]]; then
+              echo "Missing ANDROID_APP_LINKS_SHA256" >&2
+              exit 1
+            fi
+
+            MOBILE_RELEASE_CHECK=1 \
+            MOBILE_RELEASE_PLATFORM=android \
+            pnpm mobile:check
+
+          no_output_timeout: 10m
+
+
+      # ----------------------------------------------------------
+      # Restore Android signing keystore
+      # ----------------------------------------------------------
+      - run:
+          name: Restore and validate release keystore
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            REQUIRED_VARS=(
+              ANDROID_KEYSTORE_BASE64
+              ANDROID_KEYSTORE_PASSWORD
+              ANDROID_KEY_ALIAS
+              ANDROID_KEY_PASSWORD
+            )
+
+            echo "Checking Android signing variables..."
+
+            for name in "${REQUIRED_VARS[@]}"; do
+              if [[ -z "${!name:-}" ]]; then
+                echo "Missing protected CircleCI environment variable: ${name}" >&2
+                exit 1
+              fi
+            done
+
+            SIGNING_DIR="$CIRCLE_WORKING_DIRECTORY/.circleci-signing"
+            KEYSTORE_PATH="$SIGNING_DIR/zikr-release.keystore"
+            PROPERTIES_PATH="$CIRCLE_WORKING_DIRECTORY/android/keystore.properties"
+
+            mkdir -p "$SIGNING_DIR"
+
+            echo "Decoding Android release keystore..."
+
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" \
+              | base64 --decode > "$KEYSTORE_PATH"
+
+            chmod 600 "$KEYSTORE_PATH"
+
+            if [[ ! -s "$KEYSTORE_PATH" ]]; then
+              echo "Decoded keystore is empty." >&2
+              exit 1
+            fi
+
+            echo "Validating PKCS12 keystore..."
+
+            keytool \
+              -list \
+              -v \
+              -storetype PKCS12 \
+              -keystore "$KEYSTORE_PATH" \
+              -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+              -alias "$ANDROID_KEY_ALIAS" \
+              >/dev/null
+
+            echo "PKCS12 keystore validation passed."
+
+            cat > "$PROPERTIES_PATH" <<EOF
+            storeFile=$KEYSTORE_PATH
+            storeType=PKCS12
+            storePassword=$ANDROID_KEYSTORE_PASSWORD
+            keyAlias=$ANDROID_KEY_ALIAS
+            keyPassword=$ANDROID_KEY_PASSWORD
+            EOF
+
+            chmod 600 "$PROPERTIES_PATH"
+
+            echo "Gradle signing properties created."
+
+
+      # ----------------------------------------------------------
+      # Build APK
+      # ----------------------------------------------------------
+      - run:
+          name: Build signed APK
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            cd android
+
+            ./gradlew \
+              :app:assembleRelease \
+              --no-daemon \
+              --max-workers=1 \
+              -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
+
+          no_output_timeout: 30m
+
+
+      # ----------------------------------------------------------
+      # Build AAB
+      # ----------------------------------------------------------
+      - run:
+          name: Build signed AAB
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            cd android
+
+            ./gradlew \
+              :app:bundleRelease \
+              --no-daemon \
+              --max-workers=1 \
+              -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
+
+          no_output_timeout: 30m
+
+
+      # ----------------------------------------------------------
+      # Verify artifacts and signature
+      # ----------------------------------------------------------
+      - run:
+          name: Verify package and signature
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            APK="android/app/build/outputs/apk/release/app-release.apk"
+            AAB="android/app/build/outputs/bundle/release/app-release.aab"
+
+            if [[ ! -s "$APK" ]]; then
+              echo "APK was not generated." >&2
+              exit 1
+            fi
+
+            if [[ ! -s "$AAB" ]]; then
+              echo "AAB was not generated." >&2
+              exit 1
+            fi
+
+            echo "APK and AAB generated successfully."
+
+            APKSIGNER="$(
+              find "$ANDROID_HOME/build-tools" \
+                -type f \
+                -name apksigner \
+                | sort -V \
+                | tail -1
+            )"
+
+            if [[ -z "$APKSIGNER" || ! -x "$APKSIGNER" ]]; then
+              echo "Unable to locate Android apksigner." >&2
+              exit 1
+            fi
+
+            echo "Verifying APK signature..."
+
+            "$APKSIGNER" verify --verbose "$APK"
+
+            echo "APK signature verification passed."
+
+            echo "Generating SHA-256 checksums..."
+
+            sha256sum "$APK" "$AAB" > SHA256SUMS
+
+            cat SHA256SUMS
+
+            APKANALYZER="$(
+              find "$ANDROID_HOME/cmdline-tools" \
+                -type f \
+                -name apkanalyzer \
+                | sort -V \
+                | tail -1
+            )"
+
+            if [[ -z "$APKANALYZER" || ! -x "$APKANALYZER" ]]; then
+              echo "Unable to locate Android apkanalyzer." >&2
+              exit 1
+            fi
+
+            echo "Checking application ID..."
+
+            "$APKANALYZER" manifest application-id "$APK" \
+              | grep -Fx 'com.zikr.app'
+
+            echo "Application ID verification passed."
+
+
+      # ----------------------------------------------------------
+      # Verify GitHub CLI authentication
+      # ----------------------------------------------------------
+      - run:
+          name: Verify GitHub CLI authentication
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            if [[ -z "${GH_TOKEN:-}" ]]; then
+              echo "Missing GH_TOKEN." >&2
+              exit 1
+            fi
+
+            gh --version
+
+            gh auth status
+
+
+      # ----------------------------------------------------------
+      # Publish GitHub Release
+      # ----------------------------------------------------------
+      - run:
+          name: Publish GitHub Release
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            if [[ -z "${CIRCLE_TAG:-}" ]]; then
+              echo "CIRCLE_TAG is empty."
+              echo "Android release publishing only runs for version tags."
+              exit 0
+            fi
+
+            if [[ -z "${GH_TOKEN:-}" ]]; then
+              echo "Missing GH_TOKEN." >&2
+              exit 1
+            fi
+
+            REPO="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
+
+            APK="android/app/build/outputs/apk/release/app-release.apk"
+            AAB="android/app/build/outputs/bundle/release/app-release.aab"
+
+            test -s "$APK"
+            test -s "$AAB"
+            test -s SHA256SUMS
+
+            echo "Repository: $REPO"
+            echo "Release tag: $CIRCLE_TAG"
+
+            if gh release view "$CIRCLE_TAG" \
+              --repo "$REPO" \
+              >/dev/null 2>&1
+            then
+
+              echo "Release exists. Uploading latest artifacts..."
+
+              gh release upload "$CIRCLE_TAG" \
+                "$APK" \
+                "$AAB" \
+                SHA256SUMS \
+                --repo "$REPO" \
+                --clobber
+
+            else
+
+              echo "Creating GitHub release..."
+
+              gh release create "$CIRCLE_TAG" \
+                "$APK" \
+                "$AAB" \
+                SHA256SUMS \
+                --repo "$REPO" \
+                --verify-tag \
+                --generate-notes \
+                --title "ZIKR $CIRCLE_TAG"
+
+            fi
+
+            echo "GitHub release completed successfully."
+
+
+      # ----------------------------------------------------------
+      # CircleCI artifacts
+      # ----------------------------------------------------------
+      - store_artifacts:
+          path: android/app/build/outputs/apk/release/app-release.apk
+          destination: android/app-release.apk
+
+      - store_artifacts:
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          destination: android/app-release.aab
+
+      - store_artifacts:
+          path: SHA256SUMS
+          destination: SHA256SUMS
+
+
+      # ----------------------------------------------------------
+      # Always remove signing material
+      # ----------------------------------------------------------
+      - run:
+          name: Remove signing material
+          when: always
+          shell: /bin/bash
+          command: |
+            set +e
+
+            rm -f \
+              "$CIRCLE_WORKING_DIRECTORY/android/keystore.properties" \
+              "$CIRCLE_WORKING_DIRECTORY/.circleci-signing/zikr-release.keystore"
+
+            echo "Signing material cleanup completed."
+
+
+  # ============================================================
+  # Automated content
+  # ============================================================
+  automate-content:
+    docker:
+      - image: cimg/node:22.13
+    resource_class: small
+    working_directory: ~/zikr
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install rendering tools
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            sudo apt-get update
+
+            sudo apt-get install -y --no-install-recommends \
+              ffmpeg \
+              fonts-noto-core
+
+      - run:
+          name: Enable pnpm
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            sudo corepack enable
+            corepack prepare pnpm@9.15.0 --activate
+
+      - restore_cache:
+          keys:
+            - zikr-pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
+            - zikr-pnpm-v1-
+
+      - run:
+          name: Install dependencies
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile
+
+      - run:
+          name: Validate automation environment
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            REQUIRED_VARS=(
+              SUPABASE_URL
+              SUPABASE_SERVICE_ROLE_KEY
+              SUPABASE_ANON_KEY
+              NEXT_PUBLIC_SITE_URL
+            )
+
+            for name in "${REQUIRED_VARS[@]}"; do
+              if [[ -z "${!name:-}" ]]; then
+                echo "Missing required CircleCI project environment variable: ${name}" >&2
+                exit 1
+              fi
+            done
+
+      - run:
+          name: Run autonomous content and publishing queues
+          shell: /bin/bash
+          environment:
+            VIDEO_GENERATOR: template
+            AUTO_VIDEO_ENABLED: "true"
+            AUTO_VIDEO_BATCH_SIZE: "1"
+            VIDEO_BACKGROUND_BATCH_SIZE: "1"
+            SOCIAL_BACKGROUND_BATCH_SIZE: "10"
+            BACKGROUND_JOB_TARGET: all
+
+          command: |
+            set -euo pipefail
+            pnpm automation:run
+
+          no_output_timeout: 15m
+
+
+# ==============================================================
+# Workflows
+# ==============================================================
+
+workflows:
+
+  # ------------------------------------------------------------
+  # Verification on main changes
+  # ------------------------------------------------------------
+  verify-on-change:
+    jobs:
+      - verify
+
+      - production-smoke:
+          requires:
+            - verify
+
+          filters:
+            branches:
+              only: main
+
+
+  # ------------------------------------------------------------
+  # Android release on semantic version tag
+  #
+  # Example:
+  # v1.0.0
+  # v1.2.3
+  # ------------------------------------------------------------
+  android-release-on-tag:
+    jobs:
+      - android-release:
+          filters:
+            branches:
+              ignore: /.*/
+
+            tags:
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+
+
+  # ------------------------------------------------------------
+  # Automation
+  # ------------------------------------------------------------
+  scheduled-automation:
+    when: << pipeline.parameters.run_automation >>
+
+    jobs:
+      - automate-content
