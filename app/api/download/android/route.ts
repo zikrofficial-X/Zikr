@@ -5,16 +5,28 @@ const RELEASES_API_BASE =
   "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/releases";
 const TAG_RELEASE_API =
   "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/releases/tags";
-const RELEASE_DOWNLOAD_BASE =
-  "https://github.com/mohamedalaa7785-cpu/Zikr/releases/download";
+const ASSET_API_BASE =
+  "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/releases/assets";
 const MAX_RELEASE_PAGES = 3;
+const githubToken = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
+
+const githubHeaders: HeadersInit = {
+  Accept: "application/vnd.github+json",
+  "User-Agent": "ZIKR-platform-download",
+  ...(githubToken ? { Authorization: `Bearer ${githubToken}` } : {}),
+};
+
+type GitHubReleaseAsset = {
+  id?: number;
+  name?: string;
+};
 
 type GitHubRelease = {
   tag_name?: string;
   draft?: boolean;
   prerelease?: boolean;
   published_at?: string | null;
-  assets?: Array<{ name?: string }>;
+  assets?: GitHubReleaseAsset[];
 };
 
 type AndroidReleaseSetting = {
@@ -24,11 +36,6 @@ type AndroidReleaseSetting = {
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const githubHeaders = {
-  Accept: "application/vnd.github+json",
-  "User-Agent": "ZIKR-platform-download",
-};
 
 function versionParts(value: string) {
   return value
@@ -51,6 +58,9 @@ function compareVersions(a: string, b: string) {
 }
 
 async function fetchLatestStable(): Promise<GitHubRelease | null> {
+  if (!githubToken) return null;
+
+  const releases: GitHubRelease[] = [];
   for (let page = 1; page <= MAX_RELEASE_PAGES; page += 1) {
     const response = await fetch(
       `${RELEASES_API_BASE}?per_page=100&page=${page}`,
@@ -59,39 +69,37 @@ async function fetchLatestStable(): Promise<GitHubRelease | null> {
 
     if (!response.ok) return null;
 
-    const releases = (await response.json()) as GitHubRelease[];
-    if (!Array.isArray(releases) || releases.length === 0) break;
+    const batch = (await response.json()) as GitHubRelease[];
+    if (!Array.isArray(batch) || batch.length === 0) break;
 
-    const candidates = releases.filter(
-      release =>
-        !release.draft &&
-        !release.prerelease &&
-        Boolean(release.tag_name?.trim()) &&
-        release.assets?.some(asset =>
-          asset.name?.toLowerCase().endsWith(".apk"),
-        ),
-    );
-
-    if (candidates.length > 0) {
-      candidates.sort((a, b) => {
-        const versionDiff = compareVersions(b.tag_name ?? "", a.tag_name ?? "");
-        if (versionDiff !== 0) return versionDiff;
-
-        const aDate = a.published_at ? Date.parse(a.published_at) : 0;
-        const bDate = b.published_at ? Date.parse(b.published_at) : 0;
-        return bDate - aDate;
-      });
-      return candidates[0] ?? null;
-    }
-
-    if (releases.length < 100) break;
+    releases.push(...batch);
+    if (batch.length < 100) break;
   }
 
-  return null;
+  const candidates = releases.filter(
+    release =>
+      !release.draft &&
+      !release.prerelease &&
+      Boolean(release.tag_name?.trim()) &&
+      release.assets?.some(asset =>
+        asset.name?.toLowerCase().endsWith(".apk"),
+      ),
+  );
+
+  candidates.sort((a, b) => {
+    const versionDiff = compareVersions(b.tag_name ?? "", a.tag_name ?? "");
+    if (versionDiff !== 0) return versionDiff;
+
+    const aDate = a.published_at ? Date.parse(a.published_at) : 0;
+    const bDate = b.published_at ? Date.parse(b.published_at) : 0;
+    return bDate - aDate;
+  });
+
+  return candidates[0] ?? null;
 }
 
 async function fetchTaggedStable(tag: string): Promise<GitHubRelease | null> {
-  if (!/^[A-Za-z0-9._-]+$/.test(tag)) return null;
+  if (!githubToken || !/^[A-Za-z0-9._-]+$/.test(tag)) return null;
   const response = await fetch(`${TAG_RELEASE_API}/${encodeURIComponent(tag)}`, {
     headers: githubHeaders,
     cache: "no-store",
@@ -101,8 +109,44 @@ async function fetchTaggedStable(tag: string): Promise<GitHubRelease | null> {
   return release.draft || release.prerelease ? null : release;
 }
 
+async function getSignedAssetUrl(assetId: number): Promise<string | null> {
+  if (!githubToken) return null;
+
+  const response = await fetch(`${ASSET_API_BASE}/${assetId}`, {
+    headers: {
+      ...githubHeaders,
+      Accept: "application/octet-stream",
+    },
+    cache: "no-store",
+    redirect: "manual",
+  });
+
+  if (response.status >= 300 && response.status < 400) {
+    return response.headers.get("location");
+  }
+
+  if (!response.ok) return null;
+
+  // GitHub may return the asset bytes directly instead of a redirect.
+  // Do not proxy a large APK through the Vercel function; treat this as a failure.
+  return null;
+}
+
 export async function GET() {
   try {
+    if (!githubToken) {
+      return NextResponse.json(
+        { error: "إعداد الوصول إلى إصدارات Android غير مكتمل." },
+        {
+          status: 503,
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            Pragma: "no-cache",
+          },
+        },
+      );
+    }
+
     let setting: AndroidReleaseSetting = { mode: "auto", releaseTag: null };
     try {
       const supabase = await createClient();
@@ -128,7 +172,7 @@ export async function GET() {
       asset.name?.toLowerCase().endsWith(".apk"),
     );
 
-    if (!tag || !apk?.name) {
+    if (!tag || !apk?.name || !apk.id) {
       return NextResponse.json(
         { error: "تعذر العثور على APK صالح للإصدار المحدد حاليًا." },
         {
@@ -141,8 +185,21 @@ export async function GET() {
       );
     }
 
-    const downloadUrl = `${RELEASE_DOWNLOAD_BASE}/${encodeURIComponent(tag)}/${encodeURIComponent(apk.name)}`;
-    return NextResponse.redirect(downloadUrl, {
+    const signedUrl = await getSignedAssetUrl(apk.id);
+    if (!signedUrl) {
+      return NextResponse.json(
+        { error: "تعذر إنشاء رابط تنزيل آمن للـAPK حاليًا." },
+        {
+          status: 503,
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            Pragma: "no-cache",
+          },
+        },
+      );
+    }
+
+    return NextResponse.redirect(signedUrl, {
       status: 302,
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate",
