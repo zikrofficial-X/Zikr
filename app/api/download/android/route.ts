@@ -1,88 +1,80 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
-const RELEASES_API =
-  "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr-Android-Releases/releases/latest";
-const RELEASE_DOWNLOAD_BASE =
-  "https://github.com/mohamedalaa7785-cpu/Zikr-Android-Releases/releases/download";
+const RELEASES_API = "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr-Android-Releases/releases/latest";
+const TAG_RELEASE_API = "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr-Android-Releases/releases/tags";
+const RELEASE_DOWNLOAD_BASE = "https://github.com/mohamedalaa7785-cpu/Zikr-Android-Releases/releases/download";
+
+type GitHubRelease = {
+  tag_name?: string;
+  draft?: boolean;
+  prerelease?: boolean;
+  assets?: Array<{ name?: string }>;
+};
+
+type AndroidReleaseSetting = {
+  mode?: "auto" | "pinned";
+  releaseTag?: string | null;
+};
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const githubHeaders = {
+  Accept: "application/vnd.github+json",
+  "User-Agent": "ZIKR-platform-download",
+};
+
+async function fetchLatestStable(): Promise<GitHubRelease | null> {
+  const response = await fetch(RELEASES_API, { headers: githubHeaders, cache: "no-store" });
+  if (!response.ok) return null;
+  const release = (await response.json()) as GitHubRelease;
+  return release.draft || release.prerelease ? null : release;
+}
+
+async function fetchTaggedStable(tag: string): Promise<GitHubRelease | null> {
+  if (!/^[A-Za-z0-9._-]+$/.test(tag)) return null;
+  const response = await fetch(`${TAG_RELEASE_API}/${encodeURIComponent(tag)}`, { headers: githubHeaders, cache: "no-store" });
+  if (!response.ok) return null;
+  const release = (await response.json()) as GitHubRelease;
+  return release.draft || release.prerelease ? null : release;
+}
 
 export async function GET() {
   try {
-    // Resolve the release at request time so this button always follows the
-    // newest published stable GitHub Release. Do not cache the metadata lookup.
-    const response = await fetch(RELEASES_API, {
-      cache: "no-store",
-      headers: {
-        Accept: "application/vnd.github+json",
-        "User-Agent": "ZIKR-platform-download",
-      },
-    });
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: "تعذر العثور على أحدث إصدار من تطبيق Android حاليًا." },
-        {
-          status: 503,
-          headers: {
-            "Cache-Control": "no-store, no-cache, must-revalidate",
-            Pragma: "no-cache",
-          },
-        }
-      );
+    let setting: AndroidReleaseSetting = { mode: "auto", releaseTag: null };
+    try {
+      const supabase = await createClient();
+      const { data } = await supabase.from("site_settings").select("value").eq("key", "android_release").maybeSingle();
+      const value = data?.value as AndroidReleaseSetting | null;
+      if (value?.mode === "pinned" && value.releaseTag) setting = { mode: "pinned", releaseTag: value.releaseTag };
+    } catch {
+      // If the optional admin setting is unavailable, safely fall back to latest.
     }
 
-    const release = (await response.json()) as {
-      tag_name?: string;
-      draft?: boolean;
-      prerelease?: boolean;
-      assets?: Array<{
-        name?: string;
-        browser_download_url?: string;
-      }>;
-    };
+    const release = setting.mode === "pinned" && setting.releaseTag
+      ? await fetchTaggedStable(setting.releaseTag)
+      : await fetchLatestStable();
+    const tag = release?.tag_name?.trim();
+    const apk = release?.assets?.find(asset => asset.name?.toLowerCase().endsWith(".apk"));
 
-    // /releases/latest already targets the latest non-draft, non-prerelease
-    // release, but keep explicit guards for defensive correctness.
-    const tag = release.tag_name?.trim();
-    const apk = release.assets?.find(asset =>
-      asset.name?.toLowerCase().endsWith(".apk")
-    );
-
-    if (release.draft || release.prerelease || !tag || !apk?.name) {
+    if (!tag || !apk?.name) {
       return NextResponse.json(
-        { error: "لا يوجد ملف APK منشور في أحدث إصدار مستقر حاليًا." },
-        {
-          status: 503,
-          headers: {
-            "Cache-Control": "no-store, no-cache, must-revalidate",
-            Pragma: "no-cache",
-          },
-        }
+        { error: "تعذر العثور على APK صالح للإصدار المحدد حاليًا." },
+        { status: 503, headers: { "Cache-Control": "no-store, no-cache, must-revalidate", Pragma: "no-cache" } },
       );
     }
 
     const downloadUrl = `${RELEASE_DOWNLOAD_BASE}/${encodeURIComponent(tag)}/${encodeURIComponent(apk.name)}`;
-
     return NextResponse.redirect(downloadUrl, {
       status: 302,
-      headers: {
-        // Prevent the browser/CDN from keeping an old release redirect.
-        "Cache-Control": "no-store, no-cache, must-revalidate",
-        Pragma: "no-cache",
-      },
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate", Pragma: "no-cache" },
     });
   } catch (error) {
-    console.error("[android-download] latest release lookup failed:", error);
+    console.error("[android-download] release lookup failed:", error);
     return NextResponse.json(
-      { error: "تعذر الوصول إلى أحدث إصدار من تطبيق Android حاليًا." },
-      {
-        status: 503,
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-          Pragma: "no-cache",
-        },
-      }
+      { error: "تعذر الوصول إلى إصدار تطبيق Android حاليًا." },
+      { status: 503, headers: { "Cache-Control": "no-store, no-cache, must-revalidate", Pragma: "no-cache" } },
     );
   }
 }
