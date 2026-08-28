@@ -142,7 +142,13 @@ jobs:
             APKANALYZER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name apkanalyzer | sort -V | tail -1)"
             "$APKSIGNER" verify --verbose "$APK"
             "$APKANALYZER" manifest application-id "$APK" | grep -Fx 'com.zikr.app'
-            "$APKANALYZER" manifest version-name "$APK" | grep -Fx '1.1.9'
+            VERSION_NAME="$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' android/app/build.gradle | head -1)"
+            test -n "$VERSION_NAME"
+            EXPECTED_VERSION="${CIRCLE_TAG#v}"
+            if [[ "$CIRCLE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              test "$VERSION_NAME" = "$EXPECTED_VERSION"
+            fi
+            echo "Verified APK version: $VERSION_NAME"
             sha256sum "$APK" "$AAB" > SHA256SUMS
             cat SHA256SUMS
       - run:
@@ -154,17 +160,21 @@ jobs:
             gh --version
             gh auth status
       - run:
-          name: Republish v1.1.9 Android release assets
+          name: Publish Android release assets
           shell: /bin/bash
           command: |
             set -euo pipefail
+            test -n "${CIRCLE_TAG:-}"
             REPO="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
-            RELEASE_TAG="v1.1.9"
+            RELEASE_TAG="$CIRCLE_TAG"
             APK="android/app/build/outputs/apk/release/app-release.apk"
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
-            gh release view "$RELEASE_TAG" --repo "$REPO" >/dev/null
-            gh release upload "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --repo "$REPO" --clobber
-            echo "Republished Android assets for $RELEASE_TAG"
+            if gh release view "$RELEASE_TAG" --repo "$REPO" >/dev/null 2>&1; then
+              gh release upload "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --repo "$REPO" --clobber
+            else
+              gh release create "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --repo "$REPO" --verify-tag --generate-notes --title "ZIKR $RELEASE_TAG"
+            fi
+            echo "Published Android assets for $RELEASE_TAG"
       - run:
           name: Remove signing material
           when: always
@@ -180,4 +190,6 @@ workflows:
       - android-rebuild:
           filters:
             branches:
-              only: android-rebuild-v1.1.9
+              ignore: /.*/
+            tags:
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
