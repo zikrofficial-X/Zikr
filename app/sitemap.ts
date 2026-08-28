@@ -11,7 +11,7 @@ import type { Scholar } from "@/lib/services/scholars";
 import type { HadithBook } from "@/lib/types/hadith";
 import type { Story } from "@/lib/services/stories";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type SitemapEntry = MetadataRoute.Sitemap[number];
@@ -133,10 +133,12 @@ function uniqueRoutes(routes: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
 }
 
 const SITEMAP_PAGE_SIZE = 45_000;
-let sitemapCache: { entries: MetadataRoute.Sitemap; expiresAt: number } | null = null;
+let sitemapCache: { entries: MetadataRoute.Sitemap; expiresAt: number } | null =
+  null;
 
 async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
-  if (sitemapCache && sitemapCache.expiresAt > Date.now()) return sitemapCache.entries;
+  if (sitemapCache && sitemapCache.expiresAt > Date.now())
+    return sitemapCache.entries;
 
   const now = new Date();
   const staticRoutes: MetadataRoute.Sitemap = siteConfigRoutes().map(appRoute =>
@@ -147,7 +149,6 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
     })
   );
   try {
-
     const [
       surahs,
       scholars,
@@ -171,9 +172,10 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
               englishName: surah.nameEn,
               englishNameTranslation: "",
               numberOfAyahs: surah.ayahCount,
-              revelationType: surah.revelationPlace === "meccan" ? "Meccan" : "Medinan",
-            }) satisfies Surah,
-        ),
+              revelationType:
+                surah.revelationPlace === "meccan" ? "Meccan" : "Medinan",
+            }) satisfies Surah
+        )
       ),
       getAllScholars().catch((error): Scholar[] => {
         console.error("[sitemap] Scholars fetch failed:", error);
@@ -337,7 +339,10 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
     return entries;
   } catch (error) {
     console.error("[sitemap] Error generating dynamic routes:", error);
-    sitemapCache = { entries: staticRoutes, expiresAt: Date.now() + 5 * 60 * 1000 };
+    sitemapCache = {
+      entries: staticRoutes,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    };
     return staticRoutes;
   }
 }
@@ -347,20 +352,15 @@ export async function getSitemapShardCount() {
   return Math.max(1, Math.ceil(entries.length / SITEMAP_PAGE_SIZE));
 }
 
-export async function getSitemapPage(id: number): Promise<MetadataRoute.Sitemap> {
+export async function getSitemapPage(
+  id: number
+): Promise<MetadataRoute.Sitemap> {
   const entries = await getSitemapEntries();
   const safeId = Math.max(0, Math.floor(id));
   const start = safeId * SITEMAP_PAGE_SIZE;
   return entries.slice(start, start + SITEMAP_PAGE_SIZE);
 }
 
-export async function generateSitemaps() {
-  const count = await getSitemapShardCount();
-  return Array.from({ length: count }, (_, id) => ({ id }));
-}
-
-export default async function sitemap(props: {
-  id: Promise<string>;
-}): Promise<MetadataRoute.Sitemap> {
-  return getSitemapPage(Number(await props.id) || 0);
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  return getSitemapPage(0);
 }
