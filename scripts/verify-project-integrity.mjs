@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const root = process.cwd();
@@ -31,9 +31,9 @@ const requiredFiles = [
   'next.config.ts',
   'proxy.ts',
   'app/layout.tsx',
+  'app/manifest.ts',
   'public/sw.js',
   'public/offline.html',
-  'public/manifest.webmanifest',
   'public/offline-content/v1/manifest.json',
   'lib/offline-db.ts',
   'lib/offline-pack.ts',
@@ -54,12 +54,8 @@ const requiredFiles = [
 for (const file of requiredFiles) requireFile(file);
 
 const packageJson = JSON.parse(read('package.json') || '{}');
-if (packageJson.packageManager !== 'pnpm@9.15.0') {
-  failures.push('package.json must pin pnpm@9.15.0');
-}
-if (!String(packageJson.engines?.node || '').includes('22')) {
-  failures.push('package.json must require Node 22 compatibility');
-}
+if (packageJson.packageManager !== 'pnpm@9.15.0') failures.push('package.json must pin pnpm@9.15.0');
+if (!String(packageJson.engines?.node || '').includes('22')) failures.push('package.json must require Node 22 compatibility');
 if (existsSync(join(root, 'package-lock.json'))) failures.push('package-lock.json must not coexist with pnpm-lock.yaml');
 if (existsSync(join(root, 'yarn.lock'))) failures.push('yarn.lock must not coexist with pnpm-lock.yaml');
 if (!packageJson.scripts?.verify?.includes('offline:check')) failures.push('pnpm verify must include offline:check');
@@ -88,30 +84,22 @@ const offlineDbSource = read('lib/offline-db.ts');
 const offlinePackSource = read('lib/offline-pack.ts');
 for (const [dataset, store] of Object.entries(expectedDatasets)) {
   if (!offlineManifest.datasets?.[dataset]) failures.push(`Offline manifest missing dataset: ${dataset}`);
-  if (!offlinePackSource.includes(`${dataset}: '${store}'`) && !offlinePackSource.includes(`${dataset}: "${store}"`)) {
-    failures.push(`Offline pack mapping missing ${dataset} -> ${store}`);
-  }
-  if (!offlineDbSource.includes(`name: '${store}'`) && !offlineDbSource.includes(`name: "${store}"`)) {
-    failures.push(`IndexedDB store missing: ${store}`);
-  }
+  if (!offlinePackSource.includes(`${dataset}: '${store}'`) && !offlinePackSource.includes(`${dataset}: "${store}"`)) failures.push(`Offline pack mapping missing ${dataset} -> ${store}`);
+  if (!offlineDbSource.includes(`name: '${store}'`) && !offlineDbSource.includes(`name: "${store}"`)) failures.push(`IndexedDB store missing: ${store}`);
 }
-if (!Array.isArray(offlineManifest.routes) || offlineManifest.routes.length === 0) {
-  failures.push('Offline manifest has no routes');
-}
+if (!Array.isArray(offlineManifest.routes) || offlineManifest.routes.length === 0) failures.push('Offline manifest has no routes');
 for (const route of offlineManifest.routes || []) {
   if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) {
     failures.push(`Invalid offline route: ${route}`);
     continue;
   }
-  if (/^\/(admin|profile|favorites)(\/|$)/.test(route)) {
-    failures.push(`Private route must not be in offline manifest: ${route}`);
-  }
+  if (/^\/(admin|profile|favorites)(\/|$)/.test(route)) failures.push(`Private route must not be in offline manifest: ${route}`);
 }
 
 requireText('public/sw.js', [
   "const CACHE_NAME = 'zikr-v9'",
-  "CACHE_OFFLINE_ROUTES",
-  "OFFLINE_CONTENT_PREFIX",
+  'CACHE_OFFLINE_ROUTES',
+  'OFFLINE_CONTENT_PREFIX',
   "pathname.startsWith('/api/')",
   "pathname.startsWith('/admin')",
 ]);
@@ -136,6 +124,7 @@ requireText('components/layout/service-worker-register.tsx', [
   'hydrateOfflineContent',
 ]);
 requireText('app/layout.tsx', ['OfflineNavigationGuard']);
+requireText('app/manifest.ts', ['short_name', 'icons']);
 
 const mobileBridge = read('components/layout/native-capacitor-bridge.tsx');
 for (const token of [
@@ -151,9 +140,7 @@ for (const token of [
 
 const capacitor = JSON.parse(read('capacitor.config.json') || '{}');
 if (capacitor.appId !== 'com.zikr.app') failures.push('Capacitor appId drift detected');
-if (capacitor.server?.url !== 'https://zikrmediaofficial.vercel.app') {
-  failures.push('Capacitor server URL drift detected');
-}
+if (capacitor.server?.url !== 'https://zikrmediaofficial.vercel.app') failures.push('Capacitor server URL drift detected');
 
 const androidManifest = read('android/app/src/main/AndroidManifest.xml');
 for (const token of [
@@ -165,11 +152,7 @@ for (const token of [
 }
 
 const plist = read('ios/App/App/Info.plist');
-for (const token of [
-  'NSCameraUsageDescription',
-  'NSMicrophoneUsageDescription',
-  'remote-notification',
-]) {
+for (const token of ['NSCameraUsageDescription', 'NSMicrophoneUsageDescription', 'remote-notification']) {
   if (!plist.includes(token)) warnings.push(`iOS Info.plist missing: ${token}`);
 }
 
@@ -177,12 +160,9 @@ const nextConfig = read('next.config.ts');
 if (!nextConfig.includes('https://ep1.adtrafficquality.google')) {
   warnings.push('CSP does not explicitly mention ep1.adtrafficquality.google; verify against current AdSense traffic tooling.');
 }
-if (!nextConfig.includes('https://zikrmediaofficial.vercel.app')) {
-  failures.push('next.config.ts does not reference the production site URL');
-}
+if (!nextConfig.includes('https://zikrmediaofficial.vercel.app')) failures.push('next.config.ts does not reference the production site URL');
 
-// Detect accidental tracked lockfiles/build output and obvious secret literals in source.
-const secretPattern = /(sk-[A-Za-z0-9]{20,}|service[_-]?role[^\n]{0,40}[:=]\s*['"][A-Za-z0-9._-]{20,}['"]|-----BEGIN (?:RSA|OPENSSH|EC) PRIVATE KEY-----)/i;
+const secretPattern = /(sk-[A-Za-z0-9]{20,}|service[_-]?role[^\n]{0,40}[:=]\s*["'][A-Za-z0-9._-]{20,}["']|-----BEGIN (?:RSA|OPENSSH|EC) PRIVATE KEY-----)/i;
 const ignoredDirs = new Set(['node_modules', '.next', '.git', 'android/.gradle', 'ios/App/Pods']);
 function walk(dir) {
   let entries = [];
