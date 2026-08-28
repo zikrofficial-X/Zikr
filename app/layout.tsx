@@ -5,6 +5,7 @@ import { SiteShell } from "@/components/layout/site-shell";
 import { defaultOgImage, siteConfig } from "@/lib/site";
 import { DeferredRuntime } from "@/components/layout/deferred-runtime";
 import { NativeCapacitorBridge } from "@/components/layout/native-capacitor-bridge";
+import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
 
 // Navbar reads the Supabase session from request cookies, so the shell must be rendered per request.
 export const dynamic = "force-dynamic";
@@ -111,12 +112,11 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.webmanifest" />
       </head>
       <body className="font-arabic antialiased">
-        {/* JSON-LD lives in <body> so head scripts injected at runtime (AdSense)
-            cannot shift its position and break React hydration matching */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <OfflineNavigationGuard />
         <SiteShell>{children}</SiteShell>
         <NativeCapacitorBridge />
         <DeferredRuntime />
