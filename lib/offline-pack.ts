@@ -33,7 +33,8 @@ const STORE_BY_DATASET: Record<string, string> = {
 const MANIFEST_URL = '/offline-content/v1/manifest.json';
 const MANIFEST_DB_KEY = 'offline_manifest';
 const COMPLETION_DB_KEY = 'offline_completion_v1';
-const VERSION_KEY = 'offline-content-version-v5';
+// Keep this key stable for compatibility with existing readiness checks.
+const VERSION_KEY = 'offline-content-version-v3';
 const ROUTE_CACHE_REQUEST = 'CACHE_OFFLINE_ROUTES';
 
 const ESSENTIAL_ROUTES = [
