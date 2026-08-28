@@ -1,5 +1,8 @@
 // Service Worker for Zikr PWA
-const CACHE_NAME = 'zikr-v8';
+const CACHE_NAME = 'zikr-v9';
+const OFFLINE_CONTENT_PREFIX = '/offline-content/';
+const MAX_OFFLINE_ROUTES = 400;
+const ROUTE_CACHE_CONCURRENCY = 4;
 
 // Public, non-personalized content APIs that are safe to cache for offline reading.
 // Authenticated and mutation APIs remain network-only to avoid leaking private data.
@@ -17,11 +20,123 @@ const PUBLIC_CONTENT_API_PREFIXES = [
 ];
 
 function isPublicContentApi(url) {
-  return PUBLIC_CONTENT_API_PREFIXES.some((prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`));
+  return PUBLIC_CONTENT_API_PREFIXES.some((prefix) =>
+    url.pathname === prefix || url.pathname.startsWith(`${prefix}/`),
+  );
 }
 
-// Only a small app shell is pre-cached during install. Pages, public APIs,
-// and the Offline content pack are cached on demand after the first visit.
+function isSafeOfflineRoute(route) {
+  if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) return false;
+  const pathname = new URL(route, self.location.origin).pathname;
+  if (
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/auth/') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/favorites')
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function absoluteSameOriginUrl(value) {
+  try {
+    const url = new URL(value, self.location.origin);
+    return url.origin === self.location.origin ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+async function cacheReferencedStaticAssets(html, cache) {
+  const refs = [];
+  const pattern = /<(?:script|link|img)[^>]+(?:src|href)=["']([^"']+)["']/gi;
+  for (const match of html.matchAll(pattern)) {
+    const url = absoluteSameOriginUrl(match[1]);
+    if (!url) continue;
+    if (!(
+      url.pathname.startsWith('/_next/static/') ||
+      url.pathname.startsWith('/icons/') ||
+      url.pathname.startsWith('/branding/') ||
+      url.pathname.startsWith('/images/') ||
+      url.pathname.startsWith('/audio/')
+    )) {
+      continue;
+    }
+    refs.push(url.href);
+  }
+
+  const uniqueRefs = [...new Set(refs)].slice(0, 80);
+  await Promise.allSettled(
+    uniqueRefs.map(async (href) => {
+      try {
+        const request = new Request(href, { method: 'GET' });
+        if (await cache.match(request)) return;
+        const response = await fetch(request);
+        if (response.ok) await cache.put(request, response.clone());
+      } catch {
+        // A non-critical asset failure must not fail the route cache.
+      }
+    }),
+  );
+}
+
+async function cacheOfflineRoute(route, cache) {
+  const url = absoluteSameOriginUrl(route);
+  if (!url || !isSafeOfflineRoute(route)) return false;
+  try {
+    const request = new Request(url.href, {
+      method: 'GET',
+      headers: { Accept: 'text/html' },
+      cache: 'no-store',
+    });
+    const response = await fetch(request);
+    if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) return false;
+    const html = await response.clone().text();
+    await cache.put(request, new Response(html, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    }));
+    await cacheReferencedStaticAssets(html, cache);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function cacheOfflineRoutes(routes, replyPort) {
+  const uniqueRoutes = [...new Set((Array.isArray(routes) ? routes : []).filter(isSafeOfflineRoute))]
+    .slice(0, MAX_OFFLINE_ROUTES);
+  const cache = await caches.open(CACHE_NAME);
+  const failedRoutes = [];
+  let cursor = 0;
+  let cachedRoutes = 0;
+
+  async function worker() {
+    while (cursor < uniqueRoutes.length) {
+      const index = cursor++;
+      const route = uniqueRoutes[index];
+      const ok = await cacheOfflineRoute(route, cache);
+      if (ok) cachedRoutes += 1;
+      else failedRoutes.push(route);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(ROUTE_CACHE_CONCURRENCY, Math.max(uniqueRoutes.length, 1)) }, () => worker()),
+  );
+
+  replyPort?.postMessage({
+    cachedRoutes,
+    failedRoutes,
+    requestedRoutes: uniqueRoutes.length,
+  });
+}
+
+// The complete offline pack is cached explicitly by the user from the Offline Library page.
+// Only the tiny shell is installed automatically so first install stays lightweight.
 const CORE_INSTALL_ASSETS = [
   '/offline.html',
   '/manifest.webmanifest',
@@ -29,8 +144,6 @@ const CORE_INSTALL_ASSETS = [
   '/icons/icon-512.png',
 ];
 
-// Install event - cache only the lightweight app shell. The complete public
-// content pack is hydrated later by the client after the critical page settles.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
@@ -43,58 +156,72 @@ self.addEventListener('install', (event) => {
           }
         }),
       );
-    })
+    }),
   );
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys().then((cacheNames) => Promise.all(
+      cacheNames.map((cacheName) => {
+        if (cacheName !== CACHE_NAME) return caches.delete(cacheName);
+        return undefined;
+      }),
+    )),
   );
   self.clients.claim();
 });
 
-// Fetch event - network first, fallback to cache
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
-    return;
-  }
+  if (request.method !== 'GET') return;
+  if (url.origin !== self.location.origin) return;
+  if (request.destination === 'audio' || request.destination === 'video') return;
 
-  // Skip cross-origin requests entirely (external CDNs, audio/video streams, APIs).
-  // Intercepting them breaks media range requests ("URL safety check" errors).
-  if (url.origin !== self.location.origin) {
-    return;
-  }
-
-  // Skip audio/video requests - media elements need native range request handling
-  if (request.destination === 'audio' || request.destination === 'video') {
-    return;
-  }
-
-  // Skip third-party ad and tracking scripts
-  if (request.destination === 'script' && 
-      (url.hostname.includes('google') || 
+  if (request.destination === 'script' &&
+      (url.hostname.includes('google') ||
        url.hostname.includes('pagead') ||
        url.hostname.includes('doubleclick'))) {
     return;
   }
 
-  // Prayer times use network-first with a cached response so the last
-  // successful schedule remains available when the user is offline.
+  // The manifest and versioned offline JSON files are first-class offline resources.
+  // Versioned datasets are cache-first; the manifest is network-first with a local fallback.
+  if (url.pathname === '/offline-content/v1/manifest.json') {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
+        return response;
+      }).catch(() => caches.match(request).then((cached) => cached || new Response(
+        JSON.stringify({ error: 'Offline manifest unavailable' }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } },
+      )))
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith(OFFLINE_CONTENT_PREFIX)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
   if (url.pathname === '/api/prayer-times') {
     event.respondWith(
       fetch(request).then((response) => {
@@ -111,9 +238,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Public content APIs use network-first with a cached response fallback.
-  // This makes Quran, hadith, duas, stories, articles, and search content available
-  // after the user has opened it once, without caching authenticated data.
   if (isPublicContentApi(url)) {
     event.respondWith(
       fetch(request)
@@ -132,7 +256,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Other API and auth calls remain network-only.
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) {
     event.respondWith(fetch(request).catch(() => new Response(
       JSON.stringify({ error: 'Network error' }),
@@ -141,53 +264,41 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network first strategy for HTML pages
   if (request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Cache successful responses
           if (response.status === 200) {
-            const cache = caches.open(CACHE_NAME);
-            cache.then((c) => c.put(request, response.clone()));
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
           }
           return response;
         })
-        .catch(() => {
-          // Fallback to cache, then to the dedicated offline page
-          return caches.match(request).then((cached) => {
-            if (cached) return cached;
-            return caches.match('/offline.html').then((offline) => {
-              return offline || new Response('Offline - Page not cached', { status: 503 });
-            });
-          });
-        })
+        .catch(() => caches.match(request).then((cached) => {
+          if (cached) return cached;
+          return caches.match('/offline.html').then((offline) =>
+            offline || new Response('Offline - Page not cached', { status: 503 }),
+          );
+        }))
     );
     return;
   }
 
-  // Cache first strategy for assets
   event.respondWith(
     caches.match(request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
+      if (cached) return cached;
 
       return fetch(request)
         .then((response) => {
-          // Cache successful responses
           if (response.status === 200) {
-            const cache = caches.open(CACHE_NAME);
-            cache.then((c) => c.put(request, response.clone()));
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
           }
           return response;
         })
         .catch(() => {
-          // Return a placeholder for failed assets
           if (request.headers.get('accept')?.includes('image')) {
             return new Response(
               '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="#072E2A" width="100" height="100"/></svg>',
-              { headers: { 'Content-Type': 'image/svg+xml' } }
+              { headers: { 'Content-Type': 'image/svg+xml' } },
             );
           }
           return new Response('Asset unavailable', { status: 503 });
@@ -196,12 +307,25 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Handle messages from clients
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
   }
-  // Allow page to schedule a background prayer reminder
+
+  if (event.data && event.data.type === 'CACHE_OFFLINE_ROUTES') {
+    event.waitUntil(
+      cacheOfflineRoutes(event.data.routes, event.ports?.[0]).catch((error) => {
+        event.ports?.[0]?.postMessage({
+          cachedRoutes: 0,
+          failedRoutes: Array.isArray(event.data.routes) ? event.data.routes : [],
+          error: error instanceof Error ? error.message : 'Offline route cache failed',
+        });
+      }),
+    );
+    return;
+  }
+
   if (event.data && event.data.type === 'SHOW_PRAYER_NOTIFICATION') {
     const { prayerName } = event.data;
     event.waitUntil(self.registration.showNotification(`حان وقت صلاة ${prayerName}`, {
@@ -214,7 +338,7 @@ self.addEventListener('message', (event) => {
       lang: 'ar',
     }));
   }
-  // Dhikr / Salawat reminder while the service worker is controlling the page.
+
   if (event.data && event.data.type === 'SHOW_DHIKR_NOTIFICATION') {
     const { text, kind } = event.data;
     const isSalawat = kind === 'salawat';
@@ -233,7 +357,6 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Handle encrypted Web Push payloads from the trusted notification worker.
 self.addEventListener('push', (event) => {
   let data = {
     title: 'تذكير ذِكر',
@@ -261,7 +384,6 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// Notification click — focus an existing ZIKR tab or open the notification target.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const target = event.notification.data?.url || '/';
