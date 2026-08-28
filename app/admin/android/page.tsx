@@ -6,6 +6,12 @@ import { saveAndroidReleaseAction } from "./actions";
 const RELEASES_API_BASE =
   "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/releases";
 const MAX_RELEASE_PAGES = 5;
+const githubToken = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
+const githubHeaders: HeadersInit = {
+  Accept: "application/vnd.github+json",
+  "User-Agent": "ZIKR-admin-release-manager",
+  ...(githubToken ? { Authorization: `Bearer ${githubToken}` } : {}),
+};
 
 type ReleaseAsset = { name?: string };
 type Release = {
@@ -44,13 +50,7 @@ async function getReleases(): Promise<Release[]> {
     for (let page = 1; page <= MAX_RELEASE_PAGES; page += 1) {
       const response = await fetch(
         `${RELEASES_API_BASE}?per_page=100&page=${page}`,
-        {
-          headers: {
-            Accept: "application/vnd.github+json",
-            "User-Agent": "ZIKR-admin-release-manager",
-          },
-          cache: "no-store",
-        },
+        { headers: githubHeaders, cache: "no-store" },
       );
 
       if (!response.ok) break;
@@ -148,7 +148,9 @@ export default async function AndroidReleaseAdminPage() {
       <Card className="space-y-3 p-6">
         <h2 className="text-lg font-bold text-brand-gold">الإصدارات المستقرة المتاحة</h2>
         {releases.length === 0 ? (
-          <p className="text-sm text-brand-cream/50">تعذر جلب الإصدارات الآن.</p>
+          <p className="text-sm text-brand-cream/50">
+            تعذر جلب الإصدارات الآن. تأكد من إعداد GITHUB_TOKEN في Vercel للإصدارات الخاصة.
+          </p>
         ) : (
           <div className="space-y-2">
             {releases.map(release => (
