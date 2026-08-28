@@ -62,7 +62,7 @@ jobs:
       - image: cimg/android:2026.08.1-node
     resource_class: medium
     environment:
-      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=1 -Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=1 -Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
     steps:
       - checkout
       - run:
@@ -101,7 +101,7 @@ jobs:
           no_output_timeout: 20m
       - run:
           name: Verify mobile configuration
-          command: MOBILE_RELEASE_CHECK=1 pnpm mobile:check
+          command: MOBILE_RELEASE_CHECK=1 MOBILE_RELEASE_PLATFORM=android pnpm mobile:check
           environment:
             ANDROID_APP_LINKS_SHA256: ${ANDROID_APP_LINKS_SHA256}
       - run:
@@ -129,8 +129,8 @@ jobs:
           name: Build signed APK and AAB
           command: |
             cd android
-            ./gradlew :app:assembleRelease --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
-            ./gradlew :app:bundleRelease --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+            ./gradlew :app:assembleRelease --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
+            ./gradlew :app:bundleRelease --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
           no_output_timeout: 30m
       - run:
           name: Verify package and signature
