@@ -1,6 +1,42 @@
 version: 2.1
 
 jobs:
+  ci-check:
+    docker:
+      - image: cimg/node:22.11.0
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Enable pnpm
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            sudo corepack enable
+            corepack prepare pnpm@9.15.0 --activate
+            node --version
+            pnpm --version
+      - run:
+          name: Install dependencies
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile
+      - run:
+          name: Run CI checks
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm imports:check
+            pnpm mobile:check
+            pnpm offline:check
+            pnpm project:check
+            pnpm lint
+            pnpm check
+            pnpm test
+            pnpm build
+          no_output_timeout: 20m
+
   android-rebuild:
     docker:
       - image: cimg/android:2026.08.1-node
@@ -23,6 +59,17 @@ jobs:
             corepack prepare pnpm@9.15.0 --activate
             node --version
             pnpm --version
+      - run:
+          name: Select supported Java runtime
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            sudo apt-get update
+            sudo apt-get install -y openjdk-21-jdk
+            export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+            echo "export JAVA_HOME=$JAVA_HOME" >> "$BASH_ENV"
+            echo 'export PATH=$JAVA_HOME/bin:$PATH' >> "$BASH_ENV"
+            java -version
       - run:
           name: Install Android SDK packages
           shell: /bin/bash
@@ -127,8 +174,9 @@ jobs:
             rm -f "$CIRCLE_WORKING_DIRECTORY/android/keystore.properties" "$CIRCLE_WORKING_DIRECTORY/.circleci-signing/zikr-release.keystore"
 
 workflows:
-  android-rebuild-on-branch:
+  build-and-release:
     jobs:
+      - ci-check
       - android-rebuild:
           filters:
             branches:
