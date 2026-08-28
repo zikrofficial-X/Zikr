@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, isLocale, localeMeta, type Locale } from '@/lib/i18n';
+import { getOfflinePreference, saveOfflinePreference } from '@/lib/offline-settings';
 
 type LanguageContextValue = {
   locale: Locale;
@@ -15,7 +16,6 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 function getStoredLocale(): Locale {
   if (typeof window === 'undefined') return DEFAULT_LOCALE;
-
   try {
     const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
     return isLocale(stored) ? stored : DEFAULT_LOCALE;
@@ -25,22 +25,32 @@ function getStoredLocale(): Locale {
 }
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  // Initialize with default locale consistently for both server and client
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    // After hydration, update to stored locale if available
-    setIsHydrated(true);
-    const storedLocale = getStoredLocale();
-    if (storedLocale !== DEFAULT_LOCALE) {
-      setLocaleState(storedLocale);
-    }
+    let cancelled = false;
+
+    const restore = async () => {
+      const storedLocale = getStoredLocale();
+      if (storedLocale !== DEFAULT_LOCALE) {
+        if (!cancelled) setLocaleState(storedLocale);
+      } else {
+        const durableLocale = await getOfflinePreference<Locale>(LOCALE_STORAGE_KEY);
+        if (!cancelled && isLocale(durableLocale)) setLocaleState(durableLocale);
+      }
+      if (!cancelled) setIsHydrated(true);
+    };
+
+    void restore();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (!isHydrated) return;
-    
+
     const meta = localeMeta[locale];
     document.documentElement.lang = meta.lang;
     document.documentElement.dir = meta.dir;
@@ -50,8 +60,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     try {
       window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
     } catch {
-      // Storage can be unavailable in private/restricted browser contexts.
+      // IndexedDB remains the durable fallback when Web Storage is restricted.
     }
+    void saveOfflinePreference(LOCALE_STORAGE_KEY, locale);
   }, [locale, isHydrated]);
 
   const value = useMemo<LanguageContextValue>(() => {

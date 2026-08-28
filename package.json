@@ -27,11 +27,12 @@
     "mobile:check": "node scripts/verify-mobile-readiness.mjs",
     "verify-mobile-readiness": "node scripts/verify-mobile-readiness.mjs",
     "offline:check": "node scripts/verify-offline-content.mjs",
+    "project:check": "node scripts/verify-project-integrity.mjs",
     "mobile:release-check": "MOBILE_RELEASE_CHECK=1 node scripts/verify-mobile-readiness.mjs",
     "supabase:migrations:check": "node scripts/check-supabase-migrations.mjs",
     "supabase:migrations:replay": "node scripts/validate-migrations.mjs",
     "routes:check": "node scripts/verify-platform-routes.mjs",
-    "verify": "pnpm supabase:migrations:check && pnpm supabase:migrations:replay && pnpm routes:check && pnpm imports:check && pnpm mobile:check && pnpm offline:check && pnpm lint && pnpm check && pnpm test && pnpm build",
+    "verify": "pnpm supabase:migrations:check && pnpm supabase:migrations:replay && pnpm routes:check && pnpm imports:check && pnpm mobile:check && pnpm offline:check && pnpm project:check && pnpm lint && pnpm check && pnpm test && pnpm build",
     "imports:check": "node scripts/verify-local-imports.mjs",
     "background:jobs": "tsx scripts/run-background-jobs.ts",
     "automation:run": "tsx scripts/run-background-jobs.ts",
@@ -93,7 +94,7 @@
     "typescript": "^6.0.3"
   },
   "engines": {
-    "node": ">=22 <25"
+    "node": "22.x"
   },
   "packageManager": "pnpm@9.15.0"
 }

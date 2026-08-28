@@ -1,88 +1,61 @@
-'use client';
-export const dynamic = 'force-dynamic';
-
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { Button } from '@/components/ui/button';
+import { getVideoBySlug, getVideos } from '@/lib/services/content';
+import { pageMetadata } from '@/lib/site';
 
-interface Video {
-  id: string;
-  title: string;
-  description?: string;
-  youtube_id?: string;
-  thumbnail_url?: string;
-  duration?: number;
-  views: number;
-  metadata?: Record<string, unknown>;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+type VideoDetailPageProps = {
+  params: Promise<{ slug: string }>;
+};
+
+export async function generateMetadata({ params }: VideoDetailPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const video = await getVideoBySlug(slug);
+  if (!video) return pageMetadata({ title: 'الفيديو غير موجود', description: 'الفيديو المطلوب غير موجود.', path: `/videos/${slug}` });
+  return pageMetadata({
+    title: video.title,
+    description: video.description ?? `فيديو إسلامي من منصة ذِكر.`,
+    path: `/videos/${video.slug}`,
+  });
 }
 
-export default function VideoDetailPage() {
-  const params = useParams();
-  const slug = params.slug as string;
-  const [video, setVideo] = useState<Video | null>(null);
-  const [loading, setLoading] = useState(true);
+export async function generateStaticParams() {
+  const videos = await getVideos(undefined, 100);
+  return videos.map(video => ({ slug: video.slug }));
+}
+
+export default async function VideoDetailPage({ params }: VideoDetailPageProps) {
+  const { slug } = await params;
+  const video = await getVideoBySlug(slug);
+  if (!video) notFound();
 
   const directVideoUrl =
-    typeof video?.metadata?.sourceVideoUrl === 'string'
+    typeof video.metadata?.sourceVideoUrl === 'string'
       ? video.metadata.sourceVideoUrl
-      : typeof video?.metadata?.generatedVideoUrl === 'string'
+      : typeof video.metadata?.generatedVideoUrl === 'string'
         ? video.metadata.generatedVideoUrl
         : null;
-  const publicCaption = typeof video?.metadata?.caption === 'string' ? video.metadata.caption : null;
-
-  useEffect(() => {
-    const fetchVideo = async () => {
-      if (!slug) return;
-      try {
-        setLoading(true);
-        const supabase = createBrowserSupabaseClient();
-        const { data } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('slug', slug)
-          .eq('published', true)
-          .limit(1)
-          .single();
-
-        if (data) {
-          setVideo(data);
-          // Increment view count silently
-          supabase
-            .from('videos')
-            .update({ views: (data.views ?? 0) + 1 })
-            .eq('id', data.id)
-            .then(() => {});
-        }
-      } catch {
-        setVideo(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchVideo();
-  }, [slug]);
-
-  if (loading) {
-    return <Container className="py-12"><p className="text-center text-brand-cream/70">جاري التحميل...</p></Container>;
-  }
-  if (!video) {
-    return <Container className="py-12"><p className="text-center text-brand-cream/70">لم يتم العثور على الفيديو</p></Container>;
-  }
+  const publicCaption = typeof video.metadata?.caption === 'string' ? video.metadata.caption : null;
 
   return (
     <Container className="py-12 space-y-8 max-w-4xl">
+      <Button href="/videos" variant="ghost">العودة إلى الفيديوهات</Button>
+
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-brand-gold">{video.title}</h1>
       </div>
 
-      {video.youtube_id ? (
+      {video.youtubeId ? (
         <div className="w-full aspect-video rounded-lg overflow-hidden bg-black">
           <iframe
             width="100%"
             height="100%"
-            src={`https://www.youtube.com/embed/${video.youtube_id}`}
+            src={`https://www.youtube.com/embed/${video.youtubeId}`}
             title={video.title}
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -96,7 +69,7 @@ export default function VideoDetailPage() {
             controls
             playsInline
             preload="metadata"
-            poster={video.thumbnail_url || undefined}
+            poster={video.thumbnailUrl || undefined}
             src={directVideoUrl}
           >
             متصفحك لا يدعم تشغيل الفيديو.
@@ -107,18 +80,18 @@ export default function VideoDetailPage() {
       <Card className="p-6 space-y-4 bg-black/30 border-brand-gold/30">
         <div className="flex justify-between items-center text-sm text-brand-cream/70">
           <span>{video.views} مشاهدة</span>
-          {video.duration && (
+          {video.duration ? (
             <span>
               {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
             </span>
-          )}
+          ) : null}
         </div>
-        {video.description && (
+        {video.description ? (
           <div className="space-y-2">
             <h3 className="text-lg font-bold text-brand-gold">الوصف</h3>
             <p className="text-brand-cream/90 leading-relaxed">{video.description}</p>
           </div>
-        )}
+        ) : null}
         {publicCaption && publicCaption !== video.description ? (
           <div className="space-y-2">
             <h3 className="text-lg font-bold text-brand-gold">الكابشن</h3>
@@ -126,8 +99,6 @@ export default function VideoDetailPage() {
           </div>
         ) : null}
       </Card>
-
-
     </Container>
   );
 }

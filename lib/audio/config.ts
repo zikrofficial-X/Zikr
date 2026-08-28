@@ -1,3 +1,5 @@
+import { saveOfflinePreference } from "@/lib/offline-settings";
+
 export type AudioSlot = "prayer" | "dhikr" | "salawat";
 
 export type AudioChoice = {
@@ -60,6 +62,8 @@ export const DEFAULT_AUDIO_SETTINGS: Record<AudioSlot, string> = {
 
 export type AudioSettings = Record<AudioSlot, string>;
 
+const AUDIO_SETTINGS_KEY = "zikr_audio_settings";
+
 export function isAudioChoiceKey(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -72,8 +76,9 @@ export function normalizeAudioSettings(
 ): AudioSettings {
   const normalized = { ...DEFAULT_AUDIO_SETTINGS };
   for (const slot of Object.keys(normalized) as AudioSlot[]) {
-    if (isAudioChoiceKey(value?.[slot]))
+    if (isAudioChoiceKey(value?.[slot])) {
       normalized[slot] = value[slot] as string;
+    }
   }
   return normalized;
 }
@@ -85,7 +90,7 @@ export function getAudioChoice(key: string): AudioChoice {
 export function getAudioSettingsFromStorage(): AudioSettings {
   if (typeof window === "undefined") return normalizeAudioSettings(null);
   try {
-    const raw = window.localStorage.getItem("zikr_audio_settings");
+    const raw = window.localStorage.getItem(AUDIO_SETTINGS_KEY);
     return normalizeAudioSettings(
       raw ? (JSON.parse(raw) as Partial<AudioSettings>) : null
     );
@@ -101,12 +106,13 @@ export function persistAudioSettings(
   if (typeof window !== "undefined") {
     try {
       window.localStorage.setItem(
-        "zikr_audio_settings",
+        AUDIO_SETTINGS_KEY,
         JSON.stringify(normalized)
       );
     } catch {
-      // Storage can be unavailable in private browsing contexts.
+      // IndexedDB remains the durable fallback when Web Storage is restricted.
     }
+    void saveOfflinePreference(AUDIO_SETTINGS_KEY, normalized);
   }
   return normalized;
 }

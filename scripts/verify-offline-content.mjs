@@ -4,14 +4,14 @@ const manifestPath = 'public/offline-content/v1/manifest.json';
 const offlinePackPath = 'lib/offline-pack.ts';
 const serviceWorkerPath = 'public/sw.js';
 const offlineLibraryPath = 'app/offline-library/page.tsx';
+const guardPath = 'components/layout/offline-navigation-guard.tsx';
 
 const read = file => (existsSync(file) ? readFileSync(file, 'utf8') : '');
 const failures = [];
 
-if (!existsSync(manifestPath)) failures.push(`Missing ${manifestPath}`);
-if (!existsSync(offlinePackPath)) failures.push(`Missing ${offlinePackPath}`);
-if (!existsSync(serviceWorkerPath)) failures.push(`Missing ${serviceWorkerPath}`);
-if (!existsSync(offlineLibraryPath)) failures.push(`Missing ${offlineLibraryPath}`);
+for (const file of [manifestPath, offlinePackPath, serviceWorkerPath, offlineLibraryPath, guardPath]) {
+  if (!existsSync(file)) failures.push(`Missing ${file}`);
+}
 
 try {
   const manifest = JSON.parse(read(manifestPath));
@@ -35,7 +35,7 @@ try {
 
   const sensitivePrefixes = ['/api/', '/auth/', '/admin', '/profile', '/favorites'];
   for (const route of manifest.routes ?? []) {
-    if (typeof route !== 'string' || !route.startsWith('/')) {
+    if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) {
       failures.push(`Invalid offline route: ${String(route)}`);
       continue;
     }
@@ -50,9 +50,13 @@ try {
 const offlinePack = read(offlinePackPath);
 for (const token of [
   'offline_manifest',
+  'offline_completion_v1',
+  'verifyCompletedDatasets',
   'requestOfflineRouteCache',
   'cacheRoutes?: boolean',
   'offline-content-version-v3',
+  'scholars/ahmad-ibn-hanbal',
+  'videos/importance-of-prayer',
 ]) {
   if (!offlinePack.includes(token)) failures.push(`Offline pack missing ${token}`);
 }
@@ -72,9 +76,14 @@ const offlineLibrary = read(offlineLibraryPath);
 if (!offlineLibrary.includes('cacheRoutes: true')) failures.push('Offline Library does not request full route caching');
 if (!offlineLibrary.includes('تحديث وتجهيز الحزمة كاملة')) failures.push('Offline Library is missing the full-pack action');
 
+const guard = read(guardPath);
+for (const token of ['navigator.onLine', 'stopImmediatePropagation', 'window.location.assign']) {
+  if (!guard.includes(token)) failures.push(`Offline navigation guard missing ${token}`);
+}
+
 if (failures.length) {
   for (const failure of failures) console.error(`❌ ${failure}`);
   process.exit(1);
 }
 
-console.log('✅ Offline content, route cache, and safety checks passed');
+console.log('✅ Offline content, route cache, durable completion, and navigation safety checks passed');
