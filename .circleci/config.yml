@@ -62,7 +62,7 @@ jobs:
       - image: cimg/android:2026.08.1-node
     resource_class: medium
     environment:
-      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2 -Dorg.gradle.jvmargs=-Xmx4096m"
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=1 -Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
     steps:
       - checkout
       - run:
@@ -96,6 +96,7 @@ jobs:
           name: Build web assets and sync Capacitor
           command: |
             pnpm build
+            pnpm mobile:prepare
             pnpm exec cap sync android
           no_output_timeout: 20m
       - run:
@@ -116,19 +117,20 @@ jobs:
             done
             mkdir -p "$CIRCLE_WORKING_DIRECTORY/.circleci-signing"
             printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$CIRCLE_WORKING_DIRECTORY/.circleci-signing/zikr-release.keystore"
-            cat > android/keystore.properties <<'EOF'
-            storeFile=$CIRCLE_WORKING_DIRECTORY/.circleci-signing/zikr-release.keystore
-            storeType=jks
-            storePassword=$ANDROID_KEYSTORE_PASSWORD
-            keyAlias=$ANDROID_KEY_ALIAS
-            keyPassword=$ANDROID_KEY_PASSWORD
-            EOF
+            printf '%s\n' \
+              "storeFile=$CIRCLE_WORKING_DIRECTORY/.circleci-signing/zikr-release.keystore" \
+              "storeType=jks" \
+              "storePassword=$ANDROID_KEYSTORE_PASSWORD" \
+              "keyAlias=$ANDROID_KEY_ALIAS" \
+              "keyPassword=$ANDROID_KEY_PASSWORD" \
+              > android/keystore.properties
             chmod 600 android/keystore.properties
       - run:
           name: Build signed APK and AAB
           command: |
             cd android
-            ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --max-workers=2
+            ./gradlew :app:assembleRelease --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+            ./gradlew :app:bundleRelease --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
           no_output_timeout: 30m
       - run:
           name: Verify package and signature
