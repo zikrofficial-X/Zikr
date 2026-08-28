@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 const RELEASES_API_BASE =
   "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/releases";
+const RELEASE_DOWNLOAD_ENDPOINT = "/api/download/android";
 const RELEASE_DOWNLOAD_BASE =
   "https://github.com/mohamedalaa7785-cpu/Zikr/releases/download";
 const MAX_RELEASE_PAGES = 3;
@@ -131,10 +132,10 @@ export async function GET() {
       {
         version: tag.replace(/^v/i, ""),
         tag,
-        apkUrl: `${RELEASE_DOWNLOAD_BASE}/${encodeURIComponent(tag)}/${encodeURIComponent(apk.name)}`,
+        apkUrl: RELEASE_DOWNLOAD_ENDPOINT,
         releaseUrl:
           release.html_url ??
-          `https://github.com/mohamedalaa7785-cpu/Zikr/releases/tag/${encodeURIComponent(tag)}`,
+          `${RELEASE_DOWNLOAD_BASE}/${encodeURIComponent(tag)}/${encodeURIComponent(apk.name)}`,
         publishedAt: release.published_at ?? null,
         name: release.name ?? `ZIKR Android ${tag}`,
       },
