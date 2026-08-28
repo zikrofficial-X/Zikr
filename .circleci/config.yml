@@ -10,206 +10,488 @@ jobs:
     docker:
       - image: cimg/node:22.13
     resource_class: medium
+
     steps:
       - checkout
+
       - run:
           name: Enable pnpm
           command: |
+            set -euo pipefail
             sudo corepack enable
             corepack prepare pnpm@9.15.0 --activate
             pnpm --version
+
       - restore_cache:
           keys:
             - zikr-pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
             - zikr-pnpm-v1-
+
       - run:
           name: Install dependencies
-          command: pnpm install --frozen-lockfile
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile
+
       - save_cache:
           key: zikr-pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
           paths:
             - ~/.local/share/pnpm/store
+
       - run:
           name: Run full verification suite
-          command: pnpm verify
+          command: |
+            set -euo pipefail
+            pnpm verify
           no_output_timeout: 20m
+
 
   production-smoke:
     docker:
       - image: cimg/node:22.13
     resource_class: small
+
     steps:
       - checkout
+
       - run:
           name: Verify production deployment is healthy
           command: |
             set -euo pipefail
+
             echo "Waiting 90s for Vercel deployment to propagate..."
             sleep 90
+
             for attempt in $(seq 1 20); do
-              if node scripts/smoke-production-routes.mjs "https://zikrmediaofficial.vercel.app"; then
+              echo "Production smoke attempt ${attempt}/20"
+
+              if node scripts/smoke-production-routes.mjs \
+                "https://zikrmediaofficial.vercel.app"; then
+                echo "Production smoke checks passed."
                 exit 0
               fi
-              echo "Production smoke attempt ${attempt}/20 failed; retrying"
+
+              echo "Production smoke attempt ${attempt}/20 failed; retrying..."
               sleep 45
             done
-            echo "Production smoke checks failed after 20 attempts" >&2
+
+            echo "Production smoke checks failed after 20 attempts." >&2
             exit 1
+
           no_output_timeout: 30m
+
 
   android-release:
     docker:
       - image: cimg/android:2026.08.1-node
+
     resource_class: medium
+
     environment:
-      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=1 -Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
+      GRADLE_OPTS: >-
+        -Dorg.gradle.daemon=false
+        -Dorg.gradle.workers.max=1
+        -Dorg.gradle.jvmargs=-Xmx1536m
+        -XX:MaxMetaspaceSize=384m
+        -Dfile.encoding=UTF-8
+
     steps:
       - checkout
+
+
+      # ------------------------------------------------------------
+      # Node / pnpm
+      # ------------------------------------------------------------
       - run:
           name: Enable pnpm
           command: |
+            set -euo pipefail
+
             sudo corepack enable
             corepack prepare pnpm@9.15.0 --activate
+
             node --version
             pnpm --version
+
+
+      # ------------------------------------------------------------
+      # Android SDK
+      # ------------------------------------------------------------
       - run:
           name: Install Android SDK packages
           command: |
+            set -euo pipefail
+
             yes | sdkmanager --licenses >/dev/null || true
-            sdkmanager "platform-tools" "platforms;android-35" "build-tools;34.0.0"
+
+            sdkmanager \
+              "platform-tools" \
+              "platforms;android-35" \
+              "build-tools;34.0.0"
+
+
+      # ------------------------------------------------------------
+      # Dependencies
+      # ------------------------------------------------------------
       - restore_cache:
           keys:
             - zikr-pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
             - zikr-pnpm-v1-
+
       - run:
           name: Install dependencies
-          command: pnpm install --frozen-lockfile
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile
+
       - save_cache:
           key: zikr-pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
           paths:
             - ~/.local/share/pnpm/store
+
+
+      # ------------------------------------------------------------
+      # Web verification
+      # ------------------------------------------------------------
       - run:
           name: Verify web application
-          command: pnpm verify
+          command: |
+            set -euo pipefail
+            pnpm verify
           no_output_timeout: 20m
+
+
+      # ------------------------------------------------------------
+      # Build web assets + Capacitor
+      # ------------------------------------------------------------
       - run:
           name: Build web assets and sync Capacitor
           command: |
+            set -euo pipefail
+
             pnpm build
             pnpm mobile:prepare
             pnpm exec cap sync android
+
           no_output_timeout: 20m
+
+
+      # ------------------------------------------------------------
+      # Validate mobile configuration
+      # ------------------------------------------------------------
       - run:
           name: Verify mobile configuration
-          command: MOBILE_RELEASE_CHECK=1 MOBILE_RELEASE_PLATFORM=android pnpm mobile:check
-          environment:
-            ANDROID_APP_LINKS_SHA256: ${ANDROID_APP_LINKS_SHA256}
+          command: |
+            set -euo pipefail
+
+            test -n "${ANDROID_APP_LINKS_SHA256:-}" || {
+              echo "Missing ANDROID_APP_LINKS_SHA256" >&2
+              exit 1
+            }
+
+            MOBILE_RELEASE_CHECK=1 \
+            MOBILE_RELEASE_PLATFORM=android \
+            pnpm mobile:check
+
+          no_output_timeout: 10m
+
+
+      # ------------------------------------------------------------
+      # Restore + validate signing keystore
+      # ------------------------------------------------------------
       - run:
-          name: Restore release keystore
+          name: Restore and validate release keystore
           shell: /bin/bash
           command: |
             set -euo pipefail
-            for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD GH_TOKEN; do
+
+            echo "Validating required Android signing variables..."
+
+            for name in \
+              ANDROID_KEYSTORE_BASE64 \
+              ANDROID_KEYSTORE_PASSWORD \
+              ANDROID_KEY_ALIAS \
+              ANDROID_KEY_PASSWORD
+            do
               if [[ -z "${!name:-}" ]]; then
                 echo "Missing protected CircleCI environment variable: ${name}" >&2
                 exit 1
               fi
             done
-            mkdir -p "$CIRCLE_WORKING_DIRECTORY/.circleci-signing"
-            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$CIRCLE_WORKING_DIRECTORY/.circleci-signing/zikr-release.keystore"
+
+            SIGNING_DIR="$PWD/.circleci-signing"
+            KEYSTORE_PATH="$SIGNING_DIR/zikr-release.keystore"
+            PROPERTIES_PATH="$PWD/android/keystore.properties"
+
+            mkdir -p "$SIGNING_DIR"
+
+            echo "Decoding release keystore..."
+
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" \
+              | base64 --decode > "$KEYSTORE_PATH"
+
+            chmod 600 "$KEYSTORE_PATH"
+
+            if [[ ! -s "$KEYSTORE_PATH" ]]; then
+              echo "Decoded keystore is empty." >&2
+              exit 1
+            fi
+
+            echo "Validating PKCS12 keystore..."
+
+            keytool \
+              -list \
+              -storetype PKCS12 \
+              -keystore "$KEYSTORE_PATH" \
+              -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+              -alias "$ANDROID_KEY_ALIAS" \
+              >/dev/null
+
+            echo "Keystore validation passed."
+
             printf '%s\n' \
-              "storeFile=$CIRCLE_WORKING_DIRECTORY/.circleci-signing/zikr-release.keystore" \
-              "storeType=jks" \
+              "storeFile=$KEYSTORE_PATH" \
+              "storeType=PKCS12" \
               "storePassword=$ANDROID_KEYSTORE_PASSWORD" \
               "keyAlias=$ANDROID_KEY_ALIAS" \
               "keyPassword=$ANDROID_KEY_PASSWORD" \
-              > android/keystore.properties
-            chmod 600 android/keystore.properties
+              > "$PROPERTIES_PATH"
+
+            chmod 600 "$PROPERTIES_PATH"
+
+            echo "Gradle signing properties created successfully."
+
+
+      # ------------------------------------------------------------
+      # Android release build
+      # ------------------------------------------------------------
       - run:
-          name: Build signed APK and AAB
+          name: Build signed APK
           command: |
+            set -euo pipefail
+
             cd android
-            ./gradlew :app:assembleRelease --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
-            ./gradlew :app:bundleRelease --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
+
+            ./gradlew \
+              :app:assembleRelease \
+              --no-daemon \
+              --max-workers=1 \
+              -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
+
           no_output_timeout: 30m
+
+
+      - run:
+          name: Build signed AAB
+          command: |
+            set -euo pipefail
+
+            cd android
+
+            ./gradlew \
+              :app:bundleRelease \
+              --no-daemon \
+              --max-workers=1 \
+              -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
+
+          no_output_timeout: 30m
+
+
+      # ------------------------------------------------------------
+      # Artifact + signing verification
+      # ------------------------------------------------------------
       - run:
           name: Verify package and signature
           shell: /bin/bash
           command: |
             set -euo pipefail
+
             APK="android/app/build/outputs/apk/release/app-release.apk"
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
+
             test -s "$APK"
             test -s "$AAB"
-            APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+
+            echo "APK and AAB exist."
+
+            APKSIGNER="$(
+              find "$ANDROID_HOME/build-tools" \
+                -name apksigner \
+                -type f \
+                | sort -V \
+                | tail -1
+            )"
+
             test -x "$APKSIGNER"
+
+            echo "Verifying APK signature..."
+
             "$APKSIGNER" verify --verbose "$APK"
+
+            echo "APK signature verification passed."
+
+            echo "Generating SHA-256 checksums..."
+
             sha256sum "$APK" "$AAB" | tee SHA256SUMS
-            APKANALYZER="$(find "$ANDROID_HOME/cmdline-tools" -name apkanalyzer -type f | sort -V | tail -1)"
+
+            APKANALYZER="$(
+              find "$ANDROID_HOME/cmdline-tools" \
+                -name apkanalyzer \
+                -type f \
+                | sort -V \
+                | tail -1
+            )"
+
             test -x "$APKANALYZER"
-            "$APKANALYZER" manifest application-id "$APK" | grep -Fx 'com.zikr.app'
+
+            echo "Checking Android application ID..."
+
+            "$APKANALYZER" manifest application-id "$APK" \
+              | grep -Fx 'com.zikr.app'
+
+            echo "Application ID verification passed."
+
+
+      # ------------------------------------------------------------
+      # Publish GitHub Release
+      # ------------------------------------------------------------
       - run:
           name: Publish GitHub Release
           shell: /bin/bash
           command: |
             set -euo pipefail
-            if gh release view "$CIRCLE_TAG" --repo "$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME" >/dev/null 2>&1; then
+
+            if [[ -z "${GH_TOKEN:-}" ]]; then
+              echo "Missing GH_TOKEN for GitHub Release publishing." >&2
+              exit 1
+            fi
+
+            command -v gh >/dev/null 2>&1 || {
+              echo "GitHub CLI (gh) is not installed in the CircleCI image." >&2
+              exit 1
+            }
+
+            if [[ -z "${CIRCLE_TAG:-}" ]]; then
+              echo "CIRCLE_TAG is empty; GitHub Release publishing is skipped."
+              exit 0
+            fi
+
+            REPO="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
+
+            gh auth status
+
+            if gh release view "$CIRCLE_TAG" \
+              --repo "$REPO" >/dev/null 2>&1; then
+
               gh release upload "$CIRCLE_TAG" \
                 android/app/build/outputs/apk/release/app-release.apk \
                 android/app/build/outputs/bundle/release/app-release.aab \
                 SHA256SUMS \
-                --repo "$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME" \
+                --repo "$REPO" \
                 --clobber
+
             else
+
               gh release create "$CIRCLE_TAG" \
                 android/app/build/outputs/apk/release/app-release.apk \
                 android/app/build/outputs/bundle/release/app-release.aab \
                 SHA256SUMS \
-                --repo "$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME" \
+                --repo "$REPO" \
                 --verify-tag \
                 --generate-notes \
                 --title "ZIKR $CIRCLE_TAG"
+
             fi
+
+
+      # ------------------------------------------------------------
+      # Upload CircleCI artifacts
+      # ------------------------------------------------------------
+      - store_artifacts:
+          path: android/app/build/outputs/apk/release/app-release.apk
+          destination: android/app-release.apk
+
+      - store_artifacts:
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          destination: android/app-release.aab
+
+      - store_artifacts:
+          path: SHA256SUMS
+          destination: SHA256SUMS
+
+
+      # ------------------------------------------------------------
+      # Always remove signing material
+      # ------------------------------------------------------------
       - run:
           name: Remove signing material
           when: always
-          command: rm -f android/keystore.properties .circleci-signing/zikr-release.keystore
+          shell: /bin/bash
+          command: |
+            set +e
+
+            rm -f android/keystore.properties
+            rm -f .circleci-signing/zikr-release.keystore
+
+            echo "Signing material cleanup completed."
+
 
   automate-content:
     docker:
       - image: cimg/node:22.13
     resource_class: small
     working_directory: ~/zikr
+
     steps:
       - checkout
+
       - run:
           name: Install rendering tools
           command: |
+            set -euo pipefail
+
             sudo apt-get update
-            sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-core
+            sudo apt-get install -y --no-install-recommends \
+              ffmpeg \
+              fonts-noto-core
+
       - run:
           name: Enable pnpm
           command: |
+            set -euo pipefail
+
             sudo corepack enable
             corepack prepare pnpm@9.15.0 --activate
+
       - restore_cache:
           keys:
             - zikr-pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
             - zikr-pnpm-v1-
+
       - run:
           name: Install dependencies
-          command: pnpm install --frozen-lockfile
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile
+
       - run:
           name: Validate automation environment
           shell: /bin/bash
           command: |
             set -euo pipefail
-            for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_ANON_KEY NEXT_PUBLIC_SITE_URL; do
+
+            for name in \
+              SUPABASE_URL \
+              SUPABASE_SERVICE_ROLE_KEY \
+              SUPABASE_ANON_KEY \
+              NEXT_PUBLIC_SITE_URL
+            do
               if [[ -z "${!name:-}" ]]; then
                 echo "Missing required CircleCI project environment variable: ${name}" >&2
                 exit 1
               fi
             done
+
       - run:
           name: Run autonomous content and publishing queues
           environment:
@@ -219,30 +501,54 @@ jobs:
             VIDEO_BACKGROUND_BATCH_SIZE: "1"
             SOCIAL_BACKGROUND_BATCH_SIZE: "10"
             BACKGROUND_JOB_TARGET: all
-          command: pnpm automation:run
+
+          command: |
+            set -euo pipefail
+            pnpm automation:run
+
           no_output_timeout: 15m
 
+
 workflows:
+
+  # --------------------------------------------------------------
+  # Normal verification on changes
+  # --------------------------------------------------------------
   verify-on-change:
     jobs:
       - verify
+
       - production-smoke:
           requires:
             - verify
+
           filters:
             branches:
               only: main
 
+
+  # --------------------------------------------------------------
+  # Android release on semantic version tags
+  # Example:
+  # v1.0.0
+  # v1.2.3
+  # --------------------------------------------------------------
   android-release-on-tag:
     jobs:
       - android-release:
           filters:
             branches:
               ignore: /.*/
+
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
 
+
+  # --------------------------------------------------------------
+  # Manual/scheduled automation pipeline
+  # --------------------------------------------------------------
   scheduled-automation:
     when: << pipeline.parameters.run_automation >>
+
     jobs:
       - automate-content
