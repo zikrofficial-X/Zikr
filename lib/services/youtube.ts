@@ -10,7 +10,7 @@ type YoutubeSnippet = {
   channelTitle?: string;
   resourceId?: { videoId?: string };
 };
-type YoutubeSearchItem = { id: { videoId?: string }; snippet: YoutubeSnippet };
+type YoutubeSearchItem = { id: { videoId?: string; channelId?: string }; snippet: YoutubeSnippet };
 type YoutubePlaylistItem = { id: string; snippet: YoutubeSnippet; contentDetails?: { itemCount?: number } };
 type YoutubeListResponse<T> = { items?: T[]; nextPageToken?: string; pageInfo?: { totalResults?: number } };
 
@@ -62,6 +62,22 @@ const ERROR_COOLDOWN_MS = 15 * 60 * 1000;
 const CACHE_LIMIT = 100;
 const SYNC_LOCK_MS = 10 * 60 * 1000;
 
+export function normalizeYoutubeChannelInput(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  try {
+    const url = new URL(trimmed.includes('://') ? trimmed : `https://${trimmed}`);
+    const segments = url.pathname.split('/').filter(Boolean);
+    if (segments[0] === 'channel' && segments[1]) return segments[1];
+    if (segments[0]?.startsWith('@')) return segments[0];
+    if (segments[0] === 'c' && segments[1]) return segments[1];
+    if (segments[0] === 'user' && segments[1]) return segments[1];
+  } catch {
+    // Plain channel ids and handles are handled below.
+  }
+  return trimmed.replace(/^@?/, match => (trimmed.startsWith('@') ? match : ''));
+}
+
 function getYoutubeErrorCode(error: unknown): YoutubeChannelFeed['errorCode'] {
   const message = error instanceof Error ? error.message : String(error ?? '');
   if (/\b429\b|quota exceeded|quotaExceeded|dailyLimitExceeded|forbidden.*quota/i.test(message)) return 'quota_exceeded';
@@ -96,6 +112,22 @@ async function youtubeFetch<T>(path: string, params: Record<string, string | num
   } finally { clearTimeout(timeoutId); }
 }
 
+async function resolveYoutubeChannelId(input: string) {
+  const candidate = normalizeYoutubeChannelInput(input);
+  if (/^UC[A-Za-z0-9_-]{22}$/.test(candidate)) return candidate;
+
+  if (candidate.startsWith('@')) {
+    const response = await youtubeFetch<YoutubeListResponse<{ id: string }>>('channels', { part: 'id', forHandle: candidate });
+    const id = response.items?.[0]?.id;
+    if (id) return id;
+  }
+
+  const response = await youtubeFetch<YoutubeListResponse<YoutubeSearchItem>>('search', { part: 'snippet', q: candidate.replace(/^@/, ''), type: 'channel', maxResults: 1 });
+  const id = response.items?.[0]?.id?.channelId;
+  if (id) return id;
+  throw new Error(`YouTube channel was not found for ${input}.`);
+}
+
 function toVideo(row: YoutubeCacheRow): YoutubeVideo {
   return { id: row.video_id, title: row.title, description: row.description, publishedAt: row.published_at, thumbnailUrl: row.thumbnail_url };
 }
@@ -127,6 +159,7 @@ export async function getYoutubeChannelFeed(maxResults = 24): Promise<YoutubeCha
   if (!YOUTUBE_API_KEY || !YOUTUBE_CHANNEL_ID) return { configured: false, channelId: null, videos: [], playlists: [] };
   try {
     const videos = await readCachedVideos(YOUTUBE_CHANNEL_ID);
+    if (videos.length === 0) return await syncYoutubeFeed(maxResults);
     return { configured: true, channelId: YOUTUBE_CHANNEL_ID, videos: videos.slice(0, maxResults), playlists: [] };
   } catch (error) {
     return { configured: true, channelId: YOUTUBE_CHANNEL_ID, videos: [], playlists: [], error: error instanceof Error ? error.message : 'Unable to read cached YouTube feed.', errorCode: 'unknown' };
@@ -137,47 +170,49 @@ export async function syncYoutubeFeed(maxResults = 24): Promise<YoutubeChannelFe
   const { YOUTUBE_CHANNEL_ID, YOUTUBE_API_KEY } = getServerEnv();
   if (!YOUTUBE_API_KEY || !YOUTUBE_CHANNEL_ID) return { configured: false, channelId: null, videos: [], playlists: [], error: 'YouTube is not configured.' };
 
+  const channelId = await resolveYoutubeChannelId(YOUTUBE_CHANNEL_ID);
+
   const supabase = createAdminClient();
-  const health = await readSyncHealth(YOUTUBE_CHANNEL_ID);
+  const health = await readSyncHealth(channelId);
   const now = Date.now();
   const nextAllowed = health.nextAllowedSyncAt ? new Date(health.nextAllowedSyncAt).getTime() : 0;
   const lastAttempted = health.lastAttemptedAt ? new Date(health.lastAttemptedAt).getTime() : 0;
   if (nextAllowed > now || (lastAttempted > now - SYNC_LOCK_MS && !health.lastSuccessAt)) {
-    const cached = await readCachedVideos(YOUTUBE_CHANNEL_ID);
-    return { configured: true, channelId: YOUTUBE_CHANNEL_ID, videos: cached.slice(0, maxResults), playlists: [], stale: true, error: health.lastError ?? 'YouTube sync is temporarily throttled.', errorCode: health.status === 'quota_exceeded' ? 'quota_exceeded' : 'unknown' };
+    const cached = await readCachedVideos(channelId);
+    return { configured: true, channelId, videos: cached.slice(0, maxResults), playlists: [], stale: true, error: health.lastError ?? 'YouTube sync is temporarily throttled.', errorCode: health.status === 'quota_exceeded' ? 'quota_exceeded' : 'unknown' };
   }
 
   const attemptAt = new Date().toISOString();
-  const { error: stateError } = await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: YOUTUBE_CHANNEL_ID, status: 'never_synced', last_attempted_at: attemptAt, next_allowed_sync_at: new Date(now + SYNC_LOCK_MS).toISOString(), last_error: null });
+  const { error: stateError } = await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: channelId, status: 'never_synced', last_attempted_at: attemptAt, next_allowed_sync_at: new Date(now + SYNC_LOCK_MS).toISOString(), last_error: null });
   if (stateError) throw stateError;
 
   try {
     const [videosResponse, playlistsResponse] = await Promise.all([
-      youtubeFetch<YoutubeListResponse<YoutubeSearchItem>>('search', { part: 'snippet', channelId: YOUTUBE_CHANNEL_ID, maxResults, order: 'date', type: 'video' }),
-      youtubeFetch<YoutubeListResponse<YoutubePlaylistItem>>('playlists', { part: 'snippet,contentDetails', channelId: YOUTUBE_CHANNEL_ID, maxResults: Math.min(maxResults, 25) }),
+      youtubeFetch<YoutubeListResponse<YoutubeSearchItem>>('search', { part: 'snippet', channelId, maxResults, order: 'date', type: 'video' }),
+      youtubeFetch<YoutubeListResponse<YoutubePlaylistItem>>('playlists', { part: 'snippet,contentDetails', channelId, maxResults: Math.min(maxResults, 25) }),
     ]);
 
     const syncedAt = new Date().toISOString();
     const videoRows = (videosResponse.items ?? []).flatMap((item) => {
       const id = item.id.videoId;
       if (!id) return [];
-      return [{ video_id: id, channel_id: YOUTUBE_CHANNEL_ID, title: item.snippet.title, description: item.snippet.description ?? '', thumbnail_url: pickThumbnail(item.snippet), published_at: item.snippet.publishedAt ?? null, video_url: `https://www.youtube.com/watch?v=${id}`, synced_at: syncedAt }];
+      return [{ video_id: id, channel_id: channelId, title: item.snippet.title, description: item.snippet.description ?? '', thumbnail_url: pickThumbnail(item.snippet), published_at: item.snippet.publishedAt ?? null, video_url: `https://www.youtube.com/watch?v=${id}`, synced_at: syncedAt }];
     });
     if (videoRows.length > 0) {
       const { error } = await supabase.from('youtube_feed_cache').upsert(videoRows, { onConflict: 'video_id' });
       if (error) throw error;
     }
 
-    const videos = await readCachedVideos(YOUTUBE_CHANNEL_ID);
+    const videos = await readCachedVideos(channelId);
     const playlists: YoutubePlaylist[] = (playlistsResponse.items ?? []).map((item) => ({ id: item.id, title: item.snippet.title, description: item.snippet.description ?? '', thumbnailUrl: pickThumbnail(item.snippet), itemCount: item.contentDetails?.itemCount ?? null }));
-    await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: YOUTUBE_CHANNEL_ID, status: 'ok', last_attempted_at: syncedAt, last_success_at: syncedAt, next_allowed_sync_at: new Date(Date.now() + CACHE_TTL_MS).toISOString(), last_error: null });
-    return { configured: true, channelId: YOUTUBE_CHANNEL_ID, videos: videos.slice(0, maxResults), playlists, stale: false };
+    await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: channelId, status: 'ok', last_attempted_at: syncedAt, last_success_at: syncedAt, next_allowed_sync_at: new Date(Date.now() + CACHE_TTL_MS).toISOString(), last_error: null });
+    return { configured: true, channelId, videos: videos.slice(0, maxResults), playlists, stale: false };
   } catch (error) {
     const errorCode = getYoutubeErrorCode(error);
     const cooldown = errorCode === 'quota_exceeded' ? QUOTA_COOLDOWN_MS : ERROR_COOLDOWN_MS;
     const message = error instanceof Error ? error.message : 'Unknown YouTube API error.';
-    await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: YOUTUBE_CHANNEL_ID, status: errorCode === 'quota_exceeded' ? 'quota_exceeded' : 'error', last_attempted_at: new Date().toISOString(), next_allowed_sync_at: new Date(Date.now() + cooldown).toISOString(), last_error: errorCode === 'quota_exceeded' ? 'YouTube API quota is temporarily exhausted.' : message.slice(0, 500) });
-    const cached = await readCachedVideos(YOUTUBE_CHANNEL_ID);
-    return { configured: true, channelId: YOUTUBE_CHANNEL_ID, videos: cached.slice(0, maxResults), playlists: [], stale: cached.length > 0, error: errorCode === 'quota_exceeded' ? 'YouTube API quota is temporarily exhausted; cached content remains available.' : message, errorCode };
+    await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: channelId, status: errorCode === 'quota_exceeded' ? 'quota_exceeded' : 'error', last_attempted_at: new Date().toISOString(), next_allowed_sync_at: new Date(Date.now() + cooldown).toISOString(), last_error: errorCode === 'quota_exceeded' ? 'YouTube API quota is temporarily exhausted.' : message.slice(0, 500) });
+    const cached = await readCachedVideos(channelId);
+    return { configured: true, channelId, videos: cached.slice(0, maxResults), playlists: [], stale: cached.length > 0, error: errorCode === 'quota_exceeded' ? 'YouTube API quota is temporarily exhausted; cached content remains available.' : message, errorCode };
   }
 }
