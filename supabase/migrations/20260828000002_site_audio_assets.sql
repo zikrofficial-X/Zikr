@@ -20,6 +20,10 @@ create index if not exists site_audio_assets_kind_created_at_idx
 
 alter table public.site_audio_assets enable row level security;
 
+drop policy if exists site_audio_assets_admin_insert on public.site_audio_assets;
+drop policy if exists site_audio_assets_admin_update on public.site_audio_assets;
+drop policy if exists site_audio_assets_admin_delete on public.site_audio_assets;
+
 create policy site_audio_assets_admin_insert on public.site_audio_assets
   for insert to authenticated with check (private.is_admin_user());
 create policy site_audio_assets_admin_update on public.site_audio_assets
@@ -36,6 +40,10 @@ on conflict (id) do update set
   public = excluded.public,
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists site_audio_public_read on storage.objects;
+drop policy if exists site_audio_admin_insert on storage.objects;
+drop policy if exists site_audio_admin_delete on storage.objects;
 
 create policy site_audio_public_read on storage.objects
   for select to anon, authenticated using (bucket_id = 'site-audio');

@@ -1,0 +1,3 @@
+-- Historical Supabase migration version retained for migration-history reconciliation.
+-- The YouTube feed cache schema is represented by 20260828000000_youtube_feed_cache.sql.
+-- This no-op preserves environments that saw the transient 20260828000001 version.
