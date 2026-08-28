@@ -1,2 +1,0 @@
-# Google AdSense verified publisher ID
-google.com, pub-2457467624248791, DIRECT, f08c47fec0942fa0

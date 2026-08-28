@@ -1,3 +1,0 @@
--- Historical migration version retained for Supabase migration history reconciliation.
--- No-op: the original initial schema migration was archived after being superseded
--- by the canonical guarded migration chain in this directory.
