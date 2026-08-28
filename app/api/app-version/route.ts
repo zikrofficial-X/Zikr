@@ -88,8 +88,21 @@ async function getLatestStableReleaseWithApk(): Promise<ReleaseResponse | null> 
 export async function GET() {
   try {
     const release = await getLatestStableReleaseWithApk();
-    const tag = release?.tag_name?.trim();
-    const apk = release?.assets?.find(asset =>
+    if (!release) {
+      return NextResponse.json(
+        { error: "لا يوجد إصدار Android مستقر صالح حاليًا." },
+        {
+          status: 503,
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            Pragma: "no-cache",
+          },
+        },
+      );
+    }
+
+    const tag = release.tag_name?.trim();
+    const apk = release.assets?.find(asset =>
       asset.name?.toLowerCase().endsWith(".apk"),
     );
 
