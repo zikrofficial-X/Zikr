@@ -7,8 +7,8 @@ android {
         applicationId "com.zikr.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 18
-        versionName "1.2.2"
+        versionCode 19
+        versionName "1.2.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -24,7 +24,9 @@ android {
                 'META-INF/version-control-info.textproto',
                 'META-INF/*.version',
                 'META-INF/androidx.*.version',
-                'META-INF/kotlinx_coroutines_*.version'
+                'META-INF/kotlinx_coroutines_*.version',
+                'META-INF/**/*.version',
+                'META-INF/services/**'
             ]
         }
     }
