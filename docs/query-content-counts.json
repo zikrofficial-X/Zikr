@@ -1,0 +1,4 @@
+{
+  "project_id": "eydxvcamhjhajxjrsgym",
+  "query": "select relname as table_name, n_live_tup::bigint as estimated_rows from pg_stat_user_tables where schemaname = 'public' order by relname limit 100"
+}

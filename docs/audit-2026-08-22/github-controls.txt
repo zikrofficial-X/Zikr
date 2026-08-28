@@ -1,0 +1,210 @@
+--- repo ---
+[1;37m{[m
+  [1;34m"defaultBranchRef"[m[1;37m:[m [1;37m{[m
+    [1;34m"name"[m[1;37m:[m [32m"main"[m
+  [1;37m}[m[1;37m,[m
+  [1;34m"hasIssuesEnabled"[m[1;37m:[m [33mtrue[m[1;37m,[m
+  [1;34m"isPrivate"[m[1;37m:[m [33mfalse[m[1;37m,[m
+  [1;34m"nameWithOwner"[m[1;37m:[m [32m"mohamedalaa7785-cpu/Zikr"[m
+[1;37m}[m
+--- protection ---
+[1;38m{[m
+[1;34m"enforce_admins"[m[1;38m:[m [1;38m{[m
+[1;34m"enabled"[m[1;38m:[m [33mtrue[m[1;38m,[m
+[1;34m"url"[m[1;38m:[m [32m"https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/branches/main/protection/enforce_admins"[m
+[1;38m}[m[1;38m,[m
+[1;34m"required_pull_request_reviews"[m[1;38m:[m [36mnull[m[1;38m,[m
+[1;34m"required_status_checks"[m[1;38m:[m [1;38m{[m
+[1;34m"checks"[m[1;38m:[m [1;38m[[m
+[1;38m{[m
+[1;34m"app_id"[m[1;38m:[m [36mnull[m[1;38m,[m
+[1;34m"context"[m[1;38m:[m [32m"ci/circleci: verify"[m
+[1;38m}[m
+[1;38m][m[1;38m,[m
+[1;34m"contexts"[m[1;38m:[m [1;38m[[m
+[32m"ci/circleci: verify"[m
+[1;38m][m[1;38m,[m
+[1;34m"contexts_url"[m[1;38m:[m [32m"https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/branches/main/protection/required_status_checks/contexts"[m[1;38m,[m
+[1;34m"strict"[m[1;38m:[m [33mtrue[m[1;38m,[m
+[1;34m"url"[m[1;38m:[m [32m"https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/branches/main/protection/required_status_checks"[m
+[1;38m}[m[1;38m,[m
+[1;34m"restrictions"[m[1;38m:[m [36mnull[m
+[1;38m}[m
+--- open prs ---
+[1;37m[[m[1;37m][m
+--- workflows ---
+Continuous Integration	active	305005513
+Background Jobs	active	324234884
+Dependabot Updates	active	334959949
+ZIKR verify	active	339595304
+--- workflow files ---
+.github/workflows/background-jobs.yml
+name: Background Jobs
+
+# GitHub-hosted runners are currently unavailable for this account. The schedule
+# is deliberately paused to prevent recurring false failures; this manual
+# recovery workflow remains available once runner access is restored.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Queue to process"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - videos
+          - social
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-background-jobs-production
+  cancel-in-progress: false
+
+jobs:
+  process:
+    name: Process background queues
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+      HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
+      HEYGEN_AVATAR_ID: ${{ secrets.HEYGEN_AVATAR_ID }}
+      HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+      FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+      FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SUPABASE_ANON_KEY NEXT_PUBLIC_SITE_URL; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required secret: ${name}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Resolve queue target
+        id: target
+        shell: bash
+        run: |
+          echo "target=${{ inputs.target }}" >> "$GITHUB_OUTPUT"
+
+      - name: Run background queues
+        env:
+          BACKGROUND_JOB_TARGET: ${{ steps.target.outputs.target }}
+        run: pnpm background:jobs
+.github/workflows/ci.yml
+name: Continuous Integration
+
+# GitHub-hosted runners are currently unavailable for this account. Vercel now
+# executes `pnpm verify` for every deployment; retain this workflow as an
+# operator-invoked fallback for when runner access is restored.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify application
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run verification suite
+        run: pnpm verify
+.github/workflows/verify.yml
+name: ZIKR verify
+
+# GitHub-hosted runners are temporarily unavailable for this account.
+# Vercel and CircleCI run verification automatically; this workflow remains
+# available as a manual fallback when GitHub Actions access is restored.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run full verification
+        run: pnpm verify
+--- branch list ---
+main
+--- secret names only ---
+failed to get secrets: HTTP 403: Resource not accessible by integration (https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/actions/secrets?per_page=100)

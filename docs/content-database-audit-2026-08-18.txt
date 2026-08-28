@@ -1,0 +1,31 @@
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+Starting final database audit...
+Audit failed: AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1712:7)
+    at cachedError (file:///home/ubuntu/Zikr/node_modules/.pnpm/postgres@3.4.9/node_modules/postgres/src/query.js:170:23)
+    at new Query (file:///home/ubuntu/Zikr/node_modules/.pnpm/postgres@3.4.9/node_modules/postgres/src/query.js:36:24)
+    at sql (file:///home/ubuntu/Zikr/node_modules/.pnpm/postgres@3.4.9/node_modules/postgres/src/index.js:112:11)
+    at main (/home/ubuntu/Zikr/scripts/audit-db-final.ts:12:26) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:5432
+        at createConnectionError (node:net:1675:14)
+        at afterConnectMultiple (node:net:1705:16) {
+      errno: -111,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 5432
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:5432
+        at createConnectionError (node:net:1675:14)
+        at afterConnectMultiple (node:net:1705:16) {
+      errno: -111,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 5432
+    }
+  ]
+}

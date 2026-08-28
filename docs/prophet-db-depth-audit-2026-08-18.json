@@ -1,0 +1,806 @@
+{
+  "published_prophets": 25,
+  "total_sections": 150,
+  "report": [
+    {
+      "id": "9036b881-9e97-4ef5-8946-800e9d08ab66",
+      "slug": "adam",
+      "name_ar": "آدم عليه السلام",
+      "order_num": 1,
+      "bio_chars": 155,
+      "sections": 6,
+      "story_chars": 8682,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "e5cad004-e404-582e-87e9-2f74e847fc8b",
+      "slug": "idris",
+      "name_ar": "إدريس عليه السلام",
+      "order_num": 2,
+      "bio_chars": 139,
+      "sections": 6,
+      "story_chars": 1424,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "e4f25051-b78f-4943-b4f4-469819320b78",
+      "slug": "nuh",
+      "name_ar": "نوح عليه السلام",
+      "order_num": 3,
+      "bio_chars": 159,
+      "sections": 6,
+      "story_chars": 10699,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "ff4da8d3-9c8f-5c13-99c4-17c443332cdb",
+      "slug": "hud",
+      "name_ar": "هود عليه السلام",
+      "order_num": 4,
+      "bio_chars": 172,
+      "sections": 6,
+      "story_chars": 6766,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "d4b2de49-67af-563c-953d-2762cb9603b1",
+      "slug": "salih",
+      "name_ar": "صالح عليه السلام",
+      "order_num": 5,
+      "bio_chars": 152,
+      "sections": 6,
+      "story_chars": 6798,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "422f95ab-7964-4419-9e16-61b62595484c",
+      "slug": "ibrahim",
+      "name_ar": "إبراهيم عليه السلام",
+      "order_num": 6,
+      "bio_chars": 180,
+      "sections": 6,
+      "story_chars": 15332,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "60651ae2-e12a-5be9-9702-2d447ad56c88",
+      "slug": "lut",
+      "name_ar": "لوط عليه السلام",
+      "order_num": 7,
+      "bio_chars": 159,
+      "sections": 6,
+      "story_chars": 7829,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "c8c0cc68-1cfd-51a5-9628-f63f3ad706ea",
+      "slug": "ismail",
+      "name_ar": "إسماعيل عليه السلام",
+      "order_num": 8,
+      "bio_chars": 177,
+      "sections": 6,
+      "story_chars": 4300,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "f7720f6d-117c-5950-8f14-44a577eb26b4",
+      "slug": "ishaq",
+      "name_ar": "إسحاق عليه السلام",
+      "order_num": 9,
+      "bio_chars": 148,
+      "sections": 6,
+      "story_chars": 2777,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "4c036b16-cf6c-52d8-9232-094ff5f6e7d6",
+      "slug": "yaqub",
+      "name_ar": "يعقوب عليه السلام",
+      "order_num": 10,
+      "bio_chars": 169,
+      "sections": 6,
+      "story_chars": 4627,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "ba7abf32-91d7-42a3-b428-28ca6c990403",
+      "slug": "yusuf",
+      "name_ar": "يوسف عليه السلام",
+      "order_num": 11,
+      "bio_chars": 168,
+      "sections": 6,
+      "story_chars": 18388,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "6f44a03b-234c-440b-bb00-a17ed7f7f83c",
+      "slug": "ayyub",
+      "name_ar": "أيوب عليه السلام",
+      "order_num": 12,
+      "bio_chars": 153,
+      "sections": 6,
+      "story_chars": 1728,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "984b7962-639f-5169-ab0e-cfc7373dee3d",
+      "slug": "shuayb",
+      "name_ar": "شعيب عليه السلام",
+      "order_num": 13,
+      "bio_chars": 151,
+      "sections": 6,
+      "story_chars": 6374,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "32b8e752-16f5-4204-90b5-e6ec0d3f019e",
+      "slug": "musa",
+      "name_ar": "موسى عليه السلام",
+      "order_num": 14,
+      "bio_chars": 144,
+      "sections": 6,
+      "story_chars": 43089,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "e1c6c8cf-c480-50df-99e5-bb06ce28cc27",
+      "slug": "harun",
+      "name_ar": "هارون عليه السلام",
+      "order_num": 15,
+      "bio_chars": 143,
+      "sections": 6,
+      "story_chars": 11645,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "8ebb1d27-ec05-5d7a-9646-1d5541970411",
+      "slug": "dhulkifl",
+      "name_ar": "ذو الكفل عليه السلام",
+      "order_num": 16,
+      "bio_chars": 151,
+      "sections": 6,
+      "story_chars": 1286,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "8d8fa57e-a3cf-5123-b94a-b458e9fc9d5f",
+      "slug": "yunus",
+      "name_ar": "يونس عليه السلام",
+      "order_num": 17,
+      "bio_chars": 158,
+      "sections": 6,
+      "story_chars": 2371,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "276047cc-2d5a-56b7-8315-b5d2ca21f0ab",
+      "slug": "dawud",
+      "name_ar": "داود عليه السلام",
+      "order_num": 18,
+      "bio_chars": 138,
+      "sections": 6,
+      "story_chars": 5129,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "13c7e0a7-44af-5d8e-b07a-c87e1b6baffd",
+      "slug": "sulayman",
+      "name_ar": "سليمان عليه السلام",
+      "order_num": 19,
+      "bio_chars": 137,
+      "sections": 6,
+      "story_chars": 8375,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "ad17b837-b8e2-5cbb-ad7a-bdacbea9dea7",
+      "slug": "ilyas",
+      "name_ar": "إلياس عليه السلام",
+      "order_num": 20,
+      "bio_chars": 150,
+      "sections": 6,
+      "story_chars": 1613,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "71e31a81-d6b5-5dab-a15f-b3b66842a26d",
+      "slug": "alyasa",
+      "name_ar": "اليسع عليه السلام",
+      "order_num": 21,
+      "bio_chars": 166,
+      "sections": 6,
+      "story_chars": 1195,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "82940a5d-4502-5800-bc96-eddb1c55b94f",
+      "slug": "zakariya",
+      "name_ar": "زكريا عليه السلام",
+      "order_num": 22,
+      "bio_chars": 150,
+      "sections": 6,
+      "story_chars": 3752,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "eb3bcb12-7251-5900-8664-cef5ea1bb0cc",
+      "slug": "yahya",
+      "name_ar": "يحيى عليه السلام",
+      "order_num": 23,
+      "bio_chars": 137,
+      "sections": 6,
+      "story_chars": 2201,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "2942feaf-1751-4ace-b008-f71fc3610376",
+      "slug": "isa",
+      "name_ar": "عيسى عليه السلام",
+      "order_num": 24,
+      "bio_chars": 160,
+      "sections": 6,
+      "story_chars": 22447,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    },
+    {
+      "id": "5312fc33-a213-48c0-a311-75a5608c9287",
+      "slug": "muhammad",
+      "name_ar": "محمد ﷺ",
+      "order_num": 25,
+      "bio_chars": 160,
+      "sections": 6,
+      "story_chars": 6496,
+      "titles": [
+        "القصة القرآنية الكاملة ومواضعها",
+        "منهج قراءة القصة ومصادرها",
+        "آيات مرتبطة",
+        "السياق والرسالة",
+        "المحطات والابتلاءات",
+        "الدروس والضوابط"
+      ],
+      "types": [
+        "stories",
+        "legacy",
+        "legacy",
+        "biography",
+        "biography",
+        "biography"
+      ],
+      "metadata_keys": [
+        "editor",
+        "references",
+        "story_mode",
+        "content_source",
+        "content_status"
+      ]
+    }
+  ]
+}

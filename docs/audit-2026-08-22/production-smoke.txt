@@ -1,0 +1,19 @@
+✅ Route /: HTTP 200
+✅ Route /quran: HTTP 200
+✅ Route /quran/1: HTTP 200
+✅ Route /hadith: HTTP 200
+✅ Route /dua: HTTP 200
+✅ Route /search: HTTP 200
+✅ Route /settings: HTTP 200
+✅ Route /profile: HTTP 307
+✅ Route /favorites: HTTP 307
+✅ Route /memorization: HTTP 307
+✅ Route /admin: HTTP 307
+✅ Anonymous Supabase quran_surahs: HTTP 200
+✅ Anonymous Supabase quran_ayahs: HTTP 200
+✅ Anonymous Supabase hadith_books: HTTP 200
+✅ Anonymous Supabase hadiths: HTTP 200
+✅ Anonymous Supabase duas: HTTP 200
+✅ Anonymous Supabase videos: HTTP 200
+
+Production smoke test completed with 0 failure(s).

@@ -1,0 +1,85 @@
+name: Background Jobs
+
+# GitHub-hosted runners are currently unavailable for this account. The schedule
+# is deliberately paused to prevent recurring false failures; this manual
+# recovery workflow remains available once runner access is restored.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Queue to process"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - videos
+          - social
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-background-jobs-production
+  cancel-in-progress: false
+
+jobs:
+  process:
+    name: Process background queues
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+      HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
+      HEYGEN_AVATAR_ID: ${{ secrets.HEYGEN_AVATAR_ID }}
+      HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+      FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+      FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SUPABASE_ANON_KEY NEXT_PUBLIC_SITE_URL; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required secret: ${name}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Resolve queue target
+        id: target
+        shell: bash
+        run: |
+          echo "target=${{ inputs.target }}" >> "$GITHUB_OUTPUT"
+
+      - name: Run background queues
+        env:
+          BACKGROUND_JOB_TARGET: ${{ steps.target.outputs.target }}
+        run: pnpm background:jobs

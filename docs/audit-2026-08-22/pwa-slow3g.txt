@@ -1,0 +1,90 @@
+{
+  "startedAt": "2026-08-22T06:47:46.241Z",
+  "durationMs": 43621,
+  "browser": {
+    "initial": {
+      "readyState": "complete",
+      "title": "المصحف الشريف | ذِكرٌ | ZIKR",
+      "hasMushafHeading": true,
+      "hasSurahSearch": true,
+      "serviceWorkerSupported": true,
+      "registrations": [
+        {
+          "scope": "https://zikrmediaofficial.vercel.app/",
+          "active": true,
+          "controller": true
+        }
+      ],
+      "online": true
+    },
+    "offlineState": {
+      "online": false,
+      "controller": true
+    },
+    "recovered": {
+      "online": true,
+      "registrations": [
+        {
+          "scope": "https://zikrmediaofficial.vercel.app/",
+          "active": true,
+          "controller": true,
+          "waiting": false
+        }
+      ],
+      "caches": [
+        "zikr-v7"
+      ],
+      "mushafCached": null,
+      "manifestCached": null
+    },
+    "offlineProbe": {
+      "status": 200,
+      "hasMushafHeading": true
+    },
+    "notificationResults": {
+      "supported": true,
+      "permission": "granted",
+      "count": 2,
+      "titles": [
+        "حان وقت صلاة الفجر",
+        "تذكير بالصلاة على النبي"
+      ]
+    },
+    "consoleErrors": [],
+    "pageErrors": [
+      "Failed to load resource: the server responded with a status of 401 ()",
+      "Connecting to 'https://ep1.adtrafficquality.google/getconfig/sodar?sv=200&tid=gda&tv=r20260820&st=env&sjk=7458274663793671' violates the following Content Security Policy directive: \"connect-src 'self' https://va.vercel-scripts.com https://*.supabase.co https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com https://generativelanguage.googleapis.com https://api.hadith.gading.dev https://api.aladhan.com https://api.alquran.cloud https://everyayah.com https://quranaudio.pages.dev https://*.mp3quran.net https://download.quranicaudio.com https://archive.org https://*.archive.org https://pagead2.googlesyndication.com https://adservice.google.com https://fundingchoicesmessages.google.com https://mp3quran.net https://api.quran.com https://www.hisnmuslim.com https://mp3quran.net/api\". The action has been blocked.",
+      "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+      "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+    ],
+    "expectedNetworkErrors": [
+      "Failed to load resource: the server responded with a status of 401 ()",
+      "Connecting to 'https://ep1.adtrafficquality.google/getconfig/sodar?sv=200&tid=gda&tv=r20260820&st=env&sjk=7458274663793671' violates the following Content Security Policy directive: \"connect-src 'self' https://va.vercel-scripts.com https://*.supabase.co https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com https://generativelanguage.googleapis.com https://api.hadith.gading.dev https://api.aladhan.com https://api.alquran.cloud https://everyayah.com https://quranaudio.pages.dev https://*.mp3quran.net https://download.quranicaudio.com https://archive.org https://*.archive.org https://pagead2.googlesyndication.com https://adservice.google.com https://fundingchoicesmessages.google.com https://mp3quran.net https://api.quran.com https://www.hisnmuslim.com https://mp3quran.net/api\". The action has been blocked.",
+      "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+      "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+    ],
+    "unexpectedPageErrors": []
+  },
+  "handlers": {
+    "registeredEvents": [
+      "install",
+      "activate",
+      "fetch",
+      "message",
+      "push",
+      "notificationclick"
+    ],
+    "notificationCount": 3,
+    "notificationTitles": [
+      "حان وقت صلاة الفجر",
+      "تذكير بالصلاة على النبي",
+      "اختبار Push"
+    ],
+    "notificationTargets": [
+      "/prayer-times",
+      "/adhkar",
+      "/mushaf"
+    ],
+    "clickHandled": true
+  }
+}

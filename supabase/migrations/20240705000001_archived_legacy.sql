@@ -1,0 +1,3 @@
+-- Historical migration version retained for Supabase migration history reconciliation.
+-- The original migration was archived because its version collided with another legacy migration.
+-- Schema changes are intentionally omitted; the canonical 2026 migration chain owns the schema.

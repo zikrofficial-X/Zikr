@@ -1,0 +1,207 @@
+{
+  "base": "https://zikr-git-main-zikr.vercel.app",
+  "checked": 40,
+  "failures": [],
+  "results": [
+    {
+      "route": "/",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/quran",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/mushaf",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/hadith",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/adhkar",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/dua",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/prophets",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/companions",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/scholars",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/articles",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/stories",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/battles",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/conquests",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/kids",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/memorization",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/prayer-times",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/qibla",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/radio",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/reciters",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/tawasheeh",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/poetry",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/tafsir",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/tasbeeh",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/offline-library",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/search",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/about",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/platform",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/faq",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/contact",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/privacy",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/terms",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/api/content/stats",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/api/content/articles",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/api/content/prophets",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/api/duas",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/api/hadith/books",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/api/quran/surahs",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/manifest.webmanifest",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/robots.txt",
+      "status": 302,
+      "ok": true
+    },
+    {
+      "route": "/sitemap-index.xml",
+      "status": 302,
+      "ok": true
+    }
+  ]
+}

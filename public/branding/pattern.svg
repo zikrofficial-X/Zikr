@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+  <defs>
+    <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+      <!-- Eight-point star (Islamic geometric) -->
+      <polygon points="40,4 46,20 62,14 56,30 72,36 56,42 62,58 46,52 40,68 34,52 18,58 24,42 8,36 24,30 18,14 34,20"
+        fill="none" stroke="#C7A86B" stroke-width="0.8" opacity="0.6"/>
+      <!-- Inner square rotated -->
+      <rect x="28" y="28" width="24" height="24" rx="1"
+        transform="rotate(45 40 40)"
+        fill="none" stroke="#C7A86B" stroke-width="0.5" opacity="0.4"/>
+      <!-- Center dot -->
+      <circle cx="40" cy="40" r="1.5" fill="#C7A86B" opacity="0.35"/>
+    </pattern>
+  </defs>
+  <rect width="80" height="80" fill="url(#grid)"/>
+</svg>

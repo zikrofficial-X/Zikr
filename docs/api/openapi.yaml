@@ -1,0 +1,160 @@
+openapi: 3.0.0
+info:
+  title: ZIKR API
+  version: 1.0.0
+  description: |
+    Complete API for the ZIKR Islamic platform.
+    
+    ## Authentication
+    ZIKR uses Supabase JWT authentication with HTTP-only cookies.
+    Most operations are performed via Next.js Server Actions (not REST endpoints).
+    
+    ## Base URL
+    https://zikrmediaofficial.vercel.app
+  contact:
+    email: info@zikr.app
+  license:
+    name: MIT
+servers:
+  - url: https://zikrmediaofficial.vercel.app
+    description: Production
+  - url: http://localhost:3000
+    description: Development
+tags:
+  - name: AI
+    description: AI-powered endpoints
+  - name: Poetry
+    description: Poetry analysis
+  - name: Auth
+    description: Authentication (Server Actions)
+  - name: Admin
+    description: Admin operations (Server Actions)
+  - name: Favorites
+    description: User favorites (Server Actions)
+  - name: Memorization
+    description: Quran memorization (Server Actions)
+  - name: Spiritual
+    description: Spiritual AI (Server Actions)
+
+paths:
+  /api/poetry-insight:
+    post:
+      tags: [AI, Poetry]
+      summary: Generate AI literary analysis of a poem
+      description: Uses Google Gemini to produce a short Arabic literary analysis of an Islamic poem.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [poem, title]
+              properties:
+                poem:
+                  type: string
+                  description: The poem text to analyze
+                title:
+                  type: string
+                  description: The poem title
+            example:
+              poem: "ألا ليت الرياح تعود يوماً..."
+              title: "الشوق"
+      responses:
+        '200':
+          description: Analysis generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  insight:
+                    type: string
+                    description: AI-generated literary analysis in Arabic
+              example:
+                insight: "الفكرة الرئيسية: الشوق إلى الأحبة. الأسلوب: شعري عاطفي بليغ."
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              example:
+                error: "Missing poem or title"
+        '500':
+          description: AI generation failed or internal error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              examples:
+                generation_failed:
+                  value: { error: "Failed to generate insight" }
+                internal:
+                  value: { error: "Internal server error" }
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sb_access_token
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    FavoriteItemType:
+      type: string
+      enum: [quran, hadith, story, scholar, dua]
+      default: quran
+    FavoriteActionResult:
+      type: object
+      oneOf:
+        - type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+        - type: object
+          properties:
+            error:
+              type: string
+    SpiritualResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [quran, hadith, dhikr, advice, poem]
+        content:
+          type: string
+        source:
+          type: string
+        reference:
+          type: string
+    AISearchResult:
+      type: object
+      properties:
+        feeling:
+          type: string
+        responses:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpiritualResponse'
+        aiAdvice:
+          type: string
+        error:
+          type: string
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error code or message
+security:
+  - cookieAuth: []
+  - bearerAuth: []

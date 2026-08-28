@@ -1,0 +1,4 @@
+{
+  "project_id": "eydxvcamhjhajxjrsgym",
+  "query": "select slug, title, summary, author, tags, metadata from public.articles where published = true order by created_at desc limit 12"
+}

@@ -1,0 +1,4 @@
+{
+  "project_id": "eydxvcamhjhajxjrsgym",
+  "query": "select * from (select (select count(*)::bigint from public.quran_ayahs) as quran_ayahs, (select count(*)::bigint from public.quran_surahs) as quran_surahs, (select count(*)::bigint from public.quran_reciters) as quran_reciters, (select count(*)::bigint from public.scholars) as scholars, (select count(*)::bigint from public.stories) as stories, (select count(*)::bigint from public.dua_categories) as dua_categories, (select count(*)::bigint from public.article_categories) as article_categories, (select count(*)::bigint from public.hadith_books) as hadith_books, (select count(*)::bigint from public.hadiths) as hadiths) counts limit 1"
+}

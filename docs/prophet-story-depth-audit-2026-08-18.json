@@ -1,0 +1,47 @@
+{
+  "keyCount": 6,
+  "stories": [
+    {
+      "slug": "adam",
+      "name": "آدم عليه السلام",
+      "sections": 4,
+      "bioChars": 92,
+      "storyChars": 1826
+    },
+    {
+      "slug": "nuh",
+      "name": "نوح عليه السلام",
+      "sections": 4,
+      "bioChars": 143,
+      "storyChars": 1655
+    },
+    {
+      "slug": "ibrahim",
+      "name": "إبراهيم عليه السلام",
+      "sections": 6,
+      "bioChars": 139,
+      "storyChars": 2005
+    },
+    {
+      "slug": "musa",
+      "name": "موسى عليه السلام",
+      "sections": 6,
+      "bioChars": 180,
+      "storyChars": 2209
+    },
+    {
+      "slug": "yusuf",
+      "name": "يوسف عليه السلام",
+      "sections": 6,
+      "bioChars": 113,
+      "storyChars": 1872
+    },
+    {
+      "slug": "muhammad",
+      "name": "محمد صلى الله عليه وسلم",
+      "sections": 7,
+      "bioChars": 167,
+      "storyChars": 1660
+    }
+  ]
+}

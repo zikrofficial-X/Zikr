@@ -1,0 +1,66 @@
+{
+  "brand": "zikr",
+  "source": "/home/ubuntu/upload/tmp-zikr-launcher-icon(1).png",
+  "source_dimensions": [
+    1920,
+    1920
+  ],
+  "padding_ratio": 0.08,
+  "background": "#061322",
+  "assets": [
+    {
+      "path": "icon-192.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "3b271077d6c951dab76aac8154d31e5de5cb8bb144c6790a93d89c8bf3c0376d"
+    },
+    {
+      "path": "icon-512.png",
+      "width": 512,
+      "height": 512,
+      "sha256": "b656711b6867540229800b488e9967564b4c331f248ff6c953528f68f11809e9"
+    },
+    {
+      "path": "favicon-48.png",
+      "width": 48,
+      "height": 48,
+      "sha256": "69a14863e472fefec7b7db10b8d21759ee8bcb0b7553bc27ebd4446242696fbc"
+    },
+    {
+      "path": "mipmap-mdpi/ic_launcher.png",
+      "width": 48,
+      "height": 48,
+      "sha256": "69a14863e472fefec7b7db10b8d21759ee8bcb0b7553bc27ebd4446242696fbc"
+    },
+    {
+      "path": "mipmap-hdpi/ic_launcher.png",
+      "width": 72,
+      "height": 72,
+      "sha256": "f6020f9a316638ee690f021138a02c954e452c8604dfacf028232e8ef0214096"
+    },
+    {
+      "path": "mipmap-xhdpi/ic_launcher.png",
+      "width": 96,
+      "height": 96,
+      "sha256": "2978c2ddd5168dc2d59868a303ac890113b5bbc4450307e6a0c0399050bb98ee"
+    },
+    {
+      "path": "mipmap-xxhdpi/ic_launcher.png",
+      "width": 144,
+      "height": 144,
+      "sha256": "7d680ff3d316183c6a4eb0c1b983bbf08c6c24a1330a65a3eed93cfb31eac36c"
+    },
+    {
+      "path": "mipmap-xxxhdpi/ic_launcher.png",
+      "width": 192,
+      "height": 192,
+      "sha256": "3b271077d6c951dab76aac8154d31e5de5cb8bb144c6790a93d89c8bf3c0376d"
+    },
+    {
+      "path": "mipmap-anydpi-v26/ic_launcher_foreground.png",
+      "width": 432,
+      "height": 432,
+      "sha256": "871b8f22acc5cd9ca779df53bbde231f96c733fc53c1562dd0d66c5692178c4f"
+    }
+  ]
+}

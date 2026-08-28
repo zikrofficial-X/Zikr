@@ -1,0 +1,93 @@
+{
+  "appId": "com.zikr.app",
+  "appName": "ZIKR | ذِكرٌ",
+  "webDir": ".next",
+  "server": {
+    "url": "https://zikrmediaofficial.vercel.app",
+    "cleartext": false,
+    "allowNavigation": [
+      "zikrmediaofficial.vercel.app",
+      "www.islamcan.com",
+      "*.supabase.co",
+      "accounts.google.com",
+      "*.googleusercontent.com",
+      "www.youtube.com",
+      "www.youtube-nocookie.com",
+      "api.aladhan.com",
+      "api.alquran.cloud",
+      "api.hadith.gading.dev",
+      "hadithapi.com",
+      "cdn.islamic.network",
+      "everyayah.com",
+      "quranaudio.pages.dev",
+      "*.mp3quran.net",
+      "download.quranicaudio.com",
+      "archive.org",
+      "*.archive.org",
+      "server6.mp3quran.net",
+      "server8.mp3quran.net",
+      "stream.radiojar.com",
+      "qurango.net"
+    ]
+  },
+  "ios": {
+    "scheme": "ZIKR",
+    "contentInset": "automatic",
+    "limitsNavigationsToAppBoundDomains": true
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1800,
+      "backgroundColor": "#000000",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#000000",
+      "overlaysWebView": false
+    },
+    "Keyboard": {
+      "resize": "body",
+      "style": "dark",
+      "resizeOnFullScreen": true
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_zikr",
+      "iconColor": "#D8B75B",
+      "sound": "adhan.wav"
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    },
+    "Camera": {
+      "permissions": [
+        "camera",
+        "photos"
+      ]
+    },
+    "BiometricAuth": {
+      "allowDeviceCredential": true
+    },
+    "BackgroundTask": {
+      "iosMinimumBackgroundFetchInterval": 900
+    },
+    "CapacitorCookies": {
+      "enabled": true
+    },
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

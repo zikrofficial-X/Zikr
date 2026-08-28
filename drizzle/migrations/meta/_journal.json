@@ -1,0 +1,76 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1785219639377,
+      "tag": "0000_add_articles_bilingual_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785219639378,
+      "tag": "0008_content_column_alignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785219639379,
+      "tag": "0009_supabase_schema_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785219639380,
+      "tag": "0010_full_schema_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785219639381,
+      "tag": "0011_missing_core_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785219639382,
+      "tag": "0012_fix_schema_mismatch",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785219639383,
+      "tag": "0013_favorites_item_type_enum",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785219639384,
+      "tag": "0014_auth_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785219639385,
+      "tag": "0015_ensure_auth_functions",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786233600000,
+      "tag": "0016_google_oauth_profile_sync",
+      "breakpoints": true
+    }
+  ]
+}

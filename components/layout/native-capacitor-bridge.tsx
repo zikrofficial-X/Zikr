@@ -1,0 +1,331 @@
+"use client";
+
+import { useEffect } from "react";
+import { getNativeAudio, loadAudioSettings } from "@/lib/audio/config";
+
+type CapacitorPlugin = Record<
+  string,
+  (...args: unknown[]) => Promise<unknown> | unknown
+>;
+type CapacitorWindow = Window & {
+  Capacitor?: {
+    isNativePlatform?: () => boolean;
+    Plugins?: Record<string, CapacitorPlugin | undefined>;
+  };
+  zikrNative?: {
+    isNative: boolean;
+    share: (data: {
+      title?: string;
+      text?: string;
+      url?: string;
+    }) => Promise<void>;
+    haptic: (style?: "LIGHT" | "MEDIUM" | "HEAVY") => Promise<void>;
+    pickImage: () => Promise<unknown>;
+    writeFile: (path: string, data: string) => Promise<unknown>;
+    getNetworkStatus: () => Promise<unknown>;
+    scheduleLocalNotification: (notification: {
+      id: number;
+      title: string;
+      body: string;
+      scheduleAt?: string;
+      sound?: string;
+      channelId?: string;
+    }) => Promise<void>;
+    requestNotificationPermission: () => Promise<unknown>;
+    requestLocationPermission: () => Promise<unknown>;
+    checkExactNotificationSetting: () => Promise<unknown>;
+    changeExactNotificationSetting: () => Promise<unknown>;
+    getAppInfo: () => Promise<{ version?: string; build?: string }>;
+    openExternalUrl: (url: string) => Promise<void>;
+    startGoogleOAuth: (nextPath?: string) => Promise<void>;
+    cancelLocalNotifications: (ids: number[]) => Promise<void>;
+  };
+};
+
+function getNativePlugins() {
+  const capacitor = (window as CapacitorWindow).Capacitor;
+  if (!capacitor?.isNativePlatform?.()) return null;
+  return capacitor.Plugins ?? null;
+}
+
+function installNativeFacade(
+  plugins: Record<string, CapacitorPlugin | undefined>
+) {
+  const nativeWindow = window as CapacitorWindow;
+
+  nativeWindow.zikrNative = {
+    isNative: true,
+    async share(data) {
+      if (plugins.Share?.share) {
+        await plugins.Share.share(data);
+        return;
+      }
+      if (navigator.share) await navigator.share(data);
+    },
+    async haptic(style = "LIGHT") {
+      await plugins.Haptics?.impact?.({ style });
+    },
+    async pickImage() {
+      return plugins.Camera?.getPhoto?.({
+        quality: 88,
+        allowEditing: false,
+        resultType: "uri",
+        source: "PROMPT",
+      });
+    },
+    async writeFile(path, data) {
+      return plugins.Filesystem?.writeFile?.({
+        path,
+        data,
+        directory: "DATA",
+        recursive: true,
+      });
+    },
+    async getNetworkStatus() {
+      return plugins.Network?.getStatus?.();
+    },
+    async scheduleLocalNotification(notification) {
+      const localNotifications = plugins.LocalNotifications;
+      if (!localNotifications?.schedule) {
+        throw new Error("Capacitor LocalNotifications plugin is unavailable");
+      }
+      await localNotifications.schedule({
+        notifications: [
+          {
+            id: notification.id,
+            title: notification.title,
+            body: notification.body,
+            sound: notification.sound,
+            channelId: notification.channelId,
+            schedule: notification.scheduleAt
+              ? {
+                  at: new Date(notification.scheduleAt),
+                  allowWhileIdle: true,
+                }
+              : undefined,
+          },
+        ],
+      });
+    },
+    async requestNotificationPermission() {
+      return plugins.LocalNotifications?.requestPermissions?.();
+    },
+    async requestLocationPermission() {
+      return plugins.Geolocation?.requestPermissions?.();
+    },
+    async checkExactNotificationSetting() {
+      return plugins.LocalNotifications?.checkExactNotificationSetting?.();
+    },
+    async changeExactNotificationSetting() {
+      return plugins.LocalNotifications?.changeExactNotificationSetting?.();
+    },
+    async getAppInfo() {
+      const info = await plugins.App?.getInfo?.();
+      return (info as { version?: string; build?: string } | undefined) ?? {};
+    },
+    async openExternalUrl(url) {
+      if (plugins.Browser?.open) {
+        await plugins.Browser.open({ url });
+        return;
+      }
+      window.location.assign(url);
+    },
+    async startGoogleOAuth(nextPath = "/profile") {
+      const safeNext =
+        nextPath.startsWith("/") && !nextPath.startsWith("//")
+          ? nextPath
+          : "/profile";
+      const startUrl = new URL("/auth/google", window.location.origin);
+      startUrl.searchParams.set("native", "1");
+      startUrl.searchParams.set("next", safeNext);
+      const response = await fetch(startUrl, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        url?: string;
+        error?: string;
+      } | null;
+      if (!response.ok || !payload?.url) {
+        throw new Error(payload?.error ?? "تعذر بدء تسجيل الدخول عبر Google.");
+      }
+      if (plugins.Browser?.open) {
+        await plugins.Browser.open({ url: payload.url });
+        return;
+      }
+      window.location.assign(payload.url);
+    },
+    async cancelLocalNotifications(ids) {
+      if (!ids.length) return;
+      await plugins.LocalNotifications?.cancel?.({
+        notifications: ids.map(id => ({ id })),
+      });
+    },
+  };
+}
+
+export function NativeCapacitorBridge() {
+  useEffect(() => {
+    const plugins = getNativePlugins();
+    if (!plugins) return;
+
+    installNativeFacade(plugins);
+    document.documentElement.classList.add("capacitor-native");
+    // Next.js uses this attribute to coordinate router scrolling. Smooth
+    // scrolling feels delayed in the native WebView, so keep native navigation
+    // and touch scrolling immediate.
+    document.documentElement.dataset.scrollBehavior = "auto";
+    void plugins.StatusBar?.setStyle?.({ style: "DARK" });
+
+    void plugins.StatusBar?.setBackgroundColor?.({ color: "#000000" });
+    void plugins.SplashScreen?.hide?.();
+
+    const app = plugins.App;
+    const browser = plugins.Browser;
+    const network = plugins.Network;
+    const localNotifications = plugins.LocalNotifications;
+
+    let handledAuthCallback = false;
+    const handleAppUrl = (url: string) => {
+      if (!url) return;
+
+      let parsed: URL;
+      try {
+        parsed = new URL(url);
+      } catch {
+        return;
+      }
+
+      const next = parsed.searchParams.get("next");
+      const isCustomAuthCallback =
+        parsed.protocol === "com.zikr.app:" &&
+        parsed.hostname === "auth" &&
+        parsed.pathname.startsWith("/callback");
+
+      if (isCustomAuthCallback) {
+        if (handledAuthCallback) return;
+        handledAuthCallback = true;
+        void browser?.close?.();
+      }
+
+      const target = isCustomAuthCallback
+        ? `/auth/callback${parsed.search}${parsed.hash}`
+        : parsed.protocol === "com.zikr.app:" && next
+          ? next
+          : `${parsed.pathname || "/"}${parsed.search}${parsed.hash}`;
+
+      window.location.assign(target.startsWith("/") ? target : "/");
+    };
+
+    void (async () => {
+      try {
+        await loadAudioSettings();
+        const prayerAudio = getNativeAudio("prayer");
+        const dhikrAudio = getNativeAudio("dhikr");
+        const salawatAudio = getNativeAudio("salawat");
+        const channels = [
+          {
+            ...prayerAudio,
+            name: "أوقات الصلاة والأذان",
+            description: "تنبيهات أوقات الصلاة بالصوت المختار",
+            importance: 5,
+          },
+          {
+            ...dhikrAudio,
+            name: "تذكير الذكر",
+            description: "تذكيرات الذكر بالصوت المختار",
+            importance: 3,
+          },
+          {
+            ...salawatAudio,
+            name: "الصلاة على النبي",
+            description: "تذكيرات الصلاة على النبي بالصوت المختار",
+            importance: 3,
+          },
+        ];
+        const uniqueChannels = Array.from(
+          new Map(
+            channels.map(channel => [channel.channelId, channel])
+          ).values()
+        );
+        for (const channel of uniqueChannels) {
+          await localNotifications?.createChannel?.({
+            id: channel.channelId,
+            name: channel.name,
+            description: channel.description,
+            importance: channel.importance,
+            sound: channel.sound,
+            vibration: true,
+            visibility: 1,
+          });
+        }
+
+        // Android 13+ permission is returned asynchronously; the native facade
+        // exposes it to the web layer instead of pretending it is always granted.
+        await localNotifications?.requestPermissions?.();
+      } catch (error) {
+        console.warn(
+          "[native-bridge] Local notification initialization failed",
+          error
+        );
+      } finally {
+        // Do not let prayer hooks race channel creation. They can now safely
+        // schedule background alarms when this event is dispatched.
+        window.dispatchEvent(new CustomEvent("zikr:native-ready"));
+      }
+    })();
+    void plugins.PushNotifications?.requestPermissions?.();
+
+    // Browser emits this when the user closes the system Custom Tab. Notify
+    // the login button so an interrupted OAuth flow never leaves the UI stuck.
+    void browser?.addListener?.("browserFinished", () => {
+      window.dispatchEvent(new CustomEvent("zikr:native-browser-finished"));
+    });
+
+    const syncNetworkState = async () => {
+      const status = (await network?.getStatus?.()) as
+        { connected?: boolean } | undefined;
+      document.documentElement.dataset.network =
+        status?.connected === false ? "offline" : "online";
+      window.dispatchEvent(
+        new CustomEvent("zikr:native-network", { detail: status })
+      );
+    };
+
+    void syncNetworkState();
+    void network?.addListener?.("networkStatusChange", (status: unknown) => {
+      document.documentElement.dataset.network =
+        (status as { connected?: boolean })?.connected === false
+          ? "offline"
+          : "online";
+      window.dispatchEvent(
+        new CustomEvent("zikr:native-network", { detail: status })
+      );
+    });
+
+    void app?.addListener?.("appUrlOpen", (event: unknown) => {
+      handleAppUrl((event as { url?: string })?.url ?? "");
+    });
+
+    // appUrlOpen is not guaranteed to fire after a cold start. When Android
+    // launches/reuses the activity directly from the OAuth custom scheme,
+    // recover the pending URL explicitly or the browser appears stuck.
+    void (async () => {
+      const launch = (await app?.getLaunchUrl?.()) as
+        { url?: string } | undefined;
+      if (launch?.url) handleAppUrl(launch.url);
+    })();
+
+    void app?.addListener?.("appStateChange", (state: unknown) => {
+      const isActive = (state as { isActive?: boolean })?.isActive === true;
+      if (isActive) {
+        window.dispatchEvent(new CustomEvent("zikr:native-resumed"));
+      }
+      window.dispatchEvent(
+        new CustomEvent("zikr:native-app-state", { detail: state })
+      );
+    });
+  }, []);
+
+  return null;
+}

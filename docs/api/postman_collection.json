@@ -1,0 +1,275 @@
+{
+  "info": {
+    "name": "ZIKR API",
+    "description": "Complete API collection for the ZIKR Islamic platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://zikrmediaofficial.vercel.app",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "AI",
+      "item": [
+        {
+          "name": "Poetry Insight",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/poetry-insight",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"poem\": \"ألا ليت الرياح تعود يوماً...\",\n  \"title\": \"الشوق\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "200",
+              "body": "{\n  \"insight\": \"الفكرة الرئيسية: الشوق إلى الأحبة. الأسلوب: شعري عاطفي بليغ.\"\n}"
+            },
+            {
+              "name": "400 Bad Request",
+              "status": "400",
+              "body": "{\n  \"error\": \"Missing poem or title\"\n}"
+            },
+            {
+              "name": "500 Internal Error",
+              "status": "500",
+              "body": "{\n  \"error\": \"Internal server error\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth (Server Actions)",
+      "description": "These are Next.js Server Actions invoked via form submissions, not REST endpoints. Use the web UI at /auth/login, /auth/register, /auth/forgot to test.",
+      "item": [
+        {
+          "name": "Login (via /auth/login form)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "email", "value": "user@example.com" },
+                { "key": "password", "value": "password123" },
+                { "key": "next", "value": "/profile" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register (via /auth/register form)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/register",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "email", "value": "newuser@example.com" },
+                { "key": "password", "value": "password123" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/logout"
+          }
+        },
+        {
+          "name": "Forgot Password (via /auth/forgot form)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/forgot",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "email", "value": "user@example.com" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin (Server Actions)",
+      "description": "Admin operations require admin role. Tested via the /admin dashboard UI.",
+      "item": [
+        {
+          "name": "Save Site Setting",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/admin",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "key", "value": "homepage" },
+                { "key": "title", "value": "ZIKR" },
+                { "key": "body", "value": "Welcome text" },
+                { "key": "logoUrl", "value": "https://..." }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save Story",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/admin",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "title", "value": "Story Title" },
+                { "key": "slug", "value": "story-slug" },
+                { "key": "content", "value": "Story content..." },
+                { "key": "category", "value": "faith" },
+                { "key": "published", "value": "on" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save Competition",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/admin",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "title", "value": "Competition Title" },
+                { "key": "prize", "value": "Prize text" },
+                { "key": "published", "value": "on" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save Pinned Message",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/admin",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "title", "value": "Pinned Title" },
+                { "key": "body", "value": "Pinned message body" },
+                { "key": "published", "value": "on" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save Memorization Plan",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/admin",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "title", "value": "Plan Title" },
+                { "key": "cadence", "value": "daily" },
+                { "key": "published", "value": "on" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Favorites (Server Actions)",
+      "item": [
+        {
+          "name": "Add Favorite",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/favorites",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "itemRef", "value": "surah-1" },
+                { "key": "itemType", "value": "quran" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Remove Favorite",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/favorites",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "itemRef", "value": "surah-1" },
+                { "key": "itemType", "value": "quran" },
+                { "key": "action", "value": "remove" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Memorization (Server Action)",
+      "item": [
+        {
+          "name": "Evaluate Recitation",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/memorization",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "target", "value": "سورة الفاتحة", "type": "text" },
+                { "key": "expectedText", "value": "بسم الله الرحمن الرحيم...", "type": "text" },
+                { "key": "audio", "value": "", "type": "file" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spiritual AI (Server Action)",
+      "item": [
+        {
+          "name": "Search Spiritual Content",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/spiritual-ai",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "feeling", "value": "حزن" }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "200",
+              "body": "{\n  \"feeling\": \"حزن\",\n  \"responses\": [\n    { \"type\": \"quran\", \"content\": \"إِنَّ مَعَ الْعُسْرِ يُسْرًا\", \"source\": \"القرآن الكريم\" },\n    { \"type\": \"dhikr\", \"content\": \"لا حول ولا قوة إلا بالله\", \"source\": \"أذكار\" }\n  ],\n  \"aiAdvice\": \"اعلم أن الله مع الصابرين...\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

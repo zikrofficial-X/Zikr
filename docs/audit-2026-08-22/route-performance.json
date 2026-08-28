@@ -1,0 +1,360 @@
+{
+  "summary": {
+    "base": "https://zikrmediaofficial.vercel.app",
+    "checked": 43,
+    "success": 43,
+    "failures": 0,
+    "minMs": 63.91,
+    "medianMs": 179.82,
+    "maxMs": 1759.82,
+    "totalBytes": 4267828,
+    "generatedAt": "2026-08-22T07:02:52.388Z"
+  },
+  "failures": [],
+  "results": [
+    {
+      "route": "/",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 1759.82,
+      "bytes": 88309,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/quran",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 951.92,
+      "bytes": 237101,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/mushaf",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 582.87,
+      "bytes": 239672,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/hadith",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 179.82,
+      "bytes": 84370,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/adhkar",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 163.43,
+      "bytes": 59362,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/dua",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 542.22,
+      "bytes": 207847,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/prophets",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 1203.73,
+      "bytes": 157477,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/companions",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 480.5,
+      "bytes": 99835,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/scholars",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 133.5,
+      "bytes": 60625,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/articles",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 357.96,
+      "bytes": 232054,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/stories",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 414.71,
+      "bytes": 109376,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/battles",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 261.24,
+      "bytes": 114606,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/conquests",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 239.98,
+      "bytes": 98637,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/kids",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 284.3,
+      "bytes": 178526,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/memorization",
+      "status": 307,
+      "ok": true,
+      "elapsedMs": 63.91,
+      "bytes": 15,
+      "contentType": "text/plain"
+    },
+    {
+      "route": "/prayer-times",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 333.11,
+      "bytes": 49181,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/qibla",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 123.98,
+      "bytes": 47361,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/radio",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 114.61,
+      "bytes": 49097,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/reciters",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 139.25,
+      "bytes": 52325,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/tawasheeh",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 122.82,
+      "bytes": 45022,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/poetry",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 110.89,
+      "bytes": 59189,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/tafsir",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 120.72,
+      "bytes": 49789,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/tasbeeh",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 122.84,
+      "bytes": 53766,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/offline-library",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 111.78,
+      "bytes": 44307,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/search",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 116.32,
+      "bytes": 45313,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/about",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 117.64,
+      "bytes": 76827,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/platform",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 122.74,
+      "bytes": 97599,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/faq",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 122.38,
+      "bytes": 61176,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/contact",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 114.13,
+      "bytes": 50870,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/privacy",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 116.49,
+      "bytes": 52832,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/terms",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 120.48,
+      "bytes": 61862,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "route": "/api/content/stats",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 975.07,
+      "bytes": 233,
+      "contentType": "application/json"
+    },
+    {
+      "route": "/api/content/articles",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 242.81,
+      "bytes": 21983,
+      "contentType": "application/json"
+    },
+    {
+      "route": "/api/content/prophets",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 228.97,
+      "bytes": 53938,
+      "contentType": "application/json"
+    },
+    {
+      "route": "/api/duas",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 297.02,
+      "bytes": 61886,
+      "contentType": "application/json"
+    },
+    {
+      "route": "/api/hadith/books",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 408.47,
+      "bytes": 3105,
+      "contentType": "application/json"
+    },
+    {
+      "route": "/api/quran/surahs",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 423.35,
+      "bytes": 32170,
+      "contentType": "application/json"
+    },
+    {
+      "route": "/manifest.webmanifest",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 114.59,
+      "bytes": 1083,
+      "contentType": "application/manifest+json; charset=utf-8"
+    },
+    {
+      "route": "/robots.txt",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 84.18,
+      "bytes": 239,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "route": "/sitemap-index.xml",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 194.25,
+      "bytes": 393,
+      "contentType": "application/xml; charset=utf-8"
+    },
+    {
+      "route": "/api/health",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 103.25,
+      "bytes": 148,
+      "contentType": "application/json"
+    },
+    {
+      "route": "/audio/adhan.wav",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 299.7,
+      "bytes": 1102578,
+      "contentType": "audio/wave"
+    },
+    {
+      "route": "/audio/salawat.wav",
+      "status": 200,
+      "ok": true,
+      "elapsedMs": 274.14,
+      "bytes": 125744,
+      "contentType": "audio/wave"
+    }
+  ]
+}
