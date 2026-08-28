@@ -39,6 +39,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               { href: '/admin/kids', label: 'الأطفال' },
               { href: '/admin/prophets', label: 'الأنبياء' },
               { href: '/admin/battles', label: 'الغزوات' },
+              { href: '/admin/site-audio', label: 'مقاطع الأذان والتذكير' },
             ].map((item) => (
               <Link
                 key={item.href}

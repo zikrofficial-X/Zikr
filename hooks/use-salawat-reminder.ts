@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   playSalawatClip,
   unlockAudioContext,
+  refreshSiteAudio,
 } from "@/lib/audio/spiritual-tones";
 import {
   showSalawatNotification,
@@ -145,6 +146,7 @@ export interface SalawatReminderReturn {
 export function useSalawatReminder(
   options: { passive?: boolean } = {}
 ): SalawatReminderReturn {
+  useEffect(() => { void refreshSiteAudio(); }, []);
   const passive = options.passive ?? false;
   const [settings, setSettings] = useState<SalawatSettings>(DEFAULT_SETTINGS);
 
