@@ -54,7 +54,7 @@ for (const token of [
   'verifyCompletedDatasets',
   'requestOfflineRouteCache',
   'cacheRoutes?: boolean',
-  'offline-content-version-v5',
+  'offline-content-version-v3',
   'scholars/ahmad-ibn-hanbal',
   'videos/importance-of-prayer',
 ]) {
