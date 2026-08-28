@@ -4,6 +4,8 @@ import { useCallback, useRef, useState, useEffect } from 'react';
 import {
   AZAN_CLIP_URL,
   playAzanTone,
+  getSiteAudioUrl,
+  refreshSiteAudio,
   unlockAudioContext,
 } from '@/lib/audio/spiritual-tones';
 
@@ -32,6 +34,7 @@ export function useAdhanPlayer(): UseAdhanPlayerReturn {
 
   // Initialize audio element
   useEffect(() => {
+    void refreshSiteAudio();
     if (!audioRef.current) {
       audioRef.current = new Audio();
       audioRef.current.volume = volume / 100;
@@ -100,7 +103,7 @@ export function useAdhanPlayer(): UseAdhanPlayerReturn {
       makkah: 'https://www.islamcan.com/audio/adhan/azan1.mp3',
       madinah: 'https://www.islamcan.com/audio/adhan/azan2.mp3',
     };
-    const audioPath = audioSources[voice];
+    const audioPath = getSiteAudioUrl('adhan') || audioSources[voice];
 
     // Unlock the guaranteed Web Audio fallback from the same user gesture.
     unlockAudioContext();

@@ -5,6 +5,7 @@ import {
   playAzanClip,
   unlockAudioContext,
   isAudioUnlocked,
+  refreshSiteAudio,
 } from "@/lib/audio/spiritual-tones";
 import {
   showPrayerNotification,
@@ -302,6 +303,10 @@ export function usePrayerAlert(
   const [notificationPermission, setNotificationPermission] =
     useState<PermResult>("default");
   const alertCallbackRef = useRef<((p: PrayerKey) => void) | null>(null);
+
+  useEffect(() => {
+    void refreshSiteAudio();
+  }, []);
 
   // Load settings and check notification permission on mount
   useEffect(() => {

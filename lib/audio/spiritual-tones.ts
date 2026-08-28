@@ -99,11 +99,36 @@ export const SALAWAT_CLIP_URL = "/audio/salawat.wav";
 let azanEl: HTMLAudioElement | null = null;
 let dhikrEl: HTMLAudioElement | null = null;
 let salawatEl: HTMLAudioElement | null = null;
+type SiteAudioKind = 'adhan' | 'salawat';
+const siteAudioUrls: Partial<Record<SiteAudioKind, string>> = {};
+let siteAudioRequest: Promise<void> | null = null;
+
+/** Load the administrator-selected clips without making playback depend on the request. */
+export function refreshSiteAudio(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  if (!siteAudioRequest) {
+    siteAudioRequest = fetch('/api/site-audio', { cache: 'no-store' })
+      .then(response => response.ok ? response.json() : null)
+      .then(payload => {
+        for (const kind of ['adhan', 'salawat'] as const) {
+          const url = payload?.assets?.[kind]?.url;
+          if (typeof url === 'string' && url.startsWith('http')) siteAudioUrls[kind] = url;
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => { siteAudioRequest = null; });
+  }
+  return siteAudioRequest;
+}
+
+export function getSiteAudioUrl(kind: SiteAudioKind): string | null {
+  return siteAudioUrls[kind] ?? null;
+}
 function getClipEl(kind: "azan" | "dhikr" | "salawat"): HTMLAudioElement | null {
   if (typeof window === "undefined") return null;
   if (kind === "azan") {
     if (!azanEl) {
-      azanEl = new Audio(getAudioUrl('prayer') || AZAN_CLIP_URL);
+      azanEl = new Audio(getSiteAudioUrl('adhan') || getAudioUrl('prayer') || AZAN_CLIP_URL);
       azanEl.preload = "none";
     }
     return azanEl;
@@ -116,7 +141,7 @@ function getClipEl(kind: "azan" | "dhikr" | "salawat"): HTMLAudioElement | null 
     return dhikrEl;
   }
   if (!salawatEl) {
-    salawatEl = new Audio(getAudioUrl('salawat') || SALAWAT_CLIP_URL);
+    salawatEl = new Audio(getSiteAudioUrl('salawat') || getAudioUrl('salawat') || SALAWAT_CLIP_URL);
     salawatEl.preload = "none";
   }
   return salawatEl;
@@ -132,6 +157,8 @@ export function playAzanClip(): void {
     playAzanTone();
     return;
   }
+  const siteUrl = getSiteAudioUrl('adhan');
+  if (siteUrl && el.src !== siteUrl) el.src = siteUrl;
   el.volume = masterVolume;
   el.currentTime = 0;
   el.play().catch(() => playAzanTone());
@@ -166,6 +193,8 @@ export function playSalawatClip(): void {
     playSalawatTone();
     return;
   }
+  const siteUrl = getSiteAudioUrl('salawat');
+  if (siteUrl && el.src !== siteUrl) el.src = siteUrl;
   el.volume = masterVolume;
   el.currentTime = 0;
   el.play().catch(() => playSalawatTone());

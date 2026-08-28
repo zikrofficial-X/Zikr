@@ -104,6 +104,15 @@ const navItems = [
           </svg>
         ),
       },
+      {
+        href: '/admin/site-audio',
+        label: 'مقاطع الأذان والتذكير',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4.5 h-4.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 18V5l10-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm10-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          </svg>
+        ),
+      },
     ],
   },
   {
