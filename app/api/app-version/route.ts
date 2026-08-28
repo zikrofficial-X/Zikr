@@ -5,6 +5,12 @@ const RELEASES_API_BASE =
 const RELEASE_DOWNLOAD_BASE =
   "https://github.com/mohamedalaa7785-cpu/Zikr/releases/download";
 const MAX_RELEASE_PAGES = 3;
+const githubToken = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
+const githubHeaders: HeadersInit = {
+  Accept: "application/vnd.github+json",
+  "User-Agent": "ZIKR-platform-version-check",
+  ...(githubToken ? { Authorization: `Bearer ${githubToken}` } : {}),
+};
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
@@ -45,13 +51,7 @@ async function getLatestStableReleaseWithApk(): Promise<ReleaseResponse | null> 
   for (let page = 1; page <= MAX_RELEASE_PAGES; page += 1) {
     const response = await fetch(
       `${RELEASES_API_BASE}?per_page=100&page=${page}`,
-      {
-        headers: {
-          Accept: "application/vnd.github+json",
-          "User-Agent": "ZIKR-platform-version-check",
-        },
-        cache: "no-store",
-      },
+      { headers: githubHeaders, cache: "no-store" },
     );
 
     if (!response.ok) return null;
@@ -87,6 +87,20 @@ async function getLatestStableReleaseWithApk(): Promise<ReleaseResponse | null> 
 
 export async function GET() {
   try {
+    if (!githubToken) {
+      console.error("[app-version] GITHUB_TOKEN is missing; private releases cannot be read.");
+      return NextResponse.json(
+        { error: "إعداد الوصول إلى إصدارات Android غير مكتمل." },
+        {
+          status: 503,
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            Pragma: "no-cache",
+          },
+        },
+      );
+    }
+
     const release = await getLatestStableReleaseWithApk();
     if (!release) {
       return NextResponse.json(
