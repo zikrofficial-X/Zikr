@@ -67,6 +67,35 @@ jobs:
       - checkout
 
       - run:
+          name: Enable pnpm
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+
+            sudo corepack enable
+            corepack prepare pnpm@9.15.0 --activate
+
+            node --version
+            pnpm --version
+
+      - restore_cache:
+          keys:
+            - zikr-pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
+            - zikr-pnpm-v1-
+
+      - run:
+          name: Install dependencies
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile
+
+      - save_cache:
+          key: zikr-pnpm-v1-{{ checksum "pnpm-lock.yaml" }}
+          paths:
+            - ~/.local/share/pnpm/store
+
+      - run:
           name: Verify production deployment is healthy
           shell: /bin/bash
           command: |
@@ -175,6 +204,7 @@ jobs:
               >/dev/null
 
             sudo apt-get update
+
             sudo apt-get install -y --no-install-recommends gh
 
             gh --version
@@ -323,17 +353,17 @@ jobs:
 
             echo "PKCS12 keystore validation passed."
 
-            cat > "$PROPERTIES_PATH" <<EOF
-            storeFile=$KEYSTORE_PATH
-            storeType=PKCS12
-            storePassword=$ANDROID_KEYSTORE_PASSWORD
-            keyAlias=$ANDROID_KEY_ALIAS
-            keyPassword=$ANDROID_KEY_PASSWORD
-            EOF
+            printf '%s\n' \
+              "storeFile=$KEYSTORE_PATH" \
+              "storeType=PKCS12" \
+              "storePassword=$ANDROID_KEYSTORE_PASSWORD" \
+              "keyAlias=$ANDROID_KEY_ALIAS" \
+              "keyPassword=$ANDROID_KEY_PASSWORD" \
+              > "$PROPERTIES_PATH"
 
             chmod 600 "$PROPERTIES_PATH"
 
-            echo "Gradle signing properties created."
+            echo "Gradle signing properties created successfully."
 
 
       # ----------------------------------------------------------
@@ -388,15 +418,8 @@ jobs:
             APK="android/app/build/outputs/apk/release/app-release.apk"
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
 
-            if [[ ! -s "$APK" ]]; then
-              echo "APK was not generated." >&2
-              exit 1
-            fi
-
-            if [[ ! -s "$AAB" ]]; then
-              echo "AAB was not generated." >&2
-              exit 1
-            fi
+            test -s "$APK"
+            test -s "$AAB"
 
             echo "APK and AAB generated successfully."
 
@@ -413,13 +436,9 @@ jobs:
               exit 1
             fi
 
-            echo "Verifying APK signature..."
-
             "$APKSIGNER" verify --verbose "$APK"
 
             echo "APK signature verification passed."
-
-            echo "Generating SHA-256 checksums..."
 
             sha256sum "$APK" "$AAB" > SHA256SUMS
 
@@ -437,8 +456,6 @@ jobs:
               echo "Unable to locate Android apkanalyzer." >&2
               exit 1
             fi
-
-            echo "Checking application ID..."
 
             "$APKANALYZER" manifest application-id "$APK" \
               | grep -Fx 'com.zikr.app'
@@ -461,7 +478,6 @@ jobs:
             fi
 
             gh --version
-
             gh auth status
 
 
@@ -501,7 +517,6 @@ jobs:
               --repo "$REPO" \
               >/dev/null 2>&1
             then
-
               echo "Release exists. Uploading latest artifacts..."
 
               gh release upload "$CIRCLE_TAG" \
@@ -510,9 +525,7 @@ jobs:
                 SHA256SUMS \
                 --repo "$REPO" \
                 --clobber
-
             else
-
               echo "Creating GitHub release..."
 
               gh release create "$CIRCLE_TAG" \
@@ -523,7 +536,6 @@ jobs:
                 --verify-tag \
                 --generate-notes \
                 --title "ZIKR $CIRCLE_TAG"
-
             fi
 
             echo "GitHub release completed successfully."
@@ -622,7 +634,7 @@ jobs:
 
             for name in "${REQUIRED_VARS[@]}"; do
               if [[ -z "${!name:-}" ]]; then
-                echo "Missing required CircleCI project environment variable: ${name}" >&2
+                echo "Missing required CircleCI environment variable: ${name}" >&2
                 exit 1
               fi
             done
@@ -661,7 +673,6 @@ workflows:
       - production-smoke:
           requires:
             - verify
-
           filters:
             branches:
               only: main
@@ -669,10 +680,6 @@ workflows:
 
   # ------------------------------------------------------------
   # Android release on semantic version tag
-  #
-  # Example:
-  # v1.0.0
-  # v1.2.3
   # ------------------------------------------------------------
   android-release-on-tag:
     jobs:
@@ -680,7 +687,6 @@ workflows:
           filters:
             branches:
               ignore: /.*/
-
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
 
@@ -690,6 +696,5 @@ workflows:
   # ------------------------------------------------------------
   scheduled-automation:
     when: << pipeline.parameters.run_automation >>
-
     jobs:
       - automate-content
