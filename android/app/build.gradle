@@ -16,6 +16,19 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
+    packaging {
+        resources {
+            excludes += [
+                'META-INF/com/android/build/gradle/app-metadata.properties',
+                'META-INF/version-control-info.textproto',
+                'META-INF/*.version',
+                'META-INF/androidx.*.version',
+                'META-INF/kotlinx_coroutines_*.version'
+            ]
+        }
+    }
+
     def signingPropertiesFile = rootProject.file('keystore.properties')
     def signingProperties = new Properties()
     if (signingPropertiesFile.exists()) {
@@ -29,6 +42,8 @@ android {
                 storePassword signingProperties['storePassword']
                 keyAlias signingProperties['keyAlias']
                 keyPassword signingProperties['keyPassword']
+                v1SigningEnabled true
+                v2SigningEnabled true
             }
         }
     }
