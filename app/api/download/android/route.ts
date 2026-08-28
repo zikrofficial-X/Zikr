@@ -127,8 +127,6 @@ async function getSignedAssetUrl(assetId: number): Promise<string | null> {
 
   if (!response.ok) return null;
 
-  // GitHub may return the asset bytes directly instead of a redirect.
-  // Do not proxy a large APK through the Vercel function; treat this as a failure.
   return null;
 }
 
@@ -160,13 +158,14 @@ export async function GET() {
         setting = { mode: "pinned", releaseTag: value.releaseTag };
       }
     } catch {
-      // If the optional admin setting is unavailable, safely fall back to latest.
+      // Fall back to the latest stable release when the optional admin setting is unavailable.
     }
 
     const release =
       setting.mode === "pinned" && setting.releaseTag
         ? await fetchTaggedStable(setting.releaseTag)
         : await fetchLatestStable();
+
     const tag = release?.tag_name?.trim();
     const apk = release?.assets?.find(asset =>
       asset.name?.toLowerCase().endsWith(".apk"),
