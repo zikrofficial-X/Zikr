@@ -5,7 +5,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/ui/section-header';
-import { getYoutubeChannelFeed } from '@/lib/services/youtube';
+import { getYoutubeChannelFeed, getYoutubeSyncHealth } from '@/lib/services/youtube';
 
 export const metadata: Metadata = pageMetadata({
   title: 'قناة يوتيوب | ذِكر',
@@ -13,7 +13,7 @@ export const metadata: Metadata = pageMetadata({
   path: '/youtube',
 });
 
-export const revalidate = 1800;
+export const revalidate = 300;
 
 function formatDate(value: string | null): string {
   if (!value) return '';
@@ -25,7 +25,10 @@ function formatDate(value: string | null): string {
 }
 
 export default async function YoutubePage() {
-  const feed = await getYoutubeChannelFeed(24);
+  const [feed, health] = await Promise.all([
+    getYoutubeChannelFeed(24),
+    getYoutubeSyncHealth(),
+  ]);
   const channelUrl = feed.channelId
     ? `https://www.youtube.com/channel/${feed.channelId}`
     : 'https://www.youtube.com/@zikr';
@@ -52,9 +55,15 @@ export default async function YoutubePage() {
         </Card>
       )}
 
-      {feed.configured && feed.error && (
+      {feed.configured && feed.error && feed.videos.length === 0 && (
         <Card className="p-6 text-center">
-          <p className="text-brand-cream/70">تعذّر تحميل المقاطع حاليًا. حاول مرة أخرى لاحقًا.</p>
+          <p className="text-brand-cream/70">تعذّر تحميل المقاطع المخزنة حاليًا. حاول مرة أخرى لاحقًا.</p>
+        </Card>
+      )}
+
+      {feed.configured && health.status === 'quota_exceeded' && (
+        <Card className="p-4 text-center border-amber-500/20 bg-amber-500/5">
+          <p className="text-sm text-amber-200/80">تعذر التحديث المباشر من يوتيوب مؤقتًا، ويتم عرض آخر محتوى تمت مزامنته.</p>
         </Card>
       )}
 
@@ -63,32 +72,14 @@ export default async function YoutubePage() {
           <SectionHeader title="أحدث الفيديوهات" />
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {feed.videos.map((video) => (
-              <a
-                key={video.id}
-                href={`https://www.youtube.com/watch?v=${video.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group"
-              >
+              <a key={video.id} href={`https://www.youtube.com/watch?v=${video.id}`} target="_blank" rel="noopener noreferrer" className="group">
                 <Card className="overflow-hidden h-full flex flex-col hover:border-brand-gold/50 transition-all">
                   <div className="relative aspect-video bg-black/40">
-                    {video.thumbnailUrl ? (
-                      <Image
-                        src={video.thumbnailUrl}
-                        alt={video.title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        className="object-cover"
-                      />
-                    ) : null}
+                    {video.thumbnailUrl ? <Image src={video.thumbnailUrl} alt={video.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" /> : null}
                   </div>
                   <div className="p-4 space-y-2 flex-1">
-                    <h3 className="text-sm font-semibold text-brand-cream line-clamp-2 group-hover:text-brand-gold transition-colors">
-                      {video.title}
-                    </h3>
-                    {video.publishedAt && (
-                      <p className="text-xs text-brand-cream/50">{formatDate(video.publishedAt)}</p>
-                    )}
+                    <h3 className="text-sm font-semibold text-brand-cream line-clamp-2 group-hover:text-brand-gold transition-colors">{video.title}</h3>
+                    {video.publishedAt && <p className="text-xs text-brand-cream/50">{formatDate(video.publishedAt)}</p>}
                   </div>
                 </Card>
               </a>
@@ -97,48 +88,9 @@ export default async function YoutubePage() {
         </section>
       )}
 
-      {feed.playlists.length > 0 && (
-        <section className="space-y-6">
-          <SectionHeader title="قوائم التشغيل" />
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {feed.playlists.map((playlist) => (
-              <a
-                key={playlist.id}
-                href={`https://www.youtube.com/playlist?list=${playlist.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group"
-              >
-                <Card className="overflow-hidden h-full flex flex-col hover:border-brand-gold/50 transition-all">
-                  <div className="relative aspect-video bg-black/40">
-                    {playlist.thumbnailUrl ? (
-                      <Image
-                        src={playlist.thumbnailUrl}
-                        alt={playlist.title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        className="object-cover"
-                      />
-                    ) : null}
-                  </div>
-                  <div className="p-4 space-y-2 flex-1">
-                    <h3 className="text-sm font-semibold text-brand-cream line-clamp-2 group-hover:text-brand-gold transition-colors">
-                      {playlist.title}
-                    </h3>
-                    {playlist.itemCount != null && (
-                      <p className="text-xs text-brand-cream/50">{playlist.itemCount} مقطع</p>
-                    )}
-                  </div>
-                </Card>
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {feed.configured && !feed.error && feed.videos.length === 0 && feed.playlists.length === 0 && (
+      {feed.configured && feed.videos.length === 0 && !feed.error && (
         <Card className="p-6 text-center">
-          <p className="text-brand-cream/70">لا توجد مقاطع منشورة حاليًا على القناة.</p>
+          <p className="text-brand-cream/70">لا توجد مقاطع منشورة حاليًا على القناة أو لم تتم أول مزامنة بعد.</p>
         </Card>
       )}
     </Container>
