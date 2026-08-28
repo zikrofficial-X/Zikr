@@ -19,13 +19,13 @@ export async function generateMetadata({ params }: VideoDetailPageProps): Promis
   if (!video) return pageMetadata({ title: 'الفيديو غير موجود', path: `/videos/${slug}` });
   return pageMetadata({
     title: video.title,
-    description: video.description ?? `فيديو إسلامي من منصة ${'ذِكر'}.`,
+    description: video.description ?? `فيديو إسلامي من منصة ذِكر.`,
     path: `/videos/${video.slug}`,
   });
 }
 
 export async function generateStaticParams() {
-  const videos = await getVideos(\undefined, 100);
+  const videos = await getVideos(undefined, 100);
   return videos.map(video => ({ slug: video.slug }));
 }
 
