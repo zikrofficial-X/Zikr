@@ -31,7 +31,7 @@ export const AUDIO_CHOICES: readonly AudioChoice[] = [
   {
     key: "adhan-04",
     label: "الأذان 4 — صوت واضح متزن",
-    webUrl: "/audio/adhan_04-iapetus.wav",
+    webUrl: "/audio/adhan-04-iapetus.wav",
     nativeFile: "adhan_04_iapetus.wav",
   },
   {
