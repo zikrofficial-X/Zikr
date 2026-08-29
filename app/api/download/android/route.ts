@@ -64,7 +64,7 @@ async function fetchLatestStable(): Promise<GitHubRelease | null> {
   for (let page = 1; page <= MAX_RELEASE_PAGES; page += 1) {
     const response = await fetch(
       `${RELEASES_API_BASE}?per_page=100&page=${page}`,
-      { headers: githubHeaders, cache: "no-store" },
+      { headers: githubHeaders, cache: "no-store" }
     );
 
     if (!response.ok) return null;
@@ -81,9 +81,7 @@ async function fetchLatestStable(): Promise<GitHubRelease | null> {
       !release.draft &&
       !release.prerelease &&
       Boolean(release.tag_name?.trim()) &&
-      release.assets?.some(asset =>
-        asset.name?.toLowerCase().endsWith(".apk"),
-      ),
+      release.assets?.some(asset => asset.name?.toLowerCase().endsWith(".apk"))
   );
 
   candidates.sort((a, b) => {
@@ -100,10 +98,13 @@ async function fetchLatestStable(): Promise<GitHubRelease | null> {
 
 async function fetchTaggedStable(tag: string): Promise<GitHubRelease | null> {
   if (!githubToken || !/^[A-Za-z0-9._-]+$/.test(tag)) return null;
-  const response = await fetch(`${TAG_RELEASE_API}/${encodeURIComponent(tag)}`, {
-    headers: githubHeaders,
-    cache: "no-store",
-  });
+  const response = await fetch(
+    `${TAG_RELEASE_API}/${encodeURIComponent(tag)}`,
+    {
+      headers: githubHeaders,
+      cache: "no-store",
+    }
+  );
   if (!response.ok) return null;
   const release = (await response.json()) as GitHubRelease;
   return release.draft || release.prerelease ? null : release;
@@ -141,7 +142,7 @@ export async function GET() {
             "Cache-Control": "no-store, no-cache, must-revalidate",
             Pragma: "no-cache",
           },
-        },
+        }
       );
     }
 
@@ -161,14 +162,27 @@ export async function GET() {
       // Fall back to the latest stable release when the optional admin setting is unavailable.
     }
 
-    const release =
+    const latestStable = await fetchLatestStable();
+    const pinnedRelease =
       setting.mode === "pinned" && setting.releaseTag
         ? await fetchTaggedStable(setting.releaseTag)
-        : await fetchLatestStable();
+        : null;
+
+    // Never serve an older pinned APK when a newer stable release is available.
+    // This prevents stale admin settings from making the website install an old app.
+    const release =
+      pinnedRelease &&
+      latestStable &&
+      compareVersions(
+        pinnedRelease.tag_name ?? "",
+        latestStable.tag_name ?? ""
+      ) >= 0
+        ? pinnedRelease
+        : (latestStable ?? pinnedRelease);
 
     const tag = release?.tag_name?.trim();
     const apk = release?.assets?.find(asset =>
-      asset.name?.toLowerCase().endsWith(".apk"),
+      asset.name?.toLowerCase().endsWith(".apk")
     );
 
     if (!tag || !apk?.name || !apk.id) {
@@ -180,7 +194,7 @@ export async function GET() {
             "Cache-Control": "no-store, no-cache, must-revalidate",
             Pragma: "no-cache",
           },
-        },
+        }
       );
     }
 
@@ -194,7 +208,7 @@ export async function GET() {
             "Cache-Control": "no-store, no-cache, must-revalidate",
             Pragma: "no-cache",
           },
-        },
+        }
       );
     }
 
@@ -215,7 +229,7 @@ export async function GET() {
           "Cache-Control": "no-store, no-cache, must-revalidate",
           Pragma: "no-cache",
         },
-      },
+      }
     );
   }
 }
