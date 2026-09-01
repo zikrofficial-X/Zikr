@@ -23,7 +23,7 @@ export function getNativeSocialSyncConfig(): NativeSocialSyncConfig {
   if (!youtubeChannelId) throw new Error('YOUTUBE_CHANNEL_ID is required for native social sync.');
   if (!facebookPageId) throw new Error('FACEBOOK_PAGE_ID is required for native social sync.');
   if (!facebookPageAccessToken) throw new Error('FACEBOOK_PAGE_ACCESS_TOKEN is required for native social sync.');
-  if (!/^v\\d+\\.\\d+$/.test(graphApiVersion)) throw new Error('META_GRAPH_API_VERSION must look like vNN.N.');
+  if (!/^v\d+\.\d+$/.test(graphApiVersion)) throw new Error('META_GRAPH_API_VERSION must look like vNN.N.');
 
   return { youtubeChannelId, facebookPageId, facebookPageAccessToken, graphApiVersion };
 }
@@ -44,7 +44,7 @@ export function assertNativeMediaUrl(mediaUrl: string | null | undefined): strin
     throw new Error('Native video media URL must use HTTPS.');
   }
 
-  if (/youtube\\.com|youtu\\.be/i.test(url.hostname)) {
+  if (/youtube\.com|youtu\.be/i.test(url.hostname)) {
     throw new Error('YouTube watch URLs are not valid native media sources.');
   }
 
