@@ -38,7 +38,9 @@ export default function OfflineLibraryPage() {
       .then(async (response) => {
         if (!response.ok) return [];
         const routes = await response.json();
-        return Array.isArray(routes) ? routes.filter((r): r is string => typeof r === 'string') : [];
+        return Array.isArray(routes)
+          ? routes.filter((route): route is string => typeof route === 'string')
+          : [];
       })
       .then(setSupplementalRoutes)
       .catch(() => setSupplementalRoutes([]));
@@ -57,26 +59,30 @@ export default function OfflineLibraryPage() {
 
     try {
       const result = await hydrateOfflineContent({ force: true, cacheRoutes: true });
+      const coreRoutes = new Set(result?.manifest?.routes ?? []);
+      const additionalRoutes = supplementalRoutes.filter(route => !coreRoutes.has(route));
+
       let totalCachedRoutes = result?.cachedRoutes ?? 0;
       let allFailedRoutes = result?.failedRoutes ?? [];
 
-      if (supplementalRoutes.length > 0) {
-        const supplementalResult = await requestOfflineRouteCache(supplementalRoutes);
+      if (additionalRoutes.length > 0) {
+        const supplementalResult = await requestOfflineRouteCache(additionalRoutes);
         totalCachedRoutes += supplementalResult.cachedRoutes;
         allFailedRoutes = Array.from(
           new Set([...allFailedRoutes, ...supplementalResult.failedRoutes]),
         );
       }
 
+      const complete = Boolean(result?.complete) && allFailedRoutes.length === 0;
       setManifest(result?.manifest ?? null);
-      setIsComplete(result?.complete ?? false);
+      setIsComplete(complete);
       setCachedRoutes(totalCachedRoutes);
       setFailedRoutes(allFailedRoutes);
 
       if (!result) {
         setStatus('تعذر تنزيل الحزمة؛ تحقق من الاتصال ثم أعد المحاولة.');
-      } else if (result.complete && allFailedRoutes.length === 0) {
-        setStatus(`تم حفظ جميع datasets وتجهيز ${totalCachedRoutes} صفحة محتوى للعمل دون إنترنت.`);
+      } else if (complete) {
+        setStatus(`تم حفظ datasets وتجهيز ${totalCachedRoutes} صفحة محتوى للعمل دون إنترنت.`);
       } else if (result.complete) {
         setStatus(
           `تم حفظ جميع datasets. تم تجهيز ${totalCachedRoutes} صفحة، وتعذر تجهيز ${allFailedRoutes.length} صفحة ويمكن إعادة المحاولة.`,
@@ -96,7 +102,9 @@ export default function OfflineLibraryPage() {
 
   const datasets = manifest ? Object.entries(manifest.datasets) : [];
   const total = datasets.reduce((sum, [, item]) => sum + item.count, 0);
-  const routeTotal = manifest ? new Set([...manifest.routes, ...supplementalRoutes]).size : supplementalRoutes.length;
+  const routeTotal = manifest
+    ? new Set([...manifest.routes, ...supplementalRoutes]).size
+    : supplementalRoutes.length;
 
   return (
     <Container className="space-y-8 py-10 text-right">
