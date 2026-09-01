@@ -1,0 +1,3 @@
+-- Reconciliation marker for production migration 20260901012050.
+-- The schema change is already represented by the hardened YouTube trigger migrations
+-- tracked in this repository; this file preserves migration-history parity.
