@@ -1,0 +1,2 @@
+-- Reconciliation marker for production migration 20260901055404.
+-- Current hardening state is documented and represented by tracked migrations.
