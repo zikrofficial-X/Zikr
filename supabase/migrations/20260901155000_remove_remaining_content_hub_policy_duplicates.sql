@@ -1,0 +1,4 @@
+-- Reconciliation marker for the production migration history.
+-- Version 20260901155000 is already applied to the linked Supabase project.
+-- This migration intentionally contains no DDL so the local history matches
+-- production without replaying an already-applied schema change.
