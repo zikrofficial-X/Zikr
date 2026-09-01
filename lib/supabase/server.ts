@@ -2,8 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getServerEnv } from "@/lib/env";
 
-// Lazy accessors — read at call-time, not at module-evaluation time.
-// This prevents build-time / CI errors when env vars are absent.
 function getEnv() {
   const env = getServerEnv();
   const url = env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,12 +21,6 @@ function getEnv() {
   return { url, anonKey, serviceKey };
 }
 
-/**
- * True when the Supabase URL + anon key are present.
- * Route handlers and server components use this to degrade gracefully
- * (empty content, disabled account features) instead of throwing 500s
- * when the database is not connected.
- */
 export function isSupabaseConfigured(): boolean {
   const env = getServerEnv();
   return Boolean(
@@ -36,12 +28,6 @@ export function isSupabaseConfigured(): boolean {
   );
 }
 
-/**
- * Service-role client — bypasses RLS.
- * Use only in server-only code (route handlers, server actions) where you need
- * to write data for a user who may not yet have an active session cookie
- * (e.g. right after an OAuth code exchange before cookies are flushed).
- */
 export function createAdminClient() {
   const { url, serviceKey } = getEnv();
   if (!serviceKey) {
@@ -55,10 +41,6 @@ export function createAdminClient() {
   });
 }
 
-/**
- * Do NOT put this client in a global variable.
- * Always create a new client within each function call.
- */
 export async function createClient() {
   const { url, anonKey } = getEnv();
   const cookieStore = await cookies();
@@ -81,7 +63,6 @@ export async function createClient() {
   });
 }
 
-/** Convenience: get the currently authenticated user (server-side). */
 export async function getSupabaseUser() {
   const supabase = await createClient();
   const {
@@ -90,14 +71,25 @@ export async function getSupabaseUser() {
   return user;
 }
 
-// ─── Legacy REST compatibility helpers ───────────────────────────────────────
-// These wrap the Supabase REST API directly, used by older services that
-// have not yet been migrated to the supabase-js client.
-
 type RestRequestInit = RequestInit & {
-  /** Maximum time allowed for the upstream REST request. */
   timeoutMs?: number;
 };
+
+function isRetryableTransportError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = (error as Error & { cause?: unknown }).cause;
+  const causeCode =
+    typeof code === "object" && code !== null && "code" in code
+      ? String((code as { code?: unknown }).code ?? "")
+      : "";
+  return (
+    error.name === "AbortError" ||
+    error.name === "TimeoutError" ||
+    causeCode === "UND_ERR_SOCKET" ||
+    causeCode === "ECONNRESET" ||
+    causeCode === "ETIMEDOUT"
+  );
+}
 
 async function restRequest<T>(
   path: string,
@@ -106,45 +98,63 @@ async function restRequest<T>(
 ): Promise<T> {
   const { url, anonKey } = getEnv();
   const key = apiKey ?? anonKey;
-  const { timeoutMs = 8000, ...fetchInit } = init ?? {};
+  const { timeoutMs = 20000, ...fetchInit } = init ?? {};
+  const method = (fetchInit.method ?? "GET").toUpperCase();
+  const retryableMethod = method === "GET" || method === "HEAD";
+  const maxAttempts = retryableMethod ? 3 : 1;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  let lastError: unknown = null;
 
-  let res: Response;
-  try {
-    res = await fetch(`${url}${path}`, {
-      ...fetchInit,
-      headers: {
-        "Content-Type": "application/json",
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        ...(fetchInit.headers || {}),
-      },
-      cache: fetchInit.cache ?? "no-store",
-      signal: fetchInit.signal ?? controller.signal,
-    });
-  } finally {
-    clearTimeout(timeoutId);
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(`${url}${path}`, {
+        ...fetchInit,
+        headers: {
+          "Content-Type": "application/json",
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          ...(fetchInit.headers || {}),
+        },
+        cache: fetchInit.cache ?? "no-store",
+        signal: fetchInit.signal ?? controller.signal,
+      });
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        // Retry transient upstream failures only for idempotent requests.
+        if (retryableMethod && attempt < maxAttempts && res.status >= 500) {
+          await new Promise(resolve => setTimeout(resolve, 250 * attempt));
+          continue;
+        }
+        throw new Error(`Supabase REST ${res.status}: ${body}`);
+      }
+
+      if (res.status === 204) return undefined as T;
+      const text = await res.text();
+      if (!text) return undefined as T;
+      return JSON.parse(text) as T;
+    } catch (error) {
+      lastError = error;
+      if (!retryableMethod || attempt >= maxAttempts || !isRetryableTransportError(error)) {
+        throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, 250 * attempt));
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Supabase REST ${res.status}: ${body}`);
-  }
-  if (res.status === 204) return undefined as T;
-  const text = await res.text();
-  if (!text) return undefined as T;
-  return JSON.parse(text) as T;
+  throw lastError instanceof Error ? lastError : new Error("Supabase REST request failed");
 }
 
-/** Authenticated REST request using the anon key. */
 export const supabaseServerAnonRequest = <T>(
   path: string,
   init?: RestRequestInit
 ) => restRequest<T>(path, init);
 
-/** Authenticated REST request using the service-role key (bypasses RLS). */
 export const supabaseServerAdminRequest = <T>(
   path: string,
   init?: RestRequestInit
@@ -159,10 +169,6 @@ export const supabaseServerAdminRequest = <T>(
     return restRequest<T>(path, init, serviceKey);
   })();
 
-/**
- * Exact row count of a table (service-role, bypasses RLS).
- * Uses a HEAD request with `Prefer: count=exact` and parses the Content-Range header.
- */
 export async function supabaseServerAdminCount(table: string): Promise<number> {
   const { url, serviceKey } = getEnv();
   if (!serviceKey) {
@@ -180,22 +186,21 @@ export async function supabaseServerAdminCount(table: string): Promise<number> {
         Prefer: "count=exact",
       },
       cache: "no-store",
+      signal: AbortSignal.timeout(20000),
     });
     if (!res.ok) {
-      console.error(`[supabase] Count failed for ${table}: HTTP ${res.status}`);
+      console.warn(`[supabase] Count failed for ${table}: HTTP ${res.status}`);
       return 0;
     }
-    // Content-Range: 0-24/3573 → total after the slash
     const range = res.headers.get("content-range") ?? "";
     const total = Number(range.split("/")[1]);
     return Number.isFinite(total) ? total : 0;
   } catch (error) {
-    console.error(`[supabase] Count failed for ${table}:`, error);
+    console.warn(`[supabase] Count failed for ${table}:`, error);
     return 0;
   }
 }
 
-/** Legacy: check Supabase connectivity. */
 export async function assertSupabaseConnection() {
   try {
     await restRequest("/rest/v1/");
