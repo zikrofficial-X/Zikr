@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 
 const manifestPath = 'public/offline-content/v1/manifest.json';
+const routeSnapshotPath = 'public/offline-content/v2/routes.json';
 const offlinePackPath = 'lib/offline-pack.ts';
 const serviceWorkerPath = 'public/sw.js';
 const offlineLibraryPath = 'app/offline-library/page.tsx';
@@ -9,7 +10,7 @@ const guardPath = 'components/layout/offline-navigation-guard.tsx';
 const read = file => (existsSync(file) ? readFileSync(file, 'utf8') : '');
 const failures = [];
 
-for (const file of [manifestPath, offlinePackPath, serviceWorkerPath, offlineLibraryPath, guardPath]) {
+for (const file of [manifestPath, routeSnapshotPath, offlinePackPath, serviceWorkerPath, offlineLibraryPath, guardPath]) {
   if (!existsSync(file)) failures.push(`Missing ${file}`);
 }
 
@@ -47,6 +48,28 @@ try {
   failures.push(`Offline manifest JSON is invalid: ${error instanceof Error ? error.message : 'unknown error'}`);
 }
 
+try {
+  const routeSnapshot = JSON.parse(read(routeSnapshotPath));
+  if (!Array.isArray(routeSnapshot) || routeSnapshot.length < 100) {
+    failures.push('Offline v2 public route inventory is unexpectedly small');
+  }
+  const seen = new Set();
+  const sensitivePrefixes = ['/api/', '/auth/', '/admin', '/profile', '/favorites'];
+  for (const route of routeSnapshot) {
+    if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) {
+      failures.push(`Invalid v2 offline route: ${String(route)}`);
+      continue;
+    }
+    if (seen.has(route)) failures.push(`Duplicate v2 offline route: ${route}`);
+    seen.add(route);
+    if (sensitivePrefixes.some(prefix => route === prefix || route.startsWith(`${prefix}/`))) {
+      failures.push(`Sensitive route must not be in v2 offline inventory: ${route}`);
+    }
+  }
+} catch (error) {
+  failures.push(`Offline v2 route inventory JSON is invalid: ${error instanceof Error ? error.message : 'unknown error'}`);
+}
+
 const offlinePack = read(offlinePackPath);
 for (const token of [
   'offline_manifest',
@@ -73,8 +96,9 @@ for (const token of [
 }
 
 const offlineLibrary = read(offlineLibraryPath);
-if (!offlineLibrary.includes('cacheRoutes: true')) failures.push('Offline Library does not request full route caching');
-if (!offlineLibrary.includes('تحديث وتجهيز الحزمة كاملة')) failures.push('Offline Library is missing the full-pack action');
+for (const token of ['cacheRoutes: true', 'تحديث وتجهيز المكتبة كاملة', 'SUPPLEMENTAL_ROUTE_URL', 'requestOfflineRouteCache']) {
+  if (!offlineLibrary.includes(token)) failures.push(`Offline Library missing ${token}`);
+}
 
 const guard = read(guardPath);
 for (const token of ['navigator.onLine', 'stopImmediatePropagation', 'window.location.assign']) {
@@ -86,4 +110,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('✅ Offline content, route cache, durable completion, and navigation safety checks passed');
+console.log('✅ Offline core datasets, full public route inventory, route-cache integration, durable completion, and navigation safety checks passed');
