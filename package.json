@@ -36,7 +36,8 @@
     "imports:check": "node scripts/verify-local-imports.mjs",
     "background:jobs": "tsx scripts/run-background-jobs.ts",
     "automation:run": "tsx scripts/run-background-jobs.ts",
-    "launch:smoke": "node scripts/production-smoke-test.mjs"
+    "launch:smoke": "node scripts/production-smoke-test.mjs",
+    "social:backfill:native": "node scripts/import-youtube-takeout-native-facebook.mjs"
   },
   "dependencies": {
     "@capacitor/android": "7.4.3",
@@ -47,7 +48,6 @@
     "@capacitor/filesystem": "7.1.4",
     "@capacitor/geolocation": "^7.1.0",
     "@capacitor/haptics": "7.0.2",
-    "@capacitor/ios": "7.4.3",
     "@capacitor/keyboard": "7.0.3",
     "@capacitor/local-notifications": "7.0.2",
     "@capacitor/network": "7.0.2",
@@ -56,7 +56,6 @@
     "@capacitor/share": "7.0.2",
     "@capacitor/splash-screen": "7.0.2",
     "@capacitor/status-bar": "7.0.2",
-    "@capawesome/capacitor-background-task": "7.0.1",
     "@google/generative-ai": "^0.24.1",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
