@@ -1,0 +1,3 @@
+-- Reconciliation marker for production migration 20260901034914.
+-- Production schema is already represented by the current native YouTube/Facebook
+-- sync migrations; this file preserves migration-history parity for preview replay.
