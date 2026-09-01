@@ -19,6 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <nav aria-label="تنقل لوحة التحكم" className="flex flex-wrap items-center gap-1 px-4 py-2.5 overflow-x-auto">
             {[
               { href: '/admin', label: 'الرئيسية' },
+              { href: '/admin/control', label: 'مركز التحكم' },
               { href: '/admin/content', label: 'المحتوى' },
               { href: '/admin/knowledge', label: 'المعرفة الإسلامية' },
               { href: '/admin/sections', label: 'الأقسام' },
