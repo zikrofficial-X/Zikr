@@ -1,0 +1,9 @@
+-- Compatibility migration for the production migration history.
+-- Version 20260901103753 is already applied to the linked Supabase project.
+-- The complete idempotent content-hub bootstrap used for fresh environments
+-- lives in 20260901105000_rebuild_content_hub_schema.sql, which runs before
+-- the subsequent hardening migrations.
+--
+-- This file intentionally contains no DDL so that restoring the exact remote
+-- migration version to source control does not attempt to re-apply production
+-- schema changes.
