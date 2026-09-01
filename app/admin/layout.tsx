@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
+import { LibraryAdminNav } from '@/components/admin/library-nav';
 import { requireAdmin } from '@/lib/services/admin';
 
 export const metadata: Metadata = {
@@ -24,11 +25,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <span className="text-[11px] text-brand-cream/30">إجراءات الإدارة الحساسة تتطلب صلاحية Admin.</span>
           </div>
         </div>
+        <LibraryAdminNav />
         <div className="lg:hidden border-b border-brand-gold/15 bg-black/25 sticky top-16 z-30">
           <nav aria-label="تنقل لوحة التحكم" className="flex flex-wrap items-center gap-1 px-4 py-2.5 overflow-x-auto">
             {[
               { href: '/admin', label: 'الرئيسية' },
               { href: '/admin/control', label: 'مركز التحكم' },
+              { href: '/admin/library', label: 'المكتبة الإسلامية' },
               { href: '/admin/content', label: 'المحتوى' },
               { href: '/admin/knowledge', label: 'المعرفة الإسلامية' },
               { href: '/admin/sections', label: 'الأقسام' },
