@@ -50,7 +50,6 @@
     "@capacitor/haptics": "7.0.2",
     "@capacitor/keyboard": "7.0.2",
     "@capacitor/local-notifications": "7.0.2",
-    "@capacitor/network": "7.0.2",
     "@capacitor/preferences": "7.0.2",
     "@capacitor/push-notifications": "7.0.3",
     "@capacitor/share": "7.0.2",
@@ -88,8 +87,6 @@
     "eslint-config-next": "^16.3.1",
     "postcss": "^8.5.26",
     "prettier": "^3.9.4",
-    "tailwindcss": "^4.3.3",
-    "tsx": "^4.23.12",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.12",
     "typescript": "^6.0.3"
