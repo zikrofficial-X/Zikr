@@ -16,7 +16,7 @@ for (const file of files) {
 const publisher = fs.readFileSync(path.join(root, 'lib/services/native-social-sync.ts'), 'utf8');
 if (!publisher.includes('assertNativeMediaUrl')) throw new Error('Native media guard is missing.');
 if (!publisher.includes("url.protocol !== 'https:'")) throw new Error('HTTPS media validation is missing.');
-if (!publisher.includes('youtube\\\\.com|youtu\\\\.be')) throw new Error('YouTube URL rejection guard is missing.');
+if (!publisher.includes('youtube\\.com|youtu\\.be')) throw new Error('YouTube URL rejection guard is missing.');
 if (publisher.includes('/feed')) throw new Error('Native publisher must not use Facebook feed endpoint.');
 
 const env = fs.readFileSync(path.join(root, '.env.example'), 'utf8');
