@@ -4,6 +4,37 @@ import { supabaseServerAdminRequest } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
+type QueueItem = {
+  id: string;
+  content_type: string;
+  content_id: string | null;
+  title: string;
+  target_platforms: string[];
+  status: string;
+  scheduled_at: string | null;
+  published_at: string | null;
+  error_message: string | null;
+  created_at: string;
+};
+
+export async function GET() {
+  const auth = await requireAdminApi();
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  try {
+    const items = await supabaseServerAdminRequest<QueueItem[]>(
+      '/rest/v1/social_publish_queue?select=id,content_type,content_id,title,target_platforms,status,scheduled_at,published_at,error_message,created_at&order=created_at.desc&limit=250',
+    );
+    const counts = (items ?? []).reduce<Record<string, number>>((acc, item) => {
+      acc[item.status] = (acc[item.status] ?? 0) + 1;
+      return acc;
+    }, {});
+    return NextResponse.json({ items: items ?? [], counts }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    console.error('[api/admin/social] GET:', error);
+    return NextResponse.json({ error: 'تعذر تحميل طابور النشر.' }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   const auth = await requireAdminApi();
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
