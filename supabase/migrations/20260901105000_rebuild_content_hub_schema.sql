@@ -19,38 +19,18 @@ create table if not exists public.content_library (
   created_at timestamptz not null default now(), updated_at timestamptz not null default now(), published_at timestamptz,
   searchable tsvector
 );
-
 alter table if exists public.content_library add column if not exists kind text;
 alter table if exists public.content_library add column if not exists author_name text;
 alter table if exists public.content_library add column if not exists reviewer_name text;
 alter table if exists public.content_library add column if not exists searchable tsvector;
-
-update public.content_library
-set kind = case
-  when lower(coalesce(content_type,'')) in ('article','lesson','story','biography','fiqh','aqeedah','hadith_study','tafsir_study','history','family','kids','research','file','collection') then lower(content_type)
-  else 'article'
-end
-where kind is null;
+update public.content_library set kind = case when lower(coalesce(content_type,'')) in ('article','lesson','story','biography','fiqh','aqeedah','hadith_study','tafsir_study','history','family','kids','research','file','collection') then lower(content_type) else 'article' end where kind is null;
 update public.content_library set author_name = author where author_name is null and author is not null;
 
-create or replace function public.refresh_content_library_searchable()
-returns trigger language plpgsql security definer set search_path = public as $$
-begin
-  new.searchable := to_tsvector('simple',
-    coalesce(new.title_ar,'') || ' ' || coalesce(new.summary_ar,'') || ' ' ||
-    coalesce(new.body_ar,'') || ' ' || coalesce(new.category,'') || ' ' ||
-    array_to_string(coalesce(new.tags,'{}'::text[]),' '));
-  return new;
-end;
-$$;
+create or replace function public.refresh_content_library_searchable() returns trigger language plpgsql security definer set search_path = public as $$
+begin new.searchable := to_tsvector('simple', coalesce(new.title_ar,'') || ' ' || coalesce(new.summary_ar,'') || ' ' || coalesce(new.body_ar,'') || ' ' || coalesce(new.category,'') || ' ' || array_to_string(coalesce(new.tags,'{}'::text[]),' ')); return new; end $$;
 drop trigger if exists content_library_searchable_refresh on public.content_library;
-create trigger content_library_searchable_refresh
-before insert or update of title_ar, summary_ar, body_ar, category, tags
-on public.content_library for each row execute function public.refresh_content_library_searchable();
-update public.content_library
-set searchable = to_tsvector('simple', coalesce(title_ar,'') || ' ' || coalesce(summary_ar,'') || ' ' ||
-  coalesce(body_ar,'') || ' ' || coalesce(category,'') || ' ' || array_to_string(coalesce(tags,'{}'::text[]),' '))
-where searchable is null;
+create trigger content_library_searchable_refresh before insert or update of title_ar, summary_ar, body_ar, category, tags on public.content_library for each row execute function public.refresh_content_library_searchable();
+update public.content_library set searchable = to_tsvector('simple', coalesce(title_ar,'') || ' ' || coalesce(summary_ar,'') || ' ' || coalesce(body_ar,'') || ' ' || coalesce(category,'') || ' ' || array_to_string(coalesce(tags,'{}'::text[]),' ')) where searchable is null;
 create index if not exists content_library_search_idx on public.content_library using gin(searchable);
 create index if not exists content_library_kind_idx on public.content_library(kind);
 create index if not exists content_library_category_idx on public.content_library(category);
@@ -62,7 +42,6 @@ create table if not exists public.content_revisions (
   revision_no integer not null, snapshot jsonb not null, change_note text, changed_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(), unique(content_id,revision_no)
 );
-
 create table if not exists public.media_assets (
   id uuid primary key default gen_random_uuid(), title text not null,
   asset_type text not null check (asset_type in ('image','audio','video','pdf','epub','document','game_asset')),
@@ -70,7 +49,7 @@ create table if not exists public.media_assets (
   alt_text_ar text, license text, attribution text, verified_rights boolean not null default false,
   metadata jsonb not null default '{}', published boolean not null default false, created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
--- Legacy compatibility: older media_assets uses name/media_type/rights_verified.
+-- Legacy media_assets schema uses name/media_type/rights_verified. Bring it to the new contract safely.
 alter table if exists public.media_assets add column if not exists title text;
 alter table if exists public.media_assets add column if not exists asset_type text;
 alter table if exists public.media_assets add column if not exists verified_rights boolean not null default false;
@@ -82,18 +61,16 @@ update public.media_assets set title = coalesce(title,name) where title is null 
 update public.media_assets set asset_type = coalesce(asset_type,media_type) where asset_type is null and media_type is not null;
 update public.media_assets set verified_rights = coalesce(verified_rights,rights_verified,false);
 
-create or replace function public.sync_media_asset_compat_columns()
-returns trigger language plpgsql security definer set search_path = public as $$
+create or replace function public.sync_media_asset_compat_columns() returns trigger language plpgsql security definer set search_path = public as $$
 begin
   if new.title is null and new.name is not null then new.title := new.name; end if;
   if new.name is null and new.title is not null then new.name := new.title; end if;
   if new.asset_type is null and new.media_type is not null then new.asset_type := new.media_type; end if;
   if new.media_type is null and new.asset_type is not null then new.media_type := new.asset_type; end if;
-  if new.verified_rights is null then new.verified_rights := coalesce(new.rights_verified,false); end if;
-  if new.rights_verified is null then new.rights_verified := coalesce(new.verified_rights,false); end if;
+  new.verified_rights := coalesce(new.verified_rights,new.rights_verified,false);
+  new.rights_verified := coalesce(new.rights_verified,new.verified_rights,false);
   return new;
-end;
-$$;
+end $$;
 drop trigger if exists media_assets_compat_sync on public.media_assets;
 create trigger media_assets_compat_sync before insert or update on public.media_assets for each row execute function public.sync_media_asset_compat_columns();
 
@@ -121,8 +98,7 @@ create table if not exists public.kids_game_progress (
 );
 create table if not exists public.admin_audit_log (
   id uuid primary key default gen_random_uuid(), admin_id uuid references auth.users(id) on delete set null,
-  user_id uuid references auth.users(id) on delete set null,
-  action text not null, entity_type text not null, entity_id text,
+  user_id uuid references auth.users(id) on delete set null, action text not null, entity_type text not null, entity_id text,
   details jsonb not null default '{}', meta jsonb not null default '{}', created_at timestamptz not null default now()
 );
 create table if not exists public.admin_settings (
@@ -159,7 +135,7 @@ create policy content_library_public_read on public.content_library for select t
 create policy content_sources_admin_all on public.content_sources for all to authenticated using (is_admin_user()) with check (is_admin_user());
 create policy content_sources_public_read on public.content_sources for select to anon,authenticated using (verified=true);
 create policy media_assets_admin_all on public.media_assets for all to authenticated using (is_admin_user()) with check (is_admin_user());
-create policy media_assets_public_read on public.media_assets for select to anon,authenticated using (published=true and verified_rights=true);
+create policy media_assets_public_read on public.media_assets for select to anon,authenticated using (published=true and coalesce(verified_rights,false)=true);
 create policy kids_games_admin_all on public.kids_games for all to authenticated using (is_admin_user()) with check (is_admin_user());
 create policy kids_games_public_read on public.kids_games for select to anon,authenticated using (published=true);
 create policy kids_game_levels_admin_all on public.kids_game_levels for all to authenticated using (is_admin_user()) with check (is_admin_user());
@@ -222,14 +198,11 @@ create trigger game_level_publish_gate before insert or update on public.kids_ga
 create or replace function public.admin_control_center_snapshot() returns jsonb language plpgsql security definer set search_path=public as $$
 begin
   return jsonb_build_object('generated_at',now(),'counts',jsonb_build_object(
-    'users',(select count(*) from public.profiles),
-    'content',(select count(*) from public.content_library),
+    'users',(select count(*) from public.profiles), 'content',(select count(*) from public.content_library),
     'published_content',(select count(*) from public.content_library where published and review_status='approved'),
     'pending_review',(select count(*) from public.content_library where review_status in ('editorial_review','scholarly_review')),
-    'sources',(select count(*) from public.content_sources),
-    'media',(select count(*) from public.media_assets),
-    'games',(select count(*) from public.kids_games),
-    'levels',(select count(*) from public.kids_game_levels),
+    'sources',(select count(*) from public.content_sources), 'media',(select count(*) from public.media_assets),
+    'games',(select count(*) from public.kids_games), 'levels',(select count(*) from public.kids_game_levels),
     'questions',(select count(*) from public.kids_game_questions)));
 end $$;
 revoke all on function public.admin_control_center_snapshot() from public;
