@@ -41,7 +41,9 @@ export function ServiceWorkerRegister() {
       if (hydrationStarted || hydrationFinished || !canHydrate()) return;
       hydrationStarted = true;
       try {
-        const result = await hydrateOfflineContent();
+        // Hydrate the complete public dataset pack and cache every safe public
+        // route so the installed app remains usable without a network connection.
+        const result = await hydrateOfflineContent({ cacheRoutes: true });
         hydrationFinished = result?.complete === true;
       } catch (error) {
         console.warn('[PWA] Offline content hydration failed:', error);
@@ -92,9 +94,9 @@ export function ServiceWorkerRegister() {
           updateViaCache: 'none'
         });
 
-        // The offline pack contains several large public datasets. Register the
-        // worker immediately, then hydrate only after the critical page settles.
-        // Slow connections skip the first attempt but retry when conditions improve.
+        // The offline pack contains the complete public datasets plus safe
+        // public routes. Register the worker immediately, then hydrate only
+        // after the critical page settles. Slow connections/data-saver are skipped.
         scheduleHydration(15000);
 
         window.addEventListener('online', handleNetworkChange, { passive: true });

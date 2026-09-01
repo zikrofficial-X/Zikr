@@ -94,7 +94,7 @@
     "typescript": "^6.0.3"
   },
   "engines": {
-    "node": ">=22 <25"
+    "node": "22.x"
   },
   "packageManager": "pnpm@9.15.0"
 }

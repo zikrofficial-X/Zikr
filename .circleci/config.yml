@@ -14,9 +14,7 @@ jobs:
             set -euo pipefail
             sudo corepack enable
             corepack prepare pnpm@9.15.0 --activate
-            echo "Node:"
             node --version
-            echo "pnpm:"
             pnpm --version
       - run:
           name: Install dependencies
@@ -59,9 +57,7 @@ jobs:
             set -euo pipefail
             sudo corepack enable
             corepack prepare pnpm@9.15.0 --activate
-            echo "Node:"
             node --version
-            echo "pnpm:"
             pnpm --version
       - run:
           name: Select supported Java runtime
@@ -73,7 +69,6 @@ jobs:
             export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
             echo "export JAVA_HOME=$JAVA_HOME" >> "$BASH_ENV"
             echo 'export PATH=$JAVA_HOME/bin:$PATH' >> "$BASH_ENV"
-            echo "Java:"
             java -version
       - run:
           name: Install Android SDK packages
@@ -81,10 +76,7 @@ jobs:
           command: |
             set -euo pipefail
             yes | sdkmanager --licenses >/dev/null || true
-            sdkmanager \
-              "platform-tools" \
-              "platforms;android-35" \
-              "build-tools;34.0.0"
+            sdkmanager "platform-tools" "platforms;android-35" "build-tools;34.0.0"
       - run:
           name: Install dependencies
           shell: /bin/bash
@@ -105,12 +97,7 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            REQUIRED_VARS=(
-              ANDROID_KEYSTORE_BASE64
-              ANDROID_KEYSTORE_PASSWORD
-              ANDROID_KEY_ALIAS
-              ANDROID_KEY_PASSWORD
-            )
+            REQUIRED_VARS=(ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD)
             for name in "${REQUIRED_VARS[@]}"; do
               if [[ -z "${!name:-}" ]]; then
                 echo "Missing protected CircleCI environment variable: ${name}" >&2
@@ -125,13 +112,7 @@ jobs:
             chmod 600 "$KEYSTORE_PATH"
             test -s "$KEYSTORE_PATH"
             keytool -list -v -storetype PKCS12 -keystore "$KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
-            printf '%s\n' \
-              "storeFile=$KEYSTORE_PATH" \
-              "storeType=PKCS12" \
-              "storePassword=$ANDROID_KEYSTORE_PASSWORD" \
-              "keyAlias=$ANDROID_KEY_ALIAS" \
-              "keyPassword=$ANDROID_KEY_PASSWORD" \
-              > "$PROPERTIES_PATH"
+            printf '%s\n' "storeFile=$KEYSTORE_PATH" "storeType=PKCS12" "storePassword=$ANDROID_KEYSTORE_PASSWORD" "keyAlias=$ANDROID_KEY_ALIAS" "keyPassword=$ANDROID_KEY_PASSWORD" > "$PROPERTIES_PATH"
             chmod 600 "$PROPERTIES_PATH"
       - run:
           name: Resolve Android release version
@@ -149,22 +130,16 @@ jobs:
               RELEASE_TAG="v${BASH_REMATCH[1]}"
             else
               echo "Unable to determine Android release tag." >&2
-              echo "CIRCLE_TAG=${CIRCLE_TAG:-<empty>}" >&2
-              echo "CIRCLE_BRANCH=${CIRCLE_BRANCH:-<empty>}" >&2
               exit 1
             fi
             EXPECTED_VERSION="${RELEASE_TAG#v}"
             echo "Detected release tag: $RELEASE_TAG"
             echo "Detected Android versionName: $VERSION_NAME"
-            echo "Expected Android versionName: $EXPECTED_VERSION"
             if [[ "$VERSION_NAME" != "$EXPECTED_VERSION" ]]; then
               echo "Version mismatch detected." >&2
-              echo "Android versionName = $VERSION_NAME" >&2
-              echo "Release tag          = $RELEASE_TAG" >&2
               exit 1
             fi
             echo "export ANDROID_RELEASE_TAG=$RELEASE_TAG" >> "$BASH_ENV"
-            echo "Android release version verified successfully."
       - run:
           name: Clean Android build
           shell: /bin/bash
@@ -232,22 +207,30 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            if [[ -z "${ANDROID_RELEASE_TAG:-}" ]]; then
-              echo "ANDROID_RELEASE_TAG is missing." >&2
-              exit 1
-            fi
             REPO="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
             RELEASE_TAG="$ANDROID_RELEASE_TAG"
             APK="android/app/build/outputs/apk/release/app-release.apk"
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
             test -s "$APK"
             test -s "$AAB"
+
+            if ! gh api "/repos/$REPO/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+              echo "Creating missing tag $RELEASE_TAG at $CIRCLE_SHA1"
+              git config user.name "CircleCI Release"
+              git config user.email "release@zikr.app"
+              git tag -a "$RELEASE_TAG" "$CIRCLE_SHA1" -m "ZIKR $RELEASE_TAG"
+              git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+              git push origin "$RELEASE_TAG"
+            else
+              echo "Tag $RELEASE_TAG already exists."
+            fi
+
             if gh release view "$RELEASE_TAG" --repo "$REPO" >/dev/null 2>&1; then
               gh release upload "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --repo "$REPO" --clobber
             else
               gh release create "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --repo "$REPO" --verify-tag --generate-notes --title "ZIKR $RELEASE_TAG"
             fi
-            echo "Android release published successfully."
+            echo "Android release published successfully: $RELEASE_TAG"
       - run:
           name: Remove signing material
           when: always
