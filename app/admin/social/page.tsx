@@ -1,125 +1,27 @@
-export const dynamic = "force-dynamic";
+'use client';
 
-import { Container } from "@/components/ui/container";
-import { Card } from "@/components/ui/card";
-import { requireAdmin } from "@/lib/services/admin";
-import { supabaseServerAdminRequest } from "@/lib/supabase/server";
-import type { SocialPublishQueueItem } from "@/lib/services/social-publishing";
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Container } from '@/components/ui/container';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
-const statusLabels: Record<string, string> = {
-  queued: "في الانتظار",
-  processing: "قيد المعالجة",
-  published: "نُشر",
-  partial: "نشر جزئي",
-  failed: "فشل",
-};
+type QueueItem = { id: string; content_type: string; content_id: string | null; title: string; target_platforms: string[]; status: string; scheduled_at: string | null; published_at: string | null; error_message: string | null; created_at: string };
+const labels: Record<string, string> = { queued: 'في الانتظار', processing: 'قيد المعالجة', published: 'نُشر', partial: 'نشر جزئي', failed: 'فشل' };
+const classes: Record<string, string> = { queued: 'border-sky-500/25 bg-sky-500/10 text-sky-300', processing: 'border-amber-500/25 bg-amber-500/10 text-amber-300', published: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300', partial: 'border-yellow-500/25 bg-yellow-500/10 text-yellow-300', failed: 'border-red-500/25 bg-red-500/10 text-red-300' };
 
-const statusClasses: Record<string, string> = {
-  queued: "bg-sky-500/15 text-sky-300 border-sky-500/25",
-  processing: "bg-amber-500/15 text-amber-300 border-amber-500/25",
-  published: "bg-emerald-500/15 text-emerald-300 border-emerald-500/25",
-  partial: "bg-yellow-500/15 text-yellow-300 border-yellow-500/25",
-  failed: "bg-red-500/15 text-red-300 border-red-500/25",
-};
-
-async function getQueue() {
-  try {
-    return (
-      (await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-        "/rest/v1/social_publish_queue?order=created_at.desc&limit=100"
-      )) || []
-    );
-  } catch (error) {
-    console.error("[admin/social] Failed to load social queue:", error);
-    return [];
-  }
-}
-
-export default async function AdminSocialPage() {
-  await requireAdmin();
-  const queue = await getQueue();
-  const totals = queue.reduce<Record<string, number>>((acc, item) => {
-    acc[item.status] = (acc[item.status] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  return (
-    <Container className="space-y-8 py-10 text-right">
-      <section className="space-y-2">
-        <h1 className="text-3xl font-bold text-brand-gold">النشر التلقائي</h1>
-        <p className="text-sm text-brand-cream/60" dir="rtl">
-          متابعة طابور نشر البوستات والفيديوهات على الموقع وفيسبوك ويوتيوب.
-        </p>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-5">
-        {["queued", "processing", "published", "partial", "failed"].map(
-          status => (
-            <Card key={status} className="space-y-1">
-              <p className="text-sm text-brand-cream/55">
-                {statusLabels[status]}
-              </p>
-              <strong className="text-3xl text-brand-gold">
-                {totals[status] ?? 0}
-              </strong>
-            </Card>
-          )
-        )}
-      </section>
-
-      <Card className="space-y-4 overflow-hidden">
-        <h2 className="text-xl font-bold text-brand-gold">آخر عناصر الطابور</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-brand-gold/20 text-brand-cream/60">
-                <th className="pb-2 text-right">العنوان</th>
-                <th className="pb-2 text-right">النوع</th>
-                <th className="pb-2 text-right">المنصات</th>
-                <th className="pb-2 text-right">الحالة</th>
-                <th className="pb-2 text-right">الموعد</th>
-                <th className="pb-2 text-right">الخطأ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-brand-gold/10">
-              {queue.map(item => (
-                <tr key={item.id} className="align-top hover:bg-black/10">
-                  <td className="py-3 text-brand-cream">{item.title}</td>
-                  <td className="py-3 text-brand-cream/60">
-                    {item.content_type}
-                  </td>
-                  <td className="py-3 text-brand-cream/60">
-                    {item.target_platforms.join("، ")}
-                  </td>
-                  <td className="py-3">
-                    <span
-                      className={`rounded-full border px-2 py-1 text-xs ${statusClasses[item.status] ?? statusClasses.failed}`}
-                    >
-                      {statusLabels[item.status] ?? item.status}
-                    </span>
-                  </td>
-                  <td className="py-3 text-brand-cream/50" dir="ltr">
-                    {item.scheduled_at ?? "فوري"}
-                  </td>
-                  <td className="max-w-sm py-3 text-xs text-red-300/80">
-                    {item.error_message ?? "—"}
-                  </td>
-                </tr>
-              ))}
-              {queue.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="py-8 text-center text-brand-cream/45"
-                  >
-                    لا توجد عناصر في طابور النشر الآن.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </Container>
-  );
+export default function AdminSocialPage() {
+  const [items, setItems] = useState<QueueItem[]>([]); const [selected, setSelected] = useState<string[]>([]); const [filter, setFilter] = useState('all'); const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [message, setMessage] = useState('');
+  const load = useCallback(async () => { setLoading(true); setError(''); try { const r = await fetch('/api/admin/social', { cache: 'no-store' }); const p = await r.json() as { items?: QueueItem[]; error?: string }; if (!r.ok) throw new Error(p.error || 'تعذر تحميل طابور النشر.'); setItems(p.items ?? []); setSelected([]); } catch (e) { setError(e instanceof Error ? e.message : 'تعذر تحميل طابور النشر.'); } finally { setLoading(false); } }, []);
+  useEffect(() => { void load(); }, [load]);
+  const filtered = useMemo(() => filter === 'all' ? items : items.filter(i => i.status === filter), [items, filter]); const failed = items.filter(i => i.status === 'failed'); const allSelected = filtered.length > 0 && filtered.every(i => selected.includes(i.id));
+  const runAction = async (action: 'retry' | 'delete' | 'delete_failed') => { if (action !== 'retry' && !window.confirm(action === 'delete_failed' ? `سيتم حذف ${failed.length} عنصر فاشل نهائيًا.` : 'سيتم حذف العناصر الفاشلة المحددة نهائيًا.')) return; setBusy(true); setError(''); setMessage(''); try { const r = await fetch('/api/admin/social', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ids: selected }) }); const p = await r.json().catch(() => ({})) as { error?: string }; if (!r.ok) throw new Error(p.error || 'تعذر تنفيذ الإجراء.'); setMessage('تم تنفيذ الإجراء بنجاح.'); await load(); } catch (e) { setError(e instanceof Error ? e.message : 'تعذر تنفيذ الإجراء.'); } finally { setBusy(false); } };
+  const counts = items.reduce<Record<string, number>>((a, i) => { a[i.status] = (a[i.status] ?? 0) + 1; return a; }, {});
+  return <Container className="space-y-8 py-10 text-right" dir="rtl">
+    <section className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-3xl font-bold text-brand-gold">مركز النشر التلقائي</h1><p className="mt-1 text-sm text-brand-cream/55">مراقبة الطابور، إعادة المحاولة، وتنظيف العمليات الفاشلة.</p></div><div className="flex gap-2"><Link href="/admin/control" className="rounded-xl border border-brand-gold/20 px-4 py-2 text-sm text-brand-gold">مركز التحكم</Link><Button variant="outline" onClick={() => void load()} disabled={loading}>{loading ? 'جاري التحديث…' : 'تحديث'}</Button></div></section>
+    {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200" role="alert">{error}</div>}{message && <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200" role="status">{message}</div>}
+    <section className="grid gap-3 grid-cols-2 md:grid-cols-5">{(['queued','processing','published','partial','failed'] as const).map(s => <button key={s} type="button" onClick={() => setFilter(filter === s ? 'all' : s)} className={`rounded-2xl border p-4 text-right ${filter === s ? 'border-brand-gold/40 bg-brand-gold/10' : 'border-brand-gold/10 bg-black/15'}`}><p className="text-xs text-brand-cream/45">{labels[s]}</p><p className="mt-1 text-2xl font-bold text-brand-gold">{counts[s] ?? 0}</p></button>)}</section>
+    <Card className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-bold text-brand-gold">الطابور</h2><p className="text-xs text-brand-cream/40">الإجراءات الخطرة مقتصرة على العناصر الفاشلة.</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!selected.length || busy} onClick={() => void runAction('retry')}>إعادة المحاولة ({selected.length})</Button><Button variant="outline" disabled={!selected.length || busy} onClick={() => void runAction('delete')}>حذف المحدد</Button><Button variant="outline" disabled={!failed.length || busy} onClick={() => void runAction('delete_failed')}>حذف كل الفاشلة ({failed.length})</Button></div></div>
+      <div className="rounded-xl border border-brand-gold/10 overflow-auto"><table className="min-w-[900px] w-full text-sm"><thead className="bg-black/20 text-brand-cream/50"><tr><th className="p-3 text-right"><input aria-label="تحديد الكل" type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? selected.filter(id => !filtered.some(i => i.id === id)) : [...new Set([...selected, ...filtered.filter(i => i.status === 'failed').map(i => i.id)])]} /></th><th className="p-3 text-right">العنوان</th><th className="p-3 text-right">المنصات</th><th className="p-3 text-right">الحالة</th><th className="p-3 text-right">الموعد</th><th className="p-3 text-right">الخطأ</th></tr></thead><tbody className="divide-y divide-brand-gold/10">{filtered.map(i => <tr key={i.id} className="align-top hover:bg-black/10"><td className="p-3"><input type="checkbox" checked={selected.includes(i.id)} disabled={i.status !== 'failed'} onChange={() => setSelected(s => s.includes(i.id) ? s.filter(id => id !== i.id) : [...s, i.id])} aria-label={`تحديد ${i.title}`} /></td><td className="p-3 text-brand-cream">{i.title}</td><td className="p-3 text-brand-cream/55">{i.target_platforms.join('، ')}</td><td className="p-3"><span className={`rounded-full border px-2 py-1 text-xs ${classes[i.status] ?? classes.failed}`}>{labels[i.status] ?? i.status}</span></td><td className="p-3 text-xs text-brand-cream/40" dir="ltr">{i.scheduled_at ?? 'فوري'}</td><td className="p-3 text-xs text-red-300/70">{i.error_message ?? '—'}</td></tr>)}{!loading && filtered.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-brand-cream/40">لا توجد عناصر مطابقة.</td></tr>}</tbody></table></div></Card>
+  </Container>;
 }
