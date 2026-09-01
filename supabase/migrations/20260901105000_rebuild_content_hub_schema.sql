@@ -48,26 +48,32 @@ create table if not exists public.content_library (
   searchable tsvector
 );
 
--- Add modern compatibility columns to older installations.
 alter table if exists public.content_library add column if not exists kind text;
 alter table if exists public.content_library add column if not exists content_type text;
 alter table if exists public.content_library add column if not exists author_name text;
 alter table if exists public.content_library add column if not exists reviewer_name text;
 alter table if exists public.content_library add column if not exists searchable tsvector;
 
--- Safely backfill from legacy columns only when those columns exist.
+-- Backfill legacy columns only through dynamic SQL so this migration is safe when a legacy
+-- installation does not expose one of those columns.
 do $$
 begin
   if exists (select 1 from information_schema.columns where table_schema='public' and table_name='content_library' and column_name='content_type') then
-    update public.content_library
+    execute $sql$
+      update public.content_library
       set kind = case
         when lower(coalesce(content_type,'')) in ('article','lesson','story','biography','fiqh','aqeedah','hadith_study','tafsir_study','history','family','kids','research','file','collection') then lower(content_type)
         else coalesce(kind,'article')
       end
-      where kind is null or kind='';
+      where kind is null or kind=''
+    $sql$;
   end if;
   if exists (select 1 from information_schema.columns where table_schema='public' and table_name='content_library' and column_name='author') then
-    update public.content_library set author_name = author where author_name is null and author is not null;
+    execute $sql$
+      update public.content_library
+      set author_name = author
+      where author_name is null and author is not null
+    $sql$;
   end if;
 end $$;
 
@@ -250,8 +256,6 @@ alter table public.kids_game_progress enable row level security;
 alter table public.admin_audit_log enable row level security;
 alter table public.admin_settings enable row level security;
 
--- Base policies are created here only when this migration runs first.
--- Later hardening migrations may replace them.
 do $$
 begin
   if to_regclass('public.content_library') is not null then
