@@ -1,6 +1,6 @@
 {
   "name": "zikr",
-  "version": "1.2.5",
+  "version": "1.2.7",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -48,8 +48,7 @@
     "@capacitor/filesystem": "7.1.4",
     "@capacitor/geolocation": "^7.1.0",
     "@capacitor/haptics": "7.0.2",
-    "@capacitor/ios": "7.4.3",
-    "@capacitor/keyboard": "7.0.3",
+    "@capacitor/keyboard": "7.0.2",
     "@capacitor/local-notifications": "7.0.2",
     "@capacitor/network": "7.0.2",
     "@capacitor/preferences": "7.0.2",
@@ -89,6 +88,8 @@
     "eslint-config-next": "^16.3.1",
     "postcss": "^8.5.26",
     "prettier": "^3.9.4",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.12",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.12",
     "typescript": "^6.0.3"
