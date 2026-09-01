@@ -7,6 +7,7 @@ import { BookOpen, Scroll, Star } from "lucide-react";
 import { useLanguage } from "./language-provider";
 
 const FACEBOOK_PAGE_URL = "https://www.facebook.com/zikrmediaofficial1";
+const APP_VERSION = "1.2.6";
 
 export function Footer() {
   const { isEnglish } = useLanguage();
@@ -161,7 +162,7 @@ export function Footer() {
                 variant="outline"
                 className="border-brand-gold/20 text-brand-gold/40 text-[10px]"
               >
-                Version 1.2.5
+                Version {APP_VERSION}
               </Badge>
             </li>
           </ul>
