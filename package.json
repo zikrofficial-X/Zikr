@@ -1,6 +1,6 @@
 {
   "name": "zikr",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -48,7 +48,6 @@
     "@capacitor/filesystem": "7.1.4",
     "@capacitor/geolocation": "^7.1.0",
     "@capacitor/haptics": "7.0.2",
-    "@capacitor/ios": "7.4.3",
     "@capacitor/keyboard": "7.0.3",
     "@capacitor/local-notifications": "7.0.2",
     "@capacitor/network": "7.0.2",
@@ -68,7 +67,6 @@
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.31.0",
     "next": "^16.3.1",
-    "phaser": "^3.90.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "server-only": "^0.0.1",
