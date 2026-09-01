@@ -63,7 +63,7 @@ for (const token of [
 
 const serviceWorker = read(serviceWorkerPath);
 for (const token of [
-  "CACHE_NAME = 'zikr-v9'",
+  'CACHE_NAME = "zikr-v10"',
   'OFFLINE_CONTENT_PREFIX',
   'CACHE_OFFLINE_ROUTES',
   'cacheOfflineRoutes',

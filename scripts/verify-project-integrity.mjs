@@ -97,11 +97,11 @@ for (const route of offlineManifest.routes || []) {
 }
 
 requireText('public/sw.js', [
-  "const CACHE_NAME = 'zikr-v9'",
+  'const CACHE_NAME = "zikr-v10"',
   'CACHE_OFFLINE_ROUTES',
   'OFFLINE_CONTENT_PREFIX',
-  "pathname.startsWith('/api/')",
-  "pathname.startsWith('/admin')",
+  'pathname.startsWith("/api/")',
+  'pathname.startsWith("/admin")',
 ]);
 requireText('components/layout/offline-navigation-guard.tsx', [
   'navigator.onLine',

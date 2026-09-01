@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { getNativeAudio, loadAudioSettings } from "@/lib/audio/config";
+import { LocalNotifications } from "@capacitor/local-notifications";
 
 type CapacitorPlugin = Record<
   string,
@@ -42,10 +43,16 @@ type CapacitorWindow = Window & {
   };
 };
 
-function getNativePlugins() {
+function getNativePlugins(): Record<string, CapacitorPlugin | undefined> | null {
   const capacitor = (window as CapacitorWindow).Capacitor;
   if (!capacitor?.isNativePlatform?.()) return null;
-  return capacitor.Plugins ?? null;
+  return {
+    ...(capacitor.Plugins ?? {}),
+    // Capacitor v7 does not guarantee that every plugin is exposed through the
+    // legacy Capacitor.Plugins registry. Use the official plugin export for
+    // notifications so background alarms remain available in release builds.
+    LocalNotifications: LocalNotifications as unknown as CapacitorPlugin,
+  };
 }
 
 function installNativeFacade(

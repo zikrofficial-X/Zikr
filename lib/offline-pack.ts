@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { offlineDb } from '@/lib/offline-db';
+import { offlineDb } from "@/lib/offline-db";
 
 type OfflineManifest = {
   version: string;
@@ -12,43 +12,88 @@ type OfflineManifest = {
 };
 
 const STORE_BY_DATASET: Record<string, string> = {
-  surahs: 'surahs',
-  ayahs: 'ayahs',
-  tafsir: 'tafsir',
-  hadith_books: 'hadithBooks',
-  hadith: 'hadith',
-  prophets: 'prophets',
-  prophet_sections: 'prophetSections',
-  battles: 'battles',
-  battle_events: 'battleEvents',
-  conquests: 'conquests',
-  conquest_events: 'conquestEvents',
-  articles: 'articles',
-  duas: 'duas',
-  kids: 'kids',
-  companions: 'companions',
-  companion_stories: 'companionStories',
+  surahs: "surahs",
+  ayahs: "ayahs",
+  tafsir: "tafsir",
+  hadith_books: "hadithBooks",
+  hadith: "hadith",
+  prophets: "prophets",
+  prophet_sections: "prophetSections",
+  battles: "battles",
+  battle_events: "battleEvents",
+  conquests: "conquests",
+  conquest_events: "conquestEvents",
+  articles: "articles",
+  duas: "duas",
+  kids: "kids",
+  companions: "companions",
+  companion_stories: "companionStories",
 };
 
-const MANIFEST_URL = '/offline-content/v1/manifest.json';
-const MANIFEST_DB_KEY = 'offline_manifest';
-const COMPLETION_DB_KEY = 'offline_completion_v1';
+const MANIFEST_URL = "/offline-content/v1/manifest.json";
+const MANIFEST_DB_KEY = "offline_manifest";
+const COMPLETION_DB_KEY = "offline_completion_v1";
 // Keep this key stable for compatibility with existing readiness checks.
-const VERSION_KEY = 'offline-content-version-v3';
-const ROUTE_CACHE_REQUEST = 'CACHE_OFFLINE_ROUTES';
+const VERSION_KEY = "offline-content-version-v3";
+const ROUTE_CACHE_REQUEST = "CACHE_OFFLINE_ROUTES";
 
 const ESSENTIAL_ROUTES = [
-  '/', '/mushaf', '/quran', '/hadith', '/stories', '/articles', '/duas', '/adhkar',
-  '/prophets', '/companions', '/scholars', '/battles', '/conquests', '/kids',
-  '/videos', '/youtube', '/tawasheeh', '/tafsir', '/reciters', '/radio', '/qibla',
-  '/tasbeeh', '/wird', '/zakat', '/poetry', '/competitions', '/faq', '/platform',
-  '/about', '/contact', '/privacy', '/terms', '/editorial-policy', '/settings', '/offline-library',
-  '/scholars/ahmad-ibn-hanbal', '/scholars/albani', '/scholars/bukhari', '/scholars/ibn-baz',
-  '/scholars/ibn-qayyim', '/scholars/ibn-taymiyyah', '/scholars/malik-ibn-anas', '/scholars/nawawi',
-  '/scholars/saadi', '/scholars/shaarawi', '/scholars/shafii', '/scholars/uthaymin',
-  '/videos/importance-of-prayer', '/videos/lecture-tawakkul', '/videos/morning-evening-adhkar',
-  '/videos/quran-duas-collection', '/videos/story-of-musa-full', '/videos/story-of-yusuf-full',
-  '/videos/tafsir-al-baqarah-uthaymin', '/videos/tafsir-al-fatihah-shaarawi', '/videos/tafsir-ya-sin-shaarawi',
+  "/",
+  "/mushaf",
+  "/quran",
+  "/hadith",
+  "/stories",
+  "/articles",
+  "/duas",
+  "/adhkar",
+  "/prophets",
+  "/companions",
+  "/scholars",
+  "/battles",
+  "/conquests",
+  "/kids",
+  "/videos",
+  "/youtube",
+  "/tawasheeh",
+  "/tafsir",
+  "/reciters",
+  "/radio",
+  "/qibla",
+  "/tasbeeh",
+  "/wird",
+  "/zakat",
+  "/poetry",
+  "/competitions",
+  "/faq",
+  "/platform",
+  "/about",
+  "/contact",
+  "/privacy",
+  "/terms",
+  "/editorial-policy",
+  "/settings",
+  "/offline-library",
+  "/scholars/ahmad-ibn-hanbal",
+  "/scholars/albani",
+  "/scholars/bukhari",
+  "/scholars/ibn-baz",
+  "/scholars/ibn-qayyim",
+  "/scholars/ibn-taymiyyah",
+  "/scholars/malik-ibn-anas",
+  "/scholars/nawawi",
+  "/scholars/saadi",
+  "/scholars/shaarawi",
+  "/scholars/shafii",
+  "/scholars/uthaymin",
+  "/videos/importance-of-prayer",
+  "/videos/lecture-tawakkul",
+  "/videos/morning-evening-adhkar",
+  "/videos/quran-duas-collection",
+  "/videos/story-of-musa-full",
+  "/videos/story-of-yusuf-full",
+  "/videos/tafsir-al-baqarah-uthaymin",
+  "/videos/tafsir-al-fatihah-shaarawi",
+  "/videos/tafsir-ya-sin-shaarawi",
 ];
 
 type OfflineCompletion = {
@@ -74,21 +119,30 @@ async function persistManifest(manifest: OfflineManifest): Promise<void> {
     await offlineDb.initialize();
     await offlineDb.saveSetting(MANIFEST_DB_KEY, manifest);
   } catch (error) {
-    console.warn('[OfflinePack] Failed to persist manifest in IndexedDB', error);
+    console.warn(
+      "[OfflinePack] Failed to persist manifest in IndexedDB",
+      error
+    );
   }
 
   try {
-    if ('caches' in window) {
-      const cache = await caches.open('zikr-v9');
+    if ("caches" in window) {
+      const cache = await caches.open("zikr-v10");
       await cache.put(
-        new Request(MANIFEST_URL, { headers: { Accept: 'application/json' } }),
+        new Request(MANIFEST_URL, { headers: { Accept: "application/json" } }),
         new Response(JSON.stringify(manifest), {
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-        }),
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store",
+          },
+        })
       );
     }
   } catch (error) {
-    console.warn('[OfflinePack] Failed to persist manifest in Cache Storage', error);
+    console.warn(
+      "[OfflinePack] Failed to persist manifest in Cache Storage",
+      error
+    );
   }
 }
 
@@ -96,14 +150,15 @@ async function persistCompletion(completion: OfflineCompletion): Promise<void> {
   try {
     await offlineDb.saveSetting(COMPLETION_DB_KEY, completion);
   } catch (error) {
-    console.warn('[OfflinePack] Failed to persist completion marker', error);
+    console.warn("[OfflinePack] Failed to persist completion marker", error);
   }
 }
 
 async function readPersistedManifest(): Promise<OfflineManifest | null> {
   try {
     await offlineDb.initialize();
-    const manifest = await offlineDb.getSetting<OfflineManifest>(MANIFEST_DB_KEY);
+    const manifest =
+      await offlineDb.getSetting<OfflineManifest>(MANIFEST_DB_KEY);
     if (manifest?.datasets && manifest?.routes) return manifest;
   } catch {
     // Continue to Cache Storage fallback.
@@ -119,15 +174,22 @@ async function readPersistedManifest(): Promise<OfflineManifest | null> {
   return null;
 }
 
-async function verifyCompletedDatasets(manifest: OfflineManifest): Promise<OfflineCompletion | null> {
+async function verifyCompletedDatasets(
+  manifest: OfflineManifest
+): Promise<OfflineCompletion | null> {
   try {
-    const completion = await offlineDb.getSetting<OfflineCompletion>(COMPLETION_DB_KEY);
+    const completion =
+      await offlineDb.getSetting<OfflineCompletion>(COMPLETION_DB_KEY);
     if (!completion || completion.version !== manifest.version) return null;
 
     for (const [dataset, definition] of Object.entries(manifest.datasets)) {
       const storeName = STORE_BY_DATASET[dataset];
-      if (!storeName || completion.datasetCounts[storeName] !== definition.count) return null;
-      if (await offlineDb.count(storeName) !== definition.count) return null;
+      if (
+        !storeName ||
+        completion.datasetCounts[storeName] !== definition.count
+      )
+        return null;
+      if ((await offlineDb.count(storeName)) !== definition.count) return null;
     }
     return completion;
   } catch {
@@ -136,10 +198,12 @@ async function verifyCompletedDatasets(manifest: OfflineManifest): Promise<Offli
 }
 
 async function verifyCompletedRoutes(routes: string[]): Promise<boolean> {
-  if (!('caches' in window)) return false;
+  if (!("caches" in window)) return false;
   try {
-    const cache = await caches.open('zikr-v9');
-    const results = await Promise.all(routes.map(route => cache.match(new Request(route))));
+    const cache = await caches.open("zikr-v10");
+    const results = await Promise.all(
+      routes.map(route => cache.match(new Request(route)))
+    );
     return results.every(Boolean);
   } catch {
     return false;
@@ -147,10 +211,10 @@ async function verifyCompletedRoutes(routes: string[]): Promise<boolean> {
 }
 
 export async function fetchOfflineManifest(): Promise<OfflineManifest | null> {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
 
   try {
-    const response = await fetch(MANIFEST_URL, { cache: 'no-store' });
+    const response = await fetch(MANIFEST_URL, { cache: "no-store" });
     if (response.ok) {
       const manifest = (await response.json()) as OfflineManifest;
       await persistManifest(manifest);
@@ -164,15 +228,16 @@ export async function fetchOfflineManifest(): Promise<OfflineManifest | null> {
 }
 
 export async function requestOfflineRouteCache(
-  routes: string[],
+  routes: string[]
 ): Promise<{ cachedRoutes: number; failedRoutes: string[] }> {
-  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
     return { cachedRoutes: 0, failedRoutes: routes };
   }
 
   try {
     const registration = await navigator.serviceWorker.ready;
-    const worker = registration.active ?? registration.waiting ?? registration.installing;
+    const worker =
+      registration.active ?? registration.waiting ?? registration.installing;
     if (!worker) return { cachedRoutes: 0, failedRoutes: routes };
 
     return await new Promise(resolve => {
@@ -184,14 +249,21 @@ export async function requestOfflineRouteCache(
 
       channel.port1.onmessage = event => {
         window.clearTimeout(timeoutId);
-        const data = (event.data ?? {}) as { cachedRoutes?: number; failedRoutes?: string[] };
+        const data = (event.data ?? {}) as {
+          cachedRoutes?: number;
+          failedRoutes?: string[];
+        };
         resolve({
           cachedRoutes: Number(data.cachedRoutes ?? 0),
-          failedRoutes: Array.isArray(data.failedRoutes) ? data.failedRoutes : routes,
+          failedRoutes: Array.isArray(data.failedRoutes)
+            ? data.failedRoutes
+            : routes,
         });
       };
 
-      worker.postMessage({ type: ROUTE_CACHE_REQUEST, routes }, [channel.port2]);
+      worker.postMessage({ type: ROUTE_CACHE_REQUEST, routes }, [
+        channel.port2,
+      ]);
     });
   } catch {
     return { cachedRoutes: 0, failedRoutes: routes };
@@ -199,9 +271,9 @@ export async function requestOfflineRouteCache(
 }
 
 export async function hydrateOfflineContent(
-  options: { force?: boolean; cacheRoutes?: boolean } = {},
+  options: { force?: boolean; cacheRoutes?: boolean } = {}
 ): Promise<OfflineHydrationResult | null> {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
 
   const manifest = await fetchOfflineManifest();
   if (!manifest) return null;
@@ -209,11 +281,11 @@ export async function hydrateOfflineContent(
   try {
     await offlineDb.initialize();
   } catch (error) {
-    console.warn('[OfflinePack] Failed to initialize IndexedDB', error);
+    console.warn("[OfflinePack] Failed to initialize IndexedDB", error);
     return {
       manifest,
       complete: false,
-      failedDatasets: ['indexeddb'],
+      failedDatasets: ["indexeddb"],
       cachedRoutes: 0,
       failedRoutes: mergedRoutes(manifest),
     };
@@ -222,7 +294,11 @@ export async function hydrateOfflineContent(
   const expectedRoutes = mergedRoutes(manifest);
   if (!options.force) {
     const completion = await verifyCompletedDatasets(manifest);
-    if (completion && completion.cachedRoutes.length === expectedRoutes.length && await verifyCompletedRoutes(completion.cachedRoutes)) {
+    if (
+      completion &&
+      completion.cachedRoutes.length === expectedRoutes.length &&
+      (await verifyCompletedRoutes(completion.cachedRoutes))
+    ) {
       return {
         manifest,
         complete: true,
@@ -245,7 +321,7 @@ export async function hydrateOfflineContent(
 
     try {
       const response = await fetch(definition.path, {
-        cache: options.force ? 'no-store' : 'force-cache',
+        cache: options.force ? "no-store" : "force-cache",
       });
       if (!response.ok) {
         failedDatasets.push(dataset);
@@ -258,7 +334,8 @@ export async function hydrateOfflineContent(
       }
       await offlineDb.setMany(storeName, rows);
       datasetCounts[storeName] = await offlineDb.count(storeName);
-      if (datasetCounts[storeName] !== definition.count) failedDatasets.push(dataset);
+      if (datasetCounts[storeName] !== definition.count)
+        failedDatasets.push(dataset);
     } catch (error) {
       failedDatasets.push(dataset);
       console.warn(`[OfflinePack] Failed to hydrate ${dataset}`, error);
@@ -271,11 +348,17 @@ export async function hydrateOfflineContent(
 
   if (complete && options.cacheRoutes) {
     const result = await requestOfflineRouteCache(expectedRoutes);
-    cachedRoutes = expectedRoutes.filter(route => !result.failedRoutes.includes(route));
+    cachedRoutes = expectedRoutes.filter(
+      route => !result.failedRoutes.includes(route)
+    );
     failedRoutes = result.failedRoutes;
   }
 
-  if (complete && failedRoutes.length === 0 && cachedRoutes.length === expectedRoutes.length) {
+  if (
+    complete &&
+    failedRoutes.length === 0 &&
+    cachedRoutes.length === expectedRoutes.length
+  ) {
     await persistManifest(manifest);
     await persistCompletion({
       version: manifest.version,
@@ -289,7 +372,7 @@ export async function hydrateOfflineContent(
     }
   } else {
     try {
-      await offlineDb.delete('settings', COMPLETION_DB_KEY);
+      await offlineDb.delete("settings", COMPLETION_DB_KEY);
       window.localStorage.removeItem(VERSION_KEY);
     } catch {
       // Preserve already-downloaded datasets but do not keep a stale completion marker.

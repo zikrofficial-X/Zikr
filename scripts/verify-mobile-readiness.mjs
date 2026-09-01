@@ -170,14 +170,14 @@ for (const token of [
   "offline_manifest",
   "requestOfflineRouteCache",
   "cacheRoutes?: boolean",
-  "VERSION_KEY = 'offline-content-version-v3'",
+  "offline-content-version-v3",
 ]) {
   if (!offlinePack.includes(token)) failures.push(`Offline pack is missing ${token}`);
 }
 
 const serviceWorker = read("public/sw.js");
 for (const token of [
-  "CACHE_NAME = 'zikr-v9'",
+  'CACHE_NAME = "zikr-v10"',
   "OFFLINE_CONTENT_PREFIX",
   "CACHE_OFFLINE_ROUTES",
   "cacheReferencedStaticAssets",
