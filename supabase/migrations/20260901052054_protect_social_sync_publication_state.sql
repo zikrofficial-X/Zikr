@@ -1,0 +1,2 @@
+-- Reconciliation marker for production migration 20260901052054.
+-- Publication-state protection is represented by the current tracked sync schema/code.
