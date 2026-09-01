@@ -19,7 +19,7 @@ jobs:
             set -euo pipefail
 
             sudo corepack enable
-            corepack prepare pnpm@9.15.0 --activate
+            corepack prepare pnpm@10.33.4 --activate
 
             echo "Node:"
             node --version
@@ -82,7 +82,7 @@ jobs:
             set -euo pipefail
 
             sudo corepack enable
-            corepack prepare pnpm@9.15.0 --activate
+            corepack prepare pnpm@10.33.4 --activate
 
             echo "Node:"
             node --version
@@ -478,7 +478,6 @@ jobs:
                 "$RELEASE_TAG" \
                 "$APK" \
                 "$AAB" \
-                SHA256SUMS \
                 --repo "$REPO" \
                 --verify-tag \
                 --generate-notes \
