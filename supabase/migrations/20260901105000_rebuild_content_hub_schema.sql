@@ -19,6 +19,15 @@ create table if not exists public.content_library (
   created_at timestamptz not null default now(), updated_at timestamptz not null default now(), published_at timestamptz,
   searchable tsvector generated always as (to_tsvector('simple', coalesce(title_ar,'') || ' ' || coalesce(summary_ar,'') || ' ' || coalesce(body_ar,'') || ' ' || coalesce(category,'') || ' ' || array_to_string(tags,' '))) stored
 );
+
+-- Compatibility: content_library may already exist from an older schema migration.
+-- In that case CREATE TABLE IF NOT EXISTS does not add the generated search column.
+alter table if exists public.content_library
+  add column if not exists searchable tsvector generated always as (
+    to_tsvector('simple', coalesce(title_ar,'') || ' ' || coalesce(summary_ar,'') || ' ' ||
+      coalesce(body_ar,'') || ' ' || coalesce(category,'') || ' ' || array_to_string(tags,' '))
+  ) stored;
+
 create index if not exists content_library_search_idx on public.content_library using gin(searchable);
 create index if not exists content_library_kind_idx on public.content_library(kind);
 create index if not exists content_library_category_idx on public.content_library(category);
