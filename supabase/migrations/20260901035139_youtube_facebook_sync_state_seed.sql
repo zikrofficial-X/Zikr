@@ -1,0 +1,2 @@
+-- Reconciliation marker for production migration 20260901035139.
+-- Current sync state schema/seed is already represented by tracked migrations.
