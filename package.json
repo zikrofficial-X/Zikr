@@ -48,6 +48,7 @@
     "@capacitor/filesystem": "7.1.4",
     "@capacitor/geolocation": "^7.1.0",
     "@capacitor/haptics": "7.0.2",
+    "@capacitor/ios": "7.4.3",
     "@capacitor/keyboard": "7.0.3",
     "@capacitor/local-notifications": "7.0.2",
     "@capacitor/network": "7.0.2",
@@ -62,7 +63,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "ai": "^7.0.66",
-    "clsx": "^2.1.1",
+    "clsx": "2.1.1",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.31.0",
     "next": "^16.3.1",
@@ -88,11 +89,12 @@
     "postcss": "^8.5.26",
     "prettier": "^3.9.4",
     "tailwindcss": "^4.3.3",
+    "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.23.12",
     "typescript": "^6.0.3"
   },
   "engines": {
     "node": ">=22 <25"
   },
-  "packageManager": "pnpm@10.33.4"
+  "packageManager": "pnpm@9.15.0"
 }
