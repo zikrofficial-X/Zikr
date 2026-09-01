@@ -1,19 +1,36 @@
-export const dynamic = "force-dynamic";
+'use client';
 
-import Link from "next/link";
-import { Container } from "@/components/ui/container";
-import { Card } from "@/components/ui/card";
-import { requireAdmin } from "@/lib/services/admin";
-import { supabaseServerAdminRequest } from "@/lib/supabase/server";
-import type { SocialPublishQueueItem } from "@/lib/services/social-publishing";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Container } from '@/components/ui/container';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import type {
+  SocialPlatform,
+  SocialPublishQueueItem,
+  SocialQueueStatus,
+} from '@/lib/services/social-publishing';
 
-const statusLabels: Record<string, string> = {
-  queued: "في الانتظار",
-  processing: "قيد المعالجة",
-  published: "نُشر",
-  partial: "نشر جزئي",
-  failed: "فشل",
+type Status = SocialQueueStatus;
+type QueueItem = SocialPublishQueueItem;
+
+const STATUSES: readonly Status[] = [
+  'queued',
+  'processing',
+  'published',
+  'partial',
+  'failed',
+];
+
+const statusLabels: Record<Status, string> = {
+  queued: 'في الانتظار',
+  processing: 'قيد المعالجة',
+  published: 'نُشر',
+  partial: 'نشر جزئي',
+  failed: 'فشل',
 };
+
+const labels = statusLabels;
 
 const statusClasses: Record<Status, string> = {
   queued: 'border-sky-500/25 bg-sky-500/10 text-sky-300',
