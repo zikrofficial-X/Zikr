@@ -1,3 +1,4 @@
--- Historical migration version retained for Supabase migration history reconciliation.
--- No-op: the original initial schema migration was archived after being superseded
--- by the canonical guarded migration chain in this directory.
+-- Reconciled placeholder for remote migration 20260705070523_initial_schema.sql
+-- Historical migration archived; kept as no-op for history reconciliation.
+-- This file intentionally contains no schema changes.
+SELECT 1;
