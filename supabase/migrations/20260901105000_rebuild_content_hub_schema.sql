@@ -9,7 +9,7 @@ create table if not exists public.content_sources (
 );
 create table if not exists public.content_library (
   id uuid primary key default gen_random_uuid(),
-  kind text not null check (kind in ('article','lesson','story','biography','fiqh','aqeedah','hadith_study','tafsir_study','history','family','kids','research','file','collection')),
+  kind text not null default 'article' check (kind in ('article','lesson','story','biography','fiqh','aqeedah','hadith_study','tafsir_study','history','family','kids','research','file','collection')),
   title_ar text not null, title_en text, slug text not null unique, summary_ar text, body_ar text, body_en text,
   category text not null, tags text[] not null default '{}', source_id uuid references public.content_sources(id) on delete set null,
   author_name text, reviewer_name text,
@@ -17,16 +17,63 @@ create table if not exists public.content_library (
   published boolean not null default false, featured boolean not null default false, age_group text, cover_url text,
   media jsonb not null default '{}', seo jsonb not null default '{}', metadata jsonb not null default '{}', views bigint not null default 0,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now(), published_at timestamptz,
-  searchable tsvector generated always as (to_tsvector('simple', coalesce(title_ar,'') || ' ' || coalesce(summary_ar,'') || ' ' || coalesce(body_ar,'') || ' ' || coalesce(category,'') || ' ' || array_to_string(tags,' '))) stored
+  searchable tsvector
 );
 
--- Compatibility: content_library may already exist from an older schema migration.
--- In that case CREATE TABLE IF NOT EXISTS does not add the generated search column.
-alter table if exists public.content_library
-  add column if not exists searchable tsvector generated always as (
-    to_tsvector('simple', coalesce(title_ar,'') || ' ' || coalesce(summary_ar,'') || ' ' ||
-      coalesce(body_ar,'') || ' ' || coalesce(category,'') || ' ' || array_to_string(tags,' '))
-  ) stored;
+-- Compatibility with the pre-existing content_library schema.
+-- Generated tsvector columns are intentionally avoided because generated expressions
+-- must be immutable across PostgreSQL versions/configuration.
+alter table if exists public.content_library add column if not exists kind text;
+alter table if exists public.content_library add column if not exists author_name text;
+alter table if exists public.content_library add column if not exists reviewer_name text;
+alter table if exists public.content_library add column if not exists searchable tsvector;
+
+update public.content_library
+set kind = case
+  when lower(coalesce(content_type,'')) in ('article','lesson','story','biography','fiqh','aqeedah','hadith_study','tafsir_study','history','family','kids','research','file','collection') then lower(content_type)
+  else 'article'
+end
+where kind is null;
+
+update public.content_library
+set author_name = author
+where author_name is null and author is not null;
+
+create or replace function public.refresh_content_library_searchable()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  new.searchable := to_tsvector(
+    'simple',
+    coalesce(new.title_ar,'') || ' ' ||
+    coalesce(new.summary_ar,'') || ' ' ||
+    coalesce(new.body_ar,'') || ' ' ||
+    coalesce(new.category,'') || ' ' ||
+    array_to_string(coalesce(new.tags,'{}'::text[]),' ')
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists content_library_searchable_refresh on public.content_library;
+create trigger content_library_searchable_refresh
+before insert or update of title_ar, summary_ar, body_ar, category, tags
+on public.content_library
+for each row execute function public.refresh_content_library_searchable();
+
+update public.content_library
+set searchable = to_tsvector(
+  'simple',
+  coalesce(title_ar,'') || ' ' ||
+  coalesce(summary_ar,'') || ' ' ||
+  coalesce(body_ar,'') || ' ' ||
+  coalesce(category,'') || ' ' ||
+  array_to_string(coalesce(tags,'{}'::text[]),' ')
+)
+where searchable is null;
 
 create index if not exists content_library_search_idx on public.content_library using gin(searchable);
 create index if not exists content_library_kind_idx on public.content_library(kind);
@@ -68,8 +115,10 @@ create table if not exists public.kids_game_progress (
   best_score integer not null default 0, badges text[] not null default '{}', last_played_at timestamptz not null default now(), unique(user_id,game_id)
 );
 create table if not exists public.admin_audit_log (
-  id uuid primary key default gen_random_uuid(), admin_id uuid references auth.users(id) on delete set null, action text not null,
-  entity_type text not null, entity_id text, details jsonb not null default '{}', created_at timestamptz not null default now()
+  id uuid primary key default gen_random_uuid(), admin_id uuid references auth.users(id) on delete set null,
+  user_id uuid references auth.users(id) on delete set null,
+  action text not null, entity_type text not null, entity_id text,
+  details jsonb not null default '{}', meta jsonb not null default '{}', created_at timestamptz not null default now()
 );
 create table if not exists public.admin_settings (
   key text primary key, value jsonb not null default '{}', description text, updated_by uuid references auth.users(id) on delete set null, updated_at timestamptz not null default now()
@@ -92,6 +141,8 @@ drop policy if exists kids_game_levels_admin_all on public.kids_game_levels;
 drop policy if exists kids_game_levels_public_read on public.kids_game_levels;
 drop policy if exists kids_game_questions_admin_all on public.kids_game_questions;
 drop policy if exists kids_game_questions_public_read on public.kids_game_questions;
+drop policy if exists admin_audit_log_admin_all on public.admin_audit_log;
+drop policy if exists admin_settings_admin_all on public.admin_settings;
 create policy content_library_admin_all on public.content_library for all to authenticated using (is_admin_user()) with check (is_admin_user());
 create policy content_library_public_read on public.content_library for select to anon,authenticated using (published=true and review_status='approved');
 create policy content_sources_admin_all on public.content_sources for all to authenticated using (is_admin_user()) with check (is_admin_user());
