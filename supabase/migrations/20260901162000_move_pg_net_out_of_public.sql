@@ -2,7 +2,17 @@
 -- The project uses pg_net through pg_cron for the YouTube -> Facebook sync.
 create schema if not exists extensions;
 
-alter extension if exists pg_net set schema extensions;
+do $$
+begin
+  if exists (
+    select 1
+    from pg_extension e
+    join pg_namespace n on n.oid = e.extnamespace
+    where e.extname = 'pg_net'
+  ) then
+    execute 'alter extension pg_net set schema extensions';
+  end if;
+end $$;
 
 -- Re-point the scheduled native sync job to the new extension schema.
 do $$
