@@ -48,7 +48,6 @@
     "@capacitor/filesystem": "7.1.4",
     "@capacitor/geolocation": "^7.1.0",
     "@capacitor/haptics": "7.0.2",
-    "@capacitor/ios": "7.4.3",
     "@capacitor/keyboard": "7.0.3",
     "@capacitor/local-notifications": "7.0.2",
     "@capacitor/network": "7.0.2",
@@ -89,7 +88,6 @@
     "postcss": "^8.5.26",
     "prettier": "^3.9.4",
     "tailwindcss": "^4.3.3",
-    "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.23.12",
     "typescript": "^6.0.3"
   },
