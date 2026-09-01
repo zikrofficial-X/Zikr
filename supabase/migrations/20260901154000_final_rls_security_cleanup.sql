@@ -3,10 +3,7 @@ DO $$
 DECLARE t text; p text;
 BEGIN
   FOREACH t IN ARRAY ARRAY['content_library','content_sources','media_assets','kids_games','kids_game_levels','kids_game_questions'] LOOP
-    FOREACH p IN ARRAY ARRAY[
-      t||'_admin_all', t||'_admin_select', t||'_admin_insert', t||'_admin_update', t||'_admin_delete',
-      t||'_public_read'
-    ] LOOP
+    FOREACH p IN ARRAY ARRAY[t||'_admin_all', t||'_admin_select', t||'_admin_insert', t||'_admin_update', t||'_admin_delete', t||'_public_read'] LOOP
       IF to_regclass('public.'||t) IS NOT NULL THEN
         EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', p, t);
       END IF;
@@ -32,12 +29,11 @@ DROP POLICY IF EXISTS kids_game_progress_select_own ON public.kids_game_progress
 CREATE POLICY kids_game_progress_owner ON public.kids_game_progress FOR ALL TO authenticated USING ((select auth.uid())=user_id) WITH CHECK ((select auth.uid())=user_id);
 
 DO $$
+DECLARE fn text;
 BEGIN
-  REVOKE EXECUTE ON FUNCTION public.enforce_content_publish_gate() FROM PUBLIC,anon,authenticated;
-  REVOKE EXECUTE ON FUNCTION public.enforce_game_publish_gate() FROM PUBLIC,anon,authenticated;
-  REVOKE EXECUTE ON FUNCTION public.enforce_level_publish_gate() FROM PUBLIC,anon,authenticated;
-  REVOKE EXECUTE ON FUNCTION public.enforce_media_publish_gate() FROM PUBLIC,anon,authenticated;
-  REVOKE EXECUTE ON FUNCTION public.refresh_content_library_searchable() FROM PUBLIC,anon,authenticated;
-  REVOKE EXECUTE ON FUNCTION public.sync_media_asset_compat_columns() FROM PUBLIC,anon,authenticated;
-  REVOKE EXECUTE ON FUNCTION public.validate_game_question() FROM PUBLIC,anon,authenticated;
+  FOREACH fn IN ARRAY ARRAY['enforce_content_publish_gate','enforce_game_publish_gate','enforce_level_publish_gate','enforce_media_publish_gate','refresh_content_library_searchable','sync_media_asset_compat_columns','validate_game_question'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname=fn) THEN
+      EXECUTE format('REVOKE EXECUTE ON FUNCTION public.%I() FROM PUBLIC, anon, authenticated', fn);
+    END IF;
+  END LOOP;
 END $$;
