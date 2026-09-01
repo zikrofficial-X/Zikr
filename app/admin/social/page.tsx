@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/services/admin";
@@ -46,10 +47,20 @@ export default async function AdminSocialPage() {
   return (
     <Container className="space-y-8 py-10 text-right">
       <section className="space-y-2">
-        <h1 className="text-3xl font-bold text-brand-gold">النشر التلقائي</h1>
-        <p className="text-sm text-brand-cream/60" dir="rtl">
-          متابعة طابور نشر البوستات والفيديوهات على الموقع وفيسبوك ويوتيوب.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold text-brand-gold">النشر التلقائي</h1>
+            <p className="text-sm text-brand-cream/60" dir="rtl">
+              متابعة طابور نشر البوستات والفيديوهات على الموقع وفيسبوك ويوتيوب.
+            </p>
+          </div>
+          <Link
+            href="/admin/social/youtube-import"
+            className="rounded-lg border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20"
+          >
+            رفع فيديوهات YouTube القديمة
+          </Link>
+        </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-5">
