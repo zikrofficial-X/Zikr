@@ -1,6 +1,6 @@
 {
   "name": "zikr",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -93,8 +93,6 @@
     "tsx": "^4.23.12",
     "typescript": "^6.0.3"
   },
-  "engines": {
-    "node": "22.x"
-  },
+  "engines": {"node":"22.x"},
   "packageManager": "pnpm@9.15.0"
 }
