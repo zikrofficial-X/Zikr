@@ -1,0 +1,2 @@
+-- Reconciliation marker for production migration 20260901043149.
+-- The audit table is already represented by tracked migration 20260901090000.
