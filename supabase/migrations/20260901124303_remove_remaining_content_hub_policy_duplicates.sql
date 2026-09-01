@@ -1,0 +1,19 @@
+-- Remove legacy per-command admin policies now superseded by *_admin_all.
+DROP POLICY IF EXISTS content_library_admin_insert ON public.content_library;
+DROP POLICY IF EXISTS content_library_admin_update ON public.content_library;
+DROP POLICY IF EXISTS content_library_admin_delete ON public.content_library;
+DROP POLICY IF EXISTS content_sources_admin_insert ON public.content_sources;
+DROP POLICY IF EXISTS content_sources_admin_update ON public.content_sources;
+DROP POLICY IF EXISTS content_sources_admin_delete ON public.content_sources;
+DROP POLICY IF EXISTS media_assets_admin_insert ON public.media_assets;
+DROP POLICY IF EXISTS media_assets_admin_update ON public.media_assets;
+DROP POLICY IF EXISTS media_assets_admin_delete ON public.media_assets;
+DROP POLICY IF EXISTS kids_games_admin_insert ON public.kids_games;
+DROP POLICY IF EXISTS kids_games_admin_update ON public.kids_games;
+DROP POLICY IF EXISTS kids_games_admin_delete ON public.kids_games;
+DROP POLICY IF EXISTS kids_game_levels_admin_insert ON public.kids_game_levels;
+DROP POLICY IF EXISTS kids_game_levels_admin_update ON public.kids_game_levels;
+DROP POLICY IF EXISTS kids_game_levels_admin_delete ON public.kids_game_levels;
+DROP POLICY IF EXISTS kids_game_questions_admin_insert ON public.kids_game_questions;
+DROP POLICY IF EXISTS kids_game_questions_admin_update ON public.kids_game_questions;
+DROP POLICY IF EXISTS kids_game_questions_admin_delete ON public.kids_game_questions;
