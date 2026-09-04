@@ -168,14 +168,16 @@ async function scheduleNativePrayerNotifications(
       typeof cachedLocation?.lat === "number" &&
       typeof cachedLocation.lon === "number"
     ) {
-      // Future days reuse the cached coordinates only. Location permission is
-      // never requested by the global alert provider itself.
+      // Reuse the already-authorized/cached coordinates. This path never
+      // triggers a browser or native location permission prompt.
       const response = await fetch(
-        `/api/prayer-times?lat=${encodeURIComponent(cachedLocation.lat)}&lon=${encodeURIComponent(cachedLocation.lon)}&date=${encodeURIComponent(formatLocalDate(date))}`,
+        `/api/prayer-times?latitude=${encodeURIComponent(cachedLocation.lat)}&longitude=${encodeURIComponent(cachedLocation.lon)}&date=${encodeURIComponent(formatLocalDate(date))}`,
         { cache: "force-cache" }
       ).catch(() => null);
       const data = response?.ok
-        ? ((await response.json().catch(() => null)) as { data?: { timings?: Record<string, string> } } | null)
+        ? ((await response.json().catch(() => null)) as {
+            data?: { timings?: Record<string, string> };
+          } | null)
         : null;
       dayTimings = data?.data?.timings ?? null;
     }
