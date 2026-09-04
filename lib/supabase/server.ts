@@ -73,6 +73,7 @@ export async function getSupabaseUser() {
 
 type RestRequestInit = RequestInit & {
   timeoutMs?: number;
+  retries?: number;
 };
 
 function isRetryableTransportError(error: unknown): boolean {
@@ -98,10 +99,17 @@ async function restRequest<T>(
 ): Promise<T> {
   const { url, anonKey } = getEnv();
   const key = apiKey ?? anonKey;
-  const { timeoutMs = 20000, ...fetchInit } = init ?? {};
+  const {
+    timeoutMs = 20000,
+    retries,
+    ...fetchInit
+  } = init ?? {};
   const method = (fetchInit.method ?? "GET").toUpperCase();
   const retryableMethod = method === "GET" || method === "HEAD";
-  const maxAttempts = retryableMethod ? 3 : 1;
+  const retryCount = retryableMethod
+    ? Math.min(3, Math.max(0, Number.isFinite(retries) ? Math.floor(retries as number) : 2))
+    : 0;
+  const maxAttempts = 1 + retryCount;
 
   let lastError: unknown = null;
 
@@ -124,7 +132,6 @@ async function restRequest<T>(
 
       if (!res.ok) {
         const body = await res.text().catch(() => "");
-        // Retry transient upstream failures only for idempotent requests.
         if (retryableMethod && attempt < maxAttempts && res.status >= 500) {
           await new Promise(resolve => setTimeout(resolve, 250 * attempt));
           continue;
