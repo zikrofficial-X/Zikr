@@ -9,8 +9,10 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        // Private / admin / API routes must not be indexed
-        disallow: ["/admin/", "/api/", "/auth/", "/favorites", "/profile", "/settings", "/wird", "/memorization"],
+        // Keep account, admin and backend endpoints out of crawling.
+        // Public utility pages use noindex metadata instead of disallow so
+        // crawlers can see and honor their robots directives.
+        disallow: ["/admin/", "/api/", "/auth/", "/favorites", "/profile", "/settings"],
       },
     ],
     sitemap: `${baseUrl}/sitemap-index.xml`,
