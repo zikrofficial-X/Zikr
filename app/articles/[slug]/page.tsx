@@ -9,6 +9,8 @@ import { pageMetadata } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
+const MIN_PUBLIC_ARTICLE_CHARS = 500;
+
 interface ArticleReference {
   url: string;
   title: string;
@@ -16,7 +18,7 @@ interface ArticleReference {
 }
 
 function getArticleReferences(
-  metadata: Article["metadata"]
+  metadata: Article["metadata"],
 ): ArticleReference[] {
   const references = metadata?.references;
   if (!Array.isArray(references)) return [];
@@ -28,8 +30,7 @@ function getArticleReferences(
 
     try {
       const parsed = new URL(item.url);
-      if (parsed.protocol !== "https:" && parsed.protocol !== "http:")
-        return [];
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return [];
       return [
         {
           url: parsed.toString(),
@@ -70,6 +71,10 @@ async function loadArticle(slug: string): Promise<Article | null> {
   return (await getArticleBySlug(slug)) ?? staticArticleToArticle(slug);
 }
 
+function hasSubstantialContent(article: Article | null): article is Article {
+  return Boolean(article?.content?.trim() && article.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS);
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -83,13 +88,17 @@ export async function generateMetadata({
       title: "المقال غير موجود",
       description: "لم يتم العثور على المقال المطلوب في منصة ذِكرٌ.",
       path: `/articles/${slug}`,
+      noindex: true,
     });
   }
+
+  const qualityApproved = hasSubstantialContent(article);
 
   return pageMetadata({
     title: article.title,
     description: article.summary || `اقرأ مقال ${article.title} في منصة ذِكرٌ.`,
     path: `/articles/${article.slug}`,
+    noindex: !qualityApproved,
   });
 }
 
@@ -101,10 +110,14 @@ export default async function ArticleDetailPage({
   const { slug } = await params;
   const article = await loadArticle(slug);
 
-  if (!article) notFound();
+  if (!hasSubstantialContent(article)) {
+    // A published row with no meaningful article body is not a public content
+    // page yet. Keep it inaccessible until editorial content is complete.
+    notFound();
+  }
 
   const references = getArticleReferences(article.metadata);
-  const content = article.content?.trim() || article.summary?.trim();
+  const content = article.content.trim();
 
   return (
     <Container className="py-12 space-y-8 max-w-3xl" dir="rtl">
@@ -137,18 +150,11 @@ export default async function ArticleDetailPage({
         </div>
       </header>
 
-      {content ? (
-        <Card className="p-8 space-y-6 bg-black/30 border-brand-gold/30">
-          <article className="prose prose-invert max-w-none text-brand-cream leading-relaxed whitespace-pre-wrap">
-            {content}
-          </article>
-        </Card>
-      ) : (
-        <Card className="p-8 text-center text-brand-cream/70">
-          هذا المقال قيد المراجعة التحريرية وسيُنشر نصه الكامل بعد التحقق من
-          مصادره.
-        </Card>
-      )}
+      <Card className="p-8 space-y-6 bg-black/30 border-brand-gold/30">
+        <article className="prose prose-invert max-w-none text-brand-cream leading-relaxed whitespace-pre-wrap">
+          {content}
+        </article>
+      </Card>
 
       {references.length > 0 && (
         <section
