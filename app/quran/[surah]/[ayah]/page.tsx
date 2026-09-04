@@ -8,6 +8,7 @@ import { getAyah, getSurahById, getTafsir } from '@/lib/services/quran';
 import { getAyahFromDb, getSurahMetaFromDb, getTafsirRecordFromDb } from '@/lib/services/quran-server';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Share2 } from 'lucide-react';
+import { pageMetadata } from '@/lib/site';
 
 export const revalidate = 3600;
 
@@ -20,19 +21,20 @@ export async function generateMetadata({ params }: AyahPageProps): Promise<Metad
   const surahId = Number.parseInt(p.surah, 10);
   const ayahId = Number.parseInt(p.ayah, 10);
 
-  // Try DB first for metadata
   let surahMeta = Number.isNaN(surahId) ? null : await getSurahMetaFromDb(surahId, 'ar');
-
-  // Fallback to API
   if (!surahMeta && !Number.isNaN(surahId)) {
     surahMeta = await getSurahById(surahId, 'ar').then((result) => result?.surah ?? null);
   }
 
-  return {
+  return pageMetadata({
     title: surahMeta ? `سورة ${surahMeta.name} - الآية ${ayahId}` : `الآية ${p.ayah}`,
-    description: 'قراءة الآية والتفسير والمشاركة',
-    alternates: { canonical: `/quran/${p.surah}/${p.ayah}` },
-  };
+    description: 'عرض الآية وتفسيرها من داخل صفحة السورة في منصة ذِكرٌ.',
+    path: `/quran/${p.surah}/${p.ayah}`,
+    // Individual verses are useful detail screens, but the complete surah is
+    // the public SEO landing page. Avoid flooding the index with thousands of
+    // near-duplicate detail URLs.
+    noindex: true,
+  });
 }
 
 export default async function AyahPage({ params }: AyahPageProps) {
@@ -42,14 +44,12 @@ export default async function AyahPage({ params }: AyahPageProps) {
 
   if (Number.isNaN(surahId) || Number.isNaN(ayahId)) return notFound();
 
-  // DB-First Strategy with parallel execution
   const [dbSurahMeta, dbAyah, dbTafsirRecord] = await Promise.all([
     getSurahMetaFromDb(surahId, 'ar'),
     getAyahFromDb(surahId, ayahId, 'ar'),
-    getTafsirRecordFromDb(surahId, ayahId)
+    getTafsirRecordFromDb(surahId, ayahId),
   ]);
 
-  // Fallback logic
   let surahMeta = dbSurahMeta;
   let ayah = dbAyah;
   let tafsir = dbTafsirRecord?.tafsir_ar ?? null;
@@ -102,7 +102,7 @@ export default async function AyahPage({ params }: AyahPageProps) {
           <p className='text-4xl leading-loose text-right font-arabic' dir="rtl">
             {ayah.text}
           </p>
-          
+
           <div className='mt-8 flex items-center justify-between pt-6 border-t'>
             <div className="flex gap-4">
               <BookmarkButton keyRef={`quran:${surahId}:${ayah.numberInSurah}`} />
