@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 import { getAllScholars } from "@/lib/services/scholars";
 import { getHadithBooks } from "@/lib/services/hadith";
 import { getStories } from "@/lib/services/stories";
-import { reciters, surahs as fallbackSurahs } from "@/lib/data/content";
+import { surahs as fallbackSurahs } from "@/lib/data/content";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { appRoutes, siteConfig } from "@/lib/site";
 import type { Surah } from "@/lib/types/quran";
@@ -150,13 +150,6 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           priority: 0.7,
         }),
       ),
-      ...reciters.map(reciter =>
-        route(`/reciters/${reciter.id}`, {
-          lastModified: now,
-          changeFrequency: "monthly",
-          priority: 0.7,
-        }),
-      ),
       ...hadithBooks.map(book =>
         route(`/hadith/${book.slug ?? book.id}`, {
           lastModified: now,
@@ -164,15 +157,15 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           priority: 0.7,
         }),
       ),
-      ...stories.map(story =>
-        route(`/stories/${story.slug}`, {
-          lastModified: now,
-          changeFrequency: "weekly",
-          priority: 0.7,
-        }),
-      ),
-      // Only publish substantial article pages in the SEO sitemap. The detail
-      // page itself also returns noindex/404 for incomplete editorial content.
+      ...stories
+        .filter(story => (story.content?.trim().length ?? 0) >= 500)
+        .map(story =>
+          route(`/stories/${story.slug}`, {
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: 0.7,
+          }),
+        ),
       ...articles
         .filter(article => (article.content?.trim().length ?? 0) >= 500)
         .map(article =>
@@ -196,13 +189,15 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           priority: 0.7,
         }),
       ),
-      ...duas.map(dua =>
-        route(`/dua/${dua.slug}`, {
-          lastModified: now,
-          changeFrequency: "monthly",
-          priority: 0.7,
-        }),
-      ),
+      ...duas
+        .filter(dua => (dua.textAr?.trim().length ?? 0) >= 80)
+        .map(dua =>
+          route(`/dua/${dua.slug}`, {
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+          }),
+        ),
       ...kidsContent
         .filter(kid => (kid.contentAr?.trim().length ?? 0) >= 250 || Boolean(kid.quiz_data))
         .map(kid =>
