@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AdSense } from "./adsense";
 import { AppUpdateChecker } from "./app-update-checker";
-import { Analytics } from "./analytics";
 import { GoogleFundingChoices } from "./google-funding-choices";
 import { PrayerAlertProvider } from "./prayer-alert-provider";
 import { ServiceWorkerRegister } from "./service-worker-register";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const NON_AD_PATHS = [
   "/search",
@@ -57,8 +55,6 @@ function DeferredThirdPartyRuntime() {
 
   return (
     <>
-      <Analytics />
-      <SpeedInsights />
       {process.env.NODE_ENV === "production" && adsAllowed && (
         <>
           <GoogleFundingChoices />
