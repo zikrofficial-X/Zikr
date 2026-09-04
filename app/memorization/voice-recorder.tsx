@@ -4,6 +4,28 @@ import { useRef, useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { evaluateMemorizationAction } from './actions';
 
+function getSupportedAudioMimeType(): string | null {
+  if (typeof MediaRecorder === 'undefined') return null;
+
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
+  ];
+
+  for (const mimeType of candidates) {
+    try {
+      if (MediaRecorder.isTypeSupported(mimeType)) return mimeType;
+    } catch {
+      // Some WebViews expose MediaRecorder but throw from isTypeSupported.
+    }
+  }
+
+  return null;
+}
+
 export function VoiceRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -13,55 +35,126 @@ export function VoiceRecorder() {
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  function stopStream() {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+  }
 
   async function startRecording() {
     setMicError('');
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setMicError('متصفحك لا يدعم تسجيل الصوت.');
+    setAudioBlob(null);
+
+    if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setMicError('تسجيل الصوت غير متاح في هذه البيئة. افتح ZIKR من اتصال آمن أو استخدم أحدث نسخة من التطبيق.');
       return;
     }
+
+    if (typeof MediaRecorder === 'undefined') {
+      setMicError('جهازك أو بيئة التطبيق لا تدعم تسجيل الصوت. حدّث التطبيق إلى أحدث إصدار.');
+      return;
+    }
+
+    const mimeType = getSupportedAudioMimeType();
+    if (!mimeType) {
+      setMicError('لم يتم العثور على صيغة تسجيل صوتي مدعومة على جهازك. حدّث التطبيق أو جرّب متصفح Chrome حديث.');
+      return;
+    }
+
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      streamRef.current = stream;
     } catch (err) {
       const name = err instanceof DOMException ? err.name : '';
-      if (name === 'NotAllowedError' || name === 'SecurityError') {
-        setMicError('تم رفض إذن الميكروفون. اسمح بالوصول للميكروفون من إعدادات المتصفح ثم حاول مجدداً.');
-      } else if (name === 'NotFoundError') {
+      if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') {
+        setMicError('تم رفض إذن الميكروفون. اسمح لـ ZIKR باستخدام الميكروفون من إعدادات التطبيق ثم حاول مرة أخرى.');
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
         setMicError('لم يتم العثور على ميكروفون في جهازك.');
+      } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+        setMicError('الميكروفون مستخدم حاليًا بواسطة تطبيق آخر. أغلق أي تطبيق يستخدم الميكروفون ثم حاول مرة أخرى.');
       } else {
-        setMicError('تعذر الوصول إلى الميكروفون. حاول مرة أخرى.');
+        setMicError('تعذر الوصول إلى الميكروفون. تأكد من صلاحيات التطبيق وحاول مرة أخرى.');
       }
+      stopStream();
       return;
     }
+
     try {
-      const recorder = new MediaRecorder(stream);
+      const recorder = new MediaRecorder(stream, { mimeType });
       chunksRef.current = [];
+
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-        setAudioBlob(blob);
-        stream.getTracks().forEach((track) => track.stop());
+
+      recorder.onerror = () => {
+        setMicError('حدث خطأ أثناء تسجيل الصوت. حاول مرة أخرى.');
+        setIsRecording(false);
+        recorderRef.current = null;
+        stopStream();
       };
+
+      recorder.onstop = () => {
+        const finalType = recorder.mimeType || mimeType;
+        const blob = new Blob(chunksRef.current, { type: finalType });
+        if (blob.size > 0) {
+          setAudioBlob(blob);
+        } else {
+          setMicError('لم يتم التقاط صوت. تأكد من السماح بالميكروفون وحاول مرة أخرى.');
+        }
+        recorderRef.current = null;
+        stopStream();
+      };
+
       recorderRef.current = recorder;
-      recorder.start();
+      recorder.start(250);
       setIsRecording(true);
-    } catch {
-      stream.getTracks().forEach((track) => track.stop());
-      setMicError('تعذر بدء التسجيل. متصفحك قد لا يدعم MediaRecorder.');
+    } catch (err) {
+      console.error('[memorization] Failed to start MediaRecorder:', err);
+      recorderRef.current = null;
+      stopStream();
+      setMicError('تعذر بدء التسجيل على هذا الجهاز. تم إيقاف التسجيل بأمان.');
     }
   }
 
   function stopRecording() {
-    recorderRef.current?.stop();
-    setIsRecording(false);
+    const recorder = recorderRef.current;
+    if (!recorder) return;
+
+    try {
+      if (recorder.state !== 'inactive') recorder.stop();
+    } catch {
+      recorderRef.current = null;
+      stopStream();
+    } finally {
+      setIsRecording(false);
+    }
   }
 
   function submitEvaluation(formData: FormData) {
-    if (audioBlob) formData.set('audio', new File([audioBlob], 'tasmee.webm', { type: audioBlob.type || 'audio/webm' }));
+    if (audioBlob) {
+      const extension = audioBlob.type.includes('mp4')
+        ? 'm4a'
+        : audioBlob.type.includes('ogg')
+          ? 'ogg'
+          : 'webm';
+      formData.set(
+        'audio',
+        new File([audioBlob], `tasmee.${extension}`, {
+          type: audioBlob.type || 'audio/webm',
+        }),
+      );
+    }
+
     startTransition(async () => {
       const evaluation = await evaluateMemorizationAction(formData);
       setResult(evaluation);
@@ -85,7 +178,7 @@ export function VoiceRecorder() {
         {isRecording ? 'إيقاف التسجيل' : 'ابدأ تسجيل التسميع'}
       </Button>
       <Button type='submit' disabled={!audioBlob || isPending}>تقييم الحفظ والتجويد</Button>
-      {audioBlob ? <span className='text-sm text-emerald-300'>تم تسجيل الصوت وجاهز للتقييم.</span> : <span className='text-sm arabic-muted'>اسمح للمتصفح باستخدام الميكروفون.</span>}
+      {audioBlob ? <span className='text-sm text-emerald-300'>تم تسجيل الصوت وجاهز للتقييم.</span> : <span className='text-sm arabic-muted'>اسمح لـ ZIKR باستخدام الميكروفون.</span>}
     </div>
 
     {micError ? (
@@ -97,10 +190,10 @@ export function VoiceRecorder() {
         <div className='flex items-center justify-between'>
           <h3 className='text-lg font-bold text-brand-gold'>نتائج التقييم:</h3>
           <div className='flex gap-2'>
-            <Button 
-              type='button' 
-              variant='secondary' 
-              size='sm' 
+            <Button
+              type='button'
+              variant='secondary'
+              size='sm'
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(result);
@@ -113,10 +206,10 @@ export function VoiceRecorder() {
             >
               {copied ? 'تم النسخ' : 'نسخ التقييم'}
             </Button>
-            <Button 
-              type='button' 
-              variant='secondary' 
-              size='sm' 
+            <Button
+              type='button'
+              variant='secondary'
+              size='sm'
               onClick={() => setResult('')}
             >
               مسح
