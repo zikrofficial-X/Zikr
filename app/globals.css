@@ -74,8 +74,31 @@ p {
 
 /* Colors and utilities */
 .arabic-muted {
-  color: rgba(245, 245, 240, 0.5);
+  color: rgba(245, 245, 240, 0.72);
   transition: color 0.2s ease;
+}
+
+/* Keep low-opacity brand text readable on the dark ZIKR surface. The
+   PageSpeed accessibility audit flags a number of these utility combinations.
+   Attribute selectors avoid relying on Tailwind's escaped slash syntax. */
+[class~="text-brand-cream/35"] {
+  color: rgba(246, 240, 229, 0.72) !important;
+}
+
+[class~="text-brand-cream/40"] {
+  color: rgba(246, 240, 229, 0.74) !important;
+}
+
+[class~="text-brand-cream/50"] {
+  color: rgba(246, 240, 229, 0.78) !important;
+}
+
+[class~="text-brand-gold/40"] {
+  color: rgba(230, 215, 179, 0.78) !important;
+}
+
+[class~="text-brand-gold/50"] {
+  color: rgba(230, 215, 179, 0.80) !important;
 }
 
 .font-arabic {
