@@ -16,7 +16,6 @@ import {
   registerPrayerPushSubscription,
   type PushSubscriptionRegistrationResult,
 } from "@/lib/push-subscription";
-import { getPrayerTimes } from "@/lib/services/prayer-times";
 import { getNativeAudio } from "@/lib/audio/config";
 
 export type PrayerKey = "Fajr" | "Dhuhr" | "Asr" | "Maghrib" | "Isha";
@@ -125,76 +124,6 @@ function markFired(prayer: PrayerKey): void {
   sessionStorage.setItem(getAlertKey(prayer), "1");
 }
 
-async function getTimingsForNativeScheduling(): Promise<Record<
-  string,
-  string
-> | null> {
-  const cached = getCachedPrayerLocation();
-  if (cached?.timings && typeof cached.timings === "object")
-    return cached.timings;
-  if (typeof navigator === "undefined" || !navigator.geolocation) return null;
-
-  try {
-    const native = (
-      window as Window & {
-        zikrNative?: {
-          isNative?: boolean;
-          requestLocationPermission?: () => Promise<unknown>;
-        };
-      }
-    ).zikrNative;
-    if (native?.isNative && native.requestLocationPermission) {
-      const permission = (await native.requestLocationPermission()) as
-        | {
-            location?: string;
-          }
-        | undefined;
-      if (
-        permission?.location === "denied" ||
-        permission?.location === "prompt"
-      ) {
-        return null;
-      }
-    }
-  } catch {
-    // Fall back to the browser geolocation prompt when native permissions are unavailable.
-  }
-
-  return new Promise(resolve => {
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        void getPrayerTimes(position.coords.latitude, position.coords.longitude)
-          .then(response => {
-            const timings =
-              (response?.data?.timings as Record<string, string> | undefined) ??
-              null;
-            if (timings && typeof window !== "undefined") {
-              try {
-                window.localStorage.setItem(
-                  LOCATION_KEY,
-                  JSON.stringify({
-                    ...cached,
-                    lat: position.coords.latitude,
-                    lon: position.coords.longitude,
-                    timings,
-                    date: response?.data?.date,
-                    cachedAt: Date.now(),
-                  })
-                );
-              } catch {
-                // Private browsing or storage limits must not block native alarms.
-              }
-            }
-            resolve(timings);
-          })
-          .catch(() => resolve(null));
-      },
-      () => resolve(null),
-      { enableHighAccuracy: false, maximumAge: 60 * 60 * 1000, timeout: 10_000 }
-    );
-  });
-}
-
 async function scheduleNativePrayerNotifications(
   settings: AzanSettings,
   timings: Record<string, string>
@@ -239,13 +168,16 @@ async function scheduleNativePrayerNotifications(
       typeof cachedLocation?.lat === "number" &&
       typeof cachedLocation.lon === "number"
     ) {
-      const response = await getPrayerTimes(
-        cachedLocation.lat,
-        cachedLocation.lon,
-        formatLocalDate(date)
-      );
-      dayTimings =
-        (response?.data?.timings as Record<string, string> | undefined) ?? null;
+      // Future days reuse the cached coordinates only. Location permission is
+      // never requested by the global alert provider itself.
+      const response = await fetch(
+        `/api/prayer-times?lat=${encodeURIComponent(cachedLocation.lat)}&lon=${encodeURIComponent(cachedLocation.lon)}&date=${encodeURIComponent(formatLocalDate(date))}`,
+        { cache: "force-cache" }
+      ).catch(() => null);
+      const data = response?.ok
+        ? ((await response.json().catch(() => null)) as { data?: { timings?: Record<string, string> } } | null)
+        : null;
+      dayTimings = data?.data?.timings ?? null;
     }
     if (!dayTimings) dayTimings = timings;
 
@@ -327,18 +259,17 @@ export function usePrayerAlert(
   }, []);
 
   // Keep the foreground loop for the open browser, but use native alarms for
-  // Android background delivery. Reschedule after native initialization and
-  // whenever the app returns from the background.
+  // Android background delivery. Reschedule only from cached prayer timings.
+  // Browser/native location permission is requested by the explicit location
+  // controls in the prayer features, never by the global app shell.
   useEffect(() => {
     if (passive) return;
     let disposed = false;
     const schedule = () => {
       if (disposed) return;
-      void (async () => {
-        const timings = getTimings() ?? (await getTimingsForNativeScheduling());
-        if (!timings || disposed) return;
-        await scheduleNativePrayerNotifications(settings, timings);
-      })().catch(error => {
+      const timings = getTimings();
+      if (!timings) return;
+      void scheduleNativePrayerNotifications(settings, timings).catch(error => {
         console.warn("[prayer-alert] Native schedule refresh failed", error);
       });
     };
