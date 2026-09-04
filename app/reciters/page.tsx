@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { reciters } from '@/lib/data/content';
 
+export const metadata = undefined;
+
 export default function RecitersPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -22,7 +24,7 @@ export default function RecitersPage() {
       <section className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-brand-gold">القراء الكرام</h1>
         <p className="max-w-2xl mx-auto text-lg leading-8 arabic-muted">
-          استمع لأشهر القراء والمقرئين المعروفين بجودة قراءتهم للقرآن الكريم
+          استمع لأشهر القراء والمقرئين المعروفين بجودة قراءتهم للقرآن الكريم. هذه صفحة استماع تفاعلية وليست صفحة محتوى تحريري.
         </p>
       </section>
 
@@ -60,7 +62,7 @@ export default function RecitersPage() {
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-brand-gold">{reciter.nameAr}</h3>
+              <h2 className="text-lg font-bold text-brand-gold">{reciter.nameAr}</h2>
               <p className="text-sm text-brand-cream/60">{reciter.nameEn}</p>
             </div>
             <Link href={`/reciters/${reciter.id}`}>
