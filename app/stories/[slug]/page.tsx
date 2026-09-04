@@ -10,27 +10,42 @@ interface StoryPageProps {
   params: Promise<{ slug: string }>;
 }
 
+const MIN_PUBLIC_STORY_CHARS = 500;
+
+function hasSubstantialStoryContent(story: { content?: string }): boolean {
+  return (story.content?.trim().length ?? 0) >= MIN_PUBLIC_STORY_CHARS;
+}
+
 export async function generateMetadata({ params }: StoryPageProps): Promise<Metadata> {
   const { slug } = await params;
   let title = "قصة";
   let description = "اقرأ القصة كاملة في منصة ZIKR للمحتوى الإسلامي.";
+  let noindex = true;
+
   try {
     const story = await getStoryBySlug(slug);
     if (story) {
       title = story.title;
       if (story.summary) description = story.summary.slice(0, 160);
+      noindex = !hasSubstantialStoryContent(story);
     }
   } catch {
-    // fall back to generic metadata
+    // Keep the unknown/incomplete page out of search.
   }
-  return pageMetadata({ title, description, path: `/stories/${slug}` });
+
+  return pageMetadata({
+    title,
+    description,
+    path: `/stories/${slug}`,
+    noindex,
+  });
 }
 
 export default async function StoryPage({ params }: StoryPageProps) {
   const { slug } = await params;
   const story = await getStoryBySlug(slug);
 
-  if (!story) {
+  if (!story || !hasSubstantialStoryContent(story)) {
     notFound();
   }
 
