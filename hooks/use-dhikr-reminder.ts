@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { playSalawatClip, unlockAudioContext } from '@/lib/audio/spiritual-tones';
 import { showDhikrNotification, isInQuietHours } from '@/lib/services/notifications';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 export type DhikrInterval = 15 | 30 | 60 | 120 | 0; // 0 = disabled
 
@@ -36,7 +37,6 @@ const DEFAULT_SETTINGS: DhikrReminderSettings = {
   quietHours: { enabled: false, from: '22:00', to: '06:00' },
 };
 
-
 function pickDhikr(index: number): string {
   return DHIKR_PHRASES[index % DHIKR_PHRASES.length];
 }
@@ -49,20 +49,48 @@ export interface DhikrReminderReturn {
   testReminder: () => void;
 }
 
+async function getAuthenticatedSession() {
+  try {
+    const supabase = createBrowserSupabaseClient();
+    const { data, error } = await supabase.auth.getSession();
+    if (error) return null;
+    return data.session;
+  } catch {
+    return null;
+  }
+}
+
 export function useDhikrReminder(): DhikrReminderReturn {
   const [settings, setSettings] = useState<DhikrReminderSettings>(DEFAULT_SETTINGS);
   const rotationRef = useRef(0);
 
-  // Load persisted settings from the authenticated server.
+  // Load persisted settings only for authenticated users. The API intentionally
+  // returns 401 for anonymous visitors, so avoid issuing the request at all.
   useEffect(() => {
-    void fetch('/api/reminders/background').then((response) => response.ok ? response.json() : null).then((data) => {
-      if (!data) return;
-      setSettings({
-        enabled: Boolean(data.dhikr_enabled),
-        intervalMinutes: data.dhikr_interval_minutes ?? 60,
-        quietHours: { enabled: Boolean(data.quiet_hours_start && data.quiet_hours_end), from: data.quiet_hours_start?.slice(0, 5) ?? '22:00', to: data.quiet_hours_end?.slice(0, 5) ?? '06:00' },
-      });
-    }).catch(() => undefined);
+    let cancelled = false;
+    void getAuthenticatedSession().then(async session => {
+      if (cancelled || !session?.user) return;
+      try {
+        const response = await fetch('/api/reminders/background', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (cancelled) return;
+        setSettings({
+          enabled: Boolean(data.dhikr_enabled),
+          intervalMinutes: data.dhikr_interval_minutes ?? 60,
+          quietHours: {
+            enabled: Boolean(data.quiet_hours_start && data.quiet_hours_end),
+            from: data.quiet_hours_start?.slice(0, 5) ?? '22:00',
+            to: data.quiet_hours_end?.slice(0, 5) ?? '06:00',
+          },
+        });
+      } catch {
+        // Anonymous/offline users keep the local defaults.
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Set up interval whenever settings change
@@ -100,9 +128,21 @@ export function useDhikrReminder(): DhikrReminderReturn {
         | ((prev: DhikrReminderSettings) => Partial<DhikrReminderSettings>)
     ) => {
       setSettings(prev => {
-        const patch = typeof partial === "function" ? partial(prev) : partial;
+        const patch = typeof partial === 'function' ? partial(prev) : partial;
         const next = { ...prev, ...patch };
-        void fetch('/api/reminders/background', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dhikr_enabled: next.enabled, dhikr_interval_minutes: next.intervalMinutes, quiet_hours_start: next.quietHours.enabled ? next.quietHours.from : null, quiet_hours_end: next.quietHours.enabled ? next.quietHours.to : null }) }).catch(() => undefined);
+        void getAuthenticatedSession().then(session => {
+          if (!session?.user) return;
+          void fetch('/api/reminders/background', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dhikr_enabled: next.enabled,
+              dhikr_interval_minutes: next.intervalMinutes,
+              quiet_hours_start: next.quietHours.enabled ? next.quietHours.from : null,
+              quiet_hours_end: next.quietHours.enabled ? next.quietHours.to : null,
+            }),
+          }).catch(() => undefined);
+        });
         return next;
       });
     },
