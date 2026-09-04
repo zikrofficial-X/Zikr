@@ -40,7 +40,6 @@ async function getPublishedSlugs(table: "companions" | "conquests") {
   });
 }
 
-// Utility/account/search pages are intentionally excluded from the public sitemap.
 const NON_INDEXABLE_PATHS = new Set([
   "/admin",
   "/api",
@@ -60,6 +59,9 @@ const NON_INDEXABLE_PATHS = new Set([
   "/competitions",
   "/radio",
   "/youtube",
+  "/videos",
+  "/reciters",
+  "/tawasheeh",
 ]);
 
 function isIndexablePath(path: string) {
@@ -97,7 +99,7 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
   );
 
   try {
-    const [surahs, scholars, hadithBooks, stories, articles, videos, prophets, duas, kidsContent, battles, companions, conquests] =
+    const [surahs, scholars, hadithBooks, stories, articles, prophets, duas, kidsContent, battles, companions, conquests] =
       await Promise.all([
         Promise.resolve(
           fallbackSurahs.map(
@@ -125,7 +127,6 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           return [];
         }),
         import("@/lib/services/content").then(m => m.getArticles()).catch(() => []),
-        import("@/lib/services/content").then(m => m.getVideos()).catch(() => []),
         import("@/lib/services/content").then(m => m.getProphets()).catch(() => []),
         import("@/lib/services/content").then(m => m.getDuas()).catch(() => []),
         import("@/lib/services/content").then(m => m.getKidsContent()).catch(() => []),
@@ -135,8 +136,6 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       ]);
 
     const dynamicRoutes: MetadataRoute.Sitemap = [
-      // Complete surah pages are the canonical Quran landing pages. Individual
-      // ayah URLs stay available for deep links but are noindex and omitted here.
       ...surahs.map(surah =>
         route(`/quran/${surah.number}`, {
           lastModified: now,
@@ -165,7 +164,6 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           priority: 0.7,
         }),
       ),
-      // Individual hadith records are utility/detail URLs and are intentionally omitted.
       ...stories.map(story =>
         route(`/stories/${story.slug}`, {
           lastModified: now,
@@ -173,15 +171,17 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           priority: 0.7,
         }),
       ),
-      ...articles.map(article =>
-        route(`/articles/${article.slug}`, {
-          lastModified: now,
-          changeFrequency: "weekly",
-          priority: 0.7,
-        }),
-      ),
-      // Video detail pages are noindex because most are embedded/republished media.
-      // Keep the public /videos hub only.
+      // Only publish substantial article pages in the SEO sitemap. The detail
+      // page itself also returns noindex/404 for incomplete editorial content.
+      ...articles
+        .filter(article => (article.content?.trim().length ?? 0) >= 500)
+        .map(article =>
+          route(`/articles/${article.slug}`, {
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: 0.7,
+          }),
+        ),
       ...STATIC_PROPHET_SLUGS.map(slug =>
         route(`/prophets/${slug}`, {
           lastModified: now,
@@ -203,13 +203,15 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           priority: 0.7,
         }),
       ),
-      ...kidsContent.map(kid =>
-        route(`/kids/${kid.slug}`, {
-          lastModified: now,
-          changeFrequency: "monthly",
-          priority: 0.7,
-        }),
-      ),
+      ...kidsContent
+        .filter(kid => (kid.contentAr?.trim().length ?? 0) >= 250 || Boolean(kid.quiz_data))
+        .map(kid =>
+          route(`/kids/${kid.slug}`, {
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.7,
+          }),
+        ),
       ...STATIC_BATTLE_SLUGS.map(slug =>
         route(`/battles/${slug}`, {
           lastModified: now,
