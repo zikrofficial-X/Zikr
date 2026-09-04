@@ -16,11 +16,24 @@ type VideoDetailPageProps = {
 export async function generateMetadata({ params }: VideoDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
   const video = await getVideoBySlug(slug);
-  if (!video) return pageMetadata({ title: 'الفيديو غير موجود', description: 'الفيديو المطلوب غير موجود.', path: `/videos/${slug}` });
+  if (!video) {
+    return pageMetadata({
+      title: 'الفيديو غير موجود',
+      description: 'الفيديو المطلوب غير موجود.',
+      path: `/videos/${slug}`,
+      noindex: true,
+    });
+  }
+
   return pageMetadata({
     title: video.title,
-    description: video.description ?? `فيديو إسلامي من منصة ذِكر.`,
+    description: video.description ?? 'فيديو إسلامي من منصة ذِكر.',
     path: `/videos/${video.slug}`,
+    // Embedded/republished video detail screens are not used as primary SEO
+    // landing pages unless they contain substantial original editorial text.
+    // The videos hub remains public while these detail URLs stay out of the
+    // monetized search inventory.
+    noindex: true,
   });
 }
 
