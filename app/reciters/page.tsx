@@ -8,8 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { reciters } from '@/lib/data/content';
 
-export const metadata = undefined;
-
 export default function RecitersPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
