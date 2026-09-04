@@ -15,6 +15,7 @@ import {
 import { getFavoritedRefs } from "@/app/favorites/actions";
 import { getReadingProgress } from "@/app/quran/actions";
 import { Badge } from "@/components/ui/badge";
+import { pageMetadata } from "@/lib/site";
 
 export const revalidate = 3600; // Surah page cache
 
@@ -38,10 +39,12 @@ export async function generateMetadata({
     );
   }
 
-  return {
-    title: surahMeta ? `سورة ${surahMeta.name}` : "سورة",
+  return pageMetadata({
+    title: surahMeta ? `سورة ${surahMeta.name}` : `سورة ${id}`,
     description: "قراءة وتفسير واستماع",
-  };
+    path: `/quran/${id}`,
+    noindex: false,
+  });
 }
 
 export default async function SurahPage({
