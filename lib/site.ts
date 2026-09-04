@@ -31,6 +31,37 @@ export const defaultOgImage = "/og-image.png";
 import type { Metadata } from "next";
 
 /**
+ * Public tools, account screens, search results and highly-interactive views
+ * are useful to visitors but are not intended to be SEO landing pages.
+ * Keeping them out of the index prevents thin/utility URLs from diluting
+ * the quality of the core editorial content.
+ */
+const NOINDEX_PATHS = new Set([
+  "/search",
+  "/qibla",
+  "/prayer-times",
+  "/tasbeeh",
+  "/memorization",
+  "/wird",
+  "/offline-library",
+  "/settings",
+  "/favorites",
+  "/profile",
+  "/spiritual-ai",
+  "/competitions",
+  "/radio",
+  "/youtube",
+]);
+
+function isNoindexPath(path: string): boolean {
+  const normalized = path.split("?")[0].replace(/\/$/, "") || "/";
+  return Array.from(NOINDEX_PATHS).some(
+    blockedPath =>
+      normalized === blockedPath || normalized.startsWith(`${blockedPath}/`),
+  );
+}
+
+/**
  * Build consistent page metadata with canonical URL, Open Graph, and Twitter cards.
  * Use for every public page to avoid inheriting the root canonical.
  */
@@ -40,12 +71,14 @@ export function pageMetadata(opts: {
   path: string;
   noindex?: boolean;
 }): Metadata {
-  const { title, description, path, noindex } = opts;
+  const { title, description, path } = opts;
+  const shouldNoindex = opts.noindex ?? isNoindexPath(path);
+
   return {
     title,
     description,
     alternates: { canonical: path },
-    robots: noindex
+    robots: shouldNoindex
       ? { index: false, follow: false }
       : {
           index: true,
@@ -81,7 +114,13 @@ export type AppRoute = {
   label: string;
   sitemap: {
     changeFrequency:
-      "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
+      | "always"
+      | "hourly"
+      | "daily"
+      | "weekly"
+      | "monthly"
+      | "yearly"
+      | "never";
     priority: number;
   };
   nav?: "primary" | "more";
