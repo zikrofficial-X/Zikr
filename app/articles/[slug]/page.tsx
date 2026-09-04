@@ -71,8 +71,13 @@ async function loadArticle(slug: string): Promise<Article | null> {
   return (await getArticleBySlug(slug)) ?? staticArticleToArticle(slug);
 }
 
-function hasSubstantialContent(article: Article | null): article is Article {
-  return Boolean(article?.content?.trim() && article.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS);
+function hasSubstantialContent(
+  article: Article | null,
+): article is Article & { content: string } {
+  return Boolean(
+    article?.content?.trim() &&
+      article.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS,
+  );
 }
 
 export async function generateMetadata({
