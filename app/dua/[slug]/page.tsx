@@ -1,133 +1,102 @@
-'use client';
-export const dynamic = 'force-dynamic';
-
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { getDuaBySlug, type Dua } from '@/lib/services/content';
+import { pageMetadata } from '@/lib/site';
 
-interface Dua {
-  id: string;
-  title_ar: string;
-  title_en: string;
-  text_ar: string;
-  text_en?: string;
-  occasion_ar?: string;
-  occasion_en?: string;
-  source_ar?: string;
-  source_en?: string;
-  benefits_ar?: string;
-  benefits_en?: string;
+export const dynamic = 'force-dynamic';
+export const revalidate = 1800;
+
+const MIN_PUBLIC_DUA_CHARS = 80;
+
+function hasPublicDuaContent(dua: Dua | null): dua is Dua {
+  return Boolean(dua?.textAr?.trim() && dua.textAr.trim().length >= MIN_PUBLIC_DUA_CHARS);
 }
 
-export default function DuaDetailPage() {
-  const params = useParams();
-  const slug = params.slug as string;
-  const [dua, setDua] = useState<Dua | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const dua = await getDuaBySlug(slug);
 
-  useEffect(() => {
-    const fetchDua = async () => {
-      if (!slug) return;
-      try {
-        setLoading(true);
-        const supabase = createBrowserSupabaseClient();
-        const { data } = await supabase
-          .from('duas')
-          .select('*')
-          .eq('slug', slug)
-          .eq('published', true)
-          .limit(1)
-          .single();
-        setDua(data ?? null);
-      } catch (error) {
-        console.error('Failed to fetch dua:', error);
-        setDua(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    void fetchDua();
-  }, [slug]);
+  return pageMetadata({
+    title: dua?.titleAr ?? 'الدعاء غير موجود',
+    description: dua?.textAr?.trim().slice(0, 160) || 'دعاء مأثور في منصة ذِكرٌ.',
+    path: `/dua/${slug}`,
+    noindex: !hasPublicDuaContent(dua),
+  });
+}
 
-  const copyToClipboard = () => {
-    if (dua) {
-      navigator.clipboard.writeText(dua.text_ar).catch((error) => {
-        console.error('Failed to copy:', error);
-      });
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+export default async function DuaDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const dua = await getDuaBySlug(slug);
 
-  if (loading) {
-    return (
-      <Container className="py-12">
-        <p className="text-center text-brand-cream/70">جاري التحميل...</p>
-      </Container>
-    );
-  }
-
-  if (!dua) {
-    return (
-      <Container className="py-12">
-        <p className="text-center text-brand-cream/70">لم يتم العثور على الدعاء</p>
-      </Container>
-    );
-  }
+  if (!hasPublicDuaContent(dua)) notFound();
 
   return (
     <Container className="py-12 space-y-8 max-w-2xl">
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold text-brand-gold">{dua.title_ar}</h1>
-        {dua.title_en && <p className="text-brand-cream/70">{dua.title_en}</p>}
-      </div>
+      <nav className="text-sm text-brand-cream/60" aria-label="مسار التنقل">
+        <Link href="/" className="hover:text-brand-gold">الرئيسية</Link>
+        <span className="mx-2">/</span>
+        <Link href="/dua" className="hover:text-brand-gold">الأدعية</Link>
+        <span className="mx-2">/</span>
+        <span>{dua.titleAr}</span>
+      </nav>
+
+      <header className="text-center space-y-4">
+        <h1 className="text-4xl font-bold text-brand-gold">{dua.titleAr}</h1>
+        {dua.titleEn && <p className="text-brand-cream/70">{dua.titleEn}</p>}
+      </header>
 
       <Card className="p-8 space-y-6 bg-black/30 border-brand-gold/30">
         <div className="space-y-4">
           <p className="text-2xl font-arabic leading-relaxed text-brand-cream text-center" dir="rtl">
-            {dua.text_ar}
+            {dua.textAr}
           </p>
-          {dua.text_en && (
-            <p className="text-lg text-brand-cream/80 leading-relaxed text-center">{dua.text_en}</p>
+          {dua.textEn && (
+            <p className="text-lg text-brand-cream/80 leading-relaxed text-center">{dua.textEn}</p>
           )}
-        </div>
-        <div className="flex justify-center">
-          <Button onClick={copyToClipboard} variant={copied ? 'primary' : 'outline'}>
-            {copied ? 'تم النسخ' : 'نسخ الدعاء'}
-          </Button>
         </div>
       </Card>
 
-      <div className="space-y-4">
-        {dua.occasion_ar && (
+      <section className="space-y-4">
+        {dua.occasionAr && (
           <Card className="p-4 space-y-2 border-brand-gold/20">
-            <h3 className="text-lg font-bold text-brand-gold">المناسبة</h3>
-            <p className="text-brand-cream/90">{dua.occasion_ar}</p>
+            <h2 className="text-lg font-bold text-brand-gold">المناسبة</h2>
+            <p className="text-brand-cream/90 leading-7">{dua.occasionAr}</p>
           </Card>
         )}
-        {dua.source_ar && (
+        {dua.sourceAr && (
           <Card className="p-4 space-y-2 border-brand-gold/20">
-            <h3 className="text-lg font-bold text-brand-gold">المصدر</h3>
-            <p className="text-brand-cream/90">{dua.source_ar}</p>
+            <h2 className="text-lg font-bold text-brand-gold">المصدر</h2>
+            <p className="text-brand-cream/90 leading-7">{dua.sourceAr}</p>
           </Card>
         )}
-        {dua.benefits_ar && (
+        {dua.benefitsAr && (
           <Card className="p-4 space-y-2 border-brand-gold/20">
-            <h3 className="text-lg font-bold text-brand-gold">الفوائد</h3>
-            <p className="text-brand-cream/90">{dua.benefits_ar}</p>
+            <h2 className="text-lg font-bold text-brand-gold">الفوائد</h2>
+            <p className="text-brand-cream/90 leading-7">{dua.benefitsAr}</p>
           </Card>
         )}
-      </div>
+      </section>
 
-      <Card className="p-6 text-center space-y-3 bg-brand-gold/10">
-        <h3 className="text-xl font-bold text-brand-gold">فضل الدعاء</h3>
-        <p className="text-brand-cream/90 font-arabic text-lg leading-relaxed">
-          قال رسول الله ﷺ: &quot;الدعاء هو العبادة&quot;
+      <Card className="p-6 space-y-4 bg-brand-gold/10 border-brand-gold/20">
+        <h2 className="text-xl font-bold text-brand-gold">فضل الدعاء</h2>
+        <p className="text-brand-cream/90 font-arabic text-lg leading-relaxed text-center">
+          قال رسول الله ﷺ: «الدعاء هو العبادة».
         </p>
+        <div className="text-center">
+          <Button href="/dua" variant="secondary">العودة إلى الأدعية</Button>
+        </div>
       </Card>
     </Container>
   );
