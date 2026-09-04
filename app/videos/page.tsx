@@ -26,58 +26,23 @@ function formatDate(value: string | null): string {
   }
 }
 
-const localVideos = [
-  {
-    id: 'dQw4w9WgXcQ',
-    title: 'شرح سورة الفاتحة',
-    description: 'شرح تفصيلي لأم القرآن الكريم',
-    category: 'تفسير',
-    thumbnailUrl: null as string | null,
-    publishedAt: null as string | null,
-  },
-  {
-    id: 'abc123',
-    title: 'أحكام الصلاة',
-    description: 'شرح أركان الصلاة وشروطها وواجباتها',
-    category: 'فقه',
-    thumbnailUrl: null as string | null,
-    publishedAt: null as string | null,
-  },
-  {
-    id: 'def456',
-    title: 'قصة النبي يوسف عليه السلام',
-    description: 'رحلة إيمانية مع أحسن القصص في القرآن الكريم',
-    category: 'قصص الأنبياء',
-    thumbnailUrl: null as string | null,
-    publishedAt: null as string | null,
-  },
-  {
-    id: 'ghi789',
-    title: 'آداب طالب العلم',
-    description: 'كيف يتأدب طالب العلم في طلبه ومجالسته للعلماء',
-    category: 'تعليمي',
-    thumbnailUrl: null as string | null,
-    publishedAt: null as string | null,
-  },
-];
-
 export default async function VideosPage() {
   const feed = await getYoutubeChannelFeed(24);
   const channelUrl = feed.channelId
     ? `https://www.youtube.com/channel/${feed.channelId}`
-    : 'https://www.youtube.com/@zikr';
+    : 'https://www.youtube.com/@ZikrMediaOfficial';
 
   const hasYoutubeVideos = feed.configured && !feed.error && feed.videos.length > 0;
+  const hasYoutubePlaylists = feed.configured && !feed.error && feed.playlists.length > 0;
 
   return (
     <Container className="py-12 space-y-12">
-      {/* Hero */}
       <section className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-brand-gold text-balance">الفيديوهات الإسلامية</h1>
         <p className="max-w-2xl mx-auto text-lg leading-8 arabic-muted text-pretty">
-          شاهد أفضل المحتوى الإسلامي التعليمي والروحاني من قناة ذِكر على يوتيوب
+          شاهد المحتوى الإسلامي التعليمي والروحاني من قناة ذِكر على يوتيوب.
         </p>
-        <div className="flex justify-center gap-3">
+        <div className="flex justify-center gap-3 flex-wrap">
           <Button href={channelUrl} variant="primary" target="_blank" rel="noopener noreferrer">
             زيارة قناة يوتيوب
           </Button>
@@ -87,7 +52,6 @@ export default async function VideosPage() {
         </div>
       </section>
 
-      {/* YouTube Videos (if configured) */}
       {hasYoutubeVideos && (
         <section className="space-y-6">
           <SectionHeader title="أحدث الفيديوهات" subtitle="مباشرة من قناة ذِكر على يوتيوب" />
@@ -133,8 +97,7 @@ export default async function VideosPage() {
         </section>
       )}
 
-      {/* YouTube Playlists */}
-      {feed.configured && !feed.error && feed.playlists.length > 0 && (
+      {hasYoutubePlaylists && (
         <section className="space-y-6">
           <SectionHeader title="قوائم التشغيل" subtitle="سلاسل متكاملة من المحتوى الإسلامي" />
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -159,7 +122,7 @@ export default async function VideosPage() {
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-brand-gold/10">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-12 h-12 text-brand-gold/30">
-                          <path fillRule="evenodd" d="M2.625 6.75a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Zm4.875 0A.75.75 0 0 1 8.25 6h12a.75.75 0 0 1 0 1.5h-12a.75.75 0 0 1-.75-.75ZM2.625 12a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0ZM7.5 12a.75.75 0 0 1 .75-.75h12a.75.75 0 0 1 0 1.5h-12A.75.75 0 0 1 7.5 12Zm-4.875 5.25a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Zm4.875 0a.75.75 0 0 1 .75-.75h12a.75.75 0 0 1 0 1.5h-12a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+                          <path fillRule="evenodd" d="M2.625 6.75a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Zm4.875 0A.75.75 0 0 1 8.25 6h12a.75.75 0 0 1 0 1.5h-12a.75.75 0 0 1-.75-.75ZM2.625 12a1.125 1.125 0 1 1 2.25 0A1.125 1.125 0 0 1 2.625 12ZM7.5 12a.75.75 0 0 1 .75-.75h12a.75.75 0 0 1 0 1.5h-12A.75.75 0 0 1 7.5 12Zm-4.875 5.25a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Zm4.875 0a.75.75 0 0 1 .75-.75h12a.75.75 0 0 1 0 1.5h-12a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
                         </svg>
                       </div>
                     )}
@@ -179,7 +142,6 @@ export default async function VideosPage() {
         </section>
       )}
 
-      {/* Featured Categories */}
       <section className="space-y-6">
         <SectionHeader title="تصنيفات الفيديوهات" subtitle="تصفح المحتوى حسب الموضوع" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -199,47 +161,30 @@ export default async function VideosPage() {
         </div>
       </section>
 
-      {/* Local Fallback Videos (shown when YouTube not configured) */}
-      {!hasYoutubeVideos && (
-        <section className="space-y-6">
-          <SectionHeader title="محتوى مميز" subtitle="فيديوهات إسلامية مختارة" />
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {localVideos.map((video) => (
-              <a
-                key={video.id}
-                href={`https://www.youtube.com/watch?v=${video.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group"
-              >
-                <Card className="overflow-hidden h-full flex flex-col hover:border-brand-gold/50 transition-all">
-                  <div className="aspect-video bg-brand-gold/10 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-12 h-12 text-brand-gold/40 group-hover:text-brand-gold/70 transition-colors">
-                      <path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18c.62-.39.62-1.29 0-1.69L9.54 5.98C8.87 5.55 8 6.03 8 6.82z" />
-                    </svg>
-                  </div>
-                  <div className="p-4 space-y-2 flex-1">
-                    <Badge variant="outline" className="text-xs">{video.category}</Badge>
-                    <h3 className="text-sm font-semibold text-brand-cream line-clamp-2 group-hover:text-brand-gold transition-colors">
-                      {video.title}
-                    </h3>
-                    <p className="text-xs text-brand-cream/50 line-clamp-2">{video.description}</p>
-                  </div>
-                </Card>
-              </a>
-            ))}
+      {!hasYoutubeVideos && !hasYoutubePlaylists && (
+        <Card className="p-8 text-center border-brand-gold/20 bg-brand-gold/5">
+          <h2 className="text-2xl font-bold text-brand-gold">مكتبة الفيديو قيد الربط</h2>
+          <p className="max-w-2xl mx-auto mt-3 leading-8 arabic-muted">
+            لم يتم تحميل فيديوهات القناة حاليًا. لن نعرض روابط أو فيديوهات وهمية؛ عند اكتمال إعداد قناة يوتيوب الرسمية ستظهر الفيديوهات وقوائم التشغيل تلقائيًا من المصدر.
+          </p>
+          <div className="mt-5 flex justify-center gap-3 flex-wrap">
+            <Button href={channelUrl} variant="secondary" target="_blank" rel="noopener noreferrer">
+              فتح القناة الرسمية
+            </Button>
+            <Button href="/contact" variant="ghost">
+              التواصل مع فريق ذِكر
+            </Button>
           </div>
-        </section>
+        </Card>
       )}
 
-      {/* YouTube Channel CTA */}
       <section>
         <Card className="p-8 text-center space-y-4 bg-brand-gold/5 border-brand-gold/20">
-          <h2 className="text-2xl font-bold text-brand-gold">اشترك في قناة ذِكر</h2>
+          <h2 className="text-2xl font-bold text-brand-gold">تابع قناة ذِكر</h2>
           <p className="max-w-xl mx-auto arabic-muted leading-7">
-            تابع أحدث الفيديوهات والمحتوى الإسلامي على قناتنا الرسمية على يوتيوب
+            تابع أحدث الفيديوهات والمحتوى الإسلامي على قناتنا الرسمية على يوتيوب.
           </p>
-          <div className="flex justify-center gap-3">
+          <div className="flex justify-center gap-3 flex-wrap">
             <Button href={channelUrl} variant="primary" target="_blank" rel="noopener noreferrer">
               الاشتراك في القناة
             </Button>
