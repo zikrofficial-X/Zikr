@@ -132,8 +132,7 @@ export default async function AdminProphetsPage() {
           <li>الفيديو سيظهر مباشرة في صفحة النبي على الموقع.</li>
         </ol>
         <p className="text-xs text-brand-cream/40">
-          مثال على رابط صحيح: https://www.youtube.com/watch?v=dQw4w9WgXcQ
-          أو المعرف مباشرة: dQw4w9WgXcQ
+          استخدم رابط فيديو يوتيوب كامل أو معرّف الفيديو مباشرة.
         </p>
       </Card>
 
