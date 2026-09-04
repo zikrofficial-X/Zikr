@@ -10,6 +10,7 @@ import {
   showSalawatNotification,
   isInQuietHours,
 } from "@/lib/services/notifications";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export type SalawatInterval = 15 | 30 | 60 | 120 | 0; // 0 = disabled
 
@@ -135,6 +136,17 @@ async function scheduleNativeSalawatReminders(
   }
 }
 
+async function getAuthenticatedSession() {
+  try {
+    const supabase = createBrowserSupabaseClient();
+    const { data, error } = await supabase.auth.getSession();
+    if (error) return null;
+    return data.session;
+  } catch {
+    return null;
+  }
+}
+
 export interface SalawatReminderReturn {
   settings: SalawatSettings;
   setEnabled: (v: boolean) => void;
@@ -151,14 +163,19 @@ export function useSalawatReminder(
   const [settings, setSettings] = useState<SalawatSettings>(DEFAULT_SETTINGS);
 
   // Load local settings immediately, then reconcile with the authenticated
-  // server preference so the background worker uses the same configuration.
+  // server preference. Anonymous visitors do not call the protected API.
   useEffect(() => {
     setSettings(loadSettings());
     if (passive) return;
-    void fetch("/api/reminders/background", { cache: "no-store" })
-      .then(response => (response.ok ? response.json() : null))
-      .then(data => {
-        if (!data) return;
+
+    let cancelled = false;
+    void getAuthenticatedSession().then(async session => {
+      if (cancelled || !session?.user) return;
+      try {
+        const response = await fetch("/api/reminders/background", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (cancelled) return;
         const next: SalawatSettings = {
           enabled: Boolean(data.salawat_enabled),
           intervalMinutes: data.salawat_interval_minutes ?? 60,
@@ -170,8 +187,14 @@ export function useSalawatReminder(
         };
         saveSettings(next);
         setSettings(next);
-      })
-      .catch(() => undefined);
+      } catch {
+        // Keep the local settings when offline or when the API is unavailable.
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [passive]);
 
   useEffect(() => {
@@ -243,20 +266,23 @@ export function useSalawatReminder(
         const next = { ...prev, ...patch };
         saveSettings(next);
         window.dispatchEvent(new Event(SETTINGS_UPDATED_EVENT));
-        void fetch("/api/reminders/background", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            salawat_enabled: next.enabled,
-            salawat_interval_minutes: next.intervalMinutes,
-            quiet_hours_start: next.quietHours.enabled
-              ? next.quietHours.from
-              : null,
-            quiet_hours_end: next.quietHours.enabled
-              ? next.quietHours.to
-              : null,
-          }),
-        }).catch(() => undefined);
+        void getAuthenticatedSession().then(session => {
+          if (!session?.user) return;
+          void fetch("/api/reminders/background", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              salawat_enabled: next.enabled,
+              salawat_interval_minutes: next.intervalMinutes,
+              quiet_hours_start: next.quietHours.enabled
+                ? next.quietHours.from
+                : null,
+              quiet_hours_end: next.quietHours.enabled
+                ? next.quietHours.to
+                : null,
+            }),
+          }).catch(() => undefined);
+        });
         return next;
       });
     },
