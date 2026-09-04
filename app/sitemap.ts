@@ -68,12 +68,8 @@ function isIndexablePath(path: string) {
   );
 }
 
-const EXTRA_PUBLIC_ROUTES = [
-  // The puzzle route is an interactive game, not an editorial landing page.
-] as const;
-
 function siteConfigRoutes() {
-  return [...appRoutes, ...EXTRA_PUBLIC_ROUTES].filter(r => isIndexablePath(r.path));
+  return appRoutes.filter(r => isIndexablePath(r.path));
 }
 
 function route(path = "", options: Omit<SitemapEntry, "url">): SitemapEntry {
@@ -139,8 +135,8 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       ]);
 
     const dynamicRoutes: MetadataRoute.Sitemap = [
-      // Index complete surah landing pages; individual ayah pages are utility/detail
-      // screens and are intentionally noindex to avoid thousands of near-identical URLs.
+      // Complete surah pages are the canonical Quran landing pages. Individual
+      // ayah URLs stay available for deep links but are noindex and omitted here.
       ...surahs.map(surah =>
         route(`/quran/${surah.number}`, {
           lastModified: now,
@@ -169,8 +165,7 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           priority: 0.7,
         }),
       ),
-      // Individual hadith detail URLs are intentionally omitted; the book pages
-      // are the canonical public landing pages for this collection.
+      // Individual hadith records are utility/detail URLs and are intentionally omitted.
       ...stories.map(story =>
         route(`/stories/${story.slug}`, {
           lastModified: now,
@@ -185,13 +180,8 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           priority: 0.7,
         }),
       ),
-      ...videos.map(video =>
-        route(`/videos/${video.slug}`, {
-          lastModified: now,
-          changeFrequency: "weekly",
-          priority: 0.7,
-        }),
-      ),
+      // Video detail pages are noindex because most are embedded/republished media.
+      // Keep the public /videos hub only.
       ...STATIC_PROPHET_SLUGS.map(slug =>
         route(`/prophets/${slug}`, {
           lastModified: now,
