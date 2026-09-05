@@ -27,6 +27,13 @@ function normalizeArabic(value: string) {
     .toLowerCase();
 }
 
+function getArabicRevelationType(value?: string) {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "meccan") return "مكية";
+  if (normalized === "medinan") return "مدنية";
+  return value?.trim() ?? "";
+}
+
 export function SurahSearch({ initialSurahs }: { initialSurahs: Surah[] }) {
   const [query, setQuery] = useState("");
   const { isEnglish, dir } = useLanguage();
@@ -107,7 +114,7 @@ export function SurahSearch({ initialSurahs }: { initialSurahs: Surah[] }) {
                     </Badge>
                     {surah.revelationType && (
                       <span className="text-[10px] text-brand-cream/30">
-                        {isEnglish ? surah.revelationType : (surah.revelationType === "Meccan" ? "مكية" : "مدنية")}
+                        {isEnglish ? surah.revelationType : getArabicRevelationType(surah.revelationType)}
                       </span>
                     )}
                   </div>
