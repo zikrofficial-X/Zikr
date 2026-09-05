@@ -18,6 +18,8 @@ const adminUtilityLinks = [
   { href: '/admin/notifications', label: 'التنبيهات' },
   { href: '/admin/security', label: 'الأمن والصلاحيات' },
   { href: '/admin/settings', label: 'إعدادات الإدارة' },
+  { href: '/admin/seo', label: 'SEO/AdSense' },
+  { href: '/admin/automation', label: 'الأتمتة' },
   { href: '/admin/release', label: 'مركز الإصدار' },
 ] as const;
 
@@ -63,9 +65,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 {item.label}
               </Link>
             ))}
-            <Link href="/" className="mr-auto rounded-lg border border-brand-gold/25 px-3 py-1.5 text-xs text-brand-gold/80 transition-colors hover:border-brand-gold hover:text-brand-gold whitespace-nowrap">
-              عرض الموقع
-            </Link>
+            <Link href="/" className="mr-auto rounded-lg border border-brand-gold/25 px-3 py-1.5 text-xs text-brand-gold/80 transition-colors hover:border-brand-gold hover:text-brand-gold whitespace-nowrap">عرض الموقع</Link>
           </nav>
         </div>
         <main className="flex-1 min-w-0">{children}</main>
