@@ -30,7 +30,7 @@
     "project:check": "node scripts/verify-project-integrity.mjs",
     "mobile:release-check": "MOBILE_RELEASE_CHECK=1 node scripts/verify-mobile-readiness.mjs",
     "supabase:migrations:check": "node scripts/validate-migrations.mjs",
-    "supabase:migrations:replay": "node scripts/validate-migrations.mjs",
+    "supabase:migrations:replay": "SIMULATE_LEGACY=1 node scripts/validate-migrations.mjs",
     "routes:check": "node scripts/verify-platform-routes.mjs",
     "verify": "pnpm supabase:migrations:check && pnpm supabase:migrations:replay && pnpm routes:check && pnpm imports:check && pnpm placeholder-media:check && pnpm mobile:check && pnpm offline:check && pnpm project:check && pnpm lint && pnpm check && pnpm test && pnpm build",
     "imports:check": "node scripts/verify-local-imports.mjs",
