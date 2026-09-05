@@ -1,7 +1,9 @@
 import dynamic from 'next/dynamic';
+import { cookies } from 'next/headers';
 import { Footer } from './footer';
 import { Navbar } from './navbar';
 import { LanguageProvider } from './language-provider';
+import { DEFAULT_LOCALE, isLocale, type Locale } from '@/lib/i18n';
 
 const InstallPrompt = dynamic(
   () => import('./install-prompt').then((module) => module.InstallPrompt),
@@ -16,9 +18,13 @@ const NotificationPermissionBanner = dynamic(
     ),
 );
 
-export function SiteShell({ children }: { children: React.ReactNode }) {
+export async function SiteShell({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
+  const cookieLocale = cookieStore.get('zikr-locale')?.value ?? null;
+  const initialLocale: Locale = isLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
+
   return (
-    <LanguageProvider>
+    <LanguageProvider initialLocale={initialLocale}>
       <div className="min-h-screen">
         <Navbar />
         <main>{children}</main>
