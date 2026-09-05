@@ -87,7 +87,6 @@ export function CloudinaryImageUploadField({
             width={80}
             height={56}
             sizes="80px"
-            unoptimized
             className="h-14 w-20 rounded-lg object-cover ring-1 ring-brand-gold/20"
           />
           <span className="min-w-0 break-all text-[11px] text-brand-cream/45">{url}</span>
