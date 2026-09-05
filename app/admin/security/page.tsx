@@ -2,10 +2,9 @@ export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
-import { requireAdminPermission } from "@/lib/services/admin";
-import { getCurrentProfile } from "@/lib/services/admin";
+import { requireAdminPermission, getCurrentProfile } from "@/lib/services/admin";
 import { getAdminSettings } from "@/lib/services/admin-platform";
-import { getAdminPermissions, ADMIN_PERMISSIONS } from "@/lib/services/admin-permissions";
+import { getAdminPermissions, ADMIN_PERMISSIONS, type AdminPermission } from "@/lib/services/admin-permissions";
 
 export const metadata: Metadata = { title: "أمن لوحة الإدارة | الأدمن" };
 
@@ -14,7 +13,7 @@ export default async function AdminSecurityPage() {
   const profile = await getCurrentProfile();
   const settings = await getAdminSettings();
   const permissions = getAdminPermissions(profile?.role ?? "user");
-  const mfaRequired = Boolean(settings.require_mfa_for_destructive === true);
+  const mfaRequired = settings.require_mfa_for_destructive === true;
 
   return (
     <Container className="py-10 space-y-6" dir="rtl">
@@ -33,7 +32,11 @@ export default async function AdminSecurityPage() {
       <section className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
         <h2 className="text-lg font-semibold text-brand-gold">مصفوفة الصلاحيات للدور الحالي</h2>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {Object.entries(ADMIN_PERMISSIONS).map(([key, label]) => <div key={key} className={`rounded-xl border px-3 py-2 text-sm ${permissions.includes(key as never) ? 'border-emerald-500/15 bg-emerald-500/5 text-emerald-200' : 'border-brand-gold/8 text-brand-cream/30'}`}><span className="font-mono text-[11px]">{key}</span><div className="mt-1 text-xs opacity-70">{label}</div></div>)}
+          {Object.entries(ADMIN_PERMISSIONS).map(([key, label]) => {
+            const permission = key as AdminPermission;
+            const enabled = permissions.includes(permission);
+            return <div key={key} className={`rounded-xl border px-3 py-2 text-sm ${enabled ? 'border-emerald-500/15 bg-emerald-500/5 text-emerald-200' : 'border-brand-gold/8 text-brand-cream/30'}`}><span className="font-mono text-[11px]">{key}</span><div className="mt-1 text-xs opacity-70">{label}</div></div>;
+          })}
         </div>
       </section>
 
@@ -43,7 +46,7 @@ export default async function AdminSecurityPage() {
           <li>• جميع صفحات الإدارة محمية بخادم الصلاحيات المركزية.</li>
           <li>• سجل الإدارة المركزي منفصل وappend-only على مستوى قاعدة البيانات.</li>
           <li>• العمليات الحساسة لديها صلاحيات مستقلة للنشر والحذف والأمن.</li>
-          <li>• MFA يمكن تفعيله من إعدادات الإدارة قبل الإجراءات الحساسة بعد تجهيز حسابات الأدمن له.</li>
+          <li>• MFA يمكن تفعيله للعمليات الحساسة بعد تسجيل عامل TOTP موثّق للحساب.</li>
         </ul>
       </section>
     </Container>
