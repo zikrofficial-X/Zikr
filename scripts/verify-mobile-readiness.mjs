@@ -170,7 +170,7 @@ for (const token of [
   "offline_manifest",
   "requestOfflineRouteCache",
   "cacheRoutes?: boolean",
-  "offline-content-version-v3",
+  "offline-content-version-v4",
 ]) {
   if (!offlinePack.includes(token)) failures.push(`Offline pack is missing ${token}`);
 }
