@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, isLocale, localeMeta, type Locale } from '@/lib/i18n';
 import { getOfflinePreference, saveOfflinePreference } from '@/lib/offline-settings';
 
@@ -32,7 +33,18 @@ function getStoredLocale(): Locale {
   }
 }
 
+function persistLocale(locale: Locale) {
+  try {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+    document.cookie = `${LOCALE_COOKIE}=${locale}; Path=/; Max-Age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax`;
+  } catch {
+    // IndexedDB remains the durable fallback when Web Storage is restricted.
+  }
+  void saveOfflinePreference(LOCALE_STORAGE_KEY, locale);
+}
+
 export function LanguageProvider({ children, initialLocale = DEFAULT_LOCALE }: LanguageProviderProps) {
+  const router = useRouter();
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -40,17 +52,24 @@ export function LanguageProvider({ children, initialLocale = DEFAULT_LOCALE }: L
     let cancelled = false;
 
     const restore = async () => {
-      // The server cookie is the authoritative first-render locale. Only fall
-      // back to legacy browser storage when no persisted locale has reached
-      // the server yet, preserving backward compatibility for existing users.
       const hasServerLocale = initialLocale !== DEFAULT_LOCALE;
       if (!hasServerLocale) {
         const storedLocale = getStoredLocale();
         if (storedLocale !== DEFAULT_LOCALE) {
-          if (!cancelled) setLocaleState(storedLocale);
+          if (!cancelled) {
+            setLocaleState(storedLocale);
+            persistLocale(storedLocale);
+            router.refresh();
+          }
         } else {
           const durableLocale = await getOfflinePreference<Locale>(LOCALE_STORAGE_KEY);
-          if (!cancelled && isLocale(durableLocale)) setLocaleState(durableLocale);
+          if (!cancelled && isLocale(durableLocale)) {
+            setLocaleState(durableLocale);
+            if (durableLocale !== DEFAULT_LOCALE) {
+              persistLocale(durableLocale);
+              router.refresh();
+            }
+          }
         }
       }
       if (!cancelled) setIsHydrated(true);
@@ -60,36 +79,35 @@ export function LanguageProvider({ children, initialLocale = DEFAULT_LOCALE }: L
     return () => {
       cancelled = true;
     };
-  }, [initialLocale]);
+  }, [initialLocale, router]);
 
   useEffect(() => {
     if (!isHydrated) return;
-
     const meta = localeMeta[locale];
     document.documentElement.lang = meta.lang;
     document.documentElement.dir = meta.dir;
     document.documentElement.dataset.locale = locale;
     document.body.dir = meta.dir;
-
-    try {
-      window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
-      document.cookie = `${LOCALE_COOKIE}=${locale}; Path=/; Max-Age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax`;
-    } catch {
-      // IndexedDB remains the durable fallback when Web Storage is restricted.
-    }
-    void saveOfflinePreference(LOCALE_STORAGE_KEY, locale);
+    persistLocale(locale);
   }, [locale, isHydrated]);
 
   const value = useMemo<LanguageContextValue>(() => {
     const dir = localeMeta[locale].dir;
+    const setLocale = (nextLocale: Locale) => {
+      if (nextLocale === locale) return;
+      setLocaleState(nextLocale);
+      persistLocale(nextLocale);
+      router.refresh();
+    };
+
     return {
       locale,
       dir,
       isEnglish: locale === 'en',
-      setLocale: setLocaleState,
-      toggleLocale: () => setLocaleState((current) => (current === 'ar' ? 'en' : 'ar')),
+      setLocale,
+      toggleLocale: () => setLocale(locale === 'ar' ? 'en' : 'ar'),
     };
-  }, [locale]);
+  }, [locale, router]);
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
