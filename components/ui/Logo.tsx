@@ -12,8 +12,6 @@ const DEFAULT_LOGOS: Record<LogoVariant, string> = {
   gold: '/branding/logo-gold.png',
 };
 
-const FALLBACK_LOGO = '/placeholders/videos/video-placeholder.png';
-
 interface LogoProps {
   alt?: string;
   className?: string;
@@ -36,10 +34,25 @@ export function Logo({
   srcOverride,
 }: LogoProps) {
   const [failed, setFailed] = useState(false);
-  const logoPath = useMemo(() => {
-    if (failed) return FALLBACK_LOGO;
-    return srcOverride || DEFAULT_LOGOS[variant];
-  }, [failed, srcOverride, variant]);
+  const logoPath = useMemo(() => srcOverride || DEFAULT_LOGOS[variant], [srcOverride, variant]);
+
+  if (failed) {
+    return (
+      <span
+        role="img"
+        aria-label={alt}
+        className={cn(
+          'inline-flex items-center justify-center font-arabic font-bold text-brand-gold',
+          theme === 'dark' && 'brightness-110 contrast-110',
+          theme === 'light' && 'brightness-95',
+          className,
+        )}
+        style={{ minWidth: width, minHeight: height }}
+      >
+        ذِكرٌ
+      </span>
+    );
+  }
 
   return (
     <Image
