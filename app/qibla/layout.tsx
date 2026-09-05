@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';
 
 export const metadata: Metadata = pageMetadata({
-  title: 'محدد القبلة | ZIKR',
+  title: 'محدد القبلة',
   description: 'احصل على اتجاه القبلة بدقة من موقعك الجغرافي - أداة إسلامية مفيدة لتحديد اتجاه مكة المكرمة',
   path: '/qibla',
 });
