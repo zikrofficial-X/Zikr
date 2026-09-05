@@ -9,12 +9,8 @@ import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
 import { NativeCapacitorBridgeLoader } from "@/components/layout/native-capacitor-bridge-loader";
 
-// Navbar reads the Supabase session from request cookies, so the shell must be rendered per request.
 export const dynamic = "force-dynamic";
 
-// Loads the actual Arabic webfont referenced by name in globals.css
-// (--font-noto-arabic). Without this, Arabic text renders as tofu boxes on
-// any device/OS that doesn't happen to have "Noto Naskh Arabic" installed.
 const notoNaskhArabic = Noto_Naskh_Arabic({
   subsets: ["arabic"],
   weight: ["400", "500", "600", "700"],
@@ -40,10 +36,6 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   alternates: {
     canonical: "/",
-    languages: {
-      ar: "/",
-      en: "/",
-    },
   },
   openGraph: {
     title: siteConfig.name,
@@ -71,7 +63,7 @@ const jsonLd = {
       name: siteConfig.name,
       url: siteConfig.url,
       description: siteConfig.description,
-      inLanguage: ["ar", "en"],
+      inLanguage: "ar",
       potentialAction: {
         "@type": "SearchAction",
         target: {
