@@ -163,6 +163,7 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       'lucide-react',
     ],
+    inlineCss: true,
   },
 };
 
