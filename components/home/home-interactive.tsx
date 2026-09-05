@@ -45,7 +45,8 @@ function getPrayerState(timings: PrayerTimes, now: Date) {
     }
   }
 
-  const nextIndex = (keys.indexOf(active) + 1) % keys.length;
+  const activeIndex = active ? keys.indexOf(active) : -1;
+  const nextIndex = (activeIndex + 1) % keys.length;
   return { active, next: keys[nextIndex] };
 }
 
@@ -89,7 +90,6 @@ function PrayerTimesPanel({ locale }: { locale: Locale }) {
   const [now, setNow] = useState(() => new Date());
   const [loading, setLoading] = useState(false);
   const [visible, setVisible] = useState(false);
-
   const isEnglish = locale === 'en';
 
   useEffect(() => {
@@ -140,7 +140,7 @@ function PrayerTimesPanel({ locale }: { locale: Locale }) {
       setPrayerTimes(timings);
       window.sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), timings }));
     } catch {
-      // Keep the existing UI usable when the prayer service is unavailable.
+      // Keep the current UI usable when the prayer service is unavailable.
     } finally {
       setLoading(false);
     }
@@ -148,9 +148,9 @@ function PrayerTimesPanel({ locale }: { locale: Locale }) {
 
   useEffect(() => {
     if (!visible) return;
-    const idle = window.requestIdleCallback;
-    if (idle) {
-      const handle = idle(() => void loadCity(DEFAULT_CITY), { timeout: 1800 });
+    const requestIdle = window.requestIdleCallback;
+    if (requestIdle) {
+      const handle = requestIdle(() => void loadCity(DEFAULT_CITY), { timeout: 1800 });
       return () => window.cancelIdleCallback?.(handle);
     }
     const timer = window.setTimeout(() => void loadCity(DEFAULT_CITY), 500);
@@ -187,7 +187,7 @@ function PrayerTimesPanel({ locale }: { locale: Locale }) {
     void loadCity(city);
   };
 
-  const prayerState = prayerTimes ? getPrayerState(prayerTimes, now) : { active: '', next: '' };
+  const prayerState = prayerTimes ? getPrayerState(prayerTimes, now) : { active: '', next: '' as PrayerKey };
 
   return (
     <section ref={sectionRef} className="border-b border-brand-gold/10 px-3 py-10 sm:px-4 sm:py-12" aria-labelledby="prayer-times-heading">
@@ -199,19 +199,9 @@ function PrayerTimesPanel({ locale }: { locale: Locale }) {
             <p className="mt-1 text-sm text-brand-cream/40">{prayerCity} · {loading ? (isEnglish ? 'Updating…' : 'جاري التحديث…') : (isEnglish ? 'Cached for this visit' : 'محفوظة لهذه الزيارة')}</p>
           </div>
           <form onSubmit={submitCity} className="flex w-full gap-2 sm:w-auto" dir={isEnglish ? 'ltr' : 'rtl'}>
-            <input
-              value={cityInput}
-              onChange={(event) => setCityInput(event.target.value)}
-              placeholder={isEnglish ? 'City name' : 'اسم المدينة'}
-              aria-label={isEnglish ? 'City name' : 'اسم المدينة'}
-              className="min-w-0 flex-1 rounded-xl border border-brand-gold/15 bg-black/20 px-3 py-2 text-sm text-brand-cream outline-none transition focus:border-brand-gold/45 sm:w-36 sm:flex-none"
-            />
-            <button type="submit" className="rounded-xl border border-brand-gold/25 px-4 py-2 text-sm font-semibold text-brand-gold transition hover:border-brand-gold/50">
-              {isEnglish ? 'Change' : 'تغيير'}
-            </button>
-            <button type="button" onClick={chooseLocation} className="rounded-xl border border-brand-gold/15 px-3 py-2 text-sm text-brand-cream/60 transition hover:border-brand-gold/45 hover:text-brand-gold">
-              {isEnglish ? 'My location' : 'موقعي'}
-            </button>
+            <input value={cityInput} onChange={(event) => setCityInput(event.target.value)} placeholder={isEnglish ? 'City name' : 'اسم المدينة'} aria-label={isEnglish ? 'City name' : 'اسم المدينة'} className="min-w-0 flex-1 rounded-xl border border-brand-gold/15 bg-black/20 px-3 py-2 text-sm text-brand-cream outline-none transition focus:border-brand-gold/45 sm:w-36 sm:flex-none" />
+            <button type="submit" className="rounded-xl border border-brand-gold/25 px-4 py-2 text-sm font-semibold text-brand-gold transition hover:border-brand-gold/50">{isEnglish ? 'Change' : 'تغيير'}</button>
+            <button type="button" onClick={chooseLocation} className="rounded-xl border border-brand-gold/15 px-3 py-2 text-sm text-brand-cream/60 transition hover:border-brand-gold/45 hover:text-brand-gold">{isEnglish ? 'My location' : 'موقعي'}</button>
           </form>
         </div>
 
@@ -220,14 +210,7 @@ function PrayerTimesPanel({ locale }: { locale: Locale }) {
             const active = prayerState.active === key;
             const next = prayerState.next === key;
             const value = prayerTimes?.[key] ? convertTo12Hour(prayerTimes[key], !isEnglish) : '--:--';
-            return (
-              <div key={key} className={`min-h-[90px] rounded-2xl border p-3 text-center ${active ? 'border-brand-gold/60 bg-brand-gold/10' : next ? 'border-brand-gold/30 bg-brand-gold/5' : 'border-brand-gold/10 bg-black/15'}`}>
-                <p className="text-xs text-brand-gold/60" dir={isEnglish ? 'ltr' : 'rtl'}>{isEnglish ? en : ar}</p>
-                <p className="mt-2 text-lg font-bold text-brand-cream tabular-nums">{value}</p>
-                {active && <span className="mt-1 inline-block rounded-full bg-brand-gold/10 px-2 py-0.5 text-[10px] font-bold text-brand-gold">{isEnglish ? 'Now' : 'الآن'}</span>}
-                {!active && next && <span className="mt-1 inline-block text-[10px] font-semibold text-brand-gold/45">{isEnglish ? 'Next' : 'التالية'}</span>}
-              </div>
-            );
+            return <div key={key} className={`min-h-[90px] rounded-2xl border p-3 text-center ${active ? 'border-brand-gold/60 bg-brand-gold/10' : next ? 'border-brand-gold/30 bg-brand-gold/5' : 'border-brand-gold/10 bg-black/15'}`}><p className="text-xs text-brand-gold/60" dir={isEnglish ? 'ltr' : 'rtl'}>{isEnglish ? en : ar}</p><p className="mt-2 text-lg font-bold text-brand-cream tabular-nums">{value}</p>{active && <span className="mt-1 inline-block rounded-full bg-brand-gold/10 px-2 py-0.5 text-[10px] font-bold text-brand-gold">{isEnglish ? 'Now' : 'الآن'}</span>}{!active && next && <span className="mt-1 inline-block text-[10px] font-semibold text-brand-gold/45">{isEnglish ? 'Next' : 'التالية'}</span>}</div>;
           })}
         </div>
       </div>
@@ -236,12 +219,5 @@ function PrayerTimesPanel({ locale }: { locale: Locale }) {
 }
 
 export function HomeInteractive({ locale, showPrayerTimes = true }: Props) {
-  return (
-    <>
-      <div className="hero-clock-shell">
-        <Clock locale={locale} />
-      </div>
-      {showPrayerTimes && <PrayerTimesPanel locale={locale} />}
-    </>
-  );
+  return <>{showPrayerTimes && <PrayerTimesPanel locale={locale} />}<div className="sr-only"><Clock locale={locale} /></div></>;
 }
