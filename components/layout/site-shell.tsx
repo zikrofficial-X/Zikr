@@ -1,10 +1,23 @@
+import dynamic from 'next/dynamic';
 import { Footer } from './footer';
 import { Navbar } from './navbar';
-import { InstallPrompt } from './install-prompt';
-import { OfflineIndicator } from '../offline-indicator';
 import { LanguageProvider } from './language-provider';
-import { NotificationPermissionBanner } from './notification-permission-banner';
-import { AppUpdateChecker } from './app-update-checker';
+
+const InstallPrompt = dynamic(
+  () => import('./install-prompt').then((module) => module.InstallPrompt),
+);
+const OfflineIndicator = dynamic(
+  () => import('../offline-indicator').then((module) => module.OfflineIndicator),
+);
+const NotificationPermissionBanner = dynamic(
+  () =>
+    import('./notification-permission-banner').then(
+      (module) => module.NotificationPermissionBanner,
+    ),
+);
+const AppUpdateChecker = dynamic(
+  () => import('./app-update-checker').then((module) => module.AppUpdateChecker),
+);
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   return (
@@ -13,13 +26,10 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         <Navbar />
         <main>{children}</main>
         <Footer />
-        {/* One-time prompt asking for notification permission */}
+        {/* Non-critical client integrations are code-split from the initial shell. */}
         <NotificationPermissionBanner />
-        {/* PWA "add to home screen" invitation */}
         <InstallPrompt />
-        {/* Offline status indicator */}
         <OfflineIndicator />
-        {/* Native Android update notice; no-op on web and PWA. */}
         <AppUpdateChecker />
       </div>
     </LanguageProvider>
