@@ -4,10 +4,9 @@ import { SiteShell } from "@/components/layout/site-shell";
 
 import { defaultOgImage, siteConfig } from "@/lib/site";
 import { DeferredRuntime } from "@/components/layout/deferred-runtime";
+import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
 import { NativeCapacitorBridge } from "@/components/layout/native-capacitor-bridge";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 // Navbar reads the Supabase session from request cookies, so the shell must be rendered per request.
 export const dynamic = "force-dynamic";
@@ -112,6 +111,31 @@ export default function RootLayout({
         />
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
         <link rel="manifest" href="/manifest.webmanifest" />
+        <style>{`
+          html:not([data-locale]) footer {
+            visibility: hidden;
+          }
+
+          footer {
+            min-height: 460px;
+          }
+
+          @media (max-width: 639px) {
+            footer {
+              min-height: 680px;
+            }
+
+            main > div:first-child > section:first-of-type
+              div:has(> a[href="/auth/register"], > a[href="/profile"]) {
+              min-height: 168px;
+            }
+
+            main > div:first-child > section:first-of-type
+              div.text-center:has(> h1) {
+              min-height: 210px;
+            }
+          }
+        `}</style>
       </head>
       <body className="font-arabic antialiased">
         <script
@@ -122,8 +146,7 @@ export default function RootLayout({
         <SiteShell>{children}</SiteShell>
         <NativeCapacitorBridge />
         <DeferredRuntime />
-        <Analytics />
-        <SpeedInsights />
+        <DeferredAnalytics />
       </body>
     </html>
   );
