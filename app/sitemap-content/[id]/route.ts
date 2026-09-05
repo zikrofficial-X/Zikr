@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getSitemapPage, getSitemapShardCount } from '@/app/sitemap';
-import { siteConfig } from '@/lib/site';
+import sitemap from '@/app/sitemap';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+const SITEMAP_PAGE_SIZE = 45_000;
 
 function escapeXml(value: string) {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/\"/g, '&quot;')
     .replace(/'/g, '&apos;');
 }
 
@@ -25,14 +26,16 @@ export async function GET(
     return new NextResponse('Not Found', { status: 404 });
   }
 
-  const shardCount = await getSitemapShardCount();
-  if (id >= shardCount) {
+  const allEntries = await sitemap();
+  const start = id * SITEMAP_PAGE_SIZE;
+  const entries = allEntries.slice(start, start + SITEMAP_PAGE_SIZE);
+
+  if (entries.length === 0) {
     return new NextResponse('Not Found', { status: 404 });
   }
 
-  const entries = await getSitemapPage(id);
   const urls = entries
-    .map((entry) => {
+    .map(entry => {
       const lastModified = entry.lastModified
         ? new Date(entry.lastModified).toISOString()
         : undefined;
