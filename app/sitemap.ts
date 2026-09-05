@@ -31,6 +31,8 @@ const STATIC_BATTLE_SLUGS = [
   "dhat-salasil", "tabuk", "taif", "fathmakka",
 ] as const;
 
+const MIN_INDEXABLE_EDITORIAL_CHARS = 1800;
+
 async function getPublishedSlugs(table: "companions" | "conquests") {
   return supabaseServerAnonRequest<SlugRow[]>(
     `/rest/v1/${table}?select=slug&published=eq.true&order=slug.asc`,
@@ -158,7 +160,7 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
         }),
       ),
       ...stories
-        .filter(story => (story.content?.trim().length ?? 0) >= 500)
+        .filter(story => (story.content?.trim().length ?? 0) >= MIN_INDEXABLE_EDITORIAL_CHARS)
         .map(story =>
           route(`/stories/${story.slug}`, {
             lastModified: now,
@@ -167,7 +169,7 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           }),
         ),
       ...articles
-        .filter(article => (article.content?.trim().length ?? 0) >= 500)
+        .filter(article => (article.content?.trim().length ?? 0) >= MIN_INDEXABLE_EDITORIAL_CHARS)
         .map(article =>
           route(`/articles/${article.slug}`, {
             lastModified: now,
@@ -238,30 +240,19 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
     ];
 
     const entries = uniqueRoutes([...staticRoutes, ...dynamicRoutes]);
-    sitemapCache = { entries, expiresAt: Date.now() + 15 * 60 * 1000 };
+    sitemapCache = { entries, expiresAt: Date.now() + 5 * 60 * 1000 };
     return entries;
   } catch (error) {
     console.error("[sitemap] Error generating dynamic routes:", error);
-    sitemapCache = {
-      entries: staticRoutes,
-      expiresAt: Date.now() + 5 * 60 * 1000,
-    };
-    return staticRoutes;
+    sitemapCache = { entries: uniqueRoutes(staticRoutes), expiresAt: Date.now() + 60 * 1000 };
+    return uniqueRoutes(staticRoutes);
   }
 }
 
-export async function getSitemapShardCount() {
-  const entries = await getSitemapEntries();
-  return Math.max(1, Math.ceil(entries.length / SITEMAP_PAGE_SIZE));
-}
-
-export async function getSitemapPage(id: number): Promise<MetadataRoute.Sitemap> {
-  const entries = await getSitemapEntries();
-  const safeId = Math.max(0, Math.floor(id));
-  const start = safeId * SITEMAP_PAGE_SIZE;
-  return entries.slice(start, start + SITEMAP_PAGE_SIZE);
-}
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  return getSitemapPage(0);
+  const entries = await getSitemapEntries();
+
+  // Next.js currently supports large single sitemaps, but keeping a hard cap
+  // makes the route safe if the content library grows substantially.
+  return entries.slice(0, SITEMAP_PAGE_SIZE);
 }

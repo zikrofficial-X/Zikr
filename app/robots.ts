@@ -15,6 +15,8 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/admin/", "/api/", "/auth/", "/favorites", "/profile", "/settings"],
       },
     ],
-    sitemap: `${baseUrl}/sitemap-index.xml`,
+    // Next.js exposes this single sitemap endpoint because app/sitemap.ts
+    // returns one MetadataRoute.Sitemap array (it is not a sitemap index).
+    sitemap: `${baseUrl}/sitemap.xml`,
   };
 }

@@ -9,7 +9,9 @@ import { pageMetadata } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
-const MIN_PUBLIC_ARTICLE_CHARS = 500;
+// A public editorial page must contain enough original material to stand on
+// its own. Short placeholders remain unavailable until an editor completes them.
+const MIN_PUBLIC_ARTICLE_CHARS = 1800;
 
 interface ArticleReference {
   url: string;
@@ -17,9 +19,7 @@ interface ArticleReference {
   sourceType?: string;
 }
 
-function getArticleReferences(
-  metadata: Article["metadata"],
-): ArticleReference[] {
+function getArticleReferences(metadata: Article["metadata"]): ArticleReference[] {
   const references = metadata?.references;
   if (!Array.isArray(references)) return [];
 
@@ -46,6 +46,26 @@ function getArticleReferences(
       return [];
     }
   });
+}
+
+function getMetadataReferences(metadata: Article["metadata"]): ArticleReference[] {
+  const sourceUrls = metadata?.source_urls;
+  if (!Array.isArray(sourceUrls)) return [];
+
+  return sourceUrls.flatMap(url => {
+    if (typeof url !== "string") return [];
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return [];
+      return [{ url: parsed.toString(), title: "مصدر للتحقق" }];
+    } catch {
+      return [];
+    }
+  });
+}
+
+function dedupeReferences(references: ArticleReference[]) {
+  return Array.from(new Map(references.map(item => [item.url, item])).values());
 }
 
 function staticArticleToArticle(slug: string): Article | null {
@@ -116,13 +136,17 @@ export default async function ArticleDetailPage({
   const article = await loadArticle(slug);
 
   if (!hasSubstantialContent(article)) {
-    // A published row with no meaningful article body is not a public content
-    // page yet. Keep it inaccessible until editorial content is complete.
+    // Do not expose incomplete editorial rows as public landing pages.
     notFound();
   }
 
-  const references = getArticleReferences(article.metadata);
+  const references = dedupeReferences([
+    ...getArticleReferences(article.metadata),
+    ...getMetadataReferences(article.metadata),
+  ]);
   const content = article.content.trim();
+  const wordCount = content.split(/\s+/).filter(Boolean).length;
+  const readingMinutes = Math.max(1, Math.ceil(wordCount / 180));
 
   return (
     <Container className="py-12 space-y-8 max-w-3xl" dir="rtl">
@@ -152,24 +176,27 @@ export default async function ArticleDetailPage({
           <time dateTime={article.createdAt}>
             {new Date(article.createdAt).toLocaleDateString("ar-SA")}
           </time>
+          <span aria-label="مدة القراءة التقريبية">قراءة: {readingMinutes} دقيقة</span>
+          <span>{wordCount.toLocaleString("ar-EG")} كلمة تقريبًا</span>
         </div>
       </header>
 
       <Card className="p-8 space-y-6 bg-black/30 border-brand-gold/30">
-        <article className="prose prose-invert max-w-none text-brand-cream leading-relaxed whitespace-pre-wrap">
+        <article className="prose prose-invert max-w-none text-brand-cream leading-9 whitespace-pre-wrap">
           {content}
         </article>
       </Card>
+
+      <aside className="rounded-3xl border border-brand-gold/20 bg-brand-gold/5 p-5 text-sm leading-7 text-brand-cream/75">
+        هذه صفحة تحريرية تعليمية من فريق ذِكر. عند نقل نص شرعي أو معلومة تاريخية، نضع مصدر التحقق قدر الإمكان، ولا تُعد المقالات العامة فتوى شخصية أو بديلًا عن سؤال أهل العلم.
+      </aside>
 
       {references.length > 0 && (
         <section
           aria-labelledby="article-references"
           className="rounded-3xl border border-brand-gold/20 bg-black/20 p-6"
         >
-          <h2
-            id="article-references"
-            className="text-xl font-bold text-brand-gold"
-          >
+          <h2 id="article-references" className="text-xl font-bold text-brand-gold">
             المراجع ومصادر التحقق
           </h2>
           <ol className="mt-4 space-y-3 text-sm leading-7 text-brand-cream/80">
@@ -184,9 +211,7 @@ export default async function ArticleDetailPage({
                   {reference.title}
                 </a>
                 {reference.sourceType && (
-                  <span className="ms-2 text-brand-cream/50">
-                    ({reference.sourceType})
-                  </span>
+                  <span className="ms-2 text-brand-cream/50">({reference.sourceType})</span>
                 )}
               </li>
             ))}
@@ -195,10 +220,7 @@ export default async function ArticleDetailPage({
       )}
 
       {article.tags && article.tags.length > 0 && (
-        <div
-          className="flex flex-wrap gap-2 justify-center"
-          aria-label="وسوم المقال"
-        >
+        <div className="flex flex-wrap gap-2 justify-center" aria-label="وسوم المقال">
           {article.tags.map(tag => (
             <span
               key={tag}
