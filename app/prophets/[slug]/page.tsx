@@ -386,13 +386,11 @@ export default async function ProphetDetailPage({
 
   // Use static data if DB has none
   const staticStory = PROPHET_STORIES[slug];
-  const useStatic = !prophet && !!staticStory;
 
   if (!prophet && !staticStory) notFound();
 
   const displayName = prophet?.name_ar ?? staticStory?.name_ar ?? "";
   const displayNameEn = prophet?.name_en ?? staticStory?.name_en ?? "";
-  const displayBio = prophet?.bio_ar ?? staticStory?.bio_ar ?? "";
   const displayOrderNum = prophet?.order_num ?? staticStory?.order_num ?? null;
   const displayBirthPlace =
     prophet?.birth_place_ar ?? staticStory?.birth_place_ar ?? null;

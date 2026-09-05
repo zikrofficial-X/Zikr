@@ -11,7 +11,10 @@ interface QuizQuestion {
 }
 
 interface KidsQuizProps {
-  content: any;
+  content: {
+    quiz_data?: { questions?: QuizQuestion[] };
+    quizData?: { questions?: QuizQuestion[] };
+  };
 }
 
 export default function KidsQuiz({ content }: KidsQuizProps) {
@@ -19,8 +22,8 @@ export default function KidsQuiz({ content }: KidsQuizProps) {
   const [submitted, setSubmitted] = useState(false);
 
   // Extract quiz data safely
-  const quizData = content.quiz_data || (content as any).quizData;
-  const questions: QuizQuestion[] = quizData?.questions || [];
+  const quizData = content.quiz_data ?? content.quizData;
+  const questions = quizData?.questions ?? [];
 
   if (questions.length === 0) return null;
 

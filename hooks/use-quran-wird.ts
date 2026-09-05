@@ -175,7 +175,7 @@ export function useQuranWird(): WirdReturn {
         return next;
       });
     },
-    [applyProgress]
+    [applyProgress, syncRemote]
   );
 
   const logAyahs = useCallback(
@@ -188,7 +188,7 @@ export function useQuranWird(): WirdReturn {
         return next;
       });
     },
-    [applyProgress]
+    [applyProgress, syncRemote]
   );
 
   const setDailyTarget = useCallback(

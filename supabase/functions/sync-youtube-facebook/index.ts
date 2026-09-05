@@ -7,6 +7,8 @@ const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY') ?? ''
 const YOUTUBE_CHANNEL_ID = Deno.env.get('YOUTUBE_CHANNEL_ID') ?? ''
 const FACEBOOK_PAGE_ID = Deno.env.get('FACEBOOK_PAGE_ID') ?? ''
 const FACEBOOK_PAGE_ACCESS_TOKEN = Deno.env.get('FACEBOOK_PAGE_ACCESS_TOKEN') ?? ''
+type JsonObject = Record<string, unknown>;
+
 const META_GRAPH_API_VERSION = Deno.env.get('META_GRAPH_API_VERSION') ?? ''
 const MEDIA_BUCKET = Deno.env.get('YOUTUBE_FACEBOOK_MEDIA_BUCKET') ?? 'youtube-facebook-media'
 const BATCH_SIZE = Math.max(1, Math.min(10, Number(Deno.env.get('SOCIAL_SYNC_BATCH_SIZE') ?? '3')))
@@ -69,7 +71,7 @@ async function youtube(path: string, params: Record<string, string | number | un
   })
   const text = await response.text()
   if (!response.ok) throw new Error(`YouTube ${response.status}: ${text.slice(0, 1000)}`)
-  return JSON.parse(text) as any
+  return JSON.parse(text) as JsonObject
 }
 
 async function discoverYouTubePage(playlistId: string, pageToken?: string) {
@@ -80,7 +82,7 @@ async function discoverYouTubePage(playlistId: string, pageToken?: string) {
     pageToken,
   })
   return {
-    videos: (result.items ?? []).flatMap((item: any) => {
+    videos: (result.items ?? []).flatMap((item: JsonObject) => {
       const id = item.contentDetails?.videoId
       if (!id) return []
       return [{
@@ -120,7 +122,7 @@ function safeHttpsUrl(value: unknown) {
   }
 }
 
-function mediaFromVideoRow(row: any) {
+function mediaFromVideoRow(row: JsonObject) {
   const metadata = row?.metadata && typeof row.metadata === 'object' ? row.metadata : {}
   return (
     safeHttpsUrl(row?.content_ref) ??
@@ -409,7 +411,7 @@ async function getReadyJobs(limit: number) {
   return data ?? []
 }
 
-async function publishFacebookVideo(job: any) {
+async function publishFacebookVideo(job: JsonObject) {
   const sourceMediaUrl = safeHttpsUrl(job.source_media_url)
   if (!sourceMediaUrl) throw new Error('Invalid source_media_url; expected an HTTPS URL to the original video file.')
 
@@ -427,8 +429,8 @@ async function publishFacebookVideo(job: any) {
     signal: AbortSignal.timeout(45_000),
   })
   const text = await response.text()
-  let body: any = null
-  try { body = JSON.parse(text) } catch { body = { raw: text.slice(0, 1500) } }
+  let body: JsonObject = {}
+  try { body = JSON.parse(text) as JsonObject } catch { body = { raw: text.slice(0, 1500) } }
   if (!response.ok || !body?.id) {
     throw new Error(`Facebook ${response.status}: ${body?.error?.message ?? body?.raw ?? 'Facebook upload failed'}`)
   }

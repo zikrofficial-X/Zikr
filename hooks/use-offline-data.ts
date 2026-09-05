@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { offlineDb } from '@/lib/offline-db';
 import { useOfflineStatus } from './use-offline-status';
 
+type OfflineRecord = Record<string, unknown>;
+
 export interface UseOfflineDataOptions<T> {
   storeName: string;
   key?: string | number;
@@ -76,9 +78,9 @@ export function useOfflineData<T>({
       try {
         await offlineDb.initialize();
         if (key !== undefined) {
-          await offlineDb.set(storeName, { ...newData, id: key } as any);
+          await offlineDb.set(storeName, { ...(newData as OfflineRecord), id: key });
         } else {
-          await offlineDb.set(storeName, newData as any);
+          await offlineDb.set(storeName, newData as unknown as OfflineRecord);
         }
         setData(newData);
         setIsCached(true);

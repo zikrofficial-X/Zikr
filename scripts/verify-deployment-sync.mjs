@@ -39,7 +39,7 @@ function warning(message) {
   log(`⚠️  ${message}`, 'yellow');
 }
 
-function info(message) {
+function _info(message) {
   log(`ℹ️  ${message}`, 'blue');
 }
 

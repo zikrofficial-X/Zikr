@@ -132,7 +132,7 @@ export default function PrayerTimesPage() {
       },
       { timeout: 8000 }
     );
-  }, [loadForCoords]);
+  }, [loadForCoords, prayerData]);
 
   // Fetch prayer times by city
   const fetchByCity = useCallback(

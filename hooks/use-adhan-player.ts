@@ -76,7 +76,7 @@ export function useAdhanPlayer(): UseAdhanPlayerReturn {
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
     };
-  }, []);
+  }, [volume]);
 
   const playLocalAdhan = useCallback(async () => {
     const audio = audioRef.current;

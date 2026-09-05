@@ -49,7 +49,7 @@ async function mutate(formData: FormData) {
 }
 
 export default async function AdminLibraryPage() {
-  const admin = await requireAdmin();
+  await requireAdmin();
   const db = createAdminClient();
   const [{ data: items }, { data: sources }, { count: mediaCount }, { count: gamesCount }] = await Promise.all([
     db.from('content_library').select('id,title_ar,title_en,content_type,category,review_status,published,source_id,updated_at').order('updated_at', { ascending: false }).limit(100),

@@ -10,9 +10,6 @@
  *   node scripts/add-env-to-vercel.mjs --token <VERCEL_TOKEN> --project <PROJECT_ID>
  */
 
-import { execSync } from 'child_process';
-import fs from 'fs';
-import path from 'path';
 
 const PROJECT_ID = 'prj_JK5okAtNYCkRBE3Iw28QGrFwRssR'; // Zikr project
 const TEAM_ID = 'team_DPvdFrVquJ2LRzKLsZScxTfY';
@@ -82,7 +79,7 @@ async function promptForValue(variable) {
   return value || null;
 }
 
-async function addVariableToVercel(varName, varValue) {
+async function _addVariableToVercel(varName, varValue) {
   try {
     console.log(`\n   Adding ${varName}...`);
 

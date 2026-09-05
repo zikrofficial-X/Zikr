@@ -5,7 +5,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { BookOpen, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
 
 export function ReadingProgressCard() {
   const { state, percent, resumePosition, loaded } = useQuranWird();

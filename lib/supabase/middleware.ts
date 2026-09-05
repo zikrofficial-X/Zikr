@@ -38,7 +38,7 @@ export function createMiddlewareClient(
     });
 
     return { supabase, response, configured } as const;
-  } catch (error) {
+  } catch {
     return { supabase: null, response, configured: false } as const;
   }
 }

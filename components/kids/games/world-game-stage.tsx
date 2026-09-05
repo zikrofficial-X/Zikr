@@ -4,12 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   GameDifficulty,
   GameId,
-  GameResultPayload,
 } from "@/lib/games/registry";
 import {
   getVerifiedKidsQuizQuestions,
   getVerifiedWuduSteps,
-  type VerifiedQuizQuestion,
 } from "@/lib/games/verified-content";
 import {
   isVerseOrderComplete,
@@ -283,7 +281,7 @@ function MemoryGame({
       isMatch ? 180 : 700
     );
     return () => window.clearTimeout(timer);
-  }, [cards, flipped, paused]);
+  }, [cards, flipped, onSound, paused]);
 
   useEffect(() => {
     const score = Math.max(0, matched.length * 120 + combo * 25 - moves * 8);
@@ -381,14 +379,14 @@ function OrderingGame({
     setFeedback("إجابة صحيحة");
   };
   const completed = steps.length > 0 && order.length === steps.length;
-  const hud = {
+  const hud = useMemo(() => ({
     score: Math.max(0, order.length * 220 - mistakes * 30),
     collectibles: order.length,
     distance: 0,
     combo: Math.max(0, order.length - mistakes),
     level: difficulty === "easy" ? 1 : 2,
     completed,
-  };
+  }), [completed, difficulty, mistakes, order.length]);
   useEffect(() => {
     onHud(hud);
     if (completed) {
@@ -402,9 +400,7 @@ function OrderingGame({
     onResult,
     onSound,
     order.length,
-    hud.score,
-    hud.combo,
-    hud.level,
+    hud,
   ]);
   if (steps.length === 0)
     return <Unavailable text="لا تتوفر خطوات الوضوء المعتمدة حاليًا." />;
@@ -491,14 +487,14 @@ function VersePuzzleGame({
     0,
     answer.length * 180 - Math.max(0, answer.length - 1) * 12
   );
-  const hud = {
+  const hud = useMemo(() => ({
     score,
     collectibles: answer.length,
     distance: 0,
     combo: answer.length,
     level: difficulty === "hard" ? 3 : difficulty === "normal" ? 2 : 1,
     completed,
-  };
+  }), [answer.length, completed, difficulty, score]);
   useEffect(() => {
     onHud(hud);
     if (completed) {
@@ -512,8 +508,7 @@ function VersePuzzleGame({
     onResult,
     onSound,
     score,
-    hud.combo,
-    hud.level,
+    hud,
   ]);
   if (loading)
     return (
@@ -664,14 +659,14 @@ function GoodDeedsGame({
     onSound("collect");
     setCompleted(value => [...value, index]);
   };
-  const hud = {
+  const hud = useMemo(() => ({
     score: completed.length * 200,
     collectibles: completed.length,
     distance: 0,
     combo: completed.length,
     level: 1,
     completed: completed.length === deeds.length,
-  };
+  }), [completed.length, deeds.length]);
   useEffect(() => {
     onHud(hud);
     if (hud.completed) {
@@ -683,9 +678,7 @@ function GoodDeedsGame({
     onHud,
     onResult,
     onSound,
-    hud.score,
-    hud.combo,
-    hud.completed,
+    hud,
   ]);
   return (
     <div className="space-y-4 rounded-2xl border border-brand-gold/30 bg-[#071b24] p-5">
@@ -725,14 +718,14 @@ function CleanupGame({
     onSound("collect");
     setSorted(value => [...value, item]);
   };
-  const hud = {
+  const hud = useMemo(() => ({
     score: sorted.length * 180,
     collectibles: sorted.length,
     distance: 0,
     combo: sorted.length,
     level: 1,
     completed: sorted.length === items.length,
-  };
+  }), [items.length, sorted.length]);
   useEffect(() => {
     onHud(hud);
     if (hud.completed) {
@@ -743,10 +736,7 @@ function CleanupGame({
     onHud,
     onResult,
     onSound,
-    sorted.length,
-    hud.score,
-    hud.combo,
-    hud.completed,
+    hud,
   ]);
   return (
     <div className="space-y-4 rounded-2xl border border-brand-gold/30 bg-[#071b24] p-5">
@@ -788,7 +778,7 @@ function ColoringGame({
       localStorage.removeItem("zikr-kids-coloring-v1");
     }
   }, [restartToken]);
-  const paint = (index: number) =>
+  const _paint = (index: number) =>
     setCells(value => {
       onSound("collect");
       setHistory(previous => [...previous.slice(-19), value]);
@@ -813,18 +803,18 @@ function ColoringGame({
     localStorage.removeItem("zikr-kids-coloring-v1");
   };
   const filled = cells.filter(Boolean).length;
-  const hud = {
+  const hud = useMemo(() => ({
     score: filled * 100,
     collectibles: filled,
     distance: 0,
     combo: filled,
     level: 1,
     completed: filled === 12,
-  };
+  }), [filled]);
   useEffect(() => {
     onHud(hud);
     if (hud.completed) onResult(hud);
-  }, [filled, onHud, onResult, hud.score, hud.combo, hud.completed]);
+  }, [hud, onHud, onResult]);
   const regionFill = (index: number) => cells[index] || "#14313a";
   return (
     <div className="space-y-4 rounded-2xl border border-brand-gold/30 bg-[#071b24] p-5">

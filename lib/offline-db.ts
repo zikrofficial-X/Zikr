@@ -6,6 +6,8 @@
 const DB_NAME = 'ZikrOfflineDB';
 const DB_VERSION = 4;
 
+type OfflineRecord = Record<string, unknown>;
+
 interface DbStore {
   name: string;
   keyPath: string;
@@ -189,7 +191,7 @@ export class OfflineDatabase {
     });
   }
 
-  async query<T>(storeName: string, indexName: string, value: any): Promise<T[]> {
+  async query<T>(storeName: string, indexName: string, value: IDBValidKey | IDBKeyRange): Promise<T[]> {
     await this.initialize();
     const store = this.getStore(storeName, 'readonly');
     const index = store.index(indexName);
@@ -220,7 +222,7 @@ export class OfflineDatabase {
     });
   }
 
-  async saveSetting(key: string, value: any): Promise<void> {
+  async saveSetting(key: string, value: unknown): Promise<void> {
     await this.set('settings', { key, value, timestamp: Date.now() });
   }
 
@@ -229,12 +231,12 @@ export class OfflineDatabase {
     return result?.value;
   }
 
-  async saveFavorite(type: string, itemId: string, data: any): Promise<void> {
+  async saveFavorite(type: string, itemId: string, data: OfflineRecord): Promise<void> {
     const id = `${type}-${itemId}`;
     await this.set('favorites', { id, type, itemId, data, timestamp: Date.now() });
   }
 
-  async getFavorites(type?: string): Promise<any[]> {
+  async getFavorites(type?: string): Promise<OfflineRecord[]> {
     return type ? this.query('favorites', 'type', type) : this.getAll('favorites');
   }
 
@@ -246,12 +248,12 @@ export class OfflineDatabase {
     await this.delete('favorites', `${type}-${itemId}`);
   }
 
-  async cacheUrl(url: string, data: any): Promise<void> {
+  async cacheUrl(url: string, data: unknown): Promise<void> {
     await this.set('cache', { url, data, timestamp: Date.now() });
   }
 
-  async getCachedUrl(url: string): Promise<any | undefined> {
-    const result = await this.get<{ data: any }>('cache', url);
+  async getCachedUrl(url: string): Promise<unknown | undefined> {
+    const result = await this.get<{ data: unknown }>('cache', url);
     return result?.data;
   }
 

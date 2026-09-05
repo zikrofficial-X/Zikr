@@ -17,7 +17,7 @@ export function KidsShare({
   description,
   slug,
   type,
-  imageUrl,
+  imageUrl: _imageUrl,
 }: KidsShareProps) {
   const [shared, setShared] = useState(false);
   const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/kids/${slug}`;
@@ -30,8 +30,9 @@ export function KidsShare({
     setShared(true);
     
     // Track the share if available
-    if (typeof window !== 'undefined' && (window as any).gtag) {
-      (window as any).gtag('event', 'kids_content_shared', {
+    const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
+    if (gtag) {
+      gtag('event', 'kids_content_shared', {
         content_title: title,
         content_type: type,
         share_platform: 'facebook',

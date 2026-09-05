@@ -168,7 +168,7 @@ export function QuranAudioPlayer({ surahId }: { surahId: number }) {
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("ended", handleEnded);
     };
-  }, [src, isClient]);
+  }, [audioSourceIndex, audioSources, isClient, reciter?.id, src, surahId]);
 
   const togglePlay = () => {
     if (!isClient) return;
