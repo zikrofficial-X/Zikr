@@ -57,8 +57,8 @@ importers:
         specifier: 7.0.2
         version: 7.0.2(@capacitor/core@7.4.3)
       '@capacitor/splash-screen':
-        specifier: 7.0.2
-        version: 7.0.2(@capacitor/core@7.4.3)
+        specifier: 7.0.5
+        version: 7.0.5(@capacitor/core@7.4.3)
       '@capacitor/status-bar':
         specifier: 7.0.2
         version: 7.0.2(@capacitor/core@7.4.3)
@@ -330,8 +330,8 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
-  '@capacitor/splash-screen@7.0.2':
-    resolution: {integrity: sha512-bchh4F73CnVONm6XFEgXKEhbSEDQh2CQ0rNSoasIeJ5pf9JqHkkPS3t0Fnm33qHkLVFcaPoKPW69Y9zMpT5Vxg==}
+  '@capacitor/splash-screen@7.0.5':
+    resolution: {integrity: sha512-bPG2SamFL7VT5I3XsgsGgJhkiyxq3OXCOVKEDupSieVdtEiG7j2vLbSD0xL+91zteF/qLuxsjbugGy5LD8mS2A==}
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
@@ -3169,7 +3169,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 7.4.3
 
-  '@capacitor/splash-screen@7.0.2(@capacitor/core@7.4.3)':
+  '@capacitor/splash-screen@7.0.5(@capacitor/core@7.4.3)':
     dependencies:
       '@capacitor/core': 7.4.3
 
