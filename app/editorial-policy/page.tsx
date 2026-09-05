@@ -62,6 +62,12 @@ export default function EditorialPolicyPage() {
       </Card>
 
       <Card className="space-y-4 leading-9">
+        <h2 className="text-2xl font-bold text-brand-gold">كيف نكتب مادة نافعة؟</h2>
+        <p className="text-brand-cream/75">نبدأ من سؤال واضح يهم القارئ، ثم نرتب الإجابة من التعريف إلى السياق ثم الخطوة العملية. نستخدم عناوين وفقرات قصيرة وروابط داخلية تساعد على الانتقال بين القرآن والأذكار والقصص والمقالات، ونبتعد عن العناوين المبالغ فيها أو الوعود التي لا يمكن قياسها.</p>
+        <p className="text-brand-cream/75">عند وجود اختلاف في العرض أو المصطلح، نوضح طبيعة الاختلاف بدل إخفائه. وعند تعذر التحقق من معلومة، نذكر حدودها أو نحذفها. هذه المنهجية تحمي القارئ من الخلط بين التعليم العام والحكم الشرعي الملزم، وتحافظ على تجربة قراءة صادقة.</p>
+      </Card>
+
+      <Card className="space-y-4 leading-9">
         <h2 className="text-2xl font-bold text-brand-gold">طريقة التوثيق</h2>
         <ol className="list-decimal space-y-3 pe-6 text-brand-cream/75">
           <li>

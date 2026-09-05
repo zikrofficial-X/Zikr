@@ -112,6 +112,19 @@ export default function AboutPage() {
           </div>
         </section>
 
+        <section className="grid gap-6 md:grid-cols-2">
+          <Card className="space-y-4 p-7">
+            <h2 className="text-2xl font-bold text-brand-gold">كيف نعتني بالمحتوى؟</h2>
+            <p className="leading-8 text-brand-cream/70">نبدأ بتحديد نوع المادة: نص منقول، بيانات مفتوحة، شرح تعليمي، أو أداة تفاعلية. ثم نعرض لكل نوع سياقه المناسب بدل خلط الاقتباس بالرأي التحريري. عندما يكون للمادة مصدر واضح نذكره، وعندما تكون الصفحة تجربة تقنية نوضح حدود النتائج وإمكانية اختلافها بحسب الجهاز والموقع والإعدادات.</p>
+            <p className="leading-8 text-brand-cream/70">لا نملأ الصفحات بتكرار أو نصوص مصطنعة لمجرد زيادة عدد الكلمات. القيمة عندنا هي أن يجد الزائر جوابًا واضحًا، رابطًا مفيدًا، وطريقة عملية لاستخدام الميزة مع احترام حقوق المؤلف والخصوصية.</p>
+          </Card>
+          <Card className="space-y-4 p-7">
+            <h2 className="text-2xl font-bold text-brand-gold">كيف تستفيد من ذِكرٌ؟</h2>
+            <p className="leading-8 text-brand-cream/70">يمكنك قراءة القرآن والاستماع إليه، تنظيم الأذكار، مراجعة مواقيت الصلاة والقبلة، متابعة القصص والمقالات، أو استخدام القسم المخصص للصغار مع إشراف الأسرة. الحساب اختياري لمعظم القراءة العامة، ويُستخدم فقط عند الحاجة إلى مزامنة المفضلة أو التقدم.</p>
+            <p className="leading-8 text-brand-cream/70">لأفضل تجربة، اختر مدينتك، راجع إعدادات اللغة والصوت، واستخدم صفحة التواصل للإبلاغ عن خطأ مع ذكر الرابط وموضع المشكلة. الآراء التعليمية العامة لا تستبدل الفتوى أو الاستشارة المتخصصة.</p>
+          </Card>
+        </section>
+
         <section className="space-y-8">
           <h2 className="text-3xl font-bold text-brand-gold text-center">من نحن</h2>
           <div className="grid md:grid-cols-3 gap-6">
@@ -139,9 +152,9 @@ export default function AboutPage() {
             <div className="space-y-3">
               <h3 className="font-semibold text-brand-cream">هدفنا البعيد</h3>
               <ul className="space-y-2 text-sm text-brand-cream/60 list-inside">
-                <li className="flex items-start gap-2"><span className="text-brand-gold mt-0.5">◆</span> 10 ملايين مستخدم يستفيدون يومياً</li>
-                <li className="flex items-start gap-2"><span className="text-brand-gold mt-0.5">◆</span> دعم 30 لغة حول العالم</li>
-                <li className="flex items-start gap-2"><span className="text-brand-gold mt-0.5">◆</span> أكاديمية إسلامية إلكترونية متكاملة</li>
+                <li className="flex items-start gap-2"><span className="text-brand-gold mt-0.5">◆</span> توسيع المحتوى التعليمي بعد مراجعته وتوثيق مصادره</li>
+                <li className="flex items-start gap-2"><span className="text-brand-gold mt-0.5">◆</span> تحسين الوصول ودعم لغات واحتياجات استخدام إضافية تدريجيًا</li>
+                <li className="flex items-start gap-2"><span className="text-brand-gold mt-0.5">◆</span> بناء أدوات تعلم رقمية مسؤولة لا تقدم نفسها بديلًا عن أهل العلم</li>
               </ul>
             </div>
           </div>
