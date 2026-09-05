@@ -1,11 +1,16 @@
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Settings } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { MobileNav } from "./mobile-nav";
 import { AuthNavActions } from "./auth-nav-actions";
 import { LanguageToggle } from "./language-toggle";
 import { LanguageAwareNav, type NavLink } from "./language-aware-nav";
+
+const MobileNav = dynamic(
+  () => import("./mobile-nav").then((module) => module.MobileNav),
+  { ssr: false },
+);
 
 const links: NavLink[] = [
   { href: "/quran", label: "القرآن", labelEn: "Quran" },
