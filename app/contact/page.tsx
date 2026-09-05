@@ -51,7 +51,7 @@ export default function ContactPage() {
         <Container className="max-w-3xl text-center space-y-4">
           <h1 className="text-5xl font-bold text-brand-gold">تواصل معنا</h1>
           <p className="text-lg leading-8 text-brand-cream/70">
-            نسعد باستقبال استفساراتك واقتراحاتك — فريقنا يردّ خلال 24 ساعة.
+            نسعد باستقبال استفساراتك واقتراحاتك، ونراجع الرسائل بحسب نوع الطلب وأولوية المعالجة.
           </p>
         </Container>
       </section>
@@ -86,15 +86,15 @@ export default function ContactPage() {
               <ul className="space-y-3 text-sm text-brand-cream/60">
                 <li className="flex items-start gap-2">
                   <span className="text-brand-gold shrink-0">◆</span>
-                  الاستفسارات التقنية: خلال 24 ساعة
+                  الاستفسارات التقنية: تُراجع تباعًا عبر البريد
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-brand-gold shrink-0">◆</span>
-                  اقتراحات المحتوى: خلال 48 ساعة
+                  اقتراحات المحتوى: تُراجع بعد التحقق من ملاءمتها
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-brand-gold shrink-0">◆</span>
-                  الشراكات والإعلانات: خلال أسبوع
+                  الشراكات والإعلانات: تُراجع بحسب طبيعة الطلب
                 </li>
               </ul>
             </Card>
@@ -108,11 +108,11 @@ export default function ContactPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-brand-gold shrink-0">◆</span>
-                  المحتوى موثّق من مصادر معتمدة
+                  نراجع المحتوى ونوضح مصدره عند توفره
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-brand-gold shrink-0">◆</span>
-                  ندعم كل الأجهزة والمتصفحات
+                  نعمل على دعم المتصفحات والأجهزة الحديثة
                 </li>
               </ul>
             </Card>

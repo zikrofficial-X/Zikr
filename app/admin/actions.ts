@@ -227,7 +227,7 @@ export async function saveStoryAction(formData: FormData) {
 }
 
 export async function saveArticleAction(formData: FormData) {
-  const admin = await requireAdminPermission('content.manage');
+  await requireAdminPermission('content.manage');
   const title = String(formData.get("title") ?? "").trim();
   const slug = String(formData.get("slug") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
@@ -273,7 +273,7 @@ export async function saveArticleAction(formData: FormData) {
 }
 
 export async function saveVideoPostAction(formData: FormData) {
-  const admin = await requireAdminPermission('video.manage');
+  await requireAdminPermission('video.manage');
   const title = String(formData.get("title") ?? "").trim();
   if (!title) throw new Error("عنوان الفيديو مطلوب.");
 
