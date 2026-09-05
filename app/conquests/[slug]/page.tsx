@@ -33,6 +33,7 @@ type ConquestEvent = {
 import { pageMetadata } from '@/lib/site';
 import type { Metadata } from 'next';
 import { FALLBACK_CONQUESTS } from '@/lib/data/conquests-fallback';
+import { FALLBACK_CONQUEST_EVENTS } from '@/lib/data/conquests-detail-fallback';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -82,6 +83,15 @@ export default async function ConquestDetailPage({ params }: { params: Promise<{
     events = [];
   }
 
+  // When the database has no event rows, use the curated long-form fallback.
+  if (events.length === 0) {
+    events = (FALLBACK_CONQUEST_EVENTS[slug] ?? []).map((event, index) => ({
+      id: `fallback-${slug}-${index + 1}`,
+      order_num: index + 1,
+      ...event,
+    }));
+  }
+
   return (
     <Container className="space-y-8 py-10 text-right">
       <Button href="/conquests" variant="ghost">
@@ -89,7 +99,6 @@ export default async function ConquestDetailPage({ params }: { params: Promise<{
       </Button>
 
       <Card className="space-y-6">
-        {/* Header */}
         <div className="flex items-center gap-4 border-b border-brand-gold/10 pb-6">
           <div className="text-4xl">🏰</div>
           <div className="flex-1">
@@ -98,7 +107,6 @@ export default async function ConquestDetailPage({ params }: { params: Promise<{
           </div>
         </div>
 
-        {/* Description */}
         {conquest.description_ar && (
           <div className="space-y-2">
             <h2 className="text-xl font-semibold text-brand-gold">نبذة عن الفتح</h2>
@@ -109,7 +117,6 @@ export default async function ConquestDetailPage({ params }: { params: Promise<{
           </div>
         )}
 
-        {/* Conquest Info Grid */}
         <div className="grid gap-4 sm:grid-cols-2">
           {conquest.date_hijri && (
             <div className="rounded-lg border border-brand-gold/20 bg-brand-gold/5 p-4">
