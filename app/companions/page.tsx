@@ -68,6 +68,12 @@ const STATIC_COMPANIONS: Companion[] = COMPANIONS.map(companion => ({
   category: STATIC_COMPANION_CATEGORIES[companion.name_ar] ?? null,
 }));
 
+function categoryCountLabel(category: string, count: number) {
+  return category === "أمهات المؤمنين"
+    ? `${count} صحابية`
+    : `${count} صحابي`;
+}
+
 export default async function CompanionsPage() {
   let companions: Companion[] = [];
 
@@ -125,7 +131,7 @@ export default async function CompanionsPage() {
           <section key={category} className="space-y-6">
             <SectionHeader
               title={category}
-              subtitle={`${items.length} صحابي`}
+              subtitle={categoryCountLabel(category, items.length)}
             />
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {items.map(companion => (
