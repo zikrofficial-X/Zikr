@@ -5,18 +5,18 @@ import { LanguageProvider } from './language-provider';
 
 const InstallPrompt = dynamic(
   () => import('./install-prompt').then((module) => module.InstallPrompt),
+  { ssr: false },
 );
 const OfflineIndicator = dynamic(
   () => import('../offline-indicator').then((module) => module.OfflineIndicator),
+  { ssr: false },
 );
 const NotificationPermissionBanner = dynamic(
   () =>
     import('./notification-permission-banner').then(
       (module) => module.NotificationPermissionBanner,
     ),
-);
-const AppUpdateChecker = dynamic(
-  () => import('./app-update-checker').then((module) => module.AppUpdateChecker),
+  { ssr: false },
 );
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
@@ -26,11 +26,10 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         <Navbar />
         <main>{children}</main>
         <Footer />
-        {/* Non-critical client integrations are code-split from the initial shell. */}
+        {/* Non-critical client integrations stay outside the critical render path. */}
         <NotificationPermissionBanner />
         <InstallPrompt />
         <OfflineIndicator />
-        <AppUpdateChecker />
       </div>
     </LanguageProvider>
   );
