@@ -96,7 +96,6 @@ export default function OfflineLibraryClient() {
   const [discoveredRoutes, setDiscoveredRoutes] = useState<string[]>([]);
   const [status, setStatus] = useState('جاري فحص مكتبة ذِكر ومصادر المحتوى…');
   const [isHydrating, setIsHydrating] = useState(false);
-  const [isComplete, setIsComplete] = useState<boolean | null>(null);
   const [cachedRoutes, setCachedRoutes] = useState(0);
   const [failedRoutes, setFailedRoutes] = useState<string[]>([]);
   const [activeBatch, setActiveBatch] = useState(0);
@@ -159,7 +158,6 @@ export default function OfflineLibraryClient() {
     }
 
     setIsHydrating(true);
-    setIsComplete(null);
     setCachedRoutes(0);
     setFailedRoutes([]);
     setActiveBatch(0);
@@ -197,7 +195,6 @@ export default function OfflineLibraryClient() {
       }
 
       const complete = result.complete && failures.length === 0 && cached === routes.length;
-      setIsComplete(complete);
       setManifest(result.manifest);
       setStatus(
         complete
@@ -293,7 +290,7 @@ export default function OfflineLibraryClient() {
 
       {failedRoutes.length > 0 && (
         <Card className="border-brand-gold/10">
-          <h2 className="text-lg font-semibold text-brand-gold">صفحات تحتاج إعادة محاولة</h2>
+          <h2 className="text-lg font-semibold text-brand-gold">صفحات تحتاج إ��ادة محاولة</h2>
           <p className="mt-3 break-words text-sm leading-7 text-muted-foreground">{failedRoutes.slice(0, 30).join('، ')}{failedRoutes.length > 30 ? ' …' : ''}</p>
         </Card>
       )}
