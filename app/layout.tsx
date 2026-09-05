@@ -1,12 +1,20 @@
 import type { Metadata, Viewport } from "next";
+import dynamic from "next/dynamic";
 import "./globals.css";
 import { SiteShell } from "@/components/layout/site-shell";
 
 import { defaultOgImage, siteConfig } from "@/lib/site";
 import { DeferredRuntime } from "@/components/layout/deferred-runtime";
 import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
-import { NativeCapacitorBridge } from "@/components/layout/native-capacitor-bridge";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
+
+const NativeCapacitorBridge = dynamic(
+  () =>
+    import("@/components/layout/native-capacitor-bridge").then(
+      (module) => module.NativeCapacitorBridge,
+    ),
+  { ssr: false },
+);
 
 // Navbar reads the Supabase session from request cookies, so the shell must be rendered per request.
 export const dynamic = "force-dynamic";
