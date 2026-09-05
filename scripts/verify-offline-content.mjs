@@ -43,7 +43,7 @@ try {
     if (!existsSync(file)) failures.push(`Missing dataset file: ${file}`);
   }
 
-  const sensitivePrefixes = ['/api/', '/auth/', '/admin', '/profile', '/favorites'];
+  const sensitivePrefixes = ['/api/', '/auth/', '/admin', '/profile', '/favorites', '/settings'];
   for (const route of manifest.routes ?? []) {
     if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) {
       failures.push(`Invalid offline route: ${String(route)}`);
@@ -63,7 +63,7 @@ try {
     failures.push('Offline v2 public route inventory is unexpectedly small');
   }
   const seen = new Set();
-  const sensitivePrefixes = ['/api/', '/auth/', '/admin', '/profile', '/favorites'];
+  const sensitivePrefixes = ['/api/', '/auth/', '/admin', '/profile', '/favorites', '/settings'];
   for (const route of routeSnapshot) {
     if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) {
       failures.push(`Invalid v2 offline route: ${String(route)}`);
@@ -86,7 +86,7 @@ for (const token of [
   'verifyCompletedDatasets',
   'requestOfflineRouteCache',
   'cacheRoutes?: boolean',
-  'offline-content-version-v3',
+  'offline-content-version-v4',
   'scholars/ahmad-ibn-hanbal',
   'videos/importance-of-prayer',
 ]) {
@@ -106,7 +106,7 @@ for (const token of [
 
 const offlineLibrary = read(offlineLibraryPath);
 const offlineLibraryClient = read(offlineLibraryClientPath);
-if (!offlineLibrary.includes("OfflineLibraryClient")) failures.push('Offline Library page does not render client component');
+if (!offlineLibrary.includes('OfflineLibraryClient')) failures.push('Offline Library page does not render client component');
 for (const token of ['cacheRoutes: true', 'تحديث وتجهيز المكتبة كاملة', 'SUPPLEMENTAL_ROUTE_URL', 'requestOfflineRouteCache']) {
   if (!offlineLibraryClient.includes(token)) failures.push(`Offline Library client missing ${token}`);
 }
@@ -121,4 +121,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('✅ Offline core datasets, full public route inventory, route-cache integration, durable completion, and navigation safety checks passed');
+console.log('✅ Offline core datasets, expanded v4 public route inventory, route-cache integration, durable completion, and navigation safety checks passed');
