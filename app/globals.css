@@ -78,9 +78,7 @@ p {
   transition: color 0.2s ease;
 }
 
-/* Keep low-opacity brand text readable on the dark ZIKR surface. The
-   PageSpeed accessibility audit flags a number of these utility combinations.
-   Attribute selectors avoid relying on Tailwind's escaped slash syntax. */
+/* Keep low-opacity brand text readable on the dark ZIKR surface. */
 [class~="text-brand-cream/35"] {
   color: rgba(246, 240, 229, 0.72) !important;
 }
@@ -93,12 +91,29 @@ p {
   color: rgba(246, 240, 229, 0.78) !important;
 }
 
+[class~="text-brand-cream/55"],
+[class~="text-brand-cream/60"],
+[class~="text-brand-cream/65"],
+[class~="text-brand-cream/70"] {
+  color: #c8c0af !important;
+}
+
 [class~="text-brand-gold/40"] {
   color: rgba(230, 215, 179, 0.78) !important;
 }
 
 [class~="text-brand-gold/50"] {
   color: rgba(230, 215, 179, 0.80) !important;
+}
+
+[class~="text-brand-gold/75"],
+[class~="text-brand-gold/80"] {
+  color: #e6d7b3 !important;
+}
+
+/* Slightly stronger pill background for the language/locale chip. */
+[class~="bg-brand-gold/15"] {
+  background-color: rgba(199, 168, 107, 0.25) !important;
 }
 
 .font-arabic {
