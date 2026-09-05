@@ -27,8 +27,8 @@ importers:
         specifier: 7.4.3
         version: 7.4.3
       '@capacitor/filesystem':
-        specifier: 7.1.4
-        version: 7.1.4(@capacitor/core@7.4.3)
+        specifier: 7.1.8
+        version: 7.1.8(@capacitor/core@7.4.3)
       '@capacitor/geolocation':
         specifier: ^7.1.0
         version: 7.1.8(@capacitor/core@7.4.3)
@@ -280,8 +280,8 @@ packages:
   '@capacitor/core@7.4.3':
     resolution: {integrity: sha512-wCWr8fQ9Wxn0466vPg7nMn0tivbNVjNy1yL4GvDSIZuZx7UpU2HeVGNe9QjN/quEd+YLRFeKEBLBw619VqUiNg==}
 
-  '@capacitor/filesystem@7.1.4':
-    resolution: {integrity: sha512-BdUnOVulHAtruW2GeC9o7e9LO5aFcVYqNn3dLypJSOck/WipUFNfI0QWoUS0FVGeqBbDJgFGi3zjXJx0lzbDkA==}
+  '@capacitor/filesystem@7.1.8':
+    resolution: {integrity: sha512-Qpw/2SE4/CzqAUvGgSM9hw/uXQ5qoOaF4wxbToXwpAaKPS+tzletS1h5ti3jjLmGcqizTs2sEXMtcsARW/Ceew==}
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
@@ -3103,7 +3103,7 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@capacitor/filesystem@7.1.4(@capacitor/core@7.4.3)':
+  '@capacitor/filesystem@7.1.8(@capacitor/core@7.4.3)':
     dependencies:
       '@capacitor/core': 7.4.3
       '@capacitor/synapse': 1.0.4
