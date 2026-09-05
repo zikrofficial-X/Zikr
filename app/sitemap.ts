@@ -7,6 +7,7 @@ import { surahs as fallbackSurahs } from "@/lib/data/content";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { appRoutes, siteConfig } from "@/lib/site";
 import { staticArticles } from "@/lib/data/articles";
+import { adsenseEditorialArticles } from "@/lib/data/adsense-editorial";
 import type { Surah } from "@/lib/types/quran";
 import type { Scholar } from "@/lib/services/scholars";
 import type { HadithBook } from "@/lib/types/hadith";
@@ -177,6 +178,10 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
               slug: article.slug,
               content: article.content_ar,
             })),
+            ...adsenseEditorialArticles.map(article => ({
+              slug: article.slug,
+              content: article.content_ar,
+            })),
           ].map(article => [article.slug, article] as const),
         ).values(),
       )
@@ -267,8 +272,5 @@ export async function getSitemapShardCount(): Promise<number> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries = await getSitemapEntries();
-
-  // Next.js currently supports large single sitemaps, but keeping a hard cap
-  // makes the route safe if the content library grows substantially.
   return entries.slice(0, SITEMAP_PAGE_SIZE);
 }
