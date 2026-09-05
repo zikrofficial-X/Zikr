@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import nextDynamic from "next/dynamic";
 import "./globals.css";
 import { SiteShell } from "@/components/layout/site-shell";
 
@@ -7,14 +6,7 @@ import { defaultOgImage, siteConfig } from "@/lib/site";
 import { DeferredRuntime } from "@/components/layout/deferred-runtime";
 import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
-
-const NativeCapacitorBridge = nextDynamic(
-  () =>
-    import("@/components/layout/native-capacitor-bridge").then(
-      (module) => module.NativeCapacitorBridge,
-    ),
-  { ssr: false },
-);
+import { NativeCapacitorBridgeLoader } from "@/components/layout/native-capacitor-bridge-loader";
 
 // Navbar reads the Supabase session from request cookies, so the shell must be rendered per request.
 export const dynamic = "force-dynamic";
@@ -152,7 +144,7 @@ export default function RootLayout({
         />
         <OfflineNavigationGuard />
         <SiteShell>{children}</SiteShell>
-        <NativeCapacitorBridge />
+        <NativeCapacitorBridgeLoader />
         <DeferredRuntime />
         <DeferredAnalytics />
       </body>
