@@ -21,6 +21,12 @@ function redirectToLogin(request: NextRequest) {
   return NextResponse.redirect(loginUrl);
 }
 
+function nextWithPathHeader(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  headers.set("x-zikr-pathname", request.nextUrl.pathname);
+  return NextResponse.next({ request: { headers } });
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -29,7 +35,7 @@ export async function proxy(request: NextRequest) {
     pathname === AUTH_CALLBACK_PREFIX ||
     pathname.startsWith(`${AUTH_CALLBACK_PREFIX}/`)
   ) {
-    return NextResponse.next({ request });
+    return nextWithPathHeader(request);
   }
 
   const isProtected = matchesPrefix(pathname, PROTECTED_PREFIXES);
@@ -37,7 +43,9 @@ export async function proxy(request: NextRequest) {
 
   // Build the mutable response ONCE — pass it to createMiddlewareClient so
   // any Set-Cookie headers Supabase writes are preserved on this response.
-  const response = NextResponse.next({ request });
+  const headers = new Headers(request.headers);
+  headers.set("x-zikr-pathname", pathname);
+  const response = NextResponse.next({ request: { headers } });
   const { supabase, configured } = createMiddlewareClient(request, response);
 
   if (!configured || !supabase) {
