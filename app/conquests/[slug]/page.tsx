@@ -34,6 +34,7 @@ import { pageMetadata } from '@/lib/site';
 import type { Metadata } from 'next';
 import { FALLBACK_CONQUESTS } from '@/lib/data/conquests-fallback';
 import { FALLBACK_CONQUEST_EVENTS } from '@/lib/data/conquests-detail-fallback';
+import { CONQUEST_EXTENDED_ALIASES, FALLBACK_CONQUEST_EVENTS_EXTENDED } from '@/lib/data/conquests-detail-fallback-extended';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -85,7 +86,9 @@ export default async function ConquestDetailPage({ params }: { params: Promise<{
 
   // When the database has no event rows, use the curated long-form fallback.
   if (events.length === 0) {
-    events = (FALLBACK_CONQUEST_EVENTS[slug] ?? []).map((event, index) => ({
+    const extendedKey = CONQUEST_EXTENDED_ALIASES[slug] ?? slug;
+    const fallbackEvents = FALLBACK_CONQUEST_EVENTS[slug] ?? FALLBACK_CONQUEST_EVENTS_EXTENDED[extendedKey] ?? [];
+    events = fallbackEvents.map((event, index) => ({
       id: `fallback-${slug}-${index + 1}`,
       order_num: index + 1,
       ...event,
