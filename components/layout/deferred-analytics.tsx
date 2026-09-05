@@ -13,6 +13,8 @@ const SpeedInsights = dynamic(
   { ssr: false },
 );
 
+const ANALYTICS_DELAY_MS = 10000;
+
 export function DeferredAnalytics() {
   const [ready, setReady] = useState(false);
 
@@ -22,13 +24,13 @@ export function DeferredAnalytics() {
 
     const schedule = () => {
       if (typeof window.requestIdleCallback === 'function') {
-        const idleId = window.requestIdleCallback(start, { timeout: 3000 });
+        const idleId = window.requestIdleCallback(start, { timeout: ANALYTICS_DELAY_MS });
         timeoutId = window.setTimeout(() => {
           window.cancelIdleCallback(idleId);
           start();
-        }, 3000);
+        }, ANALYTICS_DELAY_MS);
       } else {
-        timeoutId = window.setTimeout(start, 1000);
+        timeoutId = window.setTimeout(start, ANALYTICS_DELAY_MS);
       }
     };
 
