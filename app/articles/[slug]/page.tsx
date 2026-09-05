@@ -5,7 +5,7 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { getArticleBySlug, type Article } from "@/lib/services/content";
 import { getStaticArticleBySlug } from "@/lib/data/articles";
-import { pageMetadata } from "@/lib/site";
+import { pageMetadata, siteConfig } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -83,12 +83,19 @@ function staticArticleToArticle(slug: string): Article | null {
     views: article.views,
     published: true,
     tags: article.tags,
+    metadata: article.metadata,
     createdAt: article.created_at,
   };
 }
 
 async function loadArticle(slug: string): Promise<Article | null> {
-  return (await getArticleBySlug(slug)) ?? staticArticleToArticle(slug);
+  const remoteArticle = await getArticleBySlug(slug);
+  // A legacy or partially edited database row must not shadow a complete
+  // bundled article with the same slug.
+  if (remoteArticle?.content?.trim() && remoteArticle.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS) {
+    return remoteArticle;
+  }
+  return staticArticleToArticle(slug);
 }
 
 function hasSubstantialContent(
@@ -145,6 +152,7 @@ export default async function ArticleDetailPage({
     ...getMetadataReferences(article.metadata),
   ]);
   const content = article.content.trim();
+  const paragraphs = content.split(/\n\s*\n/).map(paragraph => paragraph.trim()).filter(Boolean);
   const wordCount = content.split(/\s+/).filter(Boolean).length;
   const readingMinutes = Math.max(1, Math.ceil(wordCount / 180));
 
@@ -181,9 +189,30 @@ export default async function ArticleDetailPage({
         </div>
       </header>
 
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: article.title,
+            description: article.summary || undefined,
+            datePublished: article.createdAt,
+            author: { "@type": "Organization", name: article.author || "فريق ذِكر" },
+            publisher: { "@type": "Organization", name: "ZIKR | ذِكرٌ" },
+            mainEntityOfPage: `${siteConfig.url}/articles/${article.slug}`,
+            keywords: article.tags?.join(", ") || undefined,
+          }),
+        }}
+      />
+
       <Card className="p-8 space-y-6 bg-black/30 border-brand-gold/30">
-        <article className="prose prose-invert max-w-none text-brand-cream leading-9 whitespace-pre-wrap">
-          {content}
+        <article className="prose prose-invert max-w-none text-brand-cream leading-9">
+          {paragraphs.map((paragraph, index) => (
+            <p key={`${article.slug}-paragraph-${index}`} className="mb-6 last:mb-0">
+              {paragraph}
+            </p>
+          ))}
         </article>
       </Card>
 

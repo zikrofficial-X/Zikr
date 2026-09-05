@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 import { staticArticles } from '@/lib/data/articles';
 import { mergePublishedBySlug } from '@/lib/data/content-merge';
 
-const MIN_PUBLIC_ARTICLE_CHARS = 500;
+const MIN_PUBLIC_ARTICLE_CHARS = 1800;
 
 export const metadata: Metadata = pageMetadata({
   title: 'المقالات الإسلامية',
@@ -73,7 +73,12 @@ export default async function ArticlesPage() {
     // Fall through to static content
   }
 
-  const mergedArticles = mergePublishedBySlug(articles, staticArticles);
+  // Filter incomplete database rows before merging. Otherwise a short row with
+  // the same slug would hide the longer bundled editorial fallback.
+  const completeArticles = articles.filter(article =>
+    typeof article.content === 'string' && article.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS,
+  );
+  const mergedArticles = mergePublishedBySlug(completeArticles, staticArticles);
   const displayArticles = mergedArticles.filter(article =>
     typeof article.content === 'string' && article.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS,
   );

@@ -15,7 +15,7 @@ export default function PrivacyPage() {
     <Container className="max-w-4xl space-y-8 py-12">
       <section className="space-y-4 text-center">
         <h1 className="text-4xl font-bold text-brand-gold">سياسة الخصوصية</h1>
-        <p className="arabic-muted">آخر تحديث: 15 أغسطس 2026</p>
+          <p className="arabic-muted">آخر تحديث: 5 سبتمبر 2026</p>
       </section>
 
       <Card className="space-y-4 leading-8">
@@ -26,6 +26,17 @@ export default function PrivacyPage() {
           قد تستخدم المنصة بيانات الحساب الأساسية مثل البريد الإلكتروني ومعرّف
           المستخدم لتفعيل تسجيل الدخول والمفضلة وميزات المتابعة. لا ينبغي إدخال
           بيانات حساسة في حقول عامة أو في البحث.
+        </p>
+        <p className="arabic-muted">
+          قد نسجل بيانات تقنية محدودة مثل نوع المتصفح والصفحات التي تفتحها
+          وأحداث الأداء والأخطاء، وذلك لتشغيل الموقع وتحسينه. لا نبيع هذه
+          البيانات، ولا نطلب بيانات صحية أو مالية داخل أدوات المحتوى العامة.
+          يستخدم نموذج التواصل البريد الذي تكتبه للرد على رسالتك ومراجعة البلاغ،
+          ويمكنك طلب حذف رسالة أو بيانات حسابك عبر
+          <a href="mailto:zikrmediaofficial@gmail.com" className="mx-1 text-brand-gold underline">
+            zikrmediaofficial@gmail.com
+          </a>
+          .
         </p>
       </Card>
 
@@ -79,6 +90,13 @@ export default function PrivacyPage() {
           Funding Choices لتمكين المستخدمين من مراجعة خيارات الخصوصية والموافقة
           على استخدام البيانات الإعلانية وفق المنطقة والقوانين المعمول بها.
         </p>
+        <p className="arabic-muted">
+          لا نضمن ظهور الإعلانات في كل زيارة، وقد تتغير الجهات الإعلانية بحسب
+          إعدادات الحساب والمنطقة. عند استخدام مزود إعلان آخر سنسميه في هذه
+          الصفحة ونضيف رابط سياسة الخصوصية وخيارات إلغاء الإعلانات المخصصة متى
+          كانت متاحة. يمكنك تغيير تفضيلات الموافقة من رسالة الخصوصية التي تظهر
+          لك أو تعطيل ملفات الارتباط من المتصفح، مع احتمال تأثر بعض الوظائف.
+        </p>
       </Card>
 
       <Card className="space-y-4 leading-8">
@@ -101,6 +119,15 @@ export default function PrivacyPage() {
           مراجعتها يجب التواصل مع فريق تشغيل المنصة وفق قنوات الدعم المعتمدة عند
           النشر. يمكنك أيضاً تعطيل ملفات تعريف الارتباط من إعدادات متصفحك،
           علماً بأن ذلك قد يؤثر على بعض ميزات الموقع.
+        </p>
+        <p className="arabic-muted">
+          لطلب الوصول إلى بيانات حسابك أو تصحيحها أو حذفها، أرسل البريد
+          المستخدم في الحساب ووصف الطلب إلى
+          <a href="mailto:zikrmediaofficial@gmail.com" className="mx-1 text-brand-gold underline">
+            zikrmediaofficial@gmail.com
+          </a>
+          . قد نطلب التحقق من ملكية الحساب قبل تنفيذ الطلب، ونحتفظ بالسجلات
+          التي يلزم الاحتفاظ بها لأسباب أمنية أو قانونية فقط.
         </p>
       </Card>
     </Container>

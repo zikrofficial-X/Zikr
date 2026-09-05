@@ -158,6 +158,63 @@ const moreContent = [
   { href: "/stories", label: "القصص", labelEn: "Stories", icon: "📖" },
 ];
 
+const learningPaths = [
+  {
+    href: "/articles/building-a-quran-routine",
+    title: "مسار الصحبة مع القرآن",
+    titleEn: "A Quran companionship path",
+    description: "ابدأ بالقراءة، ثم افهم المعنى، وسجّل فائدة واحدة قابلة للعمل.",
+    descriptionEn: "Read, understand, and turn one reflection into an action.",
+    links: ["/quran", "/tafsir", "/memorization"],
+    color: "border-emerald-700/30 bg-emerald-950/20",
+  },
+  {
+    href: "/articles/daily-adhkar-with-understanding",
+    title: "مسار الذكر والطمأنينة",
+    titleEn: "A remembrance and calm path",
+    description: "تعلّم المعنى، اختر ورداً ثابتاً، وراجع المصدر قبل النشر.",
+    descriptionEn: "Learn the meaning, choose a steady routine, and verify sources.",
+    links: ["/adhkar", "/dua", "/tasbeeh"],
+    color: "border-violet-700/30 bg-violet-950/20",
+  },
+  {
+    href: "/articles/reading-hadith-responsibly",
+    title: "مسار القراءة الموثقة",
+    titleEn: "A source-aware reading path",
+    description: "فرّق بين النص والشرح والدرجة، وتعلّم كيف تفتح المرجع الأصلي.",
+    descriptionEn: "Separate text, commentary, and grading while checking primary sources.",
+    links: ["/hadith", "/scholars", "/editorial-policy"],
+    color: "border-amber-700/30 bg-amber-950/20",
+  },
+  {
+    href: "/articles/realistic-quran-memorization",
+    title: "مسار الحفظ المتدرج",
+    titleEn: "A sustainable memorization path",
+    description: "مقدار مناسب، مراجعة مستمرة، واستعانة بمعلم دون مقارنة أو ضغط.",
+    descriptionEn: "Small portions, consistent review, and teacher support without pressure.",
+    links: ["/memorization", "/wird", "/kids"],
+    color: "border-sky-700/30 bg-sky-950/20",
+  },
+  {
+    href: "/articles/islamic-character-in-daily-life",
+    title: "مسار الأخلاق في الحياة",
+    titleEn: "A character in daily life path",
+    description: "حوّل الصدق والرحمة والأمانة إلى قرارات في البيت والعمل والفضاء الرقمي.",
+    descriptionEn: "Practice honesty, mercy, and trust at home, work, and online.",
+    links: ["/articles", "/contact", "/about"],
+    color: "border-rose-700/30 bg-rose-950/20",
+  },
+  {
+    href: "/articles/helping-children-love-the-quran",
+    title: "مسار الأسرة والطفل",
+    titleEn: "A family and children path",
+    description: "بيئة آمنة، أسئلة مفتوحة، ولعب تعليمي يجعل التعلم محبباً ومستداماً.",
+    descriptionEn: "Safe learning, open questions, and play that makes learning sustainable.",
+    links: ["/kids", "/stories", "/quran"],
+    color: "border-cyan-700/30 bg-cyan-950/20",
+  },
+];
+
 function toMinutes(timeStr: string): number {
   const match = timeStr.match(/^(\d{1,2}):(\d{2})/);
   if (!match) return 0;
@@ -446,6 +503,33 @@ export default function HomePage() {
 
       <section className="border-b border-brand-gold/12 px-3 py-10 sm:px-4 sm:py-12" id="all-sections" aria-labelledby="more-heading" style={{ contentVisibility: "auto", containIntrinsicSize: "0 520px" }}>
         <Container className="space-y-6"><SectionDivider title={isEnglish ? "More Content" : "المزيد من المحتوى"} /><h2 id="more-heading" className="text-2xl font-bold text-brand-gold" dir={dir}>{isEnglish ? "A complete Islamic library" : "المحتوى الإسلامي الشامل"}</h2><div className="grid grid-cols-2 min-[360px]:grid-cols-4 gap-2.5 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6">{moreContent.map(item => <Link key={item.href} href={item.href} className="group flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl border border-brand-gold/18 bg-black/20 p-2.5 text-center transition-all duration-200 hover:border-brand-gold/45 hover:bg-brand-gold/6 sm:min-h-[104px] sm:gap-2.5 sm:p-4"><span className="text-2xl" aria-hidden="true">{item.icon}</span><span className="text-[11px] font-medium text-brand-cream/75 group-hover:text-brand-gold transition-colors leading-tight sm:text-xs" dir={dir}>{isEnglish ? item.labelEn : item.label}</span></Link>)}</div></Container>
+      </section>
+
+      <section className="border-b border-brand-gold/12 px-3 py-10 sm:px-4 sm:py-12" aria-labelledby="learning-paths-heading" style={{ contentVisibility: "auto", containIntrinsicSize: "0 760px" }}>
+        <Container className="space-y-6">
+          <SectionDivider title={isEnglish ? "Guided Learning" : "مسارات تعلم مقترحة"} />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-2" dir={dir}>
+              <h2 id="learning-paths-heading" className="text-2xl font-bold text-brand-gold">{isEnglish ? "Go deeper, one step at a time" : "تعمّق خطوةً خطوة"}</h2>
+              <p className="max-w-2xl text-sm leading-7 text-brand-cream/55">{isEnglish ? "Curated routes connect the library, tools, and original editorial guides so every visit has a clear next step." : "مسارات تجمع بين المكتبة والأدوات والمقالات الأصلية حتى تكون لكل زيارة خطوة تالية واضحة."}</p>
+            </div>
+            <Link href="/articles" className="shrink-0 text-sm text-brand-gold/75 underline-offset-4 hover:text-brand-gold hover:underline" dir={dir}>{isEnglish ? "Browse all guides" : "تصفح كل الأدلة"}</Link>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {learningPaths.map(path => (
+              <article key={path.href} className={`rounded-2xl border p-5 transition-colors hover:border-brand-gold/50 ${path.color}`} dir={dir}>
+                <Link href={path.href} className="group block">
+                  <h3 className="text-lg font-bold text-brand-gold group-hover:text-brand-goldSoft">{isEnglish ? path.titleEn : path.title}</h3>
+                  <p className="mt-2 text-sm leading-7 text-brand-cream/65">{isEnglish ? path.descriptionEn : path.description}</p>
+                  <span className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-brand-gold/70 group-hover:text-brand-gold">{isEnglish ? "Read the guide" : "اقرأ الدليل"}<span aria-hidden="true">←</span></span>
+                </Link>
+                <div className="mt-4 flex flex-wrap gap-2 border-t border-brand-gold/10 pt-3" aria-label={isEnglish ? "Related sections" : "الأقسام المرتبطة"}>
+                  {path.links.map(link => <Link key={link} href={link} className="rounded-full border border-brand-gold/15 px-2.5 py-1 text-[11px] text-brand-cream/55 hover:border-brand-gold/40 hover:text-brand-gold">{link.replace("/", "").replaceAll("-", " ")}</Link>)}
+                </div>
+              </article>
+            ))}
+          </div>
+        </Container>
       </section>
 
       <section className="border-b border-brand-gold/12 px-3 py-10 sm:px-4 sm:py-12" aria-labelledby="stats-heading" style={{ contentVisibility: "auto", containIntrinsicSize: "0 420px" }}><Container className="space-y-6"><SectionDivider title={isEnglish ? "Facts & Statistics" : "أرقام وإحصائيات"} /><h2 id="stats-heading" className="text-2xl font-bold text-brand-gold" dir={dir}>{isEnglish ? "Quran facts" : "أرقام من القرآن الكريم"}</h2><div className="grid grid-cols-2 min-[360px]:grid-cols-4 gap-2.5 sm:gap-4">{displayStats.map(stat => <div key={stat.labelEn} className="group relative min-h-[116px] overflow-hidden rounded-2xl border border-brand-gold/18 bg-black/25 p-3 text-center transition-colors hover:border-brand-gold/40 sm:min-h-[140px] sm:p-6"><div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ background: "radial-gradient(circle at 50% 50%, rgba(199,168,107,0.04), transparent 70%)" }} aria-hidden="true" /><p className="text-sm font-bold text-brand-cream/70 mb-1" dir={dir}>{isEnglish ? stat.labelEn : stat.label}</p><p className="text-3xl font-bold text-brand-gold tabular-nums">{stat.value}</p><p className="text-xs text-brand-cream/45 mt-1" dir={dir}>{isEnglish ? stat.subEn : stat.sub}</p></div>)}</div></Container></section>

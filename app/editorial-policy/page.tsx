@@ -45,6 +45,23 @@ export default function EditorialPolicyPage() {
       </Card>
 
       <Card className="space-y-4 leading-9">
+        <h2 className="text-2xl font-bold text-brand-gold">الأصالة والمراجعة البشرية</h2>
+        <p className="text-brand-cream/75">
+          نكتب الأدلة والمقالات لتخدم قارئاً حقيقياً يحتاج إلى فهم وتطبيق، لا
+          لمجرد زيادة عدد الصفحات. نراجع المادة لغوياً وتحريرياً، ونميز بين
+          النص المنقول والشرح الذي يكتبه فريق المنصة. قد نستخدم أدوات تقنية
+          للمساعدة في الفهرسة أو المسودة، لكن لا ننشر نصاً دينياً أو نسبة علمية
+          دون مراجعة بشرية ومصدر قابل للتحقق. إذا لم تكتمل المادة أو تعذر إثبات
+          معلومة، نؤجل نشرها بدلاً من ملء الصفحة بتكرار أو ادعاء.
+        </p>
+        <p className="text-brand-cream/75">
+          لا يوجد حد مضمون لعدد الكلمات أو الصفحات يضمن قبول الإعلانات. معيارنا
+          هو الفائدة والوضوح والدقة وتجربة القراءة، مع تحديث المصادر عند تغيرها
+          وإخفاء الصفحات الناقصة من الفهرسة العامة حتى تكتمل مراجعتها.
+        </p>
+      </Card>
+
+      <Card className="space-y-4 leading-9">
         <h2 className="text-2xl font-bold text-brand-gold">طريقة التوثيق</h2>
         <ol className="list-decimal space-y-3 pe-6 text-brand-cream/75">
           <li>
@@ -99,7 +116,7 @@ export default function EditorialPolicyPage() {
       </Card>
 
       <p className="text-center text-sm leading-7 text-brand-cream/55">
-        آخر تحديث: 26 أغسطس 2026 — منصة ذِكرٌ
+        آخر تحديث: 5 سبتمبر 2026 — منصة ذِكرٌ
       </p>
     </Container>
   );

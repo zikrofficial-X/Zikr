@@ -6,6 +6,7 @@ import { getStories } from "@/lib/services/stories";
 import { surahs as fallbackSurahs } from "@/lib/data/content";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { appRoutes, siteConfig } from "@/lib/site";
+import { staticArticles } from "@/lib/data/articles";
 import type { Surah } from "@/lib/types/quran";
 import type { Scholar } from "@/lib/services/scholars";
 import type { HadithBook } from "@/lib/types/hadith";
@@ -128,7 +129,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           console.error("[sitemap] Stories fetch failed:", error);
           return [];
         }),
-        import("@/lib/services/content").then(m => m.getArticles()).catch(() => []),
+        import("@/lib/services/content").then(m => m.getArticles(undefined, 1000)).catch(() => []),
         import("@/lib/services/content").then(m => m.getProphets()).catch(() => []),
         import("@/lib/services/content").then(m => m.getDuas()).catch(() => []),
         import("@/lib/services/content").then(m => m.getKidsContent()).catch(() => []),
@@ -168,7 +169,17 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
             priority: 0.7,
           }),
         ),
-      ...articles
+      ...Array.from(
+        new Map(
+          [
+            ...articles,
+            ...staticArticles.map(article => ({
+              slug: article.slug,
+              content: article.content_ar,
+            })),
+          ].map(article => [article.slug, article] as const),
+        ).values(),
+      )
         .filter(article => (article.content?.trim().length ?? 0) >= MIN_INDEXABLE_EDITORIAL_CHARS)
         .map(article =>
           route(`/articles/${article.slug}`, {
