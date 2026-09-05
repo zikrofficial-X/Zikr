@@ -87,6 +87,10 @@ p {
   color: rgba(246, 240, 229, 0.74) !important;
 }
 
+[class~="text-brand-cream/45"] {
+  color: #c8c0af !important;
+}
+
 [class~="text-brand-cream/50"] {
   color: rgba(246, 240, 229, 0.78) !important;
 }
@@ -106,6 +110,9 @@ p {
   color: rgba(230, 215, 179, 0.80) !important;
 }
 
+[class~="text-brand-gold/60"],
+[class~="text-brand-gold/65"],
+[class~="text-brand-gold/70"],
 [class~="text-brand-gold/75"],
 [class~="text-brand-gold/80"] {
   color: #e6d7b3 !important;
