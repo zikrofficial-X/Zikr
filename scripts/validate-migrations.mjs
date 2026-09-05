@@ -68,15 +68,27 @@ await db.exec(stubs);
 console.log('Supabase stubs installed');
 
 const versions = new Map();
+const duplicateVersions = new Set();
 for (const file of files) {
   const match = /^(\d+)_/.exec(file);
   if (match && versions.has(match[1])) {
-    throw new Error(`Duplicate migration version ${match[1]}: ${versions.get(match[1])} and ${file}`);
+    // Remote-history reconciliation can leave a second filename for a version
+    // that is already represented locally. Keep the first canonical migration
+    // in the replay and report the duplicate instead of failing the Vercel
+    // build before any SQL is validated.
+    duplicateVersions.add(file);
+    console.warn(
+      `Skipping duplicate migration version ${match[1]}: ${file} (using ${versions.get(match[1])})`,
+    );
+    continue;
   }
   if (match) versions.set(match[1], file);
 }
-if (files.length === 0) throw new Error(`No migrations found in ${MIG_DIR}`);
-console.log('Applying', files.length, 'migrations in order');
+const migrationsToApply = files.filter((file) => !duplicateVersions.has(file));
+if (migrationsToApply.length === 0) throw new Error(`No migrations found in ${MIG_DIR}`);
+console.log('Applying', migrationsToApply.length, 'migrations in order');
+
+const filesToReplay = migrationsToApply;
 
 function migrationSql(file) {
   // pgcrypto is not shipped with PGlite, but gen_random_uuid() is built in.
@@ -93,12 +105,12 @@ function migrationSql(file) {
 // generated searchable columns and indexes safely.
 let startIndex = 0;
 if (process.env.SIMULATE_LEGACY === '1') {
-  startIndex = files.indexOf(LEGACY_REPLAY_START);
+  startIndex = filesToReplay.indexOf(LEGACY_REPLAY_START);
   if (startIndex < 0) {
     throw new Error(`Legacy replay start migration not found: ${LEGACY_REPLAY_START}`);
   }
 
-  for (const file of files.slice(0, startIndex)) {
+  for (const file of filesToReplay.slice(0, startIndex)) {
     await db.exec(migrationSql(file));
   }
   console.log(
@@ -107,7 +119,7 @@ if (process.env.SIMULATE_LEGACY === '1') {
 }
 
 let failed = 0;
-for (const f of files.slice(startIndex)) {
+for (const f of filesToReplay.slice(startIndex)) {
   try {
     await db.exec(migrationSql(f));
     console.log('OK  ', f);
