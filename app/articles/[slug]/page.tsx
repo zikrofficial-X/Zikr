@@ -5,12 +5,11 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { getArticleBySlug, type Article } from "@/lib/services/content";
 import { getStaticArticleBySlug } from "@/lib/data/articles";
+import { getAdsenseEditorialArticleBySlug } from "@/lib/data/adsense-editorial";
 import { pageMetadata, siteConfig } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
-// A public editorial page must contain enough original material to stand on
-// its own. Short placeholders remain unavailable until an editor completes them.
 const MIN_PUBLIC_ARTICLE_CHARS = 1800;
 
 interface ArticleReference {
@@ -68,8 +67,7 @@ function dedupeReferences(references: ArticleReference[]) {
   return Array.from(new Map(references.map(item => [item.url, item])).values());
 }
 
-function staticArticleToArticle(slug: string): Article | null {
-  const article = getStaticArticleBySlug(slug);
+function staticArticleToArticle(article: ReturnType<typeof getStaticArticleBySlug>): Article | null {
   if (!article) return null;
 
   return {
@@ -90,12 +88,17 @@ function staticArticleToArticle(slug: string): Article | null {
 
 async function loadArticle(slug: string): Promise<Article | null> {
   const remoteArticle = await getArticleBySlug(slug);
-  // A legacy or partially edited database row must not shadow a complete
-  // bundled article with the same slug.
-  if (remoteArticle?.content?.trim() && remoteArticle.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS) {
+  if (
+    remoteArticle?.content?.trim() &&
+    remoteArticle.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS
+  ) {
     return remoteArticle;
   }
-  return staticArticleToArticle(slug);
+
+  return (
+    staticArticleToArticle(getStaticArticleBySlug(slug)) ??
+    staticArticleToArticle(getAdsenseEditorialArticleBySlug(slug))
+  );
 }
 
 function hasSubstantialContent(
@@ -150,7 +153,6 @@ export default async function ArticleDetailPage({
   const article = await loadArticle(slug);
 
   if (!hasSubstantialContent(article)) {
-    // Do not expose incomplete editorial rows as public landing pages.
     notFound();
   }
 
@@ -159,7 +161,10 @@ export default async function ArticleDetailPage({
     ...getMetadataReferences(article.metadata),
   ]);
   const content = article.content.trim();
-  const paragraphs = content.split(/\n\s*\n/).map(paragraph => paragraph.trim()).filter(Boolean);
+  const paragraphs = content
+    .split(/\n\s*\n/)
+    .map(paragraph => paragraph.trim())
+    .filter(Boolean);
   const wordCount = content.split(/\s+/).filter(Boolean).length;
   const readingMinutes = Math.max(1, Math.ceil(wordCount / 180));
 
@@ -179,13 +184,9 @@ export default async function ArticleDetailPage({
 
       <header className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-brand-gold">{article.title}</h1>
-
         {article.summary && (
-          <p className="text-brand-cream/70 text-lg leading-8">
-            {article.summary}
-          </p>
+          <p className="text-brand-cream/70 text-lg leading-8">{article.summary}</p>
         )}
-
         <div className="flex flex-wrap justify-center gap-6 text-sm text-brand-cream/60">
           {article.author && <span>الكاتب: {article.author}</span>}
           <time dateTime={article.createdAt}>
@@ -224,7 +225,7 @@ export default async function ArticleDetailPage({
       </Card>
 
       <aside className="rounded-3xl border border-brand-gold/20 bg-brand-gold/5 p-5 text-sm leading-7 text-brand-cream/75">
-        هذه صفحة تحريرية تعليمية من فريق ذِكر. عند نقل نص شرعي أو معلومة تاريخية، نضع مصدر التحقق قدر الإمكان، ولا تُعد المقالات العامة فتوى شخصية أو بديلًا عن سؤال أهل العلم.
+        هذه صفحة تحريرية تعليمية من فريق ذِكر. عند نقل نص شرعي أو معلومة تاريخية، نضع مصدر التحقق قدر الإمكان، ولا تُعد المقالات العامة فتوى شخصية أو بديلاً عن سؤال أهل العلم.
       </aside>
 
       {references.length > 0 && (
