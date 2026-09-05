@@ -1,4 +1,7 @@
-import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+import {
+  isSupabaseConfigured,
+  supabaseServerAnonRequest,
+} from "@/lib/supabase/server";
 
 export interface ArticleCategory {
   id: string;
@@ -129,6 +132,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
 
 // Videos
 export async function getVideoCategories(): Promise<VideoCategory[]> {
+  if (!isSupabaseConfigured()) return [];
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
     "/rest/v1/video_categories?select=id,name_ar,name_en,slug,icon&published=eq.true&order=name_ar.asc"
   ).catch(error => {
@@ -149,6 +153,7 @@ export async function getVideos(
   categoryId?: string,
   limit = 20
 ): Promise<Video[]> {
+  if (!isSupabaseConfigured()) return [];
   let query =
     "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&published=eq.true&order=created_at.desc";
 
