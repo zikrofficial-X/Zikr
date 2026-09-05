@@ -1,4 +1,0 @@
--- Supabase migration history reconciliation marker.
--- Remote version 20260901124136 is already applied in production.
--- The effective admin snapshot protection is represented by the canonical
--- tracked migration chain; this marker intentionally performs no schema changes.
