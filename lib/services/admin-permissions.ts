@@ -2,6 +2,8 @@ export const ADMIN_PERMISSIONS = {
   'admin.access': 'الوصول إلى لوحة الإدارة',
   'dashboard.view': 'عرض لوحة التحكم',
   'content.manage': 'إدارة المحتوى التحريري',
+  'content.publish': 'نشر وإلغاء نشر المحتوى',
+  'content.delete': 'حذف المحتوى',
   'library.manage': 'إدارة مكتبة المحتوى',
   'sources.manage': 'إدارة مصادر المحتوى',
   'knowledge.manage': 'إدارة المعرفة الإسلامية',
