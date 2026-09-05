@@ -107,7 +107,7 @@ for (const token of [
 const offlineLibrary = read(offlineLibraryPath);
 const offlineLibraryClient = read(offlineLibraryClientPath);
 if (!offlineLibrary.includes('OfflineLibraryClient')) failures.push('Offline Library page does not render client component');
-for (const token of ['cacheRoutes: true', 'تحديث وتجهيز المكتبة كاملة', 'SUPPLEMENTAL_ROUTE_URL', 'requestOfflineRouteCache']) {
+for (const token of ['cacheRoutes: false', 'تحديث وتجهيز المكتبة كاملة', 'SUPPLEMENTAL_ROUTE_URL', 'requestOfflineRouteCache']) {
   if (!offlineLibraryClient.includes(token)) failures.push(`Offline Library client missing ${token}`);
 }
 

@@ -48,25 +48,33 @@ function getPrayerState(
 }
 
 function Clock({ locale }: { locale: Locale }) {
-  const [now, setNow] = useState(() => new Date());
+  // Start as null so the server and the initial client render both emit the
+  // same placeholder; the real (locale/timezone-dependent) time is only
+  // rendered after mount to avoid a server/client hydration mismatch.
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
+    setNow(new Date());
     const id = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(id);
   }, []);
 
-  const time = now.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-  const date = now.toLocaleDateString(locale === 'en' ? 'en-US' : 'ar-EG', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const time = now
+    ? now.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      })
+    : '--:--:--';
+  const date = now
+    ? now.toLocaleDateString(locale === 'en' ? 'en-US' : 'ar-EG', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : '';
 
   return (
     <div className="mt-4 flex min-h-[68px] flex-col items-center gap-1.5 pt-1" aria-live="polite">

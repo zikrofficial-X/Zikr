@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Noto_Naskh_Arabic } from "next/font/google";
 import "./globals.css";
 import { SiteShell } from "@/components/layout/site-shell";
 
@@ -10,6 +11,16 @@ import { NativeCapacitorBridgeLoader } from "@/components/layout/native-capacito
 
 // Navbar reads the Supabase session from request cookies, so the shell must be rendered per request.
 export const dynamic = "force-dynamic";
+
+// Loads the actual Arabic webfont referenced by name in globals.css
+// (--font-noto-arabic). Without this, Arabic text renders as tofu boxes on
+// any device/OS that doesn't happen to have "Noto Naskh Arabic" installed.
+const notoNaskhArabic = Noto_Naskh_Arabic({
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-noto-arabic-loaded",
+  display: "swap",
+});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -90,7 +101,7 @@ export default function RootLayout({
       lang="ar"
       dir={siteConfig.dir}
       data-scroll-behavior="smooth"
-      className="bg-black"
+      className={`bg-black ${notoNaskhArabic.variable}`}
       suppressHydrationWarning={true}
     >
       <head>
