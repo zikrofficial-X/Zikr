@@ -125,13 +125,20 @@ export async function generateMetadata({
   }
 
   const qualityApproved = hasSubstantialContent(article);
-
-  return pageMetadata({
+  const metadata = pageMetadata({
     title: article.title,
     description: article.summary || `اقرأ مقال ${article.title} في منصة ذِكرٌ.`,
     path: `/articles/${article.slug}`,
     noindex: !qualityApproved,
   });
+
+  return {
+    ...metadata,
+    openGraph: {
+      ...metadata.openGraph,
+      type: "article",
+    },
+  };
 }
 
 export default async function ArticleDetailPage({
