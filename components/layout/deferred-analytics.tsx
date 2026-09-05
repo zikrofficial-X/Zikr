@@ -21,7 +21,7 @@ export function DeferredAnalytics() {
     const start = () => setReady(true);
 
     const schedule = () => {
-      if ('requestIdleCallback' in window) {
+      if (typeof window.requestIdleCallback === 'function') {
         const idleId = window.requestIdleCallback(start, { timeout: 3000 });
         timeoutId = window.setTimeout(() => {
           window.cancelIdleCallback(idleId);
