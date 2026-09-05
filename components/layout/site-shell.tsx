@@ -1,33 +1,10 @@
-import dynamic from 'next/dynamic';
 import { Footer } from './footer';
 import { Navbar } from './navbar';
+import { InstallPrompt } from './install-prompt';
+import { OfflineIndicator } from '../offline-indicator';
 import { LanguageProvider } from './language-provider';
-
-// Non-critical UX enhancements are loaded after the initial page render.
-// They are not needed to paint or navigate the primary content.
-const NotificationPermissionBanner = dynamic(
-  () =>
-    import('./notification-permission-banner').then(
-      (mod) => mod.NotificationPermissionBanner,
-    ),
-  { ssr: false, loading: () => null },
-);
-
-const InstallPrompt = dynamic(
-  () => import('./install-prompt').then((mod) => mod.InstallPrompt),
-  { ssr: false, loading: () => null },
-);
-
-const OfflineIndicator = dynamic(
-  () => import('../offline-indicator').then((mod) => mod.OfflineIndicator),
-  { ssr: false, loading: () => null },
-);
-
-const AppUpdateChecker = dynamic(
-  () =>
-    import('./app-update-checker').then((mod) => mod.AppUpdateChecker),
-  { ssr: false, loading: () => null },
-);
+import { NotificationPermissionBanner } from './notification-permission-banner';
+import { AppUpdateChecker } from './app-update-checker';
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   return (
@@ -36,9 +13,13 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         <Navbar />
         <main>{children}</main>
         <Footer />
+        {/* One-time prompt asking for notification permission */}
         <NotificationPermissionBanner />
+        {/* PWA "add to home screen" invitation */}
         <InstallPrompt />
+        {/* Offline status indicator */}
         <OfflineIndicator />
+        {/* Native Android update notice; no-op on web and PWA. */}
         <AppUpdateChecker />
       </div>
     </LanguageProvider>
