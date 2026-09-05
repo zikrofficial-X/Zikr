@@ -27,18 +27,18 @@ function formatDate(value: string | null): string {
   }
 }
 
-const fallbackGuideLinks = [
-  '/articles/prayer-as-daily-anchor',
-  '/articles/building-a-quran-routine',
-  '/adhkar',
-  '/stories/story-of-yusuf',
-  '/hadith',
-  '/prayer-times',
-  '/articles/prayer-as-daily-anchor',
-  '/articles/building-a-quran-routine',
-  '/kids',
-  '/dua',
-];
+const fallbackGuideLinks: Record<string, string> = {
+  fv1: '/quran',
+  fv2: '/memorization',
+  fv3: '/adhkar',
+  fv4: '/stories/story-of-yusuf',
+  fv5: '/hadith',
+  fv6: '/prayer-times',
+  fv7: '/articles',
+  fv8: '/conquests',
+  fv9: '/kids',
+  fv10: '/dua',
+};
 
 export default async function VideosPage() {
   const feed = await getYoutubeChannelFeed(24);
@@ -101,8 +101,8 @@ export default async function VideosPage() {
       <section className="space-y-6">
         <SectionHeader title="المكتبة التعليمية المصاحبة" subtitle="10 مواد مرتبة للقراءة والتعلم إلى أن تتوفر فيديوهات القناة من المصدر الرسمي" />
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {FALLBACK_VIDEOS.map((item, index) => (
-            <Link key={item.id} href={fallbackGuideLinks[index] ?? '/search'} className="group">
+          {FALLBACK_VIDEOS.map((item) => (
+            <Link key={item.id} href={fallbackGuideLinks[item.id] ?? '/search'} className="group">
               <Card className="h-full flex flex-col hover:border-brand-gold/50 transition-all">
                 <div className="h-32 flex items-center justify-center bg-gradient-to-br from-brand-gold/10 to-brand-emerald/10 text-5xl" aria-hidden="true">▶</div>
                 <div className="p-5 space-y-3 flex-1"><Badge variant="outline">مادة تعليمية</Badge><h2 className="text-lg font-bold text-brand-gold leading-snug group-hover:text-brand-goldSoft">{item.title}</h2><p className="text-sm leading-7 arabic-muted">{item.description}</p><span className="inline-flex text-sm text-brand-cream/80 group-hover:text-brand-gold">فتح المادة ←</span></div>
