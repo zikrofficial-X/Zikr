@@ -5,12 +5,21 @@ const routeSnapshotPath = 'public/offline-content/v2/routes.json';
 const offlinePackPath = 'lib/offline-pack.ts';
 const serviceWorkerPath = 'public/sw.js';
 const offlineLibraryPath = 'app/offline-library/page.tsx';
+const offlineLibraryClientPath = 'app/offline-library/offline-library-client.tsx';
 const guardPath = 'components/layout/offline-navigation-guard.tsx';
 
 const read = file => (existsSync(file) ? readFileSync(file, 'utf8') : '');
 const failures = [];
 
-for (const file of [manifestPath, routeSnapshotPath, offlinePackPath, serviceWorkerPath, offlineLibraryPath, guardPath]) {
+for (const file of [
+  manifestPath,
+  routeSnapshotPath,
+  offlinePackPath,
+  serviceWorkerPath,
+  offlineLibraryPath,
+  offlineLibraryClientPath,
+  guardPath,
+]) {
   if (!existsSync(file)) failures.push(`Missing ${file}`);
 }
 
@@ -96,8 +105,10 @@ for (const token of [
 }
 
 const offlineLibrary = read(offlineLibraryPath);
+const offlineLibraryClient = read(offlineLibraryClientPath);
+if (!offlineLibrary.includes("OfflineLibraryClient")) failures.push('Offline Library page does not render client component');
 for (const token of ['cacheRoutes: true', 'تحديث وتجهيز المكتبة كاملة', 'SUPPLEMENTAL_ROUTE_URL', 'requestOfflineRouteCache']) {
-  if (!offlineLibrary.includes(token)) failures.push(`Offline Library missing ${token}`);
+  if (!offlineLibraryClient.includes(token)) failures.push(`Offline Library client missing ${token}`);
 }
 
 const guard = read(guardPath);
