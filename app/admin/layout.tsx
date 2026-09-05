@@ -10,6 +10,17 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+const adminUtilityLinks = [
+  { href: '/admin/control', label: 'مركز التحكم' },
+  { href: '/admin/search', label: 'بحث مركزي' },
+  { href: '/admin/audit', label: 'سجل الإدارة' },
+  { href: '/admin/health', label: 'صحة النظام' },
+  { href: '/admin/notifications', label: 'التنبيهات' },
+  { href: '/admin/security', label: 'الأمن والصلاحيات' },
+  { href: '/admin/settings', label: 'إعدادات الإدارة' },
+  { href: '/admin/release', label: 'مركز الإصدار' },
+] as const;
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await requireAdmin();
   return (
@@ -17,12 +28,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <AdminSidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <div className="border-b border-brand-gold/10 bg-black/15 px-4 py-2.5">
-          <div className="mx-auto flex max-w-[1800px] items-center justify-between gap-3">
-            <Link href="/admin/control" className="inline-flex items-center gap-2 rounded-xl border border-brand-gold/20 bg-brand-gold/5 px-3 py-1.5 text-xs font-semibold text-brand-gold transition hover:border-brand-gold/40 hover:bg-brand-gold/10">
-              <span aria-hidden="true">⚙</span>
-              مركز التحكم الكامل
-            </Link>
-            <span className="text-[11px] text-brand-cream/30">إجراءات الإدارة الحساسة تتطلب صلاحية Admin.</span>
+          <div className="mx-auto flex max-w-[1800px] flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {adminUtilityLinks.map((item) => (
+                <Link key={item.href} href={item.href} className="inline-flex items-center rounded-xl border border-brand-gold/15 bg-brand-gold/5 px-3 py-1.5 text-xs font-semibold text-brand-gold/90 transition hover:border-brand-gold/35 hover:bg-brand-gold/10">
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+            <span className="text-[11px] text-brand-cream/30">الوصول والتنفيذ يخضعان لمصفوفة RBAC المركزية.</span>
           </div>
         </div>
         <LibraryAdminNav />
@@ -30,7 +44,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <nav aria-label="تنقل لوحة التحكم" className="flex flex-wrap items-center gap-1 px-4 py-2.5 overflow-x-auto">
             {[
               { href: '/admin', label: 'الرئيسية' },
-              { href: '/admin/control', label: 'مركز التحكم' },
+              ...adminUtilityLinks,
               { href: '/admin/library', label: 'المكتبة الإسلامية' },
               { href: '/admin/content', label: 'المحتوى' },
               { href: '/admin/knowledge', label: 'المعرفة الإسلامية' },
