@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import sitemap from '@/app/sitemap';
+import { getSitemapEntries } from '@/app/sitemap';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -26,7 +26,7 @@ export async function GET(
     return new NextResponse('Not Found', { status: 404 });
   }
 
-  const allEntries = await sitemap();
+  const allEntries = await getSitemapEntries();
   const start = id * SITEMAP_PAGE_SIZE;
   const entries = allEntries.slice(start, start + SITEMAP_PAGE_SIZE);
 

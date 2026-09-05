@@ -88,7 +88,7 @@ function uniqueRoutes(routes: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
 const SITEMAP_PAGE_SIZE = 45_000;
 let sitemapCache: { entries: MetadataRoute.Sitemap; expiresAt: number } | null = null;
 
-async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
+export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
   if (sitemapCache && sitemapCache.expiresAt > Date.now()) return sitemapCache.entries;
 
   const now = new Date();
@@ -247,6 +247,11 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
     sitemapCache = { entries: uniqueRoutes(staticRoutes), expiresAt: Date.now() + 60 * 1000 };
     return uniqueRoutes(staticRoutes);
   }
+}
+
+export async function getSitemapShardCount(): Promise<number> {
+  const entries = await getSitemapEntries();
+  return Math.max(1, Math.ceil(entries.length / SITEMAP_PAGE_SIZE));
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
