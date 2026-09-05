@@ -15,7 +15,7 @@ export function AdminStepUp({ nextPath }: { nextPath: string }) {
         const supabase = createClient();
         const { data, error } = await supabase.auth.mfa.listFactors();
         if (error) throw error;
-        const factor = data.totp.find((item) => item.status === 'verified');
+        const factor = data.totp.find((item: { status: string }) => item.status === 'verified');
         if (!factor) {
           setMessage('لا يوجد عامل MFA موثّق لهذا الحساب. يجب إعداد تطبيق المصادقة من إعدادات الحساب أولاً.');
           return;
