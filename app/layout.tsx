@@ -111,7 +111,31 @@ export default function RootLayout({
         />
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
         <link rel="manifest" href="/manifest.webmanifest" />
-        <style>{`html:not([data-locale]) footer { visibility: hidden; }`}</style>
+        <style>{`
+          html:not([data-locale]) footer {
+            visibility: hidden;
+          }
+
+          footer {
+            min-height: 460px;
+          }
+
+          @media (max-width: 639px) {
+            footer {
+              min-height: 680px;
+            }
+
+            main > div:first-child > section:first-of-type
+              div:has(> a[href="/auth/register"], > a[href="/profile"]) {
+              min-height: 168px;
+            }
+
+            main > div:first-child > section:first-of-type
+              div.text-center:has(> h1) {
+              min-height: 210px;
+            }
+          }
+        `}</style>
       </head>
       <body className="font-arabic antialiased">
         <script
