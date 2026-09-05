@@ -20,13 +20,25 @@
 import { generateGeminiFromAudio, generateGeminiText } from '@/lib/services/gemini-client';
 
 export async function evaluateMemorizationAction(formData: FormData) {
-  const target = String(formData.get('target') ?? '').trim();
-  const expectedText = String(formData.get('expectedText') ?? '').trim();
+  const targetValue = formData.get('target');
+  const expectedValue = formData.get('expectedText');
+  const target = typeof targetValue === 'string' ? targetValue.trim().slice(0, 500) : '';
+  const expectedText = typeof expectedValue === 'string' ? expectedValue.trim().slice(0, 5000) : '';
   const audio = formData.get('audio');
 
   const hasTarget = target.length > 0;
   const hasExpected = expectedText.length > 0;
   const hasAudio = audio instanceof File && audio.size > 0;
+
+  if (audio instanceof File && audio.size > 10 * 1024 * 1024) {
+    return 'حجم التسجيل كبير جدًا. الحد الأقصى المسموح به هو 10 ميجابايت.';
+  }
+  if (audio instanceof File && audio.type && !audio.type.startsWith('audio/')) {
+    return 'صيغة التسجيل غير مدعومة. ارفع ملفًا صوتيًا فقط.';
+  }
+  if (!hasAudio && !hasTarget && !hasExpected) {
+    return 'حدد الورد أو ارفع تسجيلًا صوتيًا للحصول على التقييم.';
+  }
 
   const sharedContext = `
 المقرر / الورد: ${hasTarget ? target : 'غير محدد — قيّم ما سمعت'}

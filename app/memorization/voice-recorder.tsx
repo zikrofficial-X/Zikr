@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { evaluateMemorizationAction } from './actions';
 
@@ -37,6 +37,15 @@ export function VoiceRecorder() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    return () => {
+      const recorder = recorderRef.current;
+      if (recorder && recorder.state !== 'inactive') recorder.stop();
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    };
+  }, []);
 
   function stopStream() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -178,7 +187,7 @@ export function VoiceRecorder() {
         {isRecording ? 'إيقاف التسجيل' : 'ابدأ تسجيل التسميع'}
       </Button>
       <Button type='submit' disabled={!audioBlob || isPending}>تقييم الحفظ والتجويد</Button>
-      {audioBlob ? <span className='text-sm text-emerald-300'>تم تسجيل الصوت وجاهز للتقييم.</span> : <span className='text-sm arabic-muted'>اسمح لـ ZIKR باستخدام الميكروفون.</span>}
+      {audioBlob ? <span className='text-sm text-emerald-300'>تم تسجيل الصوت وجاهز للتقييم.</span> : <span className='text-sm arabic-muted'>لن يُطلب إذن الميكروفون إلا عند الضغط على بدء التسجيل.</span>}
     </div>
 
     {micError ? (

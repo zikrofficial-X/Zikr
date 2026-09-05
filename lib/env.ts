@@ -1,12 +1,5 @@
 import { enforceCanonicalProductionUrl, PRODUCTION_URL } from "@/lib/site";
 
-// ─── Numbered-suffix env var resolution ──────────────────────────────────────
-// Vercel integrations expose vars as NAME_2, NAME_19, NAME_22, etc. when
-// multiple projects share the same account. `pick` resolves any base name by
-// trying the bare name first, then each known numeric suffix, so the rest of
-// the app always sees clean names regardless of how Vercel provisioned them.
-// Priority: bare name → _2 → _3 → _19 → _20 → _22
-
 const e = process.env;
 
 /** Normalize Supabase project URLs supplied by integrations or local scripts. */
@@ -23,25 +16,11 @@ function normalizeSupabaseUrl(value: string | undefined): string | undefined {
   }
 }
 
-// Vercel can suffix duplicated integration variables with any numeric suffix.
-// Resolve the bare key first, then deterministic numeric aliases that actually
-// exist in the project instead of maintaining a stale hand-written list.
-const SUFFIXES = Object.keys(e)
-  .map(key => key.match(/_(\d+)$/)?.[1])
-  .filter((suffix): suffix is string => Boolean(suffix))
-  .sort((a, b) => Number(a) - Number(b))
-  .map(suffix => `_${suffix}`);
-
-/** Resolve the first non-empty value across the given base names + suffixes. */
+/** Resolve the first explicitly allowed environment variable name. */
 function pick(...bases: string[]): string | undefined {
   for (const base of bases) {
-    const bareValue = e[base];
-    if (bareValue !== undefined && bareValue !== "") return bareValue;
-
-    for (const suffix of SUFFIXES) {
-      const value = e[`${base}${suffix}`];
-      if (value !== undefined && value !== "") return value;
-    }
+    const value = e[base];
+    if (value !== undefined && value !== "") return value;
   }
   return undefined;
 }
@@ -161,7 +140,7 @@ const rawEnv: Record<string, string | undefined> = {
     pick("NEXT_PUBLIC_HADITH_API", "HADITH_API_BASE_URL") ||
     "https://ummahapi.com/api/hadith",
 
-  // ── Facebook ──────────────────────────────────────────────────────────────
+  // ── Facebook ────────────────────���─────────────────────────────────────────
   FACEBOOK_APP_ID: pick("FACEBOOK_APP_ID"),
   FACEBOOK_APP_SECRET: pick("FACEBOOK_APP_SECRET"),
   FACEBOOK_PAGE_ACCESS_TOKEN: pick("FACEBOOK_PAGE_ACCESS_TOKEN"),

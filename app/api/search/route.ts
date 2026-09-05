@@ -16,7 +16,7 @@ const searchCache = new Map<string, CachedSearch>();
 function jsonSearch(results: unknown[]) {
   return NextResponse.json(results, {
     headers: {
-      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      'Cache-Control': 'private, max-age=60, stale-while-revalidate=300',
     },
   });
 }
@@ -48,6 +48,11 @@ export async function GET(request: NextRequest) {
         supabase.from('stories').select('id, title').ilike('title', searchTerm).limit(5),
         supabase.from('articles').select('id, title:title_ar, slug').textSearch('searchable', query, { config: 'simple', type: 'plain' }).limit(5),
       ]);
+
+      const queryErrors = [quranResults.error, hadithResults.error, duaResults.error, storyResults.error, articleResults.error].filter(Boolean);
+      if (queryErrors.length === 5) {
+        throw new Error('All search sources failed');
+      }
 
       const results = [
         ...((quranResults.data || []) as SearchRow[]).map((r) => ({ ...r, type: 'quran' })),
