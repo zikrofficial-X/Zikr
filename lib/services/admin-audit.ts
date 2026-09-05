@@ -16,15 +16,23 @@ export type AdminAuditEvent = {
   metadata?: Record<string, unknown>;
 };
 
-/**
- * Append one administrative event to the immutable audit stream.
- * Callers should invoke this only after the relevant authorization guard.
- * Audit failures are deliberately surfaced so security telemetry is not silently lost.
- */
+function safeMetadata(metadata: Record<string, unknown> | undefined) {
+  const source = metadata ?? {};
+  const output: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (/token|secret|password|cookie|authorization|key/i.test(key)) continue;
+    if (typeof value === "string" && value.length > 2000) output[key] = `${value.slice(0, 2000)}…`;
+    else output[key] = value;
+  }
+  return output;
+}
+
+/** Append one administrative event to the immutable audit stream. */
 export async function recordAdminAuditEvent(event: AdminAuditEvent): Promise<void> {
   const profile = await getCurrentProfile();
   if (!profile) throw new Error("Administrative audit requires an authenticated user.");
 
+  const requestId = event.requestId ?? crypto.randomUUID();
   await supabaseServerAdminRequest("/rest/v1/admin_audit_events", {
     method: "POST",
     headers: { Prefer: "return=minimal" },
@@ -35,8 +43,8 @@ export async function recordAdminAuditEvent(event: AdminAuditEvent): Promise<voi
       resource_type: event.resourceType ?? null,
       resource_id: event.resourceId ?? null,
       outcome: event.outcome ?? "success",
-      request_id: event.requestId ?? null,
-      metadata: event.metadata ?? {},
+      request_id: requestId,
+      metadata: safeMetadata(event.metadata),
     }),
   });
 }
