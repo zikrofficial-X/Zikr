@@ -69,20 +69,39 @@ console.log('Supabase stubs installed');
 
 const versions = new Map();
 const duplicateVersions = new Set();
+const migrationScore = (file) => {
+  const sql = readFileSync(join(MIG_DIR, file), 'utf8').toLowerCase();
+  // Reconciliation markers intentionally contain only `select 1`; when a
+  // duplicate version also has the real schema migration, replay the schema
+  // migration so the validator tests the same dependency order as production.
+  return (sql.includes('create table') ? 4 : 0)
+    + (sql.includes('alter table') ? 2 : 0)
+    + (sql.includes('create function') ? 1 : 0);
+};
 for (const file of files) {
   const match = /^(\d+)_/.exec(file);
-  if (match && versions.has(match[1])) {
-    // Remote-history reconciliation can leave a second filename for a version
-    // that is already represented locally. Keep the first canonical migration
-    // in the replay and report the duplicate instead of failing the Vercel
-    // build before any SQL is validated.
-    duplicateVersions.add(file);
-    console.warn(
-      `Skipping duplicate migration version ${match[1]}: ${file} (using ${versions.get(match[1])})`,
-    );
+  if (!match) continue;
+  const version = match[1];
+  const previous = versions.get(version);
+  if (!previous) {
+    versions.set(version, file);
     continue;
   }
-  if (match) versions.set(match[1], file);
+
+  const previousScore = migrationScore(previous);
+  const currentScore = migrationScore(file);
+  if (currentScore > previousScore) {
+    duplicateVersions.add(previous);
+    versions.set(version, file);
+    console.warn(
+      `Skipping duplicate migration version ${version}: ${previous} (using ${file})`,
+    );
+  } else {
+    duplicateVersions.add(file);
+    console.warn(
+      `Skipping duplicate migration version ${version}: ${file} (using ${previous})`,
+    );
+  }
 }
 const migrationsToApply = files.filter((file) => !duplicateVersions.has(file));
 if (migrationsToApply.length === 0) throw new Error(`No migrations found in ${MIG_DIR}`);
