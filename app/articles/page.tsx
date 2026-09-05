@@ -9,13 +9,14 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase/server';
 import { staticArticles } from '@/lib/data/articles';
+import { adsenseEditorialArticles } from '@/lib/data/adsense-editorial';
 import { mergePublishedBySlug } from '@/lib/data/content-merge';
 
 const MIN_PUBLIC_ARTICLE_CHARS = 1800;
 
 export const metadata: Metadata = pageMetadata({
   title: 'المقالات الإسلامية',
-  description: 'مقالات قيمة عن الإسلام والعقيدة والتطبيق العملي من منصة ذِكر.',
+  description: 'مقالات أصلية ومراجعة تحريرياً عن الإسلام والقرآن والحديث والسيرة والتزكية والتطبيق العملي من منصة ذِكر.',
   path: '/articles',
 });
 
@@ -45,7 +46,7 @@ const staticCategories: ArticleCategory[] = [
   { id: 'aqeedah', name_ar: 'العقيدة', slug: 'aqeedah', icon: null },
   { id: 'fiqh', name_ar: 'الفقه', slug: 'fiqh', icon: null },
   { id: 'tazkiyah', name_ar: 'التزكية', slug: 'tazkiyah', icon: null },
-  { id: 'history', name_ar: 'التاريخ', slug: 'history', icon: null },
+  { id: 'history', name_ar: 'التاريخ والسيرة', slug: 'history', icon: null },
 ];
 
 export default async function ArticlesPage() {
@@ -70,15 +71,16 @@ export default async function ArticlesPage() {
     articles = articlesRes.data ?? [];
     categories = categoriesRes.data ?? [];
   } catch {
-    // Fall through to static content
+    // Fall through to bundled editorial content.
   }
 
-  // Filter incomplete database rows before merging. Otherwise a short row with
-  // the same slug would hide the longer bundled editorial fallback.
   const completeArticles = articles.filter(article =>
     typeof article.content === 'string' && article.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS,
   );
-  const mergedArticles = mergePublishedBySlug(completeArticles, staticArticles);
+  const mergedArticles = mergePublishedBySlug(
+    completeArticles,
+    [...staticArticles, ...adsenseEditorialArticles],
+  );
   const displayArticles = mergedArticles.filter(article =>
     typeof article.content === 'string' && article.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS,
   );
@@ -89,7 +91,7 @@ export default async function ArticlesPage() {
       <section className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-brand-gold text-balance">المقالات الإسلامية</h1>
         <p className="max-w-2xl mx-auto text-lg leading-8 arabic-muted text-pretty">
-          مقالات أصلية ومراجعة تحريرياً عن الإسلام والعقيدة والتزكية والتطبيق العملي، مع مصادر التحقق عند الحاجة.
+          مقالات أصلية ومراجعة تحريرياً عن الإسلام والقرآن والحديث والسيرة والتزكية والتطبيق العملي، مع مصادر التحقق عند الحاجة.
         </p>
       </section>
 
