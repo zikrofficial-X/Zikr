@@ -196,14 +196,20 @@ export async function supabaseServerAdminCount(table: string): Promise<number> {
       signal: AbortSignal.timeout(20000),
     });
     if (!res.ok) {
-      console.warn(`[supabase] Count failed for ${table}: HTTP ${res.status}`);
+      // Log only to stderr in development; never expose details in production
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`[supabase] Count failed for ${table}: HTTP ${res.status}`);
+      }
       return 0;
     }
     const range = res.headers.get("content-range") ?? "";
     const total = Number(range.split("/")[1]);
     return Number.isFinite(total) ? total : 0;
   } catch (error) {
-    console.warn(`[supabase] Count failed for ${table}:`, error);
+    // Log only to stderr in development; never expose details in production
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[supabase] Count failed for ${table}:`, error instanceof Error ? error.message : error);
+    }
     return 0;
   }
 }

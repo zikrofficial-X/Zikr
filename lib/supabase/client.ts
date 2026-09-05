@@ -15,7 +15,7 @@ function getBrowserSupabaseEnv() {
 
 type BrowserClient = ReturnType<typeof createBrowserClient>;
 
-// ─── Singleton ────────────────────────────────────────────────────────────────
+// ─── Singleton ──────────────────────────────────────────────────────────
 // Deferred construction: module evaluation never calls createBrowserClient,
 // so Next.js static page collection and CI builds without env vars succeed.
 
@@ -27,13 +27,14 @@ export function createClient(): BrowserClient {
   const { url, key } = getBrowserSupabaseEnv();
 
   if (!url || !key) {
-    // In the v0 preview sandbox, NEXT_PUBLIC_* vars are not injected at build
-    // time. Return a placeholder so the rest of the app degrades gracefully
-    // (the server already provides initialUser via SSR props).
+    // CRITICAL: Missing Supabase configuration.
+    // This is a development-only condition and should never occur in production.
+    // In the v0 preview sandbox, NEXT_PUBLIC_* vars are not injected at build time.
     // In production on Vercel, NEXT_PUBLIC_SUPABASE_URL is always set.
-    return createBrowserClient(
-      url || 'https://placeholder.supabase.co',
-      key || 'placeholder-anon-key',
+    throw new Error(
+      'Missing Supabase configuration. ' +
+      'Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY ' +
+      'in your environment variables.'
     );
   }
 
