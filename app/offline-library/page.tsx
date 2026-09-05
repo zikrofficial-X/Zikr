@@ -5,11 +5,20 @@ import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { pageMetadata } from '@/lib/site';
+import type { Metadata } from 'next';
 import {
   fetchOfflineManifest,
   hydrateOfflineContent,
   requestOfflineRouteCache,
 } from '@/lib/offline-pack';
+
+export const metadata: Metadata = pageMetadata({
+  title: 'مكتبة ذِكر الأوفلاين',
+  description:
+    'مكتبة ذِكر الأوفلاين للمحتويات العامة المتاحة بدون اتصال بالإنترنت مع دعم PWA وCache Storage وIndexedDB.',
+  path: '/offline-library',
+});
 
 type Manifest = Awaited<ReturnType<typeof fetchOfflineManifest>>;
 
