@@ -12,7 +12,9 @@ export const ADMIN_PERMISSIONS = {
   'battles.manage': 'إدارة الغزوات والبيانات التاريخية',
   'media.manage': 'إدارة الوسائط',
   'video.manage': 'إدارة الفيديوهات والتوليد',
+  'video.delete': 'حذف عمليات توليد الفيديو',
   'social.manage': 'إدارة النشر الاجتماعي',
+  'social.publish': 'تنفيذ النشر الاجتماعي',
   'sections.manage': 'إدارة ظهور وترتيب الأقسام',
   'users.read': 'عرض المستخدمين',
   'users.roles': 'إدارة أدوار المستخدمين',
@@ -21,6 +23,9 @@ export const ADMIN_PERMISSIONS = {
   'android.manage': 'إدارة إصدارات Android',
   'settings.manage': 'إدارة إعدادات الموقع',
   'audit.read': 'عرض سجل الإدارة',
+  'notifications.manage': 'إدارة إشعارات الإدارة',
+  'security.manage': 'إدارة أمن لوحة الإدارة',
+  'release.manage': 'إدارة مركز الإصدار',
   'system.manage': 'إدارة عمليات النظام والتشغيل',
 } as const;
 
@@ -29,12 +34,6 @@ export type AdminRole = 'user' | 'admin';
 
 const ALL_ADMIN_PERMISSIONS = Object.keys(ADMIN_PERMISSIONS) as AdminPermission[];
 
-/**
- * First-stage RBAC matrix.
- * `admin` keeps the current full-access behavior while permissions become
- * explicit and can later be assigned to additional roles without changing
- * every action again. Regular users intentionally receive no admin grants.
- */
 export const ADMIN_ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
   user: [],
   admin: ALL_ADMIN_PERMISSIONS,
