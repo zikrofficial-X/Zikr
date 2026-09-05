@@ -13,6 +13,10 @@ export const metadata: Metadata = {
 const adminUtilityLinks = [
   { href: '/admin/control', label: 'مركز التحكم' },
   { href: '/admin/search', label: 'بحث مركزي' },
+  { href: '/admin/editorial', label: 'سير التحرير' },
+  { href: '/admin/sources', label: 'المصادر' },
+  { href: '/admin/media', label: 'الوسائط والحقوق' },
+  { href: '/admin/social-ops', label: 'عمليات السوشيال' },
   { href: '/admin/audit', label: 'سجل الإدارة' },
   { href: '/admin/health', label: 'صحة النظام' },
   { href: '/admin/notifications', label: 'التنبيهات' },
@@ -21,6 +25,22 @@ const adminUtilityLinks = [
   { href: '/admin/seo', label: 'SEO/AdSense' },
   { href: '/admin/automation', label: 'الأتمتة' },
   { href: '/admin/release', label: 'مركز الإصدار' },
+] as const;
+
+const existingAdminLinks = [
+  { href: '/admin/library', label: 'المكتبة الإسلامية' },
+  { href: '/admin/content', label: 'المحتوى' },
+  { href: '/admin/knowledge', label: 'المعرفة الإسلامية' },
+  { href: '/admin/sections', label: 'الأقسام' },
+  { href: '/admin/users', label: 'المستخدمون' },
+  { href: '/admin/videos', label: 'الفيديوهات' },
+  { href: '/admin/android', label: 'إصدار Android' },
+  { href: '/admin/social', label: 'النشر التلقائي' },
+  { href: '/admin/analytics', label: 'التحليلات' },
+  { href: '/admin/kids', label: 'الأطفال' },
+  { href: '/admin/prophets', label: 'الأنبياء' },
+  { href: '/admin/battles', label: 'الغزوات' },
+  { href: '/admin/site-audio', label: 'مقاطع الأذان والتذكير' },
 ] as const;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -38,7 +58,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 </Link>
               ))}
             </div>
-            <span className="text-[11px] text-brand-cream/30">الوصول والتنفيذ يخضعان لمصفوفة RBAC المركزية.</span>
+            <span className="text-[11px] text-brand-cream/30">RBAC مركزي · تدقيق · حماية العمليات الحساسة · إدارة التشغيل</span>
           </div>
         </div>
         <LibraryAdminNav />
@@ -47,19 +67,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             {[
               { href: '/admin', label: 'الرئيسية' },
               ...adminUtilityLinks,
-              { href: '/admin/library', label: 'المكتبة الإسلامية' },
-              { href: '/admin/content', label: 'المحتوى' },
-              { href: '/admin/knowledge', label: 'المعرفة الإسلامية' },
-              { href: '/admin/sections', label: 'الأقسام' },
-              { href: '/admin/users', label: 'المستخدمون' },
-              { href: '/admin/videos', label: 'الفيديوهات' },
-              { href: '/admin/android', label: 'إصدار Android' },
-              { href: '/admin/social', label: 'النشر التلقائي' },
-              { href: '/admin/analytics', label: 'التحليلات' },
-              { href: '/admin/kids', label: 'الأطفال' },
-              { href: '/admin/prophets', label: 'الأنبياء' },
-              { href: '/admin/battles', label: 'الغزوات' },
-              { href: '/admin/site-audio', label: 'مقاطع الأذان والتذكير' },
+              ...existingAdminLinks,
             ].map((item) => (
               <Link key={item.href} href={item.href} className="rounded-lg px-3 py-1.5 text-xs text-brand-cream/65 transition-colors hover:bg-brand-gold/10 hover:text-brand-gold whitespace-nowrap">
                 {item.label}
