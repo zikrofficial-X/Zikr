@@ -4,10 +4,9 @@ import { SiteShell } from "@/components/layout/site-shell";
 
 import { defaultOgImage, siteConfig } from "@/lib/site";
 import { DeferredRuntime } from "@/components/layout/deferred-runtime";
+import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
 import { NativeCapacitorBridge } from "@/components/layout/native-capacitor-bridge";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 // Navbar reads the Supabase session from request cookies, so the shell must be rendered per request.
 export const dynamic = "force-dynamic";
@@ -112,6 +111,7 @@ export default function RootLayout({
         />
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
         <link rel="manifest" href="/manifest.webmanifest" />
+        <style>{`html:not([data-locale]) footer { visibility: hidden; }`}</style>
       </head>
       <body className="font-arabic antialiased">
         <script
@@ -122,8 +122,7 @@ export default function RootLayout({
         <SiteShell>{children}</SiteShell>
         <NativeCapacitorBridge />
         <DeferredRuntime />
-        <Analytics />
-        <SpeedInsights />
+        <DeferredAnalytics />
       </body>
     </html>
   );
