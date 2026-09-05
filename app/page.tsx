@@ -1,540 +1,110 @@
-"use client";
+import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { Container } from '@/components/ui/container';
+import { getSiteSetting } from '@/lib/services/site-content';
+import { HomeInteractive } from '@/components/home/home-interactive';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Container } from "@/components/ui/container";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
-import {
-  getPrayerTimes,
-  getPrayerTimesByCity,
-  convertTo12Hour,
-} from "@/lib/services/prayer-times";
-import { offlineDb } from "@/lib/offline-db";
-import type { PrayerTimes } from "@/lib/types/prayer";
-import { useLanguage } from "@/components/layout/language-provider";
-import { resolveLocationLabel } from '@/lib/location/reverse-geocode';
+export const dynamic = 'force-dynamic';
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-const DEFAULT_PRAYER_CITY = 'Cairo';
+const navItems = [
+  ['القرآن', 'Quran', '/quran'], ['الحديث', 'Hadith', '/hadith'], ['الأذكار', 'Adhkar', '/adhkar'],
+  ['الأدعية', 'Dua', '/dua'], ['الأنبياء', 'Prophets', '/prophets'], ['الصحابة', 'Companions', '/companions'],
+  ['المقالات', 'Articles', '/articles'], ['الفيديوهات', 'Videos', '/videos'], ['الصلاة', 'Prayer', '/prayer-times'],
+  ['القبلة', 'Qibla', '/qibla'], ['المزيد', 'More', '#all-sections'],
+] as const;
 
-const prayerNames = [
-  { key: "Fajr", label: "الفجر", labelEn: "Fajr", icon: "🌙" },
-  { key: "Sunrise", label: "الشروق", labelEn: "Sunrise", icon: "🌅" },
-  { key: "Dhuhr", label: "الظهر", labelEn: "Dhuhr", icon: "☀️" },
-  { key: "Asr", label: "العصر", labelEn: "Asr", icon: "🌤" },
-  { key: "Maghrib", label: "المغرب", labelEn: "Maghrib", icon: "🌇" },
-  { key: "Isha", label: "العشاء", labelEn: "Isha", icon: "🌃" },
+const featured = [
+  { href: '/quran', title: 'القرآن الكريم', titleEn: 'The Holy Quran', desc: 'قراءة واستماع إلى سور القرآن الكريم مع تجربة هادئة وسريعة.', descEn: 'Read and listen to the Holy Quran in a calm, fast experience.', icon: '📖', badge: '114 سورة' },
+  { href: '/hadith', title: 'الحديث الشريف', titleEn: 'Prophetic Hadith', desc: 'الوصول إلى الأحاديث والمصادر المختارة داخل واجهة واضحة.', descEn: 'Explore selected Prophetic hadith and sources in a clear interface.', icon: '📜', badge: 'حديث' },
+  { href: '/adhkar', title: 'الأذكار اليومية', titleEn: 'Daily Adhkar', desc: 'أذكار الصباح والمساء وتذكير يومي يساعدك على الاستمرار.', descEn: 'Morning and evening remembrance with a simple daily rhythm.', icon: '📿', badge: 'يومي' },
+  { href: '/prophets', title: 'قصص الأنبياء', titleEn: 'Stories of the Prophets', desc: 'قصص وسير مرتبة تساعد على القراءة والتعلّم خطوة بخطوة.', descEn: 'Structured stories and biographies for focused learning.', icon: '🌙', badge: '25 نبيًا' },
+  { href: '/tafsir', title: 'التفسير', titleEn: 'Tafsir', desc: 'قراءة التفسير مع أدوات تساعدك على فهم الآيات في سياقها.', descEn: 'Study tafsir with tools that keep each verse in context.', icon: '🔎', badge: 'فهم' },
+  { href: '/spiritual-ai', title: 'الرفيق الروحاني', titleEn: 'Spiritual AI', desc: 'مساعد معرفي للأسئلة الروحانية مع التنبيه إلى أهمية الرجوع للمصادر الموثوقة.', descEn: 'A knowledge assistant for spiritual questions with source-aware guidance.', icon: '✦', badge: 'AI' },
+] as const;
+
+const moreContent = [
+  ['المصحف الشريف', 'Mushaf', '/mushaf', '📖'], ['الأطفال', 'Kids', '/kids', '🌟'], ['حفظ القرآن', 'Memorization', '/memorization', '🧠'],
+  ['إذاعة القرآن', 'Quran Radio', '/radio', '📻'], ['القراء', 'Reciters', '/reciters', '🎙️'], ['الشعر', 'Poetry', '/poetry', '✒️'],
+  ['الغزوات', 'Battles', '/battles', '☾'], ['الفتوحات', 'Conquests', '/conquests', '🏛️'], ['المداحون', 'Nasheed', '/tawasheeh', '🎵'],
+  ['عداد التسبيح', 'Tasbeeh', '/tasbeeh', '◉'], ['المكتبة بلا إنترنت', 'Offline Library', '/offline-library', '⬇️'], ['البحث', 'Search', '/search', '⌕'],
+] as const;
+
+const learningPaths = [
+  { href: '/quran', title: 'ابدأ بالقرآن', titleEn: 'Start with Quran', text: 'اقرأ سورة، استمع، ثم انتقل إلى التفسير عند الحاجة.', textEn: 'Read a surah, listen, then open tafsir when needed.' },
+  { href: '/adhkar', title: 'ثبّت وردك اليومي', titleEn: 'Build a Daily Practice', text: 'اجعل أذكار الصباح والمساء نقطة ثابتة في يومك.', textEn: 'Make morning and evening adhkar a consistent part of your day.' },
+  { href: '/memorization', title: 'ابنِ خطة حفظ', titleEn: 'Build a Memorization Plan', text: 'قسّم الحفظ إلى جلسات قصيرة مع مراجعة مستمرة.', textEn: 'Use short sessions with deliberate review.' },
 ] as const;
 
 const stats = [
-  { label: "سورة قرآنية", labelEn: "Quran Surahs", value: "114", sub: "سور الكتاب الكريم", subEn: "Chapters of the Holy Quran" },
-  { label: "آية كريمة", labelEn: "Verses", value: "6,236", sub: "آيات مباركة", subEn: "Blessed verses" },
-  { label: "جزءًا", labelEn: "Juz'", value: "30", sub: "من القرآن الكريم", subEn: "Parts of the Holy Quran" },
-  { label: "نبيًا ورسولًا", labelEn: "Prophets and Messengers", value: "25", sub: "ذُكروا في القرآن", subEn: "Mentioned in the Quran" },
-];
+  ['114', 'سورة قرآنية', 'Quran Surahs'], ['6,236', 'آية كريمة', 'Verses'], ['30', 'جزءًا', "Juz'"], ['25', 'نبيًا ورسولًا', 'Prophets & Messengers'],
+] as const;
 
-const featuredSections = [
-  {
-    href: "/quran",
-    title: "القرآن الكريم",
-    titleEn: "The Holy Quran",
-    desc: "اقرأ واستمع إلى القرآن الكريم بأصوات قراء مميزين — 114 سورة كاملة",
-    descEn: "Read and listen to the Holy Quran with the voices of renowned reciters — all 114 surahs",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.175-4.5 1.253" />
-      </svg>
-    ),
-    badge: "114 سورة",
-    badgeEn: "114 Surahs",
-    color: "from-emerald-900/50 to-emerald-950/80",
-    border: "border-emerald-700/30 hover:border-emerald-500/60",
-    glow: "hover:shadow-emerald-900/30",
-  },
-  {
-    href: "/hadith",
-    title: "الحديث الشريف",
-    titleEn: "Prophetic Hadith",
-    desc: "مجموعة شاملة من الأحاديث النبوية الصحيحة من صحيح البخاري ومسلم",
-    descEn: "A comprehensive collection of authentic Prophetic hadith from Bukhari and Muslim",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-      </svg>
-    ),
-    badge: "صحيح البخاري",
-    badgeEn: "Sahih al-Bukhari",
-    color: "from-amber-900/50 to-amber-950/80",
-    border: "border-amber-700/30 hover:border-amber-500/60",
-    glow: "hover:shadow-amber-900/30",
-  },
-  {
-    href: "/adhkar",
-    title: "الأذكار اليومية",
-    titleEn: "Daily Adhkar",
-    desc: "أذكار الصباح والمساء وتسابيح يومية لتقوية الروح وتحصين النفس",
-    descEn: "Morning and evening remembrance and daily tasbih to strengthen the spirit",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
-      </svg>
-    ),
-    badge: "صباح ومساء",
-    badgeEn: "Morning & Evening",
-    color: "from-violet-900/50 to-violet-950/80",
-    border: "border-violet-700/30 hover:border-violet-500/60",
-    glow: "hover:shadow-violet-900/30",
-  },
-  {
-    href: "/dua",
-    title: "الأدعية المأثورة",
-    titleEn: "Supplications",
-    desc: "أدعية نبوية شريفة لمختلف المناسبات والأوقات والأحوال",
-    descEn: "Authentic Prophetic supplications for different occasions and circumstances",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-      </svg>
-    ),
-    badge: "أدعية مأثورة",
-    badgeEn: "Authentic Duas",
-    color: "from-teal-900/50 to-teal-950/80",
-    border: "border-teal-700/30 hover:border-teal-500/60",
-    glow: "hover:shadow-teal-900/30",
-  },
-  {
-    href: "/prophets",
-    title: "قصص الأنبياء",
-    titleEn: "Stories of the Prophets",
-    desc: "سير وقصص الأنبياء والمرسلين عليهم الصلاة والسلام من آدم إلى محمد ﷺ",
-    descEn: "Biographies and stories of the Prophets and Messengers, from Adam to Muhammad ﷺ",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
-      </svg>
-    ),
-    badge: "25 نبيًا",
-    badgeEn: "25 Prophets",
-    color: "from-sky-900/50 to-sky-950/80",
-    border: "border-sky-700/30 hover:border-sky-500/60",
-    glow: "hover:shadow-sky-900/30",
-  },
-  {
-    href: "/spiritual-ai",
-    title: "الرفيق الروحاني",
-    titleEn: "Spiritual AI Companion",
-    desc: "مساعد ذكاء اصطناعي للإجابة على أسئلتك الدينية والروحانية بشكل فوري",
-    descEn: "An AI assistant for immediate guidance on spiritual and religious questions",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
-      </svg>
-    ),
-    badge: "AI مدعوم",
-    badgeEn: "AI-Powered",
-    color: "from-green-900/50 to-green-950/80",
-    border: "border-green-700/30 hover:border-green-500/60",
-    glow: "hover:shadow-green-900/30",
-  },
-];
+const dailyVerse = 'إِنَّ هَٰذَا الْقُرْآنَ يَهْدِي لِلَّتِي هِيَ أَقْوَمُ';
 
-const moreContent = [
-  { href: "/mushaf", label: "المصحف الشريف", labelEn: "Mushaf", icon: "📖" },
-  { href: "/tafsir", label: "التفسير", labelEn: "Tafsir", icon: "🔎" },
-  { href: "/offline-library", label: "المكتبة بلا إنترنت", labelEn: "Offline Library", icon: "⬇️" },
-  { href: "/companions", label: "الصحابة الكرام", labelEn: "Companions", icon: "👥" },
-  { href: "/scholars", label: "العلماء", labelEn: "Scholars", icon: "📚" },
-  { href: "/kids", label: "قسم الأطفال", labelEn: "Kids", icon: "🌟" },
-  { href: "/memorization", label: "حفظ القرآن", labelEn: "Quran Memorization", icon: "📿" },
-  { href: "/radio", label: "إذاعة القرآن", labelEn: "Quran Radio", icon: "📻" },
-  { href: "/tasbeeh", label: "عداد التسبيح", labelEn: "Tasbeeh Counter", icon: "📿" },
-  { href: "/battles", label: "الغزوات", labelEn: "Battles", icon: "⚔️" },
-  { href: "/conquests", label: "الفتوحات", labelEn: "Conquests", icon: "🏛️" },
-  { href: "/tawasheeh", label: "المداحون", labelEn: "Nasheed & Praise", icon: "🎵" },
-  { href: "/reciters", label: "القراء", labelEn: "Reciters", icon: "🎙️" },
-  { href: "/poetry", label: "الشعر الإسلامي", labelEn: "Islamic Poetry", icon: "✍️" },
-  { href: "/stories", label: "القصص", labelEn: "Stories", icon: "📖" },
-];
-
-const learningPaths = [
-  {
-    href: "/articles/building-a-quran-routine",
-    title: "مسار الصحبة مع القرآن",
-    titleEn: "A Quran companionship path",
-    description: "ابدأ بالقراءة، ثم افهم المعنى، وسجّل فائدة واحدة قابلة للعمل.",
-    descriptionEn: "Read, understand, and turn one reflection into an action.",
-    links: ["/quran", "/tafsir", "/memorization"],
-    color: "border-emerald-700/30 bg-emerald-950/20",
-  },
-  {
-    href: "/articles/daily-adhkar-with-understanding",
-    title: "مسار الذكر والطمأنينة",
-    titleEn: "A remembrance and calm path",
-    description: "تعلّم المعنى، اختر ورداً ثابتاً، وراجع المصدر قبل النشر.",
-    descriptionEn: "Learn the meaning, choose a steady routine, and verify sources.",
-    links: ["/adhkar", "/dua", "/tasbeeh"],
-    color: "border-violet-700/30 bg-violet-950/20",
-  },
-  {
-    href: "/articles/reading-hadith-responsibly",
-    title: "مسار القراءة الموثقة",
-    titleEn: "A source-aware reading path",
-    description: "فرّق بين النص والشرح والدرجة، وتعلّم كيف تفتح المرجع الأصلي.",
-    descriptionEn: "Separate text, commentary, and grading while checking primary sources.",
-    links: ["/hadith", "/scholars", "/editorial-policy"],
-    color: "border-amber-700/30 bg-amber-950/20",
-  },
-  {
-    href: "/articles/realistic-quran-memorization",
-    title: "مسار الحفظ المتدرج",
-    titleEn: "A sustainable memorization path",
-    description: "مقدار مناسب، مراجعة مستمرة، واستعانة بمعلم دون مقارنة أو ضغط.",
-    descriptionEn: "Small portions, consistent review, and teacher support without pressure.",
-    links: ["/memorization", "/wird", "/kids"],
-    color: "border-sky-700/30 bg-sky-950/20",
-  },
-  {
-    href: "/articles/islamic-character-in-daily-life",
-    title: "مسار الأخلاق في الحياة",
-    titleEn: "A character in daily life path",
-    description: "حوّل الصدق والرحمة والأمانة إلى قرارات في البيت والعمل والفضاء الرقمي.",
-    descriptionEn: "Practice honesty, mercy, and trust at home, work, and online.",
-    links: ["/articles", "/contact", "/about"],
-    color: "border-rose-700/30 bg-rose-950/20",
-  },
-  {
-    href: "/articles/helping-children-love-the-quran",
-    title: "مسار الأسرة والطفل",
-    titleEn: "A family and children path",
-    description: "بيئة آمنة، أسئلة مفتوحة، ولعب تعليمي يجعل التعلم محبباً ومستداماً.",
-    descriptionEn: "Safe learning, open questions, and play that makes learning sustainable.",
-    links: ["/kids", "/stories", "/quran"],
-    color: "border-cyan-700/30 bg-cyan-950/20",
-  },
-];
-
-function toMinutes(timeStr: string): number {
-  const match = timeStr.match(/^(\d{1,2}):(\d{2})/);
-  if (!match) return 0;
-  return Number(match[1]) * 60 + Number(match[2]);
-}
-
-function getActivePrayer(timings: PrayerTimes, now: Date) {
-  const cur = now.getHours() * 60 + now.getMinutes();
-  const keys: Array<"Fajr" | "Dhuhr" | "Asr" | "Maghrib" | "Isha"> = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
-  let active: (typeof keys)[number] | "" = "";
-  for (let i = keys.length - 1; i >= 0; i--) {
-    if (cur >= toMinutes(timings[keys[i]])) {
-      active = keys[i];
-      break;
-    }
-  }
-  const nextIdx = (keys.indexOf(active as (typeof keys)[number]) + 1) % keys.length;
-  return { active, next: keys[nextIdx] };
-}
-
-function StarCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d", { alpha: true });
-    if (!ctx) return;
-    let animFrame = 0;
-    let idleHandle: number | undefined;
-    const stars: { x: number; y: number; r: number; a: number; speed: number; twinkle: number }[] = [];
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const touchDevice = window.matchMedia("(pointer: coarse)").matches;
-    const animate = !reduceMotion && !touchDevice;
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      const width = canvas.offsetWidth;
-      const height = canvas.offsetHeight;
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    const draw = () => {
-      const width = canvas.offsetWidth;
-      const height = canvas.offsetHeight;
-      ctx.clearRect(0, 0, width, height);
-      for (const star of stars) {
-        if (animate) star.twinkle += star.speed;
-        const opacity = animate ? (Math.sin(star.twinkle) * 0.4 + 0.6) * star.a : star.a;
-        ctx.beginPath();
-        ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(199,168,107,${opacity * 0.7})`;
-        ctx.fill();
-      }
-      if (animate) animFrame = requestAnimationFrame(draw);
-    };
-    const init = () => {
-      resize();
-      stars.length = 0;
-      const density = touchDevice ? 11000 : 7000;
-      const count = Math.min(220, Math.floor((canvas.offsetWidth * canvas.offsetHeight) / density));
-      for (let i = 0; i < count; i++) stars.push({
-        x: Math.random() * canvas.offsetWidth,
-        y: Math.random() * canvas.offsetHeight,
-        r: Math.random() * 1.3 + 0.2,
-        a: Math.random(),
-        speed: Math.random() * 0.005 + 0.001,
-        twinkle: Math.random() * Math.PI * 2,
-      });
-      draw();
-    };
-    const start = () => { init(); if (animate) animFrame = requestAnimationFrame(draw); };
-    const requestIdle = window.requestIdleCallback?.bind(window);
-    const cancelIdle = window.cancelIdleCallback?.bind(window);
-    if (requestIdle) idleHandle = requestIdle(start, { timeout: 1200 });
-    else idleHandle = window.setTimeout(start, 200);
-    window.addEventListener("resize", init, { passive: true });
-    return () => {
-      if (idleHandle !== undefined) {
-        if (cancelIdle) cancelIdle(idleHandle);
-        else window.clearTimeout(idleHandle);
-      }
-      cancelAnimationFrame(animFrame);
-      window.removeEventListener("resize", init);
-    };
-  }, []);
-  return <canvas ref={canvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true" />;
-}
-
-function ArabicOrnament({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 300 40" className={className} fill="none" aria-hidden="true">
-      <path d="M150 20 L140 10 L130 20 L140 30 Z" fill="rgba(199,168,107,0.6)" />
-      <path d="M150 20 L160 10 L170 20 L160 30 Z" fill="rgba(199,168,107,0.6)" />
-      <line x1="0" y1="20" x2="120" y2="20" stroke="rgba(199,168,107,0.3)" strokeWidth="0.5" />
-      <line x1="180" y1="20" x2="300" y2="20" stroke="rgba(199,168,107,0.3)" strokeWidth="0.5" />
-      <circle cx="60" cy="20" r="2" fill="rgba(199,168,107,0.4)" />
-      <circle cx="100" cy="20" r="1.5" fill="rgba(199,168,107,0.3)" />
-      <circle cx="200" cy="20" r="1.5" fill="rgba(199,168,107,0.3)" />
-      <circle cx="240" cy="20" r="2" fill="rgba(199,168,107,0.4)" />
-      <path d="M120 15 Q125 20 120 25" stroke="rgba(199,168,107,0.5)" strokeWidth="0.8" fill="none" />
-      <path d="M180 15 Q175 20 180 25" stroke="rgba(199,168,107,0.5)" strokeWidth="0.8" fill="none" />
-    </svg>
-  );
-}
-
-function SectionDivider({ title }: { title: string }) {
-  return <div className="flex items-center gap-4 mb-8"><div className="flex-1 h-px bg-gradient-to-r from-transparent via-brand-gold/25 to-transparent" /><span className="text-xs font-bold tracking-[0.2em] text-brand-gold/50 uppercase shrink-0">{title}</span><div className="flex-1 h-px bg-gradient-to-r from-transparent via-brand-gold/25 to-transparent" /></div>;
-}
-
-export default function HomePage() {
-  const router = useRouter();
-  const { isEnglish, dir } = useLanguage();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [prayerTimes, setPrayerTimes] = useState<PrayerTimes | null>(null);
-  const prayerTimesRef = useRef<PrayerTimes | null>(null);
-  const [prayerCity, setPrayerCity] = useState("");
-  const [cityInput, setCityInput] = useState("");
-  const [usingLocation, setUsingLocation] = useState(false);
-  const [loadingPrayer, setLoadingPrayer] = useState(false);
-  const [currentTime, setCurrentTime] = useState<Date | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoaded, setAuthLoaded] = useState(false);
-  const [libraryStats, setLibraryStats] = useState<Record<string, number | null> | null>(null);
-  const [homepageSetting, setHomepageSetting] = useState<{ title?: string | null; body?: string | null; showQuran?: boolean; showHadith?: boolean; showProphets?: boolean } | null>(null);
-
-  useEffect(() => {
-    let interval: number | undefined;
-    let idleHandle: number | undefined;
-    let cancelled = false;
-    const runAfterFirstPaint = () => {
-      if (cancelled) return;
-      const updateClock = () => setCurrentTime(new Date());
-      updateClock();
-      interval = window.setInterval(updateClock, 1000);
-      void offlineDb.initialize().catch(err => console.error("[HomePage] Failed to initialize offline DB:", err));
-      void fetch("/api/content/stats", { headers: { Accept: "application/json" } }).then(async response => {
-        if (!response.ok) return;
-        const payload = (await response.json()) as { data?: Record<string, number | null> };
-        if (!cancelled && payload.data) setLibraryStats(payload.data);
-      }).catch(() => undefined);
-      void fetch("/api/site-settings", { headers: { Accept: "application/json" } }).then(async response => {
-        if (!response.ok) return;
-        const payload = (await response.json()) as { data?: { title?: string | null; body?: string | null; showQuran?: boolean; showHadith?: boolean; showProphets?: boolean } | null };
-        if (!cancelled && payload.data) setHomepageSetting(payload.data);
-      }).catch(() => undefined);
-      void (async () => {
-        const supabase = createBrowserSupabaseClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!cancelled) { setUser(user); setAuthLoaded(true); }
-      })();
-    };
-    const requestIdle = window.requestIdleCallback?.bind(window);
-    const cancelIdle = window.cancelIdleCallback?.bind(window);
-    if (requestIdle) idleHandle = requestIdle(runAfterFirstPaint, { timeout: 1500 });
-    else idleHandle = window.setTimeout(runAfterFirstPaint, 250);
-    return () => {
-      cancelled = true;
-      if (idleHandle !== undefined) { if (cancelIdle) cancelIdle(idleHandle); else window.clearTimeout(idleHandle); }
-      if (interval !== undefined) window.clearInterval(interval);
-    };
-  }, []);
-
-  useEffect(() => { prayerTimesRef.current = prayerTimes; }, [prayerTimes]);
-
-  const { active: activePrayer, next: nextPrayer } = useMemo(() => {
-    if (!prayerTimes || !currentTime) return { active: "", next: "" };
-    return getActivePrayer(prayerTimes, currentTime);
-  }, [prayerTimes, currentTime]);
-
-  const fetchPrayerByCity = useCallback(async (city: string, options?: { keepExisting?: boolean }) => {
-    if (!options?.keepExisting) setLoadingPrayer(true);
-    try {
-      const res = await getPrayerTimesByCity(city, "Egypt");
-      if (res?.data?.timings) setPrayerTimes(res.data.timings as PrayerTimes);
-    } catch (error) {
-      console.error("Prayer fetch error:", error);
-    } finally { setLoadingPrayer(false); }
-  }, []);
-
-  useEffect(() => {
-    if (usingLocation || !prayerCity) return;
-    if (!prayerTimesRef.current) setLoadingPrayer(true);
-    void fetchPrayerByCity(prayerCity, { keepExisting: Boolean(prayerTimesRef.current) });
-  }, [usingLocation, prayerCity, fetchPrayerByCity]);
-
-  const requestPrayerByLocation = useCallback(() => {
-    if (!("geolocation" in navigator)) {
-      setUsingLocation(false);
-      setPrayerCity(DEFAULT_PRAYER_CITY);
-      return;
-    }
-    setLoadingPrayer(true);
-    navigator.geolocation.getCurrentPosition(async ({ coords: { latitude, longitude } }) => {
-      try {
-        const res = await getPrayerTimes(latitude, longitude);
-        if (res?.data?.timings) {
-          setPrayerTimes(res.data.timings as PrayerTimes);
-          const locationLabel = await resolveLocationLabel(latitude, longitude);
-          setPrayerCity(locationLabel ?? (isEnglish ? 'Your current location' : 'موقعك الحالي'));
-          setUsingLocation(true);
-        }
-      } catch (error) { console.error("Location prayer fetch error:", error); }
-      finally { setLoadingPrayer(false); }
-    }, () => {
-      setLoadingPrayer(false);
-      setUsingLocation(false);
-      setPrayerCity(DEFAULT_PRAYER_CITY);
-    }, { timeout: 6000, maximumAge: 300000 });
-  }, [isEnglish]);
-
-  const handleSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-  }, [searchQuery, router]);
-
-  const featuredVisibility = useMemo<Record<string, boolean | undefined>>(() => ({
-    "/quran": homepageSetting?.showQuran,
-    "/hadith": homepageSetting?.showHadith,
-    "/prophets": homepageSetting?.showProphets,
-  }), [homepageSetting]);
-
-  const displayStats = useMemo(() => {
-    const liveValues = [libraryStats?.quranSurahs, libraryStats?.quranAyahs, 30, libraryStats?.prophets];
-    return stats.map((stat, index) => ({ ...stat, value: liveValues[index] == null ? stat.value : liveValues[index]!.toLocaleString(isEnglish ? "en-US" : "ar-EG") }));
-  }, [libraryStats, isEnglish]);
-
-  const timeStr = currentTime ? currentTime.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }) : "";
-  const dateStr = currentTime ? currentTime.toLocaleDateString(isEnglish ? "en-US" : "ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : "";
+export default async function HomePage() {
+  const cookieStore = await cookies();
+  const locale = cookieStore.get('zikr-locale')?.value === 'en' ? 'en' : 'ar';
+  const isEnglish = locale === 'en';
+  const dir = isEnglish ? 'ltr' : 'rtl';
+  const homepageSetting = await getSiteSetting('homepage');
+  const showPrayerTimes = homepageSetting?.showPrayerTimes !== false;
+  const homeTitle = !isEnglish && homepageSetting?.title?.trim() ? homepageSetting.title.trim() : 'ذِكرٌ';
+  const homeBody = !isEnglish && homepageSetting?.body?.trim() ? homepageSetting.body.trim() : isEnglish ? 'Your complete spiritual platform' : 'منصتك الروحانية الشاملة';
+  const visibleFeatured = featured.filter((item) => {
+    if (item.href === '/quran') return homepageSetting?.showQuran !== false;
+    if (item.href === '/hadith') return homepageSetting?.showHadith !== false;
+    if (item.href === '/prophets') return homepageSetting?.showProphets !== false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen min-w-0 overflow-x-hidden bg-brand-emeraldDeep text-brand-cream">
-      {/* HERO */}
-      <section className="relative overflow-hidden border-b border-brand-gold/15" aria-label={isEnglish ? "Home page" : "الصفحة الرئيسية"} style={{ background: "linear-gradient(180deg, #050f0a 0%, #0A2A1E 40%, #071f16 100%)" }}>
-        <StarCanvas />
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 70% 60% at 50% 30%, rgba(199,168,107,0.06) 0%, transparent 70%)" }} aria-hidden="true" />
-        <div className="absolute top-0 right-0 w-64 h-64 opacity-10 pointer-events-none" aria-hidden="true"><svg viewBox="0 0 200 200" fill="none"><path d="M200 0 L200 200 L0 0 Z" fill="rgba(199,168,107,0.3)" /><path d="M200 0 L200 120 L80 0 Z" fill="rgba(199,168,107,0.2)" /></svg></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 opacity-10 pointer-events-none" aria-hidden="true"><svg viewBox="0 0 200 200" fill="none"><path d="M0 200 L0 0 L200 200 Z" fill="rgba(199,168,107,0.3)" /><path d="M0 200 L0 80 L120 200 Z" fill="rgba(199,168,107,0.2)" /></svg></div>
-        <Container className="relative z-10 space-y-7 pt-10 pb-10 sm:space-y-10 sm:pt-14 sm:pb-16">
-          <div className="text-center"><p className="text-brand-gold/50 text-sm tracking-widest font-arabic" dir="rtl">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</p></div>
-          <ArabicOrnament className="w-64 mx-auto" />
-          <div className="text-center space-y-3">
-            <h1 className="text-5xl sm:text-6xl md:text-8xl font-bold text-brand-gold text-balance" style={{ fontFamily: "var(--font-amiri), var(--font-noto-arabic)", textShadow: "0 0 40px rgba(199,168,107,0.35), 0 0 80px rgba(199,168,107,0.12)", letterSpacing: "0.05em" }} dir="rtl">{!isEnglish && homepageSetting?.title?.trim() ? homepageSetting.title.trim() : "ذِكرٌ"}</h1>
-            <p className="text-brand-cream/55 text-base md:text-xl tracking-widest" style={{ fontFamily: "var(--font-amiri)" }}>{!isEnglish && homepageSetting?.body?.trim() ? homepageSetting.body.trim() : isEnglish ? "Your complete spiritual platform" : "منصتك الروحانية الشاملة"}</p>
-            <div className="flex min-h-[70px] flex-col items-center gap-1.5 pt-2">{timeStr ? <><div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-brand-gold/20 bg-black/30" style={{ backdropFilter: "blur(12px)" }}><span className="w-2 h-2 rounded-full bg-brand-gold animate-pulse shrink-0" /><span className="text-2xl font-mono font-bold text-brand-gold tabular-nums tracking-wider">{timeStr}</span></div><span className="text-xs text-brand-cream/40 font-arabic" dir={dir}>{dateStr}</span></> : <span className="invisible text-2xl font-mono" aria-hidden="true">00:00:00</span>}</div>
+      <section className="relative overflow-hidden border-b border-brand-gold/15 bg-[radial-gradient(circle_at_50%_10%,rgba(199,168,107,0.10),transparent_38%),linear-gradient(180deg,#050f0a_0%,#0A2A1E_55%,#071f16_100%)]" aria-label={isEnglish ? 'Home page' : 'الصفحة الرئيسية'}>
+        <Container className="relative z-10 pb-8 pt-8 sm:pb-12 sm:pt-12">
+          <div className="mx-auto max-w-5xl text-center" dir={dir}>
+            <p className="text-sm tracking-[0.18em] text-brand-gold/50">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</p>
+            <div className="mx-auto my-4 h-px w-32 bg-gradient-to-r from-transparent via-brand-gold/40 to-transparent" aria-hidden="true" />
+            <h1 className="text-5xl font-bold text-brand-gold sm:text-7xl" style={{ fontFamily: 'var(--font-amiri), var(--font-noto-arabic)' }}>{homeTitle}</h1>
+            <p className="mx-auto mt-3 max-w-2xl text-base leading-8 text-brand-cream/60 sm:text-lg" style={{ fontFamily: 'var(--font-amiri), var(--font-noto-arabic)' }}>{homeBody}</p>
+            <HomeInteractive locale={locale} showPrayerTimes={showPrayerTimes} />
+            <form action="/search" method="get" role="search" className="mx-auto mt-6 max-w-2xl">
+              <label htmlFor="home-search" className="sr-only">{isEnglish ? 'Search ZIKR' : 'البحث في ذِكر'}</label>
+              <div className="flex gap-2 rounded-2xl border border-brand-gold/20 bg-black/20 p-1.5">
+                <input id="home-search" name="q" type="search" placeholder={isEnglish ? 'Search Quran, hadith, stories…' : 'ابحث في القرآن، الحديث، القصص…'} className="min-w-0 flex-1 rounded-xl bg-transparent px-4 py-3 text-sm text-brand-cream outline-none placeholder:text-brand-cream/30" dir={dir} />
+                <button type="submit" className="shrink-0 rounded-xl bg-brand-gold px-5 py-3 text-sm font-bold text-brand-emeraldDeep transition hover:bg-brand-goldSoft">{isEnglish ? 'Search' : 'بحث'}</button>
+              </div>
+            </form>
           </div>
-          <ArabicOrnament className="w-64 mx-auto rotate-180" />
-          <div className="mx-auto w-full max-w-2xl"><form onSubmit={handleSearch} className="relative" role="search"><div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ boxShadow: "0 0 30px rgba(199,168,107,0.08)" }} aria-hidden="true" /><input type="search" placeholder={isEnglish ? "Search for an ayah, hadith, dhikr, or story..." : "ابحث عن آية، حديث، ذِكر، أو قصة..."} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} aria-label={isEnglish ? "Search content" : "البحث في المحتوى"} className="w-full rounded-xl border border-brand-gold/25 bg-black/40 px-4 py-3 pr-12 text-base text-brand-cream placeholder:text-brand-cream/30 focus:border-brand-gold/55 focus:outline-none focus:ring-2 focus:ring-brand-gold/15 sm:rounded-2xl sm:px-6 sm:py-4 sm:pr-14" style={{ backdropFilter: "blur(16px)" }} dir={dir} /><button type="submit" className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg bg-brand-gold/15 text-brand-gold transition-colors hover:bg-brand-gold/25 sm:right-4 sm:h-9 sm:w-9 sm:rounded-xl" aria-label={isEnglish ? "Search" : "بحث"}><svg xmlns="http://www.w3.org/2000/svg" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" /></svg></button></form></div>
-          <nav aria-label={isEnglish ? "Platform sections" : "أقسام المنصة"} className="grid grid-cols-3 gap-1.5 min-[360px]:grid-cols-4 sm:gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-11">{[
-            { label: "القرآن", labelEn: "Quran", href: "/quran" }, { label: "الأحاديث", labelEn: "Hadith", href: "/hadith" }, { label: "الأنبياء", labelEn: "Prophets", href: "/prophets" }, { label: "الصحابة", labelEn: "Companions", href: "/companions" }, { label: "الأذكار", labelEn: "Adhkar", href: "/adhkar" }, { label: "الأدعية", labelEn: "Dua", href: "/dua" }, { label: "المقالات", labelEn: "Articles", href: "/articles" }, { label: "الفيديوهات", labelEn: "Videos", href: "/videos" }, { label: "الأطفال", labelEn: "Kids", href: "/kids" }, { label: "الرفيق", labelEn: "AI", href: "/spiritual-ai" }, { label: "الشعر", labelEn: "Poetry", href: "/poetry" }, { label: "العلماء", labelEn: "Scholars", href: "/scholars" }, { label: "الحفظ", labelEn: "Memorize", href: "/memorization" }, { label: "الصلاة", labelEn: "Prayer", href: "/prayer-times" }, { label: "القبلة", labelEn: "Qibla", href: "/qibla" }, { label: "الغزوات", labelEn: "Battles", href: "/battles" }, { label: "الفتوحات", labelEn: "Conquests", href: "/conquests" }, { label: "المداحون", labelEn: "Tawasheeh", href: "/tawasheeh" }, { label: "القراء", labelEn: "Reciters", href: "/reciters" }, { label: "الإذاعة", labelEn: "Radio", href: "/radio" }, { label: "التسبيح", labelEn: "Tasbeeh", href: "/tasbeeh" }, { label: "يوتيوب", labelEn: "YouTube", href: "/youtube" },
-          ].map(cat => <Link key={cat.href} href={cat.href} className="group flex min-h-10 items-center justify-center rounded-xl border border-brand-gold/12 bg-black/20 p-2 transition-all duration-200 hover:border-brand-gold/40 hover:bg-brand-gold/8 sm:min-h-[44px] sm:p-2.5"><span className="text-center text-[10px] leading-tight text-brand-cream/70 transition-colors group-hover:text-brand-gold sm:text-[11px]">{isEnglish ? cat.labelEn : cat.label}</span></Link>)}</nav>
+          <nav className="mx-auto mt-6 grid max-w-6xl grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-11" aria-label={isEnglish ? 'Platform sections' : 'أقسام المنصة'}>
+            {navItems.map(([ar, en, href]) => <Link key={href} href={href} className="rounded-xl border border-brand-gold/10 bg-black/15 px-2 py-2.5 text-center text-[11px] text-brand-cream/65 transition hover:border-brand-gold/35 hover:text-brand-gold" dir={dir}>{isEnglish ? en : ar}</Link>)}
+          </nav>
         </Container>
       </section>
 
-      <section className="border-b border-brand-gold/12 px-3 py-10 sm:px-4 sm:py-12" aria-labelledby="prayer-times-heading" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 100%)" }}>
-        <Container className="space-y-6">
-          <SectionDivider title={isEnglish ? "Prayer Times" : "مواقيت الصلاة"} />
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h2 id="prayer-times-heading" className="text-2xl font-bold text-brand-gold" dir={dir}>{isEnglish ? "Today's Prayer Times" : "أوقات الصلاة اليوم"}</h2><p className="text-sm text-brand-cream/40 mt-0.5" dir={dir}>{usingLocation ? (isEnglish ? "Your current location" : "موقعك الحالي") : prayerCity} · {loadingPrayer ? (isEnglish ? "Updating without hiding prayer times" : "يتم التحديث دون إخفاء المواقيت") : (isEnglish ? "Updates automatically" : "يتجدد تلقائيًا")}</p></div><form onSubmit={e => { e.preventDefault(); const val = cityInput.trim(); if (val) { setPrayerCity(val); setUsingLocation(false); setCityInput(""); } }} className="flex w-full gap-2 sm:w-auto"><input type="text" value={cityInput} onChange={e => setCityInput(e.target.value)} placeholder={isEnglish ? "City name..." : "اسم المدينة..."} className="min-w-0 flex-1 rounded-lg border border-brand-gold/20 bg-black/30 px-3 py-2 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:border-brand-gold/50 focus:outline-none sm:w-36 sm:flex-none" aria-label={isEnglish ? "City name" : "اسم المدينة"} dir={dir} /><button type="submit" className="px-4 py-2 rounded-lg border border-brand-gold/30 text-brand-gold text-sm hover:border-brand-gold/60 hover:bg-brand-gold/8 transition-colors">{isEnglish ? "Change" : "تغيير"}</button><button type="button" onClick={requestPrayerByLocation} className="rounded-lg border border-brand-gold/20 px-3 py-2 text-sm text-brand-cream/55 transition-colors hover:border-brand-gold/50 hover:text-brand-gold">{isEnglish ? "My location" : "موقعي"}</button></form></div>
-          {prayerTimes ? <div className="grid grid-cols-2 gap-2 min-[360px]:grid-cols-3 sm:gap-3 md:grid-cols-6">{prayerNames.map(({ key, label, labelEn }) => { const isActive = activePrayer === key; const isNext = nextPrayer === key; return <div key={key} className={`relative min-h-[88px] overflow-hidden rounded-2xl border p-3 text-center transition-all duration-300 sm:min-h-[92px] sm:p-4 ${isActive ? "border-brand-gold bg-brand-gold/12 shadow-lg shadow-brand-gold/10" : isNext ? "border-brand-gold/35 bg-brand-gold/5" : "border-brand-gold/10 bg-black/20 hover:border-brand-gold/25"}`}>{isActive && <div className="absolute inset-0 bg-brand-gold/5 animate-pulse pointer-events-none" />}<p className="text-xs text-brand-gold/60 mb-2 font-arabic" dir={dir}>{isEnglish ? labelEn : label}</p><p className="text-lg font-bold text-brand-cream tabular-nums">{prayerTimes[key] ? convertTo12Hour(prayerTimes[key], !isEnglish) : "--:-- --"}</p>{isActive && <span className="mt-1.5 inline-block text-[10px] text-brand-gold font-bold tracking-widest px-2 py-0.5 rounded-full bg-brand-gold/15">{isEnglish ? "Now" : "الآن"}</span>}{isNext && !isActive && <span className="mt-1.5 inline-block text-[10px] text-brand-gold/55 font-semibold tracking-widest">{isEnglish ? "Next" : "التالية"}</span>}</div>; })}</div> : <div className="grid grid-cols-2 gap-2 min-[360px]:grid-cols-3 sm:gap-3 md:grid-cols-6">{prayerNames.map(({ label, labelEn }) => <div key={label} className="min-h-[88px] animate-pulse rounded-2xl border border-brand-gold/10 bg-black/20 p-3 text-center sm:min-h-[92px] sm:p-4"><p className="text-xs text-brand-gold/30 mb-2" dir={dir}>{isEnglish ? labelEn : label}</p><div className="h-6 w-16 bg-brand-gold/10 rounded mx-auto" /></div>)}</div>}
-          <div className="flex gap-3 flex-wrap"><Link href="/prayer-times" className="rounded-xl border border-brand-gold/25 px-5 py-2.5 text-sm text-brand-cream/70 hover:border-brand-gold hover:text-brand-gold transition-colors">{isEnglish ? "Detailed prayer times" : "مواقيت الصلاة التفصيلية"}</Link><Link href="/qibla" className="rounded-xl border border-brand-gold/15 px-5 py-2.5 text-sm text-brand-cream/45 hover:border-brand-gold/30 hover:text-brand-cream/70 transition-colors">{isEnglish ? "Qibla direction" : "اتجاه القبلة"}</Link></div>
-        </Container>
-      </section>
-
-      <section className="border-b border-brand-gold/12 px-3 py-10 sm:px-4 sm:py-12" aria-labelledby="featured-heading">
-        <Container className="space-y-6">
-          <SectionDivider title={isEnglish ? "Featured Sections" : "الأقسام الرئيسية"} />
-          <div className="flex items-center justify-between"><h2 id="featured-heading" className="text-2xl font-bold text-brand-gold" dir={dir}>{isEnglish ? "Explore the platform" : "اكتشف المنصة"}</h2><Link href="#all-sections" className="text-sm text-brand-gold/75 underline-offset-4 hover:text-brand-gold hover:underline transition-colors">{isEnglish ? "View all" : "عرض الكل"}</Link></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {featuredSections.map(sec => {
-              const visible = featuredVisibility[sec.href] !== false;
-              return visible ? (
-                <Link key={sec.href} href={sec.href} className={`group block min-h-[218px] rounded-2xl border ${sec.border} bg-gradient-to-br ${sec.color} p-4 transition-all duration-300 hover:shadow-xl sm:p-6 ${sec.glow} hover:-translate-y-0.5`}>
-                  <div className="flex items-start justify-between mb-5"><div className="w-11 h-11 rounded-xl bg-black/30 border border-brand-gold/15 flex items-center justify-center text-brand-gold group-hover:border-brand-gold/40 transition-colors">{sec.icon}</div><span className="text-[10px] font-bold tracking-widest text-brand-gold/45 uppercase group-hover:text-brand-gold/70 transition-colors px-2 py-1 rounded-full border border-brand-gold/15">{isEnglish ? sec.badgeEn : sec.badge}</span></div>
-                  <h3 className="text-lg font-bold text-brand-gold mb-2" dir={dir}>{isEnglish ? sec.titleEn : sec.title}</h3>
-                  <p className="text-sm text-brand-cream/60 leading-relaxed" dir={dir}>{isEnglish ? sec.descEn : sec.desc}</p>
-                  <div className="mt-4 flex items-center gap-2 text-xs text-brand-gold/50"><span>{isEnglish ? "Explore now" : "استكشف الآن"}</span><svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 rotate-180"><path fillRule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /></svg></div>
-                </Link>
-              ) : (
-                <div key={sec.href} aria-hidden="true" className="min-h-[218px] rounded-2xl p-4 sm:p-6 invisible" />
-              );
-            })}
+      <section className="border-b border-brand-gold/10 px-3 py-9 sm:px-4 sm:py-12" aria-labelledby="featured-heading">
+        <Container>
+          <div className="mb-6 flex items-end justify-between gap-4" dir={dir}><div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold/45">{isEnglish ? 'Core experience' : 'التجربة الأساسية'}</p><h2 id="featured-heading" className="mt-2 text-2xl font-bold text-brand-gold">{isEnglish ? 'Explore ZIKR' : 'اكتشف ذِكرٌ'}</h2></div><Link href="#all-sections" className="text-sm text-brand-gold/70 hover:text-brand-gold">{isEnglish ? 'View all' : 'عرض الكل'}</Link></div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleFeatured.map((item) => <Link key={item.href} href={item.href} className="group rounded-2xl border border-brand-gold/12 bg-black/15 p-5 transition-colors hover:border-brand-gold/35" dir={dir}><div className="flex items-start justify-between gap-3"><span className="text-2xl" aria-hidden="true">{item.icon}</span><span className="rounded-full border border-brand-gold/10 px-2 py-1 text-[10px] text-brand-gold/55">{item.badge}</span></div><h3 className="mt-5 text-lg font-bold text-brand-gold group-hover:text-brand-goldSoft">{isEnglish ? item.titleEn : item.title}</h3><p className="mt-2 text-sm leading-7 text-brand-cream/55">{isEnglish ? item.descEn : item.desc}</p></Link>)}
           </div>
         </Container>
       </section>
 
-      <section className="border-b border-brand-gold/12 px-3 py-10 sm:px-4 sm:py-12" id="all-sections" aria-labelledby="more-heading" style={{ contentVisibility: "auto", containIntrinsicSize: "0 520px" }}>
-        <Container className="space-y-6"><SectionDivider title={isEnglish ? "More Content" : "المزيد من المحتوى"} /><h2 id="more-heading" className="text-2xl font-bold text-brand-gold" dir={dir}>{isEnglish ? "A complete Islamic library" : "المحتوى الإسلامي الشامل"}</h2><div className="grid grid-cols-2 min-[360px]:grid-cols-4 gap-2.5 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6">{moreContent.map(item => <Link key={item.href} href={item.href} className="group flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl border border-brand-gold/18 bg-black/20 p-2.5 text-center transition-all duration-200 hover:border-brand-gold/45 hover:bg-brand-gold/6 sm:min-h-[104px] sm:gap-2.5 sm:p-4"><span className="text-2xl" aria-hidden="true">{item.icon}</span><span className="text-[11px] font-medium text-brand-cream/75 group-hover:text-brand-gold transition-colors leading-tight sm:text-xs" dir={dir}>{isEnglish ? item.labelEn : item.label}</span></Link>)}</div></Container>
+      <section id="all-sections" className="border-b border-brand-gold/10 px-3 py-9 sm:px-4 sm:py-12" aria-labelledby="all-sections-heading" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 520px' }}>
+        <Container><p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold/45">{isEnglish ? 'Library' : 'المكتبة'}</p><h2 id="all-sections-heading" className="mt-2 text-2xl font-bold text-brand-gold" dir={dir}>{isEnglish ? 'Everything in one place' : 'كل أقسام المنصة في مكان واحد'}</h2><div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">{moreContent.map(([ar, en, href, icon]) => <Link key={href} href={href} className="flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl border border-brand-gold/12 bg-black/15 p-3 text-center text-xs text-brand-cream/65 transition hover:border-brand-gold/35 hover:text-brand-gold" dir={dir}><span className="text-xl" aria-hidden="true">{icon}</span><span>{isEnglish ? en : ar}</span></Link>)}</div></Container>
       </section>
 
-      <section className="border-b border-brand-gold/12 px-3 py-10 sm:px-4 sm:py-12" aria-labelledby="learning-paths-heading" style={{ contentVisibility: "auto", containIntrinsicSize: "0 760px" }}>
-        <Container className="space-y-6">
-          <SectionDivider title={isEnglish ? "Guided Learning" : "مسارات تعلم مقترحة"} />
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div className="space-y-2" dir={dir}>
-              <h2 id="learning-paths-heading" className="text-2xl font-bold text-brand-gold">{isEnglish ? "Go deeper, one step at a time" : "تعمّق خطوةً خطوة"}</h2>
-              <p className="max-w-2xl text-sm leading-7 text-brand-cream/55">{isEnglish ? "Curated routes connect the library, tools, and original editorial guides so every visit has a clear next step." : "مسارات تجمع بين المكتبة والأدوات والمقالات الأصلية حتى تكون لكل زيارة خطوة تالية واضحة."}</p>
-            </div>
-            <Link href="/articles" className="shrink-0 text-sm text-brand-gold/75 underline-offset-4 hover:text-brand-gold hover:underline" dir={dir}>{isEnglish ? "Browse all guides" : "تصفح كل الأدلة"}</Link>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {learningPaths.map(path => (
-              <article key={path.href} className={`rounded-2xl border p-5 transition-colors hover:border-brand-gold/50 ${path.color}`} dir={dir}>
-                <Link href={path.href} className="group block">
-                  <h3 className="text-lg font-bold text-brand-gold group-hover:text-brand-goldSoft">{isEnglish ? path.titleEn : path.title}</h3>
-                  <p className="mt-2 text-sm leading-7 text-brand-cream/65">{isEnglish ? path.descriptionEn : path.description}</p>
-                  <span className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-brand-gold/70 group-hover:text-brand-gold">{isEnglish ? "Read the guide" : "اقرأ الدليل"}<span aria-hidden="true">←</span></span>
-                </Link>
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-brand-gold/10 pt-3" aria-label={isEnglish ? "Related sections" : "الأقسام المرتبطة"}>
-                  {path.links.map(link => <Link key={link} href={link} className="rounded-full border border-brand-gold/15 px-2.5 py-1 text-[11px] text-brand-cream/55 hover:border-brand-gold/40 hover:text-brand-gold">{link.replace("/", "").replaceAll("-", " ")}</Link>)}
-                </div>
-              </article>
-            ))}
-          </div>
-        </Container>
+      <section className="border-b border-brand-gold/10 px-3 py-9 sm:px-4 sm:py-12" aria-labelledby="learning-heading" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 440px' }}>
+        <Container><p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold/45">{isEnglish ? 'Guided learning' : 'مسارات مقترحة'}</p><h2 id="learning-heading" className="mt-2 text-2xl font-bold text-brand-gold" dir={dir}>{isEnglish ? 'A clear next step' : 'خطوة واضحة بعد كل زيارة'}</h2><div className="mt-6 grid gap-4 md:grid-cols-3">{learningPaths.map((path) => <Link key={path.href} href={path.href} className="rounded-2xl border border-brand-gold/12 bg-black/15 p-5 transition hover:border-brand-gold/35" dir={dir}><h3 className="font-bold text-brand-gold">{isEnglish ? path.titleEn : path.title}</h3><p className="mt-2 text-sm leading-7 text-brand-cream/55">{isEnglish ? path.textEn : path.text}</p><span className="mt-4 inline-block text-xs text-brand-gold/60">{isEnglish ? 'Open section →' : 'افتح القسم ←'}</span></Link>)}</div></Container>
       </section>
 
-      <section className="border-b border-brand-gold/12 px-3 py-10 sm:px-4 sm:py-12" aria-labelledby="stats-heading" style={{ contentVisibility: "auto", containIntrinsicSize: "0 420px" }}><Container className="space-y-6"><SectionDivider title={isEnglish ? "Facts & Statistics" : "أرقام وإحصائيات"} /><h2 id="stats-heading" className="text-2xl font-bold text-brand-gold" dir={dir}>{isEnglish ? "Quran facts" : "أرقام من القرآن الكريم"}</h2><div className="grid grid-cols-2 min-[360px]:grid-cols-4 gap-2.5 sm:gap-4">{displayStats.map(stat => <div key={stat.labelEn} className="group relative min-h-[116px] overflow-hidden rounded-2xl border border-brand-gold/18 bg-black/25 p-3 text-center transition-colors hover:border-brand-gold/40 sm:min-h-[140px] sm:p-6"><div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ background: "radial-gradient(circle at 50% 50%, rgba(199,168,107,0.04), transparent 70%)" }} aria-hidden="true" /><p className="text-sm font-bold text-brand-cream/70 mb-1" dir={dir}>{isEnglish ? stat.labelEn : stat.label}</p><p className="text-3xl font-bold text-brand-gold tabular-nums">{stat.value}</p><p className="text-xs text-brand-cream/45 mt-1" dir={dir}>{isEnglish ? stat.subEn : stat.sub}</p></div>)}</div></Container></section>
+      <section className="border-b border-brand-gold/10 px-3 py-9 sm:px-4 sm:py-12" aria-labelledby="stats-heading" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 360px' }}>
+        <Container><p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold/45">{isEnglish ? 'By the numbers' : 'بالأرقام'}</p><h2 id="stats-heading" className="mt-2 text-2xl font-bold text-brand-gold" dir={dir}>{isEnglish ? 'Quran facts' : 'أرقام من القرآن الكريم'}</h2><div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">{stats.map(([value, ar, en]) => <div key={value} className="rounded-2xl border border-brand-gold/12 bg-black/15 p-4 text-center"><p className="text-xs text-brand-cream/55" dir={dir}>{isEnglish ? en : ar}</p><p className="mt-2 text-3xl font-bold text-brand-gold tabular-nums">{value}</p></div>)}</div></Container>
+      </section>
 
-      <section className="border-b border-brand-gold/12 px-3 py-10 sm:px-4 sm:py-12" aria-labelledby="daily-heading" style={{ contentVisibility: "auto", containIntrinsicSize: "0 380px" }}><Container className="space-y-6"><SectionDivider title={isEnglish ? "Daily Reminder" : "تذكير اليوم"} /><div className="mx-auto max-w-3xl text-center space-y-6"><h2 id="daily-heading" className="text-2xl font-bold text-brand-gold" dir={dir}>{isEnglish ? "A verse to keep close" : "آية للتدبر والعمل"}</h2><div className="rounded-3xl border border-brand-gold/15 bg-black/20 p-6 sm:p-10"><p className="text-xl font-bold leading-loose text-brand-cream sm:text-2xl md:text-3xl" dir="rtl" style={{ fontFamily: "var(--font-amiri)" }}>&quot;إِنَّ هَٰذَا الْقُرْآنَ يَهْدِي لِلَّتِي هِيَ أَقْوَمُ&quot;</p><p className="text-sm text-brand-gold/60" dir={dir}>{isEnglish ? "Surah Al-Isra — Verse 9" : "سورة الإسراء — الآية 9"}</p></div><ArabicOrnament className="w-48 mx-auto rotate-180" /><div className="flex min-h-10 justify-center gap-4 flex-wrap pt-2"><Link href="/quran" className="w-full rounded-xl bg-brand-gold px-5 py-3 text-sm font-bold text-brand-emeraldDeep shadow-lg shadow-brand-gold/20 transition-colors hover:bg-brand-goldSoft sm:w-auto sm:px-8">{isEnglish ? "Read the Holy Quran" : "اقرأ القرآن الكريم"}</Link><Link href="/adhkar" className="w-full rounded-xl border border-brand-gold/30 px-5 py-3 text-sm text-brand-cream/80 transition-colors hover:border-brand-gold hover:text-brand-gold sm:w-auto sm:px-8">{isEnglish ? "Today's Adhkar" : "أذكار اليوم"}</Link>{!user && authLoaded && <Link href="/auth/register" className="w-full rounded-xl border border-brand-gold/15 px-5 py-3 text-sm text-brand-cream/65 transition-colors hover:border-brand-gold/30 hover:text-brand-cream/85 sm:w-auto sm:px-8">{isEnglish ? "Create a free account" : "إنشاء حساب مجاني"}</Link>}{user && authLoaded && <Link href="/profile" className="w-full rounded-xl border border-brand-gold/15 px-5 py-3 text-sm text-brand-cream/65 transition-colors hover:border-brand-gold/30 hover:text-brand-cream/85 sm:w-auto sm:px-8">{isEnglish ? "My profile" : "الملف الشخصي"}</Link>}</div></div></Container></section>
+      <section className="px-3 py-10 sm:px-4 sm:py-14" aria-labelledby="verse-heading" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 360px' }}>
+        <Container className="mx-auto max-w-4xl text-center"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold/45">{isEnglish ? 'Daily reflection' : 'تدبر اليوم'}</p><h2 id="verse-heading" className="mt-2 text-2xl font-bold text-brand-gold" dir={dir}>{isEnglish ? 'A verse to keep close' : 'آية للتدبر والعمل'}</h2><blockquote className="mt-6 rounded-3xl border border-brand-gold/12 bg-black/15 p-6 sm:p-10" dir="rtl"><p className="text-xl font-bold leading-loose text-brand-cream sm:text-3xl" style={{ fontFamily: 'var(--font-amiri)' }}>“{dailyVerse}”</p><cite className="mt-4 block text-sm not-italic text-brand-gold/55">Surah Al-Isra — Verse 9</cite></blockquote><div className="mt-6 flex flex-wrap justify-center gap-3"><Link href="/quran" className="rounded-xl bg-brand-gold px-6 py-3 text-sm font-bold text-brand-emeraldDeep transition hover:bg-brand-goldSoft">{isEnglish ? 'Read Quran' : 'اقرأ القرآن'}</Link><Link href="/adhkar" className="rounded-xl border border-brand-gold/25 px-6 py-3 text-sm text-brand-cream/75 transition hover:border-brand-gold hover:text-brand-gold">{isEnglish ? 'Open Adhkar' : 'افتح الأذكار'}</Link></div></Container>
+      </section>
     </div>
   );
 }
