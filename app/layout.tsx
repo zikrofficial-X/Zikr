@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import "./globals.css";
 import { SiteShell } from "@/components/layout/site-shell";
 
@@ -8,7 +8,7 @@ import { DeferredRuntime } from "@/components/layout/deferred-runtime";
 import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
 
-const NativeCapacitorBridge = dynamic(
+const NativeCapacitorBridge = nextDynamic(
   () =>
     import("@/components/layout/native-capacitor-bridge").then(
       (module) => module.NativeCapacitorBridge,
