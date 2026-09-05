@@ -31,10 +31,9 @@ export const defaultOgImage = "/og-image.png";
 import type { Metadata } from "next";
 
 /**
- * Utility/account/search screens and media directories are useful to visitors
- * but are not intended to be SEO landing pages. Keeping them out of the index
- * prevents thin or externally-hosted media URLs from diluting the editorial
- * content inventory used for search and monetization review.
+ * Utility/account/search screens are not intended to be SEO landing pages.
+ * Public editorial/content sections remain indexable so their substantive
+ * content can be discovered by search engines.
  */
 const NOINDEX_PATHS = new Set([
   "/search",
@@ -49,10 +48,8 @@ const NOINDEX_PATHS = new Set([
   "/favorites",
   "/profile",
   "/spiritual-ai",
-  "/competitions",
   "/radio",
   "/youtube",
-  "/videos",
   "/reciters",
   "/tawasheeh",
   "/kids/puzzle",
