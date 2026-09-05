@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/lib/services/admin";
+import { requireAdminStepUp } from "@/lib/services/admin-security";
 import { recordAdminAuditEvent } from "@/lib/services/admin-audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
@@ -28,7 +29,7 @@ export async function safeTogglePublishAction(formData: FormData) {
   const next = String(formData.get("next") ?? "false") === "true";
   const column = table === "pinned_messages" ? "is_active" : "published";
 
-  await supabaseServerAdminRequest(` /rest/v1/${table}?id=eq.${encodeURIComponent(id)}`.trim(), {
+  await supabaseServerAdminRequest(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: { Prefer: "return=minimal" },
     body: JSON.stringify({ [column]: next, updated_at: new Date().toISOString() }),
@@ -47,7 +48,7 @@ export async function safeTogglePublishAction(formData: FormData) {
 }
 
 export async function safeDeleteContentAction(formData: FormData) {
-  await requireAdminPermission("content.delete");
+  await requireAdminStepUp("content.delete", "/admin/content");
   const { table, id } = getTarget(formData);
   const column = table === "pinned_messages" ? "is_active" : "published";
   const current = await supabaseServerAdminRequest<Array<Record<string, unknown>>>(
