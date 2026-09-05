@@ -1,16 +1,11 @@
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Settings } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { MobileNav } from "./mobile-nav";
 import { AuthNavActions } from "./auth-nav-actions";
 import { LanguageToggle } from "./language-toggle";
 import { LanguageAwareNav, type NavLink } from "./language-aware-nav";
-
-const MobileNav = dynamic(
-  () => import("./mobile-nav").then((module) => module.MobileNav),
-  { ssr: false },
-);
 
 const links: NavLink[] = [
   { href: "/quran", label: "القرآن", labelEn: "Quran" },
@@ -48,7 +43,6 @@ export async function Navbar() {
       user = authUser;
 
       if (user) {
-        // A missing profile row must not erase a valid auth session from the UI.
         const { data: profile } = await supabase
           .from("profiles")
           .select("role")
@@ -57,7 +51,6 @@ export async function Navbar() {
         isAdmin = profile?.role === "admin";
       }
     } catch (error) {
-      // Keep the authenticated user even if an optional profile lookup fails.
       console.error("[v0] Navbar auth lookup failed:", error);
     }
   }
