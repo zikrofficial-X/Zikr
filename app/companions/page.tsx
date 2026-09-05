@@ -45,6 +45,19 @@ const STATIC_COMPANION_SLUGS: Record<string, string> = {
   "سعد بن أبي وقاص": "saad-ibn-abi-waqqas",
 };
 
+const STATIC_COMPANION_CATEGORIES: Record<string, string> = {
+  "أبو بكر الصديق": "الخلفاء الراشدون",
+  "عمر بن الخطاب": "الخلفاء الراشدون",
+  "علي بن أبي طالب": "الخلفاء الراشدون",
+  "عثمان بن عفان": "الخلفاء الراشدون",
+  "خالد بن الوليد": "القادة",
+  "سعد بن أبي وقاص": "القادة",
+  "بلال بن رباح": "السابقون إلى الإسلام",
+  "سلمان الفارسي": "السابقون إلى الإسلام",
+  "عبد الله بن عباس": "السابقون إلى الإسلام",
+  "أبو هريرة": "السابقون إلى الإسلام",
+};
+
 const STATIC_COMPANIONS: Companion[] = COMPANIONS.map(companion => ({
   id: `static-${companion.id}`,
   name_ar: companion.name_ar,
@@ -52,7 +65,7 @@ const STATIC_COMPANIONS: Companion[] = COMPANIONS.map(companion => ({
   title_ar: companion.title_ar,
   bio_ar: companion.biography_ar,
   slug: STATIC_COMPANION_SLUGS[companion.name_ar] ?? `static-${companion.id}`,
-  category: "الخلفاء الراشدون",
+  category: STATIC_COMPANION_CATEGORIES[companion.name_ar] ?? null,
 }));
 
 export default async function CompanionsPage() {
