@@ -1,3 +1,5 @@
+import "server-only";
+
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/services/admin";
 import type { AdminPermission } from "@/lib/services/admin-permissions";
