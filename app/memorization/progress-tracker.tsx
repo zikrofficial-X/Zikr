@@ -92,9 +92,15 @@ export function ProgressTracker({
   };
 
   const removeSurah = (num: number) => {
+    const previousEntries = entries;
+    setError('');
     setEntries((cur) => cur.filter((e) => e.surah_number !== num));
     startTransition(async () => {
-      await deleteMemorizationProgress(num);
+      const res = await deleteMemorizationProgress(num);
+      if (!res.ok) {
+        setEntries(previousEntries);
+        setError('تعذر حذف السورة. تحقق من الاتصال وحاول مرة أخرى.');
+      }
     });
   };
 
