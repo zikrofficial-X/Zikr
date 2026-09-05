@@ -31,6 +31,13 @@ const NON_AD_PATHS = [
   "/admin",
   "/api",
   "/auth",
+  "/privacy",
+  "/terms",
+  "/about",
+  "/contact",
+  "/editorial-policy",
+  "/faq",
+  "/platform",
 ] as const;
 
 function adsAllowedOnPath(pathname: string | null): boolean {

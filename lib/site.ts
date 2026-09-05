@@ -53,6 +53,10 @@ const NOINDEX_PATHS = new Set([
   "/reciters",
   "/tawasheeh",
   "/kids/puzzle",
+  "/kids/progress",
+  "/kids/games",
+  "/kids/audio",
+  "/kids/achievements",
 ]);
 
 function isNoindexPath(path: string): boolean {
