@@ -24,64 +24,80 @@ export const FALLBACK_SCHOLARS: Scholar[] = [
     slug: "ibn-taymiyyah",
     nameAr: "شيخ الإسلام ابن تيمية",
     nameEn: "Ibn Taymiyyah",
-    bioAr: "أحد أعظم علماء الإسلام، برع في الفقه والحديث والعقيدة والتفسير. له مؤلفات كثيرة أشهرها مجموع الفتاوى.",
+    bioAr: "أحمد بن عبد الحليم بن تيمية، المعروف بابن تيمية، من أشهر علماء الإسلام في أواخر القرن السابع وأوائل الثامن الهجري. وُلد سنة 661هـ ونشأ في بيت علم، وانتقل إلى دمشق في طفولته، ثم برز في علوم الحديث والفقه والتفسير والعقيدة والمناظرة. تميزت كتاباته بكثرة الاستدلال بالنصوص ومحاولة جمع المسائل المتفرقة في أصول جامعة، وكان له حضور علمي واجتماعي في زمن كثرت فيه الاضطرابات السياسية والفكرية. درّس وأفتى وكتب في مسائل متعددة، وله مؤلفات ضخمة مثل مجموع الفتاوى، ودرء تعارض العقل والنقل، ومنهاج السنة النبوية، والعقيدة الواسطية. تعرض للسجن أكثر من مرة بسبب خلافات علمية وسياسية في عصره، وتوفي في دمشق سنة 728هـ. عند دراسة ابن تيمية ينبغي قراءة كتبه ضمن سياقها ومقارنة أقواله بالمصادر التي ناقشتها، لأن بعض الأقوال المنسوبة إليه في الشبكات الاجتماعية غير دقيقة أو مبتورة من سياقها. هذه الصفحة تقدم مدخلاً تعريفياً ولا تجعل الملخص بديلاً عن كتب التراث المحققة.",
+    bioEn: "Ahmad ibn Abd al-Halim ibn Taymiyyah was a major Muslim scholar who lived in the late seventh and early eighth Islamic centuries. Born in 661 AH, he developed expertise in hadith, jurisprudence, tafsir, theology, and debate. His writings frequently connect legal and theological questions to Quranic and Prophetic evidence. Among his best-known works are Majmu al-Fatawa, Dar al-Ta'arud, Minhaj al-Sunnah, and al-Aqidah al-Wasitiyyah. His public scholarship took place amid political and intellectual disputes, and he was imprisoned several times before his death in Damascus in 728 AH. Serious study should rely on critical editions and distinguish authentic quotations from later attributions.",
     published: true,
+    metadata: { category: "متقدمين", field: "الفقه والعقيدة والحديث", sources: ["https://www.islamweb.net/ar/library/", "https://archive.org/"] },
   },
   {
     id: "2",
     slug: "ibn-qayyim",
     nameAr: "ابن القيم الجوزية",
     nameEn: "Ibn Qayyim Al-Jawziyyah",
-    bioAr: "تلميذ ابن تيمية النجيب، من أعظم علماء الإسلام في التزكية والسلوك والفقه.",
+    bioAr: "محمد بن أبي بكر الزرعي الدمشقي، المشهور بابن قيم الجوزية، ولد سنة 691هـ وتوفي سنة 751هـ. كان من أبرز تلاميذ ابن تيمية، واهتم بالفقه والحديث والعقيدة وتزكية النفس وقضايا السلوك القلبي. اشتهرت كتبه بربط الأحكام والمعاني الشرعية بحياة القلب والعمل، ولذلك انتشرت بين طلاب العلم والقراء كتب مثل مدارج السالكين، وزاد المعاد، وإعلام الموقعين، والداء والدواء. كما كتب في الطب النبوي وفي مسائل الأخلاق والعبادات والأسرة. ومن سمات أسلوبه كثرة جمع النصوص والاستشهاد بها، مع لغة عربية قوية واستطراد في معالجة الموضوع. عند قراءة كتبه يحتاج القارئ إلى التفريق بين النص الشرعي وبين استنباط المؤلف، وإلى مراجعة تخريج الأحاديث والآثار في الطبعات المحققة. سيرته تظهر كيف يمكن للفقه والحديث والتزكية أن تتكامل في المشروع العلمي للعالم، مع بقاء الحكم على تفاصيله العلمية من اختصاص البحث المتخصص.",
+    bioEn: "Ibn Qayyim al-Jawziyyah was a Damascene scholar born in 691 AH and a prominent student of Ibn Taymiyyah. He wrote extensively on jurisprudence, hadith, theology, spiritual development, ethics, and Prophetic guidance. His well-known books include Madarij al-Salikin, Zad al-Ma'ad, I'lam al-Muwaqqi'in, and works on spiritual and moral reform. His approach often connects scriptural evidence with practical transformation of character. Readers should distinguish transmitted texts from his own interpretation and use reliable editions when checking hadith and historical reports.",
     published: true,
+    metadata: { category: "متقدمين", field: "الفقه والتزكية والحديث", sources: ["https://archive.org/", "https://www.alukah.net/"] },
   },
   {
     id: "3",
     slug: "nawawi",
     nameAr: "الإمام النووي",
     nameEn: "Imam An-Nawawi",
-    bioAr: "من أشهر علماء الحديث والفقه الشافعي، صاحب الأربعين النووية وشرح صحيح مسلم.",
+    bioAr: "يحيى بن شرف النووي من أشهر علماء الحديث والفقه الشافعي، ولد سنة 631هـ وتوفي سنة 676هـ. نشأ في نوى ثم انتقل إلى دمشق، ولازم حلقات العلم واشتغل بالحديث والفقه واللغة والتربية. عُرف بقوة العبادة والزهد وكثرة التصنيف رغم قصر عمره، فترك مؤلفات أصبحت من المراجع التعليمية الأساسية، ومنها رياض الصالحين، والأربعون النووية، والمنهاج شرح صحيح مسلم، وشرح صحيح مسلم، وكتاب المجموع في الفقه الشافعي. امتاز منهجه بجمع النصوص وترتيبها وشرحها بلغة واضحة مع خدمة اصطلاحات الحديث والفقه. ولذلك تُستخدم كتبه في المراحل الأولى والمتوسطة من الدراسة، مع أهمية معرفة المذهب والسياق العلمي لكل كتاب. عند نسبة حديث إلى النووي ينبغي التفريق بين كلامه في الشرح وبين متن الحديث نفسه، والرجوع إلى مصادر الحديث الأصلية، لأن الشرح ليس مصدراً مستقلاً لصحة كل رواية يذكرها.",
+    bioEn: "Yahya ibn Sharaf al-Nawawi was a leading hadith scholar and Shafi'i jurist, born in 631 AH and deceased in 676 AH. He moved to Damascus for study and became known for worship, discipline, and prolific writing despite his short life. His works include Riyad al-Salihin, al-Arba'in al-Nawawiyyah, Sharh Sahih Muslim, and al-Majmu'. His teaching style combines organization, explanation, and careful engagement with hadith and jurisprudence. Readers should distinguish his commentary from the original hadith texts and verify reports in primary collections.",
     published: true,
+    metadata: { category: "متقدمين", field: "الحديث والفقه الشافعي", sources: ["https://sunnah.com/", "https://archive.org/"] },
   },
   {
     id: "4",
     slug: "ibn-baz",
     nameAr: "الشيخ عبد العزيز بن باز",
     nameEn: "Sheikh Ibn Baz",
-    bioAr: "المفتي العام للمملكة العربية السعودية، من أبرز علماء العصر الحديث.",
+    bioAr: "عبد العزيز بن عبد الله بن باز عالم وفقيه سعودي من علماء القرن الرابع عشر الهجري، ولد سنة 1330هـ وتوفي سنة 1420هـ. تلقى العلم على عدد من علماء عصره، واشتهر بالتدريس والإفتاء والقضاء، ثم تولى مناصب علمية رسمية في المملكة العربية السعودية. امتدت عنايته إلى العقيدة والفقه والحديث والتفسير، وله دروس مسجلة وكتب وفتاوى جمعت في مجموعات كبيرة. كان أسلوبه في التعليم مباشراً، يكثر من الاستناد إلى الآيات والأحاديث، ويجيب عن الأسئلة التطبيقية التي يحتاج إليها الناس في عباداتهم ومعاملاتهم. عند قراءة فتاواه ينبغي ملاحظة زمن الفتوى وسياق السؤال، لأن بعض المسائل مرتبطة بظروف محددة، كما ينبغي الرجوع إلى النص الكامل لا إلى الاقتباسات المنتشرة. توثيق الفتوى يحتاج أيضاً إلى معرفة أن مجموعات الفتاوى تضم إجابات متعددة المراحل وليست كلها على صياغة واحدة. الهدف من الصفحة التعريف بالمشروع العلمي للشخصية، لا تقديم فتوى شخصية للقارئ.",
+    bioEn: "Abd al-Aziz ibn Baz was a Saudi jurist and scholar who lived from 1330 to 1420 AH. He studied with scholars of his generation and worked in teaching, judging, and issuing legal opinions before holding senior scholarly positions. His work covers creed, jurisprudence, hadith, Quranic studies, and practical questions from daily life. His published fatwas and lectures became widely circulated. Because legal answers can depend on context, readers should consult complete source texts and qualified scholars rather than relying on isolated quotations online.",
     published: true,
+    metadata: { category: "معاصرين", field: "الفتوى والفقه والعقيدة", sources: ["https://binbaz.org.sa/", "https://www.islamhouse.com/"] },
   },
   {
     id: "5",
     slug: "uthaymin",
     nameAr: "الشيخ محمد بن صالح العثيمين",
     nameEn: "Sheikh Ibn Uthaymin",
-    bioAr: "من أبرز علماء المملكة العربية السعودية، له شروحات قيمة في الفقه والعقيدة.",
+    bioAr: "محمد بن صالح العثيمين من علماء السعودية في القرن الرابع عشر الهجري، ولد سنة 1347هـ وتوفي سنة 1421هـ. درس على علماء عصره، واشتغل بالتعليم والتأليف والفتوى، واشتهر بشرح المتون الفقهية والعقدية وتبسيط المسائل للطلاب. من أشهر كتبه الشرح الممتع على زاد المستقنع، وشرح العقيدة الواسطية، وشرح رياض الصالحين، وله دروس في التفسير والحديث والفقه. امتاز أسلوبه بالتدرج في عرض المسألة، وذكر الأدلة، ثم بيان وجه الاستدلال، وأحياناً مناقشة الأقوال الأخرى. لذلك يستخدم كثير من طلاب العلم كتبه في المراحل التعليمية، مع أهمية إدراك أن أحكام الترجيح الفقهي تختلف باختلاف المذاهب والمنهج العلمي. عند عرض رأي من آرائه يجب نسبته إلى مصدره الكامل، وعدم تحويل جواب في سياق سؤال خاص إلى حكم مطلق لكل حالة.",
+    bioEn: "Muhammad ibn Salih al-Uthaymin was a Saudi scholar born in 1347 AH and deceased in 1421 AH. He became well known for teaching jurisprudence, creed, hadith, and tafsir, especially through structured explanations of classical texts. His works include al-Sharh al-Mumti', explanations of al-Wasitiyyah and Riyad al-Salihin, and numerous recorded lessons. His teaching often lays out evidence, reasoning, and comparative views in a method accessible to students. Context and attribution remain important when studying his legal opinions.",
     published: true,
+    metadata: { category: "معاصرين", field: "الفقه والتفسير والعقيدة", sources: ["https://binothaimeen.net/", "https://islamhouse.com/"] },
   },
   {
     id: "6",
     slug: "albani",
     nameAr: "الشيخ محمد ناصر الدين الألباني",
     nameEn: "Sheikh Al-Albani",
-    bioAr: "محدث العصر، صحح وضعف آلاف الأحاديث وله جهود عظيمة في خدمة السنة النبوية.",
+    bioAr: "محمد ناصر الدين الألباني محدث اشتهر في القرن الرابع عشر الهجري بخدمة علم الحديث تخريجاً ودراسةً وحكماً على الأسانيد والمتون. ولد سنة 1333هـ في ألبانيا ثم انتقل مع أسرته إلى دمشق، وانصرف إلى دراسة السنة والكتب الحديثية ومراجعة الأسانيد والنصوص. أصبح له حضور واسع في تحقيق كتب الحديث وتصحيح بعض الروايات وتضعيف أخرى وفق اجتهاده الحديثي، ومن أشهر أعماله سلسلة الأحاديث الصحيحة وسلسلة الأحاديث الضعيفة وصحيح الترغيب والترهيب. أثره في الدراسات الحديثية الحديثة كبير، لكن أقواله في التصحيح والتضعيف هي أحكام عالم من علماء الحديث وليست بديلاً عن البحث المقارن في كلام المحدثين. لذلك من المهم عند استخدام كتبه مقارنة حكمه بمصادر التخريج وبيانات أئمة النقد السابقين عند الحاجة. تقدم سيرته مثالاً على التخصص الطويل والمراجعة النصية الدقيقة والعمل على إحياء العناية بالسنة.",
+    bioEn: "Muhammad Nasir al-Din al-Albani was a twentieth-century hadith specialist known for takhrij, isnad analysis, and grading narrations. Born in Albania in 1333 AH, he later lived in Damascus and devoted much of his life to studying hadith collections. His major works include the Silsilah al-Sahihah and Silsilah al-Da'ifah and studies related to al-Targhib wa al-Tarhib. His judgments had major influence on modern hadith study. Researchers should still compare his grading with primary hadith sources and earlier critical scholarship when precision is required.",
     published: true,
+    metadata: { category: "معاصرين", field: "علم الحديث", sources: ["https://alalbany.net/", "https://sunnah.com/"] },
   },
   {
     id: "7",
     slug: "shaarawi",
     nameAr: "الشيخ محمد متولي الشعراوي",
     nameEn: "Sheikh Al-Shaarawi",
-    bioAr: "من أشهر المفسرين المعاصرين، له خواطر في تفسير القرآن الكريم انتشرت في العالم العربي.",
+    bioAr: "محمد متولي الشعراوي من أشهر الدعاة والمفسرين المصريين في القرن العشرين. ولد سنة 1329هـ تقريباً وتوفي سنة 1418هـ، وتلقى تعليمه الأزهري ثم عمل في التدريس والدعوة، واشتهر في العالم العربي من خلال الخطب والبرامج التي قدم فيها خواطر وتفسيرات لمعاني القرآن بلغة قريبة من الجمهور. اعتمد في كثير من دروسه على شرح المفردات والسياق البلاغي والتربوي، وربط الآيات بمشكلات الحياة والسلوك. ساهم أسلوبه الإعلامي في جعل تفسير القرآن موضوعاً مألوفاً لجمهور واسع خارج الدوائر الأكاديمية. وعند استخدام مادته ينبغي التفريق بين الخاطرة الوعظية وبين التفسير الاصطلاحي المتخصص، وقراءة كلامه في سياقه، والرجوع إلى كتب التفسير المعتمدة عند البحث عن القول الموثق في معنى آية أو مسألة لغوية. أهمية الشعراوي في المنصة هنا معرفية وتاريخية: التعريف بنمط من الخطاب التفسيري الجماهيري وتأثيره، مع تشجيع القارئ على المقارنة والتحقق.",
+    bioEn: "Muhammad Mutawalli al-Sha'rawi was a widely known Egyptian preacher and Quran commentator of the twentieth century. Born around 1329 AH and deceased in 1418 AH, he received an Al-Azhar education and worked in teaching and religious outreach. His televised reflections on Quranic verses reached a broad Arabic-speaking audience. His style combines language, rhetorical reflection, and practical spiritual lessons. Readers should distinguish popular devotional reflection from specialist tafsir and consult established tafsir works for detailed scholarly conclusions.",
     published: true,
+    metadata: { category: "معاصرين", field: "التفسير والدعوة", sources: ["https://www.azhar.eg/", "https://archive.org/"] },
   },
   {
     id: "8",
     slug: "qaradawi",
     nameAr: "الشيخ يوسف القرضاوي",
     nameEn: "Sheikh Al-Qaradawi",
-    bioAr: "من أبرز علماء الفقه المعاصر، له اجتهادات كثيرة في القضايا المعاصرة.",
+    bioAr: "يوسف عبد الله القرضاوي عالم وفقيه مصري المولد عاش معظم حياته في دراسة الفقه والدعوة والقضايا المعاصرة، وولد سنة 1344هـ وتوفي سنة 1444هـ. درس في الأزهر واهتم بفقه الواقع، وبقضايا الأسرة والاقتصاد الإسلامي والزكاة ومقاصد الشريعة والعمل الدعوي. من أشهر كتبه فقه الزكاة، والحلال والحرام في الإسلام، وفقه الأولويات، وله مؤلفات ومحاضرات عديدة حول قضايا المسلمين في العصر الحديث. أثرت كتاباته في النقاش الفقهي المعاصر، كما أثارت بعض آرائه نقاشاً علمياً وسياسياً واسعاً؛ ولذلك ينبغي عند عرض شخصيته في مادة تعليمية أن يُذكر أثره العلمي مع احترام ضرورة قراءة آرائه في نصها الأصلي وفهم سياقها ومقارنتها بالمؤسسات والمدارس الفقهية الأخرى. هذه الصفحة لا تتبنى حكماً سياسياً أو مذهبياً على الشخصية، بل تقدم تعريفاً ببعض إسهاماته ومساره العلمي مع تشجيع التحقق من المصادر الأصلية.",
+    bioEn: "Yusuf al-Qaradawi was an Egyptian-born scholar and jurist who focused much of his work on contemporary fiqh, zakat, Islamic economics, family law, and maqasid. Born in 1344 AH and deceased in 1444 AH, he studied at Al-Azhar and produced a large body of books and lectures. His works, including Fiqh al-Zakat, al-Halal wa al-Haram fi al-Islam, and Fiqh al-Awlawiyyat, influenced modern discussions of Islamic law. Some of his positions were controversial and debated. A balanced educational profile should therefore distinguish biography from evaluation and encourage reading his original works alongside other scholarly perspectives.",
     published: true,
+    metadata: { category: "معاصرين", field: "الفقه المعاصر ومقاصد الشريعة", sources: ["https://www.al-qaradawi.net/", "https://www.azhar.eg/"] },
   },
 ];
 
@@ -133,7 +149,7 @@ function hasSupabaseConfig() {
   );
 }
 
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL = 10 * 60 * 1000;
 let cachedScholars: { data: Scholar[]; timestamp: number } | null = null;
 
 function isExpectedNetworkFallback(error: unknown): boolean {
@@ -148,7 +164,6 @@ function isExpectedNetworkFallback(error: unknown): boolean {
 
 export async function getAllScholars(): Promise<Scholar[]> {
   try {
-    // Use cache if fresh
     if (cachedScholars && Date.now() - cachedScholars.timestamp < CACHE_TTL) {
       return cachedScholars.data;
     }
@@ -163,7 +178,6 @@ export async function getAllScholars(): Promise<Scholar[]> {
       { cache: "force-cache", next: { revalidate: 3600 } }
     );
 
-    // Type validation
     if (!Array.isArray(response)) {
       console.warn("[scholars] Invalid response type, got:", typeof response);
       cachedScholars = { data: FALLBACK_SCHOLARS, timestamp: Date.now() };
@@ -176,7 +190,6 @@ export async function getAllScholars(): Promise<Scholar[]> {
       return FALLBACK_SCHOLARS;
     }
 
-    // Validate response shape and map snake_case to camelCase
     const validated = response.every(isScholarRow);
 
     if (!validated) {
@@ -189,9 +202,7 @@ export async function getAllScholars(): Promise<Scholar[]> {
     cachedScholars = { data: mapped, timestamp: Date.now() };
     return mapped;
   } catch (error) {
-    if (isExpectedNetworkFallback(error)) {
-      return FALLBACK_SCHOLARS;
-    }
+    if (isExpectedNetworkFallback(error)) return FALLBACK_SCHOLARS;
 
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error("[scholars] Failed to fetch from Supabase:", errorMsg);
