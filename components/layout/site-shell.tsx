@@ -5,18 +5,15 @@ import { LanguageProvider } from './language-provider';
 
 const InstallPrompt = dynamic(
   () => import('./install-prompt').then((module) => module.InstallPrompt),
-  { ssr: false },
 );
 const OfflineIndicator = dynamic(
   () => import('../offline-indicator').then((module) => module.OfflineIndicator),
-  { ssr: false },
 );
 const NotificationPermissionBanner = dynamic(
   () =>
     import('./notification-permission-banner').then(
       (module) => module.NotificationPermissionBanner,
     ),
-  { ssr: false },
 );
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
@@ -26,7 +23,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         <Navbar />
         <main>{children}</main>
         <Footer />
-        {/* Non-critical client integrations stay outside the critical render path. */}
+        {/* Non-critical client integrations stay code-split from the shell. */}
         <NotificationPermissionBanner />
         <InstallPrompt />
         <OfflineIndicator />
