@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { FALLBACK_COMPETITIONS } from '@/lib/data/competitions-fallback';
 
 export type SiteSettingValue = {
   title?: string | null;
@@ -52,36 +53,6 @@ export type MemorizationPlan = {
   prompt: string | null;
   tajweed_focus: string | null;
 };
-
-const FALLBACK_COMPETITIONS: Competition[] = [
-  {
-    id: 'fallback-quiz-quran',
-    title: 'تحدي القرآن الأسبوعي',
-    description: 'مسابقة تعليمية مفتوحة للتدريب على السور والمعاني والمعلومات الأساسية في علوم القرآن. يمكن للمستخدم أن يختبر نفسه من خلال أسئلة قصيرة، ثم يراجع الإجابات والمراجع قبل الانتقال إلى مستوى جديد.',
-    prize: 'شارة إنجاز رقمية داخل الحساب',
-    starts_at: null,
-    ends_at: null,
-    metadata: { rules: 'أجب بنفسك أولاً، ثم راجع الإجابة من المصدر. الهدف هو التعلم لا مجرد جمع النقاط.' },
-  },
-  {
-    id: 'fallback-seerah',
-    title: 'مسابقة السيرة النبوية',
-    description: 'برنامج مراجعة متدرج لأحداث السيرة النبوية، يبدأ بالمرحلة المكية والهجرة وبناء المجتمع في المدينة ثم ينتقل إلى الغزوات والصلح وفتح مكة وحجة الوداع. كل مرحلة مصممة لتشجيع القراءة قبل الإجابة.',
-    prize: 'شهادة إكمال للمتعلم',
-    starts_at: null,
-    ends_at: null,
-    metadata: { rules: 'تعتمد الأسئلة على مصادر السيرة والحديث المعتبرة، وتُعرض المعلومة مع توضيح ما هو مشهور وما يحتاج إلى مراجعة.' },
-  },
-  {
-    id: 'fallback-adhkar',
-    title: 'تحدي الثبات على الذكر',
-    description: 'مبادرة لتثبيت عادة الأذكار اليومية من خلال جدول بسيط للمتابعة والمراجعة. لا تقوم المسابقة على المفاضلة بين الأشخاص، بل على مساعدة كل مستخدم في بناء عادة عبادية قابلة للاستمرار.',
-    prize: 'شارة الثبات + سجل إنجاز شخصي',
-    starts_at: null,
-    ends_at: null,
-    metadata: { rules: 'الإنجاز الشخصي أهم من مقارنة الأرقام؛ راجع نص الذكر ومصدره، ثم سجل إتمامك اليومي.' },
-  },
-];
 
 const FALLBACK_MEMORIZATION_PLANS: MemorizationPlan[] = [
   { id: 'mem-01', title: 'البداية الهادئة: 5 آيات يوميًا', cadence: 'يومي', target_ref: 'سورة قصيرة أو أول 5 آيات من المقرر', prompt: 'استمع مرة، اقرأ من المصحف عدة مرات، ثم سمّع دون نظر. سجّل مواضع الخطأ للمراجعة.', tajweed_focus: 'مخارج الحروف، المدود الأصلية، وضبط الوقف على رؤوس الآيات.' },
