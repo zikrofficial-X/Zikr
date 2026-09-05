@@ -36,6 +36,13 @@ const STATIC_COMPANION_SLUGS: Record<string, string> = {
   "أبو بكر الصديق": "abu-bakr",
   "عمر بن الخطاب": "umar-ibn-khattab",
   "علي بن أبي طالب": "ali-ibn-abi-talib",
+  "عثمان بن عفان": "uthman-ibn-affan",
+  "خالد بن الوليد": "khalid-ibn-al-walid",
+  "بلال بن رباح": "bilal-ibn-rabah",
+  "سلمان الفارسي": "salman-al-farisi",
+  "عبد الله بن عباس": "abdullah-ibn-abbas",
+  "أبو هريرة": "abu-hurayrah",
+  "سعد بن أبي وقاص": "saad-ibn-abi-waqqas",
 };
 
 const STATIC_COMPANIONS: Companion[] = COMPANIONS.map(companion => ({
