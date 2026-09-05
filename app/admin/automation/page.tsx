@@ -17,9 +17,17 @@ const JOB_TABLES = [
   ['tasks', 'مهام النظام'],
 ] as const;
 
+async function safeCount(table: string) {
+  try {
+    return await supabaseServerAdminCount(table);
+  } catch {
+    return 0;
+  }
+}
+
 export default async function AdminAutomationPage() {
   await requireAdminPermission("system.manage");
-  const jobs = await Promise.all(JOB_TABLES.map(async ([table, label]) => [table, label, await supabaseServerAdminCount(table)] as const));
+  const jobs = await Promise.all(JOB_TABLES.map(async ([table, label]) => [table, label, await safeCount(table)] as const));
 
   return (
     <Container className="py-10 space-y-6" dir="rtl">
