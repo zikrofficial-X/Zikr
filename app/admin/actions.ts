@@ -33,7 +33,7 @@
  * Request (FormData): title, cadence, targetRef, prompt, tajweedFocus, published
  */
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from '@/lib/services/admin';
+import { requireAdminPermission } from '@/lib/services/admin';
 import { DEFAULT_AUDIO_SETTINGS, isAudioChoiceKey, type AudioSlot } from '@/lib/audio/config';
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
@@ -120,7 +120,7 @@ async function queueSocialPublish(input: {
 }
 
 export async function saveSiteSettingAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission('settings.manage');
   const key = String(formData.get("key") ?? "").trim();
   if (!key) throw new Error("مفتاح الإعداد مطلوب.");
 
@@ -200,7 +200,7 @@ export async function saveSiteSettingAction(formData: FormData) {
 }
 
 export async function saveStoryAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission('content.manage');
   const title = String(formData.get("title") ?? "").trim();
   const slug = String(formData.get("slug") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
@@ -227,7 +227,7 @@ export async function saveStoryAction(formData: FormData) {
 }
 
 export async function saveArticleAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdminPermission('content.manage');
   const title = String(formData.get("title") ?? "").trim();
   const slug = String(formData.get("slug") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
@@ -237,6 +237,7 @@ export async function saveArticleAction(formData: FormData) {
   const imageUrl = value(formData, "imageUrl");
   const summary = value(formData, "summary");
   const selectedPlatforms = platforms(formData);
+  if (selectedPlatforms.length > 0) await requireAdminPermission('social.manage');
 
   await supabaseServerAdminRequest("/rest/v1/articles?on_conflict=slug", {
     method: "POST",
@@ -272,7 +273,7 @@ export async function saveArticleAction(formData: FormData) {
 }
 
 export async function saveVideoPostAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdminPermission('video.manage');
   const title = String(formData.get("title") ?? "").trim();
   if (!title) throw new Error("عنوان الفيديو مطلوب.");
 
@@ -288,6 +289,8 @@ export async function saveVideoPostAction(formData: FormData) {
   const videoStorageKey = value(formData, "videoStorageKey");
   const thumbnailUrl = value(formData, "thumbnailUrl");
   const selectedPlatforms = platforms(formData);
+
+  if (selectedPlatforms.length > 0) await requireAdminPermission('social.manage');
 
   if (selectedPlatforms.length > 0 && !videoUrl) {
     throw new Error("للنشر التلقائي على Facebook أو YouTube يجب رفع ملف فيديو من حقل الرفع.");
@@ -370,7 +373,7 @@ export async function saveVideoPostAction(formData: FormData) {
 }
 
 export async function saveCompetitionAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission('content.manage');
   const title = String(formData.get("title") ?? "").trim();
   if (!title) throw new Error("عنوان المسابقة مطلوب.");
 
@@ -395,7 +398,7 @@ export async function saveCompetitionAction(formData: FormData) {
 }
 
 export async function savePinnedMessageAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission('content.manage');
   const body = String(formData.get("body") ?? "").trim();
   if (!body) throw new Error("نص الرسالة المثبتة مطلوب.");
 
@@ -419,7 +422,7 @@ export async function savePinnedMessageAction(formData: FormData) {
 
 // ─── User role management ────────────────────────────────────────────────────
 export async function updateUserRoleAction(formData: FormData) {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission('users.roles');
   const userId = String(formData.get("userId") ?? "").trim();
   const role = String(formData.get("role") ?? "").trim();
 
@@ -479,7 +482,7 @@ function assertManagedTable(table: string): asserts table is ManagedTable {
 }
 
 export async function deleteContentAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission('content.delete');
   const table = String(formData.get("table") ?? "").trim();
   const id = String(formData.get("id") ?? "").trim();
   assertManagedTable(table);
@@ -498,7 +501,7 @@ export async function deleteContentAction(formData: FormData) {
 }
 
 export async function togglePublishAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission('content.publish');
   const table = String(formData.get("table") ?? "").trim();
   const id = String(formData.get("id") ?? "").trim();
   const next = formData.get("next") === "true";
@@ -524,7 +527,7 @@ export async function togglePublishAction(formData: FormData) {
 }
 
 export async function saveMemorizationPlanAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission('content.manage');
   const title = String(formData.get("title") ?? "").trim();
   if (!title) throw new Error("عنوان خطة الحفظ مطلوب.");
 
