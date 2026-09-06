@@ -25,10 +25,7 @@ import {
   formatPrayerTime,
 } from "@/lib/services/prayer-times";
 import type { PrayerTimesResponse } from "@/lib/services/prayer-times";
-import {
-  unlockAudioContext,
-  isAudioUnlocked,
-} from "@/lib/audio/spiritual-tones";
+import { unlockAudioContext, isAudioUnlocked } from "@/lib/audio/spiritual-tones";
 import { usePrayerAlert, PRAYER_NAMES_AR } from "@/hooks/use-prayer-alert";
 import { resolveLocationLabel } from "@/lib/location/reverse-geocode";
 
@@ -64,7 +61,9 @@ export default function PrayerTimesPage() {
         try {
           localStorage.setItem("zikr_prayer_location", JSON.stringify({ lat, lon, city, timings: data.data.timings, date: data.data.date, cachedAt: Date.now() }));
           window.dispatchEvent(new Event("zikr:prayer-location-updated"));
-        } catch {}
+        } catch {
+          // Browser storage can be unavailable; prayer times remain usable in memory.
+        }
       } else {
         setError("فشل في جلب مواقيت الصلاة");
       }
@@ -123,7 +122,9 @@ export default function PrayerTimesPage() {
         try {
           localStorage.setItem("zikr_prayer_location", JSON.stringify({ lat: data.data.meta.latitude, lon: data.data.meta.longitude, city, timings: data.data.timings, date: data.data.date, cachedAt: Date.now() }));
           window.dispatchEvent(new Event("zikr:prayer-location-updated"));
-        } catch {}
+        } catch {
+          // Browser storage is optional; keep the successful response in memory.
+        }
       } else {
         setError("لم يتم العثور على المدينة");
       }
@@ -158,7 +159,9 @@ export default function PrayerTimesPage() {
           setLoading(false);
         }
       }
-    } catch {}
+    } catch {
+      // Ignore malformed/unavailable cache and fetch a fresh schedule below.
+    }
     void requestLocation();
   }, [requestLocation]);
 
