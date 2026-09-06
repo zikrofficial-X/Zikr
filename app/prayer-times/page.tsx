@@ -25,10 +25,7 @@ import {
   formatPrayerTime,
 } from "@/lib/services/prayer-times";
 import type { PrayerTimesResponse } from "@/lib/services/prayer-times";
-import {
-  unlockAudioContext,
-  isAudioUnlocked,
-} from "@/lib/audio/spiritual-tones";
+import { unlockAudioContext, isAudioUnlocked } from "@/lib/audio/spiritual-tones";
 import { usePrayerAlert, PRAYER_NAMES_AR } from "@/hooks/use-prayer-alert";
 import { resolveLocationLabel } from "@/lib/location/reverse-geocode";
 
@@ -158,6 +155,9 @@ export default function PrayerTimesPage() {
           setLoading(false);
         }
       }
+    } catch {
+      // Ignore malformed/unavailable cache and fetch a fresh schedule below.
+    }
     } catch {}
     void requestLocation();
   }, [requestLocation]);
