@@ -158,7 +158,6 @@ export default function PrayerTimesPage() {
     } catch {
       // Ignore malformed/unavailable cache and fetch a fresh schedule below.
     }
-    } catch {}
     void requestLocation();
   }, [requestLocation]);
 
