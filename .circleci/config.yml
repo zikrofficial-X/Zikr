@@ -45,8 +45,8 @@ jobs:
       GRADLE_OPTS: >-
         -Dorg.gradle.daemon=false
         -Dorg.gradle.workers.max=1
-        -Dorg.gradle.jvmargs=-Xmx1536m
-        -XX:MaxMetaspaceSize=384m
+        -Dorg.gradle.jvmargs=-Xmx2048m
+        -XX:MaxMetaspaceSize=512m
         -Dfile.encoding=UTF-8
     steps:
       - checkout
@@ -65,8 +65,8 @@ jobs:
           command: |
             set -euo pipefail
             sudo apt-get update
-            sudo apt-get install -y openjdk-17-jdk
-            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+            sudo apt-get install -y openjdk-21-jdk
+            export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
             echo "export JAVA_HOME=$JAVA_HOME" >> "$BASH_ENV"
             echo 'export PATH=$JAVA_HOME/bin:$PATH' >> "$BASH_ENV"
             java -version
@@ -111,8 +111,17 @@ jobs:
             printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
             chmod 600 "$KEYSTORE_PATH"
             test -s "$KEYSTORE_PATH"
-            keytool -list -v -storetype PKCS12 -keystore "$KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
-            printf '%s\n' "storeFile=$KEYSTORE_PATH" "storeType=PKCS12" "storePassword=$ANDROID_KEYSTORE_PASSWORD" "keyAlias=$ANDROID_KEY_ALIAS" "keyPassword=$ANDROID_KEY_PASSWORD" > "$PROPERTIES_PATH"
+            STORE_TYPE="PKCS12"
+            if keytool -list -keystore "$KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+              STORE_TYPE="PKCS12"
+            elif keytool -list -storetype JKS -keystore "$KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+              STORE_TYPE="JKS"
+            else
+              echo "Unable to open the release keystore with PKCS12 or JKS." >&2
+              exit 1
+            fi
+            echo "Detected release keystore type: $STORE_TYPE"
+            printf '%s\n' "storeFile=$KEYSTORE_PATH" "storeType=$STORE_TYPE" "storePassword=$ANDROID_KEYSTORE_PASSWORD" "keyAlias=$ANDROID_KEY_ALIAS" "keyPassword=$ANDROID_KEY_PASSWORD" > "$PROPERTIES_PATH"
             chmod 600 "$PROPERTIES_PATH"
       - run:
           name: Resolve Android release version
@@ -141,12 +150,22 @@ jobs:
             fi
             echo "export ANDROID_RELEASE_TAG=$RELEASE_TAG" >> "$BASH_ENV"
       - run:
+          name: Print Android build diagnostics
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            echo "ANDROID_HOME=${ANDROID_HOME:-<unset>}"
+            echo "JAVA_HOME=${JAVA_HOME:-<unset>}"
+            java -version
+            cd android
+            ./gradlew --version
+      - run:
           name: Clean Android build
           shell: /bin/bash
           command: |
             set -euo pipefail
             cd android
-            ./gradlew clean --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
+            ./gradlew clean --no-daemon --max-workers=1 --stacktrace -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
           no_output_timeout: 20m
       - run:
           name: Build signed APK and AAB
@@ -154,9 +173,8 @@ jobs:
           command: |
             set -euo pipefail
             cd android
-            ./gradlew :app:assembleRelease --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
-            ./gradlew :app:bundleRelease --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"
-          no_output_timeout: 30m
+            ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --max-workers=1 --stacktrace --warning-mode all -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+          no_output_timeout: 40m
       - run:
           name: Verify APK, AAB, signature and version
           shell: /bin/bash
@@ -214,7 +232,6 @@ jobs:
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
             test -s "$APK"
             test -s "$AAB"
-
             if ! gh api "/repos/$REPO/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
               echo "Creating missing tag $RELEASE_TAG at $CIRCLE_SHA1"
               git config user.name "CircleCI Release"
@@ -225,7 +242,6 @@ jobs:
             else
               echo "Tag $RELEASE_TAG already exists."
             fi
-
             if gh release view "$RELEASE_TAG" --repo "$REPO" >/dev/null 2>&1; then
               gh release upload "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --repo "$REPO" --clobber
             else
