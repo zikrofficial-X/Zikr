@@ -1,11 +1,10 @@
 BEGIN;
 
 -- The trigger function is invoked by PostgreSQL, not by direct RPC calls.
--- Remove default EXECUTE privileges from public-facing roles and PUBLIC.
 REVOKE ALL ON FUNCTION public.prevent_admin_audit_events_mutation() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.prevent_admin_audit_events_mutation() FROM anon, authenticated;
 
--- Make the admin-only RLS predicate initplan-safe so auth.uid() is evaluated once.
+-- Keep the admin-only policy initplan-safe.
 DROP POLICY IF EXISTS admin_audit_events_admin_select ON public.admin_audit_events;
 CREATE POLICY admin_audit_events_admin_select
   ON public.admin_audit_events
@@ -20,7 +19,7 @@ CREATE POLICY admin_audit_events_admin_select
     )
   );
 
--- Remove three exact duplicate indexes while retaining the canonical names.
+-- Remove exact duplicate indexes while keeping canonical indexes.
 DROP INDEX IF EXISTS public.idx_admin_audit_events_action;
 DROP INDEX IF EXISTS public.idx_admin_audit_events_created_at;
 DROP INDEX IF EXISTS public.idx_admin_audit_events_resource;
