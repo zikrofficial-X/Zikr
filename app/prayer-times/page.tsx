@@ -122,15 +122,39 @@ export default function PrayerTimesPage() {
 
     navigator.geolocation.getCurrentPosition(
       async position => {
-        const { latitude, longitude } = position.coords;
+        const { latitude, longitude, accuracy } = position.coords;
+        if (
+          !Number.isFinite(latitude) ||
+          !Number.isFinite(longitude) ||
+          latitude < -90 ||
+          latitude > 90 ||
+          longitude < -180 ||
+          longitude > 180
+        ) {
+          setError("تعذر قراءة إحداثيات الموقع. يمكنك البحث عن مدينتك يدويًا.");
+          setIsFetching(false);
+          setLoading(false);
+          return;
+        }
         const city = await resolveLocationLabel(latitude, longitude);
-        await loadForCoords(latitude, longitude, city ?? "موقعك الحالي");
+        await loadForCoords(
+          latitude,
+          longitude,
+          city ?? (accuracy && accuracy > 5000 ? "موقع تقريبي" : "موقعك الحالي")
+        );
       },
-      async () => {
-        // Geo denied — silently fall back to Cairo
-        await loadForCoords(CAIRO.lat, CAIRO.lon, CAIRO.city);
+      async error => {
+        const message =
+          error.code === error.PERMISSION_DENIED
+            ? "لم يتم السماح بالوصول إلى موقعك. يمكنك البحث عن مدينتك يدويًا."
+            : error.code === error.TIMEOUT
+              ? "انتهى وقت تحديد الموقع. يمكنك المحاولة مرة أخرى أو البحث عن مدينتك."
+              : "تعذر تحديد موقعك. يمكنك البحث عن مدينتك يدويًا.";
+        setError(message);
+        setIsFetching(false);
+        setLoading(false);
       },
-      { timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 }
     );
   }, [loadForCoords, prayerData]);
 
