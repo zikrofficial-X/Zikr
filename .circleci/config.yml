@@ -128,7 +128,7 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            VERSION_NAME="$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' android/app/build.gradle | head -1)"
+            VERSION_NAME="$(sed -n 's/.*versionName \"\([^\"]*\)\".*/\1/p' android/app/build.gradle | head -1)"
             if [[ -z "$VERSION_NAME" ]]; then
               echo "Unable to determine Android versionName" >&2
               exit 1
@@ -233,12 +233,12 @@ jobs:
             test -s "$APK"
             test -s "$AAB"
             if ! gh api "/repos/$REPO/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
-              echo "Creating missing tag $RELEASE_TAG at $CIRCLE_SHA1"
-              git config user.name "CircleCI Release"
-              git config user.email "release@zikr.app"
-              git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
-              git tag -a "$RELEASE_TAG" "$CIRCLE_SHA1" -m "ZIKR $RELEASE_TAG"
-              git push origin "$RELEASE_TAG"
+              echo "Creating missing lightweight tag $RELEASE_TAG at $CIRCLE_SHA1 via GitHub API"
+              gh api \
+                --method POST \
+                "/repos/$REPO/git/refs" \
+                -f "ref=refs/tags/$RELEASE_TAG" \
+                -f "sha=$CIRCLE_SHA1"
             else
               echo "Tag $RELEASE_TAG already exists."
             fi
