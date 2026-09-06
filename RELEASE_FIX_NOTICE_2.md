@@ -1,0 +1,1 @@
+Release publication fix for v1.3.2.
