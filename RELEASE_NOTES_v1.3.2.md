@@ -22,13 +22,13 @@ This release packages the latest merged ZIKR production code as a documented And
 - `targetSdkVersion`: `36`
 - Android Gradle Plugin: `8.13.2`
 - Gradle wrapper: `8.13`
-- Release build JDK: `17`
+- Release build JDK: `21`
 
 Android 16 / API 36 is the current required target level for new Google Play submissions and app updates as of August 31, 2026.
 
 ## Release artifacts
 
-The CI release job is configured to publish:
+The CI release job publishes:
 
 - `app-release.apk` — signed Android APK for direct installation/testing.
 - `app-release.aab` — signed Android App Bundle for Google Play distribution.
@@ -49,6 +49,7 @@ The Android release pipeline must pass all of the following before publishing:
 9. Version name verification.
 10. Target SDK verification (`36`).
 11. SHA-256 checksum generation.
+12. GitHub Release publication using the canonical repository through the GitHub API.
 
 ## Signing
 
@@ -61,7 +62,5 @@ CI can verify the production build and artifact integrity, but a physical Androi
 ## Release provenance
 
 Source branch: `android-release-v1.3.2`
-
-Base commit: `main` at merge commit `6c2682beecd674315009485652a5946f87a1eb3e`
 
 Release tag: `v1.3.2`
