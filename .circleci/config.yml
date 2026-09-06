@@ -226,7 +226,7 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            REPO="${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
+            REPO="Zikrmediaofficial/Zikr"
             RELEASE_TAG="$ANDROID_RELEASE_TAG"
             APK="android/app/build/outputs/apk/release/app-release.apk"
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
@@ -236,8 +236,8 @@ jobs:
               echo "Creating missing tag $RELEASE_TAG at $CIRCLE_SHA1"
               git config user.name "CircleCI Release"
               git config user.email "release@zikr.app"
-              git tag -a "$RELEASE_TAG" "$CIRCLE_SHA1" -m "ZIKR $RELEASE_TAG"
               git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+              git tag -a "$RELEASE_TAG" "$CIRCLE_SHA1" -m "ZIKR $RELEASE_TAG"
               git push origin "$RELEASE_TAG"
             else
               echo "Tag $RELEASE_TAG already exists."
