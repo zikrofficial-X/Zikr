@@ -152,7 +152,7 @@ export default function ContactPage() {
                         type="email"
                         value={form.email}
                         onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                        placeholder="email@example.com"
+                        placeholder="بريدك الإلكتروني"
                         className="w-full rounded-xl border border-brand-gold/20 bg-black/30 px-4 py-2.5 text-sm text-brand-cream placeholder:text-brand-cream/30 focus:border-brand-gold/50 focus:outline-none focus:ring-2 focus:ring-brand-gold/10 transition-colors"
                         dir="ltr"
                       />

@@ -91,7 +91,7 @@ function LoginForm() {
             type="email"
             required
             disabled={loading}
-            placeholder="email@example.com"
+            placeholder="بريدك الإلكتروني"
             className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-3 text-brand-cream placeholder:text-brand-cream/40 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold disabled:opacity-50"
           />
         </div>
