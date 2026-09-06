@@ -10,6 +10,19 @@ const NativeCapacitorBridge = dynamic(
   { ssr: false },
 );
 
+const NativeGoogleOAuthHandler = dynamic(
+  () =>
+    import('./native-google-oauth-handler').then(
+      (module) => module.NativeGoogleOAuthHandler,
+    ),
+  { ssr: false },
+);
+
 export function NativeCapacitorBridgeLoader() {
-  return <NativeCapacitorBridge />;
+  return (
+    <>
+      <NativeCapacitorBridge />
+      <NativeGoogleOAuthHandler />
+    </>
+  );
 }
