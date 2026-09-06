@@ -267,9 +267,8 @@ export function NativeCapacitorBridge() {
           });
         }
 
-        // Android 13+ permission is returned asynchronously; the native facade
-        // exposes it to the web layer instead of pretending it is always granted.
-        await localNotifications?.requestPermissions?.();
+        // Permission is requested only from the user action that enables
+        // reminders. Initializing channels must not trigger a system prompt.
       } catch (error) {
         console.warn(
           "[native-bridge] Local notification initialization failed",
@@ -281,7 +280,8 @@ export function NativeCapacitorBridge() {
         window.dispatchEvent(new CustomEvent("zikr:native-ready"));
       }
     })();
-    void plugins.PushNotifications?.requestPermissions?.();
+    // Push permission is requested only when the user explicitly enables
+    // server-backed reminders; never prompt during app startup.
 
     // Browser emits this when the user closes the system Custom Tab. Notify
     // the login button so an interrupted OAuth flow never leaves the UI stuck.

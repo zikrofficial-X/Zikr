@@ -2,7 +2,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const ignoredDirs = new Set(['node_modules', '.next', '.git', 'android/.gradle', 'ios/App/Pods']);
+const ignoredDirs = new Set([
+  'node_modules',
+  '.next',
+  '.git',
+  'android/.gradle',
+  'ios/App/Pods',
+  // Capacitor copies compiled Next.js output into this ignored native
+  // WebView directory; bundled dependency examples contain example.com URLs.
+  'ios/App/App/public',
+  'android/app/src/main/assets/public',
+]);
 const extensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.md', '.json']);
 const forbidden = [
   /['\"]abc123['\"]/g,

@@ -79,10 +79,7 @@ export function usePrayerTimes(): UsePrayerTimesReturn {
                 location?: string;
               }
             | undefined;
-          if (
-            permission?.location === "denied" ||
-            permission?.location === "prompt"
-          ) {
+          if (permission?.location === "denied") {
             setError(new Error("Location permission was denied"));
             return;
           }
