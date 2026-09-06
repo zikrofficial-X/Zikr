@@ -3,6 +3,10 @@ import { ServiceError } from '@/lib/types/common';
 
 // Use local API proxy to avoid CORS and crawl issues
 const API_BASE = '/api/prayer-times';
+const CACHE_TTL_MS = 60_000;
+
+const prayerTimesCache = new Map<string, { expiresAt: number; data: PrayerTimesResponse | null }>();
+const prayerTimesInFlight = new Map<string, Promise<PrayerTimesResponse | null>>();
 
 export interface PrayerTime {
   Fajr: string;
@@ -28,46 +32,25 @@ export interface PrayerTimesResponse {
         date: string;
         format: string;
         day: string;
-        weekday: {
-          en: string;
-          ar: string;
-        };
-        month: {
-          number: number;
-          en: string;
-          ar: string;
-        };
+        weekday: { en: string; ar: string };
+        month: { number: number; en: string; ar: string };
         year: string;
       };
       hijri: {
         date: string;
         format: string;
         day: string;
-        weekday: {
-          en: string;
-          ar: string;
-        };
-        month: {
-          number: number;
-          en: string;
-          ar: string;
-        };
+        weekday: { en: string; ar: string };
+        month: { number: number; en: string; ar: string };
         year: string;
-        designation: {
-          abbreviated: string;
-          expanded: string;
-        };
+        designation: { abbreviated: string; expanded: string };
       };
     };
     meta: {
       latitude: number;
       longitude: number;
       timezone: string;
-      method: {
-        id: number;
-        name: string;
-        params: Record<string, unknown>;
-      };
+      method: { id: number; name: string; params: Record<string, unknown> };
       latitudeAdjustmentMethod: string;
       midnightMethod: string;
       school: string;
@@ -84,79 +67,123 @@ export interface CityCoordinates {
   timezone: string;
 }
 
+function buildPrayerCacheKey(
+  latitude: number,
+  longitude: number,
+  date: string | undefined,
+  method: number,
+): string {
+  return [latitude.toFixed(6), longitude.toFixed(6), date ?? 'today', method].join('|');
+}
+
+async function fetchPrayerTimesUncached(
+  latitude: number,
+  longitude: number,
+  date: string | undefined,
+  method: number,
+): Promise<PrayerTimesResponse | null> {
+  const params = new URLSearchParams({
+    latitude: latitude.toString(),
+    longitude: longitude.toString(),
+    method: method.toString(),
+  });
+
+  if (date) params.append('date', date);
+
+  const { data } = await safeApiFetch<PrayerTimesResponse>(`${API_BASE}?${params.toString()}`);
+  return data || null;
+}
+
 /**
  * Fetch prayer times for a specific date and location
- * @param latitude - Latitude of the location
- * @param longitude - Longitude of the location
- * @param date - Date in YYYY-MM-DD format (optional, defaults to today)
- * @param method - Calculation method (optional, defaults to umm-al-qura)
  */
 export async function getPrayerTimes(
   latitude: number,
   longitude: number,
   date?: string,
-  method: number = 4 // 4 = Umm Al-Qura
+  method: number = 4,
 ): Promise<PrayerTimesResponse | null> {
-  try {
-    const params = new URLSearchParams({
-      latitude: latitude.toString(),
-      longitude: longitude.toString(),
-      method: method.toString(),
-    });
+  const cacheKey = buildPrayerCacheKey(latitude, longitude, date, method);
+  const now = Date.now();
+  const cached = prayerTimesCache.get(cacheKey);
 
-    if (date) {
-      params.append('date', date);
+  if (cached && cached.expiresAt > now) return cached.data;
+
+  const existingRequest = prayerTimesInFlight.get(cacheKey);
+  if (existingRequest) return existingRequest;
+
+  const request = (async () => {
+    try {
+      const data = await fetchPrayerTimesUncached(latitude, longitude, date, method);
+      prayerTimesCache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+      return data;
+    } catch (error) {
+      console.error('[prayer-times] Failed to fetch prayer times:', error);
+      if (error instanceof ServiceError) return null;
+      throw error;
+    } finally {
+      prayerTimesInFlight.delete(cacheKey);
     }
+  })();
 
-    const { data } = await safeApiFetch<PrayerTimesResponse>(
-      `${API_BASE}?${params.toString()}`
-    );
-
-    return data || null;
-  } catch (error) {
-    console.error('[prayer-times] Failed to fetch prayer times:', error);
-    if (error instanceof ServiceError) return null;
-    throw error;
-  }
+  prayerTimesInFlight.set(cacheKey, request);
+  return request;
 }
 
 /**
  * Fetch prayer times by city name
- * @param city - City name
- * @param country - Country name (optional)
- * @param date - Date in YYYY-MM-DD format (optional)
- * @param method - Calculation method (optional)
  */
 export async function getPrayerTimesByCity(
   city: string,
   country?: string,
   date?: string,
-  method: number = 4
+  method: number = 4,
 ): Promise<PrayerTimesResponse | null> {
   const cleanCity = city.trim();
   if (!cleanCity) return null;
 
-  try {
-    const params = new URLSearchParams({ method: method.toString() });
-    if (date) params.append('date', date);
+  const cacheKey = [
+    'city',
+    cleanCity.toLowerCase(),
+    country?.trim().toLowerCase() ?? '',
+    date ?? 'today',
+    method,
+  ].join('|');
+  const now = Date.now();
+  const cached = prayerTimesCache.get(cacheKey);
 
-    if (country?.trim()) {
-      // timingsByCity requires BOTH city and country.
-      params.append('city', cleanCity);
-      params.append('country', country.trim());
-    } else {
-      // Without a country, use timingsByAddress which geocodes free-form
-      // input and supports Arabic city names (e.g. "القاهرة").
-      params.append('address', cleanCity);
+  if (cached && cached.expiresAt > now) return cached.data;
+
+  const existingRequest = prayerTimesInFlight.get(cacheKey);
+  if (existingRequest) return existingRequest;
+
+  const request = (async () => {
+    try {
+      const params = new URLSearchParams({ method: method.toString() });
+      if (date) params.append('date', date);
+
+      if (country?.trim()) {
+        params.append('city', cleanCity);
+        params.append('country', country.trim());
+      } else {
+        params.append('address', cleanCity);
+      }
+
+      const { data } = await safeApiFetch<PrayerTimesResponse>(`${API_BASE}?${params.toString()}`);
+      const result = data || null;
+      prayerTimesCache.set(cacheKey, { data: result, expiresAt: Date.now() + CACHE_TTL_MS });
+      return result;
+    } catch (error) {
+      console.error('[prayer-times] Failed to fetch prayer times by city:', error);
+      if (error instanceof ServiceError) return null;
+      throw error;
+    } finally {
+      prayerTimesInFlight.delete(cacheKey);
     }
+  })();
 
-    const { data } = await safeApiFetch<PrayerTimesResponse>(`${API_BASE}?${params.toString()}`);
-    return data || null;
-  } catch (error) {
-    console.error('[prayer-times] Failed to fetch prayer times by city:', error);
-    if (error instanceof ServiceError) return null;
-    throw error;
-  }
+  prayerTimesInFlight.set(cacheKey, request);
+  return request;
 }
 
 /**
@@ -164,7 +191,7 @@ export async function getPrayerTimesByCity(
  */
 export function getNextPrayer(
   timings: PrayerTime,
-  currentTime: Date = new Date()
+  currentTime: Date = new Date(),
 ): { name: string; time: string; minutesUntil: number } | null {
   const prayers = [
     { name: 'Fajr', time: timings.Fajr },
@@ -181,25 +208,17 @@ export function getNextPrayer(
   for (const prayer of prayers) {
     const prayerMinutes = parsePrayerTimeMinutes(prayer.time);
     if (prayerMinutes === null) continue;
-
     if (prayerMinutes > now) {
-      return {
-        name: prayer.name,
-        time: prayer.time,
-        minutesUntil: prayerMinutes - now,
-      };
+      return { name: prayer.name, time: prayer.time, minutesUntil: prayerMinutes - now };
     }
   }
 
-  // If no prayer found today, return Fajr tomorrow
   const fajrTotalMinutes = parsePrayerTimeMinutes(timings.Fajr);
   if (fajrTotalMinutes === null) return null;
-  const minutesUntilFajr = 24 * 60 - now + fajrTotalMinutes;
-
   return {
     name: 'Fajr',
     time: timings.Fajr,
-    minutesUntil: minutesUntilFajr,
+    minutesUntil: 24 * 60 - now + fajrTotalMinutes,
   };
 }
 
@@ -208,7 +227,7 @@ export function getNextPrayer(
  */
 export function getCurrentPrayer(
   timings: PrayerTime,
-  currentTime: Date = new Date()
+  currentTime: Date = new Date(),
 ): { name: string; time: string } | null {
   const prayers = [
     { name: 'Fajr', time: timings.Fajr },
@@ -223,79 +242,41 @@ export function getCurrentPrayer(
   for (let i = prayers.length - 1; i >= 0; i--) {
     const prayerMinutes = parsePrayerTimeMinutes(prayers[i].time);
     if (prayerMinutes === null) continue;
-
-    if (prayerMinutes <= now) {
-      return {
-        name: prayers[i].name,
-        time: prayers[i].time,
-      };
-    }
+    if (prayerMinutes <= now) return prayers[i];
   }
-
   return null;
 }
 
-/**
- * Alias for getPrayerTimes — kept for backward compatibility with callers
- * that used the old prayer.ts service name.
- */
 export const getPrayerTimesByCoordinates = getPrayerTimes;
 
-/**
- * Parse an Aladhan prayer time value into minutes after midnight.
- *
- * Aladhan may append timezone hints (for example, "05:12 (+03)"), so
- * callers should use this helper instead of splitting on ':' and coercing.
- */
 export function parsePrayerTimeMinutes(timeStr: string): number | null {
   const match = timeStr.match(/^(\d{1,2}):(\d{2})/);
   if (!match) return null;
-
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
   if (hours > 23 || minutes > 59) return null;
-
   return hours * 60 + minutes;
 }
 
-/**
- * Format prayer API time values as HH:MM, dropping timezone suffixes.
- */
 export function formatPrayerTime(timeStr: string): string {
   const minutesAfterMidnight = parsePrayerTimeMinutes(timeStr);
   if (minutesAfterMidnight === null) return timeStr;
-
   const hours = Math.floor(minutesAfterMidnight / 60).toString().padStart(2, '0');
   const minutes = (minutesAfterMidnight % 60).toString().padStart(2, '0');
   return `${hours}:${minutes}`;
 }
 
-/**
- * Convert 24-hour format to 12-hour format with AM/PM
- * @param timeStr - Time string in HH:MM format
- * @param ar - Return in Arabic (صباحاً/مساءً) or English (AM/PM)
- * @returns Formatted time string like "5:12 ص" or "5:12 AM"
- */
 export function convertTo12Hour(timeStr: string, ar: boolean = true): string {
   const minutesAfterMidnight = parsePrayerTimeMinutes(timeStr);
   if (minutesAfterMidnight === null) return timeStr;
-
   let hours = Math.floor(minutesAfterMidnight / 60);
   const minutes = (minutesAfterMidnight % 60).toString().padStart(2, '0');
-  
   const isPM = hours >= 12;
-  hours = hours % 12 || 12; // Convert 0 to 12, 13-23 to 1-11
-  
-  const suffix = ar 
-    ? (isPM ? 'م' : 'ص')  // Arabic: م = مساءً (PM), ص = صباحاً (AM)
-    : (isPM ? 'PM' : 'AM');
-  
+  hours = hours % 12 || 12;
+  const suffix = ar ? (isPM ? 'م' : 'ص') : isPM ? 'PM' : 'AM';
   return `${hours}:${minutes} ${suffix}`;
 }
 
-/**
- * Get prayer name in Arabic
- */
 export function getPrayerNameAr(englishName: string): string {
   const names: Record<string, string> = {
     Fajr: 'الفجر',
@@ -308,13 +289,9 @@ export function getPrayerNameAr(englishName: string): string {
     Imsak: 'الإمساك',
     Midnight: 'منتصف الليل',
   };
-
   return names[englishName] || englishName;
 }
 
-/**
- * Common calculation methods
- */
 export const CALCULATION_METHODS = {
   1: 'Jafari',
   2: 'Karachi',
