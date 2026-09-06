@@ -1,22 +1,21 @@
 # ZIKR v1.3.4
 
-**Release date:** 2026-09-06
+## Release scope
 
-## Stability release
+Production release focused on stability and hardening after the v1.3.3 Google OAuth and v1.3.3 prayer-times fixes.
 
-v1.3.4 consolidates the current Android and web stability fixes and records the full release gates.
+### Included fixes
 
-### Fixed
+- Google OAuth Android callback remains inside the app session flow and returns from the system Custom Tab to `com.zikr.app://auth/callback`.
+- Prayer-times requests are cached and de-duplicated to prevent repeated identical network refreshes.
+- Supabase admin audit SECURITY DEFINER trigger function is no longer directly executable by `anon` or `authenticated`.
+- Admin audit RLS predicate uses an initplan-safe `select auth.uid()` form.
+- Duplicate admin-audit indexes were removed.
+- Lockfile-aligned Capacitor dependencies are preserved for deterministic frozen-lockfile builds.
 
-- Prayer-times location loading no longer recreates its request callback when `prayerData` changes, preventing the recurring `جاري تحديث المواقيت...` loop.
-- Prayer-times API requests retain the existing cache and in-flight request de-duplication.
-- Native Google OAuth from v1.3.3 remains based on the app's Supabase browser session with PKCE, system Custom Tab, and `com.zikr.app://auth/callback`.
-- Supabase production admin-audit hardening is aligned with the remote migration ledger.
-- Temporary release marker files are removed from the main branch.
+## Android build
 
-### Android
-
-- Version name: `1.3.4`
+- Version: `1.3.4`
 - Version code: `30`
 - Application ID: `com.zikr.app`
 - minSdk: `24`
@@ -26,20 +25,10 @@ v1.3.4 consolidates the current Android and web stability fixes and records the 
 - Gradle: `8.13`
 - Android Gradle Plugin: `8.13.2`
 
-### Automated release gates
+## Verification
 
-- Frozen pnpm lockfile install
-- Import/mobile/offline/project checks
-- ESLint and TypeScript
-- Unit/integration tests
-- Production Next.js build
-- Capacitor Android sync
-- Signed APK + AAB build
-- Signature/package/version/target verification
-- SHA-256 checksums
-- GitHub Release publication
-- Vercel production deployment
+Release publication is gated on frozen-lockfile installation, TypeScript, lint, tests, production build, mobile readiness, signed APK/AAB build, package/version/target SDK verification, SHA-256 checksums and GitHub Release publication.
 
-### Final device validation
+## Manual device acceptance
 
-A physical Android test is required for distribution: Google account sign-in and callback return, cold-start OAuth, cancellation/back navigation, location permission, stable prayer times, city search, offline cache, and notification/azan controls.
+Verify Google account sign-in, OAuth callback return, cancellation/back navigation, current-location permission and prayer-times stability on a physical Android device.

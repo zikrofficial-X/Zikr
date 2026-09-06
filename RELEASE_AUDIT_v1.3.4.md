@@ -1,55 +1,66 @@
-# ZIKR v1.3.4 — Release Audit
+# ZIKR v1.3.4 — Release & Full-System Audit
 
-**Date:** 2026-09-06
-**Repository:** `Zikrmediaofficial/Zikr`
-**Android:** `1.3.4` (`versionCode 30`)
+**Audit date:** 2026-09-06
+**Target:** Zikrmediaofficial/Zikr
+**Release:** v1.3.4
+**Android versionCode:** 30
 
-## Scope
+## Audit scope
 
-Repository structure, application source, API routes, authentication, Supabase integration, database migrations, security/performance configuration, prayer-times/location flow, offline/cache behavior, Android/Capacitor build configuration, CI/CD, Vercel deployment state, and release metadata were reviewed.
+- Web application source and tracked configuration
+- Next.js/React/TypeScript build path
+- pnpm lockfile and CI install mode
+- Vercel deployment and production runtime telemetry
+- Supabase production database, migrations, security and performance advisors
+- Android/Capacitor configuration and release pipeline
+- Google OAuth native callback path
+- Prayer-times location, caching and refresh path
+- GitHub release publication path
 
-## Findings and remediation
+## Verified conditions
 
-### 1. Prayer-times refresh loop — fixed
+- Production Vercel deployment is healthy and the current production runtime-error scan for the last hour reports no runtime error clusters.
+- Main branch CI is configured to run frozen-lockfile install plus import, mobile, offline, project, lint, TypeScript, test and production-build checks.
+- Android release CI uses JDK 21, Android API 36, signed APK/AAB generation, signature verification, package/version/target-SDK verification and SHA-256 checksums.
+- Android application ID is `com.zikr.app`, min SDK is 24, compile/target SDK are 36.
+- Native Google OAuth uses the app WebView's Supabase browser client for PKCE state, a system Custom Tab for Google, and `com.zikr.app://auth/callback` for return to the app.
+- Prayer-times caching/deduplication exists to prevent repeated identical network requests.
 
-`requestLocation` previously depended on `prayerData` while the mount effect depended on `requestLocation`. Every successful schedule update recreated the callback and retriggered the mount effect. The callback is now stable and does not depend on `prayerData`; city-search refresh is stable for the same reason.
+## Production database hardening applied
 
-The prayer service also retains caching and in-flight request de-duplication for identical requests.
+- Revoked direct EXECUTE privileges for `anon` and `authenticated` on the SECURITY DEFINER trigger function `public.prevent_admin_audit_events_mutation()`.
+- Updated the `admin_audit_events_admin_select` RLS predicate to use an initplan-safe `(select auth.uid())` form.
+- Removed three exact duplicate indexes on `public.admin_audit_events` while retaining their canonical equivalents.
 
-### 2. Google OAuth on Android — retained and audited
+## Known non-blocking advisor findings
 
-The Android path uses the Supabase browser client to establish PKCE state, opens Google through a system Custom Tab, and returns through `com.zikr.app://auth/callback`. A dedicated native callback handler supports both `appUrlOpen` and cold-start launch URLs and closes the external browser before returning to the requested app route.
-
-### 3. Dependency/lockfile consistency — checked
-
-The repository uses `pnpm@9.15.0` with a frozen-lockfile CI installation. Capacitor iOS remains present in `package.json` and lockfile alignment is preserved.
-
-### 4. Supabase security hardening — applied
-
-Production privileges for direct execution of the admin audit trigger function were revoked for public-facing roles. The admin audit RLS predicate uses an initplan-safe `select auth.uid()` form. Exact duplicate audit indexes were removed. The migration filename was aligned with the production migration ledger (`20260906164530`).
-
-### 5. Repository hygiene — corrected
-
-Temporary release marker files that had accumulated during the Android release work were removed from `main`.
-
-## Existing automated verification contract
-
-CircleCI runs frozen-lockfile installation followed by import validation, mobile readiness, offline-content validation, project-integrity checks, ESLint, TypeScript, tests, and the production Next.js build. The Android release job additionally installs JDK 21, builds signed APK/AAB artifacts, validates package/version/target SDK and generates SHA-256 checksums before publication.
-
-## Production evidence
-
-The latest known healthy `main` commit had successful CircleCI and Vercel statuses before the final release work. Vercel runtime telemetry for the recent production window showed no grouped runtime-error cluster requiring immediate remediation.
-
-New preview deployments during this audit hit Vercel's free-plan deployment quota (`api-deployments-free-per-day`), which is an account/platform limit rather than an application build error. This prevents claiming a fresh preview deployment until the quota resets.
+- `admin_rate_limits` intentionally has RLS enabled without public policies, which is a deny-by-default posture.
+- `pg_net` placement is covered by existing project migrations/documentation.
+- Supabase still reports many INFO-level unused indexes; these are not removed blindly because usage can change with production traffic and dropping useful future indexes is not a safe blanket optimization.
+- Leaked-password protection remains a Supabase Auth dashboard setting and is not modified by application code.
 
 ## Release acceptance gates
 
-v1.3.4 is not considered a completed public release until all of the following are true:
+A release is considered final only when all gates are green:
 
-- CI green
-- Vercel deployment ready
-- signed APK/AAB successfully built
-- GitHub Release contains APK, AAB, and SHA-256 checksums
-- physical Android smoke test passes Google OAuth, callback return, location permission, and stable prayer-times behavior
+1. Frozen lockfile installation
+2. Full CI static checks
+3. Production Next.js build
+4. Capacitor sync
+5. Android release build
+6. APK signature validation
+7. Package ID/version/target SDK validation
+8. GitHub Release publication with APK, AAB and SHA-256 file
+9. Production deployment ready
+10. Physical Android smoke test for Google sign-in, callback return, location permission and prayer-times stability
 
-This document intentionally distinguishes automated evidence from device-level acceptance; CI cannot prove every OEM-specific Android browser/deep-link behavior.
+## Manual acceptance matrix
+
+- Google sign-in: account selection -> app callback -> authenticated profile
+- Google sign-in cold start: callback launches app -> session restored
+- Google sign-in cancellation: return without stuck loading state
+- Prayer location: current location -> stable schedule -> no repeated refresh loop
+- City search: city selection -> stable schedule -> no repeated refresh loop
+- Offline reload: cached schedule remains visible when the network is unavailable
+- Audio/azan controls: permission and toggle state remain stable
+- Android back/navigation: no Chrome/Custom Tab stranded after OAuth callback

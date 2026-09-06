@@ -61,9 +61,7 @@ export default function PrayerTimesPage() {
         try {
           localStorage.setItem("zikr_prayer_location", JSON.stringify({ lat, lon, city, timings: data.data.timings, date: data.data.date, cachedAt: Date.now() }));
           window.dispatchEvent(new Event("zikr:prayer-location-updated"));
-        } catch {
-          // Browser storage can be unavailable; prayer times remain usable in memory.
-        }
+        } catch {}
       } else {
         setError("فشل في جلب مواقيت الصلاة");
       }
@@ -122,9 +120,7 @@ export default function PrayerTimesPage() {
         try {
           localStorage.setItem("zikr_prayer_location", JSON.stringify({ lat: data.data.meta.latitude, lon: data.data.meta.longitude, city, timings: data.data.timings, date: data.data.date, cachedAt: Date.now() }));
           window.dispatchEvent(new Event("zikr:prayer-location-updated"));
-        } catch {
-          // Browser storage is optional; keep the successful response in memory.
-        }
+        } catch {}
       } else {
         setError("لم يتم العثور على المدينة");
       }
@@ -162,6 +158,7 @@ export default function PrayerTimesPage() {
     } catch {
       // Ignore malformed/unavailable cache and fetch a fresh schedule below.
     }
+    } catch {}
     void requestLocation();
   }, [requestLocation]);
 

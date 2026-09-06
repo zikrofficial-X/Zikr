@@ -81,7 +81,7 @@
     "@capacitor/cli": "8.5.1",
     "@electric-sql/pglite": "^0.5.4",
     "@tailwindcss/postcss": "^4.3.3",
-    "@tailwindcss/typography": "^0.5.15",
+    "@tailwindcss/typography": "^0.5.20",
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
