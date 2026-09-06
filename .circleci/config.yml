@@ -65,8 +65,8 @@ jobs:
           command: |
             set -euo pipefail
             sudo apt-get update
-            sudo apt-get install -y openjdk-21-jdk
-            export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+            sudo apt-get install -y openjdk-17-jdk
+            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
             echo "export JAVA_HOME=$JAVA_HOME" >> "$BASH_ENV"
             echo 'export PATH=$JAVA_HOME/bin:$PATH' >> "$BASH_ENV"
             java -version
@@ -76,7 +76,7 @@ jobs:
           command: |
             set -euo pipefail
             yes | sdkmanager --licenses >/dev/null || true
-            sdkmanager "platform-tools" "platforms;android-35" "build-tools;34.0.0"
+            sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
       - run:
           name: Install dependencies
           shell: /bin/bash
@@ -173,6 +173,7 @@ jobs:
             "$APKSIGNER" verify --verbose "$APK"
             "$APKANALYZER" manifest application-id "$APK" | grep -Fx 'com.zikr.app'
             "$APKANALYZER" manifest version-name "$APK" | grep -Fx "${ANDROID_RELEASE_TAG#v}"
+            "$APKANALYZER" manifest target-sdk "$APK" | grep -Fx '36'
             sha256sum "$APK" "$AAB" > SHA256SUMS
             cat SHA256SUMS
       - run:
