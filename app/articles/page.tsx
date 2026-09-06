@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { pageMetadata } from '@/lib/site';
 import Link from 'next/link';
 import { Container } from '@/components/ui/container';
@@ -121,12 +122,13 @@ export default async function ArticlesPage() {
               <Link key={`${article.id}-${article.slug}`} href={`/articles/${article.slug}`}>
                 <Card className="h-full flex flex-col hover:border-brand-gold/50 transition-colors cursor-pointer">
                   {article.featured_image_url ? (
-                    <div className="w-full h-40 bg-brand-gold/10 rounded-t-xl overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                    <div className="relative w-full h-40 bg-brand-gold/10 rounded-t-xl overflow-hidden">
+                      <Image
                         src={article.featured_image_url}
                         alt={article.title}
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                        className="object-cover"
                       />
                     </div>
                   ) : (

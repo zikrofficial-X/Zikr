@@ -69,7 +69,8 @@ if (!/google-adsense-account/.test(layout)) fail('AdSense publisher meta tag is 
 const layoutPublisher = layout.match(/ca-pub-\d{8,}/)?.[0] ?? null;
 const adsTxtPublisher = adsTxt.match(/google\.com,\s*(pub-\d{8,})\s*,\s*DIRECT\s*,\s*f08c47fec0942fa0/i)?.[1] ?? null;
 if (!adsTxtPublisher) fail('public/ads.txt does not contain a valid Google direct-seller entry.');
-if (layoutPublisher && adsTxtPublisher && layoutPublisher !== adsTxtPublisher) {
+const normalizedAdsTxtPublisher = adsTxtPublisher?.replace(/^pub-/, 'ca-pub-') ?? null;
+if (layoutPublisher && normalizedAdsTxtPublisher && layoutPublisher !== normalizedAdsTxtPublisher) {
   fail(`Publisher mismatch: layout=${layoutPublisher}, ads.txt=${adsTxtPublisher}.`);
 }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { uploadAvatarAction } from '@/app/profile/avatar-actions';
@@ -71,8 +72,14 @@ export function AvatarUpload({ currentAvatarUrl, displayName, email }: AvatarUpl
         className="relative group h-24 w-24 rounded-full overflow-hidden ring-2 ring-brand-gold/30 focus:outline-none focus:ring-brand-gold transition-all"
       >
         {preview ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt="صورة المستخدم" className="h-full w-full object-cover" />
+          <Image
+            src={preview}
+            alt="صورة المستخدم"
+            fill
+            sizes="96px"
+            unoptimized
+            className="object-cover"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-black/20 text-3xl text-brand-gold/50">
             {initial}
