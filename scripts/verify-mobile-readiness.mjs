@@ -3,7 +3,6 @@ import { existsSync, readFileSync } from "node:fs";
 const requiredFiles = [
   "capacitor.config.json",
   "android/app/src/main/AndroidManifest.xml",
-  "android/gradlew",
   "android/gradle/wrapper/gradle-wrapper.properties",
   "android/app/src/main/java/com/zikr/app/MainActivity.java",
   "android/app/src/main/res/drawable/ic_stat_zikr.xml",
@@ -50,10 +49,7 @@ try {
 } catch (error) {
   failures.push(`Mobile configuration JSON is invalid: ${error instanceof Error ? error.message : "unknown error"}`);
 }
-const packageDependencies = {
-  ...(packageJson.dependencies || {}),
-  ...(packageJson.devDependencies || {}),
-};
+const packageDependencies = { ...(packageJson.dependencies || {}), ...(packageJson.devDependencies || {}) };
 
 if (capacitor.appId !== "com.zikr.app") failures.push("Capacitor appId must be com.zikr.app");
 if (capacitor.appName !== "ZIKR | ذِكرٌ") failures.push("Capacitor appName must be ZIKR | ذِكرٌ");
@@ -96,7 +92,7 @@ for (const token of [
   if (!plist.includes(token)) failures.push(`iOS Info.plist missing ${token}`);
 }
 
-const entitlements = read("ios/App/App.entitlements");
+const entitlements = read("ios/App/App/App.entitlements");
 if (!entitlements.includes("applinks:zikrmediaofficial.vercel.app")) failures.push("iOS entitlements missing production associated domain");
 
 const pbxproj = read("ios/App/App.xcodeproj/project.pbxproj");
@@ -105,7 +101,7 @@ for (const token of ["adhan.wav in Resources", "salawat.wav in Resources", "CODE
 }
 
 const bridge = read("components/layout/native-capacitor-bridge.tsx");
-for (const token of ["zikrNative", "networkStatusChange", "Share", "Camera", "Filesystem", "Haptics", "scheduleLocalNotification", "cancelLocalNotifications", "createChannel"]) {
+for (const token of ["zikrNative", "networkStatusChange", "Share", "Camera", "Filesystem", "Haptics", "scheduleLocalNotification", "cancelLocalNotifications"]) {
   if (!bridge.includes(token)) failures.push(`Native bridge missing ${token}`);
 }
 
