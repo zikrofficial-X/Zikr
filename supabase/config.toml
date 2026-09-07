@@ -14,6 +14,7 @@ additional_redirect_urls = [
   "https://zikrmediaofficial.vercel.app/auth/callback",
   "https://eydxvcamhjhajxjrsgym.supabase.co/auth/v1/callback",
   "http://localhost:3000/auth/callback",
+  "com.zikr.app://auth/callback",
 ]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
