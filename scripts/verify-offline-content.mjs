@@ -95,7 +95,7 @@ for (const token of [
 
 const serviceWorker = read(serviceWorkerPath);
 for (const token of [
-  'CACHE_NAME = "zikr-v10"',
+  'CACHE_NAME = "zikr-v11"',
   'OFFLINE_CONTENT_PREFIX',
   'CACHE_OFFLINE_ROUTES',
   'cacheOfflineRoutes',
@@ -103,6 +103,15 @@ for (const token of [
 ]) {
   if (!serviceWorker.includes(token)) failures.push(`Service worker missing ${token}`);
 }
+const htmlHandlerStart = serviceWorker.indexOf('if (request.headers.get("accept")?.includes("text/html"))');
+if (htmlHandlerStart !== -1) {
+  const htmlHandlerEnd = serviceWorker.indexOf("\n  event.respondWith(", htmlHandlerStart + 10);
+  const htmlHandler = serviceWorker.slice(htmlHandlerStart, htmlHandlerEnd === -1 ? serviceWorker.length : htmlHandlerEnd);
+  if (htmlHandler.includes('cache.put(request, response.clone())')) failures.push('Service worker must not cache generic HTML responses');
+}
+const coreMatch = serviceWorker.match(/const CORE_INSTALL_ASSETS = \[([\s\S]*?)\];/);
+if (coreMatch && coreMatch[1].includes('"/"')) failures.push('Service worker must not pre-cache the root HTML route');
+if (serviceWorker.includes('const CACHE_NAME = "zikr-v10"')) failures.push('Legacy service worker cache version zikr-v10 must not remain');
 
 const offlineLibrary = read(offlineLibraryPath);
 const offlineLibraryClient = read(offlineLibraryClientPath);
@@ -121,4 +130,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('✅ Offline core datasets, expanded v4 public route inventory, route-cache integration, durable completion, and navigation safety checks passed');
+console.log('✅ Offline core datasets, expanded v4 public route inventory, route-cache integration, durable completion, navigation safety, and Service Worker v11 checks passed');
