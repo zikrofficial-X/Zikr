@@ -138,8 +138,21 @@ for (const token of ["offline_manifest", "requestOfflineRouteCache", "cacheRoute
 }
 
 const serviceWorker = read("public/sw.js");
-for (const token of ['CACHE_NAME = "zikr-v10"', "OFFLINE_CONTENT_PREFIX", "CACHE_OFFLINE_ROUTES", "cacheReferencedStaticAssets"]) {
+for (const token of ['CACHE_NAME = "zikr-v11"', "OFFLINE_CONTENT_PREFIX", "CACHE_OFFLINE_ROUTES", "cacheReferencedStaticAssets"]) {
   if (!serviceWorker.includes(token)) failures.push(`Service worker missing ${token}`);
+}
+
+if (serviceWorker.includes('if (request.headers.get("accept")?.includes("text/html"))') && serviceWorker.includes('cache.put(request, response.clone())')) {
+  const htmlHandlerStart = serviceWorker.indexOf('if (request.headers.get("accept")?.includes("text/html"))');
+  const htmlHandlerEnd = serviceWorker.indexOf('\n  event.respondWith(', htmlHandlerStart + 10);
+  const htmlHandler = serviceWorker.slice(htmlHandlerStart, htmlHandlerEnd === -1 ? htmlHandlerStart + 2500 : htmlHandlerEnd);
+  if (htmlHandler.includes('cache.put(request, response.clone())')) {
+    failures.push("Service worker must not cache generic HTML responses");
+  }
+}
+if (serviceWorker.match(/const CORE_INSTALL_ASSETS = \[([\s\S]*?)\];/)) {
+  const coreAssets = serviceWorker.match(/const CORE_INSTALL_ASSETS = \[([\s\S]*?)\];/)[1];
+  if (coreAssets.includes('"/"')) failures.push("Service worker must not pre-cache the root HTML route");
 }
 
 if (releaseCheck && ["all", "android"].includes(releasePlatform) && !process.env.ANDROID_APP_LINKS_SHA256) failures.push("ANDROID_APP_LINKS_SHA256 is required for a Play Store release; provide the real release signing certificate SHA-256 fingerprint.");
