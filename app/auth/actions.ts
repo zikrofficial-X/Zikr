@@ -6,121 +6,129 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getServerEnv } from '@/lib/env';
 import { getCanonicalAuthBaseUrl } from '@/lib/auth-enhanced';
 
+type AuthActionResult =
+  | { ok: true; next?: string; message?: string }
+  | { ok: false; message: string };
+
+function safeNext(value: FormDataEntryValue | null): string {
+  const next = String(value || '/profile');
+  return next.startsWith('/') && !next.startsWith('//') ? next : '/profile';
+}
+
+function loginErrorMessage(message: string): string {
+  const normalized = message.toLowerCase();
+  if (normalized.includes('logins are disabled') || normalized.includes('email_provider_disabled')) {
+    return 'الدخول بالبريد الإلكتروني غير مُفعّل حالياً. فعّل مزوّد Email في إعدادات المصادقة بمشروع Supabase أو استخدم الدخول عبر Google.';
+  }
+  if (normalized.includes('email not confirmed')) return 'يجب تأكيد البريد الإلكتروني قبل تسجيل الدخول.';
+  if (normalized.includes('rate limit')) return 'تم تجاوز عدد المحاولات المسموح بها مؤقتاً. حاول مرة أخرى بعد قليل.';
+  return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+}
+
 // ─── Login ────────────────────────────────────────────────────────────────────
-// Uses the @supabase/ssr server client so that session cookies are written in
-// Supabase's native chunked format and are visible to every server component
-// that calls createClient().
-export async function loginAction(formData: FormData) {
+// The client handles navigation after a successful server action. This avoids
+// turning Next.js redirect control-flow into a visible NEXT_REDIRECT error when
+// the action is invoked from a client-side form action.
+export async function loginAction(formData: FormData): Promise<AuthActionResult> {
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const password = String(formData.get('password') || '');
-  let next = String(formData.get('next') || '/profile');
-  if (!next.startsWith('/') || next.startsWith('//')) {
-    next = '/profile';
+  const next = safeNext(formData.get('next'));
+
+  if (!email || !password) {
+    return { ok: false, message: 'أدخل البريد الإلكتروني وكلمة المرور.' };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    const normalizedError = error.message.toLowerCase();
-    if (
-      normalizedError.includes('logins are disabled') ||
-      normalizedError.includes('email_provider_disabled')
-    ) {
-      redirect(
-        `/auth/login?error=${encodeURIComponent(
-          'الدخول بالبريد الإلكتروني غير مُفعّل حالياً. فعّل مزوّد Email في إعدادات المصادقة بمشروع Supabase أو استخدم الدخول عبر Google.',
-        )}`,
-      );
-    }
-    const isActionable =
-      normalizedError.includes('email not confirmed') ||
-      normalizedError.includes('rate limit');
-    const message = isActionable
-      ? error.message
-      : 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
-    redirect(`/auth/login?error=${encodeURIComponent(message)}`);
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { ok: false, message: loginErrorMessage(error.message) };
+    return { ok: true, next };
+  } catch (error) {
+    console.error('[auth] loginAction error:', error);
+    return { ok: false, message: 'تعذر إتمام تسجيل الدخول. حاول مرة أخرى.' };
   }
-
-  redirect(next);
 }
 
 // ─── Register ─────────────────────────────────────────────────────────────────
-export async function registerAction(formData: FormData) {
+export async function registerAction(formData: FormData): Promise<AuthActionResult> {
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const password = String(formData.get('password') || '');
 
-  if (email.length > 254 || password.length > 128) {
-    redirect('/auth/register?error=بيانات التسجيل غير صالحة.');
+  if (!email || !password || email.length > 254 || password.length > 128) {
+    return { ok: false, message: 'بيانات التسجيل غير صالحة.' };
   }
 
-  const supabase = await createClient();
-  const requestOrigin = (await headers()).get('origin');
-  const siteUrl = getCanonicalAuthBaseUrl(
-    requestOrigin || getServerEnv().NEXT_PUBLIC_SITE_URL || 'https://zikrmediaofficial.vercel.app',
-  );
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${siteUrl}/auth/callback?next=/profile`,
-    },
-  });
-
-  if (error) {
-    const normalizedError = error.message.toLowerCase();
-    // Configuration-level failure: the Email provider is turned off in the
-    // Supabase project's Auth settings. Surface a clear, actionable message
-    // instead of a generic "try again" that hides the real cause.
-    if (
-      normalizedError.includes('signups are disabled') ||
-      normalizedError.includes('email_provider_disabled') ||
-      normalizedError.includes('email logins are disabled')
-    ) {
-      redirect(
-        `/auth/register?error=${encodeURIComponent(
-          'تسجيل الحساب بالبريد الإلكتروني غير مُفعّل حالياً. فعّل مزوّد Email في إعدادات المصادقة بمشروع Supabase أو استخدم الدخول عبر Google.',
-        )}`,
-      );
-    }
-    const isActionable =
-      normalizedError.includes('password') ||
-      normalizedError.includes('rate limit') ||
-      normalizedError.includes('email not authorized') ||
-      normalizedError.includes('already registered') ||
-      normalizedError.includes('invalid email');
-    const message = isActionable
-      ? error.message
-      : 'تعذر إنشاء الحساب. تحقق من البيانات وحاول مرة أخرى.';
-    redirect(`/auth/register?error=${encodeURIComponent(message)}`);
-  }
-
-  if (data.user && data.session) {
-    // Use the service-role client to bypass RLS for new profile creation
-    const adminClient = createAdminClient();
-    await adminClient.from('profiles').upsert(
-      {
-        id: data.user.id,
-        email: data.user.email ?? email,
-        display_name:
-          typeof data.user.user_metadata?.full_name === 'string'
-            ? data.user.user_metadata.full_name
-            : null,
-        avatar_url:
-          typeof data.user.user_metadata?.avatar_url === 'string'
-            ? data.user.user_metadata.avatar_url
-            : null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'id' }
+  try {
+    const supabase = await createClient();
+    const requestOrigin = (await headers()).get('origin');
+    const siteUrl = getCanonicalAuthBaseUrl(
+      requestOrigin || getServerEnv().NEXT_PUBLIC_SITE_URL || 'https://zikrmediaofficial.vercel.app',
     );
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${siteUrl}/auth/callback?next=/profile`,
+      },
+    });
 
-    redirect('/profile');
+    if (error) {
+      const normalizedError = error.message.toLowerCase();
+      if (
+        normalizedError.includes('signups are disabled') ||
+        normalizedError.includes('email_provider_disabled') ||
+        normalizedError.includes('email logins are disabled')
+      ) {
+        return {
+          ok: false,
+          message: 'تسجيل الحساب بالبريد الإلكتروني غير مُفعّل حالياً. فعّل مزوّد Email في إعدادات المصادقة بمشروع Supabase أو استخدم التسجيل عبر Google.',
+        };
+      }
+      if (normalizedError.includes('already registered')) {
+        return { ok: false, message: 'هذا البريد الإلكتروني مسجل بالفعل. انتقل إلى تسجيل الدخول.' };
+      }
+      if (normalizedError.includes('password')) {
+        return { ok: false, message: error.message };
+      }
+      if (normalizedError.includes('rate limit')) {
+        return { ok: false, message: 'تم تجاوز عدد المحاولات المسموح بها مؤقتاً. حاول مرة أخرى بعد قليل.' };
+      }
+      return { ok: false, message: 'تعذر إنشاء الحساب. تحقق من البيانات وحاول مرة أخرى.' };
+    }
+
+    if (data.user && data.session) {
+      try {
+        const adminClient = createAdminClient();
+        await adminClient.from('profiles').upsert(
+          {
+            id: data.user.id,
+            email: data.user.email ?? email,
+            display_name:
+              typeof data.user.user_metadata?.full_name === 'string'
+                ? data.user.user_metadata.full_name
+                : null,
+            avatar_url:
+              typeof data.user.user_metadata?.avatar_url === 'string'
+                ? data.user.user_metadata.avatar_url
+                : null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' },
+        );
+      } catch (profileError) {
+        console.error('[auth] register profile upsert error:', profileError);
+      }
+      return { ok: true, next: '/profile' };
+    }
+
+    return {
+      ok: true,
+      message: 'تم التسجيل! يرجى التحقق من بريدك الإلكتروني لتفعيل الحساب.',
+    };
+  } catch (error) {
+    console.error('[auth] registerAction error:', error);
+    return { ok: false, message: 'تعذر إنشاء الحساب. حاول مرة أخرى.' };
   }
-
-  // If email confirmation is enabled, the session is created after the user
-  // clicks the confirmation link, which points back to /profile.
-  redirect('/auth/login?message=check_email');
 }
 
 // ─── Forgot password ──────────────────────────────────────────────────────────
@@ -154,9 +162,6 @@ export async function updateProfileAction(formData: FormData) {
 
   if (!user) redirect('/auth/login');
 
-  // Email and role are synchronized by Auth triggers/admin code and are
-  // intentionally protected by the profiles integrity trigger. A profile
-  // update from the user session must only write presentation fields.
   const { error } = await supabase
     .from('profiles')
     .update({
