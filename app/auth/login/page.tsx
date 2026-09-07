@@ -7,12 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
 import { loginAction } from '../actions';
 import { GoogleOAuthButton } from '../google-oauth-button';
-import { useSearchParams } from 'next/navigation';
-
-// Always show Google OAuth button — the server resolves GOOGLE_CLIENT_ID from
-// the _19 suffixed env var via lib/env.ts. No NEXT_PUBLIC_ version is needed
-// because the OAuth flow is initiated entirely client-side via Supabase.
-const GOOGLE_OAUTH_ENABLED = true;
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const MESSAGE_MAP: Record<string, string> = {
   check_email: 'تم التسجيل! يرجى التحقق من بريدك الإلكتروني لتفعيل الحساب.',
@@ -27,38 +22,46 @@ const MESSAGE_MAP: Record<string, string> = {
 
 function LoginForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  useEffect(() => setIsClient(true), []);
 
   useEffect(() => {
     if (!isClient) return;
     const errorParam = searchParams.get('error');
     const msgParam = searchParams.get('message');
     if (errorParam) {
-      setError(
-        MESSAGE_MAP[errorParam] ??
-          'تعذر تسجيل الدخول. تحقق من إعدادات الحساب وحاول مرة أخرى.',
-      );
+      setError(MESSAGE_MAP[errorParam] ?? errorParam);
     }
-    if (msgParam) setMessage(MESSAGE_MAP[msgParam] ?? decodeURIComponent(msgParam));
+    if (msgParam) setMessage(MESSAGE_MAP[msgParam] ?? msgParam);
   }, [searchParams, isClient]);
-
-  if (!isClient) return <div className="text-center py-10">جاري التحميل...</div>;
 
   const handleSubmit = async (formData: FormData) => {
     setLoading(true);
     setError('');
-    // loginAction redirects after both authentication failures and successful
-    // logins. Let Next.js receive its redirect signal instead of converting it
-    // into a visible "NEXT_REDIRECT" error in the client.
-    await loginAction(formData);
+    setMessage('');
+
+    try {
+      const result = await loginAction(formData);
+      if (!result.ok) {
+        setError(result.message);
+        setLoading(false);
+        return;
+      }
+      router.replace(result.next || '/profile');
+      router.refresh();
+    } catch (err) {
+      console.error('[auth/login] client action error:', err);
+      setError('تعذر إتمام تسجيل الدخول. حاول مرة أخرى.');
+      setLoading(false);
+    }
   };
+
+  if (!isClient) return <div className="text-center py-10">جاري التحميل...</div>;
 
   return (
     <Card className="mx-auto max-w-md space-y-6 text-right">
@@ -76,7 +79,6 @@ function LoginForm() {
       {error && (
         <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-4 text-center">
           <p className="text-sm text-red-300 font-medium">{error}</p>
-          <p className="text-xs text-red-400 mt-2">تأكد من صحة البريد الإلكتروني وكلمة المرور</p>
         </div>
       )}
 
@@ -111,9 +113,7 @@ function LoginForm() {
         </div>
 
         <div className="text-right">
-          <Link href="/auth/forgot" className="text-sm text-brand-gold hover:underline">
-            نسيت كلمة المرور؟
-          </Link>
+          <Link href="/auth/forgot" className="text-sm text-brand-gold hover:underline">نسيت كلمة المرور؟</Link>
         </div>
 
         <Button type="submit" disabled={loading} className="w-full">
@@ -121,26 +121,16 @@ function LoginForm() {
         </Button>
       </form>
 
-      {GOOGLE_OAUTH_ENABLED && (
-        <>
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-brand-gold/20"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-brand-emeraldDeep px-4 arabic-muted">أو</span>
-            </div>
-          </div>
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-brand-gold/20" /></div>
+        <div className="relative flex justify-center text-sm"><span className="bg-brand-emeraldDeep px-4 arabic-muted">أو</span></div>
+      </div>
 
-          <GoogleOAuthButton next={searchParams.get('next') || undefined} label="المتابعة باستخدام Google" />
-        </>
-      )}
+      <GoogleOAuthButton next={searchParams.get('next') || undefined} label="المتابعة باستخدام Google" />
 
       <p className="text-center text-sm arabic-muted">
         ليس لديك حساب؟{' '}
-        <Link href="/auth/register" className="text-brand-gold hover:underline">
-          إنشاء حساب جديد
-        </Link>
+        <Link href="/auth/register" className="text-brand-gold hover:underline">إنشاء حساب جديد</Link>
       </p>
     </Card>
   );
@@ -149,9 +139,7 @@ function LoginForm() {
 export default function Page() {
   return (
     <Container className="py-16">
-      <Suspense fallback={<div>جاري التحميل...</div>}>
-        <LoginForm />
-      </Suspense>
+      <Suspense fallback={<div>جاري التحميل...</div>}><LoginForm /></Suspense>
     </Container>
   );
 }
