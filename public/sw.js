@@ -1,5 +1,5 @@
 // Service Worker for Zikr PWA
-const CACHE_NAME = "zikr-v11";
+const CACHE_NAME = "zikr-v12";
 const OFFLINE_CONTENT_PREFIX = "/offline-content/";
 const MAX_OFFLINE_ROUTES = 400;
 const ROUTE_CACHE_CONCURRENCY = 4;
@@ -58,13 +58,15 @@ async function cacheReferencedStaticAssets(html, cache) {
   for (const match of html.matchAll(pattern)) {
     const url = absoluteSameOriginUrl(match[1]);
     if (!url) continue;
-    if (!(
-      url.pathname.startsWith("/_next/static/") ||
-      url.pathname.startsWith("/icons/") ||
-      url.pathname.startsWith("/branding/") ||
-      url.pathname.startsWith("/images/") ||
-      url.pathname.startsWith("/audio/")
-    )) {
+    if (
+      !(
+        url.pathname.startsWith("/_next/static/") ||
+        url.pathname.startsWith("/icons/") ||
+        url.pathname.startsWith("/branding/") ||
+        url.pathname.startsWith("/images/") ||
+        url.pathname.startsWith("/audio/")
+      )
+    ) {
       continue;
     }
     refs.push(url.href);
@@ -322,6 +324,7 @@ self.addEventListener("fetch", event => {
     return;
   }
 
+  // Authentication, session and API requests must always reach the server.
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/")) {
     event.respondWith(
       fetch(request).catch(
@@ -335,6 +338,7 @@ self.addEventListener("fetch", event => {
     return;
   }
 
+  // Never cache arbitrary HTML. Authenticated SSR responses are personalized.
   if (request.headers.get("accept")?.includes("text/html")) {
     event.respondWith(
       fetch(request).catch(() =>
