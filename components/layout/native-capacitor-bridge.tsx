@@ -192,38 +192,6 @@ export function NativeCapacitorBridge() {
     const network = plugins.Network;
     const localNotifications = plugins.LocalNotifications;
 
-    let handledAuthCallback = false;
-    const handleAppUrl = (url: string) => {
-      if (!url) return;
-
-      let parsed: URL;
-      try {
-        parsed = new URL(url);
-      } catch {
-        return;
-      }
-
-      const next = parsed.searchParams.get("next");
-      const isCustomAuthCallback =
-        parsed.protocol === "com.zikr.app:" &&
-        parsed.hostname === "auth" &&
-        parsed.pathname.startsWith("/callback");
-
-      if (isCustomAuthCallback) {
-        if (handledAuthCallback) return;
-        handledAuthCallback = true;
-        void browser?.close?.();
-      }
-
-      const target = isCustomAuthCallback
-        ? `/auth/callback${parsed.search}${parsed.hash}`
-        : parsed.protocol === "com.zikr.app:" && next
-          ? next
-          : `${parsed.pathname || "/"}${parsed.search}${parsed.hash}`;
-
-      window.location.assign(target.startsWith("/") ? target : "/");
-    };
-
     void (async () => {
       try {
         await loadAudioSettings();
@@ -310,18 +278,9 @@ export function NativeCapacitorBridge() {
       );
     });
 
-    void app?.addListener?.("appUrlOpen", (event: unknown) => {
-      handleAppUrl((event as { url?: string })?.url ?? "");
-    });
-
-    // appUrlOpen is not guaranteed to fire after a cold start. When Android
-    // launches/reuses the activity directly from the OAuth custom scheme,
-    // recover the pending URL explicitly or the browser appears stuck.
-    void (async () => {
-      const launch = (await app?.getLaunchUrl?.()) as
-        { url?: string } | undefined;
-      if (launch?.url) handleAppUrl(launch.url);
-    })();
+    // Google OAuth deep-link handling is intentionally NOT registered here.
+    // NativeGoogleOAuthHandler is the single owner of the com.zikr.app://auth/callback
+    // flow so the PKCE verifier remains in the same WebView storage context.
 
     void app?.addListener?.("appStateChange", (state: unknown) => {
       const isActive = (state as { isActive?: boolean })?.isActive === true;
