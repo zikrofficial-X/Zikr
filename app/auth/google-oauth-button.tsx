@@ -55,11 +55,20 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
     try {
       const supabase = createBrowserSupabaseClient();
       const isNative = Capacitor.isNativePlatform();
+
+      // Native OAuth first lands on our HTTPS callback. The callback route then
+      // hands the authorization code to com.zikr.app://auth/callback so Android
+      // can reliably bring the app back to the foreground. This avoids relying
+      // on the identity provider accepting a custom scheme as its direct OAuth
+      // redirect URI while preserving the PKCE verifier inside the WebView.
       const callbackUrl = isNative
-        ? new URL("com.zikr.app://auth/callback")
+        ? new URL("/auth/callback", getCanonicalBrowserOrigin())
         : new URL("/auth/callback", getCanonicalBrowserOrigin());
 
       callbackUrl.searchParams.set("next", safeNext);
+      if (isNative) {
+        callbackUrl.searchParams.set("native", "1");
+      }
 
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -78,9 +87,6 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
       }
 
       if (isNative) {
-        // Keep the PKCE verifier in the WebView. The system Custom Tab performs
-        // Google authentication and the app's custom scheme returns to the same
-        // WebView, where the verifier can be consumed safely.
         await Browser.open({ url: data.url });
       } else {
         window.location.assign(data.url);
