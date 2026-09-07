@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { logoutAction } from '@/app/auth/actions';
@@ -14,7 +13,6 @@ type AuthNavActionsProps = {
 };
 
 export function AuthNavActions({ initialUser, initialIsAdmin }: AuthNavActionsProps) {
-  const pathname = usePathname();
   const { isEnglish } = useLanguage();
   const [user, setUser] = useState<User | null>(initialUser);
   const [isAdmin, setIsAdmin] = useState(initialIsAdmin);
@@ -23,48 +21,93 @@ export function AuthNavActions({ initialUser, initialIsAdmin }: AuthNavActionsPr
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    // If the browser bundle cannot see Supabase configuration, preserve the
-    // server-rendered auth state instead of replacing it with a false logout.
+    // Never replace a valid server-rendered session with a false logout when
+    // the browser bundle temporarily cannot access its auth state.
     if (!supabaseUrl || !supabaseAnonKey) return;
 
     const supabase = createClient();
+    let disposed = false;
 
     async function syncUser() {
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
 
-      setUser(currentUser);
+        if (sessionError) {
+          console.warn('[auth/nav] getSession failed; preserving current auth state');
+          return;
+        }
 
-      if (!currentUser) {
-        setIsAdmin(false);
-        return;
+        const sessionUser = session?.user ?? null;
+        if (sessionUser) {
+          if (!disposed) setUser(sessionUser);
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', sessionUser.id)
+            .maybeSingle();
+          if (!disposed) setIsAdmin(profile?.role === 'admin');
+          return;
+        }
+
+        // Confirm an empty client session with the Auth API before clearing
+        // state; transient failures must never appear as a logout.
+        const {
+          data: { user: currentUser },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.warn('[auth/nav] getUser failed; preserving current auth state');
+          return;
+        }
+
+        if (!disposed) {
+          setUser(currentUser ?? null);
+          if (!currentUser) setIsAdmin(false);
+        }
+      } catch (error) {
+        console.warn('[auth/nav] auth sync failed; preserving current auth state', error);
       }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', currentUser.id)
-        .maybeSingle();
-
-      setIsAdmin(profile?.role === 'admin');
     }
 
     void syncUser();
 
+    const handleResume = () => {
+      void syncUser();
+    };
+
+    window.addEventListener('pageshow', handleResume);
+    window.addEventListener('focus', handleResume);
+    document.addEventListener('visibilitychange', handleResume);
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
-      setUser(session?.user ?? null);
-      if (!session?.user) {
+    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      // Only an explicit SIGNED_OUT event may clear the navigation state.
+      // Refresh/recovery events without a session are not treated as logout.
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
         setIsAdmin(false);
         return;
       }
-      void syncUser();
+
+      if (session?.user) {
+        setUser(session.user);
+        void syncUser();
+      }
     });
 
-    return () => subscription.unsubscribe();
-  }, [pathname]);
+    return () => {
+      disposed = true;
+      subscription.unsubscribe();
+      window.removeEventListener('pageshow', handleResume);
+      window.removeEventListener('focus', handleResume);
+      document.removeEventListener('visibilitychange', handleResume);
+    };
+  }, []);
 
   if (!user) {
     return (
