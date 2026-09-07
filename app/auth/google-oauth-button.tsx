@@ -5,6 +5,7 @@ import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { Button } from "@/components/ui/button";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { PRODUCTION_URL } from "@/lib/site";
 
 type GoogleOAuthButtonProps = {
   next?: string;
@@ -15,6 +16,18 @@ function getSafeNextPath(next?: string): string {
   return typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
     ? next
     : "/profile";
+}
+
+function getCanonicalBrowserOrigin(): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) {
+    try {
+      return new URL(configured).origin;
+    } catch {
+      // Fall through to the compile-time production fallback.
+    }
+  }
+  return PRODUCTION_URL;
 }
 
 export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
@@ -44,7 +57,7 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
       const isNative = Capacitor.isNativePlatform();
       const callbackUrl = isNative
         ? new URL("com.zikr.app://auth/callback")
-        : new URL("/auth/callback", window.location.origin);
+        : new URL("/auth/callback", getCanonicalBrowserOrigin());
 
       callbackUrl.searchParams.set("next", safeNext);
 
