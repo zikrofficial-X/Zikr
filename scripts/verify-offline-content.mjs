@@ -95,7 +95,7 @@ for (const token of [
 
 const serviceWorker = read(serviceWorkerPath);
 for (const token of [
-  'CACHE_NAME = "zikr-v11"',
+  'CACHE_NAME = "zikr-v12"',
   'OFFLINE_CONTENT_PREFIX',
   'CACHE_OFFLINE_ROUTES',
   'cacheOfflineRoutes',
@@ -130,4 +130,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('✅ Offline core datasets, expanded v4 public route inventory, route-cache integration, durable completion, navigation safety, and Service Worker v11 checks passed');
+console.log('✅ Offline core datasets, expanded v4 public route inventory, route-cache integration, durable completion, navigation safety, and Service Worker v12 checks passed');
