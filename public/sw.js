@@ -1,11 +1,9 @@
 // Service Worker for Zikr PWA
-const CACHE_NAME = "zikr-v10";
+const CACHE_NAME = "zikr-v11";
 const OFFLINE_CONTENT_PREFIX = "/offline-content/";
 const MAX_OFFLINE_ROUTES = 400;
 const ROUTE_CACHE_CONCURRENCY = 4;
 
-// Public, non-personalized content APIs that are safe to cache for offline reading.
-// Authenticated and mutation APIs remain network-only to avoid leaking private data.
 const PUBLIC_CONTENT_API_PREFIXES = [
   "/api/content/articles",
   "/api/content/companions",
@@ -165,7 +163,6 @@ async function cacheOfflineRoutes(routes, replyPort) {
 // The complete offline pack is cached explicitly by the user from the Offline Library page.
 // Only the tiny shell is installed automatically so first install stays lightweight.
 const CORE_INSTALL_ASSETS = [
-  "/",
   "/offline.html",
   "/offline-library",
   "/sw.js",
@@ -223,8 +220,6 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // The manifest and versioned offline JSON files are first-class offline resources.
-  // Versioned datasets are cache-first; the manifest is network-first with a local fallback.
   if (url.pathname === "/offline-content/v1/manifest.json") {
     event.respondWith(
       fetch(request)
@@ -342,27 +337,16 @@ self.addEventListener("fetch", event => {
 
   if (request.headers.get("accept")?.includes("text/html")) {
     event.respondWith(
-      fetch(request)
-        .then(response => {
-          if (response.status === 200) {
-            caches
-              .open(CACHE_NAME)
-              .then(cache => cache.put(request, response.clone()));
-          }
-          return response;
+      fetch(request).catch(() =>
+        caches.match(request).then(cached => {
+          if (cached) return cached;
+          return caches.match("/offline.html").then(
+            offline =>
+              offline ||
+              new Response("Offline - Page not cached", { status: 503 })
+          );
         })
-        .catch(() =>
-          caches.match(request).then(cached => {
-            if (cached) return cached;
-            return caches
-              .match("/offline.html")
-              .then(
-                offline =>
-                  offline ||
-                  new Response("Offline - Page not cached", { status: 503 })
-              );
-          })
-        )
+      )
     );
     return;
   }
