@@ -97,12 +97,23 @@ for (const route of offlineManifest.routes || []) {
 }
 
 requireText('public/sw.js', [
-  'const CACHE_NAME = "zikr-v10"',
+  'const CACHE_NAME = "zikr-v11"',
   'CACHE_OFFLINE_ROUTES',
   'OFFLINE_CONTENT_PREFIX',
   'pathname.startsWith("/api/")',
   'pathname.startsWith("/admin")',
 ]);
+const serviceWorker = read('public/sw.js');
+const htmlHandlerStart = serviceWorker.indexOf('if (request.headers.get("accept")?.includes("text/html"))');
+if (htmlHandlerStart !== -1) {
+  const htmlHandlerEnd = serviceWorker.indexOf("\n  event.respondWith(", htmlHandlerStart + 10);
+  const htmlHandler = serviceWorker.slice(htmlHandlerStart, htmlHandlerEnd === -1 ? serviceWorker.length : htmlHandlerEnd);
+  if (htmlHandler.includes('cache.put(request, response.clone())')) failures.push('public/sw.js must not cache generic HTML responses');
+}
+const coreMatch = serviceWorker.match(/const CORE_INSTALL_ASSETS = \[([\s\S]*?)\];/);
+if (coreMatch?.[1].includes('"/"')) failures.push('public/sw.js must not pre-cache the root HTML route');
+if (serviceWorker.includes('const CACHE_NAME = "zikr-v10"')) failures.push('public/sw.js must not retain legacy cache version zikr-v10');
+
 requireText('components/layout/offline-navigation-guard.tsx', [
   'navigator.onLine',
   'event.stopImmediatePropagation()',
