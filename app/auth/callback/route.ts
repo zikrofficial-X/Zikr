@@ -26,6 +26,30 @@ export async function GET(request: NextRequest) {
   const origin = getTrustedAuthOrigin(request);
   const code = searchParams.get('code');
   const safePath = extractNextPath(searchParams);
+  const isNative = searchParams.get('native') === '1';
+
+  // Native Android/iOS OAuth uses the HTTPS callback as a bridge. Do not
+  // exchange the code on the server because the PKCE verifier lives in the
+  // native WebView. Instead, pass the code to the app's registered deep link.
+  if (isNative) {
+    const oauthError = searchParams.get('error');
+    const oauthErrorDescription = searchParams.get('error_description');
+    const nativeUrl = new URL('com.zikr.app://auth/callback');
+    nativeUrl.searchParams.set('next', safePath);
+
+    if (oauthError) {
+      nativeUrl.searchParams.set('error', oauthError);
+      if (oauthErrorDescription) {
+        nativeUrl.searchParams.set('error_description', oauthErrorDescription);
+      }
+    } else if (code) {
+      nativeUrl.searchParams.set('code', code);
+    } else {
+      nativeUrl.searchParams.set('error', 'auth_callback_failed');
+    }
+
+    return NextResponse.redirect(nativeUrl);
+  }
 
   // Supabase may forward OAuth errors directly to the callback
   const oauthError = searchParams.get('error');
@@ -39,7 +63,7 @@ export async function GET(request: NextRequest) {
     try {
       const supabase = await createClient();
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-      
+
       if (error) {
         if (isPkceVerifierError(error)) {
           console.warn(
@@ -82,7 +106,7 @@ export async function GET(request: NextRequest) {
               avatar_url: avatarUrl,
               updated_at: new Date().toISOString(),
             },
-            { onConflict: 'id' }
+            { onConflict: 'id' },
           );
           if (upsertError) {
             console.error('[auth/callback] Profile upsert error:', upsertError.message);
