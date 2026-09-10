@@ -33,6 +33,7 @@ const requiredFiles = [
 const failures = [];
 const releaseCheck = process.env.MOBILE_RELEASE_CHECK === "1";
 const releasePlatform = process.env.MOBILE_RELEASE_PLATFORM || "all";
+const releaseChannel = process.env.MOBILE_RELEASE_CHANNEL || "store";
 
 for (const file of requiredFiles) {
   if (!existsSync(file)) failures.push(`Missing required mobile/offline file: ${file}`);
@@ -155,8 +156,8 @@ if (serviceWorker.match(/const CORE_INSTALL_ASSETS = \[([\s\S]*?)\];/)) {
   if (coreAssets.includes('"/"')) failures.push("Service worker must not pre-cache the root HTML route");
 }
 
-if (releaseCheck && ["all", "android"].includes(releasePlatform) && !process.env.ANDROID_APP_LINKS_SHA256) failures.push("ANDROID_APP_LINKS_SHA256 is required for a Play Store release; provide the real release signing certificate SHA-256 fingerprint.");
-if (releaseCheck && ["all", "ios"].includes(releasePlatform) && !process.env.IOS_ASSOCIATED_DOMAIN_APP_ID) failures.push("IOS_ASSOCIATED_DOMAIN_APP_ID is required for an App Store release; provide the real Apple Team ID and bundle ID.");
+if (releaseCheck && releaseChannel === "store" && ["all", "android"].includes(releasePlatform) && !process.env.ANDROID_APP_LINKS_SHA256) failures.push("ANDROID_APP_LINKS_SHA256 is required for a Play Store release; provide the real release signing certificate SHA-256 fingerprint.");
+if (releaseCheck && releaseChannel === "store" && ["all", "ios"].includes(releasePlatform) && !process.env.IOS_ASSOCIATED_DOMAIN_APP_ID) failures.push("IOS_ASSOCIATED_DOMAIN_APP_ID is required for an App Store release; provide the real Apple Team ID and bundle ID.");
 if (releaseCheck && !["all", "android", "ios"].includes(releasePlatform)) failures.push("MOBILE_RELEASE_PLATFORM must be one of: all, android, ios.");
 
 if (failures.length) {

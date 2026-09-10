@@ -79,7 +79,7 @@ jobs:
       - name: Verify mobile configuration
         env:
           ANDROID_APP_LINKS_SHA256: ${{ secrets.ANDROID_APP_LINKS_SHA256 }}
-        run: MOBILE_RELEASE_CHECK=1 pnpm mobile:check
+        run: MOBILE_RELEASE_CHECK=1 MOBILE_RELEASE_PLATFORM=android MOBILE_RELEASE_CHANNEL=github pnpm mobile:check
 
       - name: Validate signing inputs
         shell: bash
