@@ -1,0 +1,1 @@
+Native Android OAuth callback hardening is included in the current main line. Android release must pass CircleCI ci-check and android-rebuild before publication.
