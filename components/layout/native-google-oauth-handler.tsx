@@ -13,11 +13,17 @@ function getSafeNextPath(next: string | null): string {
 function isNativeGoogleCallback(rawUrl: string): boolean {
   try {
     const url = new URL(rawUrl);
-    return (
+    const isAppDeepLink =
       url.protocol === "com.zikr.app:" &&
       url.hostname === "auth" &&
-      url.pathname.startsWith("/callback")
-    );
+      url.pathname.startsWith("/callback");
+    // Compatibility fallback for older APKs/configurations that returned
+    // from Google to the production HTTPS callback instead of the app URI.
+    const isHttpsBridge =
+      url.protocol === "https:" &&
+      url.hostname === "zikrmediaofficial.vercel.app" &&
+      url.pathname.startsWith("/auth/callback");
+    return isAppDeepLink || isHttpsBridge;
   } catch {
     return false;
   }
