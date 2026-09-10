@@ -24,10 +24,7 @@ function isNativeGoogleCallback(rawUrl: string): boolean {
 }
 
 function loginUrl(error: string, nextPath: string): string {
-  const params = new URLSearchParams({
-    error,
-    next: nextPath,
-  });
+  const params = new URLSearchParams({ error, next: nextPath });
   return `/auth/login?${params.toString()}`;
 }
 
@@ -35,9 +32,11 @@ async function closeExternalBrowser() {
   try {
     await Browser.close();
   } catch {
-    // Browser may already be closed after the custom-scheme handoff.
+    // The external browser may already be gone after Android hands control
+    // back to the application.
   }
   window.dispatchEvent(new CustomEvent("zikr:native-browser-finished"));
+  window.dispatchEvent(new CustomEvent("zikr:native-resumed"));
 }
 
 export function NativeGoogleOAuthHandler() {
@@ -45,12 +44,15 @@ export function NativeGoogleOAuthHandler() {
     if (!Capacitor.isNativePlatform()) return;
 
     const supabase = createBrowserSupabaseClient();
-    let handled = false;
-    let listener: { remove: () => Promise<void> } | undefined;
+    const handledCallbacks = new Set<string>();
+    let urlListener: { remove: () => Promise<void> } | undefined;
+    let stateListener: { remove: () => Promise<void> } | undefined;
 
     const handleCallback = async (rawUrl: string) => {
-      if (!rawUrl || handled || !isNativeGoogleCallback(rawUrl)) return;
-      handled = true;
+      if (!rawUrl || !isNativeGoogleCallback(rawUrl) || handledCallbacks.has(rawUrl)) {
+        return;
+      }
+      handledCallbacks.add(rawUrl);
 
       let parsed: URL;
       try {
@@ -91,8 +93,6 @@ export function NativeGoogleOAuthHandler() {
           return;
         }
 
-        // Keep the profile bootstrap behavior from the server callback, but do
-        // it after the native client has established the session and cookies.
         try {
           await fetch("/api/auth/profile-sync", {
             method: "POST",
@@ -100,7 +100,7 @@ export function NativeGoogleOAuthHandler() {
             cache: "no-store",
           });
         } catch {
-          // Profile sync is best-effort; authentication itself is already valid.
+          // Profile sync is best-effort; the Supabase session is already valid.
         }
 
         await closeExternalBrowser();
@@ -120,17 +120,28 @@ export function NativeGoogleOAuthHandler() {
     void App.addListener("appUrlOpen", ({ url }) => {
       void handleCallback(url);
     }).then((handle) => {
-      listener = handle;
+      urlListener = handle;
     });
 
-    // Android may deliver the OAuth custom scheme during a cold start rather
-    // than through appUrlOpen, so always inspect the launch URL as well.
+    // Cold-start callback: Android may launch ZIKR directly with the OAuth URL.
     void App.getLaunchUrl().then((launch) => {
       if (launch?.url) void handleCallback(launch.url);
     });
 
+    // singleTask can deliver the deep link while the process resumes. Re-check
+    // the launch URL on activation so the callback is consumed reliably.
+    void App.addListener("appStateChange", ({ isActive }) => {
+      if (!isActive) return;
+      void App.getLaunchUrl().then((launch) => {
+        if (launch?.url) void handleCallback(launch.url);
+      });
+    }).then((handle) => {
+      stateListener = handle;
+    });
+
     return () => {
-      void listener?.remove();
+      void urlListener?.remove();
+      void stateListener?.remove();
     };
   }, []);
 
