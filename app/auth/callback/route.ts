@@ -27,15 +27,17 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const safePath = extractNextPath(searchParams);
   const isNative = searchParams.get('native') === '1';
+  const flowId = searchParams.get('sb_flow_id')?.trim() || null;
 
-  // Native Android/iOS OAuth uses the HTTPS callback as a bridge. Do not
-  // exchange the code on the server because the PKCE verifier lives in the
-  // native WebView. Instead, pass the code to the app's registered deep link.
+  // Native OAuth can use this HTTPS endpoint as a compatibility bridge. The
+  // PKCE verifier remains in the native WebView, so the code must be returned
+  // to that WebView together with its flow id rather than exchanged on Vercel.
   if (isNative) {
     const oauthError = searchParams.get('error');
     const oauthErrorDescription = searchParams.get('error_description');
     const nativeUrl = new URL('com.zikr.app://auth/callback');
     nativeUrl.searchParams.set('next', safePath);
+    if (flowId) nativeUrl.searchParams.set('sb_flow_id', flowId);
 
     if (oauthError) {
       nativeUrl.searchParams.set('error', oauthError);
@@ -62,7 +64,10 @@ export async function GET(request: NextRequest) {
   if (code) {
     try {
       const supabase = await createClient();
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      const { data, error } = await supabase.auth.exchangeCodeForSession(
+        code,
+        flowId ? { flowId } : undefined,
+      );
 
       if (error) {
         if (isPkceVerifierError(error)) {
@@ -84,37 +89,34 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(missingSessionUrl);
       }
 
-      {
-        try {
-          const metadata = user.user_metadata ?? {};
-          const displayName =
-            getOAuthProfileValue(metadata, 'full_name', 'name', 'display_name') ??
-            user.email?.split('@')[0] ??
-            null;
-          const avatarUrl = getOAuthProfileValue(metadata, 'avatar_url', 'picture');
+      try {
+        const metadata = user.user_metadata ?? {};
+        const displayName =
+          getOAuthProfileValue(metadata, 'full_name', 'name', 'display_name') ??
+          user.email?.split('@')[0] ??
+          null;
+        const avatarUrl = getOAuthProfileValue(metadata, 'avatar_url', 'picture');
 
-          // Use the service-role admin client to bypass RLS for the upsert.
-          // The anon-key client bound to the just-exchanged session may not yet
-          // have its cookies flushed to the response, so RLS checks can fail for
-          // brand-new users who have no row in `profiles` yet.
-          const adminClient = createAdminClient();
-          const { error: upsertError } = await adminClient.from('profiles').upsert(
-            {
-              id: user.id,
-              email: user.email ?? null,
-              display_name: displayName,
-              avatar_url: avatarUrl,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'id' },
-          );
-          if (upsertError) {
-            console.error('[auth/callback] Profile upsert error:', upsertError.message);
-          }
-        } catch (profileErr) {
-          console.error('[auth/callback] Profile upsert exception:', profileErr);
-          // Never fail the login flow due to a profile write error
+        // Use the service-role admin client to bypass RLS for the upsert.
+        // The anon-key client bound to the just-exchanged session may not yet
+        // have its cookies flushed to the response, so RLS checks can fail for
+        // brand-new users who have no row in `profiles` yet.
+        const adminClient = createAdminClient();
+        const { error: upsertError } = await adminClient.from('profiles').upsert(
+          {
+            id: user.id,
+            email: user.email ?? null,
+            display_name: displayName,
+            avatar_url: avatarUrl,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' },
+        );
+        if (upsertError) {
+          console.error('[auth/callback] Profile upsert error:', upsertError.message);
         }
+      } catch (profileErr) {
+        console.error('[auth/callback] Profile upsert exception:', profileErr);
       }
 
       return NextResponse.redirect(`${origin}${safePath}`);

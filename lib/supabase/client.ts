@@ -27,18 +27,25 @@ export function createClient(): BrowserClient {
   const { url, key } = getBrowserSupabaseEnv();
 
   if (!url || !key) {
-    // CRITICAL: Missing Supabase configuration.
-    // This is a development-only condition and should never occur in production.
-    // In the v0 preview sandbox, NEXT_PUBLIC_* vars are not injected at build time.
-    // In production on Vercel, NEXT_PUBLIC_SUPABASE_URL is always set.
     throw new Error(
       'Missing Supabase configuration. ' +
-      'Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY ' +
-      'in your environment variables.'
+        'Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY ' +
+        'in your environment variables.',
     );
   }
 
-  _instance = createBrowserClient(url, key);
+  _instance = createBrowserClient(url, key, {
+    auth: {
+      flowType: 'pkce',
+      // Native OAuth can cross an external browser boundary before returning
+      // to the WebView. Keep each pending PKCE verifier addressable by flow id
+      // so the callback can exchange the exact verifier that created the code.
+      experimental: {
+        appendPkceFlowIdToRedirects: true,
+      },
+    },
+  });
+
   return _instance;
 }
 

@@ -32,8 +32,8 @@ async function closeExternalBrowser() {
   try {
     await Browser.close();
   } catch {
-    // The external browser may already be gone after Android hands control
-    // back to the application.
+    // Android can already have closed the custom tab while handing control
+    // back to the app. Closing is therefore deliberately best-effort.
   }
   window.dispatchEvent(new CustomEvent("zikr:native-browser-finished"));
   window.dispatchEvent(new CustomEvent("zikr:native-resumed"));
@@ -62,6 +62,7 @@ export function NativeGoogleOAuthHandler() {
       }
 
       const nextPath = getSafeNextPath(parsed.searchParams.get("next"));
+      const flowId = parsed.searchParams.get("sb_flow_id")?.trim() || null;
       const oauthError = parsed.searchParams.get("error");
       const oauthErrorDescription = parsed.searchParams.get("error_description");
       const code = parsed.searchParams.get("code");
@@ -78,13 +79,17 @@ export function NativeGoogleOAuthHandler() {
       }
 
       try {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        const { error } = await supabase.auth.exchangeCodeForSession(
+          code,
+          flowId ? { flowId } : undefined,
+        );
         if (error) {
           const normalized = error.message.toLowerCase();
           const errorCode =
             normalized.includes("pkce") ||
             normalized.includes("verifier") ||
-            normalized.includes("code verifier")
+            normalized.includes("code verifier") ||
+            normalized.includes("flow")
               ? "auth_pkce_expired"
               : "auth_callback_failed";
 
@@ -117,27 +122,25 @@ export function NativeGoogleOAuthHandler() {
       }
     };
 
-    void App.addListener("appUrlOpen", ({ url }) => {
-      void handleCallback(url);
-    }).then((handle) => {
-      urlListener = handle;
-    });
-
-    // Cold-start callback: Android may launch ZIKR directly with the OAuth URL.
-    void App.getLaunchUrl().then((launch) => {
-      if (launch?.url) void handleCallback(launch.url);
-    });
-
-    // singleTask can deliver the deep link while the process resumes. Re-check
-    // the launch URL on activation so the callback is consumed reliably.
-    void App.addListener("appStateChange", ({ isActive }) => {
-      if (!isActive) return;
-      void App.getLaunchUrl().then((launch) => {
-        if (launch?.url) void handleCallback(launch.url);
+    const subscribe = async () => {
+      // Register the listener before checking launchUrl so a deep link delivered
+      // during startup cannot race the initial callback lookup.
+      urlListener = await App.addListener("appUrlOpen", ({ url }) => {
+        void handleCallback(url);
       });
-    }).then((handle) => {
-      stateListener = handle;
-    });
+
+      stateListener = await App.addListener("appStateChange", ({ isActive }) => {
+        if (!isActive) return;
+        void App.getLaunchUrl().then((launch) => {
+          if (launch?.url) void handleCallback(launch.url);
+        });
+      });
+
+      const launch = await App.getLaunchUrl();
+      if (launch?.url) void handleCallback(launch.url);
+    };
+
+    void subscribe();
 
     return () => {
       void urlListener?.remove();
