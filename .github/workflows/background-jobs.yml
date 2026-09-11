@@ -1,8 +1,8 @@
 name: Background Jobs
 
-# Free, deterministic background video pipeline. HeyGen is not required for
-# the production template generator; optional provider credentials remain
-# available for explicit provider-specific workflows.
+# Deterministic background queue runner for AI video generation and social
+# publishing. Production credentials remain in GitHub Actions secrets; feature
+# flags are repository variables so the worker can be enabled deliberately.
 on:
   workflow_dispatch:
     inputs:
@@ -15,6 +15,8 @@ on:
           - all
           - videos
           - social
+  schedule:
+    - cron: "*/15 * * * *"
 
 permissions:
   contents: read
@@ -24,11 +26,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  VIDEO_GENERATOR: template
-  # Facebook credentials in the current queue are expired. Keep social
-  # publishing opt-in so video generation remains green until tokens are
-  # refreshed. Set to "true" only after valid social credentials are stored.
-  SOCIAL_PUBLISH_ENABLED: "false"
+  VIDEO_GENERATOR: ${{ vars.ZIKR_VIDEO_GENERATOR || 'heygen' }}
+  SOCIAL_PUBLISH_ENABLED: ${{ vars.ZIKR_SOCIAL_PUBLISH_ENABLED || 'false' }}
 
 jobs:
   process:
@@ -36,29 +35,34 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      # Public/non-secret defaults are safe to provide here and prevent a
-      # false failure when the same values are only stored in Vercel.
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://eydxvcamhjhajxjrsgym.supabase.co' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
       NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://zikrmediaofficial.vercel.app' }}
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
       YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
       FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
       FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+      FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
+      HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
+      HEYGEN_AVATAR_ID: ${{ secrets.HEYGEN_AVATAR_ID }}
+      HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
+      VIDEO_AUTO_PUBLISH: ${{ vars.ZIKR_VIDEO_AUTO_PUBLISH || 'false' }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v5
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v4
         with:
           version: 9.15.0
           run_install: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm
@@ -83,20 +87,27 @@ jobs:
           missing=0
           for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SITE_URL; do
             if [[ -z "${!name:-}" ]]; then
-              echo "Missing required GitHub secret: ${name}" >&2
+              echo "Missing required GitHub Actions secret: ${name}" >&2
               missing=1
             fi
           done
           if [[ "$missing" -ne 0 ]]; then
-            echo "Add the missing secret(s) under GitHub Settings > Secrets and variables > Actions." >&2
             exit 1
           fi
 
       - name: Resolve queue target
         id: target
         shell: bash
+        env:
+          DISPATCH_TARGET: ${{ inputs.target }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          echo "target=${{ inputs.target }}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "target=${DISPATCH_TARGET:-all}" >> "$GITHUB_OUTPUT"
+          else
+            echo "target=all" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Run background queues
         env:

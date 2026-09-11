@@ -6,7 +6,7 @@ const KINDS = new Set(['adhan', 'salawat']);
 const select = 'id,kind,title,storage_path,mime_type,size_bytes,is_primary,created_at';
 
 export async function GET() {
-  const guard = await requireAdminApi();
+  const guard = await requireAdminApi('audio.manage');
   if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status });
   const { data, error } = await createAdminClient().from('site_audio_assets').select(select).order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -14,7 +14,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const guard = await requireAdminApi();
+  const guard = await requireAdminApi('audio.manage');
   if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status });
   const body = await request.json().catch(() => null);
   const kind = typeof body?.kind === 'string' ? body.kind : '';
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const guard = await requireAdminApi();
+  const guard = await requireAdminApi('audio.manage');
   if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status });
   const body = await request.json().catch(() => null);
   const id = typeof body?.id === 'string' ? body.id : '';
@@ -45,7 +45,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const guard = await requireAdminApi();
+  const guard = await requireAdminApi('audio.manage');
   if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status });
   const id = request.nextUrl.searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'معرّف المقطع مطلوب.' }, { status: 400 });

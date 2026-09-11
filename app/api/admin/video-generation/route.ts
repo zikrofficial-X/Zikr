@@ -14,7 +14,7 @@ function idsFromBody(body: unknown): string[] {
 }
 
 export async function GET() {
-  const auth = await requireAdminApi();
+  const auth = await requireAdminApi('video.manage');
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
@@ -48,7 +48,7 @@ export async function GET() {
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireAdminApi();
+  const auth = await requireAdminApi('video.delete');
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
@@ -83,16 +83,55 @@ export async function DELETE(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAdminApi();
+  const auth = await requireAdminApi('video.manage');
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const body = await request.json() as { id?: unknown; status?: unknown; errorMessage?: unknown };
+    const body = await request.json() as {
+      id?: unknown;
+      status?: unknown;
+      errorMessage?: unknown;
+      action?: unknown;
+    };
     const id = typeof body.id === 'string' ? body.id : '';
     const status = typeof body.status === 'string' ? body.status : '';
-    if (!id || !ALLOWED_STATUSES.has(status)) {
+    const action = typeof body.action === 'string' ? body.action : '';
+    if (!id) return NextResponse.json({ error: 'معرّف العملية مطلوب.' }, { status: 400 });
+
+    // Publish retry preserves the generated provider job and any successful
+    // platform IDs so only missing publication work is attempted again.
+    if (action === 'retry_publish') {
+      const rows = await supabaseServerAdminRequest<Array<{
+        id: string;
+        status: string;
+        heygen_video_id: string | null;
+        youtube_id: string | null;
+        facebook_id: string | null;
+        video_url: string | null;
+      }>>(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}&select=id,status,heygen_video_id,youtube_id,facebook_id,video_url&limit=1`);
+      const current = rows?.[0];
+      if (!current) return NextResponse.json({ error: 'عملية الفيديو غير موجودة.' }, { status: 404 });
+      if (!current.heygen_video_id && !current.video_url) {
+        return NextResponse.json({ error: 'لا توجد مهمة توليد مكتملة يمكن إعادة نشرها.' }, { status: 409 });
+      }
+
+      await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'processing',
+          error_message: null,
+          error_details: null,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      return NextResponse.json({ ok: true, mode: 'retry_publish', preserved: { youtube: Boolean(current.youtube_id), facebook: Boolean(current.facebook_id) } });
+    }
+
+    if (!ALLOWED_STATUSES.has(status)) {
       return NextResponse.json({ error: 'معرّف أو حالة غير صالحة.' }, { status: 400 });
     }
+
     const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
     if (status === 'pending') {
       patch.error_message = null;
@@ -101,6 +140,9 @@ export async function PATCH(request: NextRequest) {
       patch.heygen_video_id = null;
       patch.heygen_submitted_at = null;
       patch.heygen_last_polled_at = null;
+      patch.youtube_id = null;
+      patch.facebook_id = null;
+      patch.video_url = null;
     }
     if (typeof body.errorMessage === 'string') patch.error_message = body.errorMessage.slice(0, 1000);
 
