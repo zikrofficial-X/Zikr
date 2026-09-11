@@ -12,12 +12,18 @@ type AuthActionResult =
 
 const MIN_PASSWORD_LENGTH = 12;
 const MAX_PASSWORD_LENGTH = 128;
+const EMAIL_MAX_LENGTH = 254;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 
 function isStrongPassword(password: string): boolean {
   if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) return false;
   const hasDigit = /\d/u.test(password);
   const hasSymbol = /[^\p{L}\p{N}\s]/u.test(password);
   return hasDigit && hasSymbol;
+}
+
+function isValidEmail(email: string): boolean {
+  return email.length > 0 && email.length <= EMAIL_MAX_LENGTH && EMAIL_PATTERN.test(email);
 }
 
 function safeNext(value: FormDataEntryValue | null): string {
@@ -40,8 +46,8 @@ export async function loginAction(formData: FormData): Promise<AuthActionResult>
   const password = String(formData.get('password') || '');
   const next = safeNext(formData.get('next'));
 
-  if (!email || !password) {
-    return { ok: false, message: 'أدخل البريد الإلكتروني وكلمة المرور.' };
+  if (!isValidEmail(email) || !password) {
+    return { ok: false, message: 'أدخل بريداً إلكترونياً صحيحاً وكلمة المرور.' };
   }
 
   try {
@@ -59,10 +65,14 @@ export async function registerAction(formData: FormData): Promise<AuthActionResu
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const password = String(formData.get('password') || '');
 
-  if (!email || email.length > 254 || !isStrongPassword(password)) {
+  if (!isValidEmail(email)) {
+    return { ok: false, message: 'أدخل بريداً إلكترونياً صحيحاً.' };
+  }
+
+  if (!isStrongPassword(password)) {
     return {
       ok: false,
-      message: `كلمة المرور يجب أن تكون ${MIN_PASSWORD_LENGTH} حرفاً على الأقل، وتتضمن رقماً ورمزاً خاصاً.`,
+      message: `كلمة المرور يجب أن تكون من ${MIN_PASSWORD_LENGTH} إلى ${MAX_PASSWORD_LENGTH} حرفاً، وتتضمن رقماً ورمزاً خاصاً.`,
     };
   }
 
@@ -140,7 +150,7 @@ export async function registerAction(formData: FormData): Promise<AuthActionResu
 }
 
 export async function forgotAction(formData: FormData) {
-  const email = String(formData.get('email') || '');
+  const email = String(formData.get('email') || '').trim().toLowerCase();
   const env = getServerEnv();
   const siteUrl = getCanonicalAuthBaseUrl(env.NEXT_PUBLIC_SITE_URL);
 
