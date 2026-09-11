@@ -4,20 +4,24 @@
 -- 3) Move media cleanup scheduling from Vercel to a Supabase Edge Function so
 --    pg_cron never depends on a Vercel gateway timeout.
 
-alter table public.social_sync_jobs
-  drop constraint if exists social_sync_jobs_facebook_post_type_check;
+do $
+begin
+  if to_regclass('public.social_sync_jobs') is not null then
+    execute 'alter table public.social_sync_jobs drop constraint if exists social_sync_jobs_facebook_post_type_check';
+    execute 'alter table public.social_sync_jobs add constraint social_sync_jobs_facebook_post_type_check check (facebook_post_type in (''video'', ''reel''))';
+  end if;
 
-alter table public.social_sync_jobs
-  add constraint social_sync_jobs_facebook_post_type_check
-  check (facebook_post_type in ('video', 'reel'));
-
-create policy "admin_rate_limits_no_client_access"
-on public.admin_rate_limits
-as restrictive
-for all
-to anon, authenticated
-using (false)
-with check (false);
+  if to_regclass('public.admin_rate_limits') is not null
+     and not exists (
+       select 1
+       from pg_policies
+       where schemaname = 'public'
+         and tablename = 'admin_rate_limits'
+         and policyname = 'admin_rate_limits_no_client_access'
+     ) then
+    execute 'create policy "admin_rate_limits_no_client_access" on public.admin_rate_limits as restrictive for all to anon, authenticated using (false) with check (false)';
+  end if;
+end $;
 
 -- Remove the Vercel cleanup cron job if present (job id/name may differ across environments).
 do $$
