@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getServerEnv } from '@/lib/env';
 import { getCanonicalAuthBaseUrl } from '@/lib/auth-enhanced';
+import { isPwnedPassword } from '@/lib/security/pwned-password';
 
 type AuthActionResult =
   | { ok: true; next?: string; message?: string }
@@ -74,6 +75,16 @@ export async function registerAction(formData: FormData): Promise<AuthActionResu
       ok: false,
       message: `كلمة المرور يجب أن تكون من ${MIN_PASSWORD_LENGTH} إلى ${MAX_PASSWORD_LENGTH} حرفاً، وتتضمن رقماً ورمزاً خاصاً.`,
     };
+  }
+
+  try {
+    const pwned = await isPwnedPassword(password);
+    if (pwned) {
+      return { ok: false, message: 'كلمة المرور ظهرت في تسريبات سابقة. اختر كلمة مرور أخرى غير مستخدمة من قبل.' };
+    }
+  } catch (error) {
+    // Availability of the breach-check service must never block account creation.
+    console.warn('[auth] compromised-password screening unavailable:', error);
   }
 
   try {
