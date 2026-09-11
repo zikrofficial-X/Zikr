@@ -15,17 +15,35 @@ type QueueItem = {
   published_at: string | null;
   error_message: string | null;
   created_at: string;
+  metadata?: Record<string, unknown> | null;
 };
 
-const failedFilter = 'status=eq.failed';
+const retryableStatuses = new Set(['failed', 'partial']);
+
+function successfulPlatforms(metadata: Record<string, unknown> | null | undefined): Set<string> {
+  const values = metadata?.platformResults;
+  const result = new Set<string>();
+  if (!Array.isArray(values)) return result;
+  for (const value of values) {
+    if (!value || typeof value !== 'object') continue;
+    const row = value as { platform?: unknown; ok?: unknown };
+    if (row.ok === true && typeof row.platform === 'string') result.add(row.platform);
+  }
+  return result;
+}
+
+function retryPlatforms(item: QueueItem): string[] {
+  const succeeded = successfulPlatforms(item.metadata);
+  return item.target_platforms.filter(platform => !succeeded.has(platform));
+}
 
 export async function GET() {
-  const auth = await requireAdminApi();
+  const auth = await requireAdminApi('social.manage');
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
     const items = await supabaseServerAdminRequest<QueueItem[]>(
-      '/rest/v1/social_publish_queue?select=id,content_type,content_id,title,target_platforms,status,scheduled_at,published_at,error_message,created_at&order=created_at.desc&limit=250',
+      '/rest/v1/social_publish_queue?select=id,content_type,content_id,title,target_platforms,status,scheduled_at,published_at,error_message,created_at,metadata&order=created_at.desc&limit=250',
     );
     const counts = (items ?? []).reduce<Record<string, number>>((acc, item) => {
       acc[item.status] = (acc[item.status] ?? 0) + 1;
@@ -39,7 +57,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminApi();
+  const auth = await requireAdminApi('social.manage');
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
@@ -57,52 +75,72 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'حدد عملية فاشلة أولًا.' }, { status: 400 });
     }
 
-    if (action === 'retry_all_failed') {
-      const affected = await supabaseServerAdminRequest<QueueItem[]>(
-        `/rest/v1/social_publish_queue?${failedFilter}&select=id,status`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
-          body: JSON.stringify({
-            status: 'queued',
-            error_message: null,
-            updated_at: new Date().toISOString(),
-            scheduled_at: new Date().toISOString(),
-          }),
-        },
+    const retryItems = async (filter: string) => {
+      const items = await supabaseServerAdminRequest<QueueItem[]>(
+        `/rest/v1/social_publish_queue?${filter}&select=id,target_platforms,metadata,status`,
       );
-      return NextResponse.json({ ok: true, affected: affected?.length ?? 0 });
+      let affected = 0;
+      for (const item of items ?? []) {
+        if (!retryableStatuses.has(item.status)) continue;
+        const platforms = retryPlatforms(item);
+        if (platforms.length === 0) {
+          await supabaseServerAdminRequest(
+            `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}`,
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+              body: JSON.stringify({
+                status: 'published',
+                error_message: null,
+                published_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              }),
+            },
+          );
+          affected += 1;
+          continue;
+        }
+        await supabaseServerAdminRequest(
+          `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify({
+              status: 'queued',
+              target_platforms: platforms,
+              error_message: null,
+              updated_at: new Date().toISOString(),
+              scheduled_at: new Date().toISOString(),
+            }),
+          },
+        );
+        affected += 1;
+      }
+      return affected;
+    };
+
+    if (action === 'retry_all_failed') {
+      const affected = await retryItems('status=in.(failed,partial)');
+      return NextResponse.json({ ok: true, affected });
     }
 
     const filter = ids.map(encodeURIComponent).join(',');
 
     if (action === 'retry') {
-      const affected = await supabaseServerAdminRequest<QueueItem[]>(
-        `/rest/v1/social_publish_queue?id=in.(${filter})&${failedFilter}&select=id,status`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
-          body: JSON.stringify({
-            status: 'queued',
-            error_message: null,
-            updated_at: new Date().toISOString(),
-            scheduled_at: new Date().toISOString(),
-          }),
-        },
-      );
-      return NextResponse.json({ ok: true, affected: affected?.length ?? 0 });
+      const affected = await retryItems(`id=in.(${filter})&status=in.(failed,partial)`);
+      return NextResponse.json({ ok: true, affected });
     }
 
     if (action === 'delete') {
       const affected = await supabaseServerAdminRequest<QueueItem[]>(
-        `/rest/v1/social_publish_queue?id=in.(${filter})&${failedFilter}&select=id`,
+        `/rest/v1/social_publish_queue?id=in.(${filter})&status=in.(failed,partial)&select=id`,
         { method: 'DELETE', headers: { Prefer: 'return=representation' } },
       );
       return NextResponse.json({ ok: true, affected: affected?.length ?? 0 });
     }
 
     const affected = await supabaseServerAdminRequest<QueueItem[]>(
-      `/rest/v1/social_publish_queue?${failedFilter}&select=id`,
+      '/rest/v1/social_publish_queue?status=in.(failed,partial)&select=id',
       { method: 'DELETE', headers: { Prefer: 'return=representation' } },
     );
     return NextResponse.json({ ok: true, affected: affected?.length ?? 0 });
