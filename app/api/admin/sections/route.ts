@@ -41,7 +41,7 @@ async function readVisibility(): Promise<Visibility> {
 }
 
 export async function GET() {
-  const auth = await requireAdminApi();
+  const auth = await requireAdminApi('sections.manage');
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   try {
     return NextResponse.json({ visibility: await readVisibility() }, { headers: { 'Cache-Control': 'no-store' } });
@@ -52,7 +52,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApi();
+  const auth = await requireAdminApi('sections.manage');
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   try {
     const body = await request.json() as { visibility?: unknown };
@@ -60,11 +60,7 @@ export async function POST(request: Request) {
     await supabaseServerAdminRequest('/rest/v1/site_settings?on_conflict=key', {
       method: 'POST',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify({
-        key: SETTINGS_KEY,
-        value: { visibility },
-        updated_at: new Date().toISOString(),
-      }),
+      body: JSON.stringify({ key: SETTINGS_KEY, value: { visibility }, updated_at: new Date().toISOString() }),
     });
     return NextResponse.json({ ok: true, visibility }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
