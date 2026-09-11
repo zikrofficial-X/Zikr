@@ -8,6 +8,16 @@ import { Card } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
 import { createClient } from '@/lib/supabase/client';
 
+const MIN_PASSWORD_LENGTH = 12;
+const MAX_PASSWORD_LENGTH = 128;
+
+function isStrongPassword(password: string): boolean {
+  if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) return false;
+  const hasDigit = /\d/u.test(password);
+  const hasSymbol = /[^\p{L}\p{N}\s]/u.test(password);
+  return hasDigit && hasSymbol;
+}
+
 function ResetForm() {
   const router = useRouter();
   const [password, setPassword] = useState('');
@@ -16,11 +26,10 @@ function ResetForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  // The session is already active after callback redirect — just update the password
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+    if (!isStrongPassword(password)) {
+      setError(`كلمة المرور يجب أن تكون من ${MIN_PASSWORD_LENGTH} إلى ${MAX_PASSWORD_LENGTH} حرفاً، وتتضمن رقماً ورمزاً خاصاً.`);
       return;
     }
     if (password !== confirm) {
@@ -48,6 +57,9 @@ function ResetForm() {
       setLoading(false);
     }
   };
+
+  const passwordValid = isStrongPassword(password);
+  const confirmValid = confirm.length > 0 && password === confirm;
 
   return (
     <Card className="mx-auto max-w-md space-y-6 text-right">
@@ -82,15 +94,16 @@ function ResetForm() {
               dir="ltr"
               type="password"
               required
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
+              maxLength={MAX_PASSWORD_LENGTH}
               disabled={loading}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="••••••••••••"
               className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-3 text-brand-cream placeholder:text-brand-cream/40 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold disabled:opacity-50"
             />
-            <p className={`text-xs ${password.length >= 6 ? 'text-brand-gold' : 'text-brand-cream/50'}`}>
-              {password.length}/6 أحرف على الأقل
+            <p className={`text-xs ${passwordValid ? 'text-brand-gold' : 'text-brand-cream/50'}`}>
+              {password.length}/{MIN_PASSWORD_LENGTH}+ حرفاً — يجب أن تحتوي على رقم ورمز خاص
             </p>
           </div>
 
@@ -104,20 +117,22 @@ function ResetForm() {
               dir="ltr"
               type="password"
               required
+              minLength={MIN_PASSWORD_LENGTH}
+              maxLength={MAX_PASSWORD_LENGTH}
               disabled={loading}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              placeholder="••••••••"
+              placeholder="••••••••••••"
               className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-3 text-brand-cream placeholder:text-brand-cream/40 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold disabled:opacity-50"
             />
-            {confirm && password !== confirm && (
+            {confirm && !confirmValid && (
               <p className="text-xs text-red-400">كلمتا المرور غير متطابقتين</p>
             )}
           </div>
 
           <Button
             type="submit"
-            disabled={loading || password.length < 6 || password !== confirm}
+            disabled={loading || !passwordValid || !confirmValid}
             className="w-full"
           >
             {loading ? 'جاري الحفظ...' : 'حفظ كلمة المرور الجديدة'}
