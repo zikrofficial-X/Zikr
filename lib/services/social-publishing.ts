@@ -43,7 +43,6 @@ function siteUrl() {
   return (isProduction ? "https://zikrmediaofficial.vercel.app" : configured || fallback).replace(/\/$/, "");
 }
 
-
 function assertPublishableVideoUrl(videoUrl: string, target: "facebook" | "youtube") {
   let parsed: URL;
   try {
@@ -187,6 +186,7 @@ async function publishFacebookReelItem(
   const mediaUrl = assertPublishableVideoUrl(item.video_url, "facebook");
   const env = getServerEnv();
   if (!env.FACEBOOK_PAGE_ID) throw new Error("FACEBOOK_PAGE_ID is not configured");
+  if (!env.FACEBOOK_PAGE_ACCESS_TOKEN) throw new Error("FACEBOOK_PAGE_ACCESS_TOKEN is not configured");
   return publishToFacebook(
     item.id,
     { title: item.title, description: item.body ?? "" },
@@ -228,14 +228,26 @@ async function publishPlatform(
               item.id,
               { title: item.title, description: item.body ?? "" },
               assertPublishableVideoUrl(item.video_url, "facebook"),
-              getServerEnv().FACEBOOK_PAGE_ID,
+              (() => {
+                const pageId = getServerEnv().FACEBOOK_PAGE_ID;
+                if (!pageId) throw new Error("FACEBOOK_PAGE_ID is not configured");
+                if (!getServerEnv().FACEBOOK_PAGE_ACCESS_TOKEN) throw new Error("FACEBOOK_PAGE_ACCESS_TOKEN is not configured");
+                return pageId;
+              })(),
               false
             )
           : await publishFacebookPost(item)
         : platform === "facebook_reels"
           ? await publishFacebookReelItem(item)
           : await publishYoutubeItem(item);
-    return { platform, ok: Boolean(remoteId), remoteId };
+
+    if (!remoteId) {
+      throw new Error(
+        `${platform} publisher completed without returning a remote post/video ID. Check provider credentials, permissions, and the target page/channel.`
+      );
+    }
+
+    return { platform, ok: true, remoteId };
   } catch (error) {
     return {
       platform,
