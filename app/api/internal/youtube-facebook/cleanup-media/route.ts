@@ -3,8 +3,8 @@ import { createAdminClient } from "@/lib/supabase/server";
 
 const BUCKET = "youtube-facebook-media";
 const SAFETY_DELAY_MS = 10 * 60 * 1000;
-const MAX_BATCH = 25;
-const CONCURRENCY = 5;
+const MAX_BATCH = 10;
+const CONCURRENCY = 2;
 
 async function sha256Hex(value: string) {
   const buffer = await crypto.subtle.digest(
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
       scanned: jobs?.length ?? 0,
       deleted,
       failed,
-      safetyDelayMinutes: 10,
+      safetyDelayMinutes: SAFETY_DELAY_MS / 60000,
       concurrency: CONCURRENCY,
     });
   } catch (error) {
