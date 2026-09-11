@@ -14,6 +14,8 @@ import {
 
 const VIDEO_BATCH_SIZE = Number(process.env.VIDEO_BACKGROUND_BATCH_SIZE ?? 3);
 const SOCIAL_BATCH_SIZE = Number(process.env.SOCIAL_BACKGROUND_BATCH_SIZE ?? 10);
+const SOCIAL_PUBLISH_ENABLED =
+  (process.env.SOCIAL_PUBLISH_ENABLED ?? "false").toLowerCase() === "true";
 
 const REQUIRED_ENV = [
   "SUPABASE_URL",
@@ -70,6 +72,13 @@ async function processVideos() {
 }
 
 async function processSocial() {
+  if (!SOCIAL_PUBLISH_ENABLED) {
+    console.log(
+      "[background-jobs] Social publishing is disabled; leaving queued social items untouched."
+    );
+    return { processed: 0, succeeded: 0, failed: 0 };
+  }
+
   console.log(`[background-jobs] Claiming up to ${SOCIAL_BATCH_SIZE} queued social publish item(s).`);
   const items = await claimPendingSocialPublishItems(SOCIAL_BATCH_SIZE);
   if (items.length === 0) {
@@ -101,7 +110,9 @@ async function main() {
     throw new Error(`Invalid BACKGROUND_JOB_TARGET: ${target}`);
   }
 
-  console.log(`[background-jobs] Starting autonomous background job runner (target=${target}, generator=${(process.env.VIDEO_GENERATOR ?? "template").toLowerCase()}).`);
+  console.log(
+    `[background-jobs] Starting autonomous background job runner (target=${target}, generator=${(process.env.VIDEO_GENERATOR ?? "template").toLowerCase()}, social=${SOCIAL_PUBLISH_ENABLED ? "enabled" : "disabled"}).`
+  );
   const startedAt = Date.now();
 
   const videos = target === "all" || target === "videos"
@@ -112,7 +123,10 @@ async function main() {
     : { processed: 0, succeeded: 0, failed: 0 };
   const failed = videos.failed + social.failed;
 
-  console.log("[background-jobs] Summary:", JSON.stringify({ target, videos, social, durationMs: Date.now() - startedAt }, null, 2));
+  console.log(
+    "[background-jobs] Summary:",
+    JSON.stringify({ target, videos, social, durationMs: Date.now() - startedAt }, null, 2)
+  );
 
   if (failed > 0) {
     throw new Error(`Background jobs completed with ${failed} failed item(s).`);
