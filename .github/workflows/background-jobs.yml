@@ -25,6 +25,10 @@ concurrency:
 
 env:
   VIDEO_GENERATOR: template
+  # Facebook credentials in the current queue are expired. Keep social
+  # publishing opt-in so video generation remains green until tokens are
+  # refreshed. Set to "true" only after valid social credentials are stored.
+  SOCIAL_PUBLISH_ENABLED: "false"
 
 jobs:
   process:
