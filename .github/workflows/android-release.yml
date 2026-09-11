@@ -31,7 +31,7 @@ jobs:
     name: Build signed Android release
     runs-on: ubuntu-24.04
     environment: android-release
-    timeout-minutes: 40
+    timeout-minutes: 55
     steps:
       - name: Checkout release source
         uses: actions/checkout@v7
@@ -118,7 +118,9 @@ jobs:
 
       - name: Build signed APK and AAB
         working-directory: android
-        run: ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --max-workers=2 --stacktrace --warning-mode all
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
+        run: ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --max-workers=1 --stacktrace --warning-mode all
 
       - name: Verify package and signature
         shell: bash
