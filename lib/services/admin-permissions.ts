@@ -40,12 +40,13 @@ export type AdminAssignedRole =
   | 'seo_manager'
   | 'analyst'
   | 'support';
-export type AdminRole = 'user' | AdminAssignedRole;
+export type AdminRole = 'user' | 'admin' | AdminAssignedRole;
 
 const ALL_ADMIN_PERMISSIONS = Object.keys(ADMIN_PERMISSIONS) as AdminPermission[];
 
 export const ADMIN_ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
   user: [],
+  admin: ALL_ADMIN_PERMISSIONS,
   super_admin: ALL_ADMIN_PERMISSIONS,
   content_manager: [
     'admin.access', 'dashboard.view', 'content.manage', 'content.publish', 'content.delete',
