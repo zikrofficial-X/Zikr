@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/lib/services/admin';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
+import { claimPendingSocialPublishItems, processSocialPublishItem } from '@/lib/services/social-publishing';
+import { getServerEnv } from '@/lib/env';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +38,32 @@ function successfulPlatforms(metadata: Record<string, unknown> | null | undefine
 function retryPlatforms(item: QueueItem): string[] {
   const succeeded = successfulPlatforms(item.metadata);
   return item.target_platforms.filter(platform => !succeeded.has(platform));
+}
+
+async function triggerSocialWorker() {
+  const admin = createAdminClient();
+  const { data: schedulerSecret, error } = await admin.rpc('get_push_scheduler_secret');
+  if (error || typeof schedulerSecret !== 'string' || schedulerSecret.length === 0) {
+    throw new Error('تعذر تشغيل عامل النشر تلقائيًا.');
+  }
+
+  const siteUrl = getServerEnv().NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
+  const response = await fetch(`${siteUrl}/api/internal/video-processing`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${schedulerSecret}`,
+      'Content-Type': 'application/json',
+    },
+    cache: 'no-store',
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    socialProcessed?: number;
+    socialSucceeded?: number;
+    socialFailed?: number;
+    error?: string;
+  };
+  if (!response.ok) throw new Error(payload.error || 'تعذر تشغيل عامل النشر.');
+  return payload;
 }
 
 export async function GET() {
@@ -121,14 +150,24 @@ export async function POST(request: NextRequest) {
 
     if (action === 'retry_all_failed') {
       const affected = await retryItems('status=in.(failed,partial)');
-      return NextResponse.json({ ok: true, affected });
+      const worker = affected > 0 ? await triggerSocialWorker() : null;
+      return NextResponse.json({
+        ok: true,
+        affected,
+        worker,
+      });
     }
 
     const filter = ids.map(encodeURIComponent).join(',');
 
     if (action === 'retry') {
       const affected = await retryItems(`id=in.(${filter})&status=in.(failed,partial)`);
-      return NextResponse.json({ ok: true, affected });
+      const worker = affected > 0 ? await triggerSocialWorker() : null;
+      return NextResponse.json({
+        ok: true,
+        affected,
+        worker,
+      });
     }
 
     if (action === 'delete') {
@@ -146,6 +185,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, affected: affected?.length ?? 0 });
   } catch (error) {
     console.error('[api/admin/social] POST:', error);
-    return NextResponse.json({ error: 'تعذر تنفيذ إجراء مركز النشر.' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'تعذر تنفيذ إجراء مركز النشر.' }, { status: 500 });
   }
 }
