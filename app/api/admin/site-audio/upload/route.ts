@@ -7,7 +7,7 @@ const ALLOWED_TYPES = new Set(['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/
 const MAX_BYTES = 50 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
-  const guard = await requireAdminApi();
+  const guard = await requireAdminApi('audio.manage');
   if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
   const body = await request.json().catch(() => null);
