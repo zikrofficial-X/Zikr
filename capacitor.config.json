@@ -19,7 +19,6 @@
       "hadithapi.com",
       "cdn.islamic.network",
       "everyayah.com",
-      "quranaudio.pages.dev",
       "*.mp3quran.net",
       "download.quranicaudio.com",
       "archive.org",
@@ -76,9 +75,6 @@
         "camera",
         "photos"
       ]
-    },
-    "BiometricAuth": {
-      "allowDeviceCredential": true
     },
     "BackgroundTask": {
       "iosMinimumBackgroundFetchInterval": 900
