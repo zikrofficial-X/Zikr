@@ -68,7 +68,23 @@ jobs:
         uses: android-actions/setup-android@v4
 
       - name: Install Android SDK packages
-        run: sdkmanager "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [[ -z "$SDK_ROOT" ]]; then
+            echo "Android SDK root is not set by setup-android." >&2
+            exit 1
+          fi
+          echo "ANDROID SDK: $SDK_ROOT"
+          sdkmanager "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}"
+          BUILD_TOOLS_BIN="$SDK_ROOT/build-tools/$ANDROID_BUILD_TOOLS"
+          test -x "$BUILD_TOOLS_BIN/apksigner"
+          test -x "$BUILD_TOOLS_BIN/zipalign"
+          test -x "$SDK_ROOT/cmdline-tools/latest/bin/apkanalyzer"
+          echo "$BUILD_TOOLS_BIN" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "Android build-tools ready: $BUILD_TOOLS_BIN"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -130,16 +146,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          BUILD_TOOLS_BIN="$SDK_ROOT/build-tools/$ANDROID_BUILD_TOOLS"
           APK="android/app/build/outputs/apk/release/app-release.apk"
           AAB="android/app/build/outputs/bundle/release/app-release.aab"
           test -s "$APK"
           test -s "$AAB"
-          apksigner verify --verbose "$APK"
+          test -x "$BUILD_TOOLS_BIN/apksigner"
+          test -x "$SDK_ROOT/cmdline-tools/latest/bin/apkanalyzer"
+          "$BUILD_TOOLS_BIN/apksigner" verify --verbose "$APK"
           sha256sum "$APK" "$AAB" | tee SHA256SUMS
           EXPECTED_VERSION="${RELEASE_TAG#v}"
-          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest application-id "$APK" | grep -Fx 'com.zikr.app'
-          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest version-name "$APK" | grep -Fx "$EXPECTED_VERSION"
-          "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest target-sdk "$APK" | grep -Fx '36'
+          "$SDK_ROOT/cmdline-tools/latest/bin/apkanalyzer" manifest application-id "$APK" | grep -Fx 'com.zikr.app'
+          "$SDK_ROOT/cmdline-tools/latest/bin/apkanalyzer" manifest version-name "$APK" | grep -Fx "$EXPECTED_VERSION"
+          "$SDK_ROOT/cmdline-tools/latest/bin/apkanalyzer" manifest target-sdk "$APK" | grep -Fx '36'
 
       - name: Publish GitHub Release assets
         env:
