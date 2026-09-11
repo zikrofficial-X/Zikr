@@ -10,7 +10,7 @@
     "check": "tsc --noEmit",
     "test": "tsx --test __tests__/unit/*.test.ts __tests__/integration/*.test.ts",
     "format": "prettier --write .",
-    "db:migrate:supabase": "pnpm dlx supabase db push",
+    "db:migrate-supabase": "pnpm dlx supabase db push",
     "lint": "eslint .",
     "deploy:check": "node scripts/validate-deployment-env.mjs",
     "cap": "cap",

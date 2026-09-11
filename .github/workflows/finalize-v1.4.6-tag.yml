@@ -1,0 +1,10 @@
+name: Finalize v1.4.6 Tag (disabled)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  disabled:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo 'One-time v1.4.6 tag finalization is complete.'

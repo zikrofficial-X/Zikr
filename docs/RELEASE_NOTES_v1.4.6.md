@@ -2,13 +2,12 @@
 
 ## الإصدار
 
-- تثبيت `NEXT_PUBLIC_SITE_URL` على نطاق الإنتاج الرسمي: `https://zikrmediaofficial.vercel.app/`.
-- إصلاح Google OAuth للـAndroid باستخدام deep link مباشر: `com.zikr.app://auth/callback` مع الحفاظ على PKCE داخل التطبيق.
-- إبقاء Google callback الإنتاجي على `/auth/callback` وعدم استخدام روابط Vercel preview المتغيرة في مسار الإنتاج.
-- تثبيت مسار فيديوهات القرآن المجاني على template generator مع تلاوة القرآن الأصلية وFFmpeg والترميز الاحترافي.
-- فصل فشل النشر الاجتماعي عن توليد الفيديوهات مع إبقاء النشر الاجتماعي معطلًا حتى تحديث بيانات الاعتماد المنتهية.
+- توحيد عنوان الإنتاج على `https://zikrmediaofficial.vercel.app/`.
+- إصلاح Google OAuth على Android باستخدام `com.zikr.app://auth/callback` مع الحفاظ على PKCE داخل التطبيق.
+- تثبيت مسار فيديوهات القرآن المجاني على template generator مع التلاوة الأصلية والترميز الاحترافي عبر FFmpeg.
+- فصل تعطل النشر الاجتماعي عن توليد الفيديوهات، مع إبقاء النشر الاجتماعي معطلًا لحين تحديث الاعتمادات المنتهية.
 - تحديث Android `versionCode` إلى `37` و`versionName` إلى `1.4.6`.
-- توحيد `package.json` وإجراءات التحقق مع الإصدار الجديد.
+- توحيد فحص metadata مع الإصدار الجديد.
 
 ## OAuth / Android
 
@@ -16,9 +15,9 @@
 - Native callback: `com.zikr.app://auth/callback`
 - Production callback: `https://zikrmediaofficial.vercel.app/auth/callback`
 
-## التحقق المطلوب قبل النشر
+## التحقق قبل اعتماد الإصدار
 
-- Supabase Authentication → URL Configuration: ضبط Site URL على نطاق الإنتاج الرسمي وإضافة callback الخاص بالموقع وdeep link الخاص بالتطبيق.
-- Google Cloud OAuth: الاحتفاظ بعنوان Supabase provider callback كعنوان Authorized redirect URI.
-- تشغيل `pnpm verify` قبل اعتماد الإصدار النهائي.
+- Supabase Authentication → URL Configuration: ضبط Site URL على نطاق الإنتاج وإضافة callback الخاص بالموقع وdeep link الخاص بالتطبيق.
+- Google Cloud OAuth: استخدام عنوان Supabase provider callback كـ Authorized redirect URI.
+- تشغيل `pnpm verify`.
 - التحقق من توقيع APK وAAB ومن `applicationId` و`versionName` و`targetSdk`.
