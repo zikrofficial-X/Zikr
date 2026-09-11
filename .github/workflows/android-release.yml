@@ -122,6 +122,8 @@ jobs:
 
       - name: Build signed APK and AAB
         working-directory: android
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
         run: ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --parallel --max-workers=2 --stacktrace --warning-mode all
 
       - name: Verify package and signature

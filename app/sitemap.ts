@@ -13,8 +13,12 @@ import type { Scholar } from "@/lib/services/scholars";
 import type { HadithBook } from "@/lib/types/hadith";
 import type { Story } from "@/lib/services/stories";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+/**
+ * Sitemap is public infrastructure. Avoid forcing a fresh server render on
+ * every crawler request because the URL inventory reads several data sources.
+ * ISR keeps the XML stable while still refreshing the inventory hourly.
+ */
+export const revalidate = 3600;
 
 type SitemapEntry = MetadataRoute.Sitemap[number];
 type SlugRow = { slug: string };
@@ -34,6 +38,7 @@ const STATIC_BATTLE_SLUGS = [
 ] as const;
 
 const MIN_INDEXABLE_EDITORIAL_CHARS = 1800;
+const SITEMAP_URL_LIMIT = 50_000;
 
 async function getPublishedSlugs(table: "companions" | "conquests") {
   return supabaseServerAnonRequest<SlugRow[]>(
@@ -87,9 +92,12 @@ function uniqueRoutes(routes: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
   return Array.from(new Map(routes.map(entry => [entry.url, entry])).values());
 }
 
-const SITEMAP_PAGE_SIZE = 45_000;
 let sitemapCache: { entries: MetadataRoute.Sitemap; expiresAt: number } | null = null;
 
+/**
+ * Build a sitemap from public, indexable routes. Dynamic source failures never
+ * invalidate the whole sitemap: the static route inventory is always retained.
+ */
 export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
   if (sitemapCache && sitemapCache.expiresAt > Date.now()) return sitemapCache.entries;
 
@@ -256,21 +264,23 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
     ];
 
     const entries = uniqueRoutes([...staticRoutes, ...dynamicRoutes]);
-    sitemapCache = { entries, expiresAt: Date.now() + 5 * 60 * 1000 };
-    return entries;
+    const safeEntries = entries.slice(0, SITEMAP_URL_LIMIT);
+    sitemapCache = { entries: safeEntries, expiresAt: Date.now() + 60 * 60 * 1000 };
+    return safeEntries;
   } catch (error) {
     console.error("[sitemap] Error generating dynamic routes:", error);
-    sitemapCache = { entries: uniqueRoutes(staticRoutes), expiresAt: Date.now() + 60 * 1000 };
-    return uniqueRoutes(staticRoutes);
+    const fallbackEntries = uniqueRoutes(staticRoutes).slice(0, SITEMAP_URL_LIMIT);
+    sitemapCache = { entries: fallbackEntries, expiresAt: Date.now() + 10 * 60 * 1000 };
+    return fallbackEntries;
   }
 }
 
 export async function getSitemapShardCount(): Promise<number> {
   const entries = await getSitemapEntries();
-  return Math.max(1, Math.ceil(entries.length / SITEMAP_PAGE_SIZE));
+  return Math.max(1, Math.ceil(entries.length / SITEMAP_URL_LIMIT));
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries = await getSitemapEntries();
-  return entries.slice(0, SITEMAP_PAGE_SIZE);
+  return entries.slice(0, SITEMAP_URL_LIMIT);
 }
