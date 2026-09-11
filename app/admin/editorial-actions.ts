@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdminStepUp } from "@/lib/services/admin-security";
 import { enforceAdminRateLimit } from "@/lib/services/admin-rate-limit";
@@ -15,30 +16,39 @@ function target(formData: FormData) {
   return { id, updatedAt };
 }
 
+function editorialError(message: string) {
+  redirect(`/admin/editorial?error=${encodeURIComponent(message)}`);
+}
+
 export async function changeEditorialReviewStatusAction(formData: FormData) {
   const admin = await requireAdminStepUp("knowledge.manage", "/admin/editorial");
   await enforceAdminRateLimit(admin, "editorial.review", 30, 60);
   const { id, updatedAt } = target(formData);
   const status = String(formData.get("status") ?? "").trim();
-  if (!REVIEW_STATES.has(status)) throw new Error("حالة مراجعة غير صالحة.");
+  if (!REVIEW_STATES.has(status)) editorialError("حالة مراجعة غير صالحة.");
 
   const current = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string; review_status: string }>>(
     `/rest/v1/content_library?select=id,updated_at,review_status&id=eq.${encodeURIComponent(id)}&limit=1`,
     { method: "GET" },
   );
-  if (!current[0]) throw new Error("المحتوى غير موجود.");
-  if (updatedAt && current[0].updated_at !== updatedAt) throw new Error("تم تعديل المحتوى. حدّث الصفحة ثم أعد المحاولة.");
+  if (!current[0]) editorialError("المحتوى غير موجود.");
+  if (updatedAt && current[0].updated_at !== updatedAt) editorialError("تم تعديل المحتوى. حدّث الصفحة ثم أعد المحاولة.");
 
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = { review_status: status, updated_at: now };
   if (status === "approved") patch.published = false;
   if (status === "rejected" || status === "draft" || status === "editorial_review" || status === "scholarly_review") patch.published = false;
 
-  await supabaseServerAdminRequest(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}${updatedAt ? `&updated_at=eq.${encodeURIComponent(updatedAt)}` : ""}`, {
-    method: "PATCH",
-    headers: { Prefer: "return=minimal" },
-    body: JSON.stringify(patch),
-  });
+  try {
+    await supabaseServerAdminRequest(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}${updatedAt ? `&updated_at=eq.${encodeURIComponent(updatedAt)}` : ""}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify(patch),
+    });
+  } catch (error) {
+    console.error("[admin/editorial] review update failed", error);
+    editorialError("تعذر تحديث حالة المحتوى. تحقق من الحقول المطلوبة ثم أعد المحاولة.");
+  }
 
   await recordAdminAuditEvent({
     action: "editorial.review_status.update",
@@ -56,20 +66,26 @@ export async function publishApprovedContentAction(formData: FormData) {
   const admin = await requireAdminStepUp("content.publish", "/admin/editorial");
   await enforceAdminRateLimit(admin, "editorial.publish", 10, 60);
   const { id, updatedAt } = target(formData);
-  const current = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string; review_status: string; published: boolean }>>(
-    `/rest/v1/content_library?select=id,updated_at,review_status,published&id=eq.${encodeURIComponent(id)}&limit=1`,
+  const current = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string; review_status: string; published: boolean; source_id: string | null }>>(
+    `/rest/v1/content_library?select=id,updated_at,review_status,published,source_id&id=eq.${encodeURIComponent(id)}&limit=1`,
     { method: "GET" },
   );
-  if (!current[0]) throw new Error("المحتوى غير موجود.");
-  if (current[0].review_status !== "approved") throw new Error("لا يمكن نشر محتوى قبل اعتماده.");
-  if (updatedAt && current[0].updated_at !== updatedAt) throw new Error("تم تعديل المحتوى. حدّث الصفحة ثم أعد المحاولة.");
+  if (!current[0]) editorialError("المحتوى غير موجود.");
+  if (current[0].review_status !== "approved") editorialError("لا يمكن نشر محتوى قبل اعتماده.");
+  if (!current[0].source_id) editorialError("لا يمكن نشر المحتوى قبل ربط مصدر موثوق به.");
+  if (updatedAt && current[0].updated_at !== updatedAt) editorialError("تم تعديل المحتوى. حدّث الصفحة ثم أعد المحاولة.");
 
   const now = new Date().toISOString();
-  await supabaseServerAdminRequest(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}${updatedAt ? `&updated_at=eq.${encodeURIComponent(updatedAt)}` : ""}`, {
-    method: "PATCH",
-    headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ published: true, published_at: now, updated_at: now }),
-  });
+  try {
+    await supabaseServerAdminRequest(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}${updatedAt ? `&updated_at=eq.${encodeURIComponent(updatedAt)}` : ""}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ published: true, published_at: now, updated_at: now }),
+    });
+  } catch (error) {
+    console.error("[admin/editorial] publish failed", error);
+    editorialError("فشل النشر. يجب اعتماد المحتوى وربطه بمصدر موثوق قبل النشر.");
+  }
 
   await recordAdminAuditEvent({
     action: "editorial.publish",
