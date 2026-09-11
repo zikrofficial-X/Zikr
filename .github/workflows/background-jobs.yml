@@ -26,8 +26,12 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  VIDEO_GENERATOR: ${{ vars.ZIKR_VIDEO_GENERATOR || 'heygen' }}
-  SOCIAL_PUBLISH_ENABLED: ${{ vars.ZIKR_SOCIAL_PUBLISH_ENABLED || 'false' }}
+  # Free local renderer is the production default. Set the repository variable
+  # ZIKR_VIDEO_GENERATOR=heygen only when an external HeyGen account is desired.
+  VIDEO_GENERATOR: ${{ vars.ZIKR_VIDEO_GENERATOR || 'template' }}
+  # Social publishing is enabled by default; disable deliberately with the repo
+  # variable when testing locally or pausing automatic distribution.
+  SOCIAL_PUBLISH_ENABLED: ${{ vars.ZIKR_SOCIAL_PUBLISH_ENABLED || 'true' }}
 
 jobs:
   process:
@@ -53,7 +57,9 @@ jobs:
       HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
       HEYGEN_AVATAR_ID: ${{ secrets.HEYGEN_AVATAR_ID }}
       HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
-      VIDEO_AUTO_PUBLISH: ${{ vars.ZIKR_VIDEO_AUTO_PUBLISH || 'false' }}
+      # Automatic publishing is enabled by default so generated videos flow to
+      # every configured target. Set ZIKR_VIDEO_AUTO_PUBLISH=false to pause.
+      VIDEO_AUTO_PUBLISH: ${{ vars.ZIKR_VIDEO_AUTO_PUBLISH || 'true' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
