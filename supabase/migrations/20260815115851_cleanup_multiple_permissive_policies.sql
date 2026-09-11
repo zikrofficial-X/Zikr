@@ -37,6 +37,9 @@ BEGIN
     ) AS v(table_name, policy_name)
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', rec.policy_name, rec.table_name);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', rec.policy_name || '_insert', rec.table_name);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', rec.policy_name || '_update', rec.table_name);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', rec.policy_name || '_delete', rec.table_name);
     EXECUTE format(
       'CREATE POLICY %I ON public.%I FOR INSERT TO authenticated WITH CHECK (private.is_admin_user())',
       rec.policy_name || '_insert', rec.table_name
@@ -60,6 +63,9 @@ BEGIN
   IF to_regclass('public.social_publish_queue') IS NOT NULL THEN
     DROP POLICY IF EXISTS social_publish_queue_admin_all ON public.social_publish_queue;
     DROP POLICY IF EXISTS social_publish_queue_service_role_all ON public.social_publish_queue;
+    DROP POLICY IF EXISTS social_publish_queue_admin_insert ON public.social_publish_queue;
+    DROP POLICY IF EXISTS social_publish_queue_admin_update ON public.social_publish_queue;
+    DROP POLICY IF EXISTS social_publish_queue_admin_delete ON public.social_publish_queue;
     CREATE POLICY social_publish_queue_admin_insert ON public.social_publish_queue
       FOR INSERT TO authenticated WITH CHECK (private.is_admin_user());
     CREATE POLICY social_publish_queue_admin_update ON public.social_publish_queue
@@ -82,6 +88,10 @@ DROP POLICY IF EXISTS users_own_tawasheeh_favorites ON public.tawasheeh_favorite
 DROP POLICY IF EXISTS tawasheeh_playlists_owner_all ON public.tawasheeh_playlists;
 DROP POLICY IF EXISTS users_own_tawasheeh_playlists ON public.tawasheeh_playlists;
 DROP POLICY IF EXISTS tawasheeh_playlists_public_read ON public.tawasheeh_playlists;
+DROP POLICY IF EXISTS tawasheeh_playlists_public_or_owner_select ON public.tawasheeh_playlists;
+DROP POLICY IF EXISTS tawasheeh_playlists_owner_insert ON public.tawasheeh_playlists;
+DROP POLICY IF EXISTS tawasheeh_playlists_owner_update ON public.tawasheeh_playlists;
+DROP POLICY IF EXISTS tawasheeh_playlists_owner_delete ON public.tawasheeh_playlists;
 CREATE POLICY tawasheeh_playlists_public_or_owner_select ON public.tawasheeh_playlists
   FOR SELECT TO public USING (is_public = true OR (SELECT auth.uid()) = user_id);
 CREATE POLICY tawasheeh_playlists_owner_insert ON public.tawasheeh_playlists
