@@ -35,7 +35,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      # The Supabase project URL is public configuration, so keep a deterministic
+      # repository fallback instead of failing scheduled runs when the URL is
+      # not duplicated into an Actions secret.
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL || 'https://eydxvcamhjhajxjrsgym.supabase.co' }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
       NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://zikrmediaofficial.vercel.app' }}
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
@@ -87,7 +90,7 @@ jobs:
           missing=0
           for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SITE_URL; do
             if [[ -z "${!name:-}" ]]; then
-              echo "Missing required GitHub Actions secret: ${name}" >&2
+              echo "Missing required GitHub Actions secret/configuration: ${name}" >&2
               missing=1
             fi
           done
