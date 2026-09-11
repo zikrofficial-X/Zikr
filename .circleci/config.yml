@@ -23,6 +23,14 @@ jobs:
             set -euo pipefail
             pnpm install --frozen-lockfile
       - run:
+          name: Run migration validation
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm supabase:migrations:check
+            pnpm supabase:migrations:replay
+          no_output_timeout: 20m
+      - run:
           name: Run CI checks
           shell: /bin/bash
           command: |
