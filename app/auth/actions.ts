@@ -10,6 +10,16 @@ type AuthActionResult =
   | { ok: true; next?: string; message?: string }
   | { ok: false; message: string };
 
+const MIN_PASSWORD_LENGTH = 12;
+const MAX_PASSWORD_LENGTH = 128;
+
+function isStrongPassword(password: string): boolean {
+  if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) return false;
+  const hasDigit = /\d/u.test(password);
+  const hasSymbol = /[^\p{L}\p{N}\s]/u.test(password);
+  return hasDigit && hasSymbol;
+}
+
 function safeNext(value: FormDataEntryValue | null): string {
   const next = String(value || '/profile');
   return next.startsWith('/') && !next.startsWith('//') ? next : '/profile';
@@ -25,10 +35,6 @@ function loginErrorMessage(message: string): string {
   return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
 }
 
-// ─── Login ────────────────────────────────────────────────────────────────────
-// The client handles navigation after a successful server action. This avoids
-// turning Next.js redirect control-flow into a visible NEXT_REDIRECT error when
-// the action is invoked from a client-side form action.
 export async function loginAction(formData: FormData): Promise<AuthActionResult> {
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const password = String(formData.get('password') || '');
@@ -49,13 +55,15 @@ export async function loginAction(formData: FormData): Promise<AuthActionResult>
   }
 }
 
-// ─── Register ─────────────────────────────────────────────────────────────────
 export async function registerAction(formData: FormData): Promise<AuthActionResult> {
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const password = String(formData.get('password') || '');
 
-  if (!email || !password || email.length > 254 || password.length > 128) {
-    return { ok: false, message: 'بيانات التسجيل غير صالحة.' };
+  if (!email || email.length > 254 || !isStrongPassword(password)) {
+    return {
+      ok: false,
+      message: `كلمة المرور يجب أن تكون ${MIN_PASSWORD_LENGTH} حرفاً على الأقل، وتتضمن رقماً ورمزاً خاصاً.`,
+    };
   }
 
   try {
@@ -131,7 +139,6 @@ export async function registerAction(formData: FormData): Promise<AuthActionResu
   }
 }
 
-// ─── Forgot password ──────────────────────────────────────────────────────────
 export async function forgotAction(formData: FormData) {
   const email = String(formData.get('email') || '');
   const env = getServerEnv();
@@ -145,14 +152,12 @@ export async function forgotAction(formData: FormData) {
   redirect('/auth/login?message=reset_sent');
 }
 
-// ─── Logout ───────────────────────────────────────────────────────────────────
 export async function logoutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect('/');
 }
 
-// ─── Update profile ───────────────────────────────────────────────────────────
 export async function updateProfileAction(formData: FormData) {
   const displayName = String(formData.get('displayName') || '').trim();
   const supabase = await createClient();
