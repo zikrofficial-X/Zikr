@@ -111,6 +111,9 @@ BEGIN
     DROP POLICY IF EXISTS "Anyone can subscribe" ON public.subscriptions;
     DROP POLICY IF EXISTS subscriptions_public_insert ON public.subscriptions;
     DROP POLICY IF EXISTS subscriptions_owner_all ON public.subscriptions;
+    DROP POLICY IF EXISTS subscriptions_owner_select ON public.subscriptions;
+    DROP POLICY IF EXISTS subscriptions_owner_update ON public.subscriptions;
+    DROP POLICY IF EXISTS subscriptions_owner_delete ON public.subscriptions;
     CREATE POLICY subscriptions_public_insert ON public.subscriptions
       FOR INSERT TO anon, authenticated WITH CHECK (email IS NOT NULL);
     CREATE POLICY subscriptions_owner_select ON public.subscriptions
