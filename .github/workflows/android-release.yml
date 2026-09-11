@@ -1,16 +1,17 @@
 name: Android Release
 
-# Manual Android release pipeline.
-# CircleCI may be used for the primary release path; this workflow remains a
-# fully functional GitHub-hosted fallback and must produce the same signed
-# APK/AAB artifacts without timing out on cold runners.
+# Android release pipeline for signed APK/AAB artifacts.
+# Supports both manual dispatch and automatic builds from version tags.
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag to build (for example v1.4.4)'
+        description: 'Release tag to build (for example v1.4.6)'
         required: true
-        default: v1.4.4
+        default: v1.4.6
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -25,7 +26,7 @@ env:
   JAVA_VERSION: "21"
   ANDROID_PLATFORM: "android-36"
   ANDROID_BUILD_TOOLS: "35.0.0"
-  RELEASE_TAG: ${{ inputs.release_tag }}
+  RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
 
 jobs:
   release:
@@ -92,7 +93,6 @@ jobs:
       - name: Verify web application
         run: pnpm verify
 
-      # pnpm verify already executes the production Next.js build.
       - name: Sync Capacitor Android project
         run: pnpm exec cap sync android
 
@@ -100,6 +100,9 @@ jobs:
         env:
           ANDROID_APP_LINKS_SHA256: ${{ secrets.ANDROID_APP_LINKS_SHA256 }}
         run: MOBILE_RELEASE_CHECK=1 MOBILE_RELEASE_PLATFORM=android MOBILE_RELEASE_CHANNEL=github pnpm mobile:check
+
+      - name: Validate release metadata
+        run: node scripts/verify-release-metadata.mjs
 
       - name: Validate signing inputs
         shell: bash
