@@ -1,0 +1,27 @@
+name: Finalize v1.4.6 Tag
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    name: Point v1.4.6 at production main
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Move v1.4.6 tag to current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="v1.4.6"
+          SHA="${GITHUB_SHA}"
+          gh api --method PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}" \
+            -f sha="${SHA}" \
+            -F force=true
+          echo "v1.4.6 -> ${SHA}"
