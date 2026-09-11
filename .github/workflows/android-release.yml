@@ -1,8 +1,9 @@
 name: Android Release
 
-# Android releases are built and published by CircleCI.
-# Keep this manual-only fallback so GitHub-hosted runner billing failures cannot
-# create false red checks or duplicate releases.
+# Manual Android release pipeline.
+# CircleCI may be used for the primary release path; this workflow remains a
+# fully functional GitHub-hosted fallback and must produce the same signed
+# APK/AAB artifacts without timing out on cold runners.
 on:
   workflow_dispatch:
     inputs:
@@ -31,7 +32,7 @@ jobs:
     name: Build signed Android release
     runs-on: ubuntu-24.04
     environment: android-release
-    timeout-minutes: 55
+    timeout-minutes: 60
     steps:
       - name: Checkout release source
         uses: actions/checkout@v7
@@ -57,7 +58,11 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
-          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-cleanup: on-success
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
@@ -71,10 +76,9 @@ jobs:
       - name: Verify web application
         run: pnpm verify
 
-      - name: Build web assets and sync Capacitor
-        run: |
-          pnpm build
-          pnpm exec cap sync android
+      # pnpm verify already executes the production Next.js build.
+      - name: Sync Capacitor Android project
+        run: pnpm exec cap sync android
 
       - name: Verify mobile configuration
         env:
@@ -120,7 +124,7 @@ jobs:
         working-directory: android
         env:
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
-        run: ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --max-workers=1 --stacktrace --warning-mode all
+        run: ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --parallel --max-workers=2 --stacktrace --warning-mode all
 
       - name: Verify package and signature
         shell: bash
@@ -142,10 +146,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release create "$RELEASE_TAG" \
-            android/app/build/outputs/apk/release/app-release.apk \
-            android/app/build/outputs/bundle/release/app-release.aab \
-            SHA256SUMS \
-            --verify-tag \
-            --generate-notes \
-            --title "ZIKR $RELEASE_TAG"
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          AAB="android/app/build/outputs/bundle/release/app-release.aab"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --clobber
+          else
+            gh release create "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --verify-tag --generate-notes --title "ZIKR $RELEASE_TAG"
+          fi
