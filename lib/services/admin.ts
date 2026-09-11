@@ -66,9 +66,10 @@ export async function requireAdminPermissionApi(permission: AdminPermission): Pr
 }
 
 /**
- * Backward-compatible API guard. New API routes should use the specific
- * permission needed by the endpoint.
+ * Backward-compatible API guard with optional scoped permission.
+ * Existing routes keep `admin.access`; hardened routes can request the
+ * narrowest permission required by the endpoint.
  */
-export async function requireAdminApi() {
-  return requireAdminPermissionApi('admin.access');
+export async function requireAdminApi(permission: AdminPermission = 'admin.access') {
+  return requireAdminPermissionApi(permission);
 }
