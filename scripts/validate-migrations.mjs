@@ -1,7 +1,7 @@
 // Validates the full Supabase migration chain against an in-memory Postgres
 // (PGlite) with Supabase auth/storage schemas stubbed. Catches ordering bugs,
-// duplicate migration versions, and repeated RLS policy definitions before they
-// reach Supabase Preview/production.
+// duplicate migration versions, and non-idempotent RLS policy definitions before
+// they reach Supabase Preview/production.
 //
 // Usage: node scripts/validate-migrations.mjs
 import { PGlite } from '@electric-sql/pglite';
@@ -68,7 +68,7 @@ console.log('Supabase stubs installed');
 
 const versions = new Map();
 const duplicateVersions = new Set();
-const policyDefinitions = new Map();
+const activePolicies = new Map();
 const duplicatePolicies = [];
 
 const migrationScore = (file) => {
@@ -77,6 +77,45 @@ const migrationScore = (file) => {
     + (sql.includes('alter table') ? 2 : 0)
     + (sql.includes('create function') ? 1 : 0);
 };
+
+function normalizeIdent(value) {
+  return value.replace(/^['\"]|['\"]$/g, '').trim().toLowerCase();
+}
+
+function scanPolicyChanges(sql, file) {
+  // Track explicit DROP POLICY statements first. This allows later migrations to
+  // intentionally redefine the same policy name after removing the old definition.
+  const dropRe = /drop\s+policy\s+(?:if\s+exists\s+)?["']([^"']+)["']\s+on\s+(?:public\.)?["']?([a-zA-Z0-9_]+)["']?/gi;
+  let drop;
+  while ((drop = dropRe.exec(sql)) !== null) {
+    const key = `${normalizeIdent(drop[2])}:${normalizeIdent(drop[1])}`;
+    activePolicies.delete(key);
+  }
+
+  const createRe = /create\s+policy\s+["']([^"']+)["']\s+on\s+(?:public\.)?["']?([a-zA-Z0-9_]+)["']?/gi;
+  let create;
+  while ((create = createRe.exec(sql)) !== null) {
+    const name = normalizeIdent(create[1]);
+    const table = normalizeIdent(create[2]);
+    const key = `${table}:${name}`;
+
+    // A migration may intentionally use a pg_policies existence guard. Those are
+    // idempotent even when an earlier migration already installed the policy.
+    const context = sql.slice(Math.max(0, create.index - 500), create.index).toLowerCase();
+    const guardedByPgPolicies =
+      /if\s+not\s+exists\s*\([^)]*from\s+pg_policies[^)]*policyname\s*=\s*['"]/.test(context)
+      || /if\s+not\s+exists\s*\([^)]*pg_policies/.test(context);
+
+    const previous = activePolicies.get(key);
+    if (previous && !guardedByPgPolicies) {
+      duplicatePolicies.push({ name, table, first: previous, duplicate: file });
+    }
+
+    // Keep the newest definition as the active definition. If the create is
+    // guarded, it is semantically a no-op when the policy already exists.
+    activePolicies.set(key, file);
+  }
+}
 
 for (const file of files) {
   const sql = readFileSync(join(MIG_DIR, file), 'utf8');
@@ -100,29 +139,13 @@ for (const file of files) {
     }
   }
 
-  const policyRe = /create\s+policy\s+(?:if\s+not\s+exists\s+)?["']([^"']+)["']/gi;
-  let matchPolicy;
-  while ((matchPolicy = policyRe.exec(sql)) !== null) {
-    const name = matchPolicy[1];
-    const previous = policyDefinitions.get(name);
-    if (previous) {
-      const dropPattern = new RegExp(
-        `drop\\s+policy\\s+if\\s+exists\\s+["']${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`,
-        'i',
-      );
-      if (!dropPattern.test(sql)) {
-        duplicatePolicies.push({ name, first: previous, duplicate: file });
-      }
-    } else {
-      policyDefinitions.set(name, file);
-    }
-  }
+  scanPolicyChanges(sql, file);
 }
 
 if (duplicatePolicies.length > 0) {
   console.error('DUPLICATE_RLS_POLICIES_WITHOUT_DROP:');
   for (const issue of duplicatePolicies) {
-    console.error(`  ${issue.name}: ${issue.first} -> ${issue.duplicate}`);
+    console.error(`  ${issue.table}.${issue.name}: ${issue.first} -> ${issue.duplicate}`);
   }
   process.exit(1);
 }
