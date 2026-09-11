@@ -1,8 +1,8 @@
 name: Background Jobs
 
-# GitHub-hosted runners are currently unavailable for this account. The schedule
-# is deliberately paused to prevent recurring false failures; this manual
-# recovery workflow remains available once runner access is restored.
+# Free, deterministic background video pipeline. HeyGen is not required for
+# the production template generator; optional provider credentials remain
+# available for explicit provider-specific workflows.
 on:
   workflow_dispatch:
     inputs:
@@ -23,6 +23,9 @@ concurrency:
   group: zikr-background-jobs-production
   cancel-in-progress: false
 
+env:
+  VIDEO_GENERATOR: template
+
 jobs:
   process:
     name: Process background queues
@@ -32,13 +35,8 @@ jobs:
       # Public/non-secret defaults are safe to provide here and prevent a
       # false failure when the same values are only stored in Vercel.
       SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://eydxvcamhjhajxjrsgym.supabase.co' }}
-      # Accept either canonical service-role naming used by the app.
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_PUBLISHABLE_KEY }}
       NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://zikrmediaofficial.vercel.app' }}
-      HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
-      HEYGEN_AVATAR_ID: ${{ secrets.HEYGEN_AVATAR_ID }}
-      HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
@@ -61,6 +59,15 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install FFmpeg and Arabic fonts
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-core fonts-noto-extra
+          command -v ffmpeg
+          ffmpeg -version | head -n 1
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
