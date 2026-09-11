@@ -43,6 +43,36 @@ function siteUrl() {
   return (isProduction ? "https://zikrmediaofficial.vercel.app" : configured || fallback).replace(/\/$/, "");
 }
 
+
+function assertPublishableVideoUrl(videoUrl: string, target: "facebook" | "youtube") {
+  let parsed: URL;
+  try {
+    parsed = new URL(videoUrl);
+  } catch {
+    throw new Error(target + " publishing requires an absolute video media URL");
+  }
+
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error(target + " publishing requires an http(s) video media URL");
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  const isYoutubeWatchUrl =
+    host === "youtube.com" ||
+    host.endsWith(".youtube.com") ||
+    host === "youtu.be" ||
+    host.endsWith(".youtu.be");
+
+  if (isYoutubeWatchUrl) {
+    throw new Error(
+      target +
+        " publishing requires the original media file or an approved direct media URL; YouTube watch/embed URLs cannot be republished as video assets"
+    );
+  }
+
+  return parsed.toString();
+}
+
 function publicUrl(item: SocialPublishQueueItem) {
   const publicPath = item.metadata?.publicPath;
   if (typeof publicPath === "string" && publicPath.startsWith("/"))
@@ -154,12 +184,13 @@ async function publishFacebookReelItem(
   item: SocialPublishQueueItem
 ): Promise<string | null> {
   if (!item.video_url) throw new Error("Facebook Reels publishing requires video_url");
+  const mediaUrl = assertPublishableVideoUrl(item.video_url, "facebook");
   const env = getServerEnv();
   if (!env.FACEBOOK_PAGE_ID) throw new Error("FACEBOOK_PAGE_ID is not configured");
   return publishToFacebook(
     item.id,
     { title: item.title, description: item.body ?? "" },
-    item.video_url,
+    mediaUrl,
     env.FACEBOOK_PAGE_ID,
     true
   );
@@ -169,6 +200,7 @@ async function publishYoutubeItem(
   item: SocialPublishQueueItem
 ): Promise<string | null> {
   if (!item.video_url) throw new Error("YouTube publishing requires video_url");
+  const mediaUrl = assertPublishableVideoUrl(item.video_url, "youtube");
   return publishToYoutube(
     item.id,
     {
@@ -180,7 +212,7 @@ async function publishYoutubeItem(
       categoryId: "27",
       isShort: item.metadata?.videoFormat !== "horizontal",
     },
-    item.video_url
+    mediaUrl
   );
 }
 
@@ -195,7 +227,7 @@ async function publishPlatform(
           ? await publishToFacebook(
               item.id,
               { title: item.title, description: item.body ?? "" },
-              item.video_url,
+              assertPublishableVideoUrl(item.video_url, "facebook"),
               getServerEnv().FACEBOOK_PAGE_ID,
               false
             )
