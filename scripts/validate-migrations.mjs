@@ -1,10 +1,9 @@
 // Validates the full Supabase migration chain against an in-memory Postgres
-// (PGlite) with Supabase auth/storage schemas stubbed. Catches ordering bugs
-// like "column searchable does not exist" before they hit production.
+// (PGlite) with Supabase auth/storage schemas stubbed. Catches ordering bugs,
+// duplicate migration versions, and repeated RLS policy definitions before they
+// reach Supabase Preview/production.
 //
 // Usage: node scripts/validate-migrations.mjs
-// Requires: npm install @electric-sql/pglite (dev-only, any scratch dir works
-// via NODE_PATH; CI installs it ad hoc).
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
@@ -69,45 +68,68 @@ console.log('Supabase stubs installed');
 
 const versions = new Map();
 const duplicateVersions = new Set();
+const policyDefinitions = new Map();
+const duplicatePolicies = [];
+
 const migrationScore = (file) => {
   const sql = readFileSync(join(MIG_DIR, file), 'utf8').toLowerCase();
-  // Reconciliation markers intentionally contain only `select 1`; when a
-  // duplicate version also has the real schema migration, replay the schema
-  // migration so the validator tests the same dependency order as production.
   return (sql.includes('create table') ? 4 : 0)
     + (sql.includes('alter table') ? 2 : 0)
     + (sql.includes('create function') ? 1 : 0);
 };
+
 for (const file of files) {
+  const sql = readFileSync(join(MIG_DIR, file), 'utf8');
   const match = /^(\d+)_/.exec(file);
-  if (!match) continue;
-  const version = match[1];
-  const previous = versions.get(version);
-  if (!previous) {
-    versions.set(version, file);
-    continue;
+  if (match) {
+    const version = match[1];
+    const previous = versions.get(version);
+    if (!previous) {
+      versions.set(version, file);
+    } else {
+      const previousScore = migrationScore(previous);
+      const currentScore = migrationScore(file);
+      if (currentScore > previousScore) {
+        duplicateVersions.add(previous);
+        versions.set(version, file);
+        console.warn(`Skipping duplicate migration version ${version}: ${previous} (using ${file})`);
+      } else {
+        duplicateVersions.add(file);
+        console.warn(`Skipping duplicate migration version ${version}: ${file} (using ${previous})`);
+      }
+    }
   }
 
-  const previousScore = migrationScore(previous);
-  const currentScore = migrationScore(file);
-  if (currentScore > previousScore) {
-    duplicateVersions.add(previous);
-    versions.set(version, file);
-    console.warn(
-      `Skipping duplicate migration version ${version}: ${previous} (using ${file})`,
-    );
-  } else {
-    duplicateVersions.add(file);
-    console.warn(
-      `Skipping duplicate migration version ${version}: ${file} (using ${previous})`,
-    );
+  const policyRe = /create\s+policy\s+(?:if\s+not\s+exists\s+)?["']([^"']+)["']/gi;
+  let matchPolicy;
+  while ((matchPolicy = policyRe.exec(sql)) !== null) {
+    const name = matchPolicy[1];
+    const previous = policyDefinitions.get(name);
+    if (previous) {
+      const dropPattern = new RegExp(
+        `drop\\s+policy\\s+if\\s+exists\\s+["']${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`,
+        'i',
+      );
+      if (!dropPattern.test(sql)) {
+        duplicatePolicies.push({ name, first: previous, duplicate: file });
+      }
+    } else {
+      policyDefinitions.set(name, file);
+    }
   }
 }
+
+if (duplicatePolicies.length > 0) {
+  console.error('DUPLICATE_RLS_POLICIES_WITHOUT_DROP:');
+  for (const issue of duplicatePolicies) {
+    console.error(`  ${issue.name}: ${issue.first} -> ${issue.duplicate}`);
+  }
+  process.exit(1);
+}
+
 const migrationsToApply = files.filter((file) => !duplicateVersions.has(file));
 if (migrationsToApply.length === 0) throw new Error(`No migrations found in ${MIG_DIR}`);
 console.log('Applying', migrationsToApply.length, 'migrations in order');
-
-const filesToReplay = migrationsToApply;
 
 function migrationSql(file) {
   // pgcrypto is not shipped with PGlite, but gen_random_uuid() is built in.
@@ -115,30 +137,21 @@ function migrationSql(file) {
     .replace(/create extension if not exists "?pgcrypto"?;?/gi, '');
 }
 
-// SIMULATE_LEGACY=1 reproduces the relevant production drift without
-// discarding the rest of the canonical schema. The old harness created only
-// four tables before replaying the whole chain, which produced dozens of
-// unrelated missing-table/column failures and never reached the FTS guards.
-// The canonical migrations through 0018 create the legacy content shape; the
-// replay then starts at 0019, where the compatibility guards must add the
-// generated searchable columns and indexes safely.
 let startIndex = 0;
 if (process.env.SIMULATE_LEGACY === '1') {
-  startIndex = filesToReplay.indexOf(LEGACY_REPLAY_START);
+  startIndex = migrationsToApply.indexOf(LEGACY_REPLAY_START);
   if (startIndex < 0) {
     throw new Error(`Legacy replay start migration not found: ${LEGACY_REPLAY_START}`);
   }
 
-  for (const file of filesToReplay.slice(0, startIndex)) {
+  for (const file of migrationsToApply.slice(0, startIndex)) {
     await db.exec(migrationSql(file));
   }
-  console.log(
-    `Legacy drift simulated from the pre-0019 schema; replay starts at ${LEGACY_REPLAY_START}`,
-  );
+  console.log(`Legacy drift simulated; replay starts at ${LEGACY_REPLAY_START}`);
 }
 
 let failed = 0;
-for (const f of filesToReplay.slice(startIndex)) {
+for (const f of migrationsToApply.slice(startIndex)) {
   try {
     await db.exec(migrationSql(f));
     console.log('OK  ', f);
@@ -149,7 +162,6 @@ for (const f of filesToReplay.slice(startIndex)) {
   }
 }
 
-// ---- Verify FTS objects exist ----
 const res = await db.query(`
   SELECT c.relname AS index, t.relname AS table
   FROM pg_index i
