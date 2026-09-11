@@ -414,7 +414,8 @@ export interface KidsContent {
 export async function getKidsContent(
   ageGroup?: string,
   type?: string,
-  limit = 50
+  limit = 50,
+  requestInit?: { cache?: RequestCache; next?: { revalidate?: number } },
 ): Promise<KidsContent[]> {
   let query =
     "/rest/v1/kids_content?select=*&published=eq.true&order=created_at.desc";
@@ -430,7 +431,8 @@ export async function getKidsContent(
   query += `&limit=${limit}`;
 
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
-    query
+    query,
+    requestInit,
   ).catch(error => {
     console.error("[content] Failed to fetch kids content:", error);
     return [];

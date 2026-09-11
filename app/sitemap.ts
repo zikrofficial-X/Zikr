@@ -14,11 +14,12 @@ import type { HadithBook } from "@/lib/types/hadith";
 import type { Story } from "@/lib/services/stories";
 
 /**
- * Sitemap is public infrastructure. Avoid forcing a fresh server render on
- * every crawler request because the URL inventory reads several data sources.
- * ISR keeps the XML stable while still refreshing the inventory hourly.
+ * Sitemap is public infrastructure. Its inventory reads several live data
+ * sources, so it is rendered dynamically and protected by the in-process
+ * one-hour cache below instead of being incorrectly forced through static
+ * generation.
  */
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 type SitemapEntry = MetadataRoute.Sitemap[number];
 type SlugRow = { slug: string };
@@ -141,7 +142,14 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
         import("@/lib/services/content").then(m => m.getArticles(undefined, 1000)).catch(() => []),
         import("@/lib/services/content").then(m => m.getProphets()).catch(() => []),
         import("@/lib/services/content").then(m => m.getDuas()).catch(() => []),
-        import("@/lib/services/content").then(m => m.getKidsContent()).catch(() => []),
+        import("@/lib/services/content")
+          .then(m =>
+            m.getKidsContent(undefined, undefined, 50, {
+              cache: "force-cache",
+              next: { revalidate: 3600 },
+            }),
+          )
+          .catch(() => []),
         import("@/lib/services/content").then(m => m.getBattles()).catch(() => []),
         getPublishedSlugs("companions"),
         getPublishedSlugs("conquests"),

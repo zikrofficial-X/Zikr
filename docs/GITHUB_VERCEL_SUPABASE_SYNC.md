@@ -34,7 +34,7 @@ Live Application
 2. Click "Add New" → "Project"
 3. Select "Import Git Repository"
 4. Authorize Vercel to access your GitHub account
-5. Select the `mohamedalaa7785-cpu/Zikr` repository
+5. Select the `Zikrmediaofficial/Zikr` repository
 6. Click "Import"
 
 ### If already connected:
