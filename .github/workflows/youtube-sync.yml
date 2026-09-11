@@ -1,9 +1,10 @@
 name: YouTube Feed Sync
 
+# GitHub-hosted runners are currently unavailable for this account without
+# billing access. Keep this workflow manual-only so the scheduled job cannot
+# create recurring runner/billing failures. The sync logic itself is retained.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '17 * * * *'
 
 permissions:
   contents: read
