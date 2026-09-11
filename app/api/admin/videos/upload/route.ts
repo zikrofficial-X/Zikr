@@ -17,7 +17,7 @@ function jsonError(message: string, status: number) {
 }
 
 export async function POST(request: NextRequest) {
-  const guard = await requireAdminApi();
+  const guard = await requireAdminApi('video.manage');
   if (!guard.ok) return jsonError(guard.error, guard.status);
 
   try {
