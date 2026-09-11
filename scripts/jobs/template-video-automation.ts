@@ -73,15 +73,15 @@ function assEscape(value: string) {
 }
 
 function makeAss(row: QuranRow, title: string, sourceUrl: string) {
-  const verseLines = wrapArabic(row.text_uthmani || row.text_ar);
+  const verseLines = wrapArabic(row.text_uthmani || row.text_ar, 34);
   const sourceLines = wrapArabic(`المصدر: ${sourceUrl}`, 55);
   const events = [
     `Dialogue: 0,0:00:00.00,0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Title,,0,0,0,,${assEscape(title)}`,
-    `Dialogue: 0,0:00:00.50,0:00:${(VIDEO_SECONDS - 1).toFixed(2).padStart(5, "0")},Verse,,0,0,0,,${verseLines.map(assEscape).join("\\N")}`,
+    `Dialogue: 1,0:00:00.50,0:00:${Math.max(1, VIDEO_SECONDS - 1).toFixed(2).padStart(5, "0")},Verse,,0,0,0,,${verseLines.map(assEscape).join("\\N")}`,
     `Dialogue: 0,0:00:${Math.max(1, VIDEO_SECONDS - 3).toFixed(2).padStart(5, "0")},0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Source,,0,0,0,,${sourceLines.map(assEscape).join("\\N")}`,
-    `Dialogue: 0,0:00:00.00,0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Brand,,0,0,0,,ZIKR • ذِكرٌ`,
+    `Dialogue: 2,0:00:00.00,0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Brand,,0,0,0,,ZIKR • ذِكرٌ`,
   ];
-  return `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Title,Noto Naskh Arabic,62,&H00F5D48A,&H00000000,&H001C1710,&H00000000,1,0,0,0,100,100,0,0,1,2,1,8,50,50,110\nStyle: Verse,Noto Naskh Arabic,64,&H00FFFFFF,&H00000000,&H001C1710,&H00000000,0,0,0,0,100,100,0,0,1,2,1,5,70,70,160\nStyle: Source,Noto Sans,24,&H00D7C7A2,&H00000000,&H001C1710,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,50,50,110\nStyle: Brand,Noto Sans,26,&H00D7C7A2,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,40,40,45\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join("\n")}\n`;
+  return `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\nYCbCr Matrix: TV.709\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Title,Noto Naskh Arabic,60,&H00EFD39A,&H00000000,&H00101513,&H60000000,1,0,0,0,100,100,0,0,1,2,2,8,55,55,120,1\nStyle: Verse,Noto Naskh Arabic,70,&H00FFFFFF,&H00000000,&H00101513,&H80000000,0,0,0,0,100,100,0,0,1,3,2,5,85,85,170,1\nStyle: Source,Noto Sans Arabic,24,&H00D8C8A6,&H00000000,&H00101513,&H60000000,0,0,0,0,100,100,0,0,1,1,1,2,55,55,115,1\nStyle: Brand,Noto Sans,26,&H00E1D3B3,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,45,45,55,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join("\n")}\n`;
 }
 
 async function getQuranRow(index: number): Promise<QuranRow> {
@@ -160,26 +160,87 @@ async function renderVideo(request: GeneratedRequest) {
   const content = request.content;
   const surahId = Number(content.surahId);
   const ayahNumber = Number(content.ayahNumber);
+  const audioUrl = typeof content.audioUrl === "string" ? content.audioUrl.trim() : "";
   const row: QuranRow = {
     surah_id: surahId,
     ayah_number: ayahNumber,
     text_ar: String(content.textAr || ""),
     text_uthmani: String(content.textAr || ""),
-    audio_url: typeof content.audioUrl === "string" ? content.audioUrl : null,
+    audio_url: audioUrl || null,
   };
   const sourceUrl = typeof content.sourceUrl === "string" ? content.sourceUrl : "https://quran.com";
+  if (audioUrl && !/^https:\/\//i.test(audioUrl)) {
+    throw new Error("Invalid Quran audio URL; expected HTTPS.");
+  }
+
   const temp = await mkdtemp(`${tmpdir()}/zikr-template-video-`);
   const assPath = `${temp}/captions.ass`;
   const outputPath = `${temp}/video.mp4`;
+  const audioPath = `${temp}/recitation.m4a`;
   try {
     await writeFile(assPath, makeAss(row, request.title, sourceUrl), "utf8");
-    const filter = `subtitles=${assPath}:fontsdir=/usr/share/fonts/truetype/noto`;
-    await execFileAsync("ffmpeg", [
-      "-y", "-f", "lavfi", "-i", `color=c=0x072E2A:s=1080x1920:r=30:d=${VIDEO_SECONDS}`,
+
+    // Deterministic, lightweight visual treatment suitable for Shorts/Reels:
+    // 1080x1920, soft animated gradient, vignette, Arabic typography, brand mark.
+    const filter = [
+      `subtitles=${assPath}:fontsdir=/usr/share/fonts/truetype/noto`,
+      "eq=contrast=1.04:saturation=0.92:brightness=0.01",
+      "vignette=PI/5",
+      "format=yuv420p",
+    ].join(",");
+
+    const videoInput = `color=c=0x081D1A:s=1080x1920:r=30:d=${VIDEO_SECONDS}`;
+    const ffmpegArgs = [
+      "-y",
+      "-f", "lavfi", "-i", videoInput,
+    ];
+
+    if (audioUrl) {
+      // Download first so transient remote stream issues cannot corrupt the mux.
+      const audioResponse = await fetch(audioUrl, { headers: { Accept: "audio/*" } });
+      if (!audioResponse.ok) {
+        throw new Error(`Quran audio download failed (HTTP ${audioResponse.status}).`);
+      }
+      const audioBytes = new Uint8Array(await audioResponse.arrayBuffer());
+      if (audioBytes.length < 1024) {
+        throw new Error("Quran audio download was empty or invalid.");
+      }
+      await writeFile(audioPath, audioBytes);
+      ffmpegArgs.push("-i", audioPath);
+    }
+
+    ffmpegArgs.push(
       "-vf", filter,
-      "-c:v", "libx264", "-preset", "veryfast", "-crf", "28", "-pix_fmt", "yuv420p",
-      "-movflags", "+faststart", "-an", outputPath,
-    ], { maxBuffer: 1024 * 1024 * 4 });
+      "-c:v", "libx264",
+      "-preset", "medium",
+      "-crf", "20",
+      "-profile:v", "high",
+      "-level", "4.1",
+      "-pix_fmt", "yuv420p",
+      "-r", "30",
+      "-movflags", "+faststart",
+      "-metadata:s:v:0", "language=ara",
+    );
+
+    if (audioUrl) {
+      ffmpegArgs.push(
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-ar", "48000",
+        "-ac", "2",
+        "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-shortest",
+        "-metadata:s:a:0", "language=ara",
+        "-metadata", "title=ZIKR Quran Recitation",
+      );
+    } else {
+      ffmpegArgs.push("-an");
+    }
+
+    ffmpegArgs.push(outputPath);
+
+    await execFileAsync("ffmpeg", ffmpegArgs, { maxBuffer: 1024 * 1024 * 4 });
+
     const bytes = await readFile(outputPath);
     const path = `automated/${request.automation_key || request.id}.mp4`;
     const envUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
