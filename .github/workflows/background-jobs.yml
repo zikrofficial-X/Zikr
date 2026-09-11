@@ -29,10 +29,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-      NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+      # Public/non-secret defaults are safe to provide here and prevent a
+      # false failure when the same values are only stored in Vercel.
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://eydxvcamhjhajxjrsgym.supabase.co' }}
+      # Accept either canonical service-role naming used by the app.
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://zikrmediaofficial.vercel.app' }}
       HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
       HEYGEN_AVATAR_ID: ${{ secrets.HEYGEN_AVATAR_ID }}
       HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
@@ -66,12 +69,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SUPABASE_ANON_KEY NEXT_PUBLIC_SITE_URL; do
+          missing=0
+          for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SITE_URL; do
             if [[ -z "${!name:-}" ]]; then
-              echo "Missing required secret: ${name}" >&2
-              exit 1
+              echo "Missing required GitHub secret: ${name}" >&2
+              missing=1
             fi
           done
+          if [[ "$missing" -ne 0 ]]; then
+            echo "Add the missing secret(s) under GitHub Settings > Secrets and variables > Actions." >&2
+            exit 1
+          fi
 
       - name: Resolve queue target
         id: target
