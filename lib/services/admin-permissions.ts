@@ -30,19 +30,61 @@ export const ADMIN_PERMISSIONS = {
 } as const;
 
 export type AdminPermission = keyof typeof ADMIN_PERMISSIONS;
-export type AdminRole = 'user' | 'admin';
+export type AdminAssignedRole =
+  | 'super_admin'
+  | 'content_manager'
+  | 'editor'
+  | 'video_manager'
+  | 'social_manager'
+  | 'moderator'
+  | 'seo_manager'
+  | 'analyst'
+  | 'support';
+export type AdminRole = 'user' | AdminAssignedRole;
 
 const ALL_ADMIN_PERMISSIONS = Object.keys(ADMIN_PERMISSIONS) as AdminPermission[];
 
 export const ADMIN_ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
   user: [],
-  admin: ALL_ADMIN_PERMISSIONS,
+  super_admin: ALL_ADMIN_PERMISSIONS,
+  content_manager: [
+    'admin.access', 'dashboard.view', 'content.manage', 'content.publish', 'content.delete',
+    'library.manage', 'sources.manage', 'knowledge.manage', 'kids.manage', 'prophets.manage',
+    'battles.manage', 'media.manage', 'sections.manage', 'analytics.read', 'audit.read',
+  ],
+  editor: [
+    'admin.access', 'dashboard.view', 'content.manage', 'content.publish', 'library.manage',
+    'sources.manage', 'knowledge.manage', 'kids.manage', 'prophets.manage', 'battles.manage',
+    'media.manage', 'sections.manage', 'analytics.read',
+  ],
+  video_manager: [
+    'admin.access', 'dashboard.view', 'media.manage', 'video.manage', 'video.delete',
+    'analytics.read', 'audit.read',
+  ],
+  social_manager: [
+    'admin.access', 'dashboard.view', 'media.manage', 'video.manage', 'social.manage',
+    'social.publish', 'analytics.read', 'audit.read', 'notifications.manage',
+  ],
+  moderator: [
+    'admin.access', 'dashboard.view', 'content.manage', 'library.manage', 'kids.manage',
+    'analytics.read', 'audit.read',
+  ],
+  seo_manager: [
+    'admin.access', 'dashboard.view', 'content.manage', 'analytics.read', 'settings.manage',
+    'audit.read',
+  ],
+  analyst: [
+    'admin.access', 'dashboard.view', 'analytics.read', 'audit.read',
+  ],
+  support: [
+    'admin.access', 'dashboard.view', 'users.read', 'analytics.read', 'notifications.manage',
+  ],
 };
 
 export function hasAdminPermission(role: AdminRole, permission: AdminPermission): boolean {
-  return ADMIN_ROLE_PERMISSIONS[role].includes(permission);
+  return Boolean(ADMIN_ROLE_PERMISSIONS[role]?.includes(permission));
 }
 
 export function getAdminPermissions(role: AdminRole): readonly AdminPermission[] {
-  return ADMIN_ROLE_PERMISSIONS[role];
+  return ADMIN_ROLE_PERMISSIONS[role] ?? [];
 }
