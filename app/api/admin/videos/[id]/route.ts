@@ -7,7 +7,7 @@ const allowedStatuses = new Set(['pending', 'processing', 'completed', 'failed']
 
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdminApi();
+    const auth = await requireAdminApi('video.manage');
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
     const { id } = await context.params;
     const result = await supabaseServerAdminRequest<VideoGenerationRequest[]>(
@@ -24,7 +24,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdminApi();
+    const auth = await requireAdminApi('video.manage');
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
     const { id } = await context.params;
     const body = await request.json() as Record<string, unknown>;
@@ -65,7 +65,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
 export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdminApi();
+    const auth = await requireAdminApi('video.delete');
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
     const { id } = await context.params;
 
