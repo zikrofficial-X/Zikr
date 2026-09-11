@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { createAdminClient } from '@/lib/supabase/server';
-import { supabaseServerAdminRequest } from '@/lib/supabase/server';
-import { requireAdminPermission, requireAdminStepUp } from '@/lib/services/admin';
+import { createAdminClient, supabaseServerAdminRequest } from '@/lib/supabase/server';
+import { requireAdminPermission } from '@/lib/services/admin';
+import { requireAdminStepUp } from '@/lib/services/admin-security';
 import { recordAdminAuditEvent } from '@/lib/services/admin-audit';
 
 type LibraryAction = 'create' | 'status' | 'publish' | 'unpublish' | 'delete';
@@ -49,7 +49,7 @@ async function mutate(formData: FormData) {
           permission: 'library.manage',
           resourceType: 'content_library',
           resourceId: createdId,
-          metadata: { title_ar: titleAr, content_type: type, category },
+          metadata: { title_ar: titleAr, content_type: type, category, actor: admin.id },
         });
       }
     } catch (error) {
@@ -66,14 +66,15 @@ async function mutate(formData: FormData) {
     const allowed = new Set(['draft', 'editorial_review', 'scholarly_review', 'approved', 'rejected']);
     if (!allowed.has(status)) redirect('/admin/library?error=حالة مراجعة غير صالحة.');
     try {
+      const patch: Record<string, unknown> = {
+        review_status: status,
+        updated_at: new Date().toISOString(),
+      };
+      if (status !== 'approved') patch.published = false;
       await supabaseServerAdminRequest(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({
-          review_status: status,
-          published: status === 'approved' ? false : undefined,
-          updated_at: new Date().toISOString(),
-        }),
+        body: JSON.stringify(patch),
       });
       await recordAdminAuditEvent({
         action: 'library.content.review_status.update',
@@ -99,10 +100,11 @@ async function mutate(formData: FormData) {
       );
       if (!source[0]?.verified) redirect('/admin/library?error=المصدر المختار غير موثّق.');
 
+      const now = new Date().toISOString();
       await supabaseServerAdminRequest(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ review_status: 'approved', source_id: sourceId, published: true, published_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
+        body: JSON.stringify({ review_status: 'approved', source_id: sourceId, published: true, published_at: now, updated_at: now }),
       });
       await recordAdminAuditEvent({
         action: 'library.content.publish',
@@ -230,7 +232,7 @@ export default async function AdminLibraryPage({
       </section>
 
       <section className="rounded-2xl border border-brand-gold/15 overflow-x-auto">
-        <table className="w-full min-w-[900px] text-sm">
+        <table className="w-full min-w-[1050px] text-sm">
           <thead className="bg-black/30 text-brand-gold"><tr><th className="p-3 text-right">المادة</th><th className="p-3">النوع</th><th className="p-3">التصنيف</th><th className="p-3">المراجعة</th><th className="p-3">المصدر</th><th className="p-3">النشر</th><th className="p-3">إجراء</th></tr></thead>
           <tbody>{rows.map((item) => <tr key={item.id} className="border-t border-brand-gold/10"><td className="p-3 text-brand-cream">{item.title_ar}</td><td className="p-3 text-brand-cream/60">{item.content_type}</td><td className="p-3 text-brand-cream/60">{item.category}</td><td className="p-3 text-brand-cream/60">{item.review_status}</td><td className="p-3 text-xs">{item.source_id ? <span className="text-emerald-300">مرتبط</span> : <span className="text-amber-300">غير مرتبط</span>}</td><td className="p-3">{item.published ? <span className="text-emerald-300">منشور</span> : <span className="text-amber-300">مسودة</span>}</td><td className="p-3"><div className="flex flex-wrap gap-2 justify-center">
             <form action={mutate}><input type="hidden" name="_action" value="status"/><input type="hidden" name="id" value={item.id}/><select name="review_status" defaultValue={item.review_status} className="rounded-lg bg-black/30 border border-brand-gold/15 p-2"><option value="draft">Draft</option><option value="editorial_review">Editorial review</option><option value="scholarly_review">Scholarly review</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button className="mr-1 rounded-lg border border-brand-gold/20 px-2 py-1">حفظ</button></form>
