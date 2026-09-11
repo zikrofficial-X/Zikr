@@ -74,6 +74,7 @@ for (const token of [
   "android.permission.RECORD_AUDIO",
   'android:autoVerify="true"',
   'android:host="zikrmediaofficial.vercel.app"',
+  'android:pathPrefix="/auth/callback"',
   'android:scheme="com.zikr.app"',
   'android:supportsRtl="true"',
 ]) {
@@ -105,13 +106,43 @@ const bridge = read("components/layout/native-capacitor-bridge.tsx");
 for (const token of ["zikrNative", "networkStatusChange", "Share", "Camera", "Filesystem", "Haptics", "scheduleLocalNotification", "cancelLocalNotifications"]) {
   if (!bridge.includes(token)) failures.push(`Native bridge missing ${token}`);
 }
+if (bridge.includes('parsed.protocol === "com.zikr.app:"') && bridge.includes("exchangeCodeForSession")) {
+  failures.push("Native bridge must not exchange the Google OAuth session; NativeGoogleOAuthHandler is the single callback owner");
+}
 
 const nativeOAuth = read("components/layout/native-google-oauth-handler.tsx");
 for (const token of ["Capacitor.isNativePlatform", "appUrlOpen", "getLaunchUrl", "exchangeCodeForSession", "com.zikr.app:", "/callback"]) {
   if (!nativeOAuth.includes(token)) failures.push(`Native Google OAuth handler missing ${token}`);
 }
-if (bridge.includes('parsed.protocol === "com.zikr.app:"') && bridge.includes("exchangeCodeForSession")) {
-  failures.push("Native bridge must not exchange the Google OAuth session; NativeGoogleOAuthHandler is the single callback owner");
+
+const googleButton = read("app/auth/google-oauth-button.tsx");
+for (const token of [
+  'Capacitor.isNativePlatform()',
+  'new URL("/auth/callback", getCanonicalBrowserOrigin())',
+  'url.searchParams.set("native", "1")',
+  'await Browser.open({ url: data.url })',
+]) {
+  if (!googleButton.includes(token)) failures.push(`Google OAuth button missing canonical native bridge behavior: ${token}`);
+}
+if (googleButton.includes('new URL("com.zikr.app://auth/callback")')) {
+  failures.push("Google OAuth button must not send the initial PKCE redirect directly to the custom scheme; use the HTTPS callback bridge");
+}
+
+const callbackRoute = read("app/auth/callback/route.ts");
+for (const pattern of [
+  /searchParams\.get\(['"]native['"]\)\s*===\s*['"]1['"]/, 
+  /new URL\(\s*['"]com\.zikr\.app:\/\/auth\/callback['"]\s*\)/,
+  /nativeUrl\.searchParams\.set\(\s*['"]code['"]\s*,\s*code\s*\)/,
+]) {
+  if (!pattern.test(callbackRoute)) failures.push(`Auth callback route missing native bridge behavior: ${pattern}`);
+}
+
+const assetLinksRoute = read("app/.well-known/assetlinks.json/route.ts");
+if (!assetLinksRoute.includes("CURRENT_RELEASE_FINGERPRINT")) {
+  failures.push("Android App Links endpoint has no production certificate fallback");
+}
+if (!assetLinksRoute.includes('package_name: \'com.zikr.app\'')) {
+  failures.push("Android App Links endpoint is not bound to com.zikr.app");
 }
 
 const loader = read("components/layout/native-capacitor-bridge-loader.tsx");

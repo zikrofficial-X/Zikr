@@ -30,6 +30,13 @@ function getCanonicalBrowserOrigin(): string {
   return PRODUCTION_URL;
 }
 
+function buildNativeOAuthRedirect(nextPath: string): string {
+  const url = new URL("/auth/callback", getCanonicalBrowserOrigin());
+  url.searchParams.set("native", "1");
+  url.searchParams.set("next", nextPath);
+  return url.toString();
+}
+
 export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,23 +63,21 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
       const supabase = createBrowserSupabaseClient();
       const isNative = Capacitor.isNativePlatform();
 
-      // Native OAuth returns directly to the app's registered deep link.
-      // This removes the previous HTTPS callback -> deep-link bridge hop,
-      // which could leave the external Custom Tab open or break the native
-      // PKCE flow on some Android/browser combinations.
+      // Native OAuth uses an HTTPS callback bridge first. The app then receives
+      // the auth code through com.zikr.app://auth/callback. This keeps the
+      // Supabase PKCE verifier in the app's WebView storage context while still
+      // working with external Chrome Custom Tabs and Android App Links.
       const redirectTo = isNative
-        ? new URL("com.zikr.app://auth/callback")
+        ? buildNativeOAuthRedirect(safeNext)
         : new URL(
             `/auth/callback?next=${encodeURIComponent(safeNext)}`,
             getCanonicalBrowserOrigin(),
-          );
-
-      if (isNative) redirectTo.searchParams.set("next", safeNext);
+          ).toString();
 
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: redirectTo.toString(),
+          redirectTo,
           skipBrowserRedirect: true,
           queryParams: {
             prompt: "select_account",
