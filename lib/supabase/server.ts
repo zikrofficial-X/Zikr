@@ -103,11 +103,11 @@ async function restRequest<T>(
   init?: RestRequestInit,
   apiKey?: string
 ): Promise<T> {
-  const { url, anonKey, serviceKey } = getSupabaseConfig();
-  const key = apiKey ?? anonKey ?? serviceKey;
+  const { url, anonKey } = getSupabaseConfig();
+  const key = apiKey ?? anonKey;
   if (!key) {
     throw new Error(
-      "Missing Supabase API key: configure an anon/publishable key or a service-role key."
+      "Missing Supabase API key: configure NEXT_PUBLIC_SUPABASE_ANON_KEY for client requests or SUPABASE_SERVICE_ROLE_KEY for admin requests."
     );
   }
 
