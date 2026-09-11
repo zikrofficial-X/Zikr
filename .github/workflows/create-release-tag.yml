@@ -1,0 +1,30 @@
+name: Create Release Tag
+
+on:
+  push:
+    branches:
+      - release/v1.4.6
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Create v1.4.6 tag
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Create immutable release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="v1.4.6"
+          SHA="${GITHUB_SHA}"
+          if git ls-remote --exit-code --tags "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists; nothing to do."
+            exit 0
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref="refs/tags/${TAG}" \
+            -f sha="${SHA}"
+          echo "Created ${TAG} -> ${SHA}"
