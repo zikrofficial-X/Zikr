@@ -65,19 +65,25 @@ create index if not exists push_subscriptions_active_idx
 
 alter table public.push_subscriptions enable row level security;
 
+-- Policies are replacement-safe so Supabase Preview can replay this migration
+-- even when a preview database already contains the policy objects.
+drop policy if exists "push_subscriptions_select_own" on public.push_subscriptions;
 create policy "push_subscriptions_select_own"
   on public.push_subscriptions for select
   using ((select auth.uid()) = user_id);
 
+drop policy if exists "push_subscriptions_insert_own" on public.push_subscriptions;
 create policy "push_subscriptions_insert_own"
   on public.push_subscriptions for insert
   with check ((select auth.uid()) = user_id);
 
+drop policy if exists "push_subscriptions_update_own" on public.push_subscriptions;
 create policy "push_subscriptions_update_own"
   on public.push_subscriptions for update
   using ((select auth.uid()) = user_id)
   with check ((select auth.uid()) = user_id);
 
+drop policy if exists "push_subscriptions_delete_own" on public.push_subscriptions;
 create policy "push_subscriptions_delete_own"
   on public.push_subscriptions for delete
   using ((select auth.uid()) = user_id);
@@ -144,6 +150,7 @@ create index if not exists prayer_notification_deliveries_user_idx
 
 alter table public.prayer_notification_deliveries enable row level security;
 
+drop policy if exists "prayer_notification_deliveries_select_own" on public.prayer_notification_deliveries;
 create policy "prayer_notification_deliveries_select_own"
   on public.prayer_notification_deliveries for select
   using ((select auth.uid()) = user_id);
