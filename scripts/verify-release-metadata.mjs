@@ -6,5 +6,5 @@ const version = gradle.match(/versionName\s+"([^"]+)"/)?.[1];
 const code = gradle.match(/versionCode\s+(\d+)/)?.[1];
 if (!version || !code) throw new Error('Android release metadata is missing');
 if (pkg.version !== version) throw new Error(`package.json ${pkg.version} != Android ${version}`);
-if (version !== '1.4.4' || code !== '35') throw new Error(`Unexpected release ${version}/${code}`);
+if (version !== '1.4.6' || code !== '37') throw new Error(`Unexpected release ${version}/${code}`);
 console.log(`Release metadata OK: ${version} (${code})`);
