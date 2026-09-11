@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getServerEnv } from "@/lib/env";
 
-function getEnv() {
+function getSupabaseConfig() {
   const env = getServerEnv();
   const url = env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -13,12 +13,18 @@ function getEnv() {
       "Missing NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL on the server)."
     );
   }
+
+  return { url, anonKey, serviceKey };
+}
+
+function getClientEnv() {
+  const { url, anonKey } = getSupabaseConfig();
   if (!anonKey) {
     throw new Error(
       "Missing NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_ANON_KEY on the server)."
     );
   }
-  return { url, anonKey, serviceKey };
+  return { url, anonKey };
 }
 
 export function isSupabaseConfigured(): boolean {
@@ -29,7 +35,7 @@ export function isSupabaseConfigured(): boolean {
 }
 
 export function createAdminClient() {
-  const { url, serviceKey } = getEnv();
+  const { url, serviceKey } = getSupabaseConfig();
   if (!serviceKey) {
     throw new Error(
       "Missing SUPABASE_SERVICE_ROLE_KEY for admin Supabase client."
@@ -42,7 +48,7 @@ export function createAdminClient() {
 }
 
 export async function createClient() {
-  const { url, anonKey } = getEnv();
+  const { url, anonKey } = getClientEnv();
   const cookieStore = await cookies();
 
   return createServerClient(url, anonKey, {
@@ -97,8 +103,14 @@ async function restRequest<T>(
   init?: RestRequestInit,
   apiKey?: string
 ): Promise<T> {
-  const { url, anonKey } = getEnv();
-  const key = apiKey ?? anonKey;
+  const { url, anonKey, serviceKey } = getSupabaseConfig();
+  const key = apiKey ?? anonKey ?? serviceKey;
+  if (!key) {
+    throw new Error(
+      "Missing Supabase API key: configure an anon/publishable key or a service-role key."
+    );
+  }
+
   const {
     timeoutMs = 20000,
     retries,
@@ -160,14 +172,17 @@ async function restRequest<T>(
 export const supabaseServerAnonRequest = <T>(
   path: string,
   init?: RestRequestInit
-) => restRequest<T>(path, init);
+) => {
+  const { anonKey } = getClientEnv();
+  return restRequest<T>(path, init, anonKey);
+};
 
 export const supabaseServerAdminRequest = <T>(
   path: string,
   init?: RestRequestInit
 ) =>
   (() => {
-    const { serviceKey } = getEnv();
+    const { serviceKey } = getSupabaseConfig();
     if (!serviceKey) {
       throw new Error(
         "Missing SUPABASE_SERVICE_ROLE_KEY for server-admin Supabase request."
@@ -177,7 +192,7 @@ export const supabaseServerAdminRequest = <T>(
   })();
 
 export async function supabaseServerAdminCount(table: string): Promise<number> {
-  const { url, serviceKey } = getEnv();
+  const { url, serviceKey } = getSupabaseConfig();
   if (!serviceKey) {
     throw new Error(
       "Missing SUPABASE_SERVICE_ROLE_KEY for server-admin Supabase count."
