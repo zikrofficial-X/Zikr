@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
 const RELEASES_API_BASE =
-  "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/releases";
+  "https://api.github.com/repos/Zikrmediaofficial/Zikr/releases";
 const RELEASE_DOWNLOAD_ENDPOINT = "/api/download/android";
 const RELEASE_DOWNLOAD_BASE =
-  "https://github.com/mohamedalaa7785-cpu/Zikr/releases/download";
+  "https://github.com/Zikrmediaofficial/Zikr/releases/download";
 const MAX_RELEASE_PAGES = 3;
 const githubToken = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
 const githubHeaders: HeadersInit = {

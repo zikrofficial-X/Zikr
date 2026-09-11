@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 const RELEASES_API_BASE =
-  "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/releases";
+  "https://api.github.com/repos/Zikrmediaofficial/Zikr/releases";
 const TAG_RELEASE_API =
-  "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/releases/tags";
+  "https://api.github.com/repos/Zikrmediaofficial/Zikr/releases/tags";
 const ASSET_API_BASE =
   "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/releases/assets";
 const MAX_RELEASE_PAGES = 3;
