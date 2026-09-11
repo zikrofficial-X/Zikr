@@ -144,10 +144,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release create "$RELEASE_TAG" \
-            android/app/build/outputs/apk/release/app-release.apk \
-            android/app/build/outputs/bundle/release/app-release.aab \
-            SHA256SUMS \
-            --verify-tag \
-            --generate-notes \
-            --title "ZIKR $RELEASE_TAG"
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          AAB="android/app/build/outputs/bundle/release/app-release.aab"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --clobber
+          else
+            gh release create "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --verify-tag --generate-notes --title "ZIKR $RELEASE_TAG"
+          fi
