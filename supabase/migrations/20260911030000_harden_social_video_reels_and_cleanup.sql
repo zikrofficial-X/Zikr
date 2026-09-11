@@ -1,0 +1,53 @@
+-- ZIKR social/video reliability hardening.
+-- 1) Allow the social sync pipeline to explicitly record Facebook Reels.
+-- 2) Prevent client roles from reading/writing the internal admin rate-limit table.
+-- 3) Move media cleanup scheduling from Vercel to a Supabase Edge Function so
+--    pg_cron never depends on a Vercel gateway timeout.
+
+alter table public.social_sync_jobs
+  drop constraint if exists social_sync_jobs_facebook_post_type_check;
+
+alter table public.social_sync_jobs
+  add constraint social_sync_jobs_facebook_post_type_check
+  check (facebook_post_type in ('video', 'reel'));
+
+create policy "admin_rate_limits_no_client_access"
+on public.admin_rate_limits
+as restrictive
+for all
+to anon, authenticated
+using (false)
+with check (false);
+
+-- Remove the Vercel cleanup cron job if present (job id/name may differ across environments).
+do $$
+declare
+  existing_job_id bigint;
+begin
+  select jobid into existing_job_id
+  from cron.job
+  where jobname = 'zikr-youtube-facebook-media-cleanup'
+  limit 1;
+
+  if existing_job_id is not null then
+    perform cron.unschedule(existing_job_id);
+  end if;
+end $$;
+
+-- Keep the cleanup workload inside Supabase and reuse the existing Vault secrets.
+select cron.schedule(
+  'zikr-youtube-facebook-media-cleanup-edge',
+  '*/10 * * * *',
+  $$
+    select net.http_post(
+      url := (select decrypted_secret from vault.decrypted_secrets where name = 'social_sync_project_url') || '/functions/v1/cleanup-youtube-facebook-media',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'social_sync_publishable_key'),
+        'x-zikr-sync-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'social_sync_secret')
+      ),
+      body := jsonb_build_object('trigger', 'supabase-cron', 'at', now()),
+      timeout_milliseconds := 30000
+    ) as request_id;
+  $$
+);
