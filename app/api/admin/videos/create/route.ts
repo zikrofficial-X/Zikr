@@ -4,7 +4,7 @@ import { createVideoGenerationRequest } from '@/lib/services/video-automation';
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAdminApi();
+    const auth = await requireAdminApi('video.manage');
     if (!auth.ok) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
