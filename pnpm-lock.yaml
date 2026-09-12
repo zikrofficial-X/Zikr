@@ -54,8 +54,8 @@ importers:
         specifier: 7.0.3
         version: 7.0.3(@capacitor/core@7.4.3)
       '@capacitor/share':
-        specifier: 7.0.2
-        version: 7.0.2(@capacitor/core@7.4.3)
+        specifier: 7.0.4
+        version: 7.0.4(@capacitor/core@7.4.3)
       '@capacitor/splash-screen':
         specifier: 7.0.5
         version: 7.0.5(@capacitor/core@7.4.3)
@@ -325,8 +325,8 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
-  '@capacitor/share@7.0.2':
-    resolution: {integrity: sha512-VyNPo/9831xnL17IMDeft5yNdBjoKNb451P95sRcr69hulRDqHc+kndqOVaMXnaA6IyBdWnnFv/n1HUf4cXpGw==}
+  '@capacitor/share@7.0.4':
+    resolution: {integrity: sha512-wNXxmXUcChrtbZ5jQv8scFIbIGKo3rk6B7qpWySxfUhYJP5NANgAqQ9Z69m0k/zYsucdh66SBU7XW1ykd9aUug==}
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
@@ -3165,7 +3165,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 7.4.3
 
-  '@capacitor/share@7.0.2(@capacitor/core@7.4.3)':
+  '@capacitor/share@7.0.4(@capacitor/core@7.4.3)':
     dependencies:
       '@capacitor/core': 7.4.3
 
