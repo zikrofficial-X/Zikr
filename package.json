@@ -1,6 +1,6 @@
 {
   "name": "zikr",
-  "version": "1.4.9",
+  "version": "1.4.12",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -65,7 +65,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "ai": "^7.0.66",
-    "clsx": "^2.1.1",
+    "clsx": "2.1.1",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.39.0",
     "next": "^16.3.1",
@@ -90,8 +90,8 @@
     "eslint-config-next": "^16.3.1",
     "postcss": "^8.5.26",
     "prettier": "^3.9.6",
-    "tailwindcss": "^4.3.3",
     "tsx": "^4.23.13",
+    "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3"
   },
   "engines": {"node": "22.x"},
