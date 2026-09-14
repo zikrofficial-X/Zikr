@@ -42,3 +42,24 @@ curl -s https://zikrmediaofficial.vercel.app/ | grep -o 'google-site-verificatio
 ## سبب المشكلة التي عولجت
 
 كان من السهل أن يظهر التحقق ناجحًا في commit محلي أو في خاصية مختلفة بينما لا يكون ملف HTML متاحًا على النطاق الفعلي. توحيد الأصول، وإضافة الفحص الآلي، وتوثيق اختبار HTTP يمنع هذا الالتباس ويجعل فشل النشر ظاهرًا قبل طلب التحقق مرة أخرى.
+
+## GA4 وGoogle Tag Manager
+
+كان سبب فشل اكتشاف GA4 أن المكوّن كان يُحمّل ديناميكيًا في المتصفح فقط بعد اكتمال الصفحة ومرور نحو عشر ثوانٍ. نُقلت تهيئة GA4 إلى `app/layout.tsx` داخل `head` باستخدام `next/script` و`beforeInteractive`، مع الإبقاء على معرّف القياس من `NEXT_PUBLIC_GA_MEASUREMENT_ID` فقط. لا توجد تهيئة ثانية لـ `gtag`؛ أما مكوّن التحليلات المتأخر فأصبح خاصًا بـ Vercel Speed Insights.
+
+أضيف دعم GTM إلى الطبقة نفسها باستخدام `NEXT_PUBLIC_GTM_ID`. يظهر كود GTM و`noscript` فقط عندما تكون القيمة حقيقية وتطابق الصيغة `GTM-*`؛ لذلك لن يتم اختراع حاوية أو نشر كود مزيف. لم يُعثر في المستودع أو أسرار GitHub المتاحة على GTM ID حقيقي، كما لا يمكن تأكيد متغيرات مشروع Vercel من خلال جلسة لا تملك فريقًا متاحًا في Vercel MCP.
+
+لإكمال التفعيل في Vercel، أضف القيم العامة الحقيقية في **Production**:
+
+```text
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-...   # من خاصية GA4 الحقيقية
+NEXT_PUBLIC_GTM_ID=GTM-...            # من حاوية GTM الحقيقية، إن كانت مستخدمة
+```
+
+بعد النشر، افحص المصدر الأولي للصفحة لا DOM بعد التفاعل:
+
+```bash
+curl -s https://zikrmediaofficial.vercel.app/ | grep -Eo 'googletagmanager\.com/(gtag/js|gtm\.js)|G-[A-Z0-9]+|GTM-[A-Z0-9]+' | sort -u
+```
+
+إذا كانت القيم صحيحة، يجب أن يظهر GA4 في `head`، ويجب أن يظهر GTM في `head` و`noscript` مباشرة بعد فتح `body`. نجاح تحقق Google Analytics وGTM يعتمد أيضًا على أن تكون الخاصية والحاوية والحساب المستخدم في Search Console هي الحسابات الصحيحة.

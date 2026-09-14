@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const failures = [];
 const layout = readFileSync('app/layout.tsx', 'utf8');
+const deferredAnalytics = readFileSync('components/layout/deferred-analytics.tsx', 'utf8');
 const verificationFiles = [
   'public/google3526c15e10fa1913.html',
   'public/google6f7827292f8e19bc.html',
@@ -25,6 +26,12 @@ const expectedTokens = [
 for (const token of expectedTokens) {
   if (!layout.includes(token)) failures.push(`رمز تحقق غير موجود في app/layout.tsx: ${token}`);
 }
+
+if (!layout.includes('NEXT_PUBLIC_GA_MEASUREMENT_ID')) failures.push('متغير GA4 canonical غير موجود في root layout.');
+if (!layout.includes('strategy="beforeInteractive"')) failures.push('GA4/GTM ليسا مهيئين قبل التفاعل في root layout.');
+if (!layout.includes('https://www.googletagmanager.com/gtag/js?id=')) failures.push('مصدر gtag.js غير موجود في root layout.');
+if (/import\(.+analytics/.test(deferredAnalytics)) failures.push('تمت إعادة تحميل Analytics ديناميكيًا خارج root layout.');
+if (!layout.includes('NEXT_PUBLIC_GTM_ID')) failures.push('متغير GTM canonical غير موجود في root layout.');
 
 if (failures.length) {
   console.error('GOOGLE_SEARCH_CONSOLE_VERIFICATION_FAILED');
