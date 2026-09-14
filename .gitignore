@@ -125,3 +125,5 @@ android/**/*.p12
 android/**/*.pem
 android/app/build/
 
+# Build-time downloaded binaries
+vendor/
