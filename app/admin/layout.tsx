@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { AdminSidebar } from '@/components/admin/admin-sidebar';
-import { LibraryAdminNav } from '@/components/admin/library-nav';
+import { AdminMobileNav, AdminSidebar, type AdminNavGroup } from '@/components/admin/admin-sidebar';
 import { requireAdmin, getCurrentProfile } from '@/lib/services/admin';
 import { hasAdminPermission, type AdminPermission } from '@/lib/services/admin-permissions';
 
@@ -11,79 +10,73 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const adminUtilityLinks = [
-  { href: '/admin/control', label: 'مركز التحكم', permission: 'system.manage' as AdminPermission },
-  { href: '/admin/search', label: 'بحث مركزي', permission: 'content.manage' as AdminPermission },
-  { href: '/admin/editorial', label: 'سير التحرير', permission: 'knowledge.manage' as AdminPermission },
-  { href: '/admin/sources', label: 'المصادر', permission: 'sources.manage' as AdminPermission },
-  { href: '/admin/media', label: 'الوسائط والحقوق', permission: 'media.manage' as AdminPermission },
-  { href: '/admin/social-ops', label: 'عمليات السوشيال', permission: 'social.manage' as AdminPermission },
-  { href: '/admin/audit', label: 'سجل الإدارة', permission: 'audit.read' as AdminPermission },
-  { href: '/admin/health', label: 'صحة النظام', permission: 'system.manage' as AdminPermission },
-  { href: '/admin/notifications', label: 'التنبيهات', permission: 'notifications.manage' as AdminPermission },
-  { href: '/admin/security', label: 'الأمن والصلاحيات', permission: 'security.manage' as AdminPermission },
-  { href: '/admin/settings', label: 'إعدادات الإدارة', permission: 'settings.manage' as AdminPermission },
-  { href: '/admin/seo', label: 'SEO/AdSense', permission: 'settings.manage' as AdminPermission },
-  { href: '/admin/automation', label: 'الأتمتة', permission: 'system.manage' as AdminPermission },
-  { href: '/admin/release', label: 'مركز الإصدار', permission: 'release.manage' as AdminPermission },
-  { href: '/admin/ai-video', label: 'استوديو AI للفيديو', permission: 'video.manage' as AdminPermission },
-] as const;
+type PermissionLink = { href: string; label: string; permission: AdminPermission };
 
-const existingAdminLinks = [
-  { href: '/admin/library', label: 'المكتبة الإسلامية', permission: 'library.manage' as AdminPermission },
-  { href: '/admin/content', label: 'المحتوى', permission: 'content.manage' as AdminPermission },
-  { href: '/admin/knowledge', label: 'المعرفة الإسلامية', permission: 'knowledge.manage' as AdminPermission },
-  { href: '/admin/sections', label: 'الأقسام', permission: 'sections.manage' as AdminPermission },
-  { href: '/admin/users', label: 'المستخدمون', permission: 'users.read' as AdminPermission },
-  { href: '/admin/videos', label: 'الفيديوهات', permission: 'video.manage' as AdminPermission },
-  { href: '/admin/android', label: 'إصدار Android', permission: 'android.manage' as AdminPermission },
-  { href: '/admin/social', label: 'النشر التلقائي', permission: 'social.manage' as AdminPermission },
-  { href: '/admin/analytics', label: 'التحليلات', permission: 'analytics.read' as AdminPermission },
-  { href: '/admin/kids', label: 'الأطفال', permission: 'kids.manage' as AdminPermission },
-  { href: '/admin/prophets', label: 'الأنبياء', permission: 'prophets.manage' as AdminPermission },
-  { href: '/admin/battles', label: 'الغزوات', permission: 'battles.manage' as AdminPermission },
-  { href: '/admin/site-audio', label: 'مقاطع الأذان والتذكير', permission: 'audio.manage' as AdminPermission },
-] as const;
+type PermissionGroup = { group: string; items: PermissionLink[] };
+
+const navigation: PermissionGroup[] = [
+  { group: 'مركز التشغيل', items: [
+    { href: '/admin', label: 'الرئيسية', permission: 'system.manage' },
+    { href: '/admin/control', label: 'مركز التحكم', permission: 'system.manage' },
+    { href: '/admin/analytics', label: 'التحليلات', permission: 'analytics.read' },
+    { href: '/admin/health', label: 'صحة النظام', permission: 'system.manage' },
+    { href: '/admin/audit', label: 'سجل الإدارة', permission: 'audit.read' },
+    { href: '/admin/notifications', label: 'التنبيهات', permission: 'notifications.manage' },
+  ] },
+  { group: 'المحتوى والمراجعة', items: [
+    { href: '/admin/library', label: 'المكتبة الإسلامية', permission: 'library.manage' },
+    { href: '/admin/content', label: 'المحتوى', permission: 'content.manage' },
+    { href: '/admin/knowledge', label: 'المعرفة الإسلامية', permission: 'knowledge.manage' },
+    { href: '/admin/editorial', label: 'سير التحرير', permission: 'knowledge.manage' },
+    { href: '/admin/sections', label: 'الأقسام', permission: 'sections.manage' },
+    { href: '/admin/sources', label: 'المصادر والتوثيق', permission: 'sources.manage' },
+    { href: '/admin/search', label: 'البحث المركزي', permission: 'content.manage' },
+    { href: '/admin/prophets', label: 'قصص الأنبياء', permission: 'prophets.manage' },
+    { href: '/admin/battles', label: 'الغزوات', permission: 'battles.manage' },
+    { href: '/admin/kids', label: 'محتوى الأطفال', permission: 'kids.manage' },
+  ] },
+  { group: 'الوسائط والفيديو', items: [
+    { href: '/admin/media', label: 'الوسائط والحقوق', permission: 'media.manage' },
+    { href: '/admin/videos', label: 'الفيديوهات', permission: 'video.manage' },
+    { href: '/admin/ai-video', label: 'استوديو توليد الفيديو', permission: 'video.manage' },
+    { href: '/admin/site-audio', label: 'الأذان والتذكير', permission: 'audio.manage' },
+  ] },
+  { group: 'النشر والتطبيق', items: [
+    { href: '/admin/social', label: 'النشر التلقائي', permission: 'social.manage' },
+    { href: '/admin/social-ops', label: 'عمليات السوشيال', permission: 'social.manage' },
+    { href: '/admin/android', label: 'إصدار Android', permission: 'android.manage' },
+    { href: '/admin/release', label: 'مركز الإصدار', permission: 'release.manage' },
+  ] },
+  { group: 'المستخدمون والإعدادات', items: [
+    { href: '/admin/users', label: 'المستخدمون', permission: 'users.read' },
+    { href: '/admin/security', label: 'الأمن والصلاحيات', permission: 'security.manage' },
+    { href: '/admin/settings', label: 'إعدادات الإدارة', permission: 'settings.manage' },
+    { href: '/admin/seo', label: 'SEO وAdSense', permission: 'settings.manage' },
+    { href: '/admin/automation', label: 'الأتمتة', permission: 'system.manage' },
+  ] },
+];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireAdmin();
   const currentProfile = await getCurrentProfile();
   const role = currentProfile?.role ?? profile.role;
-  const visibleUtilityLinks = adminUtilityLinks.filter(item => hasAdminPermission(role, item.permission));
-  const visibleExistingLinks = existingAdminLinks.filter(item => hasAdminPermission(role, item.permission));
+  const visibleGroups: AdminNavGroup[] = navigation.map((group) => ({
+    group: group.group,
+    items: group.items.filter((item) => hasAdminPermission(role, item.permission)).map(({ href, label }) => ({ href, label })),
+  })).filter((group) => group.items.length > 0);
 
   return (
     <div className="flex min-h-screen bg-brand-emeraldDeep" dir="rtl">
-      <AdminSidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="border-b border-brand-gold/10 bg-black/15 px-4 py-2.5">
-          <div className="mx-auto flex max-w-[1800px] flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {visibleUtilityLinks.map((item) => (
-                <Link key={item.href} href={item.href} className="inline-flex items-center rounded-xl border border-brand-gold/15 bg-brand-gold/5 px-3 py-1.5 text-xs font-semibold text-brand-gold/90 transition hover:border-brand-gold/35 hover:bg-brand-gold/10">
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-            <span className="text-[11px] text-brand-cream/30">RBAC مركزي · تدقيق · حماية العمليات الحساسة · إدارة التشغيل</span>
+      <AdminSidebar groups={visibleGroups} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="border-b border-brand-gold/10 bg-black/15 px-4 py-3">
+          <div className="mx-auto flex max-w-[1800px] items-center justify-between gap-3">
+            <div><p className="text-sm font-bold text-brand-gold">مركز إدارة منصة ذِكرٌ</p><p className="text-[11px] text-brand-cream/40">تنقل موحد · صلاحيات حسب الدور · سجل تدقيق مركزي</p></div>
+            <Link href="/" className="hidden rounded-lg border border-brand-gold/25 px-3 py-1.5 text-xs text-brand-gold/80 transition hover:bg-brand-gold/10 sm:inline-flex">عرض الموقع</Link>
           </div>
         </div>
-        <LibraryAdminNav />
-        <div className="lg:hidden border-b border-brand-gold/15 bg-black/25 sticky top-16 z-30">
-          <nav aria-label="تنقل لوحة التحكم" className="flex flex-wrap items-center gap-1 px-4 py-2.5 overflow-x-auto">
-            {[
-              { href: '/admin', label: 'الرئيسية' },
-              ...visibleUtilityLinks,
-              ...visibleExistingLinks,
-            ].map((item) => (
-              <Link key={item.href} href={item.href} className="rounded-lg px-3 py-1.5 text-xs text-brand-cream/65 transition-colors hover:bg-brand-gold/10 hover:text-brand-gold whitespace-nowrap">
-                {item.label}
-              </Link>
-            ))}
-            <Link href="/" className="mr-auto rounded-lg border border-brand-gold/25 px-3 py-1.5 text-xs text-brand-gold/80 transition-colors hover:border-brand-gold hover:text-brand-gold whitespace-nowrap">عرض الموقع</Link>
-          </nav>
-        </div>
-        <main className="flex-1 min-w-0">{children}</main>
+        <AdminMobileNav groups={visibleGroups} />
+        <main className="min-w-0 flex-1">{children}</main>
       </div>
     </div>
   );
