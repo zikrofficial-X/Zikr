@@ -1,6 +1,6 @@
 {
   "name": "zikr",
-  "version": "1.4.13",
+  "version": "1.4.16",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -94,6 +94,7 @@
     "prettier": "^3.9.6",
     "tsx": "^4.23.13",
     "tailwindcss": "^4.3.3",
+    "tailwindcss-animate": "^1.0.7",
     "typescript": "^6.0.3"
   },
   "engines": {"node": "22.x"},
