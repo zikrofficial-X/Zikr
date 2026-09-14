@@ -2,23 +2,23 @@
 
 ## What is implemented
 
-The production-safe default generator is `VIDEO_GENERATOR=template`. It selects a Quran ayah already stored in `quran_ayahs`, creates a deterministic 9:16 MP4 using ffmpeg and Arabic subtitles, uploads it to the public `videos` Supabase Storage bucket, marks the durable request completed, and queues social publishing only when the corresponding server-side credentials are configured.
+The production video generator is locked to `VIDEO_GENERATOR=template`. It selects a Quran ayah already stored in `quran_ayahs`, creates a deterministic 9:16 MP4 using FFmpeg and Arabic subtitles, uploads it to the public `videos` Supabase Storage bucket, marks the durable request completed, and queues social publishing only when the corresponding server-side credentials are configured.
 
 The generator does not invent Quran text, tafsir, hadith, religious rulings, or narration. Every automated Quran video stores `sourceUrl`, `sourceLabel`, `surahId`, and `ayahNumber` in the request JSON. The source URL is a direct Quran.com ayah URL.
 
 The queue is idempotent. `video_generation_requests.automation_key` and `social_publish_queue.automation_key` have partial unique indexes, so rerunning a schedule does not create duplicate generated videos or duplicate social queue entries.
 
-HeyGen remains an optional legacy path. It is not the default because the production inventory showed HTTP 402 insufficient credits. Set `VIDEO_GENERATOR=heygen` only when a funded HeyGen account and approved narration workflow are intentionally configured.
+HeyGen is retired from the production execution path. The production route and scheduled runner do not pass, select, submit, or poll HeyGen jobs. Legacy database columns are retained only for migration/history compatibility and are not used by the renderer.
 
-## Required CircleCI project environment variables
+## Required production environment variables
 
-Set these as protected project variables or a restricted context. Values must never be committed:
+Set these as protected server-side variables. Values must never be committed:
 
 | Variable | Purpose |
 |---|---|
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side database and Storage writes only |
-| `SUPABASE_ANON_KEY` | Required by the existing server environment normalizer |
+| `SUPABASE_ANON_KEY` | Existing server environment compatibility |
 | `NEXT_PUBLIC_SITE_URL` | Canonical public ZIKR URL |
 | `YOUTUBE_CLIENT_ID` | Optional YouTube OAuth client ID |
 | `YOUTUBE_CLIENT_SECRET` | Optional YouTube OAuth client secret |
@@ -27,19 +27,19 @@ Set these as protected project variables or a restricted context. Values must ne
 | `FACEBOOK_PAGE_ID` | Optional Facebook Page ID |
 | `FACEBOOK_PAGE_ACCESS_TOKEN` | Optional server-side Page access token |
 
-The first four variables are required for the site-only generation path. YouTube and Facebook credentials are optional; without them, videos remain on ZIKR and are not falsely marked as published.
+No HeyGen variable is required.
 
-## CircleCI schedule trigger
+## Production scheduler
 
-The repository contains a `run_automation` boolean pipeline parameter and a `scheduled-automation` workflow. In CircleCI, open the project settings, create a schedule trigger on `main`, choose the system scheduler as the actor, and set `run_automation=true`. A practical starting schedule is every six hours, with a batch size of one. This produces four Quran videos per UTC day and leaves free-plan headroom for verification builds.
+Supabase `pg_cron` invokes `/api/internal/video-processing` every minute with the scheduler bearer secret. The route is the authoritative production queue owner. Do not create a second scheduler for the same queue.
 
-CircleCI schedule triggers are configured in the authenticated CircleCI web app. The current browser session is not authenticated there, so the schedule cannot be created through this repository change alone.
+The GitHub `Background Jobs` workflow is a manual/recovery path when GitHub runners are available. It is also locked to the free `template` renderer and cannot route work to HeyGen.
 
 ## Publishing behavior
 
-YouTube uses the existing OAuth upload implementation. YouTube's official documentation requires `youtube.upload`-compatible OAuth and notes a 100-unit quota impact per upload call. New or unverified API projects may be restricted to private visibility until audit approval, so the worker must not claim public reach until the channel configuration is verified.
+YouTube uses the existing OAuth upload implementation. YouTube's official API requires an OAuth token with an upload-capable scope such as `youtube.upload`; an API key alone cannot upload videos. Unverified API projects may have uploaded videos restricted to private visibility until the required Google audit is completed.
 
-Facebook Reels use Meta's Page Reels flow. Meta documents a three-step upload/publish sequence and a limit of 30 API-published Reels within a moving 24-hour period. The worker queues no more than one Reel per generated item and does not attempt to bypass that limit. Facebook Page text posts use the Pages API and require the relevant Page permissions.
+Facebook publishing is independent of video generation. A valid Page access token and Page ID are required for automatic Page/Reels publication.
 
 ## Failure handling
 
