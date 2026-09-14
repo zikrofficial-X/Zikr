@@ -1,25 +1,9 @@
 # ZIKR v1.4.13 Validation Record
 
-## Release
-- Version: `1.4.13`
-- Android versionCode: `44`
-- Android applicationId: `com.zikr.app`
-- Android target SDK: `36`
-- Canonical production URL: `https://zikrmediaofficial.vercel.app`
+Production video generation is locked to the free deterministic FFmpeg renderer. The production Vercel route and background runner do not select, submit, or poll HeyGen jobs. Legacy HeyGen schema is retained only for compatibility.
 
-## Video generation
-Production video generation is locked to the free deterministic FFmpeg template renderer. The production route and background runner do not select, submit, or poll HeyGen jobs. Legacy HeyGen database columns/migrations remain only for historical compatibility and are not part of the active production execution path.
+The renderer uses trusted Quran rows, optional HTTPS recitation audio, Arabic captions, a 1080x1920 MP4, and Supabase Storage. Social publishing remains queue-driven: YouTube uses OAuth 2.0 credentials and Facebook uses the configured Page access token.
 
-The renderer uses trusted Quran rows from `quran_ayahs`, optional HTTPS recitation audio, Arabic captions, a 1080x1920 MP4 output, and Supabase Storage persistence. This is the project's no-paid-provider production renderer; it is deterministic rather than a hosted generative-video model.
+Release metadata: version `1.4.13`, Android versionCode `44`, applicationId `com.zikr.app`, target SDK `36`.
 
-## Social publishing
-Generated media is placed into the existing queue-driven publishing flow. YouTube publishing uses OAuth 2.0 client credentials and refresh token; Facebook publishing uses the Page access token and Page ID. Provider results are recorded per target and partial failures are not reported as full success.
-
-## Validation evidence
-- GitHub Admin 2.0 Quality Gate run `#136` for the reviewed code state completed successfully.
-- Vercel production deployment for the reviewed free-renderer code reached `READY`; the checked post-deploy window had no error/fatal runtime logs.
-- Vercel build logs for the reviewed code state showed 75 tests passed and 0 failures before the production build stage.
-- Supabase currently reports 11 completed video-generation rows with persisted `video_url` values and 4 failed historical rows. No current row has a persisted `youtube_id`, so this record does not claim a fresh YouTube upload was proven by database state alone.
-
-## Release integrity
-Provider secrets are not committed to source. Runtime credentials are consumed from protected server-side environments only.
+Validation: the reviewed code state passed the GitHub quality gate and the Vercel production build; 75 tests passed and 0 failed in the Vercel build logs. Current Supabase data contains rendered video URLs; no database-only claim is made that a fresh YouTube provider upload has succeeded without a current provider-side event.
