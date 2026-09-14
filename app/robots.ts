@@ -12,7 +12,7 @@ export default function robots(): MetadataRoute.Robots {
         // Keep account, admin and backend endpoints out of crawling.
         // Public utility pages use noindex metadata instead of disallow so
         // crawlers can see and honor their robots directives.
-        disallow: ["/admin/", "/api/", "/auth/", "/favorites", "/profile", "/settings"],
+        disallow: ["/admin", "/api", "/auth", "/favorites", "/profile", "/settings"],
       },
     ],
     // Next.js exposes this single sitemap endpoint because app/sitemap.ts

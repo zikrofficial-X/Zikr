@@ -144,6 +144,7 @@ export const appRoutes = [
   { path: "/qibla", label: "القبلة", sitemap: { changeFrequency: "monthly", priority: 0.6 }, nav: "more" },
   { path: "/adhkar", label: "الأذكار", sitemap: { changeFrequency: "weekly", priority: 0.8 }, nav: "more", footer: "platform" },
   { path: "/dua", label: "الدعاء", sitemap: { changeFrequency: "weekly", priority: 0.8 }, footer: "platform" },
+  { path: "/duas", label: "موسوعة الأدعية", sitemap: { changeFrequency: "weekly", priority: 0.8 }, footer: "platform" },
   { path: "/tasbeeh", label: "التسبيح", sitemap: { changeFrequency: "weekly", priority: 0.6 }, nav: "more" },
   { path: "/prophets", label: "قصص الأنبياء", sitemap: { changeFrequency: "monthly", priority: 0.8 }, footer: "platform" },
   { path: "/articles", label: "المقالات", sitemap: { changeFrequency: "daily", priority: 0.8 } },
