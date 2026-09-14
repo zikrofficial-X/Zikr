@@ -48,7 +48,8 @@ jobs:
           fi
 
           echo "Dispatching Android release workflow for ${TAG}"
-          gh workflow run "$ANDROID_RELEASE_WORKFLOW" \
-            --ref "$TAG" \
-            -f release_tag="$TAG"
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/${ANDROID_RELEASE_WORKFLOW}/dispatches" \
+            -f ref="$TAG" \
+            -f "inputs[release_tag]=$TAG"
           echo "Android release workflow dispatched for ${TAG}"
