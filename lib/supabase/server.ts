@@ -99,7 +99,7 @@ function isRetryableTransportError(error: unknown): boolean {
 }
 
 function retryDelayMs(attempt: number): number {
-  return Math.min(5000, 500 * 2 ** Math.max(0, attempt - 1));
+  return Math.min(4000, 400 * 2 ** Math.max(0, attempt - 1));
 }
 
 async function restRequest<T>(
@@ -115,15 +115,18 @@ async function restRequest<T>(
     );
   }
 
-  const { timeoutMs = 30000, retries, ...fetchInit } = init ?? {};
+  // Bound the default lifetime of GET/HEAD requests. The previous 30s timeout
+  // with 4 retries could keep a single page request alive for roughly 150s per
+  // lookup when Supabase returned repeated 504s, which is unsafe on Vercel.
+  const { timeoutMs = 12000, retries, ...fetchInit } = init ?? {};
   const method = (fetchInit.method ?? "GET").toUpperCase();
   const retryableMethod = method === "GET" || method === "HEAD";
   const retryCount = retryableMethod
     ? Math.min(
-        5,
+        2,
         Math.max(
           0,
-          Number.isFinite(retries) ? Math.floor(retries as number) : 4
+          Number.isFinite(retries) ? Math.floor(retries as number) : 1
         )
       )
     : 0;
@@ -154,7 +157,7 @@ async function restRequest<T>(
         if (retryableMethod && attempt < maxAttempts && retryableStatus) {
           const retryAfter = Number(res.headers.get("retry-after") ?? "");
           const retryAfterMs = Number.isFinite(retryAfter) && retryAfter > 0
-            ? Math.min(10000, retryAfter * 1000)
+            ? Math.min(8000, retryAfter * 1000)
             : retryDelayMs(attempt);
           await new Promise(resolve => setTimeout(resolve, retryAfterMs));
           continue;
@@ -225,7 +228,7 @@ export async function supabaseServerAdminCount(table: string): Promise<number> {
         Prefer: "count=exact",
       },
       cache: "no-store",
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) {
       if (process.env.NODE_ENV === "development") {
