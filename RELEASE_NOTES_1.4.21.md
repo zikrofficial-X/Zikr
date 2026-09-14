@@ -35,7 +35,7 @@
 
 تم تثبيت الإصدار ودفعه إلى GitHub في commit `842dfb7358668dd67a20ecf02990ba3996f87528` على `main`، والمستودع نظيف بعد استبعاد الملفات المولدة.
 
-مشروع Vercel `zikr` مرتبط بمستودع GitHub `Zikrmediaofficial/Zikr` ضمن فريق `zikrmediaofficial-project`. بدأ النشر تلقائيًا بعد الدفع، لكن Vercel سجّل الحالة `BLOCKED` للـ commit الحالي، مع رابط خطأ `https://vercel.com/docs/deployments/troubleshoot-project-collaboration#account-configuration`. هذا قيد حساب/إعداد حماية في Vercel، وليس فشلًا في كود المشروع أو أمر البناء؛ لذلك لا يمكن وصف نشر 1.4.21 بأنه ناجح حتى يُعالج إعداد الحساب في Vercel.
+مشروع Vercel `zikr` مرتبط بمستودع GitHub `Zikrmediaofficial/Zikr` ضمن فريق `zikrmediaofficial-project`. بدأ النشر تلقائيًا بعد الدفع، لكن Vercel سجّل الحالة `BLOCKED` للـ commit الحالي، مع رابط خطأ `https://vercel.com/docs/deployments/troubleshoot-project-collaboration#account-configuration`. تمت محاولة إعادة تشغيل النشر عبر موصل Vercel، فأعاد Vercel الخطأ `402 payment_required`: حد النشر المجاني `api-deployments-free-per-day` مستنفد، والمتبقي `0`، ويعاد الضبط خلال 24 ساعة. لذلك لا يمكن وصف نشر 1.4.21 بأنه ناجح قبل انتهاء الحد ومعالجة إعداد الحساب/الحماية.
 
 ## التغييرات
 
