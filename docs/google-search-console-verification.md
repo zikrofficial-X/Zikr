@@ -45,15 +45,15 @@ curl -s https://zikrmediaofficial.vercel.app/ | grep -o 'google-site-verificatio
 
 ## GA4 وGoogle Tag Manager
 
-كان سبب فشل اكتشاف GA4 أن المكوّن كان يُحمّل ديناميكيًا في المتصفح فقط بعد اكتمال الصفحة ومرور نحو عشر ثوانٍ. نُقلت تهيئة GA4 إلى `app/layout.tsx` داخل `head` باستخدام `next/script` و`beforeInteractive`، مع الإبقاء على معرّف القياس من `NEXT_PUBLIC_GA_MEASUREMENT_ID` فقط. لا توجد تهيئة ثانية لـ `gtag`؛ أما مكوّن التحليلات المتأخر فأصبح خاصًا بـ Vercel Speed Insights.
+كان سبب فشل اكتشاف GA4 أن المكوّن كان يُحمّل ديناميكيًا في المتصفح فقط بعد اكتمال الصفحة ومرور نحو عشر ثوانٍ. نُقلت تهيئة GA4 إلى `app/layout.tsx` داخل `head` باستخدام `next/script` و`beforeInteractive`. المعرّف الإنتاجي المعتمد هو `G-W30Z9JW0VF`، ولا توجد تهيئة ثانية لـ `gtag`؛ أما مكوّن التحليلات المتأخر فأصبح خاصًا بـ Vercel Speed Insights.
 
-أضيف دعم GTM إلى الطبقة نفسها باستخدام `NEXT_PUBLIC_GTM_ID`. يظهر كود GTM و`noscript` فقط عندما تكون القيمة حقيقية وتطابق الصيغة `GTM-*`؛ لذلك لن يتم اختراع حاوية أو نشر كود مزيف. لم يُعثر في المستودع أو أسرار GitHub المتاحة على GTM ID حقيقي، كما لا يمكن تأكيد متغيرات مشروع Vercel من خلال جلسة لا تملك فريقًا متاحًا في Vercel MCP.
+أضيف دعم GTM إلى الطبقة نفسها باستخدام `NEXT_PUBLIC_GTM_ID`. المعرّف الإنتاجي المعتمد هو `GTM-PVQCFKCB`. يظهر كود GTM و`noscript` في المصدر الأولي، ولا توجد تهيئة ثانية للحاوية. استخدم التطبيق قيمًا احتياطية عامة معتمدة، حتى لا يؤدي غياب متغير build-time في Vercel إلى تعطيل التتبع بصمت.
 
 لإكمال التفعيل في Vercel، أضف القيم العامة الحقيقية في **Production**:
 
 ```text
-NEXT_PUBLIC_GA_MEASUREMENT_ID=G-...   # من خاصية GA4 الحقيقية
-NEXT_PUBLIC_GTM_ID=GTM-...            # من حاوية GTM الحقيقية، إن كانت مستخدمة
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-W30Z9JW0VF
+NEXT_PUBLIC_GTM_ID=GTM-PVQCFKCB
 ```
 
 بعد النشر، افحص المصدر الأولي للصفحة لا DOM بعد التفاعل:

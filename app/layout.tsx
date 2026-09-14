@@ -20,8 +20,11 @@ const notoNaskhArabic = Noto_Naskh_Arabic({
   display: "swap",
 });
 
-const googleAnalyticsId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
-const googleTagManagerId = process.env.NEXT_PUBLIC_GTM_ID;
+// These are public identifiers, not secrets. Environment variables remain the
+// canonical deployment configuration; the verified production IDs are safe
+// fallbacks so a missing Vercel build variable cannot silently disable tags.
+const googleAnalyticsId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-W30Z9JW0VF";
+const googleTagManagerId = process.env.NEXT_PUBLIC_GTM_ID || "GTM-PVQCFKCB";
 const isValidGoogleAnalyticsId = /^G-[A-Z0-9]+$/i.test(googleAnalyticsId ?? "");
 const isValidGoogleTagManagerId = /^GTM-[A-Z0-9]+$/i.test(googleTagManagerId ?? "");
 
