@@ -6,4 +6,4 @@ The renderer uses trusted Quran rows, optional HTTPS recitation audio, Arabic ca
 
 Release metadata: version `1.4.13`, Android versionCode `44`, applicationId `com.zikr.app`, target SDK `36`.
 
-Validation: the reviewed code state passed the GitHub quality gate and the Vercel production build; 75 tests passed and 0 failed in the Vercel build logs. Current Supabase data contains rendered video URLs; no database-only claim is made that a fresh YouTube provider upload has succeeded without a current provider-side event.
+Validation: the reviewed free-renderer code state passed the GitHub quality gate and Vercel production build; 75 tests passed and 0 failed in the build evidence. Current Supabase data contains rendered video URLs; no database-only claim is made that a fresh YouTube provider upload has succeeded without a current provider-side event.
