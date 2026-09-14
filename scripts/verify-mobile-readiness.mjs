@@ -118,14 +118,10 @@ for (const token of ["Capacitor.isNativePlatform", "appUrlOpen", "getLaunchUrl",
 const googleButton = read("app/auth/google-oauth-button.tsx");
 for (const token of [
   'Capacitor.isNativePlatform()',
-  'new URL("/auth/callback", getCanonicalBrowserOrigin())',
-  'url.searchParams.set("native", "1")',
+  'new URL("com.zikr.app://auth/callback")',
   'await Browser.open({ url: data.url })',
 ]) {
-  if (!googleButton.includes(token)) failures.push(`Google OAuth button missing canonical native bridge behavior: ${token}`);
-}
-if (googleButton.includes('new URL("com.zikr.app://auth/callback")')) {
-  failures.push("Google OAuth button must not send the initial PKCE redirect directly to the custom scheme; use the HTTPS callback bridge");
+  if (!googleButton.includes(token)) failures.push(`Google OAuth button missing direct native callback behavior: ${token}`);
 }
 
 const callbackRoute = read("app/auth/callback/route.ts");
