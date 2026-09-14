@@ -1,16 +1,11 @@
 import {
-  claimPendingVideoRequests,
-  getSubmittedVideoRequests,
-  processVideoGenerationRequest,
-} from "../lib/services/video-automation";
+  processTemplateVideoQueue,
+  seedAutomatedVideoRequests,
+} from "./jobs/template-video-automation";
 import {
   claimPendingSocialPublishItems,
   processSocialPublishItem,
 } from "../lib/services/social-publishing";
-import {
-  processTemplateVideoQueue,
-  seedAutomatedVideoRequests,
-} from "./jobs/template-video-automation";
 
 const VIDEO_BATCH_SIZE = Number(process.env.VIDEO_BACKGROUND_BATCH_SIZE ?? 3);
 const SOCIAL_BATCH_SIZE = Number(process.env.SOCIAL_BACKGROUND_BATCH_SIZE ?? 10);
@@ -34,41 +29,19 @@ function validateRequiredEnv() {
 }
 
 async function processVideos() {
-  const generator = (process.env.VIDEO_GENERATOR ?? "template").toLowerCase();
-  if (generator === "template") {
-    const queued = await seedAutomatedVideoRequests();
-    console.log(`[background-jobs] Seeded ${queued} deterministic Quran video request(s).`);
-    return processTemplateVideoQueue(VIDEO_BATCH_SIZE);
-  }
-  if (generator !== "heygen") {
-    throw new Error(`Invalid VIDEO_GENERATOR: ${generator}. Use template or heygen.`);
-  }
-  console.log(`[background-jobs] Loading up to ${VIDEO_BATCH_SIZE} submitted HeyGen job(s).`);
-  const submitted = await getSubmittedVideoRequests(VIDEO_BATCH_SIZE);
-  console.log(`[background-jobs] Claiming up to ${VIDEO_BATCH_SIZE} pending video request(s).`);
-  const claimed = await claimPendingVideoRequests(VIDEO_BATCH_SIZE);
-  const requests = [...submitted, ...claimed];
-
-  if (requests.length === 0) {
-    console.log("[background-jobs] No pending or submitted video requests found.");
-    return { processed: 0, succeeded: 0, failed: 0 };
+  // Production video generation is intentionally locked to the free,
+  // deterministic FFmpeg renderer. A legacy VIDEO_GENERATOR value can no
+  // longer route production work to HeyGen or any paid provider.
+  const configuredGenerator = (process.env.VIDEO_GENERATOR ?? "template").toLowerCase();
+  if (configuredGenerator !== "template") {
+    console.warn(
+      `[background-jobs] Ignoring unsupported VIDEO_GENERATOR=${configuredGenerator}; production is locked to template.`
+    );
   }
 
-  let succeeded = 0;
-  let failed = 0;
-  for (const request of requests) {
-    console.log(`[background-jobs] Processing video request ${request.id}.`);
-    try {
-      const ok = await processVideoGenerationRequest(request, { alreadyClaimed: true });
-      if (ok) succeeded += 1;
-      else failed += 1;
-    } catch (error) {
-      failed += 1;
-      console.error(`[background-jobs] Video request ${request.id} failed unexpectedly:`, error);
-    }
-  }
-
-  return { processed: requests.length, succeeded, failed };
+  const queued = await seedAutomatedVideoRequests();
+  console.log(`[background-jobs] Seeded ${queued} free Quran video request(s).`);
+  return processTemplateVideoQueue(VIDEO_BATCH_SIZE);
 }
 
 async function processSocial() {
@@ -111,7 +84,7 @@ async function main() {
   }
 
   console.log(
-    `[background-jobs] Starting autonomous background job runner (target=${target}, generator=${(process.env.VIDEO_GENERATOR ?? "template").toLowerCase()}, social=${SOCIAL_PUBLISH_ENABLED ? "enabled" : "disabled"}).`
+    `[background-jobs] Starting autonomous background job runner (target=${target}, generator=template, social=${SOCIAL_PUBLISH_ENABLED ? "enabled" : "disabled"}).`
   );
   const startedAt = Date.now();
 
