@@ -4,7 +4,7 @@
 - Deployment: `dpl_DdLatbeVQ432MjFLS7vpwk1Rtjet`
 - Commit: `8ed7d058f2badcb39597b80c0dbfb66a3bfeb574`
 - State: `READY`
-- Alias: `https://zikr-git-main-zikr.vercel.app`
+- Historical preview alias: `https://zikr-git-main-zikr.vercel.app` (retained as historical evidence; it is not an application URL or production target.)
 - Homepage loaded with the Arabic-first navigation, search, prayer-time cards, six featured cards, expanded library grid, statistics, footer, and PWA install prompt.
 - Public stats endpoint returned: 114 surahs, 6236 ayahs, 6236 tafsir entries, 2964 hadiths, 47 duas, 46 articles, 25 prophets, 12 companions, 8 scholars, 21 battles, 19 conquests, and 37 kids content rows.
 - No 5xx response was observed for the homepage or stats endpoint.

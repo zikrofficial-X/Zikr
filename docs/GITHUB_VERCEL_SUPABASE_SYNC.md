@@ -56,7 +56,7 @@ Live Application
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Settings > API | `eyJhbGc...` (public key) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Settings > API | `eyJhbGc...` (secret key) |
 | `DATABASE_URL` | Supabase Database Settings | `postgresql://postgres:pw@db.xxx.supabase.co:5432/postgres` |
-| `NEXT_PUBLIC_SITE_URL` | Your domain | `https://your-domain.vercel.app` |
+| `NEXT_PUBLIC_SITE_URL` | Your domain | `https://zikrmediaofficial.vercel.app` |
 | `AUTH_CALLBACK_URL` | Same as SITE_URL + /auth/callback | `https://your-domain.vercel.app/auth/callback` |
 
 ### Optional Variables:
