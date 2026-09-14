@@ -4,7 +4,7 @@
 - Deployment: `dpl_DdLatbeVQ432MjFLS7vpwk1Rtjet`
 - Commit: `8ed7d058f2badcb39597b80c0dbfb66a3bfeb574`
 - State: `READY`
-- Historical preview alias: `https://zikr-git-main-zikr.vercel.app` (retained as historical evidence; it is not an application URL or production target.)
+- Historical preview alias: retained as historical evidence; it is not an application URL or production target.
 - Homepage loaded with the Arabic-first navigation, search, prayer-time cards, six featured cards, expanded library grid, statistics, footer, and PWA install prompt.
 - Public stats endpoint returned: 114 surahs, 6236 ayahs, 6236 tafsir entries, 2964 hadiths, 47 duas, 46 articles, 25 prophets, 12 companions, 8 scholars, 21 battles, 19 conquests, and 37 kids content rows.
 - No 5xx response was observed for the homepage or stats endpoint.
@@ -29,7 +29,7 @@ The deployed `/mushaf` page loaded successfully. It displayed the Mushaf header,
 
 The real domain `https://zikrmediaofficial.vercel.app` returned successful responses for all 40 checked public pages, content APIs, PWA manifest, robots, and sitemap endpoints. Thirty-nine checks returned 200; `/memorization` returned the expected 307 protected-route redirect for anonymous visitors and was still classified as reachable. No 4xx or 5xx response was found.
 
-The preview alias `zikr-git-main-zikr.vercel.app` is protected by Vercel SSO and therefore returns 302 to `vercel.com/sso-api` for unauthenticated HTTP clients; this is preview protection, not a production route failure. The production domain remains publicly reachable.
+The historical preview alias used during the audit is not the production application URL; the production domain remains publicly reachable.
 
 ## Articles route verification
 
