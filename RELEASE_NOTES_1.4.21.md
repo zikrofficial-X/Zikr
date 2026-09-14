@@ -31,14 +31,16 @@
 
 أظهر فحص metadata أن `applicationId=com.zikr.app` و`versionCode=52` و`versionName=1.4.21` و`minSdk=24` و`targetSdk=36`. لا يجوز استخدام APK/AAB غير الموقعين للنشر العام على Google Play؛ يلزم توفير keystore الأصلي للمشروع وملف `android/keystore.properties` السري خارج المستودع لإنتاج ملفات release موقعة.
 
-## النشر
+## GitHub وVercel
 
-مشروع Vercel `zikr` مرتبط بمستودع GitHub `Zikrmediaofficial/Zikr` ضمن فريق `zikrmediaofficial-project`. يعتمد النشر على `vercel.json`، مع `pnpm install --frozen-lockfile` ثم `pnpm verify` كأمر بناء. بعد دفع commit الإصدار، يجب اعتماد النشر فقط بعد ظهور حالة Vercel الناجحة والتحقق من رابط الإنتاج.
+تم تثبيت الإصدار ودفعه إلى GitHub في commit `842dfb7358668dd67a20ecf02990ba3996f87528` على `main`، والمستودع نظيف بعد استبعاد الملفات المولدة.
+
+مشروع Vercel `zikr` مرتبط بمستودع GitHub `Zikrmediaofficial/Zikr` ضمن فريق `zikrmediaofficial-project`. بدأ النشر تلقائيًا بعد الدفع، لكن Vercel سجّل الحالة `BLOCKED` للـ commit الحالي، مع رابط خطأ `https://vercel.com/docs/deployments/troubleshoot-project-collaboration#account-configuration`. هذا قيد حساب/إعداد حماية في Vercel، وليس فشلًا في كود المشروع أو أمر البناء؛ لذلك لا يمكن وصف نشر 1.4.21 بأنه ناجح حتى يُعالج إعداد الحساب في Vercel.
 
 ## التغييرات
 
 - رفع إصدار npm وAndroid إلى `1.4.21`.
 - رفع Android `versionCode` من 51 إلى 52.
-- نقل ضبط pnpm إلى `pnpm-workspace.yaml` وإزالة المفتاح القديم من `package.json` وlockfile.
+- إزالة إعداد pnpm القديم من `package.json` وlockfile، مع إبقاء overrides في `pnpm-workspace.yaml`.
 - استبعاد ملفات vendor الثنائية التي تُنزّل وقت البناء من Git.
-- إضافة هذا السجل لتوثيق نتائج التدقيق والبناء ومتطلبات التوقيع.
+- إضافة هذا السجل لتوثيق نتائج التدقيق والبناء ومتطلبات التوقيع وحالة Vercel.
