@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
-  claimPendingVideoRequests,
-  getSubmittedVideoRequests,
-  processVideoGenerationRequest,
-} from '@/lib/services/video-automation';
+  processTemplateVideoQueue,
+  seedAutomatedVideoRequests,
+} from '@/scripts/jobs/template-video-automation';
 import {
   claimPendingSocialPublishItems,
   processSocialPublishItem,
@@ -25,10 +24,10 @@ async function isAuthorized(request: NextRequest): Promise<boolean> {
 }
 
 /**
- * Durable video queue entrypoint. Supabase pg_cron invokes this endpoint every
- * minute using the same scheduler secret as the push worker. Submitted HeyGen
- * jobs are polled before new pending rows are claimed, preventing duplicate
- * provider submissions while allowing jobs to outlive a single request.
+ * Durable production queue entrypoint. Supabase pg_cron invokes this endpoint
+ * every minute using the scheduler secret. Production video generation is
+ * intentionally locked to the free FFmpeg renderer; HeyGen is not part of
+ * this execution path.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -36,18 +35,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const submitted = await getSubmittedVideoRequests(VIDEO_BATCH_SIZE);
-    const claimed = await claimPendingVideoRequests(VIDEO_BATCH_SIZE);
-    const requests = [...submitted, ...claimed];
+    const queued = await seedAutomatedVideoRequests();
+    const videos = await processTemplateVideoQueue(VIDEO_BATCH_SIZE);
     const socialItems = await claimPendingSocialPublishItems(SOCIAL_BATCH_SIZE);
-    let succeeded = 0;
-    let failed = 0;
-
-    for (const videoRequest of requests) {
-      const ok = await processVideoGenerationRequest(videoRequest, { alreadyClaimed: true });
-      if (ok) succeeded += 1;
-      else failed += 1;
-    }
 
     let socialSucceeded = 0;
     let socialFailed = 0;
@@ -58,10 +48,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      ok: true,
-      processed: requests.length,
-      succeeded,
-      failed,
+      ok: videos.failed === 0 && socialFailed === 0,
+      generator: 'template',
+      queued,
+      processed: videos.processed,
+      succeeded: videos.succeeded,
+      failed: videos.failed,
       socialProcessed: socialItems.length,
       socialSucceeded,
       socialFailed,
