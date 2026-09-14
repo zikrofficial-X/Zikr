@@ -179,9 +179,6 @@ async function renderVideo(request: GeneratedRequest) {
   const audioPath = `${temp}/recitation.m4a`;
   try {
     await writeFile(assPath, makeAss(row, request.title, sourceUrl), "utf8");
-
-    // Deterministic, lightweight visual treatment suitable for Shorts/Reels:
-    // 1080x1920, soft animated gradient, vignette, Arabic typography, brand mark.
     const filter = [
       `subtitles=${assPath}:fontsdir=/usr/share/fonts/truetype/noto`,
       "eq=contrast=1.04:saturation=0.92:brightness=0.01",
@@ -190,25 +187,15 @@ async function renderVideo(request: GeneratedRequest) {
     ].join(",");
 
     const videoInput = `color=c=0x081D1A:s=1080x1920:r=30:d=${VIDEO_SECONDS}`;
-    const ffmpegArgs = [
-      "-y",
-      "-f", "lavfi", "-i", videoInput,
-    ];
-
+    const ffmpegArgs = ["-y", "-f", "lavfi", "-i", videoInput];
     if (audioUrl) {
-      // Download first so transient remote stream issues cannot corrupt the mux.
       const audioResponse = await fetch(audioUrl, { headers: { Accept: "audio/*" } });
-      if (!audioResponse.ok) {
-        throw new Error(`Quran audio download failed (HTTP ${audioResponse.status}).`);
-      }
+      if (!audioResponse.ok) throw new Error(`Quran audio download failed (HTTP ${audioResponse.status}).`);
       const audioBytes = new Uint8Array(await audioResponse.arrayBuffer());
-      if (audioBytes.length < 1024) {
-        throw new Error("Quran audio download was empty or invalid.");
-      }
+      if (audioBytes.length < 1024) throw new Error("Quran audio download was empty or invalid.");
       await writeFile(audioPath, audioBytes);
       ffmpegArgs.push("-i", audioPath);
     }
-
     ffmpegArgs.push(
       "-vf", filter,
       "-c:v", "libx264",
@@ -221,24 +208,12 @@ async function renderVideo(request: GeneratedRequest) {
       "-movflags", "+faststart",
       "-metadata:s:v:0", "language=ara",
     );
-
     if (audioUrl) {
-      ffmpegArgs.push(
-        "-c:a", "aac",
-        "-b:a", "192k",
-        "-ar", "48000",
-        "-ac", "2",
-        "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
-        "-shortest",
-        "-metadata:s:a:0", "language=ara",
-        "-metadata", "title=ZIKR Quran Recitation",
-      );
+      ffmpegArgs.push("-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-shortest", "-metadata:s:a:0", "language=ara", "-metadata", "title=ZIKR Quran Recitation");
     } else {
       ffmpegArgs.push("-an");
     }
-
     ffmpegArgs.push(outputPath);
-
     await execFileAsync("ffmpeg", ffmpegArgs, { maxBuffer: 1024 * 1024 * 4 });
 
     const bytes = await readFile(outputPath);
@@ -248,12 +223,7 @@ async function renderVideo(request: GeneratedRequest) {
     if (!envUrl || !serviceKey) throw new Error("Supabase storage environment is not configured.");
     const upload = await fetch(`${envUrl.replace(/\/$/, "")}/storage/v1/object/videos/${path}`, {
       method: "POST",
-      headers: {
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
-        "Content-Type": "video/mp4",
-        "x-upsert": "true",
-      },
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "video/mp4", "x-upsert": "true" },
       body: bytes,
     });
     if (!upload.ok) throw new Error(`Video storage upload failed (HTTP ${upload.status}): ${(await upload.text()).slice(0, 300)}`);
@@ -268,7 +238,9 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
   const key = request.automation_key || request.id;
   const publicPath = typeof content.publicPath === "string" ? content.publicPath : "/quran";
   const targets: string[] = [];
-  if (process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET && process.env.YOUTUBE_REFRESH_TOKEN) targets.push("youtube");
+  const youtubeClientId = process.env.YOUTUBE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+  const youtubeClientSecret = process.env.YOUTUBE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+  if (youtubeClientId && youtubeClientSecret && process.env.YOUTUBE_REFRESH_TOKEN) targets.push("youtube");
   if (process.env.FACEBOOK_PAGE_ID && process.env.FACEBOOK_PAGE_ACCESS_TOKEN) targets.push("facebook_reels");
   if (!targets.length) {
     console.warn("[template-video] No YouTube/Facebook credentials; video remains on site only.");
