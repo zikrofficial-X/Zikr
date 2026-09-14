@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/lib/services/admin';
-import { supabaseServerAdminRequest } from '@/lib/supabase/server';
-import { claimPendingSocialPublishItems, processSocialPublishItem } from '@/lib/services/social-publishing';
+import { supabaseServerAdminRequest, createAdminClient } from '@/lib/supabase/server';
 import { getServerEnv } from '@/lib/env';
-import { createAdminClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -151,11 +149,7 @@ export async function POST(request: NextRequest) {
     if (action === 'retry_all_failed') {
       const affected = await retryItems('status=in.(failed,partial)');
       const worker = affected > 0 ? await triggerSocialWorker() : null;
-      return NextResponse.json({
-        ok: true,
-        affected,
-        worker,
-      });
+      return NextResponse.json({ ok: true, affected, worker });
     }
 
     const filter = ids.map(encodeURIComponent).join(',');
@@ -163,11 +157,7 @@ export async function POST(request: NextRequest) {
     if (action === 'retry') {
       const affected = await retryItems(`id=in.(${filter})&status=in.(failed,partial)`);
       const worker = affected > 0 ? await triggerSocialWorker() : null;
-      return NextResponse.json({
-        ok: true,
-        affected,
-        worker,
-      });
+      return NextResponse.json({ ok: true, affected, worker });
     }
 
     if (action === 'delete') {
