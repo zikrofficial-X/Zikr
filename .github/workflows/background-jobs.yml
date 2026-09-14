@@ -1,8 +1,7 @@
 name: Background Jobs
 
-# Deterministic background queue runner for AI video generation and social
-# publishing. Production credentials remain in GitHub Actions secrets; feature
-# flags are repository variables so the worker can be enabled deliberately.
+# Free deterministic video rendering and social publishing queue. Production
+# video generation does not depend on HeyGen or any paid video provider.
 on:
   workflow_dispatch:
     inputs:
@@ -26,9 +25,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Free local renderer is the production default. Set the repository variable
-  # ZIKR_VIDEO_GENERATOR=heygen only when an external HeyGen account is desired.
-  VIDEO_GENERATOR: ${{ vars.ZIKR_VIDEO_GENERATOR || 'template' }}
+  # Production video generation is intentionally locked to the free renderer.
+  VIDEO_GENERATOR: template
   # Social publishing is enabled by default; disable deliberately with the repo
   # variable when testing locally or pausing automatic distribution.
   SOCIAL_PUBLISH_ENABLED: ${{ vars.ZIKR_SOCIAL_PUBLISH_ENABLED || 'true' }}
@@ -39,12 +37,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      # The Supabase project URL is public configuration, so keep a deterministic
-      # repository fallback instead of failing scheduled runs when the URL is
-      # not duplicated into an Actions secret.
       SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL || 'https://eydxvcamhjhajxjrsgym.supabase.co' }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
-      NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://zikrmediaofficial.vercel.app' }}
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
@@ -54,11 +49,8 @@ jobs:
       FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
       FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
       FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
-      HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
-      HEYGEN_AVATAR_ID: ${{ secrets.HEYGEN_AVATAR_ID }}
-      HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
-      # Automatic publishing is enabled by default so generated videos flow to
-      # every configured target. Set ZIKR_VIDEO_AUTO_PUBLISH=false to pause.
+      # Retained nowhere in the execution environment: HeyGen credentials are
+      # intentionally not passed to production jobs.
       VIDEO_AUTO_PUBLISH: ${{ vars.ZIKR_VIDEO_AUTO_PUBLISH || 'true' }}
     steps:
       - name: Check out repository
