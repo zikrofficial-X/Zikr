@@ -62,7 +62,7 @@ jobs:
       VIDEO_AUTO_PUBLISH: ${{ vars.ZIKR_VIDEO_AUTO_PUBLISH || 'true' }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
