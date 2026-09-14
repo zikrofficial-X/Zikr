@@ -1,6 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { delimiter, resolve } from "node:path";
 import { getServerEnv } from "@/lib/env";
+
+// The production video renderer uses a pinned static FFmpeg binary bundled
+// during `prebuild`. Adding its vendor directory to PATH keeps the existing
+// execFile("ffmpeg", ...) call portable across Vercel and Linux workers while
+// preserving the development fallback to a system-installed ffmpeg.
+const bundledFfmpegDir = resolve(process.cwd(), "vendor");
+if (process.env.NODE_ENV !== "test") {
+  process.env.PATH = [bundledFfmpegDir, process.env.PATH].filter(Boolean).join(delimiter);
+}
 
 function getSupabaseConfig() {
   const env = getServerEnv();
