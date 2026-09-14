@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/ensure-ffmpeg.mjs",
     "build": "next build --webpack",
     "start": "next start",
     "check": "tsc --noEmit",
