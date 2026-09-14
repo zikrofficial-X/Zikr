@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 env:
   ANDROID_RELEASE_WORKFLOW: android-release.yml
