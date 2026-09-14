@@ -23,6 +23,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  outputFileTracingIncludes: {
+    '/*': ['./vendor/ffmpeg'],
+  },
   images: {
     unoptimized: false,
     remotePatterns: [
@@ -71,11 +74,11 @@ const nextConfig: NextConfig = {
     { source: '/home', destination: '/', permanent: false },
     { source: '/prayer', destination: '/prayer-times', permanent: true },
     { source: '/islamic-conquests', destination: '/conquests', permanent: true },
-    { source: '/battles/qaynuqa', destination: '/battles/banu-qaynuqa', permanent: true },
-    { source: '/battles/nadir', destination: '/battles/banu-nadir', permanent: true },
-    { source: '/battles/qurayza', destination: '/battles/banu-qurayza', permanent: true },
-    { source: '/battles/mutah', destination: '/battles/mu-tah', permanent: true },
-    { source: '/battles/salasel', destination: '/battles/dhat-salasil', permanent: true },
+    { source: '/battles/qaynuqa', destination: '/battles/banu-qaynuqa', permanent: false },
+    { source: '/battles/nadir', destination: '/battles/banu-nadir', permanent: false },
+    { source: '/battles/qurayza', destination: '/battles/banu-qurayza', permanent: false },
+    { source: '/battles/mutah', destination: '/battles/mu-tah', permanent: false },
+    { source: '/battles/salasel', destination: '/battles/dhat-salasil', permanent: false },
     { source: '/prophets/dhul-kifl', destination: '/prophets/dhulkifl', permanent: true },
     { source: '/prophets/zakariyya', destination: '/prophets/zakariya', permanent: true },
   ],
