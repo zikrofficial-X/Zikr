@@ -31,14 +31,20 @@ export function buildOAuthRedirectUri(
  * Supabase OAuth is sensitive to the exact redirect URL. On Vercel, users can
  * reach the same deployment through generated preview/deployment hosts; if the
  * OAuth callback uses one of those hosts, the session can appear to "jump" to a
- * different link. Localhost is preserved for development.
+ * different link. Localhost is preserved for development. For every non-local
+ * host, prefer the Vercel project production URL (when available) over the
+ * deployment/branch URL.
  */
 export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
-  // Read through the normalized server environment so numbered Vercel
-  // integration variables (for example NEXT_PUBLIC_SITE_URL_2) are honored.
-  const canonicalProductionUrl = getServerEnv().NEXT_PUBLIC_SITE_URL || PRODUCTION_URL;
+  const env = getServerEnv();
+  const canonicalProductionUrl = env.NEXT_PUBLIC_SITE_URL || PRODUCTION_URL;
+  const vercelProjectProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const stableProductionUrl =
+    vercelProjectProductionUrl && !/^https?:\/\//i.test(vercelProjectProductionUrl)
+      ? `https://${vercelProjectProductionUrl}`
+      : vercelProjectProductionUrl || canonicalProductionUrl;
 
-  if (!baseUrl) return canonicalProductionUrl;
+  if (!baseUrl) return stableProductionUrl;
 
   try {
     const url = new URL(baseUrl);
@@ -50,15 +56,19 @@ export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
 
     // OAuth redirect URIs must always point to this app, not to Supabase's
     // provider callback URL (https://<project>.supabase.co/auth/v1/callback).
-    // If a Supabase/Auth URL is accidentally supplied, fall back to the public
-    // app origin so the session exchange happens on /auth/callback.
-    if (host.endsWith(".supabase.co") || url.pathname.startsWith("/auth/v1/")) {
-      return canonicalProductionUrl;
+    // If a Supabase/Auth URL or a Vercel deployment/branch URL is supplied,
+    // fall back to the stable project production origin so auth cannot drift.
+    if (
+      host.endsWith(".supabase.co") ||
+      url.pathname.startsWith("/auth/v1/") ||
+      host.endsWith(".vercel.app")
+    ) {
+      return stableProductionUrl;
     }
 
-    return canonicalProductionUrl;
+    return stableProductionUrl;
   } catch {
-    return canonicalProductionUrl;
+    return stableProductionUrl;
   }
 }
 
@@ -66,10 +76,10 @@ export function isPkceVerifierError(error: unknown): boolean {
   const message =
     error instanceof Error
       ? error.message
-      : typeof error === 'string'
+      : typeof error === "string"
         ? error
-        : error && typeof error === 'object' && 'message' in error
-          ? String((error as { message?: unknown }).message ?? '')
+        : error && typeof error === "object" && "message" in error
+          ? String((error as { message?: unknown }).message ?? "")
           : '';
 
   return /invalid flow state|no valid flow state|(?:pkce|code verifier).*(?:not found|missing|expired)|verifier.*(?:not found|missing|expired)/i.test(
