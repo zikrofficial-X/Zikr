@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
 import { gunzip } from 'node:zlib';
 import { promisify } from 'node:util';
@@ -30,9 +30,7 @@ async function download(urlString, target) {
       pipeline(response, output).then(resolvePromise, reject);
     });
     request.on('error', reject);
-    request.setTimeout(120000, () => {
-      request.destroy(new Error('ffmpeg download timed out'));
-    });
+    request.setTimeout(120000, () => request.destroy(new Error('ffmpeg download timed out')));
   });
 }
 
@@ -54,7 +52,7 @@ async function main() {
     // Missing file; download below.
   }
 
-  console.log('[ensure-ffmpeg] Downloading pinned static ffmpeg 6.1.1 build...');
+  console.log('[ensure-ffmpeg] Downloading pinned static ffmpeg build...');
   await download(url, archivePath);
   const archive = await readFile(archivePath);
   const actualSha256 = createHash('sha256').update(archive).digest('hex');
