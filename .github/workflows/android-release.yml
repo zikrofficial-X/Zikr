@@ -9,6 +9,10 @@ on:
         description: 'Release tag to build (for example v1.4.19)'
         required: true
         default: v1.4.19
+      source_ref:
+        description: 'Git ref to build (branch, tag, or commit SHA)'
+        required: true
+        default: main
   workflow_run:
     workflows:
       - Create Release Tag
@@ -41,7 +45,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.event.workflow_run.head_sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_ref || github.event.workflow_run.head_sha }}
 
       - name: Resolve release tag
         shell: bash
