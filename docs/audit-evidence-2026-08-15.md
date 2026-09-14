@@ -17,7 +17,7 @@ Project: `Zikr`, ref `eydxvcamhjhajxjrsgym`, region `eu-west-1`, PostgreSQL 17.6
 
 - Supabase migration history contains the archived legacy markers and current August 2026 migrations. Repository contains 123 active migration files plus 34 archived files. The two new RLS migrations are recorded by Supabase as `20260815104409` and `20260815104455`, and local filenames were aligned in `be8dd9d`.
 - Deployed Edge Functions: `health` ACTIVE v7 (`verify_jwt=false`), `spiritual-ai` ACTIVE v7 (`verify_jwt=true`), and `prayer-notification-worker` ACTIVE v37 (`verify_jwt=false`). The latter is intentionally scheduler-authenticated by a secret rather than JWT.
-- pg_cron has two active jobs, both `* * * * *`, and recent runs for both jobs succeeded once per minute. Job 1 calls the prayer notification worker through `net.http_post`; job 2 calls `https://zikrmediaofficial.vercel.app/api/internal/video-processing` with the scheduler secret.
+- pg_cron has two active jobs, both `* * * * *`, and recent runs for both jobs succeeded once per minute. Job 1 calls the prayer notification worker through `net.http_post`; job 2 calls the production video-processing endpoint on the canonical production domain with the scheduler secret.
 - Supabase security advisors returned two WARN findings: `pg_net` is installed in the `public` schema, and leaked password protection is disabled in Auth.
 - Supabase performance advisors returned many INFO findings for unused indexes. These are candidates for later removal only after workload validation; no destructive index removal has been applied.
 - PostgREST logs show repeated `Warp server error: Thread killed by timeout manager` messages throughout 2026-08-15, often at one-minute intervals. The available metadata exposes only system/project identifiers, not request paths, so the responsible request still needs correlation with Vercel/Supabase request logs before changing cron or API code.
@@ -27,11 +27,11 @@ Project: `Zikr`, ref `eydxvcamhjhajxjrsgym`, region `eu-west-1`, PostgreSQL 17.6
 
 ## Vercel project
 
-- Project: `zikr`, id `prj_3J0vdLIhoMucvZ8o1IZ1yXIRYHCi`, team `team_n5mrLz3A1fUncMocWuhYc2er`, Next.js, Node `24.x`.
-- Domains: `zikrmediaofficial.vercel.app`, `zikr-zikr.vercel.app`, and `zikr-git-main-zikr.vercel.app`.
-- Latest production deployment: `dpl_13MdTuTMaxqratbyYVRAjhfw1gQp`, READY, from GitHub `main` commit `be8dd9d`. No error/fatal runtime logs were found for this deployment in the final 30-minute query, and the final production audit returned 0 issues.
+- Project: `zikr` and current production project configuration.
+- Canonical production domain: `https://zikrmediaofficial.vercel.app`.
+- Historical deployment aliases are not application targets and should not be used in OAuth, Auth, content URLs, or environment configuration.
 - Project deployment protection: password protection disabled, trusted IP protection disabled, Vercel SSO protection enabled for all except custom domains. The production custom domain remains publicly reachable.
-- Aggregated Vercel runtime errors over the last 24 hours included errors from older deployments: 48 `/battles/[slug]` errors from dereferencing `date_gregorian` on an undefined object; two old-deployment Supabase DNS failures pointing to `olryzmbomglblauhdexi.supabase.co`; one malformed JSON error each in `/api/kids/track-share`, `/api/poetry-insight`, and `/api/contact`; one `/api/tawasheeh` negative-limit error; and one PKCE verifier-not-found callback error. These must be separated by deployment before declaring current production regressions.
+- Aggregated Vercel runtime errors over the last 24 hours included errors from older deployments: 48 `/battles/[slug]` errors from dereferencing `date_gregorian` on an undefined object; two old-deployment Supabase DNS failures; one malformed JSON error each in `/api/kids/track-share`, `/api/poetry-insight`, and `/api/contact`; one `/api/tawasheeh` negative-limit error; and one PKCE verifier-not-found callback error. These must be separated by deployment before declaring current production regressions.
 
 ## Local project scripts
 
