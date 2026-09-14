@@ -16,10 +16,10 @@ The renderer uses trusted Quran rows from `quran_ayahs`, optional HTTPS recitati
 Generated media is placed into the existing queue-driven publishing flow. YouTube publishing uses OAuth 2.0 client credentials and refresh token; Facebook publishing uses the configured Page access token and Page ID. Provider results are recorded per target and partial failures are not reported as full success.
 
 ## Validation evidence
-- GitHub Admin 2.0 Quality Gate run `#136` for commit `c8b8652eb3f82b6ac788989fb1e195c529a47e52` completed successfully.
-- Vercel deployment for commit `c8b8652eb3f82b6ac788989fb1e195c529a47e52` reached `READY`; the checked post-deploy window had no error/fatal runtime logs.
-- Vercel build logs showed 75 tests passed and 0 failures before the production build stage.
-- Supabase currently reports 11 completed video-generation rows with persisted `video_url` values and 4 failed historical rows. No current row has a persisted `youtube_id`, so this record does not claim that a fresh YouTube upload was proven by database state alone.
+- GitHub Admin 2.0 Quality Gate run `#136` for the previous code state completed successfully.
+- Vercel deployment for commit `c8b8652eb3f82b6ac788989fb1e195c529a47e52` reached `READY`; its checked post-deploy window had no error/fatal runtime logs.
+- Vercel build logs for that code state showed 75 tests passed and 0 failures before the production build stage.
+- Supabase currently reports 11 completed video-generation rows with persisted `video_url` values and 4 failed historical rows. No current row has a persisted `youtube_id`, so this record does not claim a fresh YouTube upload was proven by database state alone.
 
 ## Release integrity
 Provider secrets are not committed to source. Runtime credentials are consumed from protected server-side environments only.
