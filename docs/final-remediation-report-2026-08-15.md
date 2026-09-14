@@ -49,7 +49,7 @@ The production checks also returned HTTP 200 for `/auth/login`, `/mushaf`, `/qur
 
 The audited release commit `e06dec8` and subsequent documentation-only commits are present on local `main` and `origin/main`; the working tree is clean. GitHub branch protection now requires the real CircleCI status context `ci/circleci: verify`, with force-push and deletion disabled. CircleCI jobs #25 and #26 passed and reported `Your tests passed on CircleCI!`.
 
-The latest verified Vercel production deployment is available from the successful `Vercel – zikr` status at `https://vercel.com/alaaabdelkader565-5560s-projects/zikr/8RRsWnSH6dUTveij7cUQjxzcibVm`; it targets production. The audited release code deployment `dpl_CDEBwmeGpe1Dxf3J4eHzbT4eTrTv` was `READY` and associated with commit `e06dec8`. It serves the aliases `zikrmediaofficial.vercel.app`, `zikr-zikr.vercel.app`, and `zikr-git-main-zikr.vercel.app`. Runtime log filtering for the code deployment and the final production deployment returned no error or fatal entries in the checked windows.
+The latest verified Vercel production deployment targets production and uses the canonical production domain `https://zikrmediaofficial.vercel.app`. Historical deployment aliases are not application targets and are intentionally omitted from this canonical configuration. Runtime log filtering for the code deployment and the final production deployment returned no error or fatal entries in the checked windows.
 
 The current GitHub aggregate status includes a failed `Vercel – v0-project` context with `Deployment rate limited — retry in 24 hours`; this is a separate v0 project limitation. The ZIKR Vercel context and CircleCI context are successful, and the v0 result does not affect the ZIKR production deployment.
 
@@ -67,7 +67,7 @@ The current GitHub aggregate status includes a failed `Vercel – v0-project` co
 | Automated tests | Passed; 56 tests, 11 suites, 0 failures |
 | Next.js production build | Passed; Next.js 16.3.1/Turbopack compiled and generated pages |
 | CircleCI full verify | Passed; job #23 |
-| Vercel production deployment | Passed; deployment `dpl_CDE...` READY |
+| Vercel production deployment | Passed; production deployment READY |
 | Production page/API audit | Passed; 0 issues, 40 declared routes, 156 public 200 responses, 68,766 sitemap URLs |
 | Current deployment runtime errors | None found in filtered two-hour window |
 | Cron jobs | Both active and repeatedly succeeded |
