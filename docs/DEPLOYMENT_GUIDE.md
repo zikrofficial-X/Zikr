@@ -12,7 +12,7 @@ To ensure the project works correctly on production (Vercel) and with Supabase, 
 3. Add your **Client ID** and **Client Secret** from Google Cloud Console.
 4. In **Redirect URLs**, add:
    - `http://localhost:3000/auth/callback` (for local development)
-   - `https://your-project-name.vercel.app/auth/callback` (replace with your Vercel URL)
+   - `https://zikrmediaofficial.vercel.app/auth/callback` (production)
    - Do **not** use `/api/auth/callback`; this app handles auth at `/auth/callback`.
 
 ### Database
