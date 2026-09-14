@@ -8,15 +8,12 @@ on:
 permissions:
   contents: write
 
-env:
-  ANDROID_RELEASE_WORKFLOW: android-release.yml
-
 jobs:
   tag:
-    name: Create immutable release tag and start Android release
+    name: Create immutable release tag
     runs-on: ubuntu-24.04
     steps:
-      - name: Create release tag and dispatch Android release
+      - name: Create release tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -37,19 +34,16 @@ jobs:
             exit 1
           fi
 
-          TAG_SHA=""
           if TAG_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq '.object.sha' 2>/dev/null)"; then
-            echo "Tag ${TAG} already exists; keeping existing immutable tag at ${TAG_SHA}."
+            if [[ "$TAG_SHA" != "$SHA" ]]; then
+              echo "Immutable tag ${TAG} already points to ${TAG_SHA}; refusing to move it." >&2
+              exit 1
+            fi
+            echo "Tag ${TAG} already exists at ${SHA}."
           else
             gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
               -f ref="refs/tags/${TAG}" \
               -f sha="${SHA}"
             echo "Created ${TAG} -> ${SHA}"
           fi
-
-          echo "Dispatching Android release workflow for ${TAG}"
-          gh api --method POST \
-            "repos/${GITHUB_REPOSITORY}/actions/workflows/${ANDROID_RELEASE_WORKFLOW}/dispatches" \
-            -f ref="$TAG" \
-            -f "inputs[release_tag]=$TAG"
-          echo "Android release workflow dispatched for ${TAG}"
+          echo "Android Release will start automatically from the tag push."
