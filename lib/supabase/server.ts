@@ -84,10 +84,10 @@ type RestRequestInit = RequestInit & {
 
 function isRetryableTransportError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
-  const code = (error as Error & { cause?: unknown }).cause;
+  const cause = (error as Error & { cause?: unknown }).cause;
   const causeCode =
-    typeof code === "object" && code !== null && "code" in code
-      ? String((code as { code?: unknown }).code ?? "")
+    typeof cause === "object" && cause !== null && "code" in cause
+      ? String((cause as { code?: unknown }).code ?? "")
       : "";
   return (
     error.name === "AbortError" ||
@@ -96,6 +96,10 @@ function isRetryableTransportError(error: unknown): boolean {
     causeCode === "ECONNRESET" ||
     causeCode === "ETIMEDOUT"
   );
+}
+
+function retryDelayMs(attempt: number): number {
+  return Math.min(5000, 500 * 2 ** Math.max(0, attempt - 1));
 }
 
 async function restRequest<T>(
@@ -111,15 +115,17 @@ async function restRequest<T>(
     );
   }
 
-  const {
-    timeoutMs = 20000,
-    retries,
-    ...fetchInit
-  } = init ?? {};
+  const { timeoutMs = 30000, retries, ...fetchInit } = init ?? {};
   const method = (fetchInit.method ?? "GET").toUpperCase();
   const retryableMethod = method === "GET" || method === "HEAD";
   const retryCount = retryableMethod
-    ? Math.min(3, Math.max(0, Number.isFinite(retries) ? Math.floor(retries as number) : 2))
+    ? Math.min(
+        5,
+        Math.max(
+          0,
+          Number.isFinite(retries) ? Math.floor(retries as number) : 4
+        )
+      )
     : 0;
   const maxAttempts = 1 + retryCount;
 
@@ -144,8 +150,13 @@ async function restRequest<T>(
 
       if (!res.ok) {
         const body = await res.text().catch(() => "");
-        if (retryableMethod && attempt < maxAttempts && res.status >= 500) {
-          await new Promise(resolve => setTimeout(resolve, 250 * attempt));
+        const retryableStatus = [429, 500, 502, 503, 504].includes(res.status);
+        if (retryableMethod && attempt < maxAttempts && retryableStatus) {
+          const retryAfter = Number(res.headers.get("retry-after") ?? "");
+          const retryAfterMs = Number.isFinite(retryAfter) && retryAfter > 0
+            ? Math.min(10000, retryAfter * 1000)
+            : retryDelayMs(attempt);
+          await new Promise(resolve => setTimeout(resolve, retryAfterMs));
           continue;
         }
         throw new Error(`Supabase REST ${res.status}: ${body}`);
@@ -157,16 +168,22 @@ async function restRequest<T>(
       return JSON.parse(text) as T;
     } catch (error) {
       lastError = error;
-      if (!retryableMethod || attempt >= maxAttempts || !isRetryableTransportError(error)) {
+      if (
+        !retryableMethod ||
+        attempt >= maxAttempts ||
+        !isRetryableTransportError(error)
+      ) {
         throw error;
       }
-      await new Promise(resolve => setTimeout(resolve, 250 * attempt));
+      await new Promise(resolve => setTimeout(resolve, retryDelayMs(attempt)));
     } finally {
       clearTimeout(timeoutId);
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error("Supabase REST request failed");
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Supabase REST request failed");
 }
 
 export const supabaseServerAnonRequest = <T>(
@@ -211,9 +228,10 @@ export async function supabaseServerAdminCount(table: string): Promise<number> {
       signal: AbortSignal.timeout(20000),
     });
     if (!res.ok) {
-      // Log only to stderr in development; never expose details in production
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(`[supabase] Count failed for ${table}: HTTP ${res.status}`);
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          `[supabase] Count failed for ${table}: HTTP ${res.status}`
+        );
       }
       return 0;
     }
@@ -221,9 +239,11 @@ export async function supabaseServerAdminCount(table: string): Promise<number> {
     const total = Number(range.split("/")[1]);
     return Number.isFinite(total) ? total : 0;
   } catch (error) {
-    // Log only to stderr in development; never expose details in production
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(`[supabase] Count failed for ${table}:`, error instanceof Error ? error.message : error);
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        `[supabase] Count failed for ${table}:`,
+        error instanceof Error ? error.message : error
+      );
     }
     return 0;
   }
