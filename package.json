@@ -1,6 +1,6 @@
 {
   "name": "zikr",
-  "version": "1.4.18",
+  "version": "1.4.19",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -51,7 +51,6 @@
     "@capacitor/filesystem": "7.1.8",
     "@capacitor/geolocation": "^7.1.0",
     "@capacitor/haptics": "7.0.2",
-    "@capacitor/ios": "7.4.3",
     "@capacitor/keyboard": "7.0.3",
     "@capacitor/local-notifications": "7.0.2",
     "@capacitor/network": "7.0.2",
@@ -76,7 +75,7 @@
     "react-dom": "^19.2.7",
     "server-only": "^0.0.1",
     "sonner": "2.0.8",
-    "tailwind-merge": "^3.3.1",
+    "tailwind-merge": "^3.3.0",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
