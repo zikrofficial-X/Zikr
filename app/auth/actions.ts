@@ -2,7 +2,7 @@
 
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { getServerEnv } from '@/lib/env';
 import { getCanonicalAuthBaseUrl } from '@/lib/auth-enhanced';
 import { isPwnedPassword } from '@/lib/security/pwned-password';
@@ -65,6 +65,7 @@ export async function loginAction(formData: FormData): Promise<AuthActionResult>
 export async function registerAction(formData: FormData): Promise<AuthActionResult> {
   const email = String(formData.get('email') || '').trim().toLowerCase();
   const password = String(formData.get('password') || '');
+  const next = safeNext(formData.get('next'));
 
   if (!isValidEmail(email)) {
     return { ok: false, message: 'أدخل بريداً إلكترونياً صحيحاً.' };
@@ -93,11 +94,14 @@ export async function registerAction(formData: FormData): Promise<AuthActionResu
     const siteUrl = getCanonicalAuthBaseUrl(
       requestOrigin || getServerEnv().NEXT_PUBLIC_SITE_URL || 'https://zikrmediaofficial.vercel.app',
     );
+    const callbackUrl = new URL('/auth/callback', siteUrl);
+    callbackUrl.searchParams.set('next', next);
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/callback?next=/profile`,
+        emailRedirectTo: callbackUrl.toString(),
       },
     });
 
@@ -113,41 +117,29 @@ export async function registerAction(formData: FormData): Promise<AuthActionResu
           message: 'تسجيل الحساب بالبريد الإلكتروني غير مُفعّل حالياً. فعّل مزوّد Email في إعدادات المصادقة بمشروع Supabase أو استخدم التسجيل عبر Google.',
         };
       }
-      if (normalizedError.includes('already registered')) {
+      if (normalizedError.includes('already registered') || normalizedError.includes('user already registered')) {
         return { ok: false, message: 'هذا البريد الإلكتروني مسجل بالفعل. انتقل إلى تسجيل الدخول.' };
       }
-      if (normalizedError.includes('password')) {
-        return { ok: false, message: error.message };
+      if (normalizedError.includes('redirect') && normalizedError.includes('url')) {
+        console.error('[auth] register redirect URL rejected:', error.message);
+        return { ok: false, message: 'تعذر إرسال رابط تأكيد البريد. إعدادات رابط المصادقة في Supabase تحتاج إلى مراجعة.' };
       }
-      if (normalizedError.includes('rate limit')) {
+      if (normalizedError.includes('password')) {
+        return { ok: false, message: 'كلمة المرور غير مقبولة. استخدم كلمة مرور أقوى وحاول مرة أخرى.' };
+      }
+      if (normalizedError.includes('rate limit') || normalizedError.includes('too many')) {
         return { ok: false, message: 'تم تجاوز عدد المحاولات المسموح بها مؤقتاً. حاول مرة أخرى بعد قليل.' };
       }
+      console.error('[auth] registerAction Supabase error:', error.message, error.status);
       return { ok: false, message: 'تعذر إنشاء الحساب. تحقق من البيانات وحاول مرة أخرى.' };
     }
 
+    // The database trigger `on_auth_user_created` creates/updates the
+    // corresponding profile atomically with the Auth user insert. Avoid a
+    // second service-role write here so registration does not depend on an
+    // additional privileged environment variable after signUp succeeds.
     if (data.user && data.session) {
-      try {
-        const adminClient = createAdminClient();
-        await adminClient.from('profiles').upsert(
-          {
-            id: data.user.id,
-            email: data.user.email ?? email,
-            display_name:
-              typeof data.user.user_metadata?.full_name === 'string'
-                ? data.user.user_metadata.full_name
-                : null,
-            avatar_url:
-              typeof data.user.user_metadata?.avatar_url === 'string'
-                ? data.user.user_metadata.avatar_url
-                : null,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'id' },
-        );
-      } catch (profileError) {
-        console.error('[auth] register profile upsert error:', profileError);
-      }
-      return { ok: true, next: '/profile' };
+      return { ok: true, next };
     }
 
     return {
