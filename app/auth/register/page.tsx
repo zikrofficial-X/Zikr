@@ -45,7 +45,6 @@ function RegisterForm() {
     setMessage('');
 
     const email = String(formData.get('email') || '').trim();
-    const pwd = String(formData.get('password') || '');
 
     if (!email) {
       setError('أدخل البريد الإلكتروني.');
