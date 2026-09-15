@@ -1,4 +1,5 @@
 name: Android Release
+
 # Android release pipeline for signed APK/AAB artifacts.
 # Builds explicit release tags manually, or automatically after Create Release Tag succeeds.
 on:
@@ -17,17 +18,21 @@ on:
       - Create Release Tag
     types:
       - completed
+
 permissions:
   contents: write
+
 concurrency:
   group: android-release-${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || inputs.release_tag }}
   cancel-in-progress: false
+
 env:
   NODE_VERSION: "22"
   PNPM_VERSION: "9.15.0"
   JAVA_VERSION: "21"
   ANDROID_PLATFORM: "android-36"
   ANDROID_BUILD_TOOLS: "35.0.0"
+
 jobs:
   release:
     name: Build signed Android release
@@ -41,6 +46,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_ref || github.event.workflow_run.head_sha }}
+
       - name: Resolve release tag
         shell: bash
         run: |
@@ -61,39 +67,34 @@ jobs:
           fi
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
           echo "Resolved release tag: $RELEASE_TAG"
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
           run_install: false
+
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+
       - name: Setup Java
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
+
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-cleanup: on-success
-      - name: Prepare Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-          test -n "$SDK_ROOT"
-          SDKMANAGER_BIN="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -perm -111 2>/dev/null | sort -V | tail -1 || true)"
-          if [[ -z "$SDKMANAGER_BIN" ]]; then
-            echo "sdkmanager not found under $SDK_ROOT/cmdline-tools" >&2
-            exit 1
-          fi
-          echo "$(dirname "$SDKMANAGER_BIN")" >> "$GITHUB_PATH"
-          echo "Using Android SDK at $SDK_ROOT"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
       - name: Install Android SDK packages
         shell: bash
         run: |
@@ -103,7 +104,6 @@ jobs:
             echo "Android SDK root is not set by setup-android." >&2
             exit 1
           fi
-          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}"
           BUILD_TOOLS_BIN="$SDK_ROOT/build-tools/$ANDROID_BUILD_TOOLS"
           test -x "$BUILD_TOOLS_BIN/apksigner"
@@ -111,18 +111,24 @@ jobs:
           test -x "$SDK_ROOT/cmdline-tools/latest/bin/apkanalyzer"
           echo "$BUILD_TOOLS_BIN" >> "$GITHUB_PATH"
           echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Verify web application
         run: pnpm verify
+
       - name: Sync Capacitor Android project
         run: pnpm exec cap sync android
+
       - name: Verify mobile configuration
         env:
           ANDROID_APP_LINKS_SHA256: ${{ secrets.ANDROID_APP_LINKS_SHA256 }}
         run: MOBILE_RELEASE_CHECK=1 MOBILE_RELEASE_PLATFORM=android MOBILE_RELEASE_CHANNEL=github pnpm mobile:check
+
       - name: Validate release metadata
         run: node scripts/verify-release-metadata.mjs
+
       - name: Validate signing inputs
         shell: bash
         env:
@@ -157,11 +163,13 @@ jobs:
           keyPassword=$ANDROID_KEY_PASSWORD
           EOF
           chmod 600 android/keystore.properties
+
       - name: Build signed APK and AAB
         working-directory: android
         env:
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
         run: ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --parallel --max-workers=2 --stacktrace --warning-mode all
+
       - name: Verify package and signature
         shell: bash
         run: |
@@ -178,6 +186,7 @@ jobs:
           "$SDK_ROOT/cmdline-tools/latest/bin/apkanalyzer" manifest application-id "$APK" | grep -Fx 'com.zikr.app'
           "$SDK_ROOT/cmdline-tools/latest/bin/apkanalyzer" manifest version-name "$APK" | grep -Fx "$EXPECTED_VERSION"
           "$SDK_ROOT/cmdline-tools/latest/bin/apkanalyzer" manifest target-sdk "$APK" | grep -Fx '36'
+
       - name: Publish GitHub Release assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -188,6 +197,5 @@ jobs:
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --clobber
           else
-            gh release create "$RELEASE_TAG" "$APK" "$AAB" --verify-tag --generate-notes --title "ZIKR $RELEASE_TAG"
-            gh release upload "$RELEASE_TAG" SHA256SUMS --clobber
+            gh release create "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --verify-tag --generate-notes --title "ZIKR $RELEASE_TAG"
           fi
