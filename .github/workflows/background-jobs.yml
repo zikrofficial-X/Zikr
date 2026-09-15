@@ -24,10 +24,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: zikr-background-jobs-production
-  cancel-in-progress: false
-
 env:
   VIDEO_GENERATOR: template
   SOCIAL_PUBLISH_ENABLED: ${{ vars.ZIKR_SOCIAL_PUBLISH_ENABLED || 'true' }}
