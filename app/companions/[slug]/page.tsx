@@ -8,6 +8,9 @@ import {
   ContentReferences,
   getContentReferences,
 } from "@/components/content/content-references";
+import { pageMetadata } from "@/lib/site";
+import type { Metadata } from "next";
+import { COMPANIONS } from "@/lib/data/companions";
 
 const STATIC_COMPANION_SLUGS: Record<string, string> = {
   "أبو بكر الصديق": "abu-bakr",
@@ -42,9 +45,9 @@ type CompanionStory = {
   order_num: number | null;
 };
 
-import { pageMetadata } from "@/lib/site";
-import type { Metadata } from "next";
-import { COMPANIONS } from "@/lib/data/companions";
+function safeSlug(slug: string) {
+  return encodeURIComponent(slug);
+}
 
 export async function generateMetadata({
   params,
@@ -55,9 +58,9 @@ export async function generateMetadata({
   let companion: Companion | null = null;
   try {
     const data = await supabaseServerAnonRequest<Companion[]>(
-      `/rest/v1/companions?select=name_ar,title_ar,bio_ar&slug=eq.${slug}&published=eq.true`
+      `/rest/v1/companions?select=name_ar,title_ar,bio_ar&slug=eq.${safeSlug(slug)}&published=eq.true&limit=1`
     );
-    companion = data && data.length > 0 ? (data[0] as Companion) : null;
+    companion = data && data.length > 0 ? data[0] : null;
   } catch {
     companion = null;
   }
@@ -84,12 +87,12 @@ export default async function CompanionDetailPage({
   let stories: CompanionStory[] = [];
   try {
     const data = await supabaseServerAnonRequest<Companion[]>(
-      `/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,birth_place_ar,death_place_ar,death_year,metadata&slug=eq.${slug}&published=eq.true`
+      `/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,birth_place_ar,death_place_ar,death_year,metadata&slug=eq.${safeSlug(slug)}&published=eq.true&limit=1`
     );
     companion = data && data.length > 0 ? data[0] : null;
     if (companion) {
       stories = await supabaseServerAnonRequest<CompanionStory[]>(
-        `/rest/v1/companion_stories?select=id,title_ar,content_ar,story_type,order_num&companion_id=eq.${companion.id}&order=order_num.asc`
+        `/rest/v1/companion_stories?select=id,title_ar,content_ar,story_type,order_num&companion_id=eq.${encodeURIComponent(companion.id)}&order=order_num.asc`
       );
     }
   } catch {
@@ -170,45 +173,29 @@ export default async function CompanionDetailPage({
       </Card>
 
       {stories.length > 0 && (
-        <section
-          className="space-y-5"
-          aria-labelledby="companion-stories-title"
-        >
+        <section className="space-y-5" aria-labelledby="companion-stories-title">
           <div>
-            <h2
-              id="companion-stories-title"
-              className="text-2xl font-bold text-brand-gold"
-            >
+            <h2 id="companion-stories-title" className="text-2xl font-bold text-brand-gold">
               مواقف وقصص موثقة
             </h2>
             <p className="mt-2 leading-8 arabic-muted">
-              تُعرض هذه المواقف بحسب المادة المنشورة في قاعدة المعرفة، مع
-              التمييز بين الرواية الحديثية والتلخيص التعليمي.
+              تُعرض هذه المواقف بحسب المادة المنشورة في قاعدة المعرفة، مع التمييز بين الرواية الحديثية والتلخيص التعليمي.
             </p>
           </div>
           {stories.map((story, index) => (
-            <Card
-              key={story.id}
-              className="space-y-4 border-brand-gold/10 bg-black/20"
-            >
+            <Card key={story.id} className="space-y-4 border-brand-gold/10 bg-black/20">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brand-gold/20 bg-brand-gold/10 text-xs font-bold text-brand-gold">
                   {index + 1}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-brand-gold">
-                    {story.title_ar}
-                  </h3>
+                  <h3 className="text-xl font-bold text-brand-gold">{story.title_ar}</h3>
                   {story.story_type && (
-                    <span className="mt-1 inline-block text-xs text-brand-gold/60">
-                      {story.story_type}
-                    </span>
+                    <span className="mt-1 inline-block text-xs text-brand-gold/60">{story.story_type}</span>
                   )}
                 </div>
               </div>
-              <p className="whitespace-pre-wrap pr-11 leading-9 arabic-muted">
-                {story.content_ar}
-              </p>
+              <p className="whitespace-pre-wrap pr-11 leading-9 arabic-muted">{story.content_ar}</p>
             </Card>
           ))}
         </section>
