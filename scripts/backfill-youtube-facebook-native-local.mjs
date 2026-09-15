@@ -17,7 +17,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const syncSecret = process.env.SOCIAL_SYNC_SECRET || '';
 const channelId = process.env.YOUTUBE_CHANNEL_ID || '';
 const pageId = process.env.FACEBOOK_PAGE_ID || '';
-const graphVersion = process.env.META_GRAPH_API_VERSION || 'v25.0';
+const graphVersion = process.env.FACEBOOK_GRAPH_API_VERSION || 'v26.0';
 const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN || '';
 const videoIdArg = args.get('video-id') || '';
 const limit = Math.max(1, Math.min(100, Number(args.get('limit') || 1)));
@@ -30,6 +30,7 @@ function requireConfig() {
   for (const [name, value] of [['SUPABASE_URL', supabaseUrl], ['SUPABASE_SERVICE_ROLE_KEY', serviceRoleKey], ['SOCIAL_SYNC_SECRET', syncSecret], ['YOUTUBE_CHANNEL_ID', channelId], ['FACEBOOK_PAGE_ID', pageId], ['FACEBOOK_PAGE_ACCESS_TOKEN', token]]) {
     if (!value) fail(`${name} is required.`);
   }
+  if (!/^v\d+\.\d+$/.test(graphVersion)) fail('FACEBOOK_GRAPH_API_VERSION must look like vNN.N.');
 }
 
 async function supa(pathname, options = {}) {
@@ -133,10 +134,10 @@ async function uploadNative(filePath, title, description) {
       const result = await transferChunk(session.upload_session_id, start, buffer.subarray(0, bytesRead));
       start = Number(result.start_offset ?? start + bytesRead);
       end = Number(result.end_offset ?? Math.min(stat.size, start + chunkSize));
-      process.stdout.write(`\\rUploading ${Math.min(100, Math.round((start / stat.size) * 100))}%`);
+      process.stdout.write(`\rUploading ${Math.min(100, Math.round((start / stat.size) * 100))}%`);
     }
   } finally { await handle.close(); }
-  process.stdout.write('\\n');
+  process.stdout.write('\n');
   return finishUpload(session.upload_session_id, title, description);
 }
 
@@ -162,7 +163,7 @@ async function main() {
   for (const job of jobs) {
     const filePath = path.join(workDir, `${job.source_video_id}.mp4`);
     try {
-      console.log(`\\n[1/3] Downloading ${job.source_video_id}...`);
+      console.log(`\n[1/3] Downloading ${job.source_video_id}...`);
       await downloadWithYtDlp(job.source_video_id, filePath);
       const stat = await fs.stat(filePath);
       if (!stat.size) throw new Error('yt-dlp produced an empty file.');

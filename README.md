@@ -2,267 +2,134 @@
 
 ## A Premium Islamic Spiritual Platform
 
-> **Production automation:** Supabase `pg_cron` owns the prayer notification and video/social queue schedulers. Vercel runs `pnpm verify` on every deployment. GitHub Actions is retained as a manual recovery and verification path while hosted runners are blocked by an account-level billing lock; see [`QUICK_START_GITHUB_ACTIONS.md`](./QUICK_START_GITHUB_ACTIONS.md).
+ZIKR is an Arabic-first Islamic content and spiritual platform covering Quran, Hadith, Adhkar, Dua, prayer times, Qibla, Islamic stories, Prophets, Companions, Scholars, Kids, audio, radio, articles, videos, memorization, and related tools.
 
-## 
+## Current production architecture
 
-ZIKR is a cinematic, luxurious Islamic platform designed to deepen spiritual connection through the Quran, Hadith, Islamic stories, AI-powered assistance, and Islamic radio. Built with modern web technologies and a focus on user experience, ZIKR combines traditional Islamic knowledge with contemporary digital innovation.
+- **Web:** Next.js 16 App Router + React 19 + TypeScript
+- **UI:** Tailwind CSS 4 and reusable React components
+- **Backend:** Next.js Route Handlers/Server Actions
+- **Database:** Supabase PostgreSQL with RLS
+- **Schema:** Drizzle schema mirror + canonical SQL migrations in `supabase/migrations`
+- **AI:** Google Gemini for optional AI-assisted features
+- **Media:** Supabase Storage and Cloudinary where required
+- **Web deployment:** Vercel
+- **Mobile:** Capacitor Android/iOS
+- **Automation:** GitHub Actions Background Jobs for video/social queues; Supabase `pg_cron` for prayer Web Push
 
-### 🌟 Key Features
+## Video and social automation
 
-- **القرآن الكريم (The Quran)**: Read and listen to Quranic verses with deep explanations and translations
-- **الأحاديث الشريفة (Hadith)**: Discover authentic Hadith from reliable Islamic sources
-- **القصص الإسلامية (Islamic Stories)**: Experience stories of Prophets, Companions, and Scholars in a cinematic way
-- **المساعد الذكي (AI Assistant)**: Get reliable religious answers from an AI trained on Islamic sciences
-- **الإذاعة الإسلامية (Islamic Radio)**: Listen to lectures and seminars from renowned Islamic scholars
-- **المجتمع (Community)**: Connect with a community of committed Muslims
+Production video generation uses the free deterministic FFmpeg template renderer. The worker reads trusted Quran data, renders Arabic captions, writes the output to Supabase Storage, and queues social publication.
 
-### 🎨 Design Philosophy
+```text
+video_generation_requests
+        ↓
+GitHub Background Jobs (every 15 minutes)
+        ↓
+FFmpeg template renderer
+        ↓
+Supabase Storage
+        ↓
+social_publish_queue
+        ├── YouTube
+        └── Facebook / Reels
+```
 
-ZIKR embodies a **spiritual, cinematic, luxurious, calm, and immersive** aesthetic:
+HeyGen is not required for production video generation. Historical HeyGen database fields are retained only for migration compatibility.
 
-- **Deep Black & Dark Navy**: Premium, focused atmosphere
-- **Soft Gold**: Spiritual elegance and warmth
-- **Islamic Green**: Connection to Islamic heritage
-- **Glassmorphism & Glow Effects**: Modern, ethereal design
-- **Arabic-First Typography**: Optimized for RTL languages
-- **Smooth Animations**: Framer Motion for cinematic transitions
+## Required runtime configuration
 
-### 🛠️ Tech Stack
+Use `.env.example` as the configuration reference. Production secrets must remain in protected server-side stores and must never be committed.
 
-- **Framework**: Next.js 16 (App Router, React Server Components, Turbopack)
-- **UI**: React 19, TypeScript, Tailwind CSS 3, Framer Motion
-- **Backend**: Next.js Server Actions + Route Handlers
-- **Database**: Supabase (PostgreSQL) accessed via the Supabase REST API
-- **ORM / Schema**: Drizzle ORM (schema + SQL migrations)
-- **AI**: Google Gemini (`@google/generative-ai`)
-- **Storage**: Supabase Storage
-- **Deployment**: Vercel
-- **UI Components**: Radix UI
+Core variables include:
 
-### 📱 Multi-Language Support
+- `NEXT_PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `DATABASE_URL` when running migration/ORM tooling
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` for Google OAuth
+- `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` / `YOUTUBE_REFRESH_TOKEN` for YouTube publishing
+- `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_ACCESS_TOKEN` for Facebook publishing
+- `FACEBOOK_GRAPH_API_VERSION` for the canonical Meta publisher
+- `GEMINI_API_KEY` for optional AI features
 
-ZIKR is built with full internationalization (i18n) support:
+## Development
 
-- **Arabic (العربية)**: Primary language with RTL support
-- **English**: Fully supported
-- **Future Ready**: Architecture prepared for Turkish, Urdu, Indonesian
-
-### 🚀 Getting Started
-
-#### Prerequisites
-
-- Node.js 18+
-- pnpm 9+
-- PostgreSQL database (via Supabase)
-
-#### Installation
+Prerequisites: Node.js 22.x and pnpm 9.15.0.
 
 ```bash
-# Clone the repository
-git clone https://github.com/mohamedalaa7785-cpu/zikr.git
-cd zikr
-
-# Install dependencies
 pnpm install
-
-# Set up environment variables
 cp .env.example .env.local
-# Edit .env.local with your configuration
-
-# Run development server
-pnpm dev
-
-# Build for production
-pnpm build
-
-# Start production server
-pnpm start
-```
-
-#### Environment Variables
-
-See `.env.example` for all required environment variables. Key variables:
-
-- `DATABASE_URL`: PostgreSQL connection string
-- `SUPABASE_URL` & `SUPABASE_ANON_KEY`: Supabase configuration
-- `GEMINI_API_KEY`: For AI assistant features via Google Gemini
-- `GEMINI_MODEL`: Optional model override (default `gemini-2.5-flash`)
-
-### 📁 Project Structure
-
-```
-zikr/
-├── app/                   # Next.js App Router (pages, layouts, route handlers)
-│   ├── api/               # Route handlers (e.g. poetry-insight)
-│   ├── auth/              # Auth pages + server actions
-│   ├── quran/             # Quran browser, surah & ayah viewers
-│   ├── hadith/            # Hadith library
-│   ├── ...                # Dua, Adhkar, Prayer, Kids, Radio, Videos, Admin, etc.
-│   ├── layout.tsx         # Root layout (fonts, metadata, providers)
-│   ├── manifest.ts        # PWA web manifest
-│   ├── sitemap.ts         # Dynamic sitemap
-│   └── robots.ts          # robots.txt
-├── components/            # Reusable React components (layout, ui, feature)
-├── lib/                   # Services, Supabase clients, env, types, utils
-│   ├── services/          # DB-first content services (quran, hadith, ...)
-│   ├── supabase/          # Browser + server Supabase REST clients
-│   └── env.ts             # Validated environment access
-├── shared/                # Shared types and utilities
-├── drizzle/               # Drizzle schema + migrations
-├── supabase/migrations/   # Official Supabase SQL migrations
-├── scripts/               # Idempotent import / audit / RLS scripts
-├── proxy.ts               # Next.js middleware (auth/token refresh)
-└── package.json           # Project dependencies
-```
-
-### 🎯 Development Workflow
-
-#### Running Development Server
-
-```bash
 pnpm dev
 ```
 
-This starts the Next.js development server (with Turbopack).
-
-#### Type Checking
+Useful verification commands:
 
 ```bash
+pnpm lint
 pnpm check
+pnpm test
+pnpm project:check
+pnpm mobile:check
+pnpm supabase:migrations:check
+pnpm verify
 ```
 
-#### Building for Production
+`pnpm verify` is the full release-quality gate and is used by the Vercel build configuration.
 
-```bash
-pnpm build
-```
+## Database migrations
 
-#### Database Migrations
-
-`supabase/migrations/` is the only canonical deployment migration chain. The `drizzle/` directory contains the type-safe schema and historical ORM metadata; do not apply both migration systems to the same database.
+`supabase/migrations/` is the only canonical deployment migration chain. Do not apply the Drizzle migration output independently to the production Supabase database.
 
 ```bash
 pnpm supabase:migrations:check
-pnpm db:migrate:supabase
+pnpm supabase:migrations:replay
 ```
 
-### 🗄️ Database Schema
+Never reset production migration history just to reconcile a preview or local branch.
 
-ZIKR uses Drizzle ORM schema definitions with PostgreSQL, while deployable SQL migrations live in `supabase/migrations`. Key tables:
+## Repository structure
 
-- **users**: User accounts and authentication
-- **episodes**: Content episodes (legacy compatibility)
-- **stories**: Islamic stories
-- **story_progress**: User progress tracking
-- **subscriptions**: Newsletter subscriptions
-- **payments**: Payment tracking
-- **user_subscriptions**: Subscription plans
+```text
+app/                 Next.js routes, pages and API handlers
+components/          Reusable UI and feature components
+hooks/               Client hooks
+lib/                 Services, Supabase clients, types and utilities
+drizzle/             Drizzle schema and ORM metadata
+supabase/             Supabase config, functions and canonical migrations
+scripts/              Verification, imports and background workers
+android/              Capacitor Android project
+ios/                  Capacitor iOS project
+mobile/               Mobile configuration/assets
+public/               Public static assets and offline/PWA files
+.github/workflows/    CI, release and background automation
+.circleci/            Legacy/recovery CI configuration
+```
 
-See `drizzle/schema.ts` for complete schema definition.
+## Security
 
-### 🔐 Security & Privacy
+The project uses Supabase RLS, server-side service-role boundaries, protected OAuth credentials, HTTPS, security headers, and automated verification gates. Never expose service-role keys, refresh tokens, page access tokens, or scheduler secrets to client code.
 
-- Row-Level Security (RLS) policies in Supabase
-- JWT-based authentication
-- Encrypted sensitive data
-- GDPR-compliant data handling
-- Privacy policy and terms of service
+## Release process
 
-### 📊 Performance Optimization
+The current Android release baseline is `1.4.22` / versionCode `53` / `com.zikr.app` / target SDK 36. The release workflow validates package metadata, mobile readiness, signing inputs, APK/AAB output, signature, application ID, version name, and target SDK before publishing release assets.
 
-- Lazy loading and code splitting
-- Image optimization
-- Dynamic imports for large components
-- Lighthouse-ready architecture
-- SEO optimization with structured data
-
-### 🌐 SEO & Metadata
-
-- Dynamic metadata per page and locale
-- OpenGraph and Twitter Card support
-- Structured data (JSON-LD) for rich snippets
-- Sitemap and robots.txt
-- Canonical URLs with hreflang support
-
-### 📱 PWA Support
-
-ZIKR is built as a Progressive Web App:
-
-- Installable on mobile and desktop
-- Offline-ready architecture
-- Web manifest with app icons
-- Service worker support
-
-### 🤝 Contributing
-
-We welcome contributions! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-### 📞 Support & Contact
-
-- **Email**: contact@zikr.app
-- **Website**: https://zikrmediaofficial.vercel.app
-- **GitHub Issues**: Report bugs and request features
-
-### 🙏 Acknowledgments
-
-ZIKR is built with respect for Islamic knowledge and values. We acknowledge:
-
-- Islamic scholars and sources
-- The open-source community
-- Our users and contributors
-
----
-
-**ZIKR | ذِكرٌ** - Bringing Islamic knowledge to the digital age with elegance and authenticity.
-
-*Last Updated: May 2026*
-
-## Phase 2 setup (Supabase + Auth + Drizzle)
-
-### Required environment variables
-
-Create `.env.local` with:
+Before releasing:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
+pnpm verify
+pnpm mobile:release-check
 ```
 
-### Apply migrations
+The repository also contains historical release notes and audit records. They are documentation history only and are not production execution inputs.
 
-Supabase SQL migrations in `supabase/migrations` are the single official database migration path. Ensure your Supabase project is linked, then run exactly one command before deploy:
+## Support
 
-```bash
-pnpm db:migrate:supabase
-```
+- Website: https://zikrmediaofficial.vercel.app
+- Repository: `Zikrmediaofficial/Zikr`
+- Issues: use GitHub Issues for reproducible bugs and feature requests
 
-### Supabase dashboard steps
+## License
 
-- Enable Email provider in Auth.
-- Configure Redirect URLs to include `/auth/callback`.
-- Verify `public-assets` bucket exists.
-- Verify RLS and policies on `profiles`, `favorites`, `reading_progress`, and `reminders`.
-
-
-## Phase 3 content import scripts
-
-```bash
-pnpm tsx scripts/import-quran.ts
-pnpm tsx scripts/import-tafsir.ts
-pnpm tsx scripts/import-reciters.ts
-pnpm tsx scripts/import-hadith.ts
-```
-
-All scripts are idempotent (upsert-based) and require `DATABASE_URL` plus Supabase-side RLS/admin setup.
+MIT

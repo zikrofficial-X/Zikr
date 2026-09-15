@@ -16,11 +16,22 @@ function normalizeSupabaseUrl(value: string | undefined): string | undefined {
   }
 }
 
-/** Resolve the first explicitly allowed environment variable name. */
+/** Resolve the first explicitly allowed environment variable, including integration-generated numbered aliases. */
+const ENV_SUFFIXES = [
+  "",
+  ...Object.keys(e)
+    .map((key) => key.match(/_(\d+)$/)?.[1])
+    .filter((suffix): suffix is string => Boolean(suffix))
+    .sort((a, b) => Number(a) - Number(b))
+    .map((suffix) => `_${suffix}`),
+];
+
 function pick(...bases: string[]): string | undefined {
   for (const base of bases) {
-    const value = e[base];
-    if (value !== undefined && value !== "") return value;
+    for (const suffix of ENV_SUFFIXES) {
+      const value = e[`${base}${suffix}`];
+      if (value !== undefined && value !== "") return value;
+    }
   }
   return undefined;
 }

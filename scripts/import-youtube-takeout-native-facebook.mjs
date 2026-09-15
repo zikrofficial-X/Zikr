@@ -20,7 +20,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const sourceChannelId = process.env.YOUTUBE_CHANNEL_ID || '';
 const facebookPageId = process.env.FACEBOOK_PAGE_ID || '';
 const facebookPageAccessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN || '';
-const metaGraphApiVersion = process.env.META_GRAPH_API_VERSION || '';
+const facebookGraphApiVersion = process.env.FACEBOOK_GRAPH_API_VERSION || 'v26.0';
 
 function die(message) {
   console.error(`\nERROR: ${message}`);
@@ -34,8 +34,7 @@ function requireConfig() {
   if (!sourceChannelId) die('YOUTUBE_CHANNEL_ID is required.');
   if (!facebookPageId && !dryRun) die('FACEBOOK_PAGE_ID is required.');
   if (!facebookPageAccessToken && !dryRun) die('FACEBOOK_PAGE_ACCESS_TOKEN is required.');
-  if (!metaGraphApiVersion && !dryRun) die('META_GRAPH_API_VERSION is required.');
-  if (metaGraphApiVersion && !/^v\d+\.\d+$/.test(metaGraphApiVersion)) die('META_GRAPH_API_VERSION must look like vXX.X.');
+  if (!/^v\d+\.\d+$/.test(facebookGraphApiVersion)) die('FACEBOOK_GRAPH_API_VERSION must look like vXX.X.');
 }
 
 async function walk(dir) {
@@ -128,7 +127,7 @@ async function supa(pathname, options = {}) {
 }
 
 async function listJobs() {
-  return supa(`/rest/v1/social_sync_jobs?source_channel_id=eq.${encodeURIComponent(sourceChannelId)}&select=id,source_video_id,title,status,source_media_url,facebook_post_id&order=source_published_at.asc.nullslast`);
+  return supa(`/rest/v1/social_sync_jobs?source_channel_id=eq.${encodeURIComponent(sourceChannelId)}&select=id,source_video_id,title,status,source_media_url,facebook_post_id,description&order=source_published_at.asc.nullslast`);
 }
 
 function chooseMatch(job, videoFiles, hints, used) {
@@ -164,7 +163,7 @@ async function publishDirectToFacebook(file, job) {
   form.append('published', 'true');
   form.append('access_token', facebookPageAccessToken);
 
-  const response = await fetch(`https://graph.facebook.com/${metaGraphApiVersion}/${facebookPageId}/videos`, {
+  const response = await fetch(`https://graph.facebook.com/${facebookGraphApiVersion}/${facebookPageId}/videos`, {
     method: 'POST',
     body: form,
   });
@@ -236,7 +235,6 @@ async function main() {
       await markPublished(job, result.id);
       published += 1;
       console.log(`PUBLISHED ${job.source_video_id} | ${path.basename(file)} | ${result.bytes} bytes | FB ${result.id}`);
-      // The source is the local Takeout archive; no server-side copy is retained.
     } catch (error) {
       failed += 1;
       const message = error instanceof Error ? error.message : String(error);
