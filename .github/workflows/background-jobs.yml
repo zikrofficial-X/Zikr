@@ -1,7 +1,7 @@
 name: Background Jobs
 
-# Free deterministic video rendering and social publishing queue. Production
-# video generation does not depend on HeyGen or any paid video provider.
+# Canonical production worker for deterministic video rendering and social publishing.
+# Vercel never executes FFmpeg; this workflow owns the background queues.
 on:
   workflow_dispatch:
     inputs:
@@ -25,10 +25,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Production video generation is intentionally locked to the free renderer.
   VIDEO_GENERATOR: template
-  # Social publishing is enabled by default; disable deliberately with the repo
-  # variable when testing locally or pausing automatic distribution.
   SOCIAL_PUBLISH_ENABLED: ${{ vars.ZIKR_SOCIAL_PUBLISH_ENABLED || 'true' }}
 
 jobs:
@@ -37,11 +34,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL || 'https://eydxvcamhjhajxjrsgym.supabase.co' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
-      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || vars.NEXT_PUBLIC_SITE_URL }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID || secrets.GOOGLE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET || secrets.GOOGLE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
       YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
       GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
@@ -49,8 +46,6 @@ jobs:
       FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
       FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
       FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
-      # Retained nowhere in the execution environment: HeyGen credentials are
-      # intentionally not passed to production jobs.
       VIDEO_AUTO_PUBLISH: ${{ vars.ZIKR_VIDEO_AUTO_PUBLISH || 'true' }}
     steps:
       - name: Check out repository
@@ -81,17 +76,25 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate required secrets
+      - name: Validate worker configuration
         shell: bash
         run: |
           set -euo pipefail
           missing=0
           for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SITE_URL; do
             if [[ -z "${!name:-}" ]]; then
-              echo "Missing required GitHub Actions secret/configuration: ${name}" >&2
+              echo "Missing required GitHub Actions configuration: ${name}" >&2
               missing=1
             fi
           done
+          if [[ "${SOCIAL_PUBLISH_ENABLED:-true}" == "true" ]]; then
+            if [[ -z "${YOUTUBE_CLIENT_ID:-}" || -z "${YOUTUBE_CLIENT_SECRET:-}" || -z "${YOUTUBE_REFRESH_TOKEN:-}" ]]; then
+              echo "WARNING: YouTube OAuth is not fully configured; YouTube publishing will be skipped and reported by the worker."
+            fi
+            if [[ -z "${FACEBOOK_PAGE_ID:-}" || -z "${FACEBOOK_PAGE_ACCESS_TOKEN:-}" ]]; then
+              echo "WARNING: Facebook publishing is not fully configured; Facebook publishing will be skipped and reported by the worker."
+            fi
+          fi
           if [[ "$missing" -ne 0 ]]; then
             exit 1
           fi
