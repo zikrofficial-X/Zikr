@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import {
-  processTemplateVideoQueue,
-  seedAutomatedVideoRequests,
-} from '@/scripts/jobs/template-video-automation';
-import {
-  claimPendingSocialPublishItems,
-  processSocialPublishItem,
-} from '@/lib/services/social-publishing';
 
 export const dynamic = 'force-dynamic';
-
-const VIDEO_BATCH_SIZE = 3;
-const SOCIAL_BATCH_SIZE = 10;
 
 async function isAuthorized(request: NextRequest): Promise<boolean> {
   const supplied = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
@@ -24,46 +13,31 @@ async function isAuthorized(request: NextRequest): Promise<boolean> {
 }
 
 /**
- * Durable production queue entrypoint. Supabase pg_cron invokes this endpoint
- * every minute using the scheduler secret. Production video generation is
- * intentionally locked to the free FFmpeg renderer; HeyGen is not part of
- * this execution path.
+ * Compatibility endpoint for the historical Supabase scheduler.
+ *
+ * Video rendering and social publishing are intentionally NOT executed in
+ * Vercel. The canonical worker is GitHub Actions, where FFmpeg and the full
+ * background-job runtime are available. Keeping this endpoint lightweight
+ * prevents the previous `spawn ffmpeg ENOENT` failure and prevents two queue
+ * owners from racing each other.
  */
 export async function POST(request: NextRequest) {
-  try {
-    if (!(await isAuthorized(request))) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const queued = await seedAutomatedVideoRequests();
-    const videos = await processTemplateVideoQueue(VIDEO_BATCH_SIZE);
-    const socialItems = await claimPendingSocialPublishItems(SOCIAL_BATCH_SIZE);
-
-    let socialSucceeded = 0;
-    let socialFailed = 0;
-    for (const item of socialItems) {
-      const ok = await processSocialPublishItem(item, { alreadyClaimed: true });
-      if (ok) socialSucceeded += 1;
-      else socialFailed += 1;
-    }
-
-    return NextResponse.json({
-      ok: videos.failed === 0 && socialFailed === 0,
-      generator: 'template',
-      queued,
-      processed: videos.processed,
-      succeeded: videos.succeeded,
-      failed: videos.failed,
-      socialProcessed: socialItems.length,
-      socialSucceeded,
-      socialFailed,
-    });
-  } catch (error) {
-    console.error('[api/internal/video-processing] failed:', error);
-    return NextResponse.json({ error: 'Video processing failed' }, { status: 500 });
+  if (!(await isAuthorized(request))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  return NextResponse.json({
+    ok: true,
+    mode: 'compatibility-noop',
+    worker: 'github-actions',
+    message: 'Video and social background queues are processed by GitHub Actions.',
+  });
 }
 
 export async function GET() {
-  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+  return NextResponse.json({
+    ok: true,
+    mode: 'compatibility-noop',
+    worker: 'github-actions',
+  });
 }
