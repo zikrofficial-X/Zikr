@@ -9,15 +9,20 @@ const source = readFileSync(
 
 describe("native Google OAuth handler", () => {
   it("requires the exact Android app callback pathname", () => {
-    assert.match(source, /url\.pathname === "/callback"/);
-    assert.doesNotMatch(source, /url\.pathname\.startsWith\("\/callback"\)/);
+    assert.ok(source.includes('url.pathname === "/callback"'));
+    assert.ok(!source.includes('url.pathname.startsWith("/callback")'));
   });
 
   it("uses a generic callback error for unexpected runtime exceptions", () => {
-    assert.match(source, /window\.location\.replace\(loginUrl\("auth_callback_failed", nextPath\)\)/);
-    assert.doesNotMatch(
-      source,
-      /oauthErrorDescription \? "google_oauth_failed" : "auth_callback_failed"/,
+    assert.ok(
+      source.includes(
+        'window.location.replace(loginUrl("auth_callback_failed", nextPath))',
+      ),
+    );
+    assert.ok(
+      !source.includes(
+        'oauthErrorDescription ? "google_oauth_failed" : "auth_callback_failed"',
+      ),
     );
   });
 });
