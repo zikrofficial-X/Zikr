@@ -9,6 +9,14 @@ import { registerAction } from '../actions';
 import { GoogleOAuthButton } from '../google-oauth-button';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+const MIN_PASSWORD_LENGTH = 12;
+const MAX_PASSWORD_LENGTH = 128;
+
+function isStrongPassword(password: string): boolean {
+  if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) return false;
+  return /\d/u.test(password) && /[^\p{L}\p{N}\s]/u.test(password);
+}
+
 function RegisterForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -28,14 +36,31 @@ function RegisterForm() {
     if (messageParam) setMessage(messageParam);
   }, [searchParams, isClient]);
 
+  const passwordLengthOk = password.length >= MIN_PASSWORD_LENGTH && password.length <= MAX_PASSWORD_LENGTH;
+  const passwordStrong = isStrongPassword(password);
+
   const handleSubmit = async (formData: FormData) => {
     setLoading(true);
     setError('');
     setMessage('');
 
+    const email = String(formData.get('email') || '').trim();
     const pwd = String(formData.get('password') || '');
-    if (pwd.length < 6) {
-      setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+
+    if (!email) {
+      setError('أدخل البريد الإلكتروني.');
+      setLoading(false);
+      return;
+    }
+
+    if (!passwordLengthOk) {
+      setError(`كلمة المرور يجب أن تكون من ${MIN_PASSWORD_LENGTH} إلى ${MAX_PASSWORD_LENGTH} حرفاً.`);
+      setLoading(false);
+      return;
+    }
+
+    if (!passwordStrong) {
+      setError('كلمة المرور يجب أن تحتوي على رقم واحد على الأقل ورمز خاص واحد على الأقل.');
       setLoading(false);
       return;
     }
@@ -85,16 +110,22 @@ function RegisterForm() {
       <form action={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <label htmlFor="email" className="block text-sm font-medium">البريد الإلكتروني</label>
-          <input id="email" name="email" dir="ltr" type="email" required disabled={loading} placeholder="بريدك الإلكتروني" className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-3 text-brand-cream placeholder:text-brand-cream/40 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold disabled:opacity-50" />
+          <input id="email" name="email" dir="ltr" type="email" required disabled={loading} placeholder="بريدك الإلكتروني" autoComplete="email" className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-3 text-brand-cream placeholder:text-brand-cream/40 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold disabled:opacity-50" />
         </div>
 
         <div className="space-y-2">
           <label htmlFor="password" className="block text-sm font-medium">كلمة المرور</label>
-          <input id="password" name="password" dir="ltr" type="password" required disabled={loading} value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} placeholder="••••••••" className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-3 text-brand-cream placeholder:text-brand-cream/40 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold disabled:opacity-50" />
-          <p className={`text-xs ${password.length >= 6 ? 'text-brand-gold' : 'text-brand-cream/50'}`}>{password.length}/6 أحرف على الأقل</p>
+          <input id="password" name="password" dir="ltr" type="password" required disabled={loading} value={password} onChange={(e) => setPassword(e.target.value)} minLength={MIN_PASSWORD_LENGTH} maxLength={MAX_PASSWORD_LENGTH} autoComplete="new-password" placeholder="••••••••••••" className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-3 text-brand-cream placeholder:text-brand-cream/40 focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold disabled:opacity-50" />
+          <div className="space-y-1 text-xs">
+            <p className={passwordLengthOk ? 'text-brand-gold' : 'text-brand-cream/50'}>
+              {password.length}/{MIN_PASSWORD_LENGTH} حرفاً على الأقل
+            </p>
+            <p className={/\d/u.test(password) ? 'text-brand-gold' : 'text-brand-cream/50'}>• رقم واحد على الأقل</p>
+            <p className={/[^\p{L}\p{N}\s]/u.test(password) ? 'text-brand-gold' : 'text-brand-cream/50'}>• رمز خاص واحد على الأقل</p>
+          </div>
         </div>
 
-        <Button type="submit" disabled={loading || password.length < 6} className="w-full">
+        <Button type="submit" disabled={loading || !passwordStrong} className="w-full">
           {loading ? 'جاري الإنشاء...' : 'إنشاء الحساب'}
         </Button>
       </form>
