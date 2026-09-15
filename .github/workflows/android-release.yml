@@ -81,8 +81,13 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-cleanup: on-success
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Prepare Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK_ROOT"
+          echo "Using preinstalled Android SDK at $SDK_ROOT"
       - name: Install Android SDK packages
         shell: bash
         run: |
