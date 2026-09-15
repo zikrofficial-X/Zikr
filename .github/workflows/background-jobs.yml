@@ -3,6 +3,10 @@ name: Background Jobs
 # Canonical production worker for deterministic video rendering and social publishing.
 # Vercel remains a protected compatibility endpoint; this workflow owns the background queues.
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/background-jobs.yml'
   workflow_dispatch:
     inputs:
       target:
