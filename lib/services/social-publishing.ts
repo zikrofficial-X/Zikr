@@ -75,6 +75,28 @@ function publicUrl(item: SocialPublishQueueItem) {
   return siteUrl();
 }
 
+function isFacebookAuthFailure(error: string | undefined) {
+  if (!error) return false;
+  const normalized = error.toLowerCase();
+  return (
+    normalized.includes("facebook") &&
+    (
+      normalized.includes("session has expired") ||
+      normalized.includes("error validating access token") ||
+      normalized.includes("oauthexception") ||
+      normalized.includes("invalid oauth") ||
+      normalized.includes("access token")
+    )
+  );
+}
+
+function hasRetryableFacebookAuthFailure(item: SocialPublishQueueItem) {
+  if (!item.error_message) return false;
+  return item.error_message
+    .split("; ")
+    .some(isFacebookAuthFailure);
+}
+
 async function markQueueItem(
   itemId: string,
   status: SocialQueueStatus,
@@ -110,16 +132,37 @@ export async function getPendingSocialPublishItems(
   }
 }
 
+async function getRecoverableFacebookAuthFailures(limit = 10) {
+  try {
+    const path =
+      `/rest/v1/social_publish_queue?status=eq.failed&order=updated_at.asc&limit=${Math.max(limit * 3, 30)}`;
+    const failedItems =
+      (await supabaseServerAdminRequest<SocialPublishQueueItem[]>(path)) || [];
+    return failedItems
+      .filter(hasRetryableFacebookAuthFailure)
+      .filter(item => item.target_platforms.some(platform => platform === "facebook" || platform === "facebook_reels"))
+      .slice(0, limit);
+  } catch (error) {
+    console.error("[social-publishing] Failed to recover Facebook-auth queue items:", error);
+    return [];
+  }
+}
+
 export async function claimPendingSocialPublishItems(
   limit = 10
 ): Promise<SocialPublishQueueItem[]> {
-  const items = await getPendingSocialPublishItems(limit);
+  const normalItems = await getPendingSocialPublishItems(limit);
+  const remaining = Math.max(0, limit - normalItems.length);
+  const recoverable = remaining > 0
+    ? await getRecoverableFacebookAuthFailures(remaining)
+    : [];
+  const items = [...normalItems, ...recoverable];
   const claimed: SocialPublishQueueItem[] = [];
 
   for (const item of items) {
     try {
       const result = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-        `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&or=(status.eq.queued,status.eq.partial)`,
+        `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&or=(status.eq.queued,status.eq.partial,status.eq.failed)`,
         {
           method: "PATCH",
           headers: {
@@ -296,10 +339,17 @@ export async function processSocialPublishItem(
         ? "partial"
         : "failed";
 
+  const hasAuthFailure = failures.some(failure =>
+    (failure.platform === "facebook" || failure.platform === "facebook_reels") &&
+    isFacebookAuthFailure(failure.error)
+  );
+
   const attempts = Number(item.metadata?.attempts ?? 0) + 1;
   const maxAttempts = Math.max(1, Number(item.metadata?.maxAttempts ?? 5));
-  const shouldRetry = nextStatus === "partial" && attempts < maxAttempts;
-  const retryDelayMinutes = Math.min(60, 2 ** Math.min(attempts, 6));
+  const shouldRetry = hasAuthFailure || (nextStatus === "partial" && attempts < maxAttempts);
+  const retryDelayMinutes = hasAuthFailure
+    ? 15
+    : Math.min(60, 2 ** Math.min(attempts, 6));
   const nextRetryAt = shouldRetry
     ? new Date(Date.now() + retryDelayMinutes * 60_000).toISOString()
     : null;
@@ -316,9 +366,10 @@ export async function processSocialPublishItem(
       attempts,
       maxAttempts,
       nextRetryAt,
+      authBlocked: hasAuthFailure,
       platformResults: mergedResults,
     },
   });
 
-  return nextStatus === "published";
+  return shouldRetry ? true : nextStatus === "published";
 }
