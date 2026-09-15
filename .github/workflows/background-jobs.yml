@@ -2,6 +2,7 @@ name: Background Jobs
 
 # Canonical production worker for deterministic video rendering and social publishing.
 # Vercel remains a protected compatibility endpoint; this workflow owns the background queues.
+# This workflow is intentionally path-triggered for operator-safe immediate validation.
 on:
   push:
     branches: [main]
