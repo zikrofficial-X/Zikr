@@ -63,7 +63,6 @@ const rawEnv: Record<string, string | undefined> = {
   POSTGRES_USER: pick("POSTGRES_USER"),
   POSTGRES_HOST: pick("POSTGRES_HOST"),
   POSTGRES_PASSWORD: pick("POSTGRES_PASSWORD"),
-  // POSTGRES_DATABASE falls back to the user name (common in Supabase setups).
   POSTGRES_DATABASE: pick("POSTGRES_DATABASE", "POSTGRES_USER"),
 
   // ── DATABASE_URL ──────────────────────────────────────────────────────────
@@ -75,9 +74,6 @@ const rawEnv: Record<string, string | undefined> = {
   ),
 
   // ── Supabase ──────────────────────────────────────────────────────────────
-  // The public URL and anon key are intentionally public; the service-role key
-  // remains server-only and is never returned by getPublicEnv(). Accept both
-  // app-facing NEXT_PUBLIC_* names and Supabase integration names.
   NEXT_PUBLIC_SUPABASE_URL: normalizeSupabaseUrl(
     pick("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL")
   ),
@@ -93,25 +89,16 @@ const rawEnv: Record<string, string | undefined> = {
     "SUPABASE_SECRET_KEY"
   ),
 
-  // ── Cloudinary (server-only authenticated uploads) ─────────────────────────
+  // ── Cloudinary ───────────────────────────────────────────────────────────
   CLOUDINARY_CLOUD_NAME: pick("CLOUDINARY_CLOUD_NAME"),
   CLOUDINARY_API_KEY: pick("CLOUDINARY_API_KEY"),
   CLOUDINARY_API_SECRET: pick("CLOUDINARY_API_SECRET"),
 
   // ── Site / Auth ───────────────────────────────────────────────────────────
-  // NEXT_PUBLIC_SITE_URL: use the known production URL when the env var is empty
   NEXT_PUBLIC_SITE_URL: siteUrl,
-  // AUTH_CALLBACK_URL is this app's callback route used as Supabase redirectTo.
-  // The Supabase provider callback (https://<project>.supabase.co/auth/v1/callback)
-  // belongs in Google Cloud/Supabase provider settings, not in Vercel app env.
-  // Guard against a mis-provisioned value pointing at the Supabase provider
-  // callback: such a value would break OAuth, so fall back to the app callback.
   AUTH_CALLBACK_URL: resolveAppCallbackUrl(pick("AUTH_CALLBACK_URL"), siteUrl),
 
   // ── Google OAuth ──────────────────────────────────────────────────────────
-  // Supabase hosts the actual OAuth provider, but keeping these values in the
-  // app env lets deployment checks catch mismatched Google/Supabase settings
-  // before users hit /auth/google.
   GOOGLE_CLIENT_ID: pick("GOOGLE_CLIENT_ID", "NEXT_PUBLIC_GOOGLE_CLIENT_ID"),
   GOOGLE_CLIENT_SECRET: pick("GOOGLE_CLIENT_SECRET"),
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: pick(
@@ -122,7 +109,11 @@ const rawEnv: Record<string, string | undefined> = {
   NEXT_PUBLIC_GTM_ID: pick("NEXT_PUBLIC_GTM_ID"),
 
   // ── YouTube ───────────────────────────────────────────────────────────────
+  // Uploads require the OAuth client + refresh token. API key is optional and
+  // is kept for public-data reads.
   YOUTUBE_API_KEY: pick("YOUTUBE_API_KEY"),
+  YOUTUBE_CLIENT_ID: pick("YOUTUBE_CLIENT_ID", "GOOGLE_CLIENT_ID"),
+  YOUTUBE_CLIENT_SECRET: pick("YOUTUBE_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET"),
   YOUTUBE_CHANNEL_ID: pick("YOUTUBE_CHANNEL_ID"),
   YOUTUBE_REFRESH_TOKEN: pick("YOUTUBE_REFRESH_TOKEN"),
 
@@ -142,11 +133,12 @@ const rawEnv: Record<string, string | undefined> = {
     pick("NEXT_PUBLIC_HADITH_API", "HADITH_API_BASE_URL") ||
     "https://ummahapi.com/api/hadith",
 
-  // ── Facebook ────────────────────���─────────────────────────────────────────
+  // ── Facebook ──────────────────────────────────────────────────────────────
   FACEBOOK_APP_ID: pick("FACEBOOK_APP_ID"),
   FACEBOOK_APP_SECRET: pick("FACEBOOK_APP_SECRET"),
   FACEBOOK_PAGE_ACCESS_TOKEN: pick("FACEBOOK_PAGE_ACCESS_TOKEN"),
   FACEBOOK_PAGE_ID: pick("FACEBOOK_PAGE_ID"),
+  FACEBOOK_GRAPH_API_VERSION: pick("FACEBOOK_GRAPH_API_VERSION") || "v26.0",
 };
 
 const validatedEnv = rawEnv;
@@ -184,6 +176,8 @@ export function getServerEnv() {
     HADITH_API_BASE_URL:
       validatedEnv.HADITH_API_BASE_URL || "https://ummahapi.com/api/hadith",
     YOUTUBE_API_KEY: validatedEnv.YOUTUBE_API_KEY || "",
+    YOUTUBE_CLIENT_ID: validatedEnv.YOUTUBE_CLIENT_ID || "",
+    YOUTUBE_CLIENT_SECRET: validatedEnv.YOUTUBE_CLIENT_SECRET || "",
     YOUTUBE_CHANNEL_ID: validatedEnv.YOUTUBE_CHANNEL_ID || "",
     YOUTUBE_REFRESH_TOKEN: validatedEnv.YOUTUBE_REFRESH_TOKEN || "",
     GOOGLE_CLIENT_ID: validatedEnv.GOOGLE_CLIENT_ID || "",
@@ -192,6 +186,8 @@ export function getServerEnv() {
     FACEBOOK_APP_SECRET: validatedEnv.FACEBOOK_APP_SECRET || "",
     FACEBOOK_PAGE_ACCESS_TOKEN: validatedEnv.FACEBOOK_PAGE_ACCESS_TOKEN || "",
     FACEBOOK_PAGE_ID: validatedEnv.FACEBOOK_PAGE_ID || "",
+    FACEBOOK_GRAPH_API_VERSION:
+      validatedEnv.FACEBOOK_GRAPH_API_VERSION || "v26.0",
   };
 }
 
@@ -214,9 +210,13 @@ export function getEnvAudit() {
     serverOnly: [
       "SUPABASE_SERVICE_ROLE_KEY",
       "GOOGLE_CLIENT_SECRET",
+      "YOUTUBE_CLIENT_ID",
+      "YOUTUBE_CLIENT_SECRET",
+      "YOUTUBE_REFRESH_TOKEN",
       "CLOUDINARY_CLOUD_NAME",
       "CLOUDINARY_API_KEY",
       "CLOUDINARY_API_SECRET",
+      "FACEBOOK_PAGE_ACCESS_TOKEN",
     ],
     runtimeServer: [
       "NEXT_PUBLIC_SUPABASE_URL",
@@ -231,6 +231,8 @@ export function getEnvAudit() {
       "GEMINI_API_KEY",
       "GEMINI_MODEL",
       "YOUTUBE_API_KEY",
+      "YOUTUBE_CLIENT_ID",
+      "YOUTUBE_CLIENT_SECRET",
       "YOUTUBE_CHANNEL_ID",
       "YOUTUBE_REFRESH_TOKEN",
       "GOOGLE_CLIENT_ID",
@@ -239,6 +241,7 @@ export function getEnvAudit() {
       "FACEBOOK_APP_SECRET",
       "FACEBOOK_PAGE_ACCESS_TOKEN",
       "FACEBOOK_PAGE_ID",
+      "FACEBOOK_GRAPH_API_VERSION",
     ],
     scriptsOnly: ["DATABASE_URL"],
     optionalIntegrations: [
@@ -246,6 +249,8 @@ export function getEnvAudit() {
       "QURAN_AUDIO_CDN_URL",
       "HADITH_API_BASE_URL",
       "YOUTUBE_API_KEY",
+      "YOUTUBE_CLIENT_ID",
+      "YOUTUBE_CLIENT_SECRET",
       "YOUTUBE_CHANNEL_ID",
       "YOUTUBE_REFRESH_TOKEN",
       "GEMINI_API_KEY",
@@ -256,6 +261,7 @@ export function getEnvAudit() {
       "FACEBOOK_APP_SECRET",
       "FACEBOOK_PAGE_ACCESS_TOKEN",
       "FACEBOOK_PAGE_ID",
+      "FACEBOOK_GRAPH_API_VERSION",
       "CLOUDINARY_CLOUD_NAME",
       "CLOUDINARY_API_KEY",
       "CLOUDINARY_API_SECRET",

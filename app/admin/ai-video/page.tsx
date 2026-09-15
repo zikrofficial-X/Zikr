@@ -94,6 +94,7 @@ export default function AdminAiVideoPage() {
 
     setLoading(true);
     try {
+      const normalizedNarration = narration.trim().replace(/\s+/g, " ");
       const response = await fetch("/api/admin/videos/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -101,8 +102,18 @@ export default function AdminAiVideoPage() {
           title: title.trim(),
           description: description.trim(),
           category,
-          narration: narration.trim(),
-          content: { videoFormat: format, workflow: "ai-video-studio" },
+          narration: normalizedNarration,
+          content: {
+            type: category,
+            renderer: "template",
+            workflow: "ai-video-studio",
+            videoFormat: format,
+            language: "ar",
+            resolution: format === "vertical" ? "1080x1920" : "1920x1080",
+            prompt: normalizedNarration,
+            script: normalizedNarration,
+            text: normalizedNarration,
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -220,7 +231,7 @@ export default function AdminAiVideoPage() {
       <Card className="p-5 border-brand-gold/10 bg-black/10">
         <h2 className="text-lg font-bold text-brand-gold">مسار التنفيذ</h2>
         <p className="mt-2 text-sm leading-7 text-brand-cream/55">
-          الطلب ينتقل من pending إلى processing، ثم يتم إرسال مهمة HeyGen ومتابعتها بالمعرّف المحفوظ. لا تتم إعادة إنشاء مهمة المزود عند إعادة المحاولة؛ وبعد اكتمال الفيديو تبدأ طبقة النشر والتحقق.
+          الطلب ينتقل من pending إلى processing، ثم يتولى worker الإنتاج باستخدام الـtemplate renderer وFFmpeg بشكل حتمي، وبعد اكتمال الفيديو تبدأ طبقة النشر والتحقق. لا يتم إنشاء وظائف HeyGen جديدة.
         </p>
       </Card>
     </Container>

@@ -207,10 +207,16 @@ for (const token of ['NSCameraUsageDescription', 'NSMicrophoneUsageDescription',
 }
 
 const nextConfig = read('next.config.ts');
+const siteSource = read('lib/site.ts');
+if (!nextConfig.includes('NEXT_PUBLIC_SITE_URL')) {
+  failures.push('next.config.ts must consume NEXT_PUBLIC_SITE_URL as the deployment-controlled canonical URL');
+}
+if (!siteSource.includes('PRODUCTION_URL') || !siteSource.includes('NEXT_PUBLIC_SITE_URL')) {
+  failures.push('lib/site.ts must remain the canonical site URL source');
+}
 if (!nextConfig.includes('https://ep1.adtrafficquality.google')) {
   warnings.push('CSP does not explicitly mention ep1.adtrafficquality.google; verify against current AdSense traffic tooling.');
 }
-if (!nextConfig.includes('https://zikrmediaofficial.vercel.app')) failures.push('next.config.ts does not reference the production site URL');
 
 const secretPattern = /(sk-[A-Za-z0-9]{20,}|service[_-]?role[^\n]{0,40}[:=]\s*["'][A-Za-z0-9._-]{20,}["']|-----BEGIN (?:RSA|OPENSSH|EC) PRIVATE KEY-----)/i;
 const ignoredDirs = new Set(['node_modules', '.next', '.git', 'android/.gradle', 'ios/App/Pods']);

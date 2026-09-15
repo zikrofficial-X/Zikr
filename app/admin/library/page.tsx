@@ -7,6 +7,13 @@ import { recordAdminAuditEvent } from '@/lib/services/admin-audit';
 
 type LibraryAction = 'create' | 'status' | 'publish' | 'unpublish' | 'delete';
 
+function redirectLibrary(query: { error?: string; success?: string }): never {
+  const search = new URLSearchParams();
+  if (query.error) search.set('error', query.error);
+  if (query.success) search.set('success', query.success);
+  redirect(`/admin/library?${search.toString()}`);
+}
+
 async function mutate(formData: FormData) {
   'use server';
 
@@ -14,7 +21,7 @@ async function mutate(formData: FormData) {
   const id = String(formData.get('id') ?? '').trim();
 
   if (!['create', 'status', 'publish', 'unpublish', 'delete'].includes(action)) {
-    redirect('/admin/library?error=إجراء غير صالح.');
+    redirectLibrary({ error: 'إجراء غير صالح.' });
   }
 
   if (action === 'create') {
@@ -23,7 +30,7 @@ async function mutate(formData: FormData) {
     const bodyAr = String(formData.get('body_ar') ?? '').trim();
     const type = String(formData.get('content_type') ?? 'article').trim() || 'article';
     const category = String(formData.get('category') ?? 'general').trim() || 'general';
-    if (!titleAr || !bodyAr) redirect('/admin/library?error=العنوان والمحتوى العربي مطلوبان.');
+    if (!titleAr || !bodyAr) redirectLibrary({ error: 'العنوان والمحتوى العربي مطلوبان.' });
 
     const slug = `${titleAr.toLowerCase().replace(/[^\p{Letter}\p{Number}]+/gu, '-').replace(/^-|-$/g, '') || 'item'}-${crypto.randomUUID().slice(0, 8)}`;
     try {
@@ -54,17 +61,17 @@ async function mutate(formData: FormData) {
       }
     } catch (error) {
       console.error('[admin/library] create failed', error);
-      redirect('/admin/library?error=تعذر إنشاء المادة.');
+      redirectLibrary({ error: 'تعذر إنشاء المادة.' });
     }
   }
 
-  if (!id && action !== 'create') redirect('/admin/library?error=معرّف المادة مطلوب.');
+  if (!id && action !== 'create') redirectLibrary({ error: 'معرّف المادة مطلوب.' });
 
   if (id && action === 'status') {
     const admin = await requireAdminStepUp('knowledge.manage', '/admin/library');
     const status = String(formData.get('review_status') ?? 'draft').trim();
     const allowed = new Set(['draft', 'editorial_review', 'scholarly_review', 'approved', 'rejected']);
-    if (!allowed.has(status)) redirect('/admin/library?error=حالة مراجعة غير صالحة.');
+    if (!allowed.has(status)) redirectLibrary({ error: 'حالة مراجعة غير صالحة.' });
     try {
       const patch: Record<string, unknown> = {
         review_status: status,
@@ -85,20 +92,20 @@ async function mutate(formData: FormData) {
       });
     } catch (error) {
       console.error('[admin/library] status failed', error);
-      redirect('/admin/library?error=تعذر تحديث حالة المراجعة.');
+      redirectLibrary({ error: 'تعذر تحديث حالة المراجعة.' });
     }
   }
 
   if (id && action === 'publish') {
     await requireAdminStepUp('content.publish', '/admin/library');
     const sourceId = String(formData.get('source_id') ?? '').trim();
-    if (!sourceId) redirect('/admin/library?error=اختر مصدرًا موثوقًا قبل النشر.');
+    if (!sourceId) redirectLibrary({ error: 'اختر مصدرًا موثوقًا قبل النشر.' });
     try {
       const source = await supabaseServerAdminRequest<Array<{ id: string; verified: boolean }>>(
         `/rest/v1/content_sources?select=id,verified&id=eq.${encodeURIComponent(sourceId)}&limit=1`,
         { method: 'GET' },
       );
-      if (!source[0]?.verified) redirect('/admin/library?error=المصدر المختار غير موثّق.');
+      if (!source[0]?.verified) redirectLibrary({ error: 'المصدر المختار غير موثّق.' });
 
       const now = new Date().toISOString();
       await supabaseServerAdminRequest(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}`, {
@@ -115,7 +122,7 @@ async function mutate(formData: FormData) {
       });
     } catch (error) {
       console.error('[admin/library] publish failed', error);
-      redirect('/admin/library?error=تعذر نشر المادة. تحقق من الاعتماد والمصدر.');
+      redirectLibrary({ error: 'تعذر نشر المادة. تحقق من الاعتماد والمصدر.' });
     }
   }
 
@@ -135,7 +142,7 @@ async function mutate(formData: FormData) {
       });
     } catch (error) {
       console.error('[admin/library] unpublish failed', error);
-      redirect('/admin/library?error=تعذر إلغاء النشر.');
+      redirectLibrary({ error: 'تعذر إلغاء النشر.' });
     }
   }
 
@@ -146,8 +153,8 @@ async function mutate(formData: FormData) {
         `/rest/v1/content_library?select=published&id=eq.${encodeURIComponent(id)}&limit=1`,
         { method: 'GET' },
       );
-      if (!current[0]) redirect('/admin/library?error=المادة غير موجودة.');
-      if (current[0].published) redirect('/admin/library?error=لا يمكن حذف مادة منشورة. ألغِ النشر أولًا.');
+      if (!current[0]) redirectLibrary({ error: 'المادة غير موجودة.' });
+      if (current[0].published) redirectLibrary({ error: 'لا يمكن حذف مادة منشورة. ألغِ النشر أولًا.' });
 
       await supabaseServerAdminRequest(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}`, {
         method: 'DELETE',
@@ -161,13 +168,13 @@ async function mutate(formData: FormData) {
       });
     } catch (error) {
       console.error('[admin/library] delete failed', error);
-      redirect('/admin/library?error=تعذر حذف المادة.');
+      redirectLibrary({ error: 'تعذر حذف المادة.' });
     }
   }
 
   revalidatePath('/admin/library');
   revalidatePath('/library');
-  redirect('/admin/library?success=تم تنفيذ العملية بنجاح.');
+  redirectLibrary({ success: 'تم تنفيذ العملية بنجاح.' });
 }
 
 export default async function AdminLibraryPage({

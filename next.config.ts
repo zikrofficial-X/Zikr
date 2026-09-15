@@ -17,15 +17,11 @@ const nextConfig: NextConfig = {
       'SUPABASE_ANON_KEY',
       'SUPABASE_PUBLISHABLE_KEY',
     ),
-    NEXT_PUBLIC_SITE_URL:
-      process.env.NEXT_PUBLIC_SITE_URL || 'https://zikrmediaofficial.vercel.app',
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || '',
   },
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
-  outputFileTracingIncludes: {
-    '/*': ['./vendor/ffmpeg'],
-  },
   images: {
     unoptimized: false,
     remotePatterns: [
