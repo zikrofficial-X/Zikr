@@ -32,15 +32,8 @@ type PlatformResult = {
 };
 
 function siteUrl() {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL;
-  const isProduction = process.env.VERCEL_ENV === "production";
-  const fallback = isProduction
-    ? "https://zikrmediaofficial.vercel.app"
-    : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "https://zikrmediaofficial.vercel.app";
-
-  return (isProduction ? "https://zikrmediaofficial.vercel.app" : configured || fallback).replace(/\/$/, "");
+  const env = getServerEnv();
+  return (env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
 }
 
 function assertPublishableVideoUrl(videoUrl: string, target: "facebook" | "youtube") {
@@ -74,8 +67,11 @@ function assertPublishableVideoUrl(videoUrl: string, target: "facebook" | "youtu
 
 function publicUrl(item: SocialPublishQueueItem) {
   const publicPath = item.metadata?.publicPath;
-  if (typeof publicPath === "string" && publicPath.startsWith("/"))
-    return `${siteUrl()}${publicPath}`;
+  if (typeof publicPath === "string" && publicPath.startsWith("/")) {
+    const base = siteUrl();
+    if (!base) throw new Error("NEXT_PUBLIC_SITE_URL is not configured for social publishing");
+    return `${base}${publicPath}`;
+  }
   return siteUrl();
 }
 
@@ -102,7 +98,8 @@ export async function getPendingSocialPublishItems(
   limit = 10
 ): Promise<SocialPublishQueueItem[]> {
   const now = encodeURIComponent(new Date().toISOString());
-  const path = `/rest/v1/social_publish_queue?status=eq.queued&or=(scheduled_at.is.null,scheduled_at.lte.${now})&order=scheduled_at.asc.nullsfirst,created_at.asc&limit=${limit}`;
+  const path =
+    `/rest/v1/social_publish_queue?or=(and(status.eq.queued,or(scheduled_at.is.null,scheduled_at.lte.${now})),and(status.eq.partial,or(scheduled_at.is.null,scheduled_at.lte.${now})))&order=scheduled_at.asc.nullsfirst,created_at.asc&limit=${limit}`;
   try {
     return (
       (await supabaseServerAdminRequest<SocialPublishQueueItem[]>(path)) || []
@@ -122,7 +119,7 @@ export async function claimPendingSocialPublishItems(
   for (const item of items) {
     try {
       const result = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-        `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.queued`,
+        `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&or=(status.eq.queued,status.eq.partial)`,
         {
           method: "PATCH",
           headers: {
@@ -145,43 +142,36 @@ export async function claimPendingSocialPublishItems(
   return claimed;
 }
 
-async function publishFacebookPost(
-  item: SocialPublishQueueItem
-): Promise<string | null> {
+async function publishFacebookPost(item: SocialPublishQueueItem): Promise<string | null> {
   const env = getServerEnv();
   const pageId = env.FACEBOOK_PAGE_ID;
   const pageAccessToken = env.FACEBOOK_PAGE_ACCESS_TOKEN;
-  if (!pageId || !pageAccessToken)
-    throw new Error(
-      "FACEBOOK_PAGE_ID / FACEBOOK_PAGE_ACCESS_TOKEN are not configured"
-    );
+  if (!pageId || !pageAccessToken) {
+    throw new Error("FACEBOOK_PAGE_ID / FACEBOOK_PAGE_ACCESS_TOKEN are not configured");
+  }
 
   const params = new URLSearchParams({
     access_token: pageAccessToken,
-    message: [item.title, item.body, publicUrl(item)]
-      .filter(Boolean)
-      .join("\n\n"),
+    message: [item.title, item.body, publicUrl(item)].filter(Boolean).join("\n\n"),
   });
   if (item.image_url) params.set("link", item.image_url);
 
-  const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/feed`, {
+  const version = env.FACEBOOK_GRAPH_API_VERSION || "v26.0";
+  const res = await fetch(`https://graph.facebook.com/${version}/${pageId}/feed`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: params,
+    signal: AbortSignal.timeout(20_000),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(
-      `Facebook post failed (HTTP ${res.status}): ${body.slice(0, 300)}`
-    );
+    throw new Error(`Facebook post failed (HTTP ${res.status}): ${body.slice(0, 300)}`);
   }
   const data = (await res.json()) as { id?: string };
   return data.id ?? null;
 }
 
-async function publishFacebookReelItem(
-  item: SocialPublishQueueItem
-): Promise<string | null> {
+async function publishFacebookReelItem(item: SocialPublishQueueItem): Promise<string | null> {
   if (!item.video_url) throw new Error("Facebook Reels publishing requires video_url");
   const mediaUrl = assertPublishableVideoUrl(item.video_url, "facebook");
   const env = getServerEnv();
@@ -196,18 +186,18 @@ async function publishFacebookReelItem(
   );
 }
 
-async function publishYoutubeItem(
-  item: SocialPublishQueueItem
-): Promise<string | null> {
+async function publishYoutubeItem(item: SocialPublishQueueItem): Promise<string | null> {
   if (!item.video_url) throw new Error("YouTube publishing requires video_url");
   const mediaUrl = assertPublishableVideoUrl(item.video_url, "youtube");
+  const env = getServerEnv();
+  if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET || !env.YOUTUBE_REFRESH_TOKEN) {
+    throw new Error("YouTube OAuth is not configured: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET and YOUTUBE_REFRESH_TOKEN are required");
+  }
   return publishToYoutube(
     item.id,
     {
       title: item.title,
-      description: [item.body ?? "", publicUrl(item)]
-        .filter(Boolean)
-        .join("\n\n"),
+      description: [item.body ?? "", publicUrl(item)].filter(Boolean).join("\n\n"),
       tags: ["zikr", "islamic", item.content_type],
       categoryId: "27",
       isShort: item.metadata?.videoFormat !== "horizontal",
@@ -229,10 +219,10 @@ async function publishPlatform(
               { title: item.title, description: item.body ?? "" },
               assertPublishableVideoUrl(item.video_url, "facebook"),
               (() => {
-                const pageId = getServerEnv().FACEBOOK_PAGE_ID;
-                if (!pageId) throw new Error("FACEBOOK_PAGE_ID is not configured");
-                if (!getServerEnv().FACEBOOK_PAGE_ACCESS_TOKEN) throw new Error("FACEBOOK_PAGE_ACCESS_TOKEN is not configured");
-                return pageId;
+                const env = getServerEnv();
+                if (!env.FACEBOOK_PAGE_ID) throw new Error("FACEBOOK_PAGE_ID is not configured");
+                if (!env.FACEBOOK_PAGE_ACCESS_TOKEN) throw new Error("FACEBOOK_PAGE_ACCESS_TOKEN is not configured");
+                return env.FACEBOOK_PAGE_ID;
               })(),
               false
             )
@@ -264,6 +254,7 @@ export async function processSocialPublishItem(
   if (!options.alreadyClaimed) {
     await markQueueItem(item.id, "processing");
   }
+
   const platforms = item.target_platforms.filter(
     (p): p is SocialPlatform => p === "facebook" || p === "facebook_reels" || p === "youtube"
   );
@@ -274,11 +265,30 @@ export async function processSocialPublishItem(
     return false;
   }
 
+  const previous =
+    item.metadata?.platformResults && typeof item.metadata.platformResults === "object"
+      ? (item.metadata.platformResults as Record<string, unknown>)
+      : {};
+
+  const pendingPlatforms = platforms.filter(platform => {
+    const prior = previous[platform];
+    return !(prior && typeof prior === "object" && (prior as { ok?: unknown }).ok === true && typeof (prior as { remoteId?: unknown }).remoteId === "string");
+  });
+
   const results = await Promise.all(
-    platforms.map(platform => publishPlatform(item, platform))
+    pendingPlatforms.map(platform => publishPlatform(item, platform))
   );
-  const failures = results.filter(result => !result.ok);
-  const successes = results.filter(result => result.ok);
+
+  const mergedResults: Record<string, PlatformResult> = {};
+  for (const platform of platforms) {
+    const prior = previous[platform];
+    if (prior && typeof prior === "object") mergedResults[platform] = prior as PlatformResult;
+  }
+  for (const result of results) mergedResults[result.platform] = result;
+
+  const finalResults = platforms.map(platform => mergedResults[platform]).filter(Boolean);
+  const failures = finalResults.filter(result => !result.ok);
+  const successes = finalResults.filter(result => result.ok);
   const nextStatus: SocialQueueStatus =
     failures.length === 0
       ? "published"
@@ -286,17 +296,27 @@ export async function processSocialPublishItem(
         ? "partial"
         : "failed";
 
-  await markQueueItem(item.id, nextStatus, {
+  const attempts = Number(item.metadata?.attempts ?? 0) + 1;
+  const maxAttempts = Math.max(1, Number(item.metadata?.maxAttempts ?? 5));
+  const shouldRetry = nextStatus === "partial" && attempts < maxAttempts;
+  const retryDelayMinutes = Math.min(60, 2 ** Math.min(attempts, 6));
+  const nextRetryAt = shouldRetry
+    ? new Date(Date.now() + retryDelayMinutes * 60_000).toISOString()
+    : null;
+
+  await markQueueItem(item.id, shouldRetry ? "partial" : nextStatus, {
+    scheduled_at: nextRetryAt,
     published_at: successes.length > 0 ? new Date().toISOString() : null,
     error_message:
       failures
-        .map(
-          failure => `${failure.platform}: ${failure.error ?? "unknown error"}`
-        )
+        .map(failure => `${failure.platform}: ${failure.error ?? "unknown error"}`)
         .join("; ") || null,
     metadata: {
       ...(item.metadata ?? {}),
-      platformResults: results,
+      attempts,
+      maxAttempts,
+      nextRetryAt,
+      platformResults: mergedResults,
     },
   });
 
