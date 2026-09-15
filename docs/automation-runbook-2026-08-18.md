@@ -8,7 +8,7 @@ The generator does not invent Quran text, tafsir, hadith, religious rulings, or 
 
 The queue is idempotent. `video_generation_requests.automation_key` and `social_publish_queue.automation_key` have partial unique indexes, so rerunning a schedule does not create duplicate generated videos or duplicate social queue entries.
 
-HeyGen is retired from the production execution path. The production route and scheduled runner do not pass, select, submit, or poll HeyGen jobs. Legacy database columns are retained only for migration/history compatibility and are not used by the renderer.
+HeyGen is retired from the production execution path. The production renderer does not select, submit, or poll HeyGen jobs. Legacy database columns are retained only for migration/history compatibility.
 
 ## Required production environment variables
 
@@ -26,31 +26,32 @@ Set these as protected server-side variables. Values must never be committed:
 | `YOUTUBE_CHANNEL_ID` | Optional YouTube target channel |
 | `FACEBOOK_PAGE_ID` | Optional Facebook Page ID |
 | `FACEBOOK_PAGE_ACCESS_TOKEN` | Optional server-side Page access token |
+| `FACEBOOK_GRAPH_API_VERSION` | Meta Graph API version used by the canonical publisher |
 
-No HeyGen variable is required.
+No HeyGen variable is required for production generation.
 
 ## Production scheduler
 
-Supabase `pg_cron` invokes `/api/internal/video-processing` every minute with the scheduler bearer secret. The route is the authoritative production queue owner. Do not create a second scheduler for the same queue.
+The `GitHub Background Jobs` workflow is the automatic production owner for the video and social queues and runs every 15 minutes. It invokes `pnpm background:jobs`, which seeds automated requests, renders with the free FFmpeg template worker, and processes the social publishing queue.
 
-The GitHub `Background Jobs` workflow is a manual/recovery path when GitHub runners are available. It is also locked to the free `template` renderer and cannot route work to HeyGen.
+The legacy Supabase `zikr-video-processing` cron that called `/api/internal/video-processing` has been explicitly retired by migration `20260915004110_retire_vercel_video_processing_cron.sql`. Do not create or restore a second scheduler for the same queue.
 
 ## Publishing behavior
 
-YouTube uses the existing OAuth upload implementation. YouTube's official API requires an OAuth token with an upload-capable scope such as `youtube.upload`; an API key alone cannot upload videos. Unverified API projects may have uploaded videos restricted to private visibility until the required Google audit is completed.
+YouTube uses the existing OAuth upload implementation. A refresh token and upload-capable OAuth credentials are required; an API key alone is not sufficient for uploads.
 
-Facebook publishing is independent of video generation. A valid Page access token and Page ID are required for automatic Page/Reels publication.
+Facebook publishing is independent of video generation. A valid Page access token and Page ID are required for automatic Page/Reels publication. The canonical configuration key is `FACEBOOK_GRAPH_API_VERSION`.
 
 ## Failure handling
 
-A failed render is recorded in `video_generation_requests.error_message` and `error_details`. A failed social target is recorded in `social_publish_queue.error_message` with per-platform results. The queue is not silently marked published. Re-running the scheduler is safe because claims are conditional on the queued status and idempotency keys prevent duplicate inserts.
+A failed render is recorded in `video_generation_requests.error_message` and `error_details`. A failed social target is recorded in `social_publish_queue.error_message` with per-platform results. The queue is not silently marked published. Re-running the worker is safe because claims are conditional and idempotency keys prevent duplicate queue inserts.
 
 ## Manual smoke command
 
-With the required variables loaded in a secure environment:
+With the required variables loaded in a secure server environment:
 
 ```bash
-VIDEO_GENERATOR=template AUTO_VIDEO_ENABLED=true AUTO_VIDEO_BATCH_SIZE=1 BACKGROUND_JOB_TARGET=all pnpm automation:run
+VIDEO_GENERATOR=template AUTO_VIDEO_ENABLED=true AUTO_VIDEO_BATCH_SIZE=1 BACKGROUND_JOB_TARGET=all pnpm background:jobs
 ```
 
-Do not run this command with a service-role key in a client environment or paste credentials into logs.
+Do not run this command with a service-role key in a browser/client environment or paste credentials into logs.

@@ -1,85 +1,107 @@
-# Zikr automation and GitHub Actions operations
+# ZIKR automation and GitHub Actions operations
 
-**Status:** Current architecture documented
+**Status:** Current architecture documented  
+**Last updated:** September 15, 2026
 
 ## Executive summary
 
-Zikr no longer uses GitHub Actions as its production scheduler. Every Vercel deployment runs the repository verification gate through `pnpm verify`, while Supabase `pg_cron` owns the minute-level production automation. The prayer notification worker is a Supabase Edge Function, and the video/social queue entrypoint is the authenticated Vercel route `/api/internal/video-processing`.
+ZIKR uses three separate execution owners:
 
-GitHub Actions remains in the repository for operator-invoked verification and recovery. Both workflows are intentionally `workflow_dispatch`-only because GitHub currently reports an account-level billing lock that prevents hosted runners from starting. This is an external account constraint; changing YAML cannot bypass it.
+1. **Vercel build gate** runs `pnpm verify` for every deployment and is responsible for repository/build validation.
+2. **Supabase `pg_cron`** owns the minute-level prayer Web Push scheduler.
+3. **GitHub Actions `Background Jobs`** owns the automatic video and social queue worker on a 15-minute cadence. The older Supabase `zikr-video-processing` cron was explicitly retired by `20260915004110_retire_vercel_video_processing_cron.sql`.
+
+The GitHub `Continuous Integration` workflow remains manual-only because hosted runners may be unavailable for this account. This is an external account constraint; the YAML does not bypass it.
 
 ## Current ownership
 
 | Responsibility | Authoritative owner | Frequency | Production status |
 |---|---|---:|---|
-| Install, typecheck, lint, tests, route checks, and build | Vercel build gate (`pnpm verify`) | Every deployment | Active |
+| Install, typecheck, lint, tests, route checks, migration replay, and build | Vercel build gate (`pnpm verify`) | Every deployment | Active |
 | Prayer Web Push dispatch | Supabase `pg_cron` → `prayer-notification-worker` | Every minute | Active |
-| Video and social queue processing | Supabase `pg_cron` → `/api/internal/video-processing` | Every minute | Active, authenticated by the scheduler secret |
-| Manual queue recovery | GitHub `Background Jobs` workflow | On demand | Available only when GitHub runners can start |
-| Manual verification fallback | GitHub `Continuous Integration` workflow | On demand | Available only when GitHub runners can start |
+| Video generation queue | GitHub `Background Jobs` → `pnpm background:jobs` → template/FFmpeg worker | Every 15 minutes | Active |
+| Social publishing queue | GitHub `Background Jobs` → `pnpm background:jobs` → social publisher | Every 15 minutes | Active |
+| Manual queue recovery | GitHub `Background Jobs` workflow | On demand | Available when runners can start |
+| Manual verification fallback | GitHub `Continuous Integration` workflow | On demand | Available when runners can start |
 
-There must be only one automatic owner for each queue. Do not add a GitHub schedule or a Vercel Cron entry for a queue that is already owned by Supabase.
+There must be only one automatic owner for each production queue. Do not re-enable the retired Supabase video cron or add a second Vercel/GitHub schedule for the same workload.
 
 ## Workflows in the repository
 
-`/.github/workflows/ci.yml` runs `pnpm install --frozen-lockfile` and `pnpm verify` when an operator manually dispatches it. `/.github/workflows/background-jobs.yml` accepts the `target` input `all`, `videos`, or `social`, validates the required Supabase configuration, and invokes `pnpm background:jobs`. Neither workflow is an automatic production scheduler.
+`/.github/workflows/ci.yml` runs the verification suite when manually dispatched. `/.github/workflows/background-jobs.yml` is the canonical video/social worker and runs on `*/15 * * * *`, with manual `target` values `all`, `videos`, or `social` for controlled recovery.
 
-The current workflow files deliberately configure `pnpm/action-setup@v4` before `actions/setup-node@v4` so that the pnpm cache can be initialized correctly. The production deployment gate is independent of GitHub runner availability.
+The background worker is intentionally locked to the free deterministic template renderer. It installs FFmpeg and Arabic fonts on the runner, processes the persisted queue, and publishes through server-side credentials. HeyGen is retained only as historical/legacy schema compatibility and is not selected by the production worker.
 
 ## Manual recovery procedure
 
-Use the GitHub Actions page only for a deliberate recovery run after confirming that the account-level runner lock has been resolved. Select **Background Jobs**, choose `all`, `videos`, or `social`, and review the queue rows and provider-side results after the run. The current workflow input is named `target`; older instructions using `job_type` are obsolete.
+Use **Background Jobs** only for a deliberate recovery run or targeted queue processing. Select `all`, `videos`, or `social`, verify the required GitHub secrets/variables, and review the resulting queue rows after the run.
 
 The equivalent CLI command is:
 
 ```bash
-gh workflow run background-jobs.yml --repo mohamedalaa7785-cpu/Zikr -f target=all
+gh workflow run background-jobs.yml --repo Zikrmediaofficial/Zikr -f target=all
 ```
 
-For verification, use:
+For verification:
 
 ```bash
-gh workflow run ci.yml --repo mohamedalaa7785-cpu/Zikr
-gh run list --repo mohamedalaa7785-cpu/Zikr --limit 10
+gh workflow run ci.yml --repo Zikrmediaofficial/Zikr
+gh run list --repo Zikrmediaofficial/Zikr --limit 10
 ```
 
-If GitHub reports that the job was not started because the account is locked due to a billing issue, stop retrying the workflow. Run the same checks locally or rely on the Vercel build gate instead.
+If GitHub reports that the job cannot start because of an account-level billing/runner restriction, stop retrying the workflow. Run the repository verification locally or use the Vercel build gate.
 
 ## Secrets and security
 
-Production secrets belong in Vercel or Supabase secret storage, not in the repository. GitHub repository secrets are needed only if an operator intentionally uses the manual recovery workflow after runner access is restored. Never print, commit, or move `SUPABASE_SERVICE_ROLE_KEY`, provider tokens, OAuth refresh tokens, or the scheduler secret into client code.
+Production secrets belong in Vercel, Supabase, or protected GitHub Actions secrets/variables as appropriate. Never commit or expose `SUPABASE_SERVICE_ROLE_KEY`, provider access tokens, OAuth refresh tokens, or scheduler secrets to client code.
 
-The queue workflow requires the Supabase URL, service-role key, public site URL, and the public Supabase key. Provider credentials are required only for the selected queue and should be added only when that integration is intentionally enabled. The scheduler route itself is protected by the server-side value returned by `get_push_scheduler_secret`; it is not a public cron endpoint.
+The background worker requires `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `NEXT_PUBLIC_SITE_URL`. YouTube and Facebook credentials are optional integrations and are validated at runtime before publication. Missing optional provider credentials must result in an explicit skip/failure state, not an alternate service or hardcoded project fallback.
+
+## Video generation and publishing flow
+
+```text
+video_generation_requests
+        │
+        ▼
+GitHub Background Jobs (15 min)
+        │
+        ├── seedAutomatedVideoRequests()
+        ├── template FFmpeg renderer
+        ├── Supabase Storage
+        └── social_publish_queue
+                    │
+                    ├── YouTube OAuth upload
+                    └── Facebook / Reels publish
+```
+
+The production renderer is deterministic and does not require a paid AI video provider. Generated files are stored in Supabase Storage and passed to the social queue as direct HTTPS media URLs. YouTube watch URLs are rejected as media sources for republishing.
 
 ## Production scheduler verification
 
-The production Supabase database should contain one active job named `zikr-prayer-push-dispatch` with schedule `* * * * *` and one active job named `zikr-video-processing` with the same schedule. The jobs must be visible in `cron.job`, and recent rows in `cron.job_run_details` should show successful executions. Do not create a second job to compensate for a transient provider failure; inspect the worker logs and delivery ledger first.
+The prayer worker remains the only minute-level production scheduler in Supabase. The video/social queue must be processed by the GitHub `Background Jobs` workflow. The legacy `zikr-video-processing` cron was removed from the active database schedule by the retirement migration.
 
-The prayer worker uses the private VAPID key held in Supabase runtime settings and writes idempotent delivery records. The video route claims pending rows before external side effects and polls persisted HeyGen job IDs before submitting new provider jobs. These controls are part of the production design and must be preserved when changing scheduling.
+When checking a stuck queue, inspect the GitHub workflow run, queue row status (`pending`/`processing`/`completed`/`failed` as applicable), error message, retry metadata, and provider response. Do not create a second scheduler to compensate for a provider outage.
 
 ## Troubleshooting order
 
-When a deployment fails, inspect the Vercel build logs first and reproduce with `pnpm verify`. When a prayer notification fails, inspect the Edge Function logs, the active cron row, the delivery ledger, and the subscription endpoint response. When a video or social queue is stuck, inspect `/api/internal/video-processing` authentication, row status transitions, provider credentials, and the relevant publish log. Do not re-enable an old scheduler before proving that the current owner is disabled.
+For a deployment failure, inspect Vercel logs first and reproduce with `pnpm verify`. For video generation failures, inspect the GitHub Background Jobs run, FFmpeg installation step, Supabase queue/storage response, and the generated request row. For social failures, inspect the queue item, provider credentials, and recorded platform result/error fields.
 
-When an operator needs a local verification run, use the repository’s documented commands:
+For local verification:
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm verify
 ```
 
-Queue processing should be run only in a server-side environment with the required secrets. Do not run a service-role process from a browser or expose its environment variables to a client bundle.
+Queue processing requires a server-side environment with the required secrets. Never run service-role operations in browser code.
 
 ## Migration history note
 
-The prayer scheduler migration is stored locally as `20260814160000_prayer_push_scheduler.sql`, matching the version recorded by the production Supabase migration ledger. The database was not reset or rewritten to correct this naming alignment; only the repository filename and documentation are kept synchronized.
+Historical Supabase migrations are retained as repository history. The retirement migration that disables the old Vercel video-processing cron is additive and idempotent; production migration history must not be reset or rewritten to remove historical records.
 
 ## References
 
 - [GitHub Actions workflow syntax](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions)
 - [Supabase pg_cron](https://supabase.com/docs/guides/database/extensions/pg_cron)
-- [Zikr production scheduling runbook](docs/production-scheduling.md)
-- [Zikr background jobs runbook](docs/background-jobs.md)
-- [Zikr automation completion evidence](docs/automation-and-ci-completion-report.md)
-
-**Last updated:** August 15, 2026
+- [ZIKR production scheduling runbook](docs/production-scheduling.md)
+- [ZIKR background jobs runbook](docs/background-jobs.md)

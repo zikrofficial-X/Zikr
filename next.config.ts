@@ -1,9 +1,24 @@
 import type { NextConfig } from 'next';
 
+const envSuffixes = [
+  '',
+  ...Array.from(
+    new Set(
+      Object.keys(process.env)
+        .map((key) => key.match(/_(\d+)$/)?.[1])
+        .filter((suffix): suffix is string => Boolean(suffix)),
+    ),
+  )
+    .sort((a, b) => Number(a) - Number(b))
+    .map((suffix) => `_${suffix}`),
+];
+
 function bridgeEnv(...bases: string[]): string {
   for (const base of bases) {
-    const value = process.env[base];
-    if (value) return value;
+    for (const suffix of envSuffixes) {
+      const value = process.env[`${base}${suffix}`];
+      if (value) return value;
+    }
   }
   return '';
 }
@@ -46,7 +61,7 @@ const nextConfig: NextConfig = {
           key: 'Content-Security-Policy',
           value: `default-src 'self'; script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''} https://pagead2.googlesyndication.com https://partner.googleadservices.com https://www.googletagservices.com https://adservice.google.com https://fundingchoicesmessages.google.com https://www.googletagmanager.com https://va.vercel-scripts.com; script-src-elem 'self' 'unsafe-inline' https://va.vercel-scripts.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://www.googletagservices.com https://adservice.google.com https://fundingchoicesmessages.google.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https://*.supabase.co https://res.cloudinary.com https://i.ytimg.com https://img.youtube.com https://pagead2.googlesyndication.com https://*.googleusercontent.com https://*.gstatic.com; media-src 'self' blob: https://*.supabase.co https://cdn.islamic.network https://www.islamcan.com https://everyayah.com https://quranaudio.pages.dev https://*.mp3quran.net https://download.quranicaudio.com https://archive.org https://*.archive.org https://server6.mp3quran.net https://server8.mp3quran.net https://stream.radiojar.com https://qurango.net; connect-src 'self' https://va.vercel-scripts.com https://*.supabase.co https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com https://generativelanguage.googleapis.com https://api.hadith.gading.dev https://ummahapi.com https://api.aladhan.com https://api.alquran.cloud https://everyayah.com https://quranaudio.pages.dev https://*.mp3quran.net https://download.quranicaudio.com https://archive.org https://*.archive.org https://pagead2.googlesyndication.com https://adservice.google.com https://fundingchoicesmessages.google.com https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://ep1.adtrafficquality.google https://mp3quran.net https://api.quran.com https://www.hisnmuslim.com https://mp3quran.net/api; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://fundingchoicesmessages.google.com https://accounts.google.com; font-src 'self' data: https://fonts.gstatic.com;`,
         },
-        { key: 'Permissions-Policy', value: 'geolocation=(self), microphone=(self), camera=()' },
+        { key: 'Permissions-Policy', value: 'geolocation=(self), microphone=(self), camera=(self)' },
         { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
       ],
     },

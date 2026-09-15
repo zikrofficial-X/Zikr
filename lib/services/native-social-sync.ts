@@ -18,12 +18,12 @@ export function getNativeSocialSyncConfig(): NativeSocialSyncConfig {
   const youtubeChannelId = env.YOUTUBE_CHANNEL_ID.trim();
   const facebookPageId = env.FACEBOOK_PAGE_ID.trim();
   const facebookPageAccessToken = env.FACEBOOK_PAGE_ACCESS_TOKEN.trim();
-  const graphApiVersion = (process.env.META_GRAPH_API_VERSION || 'v24.0').trim();
+  const graphApiVersion = env.FACEBOOK_GRAPH_API_VERSION.trim();
 
   if (!youtubeChannelId) throw new Error('YOUTUBE_CHANNEL_ID is required for native social sync.');
   if (!facebookPageId) throw new Error('FACEBOOK_PAGE_ID is required for native social sync.');
   if (!facebookPageAccessToken) throw new Error('FACEBOOK_PAGE_ACCESS_TOKEN is required for native social sync.');
-  if (!/^v\d+\.\d+$/.test(graphApiVersion)) throw new Error('META_GRAPH_API_VERSION must look like vNN.N.');
+  if (!/^v\d+\.\d+$/.test(graphApiVersion)) throw new Error('FACEBOOK_GRAPH_API_VERSION must look like vNN.N.');
 
   return { youtubeChannelId, facebookPageId, facebookPageAccessToken, graphApiVersion };
 }
