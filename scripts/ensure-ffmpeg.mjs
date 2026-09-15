@@ -35,6 +35,13 @@ async function download(urlString, target) {
 }
 
 async function main() {
+  // Vercel is deliberately not a renderer anymore. Avoid downloading a large
+  // native binary during web builds; GitHub Actions installs FFmpeg directly.
+  if (process.env.VERCEL === '1' || process.env.VERCEL_ENV) {
+    console.log('[ensure-ffmpeg] Skipping FFmpeg bundle on Vercel; GitHub Actions is the canonical renderer.');
+    return;
+  }
+
   if (process.platform !== 'linux' || process.arch !== 'x64') {
     console.log(`[ensure-ffmpeg] Skipping bundled Linux binary on ${process.platform}/${process.arch}.`);
     return;
