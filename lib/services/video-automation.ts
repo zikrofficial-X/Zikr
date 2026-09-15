@@ -33,15 +33,6 @@ function isVerticalVideo(request: VideoGenerationRequest): boolean {
     : true;
 }
 
-function explicitNarration(request: VideoGenerationRequest): string {
-  const content = contentObject(request);
-  for (const key of ['prompt', 'script', 'text']) {
-    const value = content[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return '';
-}
-
 /** Create a durable video-generation request for the canonical template worker. */
 export async function createVideoGenerationRequest(data: {
   title: string;

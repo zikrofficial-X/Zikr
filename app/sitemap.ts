@@ -5,9 +5,7 @@ import { getStories } from "@/lib/services/stories";
 import {
   getArticles,
   getDuas,
-  getKidsContent,
   getProphets,
-  getBattles,
 } from "@/lib/services/content";
 import { surahs as fallbackSurahs } from "@/lib/data/content";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
@@ -18,7 +16,7 @@ import type { Surah } from "@/lib/types/quran";
 import type { Scholar } from "@/lib/services/scholars";
 import type { HadithBook } from "@/lib/types/hadith";
 import type { Story } from "@/lib/services/stories";
-import type { KidsContent, Prophet, Battle, Article, Dua } from "@/lib/services/content";
+import type { Prophet, Article, Dua } from "@/lib/services/content";
 
 type SitemapEntry = MetadataRoute.Sitemap[number];
 type SlugRow = { slug: string };
@@ -67,7 +65,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
   }));
 
   try {
-    const [surahs, scholars, hadithBooks, stories, articles, prophets, duas, kidsContent, battles, companions, conquests] = await Promise.all([
+    const [surahs, scholars, hadithBooks, stories, articles, prophets, duas, companions, conquests] = await Promise.all([
       Promise.resolve(fallbackSurahs.map(surah => ({ number: surah.id, name: surah.nameAr, englishName: surah.nameEn, englishNameTranslation: "", numberOfAyahs: surah.ayahCount, revelationType: surah.revelationPlace === "meccan" ? "Meccan" : "Medinan" }) satisfies Surah)),
       getAllScholars().catch((error): Scholar[] => { console.error("[sitemap] Scholars fetch failed:", error); return []; }),
       getHadithBooks().catch((error): HadithBook[] => { console.error("[sitemap] Hadith fetch failed:", error); return []; }),
@@ -75,8 +73,6 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       getArticles(undefined, 1000).catch((): Article[] => []),
       getProphets().catch((): Prophet[] => []),
       getDuas().catch((): Dua[] => []),
-      getKidsContent(undefined, undefined, 50, { cache: "force-cache", next: { revalidate: 3600 } }).catch((): KidsContent[] => []),
-      getBattles().catch((): Battle[] => []),
       getPublishedSlugs("companions"),
       getPublishedSlugs("conquests"),
     ]);
@@ -96,9 +92,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       ...STATIC_PROPHET_SLUGS.map(slug => route(`/prophets/${slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
       ...prophets.map((prophet: Prophet) => route(`/prophets/${prophet.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
       ...duas.filter((dua: Dua) => (dua.textAr?.trim().length ?? 0) >= 80).map((dua: Dua) => route(`/dua/${dua.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
-      ...kidsContent.filter((kid: KidsContent) => (kid.contentAr?.trim().length ?? 0) >= 250 || Boolean(kid.quiz_data)).map((kid: KidsContent) => route(`/kids/${kid.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
       ...STATIC_BATTLE_SLUGS.map(slug => route(`/battles/${slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
-      ...battles.map((battle: Battle) => route(`/battles/${battle.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
       ...companions.map((companion: SlugRow) => route(`/companions/${companion.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
       ...conquests.map((conquest: SlugRow) => route(`/conquests/${conquest.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
     ];
