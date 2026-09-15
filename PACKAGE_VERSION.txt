@@ -1,4 +1,4 @@
-ZIKR v1.4.22
+ZIKR v1.0.0
 versionCode=53
 applicationId=com.zikr.app
 targetSdk=36
