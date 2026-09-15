@@ -16,13 +16,11 @@ function isNativeGoogleCallback(rawUrl: string): boolean {
     const isAppDeepLink =
       url.protocol === "com.zikr.app:" &&
       url.hostname === "auth" &&
-      url.pathname.startsWith("/callback");
-    // Compatibility fallback for older APKs/configurations that returned
-    // from Google to the production HTTPS callback instead of the app URI.
+      url.pathname === "/callback";
     const isHttpsBridge =
       url.protocol === "https:" &&
       url.hostname === "zikrmediaofficial.vercel.app" &&
-      url.pathname.startsWith("/auth/callback");
+      url.pathname === "/auth/callback";
     return isAppDeepLink || isHttpsBridge;
   } catch {
     return false;
@@ -70,7 +68,6 @@ export function NativeGoogleOAuthHandler() {
       const nextPath = getSafeNextPath(parsed.searchParams.get("next"));
       const flowId = parsed.searchParams.get("sb_flow_id")?.trim() || null;
       const oauthError = parsed.searchParams.get("error");
-      const oauthErrorDescription = parsed.searchParams.get("error_description");
       const code = parsed.searchParams.get("code");
 
       if (oauthError || !code) {
@@ -119,18 +116,11 @@ export function NativeGoogleOAuthHandler() {
       } catch (error) {
         console.error("[native-google-oauth] callback exchange failed", error);
         await closeExternalBrowser();
-        window.location.replace(
-          loginUrl(
-            oauthErrorDescription ? "google_oauth_failed" : "auth_callback_failed",
-            nextPath,
-          ),
-        );
+        window.location.replace(loginUrl("auth_callback_failed", nextPath));
       }
     };
 
     const subscribe = async () => {
-      // Register the listener before checking launchUrl so a deep link delivered
-      // during startup cannot race the initial callback lookup.
       urlListener = await App.addListener("appUrlOpen", ({ url }) => {
         void handleCallback(url);
       });
