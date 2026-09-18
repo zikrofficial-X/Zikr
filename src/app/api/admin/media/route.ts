@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/lib/services/admin';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
-import { uploadCloudinaryImage } from '@/lib/services/cloudinary';
+import { uploadCloudinaryImage } from '@/features/media/services/cloudinary';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
