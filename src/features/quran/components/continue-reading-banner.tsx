@@ -1,7 +1,7 @@
 import { BookOpen, ChevronLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getLastReadPosition } from '@/app/quran/actions';
+import { getLastReadPosition } from '@/features/quran/actions';
 
 export async function ContinueReadingBanner() {
   const progress = await getLastReadPosition();

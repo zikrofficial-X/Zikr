@@ -1,7 +1,7 @@
 "use server";
 
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
-import type { Surah, Ayah, Reciter } from "@/lib/types/quran";
+import type { Surah, Ayah, Reciter } from "@/features/quran/types/quran";
 import {
   mapDbSurah,
   mapDbAyah,

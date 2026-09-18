@@ -1,4 +1,4 @@
-import { surahNameToId } from '@/lib/utils/surah-mapping';
+import { surahNameToId } from '@/features/quran/utils/surah-mapping';
 
 /**
  * Arabic surah names ordered by surah ID (index 0 = surah 1 ... index 113 = surah 114).

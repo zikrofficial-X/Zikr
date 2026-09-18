@@ -1,9 +1,9 @@
 import { safeApiFetch } from "@/lib/services/http";
 import { getPublicEnv } from "@/lib/env";
 import { ServiceError } from "@/lib/types/common";
-import type { Ayah, Juz, QuranApiResponse, Surah, Reciter } from "@/lib/types/quran";
+import type { Ayah, Juz, QuranApiResponse, Surah, Reciter } from "@/features/quran/types/quran";
 import { surahs as fallbackSurahs, reciters as fallbackReciters } from "@/lib/data/content";
-import { getCanonicalAyahCount } from "@/lib/utils/surah-mapping";
+import { getCanonicalAyahCount } from "@/features/quran/utils/surah-mapping";
 
 const QURAN_API_BASE = "https://api.alquran.cloud/v1";
 const DEBUG_QURAN = process.env.NODE_ENV !== "production";

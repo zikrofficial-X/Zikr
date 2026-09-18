@@ -8,7 +8,7 @@ import type {
   UserResponse,
 } from "@supabase/supabase-js";
 import Link from "next/link";
-import { ReadingProgressCard } from "@/components/quran/reading-progress-card";
+import { ReadingProgressCard } from "@/features/quran/components/reading-progress-card";
 import { useLanguage } from "@/components/layout/language-provider";
 
 /**

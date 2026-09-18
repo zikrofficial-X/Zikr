@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState, useEffect } from "react";
-import { type Reciter } from "@/lib/types/quran";
-import { getReciters } from "@/lib/services/quran";
+import { type Reciter } from "@/features/quran/types/quran";
+import { getReciters } from "@/features/quran/services/quran";
 import { Button } from "@/components/ui/button";
 
 // Audio URL generation function (client-safe)

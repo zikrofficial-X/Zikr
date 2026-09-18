@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Bookmark, BookmarkCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import { saveReadingProgress, clearReadingProgress } from '@/app/quran/actions';
+import { saveReadingProgress, clearReadingProgress } from '@/features/quran/actions';
 
 interface MushafBookmarkProps {
   surahId: number;

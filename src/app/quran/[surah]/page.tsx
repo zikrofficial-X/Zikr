@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BookmarkButton } from "@/components/quran/bookmark-button";
-import { MushafBookmark } from "@/components/quran/mushaf-bookmark";
-import { QuranAudioPlayer } from "@/components/quran/audio-player";
+import { BookmarkButton } from "@/features/quran/components/bookmark-button";
+import { MushafBookmark } from "@/features/quran/components/mushaf-bookmark";
+import { QuranAudioPlayer } from "@/features/quran/components/audio-player";
 import { MarkSurahRead } from "@/components/wird/mark-surah-read";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { getSurahById } from "@/lib/services/quran";
+import { getSurahById } from "@/features/quran/services/quran";
 import {
   getSurahMetaFromDb,
   getSurahFromDb,
-} from "@/lib/services/quran-server";
+} from "@/features/quran/services/quran-server";
 import { getFavoritedRefs } from "@/app/favorites/actions";
-import { getReadingProgress } from "@/app/quran/actions";
+import { getReadingProgress } from "@/features/quran/actions";
 import { Badge } from "@/components/ui/badge";
 import { pageMetadata } from "@/lib/site";
 

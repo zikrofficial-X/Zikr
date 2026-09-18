@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BookmarkButton } from '@/components/quran/bookmark-button';
+import { BookmarkButton } from '@/features/quran/components/bookmark-button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
-import { getAyah, getSurahById, getTafsir } from '@/lib/services/quran';
-import { getAyahFromDb, getSurahMetaFromDb, getTafsirRecordFromDb } from '@/lib/services/quran-server';
+import { getAyah, getSurahById, getTafsir } from '@/features/quran/services/quran';
+import { getAyahFromDb, getSurahMetaFromDb, getTafsirRecordFromDb } from '@/features/quran/services/quran-server';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Share2 } from 'lucide-react';
 import { pageMetadata } from '@/lib/site';

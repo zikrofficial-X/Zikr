@@ -1,4 +1,4 @@
-import { surahAyahCounts } from '@/lib/utils/surah-mapping';
+import { surahAyahCounts } from '@/features/quran/utils/surah-mapping';
 
 /** Total number of ayahs in the Mushaf (Hafs narration). */
 export const TOTAL_AYAHS = 6236;

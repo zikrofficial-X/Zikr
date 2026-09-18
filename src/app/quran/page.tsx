@@ -1,13 +1,13 @@
-import { getAllSurahs } from "@/lib/services/quran";
-import { getAllSurahsFromDb } from "@/lib/services/quran-server";
+import { getAllSurahs } from "@/features/quran/services/quran";
+import { getAllSurahsFromDb } from "@/features/quran/services/quran-server";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { SurahSearch } from "@/components/quran/surah-search";
+import { SurahSearch } from "@/features/quran/components/surah-search";
 import { Suspense } from "react";
-import { SurahSkeleton } from "@/components/quran/surah-skeleton";
+import { SurahSkeleton } from "@/features/quran/components/surah-skeleton";
 import { pageMetadata } from "@/lib/site";
-import { QuranPageHeader } from "@/components/quran/quran-page-header";
-import { ContinueReadingBanner } from "@/components/quran/continue-reading-banner";
+import { QuranPageHeader } from "@/features/quran/components/quran-page-header";
+import { ContinueReadingBanner } from "@/features/quran/components/continue-reading-banner";
 
 // إجبار الصفحة على الرندرة الديناميكية لمنع أخطاء الـ Build مع الـ no-store fetch
 export const dynamic = "force-dynamic";
