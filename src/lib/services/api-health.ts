@@ -1,7 +1,7 @@
 import { getPublicEnv, getServerEnv } from '@/lib/env';
 import { assertSupabaseConnection } from '@/lib/supabase/server';
 import { generateGeminiText } from '@/lib/services/gemini-client';
-import { getYoutubeSyncHealth } from '@/lib/services/youtube';
+import { getYoutubeSyncHealth } from '@/features/videos/integrations/youtube';
 
 export type ApiHealthStatus = 'ok' | 'warning' | 'error';
 
