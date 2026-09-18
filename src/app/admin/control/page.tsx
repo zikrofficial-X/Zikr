@@ -1,5 +1,5 @@
 import { Container } from '@/components/ui/container';
-import { AdminPlatformCommandCenter } from '@/components/admin/admin-platform-command-center';
+import { AdminPlatformCommandCenter } from '@/features/admin/components/admin-platform-command-center';
 
 export const dynamic = 'force-dynamic';
 
