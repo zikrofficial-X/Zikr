@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';
-import KidsAudioHub from '@/components/kids/kids-audio-hub';
+import KidsAudioHub from '@/features/kids/components/kids-audio-hub';
 
 export const dynamic = 'force-static';
 
