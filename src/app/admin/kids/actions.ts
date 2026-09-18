@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/services/admin";
-import { uploadCloudinaryImage } from "@/lib/services/cloudinary";
+import { uploadCloudinaryImage } from "@/features/media/services/cloudinary";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { isRegisteredGameId } from "@/lib/games/registry";
 
