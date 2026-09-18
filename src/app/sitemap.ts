@@ -13,7 +13,7 @@ import { appRoutes, siteConfig } from "@/lib/site";
 import { staticArticles } from "@/lib/data/articles";
 import { adsenseEditorialArticles } from "@/lib/data/adsense-editorial";
 import { PUBLIC_CONTENT_THRESHOLDS } from "@/lib/content-quality";
-import type { Surah } from "@/lib/types/quran";
+import type { Surah } from "@/features/quran/types/quran";
 import type { Scholar } from "@/lib/services/scholars";
 import type { HadithBook } from "@/lib/types/hadith";
 import type { Story } from "@/lib/services/stories";

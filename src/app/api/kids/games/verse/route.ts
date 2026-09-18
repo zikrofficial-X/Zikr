@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAyahFromDb } from "@/lib/services/quran-server";
+import { getAyahFromDb } from "@/features/quran/services/quran-server";
 
 export async function GET(request: NextRequest) {
   const difficulty = request.nextUrl.searchParams.get("difficulty") ?? "easy";

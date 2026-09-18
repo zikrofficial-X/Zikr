@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useQuranWird } from '@/hooks/use-quran-wird';
-import { getAllSurahNames } from '@/lib/utils/surah-names';
+import { getAllSurahNames } from '@/features/quran/utils/surah-names';
 
 const TARGET_PRESETS = [5, 10, 20, 50, 100];
 const LOG_PRESETS = [5, 10, 20, 50];

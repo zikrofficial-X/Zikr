@@ -1,5 +1,5 @@
 import type { SearchResult } from '@/lib/types/common';
-import { searchQuran } from '@/lib/services/quran';
+import { searchQuran } from '@/features/quran/services/quran';
 import { searchHadith } from '@/lib/services/hadith';
 import { searchScholars } from '@/lib/services/scholars';
 import { getStories } from '@/lib/services/stories';

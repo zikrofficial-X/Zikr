@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { searchQuran } from '@/lib/services/quran';
+import { searchQuran } from '@/features/quran/services/quran';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface SearchRow {

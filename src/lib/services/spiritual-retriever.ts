@@ -1,6 +1,6 @@
 import { searchHadith } from '@/lib/services/hadith';
 import type { Hadith } from '@/lib/types/hadith';
-import { searchQuran } from '@/lib/services/quran';
+import { searchQuran } from '@/features/quran/services/quran';
 import { supabaseServerAnonRequest } from '@/lib/supabase/server';
 
 export type SpiritualSourceKind =

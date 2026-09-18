@@ -6,7 +6,7 @@ import {
   toAbsoluteAyah,
   fromAbsoluteAyah,
   percentComplete,
-} from '@/lib/utils/quran-progress';
+} from '@/features/quran/utils/quran-progress';
 import { getWirdProgress, saveWirdProgress } from '@/app/wird/actions';
 
 const STORAGE_KEY = 'zikr_quran_wird';

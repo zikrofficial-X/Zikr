@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
-import { getAllSurahs } from '@/lib/services/quran';
-import { getCanonicalAyahCount } from '@/lib/utils/surah-mapping';
+import { getAllSurahs } from '@/features/quran/services/quran';
+import { getCanonicalAyahCount } from '@/features/quran/utils/surah-mapping';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
