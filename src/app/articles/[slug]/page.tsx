@@ -5,8 +5,6 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { getArticleBySlug } from "@/features/articles/services/articles";
 import type { Article } from "@/features/articles/types/articles";
-import { getStaticArticleBySlug } from "@/lib/data/articles";
-import { getAdsenseEditorialArticleBySlug } from "@/lib/data/adsense-editorial";
 import { pageMetadata, siteConfig } from "@/lib/site";
 import { estimateReadingMinutes, PUBLIC_CONTENT_THRESHOLDS, splitEditorialParagraphs } from "@/lib/content-quality";
 
@@ -69,38 +67,8 @@ function dedupeReferences(references: ArticleReference[]) {
   return Array.from(new Map(references.map(item => [item.url, item])).values());
 }
 
-function staticArticleToArticle(article: ReturnType<typeof getStaticArticleBySlug>): Article | null {
-  if (!article) return null;
-
-  return {
-    id: article.id,
-    title: article.title_ar || article.title,
-    slug: article.slug,
-    summary: article.summary_ar || article.summary,
-    content: article.content_ar || article.content,
-    author: article.author,
-    featuredImageUrl: article.featured_image_url || undefined,
-    views: article.views,
-    published: true,
-    tags: article.tags,
-    metadata: article.metadata,
-    createdAt: article.created_at,
-  };
-}
-
 async function loadArticle(slug: string): Promise<Article | null> {
-  const remoteArticle = await getArticleBySlug(slug);
-  if (
-    remoteArticle?.content?.trim() &&
-    remoteArticle.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS
-  ) {
-    return remoteArticle;
-  }
-
-  return (
-    staticArticleToArticle(getStaticArticleBySlug(slug)) ??
-    staticArticleToArticle(getAdsenseEditorialArticleBySlug(slug))
-  );
+  return getArticleBySlug(slug);
 }
 
 function hasSubstantialContent(
