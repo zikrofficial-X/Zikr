@@ -7,9 +7,9 @@ import { useParams } from "next/navigation";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { KidsShare } from "@/components/kids/kids-share";
+import { KidsShare } from "@/features/kids/components/kids-share";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { KidsWorldGameShell } from "@/components/kids/games/game-shell";
+import { KidsWorldGameShell } from "@/features/kids/components/games/game-shell";
 import { parseGameContentMetadata } from "@/lib/games/registry";
 import {
   getKidsItemBySlug,
