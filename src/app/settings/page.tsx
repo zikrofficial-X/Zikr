@@ -9,7 +9,7 @@ import {
   PRAYERS,
   PRAYER_NAMES_AR,
   type PrayerKey,
-} from "@/hooks/use-prayer-alert";
+} from "@/features/prayer/hooks/use-prayer-alert";
 import {
   useSalawatReminder,
   type SalawatInterval,
