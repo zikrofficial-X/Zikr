@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';
 import Link from 'next/link';
 import { Container } from '@/components/ui/container';
-import { WirdDashboard } from '@/components/wird/wird-dashboard';
+import { WirdDashboard } from '@/features/quran/components/wird-dashboard';
 
 export const metadata: Metadata = pageMetadata({
   title: 'الورد اليومي وختم القرآن',
