@@ -10,7 +10,7 @@ import {
 } from "@/components/content/content-references";
 import { pageMetadata } from "@/lib/site";
 import type { Metadata } from "next";
-import { COMPANIONS } from "@/lib/data/companions";
+import { COMPANIONS } from "@/features/companions/data/fallback";
 
 const STATIC_COMPANION_SLUGS: Record<string, string> = {
   "أبو بكر الصديق": "abu-bakr",
