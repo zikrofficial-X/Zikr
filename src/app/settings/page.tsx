@@ -13,7 +13,7 @@ import {
 import {
   useSalawatReminder,
   type SalawatInterval,
-} from "@/hooks/use-salawat-reminder";
+} from "@/features/reminders/hooks/use-salawat-reminder";
 import { isAudioUnlocked } from "@/lib/audio/spiritual-tones";
 import { hydrateOfflineContent } from "@/lib/offline-pack";
 
