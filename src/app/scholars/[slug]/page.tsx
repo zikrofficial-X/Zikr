@@ -4,7 +4,7 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getAllScholars, getScholarBySlug } from "@/lib/services/scholars";
+import { getAllScholars, getScholarBySlug } from "@/features/scholars/services/scholars";
 import { siteConfig } from "@/lib/site";
 import { ContentReferences, getContentReferences } from "@/components/content/content-references";
 

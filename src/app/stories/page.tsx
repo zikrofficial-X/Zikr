@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { Badge } from '@/components/ui/badge';
 import { SectionHeader } from '@/components/ui/section-header';
-import { getStories } from '@/lib/services/stories';
+import { getStories } from '@/features/stories/services/stories';
 import { getYoutubeChannelFeed } from '@/lib/services/youtube';
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';

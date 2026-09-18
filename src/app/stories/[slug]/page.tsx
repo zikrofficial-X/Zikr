@@ -1,4 +1,4 @@
-import { getStoryBySlug } from "@/lib/services/stories";
+import { getStoryBySlug } from "@/features/stories/services/stories";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

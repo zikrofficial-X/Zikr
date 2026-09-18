@@ -1,8 +1,8 @@
 import type { SearchResult } from '@/lib/types/common';
 import { searchQuran } from '@/features/quran/services/quran';
 import { searchHadith } from '@/features/hadith/services/hadith';
-import { searchScholars } from '@/lib/services/scholars';
-import { getStories } from '@/lib/services/stories';
+import { searchScholars } from '@/features/scholars/services/scholars';
+import { getStories } from '@/features/stories/services/stories';
 
 export type GlobalSearchResult =
   | SearchResult<'quran', { text: string; number: number }>
