@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/ui/section-header';
-import { requireAdminPermission } from '@/lib/services/admin';
+import { requireAdminPermission } from '@/features/admin/services/admin';
 import { createClient } from '@/lib/supabase/server';
 import { safeDeleteContentAction, safeTogglePublishAction } from '../content-actions';
 

@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminPermission } from "@/lib/services/admin";
-import { requireAdminStepUp } from "@/lib/services/admin-security";
-import { enforceAdminRateLimit } from "@/lib/services/admin-rate-limit";
-import { recordAdminAuditEvent } from "@/lib/services/admin-audit";
+import { requireAdminPermission } from "@/features/admin/services/admin";
+import { requireAdminStepUp } from "@/features/admin/services/security";
+import { enforceAdminRateLimit } from "@/features/admin/services/rate-limit";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 type ManagedTable = "stories" | "articles" | "competitions" | "memorization_plans" | "pinned_messages";
