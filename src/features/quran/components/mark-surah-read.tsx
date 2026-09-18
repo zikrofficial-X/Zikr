@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuranWird } from '@/hooks/use-quran-wird';
+import { useQuranWird } from '@/features/quran/hooks/use-quran-wird';
 
 interface MarkSurahReadProps {
   surahId: number;

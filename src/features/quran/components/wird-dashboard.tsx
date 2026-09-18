@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useQuranWird } from '@/hooks/use-quran-wird';
+import { useQuranWird } from '@/features/quran/hooks/use-quran-wird';
 import { getAllSurahNames } from '@/features/quran/utils/surah-names';
 
 const TARGET_PRESETS = [5, 10, 20, 50, 100];
