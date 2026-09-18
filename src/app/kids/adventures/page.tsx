@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
-import { readKidsProgress, updateKidsProgress } from '@/lib/data/kids-audio-client';
+import { readKidsProgress, updateKidsProgress } from '@/features/kids/data/audio-client';
 
 type AdventureMode = 'missions' | 'memory' | 'scenarios';
 

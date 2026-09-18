@@ -3,7 +3,7 @@ import {
   KIDS_ACHIEVEMENT_STORAGE_KEY,
   normalizeKidsProgress,
   type KidsProgress,
-} from './kids-audio';
+} from './audio';
 
 export function readKidsProgress(): KidsProgress {
   if (typeof window === 'undefined') return { ...EMPTY_KIDS_PROGRESS };

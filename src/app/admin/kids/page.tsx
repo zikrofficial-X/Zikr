@@ -5,7 +5,7 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { requireAdmin } from "@/lib/services/admin";
-import { kidsContent } from "@/lib/data/kids-content";
+import { kidsContent } from "@/features/kids/data/content";
 import { saveKidsContentAction } from "./actions";
 import { CloudinaryImageUploadField } from "@/features/admin/components/cloudinary-image-upload-field";
 import { GAME_REGISTRY } from "@/lib/games/registry";

@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   kidsContent as staticKidsContent,
   normalizeKidsContentRow,
-} from "@/lib/data/kids-content";
+} from "@/features/kids/data/content";
 
 interface KidsContent {
   id: string;

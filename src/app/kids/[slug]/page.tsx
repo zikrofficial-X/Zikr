@@ -14,7 +14,7 @@ import { parseGameContentMetadata } from "@/lib/games/registry";
 import {
   getKidsItemBySlug,
   normalizeKidsContentRow,
-} from "@/lib/data/kids-content";
+} from "@/features/kids/data/content";
 
 type QuizQuestion = {
   text: string;
