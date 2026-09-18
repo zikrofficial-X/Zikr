@@ -1,4 +1,4 @@
-import { kidsContent, type KidsQuizQuestion } from "@/lib/data/kids-content";
+import { kidsContent, type KidsQuizQuestion } from "@/features/kids/data/content";
 
 export type VerifiedQuizQuestion = KidsQuizQuestion & {
   category: string;

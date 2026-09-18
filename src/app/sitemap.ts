@@ -8,8 +8,6 @@ import { getProphets } from "@/features/prophets/services/prophets";
 import { surahs as fallbackSurahs } from "@/features/quran/data/fallback";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { appRoutes, siteConfig } from "@/lib/site";
-import { staticArticles } from "@/lib/data/articles";
-import { adsenseEditorialArticles } from "@/lib/data/adsense-editorial";
 import { PUBLIC_CONTENT_THRESHOLDS } from "@/lib/content-quality";
 import type { Surah } from "@/features/quran/types/quran";
 import type { Scholar } from "@/features/scholars/types/scholars";
@@ -84,11 +82,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       ...scholars.map((scholar: Scholar) => route(`/scholars/${scholar.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
       ...hadithBooks.map((book: HadithBook) => route(`/hadith/${book.slug ?? book.id}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
       ...stories.filter((story: Story) => (story.content?.trim().length ?? 0) >= MIN_INDEXABLE_STORY_CHARS).map((story: Story) => route(`/stories/${story.slug}`, { lastModified: now, changeFrequency: "weekly", priority: 0.7 })),
-      ...Array.from(new Map([
-        ...articles,
-        ...staticArticles.map(article => ({ slug: article.slug, content: article.content_ar })),
-        ...adsenseEditorialArticles.map(article => ({ slug: article.slug, content: article.content_ar })),
-      ].map(article => [article.slug, article] as const)).values())
+      ...articles
         .filter(article => (article.content?.trim().length ?? 0) >= MIN_INDEXABLE_EDITORIAL_CHARS)
         .map(article => route(`/articles/${article.slug}`, { lastModified: now, changeFrequency: "weekly", priority: 0.7 })),
       ...STATIC_PROPHET_SLUGS.map(slug => route(`/prophets/${slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
