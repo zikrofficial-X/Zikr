@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/lib/services/admin";
-import { AdminStepUp } from "@/components/admin/admin-step-up";
+import { AdminStepUp } from "@/features/admin/components/admin-step-up";
 
 export const metadata: Metadata = { title: "تحقق إضافي | الأدمن" };
 
