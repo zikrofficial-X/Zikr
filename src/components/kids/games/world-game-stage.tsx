@@ -15,12 +15,12 @@ import {
   shuffleWuduSteps,
   type IndexedVerseToken,
 } from "@/lib/games/gameplay-helpers";
-import { ArcadeGame } from "@/components/kids/games/arcade-game";
+import { ArcadeGame } from "@/features/kids/components/games/arcade-game";
 import type {
   ArcadeGameScene,
   ArcadeHud,
 } from "@/lib/games/arcade/arcade-scene";
-import { ZikrRunnerGame } from "@/components/kids/games/zikr-runner-game";
+import { ZikrRunnerGame } from "@/features/kids/components/games/zikr-runner-game";
 import type {
   RunnerHud,
   ZikrRunnerScene,
