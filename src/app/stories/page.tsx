@@ -6,7 +6,7 @@ import { Container } from '@/components/ui/container';
 import { Badge } from '@/components/ui/badge';
 import { SectionHeader } from '@/components/ui/section-header';
 import { getStories } from '@/features/stories/services/stories';
-import { getYoutubeChannelFeed } from '@/lib/services/youtube';
+import { getYoutubeChannelFeed } from '@/features/videos/integrations/youtube';
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';
 import { PUBLIC_CONTENT_THRESHOLDS } from '@/lib/content-quality';
