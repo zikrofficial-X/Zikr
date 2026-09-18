@@ -5,7 +5,7 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Castle } from "lucide-react";
 import { pageMetadata } from "@/lib/site";
-import { FALLBACK_CONQUESTS } from "@/lib/data/conquests-fallback";
+import { FALLBACK_CONQUESTS } from "@/features/conquests/data/conquests-fallback";
 import { mergePublishedBySlug } from "@/lib/data/content-merge";
 
 export const metadata = pageMetadata({
