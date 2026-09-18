@@ -3,7 +3,7 @@ import typography from '@tailwindcss/typography';
 import animate from 'tailwindcss-animate';
 
 const config: Config = {
-  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
@@ -16,12 +16,8 @@ const config: Config = {
           mist: '#8FA49F'
         }
       },
-      fontFamily: {
-        arabic: ['var(--font-arabic)', 'serif']
-      },
-      boxShadow: {
-        glow: '0 10px 30px rgba(199,168,107,0.2)'
-      }
+      fontFamily: { arabic: ['var(--font-arabic)', 'serif'] },
+      boxShadow: { glow: '0 10px 30px rgba(199,168,107,0.2)' }
     }
   },
   plugins: [typography, animate],
