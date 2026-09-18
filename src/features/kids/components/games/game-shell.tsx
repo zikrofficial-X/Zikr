@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getGameDefinition, type GameDifficulty, type GameId, type GameResultPayload } from "@/lib/games/registry";
 import { enqueueGameResult, getQueuedGameResultCount, syncQueuedGameResults } from "@/lib/games/offline-queue";
-import { WorldGameStage, type StageController, type WorldHud } from "@/components/kids/games/world-game-stage";
+import { WorldGameStage, type StageController, type WorldHud } from "@/features/kids/components/games/world-game-stage";
 
 function formatNumber(value: number) { return new Intl.NumberFormat("ar-SA").format(value); }
 function createSubmissionId() { return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `game-${Date.now()}-${Math.random().toString(36).slice(2)}`; }

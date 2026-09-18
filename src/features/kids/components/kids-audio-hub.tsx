@@ -11,8 +11,8 @@ import {
   KIDS_AUDIO_TRACKS,
   type KidsAudioCategory,
   type KidsAudioTrack,
-} from '@/lib/data/kids-audio';
-import { readKidsProgress, updateKidsProgress } from '@/lib/data/kids-audio-client';
+} from '@/features/kids/data/audio';
+import { readKidsProgress, updateKidsProgress } from '@/features/kids/data/audio-client';
 
 const categoryOrder: Array<KidsAudioCategory | 'all'> = ['all', 'story', 'nasheed', 'dhikr'];
 const categoryLabels: Record<KidsAudioCategory | 'all', string> = {

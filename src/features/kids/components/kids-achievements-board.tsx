@@ -10,8 +10,8 @@ import {
   getEarnedKidsAchievements,
   KIDS_ACHIEVEMENTS,
   type KidsProgress,
-} from '@/lib/data/kids-audio';
-import { readKidsProgress } from '@/lib/data/kids-audio-client';
+} from '@/features/kids/data/audio';
+import { readKidsProgress } from '@/features/kids/data/audio-client';
 
 type HonorLevel = {
   title: string;
