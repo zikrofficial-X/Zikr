@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import Link from "next/link";
-import { requireAdminPermission } from "@/lib/services/admin";
+import { requireAdminPermission } from "@/features/admin/services/admin";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "عمليات النشر الاجتماعي | الأدمن" };

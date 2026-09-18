@@ -2,9 +2,9 @@ export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
-import { requireAdminPermission, getCurrentProfile } from "@/lib/services/admin";
-import { getAdminSettings } from "@/lib/services/admin-platform";
-import { getAdminPermissions, ADMIN_PERMISSIONS, type AdminPermission } from "@/lib/services/admin-permissions";
+import { requireAdminPermission, getCurrentProfile } from "@/features/admin/services/admin";
+import { getAdminSettings } from "@/features/admin/services/platform";
+import { getAdminPermissions, ADMIN_PERMISSIONS, type AdminPermission } from "@/features/admin/services/permissions";
 
 export const metadata: Metadata = { title: "أمن لوحة الإدارة | الأدمن" };
 
