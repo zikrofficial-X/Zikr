@@ -2,7 +2,7 @@ import { safeApiFetch } from "@/lib/services/http";
 import { getPublicEnv } from "@/lib/env";
 import { ServiceError } from "@/lib/types/common";
 import type { Ayah, Juz, QuranApiResponse, Surah, Reciter } from "@/features/quran/types/quran";
-import { surahs as fallbackSurahs, reciters as fallbackReciters } from "@/lib/data/content";
+import { surahs as fallbackSurahs, reciters as fallbackReciters } from "@/features/quran/data/fallback";
 import { getCanonicalAyahCount } from "@/features/quran/utils/surah-mapping";
 
 const QURAN_API_BASE = "https://api.alquran.cloud/v1";
