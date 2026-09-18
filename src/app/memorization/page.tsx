@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
-import { getMemorizationPlans } from '@/lib/services/site-content';
+import { getMemorizationPlans } from '@/features/site-content/services/site-content';
 import { VoiceRecorder } from './voice-recorder';
 import { ProgressTracker } from './progress-tracker';
 import { getMemorizationProgress } from './actions';

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSiteSetting } from "@/lib/services/site-content";
+import { getSiteSetting } from "@/features/site-content/services/site-content";
 
 export const dynamic = "force-dynamic";
 

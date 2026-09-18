@@ -6,7 +6,7 @@ import { VideoUploadField } from "@/components/admin/video-upload-field";
 import { CloudinaryImageUploadField } from "@/components/admin/cloudinary-image-upload-field";
 import { AudioChoiceField } from "@/components/admin/audio-choice-field";
 import { normalizeAudioSettings } from '@/lib/audio/config';
-import { getSiteSetting } from '@/lib/services/site-content';
+import { getSiteSetting } from '@/features/site-content/services/site-content';
 import { Container } from "@/components/ui/container";
 import { requireAdmin } from "@/lib/services/admin";
 import { runApiHealthChecks } from "@/lib/services/api-health";

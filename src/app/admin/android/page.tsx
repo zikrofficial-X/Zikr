@@ -1,6 +1,6 @@
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
-import { getSiteSetting, type SiteSettingValue } from "@/lib/services/site-content";
+import { getSiteSetting, type SiteSettingValue } from "@/features/site-content/services/site-content";
 import { saveAndroidReleaseAction } from "./actions";
 
 const RELEASES_API_BASE =

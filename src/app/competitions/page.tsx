@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
-import { getCompetitions } from '@/lib/services/site-content';
+import { getCompetitions } from '@/features/site-content/services/site-content';
 import { pageMetadata } from '@/lib/site';
 
 export const metadata: Metadata = pageMetadata({

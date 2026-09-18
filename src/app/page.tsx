@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { Container } from '@/components/ui/container';
-import { getSiteSetting } from '@/lib/services/site-content';
+import { getSiteSetting } from '@/features/site-content/services/site-content';
 import { HomeInteractive } from '@/components/home/home-interactive';
 
 export const dynamic = 'force-dynamic';

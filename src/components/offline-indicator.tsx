@@ -1,6 +1,6 @@
 'use client';
 
-import { useOfflineStatus } from '@/hooks/use-offline-status';
+import { useOfflineStatus } from '@/features/offline/hooks/use-offline-status';
 import { useEffect, useState } from 'react';
 
 export function OfflineIndicator() {
