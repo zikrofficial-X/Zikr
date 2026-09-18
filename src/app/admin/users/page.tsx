@@ -6,7 +6,7 @@ import {
   supabaseServerAdminRequest,
   supabaseServerAdminCount,
 } from "@/lib/supabase/server";
-import { UsersTable } from "@/components/admin/users-table";
+import { UsersTable } from "@/features/admin/components/users-table";
 
 interface UserProfile {
   id: string;
