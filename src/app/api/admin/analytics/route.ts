@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server";
-import { requireAdminApi } from "@/lib/services/admin";
+import { requireAdminApi } from "@/features/admin/services/admin";
 import { NextResponse } from "next/server";
 
 interface DatedRow {

@@ -1,4 +1,4 @@
-import { requireAdminApi } from "@/lib/services/admin";
+import { requireAdminApi } from "@/features/admin/services/admin";
 import { createAdminClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
