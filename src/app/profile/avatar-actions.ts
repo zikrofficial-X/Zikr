@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { uploadCloudinaryImage } from '@/lib/services/cloudinary';
+import { uploadCloudinaryImage } from '@/features/media/services/cloudinary';
 import { createClient } from '@/lib/supabase/server';
 
 export async function uploadAvatarAction(formData: FormData) {
