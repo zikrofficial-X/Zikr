@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { AdminMobileNav, AdminSidebar, type AdminNavGroup } from '@/components/admin/admin-sidebar';
+import { AdminMobileNav, AdminSidebar, type AdminNavGroup } from '@/features/admin/components/admin-sidebar';
 import { requireAdmin, getCurrentProfile } from '@/lib/services/admin';
 import { hasAdminPermission, type AdminPermission } from '@/lib/services/admin-permissions';
 
