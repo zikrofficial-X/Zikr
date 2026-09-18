@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { SocialPublishQueueItem, SocialQueueStatus } from '@/lib/services/social-publishing';
+import type { SocialPublishQueueItem, SocialQueueStatus } from '@/features/social/services/social-publishing';
 
 type Status = SocialQueueStatus;
 type QueueItem = SocialPublishQueueItem;
