@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
 import { logoutAction, updateProfileAction } from '@/app/auth/actions';
-import { AvatarUpload } from '@/components/profile/avatar-upload';
+import { AvatarUpload } from '@/features/profile/components/avatar-upload';
 import Link from 'next/link';
 
 type Favorite = {
