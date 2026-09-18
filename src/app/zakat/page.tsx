@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';
 import Link from 'next/link';
 import { Container } from '@/components/ui/container';
-import { ZakatDashboard } from '@/components/zakat/zakat-dashboard';
+import { ZakatDashboard } from '@/features/zakat/components/zakat-dashboard';
 
 export const metadata: Metadata = pageMetadata({
   title: 'الزكاة والتذكير السنوي',
