@@ -3,8 +3,8 @@ export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
-import { requireAdminPermission } from "@/lib/services/admin";
-import { searchAdminContent } from "@/lib/services/admin-platform";
+import { requireAdminPermission } from "@/features/admin/services/admin";
+import { searchAdminContent } from "@/features/admin/services/platform";
 
 export const metadata: Metadata = { title: "بحث الإدارة | الأدمن" };
 

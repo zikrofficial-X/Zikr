@@ -2,8 +2,8 @@ export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
-import { requireAdminPermission } from "@/lib/services/admin";
-import { getAdminHealth } from "@/lib/services/admin-platform";
+import { requireAdminPermission } from "@/features/admin/services/admin";
+import { getAdminHealth } from "@/features/admin/services/platform";
 
 export const metadata: Metadata = { title: "مركز الإصدار | الأدمن" };
 
