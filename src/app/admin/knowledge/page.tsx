@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { requireAdmin } from '@/lib/services/admin';
+import { requireAdmin } from '@/features/admin/services/admin';
 import { createClient } from '@/lib/supabase/server';
 import { saveCompanionAction, saveHadithAction, saveScholarAction, saveSurahAction } from './actions';
 

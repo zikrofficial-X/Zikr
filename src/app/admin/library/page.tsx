@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createAdminClient, supabaseServerAdminRequest } from '@/lib/supabase/server';
-import { requireAdminPermission } from '@/lib/services/admin';
-import { requireAdminStepUp } from '@/lib/services/admin-security';
-import { recordAdminAuditEvent } from '@/lib/services/admin-audit';
+import { requireAdminPermission } from '@/features/admin/services/admin';
+import { requireAdminStepUp } from '@/features/admin/services/security';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 
 type LibraryAction = 'create' | 'status' | 'publish' | 'unpublish' | 'delete';
 
