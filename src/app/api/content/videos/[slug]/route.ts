@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getVideoBySlug } from '@/lib/services/content';
+import { getVideoBySlug } from '@/features/videos/services/videos';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

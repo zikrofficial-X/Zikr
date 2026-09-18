@@ -1,4 +1,7 @@
-import type { Article, ArticleCategory, Video, VideoCategory, Dua, DuaCategory, Prophet } from '@/lib/services/content';
+import type { Article, ArticleCategory } from '@/features/articles/types/articles';
+import type { Video, VideoCategory } from '@/features/videos/types/videos';
+import type { Dua, DuaCategory } from '@/features/dua/types/dua';
+import type { Prophet } from '@/features/prophets/types/prophets';
 
 export const FALLBACK_ARTICLE_CATEGORIES: ArticleCategory[] = [
   { id: 'faith', nameAr: 'العقيدة والإيمان', nameEn: 'Faith', slug: 'faith', icon: '🕌' },

@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getDuaBySlug, type Dua } from '@/lib/services/content';
+import { getDuaBySlug } from '@/features/dua/services/dua';
+import type { Dua } from '@/features/dua/types/dua';
 import { pageMetadata } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';

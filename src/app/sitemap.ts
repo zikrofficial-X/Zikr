@@ -2,11 +2,9 @@ import type { MetadataRoute } from "next";
 import { getAllScholars } from "@/lib/services/scholars";
 import { getHadithBooks } from "@/features/hadith/services/hadith";
 import { getStories } from "@/lib/services/stories";
-import {
-  getArticles,
-  getDuas,
-  getProphets,
-} from "@/lib/services/content";
+import { getArticles } from "@/features/articles/services/articles";
+import { getDuas } from "@/features/dua/services/dua";
+import { getProphets } from "@/features/prophets/services/prophets";
 import { surahs as fallbackSurahs } from "@/lib/data/content";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { appRoutes, siteConfig } from "@/lib/site";
@@ -17,7 +15,9 @@ import type { Surah } from "@/features/quran/types/quran";
 import type { Scholar } from "@/lib/services/scholars";
 import type { HadithBook } from "@/features/hadith/types/hadith";
 import type { Story } from "@/lib/services/stories";
-import type { Prophet, Article, Dua } from "@/lib/services/content";
+import type { Prophet } from "@/features/prophets/types/prophets";
+import type { Article } from "@/features/articles/types/articles";
+import type { Dua } from "@/features/dua/types/dua";
 
 type SitemapEntry = MetadataRoute.Sitemap[number];
 type SlugRow = { slug: string };

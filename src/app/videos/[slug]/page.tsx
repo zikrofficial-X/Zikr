@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getVideoBySlug, getVideos } from '@/lib/services/content';
+import { getVideoBySlug, getVideos } from '@/features/videos/services/videos';
 import { pageMetadata } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
