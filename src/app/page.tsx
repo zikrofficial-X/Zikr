@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { Container } from '@/components/ui/container';
 import { getSiteSetting } from '@/features/site-content/services/site-content';
-import { HomeInteractive } from '@/components/home/home-interactive';
+import { HomeInteractive } from '@/features/home/components/home-interactive';
 
 export const dynamic = 'force-dynamic';
 
