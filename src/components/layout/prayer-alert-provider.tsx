@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { usePrayerAlert, PRAYER_NAMES_AR, type PrayerKey } from '@/features/prayer/hooks/use-prayer-alert';
 import { useSalawatReminder } from '@/features/reminders/hooks/use-salawat-reminder';
 import { useZakatReminder } from '@/hooks/use-zakat-reminder';
-import { showZakatNotification } from '@/lib/services/notifications';
+import { showZakatNotification } from '@/features/notifications/services/notifications';
 import { unlockAudioContext } from '@/lib/audio/spiritual-tones';
 
 interface ActiveAlert {

@@ -1,17 +1,17 @@
 
 'use server';
 
-import { generateGeminiText } from '@/lib/services/gemini-client';
+import { generateGeminiText } from '@/features/spiritual-ai/services/gemini-client';
 import {
   formatSourcesForPrompt,
   retrieveSpiritualSources,
   type SpiritualSource,
-} from '@/lib/services/spiritual-retriever';
+} from '@/features/spiritual-ai/services/retriever';
 import {
   classifyQuestion,
   detectEmotion,
   isCrisisMessage,
-} from '@/lib/services/spiritual-ai-policy';
+} from '@/features/spiritual-ai/services/policy';
 
 export interface ChatCitation {
   label: string;

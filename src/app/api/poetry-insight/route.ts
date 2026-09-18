@@ -1,4 +1,4 @@
-import { generateGeminiText } from '@/lib/services/gemini-client';
+import { generateGeminiText } from '@/features/spiritual-ai/services/gemini-client';
 import { getSupabaseUser } from '@/lib/supabase/server';
 
 /**

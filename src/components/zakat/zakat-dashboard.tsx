@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useZakatReminder, type ZakatCalendar } from '@/hooks/use-zakat-reminder';
-import { requestNotificationPermission } from '@/lib/services/notifications';
+import { requestNotificationPermission } from '@/features/notifications/services/notifications';
 
 const ZAKAT_RATE = 0.025; // 2.5%
 

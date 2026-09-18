@@ -9,7 +9,7 @@ import {
 import {
   showSalawatNotification,
   isInQuietHours,
-} from "@/lib/services/notifications";
+} from "@/features/notifications/services/notifications";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export type SalawatInterval = 15 | 30 | 60 | 120 | 0; // 0 = disabled

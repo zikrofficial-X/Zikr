@@ -17,7 +17,7 @@
  * Response:
  *   - string: AI-generated evaluation in Arabic
  */
-import { generateGeminiFromAudio, generateGeminiText } from '@/lib/services/gemini-client';
+import { generateGeminiFromAudio, generateGeminiText } from '@/features/spiritual-ai/services/gemini-client';
 
 export async function evaluateMemorizationAction(formData: FormData) {
   const targetValue = formData.get('target');
