@@ -1,130 +1,72 @@
-export const dynamic = 'force-dynamic';
-
-import type { Metadata } from 'next';
-import Image from 'next/image';
-import { pageMetadata } from '@/lib/site';
-import Link from 'next/link';
-import { Container } from '@/components/ui/container';
-import { Card } from '@/components/ui/card';
-import { SectionHeader } from '@/components/ui/section-header';
-import { Badge } from '@/components/ui/badge';
-import { createClient } from '@/lib/supabase/server';
-import { staticArticles } from '@/lib/data/articles';
-import { adsenseEditorialArticles } from '@/lib/data/adsense-editorial';
-import { mergePublishedBySlug } from '@/lib/data/content-merge';
-
-const MIN_PUBLIC_ARTICLE_CHARS = 1800;
-
-export const metadata: Metadata = pageMetadata({
-  title: 'المقالات الإسلامية',
-  description: 'مقالات أصلية ومراجعة تحريرياً عن الإسلام والقرآن والحديث والسيرة والتزكية والتطبيق العملي من منصة ذِكر.',
-  path: '/articles',
-});
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { pageMetadata } from "@/lib/site";
+import { Container } from "@/components/ui/container";
+import { Card } from "@/components/ui/card";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Badge } from "@/components/ui/badge";
+import { getArticleCategories, getArticles } from "@/features/articles/services/articles";
 
 export const revalidate = 1800;
 
-interface Article {
-  id: string;
-  title: string;
-  slug: string;
-  summary?: string | null;
-  content?: string | null;
-  author?: string | null;
-  featured_image_url?: string | null;
-  views: number;
-  created_at: string;
-  category_id?: string | null;
-}
-
-interface ArticleCategory {
-  id: string;
-  name_ar: string;
-  slug: string;
-  icon?: string | null;
-}
-
-const staticCategories: ArticleCategory[] = [
-  { id: 'aqeedah', name_ar: 'العقيدة', slug: 'aqeedah', icon: null },
-  { id: 'fiqh', name_ar: 'الفقه', slug: 'fiqh', icon: null },
-  { id: 'tazkiyah', name_ar: 'التزكية', slug: 'tazkiyah', icon: null },
-  { id: 'history', name_ar: 'التاريخ والسيرة', slug: 'history', icon: null },
-];
+export const metadata: Metadata = pageMetadata({
+  title: "المقالات الإسلامية",
+  description: "مقالات أصلية ومراجعة تحريرياً عن الإسلام والقرآن والحديث والسيرة والتزكية والتطبيق العملي من منصة ذِكر.",
+  path: "/articles",
+});
 
 export default async function ArticlesPage() {
-  let articles: Article[] = [];
-  let categories: ArticleCategory[] = [];
+  const [articles, categories] = await Promise.all([
+    getArticles(undefined, 100),
+    getArticleCategories(),
+  ]);
 
-  try {
-    const supabase = await createClient();
-    const [articlesRes, categoriesRes] = await Promise.all([
-      supabase
-        .from('articles')
-        .select('id, title, slug, summary, content, author, featured_image_url, views, created_at, category_id')
-        .eq('published', true)
-        .order('created_at', { ascending: false })
-        .limit(1000),
-      supabase
-        .from('article_categories')
-        .select('id, name_ar, slug, icon')
-        .eq('published', true)
-        .order('name_ar', { ascending: true }),
-    ]);
-    articles = articlesRes.data ?? [];
-    categories = categoriesRes.data ?? [];
-  } catch {
-    // Fall through to bundled editorial content.
-  }
-
-  const completeArticles = articles.filter(article =>
-    typeof article.content === 'string' && article.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS,
+  const categoryCounts = new Map(
+    categories.map(category => [
+      category.id,
+      articles.filter(article => article.categoryId === category.id).length,
+    ]),
   );
-  const mergedArticles = mergePublishedBySlug(
-    completeArticles,
-    [...staticArticles, ...adsenseEditorialArticles],
-  );
-  const displayArticles = mergedArticles.filter(article =>
-    typeof article.content === 'string' && article.content.trim().length >= MIN_PUBLIC_ARTICLE_CHARS,
-  );
-  const displayCategories = mergePublishedBySlug(categories, staticCategories);
 
   return (
     <Container className="py-12 space-y-10">
       <section className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-brand-gold text-balance">المقالات الإسلامية</h1>
         <p className="max-w-2xl mx-auto text-lg leading-8 arabic-muted text-pretty">
-          مقالات أصلية ومراجعة تحريرياً عن الإسلام والقرآن والحديث والسيرة والتزكية والتطبيق العملي، مع مصادر التحقق عند الحاجة.
+          مكتبة مقالات تحريرية قابلة للمراجعة والتحقق، مع مصدر واحد للبيانات بين لوحة الإدارة والواجهة العامة.
         </p>
       </section>
 
-      {displayCategories.length > 0 && (
+      {categories.length > 0 && (
         <section className="flex flex-wrap justify-center gap-3" aria-label="تصنيفات المقالات">
-          {displayCategories.map((cat) => (
+          {categories.map(category => (
             <span
-              key={cat.id}
-              className="rounded-full border border-brand-gold/30 px-4 py-1.5 text-sm text-brand-cream/70 hover:border-brand-gold hover:text-brand-gold transition-colors"
+              key={category.id}
+              className="rounded-full border border-brand-gold/30 px-4 py-1.5 text-sm text-brand-cream/70"
             >
-              {cat.icon && <span className="mr-1">{cat.icon}</span>}
-              {cat.name_ar}
+              {category.icon && <span className="mr-1">{category.icon}</span>}
+              {category.nameAr}
+              <span className="mr-2 text-brand-gold/70">
+                ({categoryCounts.get(category.id) ?? 0})
+              </span>
             </span>
           ))}
         </section>
       )}
 
       <section className="space-y-6">
-        <SectionHeader
-          title="المقالات المنشورة"
-          subtitle={`${displayArticles.length} مقالة`}
-        />
+        <SectionHeader title="المقالات المنشورة" subtitle={`${articles.length} مقالة`} />
 
-        {displayArticles.length > 0 ? (
+        {articles.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {displayArticles.map((article) => (
-              <Link key={`${article.id}-${article.slug}`} href={`/articles/${article.slug}`}>
-                <Card className="h-full flex flex-col hover:border-brand-gold/50 transition-colors cursor-pointer">
-                  {article.featured_image_url ? (
+            {articles.map(article => (
+              <Link key={article.slug} href={`/articles/${article.slug}`}>
+                <Card className="h-full flex flex-col hover:border-brand-gold/50 transition-colors">
+                  {article.featuredImageUrl ? (
                     <div className="relative w-full h-40 bg-brand-gold/10 rounded-t-xl overflow-hidden">
                       <Image
-                        src={article.featured_image_url}
+                        src={article.featuredImageUrl}
                         alt={article.title}
                         fill
                         sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
@@ -132,8 +74,8 @@ export default async function ArticlesPage() {
                       />
                     </div>
                   ) : (
-                    <div className="w-full h-40 bg-gradient-to-br from-brand-gold/10 to-brand-emerald/10 rounded-t-xl flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-brand-gold/30" aria-hidden="true">
+                    <div className="w-full h-40 bg-gradient-to-br from-brand-gold/10 to-brand-emerald/10 rounded-t-xl flex items-center justify-center" aria-hidden="true">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-brand-gold/30">
                         <path d="M11.25 4.533A9.707 9.707 0 0 0 6 3a9.735 9.735 0 0 0-3.25.555.75.75 0 0 0-.5.707v14.25a.75.75 0 0 0 1 .707A8.237 8.237 0 0 1 6 18.75c1.995 0 3.823.707 5.25 1.886V4.533ZM12.75 20.636A8.214 8.214 0 0 1 18 18.75c.966 0 1.89.166 2.75.47a.75.75 0 0 0 1-.708V4.262a.75.75 0 0 0-.5-.707A9.735 9.735 0 0 0 18 3a9.707 9.707 0 0 0-5.25 1.533v16.103Z" />
                       </svg>
                     </div>
@@ -148,7 +90,9 @@ export default async function ArticlesPage() {
                     <div className="flex items-center justify-between text-xs text-brand-cream/50 pt-3 border-t border-brand-gold/10">
                       {article.author && <span>{article.author}</span>}
                       {article.views > 0 && (
-                        <Badge variant="outline" className="text-[10px]">{article.views.toLocaleString('ar-EG')} مشاهدة</Badge>
+                        <Badge variant="outline" className="text-[10px]">
+                          {article.views.toLocaleString("ar-EG")} مشاهدة
+                        </Badge>
                       )}
                     </div>
                   </div>
@@ -163,28 +107,18 @@ export default async function ArticlesPage() {
         )}
       </section>
 
-      <section>
-        <Card className="p-8 text-center space-y-4 bg-brand-gold/5">
-          <h2 className="text-2xl font-bold text-brand-gold">مصادر ومراجعة المحتوى</h2>
-          <p className="max-w-xl mx-auto arabic-muted leading-7">
-            نحرص على اكتمال المادة قبل نشرها، ويمكنك الرجوع إلى صفحة معايير التحرير والمصادر لمعرفة منهجية التحقق.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link
-              href="/editorial-policy"
-              className="rounded-lg bg-brand-gold px-6 py-2.5 text-sm font-semibold text-brand-emeraldDeep hover:bg-brand-goldSoft transition-colors"
-            >
-              معايير التحرير والمصادر
-            </Link>
-            <Link
-              href="/search"
-              className="rounded-lg border border-brand-gold/30 px-6 py-2.5 text-sm text-brand-cream/70 hover:border-brand-gold hover:text-brand-gold transition-colors"
-            >
-              البحث في المحتوى
-            </Link>
-          </div>
-        </Card>
-      </section>
+      <Card className="p-8 text-center space-y-4 bg-brand-gold/5">
+        <h2 className="text-2xl font-bold text-brand-gold">مصادر ومراجعة المحتوى</h2>
+        <p className="max-w-xl mx-auto arabic-muted leading-7">
+          اكتمال المادة، وضوح نسبتها، وصلاحية مصادرها تسبق النشر العام. راجع معايير التحرير قبل اعتماد أي مادة جديدة.
+        </p>
+        <Link
+          href="/editorial-policy"
+          className="inline-flex rounded-lg bg-brand-gold px-6 py-2.5 text-sm font-semibold text-brand-emeraldDeep"
+        >
+          معايير التحرير والمصادر
+        </Link>
+      </Card>
     </Container>
   );
 }

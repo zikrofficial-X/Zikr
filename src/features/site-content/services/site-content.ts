@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { FALLBACK_COMPETITIONS } from '@/lib/data/competitions-fallback';
+import { FALLBACK_COMPETITIONS } from '@/features/competitions/data/fallback';
 
 export type SiteSettingValue = {
   title?: string | null;

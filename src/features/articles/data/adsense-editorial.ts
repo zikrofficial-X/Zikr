@@ -1,4 +1,4 @@
-import type { StaticArticle } from "@/lib/data/articles";
+import type { StaticArticle } from "@/features/articles/data/articles";
 
 const reviewedAt = "2026-09-05T00:00:00.000Z";
 
