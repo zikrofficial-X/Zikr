@@ -32,9 +32,9 @@ type ConquestEvent = {
 
 import { pageMetadata } from '@/lib/site';
 import type { Metadata } from 'next';
-import { FALLBACK_CONQUESTS } from '@/lib/data/conquests-fallback';
-import { FALLBACK_CONQUEST_EVENTS } from '@/lib/data/conquests-detail-fallback';
-import { CONQUEST_EXTENDED_ALIASES, FALLBACK_CONQUEST_EVENTS_EXTENDED } from '@/lib/data/conquests-detail-fallback-extended';
+import { FALLBACK_CONQUESTS } from '@/features/conquests/data/conquests-fallback';
+import { FALLBACK_CONQUEST_EVENTS } from '@/features/conquests/data/conquests-detail-fallback';
+import { CONQUEST_EXTENDED_ALIASES, FALLBACK_CONQUEST_EVENTS_EXTENDED } from '@/features/conquests/data/conquests-detail-fallback-extended';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
