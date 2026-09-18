@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { BookmarkButton } from '@/features/quran/components/bookmark-button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
-import { getHadithByNumber } from '@/lib/services/hadith';
+import { getHadithByNumber } from '@/features/hadith/services/hadith';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Share2 } from 'lucide-react';
 import Link from 'next/link';

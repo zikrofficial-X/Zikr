@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
-import { getHadithBook } from '@/lib/services/hadith';
+import { getHadithBook } from '@/features/hadith/services/hadith';
 import { Badge } from '@/components/ui/badge';
 
 import { pageMetadata } from '@/lib/site';

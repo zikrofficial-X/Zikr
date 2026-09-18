@@ -1,5 +1,5 @@
-import { searchHadith } from '@/lib/services/hadith';
-import type { Hadith } from '@/lib/types/hadith';
+import { searchHadith } from '@/features/hadith/services/hadith';
+import type { Hadith } from '@/features/hadith/types/hadith';
 import { searchQuran } from '@/features/quran/services/quran';
 import { supabaseServerAnonRequest } from '@/lib/supabase/server';
 

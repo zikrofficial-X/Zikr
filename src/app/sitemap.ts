@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllScholars } from "@/lib/services/scholars";
-import { getHadithBooks } from "@/lib/services/hadith";
+import { getHadithBooks } from "@/features/hadith/services/hadith";
 import { getStories } from "@/lib/services/stories";
 import {
   getArticles,
@@ -15,7 +15,7 @@ import { adsenseEditorialArticles } from "@/lib/data/adsense-editorial";
 import { PUBLIC_CONTENT_THRESHOLDS } from "@/lib/content-quality";
 import type { Surah } from "@/features/quran/types/quran";
 import type { Scholar } from "@/lib/services/scholars";
-import type { HadithBook } from "@/lib/types/hadith";
+import type { HadithBook } from "@/features/hadith/types/hadith";
 import type { Story } from "@/lib/services/stories";
 import type { Prophet, Article, Dua } from "@/lib/services/content";
 
