@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { requireAdmin } from "@/lib/services/admin";
 import { kidsContent } from "@/lib/data/kids-content";
 import { saveKidsContentAction } from "./actions";
-import { CloudinaryImageUploadField } from "@/components/admin/cloudinary-image-upload-field";
+import { CloudinaryImageUploadField } from "@/features/admin/components/cloudinary-image-upload-field";
 import { GAME_REGISTRY } from "@/lib/games/registry";
 
 const typeLabels: Record<string, string> = {
