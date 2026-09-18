@@ -4,7 +4,7 @@ import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SectionHeader } from '@/components/ui/section-header';
-import { hadithBooks } from '@/lib/data/content';
+import { hadithBooks } from '@/features/hadith/data/fallback';
 import { pageMetadata } from '@/lib/site';
 
 export const metadata = pageMetadata({
