@@ -33,7 +33,7 @@
  * Request (FormData): title, cadence, targetRef, prompt, tajweedFocus, published
  */
 import { revalidatePath } from "next/cache";
-import { requireAdminPermission } from '@/lib/services/admin';
+import { requireAdminPermission } from '@/features/admin/services/admin';
 import { DEFAULT_AUDIO_SETTINGS, isAudioChoiceKey, type AudioSlot } from '@/lib/audio/config';
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 

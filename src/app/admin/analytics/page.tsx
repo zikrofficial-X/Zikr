@@ -5,7 +5,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Badge } from '@/components/ui/badge';
-import { requireAdmin } from '@/lib/services/admin';
+import { requireAdmin } from '@/features/admin/services/admin';
 import { supabaseServerAdminCount } from '@/lib/supabase/server';
 import { createClient } from '@/lib/supabase/server';
 
