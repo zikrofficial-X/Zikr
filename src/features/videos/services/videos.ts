@@ -1,5 +1,7 @@
 import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
 
+import type { VideoCategory, Video } from "@/features/videos/types/videos";
+
 // Videos
 export async function getVideoCategories(): Promise<VideoCategory[]> {
   if (!isSupabaseConfigured()) return [];

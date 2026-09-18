@@ -1,4 +1,6 @@
-import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
+import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+
+import type { ArticleCategory, Article } from "@/features/articles/types/articles";
 
 // Articles
 export async function getArticleCategories(): Promise<ArticleCategory[]> {

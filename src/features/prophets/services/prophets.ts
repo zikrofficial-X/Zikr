@@ -1,4 +1,6 @@
-import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
+import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+
+import type { Prophet } from "@/features/prophets/types/prophets";
 
 export async function getProphets(): Promise<Prophet[]> {
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(

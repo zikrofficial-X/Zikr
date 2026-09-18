@@ -1,5 +1,3 @@
-import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
-
 export interface VideoCategory {
   id: string;
   nameAr: string;

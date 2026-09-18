@@ -1,6 +1,3 @@
-import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
-
-// Prophets
 export interface Prophet {
   id: string;
   nameAr: string;

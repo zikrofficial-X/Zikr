@@ -1,4 +1,6 @@
-import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
+import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+
+import type { DuaCategory, Dua } from "@/features/dua/types/dua";
 
 export async function getDuaCategories(): Promise<DuaCategory[]> {
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
