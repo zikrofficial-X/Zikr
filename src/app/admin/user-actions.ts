@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminStepUp } from "@/lib/services/admin-security";
-import { recordAdminAuditEvent } from "@/lib/services/admin-audit";
+import { requireAdminStepUp } from "@/features/admin/services/security";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 export async function updateUserRoleAuditedAction(formData: FormData) {

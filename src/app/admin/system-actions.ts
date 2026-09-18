@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminPermission } from "@/lib/services/admin";
-import { recordAdminAuditEvent } from "@/lib/services/admin-audit";
+import { requireAdminPermission } from "@/features/admin/services/admin";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 function formValue(formData: FormData, key: string) {

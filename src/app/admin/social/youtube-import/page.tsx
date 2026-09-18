@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { Container } from "@/components/ui/container";
-import { requireAdmin } from "@/lib/services/admin";
+import { requireAdmin } from "@/features/admin/services/admin";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import YoutubeMediaImporter from "./YoutubeMediaImporter";
 
