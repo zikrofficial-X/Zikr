@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
-import { requireAdminPermission } from "@/lib/services/admin";
+import { requireAdminPermission } from "@/features/admin/services/admin";
 import { AdminStepUp } from "@/features/admin/components/admin-step-up";
 
 export const metadata: Metadata = { title: "تحقق إضافي | الأدمن" };

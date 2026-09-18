@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { requireAdmin } from "@/lib/services/admin";
+import { requireAdmin } from "@/features/admin/services/admin";
 import {
   supabaseServerAdminRequest,
   supabaseServerAdminCount,
