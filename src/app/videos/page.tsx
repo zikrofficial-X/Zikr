@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Badge } from '@/components/ui/badge';
-import { getYoutubeChannelFeed } from '@/lib/services/youtube';
+import { getYoutubeChannelFeed } from '@/features/videos/integrations/youtube';
 import { FALLBACK_VIDEOS } from '@/lib/data/fallback-library';
 
 export const metadata: Metadata = pageMetadata({
