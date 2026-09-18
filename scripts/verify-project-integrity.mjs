@@ -30,20 +30,20 @@ const requiredFiles = [
   'pnpm-lock.yaml',
   'next.config.ts',
   'proxy.ts',
-  'app/layout.tsx',
-  'app/manifest.ts',
+  'src/app/layout.tsx',
+  'src/app/manifest.ts',
   'public/sw.js',
   'public/offline.html',
   'public/offline-content/v1/manifest.json',
-  'lib/offline-db.ts',
-  'lib/offline-pack.ts',
-  'lib/offline-settings.ts',
-  'hooks/use-offline-status.ts',
-  'hooks/use-offline-data.ts',
-  'components/layout/service-worker-register.tsx',
-  'components/layout/offline-navigation-guard.tsx',
-  'components/layout/native-capacitor-bridge.tsx',
-  'app/settings/page.tsx',
+  'src/lib/offline-db.ts',
+  'src/lib/offline-pack.ts',
+  'src/lib/offline-settings.ts',
+  'src/hooks/use-offline-status.ts',
+  'src/hooks/use-offline-data.ts',
+  'src/components/layout/service-worker-register.tsx',
+  'src/components/layout/offline-navigation-guard.tsx',
+  'src/components/layout/native-capacitor-bridge.tsx',
+  'src/app/settings/page.tsx',
   'scripts/verify-platform-routes.mjs',
   'scripts/verify-mobile-readiness.mjs',
   'scripts/verify-offline-content.mjs',
@@ -120,8 +120,8 @@ const expectedDatasets = {
   companions: 'companions',
   companion_stories: 'companionStories',
 };
-const offlineDbSource = read('lib/offline-db.ts');
-const offlinePackSource = read('lib/offline-pack.ts');
+const offlineDbSource = read('src/lib/offline-db.ts');
+const offlinePackSource = read('src/lib/offline-pack.ts');
 for (const [dataset, store] of Object.entries(expectedDatasets)) {
   if (!offlineManifest.datasets?.[dataset]) failures.push(`Offline manifest missing dataset: ${dataset}`);
   if (!offlinePackSource.includes(`${dataset}: '${store}'`) && !offlinePackSource.includes(`${dataset}: "${store}"`)) failures.push(`Offline pack mapping missing ${dataset} -> ${store}`);
@@ -154,30 +154,30 @@ const coreMatch = serviceWorker.match(/const CORE_INSTALL_ASSETS = \[([\s\S]*?)\
 if (coreMatch?.[1].includes('"/"')) failures.push('public/sw.js must not pre-cache the root HTML route');
 if (serviceWorker.includes('const CACHE_NAME = "zikr-v10"')) failures.push('public/sw.js must not retain legacy cache version zikr-v10');
 
-requireText('components/layout/offline-navigation-guard.tsx', [
+requireText('src/components/layout/offline-navigation-guard.tsx', [
   'navigator.onLine',
   'event.stopImmediatePropagation()',
   'window.location.assign',
 ]);
-requireText('lib/offline-pack.ts', [
+requireText('src/lib/offline-pack.ts', [
   'verifyCompletedDatasets',
   'COMPLETION_DB_KEY',
   'requestOfflineRouteCache',
   'failedRoutes',
 ]);
-requireText('lib/offline-db.ts', [
+requireText('src/lib/offline-db.ts', [
   'initializing: Promise<void> | null',
   'onversionchange',
   'async count(',
 ]);
-requireText('components/layout/service-worker-register.tsx', [
+requireText('src/components/layout/service-worker-register.tsx', [
   "navigator.serviceWorker.register('/sw.js'",
   'hydrateOfflineContent',
 ]);
-requireText('app/layout.tsx', ['OfflineNavigationGuard']);
-requireText('app/manifest.ts', ['short_name', 'icons']);
+requireText('src/app/layout.tsx', ['OfflineNavigationGuard']);
+requireText('src/app/manifest.ts', ['short_name', 'icons']);
 
-const mobileBridge = read('components/layout/native-capacitor-bridge.tsx');
+const mobileBridge = read('src/components/layout/native-capacitor-bridge.tsx');
 for (const token of [
   'zikrNative',
   'scheduleLocalNotification',
@@ -207,12 +207,12 @@ for (const token of ['NSCameraUsageDescription', 'NSMicrophoneUsageDescription',
 }
 
 const nextConfig = read('next.config.ts');
-const siteSource = read('lib/site.ts');
+const siteSource = read('src/lib/site.ts');
 if (!nextConfig.includes('NEXT_PUBLIC_SITE_URL')) {
   failures.push('next.config.ts must consume NEXT_PUBLIC_SITE_URL as the deployment-controlled canonical URL');
 }
 if (!siteSource.includes('PRODUCTION_URL') || !siteSource.includes('NEXT_PUBLIC_SITE_URL')) {
-  failures.push('lib/site.ts must remain the canonical site URL source');
+  failures.push('src/lib/site.ts must remain the canonical site URL source');
 }
 if (!nextConfig.includes('https://ep1.adtrafficquality.google')) {
   warnings.push('CSP does not explicitly mention ep1.adtrafficquality.google; verify against current AdSense traffic tooling.');

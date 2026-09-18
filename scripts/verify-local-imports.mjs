@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const extensions = ['', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json'];
-const sourceDirs = ['app', 'components', 'lib', 'scripts'];
+const sourceDirs = ['src', 'scripts'];
 const failures = [];
 
 function walk(dir, out = []) {
@@ -40,11 +40,17 @@ function resolveImport(specifier, fromFile) {
 
 const importPattern = /(?:import|export)\s+(?:type\s+)?(?:[^'";]+?\s+from\s+)?['"]([^'"]+)['"]|import\(['"]([^'"]+)['"]\)/g;
 
+const filesToScan = [];
 for (const sourceDir of sourceDirs) {
   const absoluteDir = join(root, sourceDir);
-  if (!existsSync(absoluteDir)) continue;
+  if (existsSync(absoluteDir)) filesToScan.push(...walk(absoluteDir));
+}
+for (const rootFile of ['proxy.ts', 'next.config.ts']) {
+  const absoluteFile = join(root, rootFile);
+  if (existsSync(absoluteFile)) filesToScan.push(absoluteFile);
+}
 
-  for (const file of walk(absoluteDir)) {
+for (const file of filesToScan) {
     const text = readFileSync(file, 'utf8');
     for (const match of text.matchAll(importPattern)) {
       const specifier = match[1] ?? match[2];
