@@ -7,8 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useState, useTransition } from 'react';
-import { surahs, hadiths, prophets } from '@/lib/data/content';
-import type { Surah, Hadith, Prophet } from '@/lib/data/content';
+import { surahs } from '@/features/quran/data/fallback';
+import { hadiths } from '@/features/hadith/data/fallback';
+import { prophets } from '@/features/prophets/data/fallback';
+import type { QuranFallbackSurah as Surah } from '@/features/quran/data/fallback';
+import type { HadithFallback as Hadith } from '@/features/hadith/data/fallback';
+import type { ProphetFallback as Prophet } from '@/features/prophets/data/fallback';
 
 type Result = {
   type: 'surah' | 'hadith' | 'prophet' | 'article';

@@ -7,7 +7,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { reciters } from '@/lib/data/content';
+import { reciters } from '@/features/quran/data/fallback';
 
 // Surah numbers 1-114 with Arabic names
 const SURAHS = [

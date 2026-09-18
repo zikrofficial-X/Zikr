@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   tawasheeh as verifiedFallback,
   type Tawasheeh,
-} from "@/lib/data/content";
+} from "@/features/audio/data/tawasheeh-fallback";
 
 type ApiTrack = {
   id: string;

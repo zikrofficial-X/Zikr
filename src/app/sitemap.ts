@@ -5,7 +5,7 @@ import { getStories } from "@/lib/services/stories";
 import { getArticles } from "@/features/articles/services/articles";
 import { getDuas } from "@/features/dua/services/dua";
 import { getProphets } from "@/features/prophets/services/prophets";
-import { surahs as fallbackSurahs } from "@/lib/data/content";
+import { surahs as fallbackSurahs } from "@/features/quran/data/fallback";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { appRoutes, siteConfig } from "@/lib/site";
 import { staticArticles } from "@/lib/data/articles";

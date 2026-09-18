@@ -6,7 +6,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { reciters } from '@/lib/data/content';
+import { reciters } from '@/features/quran/data/fallback';
 
 export default function RecitersPage() {
   const [searchQuery, setSearchQuery] = useState('');
