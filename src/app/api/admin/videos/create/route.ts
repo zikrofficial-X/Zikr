@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/lib/services/admin';
-import { createVideoGenerationRequest } from '@/lib/services/video-automation';
+import { createVideoGenerationRequest } from '@/features/videos/services/video-automation';
 
 export async function POST(request: NextRequest) {
   try {
