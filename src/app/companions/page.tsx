@@ -11,8 +11,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   companionCategoryLabel,
   uniqueCompanionSummaries,
-} from "@/lib/utils/companions";
-import { COMPANIONS } from "@/lib/data/companions";
+} from "@/features/companions/utils/companions";
+import { COMPANIONS } from "@/features/companions/data/fallback";
 
 export const metadata: Metadata = pageMetadata({
   title: "الصحابة رضي الله عنهم",
