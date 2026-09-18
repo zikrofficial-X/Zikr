@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/site";
-import KidsGamesIndex from "@/components/kids/games/games-index";
+import KidsGamesIndex from "@/features/kids/components/games/games-index";
 
 export const dynamic = "force-dynamic";
 
