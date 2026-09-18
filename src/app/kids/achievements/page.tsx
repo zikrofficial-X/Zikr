@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';
-import KidsAchievementsBoard from '@/components/kids/kids-achievements-board';
+import KidsAchievementsBoard from '@/features/kids/components/kids-achievements-board';
 
 export const dynamic = 'force-static';
 
