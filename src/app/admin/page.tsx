@@ -10,7 +10,7 @@ import { getSiteSetting } from '@/lib/services/site-content';
 import { Container } from "@/components/ui/container";
 import { requireAdmin } from "@/lib/services/admin";
 import { runApiHealthChecks } from "@/lib/services/api-health";
-import { getVideoPublishingConfig } from "@/lib/services/video-automation";
+import { getVideoPublishingConfig } from "@/features/videos/services/video-automation";
 import { supabaseServerAdminCount } from "@/lib/supabase/server";
 import {
   saveArticleAction,
