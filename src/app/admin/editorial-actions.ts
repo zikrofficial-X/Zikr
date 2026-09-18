@@ -2,9 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireAdminStepUp } from "@/lib/services/admin-security";
-import { enforceAdminRateLimit } from "@/lib/services/admin-rate-limit";
-import { recordAdminAuditEvent } from "@/lib/services/admin-audit";
+import { requireAdminStepUp } from "@/features/admin/services/security";
+import { enforceAdminRateLimit } from "@/features/admin/services/rate-limit";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 const REVIEW_STATES = new Set(["draft", "editorial_review", "scholarly_review", "approved", "rejected"]);

@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
-import { requireAdminPermission } from "@/lib/services/admin";
+import { requireAdminPermission } from "@/features/admin/services/admin";
 import { changeEditorialReviewStatusAction, publishApprovedContentAction } from "../editorial-actions";
 
 export const metadata: Metadata = { title: "سير العمل التحريري | الأدمن" };
