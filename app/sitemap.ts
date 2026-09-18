@@ -12,6 +12,7 @@ import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { appRoutes, siteConfig } from "@/lib/site";
 import { staticArticles } from "@/lib/data/articles";
 import { adsenseEditorialArticles } from "@/lib/data/adsense-editorial";
+import { PUBLIC_CONTENT_THRESHOLDS } from "@/lib/content-quality";
 import type { Surah } from "@/lib/types/quran";
 import type { Scholar } from "@/lib/services/scholars";
 import type { HadithBook } from "@/lib/types/hadith";
@@ -23,7 +24,8 @@ type SlugRow = { slug: string };
 
 const STATIC_PROPHET_SLUGS = ["adam", "idris", "nuh", "hud", "salih", "ibrahim", "lut", "ismail", "ishaq", "yaqub", "yusuf", "ayyub", "shuayb", "musa", "harun", "dhulkifl", "yunus", "dawud", "sulayman", "ilyas", "alyasa", "zakariya", "yahya", "isa", "muhammad"] as const;
 const STATIC_BATTLE_SLUGS = ["badr", "uhud", "khandaq", "khaybar", "hunayn", "waddan", "buwat", "ushayra", "safwan", "qarqarat-kudr", "banu-qaynuqa", "sawiq", "banu-nadir", "dumat-al-jandal", "banu-qurayza", "muraysi", "dhat-riqa", "mu-tah", "dhat-salasil", "tabuk", "taif", "fathmakka"] as const;
-const MIN_INDEXABLE_EDITORIAL_CHARS = 1800;
+const MIN_INDEXABLE_EDITORIAL_CHARS = PUBLIC_CONTENT_THRESHOLDS.article;
+const MIN_INDEXABLE_STORY_CHARS = PUBLIC_CONTENT_THRESHOLDS.story;
 const SITEMAP_URL_LIMIT = 50_000;
 const NON_INDEXABLE_PATHS = new Set(["/admin", "/api", "/auth", "/favorites", "/profile", "/settings", "/search", "/qibla", "/prayer-times", "/tasbeeh", "/memorization", "/wird", "/zakat", "/offline-library", "/spiritual-ai", "/competitions", "/radio", "/youtube", "/videos", "/reciters", "/tawasheeh"]);
 
@@ -81,7 +83,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       ...surahs.map((surah: Surah) => route(`/quran/${surah.number}`, { lastModified: now, changeFrequency: "monthly", priority: 0.8 })),
       ...scholars.map((scholar: Scholar) => route(`/scholars/${scholar.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
       ...hadithBooks.map((book: HadithBook) => route(`/hadith/${book.slug ?? book.id}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
-      ...stories.filter((story: Story) => (story.content?.trim().length ?? 0) >= MIN_INDEXABLE_EDITORIAL_CHARS).map((story: Story) => route(`/stories/${story.slug}`, { lastModified: now, changeFrequency: "weekly", priority: 0.7 })),
+      ...stories.filter((story: Story) => (story.content?.trim().length ?? 0) >= MIN_INDEXABLE_STORY_CHARS).map((story: Story) => route(`/stories/${story.slug}`, { lastModified: now, changeFrequency: "weekly", priority: 0.7 })),
       ...Array.from(new Map([
         ...articles,
         ...staticArticles.map(article => ({ slug: article.slug, content: article.content_ar })),

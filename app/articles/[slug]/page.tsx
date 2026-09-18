@@ -7,10 +7,11 @@ import { getArticleBySlug, type Article } from "@/lib/services/content";
 import { getStaticArticleBySlug } from "@/lib/data/articles";
 import { getAdsenseEditorialArticleBySlug } from "@/lib/data/adsense-editorial";
 import { pageMetadata, siteConfig } from "@/lib/site";
+import { estimateReadingMinutes, PUBLIC_CONTENT_THRESHOLDS, splitEditorialParagraphs } from "@/lib/content-quality";
 
 export const dynamic = "force-dynamic";
 
-const MIN_PUBLIC_ARTICLE_CHARS = 1800;
+const MIN_PUBLIC_ARTICLE_CHARS = PUBLIC_CONTENT_THRESHOLDS.article;
 
 interface ArticleReference {
   url: string;
@@ -161,12 +162,9 @@ export default async function ArticleDetailPage({
     ...getMetadataReferences(article.metadata),
   ]);
   const content = article.content.trim();
-  const paragraphs = content
-    .split(/\n\s*\n/)
-    .map(paragraph => paragraph.trim())
-    .filter(Boolean);
+  const paragraphs = splitEditorialParagraphs(content);
   const wordCount = content.split(/\s+/).filter(Boolean).length;
-  const readingMinutes = Math.max(1, Math.ceil(wordCount / 180));
+  const readingMinutes = estimateReadingMinutes(content);
 
   return (
     <Container className="py-12 space-y-8 max-w-3xl" dir="rtl">
@@ -196,6 +194,20 @@ export default async function ArticleDetailPage({
           <span>{wordCount.toLocaleString("ar-EG")} كلمة تقريبًا</span>
         </div>
       </header>
+      <section className="grid gap-4 sm:grid-cols-3" aria-label="ملخص بيانات القراءة">
+        <div className="rounded-2xl border border-brand-gold/15 bg-brand-gold/5 p-4 text-center">
+          <p className="text-xs text-brand-cream/50">نوع المادة</p>
+          <p className="mt-2 font-semibold text-brand-gold">مقالة تحريرية تعليمية</p>
+        </div>
+        <div className="rounded-2xl border border-brand-gold/15 bg-brand-gold/5 p-4 text-center">
+          <p className="text-xs text-brand-cream/50">المراجع المتاحة</p>
+          <p className="mt-2 font-semibold text-brand-gold">{references.length.toLocaleString("ar-EG")} مصدرًا</p>
+        </div>
+        <div className="rounded-2xl border border-brand-gold/15 bg-brand-gold/5 p-4 text-center">
+          <p className="text-xs text-brand-cream/50">طريقة الاستخدام</p>
+          <p className="mt-2 font-semibold text-brand-gold">اقرأ ثم تحقق من المصدر</p>
+        </div>
+      </section>
 
       <script
         type="application/ld+json"

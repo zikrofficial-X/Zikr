@@ -9,10 +9,11 @@ import { getStories } from '@/lib/services/stories';
 import { getYoutubeChannelFeed } from '@/lib/services/youtube';
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';
+import { PUBLIC_CONTENT_THRESHOLDS } from '@/lib/content-quality';
 
 export const revalidate = 1800;
 
-const MIN_PUBLIC_STORY_CHARS = 500;
+const MIN_PUBLIC_STORY_CHARS = PUBLIC_CONTENT_THRESHOLDS.story;
 
 function hasSubstantialStoryContent(story: { content?: string }): boolean {
   return (story.content?.trim().length ?? 0) >= MIN_PUBLIC_STORY_CHARS;

@@ -148,6 +148,7 @@ export const appRoutes = [
   { path: "/tasbeeh", label: "التسبيح", sitemap: { changeFrequency: "weekly", priority: 0.6 }, nav: "more" },
   { path: "/prophets", label: "قصص الأنبياء", sitemap: { changeFrequency: "monthly", priority: 0.8 }, footer: "platform" },
   { path: "/articles", label: "المقالات", sitemap: { changeFrequency: "daily", priority: 0.8 } },
+  { path: "/knowledge", label: "مركز المعرفة", sitemap: { changeFrequency: "monthly", priority: 0.7 }, footer: "platform" },
   { path: "/videos", label: "الفيديوهات", sitemap: { changeFrequency: "daily", priority: 0.8 } },
   { path: "/youtube", label: "يوتيوب", sitemap: { changeFrequency: "daily", priority: 0.7 }, nav: "more" },
   { path: "/kids", label: "الأطفال", sitemap: { changeFrequency: "weekly", priority: 0.7 } },
