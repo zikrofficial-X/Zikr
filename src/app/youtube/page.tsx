@@ -5,7 +5,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/ui/section-header';
-import { getYoutubeChannelFeed, getYoutubeSyncHealth } from '@/lib/services/youtube';
+import { getYoutubeChannelFeed, getYoutubeSyncHealth } from '@/features/videos/integrations/youtube';
 
 export const metadata: Metadata = pageMetadata({
   title: 'قناة يوتيوب | ذِكر',
