@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { BookmarkButton } from "@/features/quran/components/bookmark-button";
 import { MushafBookmark } from "@/features/quran/components/mushaf-bookmark";
 import { QuranAudioPlayer } from "@/features/quran/components/audio-player";
-import { MarkSurahRead } from "@/components/wird/mark-surah-read";
+import { MarkSurahRead } from "@/features/quran/components/mark-surah-read";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { getSurahById } from "@/features/quran/services/quran";
