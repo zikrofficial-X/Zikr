@@ -1,7 +1,7 @@
 import { getServerEnv } from "@/lib/env";
 import { safeApiFetch } from "@/lib/services/http";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
-import type { Hadith, HadithBook, HadithResponse } from "@/lib/types/hadith";
+import type { Hadith, HadithBook, HadithResponse } from "@/features/hadith/types/hadith";
 import type { PaginationMeta } from "@/lib/types/common";
 
 const LEGACY_HADITH_API_BASE = "https://api.hadith.gading.dev";
