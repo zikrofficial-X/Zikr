@@ -6,7 +6,7 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { VideoGenerationRequest } from "@/lib/services/video-automation";
+import type { VideoGenerationRequest } from "@/features/videos/services/video-automation";
 
 interface CreateFormState {
   title: string;
