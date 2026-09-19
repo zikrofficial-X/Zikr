@@ -31,6 +31,7 @@ export default async function CompanionsPage() {
       (acc[category] ??= []).push(companion);
       return acc;
     },
+    {},
   );
 
   return (
