@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { staticArticles } from "../../src/features/articles/data/fallback";
+import { staticArticles } from "../../src/features/articles/data/articles";
 
 const MIN_PUBLIC_ARTICLE_CHARS = 1800;
 
