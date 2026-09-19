@@ -55,3 +55,20 @@ The project is **not** marked 100% verified yet. Final certification still requi
 ## Safety rule
 
 No production Supabase object is deleted as part of this rebuild. No changes are merged into `main` from this branch during the rebuild phase.
+
+
+## Latest pass — 2026-09-19
+
+- Unified reciter pages with `features/quran/services/quran` instead of importing the static fallback directly.
+- Moved curated poetry data to `src/features/poetry/data/fallback.ts`; the route now consumes the feature data.
+- Made the tafsir library database-driven through `getTafsirSourcesFromDb()` and moved its client UI under `features/quran/components`.
+- Centralized the tafsir source type under `features/quran/types` so the client layer does not import server-only modules.
+- Repaired a corrupted Arabic fallback character in the prophets data and a corrupted Arabic word in the poetry page.
+- Corrected the Quran ayah-page tafsir fallback metadata so its source/author match the edition used by the service.
+- Verified the live Supabase migration ledger: 230 remote versions == 230 local migration files; no remote-only or local-only versions and no duplicate local version IDs.
+- Verified all public-schema tables observed in the audit have RLS enabled.
+- Verified no `SECURITY DEFINER` function is currently EXECUTE-granted to `anon` or `authenticated`; no public-schema views were found.
+- Supabase security advisor currently reports one warning: leaked-password protection is disabled. This is an Auth project setting and has not been changed through SQL.
+- Supabase performance advisor reports unused indexes; these are informational and were not deleted blindly.
+- Live content audit: `content_library` currently has no published rows; 177 drafts and 2 editorial-review rows remain unpublished. Published prophet rows exist separately, including legacy sections whose text quality still requires editorial review.
+- The branch is not certified until the actual CI/build chain passes: migration replay, imports, routes, hygiene, lint, TypeScript, tests, production build, runtime smoke tests, and final security/content gates.
