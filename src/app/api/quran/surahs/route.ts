@@ -6,7 +6,6 @@ import { getCanonicalAyahCount } from "@/features/quran/utils/surah-mapping";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 3600;
 
 type QuranSurahRow = {
   id: number;
