@@ -255,6 +255,8 @@ jobs:
     docker:
       - image: cimg/node:22.11.0
     resource_class: medium
+    environment:
+      QURAN_AUDIO_MAX_FILE_MB: "200"
     steps:
       - checkout
       - run:
