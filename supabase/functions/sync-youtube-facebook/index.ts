@@ -16,6 +16,7 @@ const MAX_DISCOVERY_PAGES_PER_RUN = Math.max(1, Math.min(10, Number(Deno.env.get
 const RETRY_LIMIT = 8
 const STALE_PROCESSING_MS = 30 * 60 * 1000
 const AMBIGUOUS_RECHECK_MS = 60 * 60 * 1000
+const WAITING_MEDIA_EXPIRY_MS = 14 * 24 * 60 * 60 * 1000
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -223,12 +224,34 @@ async function insertNewJobs(videos: Array<{
   return { inserted: data?.length ?? 0, media: resolvedMedia.size }
 }
 
+async function expireStaleWaitingMedia() {
+  const cutoff = new Date(Date.now() - WAITING_MEDIA_EXPIRY_MS).toISOString()
+  const { data, error } = await supabase
+    .from('social_sync_jobs')
+    .update({
+      status: 'failed',
+      retryable: false,
+      next_attempt_at: null,
+      last_error: 'Expired waiting-media job: original video media was not found within the retry window. Requeue manually after uploading or registering the media.',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('source_channel_id', YOUTUBE_CHANNEL_ID)
+    .eq('status', 'waiting_media')
+    .eq('retryable', true)
+    .lt('created_at', cutoff)
+    .select('id')
+  if (error) throw new Error(`Waiting-media expiry failed: ${JSON.stringify(error)}`)
+  return data?.length ?? 0
+}
+
 async function refreshWaitingMedia(limit = 100) {
   const { data: waiting, error } = await supabase
     .from('social_sync_jobs')
     .select('id,source_video_id,source_media_path')
     .eq('source_channel_id', YOUTUBE_CHANNEL_ID)
     .eq('status', 'waiting_media')
+    .eq('retryable', true)
+    .gte('created_at', new Date(Date.now() - WAITING_MEDIA_EXPIRY_MS).toISOString())
     .limit(limit)
   if (error) throw new Error(`Waiting-media lookup failed: ${JSON.stringify(error)}`)
   if (!waiting?.length) return 0
@@ -379,7 +402,7 @@ async function recoverStaleProcessing() {
     } else {
       const retryable = Number(job.attempts ?? 0) < RETRY_LIMIT
       await supabase.from('social_sync_jobs').update({
-        status: retryable ? 'failed' : 'failed',
+        status: 'failed',
         retryable,
         locked_at: null,
         next_attempt_at: new Date().toISOString(),
@@ -559,6 +582,7 @@ Deno.serve(async (req) => {
     }
 
     const discovery = await discoverAndQueue()
+    const waitingExpired = await expireStaleWaitingMedia()
     const waitingPromoted = await refreshWaitingMedia()
     const recovered = await recoverStaleProcessing()
     const processing = await processReadyJobs()
@@ -568,6 +592,7 @@ Deno.serve(async (req) => {
       ok: true,
       mode: forceBackfill ? 'backfill' : 'incremental',
       discovery,
+      waitingExpired,
       waitingPromoted,
       recovered,
       processing,
