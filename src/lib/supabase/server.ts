@@ -264,7 +264,18 @@ export async function supabaseServerAdminCount(table: string): Promise<number> {
 
 export async function assertSupabaseConnection() {
   try {
-    await restRequest("/rest/v1/");
+    const { anonKey, serviceKey } = getSupabaseConfig();
+    const apiKey = serviceKey || anonKey;
+    if (!apiKey) return false;
+
+    // Probe a real lightweight application table instead of the REST root
+    // metadata endpoint so the admin health status reflects actual data-plane
+    // reachability and credentials used by the application.
+    await restRequest<{ id: string }[]>(
+      "/rest/v1/quran_surahs?select=id&limit=1",
+      { timeoutMs: 5000, retries: 1 },
+      apiKey,
+    );
     return true;
   } catch {
     return false;
