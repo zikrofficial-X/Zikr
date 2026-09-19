@@ -114,7 +114,7 @@ Before releasing:
 
 ```bash
 pnpm verify
-pnpm mobile:release-check
+pnpm mobile:check
 ```
 
 The repository also contains historical release notes and audit records. They are documentation history only and are not production execution inputs.
