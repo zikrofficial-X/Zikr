@@ -95,8 +95,8 @@ function checkFileStructure() {
   ];
   
   const requiredDirs = [
-    'app',
-    'lib',
+    'src/app',
+    'src/lib',
     'drizzle',
     'scripts',
     'supabase',
