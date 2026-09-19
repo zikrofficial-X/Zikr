@@ -7,7 +7,6 @@ import { QuranAudioPlayer } from "@/features/quran/components/audio-player";
 import { MarkSurahRead } from "@/features/quran/components/mark-surah-read";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { getSurahById } from "@/features/quran/services/quran";
 import {
   getSurahMetaFromDb,
   getSurahFromDb,
@@ -32,12 +31,7 @@ export async function generateMetadata({
   // and avoids a duplicate, timeout-prone Quran query before page rendering.
   let surahMeta = await getSurahMetaFromDb(id, "ar");
 
-  // Fallback to API if DB metadata is unavailable.
-  if (!surahMeta) {
-    surahMeta = await getSurahById(id, "ar").then(
-      apiResult => apiResult?.surah ?? null
-    );
-  }
+  if (!surahMeta) return { title: `سورة ${id}`, description: "بيانات القرآن غير متاحة حاليًا" };
 
   return pageMetadata({
     title: surahMeta ? `سورة ${surahMeta.name}` : `سورة ${id}`,
@@ -56,17 +50,7 @@ export default async function SurahPage({
   const id = Number.parseInt(p.surah, 10);
   if (Number.isNaN(id)) return notFound();
 
-  // DB-First Strategy
-  let result = await getSurahFromDb(id, "ar");
-
-  // Fallback to API if DB is empty/fails
-  if (!result) {
-    console.info(
-      `[surah-page] DB unavailable for surah ${id}, falling back to external API`
-    );
-    result = await getSurahById(id, "ar");
-  }
-
+  const result = await getSurahFromDb(id, "ar");
   if (!result) return notFound();
 
   // Batch-fetch all favorite states + reading progress in parallel
