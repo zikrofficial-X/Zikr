@@ -34,6 +34,10 @@
  */
 import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from '@/features/admin/services/admin';
+import { requireAdminStepUp } from '@/features/admin/services/security';
+import { enforceAdminRateLimit } from '@/features/admin/services/rate-limit';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
+import { safeDeleteContentAction } from '@/app/admin/content-actions';
 import { DEFAULT_AUDIO_SETTINGS, isAudioChoiceKey, type AudioSlot } from '@/lib/audio/config';
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { updateUserRoleAuditedAction } from "@/app/admin/user-actions";
@@ -62,6 +66,18 @@ const VIDEO_GENERATION_CATEGORIES = new Set([
 ]);
 
 type JsonRecord = Record<string, unknown>;
+
+async function requireManageAndOptionalPublish(
+  managePermission: "content.manage" | "video.manage",
+  publishRequested: boolean,
+  path: string,
+) {
+  const admin = publishRequested
+    ? await requireAdminStepUp("content.publish", path)
+    : await requireAdminPermission(managePermission);
+  if (publishRequested) await enforceAdminRateLimit(admin, "content.publish", 10, 60);
+  return admin;
+}
 
 function value(formData: FormData, key: string) {
   const raw = String(formData.get(key) ?? "").trim();
@@ -201,12 +217,15 @@ export async function saveSiteSettingAction(formData: FormData) {
 }
 
 export async function saveStoryAction(formData: FormData) {
-  await requireAdminPermission('content.manage');
+  const publishRequested = bool(formData, "published");
+  await requireManageAndOptionalPublish("content.manage", publishRequested, "/admin/content");
   const title = String(formData.get("title") ?? "").trim();
   const slug = String(formData.get("slug") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
   if (!title || !slug || !content)
     throw new Error("العنوان والرابط والمحتوى مطلوبة.");
+  if (publishRequested && content.length < 1200)
+    throw new Error("لا يمكن نشر القصة قبل وصول المحتوى إلى الحد الأدنى التحريري (1200 حرف).");
 
   await supabaseServerAdminRequest("/rest/v1/stories?on_conflict=slug", {
     method: "POST",
@@ -228,12 +247,15 @@ export async function saveStoryAction(formData: FormData) {
 }
 
 export async function saveArticleAction(formData: FormData) {
-  await requireAdminPermission('content.manage');
+  const publishRequested = bool(formData, "published");
+  await requireManageAndOptionalPublish("content.manage", publishRequested, "/admin/content");
   const title = String(formData.get("title") ?? "").trim();
   const slug = String(formData.get("slug") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
   if (!title || !slug || !content)
     throw new Error("عنوان المقال والرابط والمحتوى مطلوبة.");
+  if (publishRequested && content.length < 1800)
+    throw new Error("لا يمكن نشر المقال قبل وصول المحتوى إلى الحد الأدنى التحريري (1800 حرف).");
 
   const imageUrl = value(formData, "imageUrl");
   const summary = value(formData, "summary");
@@ -274,7 +296,8 @@ export async function saveArticleAction(formData: FormData) {
 }
 
 export async function saveVideoPostAction(formData: FormData) {
-  await requireAdminPermission('video.manage');
+  const publishRequested = bool(formData, "published");
+  await requireManageAndOptionalPublish("video.manage", publishRequested, "/admin/videos");
   const title = String(formData.get("title") ?? "").trim();
   if (!title) throw new Error("عنوان الفيديو مطلوب.");
 
@@ -292,6 +315,9 @@ export async function saveVideoPostAction(formData: FormData) {
   const selectedPlatforms = platforms(formData);
 
   if (selectedPlatforms.length > 0) await requireAdminPermission('social.manage');
+  if (publishRequested && !videoUrl && !youtubeId) {
+    throw new Error("لا يمكن نشر فيديو دون مصدر قابل للتشغيل: ملف فيديو مرفوع أو YouTube ID.");
+  }
 
   if (selectedPlatforms.length > 0 && !videoUrl) {
     throw new Error("للنشر التلقائي على Facebook أو YouTube يجب رفع ملف فيديو من حقل الرفع.");
@@ -374,7 +400,8 @@ export async function saveVideoPostAction(formData: FormData) {
 }
 
 export async function saveCompetitionAction(formData: FormData) {
-  await requireAdminPermission('content.manage');
+  const publishRequested = bool(formData, "published");
+  await requireManageAndOptionalPublish("content.manage", publishRequested, "/admin/competitions");
   const title = String(formData.get("title") ?? "").trim();
   if (!title) throw new Error("عنوان المسابقة مطلوب.");
 
@@ -399,7 +426,8 @@ export async function saveCompetitionAction(formData: FormData) {
 }
 
 export async function savePinnedMessageAction(formData: FormData) {
-  await requireAdminPermission('content.manage');
+  const publishRequested = bool(formData, "published");
+  await requireManageAndOptionalPublish("content.manage", publishRequested, "/admin");
   const body = String(formData.get("body") ?? "").trim();
   if (!body) throw new Error("نص الرسالة المثبتة مطلوب.");
 
@@ -423,7 +451,7 @@ export async function savePinnedMessageAction(formData: FormData) {
 
 // ─── User role management ────────────────────────────────────────────────────
 export async function updateUserRoleAction(formData: FormData) {
-  return updateUserRoleAuditedAction(formData);
+  return (await import("@/app/admin/user-actions")).updateUserRoleAuditedAction(formData);
 }
 
 // ─── Content management (delete / toggle publish) ────────────────────────────
@@ -454,22 +482,7 @@ function assertManagedTable(table: string): asserts table is ManagedTable {
 }
 
 export async function deleteContentAction(formData: FormData) {
-  await requireAdminPermission('content.delete');
-  const table = String(formData.get("table") ?? "").trim();
-  const id = String(formData.get("id") ?? "").trim();
-  assertManagedTable(table);
-  if (!id) throw new Error("المعرّف مطلوب.");
-
-  await supabaseServerAdminRequest(
-    `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
-    {
-      method: "DELETE",
-      headers: { Prefer: "return=minimal" },
-    }
-  );
-
-  revalidatePath("/admin");
-  for (const path of MANAGED_TABLES[table].paths) revalidatePath(path);
+  return safeDeleteContentAction(formData);
 }
 
 export async function togglePublishAction(formData: FormData) {
@@ -499,7 +512,8 @@ export async function togglePublishAction(formData: FormData) {
 }
 
 export async function saveMemorizationPlanAction(formData: FormData) {
-  await requireAdminPermission('content.manage');
+  const publishRequested = bool(formData, "published");
+  await requireManageAndOptionalPublish("content.manage", publishRequested, "/admin/memorization");
   const title = String(formData.get("title") ?? "").trim();
   if (!title) throw new Error("عنوان خطة الحفظ مطلوب.");
 
