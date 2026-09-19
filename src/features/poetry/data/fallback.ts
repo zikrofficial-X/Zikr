@@ -1,6 +1,6 @@
 // Curated fallback poetry shown when no remote editorial catalogue is available.
 // Keep source attribution and editorial review separate from user-submitted community poems.
-const islamicPoems = [
+export const islamicPoems = [
   {
     id: 1,
     title: 'البردة',
