@@ -22,9 +22,9 @@ function fail(message) {
 }
 
 const config = read("supabase/config.toml");
-const authBlock = config.match(/\[auth\]([\\s\\S]*?)(?=\n\[|$)/)?.[0] ?? "";
+const authBlock = config.match(/\[auth\]([\s\S]*?)(?=\n\[|$)/)?.[0] ?? "";
 const siteUrl = authBlock.match(/^site_url\s*=\s*"([^"]+)"/m)?.[1] ?? "";
-const redirects = authBlock.match(/additional_redirect_urls\s*=\s*\[([\\s\\S]*?)\]/m)
+const redirects = authBlock.match(/additional_redirect_urls\s*=\s*\[([\s\S]*?)\]/m)
   ? Array.from(authBlock.match(/additional_redirect_urls\s*=\s*\[([\\s\\S]*?)\]/m)[1].matchAll(/"([^"]+)"/g), m => m[1])
   : [];
 
@@ -35,8 +35,8 @@ if (JSON.stringify(redirects) !== JSON.stringify(expected)) {
   fail(`Supabase Auth redirect allowlist drift: ${JSON.stringify(redirects)}`);
 }
 
-const forbiddenAlias = /zikr-zikrmediaofficial\\.vercel\\.app/i;
-const forbiddenVercelFallback = /process\\.env\\.VERCEL_URL\\?\\.trim\\(\\)/;
+const forbiddenAlias = /zikr-zikrmediaofficial\.vercel\.app/i;
+const forbiddenVercelFallback = /process\.env\.VERCEL_URL\?\.trim\(\)/;
 const runtimeFiles = [
   "src/lib/site.ts",
   "src/lib/env.ts",
@@ -88,7 +88,7 @@ if (!envSource.includes("PRODUCTION_URL.replace(/\\/$/, "")") || !envSource.incl
 }
 
 const authEnhanced = read("src/lib/auth-enhanced.ts");
-if (!authEnhanced.includes("host.endsWith(".vercel.app")") || !authEnhanced.includes("return PRODUCTION_URL")) {
+if (!authEnhanced.includes('host.endsWith(".vercel.app")') || !authEnhanced.includes("return PRODUCTION_URL")) {
   fail("Auth origin guard must reject Vercel aliases");
 }
 
