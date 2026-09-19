@@ -4,7 +4,12 @@
 
 BEGIN;
 
-WITH canonical(id, ayahs_count) AS (
+CREATE TEMP TABLE canonical_quran_surah_counts (
+  id integer PRIMARY KEY,
+  ayahs_count integer NOT NULL
+) ON COMMIT DROP;
+
+INSERT INTO canonical_quran_surah_counts (id, ayahs_count)
   VALUES
     (1, 7),
     (2, 286),
@@ -123,7 +128,7 @@ WITH canonical(id, ayahs_count) AS (
 )
 UPDATE public.quran_surahs AS s
 SET ayahs_count = c.ayahs_count
-FROM canonical AS c
+FROM canonical_quran_surah_counts AS c
 WHERE s.id = c.id
   AND s.ayahs_count IS DISTINCT FROM c.ayahs_count;
 
@@ -134,7 +139,7 @@ BEGIN
   SELECT count(*)
     INTO mismatch_count
   FROM public.quran_surahs AS s
-  JOIN canonical AS c ON c.id = s.id
+  JOIN canonical_quran_surah_counts AS c ON c.id = s.id
   WHERE s.ayahs_count IS DISTINCT FROM c.ayahs_count;
 
   IF mismatch_count <> 0 THEN
