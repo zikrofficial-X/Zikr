@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import type { Competition } from '@/features/competitions/types';
 import { FALLBACK_COMPETITIONS } from '@/features/competitions/data/fallback';
 
 export type SiteSettingValue = {
@@ -33,16 +34,6 @@ export type PinnedMessage = {
   type: string | null;
   is_active: boolean;
   priority: number;
-};
-
-export type Competition = {
-  id: string;
-  title: string;
-  description: string | null;
-  prize: string | null;
-  starts_at: string | null;
-  ends_at: string | null;
-  metadata: { imageUrl?: string | null; rules?: string | null } | null;
 };
 
 export type MemorizationPlan = {
