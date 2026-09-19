@@ -25,7 +25,7 @@ const config = read("supabase/config.toml");
 const authBlock = config.match(/\[auth\]([\s\S]*?)(?=\n\[|$)/)?.[0] ?? "";
 const siteUrl = authBlock.match(/^site_url\s*=\s*"([^"]+)"/m)?.[1] ?? "";
 const redirects = authBlock.match(/additional_redirect_urls\s*=\s*\[([\s\S]*?)\]/m)
-  ? Array.from(authBlock.match(/additional_redirect_urls\s*=\s*\[([\\s\\S]*?)\]/m)[1].matchAll(/"([^"]+)"/g), m => m[1])
+  ? Array.from(authBlock.match(/additional_redirect_urls\s*=\s*\[([\s\S]*?)\]/m)[1].matchAll(/"([^"]+)"/g), m => m[1])
   : [];
 
 const expected = [nativeCallback, localWildcard, browserCallback];
@@ -83,7 +83,7 @@ if (!nextConfig.includes("const canonicalClientSiteUrl = PRODUCTION_URL;")) {
 }
 
 const envSource = read("src/lib/env.ts");
-if (!envSource.includes("PRODUCTION_URL.replace(/\\/$/, "")") || !envSource.includes('"/auth/callback"')) {
+if (!envSource.includes("resolveAppCallbackUrl") || !envSource.includes('"/auth/callback"') || !envSource.includes("PRODUCTION_URL")) {
   fail("src/lib/env.ts must pin AUTH_CALLBACK_URL to canonical /auth/callback");
 }
 
