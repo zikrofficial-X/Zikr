@@ -31,9 +31,8 @@ Click "Add New" and create these variables for **ALL environments**:
 NEXT_PUBLIC_SUPABASE_URL = [Your Project URL from step 1]
 NEXT_PUBLIC_SUPABASE_ANON_KEY = [Your Anon Key from step 1]
 SUPABASE_SERVICE_ROLE_KEY = [Your Service Role Key from step 1]
-DATABASE_URL = [Your PostgreSQL connection string from step 1]
-NEXT_PUBLIC_SITE_URL = https://your-project-name.vercel.app
-AUTH_CALLBACK_URL = https://your-project-name.vercel.app/auth/callback
+NEXT_PUBLIC_SITE_URL = https://zikrmediaofficial.vercel.app
+AUTH_CALLBACK_URL = https://zikrmediaofficial.vercel.app/auth/callback
 ```
 
 ⚠️ **Make sure to add these to ALL environments** (Production, Preview, Development)
