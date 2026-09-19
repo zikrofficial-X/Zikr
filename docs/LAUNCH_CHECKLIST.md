@@ -33,9 +33,9 @@ Confirm exactly one active row for each production job:
 | Job | Schedule | Target |
 |---|---:|---|
 | `zikr-prayer-push-dispatch` | `* * * * *` | `prayer-notification-worker` |
-| `zikr-video-processing` | `* * * * *` | `/api/internal/video-processing` |
+| `zikr-video-processing` | retired | none |
 
-Review recent `cron.job_run_details` rows and Edge Function/runtime logs. The prayer worker must use the delivery ledger and private VAPID settings. The video route must reject requests without its scheduler bearer secret and must claim queue rows before external provider side effects.
+Review recent `cron.job_run_details` rows and Edge Function/runtime logs. The prayer worker must use the delivery ledger and private VAPID settings. The retired video cron must not be recreated. Any manual recovery request must use the protected route and conditional queue claims.
 
 ## Authentication and OAuth
 
