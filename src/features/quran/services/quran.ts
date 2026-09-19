@@ -1,9 +1,5 @@
 import { getPublicEnv } from "@/lib/env";
 import type { Ayah, Juz, Surah, Reciter } from "@/features/quran/types/quran";
-import {
-  surahs as fallbackSurahs,
-  reciters as fallbackReciters,
-} from "@/features/quran/data/fallback";
 import { getCanonicalAyahCount } from "@/features/quran/utils/surah-mapping";
 
 const DEBUG_QURAN = process.env.NODE_ENV !== "production";
@@ -143,16 +139,8 @@ export async function getAllSurahs(locale: Locale = "ar"): Promise<Surah[]> {
     }
     return rows.map(row => mapDbSurah(row, locale));
   } catch (error) {
-    console.error("[quran-service] Supabase surah catalog unavailable:", error);
-    // Static data is only a local resilience fallback; no external API is used.
-    return fallbackSurahs.map(s => ({
-      number: s.id,
-      name: locale === "en" ? s.nameEn : s.nameAr,
-      englishName: s.nameEn,
-      englishNameTranslation: "",
-      numberOfAyahs: s.ayahCount,
-      revelationType: s.revelationPlace === "meccan" ? "Meccan" : "Medinan",
-    })) as Surah[];
+    console.error("[quran-service] canonical Supabase surah catalog unavailable:", error);
+    return [];
   }
 }
 
@@ -289,7 +277,7 @@ export async function getReciters(): Promise<Reciter[]> {
     if (!rows.length) throw new Error("No Quran reciters found in Supabase.");
     return rows.map(mapDbReciter);
   } catch (error) {
-    console.error("[quran-service] Supabase reciter catalog unavailable:", error);
-    return fallbackReciters;
+    console.error("[quran-service] canonical Supabase reciter catalog unavailable:", error);
+    return [];
   }
 }
