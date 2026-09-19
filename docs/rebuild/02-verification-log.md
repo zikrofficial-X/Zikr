@@ -75,7 +75,7 @@ No production Supabase object is deleted as part of this rebuild. No changes are
 
 ## Latest implementation pass — 2026-09-19 (continued)
 
-Current rebuild HEAD at time of this entry: `2f64e2cc55b633fdabf5b84acea1e0d578221969`.
+Current rebuild HEAD at time of this entry: `819c47fa30b3d35d05d65eda6890b7784e84ee60`.
 
 ### Architecture cleanup completed
 - Admin API routes now consume `features/admin/services` directly; legacy admin-service imports were removed from the reviewed admin API/page surface.
@@ -87,6 +87,7 @@ Current rebuild HEAD at time of this entry: `2f64e2cc55b633fdabf5b84acea1e0d5782
 
 ### Content/data improvements
 - Video and dua feature services now use feature-owned fallbacks instead of returning empty data when Supabase is unavailable.
+- Video and dua category fetches also retain their feature fallbacks during network errors; the services use validated safe limits for collection reads.
 - Prophets offline data was synchronized from the 25 currently published DB records; Arabic biographies are unique and no longer rely on the repeated English placeholder.
 - Reciter pages consume the unified Quran reciter service.
 - Tafsir library is database-driven; the client component imports its type from the feature types layer rather than a server module.
