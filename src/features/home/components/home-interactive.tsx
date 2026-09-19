@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { convertTo12Hour, getPrayerTimes, getPrayerTimesByCity } from '@/lib/services/prayer-times';
+import { convertTo12Hour, getPrayerTimes, getPrayerTimesByCity } from '@/features/prayer/services/prayer-times';
 import type { PrayerTimes } from '@/lib/types/prayer';
 import { resolveLocationLabel } from '@/lib/location/reverse-geocode';
 
