@@ -115,14 +115,15 @@ for (const token of ["Capacitor.isNativePlatform", "appUrlOpen", "getLaunchUrl",
   if (!nativeOAuth.includes(token)) failures.push(`Native Google OAuth handler missing ${token}`);
 }
 
-const googleButton = read("src/app/auth/google-oauth-button.tsx");
+const googleButton = read("src/features/auth/components/google-oauth-button.tsx");
 for (const token of [
-  'Capacitor.isNativePlatform()',
+  "Capacitor.isNativePlatform()",
   'new URL("com.zikr.app://auth/callback")',
-  'await Browser.open({ url: data.url })',
+  "Browser.open({ url: data.url })",
 ]) {
   if (!googleButton.includes(token)) failures.push(`Google OAuth button missing direct native callback behavior: ${token}`);
 }
+if (!googleButton.includes("skipBrowserRedirect: true")) failures.push("Google OAuth button must keep browser redirect disabled so the native callback remains app-owned.");
 
 const callbackRoute = read("src/app/auth/callback/route.ts");
 for (const pattern of [
