@@ -7,7 +7,7 @@ This is the canonical architecture reference; historical reports live in `docs/r
 
 - **Framework:** Next.js (App Router, TypeScript, Tailwind)
 - **Database:** Supabase (PostgreSQL, RLS, Storage, Auth)
-- **ORM/schema mirror:** Drizzle (`drizzle/schema.ts`, config in `drizzle.config.ts`)
+- **Database schema:** Supabase migrations (`supabase/migrations`) are the single source of truth.
 - **Package manager:** pnpm (single lockfile: `pnpm-lock.yaml`)
 - **Verification:** Vercel runs `pnpm verify` on every deployment; GitHub Actions retains manual-only verification and recovery workflows while hosted runners are billing-locked
 - **Hosting:** Vercel (`vercel.json`) with Supabase `pg_cron` and Edge Functions for production background scheduling
@@ -26,8 +26,7 @@ This is the canonical architecture reference; historical reports live in `docs/r
 | `public/` | Static assets, manifest, icons. |
 | `supabase/migrations/` | Canonical migration chain (`0000_young_rattler` → `rls_triggers_storage`). |
 | `supabase/migrations_archive/` | Legacy/conflicting migrations. Never apply. See its README. |
-| `drizzle/` | Drizzle schema + drizzle-generated alignment migrations. |
-| `scripts/` | One-off operational scripts (imports, audits, RLS checks). Run manually with env vars; not part of the build. |
+| `drizzle/` | | `scripts/` | One-off operational scripts (imports, audits, RLS checks). Run manually with env vars; not part of the build. |
 | `proxy.ts` | Next.js middleware (Next 16 naming). |
 | `docs/` | Guides (deployment, Google auth, video automation) and this file. |
 | `docs/reports/` | Historical audit/status reports (archived from repo root). |
