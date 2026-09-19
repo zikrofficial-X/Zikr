@@ -8,7 +8,7 @@
 
 The repository has been consolidated onto a single canonical branch. Obsolete feature wrappers, duplicate assets, legacy hook/service paths, and root-level historical release clutter were removed or archived.
 
-The current repair work is committed on `main`; the latest repository commit is `cd00ae772da5e0a45954c79183da01e39e1b1371`.
+The current repair work is committed on `main`; the latest repository commit is `9f5c58f734d5ab6b193513a29097594c8332dd44`.
 
 The GitHub Admin 2.0 Quality Gate passed all configured checks, including migration validation/replay, route and import validation, hygiene, placeholder-media validation, project integrity, mobile/offline checks, content/auth checks, social/AdSense/Search Console checks, TypeScript, ESLint, unit/integration tests, and the production build. CircleCI also reports a successful `ci-check` on the audited commit.
 
