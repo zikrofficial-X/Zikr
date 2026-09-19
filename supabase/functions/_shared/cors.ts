@@ -1,17 +1,14 @@
+const CANONICAL_ORIGIN = 'https://zikrmediaofficial.vercel.app';
+
 const allowedOrigins = new Set(
-  (Deno.env.get('ALLOWED_ORIGINS') ?? Deno.env.get('NEXT_PUBLIC_SITE_URL') ?? '')
-    .split(',')
-    .map((origin) => origin.trim())
+  [CANONICAL_ORIGIN, ...(Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',')]
+    .map((origin) => origin.trim().replace(/\/$/, ''))
     .filter(Boolean),
 );
 
 export function corsHeaders(request: Request): HeadersInit {
-  const origin = request.headers.get('origin') ?? '';
-  const allowOrigin = allowedOrigins.size === 0
-    ? origin || '*'
-    : allowedOrigins.has(origin)
-      ? origin
-      : Array.from(allowedOrigins)[0];
+  const origin = (request.headers.get('origin') ?? '').trim().replace(/\/$/, '');
+  const allowOrigin = origin && allowedOrigins.has(origin) ? origin : CANONICAL_ORIGIN;
 
   return {
     'Access-Control-Allow-Origin': allowOrigin,
