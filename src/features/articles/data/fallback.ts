@@ -1,5 +1,14 @@
 import type { Article } from '@/features/articles/types/articles';
 
+export const FALLBACK_ARTICLE_CATEGORIES: ArticleCategory[] = [
+  { id: 'faith', nameAr: 'العقيدة والإيمان', nameEn: 'Faith', slug: 'faith', icon: '🕌' },
+  { id: 'quran', nameAr: 'القرآن وعلومه', nameEn: 'Quran', slug: 'quran', icon: '📖' },
+  { id: 'sunnah', nameAr: 'السنة والسيرة', nameEn: 'Sunnah & Seerah', slug: 'sunnah', icon: '🌙' },
+  { id: 'ethics', nameAr: 'الأخلاق والتزكية', nameEn: 'Ethics', slug: 'ethics', icon: '🌿' },
+  { id: 'history', nameAr: 'التاريخ والحضارة', nameEn: 'History', slug: 'history', icon: '🏛️' },
+  { id: 'family', nameAr: 'الأسرة والمجتمع', nameEn: 'Family', slug: 'family', icon: '👨‍👩‍👧‍👦' },
+];
+
 const articleContent = (_title: string, paragraphs: string[]) =>
   `هذا المقال من مكتبة ذِكر التعليمية، والغرض منه تقديم مادة منظمة قابلة للقراءة والمراجعة مع الالتزام بالتمييز بين النص الشرعي المباشر وبين الشرح والاستنباط.\n\n${paragraphs.join('\n\n')}\n\nفي نهاية الموضوع، يبقى الرجوع إلى القرآن الكريم والسنة الصحيحة والمراجع المتخصصة هو الأساس عند دراسة المسألة بتوسع. ويسعى هذا المحتوى إلى أن يكون مدخلاً واضحاً لا بديلاً عن المصادر الأصلية.`;
 
