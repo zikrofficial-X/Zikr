@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdminApi } from '@/lib/services/admin';
+import { requireAdminApi } from '@/features/admin/services/admin';
 import { getAllVideoRequests } from '@/features/videos/services/video-automation';
 
 export async function GET() {
