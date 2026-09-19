@@ -16,13 +16,13 @@ This is the canonical architecture reference; historical reports live in `docs/r
 
 | Path | Purpose |
 | --- | --- |
-| `app/` | All routes (pages + API). See "Routes" below. |
-| `components/` | Shared React components (UI, layout, feature components). |
-| `lib/` | Core services: `lib/supabase/client.ts` (browser client + legacy REST `request()` helper), `lib/supabase/server.ts` (async server client — must be awaited), types in `lib/types/`. |
-| `hooks/`, `shared/` | Reusable hooks and shared utilities. |
-| `config/` | App configuration. |
-| `styles/` | Global styles. |
-| `types/` | Global TypeScript types. |
+| `src/app/` | All routes (pages + API). See "Routes" below. |
+| `src/components/` | Shared React components (UI, layout, feature components). |
+| `src/lib/` | Core services: `lib/supabase/client.ts` (browser client + legacy REST `request()` helper), `lib/supabase/server.ts` (async server client — must be awaited), types in `src/lib/types/`. |
+| `src/hooks/`, `src/shared/` | Reusable hooks and shared utilities. |
+| `src/config/` | App configuration. |
+| `src/styles/` | Global styles. |
+| `src/types/` | Global TypeScript types. |
 | `public/` | Static assets, manifest, icons. |
 | `supabase/migrations/` | Canonical migration chain (`0000_young_rattler` → `rls_triggers_storage`). |
 | `supabase/migrations_archive/` | Legacy/conflicting migrations. Never apply. See its README. |
@@ -82,4 +82,4 @@ Documented in `docs/environment-variables.md`. Key vars:
 
 - `pnpm` only — do not commit `package-lock.json`.
 - Server Supabase client is async (Next 16 `cookies()` is async).
-- Drizzle schema must be kept in sync with `supabase/migrations/` when tables change.
+- - Database changes are made through the canonical Supabase migration chain; generated TypeScript types are refreshed from the live schema.
