@@ -124,8 +124,8 @@ INSERT INTO canonical_quran_surah_counts (id, ayahs_count)
     (111, 5),
     (112, 4),
     (113, 5),
-    (114, 6)
-)
+    (114, 6);
+
 UPDATE public.quran_surahs AS s
 SET ayahs_count = c.ayahs_count
 FROM canonical_quran_surah_counts AS c
