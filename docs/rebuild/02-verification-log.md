@@ -72,3 +72,41 @@ No production Supabase object is deleted as part of this rebuild. No changes are
 - Supabase performance advisor reports unused indexes; these are informational and were not deleted blindly.
 - Live content audit: `content_library` currently has no published rows; 177 drafts and 2 editorial-review rows remain unpublished. Published prophet rows exist separately, including legacy sections whose text quality still requires editorial review.
 - The branch is not certified until the actual CI/build chain passes: migration replay, imports, routes, hygiene, lint, TypeScript, tests, production build, runtime smoke tests, and final security/content gates.
+
+## Latest implementation pass — 2026-09-19 (continued)
+
+Current rebuild HEAD at time of this entry: `2f64e2cc55b633fdabf5b84acea1e0d578221969`.
+
+### Architecture cleanup completed
+- Admin API routes now consume `features/admin/services` directly; legacy admin-service imports were removed from the reviewed admin API/page surface.
+- The remaining `src/lib/services` files are now predominantly compatibility exports. The current infrastructure exceptions are `http`, `storage`, and `api-health`.
+- `verify-local-imports.mjs` now enforces this boundary and fails on legacy service imports from `src/app` or `src/features` outside the allowlist.
+- Companions now load through `features/companions/services/companions`; the fallback type import was repaired.
+- Prophets now use the synchronized published-DB fallback when the database is unavailable.
+- The legacy mixed `src/lib/data/fallback-library.ts` is now a compatibility bridge for article/video/dua fallbacks; unsplit legacy prophet/companion/battle/conquest data remains isolated there for later migration.
+
+### Content/data improvements
+- Video and dua feature services now use feature-owned fallbacks instead of returning empty data when Supabase is unavailable.
+- Prophets offline data was synchronized from the 25 currently published DB records; Arabic biographies are unique and no longer rely on the repeated English placeholder.
+- Reciter pages consume the unified Quran reciter service.
+- Tafsir library is database-driven; the client component imports its type from the feature types layer rather than a server module.
+- Poetry data and AI insight logic now live under the poetry feature. Fake engagement counts were removed, and community-poem state is explicitly session-only.
+- A corrupted Arabic character found during the audit was repaired.
+
+### Live database verification
+- Supabase migration ledger: 230 remote versions and 230 local migration files, with no remote-only/local-only versions and no duplicate local version IDs.
+- Public tables observed in the security audit have RLS enabled.
+- No reviewed public `SECURITY DEFINER` function is EXECUTE-granted to `anon` or `authenticated`.
+- Supabase security advisor still reports leaked-password protection disabled; this is an Auth project setting, not a SQL migration.
+- `content_library` currently contains no published rows (177 draft, 2 editorial-review, 1 approved-but-unpublished). Those entries were not promoted automatically.
+- `prophets` currently has 25 published rows with 25 distinct Arabic biographies.
+- `prophet_sections` still contains legacy sections with duplicate-ish text; this remains an editorial cleanup item and was not destructively modified.
+
+### Certification status
+The rebuild is **not certified** yet. The remaining proof gate is execution-based and still requires a successful CircleCI run and/or an unblocked Vercel production build, followed by runtime smoke tests and final content/security verification.
+
+Current GitHub status:
+- `ci/circleci: ci-check` = pending.
+- `Vercel` = failure with target `build-rate-limit`.
+
+The production `main` branch remains unchanged at `36d051902c9be10e2082648ee1970c54b99ff10f`.
