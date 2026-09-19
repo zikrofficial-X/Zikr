@@ -75,10 +75,10 @@ for (const obsolete of [
 }
 
 const authConfig = read("supabase/config.toml");
-const authBlockMatch = authConfig.match(/\[auth\]([\\s\\S]*?)(?=\n\[|$)/);
+const authBlockMatch = authConfig.match(/\[auth\]([\s\S]*?)(?=\n\[|$)/);
 const authBlock = authBlockMatch ? authBlockMatch[0] : "";
 const siteUrlMatch = authBlock.match(/^site_url\s*=\s*"([^"]+)"/m);
-const redirectsMatch = authBlock.match(/additional_redirect_urls\s*=\s*\[([\\s\\S]*?)\]/m);
+const redirectsMatch = authBlock.match(/additional_redirect_urls\s*=\s*\[([\s\S]*?)\]/m);
 const configuredRedirects = redirectsMatch
   ? Array.from(redirectsMatch[1].matchAll(/"([^"]+)"/g), match => match[1])
   : [];
