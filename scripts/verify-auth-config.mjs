@@ -22,10 +22,31 @@ function requireText(label, source, token) {
   if (!source.includes(token)) failures.push(label + ": missing " + token);
 }
 
-requireText("supabase/config.toml", config, 'site_url = "' + production + '"');
-requireText("supabase/config.toml", config, '"' + production + '/auth/callback"');
-requireText("supabase/config.toml", config, '"http://localhost:3000/auth/callback"');
-requireText("supabase/config.toml", config, '"' + nativeCallback + '"');
+const expectedRedirects = [
+  nativeCallback,
+  "http://localhost:3000/**",
+  production + "/auth/callback",
+];
+
+const authBlockMatch = config.match(/\[auth\]([\\s\\S]*?)(?=\n\[|$)/);
+const authBlock = authBlockMatch ? authBlockMatch[0] : "";
+const siteUrlMatch = authBlock.match(/^site_url\s*=\s*"([^"]+)"/m);
+const redirectsMatch = authBlock.match(/additional_redirect_urls\s*=\s*\[([\\s\\S]*?)\]/m);
+const configuredRedirects = redirectsMatch
+  ? Array.from(redirectsMatch[1].matchAll(/"([^"]+)"/g), match => match[1])
+  : [];
+
+if (siteUrlMatch?.[1] !== production + "/") {
+  failures.push("supabase/config.toml: site_url is not the locked canonical production URL");
+}
+if (JSON.stringify(configuredRedirects) !== JSON.stringify(expectedRedirects)) {
+  failures.push(
+    "supabase/config.toml: additional_redirect_urls must exactly match the three approved production/native/local entries",
+  );
+}
+if (authBlock.includes('site_url = "' + production + '"') && !authBlock.includes('site_url = "' + production + '/"')) {
+  failures.push("supabase/config.toml: trailing slash was removed from the canonical Site URL");
+}
 
 requireText(".env.example", env, "AUTH_CALLBACK_URL=" + production + "/auth/callback");
 requireText("auth-enhanced", enhanced, 'new URL("/auth/callback"');
