@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuranWird } from '@/hooks/use-quran-wird';
+import { useQuranWird } from '@/features/quran/hooks/use-quran-wird';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
