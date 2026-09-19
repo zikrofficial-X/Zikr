@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerEnv } from '@/lib/env';
-import { requireAdminApi } from '@/lib/services/admin';
+import { requireAdminApi } from '@/features/admin/services/admin';
 import { syncYoutubeFeed } from '@/features/videos/integrations/youtube';
 
 export const dynamic = 'force-dynamic';
