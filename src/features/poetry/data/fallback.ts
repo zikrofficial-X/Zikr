@@ -56,4 +56,4 @@ const islamicPoems = [
   },
 ];
 
-export const CATEGORIES = ['الكل', 'مدائح نبوية', 'مناجاة', 'حكمة', 'تصوف'];;
+export const POETRY_CATEGORIES = ['الكل', 'مدائح نبوية', 'مناجاة', 'حكمة', 'تصوف'] as const;;
