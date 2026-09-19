@@ -67,23 +67,6 @@ function resolveAppCallbackUrl(
 const rawEnv: Record<string, string | undefined> = {
   ...e,
 
-  // ── PostgreSQL / Database ──────────────────────────────────────────────────
-  POSTGRES_URL: pick("POSTGRES_URL"),
-  POSTGRES_PRISMA_URL: pick("POSTGRES_PRISMA_URL"),
-  POSTGRES_URL_NON_POOLING: pick("POSTGRES_URL_NON_POOLING"),
-  POSTGRES_USER: pick("POSTGRES_USER"),
-  POSTGRES_HOST: pick("POSTGRES_HOST"),
-  POSTGRES_PASSWORD: pick("POSTGRES_PASSWORD"),
-  POSTGRES_DATABASE: pick("POSTGRES_DATABASE", "POSTGRES_USER"),
-
-  // ── DATABASE_URL ──────────────────────────────────────────────────────────
-  DATABASE_URL: pick(
-    "DATABASE_URL",
-    "POSTGRES_URL",
-    "POSTGRES_PRISMA_URL",
-    "POSTGRES_URL_NON_POOLING"
-  ),
-
   // ── Supabase ──────────────────────────────────────────────────────────────
   NEXT_PUBLIC_SUPABASE_URL: normalizeSupabaseUrl(
     pick("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL")
@@ -109,13 +92,6 @@ const rawEnv: Record<string, string | undefined> = {
   NEXT_PUBLIC_SITE_URL: siteUrl,
   AUTH_CALLBACK_URL: resolveAppCallbackUrl(pick("AUTH_CALLBACK_URL"), siteUrl),
 
-  // ── Google OAuth ──────────────────────────────────────────────────────────
-  GOOGLE_CLIENT_ID: pick("GOOGLE_CLIENT_ID", "NEXT_PUBLIC_GOOGLE_CLIENT_ID"),
-  GOOGLE_CLIENT_SECRET: pick("GOOGLE_CLIENT_SECRET"),
-  NEXT_PUBLIC_GOOGLE_CLIENT_ID: pick(
-    "NEXT_PUBLIC_GOOGLE_CLIENT_ID",
-    "GOOGLE_CLIENT_ID"
-  ),
   NEXT_PUBLIC_GA_MEASUREMENT_ID: pick("NEXT_PUBLIC_GA_MEASUREMENT_ID"),
   NEXT_PUBLIC_GTM_ID: pick("NEXT_PUBLIC_GTM_ID"),
 
@@ -160,8 +136,6 @@ export function getPublicEnv() {
     NEXT_PUBLIC_SUPABASE_ANON_KEY:
       validatedEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
     NEXT_PUBLIC_SITE_URL: validatedEnv.NEXT_PUBLIC_SITE_URL || "",
-    NEXT_PUBLIC_GOOGLE_CLIENT_ID:
-      validatedEnv.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
     NEXT_PUBLIC_GA_MEASUREMENT_ID:
       validatedEnv.NEXT_PUBLIC_GA_MEASUREMENT_ID || "",
     NEXT_PUBLIC_GTM_ID: validatedEnv.NEXT_PUBLIC_GTM_ID || "",
@@ -175,7 +149,6 @@ export function getServerEnv() {
     CLOUDINARY_CLOUD_NAME: validatedEnv.CLOUDINARY_CLOUD_NAME || "",
     CLOUDINARY_API_KEY: validatedEnv.CLOUDINARY_API_KEY || "",
     CLOUDINARY_API_SECRET: validatedEnv.CLOUDINARY_API_SECRET || "",
-    DATABASE_URL: validatedEnv.DATABASE_URL || "",
     AUTH_CALLBACK_URL: validatedEnv.AUTH_CALLBACK_URL || "",
     GEMINI_API_KEY: validatedEnv.GEMINI_API_KEY || "",
     GEMINI_MODEL: validatedEnv.GEMINI_MODEL || "gemini-2.5-flash",
@@ -191,8 +164,6 @@ export function getServerEnv() {
     YOUTUBE_CLIENT_SECRET: validatedEnv.YOUTUBE_CLIENT_SECRET || "",
     YOUTUBE_CHANNEL_ID: validatedEnv.YOUTUBE_CHANNEL_ID || "",
     YOUTUBE_REFRESH_TOKEN: validatedEnv.YOUTUBE_REFRESH_TOKEN || "",
-    GOOGLE_CLIENT_ID: validatedEnv.GOOGLE_CLIENT_ID || "",
-    GOOGLE_CLIENT_SECRET: validatedEnv.GOOGLE_CLIENT_SECRET || "",
     FACEBOOK_APP_ID: validatedEnv.FACEBOOK_APP_ID || "",
     FACEBOOK_APP_SECRET: validatedEnv.FACEBOOK_APP_SECRET || "",
     FACEBOOK_PAGE_ACCESS_TOKEN: validatedEnv.FACEBOOK_PAGE_ACCESS_TOKEN || "",
@@ -204,7 +175,6 @@ export function getServerEnv() {
 
 export function getScriptEnv() {
   return {
-    DATABASE_URL: validatedEnv.DATABASE_URL,
   };
 }
 
@@ -214,13 +184,11 @@ export function getEnvAudit() {
       "NEXT_PUBLIC_SUPABASE_URL",
       "NEXT_PUBLIC_SUPABASE_ANON_KEY",
       "NEXT_PUBLIC_SITE_URL",
-      "NEXT_PUBLIC_GOOGLE_CLIENT_ID",
       "NEXT_PUBLIC_GA_MEASUREMENT_ID",
       "NEXT_PUBLIC_GTM_ID",
     ],
     serverOnly: [
       "SUPABASE_SERVICE_ROLE_KEY",
-      "GOOGLE_CLIENT_SECRET",
       "YOUTUBE_CLIENT_ID",
       "YOUTUBE_CLIENT_SECRET",
       "YOUTUBE_REFRESH_TOKEN",
@@ -237,7 +205,6 @@ export function getEnvAudit() {
       "CLOUDINARY_CLOUD_NAME",
       "CLOUDINARY_API_KEY",
       "CLOUDINARY_API_SECRET",
-      "DATABASE_URL",
       "AUTH_CALLBACK_URL",
       "GEMINI_API_KEY",
       "GEMINI_MODEL",
@@ -246,8 +213,6 @@ export function getEnvAudit() {
       "YOUTUBE_CLIENT_SECRET",
       "YOUTUBE_CHANNEL_ID",
       "YOUTUBE_REFRESH_TOKEN",
-      "GOOGLE_CLIENT_ID",
-      "GOOGLE_CLIENT_SECRET",
       "FACEBOOK_APP_ID",
       "FACEBOOK_APP_SECRET",
       "FACEBOOK_PAGE_ACCESS_TOKEN",
