@@ -32,7 +32,7 @@ const COLORS = {
 
 export class ZikrRunnerScene extends Phaser.Scene {
   private callbacks: RunnerSceneCallbacks;
-  private readonly tone = new ToneFeedback();
+  private readonly tone = new ToneFeedback("adventure");
   private player!: Phaser.GameObjects.Rectangle;
   private playerBody!: Phaser.Physics.Arcade.Body;
   private obstacles!: Phaser.Physics.Arcade.Group;
@@ -62,6 +62,10 @@ export class ZikrRunnerScene extends Phaser.Scene {
     this.callbacks = callbacks;
   }
 
+  preload() {
+    this.load.image("zikr-night-garden", "/kids/games/scene-night-garden.png");
+  }
+
   create(data?: RunnerData) {
     if (data?.callbacks) this.callbacks = data.callbacks;
 
@@ -69,9 +73,13 @@ export class ZikrRunnerScene extends Phaser.Scene {
     const height = this.scale.height;
     this.cameras.main.setBackgroundColor(COLORS.background);
 
+    const backdrop = this.add.image(width / 2, height / 2, "zikr-night-garden");
+    backdrop.setDisplaySize(width, height).setAlpha(0.34).setDepth(-4);
+
     const sky = this.add.graphics();
     sky.fillGradientStyle(0x0a2c38, 0x071b24, 0x0c2630, 0x071b24, 1);
     sky.fillRect(0, 0, width, height);
+    sky.setAlpha(0.7).setDepth(-3);
 
     const roadWidth = Math.min(width * 0.92, 520);
     const roadLeft = (width - roadWidth) / 2;

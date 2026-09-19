@@ -96,12 +96,13 @@ export function WorldGameStage(props: WorldGameStageProps) {
   const localTone = useRef<ToneFeedback | null>(null);
 
   useEffect(() => {
-    localTone.current = new ToneFeedback();
+    const theme = gameId === "zikr-memory" || gameId === "verse-puzzle" ? "night" : gameId === "wudu-challenge" || gameId === "zikr-quiz" ? "learning" : "adventure";
+    localTone.current = new ToneFeedback(theme);
     return () => {
       localTone.current?.dispose();
       localTone.current = null;
     };
-  }, []);
+  }, [gameId]);
 
   useEffect(() => {
     localTone.current?.setMuted(muted);
@@ -251,6 +252,7 @@ function MemoryGame({
   const [moves, setMoves] = useState(0);
   const [combo, setCombo] = useState(0);
   const [startedAt, setStartedAt] = useState(Date.now());
+  const completedRef = useRef(false);
 
   useEffect(() => {
     setCards(createMemoryCards(pairCount));
@@ -259,6 +261,7 @@ function MemoryGame({
     setMoves(0);
     setCombo(0);
     setStartedAt(Date.now());
+    completedRef.current = false;
   }, [pairCount, restartToken]);
 
   useEffect(() => {
@@ -294,13 +297,15 @@ function MemoryGame({
       completed: matched.length === cards.length,
     };
     onHud(hud);
-    if (hud.completed)
+    if (hud.completed && !completedRef.current) {
+      completedRef.current = true;
       onResult({
         ...hud,
         score:
           score +
           Math.max(0, 600 - Math.floor((Date.now() - startedAt) / 1000) * 5),
       });
+    }
   }, [cards.length, combo, matched.length, moves, onHud, onResult, startedAt]);
 
   const flip = (index: number) => {
@@ -787,6 +792,9 @@ function ColoringGame({
       localStorage.setItem("zikr-kids-coloring-v1", JSON.stringify(next));
       return next;
     });
+  const paintRegion = (index: number) => {
+    _paint(index);
+  };
   const undo = () =>
     setHistory(previous => {
       const last = previous.at(-1);
@@ -858,6 +866,8 @@ function ColoringGame({
             fill={regionFill(0)}
             stroke="#f3c969"
             strokeWidth="3"
+            className="cursor-pointer"
+            onClick={() => paintRegion(0)}
           />
           <circle cx="291" cy="48" r="27" fill="#102f3a" />
           <path
@@ -865,18 +875,24 @@ function ColoringGame({
             fill={regionFill(1)}
             stroke="#f3c969"
             strokeWidth="4"
+            className="cursor-pointer"
+            onClick={() => paintRegion(1)}
           />
           <path
             d="M163 194v-48h34v48Z"
             fill={regionFill(2)}
             stroke="#f3c969"
             strokeWidth="3"
+            className="cursor-pointer"
+            onClick={() => paintRegion(2)}
           />
           <path
             d="M75 132h25v62H75zM260 132h25v62h-25z"
             fill={regionFill(3)}
             stroke="#f3c969"
             strokeWidth="3"
+            className="cursor-pointer"
+            onClick={() => paintRegion(3)}
           />
           <path
             d="M177 43V25h6v18M171 25h18"
@@ -891,21 +907,25 @@ function ColoringGame({
             fill={regionFill(4)}
             stroke="#5fd1a6"
             strokeWidth="3"
+            className="cursor-pointer"
+            onClick={() => paintRegion(4)}
           />
           <path
             d="M36 194c8-21 18-21 26 0M300 194c8-21 18-21 26 0"
             fill={regionFill(5)}
             stroke="#5fd1a6"
             strokeWidth="3"
+            className="cursor-pointer"
+            onClick={() => paintRegion(5)}
           />
           <path d="M30 212h300" stroke="#d7a7e8" strokeWidth="5" />
-          <g fill={regionFill(6)} stroke="#8ab6e2" strokeWidth="2">
+          <g fill={regionFill(6)} stroke="#8ab6e2" strokeWidth="2" className="cursor-pointer" onClick={() => paintRegion(6)}>
             <circle cx="92" cy="212" r="7" />
             <circle cx="122" cy="212" r="7" />
             <circle cx="238" cy="212" r="7" />
             <circle cx="268" cy="212" r="7" />
           </g>
-          <g fill={regionFill(7)} stroke="#e28a5a" strokeWidth="2">
+          <g fill={regionFill(7)} stroke="#e28a5a" strokeWidth="2" className="cursor-pointer" onClick={() => paintRegion(7)}>
             <path d="M32 92l12-12 12 12-12 12z" />
             <path d="M304 108l12-12 12 12-12 12z" />
           </g>
@@ -920,6 +940,8 @@ function ColoringGame({
               fill={regionFill(8 + index)}
               stroke="#f3c969"
               strokeWidth="2"
+              className="cursor-pointer"
+              onClick={() => paintRegion(8 + index)}
             />
           ))}
         </svg>
