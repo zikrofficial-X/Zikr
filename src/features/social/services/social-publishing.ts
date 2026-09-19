@@ -132,22 +132,6 @@ export async function getPendingSocialPublishItems(
   }
 }
 
-async function getRecoverableFacebookAuthFailures(limit = 10) {
-  try {
-    const path =
-      `/rest/v1/social_publish_queue?status=eq.failed&order=updated_at.asc&limit=${Math.max(limit * 3, 30)}`;
-    const failedItems =
-      (await supabaseServerAdminRequest<SocialPublishQueueItem[]>(path)) || [];
-    return failedItems
-      .filter(hasRetryableFacebookAuthFailure)
-      .filter(item => item.target_platforms.some(platform => platform === "facebook" || platform === "facebook_reels"))
-      .slice(0, limit);
-  } catch (error) {
-    console.error("[social-publishing] Failed to recover Facebook-auth queue items:", error);
-    return [];
-  }
-}
-
 export async function claimPendingSocialPublishItems(
   limit = 10
 ): Promise<SocialPublishQueueItem[]> {
