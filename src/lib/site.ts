@@ -26,7 +26,7 @@ export const siteConfig = {
   dir: "rtl" as const,
 };
 
-export const defaultOgImage = "/og-image.png";
+export const defaultOgImage = "/branding/og-image.png";
 
 import type { Metadata } from "next";
 
