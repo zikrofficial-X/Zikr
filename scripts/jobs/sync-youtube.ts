@@ -1,4 +1,4 @@
-import { syncYoutubeFeed } from '../../lib/services/youtube';
+import { syncYoutubeFeed } from '../../src/features/videos/integrations/youtube';
 
 async function main() {
   const result = await syncYoutubeFeed(24);
