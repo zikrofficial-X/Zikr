@@ -58,19 +58,6 @@ const nextConfig: NextConfig = {
     { source: '/sitemap-content/:id.xml', destination: '/sitemap-content/:id' },
   ],
   redirects: async () => [
-    // The Vercel project exposes historical/generated aliases. Keep the
-    // user-facing origin and OAuth origin pinned to the canonical domain.
-    {
-      source: '/:path*',
-      has: [
-        {
-          type: 'host',
-          value: 'zikr-zikrmediaofficial.vercel.app',
-        },
-      ],
-      destination: 'https://zikrmediaofficial.vercel.app/:path*',
-      permanent: true,
-    },
     { source: '/home', destination: '/', permanent: false },
     { source: '/prayer', destination: '/prayer-times', permanent: true },
     { source: '/islamic-conquests', destination: '/conquests', permanent: true },
