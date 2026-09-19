@@ -1,0 +1,97 @@
+name: Background Jobs
+
+# Manual recovery worker only. Do not add a schedule here: production prayer
+# notifications are owned by Supabase pg_cron, while video/social queues are
+# intentionally operator-triggered.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Queue to process
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - videos
+          - social
+
+permissions:
+  contents: read
+
+concurrency:
+  group: background-jobs
+  cancel-in-progress: false
+
+jobs:
+  process:
+    name: Process ${{ inputs.target }} queue
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: Production
+
+    env:
+      BACKGROUND_JOB_TARGET: ${{ inputs.target }}
+
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
+
+      VIDEO_BACKGROUND_BATCH_SIZE: ${{ vars.VIDEO_BACKGROUND_BATCH_SIZE || '3' }}
+      SOCIAL_BACKGROUND_BATCH_SIZE: ${{ vars.SOCIAL_BACKGROUND_BATCH_SIZE || '10' }}
+      SOCIAL_PUBLISH_ENABLED: ${{ vars.SOCIAL_PUBLISH_ENABLED || 'false' }}
+      VIDEO_GENERATOR: template
+      AUTO_VIDEO_ENABLED: ${{ vars.AUTO_VIDEO_ENABLED || 'true' }}
+      AUTO_VIDEO_BATCH_SIZE: ${{ vars.AUTO_VIDEO_BATCH_SIZE || '1' }}
+      AUTO_VIDEO_SECONDS: ${{ vars.AUTO_VIDEO_SECONDS || '14' }}
+
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+
+      FACEBOOK_APP_ID: ${{ secrets.FACEBOOK_APP_ID }}
+      FACEBOOK_APP_SECRET: ${{ secrets.FACEBOOK_APP_SECRET }}
+      FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+      FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          package-manager-cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install FFmpeg and Arabic fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-core fonts-noto-extra
+          ffmpeg -version | head -n 1
+          fc-match "Noto Naskh Arabic"
+
+      - name: Validate required runtime secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SITE_URL; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Missing required runtime secret/variable: $name"
+              exit 1
+            fi
+          done
+
+      - name: Run background worker
+        run: pnpm background:jobs
