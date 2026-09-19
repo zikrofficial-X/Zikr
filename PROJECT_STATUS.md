@@ -10,7 +10,7 @@ The repository has been consolidated onto a single canonical branch. Obsolete fe
 
 The current repair work is committed on `main`; the latest repository commit is `9f5c58f734d5ab6b193513a29097594c8332dd44`.
 
-The GitHub Admin 2.0 Quality Gate passed all configured checks, including migration validation/replay, route and import validation, hygiene, placeholder-media validation, project integrity, mobile/offline checks, content/auth checks, social/AdSense/Search Console checks, TypeScript, ESLint, unit/integration tests, and the production build. CircleCI also reports a successful `ci-check` on the audited commit.
+The current repair commits are not yet certified by a green CI run. GitHub-hosted runners are unavailable for this account, the latest CircleCI `ci-check` is failing without exposed job logs in the current integration, and Vercel is currently rejecting deployments with a `build-rate-limit` platform status. The repository therefore remains under repair/verification rather than being marked release-green.
 
 ## Repository architecture
 
@@ -59,21 +59,21 @@ The existing `tasks` and `user_behavior` tables were intentionally retained beca
 
 Current populated production content includes Quran tafsir/audio, hadiths, stories, articles, prophets, companions, battles, conquests, duas, scholars, children's content/games, tawasheeh, social-sync queues, and prayer notification history.
 
-The production Quran catalog is populated and repaired: `quran_surahs` = 114, `quran_ayahs` = 6236, `quran_reciters` = 7, `quran_audio` = 798, and `quran_tafsir` = 6236. The surah catalog now has canonical `ayahs_count` metadata totaling 6236, with no zero/null counts. Quran audio covers all 114 surahs for all 7 current reciters, with no duplicate `(surah_id, reciter_id)` pairs.
+The last recorded production audit reported `quran_surahs` = 114, `quran_ayahs` = 6236, `quran_reciters` = 7, `quran_audio` = 798, and `quran_tafsir` = 6236. These live counts were not re-queried during this pass because the current Supabase management connector does not have sufficient permissions. The surah catalog now has canonical `ayahs_count` metadata totaling 6236, with no zero/null counts. Quran audio covers all 114 surahs for all 7 current reciters, with no duplicate `(surah_id, reciter_id)` pairs.
 
 ## Mobile
 
-Capacitor runtime packages are currently on major version 7, with Android/iOS native projects present and the mobile readiness gate passing. The CLI version discrepancy should be normalized during the next dependency maintenance cycle using a regenerated lockfile rather than hand-editing dependency resolution data.
+Capacitor runtime packages are on major version 7, while the repository pins `@capacitor/cli` to 8.5.1 in both `package.json` and `mobile/capacitor-dependencies.json`. This is documented as a dependency-maintenance item; the lockfile is kept internally consistent and was not hand-edited to force a speculative major-version migration.
 
 ## Deployment
 
-Vercel's last READY production deployment is still commit `2dec7d45c57a01927f10b499ca405e6b07c31739`; the current `main` repair commits have been pushed to GitHub but are not yet present in a newer READY deployment. The latest Vercel runtime-error query returned no runtime errors in the selected 24-hour window.
+Vercel's last READY production deployment is still commit `2dec7d45c57a01927f10b499ca405e6b07c31739`; the current `main` repair commits have been pushed to GitHub but are not yet present in a newer READY deployment. The last available Vercel runtime-error query showed no grouped runtime errors in the selected 24-hour window; the newer deployment attempts are currently blocked by the Vercel build-rate limit.
 
 ## Canonical Quran storage
 
 - Quran text is now runtime-local to ZIKR: `quran_surahs` (114), `quran_ayahs` (6236), `quran_tafsir` (6236), and `quran_reciters` (7).
 - Quran runtime services no longer depend on Al Quran Cloud or any other external Quran API.
-- `quran_audio` has 798 deterministic Supabase Storage targets, one whole-surah track for each of 114 surahs × 7 current reciters.
+- `quran_audio` is modeled as 798 deterministic Supabase Storage targets: one whole-surah track for each of 114 surahs × 7 current reciters.
 - Bucket: `quran-audio` (public read, controlled writes).
 - The storage import workflow is `.github/workflows/import-quran-audio.yml`; it requires the existing `SUPABASE_SERVICE_ROLE_KEY` repository secret.
 - Audio objects are not yet uploaded: `quran-audio` currently contains 0 objects and all 798 rows are `storage_status='pending'`.
@@ -81,7 +81,7 @@ Vercel's last READY production deployment is still commit `2dec7d45c57a01927f10b
 
 ## Canonical Auth and Quran invariants
 
-- Supabase Auth `site_url` is locked in repository configuration to `https://zikrmediaofficial.vercel.app/`.
+- Supabase Auth `site_url` is locked in repository configuration to `https://zikrmediaofficial.vercel.app`.
 - The approved redirect allowlist is exactly `com.zikr.app://auth/callback`, `http://localhost:3000/**`, and `https://zikrmediaofficial.vercel.app/auth/callback`.
 - Deployment/auth verification scripts fail on redirect-list drift.
 - Production client code uses the canonical ZIKR origin instead of a Vercel deployment alias.
