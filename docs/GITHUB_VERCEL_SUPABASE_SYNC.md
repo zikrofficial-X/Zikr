@@ -101,11 +101,11 @@ Migrations are managed through the Supabase migration chain. Do not add a direct
 pnpm db:migrate-supabase
 ```
 
-### On Vercel
+### Database deployment
 
 Vercel builds and deploys the application. Database schema changes are applied by the canonical Supabase migration process, not by the Vercel build.
 
-If migrations don't apply automatically, run them manually:
+To apply pending migrations:
 
 ```bash
 # Run the canonical Supabase migration chain
@@ -259,7 +259,7 @@ project/
 ├── .github/
 │   └── workflows/           # GitHub Actions (if used)
 ├── supabase/
-│   ├── migrations/          # SQL migrations (auto-applied)
+│   ├── migrations/          # Canonical SQL migration chain
 │   └── config.json          # Supabase project config
 ├── lib/
 │   ├── env.ts              # Environment validation
