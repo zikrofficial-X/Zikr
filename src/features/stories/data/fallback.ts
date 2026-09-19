@@ -1,6 +1,4 @@
-}
-
-export const PRIMARY_STORY_SOURCES: Record<string, StorySourceReference[]> = {
+const PRIMARY_STORY_SOURCES: Record<string, StorySourceReference[]> = {
   "story-of-musa": [
     { label: "سورة القصص — القرآن الكريم", url: "https://quran.com/28", type: "quran" },
     { label: "سورة طه — القرآن الكريم", url: "https://quran.com/20", type: "quran" },
@@ -51,7 +49,7 @@ export interface Story {
   updatedAt?: string;
 }
 
-export const FALLBACK_STORIES: Story[] = [
+const FALLBACK_STORIES: Story[] = [
   {
     id: "1",
     slug: "story-of-musa",
@@ -221,4 +219,3 @@ export const FALLBACK_STORIES: Story[] = [
 توفي خالد رضي الله عنه في حمص بعد حياة حافلة بالأحداث. وتبقى سيرته مثالاً على أن الإنسان يمكن أن يغير طريقه بالكامل، وأن الكفاءة حين تقترن بالإيمان والمسؤولية يمكن أن تتحول من أداة في صراع إلى طاقة في خدمة المجتمع.`
   },
 ];
-
