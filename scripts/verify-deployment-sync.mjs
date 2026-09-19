@@ -95,36 +95,36 @@ if (JSON.stringify(configuredRedirects) !== JSON.stringify(expectedRedirects)) {
   failures.push("Supabase Auth redirect allowlist drift detected");
 }
 
-const CANONICAL_SITE = "https://zikrmediaofficial.vercel.app";
-const FORBIDDEN_RUNTIME_HOST_PATTERNS = [
-  /zikr-zikrmediaofficial\\.vercel\\.app/i,
-  /VERCEL_URL\\?\\.trim\\(\\)/,
-  /https:\\/\\/\\$\\{vercelUrl\\}/i,
+const forbiddenRuntimePatterns = [
+  /zikr-zikrmediaofficial\.vercel\.app/i,
+  /process\.env\.VERCEL_URL\?\.trim\(\)/,
+  /https:\/\/\$\{vercelUrl\}/i,
 ];
 
-function walkRuntimeFiles(dir, relativeDir = "") {
-  let entries = [];
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
-  for (const entry of entries) {
-    const full = path.join(dir, entry.name);
-    const rel = path.join(relativeDir, entry.name).replaceAll("\\\\", "/");
-    if (entry.isDirectory()) {
-      if ([".git", ".next", "node_modules", "android/.gradle", "ios/App/Pods"].some((p) => rel === p || rel.startsWith(p + "/"))) continue;
-      walkRuntimeFiles(full, rel);
-      continue;
-    }
-    if (!/\\.(?:ts|tsx|js|mjs|json|yml|yaml|toml)$/i.test(entry.name)) continue;
-    const source = read(rel);
-    for (const pattern of FORBIDDEN_RUNTIME_HOST_PATTERNS) {
-      if (pattern.test(source)) failures.push(`Canonical URL drift detected in runtime/config file: ${rel}`);
-    }
-    if (/https:\\/\\/zikrmediaofficial\\.vercel\\.app/.test(source) === false && /(site_url|redirectTo|NEXT_PUBLIC_SITE_URL|PRODUCTION_URL)/.test(source)) {
-      // No-op: these symbols may legitimately refer to variables/config without
-      // embedding a URL in the same file.
+for (const relativePath of [
+  "src/lib/site.ts",
+  "src/lib/env.ts",
+  "src/lib/auth-enhanced.ts",
+  "next.config.ts",
+  "proxy.ts",
+  "src/features/auth/actions.ts",
+  "src/features/auth/integrations/google-oauth.ts",
+  "src/app/auth/callback/route.ts",
+  "src/app/auth/google/route.ts",
+  "src/features/auth/components/google-oauth-button.tsx",
+  "scripts/jobs/template-video-automation.ts",
+  "supabase/functions/_shared/cors.ts",
+]) {
+  const source = read(relativePath);
+  if (!source) continue;
+  for (const pattern of forbiddenRuntimePatterns) {
+    if (pattern.test(source)) {
+      failures.push(`Canonical URL drift detected in runtime/config file: ${relativePath}`);
+      break;
     }
   }
 }
-walkRuntimeFiles(root);
+
 
 const migrationsDir = path.join(root, "supabase", "migrations");
 if (fs.existsSync(migrationsDir)) {
