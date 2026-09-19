@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createMiddlewareClient } from "@/lib/supabase/middleware";
+import { PRODUCTION_URL } from "@/lib/site";
 
 const PROTECTED_PREFIXES = ["/profile", "/favorites", "/admin", "/wird", "/memorization"];
 
@@ -29,6 +30,19 @@ function nextWithPathHeader(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Vercel exposes multiple aliases for the same production deployment. Keep
+  // the user-facing site and OAuth callback on the canonical public origin.
+  if (process.env.VERCEL_ENV === "production") {
+    const requestHost = request.nextUrl.hostname.toLowerCase();
+    const canonicalHost = new URL(PRODUCTION_URL).hostname.toLowerCase();
+    if (requestHost.endsWith(".vercel.app") && requestHost !== canonicalHost) {
+      const canonicalUrl = new URL(request.url);
+      canonicalUrl.protocol = "https:";
+      canonicalUrl.host = canonicalHost;
+      return NextResponse.redirect(canonicalUrl, 308);
+    }
+  }
 
   // Let the OAuth callback through without session checks
   if (
