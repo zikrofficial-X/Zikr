@@ -19,6 +19,14 @@ const version = String(packageJson.version || "");
 const releaseTag = process.env.RELEASE_TAG || read(".release-tag").trim();
 const packageVersionText = read("PACKAGE_VERSION.txt");
 const androidBuild = read("android/app/build.gradle");
+const iosProject = read("ios/App/App.xcodeproj/project.pbxproj");
+const iosInfoPlist = read("ios/App/App/Info.plist");
+
+const iosMarketingVersions = [...iosProject.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map((match) => match[1].trim());
+const iosProjectVersions = [...iosProject.matchAll(/CURRENT_PROJECT_VERSION = ([^;]+);/g)].map((match) => match[1].trim());
+const iosShortVersion = iosInfoPlist.match(/<key>CFBundleShortVersionString<\\/key>\\s*<string>([^<]+)<\\/string>/)?.[1];
+const iosBundleVersion = iosInfoPlist.match(/<key>CFBundleVersion<\\/key>\\s*<string>([^<]+)<\\/string>/)?.[1];
+
 const androidVariables = read("android/variables.gradle");
 
 if (!/^\d+\.\d+\.\d+$/.test(version)) fail("package.json version must be a semantic release version");
@@ -44,6 +52,15 @@ if (packageTargetSdk !== androidTargetSdk) fail("targetSdk mismatch between PACK
 
 if (packageAppId !== "com.zikr.app") fail("applicationId must remain com.zikr.app");
 if (packageTargetSdk !== "36") fail("targetSdk must remain 36 for the current release baseline");
+
+if (!iosMarketingVersions.length || iosMarketingVersions.some((value) => value !== version)) {
+  fail(`iOS MARKETING_VERSION must match package.json version ${version}`);
+}
+if (!iosProjectVersions.length || iosProjectVersions.some((value) => value !== packageCode)) {
+  fail(`iOS CURRENT_PROJECT_VERSION must match versionCode ${packageCode}`);
+}
+if (iosShortVersion !== version) fail(`iOS CFBundleShortVersionString must be ${version}`);
+if (iosBundleVersion !== packageCode) fail(`iOS CFBundleVersion must be ${packageCode}`);
 
 const capacitor = (() => {
   try {
