@@ -70,7 +70,7 @@ export function QuranAudioPlayer({ surahId }: { surahId: number }) {
     if (!reciter.code) return [];
 
     return getAudioUrl(databaseAudioUrl);
-  }, [databaseAudioUrl, reciter, surahId, isClient]);
+  }, [databaseAudioUrl, reciter, isClient]);
 
   const src = audioSources[audioSourceIndex] || audioSources[0];
 
@@ -100,28 +100,16 @@ export function QuranAudioPlayer({ surahId }: { surahId: number }) {
       const audioError = (event.target as HTMLAudioElement).error;
       const errorMsg = audioError?.message || "Unknown error";
 
-      if (audioSourceIndex < audioSources.length - 1) {
-        setIsLoading(false);
-        setError(
-          "لم يتم رفع هذا التسجيل إلى مكتبة ذِكر الداخلية بعد. حاول مرة أخرى لاحقًا."
-        );
-        console.error("[audio] Supabase Storage source failed:", {
-          surahId,
-          reciter: reciter?.id,
-          source: audioSources[audioSourceIndex],
-          error: errorMsg,
-        });
-      } else {
-        setIsLoading(false);
-        setError(
-          "تعذر تحميل المقطع الصوتي من جميع المصادر المتاحة. تأكد من اتصالك بالإنترنت وحاول مرة أخرى."
-        );
-        console.error("[audio] All audio sources failed:", {
-          surahId,
-          reciter: reciter?.id,
-          sources: audioSources,
-        });
-      }
+      setIsLoading(false);
+      setError(
+        "تعذر تحميل هذا التسجيل من مكتبة ذِكر الداخلية. حاول مرة أخرى لاحقًا."
+      );
+      console.error("[audio] Supabase Storage source failed:", {
+        surahId,
+        reciter: reciter?.id,
+        source: audioSources[audioSourceIndex],
+        error: errorMsg,
+      });
     };
 
     const handleTimeUpdate = () => {
