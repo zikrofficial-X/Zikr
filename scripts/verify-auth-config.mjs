@@ -9,6 +9,8 @@ const config = read("supabase/config.toml");
 const env = read(".env.example");
 const enhanced = read("src/lib/auth-enhanced.ts");
 const callback = read("src/app/auth/callback/route.ts");
+const googleRoute = read("src/features/auth/integrations/google-oauth.ts");
+const proxy = read("proxy.ts");
 const button = read("src/features/auth/components/google-oauth-button.tsx");
 const native = read("src/components/layout/native-google-oauth-handler.tsx");
 
@@ -33,6 +35,8 @@ requireText("native Google handler", native, 'url.pathname === "/callback"');
 requireText("callback route", callback, "exchangeCodeForSession");
 requireText("callback route", callback, "extractNextPath");
 requireText("callback route", callback, "getTrustedAuthOrigin");
+requireText("Google route", googleRoute, "getCanonicalAuthBaseUrl");
+requireText("proxy", proxy, "getCanonicalAuthBaseUrl");
 
 if (config.includes(supabaseProvider)) {
   failures.push("supabase/config.toml: provider callback must not be placed in the application redirect allowlist as AUTH_CALLBACK_URL");

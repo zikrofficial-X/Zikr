@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createMiddlewareClient } from "@/lib/supabase/middleware";
+import { getCanonicalAuthBaseUrl } from "@/lib/auth-enhanced";
 import { PRODUCTION_URL } from "@/lib/site";
 
 const PROTECTED_PREFIXES = ["/profile", "/favorites", "/admin", "/wird", "/memorization"];
@@ -14,7 +15,10 @@ function matchesPrefix(pathname: string, prefixes: readonly string[]) {
 }
 
 function redirectToLogin(request: NextRequest) {
-  const loginUrl = new URL("/auth/login", request.url);
+  const loginUrl = new URL(
+    "/auth/login",
+    getCanonicalAuthBaseUrl(request.nextUrl.origin),
+  );
   loginUrl.searchParams.set(
     "next",
     `${request.nextUrl.pathname}${request.nextUrl.search}`
@@ -83,7 +87,9 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user && isAuthOnlyPage) {
-    return NextResponse.redirect(new URL("/profile", request.url));
+    return NextResponse.redirect(
+      new URL("/profile", getCanonicalAuthBaseUrl(request.nextUrl.origin)),
+    );
   }
 
   // Return the same `response` so Set-Cookie headers are forwarded

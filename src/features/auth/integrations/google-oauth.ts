@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { buildOAuthRedirectUri, extractNextPath } from "@/lib/auth-enhanced";
+import {
+  buildOAuthRedirectUri,
+  extractNextPath,
+  getCanonicalAuthBaseUrl,
+} from "@/lib/auth-enhanced";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +17,11 @@ function buildNativeOAuthRedirectUri(nextPath: string): string {
 export async function handleGoogleOAuth(request: NextRequest) {
   const safePath = extractNextPath(request.nextUrl.searchParams);
   const native = request.nextUrl.searchParams.get("native") === "1";
+  const authOrigin = getCanonicalAuthBaseUrl(request.nextUrl.origin);
   const redirectTo = native
     ? buildNativeOAuthRedirectUri(safePath)
-    : buildOAuthRedirectUri(request.nextUrl.origin, safePath);
-  const loginUrl = new URL("/auth/login", request.nextUrl.origin);
+    : buildOAuthRedirectUri(authOrigin, safePath);
+  const loginUrl = new URL("/auth/login", authOrigin);
   loginUrl.searchParams.set("next", safePath);
 
   try {
