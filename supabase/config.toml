@@ -8,7 +8,7 @@ max_rows = 1000
 
 [auth]
 enabled = true
-site_url = "https://zikrmediaofficial.vercel.app/"
+site_url = "https://zikrmediaofficial.vercel.app"
 # The public production origin is fixed. Keep app redirect URLs explicit for Supabase Auth.
 additional_redirect_urls = [
   "com.zikr.app://auth/callback",
