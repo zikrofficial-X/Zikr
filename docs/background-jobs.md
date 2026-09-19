@@ -1,6 +1,6 @@
 # Background jobs runbook
 
-Zikr has one authoritative automatic owner for the production background queues: GitHub Actions. The scheduled `Background Jobs` workflow runs every 15 minutes on `ubuntu-24.04`, installs FFmpeg and Arabic fonts, validates its production configuration, and executes the deterministic template/video and social queues. Its concurrency group prevents overlapping production workers.
+Zikr has one authoritative recovery worker for the production video/social queues: GitHub Actions. The `Background Jobs` workflow is manual-only while GitHub-hosted runners are unavailable; it installs FFmpeg and Arabic fonts, validates its production configuration, and executes the deterministic template/video and social queues when deliberately dispatched.
 
 The legacy Supabase `zikr-video-processing` job is retired and must not be recreated. The authenticated `/api/internal/video-processing` route remains a compatibility/recovery endpoint, not a scheduler. `/api/internal/video-processing` does **not** render or publish media on Vercel. This prevents Vercel runtime limits, missing FFmpeg binaries, and stale Vercel social credentials from affecting production queues.
 
@@ -18,7 +18,7 @@ Generated MP4 files are queued for configured platforms. YouTube uses OAuth 2.0 
 
 ## Scheduler
 
-GitHub Actions is the authoritative production worker. The workflow uses `VIDEO_GENERATOR=template`, server-side credentials, and a single concurrency group. Do not add another automatic worker for the same queue.
+There is no automatic GitHub schedule for video/social queues while hosted runners are unavailable. The workflow uses `VIDEO_GENERATOR=template`, server-side credentials, and a single concurrency group for manual recovery. Do not add another automatic worker for the same queue.
 
 No Supabase video cron is active in the current architecture. Video processing is a manual recovery operation through the GitHub Background Jobs workflow when a runner is available.
 
