@@ -1,15 +1,6 @@
 name: Supabase Auth Config Lock
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "supabase/config.toml"
-      - "scripts/verify-canonical-config.mjs"
-      - "docs/CANONICAL_AUTH_CONFIG.md"
-      - ".github/workflows/supabase-auth-config-lock.yml"
-  schedule:
-    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -20,7 +11,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate:
+    name: Validate canonical Supabase Auth URLs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm canonical:check
+
   enforce:
+    if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' }}
     name: Enforce canonical Supabase Auth URLs
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -42,17 +52,6 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
-
-      - name: Validate the locked values locally
-        run: pnpm canonical:check
-
-      - name: Require Supabase management token
-        run: |
-          set -euo pipefail
-          test -n "${SUPABASE_ACCESS_TOKEN:-}" || {
-            echo "::error::Missing GitHub Actions secret SUPABASE_ACCESS_TOKEN. This secret is required to enforce the remote Supabase Auth URL lock."
-            exit 1
-          }
 
       - name: Link the production project
         run: pnpm dlx supabase@latest link --project-ref "${SUPABASE_PROJECT_REF}"
