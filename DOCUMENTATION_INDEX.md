@@ -4,14 +4,16 @@
 
 - [`README.md`](./README.md) — installation, development, deployment, and database migration rules.
 - [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) — current project status and verified checks.
-- [`QUICK_START_GITHUB_ACTIONS.md`](./QUICK_START_GITHUB_ACTIONS.md) — GitHub Actions recovery and scheduling ownership.
+- [`GITHUB_ACTIONS_MIGRATION_GUIDE.md`](./GITHUB_ACTIONS_MIGRATION_GUIDE.md) — current automation ownership and GitHub Actions retirement rules.
 
 ## Operations
 
 - [`DEPLOYMENT_CHECKLIST.md`](./DEPLOYMENT_CHECKLIST.md) — production deployment checklist.
 - [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) — common runtime and deployment issues.
-- [`GITHUB_ACTIONS_MIGRATION_GUIDE.md`](./GITHUB_ACTIONS_MIGRATION_GUIDE.md) — GitHub Actions configuration.
+- [`docs/github-actions-replacement.md`](./docs/github-actions-replacement.md) — CircleCI migration and GitHub Actions retirement.
 - [`OFFLINE_SUPPORT.md`](./OFFLINE_SUPPORT.md) — offline/PWA behavior.
+- [`docs/production-scheduling.md`](./docs/production-scheduling.md) — scheduler ownership and recovery jobs.
+- [`docs/background-jobs.md`](./docs/background-jobs.md) — CircleCI background processing runbook.
 
 ## Authentication and data
 
