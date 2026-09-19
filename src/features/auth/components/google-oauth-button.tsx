@@ -19,12 +19,13 @@ function getSafeNextPath(next?: string): string {
 }
 
 function getCanonicalBrowserOrigin(): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (configured) {
-    try {
-      return new URL(configured).origin;
-    } catch {
-      // Fall through to the compile-time production fallback.
+  // The browser bundle may contain a stale or alias-valued public env var.
+  // Keep production Google OAuth pinned to the canonical public origin while
+  // preserving localhost for local development.
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+      return window.location.origin;
     }
   }
   return PRODUCTION_URL;
