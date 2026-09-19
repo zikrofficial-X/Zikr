@@ -1,10 +1,7 @@
 import type { NextConfig } from 'next';
 import { PRODUCTION_URL } from './src/lib/site';
 
-const canonicalClientSiteUrl =
-  process.env.VERCEL_ENV === 'production'
-    ? PRODUCTION_URL
-    : process.env.NEXT_PUBLIC_SITE_URL || PRODUCTION_URL;
+const canonicalClientSiteUrl = PRODUCTION_URL;
 
 const nextConfig: NextConfig = {
   env: {
