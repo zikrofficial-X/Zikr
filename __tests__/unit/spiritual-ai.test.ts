@@ -6,7 +6,7 @@ import {
   deriveSpiritualSearchTerm,
   formatSourcesForPrompt,
   type SpiritualSource,
-} from '../../lib/services/spiritual-retriever';
+} from '../../src/features/spiritual-ai/services/retriever';
 
 test('classifies fiqh and spiritual questions separately', () => {
   assert.equal(classifyQuestion('ما حكم الربا؟'), 'fatwa');
