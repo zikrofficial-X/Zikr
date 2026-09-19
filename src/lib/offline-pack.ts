@@ -53,6 +53,13 @@ export function isCacheableOfflinePageRoute(route: string): boolean {
   ) {
     return false;
   }
+  if (
+    ["/api", "/auth", "/admin", "/profile", "/favorites", "/settings"].some(
+      prefix => pathname === prefix || pathname.startsWith(prefix + "/")
+    )
+  ) {
+    return false;
+  }
   return !/\.(?:json|js|css|xml|txt|map|svg|png|jpe?g|gif|webp|ico|woff2?|mp3|wav|mp4|webm)$/i.test(pathname);
 }
 
