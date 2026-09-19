@@ -1,10 +1,7 @@
 name: Admin 2.0 Quality Gate
 # Verification gate: migrations, integrity, tests, lint, and production build.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
