@@ -7,12 +7,11 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
-import { createClient } from "@/lib/supabase/server";
 import {
   companionCategoryLabel,
   uniqueCompanionSummaries,
 } from "@/features/companions/utils/companions";
-import { COMPANIONS } from "@/features/companions/data/fallback";
+import { getPublishedCompanions } from "@/features/companions/services/companions";
 
 export const metadata: Metadata = pageMetadata({
   title: "الصحابة رضي الله عنهم",
@@ -22,52 +21,6 @@ export const metadata: Metadata = pageMetadata({
 
 export const revalidate = 3600;
 
-type Companion = {
-  id: string;
-  name_ar: string;
-  name_en: string | null;
-  title_ar: string | null;
-  bio_ar: string | null;
-  slug: string;
-  category: string | null;
-};
-
-const STATIC_COMPANION_SLUGS: Record<string, string> = {
-  "أبو بكر الصديق": "abu-bakr",
-  "عمر بن الخطاب": "umar-ibn-khattab",
-  "علي بن أبي طالب": "ali-ibn-abi-talib",
-  "عثمان بن عفان": "uthman-ibn-affan",
-  "خالد بن الوليد": "khalid-ibn-al-walid",
-  "بلال بن رباح": "bilal-ibn-rabah",
-  "سلمان الفارسي": "salman-al-farisi",
-  "عبد الله بن عباس": "abdullah-ibn-abbas",
-  "أبو هريرة": "abu-hurayrah",
-  "سعد بن أبي وقاص": "saad-ibn-abi-waqqas",
-};
-
-const STATIC_COMPANION_CATEGORIES: Record<string, string> = {
-  "أبو بكر الصديق": "الخلفاء الراشدون",
-  "عمر بن الخطاب": "الخلفاء الراشدون",
-  "علي بن أبي طالب": "الخلفاء الراشدون",
-  "عثمان بن عفان": "الخلفاء الراشدون",
-  "خالد بن الوليد": "القادة",
-  "سعد بن أبي وقاص": "القادة",
-  "بلال بن رباح": "السابقون إلى الإسلام",
-  "سلمان الفارسي": "السابقون إلى الإسلام",
-  "عبد الله بن عباس": "السابقون إلى الإسلام",
-  "أبو هريرة": "السابقون إلى الإسلام",
-};
-
-const STATIC_COMPANIONS: Companion[] = COMPANIONS.map(companion => ({
-  id: `static-${companion.id}`,
-  name_ar: companion.name_ar,
-  name_en: companion.name_en,
-  title_ar: companion.title_ar,
-  bio_ar: companion.biography_ar,
-  slug: STATIC_COMPANION_SLUGS[companion.name_ar] ?? `static-${companion.id}`,
-  category: STATIC_COMPANION_CATEGORIES[companion.name_ar] ?? null,
-}));
-
 function categoryCountLabel(category: string, count: number) {
   return category === "أمهات المؤمنين"
     ? `${count} صحابية`
@@ -75,33 +28,14 @@ function categoryCountLabel(category: string, count: number) {
 }
 
 export default async function CompanionsPage() {
-  let companions: Companion[] = [];
-
-  try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("companions")
-      .select("id, name_ar, name_en, title_ar, bio_ar, slug, category")
-      .eq("published", true)
-      .order("name_ar", { ascending: true });
-
-    if (error) throw error;
-    companions = uniqueCompanionSummaries((data ?? []) as Companion[]);
-  } catch (error) {
-    console.error("[companions] Failed to load published content:", error);
-  }
-
-  const displayCompanions = uniqueCompanionSummaries([
-    ...companions,
-    ...STATIC_COMPANIONS,
-  ]);
-  const grouped = displayCompanions.reduce<Record<string, Companion[]>>(
+  const companions = await getPublishedCompanions();
+  const displayCompanions = uniqueCompanionSummaries(companions);
+  const grouped = displayCompanions.reduce<Record<string, typeof displayCompanions>>(
     (acc, companion) => {
       const category = companionCategoryLabel(companion.category);
       (acc[category] ??= []).push(companion);
       return acc;
     },
-    {}
   );
 
   return (
