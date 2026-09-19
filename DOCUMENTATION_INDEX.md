@@ -4,7 +4,7 @@
 
 - [`README.md`](./README.md) — installation, development, deployment, and database migration rules.
 - [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) — current project status and verified checks.
-- [`QUICK_START_GITHUB_ACTIONS.md`](./QUICK_START_GITHUB_ACTIONS.md) — scheduled background jobs.
+- [`QUICK_START_GITHUB_ACTIONS.md`](./QUICK_START_GITHUB_ACTIONS.md) — GitHub Actions recovery and scheduling ownership.
 
 ## Operations
 
@@ -25,7 +25,7 @@
 
 - Deployable SQL migrations live only in [`supabase/migrations/`](./supabase/migrations/).
 - [`supabase/migrations_archive/`](./supabase/migrations_archive/) is historical and must not be applied.
-- `drizzle/schema.ts` is the type-safe schema reference. Its migration journal is retained for ORM history, but it is not a second deployment path.
+- Historical Drizzle migration records may remain inside `supabase/migrations/` because they are part of database history; there is no active Drizzle runtime or schema-migration path.
 - Use `pnpm verify` before opening a pull request.
 
 This index intentionally omits historical audit reports and superseded setup notes so links do not point to conflicting instructions.
