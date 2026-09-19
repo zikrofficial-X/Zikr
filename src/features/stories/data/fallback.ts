@@ -1,4 +1,4 @@
-import type { Story, StoryCategory, StorySourceReference } from "@/features/stories/types/stories";
+import type { StoryCategory, StorySourceReference, Story } from "@/features/stories/types/stories";
 
 export const PRIMARY_STORY_SOURCES: Record<string, StorySourceReference[]> = {
   "story-of-musa": [
@@ -36,20 +36,6 @@ export const PRIMARY_STORY_SOURCES: Record<string, StorySourceReference[]> = {
     { label: "الموسوعة البريطانية — Andalusia", url: "https://www.britannica.com/place/Andalusia", type: "history" },
   ],
 };
-
-export interface Story {
-  id: string;
-  slug: string;
-  title: string;
-  summary?: string;
-  content?: string;
-  category: StoryCategory;
-  metadata?: Record<string, unknown>;
-  primarySources?: StorySourceReference[];
-  published?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
 
 export const FALLBACK_STORIES: Story[] = [
   {
