@@ -188,7 +188,10 @@ async function main() {
         console.log(`OK ${result.reciter} ${result.surah} ${result.bytes} bytes`);
       } catch (error) {
         failed++;
-        console.error(`FAIL ${task.reciter.code} ${task.row.surah_id}: ${error instanceof Error ? error.message : error}`);
+        const errMsg = error instanceof Error
+          ? (error.message || error.stack?.split('\n')[0] || error.constructor?.name || 'Error')
+          : String(error);
+        console.error(`FAIL ${task.reciter.code} ${task.row.surah_id}: ${errMsg}`);
       }
     }
   }
