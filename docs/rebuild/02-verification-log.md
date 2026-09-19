@@ -110,3 +110,6 @@ Current GitHub status:
 - `Vercel` = failure with target `build-rate-limit`.
 
 The production `main` branch remains unchanged at `36d051902c9be10e2082648ee1970c54b99ff10f`.
+
+- The stories service was hardened so an empty, connected `stories` table returns no published stories instead of silently surfacing fallback content; fallbacks remain available for offline/unconfigured operation.
+- Live published-content snapshot: articles=5 (all >= 1800 chars), videos=9, duas=47, stories=0, companions=12, scholars=12, quran_tafsir=6236 rows from 1 author.
