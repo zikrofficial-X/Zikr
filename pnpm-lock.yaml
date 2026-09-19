@@ -82,10 +82,7 @@ importers:
         version: 7.0.66(zod@4.4.3)
       clsx:
         specifier: 2.1.1
-        version: 2.1.1
-      drizzle-orm:
-        specifier: ^0.45.2
-        version: 0.45.2(@electric-sql/pglite@0.5.8)(postgres@3.4.9)
+        version: 2.1.1        version: 0.45.2(@electric-sql/pglite@0.5.8)(postgres@3.4.9)
       lucide-react:
         specifier: ^1.39.0
         version: 1.39.0(react@19.2.7)
@@ -1528,9 +1525,6 @@ packages:
   doctrine@2.1.0:
     resolution: {integrity: sha512-35mSku4ZXK0vfCuHEDAwt55dg2jNajHZ1odvF+8SSr82EsZY4QmXfuWso8oEd8zRhVObSN18aM0CjSdoBX7zIw==}
     engines: {node: '>=0.10.0'}
-
-  drizzle-orm@0.45.2:
-    resolution: {integrity: sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
