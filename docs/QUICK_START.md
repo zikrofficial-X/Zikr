@@ -47,12 +47,7 @@ Visit your Vercel URL → It should load without errors ✅
 
 ## What Just Happened?
 
-- ✅ GitHub code is clean (3 commits with fixes)
-- ✅ TypeScript passes
-- ✅ Build succeeds
-- ✅ Middleware handles missing config gracefully
-- ✅ Environment validation improved
-- ✅ Error messages are helpful
+- ✅ GitHub code has the canonical URL and architecture checks
 - ⏳ **Deployment**: Vercel build capacity/account limits may block a new deployment even when the repository is valid.
 
 ## If Something Goes Wrong
