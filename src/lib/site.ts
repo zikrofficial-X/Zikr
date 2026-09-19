@@ -1,19 +1,14 @@
 /**
- * Canonical production origin. Single source of truth for every fallback —
- * override per environment with NEXT_PUBLIC_SITE_URL.
+ * Canonical production origin. Single source of truth.
+ *
+ * This value is intentionally immutable at runtime: preview/deployment aliases
+ * must never become the user-facing URL, metadata base, sitemap origin, or
+ * OAuth origin.
  */
 export const PRODUCTION_URL = "https://zikrmediaofficial.vercel.app";
 
-export function enforceCanonicalProductionUrl(value?: string): string {
-  if (!value) return PRODUCTION_URL;
-
-  try {
-    const origin = new URL(value).origin;
-    if (process.env.VERCEL_ENV === "production") return PRODUCTION_URL;
-    return origin;
-  } catch {
-    return PRODUCTION_URL;
-  }
+export function enforceCanonicalProductionUrl(_value?: string): string {
+  return PRODUCTION_URL;
 }
 
 export const siteConfig = {
@@ -21,7 +16,7 @@ export const siteConfig = {
   shortName: "ZIKR",
   description:
     "ZIKR - منصة إسلامية شاملة للقرآن الكريم، الأحاديث النبوية، قصص الأنبياء، ومواقيت الصلاة بتجربة حديثة ومتكاملة.",
-  url: enforceCanonicalProductionUrl(process.env.NEXT_PUBLIC_SITE_URL),
+  url: PRODUCTION_URL,
   locale: "ar_SA",
   dir: "rtl" as const,
 };
