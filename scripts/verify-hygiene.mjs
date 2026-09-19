@@ -42,9 +42,11 @@ try {
   fail(`package.json is not valid JSON: ${error instanceof Error ? error.message : 'unknown error'}`);
 }
 
-const envAndRuntimeSources = [
+const envAndRuntimeFiles = [
   '.env.example',
   'src/lib/env.ts',
+];
+const envAndRuntimeDirs = [
   'src/app',
   'src/features',
   'src/components',
@@ -61,6 +63,16 @@ const staleRuntimeTokens = [
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
 ];
+
+function scanFile(relativePath) {
+  const full = path.join(root, relativePath);
+  if (!existsSync(full)) return;
+  let source = '';
+  try { source = readFileSync(full, 'utf8'); } catch { return; }
+  for (const token of staleRuntimeTokens) {
+    if (source.includes(token)) fail(`Stale runtime reference '${token}' found in ${relativePath}`);
+  }
+}
 
 function walkRuntime(relativeDir) {
   const absolute = path.join(root, relativeDir);
@@ -81,7 +93,8 @@ function walkRuntime(relativeDir) {
   }
 }
 
-for (const source of envAndRuntimeSources) walkRuntime(source);
+for (const file of envAndRuntimeFiles) scanFile(file);
+for (const dir of envAndRuntimeDirs) walkRuntime(dir);
 
 for (const legacyDir of ['app', 'pages', 'src/hooks']) {
   if (existsSync(path.join(root, legacyDir))) fail(`Legacy runtime directory must not exist: ${legacyDir}`);
