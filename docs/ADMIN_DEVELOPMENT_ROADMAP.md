@@ -784,7 +784,7 @@ export async function restoreAdminConfiguration(backupId: string): Promise<boole
 ## 🔧 متطل��ات تقنية
 
 ### المتطلبات:
-- ✅ Next.js 14+
+- ✅ Next.js 16+
 - ✅ TypeScript
 - ✅ Supabase (Database + Auth)
 - ✅ YouTube API v3
