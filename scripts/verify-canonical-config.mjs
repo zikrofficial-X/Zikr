@@ -5,7 +5,6 @@ import path from "node:path";
 
 const root = process.cwd();
 const production = "https://zikrmediaofficial.vercel.app";
-const productionWithSlash = production + "/";
 const nativeCallback = "com.zikr.app://auth/callback";
 const localWildcard = "http://localhost:3000/**";
 const browserCallback = production + "/auth/callback";
@@ -30,7 +29,7 @@ const redirects = authBlock.match(/additional_redirect_urls\s*=\s*\[([\s\S]*?)\]
 
 const expected = [nativeCallback, localWildcard, browserCallback];
 
-if (siteUrl !== productionWithSlash) fail(`Supabase Auth site_url drift: ${siteUrl || "<missing>"}`);
+if (siteUrl !== production) fail(`Supabase Auth site_url drift: ${siteUrl || "<missing>"}`);
 if (JSON.stringify(redirects) !== JSON.stringify(expected)) {
   fail(`Supabase Auth redirect allowlist drift: ${JSON.stringify(redirects)}`);
 }
