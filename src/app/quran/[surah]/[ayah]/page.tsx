@@ -70,8 +70,8 @@ export default async function AyahPage({ params }: AyahPageProps) {
   if (!tafsir) {
     console.info(`[ayah-page] Tafsir DB miss for ${surahId}:${ayahId}, falling back to API`);
     tafsir = await getTafsir(surahId, ayahId);
-    tafsirSource = `https://api.alquran.cloud/v1/ayah/${surahId}:${ayahId}/ar.muyassar`;
-    tafsirAuthor = 'Al Quran Cloud — ar.muyassar';
+    tafsirSource = `https://api.alquran.cloud/v1/ayah/${surahId}:${ayahId}/ar.jalalayn`;
+    tafsirAuthor = 'Al Quran Cloud — ar.jalalayn';
     tafsirRetrievedAt = null;
   }
 
