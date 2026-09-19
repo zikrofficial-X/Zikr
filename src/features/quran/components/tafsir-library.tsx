@@ -8,15 +8,10 @@ import { Input } from '@/components/ui/input';
 import { SectionHeader } from '@/components/ui/section-header';
 import type { QuranTafsirSource } from '@/features/quran/types/quran';
 
-const FALLBACK_SOURCE: QuranTafsirSource = {
-  author: 'التفسير الجلالين',
-  sourceUrl: 'https://api.alquran.cloud/v1/ayah/1:1/ar.jalalayn',
-};
-
 export function TafsirLibrary({ sources }: { sources: QuranTafsirSource[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const filtered = useMemo(() => {
-    const availableSources = sources.length > 0 ? sources : [FALLBACK_SOURCE];
+    const availableSources = sources;
     const query = searchQuery.trim().toLowerCase();
     if (!query) return availableSources;
     return availableSources.filter((source) => source.author.toLowerCase().includes(query));
