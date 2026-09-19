@@ -99,8 +99,8 @@ const rawEnv: Record<string, string | undefined> = {
   // Uploads require the OAuth client + refresh token. API key is optional and
   // is kept for public-data reads.
   YOUTUBE_API_KEY: pick("YOUTUBE_API_KEY"),
-  YOUTUBE_CLIENT_ID: pick("YOUTUBE_CLIENT_ID", "GOOGLE_CLIENT_ID"),
-  YOUTUBE_CLIENT_SECRET: pick("YOUTUBE_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET"),
+  YOUTUBE_CLIENT_ID: pick("YOUTUBE_CLIENT_ID"),
+  YOUTUBE_CLIENT_SECRET: pick("YOUTUBE_CLIENT_SECRET"),
   YOUTUBE_CHANNEL_ID: pick("YOUTUBE_CHANNEL_ID"),
   YOUTUBE_REFRESH_TOKEN: pick("YOUTUBE_REFRESH_TOKEN"),
 
@@ -173,11 +173,6 @@ export function getServerEnv() {
   };
 }
 
-export function getScriptEnv() {
-  return {
-  };
-}
-
 export function getEnvAudit() {
   return {
     public: [
@@ -219,7 +214,6 @@ export function getEnvAudit() {
       "FACEBOOK_PAGE_ID",
       "FACEBOOK_GRAPH_API_VERSION",
     ],
-    scriptsOnly: ["DATABASE_URL"],
     optionalIntegrations: [
       "QURAN_API_BASE_URL",
       "QURAN_AUDIO_CDN_URL",
@@ -231,8 +225,6 @@ export function getEnvAudit() {
       "YOUTUBE_REFRESH_TOKEN",
       "GEMINI_API_KEY",
       "GEMINI_MODEL",
-      "GOOGLE_CLIENT_ID",
-      "GOOGLE_CLIENT_SECRET",
       "FACEBOOK_APP_ID",
       "FACEBOOK_APP_SECRET",
       "FACEBOOK_PAGE_ACCESS_TOKEN",
