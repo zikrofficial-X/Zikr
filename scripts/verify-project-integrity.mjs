@@ -79,8 +79,8 @@ const iosProject = read('ios/App/App.xcodeproj/project.pbxproj');
 const iosInfoPlist = read('ios/App/App/Info.plist');
 const iosMarketingVersions = [...iosProject.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map((match) => match[1].trim());
 const iosProjectVersions = [...iosProject.matchAll(/CURRENT_PROJECT_VERSION = ([^;]+);/g)].map((match) => match[1].trim());
-const iosShortVersion = iosInfoPlist.match(/<key>CFBundleShortVersionString<\\/key>\\s*<string>([^<]+)<\\/string>/)?.[1];
-const iosBundleVersion = iosInfoPlist.match(/<key>CFBundleVersion<\\/key>\\s*<string>([^<]+)<\\/string>/)?.[1];
+const iosShortVersion = iosInfoPlist.match(/<key>CFBundleShortVersionString<\/key>\\s*<string>([^<]+)<\/string>/)?.[1];
+const iosBundleVersion = iosInfoPlist.match(/<key>CFBundleVersion<\/key>\\s*<string>([^<]+)<\/string>/)?.[1];
 
 const androidTargetSdkValueMatch = androidVariables.match(/targetSdkVersion\s*=\s*(\d+)/);
 
