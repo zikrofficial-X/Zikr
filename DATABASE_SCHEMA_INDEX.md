@@ -1,213 +1,87 @@
-# Database Schema Documentation Index
+# ZIKR Database Schema Index
 
-## Quick Links
+## Canonical database architecture
 
-### 📊 Main Documentation
-1. **DATABASE_SCHEMA_SUMMARY.txt** - Complete fix overview with all details
-2. **DRIZZLE_SCHEMA_COMPLETE.md** - Drizzle ORM schema update report
-3. **SUPABASE_GITHUB_FIX_SUMMARY.md** - Supabase schema fixes and migrations
+The production database is **Supabase PostgreSQL**.
 
-### 🔧 Configuration Files
-- `src/lib/types/supabase.ts` - TypeScript types for Supabase tables
+Database schema changes have one deployment path:
 
-### 📁 Migration Files
+`supabase/migrations/*.sql`
 
-#### Drizzle Migrations
-```
-drizzle/migrations/
-├── 0000_add_articles_bilingual_columns.sql (NEW - 989 lines)
-└── meta/
-    ├── 0000_snapshot.json
-    └── _journal.json
-```
+The application runtime does not use Drizzle ORM, `drizzle-kit`, `drizzle.config.ts`, or a direct `DATABASE_URL`.
 
-#### Supabase Migrations
-```
-supabase/migrations/
-├── 20260727000000_schema_reconciliation.sql (UPDATED)
-├── 20260728000000_comprehensive_schema_validation.sql (NEW)
-└── ... (50+ other migrations)
-```
+## Current project
 
-### 📝 Content Files
-- `lib/data/articles.ts` - 6 bilingual articles (UPDATED)
-- `lib/data/quran-surahs.ts` - 114 Quranic chapters (NEW)
-- `lib/data/kids-stories.ts` - 3 stories + activities (NEW)
-- `lib/data/companions.ts` - 3 companions + 2 battles (NEW)
+- Supabase project ref: `eydxvcamhjhajxjrsgym`
+- Canonical migration directory: `supabase/migrations/`
+- Historical migrations/archive: `supabase/migrations_archive/`
+- Generated TypeScript database types: `src/lib/types/supabase.ts`
+- Supabase Edge Functions: `supabase/functions/`
+- Row-Level Security: enabled on the audited public tables.
+- Application data access: Supabase client / REST / server-side Supabase helpers.
 
-### 🕐 Service Updates
-- `lib/services/prayer-times.ts` - 12-hour format function (UPDATED)
-- `app/page.tsx` - Prayer time display (UPDATED)
+## Migration rules
 
----
+1. Create every new schema change as a new timestamped SQL file under `supabase/migrations/`.
+2. Never edit or delete an already-applied production migration merely to make history look cleaner.
+3. Never reset production migration history to solve local/preview drift.
+4. Validate migration ordering and replay with:
+   `pnpm supabase:migrations:check`
+   and
+   `pnpm supabase:migrations:replay`.
+5. Use Supabase's authenticated migration workflow to deploy schema changes.
 
-## What Was Fixed
+## Historical Drizzle references
 
-### Problem
-Database error: `column "title_ar" of relation "articles" does not exist`
+The repository still contains historical migration records whose filenames/comments mention Drizzle. They are retained because they are part of the recorded database history and reconciliation trail.
 
-### Root Cause
-- Drizzle schema didn't include bilingual columns
-- Supabase schema missing bilingual fields
-- TypeScript types not aligned
-- Types mismatch between code and database
+They are **not** an active Drizzle deployment mechanism.
 
-### Solution
-✅ Updated Drizzle ORM schema  
-✅ Generated comprehensive Drizzle migration  
-✅ Updated Supabase schema reconciliation  
-✅ Created Supabase validation migration  
-✅ Aligned TypeScript types  
-✅ Added bilingual content to articles  
+Do not recreate `drizzle/`, add `drizzle-orm`, add `drizzle-kit`, or introduce a second ORM schema-push path.
 
----
+## Core domains
 
-## Articles Table Columns
+The current schema supports the platform's active domains, including:
 
-| Column | Type | Status |
-|--------|------|--------|
-| id | uuid | ✅ Existing |
-| category_id | uuid | ✅ Existing |
-| title | text | ✅ Legacy (kept) |
-| **title_ar** | text | ✅ **NEW** |
-| **title_en** | text | ✅ **NEW** |
-| slug | text | ✅ Existing |
-| content | text | ✅ Legacy (kept) |
-| **content_ar** | text | ✅ **NEW** |
-| **content_en** | text | ✅ **NEW** |
-| summary | text | ✅ Existing |
-| **summary_ar** | text | ✅ **NEW** |
-| **summary_en** | text | ✅ **NEW** |
-| author | text | ✅ Existing |
-| tags | text[] | ✅ Existing |
-| featured_image_url | text | ✅ Existing |
-| **featured** | boolean | ✅ **NEW** |
-| published | boolean | ✅ Existing |
-| views | integer | ✅ Existing |
-| metadata | jsonb | ✅ Existing |
-| created_at | timestamp | ✅ Existing |
-| updated_at | timestamp | ✅ Existing |
+- Quran: `quran_surahs`, `quran_ayahs`, `quran_tafsir`, `quran_reciters`, `quran_audio`
+- Authentication/profile: `profiles` and related account tables
+- Content: articles, stories, prophets, companions, battles, conquests, duas, hadith, scholars, kids, tawasheeh
+- User activity: favorites, reading/memorization/progress, reminders, notifications
+- Automation: video generation queues, social publishing queues, scheduler state
+- Audit/security: administrative audit records, role/RLS controls, internal scheduler tables
 
----
+## Quran invariants
 
-## Git Commits
+The recorded current production audit established:
 
-### Commit 1: Supabase Schema Fix
-```
-Commit: 0c109bd
-Message: fix: Update articles schema with bilingual columns
-Branch: v0/article-database-schema-d5555c3f
-Files Modified:
-  - supabase/migrations/20260727000000_schema_reconciliation.sql
-  - supabase/migrations/20260728000000_comprehensive_schema_validation.sql
-```
+- 114 Quran surahs
+- 6236 Quran ayahs
+- 6236 tafsir rows
+- 7 reciter records
+- 798 Quran-audio rows representing 114 × 7 surah/reciter targets
 
-### Commit 2: Drizzle Schema Update
-```
-Commit: adb31f4
-Message: feat: Update Drizzle ORM schema with bilingual articles columns
-Branch: v0/article-database-schema-d5555c3f
-Files Modified:
-  - drizzle/schema.ts (+7 lines)
-  - drizzle/migrations/0000_add_articles_bilingual_columns.sql (NEW)
-  - drizzle/migrations/meta/
-```
+Quran runtime code is intentionally Supabase-only. External Quran APIs may still appear in ingestion/research scripts, but they are not a runtime fallback.
 
----
+## Security invariants
 
-## Verification Status
+- RLS is mandatory for production application tables.
+- Service-role credentials are server-side only.
+- Admin access is enforced through server-side/admin predicates.
+- Public content policies are limited to intended published/active records.
+- Do not grant regular users access to internal scheduler or administrative data.
 
-✅ **Build**: Passed (0 errors)  
-✅ **TypeScript**: No errors  
-✅ **Migrations**: Generated correctly  
-✅ **Types**: Aligned with schema  
-✅ **Backward Compatibility**: Maintained  
-✅ **Git**: Committed and pushed  
+## Related verification
 
----
+Use the canonical repository checks:
 
-## How to Deploy
+`pnpm project:check`
+`pnpm hygiene:check`
+`pnpm auth:check`
+`pnpm canonical:check`
+`pnpm supabase:migrations:check`
+`pnpm supabase:migrations:replay`
+`pnpm verify`
 
-1. Create PR from `v0/article-database-schema-d5555c3f` to `main`
-2. Review and approve
-3. Merge to main
-4. Vercel auto-deploys
-5. Supabase migrations run automatically
-6. Drizzle schema updated
-7. Production database synchronized
+For the current authentication URL contract, see:
 
----
-
-## Migration Files Checklist
-
-- [x] Drizzle schema updated (drizzle/schema.ts)
-- [x] Drizzle migration generated (0000_add_articles_bilingual_columns.sql)
-- [x] Supabase schema updated (20260727000000_schema_reconciliation.sql)
-- [x] Supabase validation migration created (20260728000000_comprehensive_schema_validation.sql)
-- [x] TypeScript types aligned (lib/types/supabase.ts)
-- [x] Content files updated with bilingual data
-- [x] Prayer times converted to 12-hour format
-- [x] Build passes with no errors
-- [x] Changes committed to GitHub
-- [x] Ready for production deployment
-
----
-
-## Files to Review
-
-For complete information, read these files in order:
-
-1. **Start here**: DATABASE_SCHEMA_SUMMARY.txt (overview)
-2. **Details**: DRIZZLE_SCHEMA_COMPLETE.md (Drizzle specifics)
-3. **Context**: SUPABASE_GITHUB_FIX_SUMMARY.md (Supabase details)
-4. **Reference**: This index (navigation)
-
----
-
-## Key Changes Summary
-
-```typescript
-// Before
-const articles = pgTable("articles", {
-  id: uuid(...),
-  title: text(...),           // Only English
-  content: text(...),
-  ...
-});
-
-// After  
-const articles = pgTable("articles", {
-  id: uuid(...),
-  title: text(...),           // Legacy (kept)
-  titleAr: text(...),         // NEW Arabic
-  titleEn: text(...),         // NEW English explicit
-  content: text(...),
-  contentAr: text(...),       // NEW Arabic
-  contentEn: text(...),       // NEW English explicit
-  summary: text(...),
-  summaryAr: text(...),       // NEW Arabic
-  summaryEn: text(...),       // NEW English
-  featured: boolean(...),     // NEW Featured flag
-  ...
-});
-```
-
----
-
-## Status
-
-✅ **COMPLETE AND VERIFIED**
-
-All database schema issues have been resolved and synchronized across:
-- Drizzle ORM
-- Supabase PostgreSQL
-- TypeScript type definitions
-- API code
-
-Ready for production deployment.
-
----
-
-**Date**: July 28, 2026  
-**Branch**: v0/article-database-schema-d5555c3f  
-**Status**: ✅ Production Ready
+`docs/CANONICAL_AUTH_CONFIG.md`
