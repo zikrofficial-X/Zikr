@@ -6,6 +6,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 // Well-known cities for quick selection
+const KAABA_LAT = 21.422487;
+const KAABA_LNG = 39.826206;
+
 const CITIES = [
   { nameAr: 'القاهرة', lat: 30.0444, lng: 31.2357 },
   { nameAr: 'دبي', lat: 25.2048, lng: 55.2708 },
@@ -39,7 +42,7 @@ function calculateDistance(lat: number, lng: number): number {
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-export default function QiblaPage() {
+export function QiblaPage() {
   const [coords, setCoords] = useState<{ lat: number; lng: number; label: string } | null>(null);
   const [heading, setHeading] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -105,8 +108,8 @@ export default function QiblaPage() {
     return () => window.removeEventListener('deviceorientation', handler, true);
   }, [coords]);
 
-  const qiblaDirection = coords ? calculateQibla({ latitude: coords.lat, longitude: coords.lng }).direction : null;
-  const distance = coords ? getDistanceToMecca({ latitude: coords.lat, longitude: coords.lng }) : null;
+  const qiblaDirection = coords ? calculateQiblaDirection(coords.lat, coords.lng) : null;
+  const distance = coords ? calculateDistance(coords.lat, coords.lng) : null;
   const compassRotation =
     heading != null && qiblaDirection != null ? qiblaDirection - heading : qiblaDirection;
 
