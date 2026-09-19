@@ -32,23 +32,14 @@ const siteUrl = enforceCanonicalProductionUrl(
  * the app `redirectTo` would break the OAuth code exchange.
  */
 function resolveAppCallbackUrl(
-  configured: string | undefined,
-  site: string
+  _configured: string | undefined,
+  site: string,
 ): string {
-  const fallback = `${site.replace(/\/$/, "")}/auth/callback`;
-  if (!configured) return fallback;
-  try {
-    const url = new URL(configured);
-    const isSupabaseProviderCallback =
-      url.hostname.endsWith(".supabase.co") &&
-      url.pathname === "/auth/v1/callback";
-    if (isSupabaseProviderCallback) return fallback;
-    return configured;
-  } catch {
-    return fallback;
-  }
+  // Production OAuth is permanently pinned to the canonical public origin.
+  // The native custom-scheme callback is handled separately by the native flow.
+  void site;
+  return `${PRODUCTION_URL.replace(/\\/$/, "")}/auth/callback`;
 }
-
 const rawEnv: Record<string, string | undefined> = {
   ...e,
 
