@@ -1,0 +1,63 @@
+name: Import Quran Audio
+
+# Manual-only import for the canonical quran-audio Supabase Storage bucket.
+# The importer is intentionally never scheduled automatically because the
+# current Supabase Free storage quota must be checked before a full 798-file import.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quran-audio-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    name: Import Quran audio
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    environment: Production
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      QURAN_AUDIO_MAX_FILE_MB: ${{ vars.QURAN_AUDIO_MAX_FILE_MB || '50' }}
+      QURAN_AUDIO_CONCURRENCY: ${{ vars.QURAN_AUDIO_CONCURRENCY || '2' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          package-manager-cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate importer configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::SUPABASE_URL is missing"; exit 1; }
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo "::error::SUPABASE_SERVICE_ROLE_KEY is missing"; exit 1; }
+          case "$QURAN_AUDIO_MAX_FILE_MB" in
+            ''|*[!0-9]*) echo "::error::QURAN_AUDIO_MAX_FILE_MB must be numeric"; exit 1 ;;
+          esac
+          case "$QURAN_AUDIO_CONCURRENCY" in
+            ''|*[!0-9]*) echo "::error::QURAN_AUDIO_CONCURRENCY must be numeric"; exit 1 ;;
+          esac
+          echo "Quran audio import configured at ${QURAN_AUDIO_CONCURRENCY}-way concurrency and ${QURAN_AUDIO_MAX_FILE_MB} MB/file limit."
+
+      - name: Run canonical Quran audio importer
+        run: pnpm exec node scripts/import-quran-audio-to-supabase.mjs
