@@ -88,8 +88,8 @@ Migrations are managed through the Supabase migration chain. Do not add a direct
 2. Click "Enable Google Provider"
 3. Add your Google OAuth credentials (from Google Cloud Console)
 4. In **Redirect URLs**, add:
-   - Local: `http://localhost:3000/auth/callback`
-   - Production: `https://your-domain.vercel.app/auth/callback`
+   - Local: `http://localhost:3000/**`
+   - Production: `https://zikrmediaofficial.vercel.app/auth/callback`
    - **Do NOT use** `/api/auth/callback` (this uses app router)
 
 ## Step 4: Apply Database Migrations
@@ -101,12 +101,9 @@ Migrations are managed through the Supabase migration chain. Do not add a direct
 pnpm db:migrate-supabase
 ```
 
-### On Vercel (Automatic):
+### On Vercel
 
-The migrations in `supabase/migrations/` are automatically applied when:
-1. You push to GitHub
-2. Vercel starts the build process
-3. Database URL is configured in environment variables
+Vercel builds and deploys the application. Database schema changes are applied by the canonical Supabase migration process, not by the Vercel build.
 
 If migrations don't apply automatically, run them manually:
 
@@ -243,7 +240,7 @@ git push origin main
 
 All database tables are created via SQL migrations in `supabase/migrations/`:
 
-- Schema is applied automatically
+- Schema is managed by the canonical Supabase migration chain
 - Row-Level Security (RLS) policies protect data
 - Users can only see their own private data
 - Admin users have full access (when configured)
