@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +33,7 @@ type ContentItem = {
 
 export default async function ContentDetails({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const db = createAdminClient();
+  const db = await createClient();
   const { data: rawItem, error } = await db
     .from('content_library')
     .select('id,slug,title_ar,title_en,summary_ar,summary_en,body_ar,body_en,content_type,category,tags,author,published_at,source_id,content_sources(name,reference,author,publisher,license,attribution)')
