@@ -13,9 +13,9 @@ const failures = [];
 
 function isPageRoute(route) {
   if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) return false;
-  const pathname = route.replace(/\\/+$/, '') || '/';
+  const pathname = route.replace(/\/+$/, '') || '/';
   if (['/manifest.webmanifest', '/sw.js', '/robots.txt', '/sitemap.xml', '/sitemap-index.xml'].includes(pathname)) return false;
-  return !/\\.(?:json|js|css|xml|txt|map|svg|png|jpe?g|gif|webp|ico|woff2?|mp3|wav|mp4|webm)$/i.test(pathname);
+  return !/\.(?:json|js|css|xml|txt|map|svg|png|jpe?g|gif|webp|ico|woff2?|mp3|wav|mp4|webm)$/i.test(pathname);
 }
 
 for (const file of [
