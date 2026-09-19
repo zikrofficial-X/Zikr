@@ -11,27 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
-    name: Validate canonical Supabase Auth URLs
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 9.15.0
-          run_install: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm canonical:check
-
   enforce:
-    if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' }}
-    name: Enforce canonical Supabase Auth URLs
+    name: Validate and enforce canonical Supabase Auth URLs
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -53,8 +34,25 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Link the production project
+      - name: Validate the canonical values in the repository
+        run: pnpm canonical:check
+
+      - name: Check for Supabase management token
+        id: token
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SUPABASE_ACCESS_TOKEN is not configured. Remote enforcement is skipped; repository validation remains active."
+          fi
+
+      - name: Link the production Supabase project
+        if: steps.token.outputs.configured == 'true'
         run: pnpm dlx supabase@latest link --project-ref "${SUPABASE_PROJECT_REF}"
 
-      - name: Push the canonical project configuration
+      - name: Push canonical Supabase project configuration
+        if: steps.token.outputs.configured == 'true'
         run: pnpm dlx supabase@latest config push
