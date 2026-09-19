@@ -38,7 +38,7 @@ function resolveAppCallbackUrl(
   // Production OAuth is permanently pinned to the canonical public origin.
   // The native custom-scheme callback is handled separately by the native flow.
   void site;
-  return `${PRODUCTION_URL.replace(/\\/$/, "")}/auth/callback`;
+  return `${PRODUCTION_URL.replace(/\/$/, "")}/auth/callback`;
 }
 const rawEnv: Record<string, string | undefined> = {
   ...e,
