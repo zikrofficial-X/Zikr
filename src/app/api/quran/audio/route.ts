@@ -19,7 +19,7 @@ const VERIFIED_SURAH_AUDIO_BASES: Record<string, string> = {
 };
 
 function normalizeReciterCode(code: string): string {
-  return code.replace(/^ar\\./i, '').trim().toLowerCase();
+  return code.replace(/^ar\./i, '').trim().toLowerCase();
 }
 
 function json(data: unknown, status = 200) {
