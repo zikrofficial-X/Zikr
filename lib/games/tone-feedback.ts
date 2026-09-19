@@ -1,6 +1,8 @@
 export type GameSoundEvent =
   "start" | "move" | "jump" | "collect" | "success" | "miss" | "gameOver";
 
+export type GameMusicTheme = "adventure" | "night" | "learning";
+
 type ToneNote = {
   frequency: number;
   duration: number;
@@ -37,6 +39,12 @@ const EVENT_NOTES: Record<GameSoundEvent, ToneNote[]> = {
 export class ToneFeedback {
   private context: AudioContext | null = null;
   private muted = false;
+  private music: HTMLAudioElement | null = null;
+  private readonly musicUrl: string;
+
+  constructor(theme: GameMusicTheme = "learning") {
+    this.musicUrl = `/audio/kids-${theme}-theme.mp3`;
+  }
 
   setMuted(value: boolean) {
     this.muted = value;
@@ -48,7 +56,19 @@ export class ToneFeedback {
   }
 
   playEvent(event: GameSoundEvent) {
+    this.startMusic();
     this.playNotes(EVENT_NOTES[event]);
+  }
+
+  private startMusic() {
+    if (this.muted || typeof window === "undefined") return;
+    if (!this.music) {
+      this.music = new Audio(this.musicUrl);
+      this.music.loop = true;
+      this.music.volume = 0.16;
+      this.music.preload = "auto";
+    }
+    if (this.music.paused) this.music.play().catch(() => undefined);
   }
 
   private playNotes(notes: ToneNote[]) {
@@ -86,6 +106,8 @@ export class ToneFeedback {
   }
 
   dispose() {
+    this.music?.pause();
+    this.music = null;
     this.context?.close().catch(() => undefined);
     this.context = null;
   }

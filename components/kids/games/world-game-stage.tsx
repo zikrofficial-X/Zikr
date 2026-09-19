@@ -96,12 +96,13 @@ export function WorldGameStage(props: WorldGameStageProps) {
   const localTone = useRef<ToneFeedback | null>(null);
 
   useEffect(() => {
-    localTone.current = new ToneFeedback();
+    const theme = gameId === "zikr-memory" || gameId === "verse-puzzle" ? "night" : gameId === "wudu-challenge" || gameId === "zikr-quiz" ? "learning" : "adventure";
+    localTone.current = new ToneFeedback(theme);
     return () => {
       localTone.current?.dispose();
       localTone.current = null;
     };
-  }, []);
+  }, [gameId]);
 
   useEffect(() => {
     localTone.current?.setMuted(muted);

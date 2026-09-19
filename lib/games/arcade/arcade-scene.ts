@@ -43,6 +43,12 @@ function modeForGame(gameId: GameId): ArcadeMode {
   return "lanes";
 }
 
+function musicThemeForGame(gameId: GameId) {
+  if (gameId === "hilal-fly") return "night" as const;
+  if (gameId === "mosque-adventure") return "learning" as const;
+  return "adventure" as const;
+}
+
 export class ArcadeGameScene extends Phaser.Scene {
   private callbacks!: ArcadeSceneCallbacks;
   private readonly gameId: GameId;
@@ -82,13 +88,19 @@ export class ArcadeGameScene extends Phaser.Scene {
   private adventureStageStars = 0;
   private adventureComplete = false;
   private objectiveText?: Phaser.GameObjects.Text;
-  private readonly tone = new ToneFeedback();
+  private readonly tone: ToneFeedback;
 
   constructor(gameId: GameId, callbacks: ArcadeSceneCallbacks) {
     super({ key: `zikr-${gameId}` });
     this.gameId = gameId;
     this.mode = modeForGame(gameId);
     this.callbacks = callbacks;
+    this.tone = new ToneFeedback(musicThemeForGame(gameId));
+  }
+
+  preload() {
+    const asset = this.mode === "fly" ? "scene-moon-sky" : this.mode === "adventure" ? "scene-mosque-courtyard" : "scene-night-garden";
+    this.load.image(asset, `/kids/games/${asset}.png`);
   }
 
   create() {
@@ -122,6 +134,9 @@ export class ArcadeGameScene extends Phaser.Scene {
       1
     );
     background.fillRect(0, 0, width, height);
+    const backgroundAsset = this.mode === "fly" ? "scene-moon-sky" : this.mode === "adventure" ? "scene-mosque-courtyard" : "scene-night-garden";
+    this.add.image(width / 2, height / 2, backgroundAsset).setDisplaySize(width, height).setAlpha(0.3).setDepth(-4);
+    background.setAlpha(0.72).setDepth(-3);
 
     if (this.mode === "lanes" || this.mode === "adventure")
       this.createLanes(width, height);
