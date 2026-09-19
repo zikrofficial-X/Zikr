@@ -35,7 +35,26 @@ const MANIFEST_DB_KEY = "offline_manifest";
 const COMPLETION_DB_KEY = "offline_completion_v1";
 // v4 reflects the expanded public-route discovery and batched offline strategy.
 const VERSION_KEY = "offline-content-version-v4";
+const OFFLINE_CACHE_NAME = "zikr-v12";
+// Keep the client verifier, offline pack, and Service Worker on one cache name.
 const ROUTE_CACHE_REQUEST = "CACHE_OFFLINE_ROUTES";
+
+export function isCacheableOfflinePageRoute(route: string): boolean {
+  if (typeof route !== "string" || !route.startsWith("/") || route.startsWith("//")) {
+    return false;
+  }
+  const pathname = route.replace(/\/+$/, "") || "/";
+  if (
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/sw.js" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/sitemap-index.xml"
+  ) {
+    return false;
+  }
+  return !/\.(?:json|js|css|xml|txt|map|svg|png|jpe?g|gif|webp|ico|woff2?|mp3|wav|mp4|webm)$/i.test(pathname);
+}
 
 const ESSENTIAL_ROUTES = [
   "/", "/mushaf", "/quran", "/hadith", "/stories", "/articles", "/duas", "/adhkar",
@@ -66,7 +85,9 @@ export type OfflineHydrationResult = {
 };
 
 function mergedRoutes(manifest: OfflineManifest): string[] {
-  return Array.from(new Set([...ESSENTIAL_ROUTES, ...(manifest.routes ?? [])]));
+  return Array.from(
+    new Set([...ESSENTIAL_ROUTES, ...(manifest.routes ?? [])])
+  ).filter(isCacheableOfflinePageRoute);
 }
 
 async function persistManifest(manifest: OfflineManifest): Promise<void> {
@@ -82,7 +103,7 @@ async function persistManifest(manifest: OfflineManifest): Promise<void> {
 
   try {
     if ("caches" in window) {
-      const cache = await caches.open("zikr-v10");
+      const cache = await caches.open(OFFLINE_CACHE_NAME);
       await cache.put(
         new Request(MANIFEST_URL, { headers: { Accept: "application/json" } }),
         new Response(JSON.stringify(manifest), {
@@ -155,7 +176,7 @@ async function verifyCompletedDatasets(
 async function verifyCompletedRoutes(routes: string[]): Promise<boolean> {
   if (!("caches" in window)) return false;
   try {
-    const cache = await caches.open("zikr-v10");
+    const cache = await caches.open(OFFLINE_CACHE_NAME);
     const results = await Promise.all(
       routes.map(route => cache.match(new Request(route)))
     );
@@ -302,11 +323,22 @@ export async function hydrateOfflineContent(
   let failedRoutes: string[] = [];
 
   if (complete && options.cacheRoutes) {
-    const result = await requestOfflineRouteCache(expectedRoutes);
-    cachedRoutes = expectedRoutes.filter(
-      route => !result.failedRoutes.includes(route)
+    const batchedResults: Array<{
+      cachedRoutes: number;
+      failedRoutes: string[];
+    }> = [];
+    const ROUTE_CACHE_BATCH_SIZE = 160;
+
+    for (let index = 0; index < expectedRoutes.length; index += ROUTE_CACHE_BATCH_SIZE) {
+      const batch = expectedRoutes.slice(index, index + ROUTE_CACHE_BATCH_SIZE);
+      batchedResults.push(await requestOfflineRouteCache(batch));
+    }
+
+    const allFailedRoutes = Array.from(
+      new Set(batchedResults.flatMap(result => result.failedRoutes))
     );
-    failedRoutes = result.failedRoutes;
+    cachedRoutes = expectedRoutes.filter(route => !allFailedRoutes.includes(route));
+    failedRoutes = allFailedRoutes;
   }
 
   if (
