@@ -1,4 +1,4 @@
-import { generateGeminiText } from '@/features/spiritual-ai/services/gemini-client';
+import { generatePoetryInsight } from '@/features/poetry/services/poetry-insight';
 import { getSupabaseUser } from '@/lib/supabase/server';
 
 /**
@@ -63,18 +63,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const prompt = `أنت متخصص في النقد الأدبي والشعر الإسلامي.
-قصيدة بعنوان: "${title}"
-النص: "${poem}"
-
-قدم تحليلاً قصيراً (3-4 أسطر فقط) للقصيدة يتضمن:
-1. الفكرة الرئيسية
-2. الأسلوب والجمال الأدبي
-3. الرسالة الروحانية أو الأخلاقية
-
-الرد يجب أن يكون باللغة العربية الفصحى وبسيط وجميل.`;
-
-    const insight = await generateGeminiText(prompt);
+    const insight = await generatePoetryInsight(poem, title);
 
     if (!insight) {
       return Response.json(
