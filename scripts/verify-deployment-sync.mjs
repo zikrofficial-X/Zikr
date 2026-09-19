@@ -88,7 +88,7 @@ const expectedRedirects = [
   "https://zikrmediaofficial.vercel.app/auth/callback",
 ];
 
-if (siteUrlMatch?.[1] !== "https://zikrmediaofficial.vercel.app/") {
+if (siteUrlMatch?.[1] !== "https://zikrmediaofficial.vercel.app") {
   failures.push("Supabase auth site_url is not the locked canonical URL");
 }
 if (JSON.stringify(configuredRedirects) !== JSON.stringify(expectedRedirects)) {
