@@ -4,6 +4,7 @@ import {
   hasAdminPermission,
   type AdminPermission,
   type AdminRole,
+  ADMIN_ROLE_PERMISSIONS,
 } from '@/features/admin/services/permissions';
 
 export type AdminProfile = {
@@ -28,7 +29,21 @@ export async function getCurrentProfile(): Promise<AdminProfile | null> {
       .single();
 
     if (!profile) return { id: user.id, email: user.email, display_name: null, role: 'user' };
-    const role: AdminRole = profile.role === 'admin' ? 'admin' : 'user';
+
+    const { data: assignment } = await supabase
+      .from('admin_role_assignments')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const assignedRole = assignment?.role as AdminRole | null;
+    const role: AdminRole =
+      assignedRole && assignedRole in ADMIN_ROLE_PERMISSIONS
+        ? assignedRole
+        : profile.role === 'admin'
+          ? 'admin'
+          : 'user';
+
     return { ...profile, email: user.email, role };
   } catch {
     return null;
