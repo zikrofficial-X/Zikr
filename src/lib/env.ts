@@ -16,7 +16,12 @@ function normalizeSupabaseUrl(value: string | undefined): string | undefined {
   }
 }
 
-function pick(name: string): string | undefined {\n  const value = e[name];\n  return value !== undefined && value !== "" ? value : undefined;\n}\n\nconst siteUrl = enforceCanonicalProductionUrl(
+function pick(name: string): string | undefined {
+  const value = e[name];
+  return value !== undefined && value !== "" ? value : undefined;
+}
+
+const siteUrl = enforceCanonicalProductionUrl(
   pick("NEXT_PUBLIC_SITE_URL") || PRODUCTION_URL
 );
 
