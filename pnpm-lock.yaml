@@ -5624,6 +5624,8 @@ snapshots:
 
   tapable@2.3.3: {}
 
+  chownr@2.0.0: {}
+
   fs-minipass@2.1.0:
     dependencies:
       minipass: 3.3.6
@@ -5864,6 +5866,8 @@ snapshots:
   xmlbuilder@15.1.1: {}
 
   yallist@3.1.1: {}
+
+  yallist@4.0.0: {}
 
   yallist@5.0.0: {}
 
