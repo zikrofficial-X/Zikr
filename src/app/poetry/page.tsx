@@ -27,9 +27,7 @@ type Tab = 'browse' | 'community' | 'write';
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function StaticPoemCard({ poem }: { poem: (typeof islamicPoems)[0] }) {
-  // Deterministic seed based on poem index to avoid SSR/client hydration mismatch
-  const baseLikes = (poem.title.charCodeAt(0) % 70) + 10;
-  const [likes, setLikes] = useState(baseLikes);
+  const [likes, setLikes] = useState(0);
   const [liked, setLiked] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -268,7 +266,10 @@ export default function PoetryPage() {
       {tab === 'community' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-brand-gold">قصائد المجتمع</h2>
+            <div>
+              <h2 className="text-2xl font-bold text-brand-gold">قصائد المجتمع</h2>
+              <p className="text-xs arabic-muted mt-1">القصائد التي تنشئها هنا مؤقتة في هذه الجلسة ولا تُحفظ على الخادم بعد.</p>
+            </div>
             <Button onClick={() => setTab('write')}>+ نشر قصيدة</Button>
           </div>
 
