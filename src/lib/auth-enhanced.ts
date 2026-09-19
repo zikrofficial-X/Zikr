@@ -36,15 +36,7 @@ export function buildOAuthRedirectUri(
  * deployment/branch URL.
  */
 export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
-  const env = getServerEnv();
-  const canonicalProductionUrl = env.NEXT_PUBLIC_SITE_URL || PRODUCTION_URL;
-  const vercelProjectProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  const stableProductionUrl =
-    vercelProjectProductionUrl && !/^https?:\/\//i.test(vercelProjectProductionUrl)
-      ? `https://${vercelProjectProductionUrl}`
-      : vercelProjectProductionUrl || canonicalProductionUrl;
-
-  if (!baseUrl) return stableProductionUrl;
+  if (!baseUrl) return PRODUCTION_URL;
 
   try {
     const url = new URL(baseUrl);
@@ -63,12 +55,12 @@ export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
       url.pathname.startsWith("/auth/v1/") ||
       host.endsWith(".vercel.app")
     ) {
-      return stableProductionUrl;
+      return PRODUCTION_URL;
     }
 
-    return stableProductionUrl;
+    return PRODUCTION_URL;
   } catch {
-    return stableProductionUrl;
+    return PRODUCTION_URL;
   }
 }
 
