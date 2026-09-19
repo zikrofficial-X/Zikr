@@ -45,7 +45,7 @@ async function call(actor: Actor, table: string, method: string, body?: unknown)
 }
 
 async function main() {
-  const targets = ['profiles', 'favorites', 'reading_progress', 'reminders', 'subscriptions', 'payments'];
+  const targets = ['profiles', 'favorites', 'reading_progress', 'reminders', 'push_subscriptions', 'notification_settings'];
   const results: Result[] = [];
 
   for (const table of targets) {
