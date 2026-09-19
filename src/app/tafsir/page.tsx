@@ -3,7 +3,6 @@ import TafsirLibrary from '@/features/quran/components/tafsir-library';
 import { pageMetadata } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 3600;
 
 export const metadata = pageMetadata({
   title: 'تفسير القرآن الكريم',
