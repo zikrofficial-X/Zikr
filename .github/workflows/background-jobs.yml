@@ -15,8 +15,6 @@ on:
           - all
           - videos
           - social
-  schedule:
-    - cron: "*/15 * * * *"
 
 permissions:
   contents: read
