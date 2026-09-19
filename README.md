@@ -15,16 +15,16 @@ ZIKR is an Arabic-first Islamic content and spiritual platform covering Quran, H
 - **Media:** Supabase Storage and Cloudinary where required
 - **Web deployment:** Vercel
 - **Mobile:** Capacitor Android/iOS
-- **Automation:** Supabase `pg_cron` for prayer Web Push; GitHub Actions Background Jobs is a manual recovery worker while hosted runners are unavailable
+- **Automation:** Supabase `pg_cron` owns production prayer Web Push scheduling; no GitHub Actions workflow is part of the production runtime or build pipeline
 
 ## Video and social automation
 
-Production video generation uses the free deterministic FFmpeg template renderer. When manually dispatched on an available runner, the worker reads trusted Quran data, renders Arabic captions, writes output to Supabase Storage, and queues social publication.
+Production video generation uses the free deterministic FFmpeg template renderer. Queue processing is executed by the configured external/server-side automation path and is not dependent on GitHub Actions.
 
 ```text
 video_generation_requests
         ↓
-GitHub Background Jobs (manual recovery while hosted runners are unavailable)
+server-side / Supabase queue processing
         ↓
 FFmpeg template renderer
         ↓
@@ -99,17 +99,17 @@ android/              Capacitor Android project
 ios/                  Capacitor iOS project
 mobile/               Mobile configuration/assets
 public/               Public static assets and offline/PWA files
-.github/workflows/    CI, release and background automation
-.circleci/            Legacy/recovery CI configuration
+.github/              Repository metadata only; GitHub Actions workflows are intentionally retired
+.circleci/            Secondary/recovery CI configuration
 ```
 
 ## Security
 
-The project uses Supabase RLS, server-side service-role boundaries, protected OAuth credentials, HTTPS, security headers, and automated verification gates. Never expose service-role keys, refresh tokens, page access tokens, or scheduler secrets to client code.
+The project uses Supabase RLS, server-side service-role boundaries, protected OAuth credentials, HTTPS, security headers, and external verification gates. Never expose service-role keys, refresh tokens, page access tokens, or scheduler secrets to client code.
 
 ## Release process
 
-The current release metadata baseline is `1.0.0` / versionCode `53` / `com.zikr.app` / target SDK 36. The v1.4.x documents are historical release records. The release workflow validates package metadata, mobile readiness, signing inputs, APK/AAB output, signature, application ID, version name, and target SDK before publishing release assets.
+The current release metadata baseline is `1.0.0` / versionCode `53` / `com.zikr.app` / target SDK 36. The v1.4.x documents are historical release records.
 
 Before releasing:
 
