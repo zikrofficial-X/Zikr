@@ -21,7 +21,24 @@ const REQUIRED_ENV = [
 function validateRequiredEnv() {
   const missing = REQUIRED_ENV.filter(name => !process.env[name]);
   if (missing.length > 0) {
-    throw new Error(`Missing required GitHub Secret(s): ${missing.join(", ")}`);
+    throw new Error(`Missing required CircleCI environment variable(s): ${missing.join(", ")}`);
+  }
+
+  if (SOCIAL_PUBLISH_ENABLED) {
+    const youtubeReady = Boolean(
+      process.env.YOUTUBE_CLIENT_ID?.trim() &&
+        process.env.YOUTUBE_CLIENT_SECRET?.trim() &&
+        process.env.YOUTUBE_REFRESH_TOKEN?.trim(),
+    );
+    const facebookReady = Boolean(
+      process.env.FACEBOOK_PAGE_ID?.trim() &&
+        process.env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim(),
+    );
+    if (!youtubeReady && !facebookReady) {
+      throw new Error(
+        "SOCIAL_PUBLISH_ENABLED=true requires either the complete YouTube OAuth set (YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN) or the Facebook page set (FACEBOOK_PAGE_ID, FACEBOOK_PAGE_ACCESS_TOKEN).",
+      );
+    }
   }
 
   process.env.NEXT_PUBLIC_SUPABASE_URL ||= process.env.SUPABASE_URL;
