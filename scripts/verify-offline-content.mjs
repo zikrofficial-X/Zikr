@@ -11,6 +11,13 @@ const guardPath = 'src/components/layout/offline-navigation-guard.tsx';
 const read = file => (existsSync(file) ? readFileSync(file, 'utf8') : '');
 const failures = [];
 
+function isPageRoute(route) {
+  if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) return false;
+  const pathname = route.replace(/\\/+$/, '') || '/';
+  if (['/manifest.webmanifest', '/sw.js', '/robots.txt', '/sitemap.xml', '/sitemap-index.xml'].includes(pathname)) return false;
+  return !/\\.(?:json|js|css|xml|txt|map|svg|png|jpe?g|gif|webp|ico|woff2?|mp3|wav|mp4|webm)$/i.test(pathname);
+}
+
 for (const file of [
   manifestPath,
   routeSnapshotPath,
@@ -52,6 +59,8 @@ try {
     if (sensitivePrefixes.some(prefix => route === prefix || route.startsWith(`${prefix}/`))) {
       failures.push(`Sensitive route must not be in offline manifest: ${route}`);
     }
+    if (!isPageRoute(route)) failures.push(`Non-page asset must not be in offline manifest route inventory: ${route}`);
+    if (route !== '/' && /\/$/.test(route)) failures.push(`Offline manifest route must not have trailing slash: ${route}`);
   }
 } catch (error) {
   failures.push(`Offline manifest JSON is invalid: ${error instanceof Error ? error.message : 'unknown error'}`);
@@ -74,6 +83,8 @@ try {
     if (sensitivePrefixes.some(prefix => route === prefix || route.startsWith(`${prefix}/`))) {
       failures.push(`Sensitive route must not be in v2 offline inventory: ${route}`);
     }
+    if (!isPageRoute(route)) failures.push(`Non-page asset must not be in v2 offline inventory: ${route}`);
+    if (route !== '/' && /\/$/.test(route)) failures.push(`v2 offline route must not have trailing slash: ${route}`);
   }
 } catch (error) {
   failures.push(`Offline v2 route inventory JSON is invalid: ${error instanceof Error ? error.message : 'unknown error'}`);
@@ -87,6 +98,9 @@ for (const token of [
   'requestOfflineRouteCache',
   'cacheRoutes?: boolean',
   'offline-content-version-v4',
+  'OFFLINE_CACHE_NAME',
+  'isCacheableOfflinePageRoute',
+  'zikr-v12',
   'scholars/ahmad-ibn-hanbal',
   'videos/importance-of-prayer',
 ]) {
@@ -112,6 +126,7 @@ if (htmlHandlerStart !== -1) {
 const coreMatch = serviceWorker.match(/const CORE_INSTALL_ASSETS = \[([\s\S]*?)\];/);
 if (coreMatch && coreMatch[1].includes('"/"')) failures.push('Service worker must not pre-cache the root HTML route');
 if (serviceWorker.includes('const CACHE_NAME = "zikr-v10"')) failures.push('Legacy service worker cache version zikr-v10 must not remain');
+if (!offlinePack.includes('const OFFLINE_CACHE_NAME = "zikr-v12"')) failures.push('Offline pack cache name must match Service Worker cache zikr-v12');
 
 const offlineLibrary = read(offlineLibraryPath);
 const offlineLibraryClient = read(offlineLibraryClientPath);
