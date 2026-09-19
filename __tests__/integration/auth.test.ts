@@ -56,6 +56,24 @@ describe('getCanonicalAuthBaseUrl', () => {
     const result = getCanonicalAuthBaseUrl(null);
     assert.match(result, /^https:\/\//);
   });
+
+  it('pins Vercel aliases to the canonical production origin', () => {
+    assert.equal(
+      getCanonicalAuthBaseUrl('https://zikr-zikrmediaofficial.vercel.app'),
+      'https://zikrmediaofficial.vercel.app',
+    );
+  });
+
+  it('builds canonical OAuth callback URLs from a Vercel alias', () => {
+    const uri = buildOAuthRedirectUri(
+      'https://zikr-zikrmediaofficial.vercel.app',
+      '/profile',
+    );
+    assert.equal(
+      new URL(uri).origin,
+      'https://zikrmediaofficial.vercel.app',
+    );
+  });
 });
 
 describe('isPkceVerifierError', () => {
