@@ -6,7 +6,7 @@ const RELEASES_API_BASE =
 const TAG_RELEASE_API =
   "https://api.github.com/repos/Zikrmediaofficial/Zikr/releases/tags";
 const ASSET_API_BASE =
-  "https://api.github.com/repos/mohamedalaa7785-cpu/Zikr/releases/assets";
+  "https://api.github.com/repos/Zikrmediaofficial/Zikr/releases/assets";
 const MAX_RELEASE_PAGES = 3;
 const githubToken = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
 
