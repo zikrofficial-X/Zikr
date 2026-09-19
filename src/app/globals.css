@@ -356,3 +356,33 @@ html.capacitor-native .animate-slideUp {
 [class~="text-brand-cream/70"] {
   color: #d8d2c4 !important;
 }
+
+/*
+ * Footer visibility + layout-shift reservations. Previously inlined as a raw
+ * <style> tag in the document <head>, which reordered against the Next.js dev
+ * overlay's injected style node and produced a hydration mismatch. Keeping the
+ * rules in the stylesheet is functionally identical and hydration-safe.
+ */
+html:not([data-locale]) footer {
+  visibility: hidden;
+}
+
+footer {
+  min-height: 460px;
+}
+
+@media (max-width: 639px) {
+  footer {
+    min-height: 680px;
+  }
+
+  main > div:first-child > section:first-of-type
+    div:has(> a[href="/auth/register"], > a[href="/profile"]) {
+    min-height: 168px;
+  }
+
+  main > div:first-child > section:first-of-type
+    div.text-center:has(> h1) {
+    min-height: 210px;
+  }
+}
