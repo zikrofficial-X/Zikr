@@ -62,12 +62,23 @@ export async function GET(request: NextRequest) {
         ...((articleResults.data || []) as SearchRow[]).map((r) => ({ ...r, type: 'article' })),
       ];
 
-      searchCache.set(query, { expiresAt: Date.now() + SEARCH_CACHE_TTL_MS, results });
+      // A valid search may produce zero rows because different content sources
+      // index different fields. Keep the global search from appearing empty for
+      // common Quranic terms by falling back to the canonical Quran text search.
+      const finalResults = results.length > 0
+        ? results
+        : (await searchQuran(query, 'ar')).slice(0, 10).map((result) => ({
+            id: `quran-${result.number}-${result.numberInSurah}`,
+            title: result.text,
+            type: 'quran' as const,
+          }));
+
+      searchCache.set(query, { expiresAt: Date.now() + SEARCH_CACHE_TTL_MS, results: finalResults });
       if (searchCache.size > SEARCH_CACHE_MAX_ENTRIES) {
         const oldestKey = searchCache.keys().next().value;
         if (oldestKey) searchCache.delete(oldestKey);
       }
-      return jsonSearch(results);
+      return jsonSearch(finalResults);
     } catch (error) {
       console.warn('[api/search] Supabase unavailable; using Quran API fallback:', error);
       const quranResults = await searchQuran(query, 'ar');
