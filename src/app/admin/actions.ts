@@ -36,11 +36,9 @@ import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from '@/features/admin/services/admin';
 import { requireAdminStepUp } from '@/features/admin/services/security';
 import { enforceAdminRateLimit } from '@/features/admin/services/rate-limit';
-import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { safeDeleteContentAction } from '@/app/admin/content-actions';
 import { DEFAULT_AUDIO_SETTINGS, isAudioChoiceKey, type AudioSlot } from '@/lib/audio/config';
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
-import { updateUserRoleAuditedAction } from "@/app/admin/user-actions";
 
 type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 
