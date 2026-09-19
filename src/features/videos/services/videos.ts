@@ -10,7 +10,7 @@ export async function getVideoCategories(): Promise<VideoCategory[]> {
     "/rest/v1/video_categories?select=id,name_ar,name_en,slug,icon&published=eq.true&order=name_ar.asc"
   ).catch(error => {
     console.error("[content] Failed to fetch video categories:", error);
-    return FALLBACK_VIDEO_CATEGORIES;
+    return [];
   });
 
   if (rows.length === 0) return FALLBACK_VIDEO_CATEGORIES;
