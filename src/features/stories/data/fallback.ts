@@ -1,4 +1,4 @@
-const PRIMARY_STORY_SOURCES: Record<string, StorySourceReference[]> = {
+export const PRIMARY_STORY_SOURCES: Record<string, StorySourceReference[]> = {
   "story-of-musa": [
     { label: "سورة القصص — القرآن الكريم", url: "https://quran.com/28", type: "quran" },
     { label: "سورة طه — القرآن الكريم", url: "https://quran.com/20", type: "quran" },
@@ -49,7 +49,7 @@ export interface Story {
   updatedAt?: string;
 }
 
-const FALLBACK_STORIES: Story[] = [
+export const FALLBACK_STORIES: Story[] = [
   {
     id: "1",
     slug: "story-of-musa",
