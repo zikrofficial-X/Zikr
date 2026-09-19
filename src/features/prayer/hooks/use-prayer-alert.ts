@@ -10,7 +10,7 @@ import {
 import {
   showPrayerNotification,
   requestNotificationPermission,
-} from "@/lib/services/notifications";
+} from "@/features/notifications/services/notifications";
 import type { NotificationPermission as PermResult } from "@/lib/services/notifications";
 import {
   registerPrayerPushSubscription,
