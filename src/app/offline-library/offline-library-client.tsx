@@ -9,6 +9,7 @@ import {
   fetchOfflineManifest,
   hydrateOfflineContent,
   requestOfflineRouteCache,
+  isCacheableOfflinePageRoute,
 } from '@/lib/offline-pack';
 
 type Manifest = Awaited<ReturnType<typeof fetchOfflineManifest>>;
@@ -50,11 +51,11 @@ function normalizeRoute(value: string): string | null {
   try {
     const url = new URL(value, window.location.origin);
     if (url.origin !== window.location.origin) return null;
-    const pathname = url.pathname === '' ? '/' : url.pathname;
+    const pathname = (url.pathname === '' ? '/' : url.pathname).replace(/\/+$/, '') || '/';
     if (PRIVATE_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
       return null;
     }
-    return pathname;
+    return isCacheableOfflinePageRoute(pathname) ? pathname : null;
   } catch {
     return null;
   }
