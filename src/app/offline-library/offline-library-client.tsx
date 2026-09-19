@@ -290,7 +290,7 @@ export default function OfflineLibraryClient() {
 
       {failedRoutes.length > 0 && (
         <Card className="border-brand-gold/10">
-          <h2 className="text-lg font-semibold text-brand-gold">صفحات تحتاج إ��ادة محاولة</h2>
+          <h2 className="text-lg font-semibold text-brand-gold">صفحات تحتاج إعادة محاولة</h2>
           <p className="mt-3 break-words text-sm leading-7 text-muted-foreground">{failedRoutes.slice(0, 30).join('، ')}{failedRoutes.length > 30 ? ' …' : ''}</p>
         </Card>
       )}
