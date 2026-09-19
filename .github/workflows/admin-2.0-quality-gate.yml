@@ -30,6 +30,8 @@ jobs:
       - run: pnpm supabase:migrations:replay
       - run: pnpm routes:check
       - run: pnpm imports:check
+      - run: pnpm hygiene:check
+      - run: pnpm placeholder-media:check
       - run: pnpm project:check
       - run: pnpm mobile:check
       - run: pnpm offline:check
