@@ -3,8 +3,8 @@ import path from 'node:path';
 
 const root = process.cwd();
 const files = [
-  'lib/services/native-social-sync.ts',
-  'lib/env.ts',
+  'src/features/social/services/native-social-sync.ts',
+  'src/lib/env.ts',
   '.env.example',
 ];
 
