@@ -31,9 +31,8 @@ export function buildOAuthRedirectUri(
  * Supabase OAuth is sensitive to the exact redirect URL. On Vercel, users can
  * reach the same deployment through generated preview/deployment hosts; if the
  * OAuth callback uses one of those hosts, the session can appear to "jump" to a
- * different link. Localhost is preserved for development. For every non-local
- * host, prefer the Vercel project production URL (when available) over the
- * deployment/branch URL.
+ * different link. Localhost is preserved for development; all non-local hosts
+ * are pinned to the canonical public origin.
  */
 export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
   if (!baseUrl) return PRODUCTION_URL;
