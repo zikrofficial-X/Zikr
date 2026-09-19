@@ -35,8 +35,8 @@ Add the following variables to your Vercel project settings:
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase Anon Key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase Service Role Key (Keep Secret) |
-| `NEXT_PUBLIC_SITE_URL` | Your production URL (e.g., `https://zikr.app`) |
-| `AUTH_CALLBACK_URL` | `${NEXT_PUBLIC_SITE_URL}/auth/callback` (do not use `/api/auth/callback`) |
+| `NEXT_PUBLIC_SITE_URL` | Locked production URL: `https://zikrmediaofficial.vercel.app` |
+| `AUTH_CALLBACK_URL` | Locked application callback: `https://zikrmediaofficial.vercel.app/auth/callback` |
 | `GEMINI_API_KEY` | Optional: For AI features |
 | `YOUTUBE_API_KEY` | Optional: For fetching YouTube data |
 | `YOUTUBE_CHANNEL_ID` | Optional: YouTube channel ID for the video feed |
