@@ -48,15 +48,20 @@ TO anon, authenticated
 USING (bucket_id = 'quran-audio');
 
 -- Pre-create deterministic storage targets for every canonical reciter/surah row.
+-- Use metadata/source URL instead of quran_reciters.code so this migration also
+-- replays against the historical schema stubs used by the CI verifier.
 UPDATE public.quran_audio AS a
 SET
   storage_bucket = 'quran-audio',
   storage_path = 'reciters/' ||
-    regexp_replace(lower(coalesce(r.code, 'unknown')), '^ar\.', '') ||
+    regexp_replace(
+      lower(coalesce(a.metadata->>'reciter_code', split_part(a.audio_url, '/', 4), 'unknown')),
+      '^ar\\.',
+      ''
+    ) ||
     '/' || lpad(a.surah_id::text, 3, '0') || '.mp3',
   mime_type = 'audio/mpeg'
-FROM public.quran_reciters AS r
-WHERE r.id = a.reciter_id;
+WHERE a.surah_id between 1 and 114;
 
 UPDATE public.quran_audio AS a
 SET storage_url =
