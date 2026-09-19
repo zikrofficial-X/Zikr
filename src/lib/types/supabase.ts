@@ -1360,63 +1360,6 @@ export type Database = {
           },
         ]
       }
-      episodes: {
-        Row: {
-          category: string | null
-          contentar: string
-          contenten: string
-          created_at: string
-          descriptionar: string
-          descriptionen: string
-          id: string
-          keywordsar: string | null
-          keywordsen: string | null
-          published_at: string | null
-          slug: string
-          thumbnailurl: string | null
-          titlear: string
-          titleen: string
-          updated_at: string
-          youtubevideoid: string | null
-        }
-        Insert: {
-          category?: string | null
-          contentar: string
-          contenten: string
-          created_at?: string
-          descriptionar: string
-          descriptionen: string
-          id?: string
-          keywordsar?: string | null
-          keywordsen?: string | null
-          published_at?: string | null
-          slug: string
-          thumbnailurl?: string | null
-          titlear: string
-          titleen: string
-          updated_at?: string
-          youtubevideoid?: string | null
-        }
-        Update: {
-          category?: string | null
-          contentar?: string
-          contenten?: string
-          created_at?: string
-          descriptionar?: string
-          descriptionen?: string
-          id?: string
-          keywordsar?: string | null
-          keywordsen?: string | null
-          published_at?: string | null
-          slug?: string
-          thumbnailurl?: string | null
-          titlear?: string
-          titleen?: string
-          updated_at?: string
-          youtubevideoid?: string | null
-        }
-        Relationships: []
-      }
       favorite_recitations: {
         Row: {
           created_at: string | null
@@ -1505,35 +1448,6 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      generated_research: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          request_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          request_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          request_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "generated_research_request_id_fkey"
-            columns: ["request_id"]
-            isOneToOne: false
-            referencedRelation: "research_requests"
             referencedColumns: ["id"]
           },
         ]
@@ -2410,47 +2324,6 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
-      }
-      payments: {
-        Row: {
-          amount: number
-          created_at: string
-          id: string
-          method: string
-          reference_note: string
-          screenshot_url: string | null
-          status: Database["public"]["Enums"]["payment_status"]
-          user_id: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          id?: string
-          method: string
-          reference_note: string
-          screenshot_url?: string | null
-          status?: Database["public"]["Enums"]["payment_status"]
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          id?: string
-          method?: string
-          reference_note?: string
-          screenshot_url?: string | null
-          status?: Database["public"]["Enums"]["payment_status"]
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payments_user_id_profiles_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       pinned_messages: {
         Row: {
@@ -3521,86 +3394,6 @@ export type Database = {
           },
         ]
       }
-      research_requests: {
-        Row: {
-          created_at: string
-          field: string
-          id: string
-          language: string
-          pages: number
-          status: Database["public"]["Enums"]["status"]
-          title: string
-          type: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          field: string
-          id?: string
-          language?: string
-          pages?: number
-          status?: Database["public"]["Enums"]["status"]
-          title: string
-          type: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          field?: string
-          id?: string
-          language?: string
-          pages?: number
-          status?: Database["public"]["Enums"]["status"]
-          title?: string
-          type?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "research_requests_user_id_profiles_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      saved_stories: {
-        Row: {
-          created_at: string
-          id: string
-          story_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          story_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          story_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "saved_stories_story_id_fkey"
-            columns: ["story_id"]
-            isOneToOne: false
-            referencedRelation: "stories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "saved_stories_user_id_profiles_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       scholars: {
         Row: {
           bio_ar: string | null
@@ -4175,45 +3968,6 @@ export type Database = {
           },
         ]
       }
-      subscriptions: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          language: string
-          subscribed_at: string
-          unsubscribed_at: string | null
-          updated_at: string
-          verification_token: string | null
-          verificationtoken: string | null
-          verified: boolean
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          language?: string
-          subscribed_at?: string
-          unsubscribed_at?: string | null
-          updated_at?: string
-          verification_token?: string | null
-          verificationtoken?: string | null
-          verified?: boolean
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          language?: string
-          subscribed_at?: string
-          unsubscribed_at?: string | null
-          updated_at?: string
-          verification_token?: string | null
-          verificationtoken?: string | null
-          verified?: boolean
-        }
-        Relationships: []
-      }
       tasks: {
         Row: {
           created_at: string
@@ -4550,44 +4304,6 @@ export type Database = {
             columns: ["default_reciter_id"]
             isOneToOne: false
             referencedRelation: "quran_reciters"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_subscriptions: {
-        Row: {
-          created_at: string
-          credits: number
-          expires_at: string | null
-          id: string
-          plan: Database["public"]["Enums"]["plan"]
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          credits?: number
-          expires_at?: string | null
-          id?: string
-          plan?: Database["public"]["Enums"]["plan"]
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          credits?: number
-          expires_at?: string | null
-          id?: string
-          plan?: Database["public"]["Enums"]["plan"]
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_subscriptions_user_id_profiles_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
