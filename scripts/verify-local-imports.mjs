@@ -45,7 +45,7 @@ function existsAsModule(basePath) {
 }
 
 function resolveImport(specifier, fromFile) {
-  if (specifier.startsWith('@/')) return resolve(root, specifier.slice(2));
+  if (specifier.startsWith('@/')) return resolve(root, 'src', specifier.slice(2));
   if (specifier.startsWith('./') || specifier.startsWith('../')) return resolve(dirname(fromFile), specifier);
   return null;
 }
