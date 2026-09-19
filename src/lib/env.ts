@@ -53,8 +53,9 @@ const rawEnv: Record<string, string | undefined> = {
   ...e,
 
   // ── Supabase ──────────────────────────────────────────────────────────────
+  SUPABASE_URL: normalizeSupabaseUrl(pick("SUPABASE_URL")),
   NEXT_PUBLIC_SUPABASE_URL: normalizeSupabaseUrl(
-    pick("NEXT_PUBLIC_SUPABASE_URL")
+    pick("NEXT_PUBLIC_SUPABASE_URL") || pick("SUPABASE_URL")
   ),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: pick("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
   SUPABASE_SERVICE_ROLE_KEY: pick("SUPABASE_SERVICE_ROLE_KEY"),
@@ -106,7 +107,8 @@ const validatedEnv = rawEnv;
 
 export function getPublicEnv() {
   return {
-    NEXT_PUBLIC_SUPABASE_URL: validatedEnv.NEXT_PUBLIC_SUPABASE_URL || "",
+    NEXT_PUBLIC_SUPABASE_URL:
+      validatedEnv.NEXT_PUBLIC_SUPABASE_URL || validatedEnv.SUPABASE_URL || "",
     NEXT_PUBLIC_SUPABASE_ANON_KEY:
       validatedEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
     NEXT_PUBLIC_SITE_URL: validatedEnv.NEXT_PUBLIC_SITE_URL || "",
@@ -119,6 +121,7 @@ export function getPublicEnv() {
 export function getServerEnv() {
   return {
     ...getPublicEnv(),
+    SUPABASE_URL: validatedEnv.SUPABASE_URL || validatedEnv.NEXT_PUBLIC_SUPABASE_URL || "",
     SUPABASE_SERVICE_ROLE_KEY: validatedEnv.SUPABASE_SERVICE_ROLE_KEY || "",
     CLOUDINARY_CLOUD_NAME: validatedEnv.CLOUDINARY_CLOUD_NAME || "",
     CLOUDINARY_API_KEY: validatedEnv.CLOUDINARY_API_KEY || "",
@@ -150,6 +153,7 @@ export function getServerEnv() {
 export function getEnvAudit() {
   return {
     public: [
+      "SUPABASE_URL",
       "NEXT_PUBLIC_SUPABASE_URL",
       "NEXT_PUBLIC_SUPABASE_ANON_KEY",
       "NEXT_PUBLIC_SITE_URL",

@@ -2,7 +2,7 @@ name: Admin 2.0 Quality Gate
 # Verification gate: migrations, integrity, tests, lint, and production build.
 on:
   push:
-    branches: [main, feat/admin-2.0-control-center, feat/rebuild-validation-20260919]
+    branches: [main]
   pull_request:
     branches: [main]
 permissions:
@@ -31,6 +31,13 @@ jobs:
       - run: pnpm routes:check
       - run: pnpm imports:check
       - run: pnpm project:check
+      - run: pnpm mobile:check
+      - run: pnpm offline:check
+      - run: pnpm content:check
+      - run: pnpm auth:check
+      - run: pnpm native-social:check
+      - run: pnpm adsense:check
+      - run: pnpm search-console:check
       - run: pnpm check
       - run: pnpm lint
       - run: pnpm test
