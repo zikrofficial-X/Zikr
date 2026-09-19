@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 
 const failures = [];
-const layout = readFileSync('app/layout.tsx', 'utf8');
-const deferredAnalytics = readFileSync('components/layout/deferred-analytics.tsx', 'utf8');
+const layout = readFileSync('src/app/layout.tsx', 'utf8');
+const deferredAnalytics = readFileSync('src/components/layout/deferred-analytics.tsx', 'utf8');
 const approvedGaId = 'G-W30Z9JW0VF';
 const approvedGtmId = 'GTM-PVQCFKCB';
 const verificationFiles = [
