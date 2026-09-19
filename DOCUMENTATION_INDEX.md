@@ -9,7 +9,6 @@
 
 - [`DEPLOYMENT_CHECKLIST.md`](./DEPLOYMENT_CHECKLIST.md) — production deployment checklist.
 - [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) — common runtime and deployment issues.
-- [`docs/github-actions-replacement.md`](./docs/github-actions-replacement.md) — CircleCI migration and GitHub Actions retirement.
 - [`OFFLINE_SUPPORT.md`](./OFFLINE_SUPPORT.md) — offline/PWA behavior.
 - [`docs/production-scheduling.md`](./docs/production-scheduling.md) — scheduler ownership and recovery jobs.
 - [`docs/background-jobs.md`](./docs/background-jobs.md) — CircleCI background processing runbook.
@@ -27,6 +26,6 @@
 - Deployable SQL migrations live only in [`supabase/migrations/`](./supabase/migrations/).
 - [`supabase/migrations_archive/`](./supabase/migrations_archive/) is historical and must not be applied.
 - Historical Drizzle migration records may remain inside `supabase/migrations/` because they are part of database history; there is no active Drizzle runtime or schema-migration path.
-- Use `pnpm verify` before opening a pull request.
+- Use `pnpm verify` and `pnpm build` before release.
 
 This index contains only current operational documentation; superseded audit and release records remain in Git history.
