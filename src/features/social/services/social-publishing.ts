@@ -152,11 +152,10 @@ export async function claimPendingSocialPublishItems(
   limit = 10
 ): Promise<SocialPublishQueueItem[]> {
   const normalItems = await getPendingSocialPublishItems(limit);
-  const remaining = Math.max(0, limit - normalItems.length);
-  const recoverable = remaining > 0
-    ? await getRecoverableFacebookAuthFailures(remaining)
-    : [];
-  const items = [...normalItems, ...recoverable];
+  // Failed Facebook-auth items are intentionally not auto-retried. An expired
+  // page token will otherwise create an unbounded retry loop and repeated provider
+  // requests. Admin can manually requeue them after credentials are repaired.
+  const items = normalItems;
   const claimed: SocialPublishQueueItem[] = [];
 
   for (const item of items) {
@@ -346,7 +345,7 @@ export async function processSocialPublishItem(
 
   const attempts = Number(item.metadata?.attempts ?? 0) + 1;
   const maxAttempts = Math.max(1, Number(item.metadata?.maxAttempts ?? 5));
-  const shouldRetry = hasAuthFailure || (nextStatus === "partial" && attempts < maxAttempts);
+  const shouldRetry = attempts < maxAttempts && (hasAuthFailure || nextStatus === "partial");
   const retryDelayMinutes = hasAuthFailure
     ? 15
     : Math.min(60, 2 ** Math.min(attempts, 6));
@@ -371,5 +370,5 @@ export async function processSocialPublishItem(
     },
   });
 
-  return shouldRetry ? true : nextStatus === "published";
+  return nextStatus === "published";
 }
