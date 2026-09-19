@@ -56,7 +56,7 @@ Live Application
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Settings > API | `eyJhbGc...` (public key) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Settings > API | `eyJhbGc...` (secret key) |
 | `NEXT_PUBLIC_SITE_URL` | Your domain | `https://zikrmediaofficial.vercel.app` |
-| `AUTH_CALLBACK_URL` | Same as SITE_URL + /auth/callback | `https://your-domain.vercel.app/auth/callback` |
+| `AUTH_CALLBACK_URL` | Locked application callback | `https://zikrmediaofficial.vercel.app/auth/callback` |
 
 ### Optional Variables:
 
