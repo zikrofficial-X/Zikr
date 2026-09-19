@@ -45,3 +45,8 @@ export interface Reciter {
   baseUrlTemplate: string;
   type: 'surah' | 'ayah';
 }
+
+export interface QuranTafsirSource {
+  author: string;
+  sourceUrl: string | null;
+}
