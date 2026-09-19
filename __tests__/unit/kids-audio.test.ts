@@ -6,7 +6,7 @@ import {
   KIDS_AUDIO_TRACKS,
   KIDS_ACHIEVEMENTS,
   normalizeKidsProgress,
-} from '../../lib/data/kids-audio';
+} from '../../src/features/kids/data/audio';
 
 test('kids audio library contains stories, nasheeds, and adhkar', () => {
   const categories = new Set(KIDS_AUDIO_TRACKS.map(track => track.category));

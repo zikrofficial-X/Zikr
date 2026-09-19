@@ -2,11 +2,11 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const manifestPath = 'public/offline-content/v1/manifest.json';
 const routeSnapshotPath = 'public/offline-content/v2/routes.json';
-const offlinePackPath = 'lib/offline-pack.ts';
+const offlinePackPath = 'src/lib/offline-pack.ts';
 const serviceWorkerPath = 'public/sw.js';
-const offlineLibraryPath = 'app/offline-library/page.tsx';
-const offlineLibraryClientPath = 'app/offline-library/offline-library-client.tsx';
-const guardPath = 'components/layout/offline-navigation-guard.tsx';
+const offlineLibraryPath = 'src/app/offline-library/page.tsx';
+const offlineLibraryClientPath = 'src/app/offline-library/offline-library-client.tsx';
+const guardPath = 'src/components/layout/offline-navigation-guard.tsx';
 
 const read = file => (existsSync(file) ? readFileSync(file, 'utf8') : '');
 const failures = [];

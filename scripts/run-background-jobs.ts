@@ -5,7 +5,7 @@ import {
 import {
   claimPendingSocialPublishItems,
   processSocialPublishItem,
-} from "../lib/services/social-publishing";
+} from "../src/features/social/services/social-publishing";
 
 const VIDEO_BATCH_SIZE = Number(process.env.VIDEO_BACKGROUND_BATCH_SIZE ?? 3);
 const SOCIAL_BATCH_SIZE = Number(process.env.SOCIAL_BACKGROUND_BATCH_SIZE ?? 10);

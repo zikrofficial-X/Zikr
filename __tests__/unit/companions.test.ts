@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   companionCategoryLabel,
   uniqueCompanionSummaries,
-} from '../../lib/utils/companions';
+} from '../../src/features/companions/utils/companions';
 
 test('uniqueCompanionSummaries prefers a categorized record for duplicate names', () => {
   const rows = [

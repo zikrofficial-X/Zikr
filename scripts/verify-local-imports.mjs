@@ -4,8 +4,20 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const extensions = ['', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json'];
-const sourceDirs = ['app', 'components', 'lib', 'scripts'];
+const sourceDirs = ['src', 'scripts'];
 const failures = [];
+const LEGACY_SERVICE_ALLOWLIST = new Set(['http', 'storage', 'api-health']);
+
+function checkServiceBoundary(file, specifier) {
+  const inFeatureCode = file.startsWith(join(root, 'src', 'app')) || file.startsWith(join(root, 'src', 'features'));
+  if (!inFeatureCode || !specifier.startsWith('@/lib/services/')) return;
+
+  const serviceName = specifier.slice('@/lib/services/'.length).replace(/\.(?:ts|tsx|js|jsx)$/, '');
+  if (!LEGACY_SERVICE_ALLOWLIST.has(serviceName)) {
+    failures.push(file.replace(root + '/', '') + ': legacy service import ' + specifier + ' is outside the allowed infrastructure boundary');
+  }
+}
+
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -33,29 +45,35 @@ function existsAsModule(basePath) {
 }
 
 function resolveImport(specifier, fromFile) {
-  if (specifier.startsWith('@/')) return resolve(root, specifier.slice(2));
+  if (specifier.startsWith('@/')) return resolve(root, 'src', specifier.slice(2));
   if (specifier.startsWith('./') || specifier.startsWith('../')) return resolve(dirname(fromFile), specifier);
   return null;
 }
 
 const importPattern = /(?:import|export)\s+(?:type\s+)?(?:[^'";]+?\s+from\s+)?['"]([^'"]+)['"]|import\(['"]([^'"]+)['"]\)/g;
 
+const filesToScan = [];
 for (const sourceDir of sourceDirs) {
   const absoluteDir = join(root, sourceDir);
-  if (!existsSync(absoluteDir)) continue;
+  if (existsSync(absoluteDir)) filesToScan.push(...walk(absoluteDir));
+}
+for (const rootFile of ['proxy.ts', 'next.config.ts']) {
+  const absoluteFile = join(root, rootFile);
+  if (existsSync(absoluteFile)) filesToScan.push(absoluteFile);
+}
 
-  for (const file of walk(absoluteDir)) {
+for (const file of filesToScan) {
     const text = readFileSync(file, 'utf8');
     for (const match of text.matchAll(importPattern)) {
       const specifier = match[1] ?? match[2];
       const resolved = resolveImport(specifier, file);
       if (!resolved) continue;
+      checkServiceBoundary(file, specifier);
       if (!existsAsModule(resolved)) {
         failures.push(`${file.replace(`${root}/`, '')}: unresolved local import ${specifier}`);
       }
     }
   }
-}
 
 if (failures.length > 0) {
   for (const failure of failures) console.error(`❌ ${failure}`);

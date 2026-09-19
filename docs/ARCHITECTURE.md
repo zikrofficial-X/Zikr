@@ -7,7 +7,7 @@ This is the canonical architecture reference; historical reports live in `docs/r
 
 - **Framework:** Next.js (App Router, TypeScript, Tailwind)
 - **Database:** Supabase (PostgreSQL, RLS, Storage, Auth)
-- **ORM/schema mirror:** Drizzle (`drizzle/schema.ts`, config in `drizzle.config.ts`)
+- **Database schema:** Supabase migrations (`supabase/migrations`) are the single source of truth.
 - **Package manager:** pnpm (single lockfile: `pnpm-lock.yaml`)
 - **Verification:** Vercel runs `pnpm verify` on every deployment; GitHub Actions retains manual-only verification and recovery workflows while hosted runners are billing-locked
 - **Hosting:** Vercel (`vercel.json`) with Supabase `pg_cron` and Edge Functions for production background scheduling
@@ -16,18 +16,17 @@ This is the canonical architecture reference; historical reports live in `docs/r
 
 | Path | Purpose |
 | --- | --- |
-| `app/` | All routes (pages + API). See "Routes" below. |
-| `components/` | Shared React components (UI, layout, feature components). |
-| `lib/` | Core services: `lib/supabase/client.ts` (browser client + legacy REST `request()` helper), `lib/supabase/server.ts` (async server client — must be awaited), types in `lib/types/`. |
-| `hooks/`, `shared/` | Reusable hooks and shared utilities. |
-| `config/` | App configuration. |
-| `styles/` | Global styles. |
-| `types/` | Global TypeScript types. |
+| `src/app/` | All routes (pages + API). See "Routes" below. |
+| `src/components/` | Shared React components (UI, layout, feature components). |
+| `src/lib/` | Core services: `lib/supabase/client.ts` (browser client + legacy REST `request()` helper), `lib/supabase/server.ts` (async server client — must be awaited), types in `src/lib/types/`. |
+| `src/hooks/`, `src/shared/` | Reusable hooks and shared utilities. |
+| `src/config/` | App configuration. |
+| `src/styles/` | Global styles. |
+| `src/types/` | Global TypeScript types. |
 | `public/` | Static assets, manifest, icons. |
 | `supabase/migrations/` | Canonical migration chain (`0000_young_rattler` → `rls_triggers_storage`). |
 | `supabase/migrations_archive/` | Legacy/conflicting migrations. Never apply. See its README. |
-| `drizzle/` | Drizzle schema + drizzle-generated alignment migrations. |
-| `scripts/` | One-off operational scripts (imports, audits, RLS checks). Run manually with env vars; not part of the build. |
+| `drizzle/` | | `scripts/` | One-off operational scripts (imports, audits, RLS checks). Run manually with env vars; not part of the build. |
 | `proxy.ts` | Next.js middleware (Next 16 naming). |
 | `docs/` | Guides (deployment, Google auth, video automation) and this file. |
 | `docs/reports/` | Historical audit/status reports (archived from repo root). |
@@ -83,4 +82,4 @@ Documented in `docs/environment-variables.md`. Key vars:
 
 - `pnpm` only — do not commit `package-lock.json`.
 - Server Supabase client is async (Next 16 `cookies()` is async).
-- Drizzle schema must be kept in sync with `supabase/migrations/` when tables change.
+- - Database changes are made through the canonical Supabase migration chain; generated TypeScript types are refreshed from the live schema.

@@ -83,9 +83,6 @@ importers:
       clsx:
         specifier: 2.1.1
         version: 2.1.1
-      drizzle-orm:
-        specifier: ^0.45.2
-        version: 0.45.2(@electric-sql/pglite@0.5.8)(postgres@3.4.9)
       lucide-react:
         specifier: ^1.39.0
         version: 1.39.0(react@19.2.7)

@@ -8,9 +8,7 @@
 3. **SUPABASE_GITHUB_FIX_SUMMARY.md** - Supabase schema fixes and migrations
 
 ### 🔧 Configuration Files
-- `drizzle.config.ts` - Drizzle Kit configuration
-- `drizzle/schema.ts` - Complete Drizzle ORM schema (updated)
-- `lib/types/supabase.ts` - TypeScript types for Supabase tables
+- `src/lib/types/supabase.ts` - TypeScript types for Supabase tables
 
 ### 📁 Migration Files
 

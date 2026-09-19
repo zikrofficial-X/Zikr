@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mergePublishedBySlug } from '@/lib/data/content-merge';
-import { FALLBACK_CONQUESTS } from '@/lib/data/conquests-fallback';
+import { FALLBACK_CONQUESTS } from '@/features/conquests/data/conquests-fallback';
 
 test('content merge keeps database rows first and adds unseen fallback slugs', () => {
   const merged = mergePublishedBySlug(

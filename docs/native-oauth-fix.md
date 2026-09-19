@@ -1,9 +1,21 @@
-# Native OAuth callback flow
+# Native Google OAuth callback flow
 
-For native Android, ZIKR starts Google OAuth with the direct `com.zikr.app://auth/callback` redirect. The external Chrome Custom Tab returns the authorization code directly to the Capacitor Activity, where `appUrlOpen` is handled by the WebView and exchanged with the PKCE verifier stored by the browser Supabase client. The external browser is then closed and the user is navigated to the requested page inside the app.
+ZIKR native builds use the direct application deep link:
 
-The Android activity is `singleTask`, so `onNewIntent()` preserves the latest deep-link intent for Capacitor. The web handler registers `appUrlOpen` before checking `getLaunchUrl()` at startup and whenever the app becomes active. It also accepts the production HTTPS callback as a compatibility fallback for already-installed older APKs and web sessions.
+`com.zikr.app://auth/callback`
 
-The direct custom-scheme redirect must be present in Supabase Auth URL Configuration and in the Google OAuth client’s authorized redirect configuration where applicable. The production web callback remains `https://zikrmediaofficial.vercel.app/auth/callback` for browser sign-in.
+The external Google authentication still runs through Supabase Auth. Google's OAuth client uses the Supabase provider callback:
 
-This direct-return path avoids the extra HTTPS bridge redirect that could leave Android on the Google or Vercel page without delivering the callback to the app.
+`https://eydxvcamhjhajxjrsgym.supabase.co/auth/v1/callback`
+
+Supabase then redirects to the application deep link because it is present in the Supabase Auth Redirect URLs allowlist. Supabase supports mobile deep-link redirect targets in this configuration.
+
+The Capacitor handler listens for `appUrlOpen`, retrieves the callback URL, validates the exact deep-link pathname `/callback`, and exchanges the authorization code with the PKCE verifier stored by the browser Supabase client.
+
+For older installs, the handler also accepts the HTTPS application callback:
+
+`https://zikrmediaofficial.vercel.app/auth/callback`
+
+The custom scheme should **not** be added as Google's OAuth provider callback URI. It belongs in the Supabase application redirect allowlist.
+
+The Android activity remains responsible for passing the latest deep-link intent to Capacitor so the WebView can receive the callback.

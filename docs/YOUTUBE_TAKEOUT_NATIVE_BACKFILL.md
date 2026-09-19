@@ -27,7 +27,7 @@ Set these environment variables in the terminal session only:
 - `YOUTUBE_CHANNEL_ID`
 - `FACEBOOK_PAGE_ID`
 - `FACEBOOK_PAGE_ACCESS_TOKEN`
-- `META_GRAPH_API_VERSION`
+- `FACEBOOK_GRAPH_API_VERSION`
 
 Never commit these values and never put them in a browser/client bundle.
 

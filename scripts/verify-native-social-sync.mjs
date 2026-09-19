@@ -3,8 +3,8 @@ import path from 'node:path';
 
 const root = process.cwd();
 const files = [
-  'lib/services/native-social-sync.ts',
-  'lib/env.ts',
+  'src/features/social/services/native-social-sync.ts',
+  'src/lib/env.ts',
   '.env.example',
 ];
 
@@ -13,7 +13,7 @@ for (const file of files) {
   if (!fs.existsSync(absolute)) throw new Error(`Missing required file: ${file}`);
 }
 
-const publisher = fs.readFileSync(path.join(root, 'lib/services/native-social-sync.ts'), 'utf8');
+const publisher = fs.readFileSync(path.join(root, 'src/features/social/services/native-social-sync.ts'), 'utf8');
 if (!publisher.includes('assertNativeMediaUrl')) throw new Error('Native media guard is missing.');
 if (!publisher.includes("url.protocol !== 'https:'")) throw new Error('HTTPS media validation is missing.');
 if (!publisher.includes('youtube\\.com|youtu\\.be')) throw new Error('YouTube URL rejection guard is missing.');

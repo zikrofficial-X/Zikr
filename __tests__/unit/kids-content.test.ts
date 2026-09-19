@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getKidsItemBySlug, kidsContent } from '../../lib/data/kids-content';
+import { getKidsItemBySlug, kidsContent } from '../../src/features/kids/data/content';
 
 test('kids adventure pack includes stories, games, quiz, and supervised activities', () => {
   const requiredSlugs = [

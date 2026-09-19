@@ -1,25 +1,14 @@
 {
   "include": [
     "next-env.d.ts",
-    "app/**/*",
-    "components/**/*",
-    "features/**/*",
-    "hooks/**/*",
-    "lib/**/*",
-    "providers/**/*",
-    "services/**/*",
-    "store/**/*",
-    "styles/**/*",
-    "types/**/*",
-    "shared/**/*",
-    "drizzle/**/*.ts",
+    "src/**/*",
+    "scripts/**/*.ts",
     "next.config.ts",
+    "proxy.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ],
+  "exclude": ["node_modules", ".next", "android", "ios"],
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
@@ -27,31 +16,17 @@
     "module": "ESNext",
     "target": "ES2022",
     "strict": true,
-    "lib": [
-      "esnext",
-      "dom",
-      "dom.iterable"
-    ],
+    "lib": ["esnext", "dom", "dom.iterable"],
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "ignoreDeprecations": "6.0",
-    "types": [
-      "node"
-    ],
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
-    "allowJs": true,
+    "types": ["node"],
+    "plugins": [{ "name": "next" }],
+    "paths": { "@/*": ["./src/*"] },
+    "allowJs": false,
     "resolveJsonModule": true,
     "isolatedModules": true
   }
