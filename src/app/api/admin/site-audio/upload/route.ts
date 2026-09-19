@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminApi } from '@/lib/services/admin';
+import { requireAdminApi } from '@/features/admin/services/admin';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sanitizeStorageSegment } from '@/lib/services/storage';
 
