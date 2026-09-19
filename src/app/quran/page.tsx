@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { pageMetadata } from "@/lib/site";
 import { QuranPageHeader } from "@/features/quran/components/quran-page-header";
 import { ContinueReadingBanner } from "@/features/quran/components/continue-reading-banner";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 // إجبار الصفحة على الرندرة الديناميكية لمنع أخطاء الـ Build مع الـ no-store fetch
 export const dynamic = "force-dynamic";
@@ -45,11 +46,13 @@ async function QuranContent() {
         <QuranPageHeader />
 
         {/* Reserve the optional banner slot so its async resolution cannot shift the list. */}
-        <div className="min-h-[72px]">
-          <Suspense fallback={<div className="h-[72px]" aria-hidden="true" />}>
-            <ContinueReadingBanner />
-          </Suspense>
-        </div>
+        {isSupabaseConfigured() ? (
+          <div className="min-h-[72px]">
+            <Suspense fallback={<div className="h-[72px]" aria-hidden="true" />}>
+              <ContinueReadingBanner />
+            </Suspense>
+          </div>
+        ) : null}
 
         <SurahSearch
           initialSurahs={surahs.map(s => ({
