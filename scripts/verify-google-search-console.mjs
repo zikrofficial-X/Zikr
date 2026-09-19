@@ -33,7 +33,7 @@ if (!layout.includes('NEXT_PUBLIC_GA_MEASUREMENT_ID')) failures.push('متغير
 if (!layout.includes(approvedGaId)) failures.push(`معرّف GA4 المعتمد غير موجود: ${approvedGaId}`);
 if (!layout.includes(approvedGtmId)) failures.push(`معرّف GTM المعتمد غير موجود: ${approvedGtmId}`);
 if (layout.includes('G-G9DPYTK78')) failures.push('المعرّف القديم G-G9DPYTK78 ما زال موجودًا في root layout.');
-if (!layout.includes('strategy="beforeInteractive"')) failures.push('GA4/GTM ليسا مهيئين قبل التفاعل في root layout.');
+if (!layout.includes('strategy="lazyOnload"')) failures.push('GA4/GTM لا يستخدمان lazyOnload في root layout.');
 if (!layout.includes('https://www.googletagmanager.com/gtag/js?id=')) failures.push('مصدر gtag.js غير موجود في root layout.');
 if (/import\(.+analytics/.test(deferredAnalytics)) failures.push('تمت إعادة تحميل Analytics ديناميكيًا خارج root layout.');
 if (!layout.includes('NEXT_PUBLIC_GTM_ID')) failures.push('متغير GTM canonical غير موجود في root layout.');

@@ -324,3 +324,35 @@ html.capacitor-native .animate-slideUp {
     scroll-behavior: auto;
   }
 }
+
+/* Lighthouse contrast hardening: readable brand text must stay opaque on the
+   dark ZIKR surface; translucent text colors were still failing contrast. */
+[class~="text-brand-gold/20"],
+[class~="text-brand-gold/25"],
+[class~="text-brand-gold/30"],
+[class~="text-brand-gold/35"],
+[class~="text-brand-gold/40"],
+[class~="text-brand-gold/45"],
+[class~="text-brand-gold/50"],
+[class~="text-brand-gold/55"],
+[class~="text-brand-gold/60"],
+[class~="text-brand-gold/65"],
+[class~="text-brand-gold/70"],
+[class~="text-brand-gold/75"],
+[class~="text-brand-gold/80"] {
+  color: #e6d7b3 !important;
+}
+
+[class~="text-brand-cream/20"],
+[class~="text-brand-cream/25"],
+[class~="text-brand-cream/30"],
+[class~="text-brand-cream/35"],
+[class~="text-brand-cream/40"],
+[class~="text-brand-cream/45"],
+[class~="text-brand-cream/50"],
+[class~="text-brand-cream/55"],
+[class~="text-brand-cream/60"],
+[class~="text-brand-cream/65"],
+[class~="text-brand-cream/70"] {
+  color: #d8d2c4 !important;
+}

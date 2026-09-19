@@ -11,11 +11,10 @@ import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
 import { NativeCapacitorBridgeLoader } from "@/components/layout/native-capacitor-bridge-loader";
 
-export const dynamic = "force-dynamic";
-
 const notoNaskhArabic = Noto_Naskh_Arabic({
   subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700"],
+  preload: false,
   variable: "--font-noto-arabic-loaded",
   display: "swap",
 });
@@ -115,9 +114,9 @@ export default function RootLayout({
             <Script
               id="google-analytics-src"
               src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`}
-              strategy="beforeInteractive"
+              strategy="lazyOnload"
             />
-            <Script id="google-analytics-config" strategy="beforeInteractive">
+            <Script id="google-analytics-config" strategy="lazyOnload">
               {`window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
@@ -126,7 +125,7 @@ gtag('config', '${googleAnalyticsId}', { send_page_view: true });`}
           </>
         )}
         {process.env.NODE_ENV === "production" && isValidGoogleTagManagerId && (
-          <Script id="google-tag-manager" strategy="beforeInteractive">
+          <Script id="google-tag-manager" strategy="lazyOnload">
             {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${googleTagManagerId}');`}
           </Script>
         )}
