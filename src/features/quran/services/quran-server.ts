@@ -1,7 +1,11 @@
 "use server";
 
-import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+import {
+  supabaseServerAdminRequest,
+  supabaseServerAnonRequest,
+} from "@/lib/supabase/server";
 import type { Surah, Ayah, Reciter, QuranTafsirSource } from "@/features/quran/types/quran";
+import { surahs as fallbackSurahs } from "@/features/quran/data/fallback";
 import {
   mapDbSurah,
   mapDbAyah,
@@ -13,8 +17,29 @@ import {
   type Locale,
 } from "./quran";
 
-const quranDbRequest = <T>(path: string) =>
-  supabaseServerAnonRequest<T>(path, { timeoutMs: 15_000 });
+/** Prefer the server-only read path, then retain anon access for local previews. */
+const quranDbRequest = async <T>(path: string): Promise<T> => {
+  try {
+    return await supabaseServerAdminRequest<T>(path, {
+      timeoutMs: 15_000,
+      retries: 1,
+    });
+  } catch (adminError) {
+    console.warn("[quran-server] admin read unavailable; trying public read:", adminError);
+    return supabaseServerAnonRequest<T>(path, { timeoutMs: 15_000, retries: 1 });
+  }
+};
+
+function getFallbackSurahs(locale: Locale): Surah[] {
+  return fallbackSurahs.map((surah) => ({
+    number: surah.id,
+    name: locale === "en" ? surah.nameEn : surah.nameAr,
+    englishName: surah.nameEn,
+    englishNameTranslation: surah.nameEn,
+    revelationType: surah.revelationPlace === "medinan" ? "Medinan" : "Meccan",
+    numberOfAyahs: surah.ayahCount,
+  }));
+}
 
 /**
  * DB-First Quran Service (Server-Only)
@@ -30,12 +55,13 @@ export async function getAllSurahsFromDb(
     );
 
     if (dbSurahs?.length !== 114) {
-      throw new Error(`Incomplete Quran catalog: ${dbSurahs?.length ?? 0}/114`);
+      console.error(`[quran-server] Incomplete Quran catalog: ${dbSurahs?.length ?? 0}/114`);
+      return getFallbackSurahs(locale);
     }
     return dbSurahs.map(surah => mapDbSurah(surah, locale));
   } catch (error) {
     console.error("[quran-server] canonical Supabase surah catalog unavailable:", error);
-    return null;
+    return getFallbackSurahs(locale);
   }
 }
 
@@ -47,13 +73,14 @@ export async function getSurahMetaFromDb(
     const dbSurahs = await quranDbRequest<DbSurah[]>(
       `/rest/v1/quran_surahs?id=eq.${surahId}&select=id,name_ar,name_en,name_translation,revelation_place,ayahs_count&limit=1`
     );
-    return dbSurahs?.[0] ? mapDbSurah(dbSurahs[0], locale) : null;
+    if (dbSurahs?.[0]) return mapDbSurah(dbSurahs[0], locale);
+    return getFallbackSurahs(locale).find((surah) => surah.number === surahId) ?? null;
   } catch (error) {
     console.error(
       `[quran-server] getSurahMetaFromDb failed for ${surahId}:`,
       error
     );
-    return null;
+    return getFallbackSurahs(locale).find((surah) => surah.number === surahId) ?? null;
   }
 }
 
