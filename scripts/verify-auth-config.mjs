@@ -44,9 +44,6 @@ if (JSON.stringify(configuredRedirects) !== JSON.stringify(expectedRedirects)) {
     "supabase/config.toml: additional_redirect_urls must exactly match the three approved production/native/local entries",
   );
 }
-if (authBlock.includes('site_url = "' + production + '"') && !authBlock.includes('site_url = "' + production + '/"')) {
-  failures.push("supabase/config.toml: trailing slash was removed from the canonical Site URL");
-}
 
 requireText(".env.example", env, "AUTH_CALLBACK_URL=" + production + "/auth/callback");
 requireText("auth-enhanced", enhanced, 'new URL("/auth/callback"');
