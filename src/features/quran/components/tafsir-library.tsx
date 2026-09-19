@@ -15,12 +15,12 @@ const FALLBACK_SOURCE: QuranTafsirSource = {
 
 export function TafsirLibrary({ sources }: { sources: QuranTafsirSource[] }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const availableSources = sources.length > 0 ? sources : [FALLBACK_SOURCE];
   const filtered = useMemo(() => {
+    const availableSources = sources.length > 0 ? sources : [FALLBACK_SOURCE];
     const query = searchQuery.trim().toLowerCase();
     if (!query) return availableSources;
     return availableSources.filter((source) => source.author.toLowerCase().includes(query));
-  }, [availableSources, searchQuery]);
+  }, [sources, searchQuery]);
 
   return (
     <Container className="py-12 space-y-10">
