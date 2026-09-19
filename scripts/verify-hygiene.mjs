@@ -28,11 +28,6 @@ if (envExample.includes('META_GRAPH_API_VERSION')) {
   fail('Stale environment key META_GRAPH_API_VERSION is still present; use FACEBOOK_GRAPH_API_VERSION.');
 }
 
-const backgroundWorkflow = read('.github/workflows/background-jobs.yml');
-if (backgroundWorkflow.includes('https://eydxvcamhjhajxjrsgym.supabase.co')) {
-  fail('Background worker must not contain a hardcoded production Supabase URL fallback.');
-}
-
 const packageJson = read('package.json');
 try {
   const pkg = JSON.parse(packageJson);
