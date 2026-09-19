@@ -10,7 +10,7 @@ To ensure the project works correctly on production (Vercel) and with Supabase, 
 1. Go to **Authentication > Providers > Google**.
 2. Enable Google Provider.
 3. Add your **Client ID** and **Client Secret** from Google Cloud Console.
-4. In **Redirect URLs**, add:
+4. In Supabase Auth URL Configuration, keep the repository-locked three entries exactly; do not add additional Vercel aliases.
    - `http://localhost:3000/auth/callback` (for local development)
    - `https://zikrmediaofficial.vercel.app/auth/callback` (production)
    - Do **not** use `/api/auth/callback`; this app handles auth at `/auth/callback`.
@@ -57,7 +57,7 @@ pnpm build
 
 ## 4. Features Status
 
-- **Quran**: Fully functional via AlQuran API.
+- **Quran**: Canonical runtime data is served from Supabase.
 - **Tafsir**: Integrated into Ayah detail pages.
 - **Hadith**: Connected to live API with pagination.
 - **Stories**: Integrated with YouTube embed support.
