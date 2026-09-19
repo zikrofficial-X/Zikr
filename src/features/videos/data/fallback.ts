@@ -1,6 +1,13 @@
 import type { Video, VideoCategory } from '@/features/videos/types/videos';
 
-export const FALLBACK_VIDEO_CATEGORIES: VideoCategory[] = FALLBACK_ARTICLE_CATEGORIES.map((c) => ({ ...c, id: `video-${c.id}` }));
+export const FALLBACK_VIDEO_CATEGORIES: VideoCategory[] = [
+  { id: 'video-faith', nameAr: 'العقيدة والإيمان', nameEn: 'Faith', slug: 'faith', icon: '🕌' },
+  { id: 'video-quran', nameAr: 'القرآن وعلومه', nameEn: 'Quran', slug: 'quran', icon: '📖' },
+  { id: 'video-sunnah', nameAr: 'السنة والسيرة', nameEn: 'Sunnah & Seerah', slug: 'sunnah', icon: '🌙' },
+  { id: 'video-ethics', nameAr: 'الأخلاق والتزكية', nameEn: 'Ethics', slug: 'ethics', icon: '🌿' },
+  { id: 'video-history', nameAr: 'التاريخ والحضارة', nameEn: 'History', slug: 'history', icon: '🏛️' },
+  { id: 'video-family', nameAr: 'الأسرة والمجتمع', nameEn: 'Family', slug: 'family', icon: '👨‍👩‍👧‍👦' },
+];
 export const FALLBACK_VIDEOS: Video[] = [
  {id:'fv1',title:'سورة الفاتحة: المعاني والمقاصد',slug:'surah-al-fatiha-guide',description:'حلقة تعليمية تشرح بصورة مبسطة بنية سورة الفاتحة، وأبرز المعاني المرتبطة بالحمد والعبادة والاستعانة والهداية، مع نصيحة بمراجعة التفسير المعتبر عند التوسع.',views:0,published:true,categoryId:'video-quran',createdAt:'2026-01-01T00:00:00.000Z',duration:900,metadata:{kind:'educational',language:'ar'}},
  {id:'fv2',title:'كيف تحفظ سورة قصيرة بطريقة ثابتة؟',slug:'memorize-short-surah',description:'منهج تدريجي للحفظ يبدأ بالتكرار الصحيح، والاستماع، وربط الآيات ببعضها، ثم المراجعة المتباعدة حتى يثبت المحفوظ.',views:0,published:true,categoryId:'video-quran',createdAt:'2026-01-02T00:00:00.000Z',duration:780,metadata:{kind:'memorization'}},
