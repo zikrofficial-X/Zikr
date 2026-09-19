@@ -22,7 +22,7 @@ The verification command is the same gate configured in `vercel.json`. It covers
 After GitHub runner access is restored, dispatch the verification workflow from the Actions tab or with:
 
 ```bash
-gh workflow run ci.yml --repo mohamedalaa7785-cpu/Zikr
+gh workflow run ci.yml --repo Zikrmediaofficial/Zikr
 ```
 
 The workflow installs the frozen lockfile and runs `pnpm verify`. If GitHub reports an account billing lock, do not repeatedly rerun it; use the local command or inspect the Vercel deployment instead.
@@ -40,7 +40,7 @@ The Background Jobs workflow is a recovery tool for a deliberate operator action
 Use the CLI form only when runner access and all required server-side secrets have been verified:
 
 ```bash
-gh workflow run background-jobs.yml --repo mohamedalaa7785-cpu/Zikr -f target=all
+gh workflow run background-jobs.yml --repo Zikrmediaofficial/Zikr -f target=all
 ```
 
 The previous `job_type` input is no longer valid. The workflow must never be changed back to `schedule` while the Supabase queue scheduler is active, because doing so can duplicate external publishing.
