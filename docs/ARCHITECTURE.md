@@ -14,7 +14,7 @@ This document describes the **current canonical architecture**. Historical audit
 - **Package manager:** pnpm; `pnpm-lock.yaml` is the only lockfile
 - **Mobile:** Capacitor with Android and iOS projects
 - **Hosting:** Vercel
-- **Verification:** Vercel deployment/build checks plus the external CI path configured outside GitHub Actions
+- **Verification:** repository integrity checks plus Vercel production build
 
 ## Canonical Directory Map
 
@@ -36,7 +36,7 @@ This document describes the **current canonical architecture**. Historical audit
 | `android/`, `ios/`, `mobile/` | Native projects and mobile build metadata |
 | `.github/` | Repository metadata only; GitHub Actions workflows are intentionally retired |
 | `.circleci/` | CircleCI configuration retained for secondary CI/recovery validation |
-| `docs/` | Current guides, operational documentation, audits, and historical records |
+| `docs/` | Current operational documentation |
 
 ### Path ownership rules
 
