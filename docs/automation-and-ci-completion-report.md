@@ -54,7 +54,7 @@ The final repository was tested after rebasing onto the latest remote `main` his
 
 ## Queue ownership after the change
 
-Prayer Web Push has one active automatic scheduler in Supabase. The video/social queue's previous Supabase scheduler was retired; execution is currently a manual recovery path. Browser-local reminders remain an offline fallback. Video and social processing is owned by `zikr-video-processing`, which calls the authenticated `/api/internal/video-processing` route; GitHub remains a manual recovery path only. The operational details are documented in [`production-scheduling.md`](./production-scheduling.md) and [`background-jobs.md`](./background-jobs.md).
+Prayer Web Push has one active automatic scheduler in Supabase. The video/social queue's previous Supabase scheduler was retired; execution is currently a manual recovery path. Browser-local reminders remain an offline fallback. The former `zikr-video-processing` scheduler is retired. The authenticated `/api/internal/video-processing` route remains a compatibility/recovery endpoint; GitHub Background Jobs is the manual recovery worker. The operational details are documented in [`production-scheduling.md`](./production-scheduling.md) and [`background-jobs.md`](./background-jobs.md).
 
 ## Remaining requirements
 
