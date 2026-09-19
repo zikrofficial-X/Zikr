@@ -210,8 +210,41 @@ self.addEventListener("fetch", event => {
 
   if (request.method !== "GET") return;
   if (url.origin !== self.location.origin) return;
-  if (request.destination === "audio" || request.destination === "video")
+
+  // Local same-origin audio (adhan, salawat, kids themes) is bundled with the
+  // app and small enough to serve fully offline. Cross-origin recitation
+  // streams and video remain network-only because they are far too large to
+  // persist and are served from external CDNs the service worker cannot cache.
+  if (request.destination === "audio" || request.destination === "video") {
+    if (
+      request.destination === "audio" &&
+      url.pathname.startsWith("/audio/")
+    ) {
+      event.respondWith(
+        caches.match(request).then(cached => {
+          if (cached) return cached;
+          return fetch(request)
+            .then(response => {
+              if (response.ok) {
+                const copy = response.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+              }
+              return response;
+            })
+            .catch(() =>
+              caches
+                .match(request)
+                .then(
+                  fallback =>
+                    fallback ||
+                    new Response("Audio unavailable offline", { status: 503 })
+                )
+            );
+        })
+      );
+    }
     return;
+  }
 
   if (
     request.destination === "script" &&

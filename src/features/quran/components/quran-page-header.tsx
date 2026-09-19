@@ -1,8 +1,6 @@
 'use client';
 
 import { useLanguage } from '@/components/layout/language-provider';
-import { QuranAuthBanner } from '@/features/quran/components/quran-auth-banner';
-
 export function QuranPageHeader() {
   const { isEnglish, dir } = useLanguage();
   return (
@@ -10,7 +8,6 @@ export function QuranPageHeader() {
       <h1 className="text-4xl font-bold text-brand-gold" dir={dir}>
         {isEnglish ? 'The Holy Quran' : 'القرآن الكريم'}
       </h1>
-      <QuranAuthBanner />
     </div>
   );
 }
