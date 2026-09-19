@@ -1,0 +1,47 @@
+name: Import Quran Audio to Supabase
+
+on:
+  workflow_dispatch:
+    inputs:
+      concurrency:
+        description: "Number of simultaneous audio uploads (1-4)"
+        required: false
+        default: "2"
+      max_file_mb:
+        description: "Maximum accepted file size in MB"
+        required: false
+        default: "50"
+
+permissions:
+  contents: read
+
+jobs:
+  import:
+    name: Import Quran recitations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      QURAN_AUDIO_CONCURRENCY: ${{ inputs.concurrency }}
+      QURAN_AUDIO_MAX_FILE_MB: ${{ inputs.max_file_mb }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Validate configuration
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_URL:-${NEXT_PUBLIC_SUPABASE_URL:-}}" || { echo "Missing Supabase URL" >&2; exit 1; }
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "Missing SUPABASE_SERVICE_ROLE_KEY" >&2; exit 1; }
+      - name: Import all Quran recitations
+        run: node scripts/import-quran-audio-to-supabase.mjs
