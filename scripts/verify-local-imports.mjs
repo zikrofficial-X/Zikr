@@ -6,6 +6,18 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const extensions = ['', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json'];
 const sourceDirs = ['src', 'scripts'];
 const failures = [];
+const LEGACY_SERVICE_ALLOWLIST = new Set(['http', 'storage', 'api-health']);
+
+function checkServiceBoundary(file, specifier) {
+  const inFeatureCode = file.startsWith(join(root, 'src', 'app')) || file.startsWith(join(root, 'src', 'features'));
+  if (!inFeatureCode || !specifier.startsWith('@/lib/services/')) return;
+
+  const serviceName = specifier.slice('@/lib/services/'.length).replace(/\.(?:ts|tsx|js|jsx)$/, '');
+  if (!LEGACY_SERVICE_ALLOWLIST.has(serviceName)) {
+    failures.push(file.replace(root + '/', '') + ': legacy service import ' + specifier + ' is outside the allowed infrastructure boundary');
+  }
+}
+
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -56,6 +68,7 @@ for (const file of filesToScan) {
       const specifier = match[1] ?? match[2];
       const resolved = resolveImport(specifier, file);
       if (!resolved) continue;
+      checkServiceBoundary(file, specifier);
       if (!existsAsModule(resolved)) {
         failures.push(`${file.replace(`${root}/`, '')}: unresolved local import ${specifier}`);
       }
