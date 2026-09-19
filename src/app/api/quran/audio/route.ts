@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { reciters as fallbackReciters } from "@/features/quran/data/fallback";
 
 export const revalidate = 86400;
 
@@ -244,7 +245,14 @@ export async function GET(request: Request) {
 
     if (reciterError) throw reciterError;
     const reciterRow = reciters?.find(row => candidates.includes(row.code ?? ""));
-    if (!reciterRow?.id) return json({ audio: null, reason: "reciter_not_found" });
+    if (!reciterRow?.id) {
+      const fallback = fallbackReciters.find(row => row.code === reciter || row.id === reciter);
+      if (fallback) {
+        const audioUrl = `${fallback.baseUrlTemplate.replace(/\/$/, "")}/${String(surah).padStart(3, "0")}.mp3`;
+        return json({ audio: { audio_url: audioUrl, source_url: audioUrl, storage_url: audioUrl, storage_status: "ready" } });
+      }
+      return json({ audio: null, reason: "reciter_not_found" });
+    }
 
     const { data: audio, error: audioError } = await supabase
       .from("quran_audio")
