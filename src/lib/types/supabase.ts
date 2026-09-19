@@ -59,6 +59,199 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_actions_audit: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          meta: Json
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          meta?: Json
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          meta?: Json
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      admin_audit_events: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          outcome: string
+          permission: string | null
+          request_id: string | null
+          resource_id: string | null
+          resource_type: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          outcome?: string
+          permission?: string | null
+          request_id?: string | null
+          resource_id?: string | null
+          resource_type?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          outcome?: string
+          permission?: string | null
+          request_id?: string | null
+          resource_id?: string | null
+          resource_type?: string | null
+        }
+        Relationships: []
+      }
+      admin_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          meta: Json
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          meta?: Json
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          meta?: Json
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_rate_limits: {
+        Row: {
+          actor_user_id: string
+          bucket: string
+          request_count: number
+          updated_at: string
+          window_start: string
+        }
+        Insert: {
+          actor_user_id: string
+          bucket: string
+          request_count?: number
+          updated_at?: string
+          window_start: string
+        }
+        Update: {
+          actor_user_id?: string
+          bucket?: string
+          request_count?: number
+          updated_at?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      admin_role_assignments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          role: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_role_assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_role_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_history: {
         Row: {
           created_at: string | null
@@ -860,11 +1053,212 @@ export type Database = {
         }
         Relationships: []
       }
+      content_library: {
+        Row: {
+          author: string | null
+          author_name: string | null
+          body_ar: string
+          body_en: string | null
+          category: string
+          content_type: string
+          created_at: string
+          featured: boolean
+          id: string
+          kind: string | null
+          metadata: Json
+          published: boolean
+          published_at: string | null
+          review_status: string
+          reviewer_name: string | null
+          searchable: unknown
+          slug: string
+          source_id: string | null
+          summary_ar: string | null
+          summary_en: string | null
+          tags: string[]
+          title_ar: string
+          title_en: string | null
+          updated_at: string
+        }
+        Insert: {
+          author?: string | null
+          author_name?: string | null
+          body_ar: string
+          body_en?: string | null
+          category: string
+          content_type: string
+          created_at?: string
+          featured?: boolean
+          id?: string
+          kind?: string | null
+          metadata?: Json
+          published?: boolean
+          published_at?: string | null
+          review_status?: string
+          reviewer_name?: string | null
+          searchable?: unknown
+          slug: string
+          source_id?: string | null
+          summary_ar?: string | null
+          summary_en?: string | null
+          tags?: string[]
+          title_ar: string
+          title_en?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author?: string | null
+          author_name?: string | null
+          body_ar?: string
+          body_en?: string | null
+          category?: string
+          content_type?: string
+          created_at?: string
+          featured?: boolean
+          id?: string
+          kind?: string | null
+          metadata?: Json
+          published?: boolean
+          published_at?: string | null
+          review_status?: string
+          reviewer_name?: string | null
+          searchable?: unknown
+          slug?: string
+          source_id?: string | null
+          summary_ar?: string | null
+          summary_en?: string | null
+          tags?: string[]
+          title_ar?: string
+          title_en?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_library_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "content_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_revisions: {
+        Row: {
+          body_ar: string
+          body_en: string | null
+          change_note: string | null
+          changed_by: string | null
+          content_id: string
+          created_at: string
+          id: string
+          summary_ar: string | null
+          summary_en: string | null
+          title_ar: string
+          title_en: string | null
+          version: number
+        }
+        Insert: {
+          body_ar: string
+          body_en?: string | null
+          change_note?: string | null
+          changed_by?: string | null
+          content_id: string
+          created_at?: string
+          id?: string
+          summary_ar?: string | null
+          summary_en?: string | null
+          title_ar: string
+          title_en?: string | null
+          version: number
+        }
+        Update: {
+          body_ar?: string
+          body_en?: string | null
+          change_note?: string | null
+          changed_by?: string | null
+          content_id?: string
+          created_at?: string
+          id?: string
+          summary_ar?: string | null
+          summary_en?: string | null
+          title_ar?: string
+          title_en?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_revisions_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_revisions_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "content_library"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_sources: {
+        Row: {
+          attribution: string | null
+          author: string | null
+          authority_level: number
+          base_url: string | null
+          created_at: string
+          id: string
+          license: string | null
+          name: string
+          notes: string | null
+          publisher: string | null
+          reference: string | null
+          source_type: string
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          attribution?: string | null
+          author?: string | null
+          authority_level?: number
+          base_url?: string | null
+          created_at?: string
+          id?: string
+          license?: string | null
+          name: string
+          notes?: string | null
+          publisher?: string | null
+          reference?: string | null
+          source_type: string
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          attribution?: string | null
+          author?: string | null
+          authority_level?: number
+          base_url?: string | null
+          created_at?: string
+          id?: string
+          license?: string | null
+          name?: string
+          notes?: string | null
+          publisher?: string | null
+          reference?: string | null
+          source_type?: string
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       dua_categories: {
         Row: {
           created_at: string | null
           icon: string | null
           id: string
+          is_active: boolean
           name_ar: string
           name_en: string
           published: boolean | null
@@ -875,6 +1269,7 @@ export type Database = {
           created_at?: string | null
           icon?: string | null
           id?: string
+          is_active?: boolean
           name_ar: string
           name_en: string
           published?: boolean | null
@@ -885,6 +1280,7 @@ export type Database = {
           created_at?: string | null
           icon?: string | null
           id?: string
+          is_active?: boolean
           name_ar?: string
           name_en?: string
           published?: boolean | null
@@ -1104,6 +1500,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "favorites_user_id_profiles_id_fk"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       generated_research: {
@@ -1274,6 +1677,42 @@ export type Database = {
           },
         ]
       }
+      kids_achievements: {
+        Row: {
+          created_at: string
+          criteria: Json
+          description_ar: string
+          description_en: string
+          icon: string
+          id: string
+          is_active: boolean
+          title_ar: string
+          title_en: string
+        }
+        Insert: {
+          created_at?: string
+          criteria?: Json
+          description_ar: string
+          description_en: string
+          icon: string
+          id: string
+          is_active?: boolean
+          title_ar: string
+          title_en: string
+        }
+        Update: {
+          created_at?: string
+          criteria?: Json
+          description_ar?: string
+          description_en?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          title_ar?: string
+          title_en?: string
+        }
+        Relationships: []
+      }
       kids_content: {
         Row: {
           age_group: string
@@ -1360,6 +1799,458 @@ export type Database = {
           youtube_video_id?: string | null
         }
         Relationships: []
+      }
+      kids_game_levels: {
+        Row: {
+          config: Json
+          created_at: string
+          difficulty: string
+          game_id: string
+          id: string
+          level_no: number
+          objective_ar: string | null
+          objective_en: string | null
+          published: boolean
+          reward_xp: number
+          title_ar: string
+          title_en: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          difficulty?: string
+          game_id: string
+          id?: string
+          level_no: number
+          objective_ar?: string | null
+          objective_en?: string | null
+          published?: boolean
+          reward_xp?: number
+          title_ar: string
+          title_en: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          difficulty?: string
+          game_id?: string
+          id?: string
+          level_no?: number
+          objective_ar?: string | null
+          objective_en?: string | null
+          published?: boolean
+          reward_xp?: number
+          title_ar?: string
+          title_en?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kids_game_levels_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "kids_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kids_game_progress: {
+        Row: {
+          badges: string[]
+          best_combo: number
+          best_distance: number
+          best_level: number
+          best_score: number
+          created_at: string
+          game_id: string
+          level_no: number
+          play_count: number
+          updated_at: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          badges?: string[]
+          best_combo?: number
+          best_distance?: number
+          best_level?: number
+          best_score?: number
+          created_at?: string
+          game_id: string
+          level_no?: number
+          play_count?: number
+          updated_at?: string
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          badges?: string[]
+          best_combo?: number
+          best_distance?: number
+          best_level?: number
+          best_score?: number
+          created_at?: string
+          game_id?: string
+          level_no?: number
+          play_count?: number
+          updated_at?: string
+          user_id?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kids_game_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kids_game_questions: {
+        Row: {
+          correct_index: number
+          created_at: string
+          explanation_ar: string | null
+          explanation_en: string | null
+          id: string
+          level_id: string
+          options_ar: string[]
+          options_en: string[]
+          published: boolean
+          question_ar: string
+          question_en: string
+          question_no: number
+          source_id: string | null
+        }
+        Insert: {
+          correct_index: number
+          created_at?: string
+          explanation_ar?: string | null
+          explanation_en?: string | null
+          id?: string
+          level_id: string
+          options_ar: string[]
+          options_en: string[]
+          published?: boolean
+          question_ar: string
+          question_en: string
+          question_no: number
+          source_id?: string | null
+        }
+        Update: {
+          correct_index?: number
+          created_at?: string
+          explanation_ar?: string | null
+          explanation_en?: string | null
+          id?: string
+          level_id?: string
+          options_ar?: string[]
+          options_en?: string[]
+          published?: boolean
+          question_ar?: string
+          question_en?: string
+          question_no?: number
+          source_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kids_game_questions_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "kids_game_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kids_game_questions_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "content_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kids_game_results: {
+        Row: {
+          client_submission_id: string
+          collectibles: number
+          created_at: string
+          difficulty: string
+          distance: number
+          game_id: string
+          id: string
+          metadata: Json
+          played_at: string
+          score: number
+          updated_at: string
+          user_id: string
+          xp_awarded: number
+        }
+        Insert: {
+          client_submission_id: string
+          collectibles?: number
+          created_at?: string
+          difficulty?: string
+          distance?: number
+          game_id: string
+          id?: string
+          metadata?: Json
+          played_at?: string
+          score?: number
+          updated_at?: string
+          user_id: string
+          xp_awarded?: number
+        }
+        Update: {
+          client_submission_id?: string
+          collectibles?: number
+          created_at?: string
+          difficulty?: string
+          distance?: number
+          game_id?: string
+          id?: string
+          metadata?: Json
+          played_at?: string
+          score?: number
+          updated_at?: string
+          user_id?: string
+          xp_awarded?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kids_game_results_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kids_games: {
+        Row: {
+          age_max: number
+          age_min: number
+          created_at: string
+          description_ar: string | null
+          description_en: string | null
+          difficulty: string
+          featured: boolean
+          id: string
+          mechanics: string[]
+          metadata: Json
+          published: boolean
+          reward_xp: number
+          slug: string
+          title_ar: string
+          title_en: string
+          updated_at: string
+        }
+        Insert: {
+          age_max?: number
+          age_min?: number
+          created_at?: string
+          description_ar?: string | null
+          description_en?: string | null
+          difficulty?: string
+          featured?: boolean
+          id: string
+          mechanics?: string[]
+          metadata?: Json
+          published?: boolean
+          reward_xp?: number
+          slug: string
+          title_ar: string
+          title_en: string
+          updated_at?: string
+        }
+        Update: {
+          age_max?: number
+          age_min?: number
+          created_at?: string
+          description_ar?: string | null
+          description_en?: string | null
+          difficulty?: string
+          featured?: boolean
+          id?: string
+          mechanics?: string[]
+          metadata?: Json
+          published?: boolean
+          reward_xp?: number
+          slug?: string
+          title_ar?: string
+          title_en?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kids_player_progress: {
+        Row: {
+          created_at: string
+          level: number
+          total_collectibles: number
+          total_games: number
+          total_score: number
+          updated_at: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          created_at?: string
+          level?: number
+          total_collectibles?: number
+          total_games?: number
+          total_score?: number
+          updated_at?: string
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          created_at?: string
+          level?: number
+          total_collectibles?: number
+          total_games?: number
+          total_score?: number
+          updated_at?: string
+          user_id?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kids_player_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kids_user_achievements: {
+        Row: {
+          achievement_id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kids_user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "kids_achievements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kids_user_achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      media_assets: {
+        Row: {
+          alt_text_ar: string | null
+          asset_type: string | null
+          attribution: string | null
+          created_at: string
+          created_by: string | null
+          duration_seconds: number | null
+          height: number | null
+          id: string
+          license: string | null
+          media_type: string
+          metadata: Json
+          mime_type: string | null
+          name: string
+          published: boolean
+          rights_verified: boolean
+          size_bytes: number | null
+          source_id: string | null
+          storage_path: string | null
+          title: string | null
+          updated_at: string
+          url: string
+          verified_rights: boolean
+          width: number | null
+        }
+        Insert: {
+          alt_text_ar?: string | null
+          asset_type?: string | null
+          attribution?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number | null
+          height?: number | null
+          id?: string
+          license?: string | null
+          media_type: string
+          metadata?: Json
+          mime_type?: string | null
+          name: string
+          published?: boolean
+          rights_verified?: boolean
+          size_bytes?: number | null
+          source_id?: string | null
+          storage_path?: string | null
+          title?: string | null
+          updated_at?: string
+          url: string
+          verified_rights?: boolean
+          width?: number | null
+        }
+        Update: {
+          alt_text_ar?: string | null
+          asset_type?: string | null
+          attribution?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number | null
+          height?: number | null
+          id?: string
+          license?: string | null
+          media_type?: string
+          metadata?: Json
+          mime_type?: string | null
+          name?: string
+          published?: boolean
+          rights_verified?: boolean
+          size_bytes?: number | null
+          source_id?: string | null
+          storage_path?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string
+          verified_rights?: boolean
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_assets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_assets_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "content_sources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       memorization_attempts: {
         Row: {
@@ -2779,6 +3670,53 @@ export type Database = {
         }
         Relationships: []
       }
+      site_audio_assets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_primary: boolean
+          kind: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_primary?: boolean
+          kind: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_primary?: boolean
+          kind?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_audio_assets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           created_at: string
@@ -2887,6 +3825,162 @@ export type Database = {
           platform?: string | null
           shared_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      social_sync_jobs: {
+        Row: {
+          attempts: number
+          created_at: string
+          description: string | null
+          facebook_post_id: string | null
+          facebook_post_type: string
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          next_attempt_at: string
+          publish_request_id: string | null
+          published_at_facebook: string | null
+          retryable: boolean
+          source_channel_id: string
+          source_media_delete_error: string | null
+          source_media_deleted_at: string | null
+          source_media_match_method: string | null
+          source_media_match_score: number | null
+          source_media_mime: string | null
+          source_media_path: string | null
+          source_media_size: number | null
+          source_media_uploaded_at: string | null
+          source_media_url: string | null
+          source_published_at: string | null
+          source_url: string
+          source_video_id: string
+          status: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          description?: string | null
+          facebook_post_id?: string | null
+          facebook_post_type?: string
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          next_attempt_at?: string
+          publish_request_id?: string | null
+          published_at_facebook?: string | null
+          retryable?: boolean
+          source_channel_id: string
+          source_media_delete_error?: string | null
+          source_media_deleted_at?: string | null
+          source_media_match_method?: string | null
+          source_media_match_score?: number | null
+          source_media_mime?: string | null
+          source_media_path?: string | null
+          source_media_size?: number | null
+          source_media_uploaded_at?: string | null
+          source_media_url?: string | null
+          source_published_at?: string | null
+          source_url: string
+          source_video_id: string
+          status?: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          description?: string | null
+          facebook_post_id?: string | null
+          facebook_post_type?: string
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          next_attempt_at?: string
+          publish_request_id?: string | null
+          published_at_facebook?: string | null
+          retryable?: boolean
+          source_channel_id?: string
+          source_media_delete_error?: string | null
+          source_media_deleted_at?: string | null
+          source_media_match_method?: string | null
+          source_media_match_score?: number | null
+          source_media_mime?: string | null
+          source_media_path?: string | null
+          source_media_size?: number | null
+          source_media_uploaded_at?: string | null
+          source_media_url?: string | null
+          source_published_at?: string | null
+          source_url?: string
+          source_video_id?: string
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      social_sync_state: {
+        Row: {
+          auto_sync_enabled: boolean
+          backfill_complete: boolean
+          backfill_completed_at: string | null
+          backfill_cursor: string | null
+          backfill_page_count: number
+          backfill_page_token: string | null
+          backfill_started_at: string | null
+          batch_size: number
+          id: number
+          last_discovery_at: string | null
+          last_seen_published_at: string | null
+          last_seen_video_id: string | null
+          schedule_cron: string
+          source_channel_id: string
+          sync_secret_hash: string | null
+          updated_at: string
+          uploads_playlist_id: string | null
+        }
+        Insert: {
+          auto_sync_enabled?: boolean
+          backfill_complete?: boolean
+          backfill_completed_at?: string | null
+          backfill_cursor?: string | null
+          backfill_page_count?: number
+          backfill_page_token?: string | null
+          backfill_started_at?: string | null
+          batch_size?: number
+          id?: number
+          last_discovery_at?: string | null
+          last_seen_published_at?: string | null
+          last_seen_video_id?: string | null
+          schedule_cron?: string
+          source_channel_id: string
+          sync_secret_hash?: string | null
+          updated_at?: string
+          uploads_playlist_id?: string | null
+        }
+        Update: {
+          auto_sync_enabled?: boolean
+          backfill_complete?: boolean
+          backfill_completed_at?: string | null
+          backfill_cursor?: string | null
+          backfill_page_count?: number
+          backfill_page_token?: string | null
+          backfill_started_at?: string | null
+          batch_size?: number
+          id?: number
+          last_discovery_at?: string | null
+          last_seen_published_at?: string | null
+          last_seen_video_id?: string | null
+          schedule_cron?: string
+          source_channel_id?: string
+          sync_secret_hash?: string | null
+          updated_at?: string
+          uploads_playlist_id?: string | null
         }
         Relationships: []
       }
@@ -3164,6 +4258,7 @@ export type Database = {
           duration: number | null
           featured: boolean | null
           id: string
+          is_active: boolean
           metadata: Json | null
           published: boolean | null
           slug: string
@@ -3184,6 +4279,7 @@ export type Database = {
           duration?: number | null
           featured?: boolean | null
           id?: string
+          is_active?: boolean
           metadata?: Json | null
           published?: boolean | null
           slug: string
@@ -3204,6 +4300,7 @@ export type Database = {
           duration?: number | null
           featured?: boolean | null
           id?: string
+          is_active?: boolean
           metadata?: Json | null
           published?: boolean | null
           slug?: string
@@ -3230,6 +4327,7 @@ export type Database = {
           description_en: string | null
           icon: string | null
           id: string
+          is_active: boolean
           name_ar: string
           name_en: string
           order_num: number | null
@@ -3243,6 +4341,7 @@ export type Database = {
           description_en?: string | null
           icon?: string | null
           id?: string
+          is_active?: boolean
           name_ar: string
           name_en: string
           order_num?: number | null
@@ -3256,6 +4355,7 @@ export type Database = {
           description_en?: string | null
           icon?: string | null
           id?: string
+          is_active?: boolean
           name_ar?: string
           name_en?: string
           order_num?: number | null
@@ -3781,11 +4881,93 @@ export type Database = {
           },
         ]
       }
+      youtube_feed_cache: {
+        Row: {
+          channel_id: string
+          created_at: string
+          description: string
+          published_at: string | null
+          synced_at: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          video_id: string
+          video_url: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          description?: string
+          published_at?: string | null
+          synced_at?: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          video_id: string
+          video_url: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          description?: string
+          published_at?: string | null
+          synced_at?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          video_id?: string
+          video_url?: string
+        }
+        Relationships: []
+      }
+      youtube_sync_state: {
+        Row: {
+          channel_id: string | null
+          id: number
+          last_attempted_at: string | null
+          last_error: string | null
+          last_success_at: string | null
+          next_allowed_sync_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          channel_id?: string | null
+          id?: number
+          last_attempted_at?: string | null
+          last_error?: string | null
+          last_success_at?: string | null
+          next_allowed_sync_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string | null
+          id?: number
+          last_attempted_at?: string | null
+          last_error?: string | null
+          last_success_at?: string | null
+          next_allowed_sync_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      admin_control_center_snapshot: { Args: never; Returns: Json }
+      consume_admin_rate_limit: {
+        Args: {
+          p_actor: string
+          p_bucket: string
+          p_limit?: number
+          p_window_seconds?: number
+        }
+        Returns: boolean
+      }
       ensure_push_vapid_bundle: { Args: { candidate: Json }; Returns: Json }
       get_push_scheduler_secret: { Args: never; Returns: string }
       get_push_vapid_bundle: { Args: never; Returns: Json }
@@ -3798,6 +4980,50 @@ export type Database = {
         }[]
       }
       is_admin_user: { Args: never; Returns: boolean }
+      kids_record_game_result: {
+        Args: {
+          p_client_submission_id: string
+          p_collectibles: number
+          p_combo: number
+          p_completed: boolean
+          p_difficulty: string
+          p_distance: number
+          p_game_id: string
+          p_level: number
+          p_metadata?: Json
+          p_score: number
+          p_xp_awarded: number
+        }
+        Returns: {
+          duplicate: boolean
+          newly_unlocked: string[]
+          player_level: number
+          result_id: string
+          xp_awarded: number
+        }[]
+      }
+      kids_record_game_result_internal: {
+        Args: {
+          p_client_submission_id: string
+          p_collectibles: number
+          p_combo: number
+          p_completed: boolean
+          p_difficulty: string
+          p_distance: number
+          p_game_id: string
+          p_level: number
+          p_metadata?: Json
+          p_score: number
+          p_user_id: string
+        }
+        Returns: {
+          duplicate: boolean
+          newly_unlocked: string[]
+          player_level: number
+          result_id: string
+          xp_awarded: number
+        }[]
+      }
       plan_background_reminder_deliveries: {
         Args: { now_at?: string }
         Returns: number
@@ -3834,12 +5060,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3863,11 +5089,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3888,11 +5114,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3913,11 +5139,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3930,11 +5156,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
