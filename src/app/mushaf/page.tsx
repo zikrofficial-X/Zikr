@@ -19,7 +19,7 @@ export default function MushafPage() {
           <p className="text-sm tracking-[0.25em] text-brand-gold/70">المصحف الشريف</p>
           <h1 className="font-arabic text-4xl md:text-5xl font-bold text-brand-gold">﴿ كِتَابٌ أَنزَلْنَاهُ إِلَيْكَ مُبَارَكٌ ﴾</h1>
           <p className="mx-auto max-w-2xl leading-8 text-brand-cream/70">
-            اقرأ كتاب الله كاملًا من قاعدة بيانات ذِكرٌ، وتصفح السور والآيات بتصميم هادئ قريب من صفحات المصحف، مع إمكانية الانتقال إلى التفسير والتلاوة.
+            اقرأ كتاب الله كاملًا من نسخة القرآن المحلية المحفوظة ضمن مستودع ذِكرٌ، وتصفح السور والآيات بتصميم هادئ قريب من صفحات المصحف، مع إمكانية الانتقال إلى التفسير والتلاوة.
           </p>
           <div className="flex flex-wrap justify-center gap-3 text-sm">
             <span className="rounded-full border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-brand-gold">114 سورة</span>
@@ -30,7 +30,7 @@ export default function MushafPage() {
       </section>
       <QuranPage />
       <p className="mx-auto max-w-5xl px-4 pb-10 text-center text-xs leading-6 text-brand-cream/45">
-        نص القرآن الكريم من مصدر Tanzil مع الحفاظ على الإسناد والترخيص في بيانات المشروع. للمراجعة والتدبر، يُرجى الرجوع إلى المصحف المطبوع وأهل الاختصاص.
+        نص القرآن الكريم محفوظ محليًا ضمن المستودع مع إبقاء بيانات المصدر والترخيص. لا يُعد هذا بديلًا عن المراجعة بالمصحف المطبوع. للمراجعة والتدبر، يُرجى الرجوع إلى المصحف المطبوع وأهل الاختصاص.
       </p>
     </main>
   );
