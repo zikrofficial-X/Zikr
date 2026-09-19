@@ -5,30 +5,9 @@ import { type Reciter } from "@/features/quran/types/quran";
 import { getReciters } from "@/features/quran/services/quran";
 import { Button } from "@/components/ui/button";
 
-// Audio URL generation function (client-safe)
-function getAudioUrl(surahId: number, reciter: Reciter, databaseAudioUrl?: string | null) {
-  const surahNumber = String(surahId).padStart(3, "0");
-
-  // Primary: use the source-indexed DB row; retain the verified template as fallback.
-  const primary = databaseAudioUrl || `${reciter.baseUrlTemplate}/${surahNumber}.mp3`;
-
-  // Fallback: quranicaudio.com
-  const quranicAudioMap: Record<string, string> = {
-    alafasy: "mishaari_raashid_al_3afaasee",
-    minshawi: "muhammad_siddeeq_al-minshaawee",
-    abdulbasit: "abdulbasit_murattal_new",
-    sudais: "abdurrahmaan_as-sudays",
-    shuraim: "saood_ash-shuraym",
-    mahermuaiqly: "maher_al_muaiqly",
-    ghamdi: "sa3d_al-ghaamidi",
-  };
-  const reciterKey = reciter.code.replace(/^ar\./, "");
-  const quranicPath = quranicAudioMap[reciterKey] ?? quranicAudioMap[reciter.id];
-  const fallback = quranicPath
-    ? [`https://download.quranicaudio.com/quran/${quranicPath}/${surahNumber}.mp3`]
-    : [];
-
-  return { primary, fallback };
+// The player receives a canonical Supabase Storage URL from /api/quran/audio.
+function getAudioUrl(databaseAudioUrl?: string | null) {
+  return databaseAudioUrl ? [databaseAudioUrl] : [];
 }
 
 export function QuranAudioPlayer({ surahId }: { surahId: number }) {
@@ -77,7 +56,7 @@ export function QuranAudioPlayer({ surahId }: { surahId: number }) {
       })
       .catch(error => {
         if (error instanceof DOMException && error.name === 'AbortError') return;
-        console.warn('[audio] DB audio source unavailable; using verified template fallback');
+        console.warn('[audio] Supabase Storage audio source unavailable');
       });
 
     return () => {
@@ -90,8 +69,7 @@ export function QuranAudioPlayer({ surahId }: { surahId: number }) {
     if (!isClient || !reciter) return [];
     if (!reciter.code) return [];
 
-    const { primary, fallback } = getAudioUrl(surahId, reciter, databaseAudioUrl);
-    return [primary, ...fallback];
+    return getAudioUrl(databaseAudioUrl);
   }, [databaseAudioUrl, reciter, surahId, isClient]);
 
   const src = audioSources[audioSourceIndex] || audioSources[0];
@@ -123,10 +101,16 @@ export function QuranAudioPlayer({ surahId }: { surahId: number }) {
       const errorMsg = audioError?.message || "Unknown error";
 
       if (audioSourceIndex < audioSources.length - 1) {
-        console.warn(
-          `[audio] Failed to load from source ${audioSourceIndex + 1}/${audioSources.length}: ${errorMsg}. Trying next...`
+        setIsLoading(false);
+        setError(
+          "لم يتم رفع هذا التسجيل إلى مكتبة ذِكر الداخلية بعد. حاول مرة أخرى لاحقًا."
         );
-        setAudioSourceIndex(prev => prev + 1);
+        console.error("[audio] Supabase Storage source failed:", {
+          surahId,
+          reciter: reciter?.id,
+          source: audioSources[audioSourceIndex],
+          error: errorMsg,
+        });
       } else {
         setIsLoading(false);
         setError(
