@@ -10,7 +10,7 @@ ZIKR is an Arabic-first Islamic content and spiritual platform covering Quran, H
 - **UI:** Tailwind CSS 4 and reusable React components
 - **Backend:** Next.js Route Handlers/Server Actions
 - **Database:** Supabase PostgreSQL with RLS
-- **Schema:** Drizzle schema mirror + canonical SQL migrations in `supabase/migrations`
+- **Schema:** Supabase PostgreSQL schema managed exclusively through canonical SQL migrations in `supabase/migrations`
 - **AI:** Google Gemini for optional AI-assisted features
 - **Media:** Supabase Storage and Cloudinary where required
 - **Web deployment:** Vercel
@@ -47,8 +47,6 @@ Core variables include:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `DATABASE_URL` when running migration/ORM tooling
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` for Google OAuth
 - `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` / `YOUTUBE_REFRESH_TOKEN` for YouTube publishing
 - `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_ACCESS_TOKEN` for Facebook publishing
 - `FACEBOOK_GRAPH_API_VERSION` for the canonical Meta publisher
@@ -94,9 +92,7 @@ Never reset production migration history just to reconcile a preview or local br
 ```text
 app/                 Next.js routes, pages and API handlers
 components/          Reusable UI and feature components
-hooks/               Client hooks
-lib/                 Services, Supabase clients, types and utilities
-drizzle/             Drizzle schema and ORM metadata
+lib/                 Shared infrastructure, Supabase clients, types and utilities
 supabase/             Supabase config, functions and canonical migrations
 scripts/              Verification, imports and background workers
 android/              Capacitor Android project
