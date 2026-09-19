@@ -78,7 +78,7 @@ pnpm verify
 
 ## Database migrations
 
-`supabase/migrations/` is the only canonical deployment migration chain. Do not apply the Drizzle migration output independently to the production Supabase database.
+`supabase/migrations/` is the only canonical deployment migration chain. Do not introduce a second schema-migration mechanism.
 
 ```bash
 pnpm supabase:migrations:check
