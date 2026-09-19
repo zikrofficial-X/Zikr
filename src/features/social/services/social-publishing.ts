@@ -90,13 +90,6 @@ function isFacebookAuthFailure(error: string | undefined) {
   );
 }
 
-function hasRetryableFacebookAuthFailure(item: SocialPublishQueueItem) {
-  if (!item.error_message) return false;
-  return item.error_message
-    .split("; ")
-    .some(isFacebookAuthFailure);
-}
-
 async function markQueueItem(
   itemId: string,
   status: SocialQueueStatus,
