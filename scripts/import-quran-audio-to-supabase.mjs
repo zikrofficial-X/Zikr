@@ -131,15 +131,11 @@ async function main() {
   if (surahError) throw surahError;
   if (!surahs || surahs.length !== 114) throw new Error(`Expected 114 surahs, found ${surahs?.length ?? 0}`);
 
-  const { data: ayahCount, error: ayahError } = await supabase
+  const { count: ayahCount, error: ayahError } = await supabase
     .from("quran_ayahs")
     .select("id", { count: "exact", head: true });
   if (ayahError) throw ayahError;
-  if (Number(ayahCount?.length ?? 0) === 0) {
-    // Head requests return no body; use an exact count through a second query.
-    const { count } = await supabase.from("quran_ayahs").select("id", { count: "exact", head: true });
-    if (count !== 6236) throw new Error(`Expected 6236 ayahs, found ${count ?? 0}`);
-  }
+  if (ayahCount !== 6236) throw new Error(`Expected 6236 ayahs, found ${ayahCount ?? 0}`);
 
   const { data: reciters, error: reciterError } = await supabase
     .from("quran_reciters")
