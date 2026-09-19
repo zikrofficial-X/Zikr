@@ -8,9 +8,7 @@ import { getServerEnv } from "@/lib/env";
 // execFile("ffmpeg", ...) call portable across Vercel and Linux workers while
 // preserving the development fallback to a system-installed ffmpeg.
 const bundledFfmpegDir = resolve(process.cwd(), "vendor");
-if (process.env.NODE_ENV !== "test") {
-  process.env.PATH = [bundledFfmpegDir, process.env.PATH].filter(Boolean).join(delimiter);
-}
+process.env.PATH = [bundledFfmpegDir, process.env.PATH].filter(Boolean).join(delimiter);
 
 function getSupabaseConfig() {
   const env = getServerEnv();
