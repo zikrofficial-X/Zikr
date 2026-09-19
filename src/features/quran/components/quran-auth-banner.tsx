@@ -23,7 +23,22 @@ export function QuranAuthBanner() {
   const { isEnglish, dir } = useLanguage();
 
   useEffect(() => {
-    const supabase = createClient();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    // Quran reading and audio remain available when optional auth is not configured.
+    if (!supabaseUrl || !supabaseAnonKey) {
+      setIsAuthenticated(false);
+      return;
+    }
+
+    let supabase;
+    try {
+      supabase = createClient();
+    } catch {
+      setIsAuthenticated(false);
+      return;
+    }
 
     supabase.auth.getUser().then(({ data }: UserResponse) => {
       setIsAuthenticated(!!data.user);
