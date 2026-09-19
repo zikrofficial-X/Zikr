@@ -55,6 +55,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- Add missing columns if absent (non-destructive)
 ALTER TABLE IF EXISTS public.stories ADD COLUMN IF NOT EXISTS summary TEXT;
 ALTER TABLE IF EXISTS public.stories ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE IF EXISTS public.stories ADD COLUMN IF NOT EXISTS is_approved BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE IF EXISTS public.scholars ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
 
 -- Add indexes if missing (guarded: only if the target table/column exists)
