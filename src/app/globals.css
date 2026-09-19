@@ -1,6 +1,6 @@
 @import "../styles/tokens.css";
 @import "tailwindcss";
-@config "../tailwind.config.ts";
+@config "../../tailwind.config.ts";
 
 :root {
   --font-noto-arabic: var(--font-noto-arabic-loaded), "Noto Naskh Arabic";
