@@ -5,13 +5,12 @@ import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/ui/section-header';
 import type { QuranTafsirSource } from '@/features/quran/services/quran-server';
 
 const FALLBACK_SOURCE: QuranTafsirSource = {
-  author: 'التفسير الميسر',
-  sourceUrl: 'https://api.alquran.cloud/v1/surah/1/ar.muyassar',
+  author: 'التفسير الجلالين',
+  sourceUrl: 'https://api.alquran.cloud/v1/ayah/1:1/ar.jalalayn',
 };
 
 export function TafsirLibrary({ sources }: { sources: QuranTafsirSource[] }) {
