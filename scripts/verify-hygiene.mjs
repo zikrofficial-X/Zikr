@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 
+const root = process.cwd();
 const failures = [];
-const read = (file) => (existsSync(file) ? readFileSync(file, 'utf8') : '');
+const read = (file) => (existsSync(path.join(root, file)) ? readFileSync(path.join(root, file), 'utf8') : '');
 const fail = (message) => failures.push(message);
 
 const forbiddenFiles = [
@@ -18,7 +20,7 @@ const forbiddenFiles = [
 ];
 
 for (const file of forbiddenFiles) {
-  if (existsSync(file)) fail(`Stale/temporary artifact must not be tracked: ${file}`);
+  if (existsSync(path.join(root, file))) fail(`Stale/temporary artifact must not be tracked: ${file}`);
 }
 
 const envExample = read('.env.example');
@@ -39,14 +41,6 @@ try {
 } catch (error) {
   fail(`package.json is not valid JSON: ${error instanceof Error ? error.message : 'unknown error'}`);
 }
-const packageJson = read('package.json');
-try {
-  const pkg = JSON.parse(packageJson);
-  if (pkg.scripts?.['social:process']) fail('Deprecated social:process script alias is still present.');
-  if (pkg.scripts?.['automation:run']) fail('Redundant automation:run alias is still present; use background:jobs.');
-} catch (error) {
-  fail(`package.json is not valid JSON: ${error instanceof Error ? error.message : 'unknown error'}`);
-}
 
 const envAndRuntimeSources = [
   '.env.example',
@@ -54,9 +48,9 @@ const envAndRuntimeSources = [
   'src/app',
   'src/features',
   'src/components',
-  'scripts',
   'supabase/functions',
 ];
+
 const staleRuntimeTokens = [
   'mohamedalaa7785-cpu/Zikr',
   'zikr-zikrmediaofficial.vercel.app',
@@ -67,6 +61,7 @@ const staleRuntimeTokens = [
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
 ];
+
 function walkRuntime(relativeDir) {
   const absolute = path.join(root, relativeDir);
   if (!existsSync(absolute)) return;
@@ -74,17 +69,18 @@ function walkRuntime(relativeDir) {
   for (const entry of entries) {
     const rel = path.join(relativeDir, entry.name);
     const full = path.join(root, rel);
-    if (entry.isDirectory()) walkRuntime(rel);
-    else if (/\.(?:ts|tsx|js|mjs|json|yml|yaml|toml|env)$/i.test(entry.name)) {
-      const text = readFileSync(full, 'utf8');
+    if (entry.isDirectory()) {
+      walkRuntime(rel);
+    } else if (/\.(?:ts|tsx|js|mjs|json|yml|yaml|toml|env)$/i.test(entry.name)) {
+      let source = '';
+      try { source = readFileSync(full, 'utf8'); } catch { continue; }
       for (const token of staleRuntimeTokens) {
-        if (text.includes(token)) fail(`Stale runtime reference '${token}' found in ${rel}`);
+        if (source.includes(token)) fail(`Stale runtime reference '${token}' found in ${rel}`);
       }
     }
   }
 }
-import path from 'node:path';
-import { readdirSync, existsSync } from 'node:fs';
+
 for (const source of envAndRuntimeSources) walkRuntime(source);
 
 for (const legacyDir of ['app', 'pages', 'src/hooks']) {
