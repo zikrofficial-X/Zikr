@@ -39,6 +39,57 @@ try {
 } catch (error) {
   fail(`package.json is not valid JSON: ${error instanceof Error ? error.message : 'unknown error'}`);
 }
+const packageJson = read('package.json');
+try {
+  const pkg = JSON.parse(packageJson);
+  if (pkg.scripts?.['social:process']) fail('Deprecated social:process script alias is still present.');
+  if (pkg.scripts?.['automation:run']) fail('Redundant automation:run alias is still present; use background:jobs.');
+} catch (error) {
+  fail(`package.json is not valid JSON: ${error instanceof Error ? error.message : 'unknown error'}`);
+}
+
+const envAndRuntimeSources = [
+  '.env.example',
+  'src/lib/env.ts',
+  'src/app',
+  'src/features',
+  'src/components',
+  'scripts',
+  'supabase/functions',
+];
+const staleRuntimeTokens = [
+  'mohamedalaa7785-cpu/Zikr',
+  'zikr-zikrmediaofficial.vercel.app',
+  'qjcrvgbgmumwhzxdbgad',
+  'NEXT_PUBLIC_QURAN_API',
+  'NEXT_PUBLIC_HADITH_API',
+  'QURAN_AUDIO_CDN_URL',
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
+];
+function walkRuntime(relativeDir) {
+  const absolute = path.join(root, relativeDir);
+  if (!existsSync(absolute)) return;
+  const entries = readdirSync(absolute, { withFileTypes: true });
+  for (const entry of entries) {
+    const rel = path.join(relativeDir, entry.name);
+    const full = path.join(root, rel);
+    if (entry.isDirectory()) walkRuntime(rel);
+    else if (/\.(?:ts|tsx|js|mjs|json|yml|yaml|toml|env)$/i.test(entry.name)) {
+      const text = readFileSync(full, 'utf8');
+      for (const token of staleRuntimeTokens) {
+        if (text.includes(token)) fail(`Stale runtime reference '${token}' found in ${rel}`);
+      }
+    }
+  }
+}
+import path from 'node:path';
+import { readdirSync, existsSync } from 'node:fs';
+for (const source of envAndRuntimeSources) walkRuntime(source);
+
+for (const legacyDir of ['app', 'pages', 'src/hooks']) {
+  if (existsSync(path.join(root, legacyDir))) fail(`Legacy runtime directory must not exist: ${legacyDir}`);
+}
 
 if (failures.length) {
   console.error('REPOSITORY_HYGIENE_CHECK_FAILED');
