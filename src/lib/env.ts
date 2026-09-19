@@ -85,15 +85,8 @@ const rawEnv: Record<string, string | undefined> = {
   GEMINI_API_KEY: pick("GEMINI_API_KEY"),
   GEMINI_MODEL: pick("GEMINI_MODEL") || "gemini-2.5-flash",
 
-  // ── Quran / Islamic content APIs ──────────────────────────────────────────
-  QURAN_API_BASE_URL: pick("QURAN_API_BASE_URL"),
-  QURAN_AUDIO_CDN_URL:
-    pick("QURAN_AUDIO_CDN_URL") || "https://cdn.islamic.network/quran/audio",
+  // ── Islamic content API ───────────────────────────────────────────────────
   HADITH_API_BASE_URL: pick("HADITH_API_BASE_URL"),
-  NEXT_PUBLIC_QURAN_API:
-    "https://api.alquran.cloud/v1",
-  NEXT_PUBLIC_HADITH_API:
-    "https://ummahapi.com/api/hadith",
 
   // ── Facebook ──────────────────────────────────────────────────────────────
   FACEBOOK_APP_ID: pick("FACEBOOK_APP_ID"),
@@ -129,11 +122,6 @@ export function getServerEnv() {
     AUTH_CALLBACK_URL: validatedEnv.AUTH_CALLBACK_URL || "",
     GEMINI_API_KEY: validatedEnv.GEMINI_API_KEY || "",
     GEMINI_MODEL: validatedEnv.GEMINI_MODEL || "gemini-2.5-flash",
-    QURAN_API_BASE_URL:
-      validatedEnv.QURAN_API_BASE_URL || "https://api.alquran.cloud/v1",
-    QURAN_AUDIO_CDN_URL:
-      validatedEnv.QURAN_AUDIO_CDN_URL ||
-      "https://cdn.islamic.network/quran/audio",
     HADITH_API_BASE_URL:
       validatedEnv.HADITH_API_BASE_URL || "https://ummahapi.com/api/hadith",
     YOUTUBE_API_KEY: validatedEnv.YOUTUBE_API_KEY || "",
@@ -193,8 +181,6 @@ export function getEnvAudit() {
       "FACEBOOK_GRAPH_API_VERSION",
     ],
     optionalIntegrations: [
-      "QURAN_API_BASE_URL",
-      "QURAN_AUDIO_CDN_URL",
       "HADITH_API_BASE_URL",
       "YOUTUBE_API_KEY",
       "YOUTUBE_CLIENT_ID",
