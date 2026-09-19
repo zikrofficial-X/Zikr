@@ -138,6 +138,30 @@ export async function getTafsirFromDb(
   return record?.tafsir_ar ?? null;
 }
 
+export type QuranTafsirSource = {
+  author: string;
+  sourceUrl: string | null;
+};
+
+export async function getTafsirSourcesFromDb(): Promise<QuranTafsirSource[]> {
+  try {
+    const rows = await quranDbRequest<Array<{ author: string | null; source_url: string | null }>>(
+      "/rest/v1/quran_tafsir?select=author,source_url&order=author.asc&limit=200"
+    );
+
+    const byAuthor = new Map<string, QuranTafsirSource>();
+    for (const row of rows ?? []) {
+      const author = row.author?.trim();
+      if (!author || byAuthor.has(author)) continue;
+      byAuthor.set(author, { author, sourceUrl: row.source_url ?? null });
+    }
+    return [...byAuthor.values()];
+  } catch (error) {
+    console.error("[quran-server] getTafsirSourcesFromDb failed:", error);
+    return [];
+  }
+}
+
 export async function getRecitersFromDb(): Promise<Reciter[] | null> {
   try {
     const dbReciters = await quranDbRequest<DbReciter[]>(
