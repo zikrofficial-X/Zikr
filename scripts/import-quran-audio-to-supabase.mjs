@@ -1,5 +1,16 @@
-import "dotenv/config";
+import { loadEnvFile } from "node:process";
 import { createClient } from "@supabase/supabase-js";
+
+function loadOptionalEnvFile(filePath) {
+  try {
+    loadEnvFile(filePath);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
+
+loadOptionalEnvFile(".env");
+loadOptionalEnvFile(".env.local");
 import { createHash } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { promises as fs } from "node:fs";
