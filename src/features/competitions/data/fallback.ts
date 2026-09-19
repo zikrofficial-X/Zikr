@@ -1,4 +1,4 @@
-import type { Competition } from '@/lib/services/site-content';
+import type { Competition } from '@/features/competitions/types';
 
 export const FALLBACK_COMPETITIONS: Competition[] = [
   {
