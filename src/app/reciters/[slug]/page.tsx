@@ -1,7 +1,9 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getReciters } from '@/features/quran/services/quran';
+import type { Reciter } from '@/features/quran/types/quran';
 import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
@@ -78,10 +80,32 @@ function getAudioUrl(baseUrlTemplate: string, surahNumber: number): string {
 export default function ReciterPage() {
   const params = useParams();
   const slug = typeof params.slug === 'string' ? params.slug : '';
-  const reciter = reciters.find((r) => r.id === slug || r.code === slug);
-
+  const [reciter, setReciter] = useState<Reciter | null>(null);
+  const [loading, setLoading] = useState(true);
   const [currentSurah, setCurrentSurah] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    getReciters().then((rows) => {
+      if (!active) return;
+      setReciter(rows.find((r) => r.id === slug || r.code === slug) ?? null);
+      setLoading(false);
+    }).catch(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <Container className="py-16">
+        <Card className="text-center space-y-4 py-12">
+          <h1 className="text-2xl text-brand-gold">جاري تحميل بيانات القارئ</h1>
+        </Card>
+      </Container>
+    );
+  }
 
   if (!reciter) {
     return (
