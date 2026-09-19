@@ -1,3 +1,5 @@
+import type { Story, StoryCategory, StorySourceReference } from "@/features/stories/types/stories";
+
 export const PRIMARY_STORY_SOURCES: Record<string, StorySourceReference[]> = {
   "story-of-musa": [
     { label: "سورة القصص — القرآن الكريم", url: "https://quran.com/28", type: "quran" },
