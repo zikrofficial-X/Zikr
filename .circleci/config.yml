@@ -5,6 +5,11 @@ version: 2.1
 # - android-rebuild runs only for release branches/tags.
 # - operational jobs are opt-in through CircleCI pipeline parameters.
 # - production scheduling remains owned by Supabase pg_cron / Edge Functions.
+#
+# IMPORTANT:
+# CircleCI receives runtime values from CircleCI Project/Context environment
+# variables. GitHub Environment secrets are NOT automatically inherited here.
+# Never put secret values in this file.
 parameters:
   run_background_jobs:
     type: boolean
@@ -76,14 +81,20 @@ jobs:
             set -euo pipefail
             pnpm install --frozen-lockfile
       - run:
-          name: Export production smoke environment
+          name: Validate production smoke environment
           shell: /bin/bash
           command: |
             set -euo pipefail
-            export NEXT_PUBLIC_SUPABASE_URL="${SUPABASE_URL:-}"
-            export NEXT_PUBLIC_SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-}"
-            echo 'export NEXT_PUBLIC_SUPABASE_URL="${SUPABASE_URL:-}"' >> "$BASH_ENV"
-            echo 'export NEXT_PUBLIC_SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-}"' >> "$BASH_ENV"
+            for name in SUPABASE_URL SUPABASE_ANON_KEY NEXT_PUBLIC_SITE_URL; do
+              if [[ -z "${!name:-}" ]]; then
+                echo "Missing required CircleCI variable: $name" >&2
+                exit 1
+              fi
+            done
+            export NEXT_PUBLIC_SUPABASE_URL="${SUPABASE_URL}"
+            export NEXT_PUBLIC_SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}"
+            echo 'export NEXT_PUBLIC_SUPABASE_URL="${SUPABASE_URL}"' >> "$BASH_ENV"
+            echo 'export NEXT_PUBLIC_SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}"' >> "$BASH_ENV"
       - run:
           name: Run production smoke checks
           shell: /bin/bash
@@ -154,9 +165,6 @@ jobs:
     resource_class: medium
     environment:
       BACKGROUND_JOB_TARGET: << parameters.target >>
-      SUPABASE_URL: $SUPABASE_URL
-      SUPABASE_SERVICE_ROLE_KEY: $SUPABASE_SERVICE_ROLE_KEY
-      SUPABASE_ANON_KEY: $SUPABASE_ANON_KEY
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       VIDEO_BACKGROUND_BATCH_SIZE: "3"
       SOCIAL_BACKGROUND_BATCH_SIZE: "10"
@@ -200,6 +208,12 @@ jobs:
                 exit 1
               fi
             done
+            if [[ "${SOCIAL_PUBLISH_ENABLED:-false}" == "true" ]]; then
+              if [[ -z "${YOUTUBE_CLIENT_ID:-}" && -z "${FACEBOOK_PAGE_ID:-}" ]]; then
+                echo "Social publishing is enabled but neither YouTube nor Facebook credentials are configured." >&2
+                exit 1
+              fi
+            fi
       - run:
           name: Run background worker
           shell: /bin/bash
