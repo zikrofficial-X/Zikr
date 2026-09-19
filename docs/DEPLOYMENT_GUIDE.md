@@ -7,7 +7,7 @@ To ensure the project works correctly on production (Vercel) and with Supabase, 
 ## 1. Supabase Configuration
 
 ### Authentication
-1. Go to **Authentication > Providers > Google**.
+1. Go to **Authentication → Providers → Google**.
 2. Enable Google Provider.
 3. Add your **Client ID** and **Client Secret** from Google Cloud Console.
 4. In Supabase Auth URL Configuration, keep the repository-locked three entries exactly; do not add additional Vercel aliases.
