@@ -4,7 +4,6 @@ import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { SurahSearch } from "@/features/quran/components/surah-search";
 import { Suspense } from "react";
-import { SurahSkeleton } from "@/features/quran/components/surah-skeleton";
 import { pageMetadata } from "@/lib/site";
 import { QuranPageHeader } from "@/features/quran/components/quran-page-header";
 import { ContinueReadingBanner } from "@/features/quran/components/continue-reading-banner";
@@ -79,10 +78,8 @@ async function QuranContent() {
   }
 }
 
-export default function QuranPage() {
-  return (
-    <Suspense fallback={<SurahSkeleton />}>
-      <QuranContent />
-    </Suspense>
-  );
+export default async function QuranPage() {
+  // Do not wrap the entire page in Suspense: the previous shell could remain
+  // on the loading state when the streamed RSC boundary was delayed or blocked.
+  return <QuranContent />;
 }
