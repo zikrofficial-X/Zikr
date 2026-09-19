@@ -58,8 +58,6 @@ jobs:
     resource_class: small
     environment:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      NEXT_PUBLIC_SUPABASE_URL: $SUPABASE_URL
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: $SUPABASE_ANON_KEY
     steps:
       - checkout
       - run:
@@ -78,6 +76,15 @@ jobs:
             set -euo pipefail
             pnpm install --frozen-lockfile
       - run:
+          name: Export production smoke environment
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            export NEXT_PUBLIC_SUPABASE_URL="${SUPABASE_URL:-}"
+            export NEXT_PUBLIC_SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-}"
+            echo 'export NEXT_PUBLIC_SUPABASE_URL="${SUPABASE_URL:-}"' >> "$BASH_ENV"
+            echo 'export NEXT_PUBLIC_SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-}"' >> "$BASH_ENV"
+      - run:
           name: Run production smoke checks
           shell: /bin/bash
           command: |
@@ -91,9 +98,6 @@ jobs:
     resource_class: small
     environment:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      NEXT_PUBLIC_SUPABASE_URL: $SUPABASE_URL
-      SUPABASE_URL: $SUPABASE_URL
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: $SUPABASE_ANON_KEY
     steps:
       - checkout
       - run:
@@ -161,14 +165,6 @@ jobs:
       AUTO_VIDEO_ENABLED: "true"
       AUTO_VIDEO_BATCH_SIZE: "1"
       AUTO_VIDEO_SECONDS: "14"
-      YOUTUBE_CLIENT_ID: $YOUTUBE_CLIENT_ID
-      YOUTUBE_CLIENT_SECRET: $YOUTUBE_CLIENT_SECRET
-      YOUTUBE_REFRESH_TOKEN: $YOUTUBE_REFRESH_TOKEN
-      YOUTUBE_API_KEY: $YOUTUBE_API_KEY
-      FACEBOOK_APP_ID: $FACEBOOK_APP_ID
-      FACEBOOK_APP_SECRET: $FACEBOOK_APP_SECRET
-      FACEBOOK_PAGE_ID: $FACEBOOK_PAGE_ID
-      FACEBOOK_PAGE_ACCESS_TOKEN: $FACEBOOK_PAGE_ACCESS_TOKEN
     steps:
       - checkout
       - run:
@@ -216,11 +212,6 @@ jobs:
     docker:
       - image: cimg/node:22.11.0
     resource_class: medium
-    environment:
-      SUPABASE_URL: $SUPABASE_URL
-      SUPABASE_SERVICE_ROLE_KEY: $SUPABASE_SERVICE_ROLE_KEY
-      QURAN_AUDIO_MAX_FILE_MB: $QURAN_AUDIO_MAX_FILE_MB
-      QURAN_AUDIO_CONCURRENCY: $QURAN_AUDIO_CONCURRENCY
     steps:
       - checkout
       - run:
