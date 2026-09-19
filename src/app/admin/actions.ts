@@ -36,6 +36,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from '@/features/admin/services/admin';
 import { DEFAULT_AUDIO_SETTINGS, isAudioChoiceKey, type AudioSlot } from '@/lib/audio/config';
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { updateUserRoleAuditedAction } from "@/app/admin/user-actions";
 
 type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 
@@ -422,36 +423,7 @@ export async function savePinnedMessageAction(formData: FormData) {
 
 // ─── User role management ────────────────────────────────────────────────────
 export async function updateUserRoleAction(formData: FormData) {
-  const admin = await requireAdminPermission('users.roles');
-  const userId = String(formData.get("userId") ?? "").trim();
-  const role = String(formData.get("role") ?? "").trim();
-
-  if (!userId) throw new Error("معرّف المستخدم مطلوب.");
-  if (role !== "admin" && role !== "user") throw new Error("الدور غير صالح.");
-  if (userId === admin.id && role !== "admin") {
-    throw new Error("لا يمكنك إزالة صلاحية الأدمن عن نفسك.");
-  }
-
-  await supabaseServerAdminRequest(
-    `/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
-    {
-      method: "PATCH",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ role, updated_at: new Date().toISOString() }),
-    }
-  );
-
-  await supabaseServerAdminRequest("/rest/v1/admin_actions_audit", {
-    method: "POST",
-    headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({
-      user_id: admin.id,
-      action: "update_user_role",
-      meta: { target_user_id: userId, role },
-    }),
-  });
-
-  revalidatePath("/admin/users");
+  return updateUserRoleAuditedAction(formData);
 }
 
 // ─── Content management (delete / toggle publish) ────────────────────────────
