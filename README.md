@@ -67,14 +67,13 @@ Useful verification commands:
 ```bash
 pnpm lint
 pnpm check
-pnpm test
 pnpm project:check
 pnpm mobile:check
 pnpm supabase:migrations:check
 pnpm verify
 ```
 
-`pnpm verify` is the full release-quality gate and is used by the Vercel build configuration.
+`pnpm verify` is the repository integrity gate; Vercel builds with `pnpm build`.
 
 ## Database migrations
 

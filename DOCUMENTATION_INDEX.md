@@ -4,7 +4,6 @@
 
 - [`README.md`](./README.md) — installation, development, deployment, and database migration rules.
 - [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) — current project status and verified checks.
-- [`GITHUB_ACTIONS_MIGRATION_GUIDE.md`](./GITHUB_ACTIONS_MIGRATION_GUIDE.md) — current automation ownership and GitHub Actions retirement rules.
 
 ## Operations
 
@@ -30,4 +29,4 @@
 - Historical Drizzle migration records may remain inside `supabase/migrations/` because they are part of database history; there is no active Drizzle runtime or schema-migration path.
 - Use `pnpm verify` before opening a pull request.
 
-This index intentionally omits historical audit reports and superseded setup notes so links do not point to conflicting instructions.
+This index contains only current operational documentation; superseded audit and release records remain in Git history.

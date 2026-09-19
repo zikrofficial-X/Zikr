@@ -43,7 +43,6 @@ const navigation: PermissionGroup[] = [
   ] },
   { group: 'النشر والتطبيق', items: [
     { href: '/admin/social', label: 'النشر التلقائي', permission: 'social.manage' },
-    { href: '/admin/social-ops', label: 'عمليات السوشيال', permission: 'social.manage' },
     { href: '/admin/android', label: 'إصدار Android', permission: 'android.manage' },
     { href: '/admin/release', label: 'مركز الإصدار', permission: 'release.manage' },
   ] },

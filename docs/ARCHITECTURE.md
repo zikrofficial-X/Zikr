@@ -32,7 +32,7 @@ This document describes the **current canonical architecture**. Historical audit
 | `supabase/migrations_archive/` | Historical/legacy migration copies; never treated as the active migration chain |
 | `supabase/functions/` | Supabase Edge Functions |
 | `scripts/` | Deterministic verification, maintenance, migration, content, and release tooling |
-| `__tests__/` | Unit and integration tests |
+| Main release tree | Production application code only |
 | `android/`, `ios/`, `mobile/` | Native projects and mobile build metadata |
 | `.github/` | Repository metadata only; GitHub Actions workflows are intentionally retired |
 | `.circleci/` | CircleCI configuration retained for secondary CI/recovery validation |
@@ -106,7 +106,6 @@ pnpm adsense:check
 pnpm search-console:check
 pnpm check
 pnpm lint
-pnpm test
 pnpm build
 ```
 
