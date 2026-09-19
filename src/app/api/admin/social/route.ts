@@ -24,12 +24,38 @@ const retryableStatuses = new Set(['failed', 'partial']);
 function successfulPlatforms(metadata: Record<string, unknown> | null | undefined): Set<string> {
   const values = metadata?.platformResults;
   const result = new Set<string>();
-  if (!Array.isArray(values)) return result;
-  for (const value of values) {
-    if (!value || typeof value !== 'object') continue;
-    const row = value as { platform?: unknown; ok?: unknown };
-    if (row.ok === true && typeof row.platform === 'string') result.add(row.platform);
+
+  if (values && typeof values === 'object' && !Array.isArray(values)) {
+    for (const [platform, value] of Object.entries(values)) {
+      if (!value || typeof value !== 'object') continue;
+      const row = value as { platform?: unknown; ok?: unknown; remoteId?: unknown };
+      if (
+        row.ok === true &&
+        (typeof row.remoteId === 'string' && row.remoteId.length > 0) &&
+        (row.platform === undefined || row.platform === platform)
+      ) {
+        result.add(platform);
+      }
+    }
+    return result;
   }
+
+  // Backward compatibility for older queue metadata that used an array.
+  if (Array.isArray(values)) {
+    for (const value of values) {
+      if (!value || typeof value !== 'object') continue;
+      const row = value as { platform?: unknown; ok?: unknown; remoteId?: unknown };
+      if (
+        row.ok === true &&
+        typeof row.platform === 'string' &&
+        typeof row.remoteId === 'string' &&
+        row.remoteId.length > 0
+      ) {
+        result.add(row.platform);
+      }
+    }
+  }
+
   return result;
 }
 
