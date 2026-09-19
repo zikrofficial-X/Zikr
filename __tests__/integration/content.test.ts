@@ -9,16 +9,16 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 const publicContentRoutes = [
-  '../../app/api/quran/surahs/route.ts',
-  '../../app/api/quran/audio/route.ts',
-  '../../app/api/hadith/books/route.ts',
-  '../../app/api/duas/route.ts',
-  '../../app/api/duas/categories/route.ts',
-  '../../app/api/content/stories/route.ts',
-  '../../app/api/content/prophets/route.ts',
-  '../../app/api/content/companions/route.ts',
-  '../../app/api/content/articles/route.ts',
-  '../../app/api/search/route.ts',
+  '../../src/app/api/quran/surahs/route.ts',
+  '../../src/app/api/quran/audio/route.ts',
+  '../../src/app/api/hadith/books/route.ts',
+  '../../src/app/api/duas/route.ts',
+  '../../src/app/api/duas/categories/route.ts',
+  '../../src/app/api/content/stories/route.ts',
+  '../../src/app/api/content/prophets/route.ts',
+  '../../src/app/api/content/companions/route.ts',
+  '../../src/app/api/content/articles/route.ts',
+  '../../src/app/api/search/route.ts',
 ] as const;
 
 describe('Public content route exports', () => {
