@@ -9,6 +9,16 @@ type AudioRow = {
 };
 
 const VERIFIED_SURAH_AUDIO_BASES: Record<string, string> = {
+  // Canonical database codes
+  afs: "https://server8.mp3quran.net/afs",
+  minsh: "https://server10.mp3quran.net/minsh",
+  basit: "https://server7.mp3quran.net/basit",
+  sds: "https://server11.mp3quran.net/sds",
+  shur: "https://server7.mp3quran.net/shur",
+  maher: "https://server12.mp3quran.net/maher",
+  s_gmd: "https://server7.mp3quran.net/s_gmd",
+
+  // Legacy / human-readable aliases
   alafasy: "https://server8.mp3quran.net/afs",
   minshawi: "https://server10.mp3quran.net/minsh",
   abdulbasit: "https://server7.mp3quran.net/basit",
@@ -34,6 +44,15 @@ function json(data: unknown, status = 200) {
     },
   });
 }
+function buildVerifiedAudio(code: string, surah: number) {
+  const baseUrl = VERIFIED_SURAH_AUDIO_BASES[code];
+  if (!baseUrl) return null;
+  return {
+    audio_url: baseUrl + "/" + String(surah).padStart(3, "0") + ".mp3",
+    source_url: "https://www.mp3quran.net/",
+    retrieved_at: null,
+  };
+}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -46,10 +65,16 @@ export async function GET(request: Request) {
   if (!/^[a-z0-9.-]{2,80}$/i.test(reciter)) {
     return json({ error: 'Invalid reciter' }, 400);
   }
-  if (!isSupabaseConfigured()) return json({ audio: null });
+  const normalizedCode = normalizeReciterCode(reciter);
+  const verifiedFallback = () => buildVerifiedAudio(normalizedCode, surah);
+
+  // Always keep a verified source available even when Supabase public
+  // credentials are unavailable in a deployment.
+  if (!isSupabaseConfigured()) {
+    return json({ audio: verifiedFallback() });
+  }
 
   try {
-    const normalizedCode = normalizeReciterCode(reciter);
     const candidates = [...new Set([reciter, `ar.${normalizedCode}`, normalizedCode])].filter(Boolean);
     let reciterId: string | null = null;
 
@@ -73,19 +98,7 @@ export async function GET(request: Request) {
     // Keep playback available even when an individual DB row is temporarily
     // missing. These templates are the same verified MP3Quran sources used by
     // the restored quran_audio dataset.
-    const baseUrl = VERIFIED_SURAH_AUDIO_BASES[normalizedCode];
-    if (baseUrl) {
-      const audioUrl = `${baseUrl}/${String(surah).padStart(3, "0")}.mp3`;
-      return json({
-        audio: {
-          audio_url: audioUrl,
-          source_url: "https://www.mp3quran.net/",
-          retrieved_at: null,
-        },
-      });
-    }
-
-    return json({ audio: null });
+    return json({ audio: verifiedFallback() });
   } catch (error) {
     console.warn('[api/quran/audio] unavailable:', error instanceof Error ? error.message : error);
     return json({ audio: null });
