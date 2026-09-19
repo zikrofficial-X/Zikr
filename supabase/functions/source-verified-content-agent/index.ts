@@ -55,14 +55,10 @@ async function isAuthorized(request: Request): Promise<boolean> {
   return constantTimeEqual(supplied, data);
 }
 
-function stringValue(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
 function parseItems(
   source: Source,
-  payload: unknown,
-  retrievedAt: string
+  _payload: unknown,
+  _retrievedAt: string
 ): SourceItem[] {
   if (source.parser_key === "alquran_cloud") {
     // Quran chapter catalog is synchronized into quran_surahs and is not a
