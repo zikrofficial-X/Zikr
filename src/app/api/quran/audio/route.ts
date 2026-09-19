@@ -14,7 +14,7 @@ const VERIFIED_SURAH_AUDIO_BASES: Record<string, string> = {
   abdulbasit: "https://server7.mp3quran.net/basit",
   abdulsamad: "https://server7.mp3quran.net/basit",
   sudais: "https://server11.mp3quran.net/sds",
-  as-sudais: "https://server11.mp3quran.net/sds",
+  "as-sudais": "https://server11.mp3quran.net/sds",
   shuraim: "https://server7.mp3quran.net/shur",
   shuraym: "https://server7.mp3quran.net/shur",
   mahermuaiqly: "https://server12.mp3quran.net/maher",
