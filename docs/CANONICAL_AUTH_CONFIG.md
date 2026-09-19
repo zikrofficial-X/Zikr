@@ -32,17 +32,13 @@ The repository gate invokes it through:
 
 ## Remote enforcement
 
-`.github/workflows/supabase-auth-config-lock.yml` pushes `supabase/config.toml` to the linked production Supabase project when the workflow runs.
+GitHub Actions are intentionally retired from the active repository. No workflow is responsible for pushing or enforcing Supabase Auth configuration.
 
-The workflow requires the GitHub Actions secret:
-
-`SUPABASE_ACCESS_TOKEN`
-
-A manual dashboard change is therefore not a new source of truth; the repository configuration remains canonical.
+The canonical configuration is enforced by the repository configuration plus the normal deployment/verification path. Any manual dashboard change must preserve the exact three-value contract above.
 
 ## Rules
 
 Do not add Vercel preview/deployment aliases to Supabase Auth Redirect URLs.
 Do not replace the application callback with the Supabase provider callback.
 Do not add a duplicate localhost callback while `http://localhost:3000/**` is present.
-Do not rename or remove the canonical production host without updating the protected contract, application auth guards, and verification workflow together.
+Do not rename or remove the canonical production host without updating the protected contract, application auth guards, and verification scripts together.
