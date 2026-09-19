@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';
 import { supabaseServerAnonRequest } from '@/lib/supabase/server';
-import { getKidsItemBySlug } from '@/lib/data/kids-content';
+import { getKidsItemBySlug } from '@/features/kids/data/content';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
