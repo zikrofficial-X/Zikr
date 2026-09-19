@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getReciters } from '@/features/quran/services/quran';
+import type { Reciter } from '@/features/quran/types/quran';
 import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
@@ -10,6 +12,20 @@ import { reciters } from '@/features/quran/data/fallback';
 
 export default function RecitersPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [reciters, setReciters] = useState<Reciter[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    getReciters().then((rows) => {
+      if (!active) return;
+      setReciters(rows);
+      setLoading(false);
+    }).catch(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
 
   const filtered = reciters.filter(
     (r) =>
@@ -70,11 +86,13 @@ export default function RecitersPage() {
             </Link>
           </Card>
         ))}
-        {filtered.length === 0 && (
+        {loading ? (
+          <div className="col-span-full text-center py-8 arabic-muted">جاري تحميل القراء...</div>
+        ) : filtered.length === 0 ? (
           <div className="col-span-full text-center py-8 arabic-muted">
             لم يتم العثور على قارئ بهذا الاسم.
           </div>
-        )}
+        ) : null}
       </section>
     </Container>
   );
