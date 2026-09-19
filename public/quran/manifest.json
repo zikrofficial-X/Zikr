@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "edition": "Hafs / Uthmani",
+  "source": "Tanzil Quran Text (Uthmani), Version 1.1",
+  "source_url": "https://tanzil.net",
+  "license": "Creative Commons Attribution 3.0",
+  "surahs": 114,
+  "ayahs": 6236,
+  "pages": 604,
+  "corpus": "/quran/mushaf-hafs.json",
+  "search_index": "/offline-content/v1/ayahs.json",
+  "integrity": {
+    "row_count": 6236,
+    "unique_surah_ayah_pairs": 6236
+  }
+}
