@@ -1,7 +1,7 @@
 "use server";
 
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
-import type { Surah, Ayah, Reciter } from "@/features/quran/types/quran";
+import type { Surah, Ayah, Reciter, QuranTafsirSource } from "@/features/quran/types/quran";
 import {
   mapDbSurah,
   mapDbAyah,
@@ -138,10 +138,6 @@ export async function getTafsirFromDb(
   return record?.tafsir_ar ?? null;
 }
 
-export type QuranTafsirSource = {
-  author: string;
-  sourceUrl: string | null;
-};
 
 export async function getTafsirSourcesFromDb(): Promise<QuranTafsirSource[]> {
   try {
