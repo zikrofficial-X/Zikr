@@ -8,7 +8,7 @@ import { getAdminHealth } from "@/features/admin/services/platform";
 export const metadata: Metadata = { title: "مركز الإصدار | الأدمن" };
 
 const checks = [
-  ["CI / Verify", ".github/workflows/verify.yml"],
+  ["CI / Verify", "CircleCI → ci-check"],
   ["Production build", "vercel.json → pnpm verify"],
   ["Migration integrity", "pnpm supabase:migrations:check"],
   ["Routes integrity", "pnpm routes:check"],
