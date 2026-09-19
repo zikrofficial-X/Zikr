@@ -4,12 +4,9 @@ function getBrowserSupabaseEnv() {
   // Keep these references static so Next.js can inline NEXT_PUBLIC_* values
   // into the browser bundle. Dynamic process.env lookups are server-only.
   return {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '',
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     key:
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-      process.env.SUPABASE_ANON_KEY ||
-      process.env.SUPABASE_PUBLISHABLE_KEY ||
-      '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
   };
 }
 
