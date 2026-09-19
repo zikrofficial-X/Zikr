@@ -250,7 +250,7 @@ Never modify schema through Supabase UI directly. Instead:
 1. Create new migration file
 2. Add SQL to `supabase/migrations/`
 3. Push to GitHub
-4. Migrations auto-apply to production
+4. Supabase migrations are applied through the canonical migration workflow
 
 ## File Structure for Sync
 
