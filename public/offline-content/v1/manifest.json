@@ -72,7 +72,6 @@
   "routes": [
     "/",
     "/offline.html",
-    "/manifest.webmanifest",
     "/mushaf",
     "/quran",
     "/hadith",
