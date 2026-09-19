@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { playSalawatClip, unlockAudioContext } from '@/lib/audio/spiritual-tones';
-import { showDhikrNotification, isInQuietHours } from '@/lib/services/notifications';
+import { showDhikrNotification, isInQuietHours } from '@/features/notifications/services/notifications';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 export type DhikrInterval = 15 | 30 | 60 | 120 | 0; // 0 = disabled
