@@ -18,7 +18,7 @@ ZIKR uses Supabase Auth with PKCE.
 3. The native Capacitor handler receives `appUrlOpen` and performs the PKCE code exchange inside the app.
 4. The app returns to the requested internal route.
 
-Supabase's current Google setup documentation uses the Supabase project's `/auth/v1/callback` as the Google OAuth client's redirect URI, while the application's post-login URL is configured in Supabase Auth Redirect URLs. citeturn167534search0turn167534search1
+Supabase's current Google setup documentation uses the Supabase project's `/auth/v1/callback` as the Google OAuth client's redirect URI, while the application's post-login URL is configured in Supabase Auth Redirect URLs.
 
 ## Supabase configuration
 
@@ -54,7 +54,7 @@ Authorized redirect URI:
 
 Do **not** use `https://zikrmediaofficial.vercel.app/auth/callback` as Google's provider callback for the Supabase-managed social-login flow.
 
-For local Supabase CLI development, use the local Supabase callback shown by the local Supabase project instead of the production project callback. citeturn167534search0
+For local Supabase CLI development, use the local Supabase callback shown by the local Supabase project instead of the production project callback.
 
 ## Credentials
 
@@ -84,7 +84,7 @@ Do not recreate old `app/auth/*`, `lib/*`, or duplicate Google button implementa
 Google is disabled in the Supabase Authentication provider settings.
 
 **redirect_uri_mismatch**
-The Google OAuth client must contain the exact Supabase provider callback URI. Supabase's own redirect allowlist controls the final redirect back to the ZIKR app. citeturn167534search0turn167534search1
+The Google OAuth client must contain the exact Supabase provider callback URI. Supabase's own redirect allowlist controls the final redirect back to the ZIKR app.
 
 **PKCE verifier missing**
 Restart the OAuth flow from ZIKR. The callback deliberately treats missing/expired PKCE state as a recoverable OAuth restart.
