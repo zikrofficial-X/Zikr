@@ -270,7 +270,7 @@ project/
 │   └── supabase/
 │       ├── server.ts       # Server-side Supabase client
 │       └── client.ts       # Browser Supabase client
-├── drizzle.config.ts       # Database config for migrations
+├── supabase/               # Canonical database config, functions, and migrations
 ├── .env.example            # Env vars template
 ├── DEPLOYMENT_GUIDE.md     # This file
 └── vercel.json             # Vercel configuration
