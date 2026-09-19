@@ -15,8 +15,6 @@ export async function getDuaCategories(): Promise<DuaCategory[]> {
 
   if (rows.length === 0) return FALLBACK_DUA_CATEGORIES;
 
-  if (rows.length === 0) return fallback.slice(0, safeLimit);
-
   return rows.map(r => ({
     id: r.id as string,
     nameAr: r.name_ar as string,
@@ -49,6 +47,8 @@ export async function getDuas(categoryId?: string, limit = 50): Promise<Dua[]> {
     console.error("[content] Failed to fetch duas:", error);
     return [];
   });
+
+  if (rows.length === 0) return fallback.slice(0, safeLimit);
 
   return rows.map(r => ({
     id: r.id as string,
