@@ -9,5 +9,5 @@ export const prophets:ProphetFallback[]=[
   {id:'5',nameAr:'عيسى عليه السلام',nameEn:'Jesus',slug:'jesus',order:5,bioAr:'روح الله وكلمته، أرسل إلى بني إسرائيل'},
   {id:'6',nameAr:'يوسف عليه السلام',nameEn:'Yusuf',slug:'yusuf',order:6,bioAr:'صاحب قصة الصبر والعفة، ملك مصر'},
   {id:'7',nameAr:'أيوب عليه السلام',nameEn:'Ayyub',slug:'ayyub',order:7,bioAr:'ضرب به المثل في الصبر على البلاء'},
-  {id:'8',nameAr:'محمد صلى الله عليه وسلم',nameEn:'Muhammad',slug:'muhammad',order:8,bioAr:'خاتم الأنبياء والمرسلين، أرسل ��حمة للعالمين'},
+  {id:'8',nameAr:'محمد صلى الله عليه وسلم',nameEn:'Muhammad',slug:'muhammad',order:8,bioAr:'خاتم الأنبياء والمرسلين، أرسل رحمة للعالمين'},
 ];
