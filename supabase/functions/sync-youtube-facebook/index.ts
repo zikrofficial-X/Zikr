@@ -369,9 +369,10 @@ async function recoverStaleProcessing() {
       }).eq('id', job.id).eq('status', 'processing')
     } else if (job.publish_request_id) {
       await supabase.from('social_sync_jobs').update({
+        status: 'failed',
         next_attempt_at: new Date(Date.now() + AMBIGUOUS_RECHECK_MS).toISOString(),
         locked_at: null,
-        last_error: 'Previous Facebook request may have succeeded; automatic retry paused to prevent duplicate publishing.',
+        last_error: 'Previous Facebook request may have succeeded; manual reconciliation is required before retry.',
         retryable: false,
         updated_at: new Date().toISOString(),
       }).eq('id', job.id).eq('status', 'processing')
