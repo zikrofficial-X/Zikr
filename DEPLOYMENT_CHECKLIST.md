@@ -33,7 +33,7 @@ Confirm that all public tables holding user or operational data have RLS enabled
 
 ## Production schedulers
 
-Confirm that `cron.job` contains exactly one active job for each name below and that recent `cron.job_run_details` rows are successful:
+Confirm that `cron.job` contains exactly one active prayer job and zero active rows for the retired video job; review recent `cron.job_run_details` for the active prayer scheduler:
 
 | Job | Schedule | Target |
 |---|---:|---|
