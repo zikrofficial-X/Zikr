@@ -1,372 +1,119 @@
 #!/usr/bin/env node
+
 /**
- * ZIKR DEPLOYMENT SYNC VERIFICATION SCRIPT
- * 
- * Comprehensive checks before production deployment
- * Run: node scripts/verify-deployment-sync.mjs
+ * Canonical pre-deployment integrity check.
+ * Database changes belong exclusively to Supabase migrations.
+ * The application runtime does not use Drizzle or a direct Postgres URL.
  */
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const failures = [];
+const warnings = [];
 
-// Color codes for console output
-const colors = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  cyan: '\x1b[36m',
-};
-
-function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
+function exists(relativePath) {
+  return fs.existsSync(path.join(root, relativePath));
+}
+function read(relativePath) {
+  const file = path.join(root, relativePath);
+  return exists(relativePath) ? fs.readFileSync(file, "utf8") : "";
+}
+function requirePath(relativePath) {
+  if (!exists(relativePath)) failures.push(`Missing required path: ${relativePath}`);
+}
+function warn(message) {
+  warnings.push(message);
 }
 
-function success(message) {
-  log(`✅ ${message}`, 'green');
+for (const file of [
+  "package.json",
+  "pnpm-lock.yaml",
+  "tsconfig.json",
+  "next.config.ts",
+  "supabase/config.toml",
+  ".env.example",
+  "src/lib/types/supabase.ts",
+]) requirePath(file);
+
+for (const stalePath of [
+  "drizzle.config.ts",
+  "drizzle/schema.ts",
+  "drizzle/migrations",
+]) {
+  if (exists(stalePath)) failures.push(`Obsolete runtime schema path still exists: ${stalePath}`);
 }
 
-function error(message) {
-  log(`❌ ${message}`, 'red');
+const pkg = JSON.parse(read("package.json"));
+if (!pkg.dependencies?.["@supabase/supabase-js"]) {
+  failures.push("Supabase client dependency is missing");
+}
+if (!pkg.scripts?.build) failures.push("package.json: build script is missing");
+if (!pkg.scripts?.verify) failures.push("package.json: verify script is missing");
+if (pkg.dependencies?.["drizzle-orm"] || pkg.devDependencies?.["drizzle-kit"]) {
+  failures.push("Drizzle dependency remains in package.json");
 }
 
-function warning(message) {
-  log(`⚠️  ${message}`, 'yellow');
+const lock = read("pnpm-lock.yaml");
+if (lock.includes("drizzle-orm") || lock.includes("drizzle-kit")) {
+  failures.push("Drizzle dependency remains in pnpm-lock.yaml");
 }
 
-function _info(message) {
-  log(`ℹ️  ${message}`, 'blue');
+const envExample = read(".env.example");
+for (const obsolete of [
+  "DATABASE_URL=",
+  "POSTGRES_URL=",
+  "POSTGRES_PRISMA_URL=",
+  "POSTGRES_URL_NON_POOLING=",
+  "NEXT_PUBLIC_GOOGLE_CLIENT_ID=",
+  "GOOGLE_CLIENT_ID=",
+  "GOOGLE_CLIENT_SECRET=",
+]) {
+  if (envExample.includes(obsolete)) failures.push(`.env.example contains retired variable: ${obsolete}`);
 }
 
-function header(title) {
-  log(`\n${'='.repeat(50)}`, 'cyan');
-  log(`${title}`, 'cyan');
-  log(`${'='.repeat(50)}`, 'cyan');
+const authConfig = read("supabase/config.toml");
+if (!authConfig.includes('site_url = "https://zikrmediaofficial.vercel.app"')) {
+  failures.push("Supabase auth site_url is not canonical");
+}
+for (const redirect of [
+  "https://zikrmediaofficial.vercel.app/auth/callback",
+  "http://localhost:3000/auth/callback",
+  "com.zikr.app://auth/callback",
+]) {
+  if (!authConfig.includes(redirect)) failures.push(`Supabase Auth redirect missing: ${redirect}`);
 }
 
-// Check environment variables
-function checkEnvironmentVariables() {
-  header('📋 ENVIRONMENT VARIABLES CHECK');
-  
-  const envPaths = [
-    path.join(projectRoot, '.env.local'),
-    path.join(projectRoot, '.env.development.local'),
-  ];
-  const envExamplePath = path.join(projectRoot, '.env.example');
-  
-  let passed = 0;
-  let failed = 0;
-  
-  if (envPaths.some(fs.existsSync)) {
-    success('Environment file exists');
-    passed++;
-  } else {
-    warning('No local environment file found; deployment secrets are managed by the platform');
-    passed++;
-  }
-  
-  if (fs.existsSync(envExamplePath)) {
-    success('Template file (.env.example) exists');
-    passed++;
-  } else {
-    error('Missing .env.example template');
-    failed++;
-  }
-  
-  return { passed, failed };
-}
+const migrationsDir = path.join(root, "supabase", "migrations");
+if (fs.existsSync(migrationsDir)) {
+  const migrations = fs.readdirSync(migrationsDir).filter((file) => file.endsWith(".sql")).sort();
+  if (!migrations.length) failures.push("Supabase migration directory is empty");
 
-// Check file structure
-function checkFileStructure() {
-  header('📁 FILE STRUCTURE CHECK');
-  
-  const requiredFiles = [
-    'package.json',
-    'tsconfig.json',
-    'next.config.ts',
-    'drizzle.config.ts',
-    '.env.example',
-    'supabase/config.toml',
-  ];
-  
-  const requiredDirs = [
-    'src/app',
-    'src/lib',
-    'drizzle',
-    'scripts',
-    'supabase',
-    'public',
-  ];
-  
-  let passed = 0;
-  let failed = 0;
-  
-  // Check files
-  for (const file of requiredFiles) {
-    const filePath = path.join(projectRoot, file);
-    if (fs.existsSync(filePath)) {
-      passed++;
-    } else {
-      error(`Missing required file: ${file}`);
-      failed++;
-    }
-  }
-  
-  // Check directories
-  for (const dir of requiredDirs) {
-    const dirPath = path.join(projectRoot, dir);
-    if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
-      passed++;
-    } else {
-      error(`Missing required directory: ${dir}`);
-      failed++;
-    }
-  }
-  
-  success(`${passed} files/directories verified`);
-  return { passed, failed };
-}
-
-// Check migration files
-function checkMigrationFiles() {
-  header('🔄 MIGRATION FILES CHECK');
-  
-  const migrationDir = path.join(projectRoot, 'supabase', 'migrations');
-  
-  let passed = 0;
-  let failed = 0;
-  
-  try {
-    const migrations = fs.readdirSync(migrationDir)
-      .filter(f => f.endsWith('.sql'))
-      .sort();
-    
-    success(`Found ${migrations.length} migration files`);
-    passed++;
-    
-    // The canonical chain is intentionally incremental; a consolidated baseline
-    // is not required when every migration has a unique numeric version.
-    success('Canonical incremental migration chain is present');
-    passed++;
-    
-    // Check for duplicate sequences
-    const timestamps = migrations.map(m => m.split('_')[0]);
-    const duplicates = timestamps.filter((t, i) => timestamps.indexOf(t) !== i);
-    
-    if (duplicates.length === 0) {
-      success('No duplicate migration timestamps');
-      passed++;
-    } else {
-      warning(`Found duplicate timestamps: ${duplicates.join(', ')}`);
-      failed++;
-    }
-    
-  } catch (err) {
-    error(`Migration check failed: ${err.message}`);
-    failed++;
-  }
-  
-  return { passed, failed };
-}
-
-// Check schema consistency
-function checkSchemaConsistency() {
-  header('🗄️  SCHEMA CONSISTENCY CHECK');
-  
-  const schemaPath = path.join(projectRoot, 'drizzle', 'schema.ts');
-  
-  let passed = 0;
-  let failed = 0;
-  
-  try {
-    const schema = fs.readFileSync(schemaPath, 'utf-8');
-    
-    // Check for key tables
-    const tables = [
-      'profiles',
-      'favorites',
-      'quran_ayahs',
-      'hadiths',
-      'stories',
-    ];
-    
-    for (const table of tables) {
-      if (schema.includes(`"${table}"`)) {
-        success(`Table '${table}' defined in schema`);
-        passed++;
-      } else {
-        error(`Missing table '${table}' in schema`);
-        failed++;
-      }
-    }
-    
-    // Check for the enum names used by the canonical Drizzle schema.
-    if (schema.includes('roleEnum') && schema.includes('favoriteItemTypeEnum')) {
-      success('Enums defined in schema');
-      passed++;
-    } else {
-      error('Required schema enums are missing');
-      failed++;
-    }
-    
-  } catch (err) {
-    error(`Schema check failed: ${err.message}`);
-    failed++;
-  }
-  
-  return { passed, failed };
-}
-
-// Check configuration files
-function checkConfigurationFiles() {
-  header('⚙️  CONFIGURATION FILES CHECK');
-  
-  let passed = 0;
-  let failed = 0;
-  
-  // Check supabase config
-  const supabaseConfig = path.join(projectRoot, 'supabase', 'config.toml');
-  if (fs.existsSync(supabaseConfig)) {
-    success('Supabase config.toml exists');
-    passed++;
-  } else {
-    error('Missing supabase/config.toml');
-    failed++;
-  }
-  
-  // Check drizzle config
-  const drizzleConfig = path.join(projectRoot, 'drizzle.config.ts');
-  if (fs.existsSync(drizzleConfig)) {
-    const config = fs.readFileSync(drizzleConfig, 'utf-8');
-    if (config.includes('schema') && config.includes('out')) {
-      success('Drizzle configuration valid');
-      passed++;
-    } else {
-      error('Drizzle config missing required properties');
-      failed++;
-    }
-  } else {
-    error('Missing drizzle.config.ts');
-    failed++;
-  }
-  
-  // Check tsconfig
-  const tsconfig = path.join(projectRoot, 'tsconfig.json');
-  if (fs.existsSync(tsconfig)) {
-    const config = JSON.parse(fs.readFileSync(tsconfig, 'utf-8'));
-    if (config.compilerOptions?.strict === true) {
-      success('TypeScript strict mode enabled');
-      passed++;
-    } else {
-      warning('Consider enabling TypeScript strict mode');
-      failed++;
-    }
-  } else {
-    error('Missing tsconfig.json');
-    failed++;
-  }
-  
-  return { passed, failed };
-}
-
-// Check build readiness
-function checkBuildReadiness() {
-  header('🏗️  BUILD READINESS CHECK');
-  
-  let passed = 0;
-  let failed = 0;
-  
-  const packageJson = path.join(projectRoot, 'package.json');
-  
-  try {
-    const pkg = JSON.parse(fs.readFileSync(packageJson, 'utf-8'));
-    
-    // Check required scripts
-    const requiredScripts = ['build', 'dev'];
-    
-    for (const script of requiredScripts) {
-      if (pkg.scripts?.[script]) {
-        success(`Build script '${script}' exists`);
-        passed++;
-      } else {
-        error(`Missing build script: ${script}`);
-        failed++;
-      }
-    }
-    
-    // Check dependencies
-    const hasNext = pkg.dependencies?.next;
-    const hasSupabase = pkg.dependencies?.['@supabase/supabase-js'];
-    
-    if (hasNext) {
-      success('Next.js dependency found');
-      passed++;
-    } else {
-      error('Next.js not installed');
-      failed++;
-    }
-    
-    if (hasSupabase) {
-      success('Supabase client dependency found');
-      passed++;
-    } else {
-      error('Supabase client not installed');
-      failed++;
-    }
-    
-  } catch (err) {
-    error(`Build readiness check failed: ${err.message}`);
-    failed++;
-  }
-  
-  return { passed, failed };
-}
-
-// Main execution
-function main() {
-  header('🚀 ZIKR DEPLOYMENT SYNC VERIFICATION');
-  
-  const results = [];
-  
-  results.push(checkEnvironmentVariables());
-  results.push(checkFileStructure());
-  results.push(checkMigrationFiles());
-  results.push(checkSchemaConsistency());
-  results.push(checkConfigurationFiles());
-  results.push(checkBuildReadiness());
-  
-  // Calculate totals
-  const totalPassed = results.reduce((sum, r) => sum + r.passed, 0);
-  const totalFailed = results.reduce((sum, r) => sum + r.failed, 0);
-  const totalTests = totalPassed + totalFailed;
-  
-  // Summary
-  header('📊 VERIFICATION SUMMARY');
-  
-  log(`Total Tests: ${totalTests}`, 'cyan');
-  success(`Passed: ${totalPassed}`);
-  if (totalFailed > 0) {
-    error(`Failed: ${totalFailed}`);
-  }
-  
-  const successRate = Math.round((totalPassed / totalTests) * 100);
-  log(`\nSuccess Rate: ${successRate}%`, 'cyan');
-  
-  if (successRate >= 90) {
-    success('\n✅ READY FOR DEPLOYMENT');
-    process.exit(0);
-  } else if (successRate >= 70) {
-    warning('\n⚠️  DEPLOYMENT POSSIBLE - REVIEW WARNINGS');
-    process.exit(0);
-  } else {
-    error('\n❌ NOT READY - FIX ERRORS BEFORE DEPLOYMENT');
-    process.exit(1);
+  const versions = new Set();
+  for (const file of migrations) {
+    const match = file.match(/^(\d+)_/);
+    if (!match) failures.push(`Migration file has no numeric version prefix: ${file}`);
+    else if (versions.has(match[1])) failures.push(`Duplicate Supabase migration version: ${match[1]}`);
+    else versions.add(match[1]);
   }
 }
 
-main();
+const routes = read("src/app");
+if (!routes) failures.push("src/app is missing");
+if (!exists("src/features")) failures.push("src/features is missing");
+
+for (const historicalDoc of [
+  "AUDIT_REPORT.md",
+  "PROJECT_STATUS.md",
+]) {
+  if (exists(historicalDoc)) warn(`${historicalDoc} is a historical status document; runtime does not depend on it.`);
+}
+
+console.log("ZIKR DEPLOYMENT INTEGRITY");
+for (const failure of failures) console.log("❌ " + failure);
+for (const warning of warnings) console.log("⚠️ " + warning);
+
+console.log(`\\nResult: ${failures.length} failure(s), ${warnings.length} warning(s)`);
+if (failures.length) process.exit(1);
