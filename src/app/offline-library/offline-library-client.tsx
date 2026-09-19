@@ -115,7 +115,9 @@ export default function OfflineLibraryClient() {
       const routes = Array.from(
         new Set([
           ...PUBLIC_LIBRARY_ROUTES,
-          ...(nextManifest?.routes ?? []),
+          ...(nextManifest?.routes ?? [])
+            .map(normalizeRoute)
+            .filter((route): route is string => Boolean(route)),
           ...supplementalRoutes,
           ...sitemapRoutes,
         ]),
