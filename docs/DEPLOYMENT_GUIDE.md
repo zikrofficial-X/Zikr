@@ -10,10 +10,10 @@ To ensure the project works correctly on production (Vercel) and with Supabase, 
 1. Go to **Authentication → Providers → Google**.
 2. Enable Google Provider.
 3. Add your **Client ID** and **Client Secret** from Google Cloud Console.
-4. In Supabase Auth URL Configuration, keep the repository-locked three entries exactly; do not add additional Vercel aliases.
-   - `http://localhost:3000/auth/callback` (for local development)
-   - `https://zikrmediaofficial.vercel.app/auth/callback` (production)
-   - Do **not** use `/api/auth/callback`; this app handles auth at `/auth/callback`.
+4. In Supabase Auth URL Configuration, keep exactly these three entries and no Vercel aliases:
+   - `com.zikr.app://auth/callback`
+   - `http://localhost:3000/**`
+   - `https://zikrmediaofficial.vercel.app/auth/callback`
 
 ### Database
 Supabase SQL migrations are the single official database migration path for this project. All deployable SQL lives in `supabase/migrations`. The application does not use Drizzle or a direct PostgreSQL URL at runtime.
