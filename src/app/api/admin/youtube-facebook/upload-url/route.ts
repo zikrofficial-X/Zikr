@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { requireAdminApi } from "@/lib/services/admin";
+import { requireAdminApi } from "@/features/admin/services/admin";
 
 const BUCKET = "youtube-facebook-media";
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
