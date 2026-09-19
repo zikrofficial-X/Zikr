@@ -6,15 +6,15 @@ ZIKR has one authoritative automatic scheduler per production workload.
 |---|---|---:|---|
 | Prayer Web Push planning and delivery | Supabase `pg_cron` → `prayer-notification-worker` | Every minute | Private scheduler token, per-device uniqueness, atomic claims, bounded retries, invalid-subscription deactivation. |
 | Client-local azan and reminder sounds | Browser / native client | While active | Local/offline fallback; it does not create server delivery rows. |
-| Video generation queue | GitHub `Background Jobs` → `pnpm background:jobs` → template/FFmpeg worker | Every 15 minutes | Persisted queue, deterministic renderer, Supabase Storage, server-side service credentials. |
-| Social publishing queue | GitHub `Background Jobs` → `pnpm background:jobs` → social publisher | Every 15 minutes | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
+| Video generation queue | GitHub `Background Jobs` → `pnpm background:jobs` → template/FFmpeg worker | Manual recovery | Persisted queue, deterministic renderer, Supabase Storage, server-side service credentials. |
+| Social publishing queue | GitHub `Background Jobs` → `pnpm background:jobs` → social publisher | Manual recovery | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
 | Repository verification | Vercel build gate | Every deployment | `pnpm verify` must pass before the deployment is published. |
 
 ## Scheduler ownership
 
 The Supabase migration `20260915004110_retire_vercel_video_processing_cron.sql` explicitly retires the legacy `zikr-video-processing` cron job. This prevents the old Vercel route from competing with the GitHub worker.
 
-The GitHub `Background Jobs` workflow is therefore the current automatic owner for video and social processing. Do not add a second GitHub schedule, Vercel Cron job, or Supabase video cron for these queues.
+The GitHub `Background Jobs` workflow is the canonical manual recovery worker for video and social processing while hosted runners are unavailable. Do not add a second GitHub schedule, Vercel Cron job, or Supabase video cron.
 
 ## Prayer Web Push lifecycle
 
@@ -30,7 +30,7 @@ Each delivery uses a unique subscription/prayer/time key and is claimed before s
 video_generation_requests
         │
         ▼
-GitHub Background Jobs (*/15)
+GitHub Background Jobs (manual recovery)
         │
         ├── seed queue items
         ├── FFmpeg template renderer
@@ -47,7 +47,7 @@ The worker requires a direct HTTPS media URL for social publication and rejects 
 
 ## GitHub runner recovery
 
-`Background Jobs` has a scheduled trigger for normal production processing and a manual `workflow_dispatch` trigger for targeted recovery. `Continuous Integration` remains manual-only when hosted runners are restricted for the account.
+`Background Jobs` is manual-only while GitHub-hosted runners are unavailable; it has no production schedule. Use it only for deliberate recovery after runner access is restored. `Continuous Integration` remains manual-only when hosted runners are restricted for the account.
 
 When the GitHub runner cannot start, do not add an alternate scheduler. Run `pnpm verify` locally or rely on the Vercel deployment gate for repository validation, then process the queue once runner access is restored.
 
