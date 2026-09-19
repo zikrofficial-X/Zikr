@@ -10,6 +10,9 @@ if (!url || !anonKey) {
   throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
 }
 
+const requiredUrl = url;
+const requiredAnonKey = anonKey;
+
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = join('reports', 'rls-auth', stamp);
 mkdirSync(outDir, { recursive: true });
@@ -26,13 +29,13 @@ type Result = {
 };
 
 async function call(actor: Actor, table: string, method: string, body?: unknown): Promise<Result> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', apikey: anonKey };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', apikey: requiredAnonKey };
   if (actor === 'authenticated' && authToken) headers.Authorization = `Bearer ${authToken}`;
   if (actor === 'service_role' && serviceRole) {
     headers.apikey = serviceRole;
     headers.Authorization = `Bearer ${serviceRole}`;
   }
-  const res = await fetch(`${url}/rest/v1/${table}?select=*`, {
+  const res = await fetch(`${requiredUrl}/rest/v1/${table}?select=*`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
