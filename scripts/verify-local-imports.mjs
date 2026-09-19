@@ -74,7 +74,6 @@ for (const file of filesToScan) {
       }
     }
   }
-}
 
 if (failures.length > 0) {
   for (const failure of failures) console.error(`❌ ${failure}`);
