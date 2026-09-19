@@ -8,9 +8,7 @@
 
 The repository has been consolidated onto a single canonical branch. Obsolete feature wrappers, duplicate assets, legacy hook/service paths, and root-level historical release clutter were removed or archived.
 
-The current verification chain is green on the audited `main` commit:
-
-`9ecefb83bbd24bd697604c35a8263371de5a56f6`
+The current repair work is committed on `main`; the latest repository commit is `cd00ae772da5e0a45954c79183da01e39e1b1371`.
 
 The GitHub Admin 2.0 Quality Gate passed all configured checks, including migration validation/replay, route and import validation, hygiene, placeholder-media validation, project integrity, mobile/offline checks, content/auth checks, social/AdSense/Search Console checks, TypeScript, ESLint, unit/integration tests, and the production build. CircleCI also reports a successful `ci-check` on the audited commit.
 
@@ -61,7 +59,7 @@ The existing `tasks` and `user_behavior` tables were intentionally retained beca
 
 Current populated production content includes Quran tafsir/audio, hadiths, stories, articles, prophets, companions, battles, conquests, duas, scholars, children's content/games, tawasheeh, social-sync queues, and prayer notification history.
 
-The Quran catalog tables `quran_surahs`, `quran_ayahs`, and `quran_reciters` currently contain no rows. The application deliberately uses a DB-first/API-fallback architecture for those resources; this is a data-population gap, not a build failure.
+The production Quran catalog is populated and repaired: `quran_surahs` = 114, `quran_ayahs` = 6236, `quran_reciters` = 7, `quran_audio` = 798, and `quran_tafsir` = 6236. The surah catalog now has canonical `ayahs_count` metadata totaling 6236, with no zero/null counts. Quran audio covers all 114 surahs for all 7 current reciters, with no duplicate `(surah_id, reciter_id)` pairs.
 
 ## Mobile
 
@@ -69,9 +67,14 @@ Capacitor runtime packages are currently on major version 7, with Android/iOS na
 
 ## Deployment
 
-Vercel production deployment for the current audited HEAD is **not certified** yet. Vercel is currently rejecting new deployments at the account/project build-rate limit. A previous production deployment of the older `b4d14fd...` commit was READY, but that does not certify the current HEAD.
+Vercel's last READY production deployment is still commit `2dec7d45c57a01927f10b499ca405e6b07c31739`; the current `main` repair commits have been pushed to GitHub but are not yet present in a newer READY deployment. The latest Vercel runtime-error query returned no runtime errors in the selected 24-hour window.
 
-The latest Vercel runtime-error query returned no runtime errors in the selected 24-hour window; this is not a substitute for a successful deployment of the current HEAD.
+## Canonical Auth and Quran invariants
+
+- Supabase Auth `site_url` is locked in repository configuration to `https://zikrmediaofficial.vercel.app/`.
+- The approved redirect allowlist is exactly `com.zikr.app://auth/callback`, `http://localhost:3000/**`, and `https://zikrmediaofficial.vercel.app/auth/callback`.
+- Deployment/auth verification scripts fail on redirect-list drift.
+- Production client code uses the canonical ZIKR origin instead of a Vercel deployment alias.
 
 ## Rules for future changes
 
