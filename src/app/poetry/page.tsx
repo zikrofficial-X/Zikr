@@ -273,7 +273,7 @@ export default function PoetryPage() {
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-brand-gold">الشعر الإسلامي</h1>
         <p className="text-brand-cream/70 max-w-2xl mx-auto leading-relaxed">
-          استمتع بروائع ال��عر الإسلامي، وشارك قصائدك مع المجتمع
+          استمتع بروائع الشعر الإسلامي، وشارك قصائدك مع المجتمع
         </p>
       </div>
 
