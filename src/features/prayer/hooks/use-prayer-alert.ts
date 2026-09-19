@@ -11,7 +11,7 @@ import {
   showPrayerNotification,
   requestNotificationPermission,
 } from "@/features/notifications/services/notifications";
-import type { NotificationPermission as PermResult } from "@/lib/services/notifications";
+import type { NotificationPermission as PermResult } from "@/features/notifications/services/notifications";
 import {
   registerPrayerPushSubscription,
   type PushSubscriptionRegistrationResult,
