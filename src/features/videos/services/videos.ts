@@ -15,8 +15,6 @@ export async function getVideoCategories(): Promise<VideoCategory[]> {
 
   if (rows.length === 0) return FALLBACK_VIDEO_CATEGORIES;
 
-  if (rows.length === 0) return fallback.slice(0, safeLimit);
-
   return rows.map(r => ({
     id: r.id as string,
     nameAr: r.name_ar as string,
@@ -51,6 +49,8 @@ export async function getVideos(
     console.error("[content] Failed to fetch videos:", error);
     return [];
   });
+
+  if (rows.length === 0) return fallback.slice(0, safeLimit);
 
   return rows.map(r => ({
     id: r.id as string,
