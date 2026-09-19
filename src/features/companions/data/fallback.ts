@@ -1,3 +1,5 @@
+import type { Companion } from '@/features/companions/types/companions';
+
 export const COMPANIONS: Companion[] = [
   {
     id: '1',
