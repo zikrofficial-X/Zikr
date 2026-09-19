@@ -6,7 +6,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SectionHeader } from '@/components/ui/section-header';
-import type { QuranTafsirSource } from '@/features/quran/services/quran-server';
+import type { QuranTafsirSource } from '@/features/quran/types/quran';
 
 const FALLBACK_SOURCE: QuranTafsirSource = {
   author: 'التفسير الجلالين',
