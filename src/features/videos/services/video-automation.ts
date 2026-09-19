@@ -4,15 +4,9 @@ import type { VideoGenerationRequest } from '@/lib/types/video';
 
 export type { VideoGenerationRequest };
 
-function pickEnv(...bases: string[]): string | undefined {
-  const suffixes = ['', '_2', '_3', '_19', '_20', '_22'];
-  for (const base of bases) {
-    for (const suffix of suffixes) {
-      const value = process.env[`${base}${suffix}`];
-      if (value) return value;
-    }
-  }
-  return undefined;
+function getEnv(name: string): string | undefined {
+  const value = process.env[name];
+  return value?.trim() || undefined;
 }
 
 function contentObject(request: VideoGenerationRequest): Record<string, unknown> {
@@ -280,9 +274,9 @@ function assertRemoteVideoUrl(videoUrl: string, target: string): string {
 }
 
 async function getYoutubeAccessToken(): Promise<string | null> {
-  const clientId = pickEnv('YOUTUBE_CLIENT_ID', 'GOOGLE_CLIENT_ID');
-  const clientSecret = pickEnv('YOUTUBE_CLIENT_SECRET', 'GOOGLE_CLIENT_SECRET');
-  const refreshToken = pickEnv('YOUTUBE_REFRESH_TOKEN');
+  const clientId = getEnv('YOUTUBE_CLIENT_ID');
+  const clientSecret = getEnv('YOUTUBE_CLIENT_SECRET');
+  const refreshToken = getEnv('YOUTUBE_REFRESH_TOKEN');
   if (!clientId || !clientSecret || !refreshToken) return null;
 
   try {
@@ -378,7 +372,7 @@ export async function publishToFacebook(
   void videoId;
   try {
     const env = getServerEnv();
-    const pageAccessToken = env.FACEBOOK_PAGE_ACCESS_TOKEN || pickEnv('FACEBOOK_PAGE_ACCESS_TOKEN');
+    const pageAccessToken = env.FACEBOOK_PAGE_ACCESS_TOKEN;
     if (!pageAccessToken || !pageId) return null;
     const source = assertRemoteVideoUrl(videoUrl, 'Facebook');
     const version = env.FACEBOOK_GRAPH_API_VERSION || 'v26.0';
@@ -442,14 +436,14 @@ export async function getVideoPublishingConfig() {
       pickEnv('YOUTUBE_REFRESH_TOKEN'),
   );
   const facebookEnabled = Boolean(
-    pickEnv('FACEBOOK_PAGE_ACCESS_TOKEN') && pickEnv('FACEBOOK_PAGE_ID'),
+    pickEnv('FACEBOOK_PAGE_ACCESS_TOKEN') && getEnv('FACEBOOK_PAGE_ID'),
   );
   return {
     youtubeEnabled,
-    youtubeChannelId: pickEnv('YOUTUBE_CHANNEL_ID'),
+    youtubeChannelId: getEnv('YOUTUBE_CHANNEL_ID'),
     facebookEnabled,
     facebookPageId: pickEnv('FACEBOOK_PAGE_ID'),
-    autoPublish: pickEnv('VIDEO_AUTO_PUBLISH')?.toLowerCase() !== 'false',
-    publishSchedule: pickEnv('VIDEO_PUBLISH_SCHEDULE'),
+    autoPublish: getEnv('VIDEO_AUTO_PUBLISH')?.toLowerCase() !== 'false',
+    publishSchedule: getEnv('VIDEO_PUBLISH_SCHEDULE'),
   };
 }
