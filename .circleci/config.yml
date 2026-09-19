@@ -52,7 +52,9 @@ jobs:
             pnpm config set fetch-timeout 120000
             pnpm config set fetch-retry-mintimeout 20000
             pnpm config set fetch-retry-maxtimeout 120000
+            pnpm config set network-concurrency 8
             pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+          no_output_timeout: 20m
       - run:
           name: Verify installed toolchain
           shell: /bin/bash
@@ -95,6 +97,7 @@ jobs:
             pnpm config set fetch-retry-mintimeout 20000
             pnpm config set fetch-retry-maxtimeout 120000
             pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+          no_output_timeout: 20m
       - run:
           name: Validate production smoke environment
           shell: /bin/bash
@@ -143,6 +146,7 @@ jobs:
             pnpm config set fetch-retry-mintimeout 20000
             pnpm config set fetch-retry-maxtimeout 120000
             pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+          no_output_timeout: 20m
       - run:
           name: Production dependency audit
           shell: /bin/bash
@@ -211,6 +215,7 @@ jobs:
             pnpm config set fetch-retry-mintimeout 20000
             pnpm config set fetch-retry-maxtimeout 120000
             pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+          no_output_timeout: 20m
       - run:
           name: Install FFmpeg and Arabic fonts
           shell: /bin/bash
@@ -268,6 +273,7 @@ jobs:
             pnpm config set fetch-retry-mintimeout 20000
             pnpm config set fetch-retry-maxtimeout 120000
             pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+          no_output_timeout: 20m
       - run:
           name: Validate Quran audio import configuration
           shell: /bin/bash
@@ -337,6 +343,7 @@ jobs:
             pnpm config set fetch-retry-mintimeout 20000
             pnpm config set fetch-retry-maxtimeout 120000
             pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+          no_output_timeout: 20m
       - run:
           name: Build web assets and sync Capacitor
           shell: /bin/bash
