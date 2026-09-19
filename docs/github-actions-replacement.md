@@ -38,7 +38,7 @@ The repository now includes `.circleci/config.yml`. It performs the same CI veri
 4. Runs `pnpm verify`, which covers migrations checks, route/import checks, mobile readiness, lint, TypeScript, tests, and production build.
 5. Uses a lockfile-keyed pnpm cache only to reduce setup time.
 
-To enable it, create or log into a CircleCI account, choose the GitHub repository `mohamedalaa7785-cpu/Zikr`, and let CircleCI read the committed `.circleci/config.yml`. No application code or Supabase secret is required for this CI-only job. CircleCI’s official pricing currently lists a Free plan with 30,000 credits per month; qualifying open-source projects may receive a larger open-source allowance. Confirm the account’s displayed allowance before relying on high-frequency runs.
+To enable it, create or log into a CircleCI account, choose the GitHub repository `Zikrmediaofficial/Zikr`, and let CircleCI read the committed `.circleci/config.yml`. No application code or Supabase secret is required for this CI-only job. CircleCI’s official pricing currently lists a Free plan with 30,000 credits per month; qualifying open-source projects may receive a larger open-source allowance. Confirm the account’s displayed allowance before relying on high-frequency runs.
 
 ## Does the replacement do the same job?
 
