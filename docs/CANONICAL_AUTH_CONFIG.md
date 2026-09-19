@@ -6,7 +6,7 @@ This file is the operator contract for the production Authentication → URL Con
 
 **Site URL**
 
-`https://zikrmediaofficial.vercel.app/`
+`https://zikrmediaofficial.vercel.app`
 
 **Redirect URLs — exactly three**
 
