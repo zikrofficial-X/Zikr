@@ -1,3 +1,5 @@
+import type { Battle } from "@/features/battles/types/battles";
+
 export const ISLAMIC_BATTLES: Battle[] = [
   {
     id: '1',
