@@ -12,27 +12,21 @@ The following environment variables are required for the application to function
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | The public anonymous key for your Supabase project.                         | Public   |
 | `NEXT_PUBLIC_SITE_URL`          | The public URL of the deployed site.                                        | Public   |
 | `SUPABASE_SERVICE_ROLE_KEY`     | The Supabase service role key, used for server-side operations.             | Server   |
-| `DATABASE_URL`                  | The connection string for the PostgreSQL database.                          | Server   |
 | `AUTH_CALLBACK_URL`             | OAuth callback URL. Use the Supabase provider callback (`https://eydxvcamhjhajxjrsgym.supabase.co/auth/v1/callback`) for provider registration, or the app callback (`${NEXT_PUBLIC_SITE_URL}/auth/callback`) for app redirects. | Server   |
 
 ## Optional Integration Environment Variables
 
-The following environment variables are optional and are used for integrating with external services. Hadith reads Supabase first and uses the configured external provider only when the database is unavailable. File uploads use the Supabase Storage buckets configured in `supabase/config.toml`; no AWS S3 variables are required.
+The following environment variables are optional and are used for integrating with external services. Hadith reads Supabase first and uses the configured Ummah-compatible provider only when the database is unavailable. File uploads use the Supabase Storage buckets configured in `supabase/config.toml`; no AWS S3 variables are required.
 
 | Variable Name             | Description                                                                 | Type     |
 | :------------------------ | :-------------------------------------------------------------------------- | :------- |
 | `GEMINI_API_KEY`                | API key for Google Gemini services.                                         | Server   |
 | `GEMINI_MODEL`                  | Optional Gemini model override (recommended: `gemini-2.5-flash`).           | Server   |
-| `QURAN_API_BASE_URL`            | Base URL for the Quran API.                                                 | Server   |
-| `QURAN_AUDIO_CDN_URL`           | CDN URL for Quran audio files.                                              | Server   |
 | `HADITH_API_BASE_URL`          | Base URL for the Hadith API; defaults to `https://ummahapi.com/api/hadith` and can be overridden with a provider exposing the configured contract. | Server   |
 | `YOUTUBE_API_KEY`               | API key for YouTube services.                                               | Server   |
 | `YOUTUBE_CHANNEL_ID`            | YouTube channel ID.                                                         | Server   |
-| `YOUTUBE_PLAYLIST_ID`           | YouTube playlist ID.                                                        | Server   |
-| `GOOGLE_CLIENT_ID`               | Google OAuth client ID.                                                     | Server   |
-| `GOOGLE_CLIENT_SECRET`           | Google OAuth client secret. Keep secret.                                    | Server   |
-| `YOUTUBE_CLIENT_ID`              | OAuth client ID used for YouTube uploads; falls back to `GOOGLE_CLIENT_ID`. | Server   |
-| `YOUTUBE_CLIENT_SECRET`          | OAuth client secret used for YouTube uploads; falls back to `GOOGLE_CLIENT_SECRET`. | Server   |
+| `YOUTUBE_CLIENT_ID`              | OAuth client ID used for YouTube uploads.                                   | Server   |
+| `YOUTUBE_CLIENT_SECRET`          | OAuth client secret used for YouTube uploads. Keep secret.                  | Server   |
 | `YOUTUBE_REFRESH_TOKEN`          | Long-lived OAuth refresh token granted with the `youtube.upload` scope.     | Server   |
 | `FACEBOOK_PAGE_ID`               | Facebook Page ID that receives uploaded videos and Reels.                   | Server   |
 | `FACEBOOK_PAGE_ACCESS_TOKEN`     | Page access token with the Meta Page publishing permissions.                | Server   |
@@ -52,7 +46,7 @@ Run the deployment environment check before shipping a release:
 pnpm deploy:check
 ```
 
-The command validates required runtime variables, URL shape, Supabase REST reachability, optional YouTube reachability, and common `DATABASE_URL` formatting mistakes without printing secret values.
+The command validates required runtime variables, URL shape, Supabase REST reachability, optional YouTube reachability, and common retired-variable mistakes without printing secret values.
 
 > Security note: never commit real Supabase service-role keys, database URLs, Gemini keys, YouTube keys, or Google OAuth secrets. If any secret is shared in chat or logs, rotate it in the provider dashboard before deploying.
 
