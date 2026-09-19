@@ -9,7 +9,7 @@ const FACEBOOK_PAGE_ID = Deno.env.get('FACEBOOK_PAGE_ID') ?? ''
 const FACEBOOK_PAGE_ACCESS_TOKEN = Deno.env.get('FACEBOOK_PAGE_ACCESS_TOKEN') ?? ''
 type JsonObject = Record<string, unknown>;
 
-const META_GRAPH_API_VERSION = Deno.env.get('META_GRAPH_API_VERSION') ?? ''
+const FACEBOOK_GRAPH_API_VERSION = Deno.env.get('FACEBOOK_GRAPH_API_VERSION') ?? ''
 const MEDIA_BUCKET = Deno.env.get('YOUTUBE_FACEBOOK_MEDIA_BUCKET') ?? 'youtube-facebook-media'
 const BATCH_SIZE = Math.max(1, Math.min(10, Number(Deno.env.get('SOCIAL_SYNC_BATCH_SIZE') ?? '3')))
 const MAX_DISCOVERY_PAGES_PER_RUN = Math.max(1, Math.min(10, Number(Deno.env.get('SOCIAL_SYNC_DISCOVERY_PAGES_PER_RUN') ?? '5')))
@@ -51,11 +51,11 @@ function requireConfig() {
     ['YOUTUBE_CHANNEL_ID', YOUTUBE_CHANNEL_ID],
     ['FACEBOOK_PAGE_ID', FACEBOOK_PAGE_ID],
     ['FACEBOOK_PAGE_ACCESS_TOKEN', FACEBOOK_PAGE_ACCESS_TOKEN],
-    ['META_GRAPH_API_VERSION', META_GRAPH_API_VERSION],
+    ['FACEBOOK_GRAPH_API_VERSION', FACEBOOK_GRAPH_API_VERSION],
   ].filter(([, value]) => !value).map(([name]) => name)
   if (missing.length) throw new Error(`Missing configuration: ${missing.join(', ')}`)
-  if (!/^v\d+\.\d+$/.test(META_GRAPH_API_VERSION)) {
-    throw new Error(`Invalid Meta Graph API version: ${META_GRAPH_API_VERSION}`)
+  if (!/^v\d+\.\d+$/.test(FACEBOOK_GRAPH_API_VERSION)) {
+    throw new Error(`Invalid Meta Graph API version: ${FACEBOOK_GRAPH_API_VERSION}`)
   }
 }
 
@@ -423,7 +423,7 @@ async function publishFacebookVideo(job: JsonObject) {
   form.set('published', 'true')
   form.set('access_token', FACEBOOK_PAGE_ACCESS_TOKEN)
 
-  const response = await fetch(`https://graph.facebook.com/${META_GRAPH_API_VERSION}/${FACEBOOK_PAGE_ID}/videos`, {
+  const response = await fetch(`https://graph.facebook.com/${FACEBOOK_GRAPH_API_VERSION}/${FACEBOOK_PAGE_ID}/videos`, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: form,
