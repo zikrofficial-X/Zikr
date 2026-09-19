@@ -60,6 +60,11 @@ ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS summary_ar TE
 ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS summary_en TEXT;
 ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS age_min INTEGER;
 ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS age_max INTEGER;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS featured BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS youtube_video_id TEXT;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS facebook_share_enabled BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS likes INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS shares INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE IF EXISTS public.scholars ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
 
 -- Add indexes if missing (guarded: only if the target table/column exists)
