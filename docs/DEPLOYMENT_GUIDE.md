@@ -24,7 +24,7 @@ Run exactly one database command before deploying:
 pnpm db:migrate-supabase
 ```
 
-Do not use Drizzle `db:push` for deployment; it is intentionally not defined because it would not apply the full Supabase migration history, including RLS policies.
+Do not use any parallel ORM schema-push command for deployment; the canonical Supabase migration chain must remain authoritative.
 
 ## 2. Vercel Environment Variables
 
