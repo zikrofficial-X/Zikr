@@ -1,20 +1,25 @@
 # ZIKR Production Scheduling
 
-ZIKR has one authoritative automatic scheduler per production workload.
+ZIKR has one authoritative execution owner per production workload.
 
 | Workload | Authoritative execution owner | Cadence | Safety boundary |
 |---|---|---:|---|
 | Prayer Web Push planning and delivery | Supabase `pg_cron` → `prayer-notification-worker` | Every minute | Private scheduler token, per-device uniqueness, atomic claims, bounded retries, invalid-subscription deactivation. |
 | Client-local azan and reminder sounds | Browser / native client | While active | Local/offline fallback; it does not create server delivery rows. |
-| Video generation queue | GitHub `Background Jobs` → `pnpm background:jobs` → template/FFmpeg worker | Manual recovery | Persisted queue, deterministic renderer, Supabase Storage, server-side service credentials. |
-| Social publishing queue | GitHub `Background Jobs` → `pnpm background:jobs` → social publisher | Manual recovery | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
-| Repository verification | Vercel build gate | Every deployment | `pnpm verify` must pass before the deployment is published. |
+| Video generation queue | CircleCI `background-jobs` → `pnpm background:jobs` → template/FFmpeg worker | Manual pipeline parameter | Persisted queue, deterministic renderer, Supabase Storage, protected CircleCI variables. |
+| Social publishing queue | CircleCI `background-jobs` → `pnpm background:jobs` → social publisher | Manual pipeline parameter | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
+| Quran audio import | CircleCI `quran-audio-import` → canonical importer | Manual pipeline parameter | Storage quota gate, service-role secret, bounded concurrency, no GitHub runner. |
+| Repository verification | CircleCI `ci-check` + Vercel build gate | Source changes / every deployment | `pnpm verify` is the canonical validation command. |
+| Production smoke | CircleCI `production-smoke` | Manual pipeline parameter | Public HTTP checks only. |
+| Security audit | CircleCI `security-audit` | Manual pipeline parameter | No production publishing credentials required. |
 
 ## Scheduler ownership
 
-The Supabase migration `20260915004110_retire_vercel_video_processing_cron.sql` explicitly retires the legacy `zikr-video-processing` cron job. This prevents the old Vercel route from competing with the GitHub worker.
+The Supabase migration `20260915004110_retire_vercel_video_processing_cron.sql` retires the legacy `zikr-video-processing` cron job. The old Vercel route must not become an alternate scheduler.
 
-The GitHub `Background Jobs` workflow is the canonical manual recovery worker for video and social processing while hosted runners are unavailable. Do not add a second GitHub schedule, Vercel Cron job, or Supabase video cron.
+GitHub Actions are retired from the active repository. Do not recreate `.github/workflows/`.
+
+Supabase owns minute-level prayer scheduling. CircleCI is used as an external CI/recovery execution environment and does not become an automatic production scheduler unless explicitly configured through a deliberate CircleCI scheduled pipeline.
 
 ## Prayer Web Push lifecycle
 
@@ -30,7 +35,7 @@ Each delivery uses a unique subscription/prayer/time key and is claimed before s
 video_generation_requests
         │
         ▼
-GitHub Background Jobs (manual recovery)
+CircleCI background-jobs (manual parameter)
         │
         ├── seed queue items
         ├── FFmpeg template renderer
@@ -41,15 +46,28 @@ GitHub Background Jobs (manual recovery)
                     └── Facebook / Reels publish
 ```
 
-Production video generation is intentionally locked to the free deterministic FFmpeg renderer. HeyGen fields/migrations remain only for historical compatibility and must not become an alternate production execution path.
+Production video generation uses the deterministic FFmpeg template renderer. HeyGen fields/migrations remain only for historical compatibility and must not become an alternate production execution path.
 
-The worker requires a direct HTTPS media URL for social publication and rejects YouTube watch URLs as media sources. Social queue items record platform-level success/failure and retry only the unfinished platforms.
+The worker requires a direct HTTPS media URL for social publication and rejects YouTube watch URLs as media sources. Social queue items record platform-level success/failure and retry only unfinished platforms.
 
-## GitHub runner recovery
+## Manual CircleCI operations
 
-`Background Jobs` is manual-only while GitHub-hosted runners are unavailable; it has no production schedule. Use it only for deliberate recovery after runner access is restored. `Continuous Integration` remains manual-only when hosted runners are restricted for the account.
+The CircleCI configuration is parameterized so operational jobs are **opt-in** and do not run on every source change.
 
-When the GitHub runner cannot start, do not add an alternate scheduler. Run `pnpm verify` locally or rely on the Vercel deployment gate for repository validation, then process the queue once runner access is restored.
+Pipeline parameters:
+
+- `run_background_jobs=true` with `background_target=all|videos|social`
+- `run_quran_audio_import=true`
+- `run_production_smoke=true`
+- `run_security_audit=true`
+
+These parameters are submitted through the CircleCI pipeline trigger/API. The ordinary source-change workflow runs only `ci-check`; Android release work remains restricted to release branches/tags.
+
+## Safety
+
+Production credentials belong only in protected CircleCI project/context variables, Supabase secrets, or Vercel secrets as appropriate. Never commit `SUPABASE_SERVICE_ROLE_KEY`, provider access tokens, OAuth refresh tokens, Android signing keys, or scheduler secrets.
+
+Do not create a second scheduler to compensate for a temporary provider outage. Inspect the queue state and error metadata, then execute the appropriate CircleCI recovery pipeline once.
 
 ## Supabase Preview integration
 
