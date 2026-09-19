@@ -28,11 +28,9 @@ export function buildOAuthRedirectUri(
 /**
  * Keep production auth on one registered, user-facing origin.
  *
- * Supabase OAuth is sensitive to the exact redirect URL. On Vercel, users can
- * reach the same deployment through generated preview/deployment hosts; if the
- * OAuth callback uses one of those hosts, the session can appear to "jump" to a
- * different link. Localhost is preserved for development; all non-local hosts
- * are pinned to the canonical public origin.
+ * Supabase OAuth uses the exact configured redirect URL. Vercel exposes several
+ * aliases for the same deployment, but those aliases are not the public OAuth
+ * origin for ZIKR. Localhost remains supported for development.
  */
 export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
   if (!baseUrl) return PRODUCTION_URL;
