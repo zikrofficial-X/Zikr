@@ -11,7 +11,7 @@ const InstallPrompt = dynamic(
   () => import('./install-prompt').then((module) => module.InstallPrompt),
 );
 const OfflineIndicator = dynamic(
-  () => import('../offline-indicator').then((module) => module.OfflineIndicator),
+  () => import('@/features/offline/components/offline-indicator').then((module) => module.OfflineIndicator),
 );
 const NotificationPermissionBanner = dynamic(
   () =>
