@@ -71,7 +71,8 @@ Vercel's last READY production deployment is still commit `2dec7d45c57a01927f10b
 
 ## Canonical Quran storage
 
-- Quran text is runtime-local to ZIKR: `quran_surahs` (114), `quran_ayahs` (6236), `quran_tafsir` (6236), and `quran_reciters` (7).
+- Quran text is bundled and versioned in Git at `public/quran/mushaf-hafs.json` (114 surahs / 6236 ayahs), with `public/quran/manifest.json` and `public/quran/NOTICE.md` for integrity and attribution.
+- The Quran reader reads the Git-tracked corpus first and uses Supabase `quran_surahs/quran_ayahs` only as a compatibility fallback.
 - Quran runtime services no longer depend on Al Quran Cloud or any other external Quran API.
 - `quran_audio` is modeled as 798 deterministic Supabase Storage targets: one whole-surah track for each of 114 surahs × 7 current reciters.
 - Bucket: `quran-audio` (public read, controlled writes).
