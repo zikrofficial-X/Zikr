@@ -16,11 +16,11 @@ Vercel production must build from the GitHub `main` branch. The repository is th
 
 ## Current verified state
 
-Repository `main` currently points to:
+The current repository `main` commit is:
 
-`4579077d73652992b3955102522f77bbc7640d1e`
+`f2b85f939f63987a356811992173d6e8d998e83c`
 
-The current repair commits are not yet represented by a newer READY Vercel production deployment because Vercel is currently returning a deployment rate-limit condition. The repository must therefore remain the canonical source until a fresh production deployment is successfully built and verified against the intended commit.
+A fresh production deployment has not been verified for this repair set because Vercel is currently returning a deployment rate-limit condition. Until a new deployment is successfully built and verified against this commit, the repository remains the canonical source.
 
 ## Runtime baseline
 
