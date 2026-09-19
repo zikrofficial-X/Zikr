@@ -1,85 +1,80 @@
-# GitHub Actions Billing Lock and Free CI Replacement
+# ZIKR — GitHub Actions retirement and CircleCI migration
 
-## Executive conclusion
+## Current state
 
-The repository workflows are not failing because of the ZIKR YAML or verification commands. The latest GitHub runs fail during runner startup, before any job step begins, which is consistent with the account-level message previously observed: `The job was not started because your account is locked due to a billing issue.` A workflow file cannot bypass an account lock.
+GitHub Actions has been removed from the active ZIKR repository because the account-level GitHub-hosted runner billing restriction was preventing workflow startup.
 
-For ZIKR, the safest free architecture is **hybrid**. Vercel continues to execute `pnpm verify` during deployments, Supabase remains the production scheduler for privileged background work, and CircleCI can run the same CI-only verification command independently of GitHub Actions. The new `.circleci/config.yml` intentionally contains no production secrets.
+The active architecture is now:
 
-## What the lock means
+- **GitHub:** source control, pull requests, releases, and repository metadata.
+- **CircleCI:** external CI and controlled recovery/build jobs.
+- **Vercel:** production web deployment and deployment-time build validation.
+- **Supabase:** production database, Edge Functions, and minute-level scheduled jobs through `pg_cron`.
 
-GitHub’s official billing documentation says standard GitHub-hosted runners are free and unlimited for public repositories, but it also says usage can be blocked when an account has exhausted quota without a valid payment method. The repository is public, so the lock is not explained by ordinary public-runner pricing; it is an account-level billing/eligibility state that must be inspected in the account billing UI. The CLI can show failed runs but does not expose the private billing case details.
+The `.github/workflows/` directory is intentionally absent from `main`.
 
-The run evidence is distinctive: jobs finish in a few seconds, have no recorded steps, and are marked failed/startup-failed. That means the runner was not provisioned. It is not evidence of a failed `pnpm install`, TypeScript error, test failure, or Supabase query.
+## What was migrated
 
-## How to resolve GitHub Actions directly
+The previous repository workflows were converted into CircleCI jobs in `.circleci/config.yml`:
 
-Open [GitHub Billing and plans](https://github.com/settings/billing) while signed into the owner account, then review the following areas in order:
-
-| Area | What to inspect | Corrective action |
+| Former GitHub workflow | CircleCI replacement | Trigger |
 |---|---|---|
-| Payment method and invoices | Failed payment, expired card, unpaid balance, or payment verification | Update the payment method and settle any outstanding invoice or account notice |
-| Actions usage | Included minutes, artifact storage, cache storage, and any larger-runner usage | Remove unnecessary artifacts/caches and wait for usage/billing state to refresh |
-| Budgets | A zero or restrictive Actions budget can stop metered use | Set a budget that allows the intended usage, or keep usage within the public-repository free policy |
-| Repository settings | Actions disabled, restricted, or policy-limited | Confirm Actions is enabled and standard GitHub-hosted runners are allowed |
-| Account notices | A banner or support case may require manual review | Follow the notice and contact GitHub Support if the lock remains after billing is corrected |
+| Continuous Integration | `ci-check` | Normal source-change pipeline |
+| Background Jobs | `background-jobs` | Explicit pipeline parameter |
+| Import Quran Audio | `quran-audio-import` | Explicit pipeline parameter |
+| Android Build | `android-rebuild` | Release branch/tag only |
+| Production Smoke Test | `production-smoke` | Explicit pipeline parameter |
+| Security Audit | `security-audit` | Explicit pipeline parameter |
 
-Do not add a card merely to test randomly. First inspect the exact invoice, payment, quota, and budget message. For a public repository using standard Linux runners, the expected target is ordinary public-repository runner eligibility, not a paid larger runner.
+No production secret is required for the standard `ci-check` job.
 
-After correcting the account state, manually run the `Continuous Integration` workflow from the Actions tab. Then run `Background Jobs` only after confirming all required repository secrets exist. The workflow files currently use `workflow_dispatch` deliberately, so they will not generate recurring failures while the account remains locked.
+## Operational controls
 
-## Free replacement now added
+Operational jobs are **disabled by default** so a normal push does not unexpectedly start expensive or privileged workloads.
 
-The repository now includes `.circleci/config.yml`. It performs the same CI verification command as `.github/workflows/ci.yml`:
+Parameters exposed by CircleCI:
 
-1. Uses a Node 22.13-compatible CircleCI Linux container.
-2. Installs pnpm 9.15.0.
-3. Runs `pnpm install --frozen-lockfile`.
-4. Runs `pnpm verify`, which covers migrations checks, route/import checks, mobile readiness, lint, TypeScript, tests, and production build.
-5. Uses a lockfile-keyed pnpm cache only to reduce setup time.
+```text
+run_background_jobs=false
+background_target=all
+run_quran_audio_import=false
+run_production_smoke=false
+run_security_audit=false
+```
 
-To enable it, create or log into a CircleCI account, choose the GitHub repository `Zikrmediaofficial/Zikr`, and let CircleCI read the committed `.circleci/config.yml`. No application code or Supabase secret is required for this CI-only job. CircleCI’s official pricing currently lists a Free plan with 30,000 credits per month; qualifying open-source projects may receive a larger open-source allowance. Confirm the account’s displayed allowance before relying on high-frequency runs.
+To run a recovery job, trigger a CircleCI pipeline with the required parameter set. Only protected CircleCI project/context variables should contain service-role keys, OAuth credentials, provider access tokens, or signing material.
 
-## Does the replacement do the same job?
+## Production ownership
 
-| Capability | GitHub Actions CI | CircleCI config added | Equivalent? |
-|---|---|---|---|
-| Checkout source | Yes | Yes | Yes |
-| Node/pnpm setup | Node 22 + pnpm 9.15.0 | Node 22.13 image + pnpm 9.15.0 | Yes |
-| Frozen dependency install | Yes | Yes | Yes |
-| Full `pnpm verify` | Yes | Yes | Yes |
-| GitHub Checks status | Native | CircleCI status/check integration | Functionally, after CircleCI GitHub integration is enabled |
-| Pull-request gating | GitHub branch rules | Configure CircleCI required status check in GitHub | Yes, after configuration |
-| Production secrets | Not needed for CI workflow | Not included | Safer |
-| Scheduled privileged background jobs | Previously attempted in GitHub Actions | Not moved | Intentionally no |
-| Supabase prayer/video production jobs | Not a safe CI responsibility | Remain in Supabase cron/Edge Functions | Yes, existing production path |
+Prayer Web Push remains owned by Supabase `pg_cron` and the `prayer-notification-worker` Edge Function.
 
-## Why background jobs should not be moved into the free CI replacement
+The retired `zikr-video-processing` Supabase cron must not be recreated. Video/social queue recovery is executed through CircleCI when deliberately triggered.
 
-The background workflow requires a Supabase service-role key and third-party publishing credentials. CI is optimized for finite build/test jobs, not guaranteed production scheduling. The current ZIKR production design already uses Supabase cron and the deployed Edge Function for prayer notifications and video processing. Moving those secrets into a second hosted CI provider would increase exposure and create duplicate scheduling risk. CircleCI should therefore be used only for verification unless a separate, security-reviewed migration is explicitly requested.
+The Vercel build gate remains the deployment validation path. The CircleCI `ci-check` provides an independent repository verification path.
 
-## Other options
+## Security
 
-A self-hosted GitHub runner on a trusted machine can run the existing GitHub workflow without GitHub-hosted runner capacity, but it requires an always-available machine and operational maintenance. GitHub warns that self-hosted runners are risky for public repositories because fork pull requests can execute code on the runner; therefore it should not be used for untrusted pull requests without strict approval and isolation.
+Secrets are never committed to the repository. CircleCI receives protected values through its project/context environment-variable store; the committed configuration contains only variable names and non-sensitive defaults.
 
-Vercel is already the strongest no-new-service option for ZIKR because it runs `pnpm verify` during deployment and has the production environment. It is not a complete replacement for a GitHub Checks provider because it reports deployment/build status rather than a normal GitHub Actions workflow status. CircleCI fills that CI-status gap without moving privileged jobs.
+Android release signing uses protected CircleCI variables and removes generated signing files at job completion. The repository contains no release keystore.
 
-Cloudflare Workers Free is suitable for small HTTP/cron functions, but it is not a drop-in Linux environment for `pnpm verify`. Rewriting ZIKR’s background jobs there would be a separate architecture project and is not necessary while Supabase cron is healthy.
+## Billing
 
-## References
+Removing GitHub workflows prevents new repository workflow executions from consuming GitHub-hosted runner capacity. It does **not** erase historical GitHub Actions usage, invoices, or an account-level billing restriction.
 
-[1]: https://docs.github.com/en/actions/concepts/billing-and-usage "GitHub Actions billing and usage"
+CircleCI has a separate credit/quota system. Keep operational jobs opt-in and review the account's displayed allowance before enabling high-frequency execution.
 
-[2]: https://docs.github.com/billing/managing-billing-for-github-actions/about-billing-for-github-actions "About billing for GitHub Actions"
+## Validation checklist
 
-[3]: https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job "Choosing a runner for a job"
+1. Confirm GitHub `.github/workflows/` is absent.
+2. Confirm CircleCI reads `.circleci/config.yml`.
+3. Confirm the CircleCI `ci-check` status appears on the repository commit.
+4. Confirm protected secrets exist in CircleCI before enabling background or release jobs.
+5. Keep Supabase as the only automatic owner for minute-level prayer scheduling.
+6. Do not reintroduce GitHub Actions workflows unless the execution model is intentionally changed and reviewed.
 
-[4]: https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners "Adding self-hosted runners"
+## Historical records
 
-[5]: https://github.blog/changelog/2025-12-16-coming-soon-simpler-pricing-and-a-better-experience-for-github-actions/ "GitHub Actions pricing update and postponement"
+Older audit reports and migration notes may still mention GitHub Actions. Those files are historical evidence and are not active execution configuration.
 
-[6]: https://circleci.com/pricing/ "CircleCI pricing"
-
-[7]: https://circleci.com/docs/guides/plans-pricing/plan-overview/ "CircleCI plan overview"
-
-[8]: https://developers.cloudflare.com/workers/platform/pricing/ "Cloudflare Workers pricing"
+**Last updated:** September 19, 2026
