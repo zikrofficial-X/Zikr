@@ -100,8 +100,7 @@ if (fs.existsSync(migrationsDir)) {
   }
 }
 
-const routes = read("src/app");
-if (!routes) failures.push("src/app is missing");
+if (!exists("src/app")) failures.push("src/app is missing");
 if (!exists("src/features")) failures.push("src/features is missing");
 
 for (const historicalDoc of [
