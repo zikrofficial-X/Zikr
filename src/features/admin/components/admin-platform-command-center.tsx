@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAdminSnapshot } from "@/lib/services/admin-platform";
+import { getAdminSnapshot } from "@/features/admin/services/platform";
 import { deleteFailedVideoGenerationAction } from "@/app/admin/video-actions";
 
 const utilities = [
