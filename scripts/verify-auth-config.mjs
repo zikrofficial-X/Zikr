@@ -36,7 +36,7 @@ const configuredRedirects = redirectsMatch
   ? Array.from(redirectsMatch[1].matchAll(/"([^"]+)"/g), match => match[1])
   : [];
 
-if (siteUrlMatch?.[1] !== production + "/") {
+if (siteUrlMatch?.[1] !== production) {
   failures.push("supabase/config.toml: site_url is not the locked canonical production URL");
 }
 if (JSON.stringify(configuredRedirects) !== JSON.stringify(expectedRedirects)) {
