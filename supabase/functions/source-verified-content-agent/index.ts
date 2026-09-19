@@ -71,32 +71,6 @@ function parseItems(
     return [];
   }
 
-  if (source.parser_key === "alquran_cloud") {
-    const data = (payload as { data?: unknown }).data;
-    if (!Array.isArray(data)) return [];
-    return data.flatMap(entry => {
-      if (!entry || typeof entry !== "object") return [];
-      const row = entry as Record<string, unknown>;
-      const number = row.number;
-      if (typeof number !== "number" && typeof number !== "string") return [];
-      const externalId = `surah:${number}`;
-      const title = stringValue(row.name) ?? stringValue(row.englishName);
-      return [
-        {
-          externalId,
-          title,
-          body: null,
-          sourceUrl: `${source.base_url.replace(/\/$/, "")}/v1/surah/${number}`,
-          metadata: {
-            source: source.name,
-            retrievedAt,
-            rawType: "surah_catalog",
-          },
-        },
-      ];
-    });
-  }
-
   // API responses from providers requiring credentials are intentionally not
   // interpreted by a generic parser. A provider-specific parser must be added
   // and reviewed before enabling that source.
