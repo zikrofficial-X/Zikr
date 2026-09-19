@@ -68,18 +68,37 @@ async function loadLocalQuranCorpus(): Promise<LocalQuranRow[]> {
   return localCorpusPromise;
 }
 
+const BASMALA_PREFIXES = [
+  "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
+  "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
+];
+
+function getDisplayedLocalArabicText(row: LocalQuranRow): string {
+  let text = row.text_uthmani ?? row.text_ar;
+  if (row.ayah_number === 1 && row.surah_id !== 1 && row.surah_id !== 9) {
+    for (const prefix of BASMALA_PREFIXES) {
+      if (text.startsWith(prefix)) {
+        text = text.slice(prefix.length).trim();
+        break;
+      }
+    }
+  }
+  return text;
+}
+
 function mapLocalAyah(
   row: LocalQuranRow,
   locale: Locale,
 ): Ayah {
+  const displayArabic = getDisplayedLocalArabicText(row);
   return mapDbAyah(
     {
       id: row.id,
       surah_id: row.surah_id,
       ayah_number: row.ayah_number,
-      text_ar: row.text_ar,
+      text_ar: displayArabic,
       text_en: row.text_en,
-      text_uthmani: row.text_uthmani,
+      text_uthmani: displayArabic,
       text_simple: row.text_simple,
       page: row.page,
       juz: row.juz,
@@ -113,8 +132,9 @@ function getFallbackSurahs(locale: Locale): Surah[] {
 }
 
 /**
- * DB-First Quran Service (Server-Only)
- * This module interacts directly with Supabase REST API.
+ * Local-corpus-first Quran Service (Server-Only)
+ * The complete Quran corpus is tracked in Git and deployed with the app.
+ * Supabase remains a compatibility fallback for exceptional legacy states.
  */
 
 export async function getAllSurahsFromDb(
