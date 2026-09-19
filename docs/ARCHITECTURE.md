@@ -13,7 +13,7 @@ This document describes the **current canonical architecture**. Historical audit
 - **Package manager:** pnpm; `pnpm-lock.yaml` is the only lockfile
 - **Mobile:** Capacitor with Android and iOS projects
 - **Hosting:** Vercel
-- **Verification:** GitHub Actions quality gate plus deployment checks; Vercel also runs the repository verification command during deployments
+- **Verification:** Vercel deployment/build checks plus the external CI path configured outside GitHub Actions
 
 ## Canonical Directory Map
 
@@ -33,8 +33,8 @@ This document describes the **current canonical architecture**. Historical audit
 | `scripts/` | Deterministic verification, maintenance, migration, content, and release tooling |
 | `__tests__/` | Unit and integration tests |
 | `android/`, `ios/`, `mobile/` | Native projects and mobile build metadata |
-| `.github/workflows/` | CI, quality gates, scheduled background jobs, content sync, and release automation |
-| `.circleci/` | CircleCI configuration retained for the mobile/secondary CI pipeline |
+| `.github/` | Repository metadata only; GitHub Actions workflows are intentionally retired |
+| `.circleci/` | CircleCI configuration retained for secondary CI/recovery validation |
 | `docs/` | Current guides, operational documentation, audits, and historical records |
 
 ### Path ownership rules
@@ -116,3 +116,4 @@ All changes must leave the repository buildable and must not introduce a second 
 - Vercel deployment success and application-code correctness are separate checks.
 - External provider credentials (for example social publishing tokens) are runtime configuration, not source-code constants.
 - Supabase performance advisories about unused indexes are informational and require workload evidence before destructive index removal.
+- GitHub Actions workflows are intentionally absent from the active repository. Do not recreate them for CI, scheduling, releases, or background processing.
