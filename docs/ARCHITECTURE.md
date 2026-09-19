@@ -1,85 +1,118 @@
 # Zikr — Architecture Overview
 
-Islamic content platform built with Next.js (App Router) + Supabase.
-This is the canonical architecture reference; historical reports live in `docs/reports/`.
+ZIKR is an Islamic content and spiritual-tools platform built with Next.js App Router, TypeScript, Tailwind CSS, Supabase, and Capacitor.
+
+This document describes the **current canonical architecture**. Historical audit/release material is kept under `docs/` and must not be treated as live architecture.
 
 ## Stack
 
-- **Framework:** Next.js (App Router, TypeScript, Tailwind)
-- **Database:** Supabase (PostgreSQL, RLS, Storage, Auth)
-- **Database schema:** Supabase migrations (`supabase/migrations`) are the single source of truth.
-- **Package manager:** pnpm (single lockfile: `pnpm-lock.yaml`)
-- **Verification:** Vercel runs `pnpm verify` on every deployment; GitHub Actions retains manual-only verification and recovery workflows while hosted runners are billing-locked
-- **Hosting:** Vercel (`vercel.json`) with Supabase `pg_cron` and Edge Functions for production background scheduling
+- **Framework:** Next.js App Router + TypeScript + React
+- **UI:** Tailwind CSS + shared components
+- **Database/Auth/Storage:** Supabase (PostgreSQL, RLS, Storage, Auth, Edge Functions)
+- **Database source of truth:** `supabase/migrations/`
+- **Package manager:** pnpm; `pnpm-lock.yaml` is the only lockfile
+- **Mobile:** Capacitor with Android and iOS projects
+- **Hosting:** Vercel
+- **Verification:** GitHub Actions quality gate plus deployment checks; Vercel also runs the repository verification command during deployments
 
-## Directory Map
+## Canonical Directory Map
 
 | Path | Purpose |
 | --- | --- |
-| `src/app/` | All routes (pages + API). See "Routes" below. |
-| `src/components/` | Shared React components (UI, layout, feature components). |
-| `src/lib/` | Core services: `lib/supabase/client.ts` (browser client + legacy REST `request()` helper), `lib/supabase/server.ts` (async server client — must be awaited), types in `src/lib/types/`. |
-| `src/hooks/`, `src/shared/` | Reusable hooks and shared utilities. |
-| `src/config/` | App configuration. |
-| `src/styles/` | Global styles. |
-| `src/types/` | Global TypeScript types. |
-| `public/` | Static assets, manifest, icons. |
-| `supabase/migrations/` | Canonical migration chain (`0000_young_rattler` → `rls_triggers_storage`). |
-| `supabase/migrations_archive/` | Legacy/conflicting migrations. Never apply. See its README. |
-| `drizzle/` | | `scripts/` | One-off operational scripts (imports, audits, RLS checks). Run manually with env vars; not part of the build. |
-| `proxy.ts` | Next.js middleware (Next 16 naming). |
-| `docs/` | Guides (deployment, Google auth, video automation) and this file. |
-| `docs/reports/` | Historical audit/status reports (archived from repo root). |
+| `src/app/` | Next.js routes, pages, layouts, API routes, and route-local actions |
+| `src/features/` | Canonical feature modules. Domain components, hooks, services, types, data, and integrations live here |
+| `src/components/ui/` | Shared design-system primitives and reusable UI building blocks |
+| `src/components/layout/` | Shared application shell and cross-feature layout integrations |
+| `src/lib/` | Cross-cutting infrastructure only: Supabase clients, environment handling, HTTP transport, storage helpers, offline persistence, i18n, site metadata, and shared types/utils |
+| `src/config/` | Application configuration |
+| `src/types/` | Global TypeScript types |
+| `public/` | Static assets, PWA files, icons, audio, and offline content |
+| `supabase/migrations/` | Canonical migration chain used for fresh/replay validation and production changes |
+| `supabase/migrations_archive/` | Historical/legacy migration copies; never treated as the active migration chain |
+| `supabase/functions/` | Supabase Edge Functions |
+| `scripts/` | Deterministic verification, maintenance, migration, content, and release tooling |
+| `__tests__/` | Unit and integration tests |
+| `android/`, `ios/`, `mobile/` | Native projects and mobile build metadata |
+| `.github/workflows/` | CI, quality gates, scheduled background jobs, content sync, and release automation |
+| `.circleci/` | CircleCI configuration retained for the mobile/secondary CI pipeline |
+| `docs/` | Current guides, operational documentation, audits, and historical records |
+
+### Path ownership rules
+
+The repository uses **feature-first imports** for domain code.
+
+- Prefer `@/features/<feature>/...` for feature services, hooks, types, data, components, and integrations.
+- `@/components/ui/*` and `@/components/layout/*` are shared application infrastructure.
+- `@/lib/*` is reserved for cross-cutting infrastructure.
+- Do not recreate domain services under `src/lib/services/`.
+- Do not create a second domain hook layer under `src/hooks/`.
+- Legacy compatibility bridges that have no live consumers are removed rather than retained as parallel implementations.
+
+The import verifier enforces the remaining infrastructure boundary. The only permitted feature/app imports through `@/lib/services/*` are the shared infrastructure modules explicitly allowlisted by the verifier.
 
 ## Routes
 
-### Content pages (public, read from Supabase)
-Home (`/`, prayer times widget), `adhkar`, `articles(/[slug])`, `battles(/[slug])`,
-`companions(/[slug])`, `conquests(/[slug])`, `dua(/[slug])`, `hadith(/[book]/[id])`,
-`kids(/[slug])`, `poetry`, `prophets(/[slug])`, `quran(/[surah]/[ayah])`, `reciters`,
-`scholars(/[slug])`, `stories(/[slug])`, `tafsir`, `tawasheeh`, `videos(/[slug])`, `youtube`.
+The canonical route inventory is generated/validated by `scripts/verify-platform-routes.mjs`.
 
-### Tools
-`prayer-times`, `prayer`, `qibla`, `tasbeeh`, `radio`, `memorization`, `search`,
-`spiritual-ai`, `competitions`.
+Major public areas include:
 
-### User
-`auth/login`, `auth/register`, `auth/forgot`, `profile`, `favorites`.
-
-### Admin
-`admin` (dashboard), `admin/analytics`, `admin/content`, `admin/users`, `admin/videos`.
-
-### Static
-`about`, `contact`, `faq`, `privacy`, `terms`.
-
-### API routes (`app/api/`)
-- `admin/*` — analytics, content management, video automation (create/retry/manage).
-- `content/*` — articles, companions, prophets, stories.
-- `duas`, `duas/categories`, `hadith/books`, `quran/surahs`, `tawasheeh(/categories)`.
-- `search` — cross-content search.
-- `user/*` — favorites, notifications, profile (auth-scoped).
-- `poetry-insight` — AI-assisted poetry insight.
+- Quran, Mushaf, Tafsir, reciters
+- Hadith
+- Adhkar and Dua
+- Prophets, Companions, Scholars
+- Stories, Articles, Videos, Poetry
+- Battles and Conquests
+- Prayer Times, Qibla, Tasbeeh, Wird, Zakat
+- Kids content and games
+- Radio and Tawasheeh
+- Search and Spiritual AI
+- Authentication, profile, favorites, settings
+- Administrative control center and operational tools
 
 ## Supabase Layer
 
-- **Server:** `lib/supabase/server.ts` exports an **async** `createClient()` — always `await` it.
-- **Browser:** `lib/supabase/client.ts` exports `createBrowserSupabaseClient()` which
-  includes a legacy `request()` REST helper used by several client pages.
-- **Migrations:** single canonical chain in `supabase/migrations/`. Duplicate/legacy
-  files were archived (2026-07-05). If `supabase db push` reports a history mismatch,
-  see `supabase/migrations_archive/README.md` for the `migration repair` command.
-- **RLS:** hardened in `0008_rls_hardening` and `0015_comprehensive_rls`; public read
-  for content tables, per-user scoping for `favorites`, `reading_progress`, profiles.
+- **Server client:** `src/lib/supabase/server.ts` provides the async server client.
+- **Browser client:** `src/lib/supabase/client.ts` provides the browser Supabase client.
+- **Migrations:** only `supabase/migrations/` is canonical.
+- **RLS:** all production public tables are expected to remain protected by RLS.
+- **Security:** privileged functions and admin data must remain scoped and must not be exposed to public roles.
+- **Generated data:** application types and verification scripts must reflect the live schema.
 
 ## Environment Variables
 
-Validated by `scripts/validate-deployment-env.mjs` (`pnpm deploy:check`).
-Documented in `docs/environment-variables.md`. Key vars:
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
-`NEXT_PUBLIC_SITE_URL`, `AUTH_CALLBACK_URL`.
+Deployment validation is handled by repository scripts. Important variables include:
 
-## Known Constraints
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `AUTH_CALLBACK_URL`, and provider-specific server secrets.
 
-- `pnpm` only — do not commit `package-lock.json`.
-- Server Supabase client is async (Next 16 `cookies()` is async).
-- - Database changes are made through the canonical Supabase migration chain; generated TypeScript types are refreshed from the live schema.
+Secrets must never be committed. Only placeholders belong in `.env.example`.
+
+## Verification
+
+The canonical verification chain includes:
+
+```text
+pnpm supabase:migrations:check
+pnpm supabase:migrations:replay
+pnpm routes:check
+pnpm imports:check
+pnpm project:check
+pnpm mobile:check
+pnpm offline:check
+pnpm content:check
+pnpm auth:check
+pnpm native-social:check
+pnpm adsense:check
+pnpm search-console:check
+pnpm check
+pnpm lint
+pnpm test
+pnpm build
+```
+
+All changes must leave the repository buildable and must not introduce a second implementation path for an existing feature.
+
+## Known Operational Boundaries
+
+- Vercel deployment success and application-code correctness are separate checks.
+- External provider credentials (for example social publishing tokens) are runtime configuration, not source-code constants.
+- Supabase performance advisories about unused indexes are informational and require workload evidence before destructive index removal.
