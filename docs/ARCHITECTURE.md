@@ -10,6 +10,7 @@ This document describes the **current canonical architecture**. Historical audit
 - **UI:** Tailwind CSS + shared components
 - **Database/Auth/Storage:** Supabase (PostgreSQL, RLS, Storage, Auth, Edge Functions)
 - **Database source of truth:** `supabase/migrations/`
+- **Quran text source of truth:** `public/quran/mushaf-hafs.json` (Git-tracked Hafs/Uthmani snapshot, 6236 ayahs).
 - **Package manager:** pnpm; `pnpm-lock.yaml` is the only lockfile
 - **Mobile:** Capacitor with Android and iOS projects
 - **Hosting:** Vercel
