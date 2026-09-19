@@ -48,7 +48,18 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            pnpm install --frozen-lockfile
+            pnpm config set fetch-retries 5
+            pnpm config set fetch-timeout 120000
+            pnpm config set fetch-retry-mintimeout 20000
+            pnpm config set fetch-retry-maxtimeout 120000
+            pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+      - run:
+          name: Verify installed toolchain
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            test -x node_modules/.bin/tsx || { echo "tsx was not installed correctly" >&2; exit 1; }
+            node -e "import('@supabase/supabase-js').then(() => console.log('Supabase SDK dependency: OK'))"
       - run:
           name: Run the canonical verification suite
           shell: /bin/bash
@@ -79,7 +90,11 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            pnpm install --frozen-lockfile
+            pnpm config set fetch-retries 5
+            pnpm config set fetch-timeout 120000
+            pnpm config set fetch-retry-mintimeout 20000
+            pnpm config set fetch-retry-maxtimeout 120000
+            pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
       - run:
           name: Validate production smoke environment
           shell: /bin/bash
@@ -123,7 +138,11 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            pnpm install --frozen-lockfile
+            pnpm config set fetch-retries 5
+            pnpm config set fetch-timeout 120000
+            pnpm config set fetch-retry-mintimeout 20000
+            pnpm config set fetch-retry-maxtimeout 120000
+            pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
       - run:
           name: Production dependency audit
           shell: /bin/bash
@@ -187,7 +206,11 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            pnpm install --frozen-lockfile
+            pnpm config set fetch-retries 5
+            pnpm config set fetch-timeout 120000
+            pnpm config set fetch-retry-mintimeout 20000
+            pnpm config set fetch-retry-maxtimeout 120000
+            pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
       - run:
           name: Install FFmpeg and Arabic fonts
           shell: /bin/bash
@@ -240,7 +263,11 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            pnpm install --frozen-lockfile
+            pnpm config set fetch-retries 5
+            pnpm config set fetch-timeout 120000
+            pnpm config set fetch-retry-mintimeout 20000
+            pnpm config set fetch-retry-maxtimeout 120000
+            pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
       - run:
           name: Validate Quran audio import configuration
           shell: /bin/bash
@@ -305,7 +332,11 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            pnpm install --frozen-lockfile
+            pnpm config set fetch-retries 5
+            pnpm config set fetch-timeout 120000
+            pnpm config set fetch-retry-mintimeout 20000
+            pnpm config set fetch-retry-maxtimeout 120000
+            pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
       - run:
           name: Build web assets and sync Capacitor
           shell: /bin/bash
