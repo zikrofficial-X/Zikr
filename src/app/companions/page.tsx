@@ -1,5 +1,3 @@
-export const dynamic = "force-dynamic";
-
 import type { Metadata } from "next";
 import Link from "next/link";
 import { pageMetadata } from "@/lib/site";
@@ -7,10 +5,7 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
-import {
-  companionCategoryLabel,
-  uniqueCompanionSummaries,
-} from "@/features/companions/utils/companions";
+import { companionCategoryLabel } from "@/features/companions/utils/companions";
 import { getPublishedCompanions } from "@/features/companions/services/companions";
 
 export const metadata: Metadata = pageMetadata({
@@ -29,7 +24,7 @@ function categoryCountLabel(category: string, count: number) {
 
 export default async function CompanionsPage() {
   const companions = await getPublishedCompanions();
-  const displayCompanions = uniqueCompanionSummaries(companions);
+  const displayCompanions = companions;
   const grouped = displayCompanions.reduce<Record<string, typeof displayCompanions>>(
     (acc, companion) => {
       const category = companionCategoryLabel(companion.category);
