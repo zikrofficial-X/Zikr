@@ -15,16 +15,16 @@ ZIKR is an Arabic-first Islamic content and spiritual platform covering Quran, H
 - **Media:** Supabase Storage and Cloudinary where required
 - **Web deployment:** Vercel
 - **Mobile:** Capacitor Android/iOS
-- **Automation:** GitHub Actions Background Jobs for video/social queues; Supabase `pg_cron` for prayer Web Push
+- **Automation:** Supabase `pg_cron` for prayer Web Push; GitHub Actions Background Jobs is a manual recovery worker while hosted runners are unavailable
 
 ## Video and social automation
 
-Production video generation uses the free deterministic FFmpeg template renderer. The worker reads trusted Quran data, renders Arabic captions, writes the output to Supabase Storage, and queues social publication.
+Production video generation uses the free deterministic FFmpeg template renderer. When manually dispatched on an available runner, the worker reads trusted Quran data, renders Arabic captions, writes output to Supabase Storage, and queues social publication.
 
 ```text
 video_generation_requests
         ↓
-GitHub Background Jobs (every 15 minutes)
+GitHub Background Jobs (manual recovery while hosted runners are unavailable)
         ↓
 FFmpeg template renderer
         ↓
