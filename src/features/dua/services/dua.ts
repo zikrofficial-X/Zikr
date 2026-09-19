@@ -15,13 +15,17 @@ export async function getDuaCategories(): Promise<DuaCategory[]> {
 
   if (rows.length === 0) return FALLBACK_DUA_CATEGORIES;
 
-  return rows.map(r => ({
+  const mapped = rows.map(r => ({
     id: r.id as string,
     nameAr: r.name_ar as string,
     nameEn: r.name_en as string,
     slug: r.slug as string,
     icon: r.icon as string | undefined,
   }));
+
+  return Array.from(
+    new Map([...mapped, ...FALLBACK_DUA_CATEGORIES].map((category) => [category.slug, category])).values(),
+  );
 }
 
 export async function getDuas(categoryId?: string, limit = 50): Promise<Dua[]> {
@@ -50,7 +54,7 @@ export async function getDuas(categoryId?: string, limit = 50): Promise<Dua[]> {
 
   if (rows.length === 0) return fallback.slice(0, safeLimit);
 
-  return rows.map(r => ({
+  const mapped = rows.map(r => ({
     id: r.id as string,
     titleAr: r.title_ar as string,
     titleEn: r.title_en as string,
@@ -62,6 +66,10 @@ export async function getDuas(categoryId?: string, limit = 50): Promise<Dua[]> {
     categoryId: r.category_id as string | undefined,
     published: r.published as boolean,
   }));
+
+  return Array.from(
+    new Map([...mapped, ...fallback].map((dua) => [dua.slug, dua])).values(),
+  ).slice(0, safeLimit);
 }
 
 export async function getDuaBySlug(slug: string): Promise<Dua | null> {
