@@ -12,10 +12,14 @@ const VERIFIED_SURAH_AUDIO_BASES: Record<string, string> = {
   alafasy: "https://server8.mp3quran.net/afs",
   minshawi: "https://server10.mp3quran.net/minsh",
   abdulbasit: "https://server7.mp3quran.net/basit",
+  abdulsamad: "https://server7.mp3quran.net/basit",
   sudais: "https://server11.mp3quran.net/sds",
+  as-sudais: "https://server11.mp3quran.net/sds",
   shuraim: "https://server7.mp3quran.net/shur",
+  shuraym: "https://server7.mp3quran.net/shur",
   mahermuaiqly: "https://server12.mp3quran.net/maher",
   ghamdi: "https://server7.mp3quran.net/s_gmd",
+  saadghamidi: "https://server7.mp3quran.net/s_gmd",
 };
 
 function normalizeReciterCode(code: string): string {
