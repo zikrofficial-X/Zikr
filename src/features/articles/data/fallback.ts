@@ -1,6 +1,6 @@
 import type { Article, ArticleCategory } from '@/features/articles/types/articles';
 
-const articleContent = (title: string, paragraphs: string[]) =>
+const articleContent = (_title: string, paragraphs: string[]) =>
   `هذا المقال من مكتبة ذِكر التعليمية، والغرض منه تقديم مادة منظمة قابلة للقراءة والمراجعة مع الالتزام بالتمييز بين النص الشرعي المباشر وبين الشرح والاستنباط.\n\n${paragraphs.join('\n\n')}\n\nفي نهاية الموضوع، يبقى الرجوع إلى القرآن الكريم والسنة الصحيحة والمراجع المتخصصة هو الأساس عند دراسة المسألة بتوسع. ويسعى هذا المحتوى إلى أن يكون مدخلاً واضحاً لا بديلاً عن المصادر الأصلية.`;
 
 export const FALLBACK_ARTICLES: Article[] = [
