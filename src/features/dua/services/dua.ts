@@ -10,7 +10,7 @@ export async function getDuaCategories(): Promise<DuaCategory[]> {
     "/rest/v1/dua_categories?select=id,name_ar,name_en,slug,icon&published=eq.true&order=name_ar.asc"
   ).catch(error => {
     console.error("[content] Failed to fetch dua categories:", error);
-    return [];
+    return FALLBACK_DUA_CATEGORIES;
   });
 
   if (rows.length === 0) return FALLBACK_DUA_CATEGORIES;
