@@ -67,12 +67,12 @@ export async function runApiHealthChecks(): Promise<ApiHealthCheck[]> {
       status: publicEnv.NEXT_PUBLIC_SITE_URL ? 'ok' : 'error',
       message: publicEnv.NEXT_PUBLIC_SITE_URL ? `Configured: ${publicEnv.NEXT_PUBLIC_SITE_URL}` : 'NEXT_PUBLIC_SITE_URL is missing.',
     })),
-    timed('Quran/Hadith external APIs', async () => ({
-      name: 'Quran/Hadith external APIs',
-      status: serverEnv.QURAN_API_BASE_URL || serverEnv.HADITH_API_BASE_URL ? 'ok' : 'warning',
-      message: serverEnv.QURAN_API_BASE_URL || serverEnv.HADITH_API_BASE_URL
-        ? 'At least one external Quran/Hadith API base URL is configured.'
-        : 'No external Quran/Hadith base URL is configured; local/imported database content will be used.',
+    timed('Hadith external API', async () => ({
+      name: 'Hadith external API',
+      status: serverEnv.HADITH_API_BASE_URL ? 'ok' : 'warning',
+      message: serverEnv.HADITH_API_BASE_URL
+        ? 'The configured Hadith API base URL is available as an external fallback.'
+        : 'No external Hadith API base URL is configured; local/imported database content will be used.',
     })),
   ]);
 }
