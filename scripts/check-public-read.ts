@@ -1,6 +1,6 @@
-import dotenv from 'dotenv';
+import { loadEnvFile } from "node:process";
 
-dotenv.config({ path: '.env.local' });
+try { loadEnvFile(".env.local"); } catch { /* CI provides environment variables directly. */ }
 
 const rawSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseUrl = rawSupabaseUrl?.replace(/\/rest\/v1\/?$/, '');
