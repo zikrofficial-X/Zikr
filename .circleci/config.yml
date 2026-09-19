@@ -1,5 +1,27 @@
 version: 2.1
 
+# ZIKR execution is intentionally outside GitHub Actions.
+# - ci-check runs on source changes.
+# - android-rebuild runs only for release branches/tags.
+# - operational jobs are opt-in through CircleCI pipeline parameters.
+# - production scheduling remains owned by Supabase pg_cron / Edge Functions.
+parameters:
+  run_background_jobs:
+    type: boolean
+    default: false
+  background_target:
+    type: string
+    default: all
+  run_quran_audio_import:
+    type: boolean
+    default: false
+  run_production_smoke:
+    type: boolean
+    default: false
+  run_security_audit:
+    type: boolean
+    default: false
+
 jobs:
   ci-check:
     docker:
@@ -29,6 +51,209 @@ jobs:
             set -euo pipefail
             pnpm verify
           no_output_timeout: 30m
+
+  production-smoke:
+    docker:
+      - image: cimg/node:22.11.0
+    resource_class: small
+    environment:
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+      NEXT_PUBLIC_SUPABASE_URL: $SUPABASE_URL
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: $SUPABASE_ANON_KEY
+    steps:
+      - checkout
+      - run:
+          name: Enable pnpm
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            sudo corepack enable
+            corepack prepare pnpm@9.15.0 --activate
+            node --version
+            pnpm --version
+      - run:
+          name: Install dependencies
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile
+      - run:
+          name: Run production smoke checks
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm launch:smoke
+          no_output_timeout: 15m
+
+  security-audit:
+    docker:
+      - image: cimg/node:22.11.0
+    resource_class: small
+    environment:
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+      NEXT_PUBLIC_SUPABASE_URL: $SUPABASE_URL
+      SUPABASE_URL: $SUPABASE_URL
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: $SUPABASE_ANON_KEY
+    steps:
+      - checkout
+      - run:
+          name: Enable pnpm
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            sudo corepack enable
+            corepack prepare pnpm@9.15.0 --activate
+      - run:
+          name: Install dependencies
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile
+      - run:
+          name: Production dependency audit
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm audit --prod --audit-level=high
+      - run:
+          name: Repository hygiene validation
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm hygiene:check
+      - run:
+          name: Authentication configuration validation
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm auth:check
+      - run:
+          name: Canonical URL configuration validation
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm canonical:check
+      - run:
+          name: Migration chain validation
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm supabase:migrations:check
+
+  background-jobs:
+    parameters:
+      target:
+        type: string
+        default: all
+    docker:
+      - image: cimg/node:22.11.0
+    resource_class: medium
+    environment:
+      BACKGROUND_JOB_TARGET: << parameters.target >>
+      SUPABASE_URL: $SUPABASE_URL
+      SUPABASE_SERVICE_ROLE_KEY: $SUPABASE_SERVICE_ROLE_KEY
+      SUPABASE_ANON_KEY: $SUPABASE_ANON_KEY
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+      VIDEO_BACKGROUND_BATCH_SIZE: "3"
+      SOCIAL_BACKGROUND_BATCH_SIZE: "10"
+      SOCIAL_PUBLISH_ENABLED: "false"
+      VIDEO_GENERATOR: template
+      AUTO_VIDEO_ENABLED: "true"
+      AUTO_VIDEO_BATCH_SIZE: "1"
+      AUTO_VIDEO_SECONDS: "14"
+      YOUTUBE_CLIENT_ID: $YOUTUBE_CLIENT_ID
+      YOUTUBE_CLIENT_SECRET: $YOUTUBE_CLIENT_SECRET
+      YOUTUBE_REFRESH_TOKEN: $YOUTUBE_REFRESH_TOKEN
+      YOUTUBE_API_KEY: $YOUTUBE_API_KEY
+      FACEBOOK_APP_ID: $FACEBOOK_APP_ID
+      FACEBOOK_APP_SECRET: $FACEBOOK_APP_SECRET
+      FACEBOOK_PAGE_ID: $FACEBOOK_PAGE_ID
+      FACEBOOK_PAGE_ACCESS_TOKEN: $FACEBOOK_PAGE_ACCESS_TOKEN
+    steps:
+      - checkout
+      - run:
+          name: Enable pnpm
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            sudo corepack enable
+            corepack prepare pnpm@9.15.0 --activate
+      - run:
+          name: Install dependencies
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile
+      - run:
+          name: Install FFmpeg and Arabic fonts
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-core fonts-noto-extra
+            ffmpeg -version | head -n 1
+            fc-match "Noto Naskh Arabic"
+      - run:
+          name: Validate protected runtime configuration
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SITE_URL; do
+              if [[ -z "${!name:-}" ]]; then
+                echo "::error::Missing required CircleCI secret/variable: $name"
+                exit 1
+              fi
+            done
+      - run:
+          name: Run background worker
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm background:jobs
+          no_output_timeout: 30m
+
+  quran-audio-import:
+    docker:
+      - image: cimg/node:22.11.0
+    resource_class: medium
+    environment:
+      SUPABASE_URL: $SUPABASE_URL
+      SUPABASE_SERVICE_ROLE_KEY: $SUPABASE_SERVICE_ROLE_KEY
+      QURAN_AUDIO_MAX_FILE_MB: $QURAN_AUDIO_MAX_FILE_MB
+      QURAN_AUDIO_CONCURRENCY: $QURAN_AUDIO_CONCURRENCY
+    steps:
+      - checkout
+      - run:
+          name: Enable pnpm
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            sudo corepack enable
+            corepack prepare pnpm@9.15.0 --activate
+      - run:
+          name: Install dependencies
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile
+      - run:
+          name: Validate Quran audio import configuration
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            test -n "$SUPABASE_URL"
+            test -n "$SUPABASE_SERVICE_ROLE_KEY"
+            : "${QURAN_AUDIO_MAX_FILE_MB:=50}"
+            : "${QURAN_AUDIO_CONCURRENCY:=2}"
+            case "$QURAN_AUDIO_MAX_FILE_MB" in ''|*[!0-9]*) echo "QURAN_AUDIO_MAX_FILE_MB must be numeric"; exit 1;; esac
+            case "$QURAN_AUDIO_CONCURRENCY" in ''|*[!0-9]*) echo "QURAN_AUDIO_CONCURRENCY must be numeric"; exit 1;; esac
+      - run:
+          name: Run canonical Quran audio importer
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm exec node scripts/import-quran-audio-to-supabase.mjs
+          no_output_timeout: 120m
 
   android-rebuild:
     docker:
@@ -268,3 +493,24 @@ workflows:
                 - /^android-release-v[0-9]+\.[0-9]+\.[0-9]+$/
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+
+  manual-background-processing:
+    when: << pipeline.parameters.run_background_jobs >>
+    jobs:
+      - background-jobs:
+          target: << pipeline.parameters.background_target >>
+
+  manual-quran-audio-import:
+    when: << pipeline.parameters.run_quran_audio_import >>
+    jobs:
+      - quran-audio-import
+
+  manual-production-smoke:
+    when: << pipeline.parameters.run_production_smoke >>
+    jobs:
+      - production-smoke
+
+  manual-security-audit:
+    when: << pipeline.parameters.run_security_audit >>
+    jobs:
+      - security-audit
