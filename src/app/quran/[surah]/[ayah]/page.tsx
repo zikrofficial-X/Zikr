@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation';
 import { BookmarkButton } from '@/features/quran/components/bookmark-button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
-import { getAyah, getSurahById, getTafsir } from '@/features/quran/services/quran';
 import { getAyahFromDb, getSurahMetaFromDb, getTafsirRecordFromDb } from '@/features/quran/services/quran-server';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Share2 } from 'lucide-react';
@@ -21,11 +20,8 @@ export async function generateMetadata({ params }: AyahPageProps): Promise<Metad
   const surahId = Number.parseInt(p.surah, 10);
   const ayahId = Number.parseInt(p.ayah, 10);
 
-  let surahMeta = Number.isNaN(surahId) ? null : await getSurahMetaFromDb(surahId, 'ar');
-  if (!surahMeta && !Number.isNaN(surahId)) {
-    surahMeta = await getSurahById(surahId, 'ar').then((result) => result?.surah ?? null);
-  }
-
+  const surahMeta = Number.isNaN(surahId) ? null : await getSurahMetaFromDb(surahId, 'ar');
+  
   return pageMetadata({
     title: surahMeta ? `سورة ${surahMeta.name} - الآية ${ayahId}` : `الآية ${p.ayah}`,
     description: 'عرض الآية وتفسيرها من داخل صفحة السورة في منصة ذِكرٌ.',
@@ -50,31 +46,14 @@ export default async function AyahPage({ params }: AyahPageProps) {
     getTafsirRecordFromDb(surahId, ayahId),
   ]);
 
-  let surahMeta = dbSurahMeta;
-  let ayah = dbAyah;
-  let tafsir = dbTafsirRecord?.tafsir_ar ?? null;
-  let tafsirSource = dbTafsirRecord?.source_url ?? null;
-  let tafsirAuthor = dbTafsirRecord?.author ?? 'التفسير الميسر';
-  let tafsirRetrievedAt = dbTafsirRecord?.retrieved_at ?? null;
+  const surahMeta = dbSurahMeta;
+  const ayah = dbAyah;
+  const tafsir = dbTafsirRecord?.tafsir_ar ?? null;
+  const tafsirSource = dbTafsirRecord?.source_url ?? null;
+  const tafsirAuthor = dbTafsirRecord?.author ?? 'التفسير الميسر';
+  const tafsirRetrievedAt = dbTafsirRecord?.retrieved_at ?? null;
 
-  if (!surahMeta) {
-    console.info(`[ayah-page] Surah DB miss for ${surahId}, falling back to API`);
-    surahMeta = await getSurahById(surahId, 'ar').then((result) => result?.surah ?? null);
-  }
-
-  if (!ayah) {
-    console.info(`[ayah-page] Ayah DB miss for ${surahId}:${ayahId}, falling back to API`);
-    ayah = await getAyah(surahId, ayahId, 'ar');
-  }
-
-  if (!tafsir) {
-    console.info(`[ayah-page] Tafsir DB miss for ${surahId}:${ayahId}, falling back to API`);
-    tafsir = await getTafsir(surahId, ayahId);
-    tafsirSource = `https://api.alquran.cloud/v1/ayah/${surahId}:${ayahId}/ar.jalalayn`;
-    tafsirAuthor = 'Al Quran Cloud — ar.jalalayn';
-    tafsirRetrievedAt = null;
-  }
-
+  
   if (!surahMeta || !ayah) return notFound();
 
   return (

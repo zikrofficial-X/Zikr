@@ -1,4 +1,3 @@
-import { getAllSurahs } from "@/features/quran/services/quran";
 import { getAllSurahsFromDb } from "@/features/quran/services/quran-server";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
@@ -21,16 +20,9 @@ export const metadata = pageMetadata({
 
 async function QuranContent() {
   try {
-    // DB-First Strategy
-    let surahs = await getAllSurahsFromDb("ar");
+    const surahs = await getAllSurahsFromDb("ar");
 
-    // Fallback to API if DB is empty/fails
-    if (!surahs || surahs.length === 0) {
-      console.info("[quran-page] DB unavailable, falling back to external API");
-      surahs = await getAllSurahs("ar");
-    }
-
-    if (!surahs || surahs.length === 0) {
+    if (!surahs || surahs.length !== 114) {
       return (
         <Container className="space-y-4 py-12">
           <h1 className="text-3xl text-brand-gold mb-6">القرآن الكريم</h1>

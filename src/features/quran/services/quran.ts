@@ -1,11 +1,11 @@
-import { safeApiFetch } from "@/lib/services/http";
 import { getPublicEnv } from "@/lib/env";
-import { ServiceError } from "@/lib/types/common";
-import type { Ayah, Juz, QuranApiResponse, Surah, Reciter } from "@/features/quran/types/quran";
-import { surahs as fallbackSurahs, reciters as fallbackReciters } from "@/features/quran/data/fallback";
+import type { Ayah, Juz, Surah, Reciter } from "@/features/quran/types/quran";
+import {
+  surahs as fallbackSurahs,
+  reciters as fallbackReciters,
+} from "@/features/quran/data/fallback";
 import { getCanonicalAyahCount } from "@/features/quran/utils/surah-mapping";
 
-const QURAN_API_BASE = "https://api.alquran.cloud/v1";
 const DEBUG_QURAN = process.env.NODE_ENV !== "production";
 
 function debugLog(message: string, payload?: unknown) {
@@ -17,15 +17,7 @@ function debugLog(message: string, payload?: unknown) {
   console.debug(`[quran-service] ${message}`, payload);
 }
 
-const EDITIONS = {
-  ar: "quran-uthmani",
-  en: "en.asad",
-  tafsir: "ar.jalalayn",
-} as const;
-
-export type Locale = keyof typeof EDITIONS;
-
-// --- Shared Database Types ---
+export type Locale = "ar" | "en" | "tafsir";
 
 export type DbSurah = {
   id: number;
@@ -64,11 +56,11 @@ export type DbReciter = {
   base_url_template: string;
 };
 
-// --- Shared Mappers ---
-
 export function mapDbReciter(reciter: DbReciter): Reciter {
   return {
-    id: reciter.code,
+    // Keep the stable database UUID as the UI value. The API resolves
+    // the UUID/code pair against the canonical quran_reciters table.
+    id: reciter.id,
     nameAr: reciter.name_ar,
     nameEn: reciter.name_en,
     code: reciter.code,
@@ -83,7 +75,10 @@ export function mapDbSurah(surah: DbSurah, locale: Locale): Surah {
     name: locale === "en" ? surah.name_en : surah.name_ar,
     englishName: surah.name_en,
     englishNameTranslation: surah.name_translation ?? "",
-    numberOfAyahs: surah.ayahs_count && surah.ayahs_count > 0 ? surah.ayahs_count : getCanonicalAyahCount(surah.id),
+    numberOfAyahs:
+      surah.ayahs_count && surah.ayahs_count > 0
+        ? surah.ayahs_count
+        : getCanonicalAyahCount(surah.id),
     revelationType: surah.revelation_place ?? "",
   };
 }
@@ -91,7 +86,7 @@ export function mapDbSurah(surah: DbSurah, locale: Locale): Surah {
 export function mapDbAyah(ayah: DbAyah, locale: Locale): Ayah {
   return {
     number: ayah.ayah_number,
-    text: locale === "en" ? (ayah.text_en ?? ayah.text_ar) : ayah.text_ar,
+    text: locale === "en" ? ayah.text_en ?? ayah.text_ar : ayah.text_ar,
     numberInSurah: ayah.ayah_number,
     juz: ayah.juz ?? 0,
     manzil: 0,
@@ -102,24 +97,54 @@ export function mapDbAyah(ayah: DbAyah, locale: Locale): Ayah {
   };
 }
 
-// --- Client-Safe Service (API Fallbacks) ---
+function getSupabaseConfig() {
+  const { NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY } = getPublicEnv();
+  if (!NEXT_PUBLIC_SUPABASE_URL || !NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    throw new Error("Supabase public configuration is missing.");
+  }
+  return {
+    url: NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, ""),
+    key: NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  };
+}
+
+async function supabasePublicFetch<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const { url, key } = getSupabaseConfig();
+  const response = await fetch(`${url}${path}`, {
+    ...init,
+    cache: init.cache ?? "no-store",
+    headers: {
+      Accept: "application/json",
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      ...(init.headers ?? {}),
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Supabase Quran request failed: ${response.status} ${body}`);
+  }
+
+  return (await response.json()) as T;
+}
 
 export async function getAllSurahs(locale: Locale = "ar"): Promise<Surah[]> {
-  debugLog("getAllSurahs request", { locale });
-
   try {
-    const { data: response } = await safeApiFetch<QuranApiResponse<Surah[]>>(
-      `${QURAN_API_BASE}/surah`
+    debugLog("getAllSurahs from Supabase");
+    const rows = await supabasePublicFetch<DbSurah[]>(
+      "/rest/v1/quran_surahs?select=id,name_ar,name_en,name_translation,revelation_place,ayahs_count&order=id.asc",
     );
-    if (!response || !Array.isArray(response.data)) {
-      throw new Error("Invalid response from Quran API");
+    if (rows.length !== 114) {
+      throw new Error(`Canonical Quran catalog must contain 114 surahs, received ${rows.length}`);
     }
-    debugLog("getAllSurahs API success", { count: response.data.length });
-    return locale === "en"
-      ? response.data.map(surah => ({ ...surah, name: surah.englishName }))
-      : response.data;
+    return rows.map(row => mapDbSurah(row, locale));
   } catch (error) {
-    console.error("[quran-service] Failed to fetch surahs, using fallback:", error);
+    console.error("[quran-service] Supabase surah catalog unavailable:", error);
+    // Static data is only a local resilience fallback; no external API is used.
     return fallbackSurahs.map(s => ({
       number: s.id,
       name: locale === "en" ? s.nameEn : s.nameAr,
@@ -133,21 +158,31 @@ export async function getAllSurahs(locale: Locale = "ar"): Promise<Surah[]> {
 
 export async function getSurahById(
   id: number,
-  locale: Locale = "ar"
+  locale: Locale = "ar",
 ): Promise<{ surah: Surah; ayahs: Ayah[] } | null> {
-  if (!id || id < 1 || id > 114) return null;
+  if (!Number.isInteger(id) || id < 1 || id > 114) return null;
 
   try {
-    debugLog("getSurahById trying external API", { id });
-    const { data: response } = await safeApiFetch<
-      QuranApiResponse<{ ayahs: Ayah[] } & Surah>
-    >(`${QURAN_API_BASE}/surah/${id}/${EDITIONS[locale]}`);
+    const [surahs, ayahs] = await Promise.all([
+      supabasePublicFetch<DbSurah[]>(
+        `/rest/v1/quran_surahs?id=eq.${id}&select=id,name_ar,name_en,name_translation,revelation_place,ayahs_count&limit=1`,
+      ),
+      supabasePublicFetch<DbAyah[]>(
+        `/rest/v1/quran_ayahs?surah_id=eq.${id}&select=id,surah_id,ayah_number,text_ar,text_en,text_uthmani,text_simple,page,juz,hizb,rub,sajda&order=ayah_number.asc`,
+      ),
+    ]);
 
-    if (!response?.data) return null;
-    const { ayahs = [], ...surah } = response.data;
-    return { surah, ayahs };
+    if (!surahs[0]) return null;
+    if (ayahs.length !== mapDbSurah(surahs[0], "ar").numberOfAyahs) {
+      throw new Error(`Incomplete Quran surah ${id}: expected ${surahs[0].ayahs_count}, received ${ayahs.length}`);
+    }
+
+    return {
+      surah: mapDbSurah(surahs[0], locale),
+      ayahs: ayahs.map(row => mapDbAyah(row, locale)),
+    };
   } catch (error) {
-    console.error(`[quran-service] getSurahById error for surah ${id}:`, error);
+    console.error(`[quran-service] Supabase surah ${id} unavailable:`, error);
     return null;
   }
 }
@@ -155,95 +190,106 @@ export async function getSurahById(
 export async function getAyah(
   surahId: number,
   ayahId: number,
-  locale: Locale = "ar"
+  locale: Locale = "ar",
 ): Promise<Ayah | null> {
   if (surahId < 1 || surahId > 114 || ayahId < 1) return null;
 
   try {
-    debugLog("getAyah trying external API", { surahId, ayahId });
-    const { data: response } = await safeApiFetch<QuranApiResponse<Ayah>>(
-      `${QURAN_API_BASE}/ayah/${surahId}:${ayahId}/${EDITIONS[locale]}`
+    const rows = await supabasePublicFetch<DbAyah[]>(
+      `/rest/v1/quran_ayahs?surah_id=eq.${surahId}&ayah_number=eq.${ayahId}&limit=1&select=id,surah_id,ayah_number,text_ar,text_en,text_uthmani,text_simple,page,juz,hizb,rub,sajda`,
     );
-    return response?.data ?? null;
+    return rows[0] ? mapDbAyah(rows[0], locale) : null;
   } catch (error) {
-    console.error(`[quran-service] getAyah error for ${surahId}:${ayahId}:`, error);
+    console.error(`[quran-service] Supabase ayah ${surahId}:${ayahId} unavailable:`, error);
     return null;
   }
 }
 
 export async function getTafsir(
   surahId: number,
-  ayahId: number
+  ayahId: number,
 ): Promise<string | null> {
   if (surahId < 1 || surahId > 114 || ayahId < 1) return null;
 
   try {
-    debugLog("getTafsir trying external API", { surahId, ayahId });
-    const { data: response } = await safeApiFetch<QuranApiResponse<Ayah>>(
-      `${QURAN_API_BASE}/ayah/${surahId}:${ayahId}/${EDITIONS.tafsir}`
+    const rows = await supabasePublicFetch<DbTafsir[] & Array<{ author?: string | null }>>(
+      `/rest/v1/quran_tafsir?surah_id=eq.${surahId}&ayah_number=eq.${ayahId}&order=author.asc&limit=1&select=tafsir_ar,tafsir_en,author`,
     );
-    return response?.data?.text ?? null;
+    return rows[0]?.tafsir_ar ?? null;
   } catch (error) {
-    console.error(`[quran-service] getTafsir error for ${surahId}:${ayahId}:`, error);
+    console.error(`[quran-service] Supabase tafsir ${surahId}:${ayahId} unavailable:`, error);
     return null;
   }
 }
 
 export async function getJuz(
   juzId: number,
-  locale: Locale = "ar"
+  locale: Locale = "ar",
 ): Promise<Juz | null> {
   if (juzId < 1 || juzId > 30) return null;
 
-  const { data: response } = await safeApiFetch<QuranApiResponse<Juz>>(
-    `${QURAN_API_BASE}/juz/${juzId}/${EDITIONS[locale]}`
-  );
-  return response?.data ?? null;
+  try {
+    const [ayahRows, surahRows] = await Promise.all([
+      supabasePublicFetch<DbAyah[]>(
+        `/rest/v1/quran_ayahs?juz=eq.${juzId}&select=id,surah_id,ayah_number,text_ar,text_en,text_uthmani,text_simple,page,juz,hizb,rub,sajda&order=surah_id.asc,ayah_number.asc`,
+      ),
+      supabasePublicFetch<DbSurah[]>(
+        "/rest/v1/quran_surahs?select=id,name_ar,name_en,name_translation,revelation_place,ayahs_count&order=id.asc",
+      ),
+    ]);
+
+    const ayahs = ayahRows.map(row => mapDbAyah(row, locale));
+    const surahs: Record<string, Surah> = {};
+    const included = new Set(ayahRows.map(row => row.surah_id));
+    for (const row of surahRows) {
+      if (included.has(row.id)) surahs[String(row.id)] = mapDbSurah(row, locale);
+    }
+
+    return {
+      number: juzId,
+      ayahs,
+      surahs,
+      edition: {
+        identifier: "zikr.supabase.quran",
+        language: "ar",
+        name: "القرآن الكريم",
+        englishName: "The Noble Quran",
+      },
+    };
+  } catch (error) {
+    console.error(`[quran-service] Supabase juz ${juzId} unavailable:`, error);
+    return null;
+  }
 }
 
 export async function searchQuran(
   query: string,
-  locale: Locale = "ar"
+  locale: Locale = "ar",
 ): Promise<Ayah[]> {
   const cleanQuery = query.trim();
   if (!cleanQuery) return [];
 
   try {
-    const { data: response } = await safeApiFetch<
-      QuranApiResponse<{ matches: Ayah[] }>
-    >(
-      `${QURAN_API_BASE}/search/${encodeURIComponent(cleanQuery)}/all/${EDITIONS[locale]}`
+    const encoded = encodeURIComponent(cleanQuery.replace(/[%_]/g, " "));
+    const rows = await supabasePublicFetch<DbAyah[]>(
+      `/rest/v1/quran_ayahs?or=(text_ar.ilike.*${encoded}*,text_uthmani.ilike.*${encoded}*,text_simple.ilike.*${encoded}*)&limit=50&order=surah_id.asc,ayah_number.asc&select=id,surah_id,ayah_number,text_ar,text_en,text_uthmani,text_simple,page,juz,hizb,rub,sajda`,
     );
-    return response?.data?.matches ?? [];
+    return rows.map(row => mapDbAyah(row, locale));
   } catch (error) {
-    if (error instanceof ServiceError) return [];
-    throw error;
+    console.error("[quran-service] Supabase Quran search unavailable:", error);
+    return [];
   }
 }
 
 export async function getReciters(): Promise<Reciter[]> {
   try {
-    // Try DB via Supabase REST (array response, works client + server)
-    const {
-      NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseKey,
-    } = getPublicEnv();
-    if (supabaseUrl && supabaseKey) {
-      const { data: rows } = await safeApiFetch<DbReciter[]>(
-        `${supabaseUrl}/rest/v1/quran_reciters?select=id,code,name_ar,name_en,base_url_template&order=name_en.asc`,
-        {
-          headers: {
-            apikey: supabaseKey,
-            Authorization: `Bearer ${supabaseKey}`,
-          },
-        }
-      );
-      if (Array.isArray(rows) && rows.length > 0) {
-        return rows.map(mapDbReciter);
-      }
-    }
-  } catch {
-    // fall through to static fallback
+    const rows = await supabasePublicFetch<DbReciter[]>(
+      "/rest/v1/quran_reciters?select=id,code,name_ar,name_en,base_url_template&order=name_en.asc",
+    );
+    if (!rows.length) throw new Error("No Quran reciters found in Supabase.");
+    return rows.map(mapDbReciter);
+  } catch (error) {
+    console.error("[quran-service] Supabase reciter catalog unavailable:", error);
+    return fallbackReciters;
   }
-  return fallbackReciters;
 }

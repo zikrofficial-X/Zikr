@@ -69,6 +69,16 @@ Capacitor runtime packages are currently on major version 7, with Android/iOS na
 
 Vercel's last READY production deployment is still commit `2dec7d45c57a01927f10b499ca405e6b07c31739`; the current `main` repair commits have been pushed to GitHub but are not yet present in a newer READY deployment. The latest Vercel runtime-error query returned no runtime errors in the selected 24-hour window.
 
+## Canonical Quran storage
+
+- Quran text is now runtime-local to ZIKR: `quran_surahs` (114), `quran_ayahs` (6236), `quran_tafsir` (6236), and `quran_reciters` (7).
+- Quran runtime services no longer depend on Al Quran Cloud or any other external Quran API.
+- `quran_audio` has 798 deterministic Supabase Storage targets, one whole-surah track for each of 114 surahs × 7 current reciters.
+- Bucket: `quran-audio` (public read, controlled writes).
+- The storage import workflow is `.github/workflows/import-quran-audio.yml`; it requires the existing `SUPABASE_SERVICE_ROLE_KEY` repository secret.
+- Audio objects are not yet uploaded: `quran-audio` currently contains 0 objects and all 798 rows are `storage_status='pending'`.
+- The current Supabase project is on the Free storage quota shown in the dashboard (1 GB included, 50 MB maximum per file). Full retention of all seven complete reciter libraries should therefore be capacity-checked before the import is run; the importer refuses files above the configured per-file limit rather than silently truncating them.
+
 ## Canonical Auth and Quran invariants
 
 - Supabase Auth `site_url` is locked in repository configuration to `https://zikrmediaofficial.vercel.app/`.
