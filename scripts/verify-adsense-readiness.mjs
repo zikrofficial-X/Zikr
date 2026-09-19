@@ -49,7 +49,7 @@ function walk(dir) {
   return result;
 }
 
-const appCode = [...walk('app'), ...walk('components'), ...walk('lib')];
+const appCode = [...walk('src/app'), ...walk('src/components'), ...walk('src/lib'), ...walk('src/features')];
 for (const file of appCode) {
   const source = read(file);
   if (/<img\b/i.test(source)) fail(`Raw <img> usage found in application code: ${file}`);
