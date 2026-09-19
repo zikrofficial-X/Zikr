@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: AyahPageProps): Promise<Metad
   const surahId = Number.parseInt(p.surah, 10);
   const ayahId = Number.parseInt(p.ayah, 10);
 
-  let surahMeta = Number.isNaN(surahId) ? null : await getSurahMetaFromDb(surahId, 'ar');
+  const surahMeta = Number.isNaN(surahId) ? null : await getSurahMetaFromDb(surahId, 'ar');
   
   return pageMetadata({
     title: surahMeta ? `سورة ${surahMeta.name} - الآية ${ayahId}` : `الآية ${p.ayah}`,
@@ -46,12 +46,12 @@ export default async function AyahPage({ params }: AyahPageProps) {
     getTafsirRecordFromDb(surahId, ayahId),
   ]);
 
-  let surahMeta = dbSurahMeta;
-  let ayah = dbAyah;
-  let tafsir = dbTafsirRecord?.tafsir_ar ?? null;
-  let tafsirSource = dbTafsirRecord?.source_url ?? null;
-  let tafsirAuthor = dbTafsirRecord?.author ?? 'التفسير الميسر';
-  let tafsirRetrievedAt = dbTafsirRecord?.retrieved_at ?? null;
+  const surahMeta = dbSurahMeta;
+  const ayah = dbAyah;
+  const tafsir = dbTafsirRecord?.tafsir_ar ?? null;
+  const tafsirSource = dbTafsirRecord?.source_url ?? null;
+  const tafsirAuthor = dbTafsirRecord?.author ?? 'التفسير الميسر';
+  const tafsirRetrievedAt = dbTafsirRecord?.retrieved_at ?? null;
 
   
   if (!surahMeta || !ayah) return notFound();
