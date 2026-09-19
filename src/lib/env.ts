@@ -16,27 +16,7 @@ function normalizeSupabaseUrl(value: string | undefined): string | undefined {
   }
 }
 
-/** Resolve the first explicitly allowed environment variable, including integration-generated numbered aliases. */
-const ENV_SUFFIXES = [
-  "",
-  ...Object.keys(e)
-    .map((key) => key.match(/_(\d+)$/)?.[1])
-    .filter((suffix): suffix is string => Boolean(suffix))
-    .sort((a, b) => Number(a) - Number(b))
-    .map((suffix) => `_${suffix}`),
-];
-
-function pick(...bases: string[]): string | undefined {
-  for (const base of bases) {
-    for (const suffix of ENV_SUFFIXES) {
-      const value = e[`${base}${suffix}`];
-      if (value !== undefined && value !== "") return value;
-    }
-  }
-  return undefined;
-}
-
-const siteUrl = enforceCanonicalProductionUrl(
+function pick(name: string): string | undefined {\n  const value = e[name];\n  return value !== undefined && value !== "" ? value : undefined;\n}\n\nconst siteUrl = enforceCanonicalProductionUrl(
   pick("NEXT_PUBLIC_SITE_URL") || PRODUCTION_URL
 );
 
@@ -69,7 +49,7 @@ const rawEnv: Record<string, string | undefined> = {
 
   // ── Supabase ──────────────────────────────────────────────────────────────
   NEXT_PUBLIC_SUPABASE_URL: normalizeSupabaseUrl(
-    pick("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL")
+    pick("NEXT_PUBLIC_SUPABASE_URL")
   ),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: pick("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
   SUPABASE_SERVICE_ROLE_KEY: pick("SUPABASE_SERVICE_ROLE_KEY"),
@@ -100,15 +80,13 @@ const rawEnv: Record<string, string | undefined> = {
   GEMINI_MODEL: pick("GEMINI_MODEL") || "gemini-2.5-flash",
 
   // ── Quran / Islamic content APIs ──────────────────────────────────────────
-  QURAN_API_BASE_URL: pick("QURAN_API_BASE_URL", "NEXT_PUBLIC_QURAN_API"),
+  QURAN_API_BASE_URL: pick("QURAN_API_BASE_URL"),
   QURAN_AUDIO_CDN_URL:
     pick("QURAN_AUDIO_CDN_URL") || "https://cdn.islamic.network/quran/audio",
-  HADITH_API_BASE_URL: pick("HADITH_API_BASE_URL", "NEXT_PUBLIC_HADITH_API"),
+  HADITH_API_BASE_URL: pick("HADITH_API_BASE_URL"),
   NEXT_PUBLIC_QURAN_API:
-    pick("NEXT_PUBLIC_QURAN_API", "QURAN_API_BASE_URL") ||
     "https://api.alquran.cloud/v1",
   NEXT_PUBLIC_HADITH_API:
-    pick("NEXT_PUBLIC_HADITH_API", "HADITH_API_BASE_URL") ||
     "https://ummahapi.com/api/hadith",
 
   // ── Facebook ──────────────────────────────────────────────────────────────
