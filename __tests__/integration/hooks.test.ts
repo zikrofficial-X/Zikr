@@ -8,24 +8,24 @@ import { describe, it } from 'node:test';
 
 describe('Prayer times hook exports', () => {
   it('exports usePrayerTimes', async () => {
-    const mod = await import('../../hooks/use-prayer-times.ts');
+    const mod = await import('../../src/features/prayer/hooks/use-prayer-times.ts');
     assert.equal(typeof mod.usePrayerTimes, 'function');
   });
 });
 
 describe('Auth enhanced exports', () => {
   it('exports extractNextPath', async () => {
-    const mod = await import('../../lib/auth-enhanced.ts');
+    const mod = await import('../../src/lib/auth-enhanced.ts');
     assert.equal(typeof mod.extractNextPath, 'function');
   });
 
   it('exports getCanonicalAuthBaseUrl', async () => {
-    const mod = await import('../../lib/auth-enhanced.ts');
+    const mod = await import('../../src/lib/auth-enhanced.ts');
     assert.equal(typeof mod.getCanonicalAuthBaseUrl, 'function');
   });
 
   it('exports buildOAuthRedirectUri', async () => {
-    const mod = await import('../../lib/auth-enhanced.ts');
+    const mod = await import('../../src/lib/auth-enhanced.ts');
     assert.equal(typeof mod.buildOAuthRedirectUri, 'function');
   });
 });

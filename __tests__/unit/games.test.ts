@@ -9,11 +9,11 @@ import {
   getGameDefinition,
   isRegisteredGameId,
   parseGameContentMetadata,
-} from "../../lib/games/registry";
-import { validateGameResultPayload } from "../../lib/games/validation";
-import { enqueueGameResult } from "../../lib/games/offline-queue";
-import { getVerifiedWuduSteps } from "../../lib/games/verified-content";
-import { isVerseOrderComplete, shuffleVerseTokens, shuffleWuduSteps } from "../../lib/games/gameplay-helpers";
+} from "../../src/lib/games/registry";
+import { validateGameResultPayload } from "../../src/lib/games/validation";
+import { enqueueGameResult } from "../../src/lib/games/offline-queue";
+import { getVerifiedWuduSteps } from "../../src/lib/games/verified-content";
+import { isVerseOrderComplete, shuffleVerseTokens, shuffleWuduSteps } from "../../src/lib/games/gameplay-helpers";
 
 test("game registry resolves ZIKR Runner and rejects unknown IDs", () => {
   assert.equal(isRegisteredGameId("zikr-runner"), true);

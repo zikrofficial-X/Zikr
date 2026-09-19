@@ -10,13 +10,13 @@ import { describe, it } from 'node:test';
 
 describe('User data route exports', () => {
   it('exports profile read and update handlers', async () => {
-    const profileRoute = await import('../../app/api/user/profile/route.ts');
+    const profileRoute = await import('../../src/app/api/user/profile/route.ts');
     assert.equal(typeof profileRoute.GET, 'function');
     assert.equal(typeof profileRoute.PUT, 'function');
   });
 
   it('exports favorites read, create, and delete handlers', async () => {
-    const favoritesRoute = await import('../../app/api/user/favorites/route.ts');
+    const favoritesRoute = await import('../../src/app/api/user/favorites/route.ts');
     assert.equal(typeof favoritesRoute.GET, 'function');
     assert.equal(typeof favoritesRoute.POST, 'function');
     assert.equal(typeof favoritesRoute.DELETE, 'function');

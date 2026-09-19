@@ -12,27 +12,27 @@ import { describe, it } from 'node:test';
 describe('Auth server actions exports', () => {
   it('exports loginAction', async () => {
     // Dynamic import avoids "use server" pragma issues in test context
-    const mod = await import('../../app/auth/actions.ts');
+    const mod = await import('../../src/features/auth/actions.ts');
     assert.equal(typeof mod.loginAction, 'function');
   });
 
   it('exports registerAction', async () => {
-    const mod = await import('../../app/auth/actions.ts');
+    const mod = await import('../../src/features/auth/actions.ts');
     assert.equal(typeof mod.registerAction, 'function');
   });
 
   it('exports logoutAction', async () => {
-    const mod = await import('../../app/auth/actions.ts');
+    const mod = await import('../../src/features/auth/actions.ts');
     assert.equal(typeof mod.logoutAction, 'function');
   });
 
   it('exports forgotAction', async () => {
-    const mod = await import('../../app/auth/actions.ts');
+    const mod = await import('../../src/features/auth/actions.ts');
     assert.equal(typeof mod.forgotAction, 'function');
   });
 
   it('exports updateProfileAction', async () => {
-    const mod = await import('../../app/auth/actions.ts');
+    const mod = await import('../../src/features/auth/actions.ts');
     assert.equal(typeof mod.updateProfileAction, 'function');
   });
 });

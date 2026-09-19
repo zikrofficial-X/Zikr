@@ -6,7 +6,7 @@ import {
   getAudioChoice,
   getNativeAudio,
   normalizeAudioSettings,
-} from "../../lib/audio/config";
+} from "../../src/lib/audio/config";
 
 test("audio configuration exposes five distinct adhan choices", () => {
   const adhanChoices = AUDIO_CHOICES.filter(choice =>
