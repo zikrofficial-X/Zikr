@@ -1,6 +1,6 @@
 # Zikr production launch checklist
 
-Use this checklist before promoting a release. Keep real credentials only in local `.env.local` for development and in Vercel/Supabase server-side secret stores for production. Do not commit secrets or copy service-role credentials into browser-side tests.
+Use this checklist before promoting a release. Keep real credentials only in local `.env.local` for development and in Vercel/Supabase server-side secret stores for production. Never commit secrets.
 
 ## Local verification
 
@@ -12,7 +12,7 @@ pnpm verify
 pnpm deploy:check
 ```
 
-The lockfile must remain unchanged after installation. The verification suite is also the Vercel build gate.
+The lockfile must remain unchanged after installation. The repository integrity gate is local; Vercel executes the production build.
 
 ## Vercel configuration
 
@@ -69,8 +69,3 @@ When signed out, `/profile` and other private surfaces must require authenticati
 
 Record the deployed commit SHA, Vercel deployment state, the `pnpm verify` result, the remote/local migration counts, the active cron job names, recent cron run results, Supabase advisor warnings, and Vercel runtime error results. A `READY` deployment alone is not proof that authentication, RLS, schedulers, or core routes are healthy.
 
-## GitHub Actions constraint
-
-The repository contains manual-only `ci.yml` and `background-jobs.yml` workflows. They are recovery and verification paths, not production schedules. GitHub currently blocks hosted runners because of an account-level billing lock. Do not restore `schedule` triggers or move production secrets into GitHub merely to make the workflows appear active. Use the Vercel build gate and Supabase cron until the external lock is resolved.
-
-**Last updated:** August 15, 2026
