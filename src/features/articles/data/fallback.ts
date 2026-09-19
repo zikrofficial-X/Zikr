@@ -1,4 +1,4 @@
-import type { Article } from '@/features/articles/types/articles';
+import type { Article, ArticleCategory } from '@/features/articles/types/articles';
 
 export const FALLBACK_ARTICLE_CATEGORIES: ArticleCategory[] = [
   { id: 'faith', nameAr: 'العقيدة والإيمان', nameEn: 'Faith', slug: 'faith', icon: '🕌' },
