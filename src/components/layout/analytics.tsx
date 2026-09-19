@@ -24,17 +24,13 @@ export function Analytics() {
 
     const start = () => setReady(true);
     const schedule = () => {
-      if (typeof window.requestIdleCallback === 'function') {
-        idleId = window.requestIdleCallback(start, {
-          timeout: ANALYTICS_DELAY_MS,
-        });
-        timeoutId = window.setTimeout(() => {
-          if (idleId !== undefined) window.cancelIdleCallback(idleId);
+      timeoutId = window.setTimeout(() => {
+        if (typeof window.requestIdleCallback === 'function') {
+          idleId = window.requestIdleCallback(start, { timeout: 5000 });
+        } else {
           start();
-        }, ANALYTICS_DELAY_MS);
-      } else {
-        timeoutId = window.setTimeout(start, ANALYTICS_DELAY_MS);
-      }
+        }
+      }, ANALYTICS_DELAY_MS);
     };
 
     if (document.readyState === 'complete') {
