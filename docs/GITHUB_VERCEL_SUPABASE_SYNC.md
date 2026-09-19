@@ -55,7 +55,6 @@ Live Application
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Settings > API | `https://abcdef.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Settings > API | `eyJhbGc...` (public key) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Settings > API | `eyJhbGc...` (secret key) |
-| `DATABASE_URL` | Supabase Database Settings | `postgresql://postgres:pw@db.xxx.supabase.co:5432/postgres` |
 | `NEXT_PUBLIC_SITE_URL` | Your domain | `https://zikrmediaofficial.vercel.app` |
 | `AUTH_CALLBACK_URL` | Same as SITE_URL + /auth/callback | `https://your-domain.vercel.app/auth/callback` |
 
@@ -63,7 +62,7 @@ Live Application
 
 - `GEMINI_API_KEY` - For AI features
 - `YOUTUBE_API_KEY`, `YOUTUBE_CHANNEL_ID` - For video content
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` - For OAuth (if enabling)
+- Google OAuth is configured in Supabase Authentication; no Google client variables belong in Vercel.
 
 **Important**: Use the environment selector to add variables to **all environments**. Set "Environments" to include Production, Preview, and Development.
 
@@ -81,10 +80,7 @@ Live Application
 ### Get Database Connection String:
 
 1. Go to **Settings** → **Database** → **Connection Pooling**
-2. Select Mode: **Transaction** (recommended for Vercel)
-3. Copy the connection string
-4. Replace `[YOUR-PASSWORD]` with your database password
-5. Use for `DATABASE_URL` in Vercel
+Migrations are managed through the Supabase migration chain. Do not add a direct PostgreSQL connection string to the application runtime.
 
 ### Optional: Configure Google OAuth
 
@@ -101,11 +97,8 @@ Live Application
 ### Local Development:
 
 ```bash
-# Set DATABASE_URL in your local .env file first
-echo "DATABASE_URL=your-connection-string" > .env.local
-
-# Run migrations
-pnpm db:migrate:supabase
+# Run the canonical Supabase migration chain
+pnpm db:migrate-supabase
 ```
 
 ### On Vercel (Automatic):
@@ -118,8 +111,8 @@ The migrations in `supabase/migrations/` are automatically applied when:
 If migrations don't apply automatically, run them manually:
 
 ```bash
-# On your local machine with DATABASE_URL set:
-pnpm db:migrate:supabase
+# Run the canonical Supabase migration chain
+pnpm db:migrate-supabase
 ```
 
 ## Step 5: Verify Deployment
@@ -142,7 +135,7 @@ pnpm db:migrate:supabase
 ### Validate Configuration:
 
 ```bash
-# Run validation script (requires DATABASE_URL set locally)
+# Run validation script
 pnpm deploy:check
 ```
 
@@ -198,10 +191,9 @@ This ensures new environment variables are picked up.
 ### Problem: Database connection fails (migrations don't apply)
 
 **Solution**:
-1. Verify DATABASE_URL is set correctly in Vercel
-2. Check password is URL-encoded (e.g., `@` → `%40`)
-3. Ensure database firewall allows Vercel IP ranges
-4. Run locally first: `DATABASE_URL=... pnpm db:migrate:supabase`
+1. Verify the Supabase project ID and migration history are correct
+2. Confirm the Supabase project is reachable
+3. Run `pnpm db:migrate-supabase` from an authenticated Supabase CLI environment
 
 ### Problem: GitHub changes don't trigger Vercel deployment
 
