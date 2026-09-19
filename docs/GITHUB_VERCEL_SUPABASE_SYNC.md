@@ -77,9 +77,9 @@ Live Application
    - Anon Key (use for `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
    - Service Role Key (use for `SUPABASE_SERVICE_ROLE_KEY`) - **Keep this secret!**
 
-### Get Database Connection String:
+### Database migrations (no runtime DATABASE_URL):
 
-1. Go to **Settings** → **Database** → **Connection Pooling**
+1. Manage schema changes through `supabase/migrations/` and the Supabase CLI migration chain.
 Migrations are managed through the Supabase migration chain. Do not add a direct PostgreSQL connection string to the application runtime.
 
 ### Optional: Configure Google OAuth
