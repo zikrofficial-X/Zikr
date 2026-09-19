@@ -75,15 +75,24 @@ for (const obsolete of [
 }
 
 const authConfig = read("supabase/config.toml");
-if (!authConfig.includes('site_url = "https://zikrmediaofficial.vercel.app"')) {
-  failures.push("Supabase auth site_url is not canonical");
-}
-for (const redirect of [
-  "https://zikrmediaofficial.vercel.app/auth/callback",
-  "http://localhost:3000/auth/callback",
+const authBlockMatch = authConfig.match(/\[auth\]([\\s\\S]*?)(?=\n\[|$)/);
+const authBlock = authBlockMatch ? authBlockMatch[0] : "";
+const siteUrlMatch = authBlock.match(/^site_url\s*=\s*"([^"]+)"/m);
+const redirectsMatch = authBlock.match(/additional_redirect_urls\s*=\s*\[([\\s\\S]*?)\]/m);
+const configuredRedirects = redirectsMatch
+  ? Array.from(redirectsMatch[1].matchAll(/"([^"]+)"/g), match => match[1])
+  : [];
+const expectedRedirects = [
   "com.zikr.app://auth/callback",
-]) {
-  if (!authConfig.includes(redirect)) failures.push(`Supabase Auth redirect missing: ${redirect}`);
+  "http://localhost:3000/**",
+  "https://zikrmediaofficial.vercel.app/auth/callback",
+];
+
+if (siteUrlMatch?.[1] !== "https://zikrmediaofficial.vercel.app/") {
+  failures.push("Supabase auth site_url is not the locked canonical URL");
+}
+if (JSON.stringify(configuredRedirects) !== JSON.stringify(expectedRedirects)) {
+  failures.push("Supabase Auth redirect allowlist drift detected");
 }
 
 const migrationsDir = path.join(root, "supabase", "migrations");
