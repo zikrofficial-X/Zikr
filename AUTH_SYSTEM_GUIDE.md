@@ -29,7 +29,7 @@ The Google OAuth provider callback is:
 
 These are intentionally different.
 
-Supabase's Google provider configuration uses the project callback URL at `/auth/v1/callback`; the application's `redirectTo` is controlled by the Supabase Auth Redirect URLs allowlist. citeturn167534search0turn167534search1
+Supabase's Google provider configuration uses the project callback URL at `/auth/v1/callback`; the application's `redirectTo` is controlled by the Supabase Auth Redirect URLs allowlist.
 
 The app validates `next` as an internal relative path to prevent open redirects.
 
