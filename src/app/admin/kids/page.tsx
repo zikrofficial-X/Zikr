@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { requireAdmin } from "@/lib/services/admin";
+import { requireAdmin } from "@/features/admin/services/admin";
 import { kidsContent } from "@/features/kids/data/content";
 import { saveKidsContentAction } from "./actions";
 import { CloudinaryImageUploadField } from "@/features/admin/components/cloudinary-image-upload-field";
