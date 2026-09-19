@@ -57,7 +57,7 @@ pnpm build
 
 ## 4. Features Status
 
-- **Quran**: Canonical runtime data is served from Supabase.
+- **Quran**: Canonical runtime data is served from Supabase; external Quran APIs are ingestion/research sources only.
 - **Tafsir**: Integrated into Ayah detail pages.
 - **Hadith**: Connected to live API with pagination.
 - **Stories**: Integrated with YouTube embed support.
