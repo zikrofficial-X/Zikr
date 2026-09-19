@@ -32,7 +32,7 @@ No HeyGen variable is required for production generation.
 
 ## Production scheduler
 
-The `GitHub Background Jobs` workflow is the automatic production owner for the video and social queues and runs every 15 minutes. It invokes `pnpm background:jobs`, which seeds automated requests, renders with the free FFmpeg template worker, and processes the social publishing queue.
+The `GitHub Background Jobs` workflow is the manual recovery owner for video and social queues while GitHub hosted runners are unavailable. It has no production schedule. It invokes `pnpm background:jobs`, which seeds automated requests, renders with the free FFmpeg template worker, and processes the social publishing queue.
 
 The legacy Supabase `zikr-video-processing` cron that called `/api/internal/video-processing` has been explicitly retired by migration `20260915004110_retire_vercel_video_processing_cron.sql`. Do not create or restore a second scheduler for the same queue.
 
