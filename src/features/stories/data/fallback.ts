@@ -1,4 +1,4 @@
-import type { StoryCategory, StorySourceReference, Story } from "@/features/stories/types/stories";
+import type { StorySourceReference, Story } from "@/features/stories/types/stories";
 
 export const PRIMARY_STORY_SOURCES: Record<string, StorySourceReference[]> = {
   "story-of-musa": [
