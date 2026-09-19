@@ -1,106 +1,77 @@
-import { NextResponse } from 'next/server';
-import { isSupabaseConfigured, supabaseServerAnonRequest } from '@/lib/supabase/server';
+import { createClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
 
-type ReciterRow = { id: string; code: string };
+export const revalidate = 86400;
+
 type AudioRow = {
-  audio_url: string;
+  audio_url: string | null;
   source_url: string | null;
   retrieved_at: string | null;
+  storage_url: string | null;
+  storage_status: "pending" | "uploading" | "ready" | "failed" | null;
 };
-
-const VERIFIED_SURAH_AUDIO_BASES: Record<string, string> = {
-  // Canonical database codes
-  afs: "https://server8.mp3quran.net/afs",
-  minsh: "https://server10.mp3quran.net/minsh",
-  basit: "https://server7.mp3quran.net/basit",
-  sds: "https://server11.mp3quran.net/sds",
-  shur: "https://server7.mp3quran.net/shur",
-  maher: "https://server12.mp3quran.net/maher",
-  s_gmd: "https://server7.mp3quran.net/s_gmd",
-
-  // Legacy / human-readable aliases
-  alafasy: "https://server8.mp3quran.net/afs",
-  minshawi: "https://server10.mp3quran.net/minsh",
-  abdulbasit: "https://server7.mp3quran.net/basit",
-  abdulsamad: "https://server7.mp3quran.net/basit",
-  sudais: "https://server11.mp3quran.net/sds",
-  "as-sudais": "https://server11.mp3quran.net/sds",
-  shuraim: "https://server7.mp3quran.net/shur",
-  shuraym: "https://server7.mp3quran.net/shur",
-  mahermuaiqly: "https://server12.mp3quran.net/maher",
-  ghamdi: "https://server7.mp3quran.net/s_gmd",
-  saadghamidi: "https://server7.mp3quran.net/s_gmd",
-};
-
-function normalizeReciterCode(code: string): string {
-  return code.replace(/^ar\./i, '').trim().toLowerCase();
-}
 
 function json(data: unknown, status = 200) {
   return NextResponse.json(data, {
     status,
     headers: {
-      'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+      "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800",
     },
   });
-}
-function buildVerifiedAudio(code: string, surah: number) {
-  const baseUrl = VERIFIED_SURAH_AUDIO_BASES[code];
-  if (!baseUrl) return null;
-  return {
-    audio_url: baseUrl + "/" + String(surah).padStart(3, "0") + ".mp3",
-    source_url: "https://www.mp3quran.net/",
-    retrieved_at: null,
-  };
 }
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const surah = Number.parseInt(url.searchParams.get('surah') ?? '', 10);
-  const reciter = (url.searchParams.get('reciter') ?? '').trim();
+  const surah = Number.parseInt(url.searchParams.get("surah") ?? "", 10);
+  const reciter = (url.searchParams.get("reciter") ?? "").trim();
 
   if (!Number.isInteger(surah) || surah < 1 || surah > 114) {
-    return json({ error: 'Invalid surah' }, 400);
+    return json({ error: "Invalid surah" }, 400);
   }
   if (!/^[a-z0-9.-]{2,80}$/i.test(reciter)) {
-    return json({ error: 'Invalid reciter' }, 400);
-  }
-  const normalizedCode = normalizeReciterCode(reciter);
-  const verifiedFallback = () => buildVerifiedAudio(normalizedCode, surah);
-
-  // Always keep a verified source available even when Supabase public
-  // credentials are unavailable in a deployment.
-  if (!isSupabaseConfigured()) {
-    return json({ audio: verifiedFallback() });
+    return json({ error: "Invalid reciter" }, 400);
   }
 
   try {
-    const candidates = [...new Set([reciter, `ar.${normalizedCode}`, normalizedCode])].filter(Boolean);
-    let reciterId: string | null = null;
+    const supabase = await createClient();
 
-    for (const candidate of candidates) {
-      const reciters = await supabaseServerAnonRequest<ReciterRow[]>(
-        `/rest/v1/quran_reciters?code=eq.${encodeURIComponent(candidate)}&select=id,code&limit=1`,
-      );
-      if (reciters?.[0]?.id) {
-        reciterId = reciters[0].id;
-        break;
-      }
+    const candidates = [...new Set([
+      reciter,
+      reciter.replace(/^ar\./i, ""),
+      `ar.${reciter.replace(/^ar\./i, "")}`,
+    ])];
+
+    const { data: reciters, error: reciterError } = await supabase
+      .from("quran_reciters")
+      .select("id,code")
+      .in("code", candidates)
+      .limit(10);
+
+    if (reciterError) throw reciterError;
+    const reciterRow = reciters?.find(row => candidates.includes(row.code ?? ""));
+    if (!reciterRow?.id) return json({ audio: null, reason: "reciter_not_found" });
+
+    const { data: audio, error: audioError } = await supabase
+      .from("quran_audio")
+      .select("audio_url,source_url,retrieved_at,storage_url,storage_status")
+      .eq("surah_id", surah)
+      .eq("reciter_id", reciterRow.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (audioError) throw audioError;
+    const row = audio as AudioRow | null;
+
+    if (row?.storage_status === "ready" && row.storage_url) {
+      return json({ audio: row });
     }
 
-    if (reciterId) {
-      const rows = await supabaseServerAnonRequest<AudioRow[]>(
-        `/rest/v1/quran_audio?surah_id=eq.${surah}&reciter_id=eq.${encodeURIComponent(reciterId)}&select=audio_url,source_url,retrieved_at&limit=1`,
-      );
-      if (rows?.[0]?.audio_url) return json({ audio: rows[0] });
-    }
-
-    // Keep playback available even when an individual DB row is temporarily
-    // missing. These templates are the same verified MP3Quran sources used by
-    // the restored quran_audio dataset.
-    return json({ audio: verifiedFallback() });
+    return json({
+      audio: null,
+      reason: row?.storage_status ?? "not_imported",
+    });
   } catch (error) {
-    console.warn('[api/quran/audio] unavailable:', error instanceof Error ? error.message : error);
-    return json({ audio: null });
+    console.error("[api/quran/audio] canonical Supabase audio unavailable:", error);
+    return json({ audio: null, reason: "storage_unavailable" }, 503);
   }
 }
