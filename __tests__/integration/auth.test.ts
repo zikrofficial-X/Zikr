@@ -11,7 +11,7 @@ import {
   getCanonicalAuthBaseUrl,
   buildOAuthRedirectUri,
   isPkceVerifierError,
-} from '../../lib/auth-enhanced.ts';
+} from '../../src/lib/auth-enhanced.ts';
 
 describe('extractNextPath', () => {
   it('defaults to /profile when no next param', () => {

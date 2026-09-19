@@ -2,15 +2,15 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const requiredFiles = [
-  'app/layout.tsx',
-  'lib/site.ts',
-  'app/robots.ts',
-  'app/sitemap.ts',
-  'app/about/page.tsx',
-  'app/contact/page.tsx',
-  'app/privacy/page.tsx',
-  'app/editorial-policy/page.tsx',
-  'app/terms/page.tsx',
+  'src/app/layout.tsx',
+  'src/lib/site.ts',
+  'src/app/robots.ts',
+  'src/app/sitemap.ts',
+  'src/app/about/page.tsx',
+  'src/app/contact/page.tsx',
+  'src/app/privacy/page.tsx',
+  'src/app/editorial-policy/page.tsx',
+  'src/app/terms/page.tsx',
   'public/ads.txt',
 ];
 
@@ -49,7 +49,7 @@ function walk(dir) {
   return result;
 }
 
-const appCode = [...walk('app'), ...walk('components'), ...walk('lib')];
+const appCode = [...walk('src/app'), ...walk('src/components'), ...walk('src/lib'), ...walk('src/features')];
 for (const file of appCode) {
   const source = read(file);
   if (/<img\b/i.test(source)) fail(`Raw <img> usage found in application code: ${file}`);
@@ -59,11 +59,11 @@ for (const file of appCode) {
   }
 }
 
-const layout = read('app/layout.tsx');
-const site = read('lib/site.ts');
+const layout = read('src/app/layout.tsx');
+const site = read('src/lib/site.ts');
 const adsTxt = read('public/ads.txt');
 const nextConfig = read('next.config.ts');
-const analytics = read('components/layout/analytics.tsx');
+const analytics = read('src/components/layout/analytics.tsx');
 
 if (!/google-adsense-account/.test(layout)) fail('AdSense publisher meta tag is missing from app/layout.tsx.');
 const layoutPublisher = layout.match(/ca-pub-\d{8,}/)?.[0] ?? null;
@@ -74,7 +74,7 @@ if (layoutPublisher && normalizedAdsTxtPublisher && layoutPublisher !== normaliz
   fail(`Publisher mismatch: layout=${layoutPublisher}, ads.txt=${adsTxtPublisher}.`);
 }
 
-if (!/sitemap\.xml/.test(read('app/robots.ts'))) fail('robots.ts does not advertise sitemap.xml.');
+if (!/sitemap\.xml/.test(read('src/app/robots.ts'))) fail('robots.ts does not advertise sitemap.xml.');
 if (!/alternates:\s*\{\s*canonical:\s*["']\/["']/.test(layout)) warn('Root canonical is not declared in the expected metadata shape.');
 if (/languages\s*:\s*\{[\s\S]*?en\s*:/.test(layout)) fail('English alternate metadata is present although the site is currently Arabic-only.');
 if (/inLanguage:\s*\[\s*["']ar["']\s*,\s*["']en["']\s*\]/.test(layout)) fail('WebSite JSON-LD incorrectly advertises English content.');
@@ -88,11 +88,11 @@ const noindexPaths = [...site.matchAll(/"\/(?:search|qibla|prayer-times|tasbeeh|
 if (noindexPaths < 10) warn('Expected utility/account noindex coverage was not found in lib/site.ts.');
 
 const publicEditorial = [
-  'app/about/page.tsx',
-  'app/contact/page.tsx',
-  'app/privacy/page.tsx',
-  'app/editorial-policy/page.tsx',
-  'app/terms/page.tsx',
+  'src/app/about/page.tsx',
+  'src/app/contact/page.tsx',
+  'src/app/privacy/page.tsx',
+  'src/app/editorial-policy/page.tsx',
+  'src/app/terms/page.tsx',
 ];
 for (const file of publicEditorial) {
   if (read(file).trim().length < 600) warn(`Public trust/legal page is unusually short: ${file}`);

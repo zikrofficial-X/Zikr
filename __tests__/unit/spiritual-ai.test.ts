@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyQuestion, detectEmotion, isCrisisMessage } from '../../lib/services/spiritual-ai-policy';
+import { classifyQuestion, detectEmotion, isCrisisMessage } from '../../src/features/spiritual-ai/services/policy';
 import {
   deriveQuranSearchVariants,
   deriveSpiritualSearchTerm,
   formatSourcesForPrompt,
   type SpiritualSource,
-} from '../../lib/services/spiritual-retriever';
+} from '../../src/features/spiritual-ai/services/retriever';
 
 test('classifies fiqh and spiritual questions separately', () => {
   assert.equal(classifyQuestion('ما حكم الربا؟'), 'fatwa');

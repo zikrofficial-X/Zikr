@@ -55,6 +55,16 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- Add missing columns if absent (non-destructive)
 ALTER TABLE IF EXISTS public.stories ADD COLUMN IF NOT EXISTS summary TEXT;
 ALTER TABLE IF EXISTS public.stories ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE IF EXISTS public.stories ADD COLUMN IF NOT EXISTS is_approved BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS summary_ar TEXT;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS summary_en TEXT;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS age_min INTEGER;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS age_max INTEGER;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS featured BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS youtube_video_id TEXT;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS facebook_share_enabled BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS likes INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE IF EXISTS public.kids_content ADD COLUMN IF NOT EXISTS shares INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE IF EXISTS public.scholars ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
 
 -- Add indexes if missing (guarded: only if the target table/column exists)
@@ -144,3 +154,9 @@ END$$;
 
 -- Safety note: This migration avoids any DROP TABLE or destructive ALTER statements.
 -- If you need destructive operations (DROP TABLE / DROP CONSTRAINT), they must be executed in a controlled maintenance window and after a verified backup.
+
+-- Keep the story-category enum compatible with the published stories catalog.
+ALTER TYPE public.category ADD VALUE IF NOT EXISTS 'prophets';
+ALTER TYPE public.category ADD VALUE IF NOT EXISTS 'sahaba';
+ALTER TYPE public.category ADD VALUE IF NOT EXISTS 'documentaries';
+ALTER TYPE public.category ADD VALUE IF NOT EXISTS 'history';

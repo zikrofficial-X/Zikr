@@ -7,7 +7,7 @@ import {
   getNextPrayer,
   parsePrayerTimeMinutes,
   type PrayerTime,
-} from '@/lib/services/prayer-times';
+} from '@/features/prayer/services/prayer-times';
 
 const timings: PrayerTime = {
   Fajr: '05:12 (+03)',

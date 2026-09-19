@@ -5,7 +5,7 @@ import { promisify } from "node:util";
 import {
   supabaseServerAdminCount,
   supabaseServerAdminRequest,
-} from "../../lib/supabase/server";
+} from "../../src/lib/supabase/server";
 
 const execFileAsync = promisify(execFile);
 const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 1));
@@ -231,7 +231,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
   const key = request.automation_key || request.id;
   const publicPath = typeof content.publicPath === "string" && content.publicPath.startsWith("/") ? content.publicPath : "/quran";
   const targets: string[] = [];
-  if ((process.env.YOUTUBE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID) && (process.env.YOUTUBE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET) && process.env.YOUTUBE_REFRESH_TOKEN) targets.push("youtube");
+  if (process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET && process.env.YOUTUBE_REFRESH_TOKEN) targets.push("youtube");
   if (process.env.FACEBOOK_PAGE_ID && process.env.FACEBOOK_PAGE_ACCESS_TOKEN) targets.push("facebook_reels");
   if (!targets.length) return;
   const socialKey = `${key}:social-video`;

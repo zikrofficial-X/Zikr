@@ -9,13 +9,14 @@ const FACEBOOK_PAGE_ID = Deno.env.get('FACEBOOK_PAGE_ID') ?? ''
 const FACEBOOK_PAGE_ACCESS_TOKEN = Deno.env.get('FACEBOOK_PAGE_ACCESS_TOKEN') ?? ''
 type JsonObject = Record<string, unknown>;
 
-const META_GRAPH_API_VERSION = Deno.env.get('META_GRAPH_API_VERSION') ?? ''
+const FACEBOOK_GRAPH_API_VERSION = Deno.env.get('FACEBOOK_GRAPH_API_VERSION') ?? ''
 const MEDIA_BUCKET = Deno.env.get('YOUTUBE_FACEBOOK_MEDIA_BUCKET') ?? 'youtube-facebook-media'
 const BATCH_SIZE = Math.max(1, Math.min(10, Number(Deno.env.get('SOCIAL_SYNC_BATCH_SIZE') ?? '3')))
 const MAX_DISCOVERY_PAGES_PER_RUN = Math.max(1, Math.min(10, Number(Deno.env.get('SOCIAL_SYNC_DISCOVERY_PAGES_PER_RUN') ?? '5')))
 const RETRY_LIMIT = 8
 const STALE_PROCESSING_MS = 30 * 60 * 1000
 const AMBIGUOUS_RECHECK_MS = 60 * 60 * 1000
+const WAITING_MEDIA_EXPIRY_MS = 14 * 24 * 60 * 60 * 1000
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -51,11 +52,11 @@ function requireConfig() {
     ['YOUTUBE_CHANNEL_ID', YOUTUBE_CHANNEL_ID],
     ['FACEBOOK_PAGE_ID', FACEBOOK_PAGE_ID],
     ['FACEBOOK_PAGE_ACCESS_TOKEN', FACEBOOK_PAGE_ACCESS_TOKEN],
-    ['META_GRAPH_API_VERSION', META_GRAPH_API_VERSION],
+    ['FACEBOOK_GRAPH_API_VERSION', FACEBOOK_GRAPH_API_VERSION],
   ].filter(([, value]) => !value).map(([name]) => name)
   if (missing.length) throw new Error(`Missing configuration: ${missing.join(', ')}`)
-  if (!/^v\d+\.\d+$/.test(META_GRAPH_API_VERSION)) {
-    throw new Error(`Invalid Meta Graph API version: ${META_GRAPH_API_VERSION}`)
+  if (!/^v\d+\.\d+$/.test(FACEBOOK_GRAPH_API_VERSION)) {
+    throw new Error(`Invalid Meta Graph API version: ${FACEBOOK_GRAPH_API_VERSION}`)
   }
 }
 
@@ -223,12 +224,34 @@ async function insertNewJobs(videos: Array<{
   return { inserted: data?.length ?? 0, media: resolvedMedia.size }
 }
 
+async function expireStaleWaitingMedia() {
+  const cutoff = new Date(Date.now() - WAITING_MEDIA_EXPIRY_MS).toISOString()
+  const { data, error } = await supabase
+    .from('social_sync_jobs')
+    .update({
+      status: 'failed',
+      retryable: false,
+      next_attempt_at: new Date().toISOString(),
+      last_error: 'Expired waiting-media job: original video media was not found within the retry window. Requeue manually after uploading or registering the media.',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('source_channel_id', YOUTUBE_CHANNEL_ID)
+    .eq('status', 'waiting_media')
+    .eq('retryable', true)
+    .lt('created_at', cutoff)
+    .select('id')
+  if (error) throw new Error(`Waiting-media expiry failed: ${JSON.stringify(error)}`)
+  return data?.length ?? 0
+}
+
 async function refreshWaitingMedia(limit = 100) {
   const { data: waiting, error } = await supabase
     .from('social_sync_jobs')
     .select('id,source_video_id,source_media_path')
     .eq('source_channel_id', YOUTUBE_CHANNEL_ID)
     .eq('status', 'waiting_media')
+    .eq('retryable', true)
+    .gte('created_at', new Date(Date.now() - WAITING_MEDIA_EXPIRY_MS).toISOString())
     .limit(limit)
   if (error) throw new Error(`Waiting-media lookup failed: ${JSON.stringify(error)}`)
   if (!waiting?.length) return 0
@@ -369,16 +392,17 @@ async function recoverStaleProcessing() {
       }).eq('id', job.id).eq('status', 'processing')
     } else if (job.publish_request_id) {
       await supabase.from('social_sync_jobs').update({
+        status: 'failed',
         next_attempt_at: new Date(Date.now() + AMBIGUOUS_RECHECK_MS).toISOString(),
         locked_at: null,
-        last_error: 'Previous Facebook request may have succeeded; automatic retry paused to prevent duplicate publishing.',
+        last_error: 'Previous Facebook request may have succeeded; manual reconciliation is required before retry.',
         retryable: false,
         updated_at: new Date().toISOString(),
       }).eq('id', job.id).eq('status', 'processing')
     } else {
       const retryable = Number(job.attempts ?? 0) < RETRY_LIMIT
       await supabase.from('social_sync_jobs').update({
-        status: retryable ? 'failed' : 'failed',
+        status: 'failed',
         retryable,
         locked_at: null,
         next_attempt_at: new Date().toISOString(),
@@ -422,7 +446,7 @@ async function publishFacebookVideo(job: JsonObject) {
   form.set('published', 'true')
   form.set('access_token', FACEBOOK_PAGE_ACCESS_TOKEN)
 
-  const response = await fetch(`https://graph.facebook.com/${META_GRAPH_API_VERSION}/${FACEBOOK_PAGE_ID}/videos`, {
+  const response = await fetch(`https://graph.facebook.com/${FACEBOOK_GRAPH_API_VERSION}/${FACEBOOK_PAGE_ID}/videos`, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: form,
@@ -558,6 +582,7 @@ Deno.serve(async (req) => {
     }
 
     const discovery = await discoverAndQueue()
+    const waitingExpired = await expireStaleWaitingMedia()
     const waitingPromoted = await refreshWaitingMedia()
     const recovered = await recoverStaleProcessing()
     const processing = await processReadyJobs()
@@ -567,6 +592,7 @@ Deno.serve(async (req) => {
       ok: true,
       mode: forceBackfill ? 'backfill' : 'incremental',
       discovery,
+      waitingExpired,
       waitingPromoted,
       recovered,
       processing,

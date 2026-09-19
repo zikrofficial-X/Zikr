@@ -1,37 +1,10 @@
 import type { NextConfig } from 'next';
 
-const envSuffixes = [
-  '',
-  ...Array.from(
-    new Set(
-      Object.keys(process.env)
-        .map((key) => key.match(/_(\d+)$/)?.[1])
-        .filter((suffix): suffix is string => Boolean(suffix)),
-    ),
-  )
-    .sort((a, b) => Number(a) - Number(b))
-    .map((suffix) => `_${suffix}`),
-];
-
-function bridgeEnv(...bases: string[]): string {
-  for (const base of bases) {
-    for (const suffix of envSuffixes) {
-      const value = process.env[`${base}${suffix}`];
-      if (value) return value;
-    }
-  }
-  return '';
-}
-
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_SUPABASE_URL:
-      bridgeEnv('NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_URL'),
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: bridgeEnv(
-      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-      'SUPABASE_ANON_KEY',
-      'SUPABASE_PUBLISHABLE_KEY',
-    ),
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || '',
   },
   reactStrictMode: true,

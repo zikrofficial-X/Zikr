@@ -1,277 +1,86 @@
 # ZIKR Authentication System Guide
 
-## Overview
+## Authentication architecture
 
-Your app uses **Supabase Authentication** with Google OAuth. The system has two authentication flows:
+ZIKR uses Supabase Auth for email/password and Google OAuth. Browser OAuth uses PKCE and a dedicated Next.js callback route. Native Capacitor builds use the `com.zikr.app://auth/callback` deep link.
 
-1. **Email/Password Login** - Standard form-based auth
-2. **Google OAuth** - Social login via Google
+### Canonical files
 
-## Architecture
+- `src/app/auth/login/page.tsx`
+- `src/features/auth/components/google-oauth-button.tsx`
+- `src/features/auth/integrations/google-oauth.ts`
+- `src/app/auth/callback/route.ts`
+- `src/components/layout/native-google-oauth-handler.tsx`
+- `src/lib/auth-enhanced.ts`
+- `src/lib/supabase/client.ts`
+- `src/lib/supabase/server.ts`
 
-```
-┌─ Browser ────────────────────────────────────────────────────────┐
-│                                                                   │
-│  Login Page (app/auth/login/page.tsx)                            │
-│  ├─ Email/Password Form                                          │
-│  └─ Google OAuth Button (GoogleOAuthButton component)            │
-│                                                                   │
-│  When user clicks Google button:                                 │
-│  └─→ app/auth/google-oauth-button.tsx                           │
-│      └─→ Supabase signInWithOAuth()                             │
-│          └─→ Redirects to Google                                 │
-│                                                                   │
-│  After Google auth, redirects to:                                │
-│  └─→ app/auth/callback/route.ts                                 │
-│      └─→ Exchanges code for session                             │
-│          └─→ Updates user profile                               │
-│              └─→ Redirects to /profile or saved path            │
-│                                                                   │
-└───────────────────────────────────────────────────────────────────┘
-```
+There are no canonical auth files under root `app/` or root `lib/`.
 
-## Key Files
+## Browser Google OAuth
 
-### 1. **app/auth/login/page.tsx**
-The main login page component. Contains:
-- Email/Password form
-- Google OAuth button
-- Sign up link
-- Password recovery link
+The browser callback is:
 
-### 2. **app/auth/google-oauth-button.tsx**
-Handles the Google OAuth flow:
-- Builds the redirect URI
-- Initiates OAuth with Supabase
-- Handles errors and loading states
-- Provides user feedback
+`https://zikrmediaofficial.vercel.app/auth/callback`
 
-**Key Code:**
-```typescript
-const { data, error: oauthError } = await client.auth.signInWithOAuth({
-  provider: 'google',
-  options: {
-    redirectTo: redirectUri,
-    scopes: 'email profile',
-    queryParams: {
-      access_type: 'offline',
-      prompt: 'consent',
-    },
-  },
-});
-```
+The Google OAuth provider callback is:
 
-### 3. **app/auth/callback/route.ts**
-Receives the OAuth callback from Google:
-- Extracts the authorization code
-- Exchanges it for a session
-- Updates user profile in database
-- Redirects to saved path or profile page
+`https://eydxvcamhjhajxjrsgym.supabase.co/auth/v1/callback`
 
-**Key Code:**
-```typescript
-const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+These are intentionally different.
 
-if (!error) {
-  // Update user profile
-  await supabase.from('profiles').upsert({
-    id: user.id,
-    email: user.email,
-    display_name: user.user_metadata?.full_name,
-    avatar_url: user.user_metadata?.avatar_url,
-  });
-}
-```
+Supabase's Google provider configuration uses the project callback URL at `/auth/v1/callback`; the application's `redirectTo` is controlled by the Supabase Auth Redirect URLs allowlist.
 
-### 4. **lib/auth-enhanced.ts**
-Utility functions for auth:
-- `buildOAuthRedirectUri()` - Constructs the callback URL with state
-- `extractNextPath()` - Extracts the return path from search params
-- Session management utilities
+The app validates `next` as an internal relative path to prevent open redirects.
 
-### 5. **lib/supabase/client.ts**
-Browser-side Supabase client:
-- Creates singleton instance
-- Handles environment variables
-- Provides API for client components
+## Native Google OAuth
 
-### 6. **lib/supabase/server.ts**
-Server-side Supabase client:
-- Used in Server Components and Route Handlers
-- Handles session from cookies
-- Used in auth callback to verify sessions
+Native builds use:
 
-## User Profile Schema
+`com.zikr.app://auth/callback`
 
-The `profiles` table stores user information:
+The custom scheme is an application redirect target, not Google's provider callback. The native handler performs the authorization-code exchange with the same browser Supabase client that created the PKCE verifier.
 
-```sql
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL,
-  display_name TEXT,
-  avatar_url TEXT,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-```
+## Session and profile handling
 
-When a user signs in with Google, this table is auto-populated with:
-- `id` - Supabase user ID
-- `email` - From Google account
-- `display_name` - From Google full_name
-- `avatar_url` - From Google avatar_url
+The callback exchanges the authorization code through Supabase SSR, then performs a service-side profile upsert. The profile write is deliberately best-effort so a database-side profile issue does not turn a valid authentication into a false login failure.
 
-## Environment Variables
+Protected application areas are guarded by `proxy.ts` and Supabase's authenticated-user lookup.
 
-Required for authentication to work:
+## Security properties
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
-AUTH_CALLBACK_URL=http://localhost:3000/auth/callback
-```
+- Relative-path validation blocks open redirects.
+- OAuth start responses are `no-store`.
+- PKCE verifier failures lead to a clean restart.
+- Service-role credentials are server-only.
+- Provider credentials are not stored in source control.
+- Native callback matching requires the exact `/callback` pathname.
 
-## OAuth Flow Diagram
+## Environment variables
 
-```
-User clicks Google button
-    ↓
-App builds OAuth request with:
-  - provider: 'google'
-  - redirectTo: 'http://localhost:3000/auth/callback?next=/profile'
-  - scopes: 'email profile'
-    ↓
-Supabase generates PKCE code challenge & verifier
-    ↓
-Redirects to Google with:
-  - client_id
-  - redirect_uri
-  - scope
-  - code_challenge (PKCE)
-    ↓
-User signs in with Google & consents
-    ↓
-Google redirects to callback URL with:
-  - code (authorization code)
-  - state (PKCE state)
-    ↓
-Callback route receives code
-    ↓
-Supabase exchanges code for JWT session:
-  - Uses PKCE verifier
-  - Gets JWT tokens
-  - Sets httpOnly session cookie
-    ↓
-User profile is created/updated
-    ↓
-Redirects to /profile (or saved path)
-    ↓
-User is logged in!
-```
+Required runtime values:
 
-## Session Management
+`NEXT_PUBLIC_SUPABASE_URL`
 
-### Browser Client
-```typescript
-import { createClient } from '@/lib/supabase/client';
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-const supabase = createClient();
-const { data: { session } } = await supabase.auth.getSession();
-```
+`NEXT_PUBLIC_SITE_URL`
 
-### Server Component
-```typescript
-import { createClient } from '@/lib/supabase/server';
+Optional server integrations such as Google/YouTube or Facebook publishing have separate credentials and are not interchangeable with Supabase Auth.
 
-const supabase = await createClient();
-const { data: { session } } = await supabase.auth.getSession();
-```
+## Current configuration
 
-### Protecting Routes
-You can add middleware to protect routes:
+The local Supabase Auth URL configuration is in `supabase/config.toml`:
 
-```typescript
-// middleware.ts
-import { createServerClient } from '@supabase/ssr';
+- production site URL: `https://zikrmediaofficial.vercel.app`
+- browser callback: `https://zikrmediaofficial.vercel.app/auth/callback`
+- local callback: `http://localhost:3000/auth/callback`
+- native callback: `com.zikr.app://auth/callback`
 
-export async function middleware(request: NextRequest) {
-  const supabase = createServerClient(...);
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session && request.nextUrl.pathname.startsWith('/profile')) {
-    return NextResponse.redirect(new URL('/auth/login', request.url));
-  }
-}
-```
-
-## Error Handling
-
-The auth system handles several types of errors:
-
-### OAuth Errors
-From Google or network issues:
-```
-error: 'access_denied' - User rejected permissions
-error: 'server_error' - Google server error
-```
-
-### Callback Errors
-During session exchange:
-```
-error_code: 'validation_failed' - Invalid code
-error_code: 'invalid_grant' - Code expired
-```
-
-### Profile Errors
-Database operations:
-```
-Fails gracefully if profile update fails
-Doesn't prevent user login
-```
-
-All errors are logged with `[oauth]` or `[auth/callback]` prefixes for debugging.
+The hosted Google provider being enabled is a Dashboard setting. Repository files cannot prove that the hosted provider toggle and its Client ID/Secret are currently enabled, so that state must be checked in Supabase Authentication → Sign In / Providers → Google.
 
 ## Testing
 
-### Local Testing
-1. Ensure Supabase is connected
-2. Enable Google OAuth in Supabase
-3. Open http://localhost:3000/auth/login
-4. Click "المتابعة باستخدام Google"
-5. Check browser console for logs
+Use the pure auth tests under `__tests__/integration/auth.test.ts` and the native callback test under `__tests__/unit/native-google-oauth-handler.test.ts`.
 
-### Debugging
-Open browser DevTools (F12) and look for logs starting with:
-- `[oauth]` - OAuth button clicks
-- `[auth/callback]` - Callback processing
-- `[v0]` - Manual debug logs
-
-## Production Deployment
-
-### Vercel Deployment
-1. Set environment variables in Vercel project settings
-2. Add production callback URL to Google Cloud Console
-3. Test the flow on production
-
-### Supabase Production
-1. Supabase handles this automatically
-2. Just ensure Google OAuth is enabled
-3. Use production Supabase URL and key
-
-## Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| "provider is not enabled" | Enable Google OAuth in Supabase |
-| "redirect_uri_mismatch" | URLs must match exactly |
-| "Invalid client" | Check Client ID/Secret |
-| "Session not created" | Check callback route logs |
-| "Profile not updated" | Check database permissions |
-
-## Next Steps
-
-1. **Enable Google OAuth**: See `ENABLE_GOOGLE_OAUTH.md`
-2. **Test the flow**: Open login page and try Google sign-in
-3. **Monitor logs**: Check console for `[oauth]` and `[auth/callback]` messages
-4. **Deploy**: Follow production deployment steps when ready
+Then run the full verification suite with `pnpm verify`.

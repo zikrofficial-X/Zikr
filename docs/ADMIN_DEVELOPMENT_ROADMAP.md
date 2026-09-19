@@ -784,7 +784,7 @@ export async function restoreAdminConfiguration(backupId: string): Promise<boole
 ## 🔧 متطل��ات تقنية
 
 ### المتطلبات:
-- ✅ Next.js 14+
+- ✅ Next.js 16+
 - ✅ TypeScript
 - ✅ Supabase (Database + Auth)
 - ✅ YouTube API v3
@@ -805,7 +805,7 @@ YOUTUBE_CHANNEL_ID=xxx
 # Facebook Configuration
 FACEBOOK_PAGE_ID=xxx
 FACEBOOK_PAGE_ACCESS_TOKEN=xxx
-META_GRAPH_API_VERSION=v26.0
+FACEBOOK_GRAPH_API_VERSION=v26.0
 
 # Publishing Configuration
 VIDEO_AUTO_PUBLISH=true
