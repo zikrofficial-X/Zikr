@@ -1,3 +1,6 @@
+import { getPublicEnv } from "@/lib/env";
+import type { Scholar } from "@/features/scholars/types/scholars";
+
 export const FALLBACK_SCHOLARS: Scholar[] = [
   {
     id: "1",
