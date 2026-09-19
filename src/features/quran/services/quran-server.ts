@@ -1,5 +1,7 @@
 "use server";
 
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import {
   supabaseServerAdminRequest,
   supabaseServerAnonRequest,
@@ -30,6 +32,75 @@ const quranDbRequest = async <T>(path: string): Promise<T> => {
   }
 };
 
+type LocalQuranRow = {
+  id: string;
+  surah_id: number;
+  ayah_number: number;
+  text_ar: string;
+  text_en: string | null;
+  text_uthmani: string | null;
+  text_simple: string | null;
+  page: number | null;
+  juz: number | null;
+  hizb: number | null;
+  rub: number | null;
+  sajda: boolean | null;
+};
+
+let localCorpusPromise: Promise<LocalQuranRow[]> | null = null;
+
+async function loadLocalQuranCorpus(): Promise<LocalQuranRow[]> {
+  if (!localCorpusPromise) {
+    localCorpusPromise = readFile(
+      path.join(process.cwd(), "public/quran/mushaf-hafs.json"),
+      "utf8",
+    ).then((raw) => {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed) || parsed.length !== 6236) {
+        throw new Error(
+          `Local Quran corpus is invalid: expected 6236 ayahs, received ${Array.isArray(parsed) ? parsed.length : 0}`,
+        );
+      }
+      return parsed as LocalQuranRow[];
+    });
+  }
+
+  return localCorpusPromise;
+}
+
+function mapLocalAyah(
+  row: LocalQuranRow,
+  locale: Locale,
+): Ayah {
+  return mapDbAyah(
+    {
+      id: row.id,
+      surah_id: row.surah_id,
+      ayah_number: row.ayah_number,
+      text_ar: row.text_ar,
+      text_en: row.text_en,
+      text_uthmani: row.text_uthmani,
+      text_simple: row.text_simple,
+      page: row.page,
+      juz: row.juz,
+      hizb: row.hizb,
+      rub: row.rub,
+      sajda: row.sajda,
+    },
+    locale,
+  );
+}
+
+async function getLocalSurahRows(surahId: number): Promise<LocalQuranRow[]> {
+  const corpus = await loadLocalQuranCorpus();
+  const rows = corpus
+    .filter((row) => row.surah_id === surahId)
+    .sort((a, b) => a.ayah_number - b.ayah_number);
+
+  if (!rows.length) return [];
+  return rows;
+}
+
 function getFallbackSurahs(locale: Locale): Surah[] {
   return fallbackSurahs.map((surah) => ({
     number: surah.id,
@@ -49,6 +120,22 @@ function getFallbackSurahs(locale: Locale): Surah[] {
 export async function getAllSurahsFromDb(
   locale: Locale = "ar"
 ): Promise<Surah[] | null> {
+  try {
+    const corpus = await loadLocalQuranCorpus();
+    const counts = new Map<number, number>();
+    for (const row of corpus) {
+      counts.set(row.surah_id, (counts.get(row.surah_id) ?? 0) + 1);
+    }
+    if (counts.size === 114 && corpus.length === 6236) {
+      return getFallbackSurahs(locale).map((surah) => ({
+        ...surah,
+        numberOfAyahs: counts.get(surah.number) ?? surah.numberOfAyahs,
+      }));
+    }
+  } catch (error) {
+    console.error("[quran-server] local Quran corpus unavailable; falling back to Supabase:", error);
+  }
+
   try {
     const dbSurahs = await quranDbRequest<DbSurah[]>(
       "/rest/v1/quran_surahs?select=id,name_ar,name_en,name_translation,revelation_place,ayahs_count&order=id.asc"
@@ -70,6 +157,16 @@ export async function getSurahMetaFromDb(
   locale: Locale = "ar"
 ): Promise<Surah | null> {
   try {
+    const rows = await getLocalSurahRows(surahId);
+    const fallback = getFallbackSurahs(locale).find((surah) => surah.number === surahId) ?? null;
+    if (fallback && rows.length) {
+      return { ...fallback, numberOfAyahs: rows.length };
+    }
+  } catch (error) {
+    console.error(`[quran-server] local metadata failed for ${surahId}:`, error);
+  }
+
+  try {
     const dbSurahs = await quranDbRequest<DbSurah[]>(
       `/rest/v1/quran_surahs?id=eq.${surahId}&select=id,name_ar,name_en,name_translation,revelation_place,ayahs_count&limit=1`
     );
@@ -89,14 +186,24 @@ export async function getSurahFromDb(
   locale: Locale = "ar"
 ): Promise<{ surah: Surah; ayahs: Ayah[] } | null> {
   try {
-    // 1. Get Surah Metadata
+    const rows = await getLocalSurahRows(surahId);
+    const fallback = getFallbackSurahs(locale).find((surah) => surah.number === surahId) ?? null;
+    if (fallback && rows.length === fallback.numberOfAyahs) {
+      return {
+        surah: { ...fallback, numberOfAyahs: rows.length },
+        ayahs: rows.map((row) => mapLocalAyah(row, locale)),
+      };
+    }
+  } catch (error) {
+    console.error(`[quran-server] local Quran surah ${surahId} unavailable:`, error);
+  }
+
+  try {
     const dbSurahs = await quranDbRequest<DbSurah[]>(
       `/rest/v1/quran_surahs?id=eq.${surahId}&select=id,name_ar,name_en,name_translation,revelation_place,ayahs_count`
     );
-
     if (!dbSurahs?.[0]) return null;
 
-    // 2. Get Ayahs for this Surah
     const dbAyahs = await quranDbRequest<DbAyah[]>(
       `/rest/v1/quran_ayahs?surah_id=eq.${surahId}&select=id,surah_id,ayah_number,text_ar,text_en,text_uthmani,text_simple,page,juz,hizb,rub,sajda&order=ayah_number.asc`
     );
@@ -116,6 +223,17 @@ export async function getAyahFromDb(
   ayahNumber: number,
   locale: Locale = "ar"
 ): Promise<Ayah | null> {
+  try {
+    const rows = await getLocalSurahRows(surahId);
+    const local = rows.find((row) => row.ayah_number === ayahNumber);
+    if (local) return mapLocalAyah(local, locale);
+  } catch (error) {
+    console.error(
+      `[quran-server] local Quran ayah ${surahId}:${ayahNumber} unavailable:`,
+      error
+    );
+  }
+
   try {
     const result = await quranDbRequest<DbAyah[]>(
       `/rest/v1/quran_ayahs?surah_id=eq.${surahId}&ayah_number=eq.${ayahNumber}&limit=1&select=id,surah_id,ayah_number,text_ar,text_en,text_uthmani,text_simple,page,juz,hizb,rub,sajda`
