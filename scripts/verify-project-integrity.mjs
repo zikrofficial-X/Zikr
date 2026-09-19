@@ -209,10 +209,14 @@ for (const token of ['NSCameraUsageDescription', 'NSMicrophoneUsageDescription',
 const nextConfig = read('next.config.ts');
 const siteSource = read('src/lib/site.ts');
 if (!nextConfig.includes('NEXT_PUBLIC_SITE_URL')) {
-  failures.push('next.config.ts must consume NEXT_PUBLIC_SITE_URL as the deployment-controlled canonical URL');
+  failures.push('next.config.ts must expose NEXT_PUBLIC_SITE_URL from the canonical production source');
 }
-if (!siteSource.includes('PRODUCTION_URL') || !siteSource.includes('NEXT_PUBLIC_SITE_URL')) {
-  failures.push('src/lib/site.ts must remain the canonical site URL source');
+if (
+  !siteSource.includes('PRODUCTION_URL') ||
+  !siteSource.includes('export const PRODUCTION_URL = "https://zikrmediaofficial.vercel.app";') ||
+  !siteSource.includes('url: PRODUCTION_URL')
+) {
+  failures.push('src/lib/site.ts must remain the immutable canonical site URL source');
 }
 if (!nextConfig.includes('https://ep1.adtrafficquality.google')) {
   warnings.push('CSP does not explicitly mention ep1.adtrafficquality.google; verify against current AdSense traffic tooling.');
