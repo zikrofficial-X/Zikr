@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +18,7 @@ type LibraryItem = {
 };
 
 export default async function LibraryPage() {
-  const db = createAdminClient();
+  const db = await createClient();
   const { data: rawItems, error } = await db
     .from('content_library')
     .select('id,slug,title_ar,title_en,summary_ar,summary_en,content_type,category,tags,author,published_at')
