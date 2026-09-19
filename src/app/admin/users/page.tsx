@@ -13,6 +13,7 @@ interface UserProfile {
   display_name: string | null;
   email: string | null;
   role: "user" | "admin" | null;
+  effective_role?: string;
   avatar_url: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -44,7 +45,15 @@ async function getUsers(): Promise<UserProfile[]> {
       "/rest/v1/profiles?select=id,display_name,email,role,avatar_url,created_at,updated_at&order=created_at.desc&limit=200",
       { cache: "no-store" }
     );
-    return users || [];
+    const assignments = await supabaseServerAdminRequest<Array<{ user_id: string; role: string }>>(
+      "/rest/v1/admin_role_assignments?select=user_id,role&limit=500",
+      { cache: "no-store" },
+    );
+    const roleByUser = new Map(assignments.map((row) => [row.user_id, row.role]));
+    return (users || []).map((user) => ({
+      ...user,
+      effective_role: roleByUser.get(user.id) ?? user.role ?? "user",
+    }));
   } catch (error) {
     console.error("Failed to fetch users:", error);
     return [];
@@ -59,7 +68,7 @@ export default async function AdminUsersPage() {
     getRecentAdminActions(),
   ]);
 
-  const adminCount = users.filter(u => u.role === "admin").length;
+  const adminCount = users.filter(u => (u.effective_role ?? u.role) !== "user").length;
   const now = new Date().getTime();
   const thirtyDaysAgoMs = now - 30 * 24 * 60 * 60 * 1000;
   const recentCount = users.filter(
