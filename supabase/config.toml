@@ -8,12 +8,12 @@ max_rows = 1000
 
 [auth]
 enabled = true
-site_url = "https://zikrmediaofficial.vercel.app"
+site_url = "https://zikrmediaofficial.vercel.app/"
 # The public production origin is fixed. Keep app redirect URLs explicit for Supabase Auth.
 additional_redirect_urls = [
-  "https://zikrmediaofficial.vercel.app/auth/callback",
-  "http://localhost:3000/auth/callback",
   "com.zikr.app://auth/callback",
+  "http://localhost:3000/**",
+  "https://zikrmediaofficial.vercel.app/auth/callback",
 ]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
@@ -23,6 +23,7 @@ refresh_token_reuse_interval = 10
 enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
+
 
 [storage]
 enabled = true
