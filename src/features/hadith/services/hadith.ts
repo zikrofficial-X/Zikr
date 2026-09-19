@@ -4,16 +4,8 @@ import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import type { Hadith, HadithBook, HadithResponse } from "@/features/hadith/types/hadith";
 import type { PaginationMeta } from "@/lib/types/common";
 
-const LEGACY_HADITH_API_BASE = "https://api.hadith.gading.dev";
 const HADITH_API_BASE =
   getServerEnv().HADITH_API_BASE_URL || "https://ummahapi.com/api/hadith";
-const IS_UMMAH_API = /ummahapi\.com\/api\/hadith/i.test(HADITH_API_BASE);
-
-interface LegacyApiResponse<T> {
-  code: number;
-  message: string;
-  data: T;
-}
 
 type DbHadithBook = {
   id: string;
@@ -184,16 +176,7 @@ export async function getHadithBooks(): Promise<HadithBook[]> {
   );
   if (dbBooks?.length) return dbBooks.map(mapDbHadithBook);
 
-  if (IS_UMMAH_API) return getUmmahBooks();
-
-  const { data: res } = await safeApiFetch<
-    LegacyApiResponse<Record<string, { name: string; available: number }>>
-  >(`${HADITH_API_BASE || LEGACY_HADITH_API_BASE}/books`);
-  return Object.entries(res?.data ?? {}).map(([id, value]) => ({
-    id,
-    slug: id,
-    ...value,
-  }));
+  return getUmmahBooks();
 }
 
 export async function getHadithBook(
@@ -229,40 +212,7 @@ export async function getHadithBook(
     };
   }
 
-  if (IS_UMMAH_API) return getUmmahBook(clean, page, limit);
-
-  try {
-    const { data: result } = await safeApiFetch<
-      LegacyApiResponse<{
-        name: string;
-        id: string;
-        available: number;
-        requested: number;
-        hadiths: Hadith[];
-      }>
-    >(
-      `${HADITH_API_BASE || LEGACY_HADITH_API_BASE}/books/${encodeURIComponent(clean)}?range=${page}-${page + limit - 1}`,
-    );
-
-    const total = result?.data?.available ?? 0;
-    const pagination: PaginationMeta = {
-      currentPage: page,
-      pageSize: limit,
-      totalItems: total,
-      totalPages: Math.max(1, Math.ceil(total / limit)),
-    };
-
-    return {
-      name: result?.data?.name ?? clean,
-      slug: result?.data?.id ?? clean,
-      total,
-      pagination,
-      data: result?.data?.hadiths ?? [],
-    };
-  } catch (error) {
-    console.error("[hadith-service] Failed to fetch book:", clean, error);
-    return null;
-  }
+  return getUmmahBook(clean, page, limit);
 }
 
 export async function getHadithByNumber(
@@ -281,14 +231,7 @@ export async function getHadithByNumber(
     if (dbHadiths?.[0]) return mapDbHadith(dbHadiths[0]);
   }
 
-  if (IS_UMMAH_API) return getUmmahHadithByNumber(book, number);
-
-  const { data: res } = await safeApiFetch<
-    LegacyApiResponse<{ name: string; id: string; contents: Hadith }>
-  >(
-    `${HADITH_API_BASE || LEGACY_HADITH_API_BASE}/books/${encodeURIComponent(book)}/${number}`,
-  );
-  return res?.data?.contents ?? null;
+  return getUmmahHadithByNumber(book, number);
 }
 
 export async function searchHadith(query: string): Promise<Hadith[]> {
