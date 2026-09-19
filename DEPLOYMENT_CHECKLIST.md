@@ -38,9 +38,9 @@ Confirm that `cron.job` contains exactly one active job for each name below and 
 | Job | Schedule | Target |
 |---|---:|---|
 | `zikr-prayer-push-dispatch` | `* * * * *` | `prayer-notification-worker` Edge Function |
-| `zikr-video-processing` | `* * * * *` | `/api/internal/video-processing` |
+| `zikr-video-processing` | retired | none |
 
-Do not add a GitHub schedule or a Vercel Cron entry for either path. The prayer worker uses the private VAPID configuration and an idempotent delivery ledger. The video route uses a private scheduler bearer secret and conditional queue claims.
+Do not add or restore a scheduler for the retired video path. The prayer scheduler remains owned by Supabase `pg_cron`; video/social processing is manual recovery while GitHub hosted runners are unavailable. The prayer worker uses the private VAPID configuration and an idempotent delivery ledger. The video route uses a private scheduler bearer secret and conditional queue claims.
 
 ## Authentication and Google OAuth
 
