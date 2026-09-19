@@ -114,17 +114,6 @@ export async function claimPendingVideoRequests(limit = 100): Promise<VideoGener
   return claimed;
 }
 
-/** Kept for API compatibility; active production rendering is owned by the template worker. */
-export async function getSubmittedVideoRequests(_limit = 100): Promise<VideoGenerationRequest[]> {
-  try {
-    return (await supabaseServerAdminRequest<VideoGenerationRequest[]>(
-      '/rest/v1/video_generation_requests?status=eq.processing&content->>renderer=eq.template&order=updated_at.asc&limit=100',
-    )) ?? [];
-  } catch (error) {
-    console.error('[video-automation] Failed to fetch submitted template requests:', error);
-    return [];
-  }
-}
 
 export async function getAllVideoRequests(): Promise<VideoGenerationRequest[]> {
   try {
@@ -245,22 +234,6 @@ export async function generateAdhkarVideo(
     category: 'adhkar',
     content: { renderer: 'template', type: 'adhkar', adhkarType },
   });
-}
-
-/**
- * Legacy orchestration entry point retained only so old callers fail closed.
- * The active renderer is `scripts/jobs/template-video-automation.ts`.
- */
-export async function processVideoGenerationRequest(
-  request: VideoGenerationRequest,
-  _options: { alreadyClaimed?: boolean } = {},
-): Promise<boolean> {
-  if (request.status === 'completed' && request.video_url) return true;
-  await updateVideoRequestStatus(request.id, 'failed');
-  console.error(
-    `[video-automation] Legacy generation entry point rejected for ${request.id}; use the canonical template worker.`,
-  );
-  return false;
 }
 
 function assertRemoteVideoUrl(videoUrl: string, target: string): string {
