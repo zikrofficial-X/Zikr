@@ -23,27 +23,12 @@ jobs:
             set -euo pipefail
             pnpm install --frozen-lockfile
       - run:
-          name: Run migration validation
+          name: Run the canonical verification suite
           shell: /bin/bash
           command: |
             set -euo pipefail
-            pnpm supabase:migrations:check
-            pnpm supabase:migrations:replay
-          no_output_timeout: 20m
-      - run:
-          name: Run CI checks
-          shell: /bin/bash
-          command: |
-            set -euo pipefail
-            pnpm imports:check
-            pnpm mobile:check
-            pnpm offline:check
-            pnpm project:check
-            pnpm lint
-            pnpm check
-            pnpm test
-            pnpm build
-          no_output_timeout: 20m
+            pnpm verify
+          no_output_timeout: 30m
 
   android-rebuild:
     docker:
