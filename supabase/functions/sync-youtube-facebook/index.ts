@@ -231,7 +231,7 @@ async function expireStaleWaitingMedia() {
     .update({
       status: 'failed',
       retryable: false,
-      next_attempt_at: null,
+      next_attempt_at: new Date().toISOString(),
       last_error: 'Expired waiting-media job: original video media was not found within the retry window. Requeue manually after uploading or registering the media.',
       updated_at: new Date().toISOString(),
     })
