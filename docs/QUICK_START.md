@@ -17,9 +17,7 @@ Copy these 3 values:
 - **Anon Key** → long string starting with `eyJ...`
 - **Service Role Key** → long string, KEEP SECRET
 
-Also get your PostgreSQL connection string:
-- Settings > Database > Connection Pooling
-- Format: `postgresql://postgres:PASSWORD@db.xxx.supabase.co:5432/postgres`
+Migrations are managed exclusively through the Supabase migration chain; do not provision a `DATABASE_URL` for application runtime.
 
 ### 2️⃣ Add to Vercel (2 min)
 
