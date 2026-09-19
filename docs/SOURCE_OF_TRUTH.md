@@ -4,7 +4,7 @@
 
 The canonical application source for ZIKR is:
 
-- GitHub repository: `mohamedalaa7785-cpu/Zikr`
+- GitHub repository: `Zikrmediaofficial/Zikr`
 - Production branch: `main`
 - Vercel project: `zikr`
 - Vercel team: `Hamo's projects`
