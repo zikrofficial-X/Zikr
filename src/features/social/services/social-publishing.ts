@@ -123,9 +123,16 @@ export async function getPendingSocialPublishItems(
   const path =
     `/rest/v1/social_publish_queue?or=(and(status.eq.queued,or(scheduled_at.is.null,scheduled_at.lte.${now})),and(status.eq.partial,or(scheduled_at.is.null,scheduled_at.lte.${now})))&order=scheduled_at.asc.nullsfirst,created_at.asc&limit=${limit}`;
   try {
-    return (
-      (await supabaseServerAdminRequest<SocialPublishQueueItem[]>(path)) || []
-    );
+    const rows =
+      (await supabaseServerAdminRequest<SocialPublishQueueItem[]>(path)) || [];
+
+    return rows.filter((item) => {
+      const metadata = item.metadata ?? {};
+      const authBlocked = metadata.authBlocked === true;
+      const attempts = Number(metadata.attempts ?? 0);
+      const maxAttempts = Math.max(1, Number(metadata.maxAttempts ?? 5));
+      return !authBlocked && attempts < maxAttempts;
+    });
   } catch (error) {
     console.error("[social-publishing] Failed to fetch queue:", error);
     return [];
