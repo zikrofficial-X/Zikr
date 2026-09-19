@@ -109,7 +109,7 @@ The project uses Supabase RLS, server-side service-role boundaries, protected OA
 
 ## Release process
 
-The current Android release baseline is `1.4.22` / versionCode `53` / `com.zikr.app` / target SDK 36. The release workflow validates package metadata, mobile readiness, signing inputs, APK/AAB output, signature, application ID, version name, and target SDK before publishing release assets.
+The current release metadata baseline is `1.0.0` / versionCode `53` / `com.zikr.app` / target SDK 36. The v1.4.x documents are historical release records. The release workflow validates package metadata, mobile readiness, signing inputs, APK/AAB output, signature, application ID, version name, and target SDK before publishing release assets.
 
 Before releasing:
 
