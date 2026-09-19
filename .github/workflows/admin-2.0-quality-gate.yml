@@ -37,6 +37,7 @@ jobs:
       - run: pnpm offline:check
       - run: pnpm content:check
       - run: pnpm auth:check
+      - run: pnpm canonical:check
       - run: pnpm native-social:check
       - run: pnpm adsense:check
       - run: pnpm search-console:check
