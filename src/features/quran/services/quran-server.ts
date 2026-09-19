@@ -2,6 +2,7 @@
 
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import type { Surah, Ayah, Reciter, QuranTafsirSource } from "@/features/quran/types/quran";
+import { surahs as fallbackSurahs, reciters as fallbackReciters } from "@/features/quran/data/fallback";
 import {
   mapDbSurah,
   mapDbAyah,
@@ -29,11 +30,18 @@ export async function getAllSurahsFromDb(
       "/rest/v1/quran_surahs?select=id,name_ar,name_en,name_translation,revelation_place,ayahs_count&order=id.asc"
     );
 
-    if (!dbSurahs?.length) return null;
-    return dbSurahs.map(surah => mapDbSurah(surah, locale));
+    if (dbSurahs?.length === 114) return dbSurahs.map(surah => mapDbSurah(surah, locale));
+    throw new Error(`Incomplete Quran catalog: ${dbSurahs?.length ?? 0}/114`);
   } catch (error) {
-    console.error("[quran-server] getAllSurahsFromDb failed:", error);
-    return null;
+    console.error("[quran-server] getAllSurahsFromDb failed; using bundled catalog:", error);
+    return fallbackSurahs.map(surah => ({
+      number: surah.id,
+      name: locale === "en" ? surah.nameEn : surah.nameAr,
+      englishName: surah.nameEn,
+      englishNameTranslation: "",
+      numberOfAyahs: surah.ayahCount,
+      revelationType: surah.revelationPlace === "meccan" ? "Meccan" : "Medinan",
+    }));
   }
 }
 
@@ -77,11 +85,24 @@ export async function getSurahFromDb(
       ayahs: (dbAyahs ?? []).map(ayah => mapDbAyah(ayah, locale)),
     };
   } catch (error) {
-    console.error(
-      `[quran-server] getSurahFromDb failed for ${surahId}:`,
-      error
-    );
-    return null;
+    console.error(`[quran-server] getSurahFromDb failed for ${surahId}; using public Quran API:`, error);
+    try {
+      const baseUrl = process.env.QURAN_API_BASE_URL || "https://api.alquran.cloud/v1";
+      const response = await fetch(`${baseUrl.replace(/\/$/, "")}/surah/${surahId}/quran-uthmani`, {
+        next: { revalidate: 86400 },
+      });
+      if (!response.ok) return null;
+      const payload = await response.json() as { data?: { number: number; name: string; englishName: string; numberOfAyahs: number; revelationType: string; ayahs: Array<{ number: number; text: string; numberInSurah: number; juz: number; page: number; hizbQuarter: number; sajda: boolean | object }> } };
+      const data = payload.data;
+      if (!data?.ayahs?.length) return null;
+      return {
+        surah: { number: data.number, name: data.name, englishName: data.englishName, englishNameTranslation: "", numberOfAyahs: data.numberOfAyahs, revelationType: data.revelationType },
+        ayahs: data.ayahs.map(ayah => ({ number: ayah.number, text: ayah.text, numberInSurah: ayah.numberInSurah, juz: ayah.juz, manzil: 0, page: ayah.page, ruku: 0, hizbQuarter: ayah.hizbQuarter, sajda: Boolean(ayah.sajda) })),
+      };
+    } catch (fallbackError) {
+      console.error(`[quran-server] public Quran API failed for ${surahId}:`, fallbackError);
+      return null;
+    }
   }
 }
 
