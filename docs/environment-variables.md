@@ -12,7 +12,7 @@ The following environment variables are required for the application to function
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | The public anonymous key for your Supabase project.                         | Public   |
 | `NEXT_PUBLIC_SITE_URL`          | The locked canonical public URL: https://zikrmediaofficial.vercel.app.                                        | Public   |
 | `SUPABASE_SERVICE_ROLE_KEY`     | The Supabase service role key, used for server-side operations.             | Server   |
-| `AUTH_CALLBACK_URL`             | Locked application callback: `https://zikrmediaofficial.vercel.app/auth/callback`. Google provider registration remains configured separately in Supabase Auth. | Server   |
+| `AUTH_CALLBACK_URL`             | Locked application callback: `https://zikrmediaofficial.vercel.app/auth/callback`. Google provider registration uses Supabase's provider callback separately. | Server   |
 
 ## Optional Integration Environment Variables
 
