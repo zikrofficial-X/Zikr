@@ -65,6 +65,13 @@ function parseItems(
   retrievedAt: string
 ): SourceItem[] {
   if (source.parser_key === "alquran_cloud") {
+    // Quran chapter catalog is synchronized into quran_surahs and is not a
+    // reviewable editorial-content queue item. Keep the source check for
+    // monitoring, but do not create 114 permanent pending queue records.
+    return [];
+  }
+
+  if (source.parser_key === "alquran_cloud") {
     const data = (payload as { data?: unknown }).data;
     if (!Array.isArray(data)) return [];
     return data.flatMap(entry => {
