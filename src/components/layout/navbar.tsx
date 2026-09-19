@@ -51,7 +51,7 @@ export async function Navbar() {
         isAdmin = profile?.role === "admin";
       }
     } catch (error) {
-      console.error("[v0] Navbar auth lookup failed:", error);
+      console.error("[navbar] Auth lookup failed:", error);
     }
   }
 
