@@ -1,2 +1,0 @@
-Run locally after installing yt-dlp and setting the documented environment variables:
-node scripts/backfill-youtube-facebook-native-local.mjs --limit 1
