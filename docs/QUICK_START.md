@@ -33,7 +33,7 @@ NEXT_PUBLIC_SITE_URL = https://zikrmediaofficial.vercel.app
 AUTH_CALLBACK_URL = https://zikrmediaofficial.vercel.app/auth/callback
 ```
 
-⚠️ **Make sure to add these to ALL environments** (Production, Preview, Development)
+⚠️ **Keep `NEXT_PUBLIC_SITE_URL` and `AUTH_CALLBACK_URL` exactly identical across environments**. Supabase credentials are required in environments where the app is executed.
 
 ### 3️⃣ Redeploy (30 sec)
 
@@ -53,18 +53,18 @@ Visit your Vercel URL → It should load without errors ✅
 - ✅ Middleware handles missing config gracefully
 - ✅ Environment validation improved
 - ✅ Error messages are helpful
-- ⏳ **Waiting for**: You to add Supabase credentials to Vercel
+- ⏳ **Deployment**: Vercel build capacity/account limits may block a new deployment even when the repository is valid.
 
 ## If Something Goes Wrong
 
 ### Build still fails?
 - Check Vercel Deployments > Build Logs
-- Make sure ALL 6 variables from step 2 are set
+- Make sure the 5 required variables from step 2 are set
 - Try redeploy again
 
 ### App loads but nothing works?
 - Check browser console (F12)
-- Make sure database connection string is correct (URL-encode special characters)
+- Do not add a direct database connection string; use Supabase migration tooling for schema changes.
 - Verify Supabase project is active
 
 ### Need help?
@@ -75,7 +75,7 @@ Visit your Vercel URL → It should load without errors ✅
 ## After This Works
 
 You'll have:
-- ✅ Automatic GitHub → Vercel deployment on push
+- ✅ GitHub → Vercel deployment remains configured by the connected project
 - ✅ Database connection to Supabase
 - ✅ Auth system working
 - ✅ All app features functional
