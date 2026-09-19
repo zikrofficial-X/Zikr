@@ -8,9 +8,9 @@
 
 The repository has been consolidated onto a single canonical branch. Obsolete feature wrappers, duplicate assets, legacy hook/service paths, and root-level historical release clutter were removed or archived.
 
-The current repair work is committed on `main`; the latest repository commit is `9f5c58f734d5ab6b193513a29097594c8332dd44`.
+The GitHub Actions workflows have now been **fully retired from the active repository**. The `.github/workflows/` directory no longer exists on `main`, so new GitHub-hosted runner jobs cannot be started from repository workflow files.
 
-The current repair commits are not yet certified by a green CI run. GitHub-hosted runners are unavailable for this account, the latest CircleCI `ci-check` is failing without exposed job logs in the current integration, and Vercel is currently rejecting deployments with a `build-rate-limit` platform status. The repository therefore remains under repair/verification rather than being marked release-green.
+Application verification is handled by the existing external CI/deployment systems. This removes the repository-level GitHub Actions execution path that was previously blocked by the account billing/spending restriction.
 
 ## Repository architecture
 
@@ -67,15 +67,15 @@ Capacitor runtime packages are on major version 7, while the repository pins `@c
 
 ## Deployment
 
-Vercel's last READY production deployment is still commit `2dec7d45c57a01927f10b499ca405e6b07c31739`; the current `main` repair commits have been pushed to GitHub but are not yet present in a newer READY deployment. The last available Vercel runtime-error query showed no grouped runtime errors in the selected 24-hour window; the newer deployment attempts are currently blocked by the Vercel build-rate limit.
+Vercel's last READY production deployment is still commit `2dec7d45c57a01927f10b499ca405e6b07c31739`; the current `main` repair commits have been pushed to GitHub but are not yet present in a newer READY deployment. The last available Vercel runtime-error query showed no grouped runtime errors in the selected 24-hour window; newer deployment attempts were previously blocked by the Vercel build-rate limit.
 
 ## Canonical Quran storage
 
-- Quran text is now runtime-local to ZIKR: `quran_surahs` (114), `quran_ayahs` (6236), `quran_tafsir` (6236), and `quran_reciters` (7).
+- Quran text is runtime-local to ZIKR: `quran_surahs` (114), `quran_ayahs` (6236), `quran_tafsir` (6236), and `quran_reciters` (7).
 - Quran runtime services no longer depend on Al Quran Cloud or any other external Quran API.
 - `quran_audio` is modeled as 798 deterministic Supabase Storage targets: one whole-surah track for each of 114 surahs × 7 current reciters.
 - Bucket: `quran-audio` (public read, controlled writes).
-- The storage import workflow is `.github/workflows/import-quran-audio.yml`; it requires the existing `SUPABASE_SERVICE_ROLE_KEY` repository secret.
+- Audio import remains available through the canonical importer script under `scripts/`; it is no longer exposed through a GitHub Actions workflow.
 - Audio objects are not yet uploaded: `quran-audio` currently contains 0 objects and all 798 rows are `storage_status='pending'`.
 - The current Supabase project is on the Free storage quota shown in the dashboard (1 GB included, 50 MB maximum per file). Full retention of all seven complete reciter libraries should therefore be capacity-checked before the import is run; the importer refuses files above the configured per-file limit rather than silently truncating them.
 
@@ -94,4 +94,5 @@ Vercel's last READY production deployment is still commit `2dec7d45c57a01927f10b
 - Apply database changes through `supabase/migrations/`.
 - Never reintroduce duplicate compatibility layers without a concrete migration requirement.
 - Do not remove Supabase indexes solely because they are currently unused according to the advisor.
+- Do not recreate `.github/workflows/` unless the GitHub account billing state has been deliberately reviewed and the execution model is explicitly approved.
 - Do not treat archived reports as current project state.
