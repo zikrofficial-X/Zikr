@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { requireAdminApi } from "@/lib/services/admin";
+import { requireAdminApi } from "@/features/admin/services/admin";
 
 const BUCKET = "youtube-facebook-media";
 const PUBLIC_URL_PREFIX = "/storage/v1/object/public/";
