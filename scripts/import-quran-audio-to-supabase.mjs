@@ -1,5 +1,11 @@
-import { loadEnvFile } from "node:process";
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
+import { createWriteStream } from "node:fs";
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { loadEnvFile } from "node:process";
+import { pipeline } from "node:stream/promises";
 
 function loadOptionalEnvFile(filePath) {
   try {
@@ -11,12 +17,6 @@ function loadOptionalEnvFile(filePath) {
 
 loadOptionalEnvFile(".env");
 loadOptionalEnvFile(".env.local");
-import { createHash } from "node:crypto";
-import { createWriteStream } from "node:fs";
-import { promises as fs } from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { pipeline } from "node:stream/promises";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
