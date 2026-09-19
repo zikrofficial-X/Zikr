@@ -8,7 +8,7 @@ The external Google authentication still runs through Supabase Auth. Google's OA
 
 `https://eydxvcamhjhajxjrsgym.supabase.co/auth/v1/callback`
 
-Supabase then redirects to the application deep link because it is present in the Supabase Auth Redirect URLs allowlist. Supabase supports mobile deep-link redirect targets in this configuration. citeturn167534search0turn167534search1
+Supabase then redirects to the application deep link because it is present in the Supabase Auth Redirect URLs allowlist. Supabase supports mobile deep-link redirect targets in this configuration.
 
 The Capacitor handler listens for `appUrlOpen`, retrieves the callback URL, validates the exact deep-link pathname `/callback`, and exchanges the authorization code with the PKCE verifier stored by the browser Supabase client.
 
