@@ -20,7 +20,10 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   const { id: rawId } = await context.params;
-  const id = Number(rawId);
+  // The sitemap index links to /sitemap-content/{id}.xml. Accept the suffix
+  // explicitly so the handler remains correct behind rewrites and adapters
+  // that pass the raw pathname segment through unchanged.
+  const id = Number(rawId.replace(/\.xml$/i, ''));
 
   if (!Number.isInteger(id) || id < 0) {
     return new NextResponse('Not Found', { status: 404 });
