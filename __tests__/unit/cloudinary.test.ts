@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { validateCloudinaryImage } from '@/lib/services/cloudinary-validation';
+import { validateCloudinaryImage } from '@/features/media/services/cloudinary-validation';
 
 function file(bytes: number, type: string) {
   return new File([new Uint8Array(bytes)], 'upload.bin', { type });
