@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { readFileSync } from "node:fs";
 
 const source = readFileSync(
-  "src/components/layout/native-google-oauth-handler.tsx",
+  "src/src/components/layout/native-google-oauth-handler.tsx",
   "utf8",
 );
 
