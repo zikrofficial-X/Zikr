@@ -29,7 +29,7 @@ export async function generateMetadata({
 
   // Metadata must not load the complete ayah list. This keeps SEO requests cheap
   // and avoids a duplicate, timeout-prone Quran query before page rendering.
-  let surahMeta = await getSurahMetaFromDb(id, "ar");
+  const surahMeta = await getSurahMetaFromDb(id, "ar");
 
   if (!surahMeta) return { title: `سورة ${id}`, description: "بيانات القرآن غير متاحة حاليًا" };
 
