@@ -117,8 +117,6 @@ pnpm verify
 pnpm mobile:check
 ```
 
-The repository also contains historical release notes and audit records. They are documentation history only and are not production execution inputs.
-
 ## Support
 
 - Website: https://zikrmediaofficial.vercel.app
