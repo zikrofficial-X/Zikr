@@ -14,10 +14,10 @@ const requiredFiles = [
   "ios/App/Podfile",
   "android/variables.gradle",
   "mobile/capacitor-dependencies.json",
-  "app/.well-known/assetlinks.json/route.ts",
-  "app/.well-known/apple-app-site-association/route.ts",
-  "components/layout/native-capacitor-bridge.tsx",
-  "components/layout/native-google-oauth-handler.tsx",
+  "src/app/.well-known/assetlinks.json/route.ts",
+  "src/app/.well-known/apple-app-site-association/route.ts",
+  "src/components/layout/native-capacitor-bridge.tsx",
+  "src/components/layout/native-google-oauth-handler.tsx",
   "public/sw.js",
   "public/audio/adhan.mp3",
   "public/audio/salawat.wav",
@@ -25,9 +25,9 @@ const requiredFiles = [
   "android/app/src/main/res/raw/salawat.wav",
   "ios/App/App/Resources/adhan.wav",
   "ios/App/App/Resources/salawat.wav",
-  "app/manifest.ts",
+  "src/app/manifest.ts",
   "public/offline-content/v1/manifest.json",
-  "lib/offline-pack.ts",
+  "src/lib/offline-pack.ts",
 ];
 
 const failures = [];
@@ -102,7 +102,7 @@ for (const token of ["adhan.wav in Resources", "salawat.wav in Resources", "CODE
   if (!pbxproj.includes(token)) failures.push(`iOS Xcode project missing ${token}`);
 }
 
-const bridge = read("components/layout/native-capacitor-bridge.tsx");
+const bridge = read("src/components/layout/native-capacitor-bridge.tsx");
 for (const token of ["zikrNative", "networkStatusChange", "Share", "Camera", "Filesystem", "Haptics", "scheduleLocalNotification", "cancelLocalNotifications"]) {
   if (!bridge.includes(token)) failures.push(`Native bridge missing ${token}`);
 }
@@ -110,12 +110,12 @@ if (bridge.includes('parsed.protocol === "com.zikr.app:"') && bridge.includes("e
   failures.push("Native bridge must not exchange the Google OAuth session; NativeGoogleOAuthHandler is the single callback owner");
 }
 
-const nativeOAuth = read("components/layout/native-google-oauth-handler.tsx");
+const nativeOAuth = read("src/components/layout/native-google-oauth-handler.tsx");
 for (const token of ["Capacitor.isNativePlatform", "appUrlOpen", "getLaunchUrl", "exchangeCodeForSession", "com.zikr.app:", "/callback"]) {
   if (!nativeOAuth.includes(token)) failures.push(`Native Google OAuth handler missing ${token}`);
 }
 
-const googleButton = read("app/auth/google-oauth-button.tsx");
+const googleButton = read("src/app/auth/google-oauth-button.tsx");
 for (const token of [
   'Capacitor.isNativePlatform()',
   'new URL("com.zikr.app://auth/callback")',
@@ -124,7 +124,7 @@ for (const token of [
   if (!googleButton.includes(token)) failures.push(`Google OAuth button missing direct native callback behavior: ${token}`);
 }
 
-const callbackRoute = read("app/auth/callback/route.ts");
+const callbackRoute = read("src/app/auth/callback/route.ts");
 for (const pattern of [
   /searchParams\.get\(['"]native['"]\)\s*===\s*['"]1['"]/, 
   /new URL\(\s*['"]com\.zikr\.app:\/\/auth\/callback['"]\s*\)/,
@@ -133,7 +133,7 @@ for (const pattern of [
   if (!pattern.test(callbackRoute)) failures.push(`Auth callback route missing native bridge behavior: ${pattern}`);
 }
 
-const assetLinksRoute = read("app/.well-known/assetlinks.json/route.ts");
+const assetLinksRoute = read("src/app/.well-known/assetlinks.json/route.ts");
 if (!assetLinksRoute.includes("CURRENT_RELEASE_FINGERPRINT")) {
   failures.push("Android App Links endpoint has no production certificate fallback");
 }
@@ -141,7 +141,7 @@ if (!assetLinksRoute.includes('package_name: \'com.zikr.app\'')) {
   failures.push("Android App Links endpoint is not bound to com.zikr.app");
 }
 
-const loader = read("components/layout/native-capacitor-bridge-loader.tsx");
+const loader = read("src/components/layout/native-capacitor-bridge-loader.tsx");
 if (!loader.includes("NativeGoogleOAuthHandler")) failures.push("Native bridge loader must mount NativeGoogleOAuthHandler");
 
 const offlineManifestPath = "public/offline-content/v1/manifest.json";
@@ -160,7 +160,7 @@ try {
   failures.push(`Offline manifest is invalid JSON: ${error instanceof Error ? error.message : "unknown error"}`);
 }
 
-const offlinePack = read("lib/offline-pack.ts");
+const offlinePack = read("src/lib/offline-pack.ts");
 for (const token of ["offline_manifest", "requestOfflineRouteCache", "cacheRoutes?: boolean", "offline-content-version-v4"]) {
   if (!offlinePack.includes(token)) failures.push(`Offline pack is missing ${token}`);
 }
