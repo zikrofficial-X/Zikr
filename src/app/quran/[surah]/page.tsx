@@ -90,6 +90,16 @@ export default async function SurahPage({
 
       <QuranAudioPlayer surahId={result.surah.number} />
 
+      {result.surah.number !== 1 && result.surah.number !== 9 ? (
+        <div
+          className="py-2 text-center font-arabic text-3xl leading-loose text-brand-gold"
+          aria-label="البسملة"
+          dir="rtl"
+        >
+          بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+        </div>
+      ) : null}
+
       {result.ayahs.length === 0 ? (
         <Card className="p-8 text-center arabic-muted">
           لا توجد آيات متاحة لهذه السورة حاليًا.
