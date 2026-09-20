@@ -30,8 +30,10 @@ export type CurrentProfileData = {
   profile: {
     display_name: string | null;
     avatar_url: string | null;
+    locale: string | null;
     role: string | null;
     created_at: string | null;
+    updated_at: string | null;
   } | null;
   assignedRole: string | null;
   favorites: ProfileFavorite[];
@@ -50,7 +52,7 @@ export async function getCurrentProfileData(): Promise<CurrentProfileData | null
     await Promise.all([
       supabase
         .from("profiles")
-        .select("display_name, avatar_url, role, created_at")
+        .select("display_name, avatar_url, locale, role, created_at, updated_at")
         .eq("id", user.id)
         .limit(1),
       supabase
@@ -92,8 +94,10 @@ export async function getCurrentProfileData(): Promise<CurrentProfileData | null
       ? {
           display_name: profileRes.data[0].display_name ?? null,
           avatar_url: profileRes.data[0].avatar_url ?? null,
+          locale: profileRes.data[0].locale ?? null,
           role: profileRes.data[0].role ?? null,
           created_at: profileRes.data[0].created_at ?? null,
+          updated_at: profileRes.data[0].updated_at ?? null,
         }
       : null,
     assignedRole:
