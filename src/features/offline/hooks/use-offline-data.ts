@@ -11,6 +11,11 @@ export interface UseOfflineDataOptions<T> {
   key?: string | number;
   initialData?: T;
   fallback?: T;
+  /**
+   * Optional online loader used by refresh() when the browser is online.
+   * The value is cached automatically after a successful load.
+   */
+  loadOnline?: () => Promise<T | undefined>;
 }
 
 export interface UseOfflineDataResult<T> {
@@ -27,6 +32,7 @@ export function useOfflineData<T>({
   key,
   initialData,
   fallback,
+  loadOnline,
 }: UseOfflineDataOptions<T>): UseOfflineDataResult<T> {
   const [data, setData] = useState<T | undefined>(initialData);
   const [loading, setLoading] = useState(false);
@@ -59,19 +65,30 @@ export function useOfflineData<T>({
   }, [storeName, key]);
 
   const refresh = useCallback(async () => {
-    if (!isOnline) {
-      await loadFromCache();
-      return;
-    }
     setLoading(true);
+    setError(null);
     try {
-      await loadFromCache();
+      if (isOnline && loadOnline) {
+        const onlineData = await loadOnline();
+        if (onlineData !== undefined) {
+          setData(onlineData);
+          setIsCached(false);
+          await save(onlineData);
+          setIsCached(true);
+          return;
+        }
+      }
+
+      const cached = await loadFromCache();
+      if (!cached && !isOnline && fallback === undefined) {
+        setError(new Error("No offline data is available."));
+      }
     } catch (err) {
-      setError(err as Error);
+      setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setLoading(false);
     }
-  }, [isOnline, loadFromCache]);
+  }, [fallback, isOnline, loadFromCache, loadOnline, save]);
 
   const save = useCallback(
     async (newData: T) => {
