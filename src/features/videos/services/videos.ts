@@ -1,3 +1,5 @@
+import "server-only";
+
 import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
 
 import type { VideoCategory, Video } from "@/features/videos/types/videos";
