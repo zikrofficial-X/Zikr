@@ -1,5 +1,6 @@
 import { getPublicEnv } from "@/lib/env";
 import type { Ayah, Juz, Surah, Reciter } from "@/features/quran/types/quran";
+import { reciters as FALLBACK_RECITERS } from "@/features/quran/data/fallback";
 import { getCanonicalAyahCount } from "@/features/quran/utils/surah-mapping";
 
 const DEBUG_QURAN = process.env.NODE_ENV !== "production";
