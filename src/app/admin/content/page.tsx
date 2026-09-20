@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { requireAdminPermission } from '@/features/admin/services/admin';
-import { createClient } from '@/lib/supabase/server';
+import { getManagedContent, type ManagedContentItem } from '@/features/admin/services/content';
 import { safeDeleteContentAction, safeTogglePublishAction } from '../content-actions';
 
 export const metadata: Metadata = { title: 'إدارة المحتوى | الأدمن' };
@@ -22,29 +22,6 @@ interface ContentItem {
   updated_at: string;
   type: string;
   table: 'stories' | 'articles' | 'competitions' | 'memorization_plans' | 'pinned_messages';
-}
-
-async function getManagedContent(): Promise<ContentItem[]> {
-  try {
-    const supabase = await createClient();
-    const [storiesRes, articlesRes, competitionsRes, plansRes, pinnedRes] = await Promise.all([
-      supabase.from('stories').select('id, title, published, created_at, updated_at').order('created_at', { ascending: false }).limit(20),
-      supabase.from('articles').select('id, title, published, views, created_at, updated_at').order('created_at', { ascending: false }).limit(20),
-      supabase.from('competitions').select('id, title, published, created_at, updated_at').order('created_at', { ascending: false }).limit(20),
-      supabase.from('memorization_plans').select('id, title, published, created_at, updated_at').order('created_at', { ascending: false }).limit(20),
-      supabase.from('pinned_messages').select('id, title, is_active, created_at, updated_at').order('created_at', { ascending: false }).limit(20),
-    ]);
-    const items: ContentItem[] = [
-      ...(storiesRes.data ?? []).map((s) => ({ id: s.id, title: s.title, published: s.published ?? false, views: 0, created_at: s.created_at, updated_at: s.updated_at, type: 'قصة', table: 'stories' as const })),
-      ...(articlesRes.data ?? []).map((a) => ({ id: a.id, title: a.title, published: a.published ?? false, views: a.views ?? 0, created_at: a.created_at, updated_at: a.updated_at, type: 'مقالة', table: 'articles' as const })),
-      ...(competitionsRes.data ?? []).map((c) => ({ id: c.id, title: c.title, published: c.published ?? false, views: 0, created_at: c.created_at, updated_at: c.updated_at, type: 'مسابقة', table: 'competitions' as const })),
-      ...(plansRes.data ?? []).map((p) => ({ id: p.id, title: p.title, published: p.published ?? false, views: 0, created_at: p.created_at, updated_at: p.updated_at, type: 'خطة حفظ', table: 'memorization_plans' as const })),
-      ...(pinnedRes.data ?? []).map((m) => ({ id: m.id, title: m.title ?? 'رسالة مثبتة', published: m.is_active ?? false, views: 0, created_at: m.created_at, updated_at: m.updated_at, type: 'رسالة مثبتة', table: 'pinned_messages' as const })),
-    ];
-    return items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  } catch {
-    return [];
-  }
 }
 
 export default async function ContentPage() {
