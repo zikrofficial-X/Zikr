@@ -31,7 +31,14 @@ export async function GET() {
     }
 
     const release = await getLatestStableAndroidRelease();
-    const tag = release?.tag_name?.trim();
+    if (!release) {
+      return NextResponse.json(
+        { error: "لا يوجد إصدار Android متاح حاليًا." },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
+    const tag = release.tag_name?.trim();
     const apk = findApkAsset(release);
 
     if (!tag || !apk?.name) {
