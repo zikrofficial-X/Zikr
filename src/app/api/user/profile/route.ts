@@ -5,6 +5,17 @@ import {
 import { requireSupabaseAuth } from '@/lib/supabase/guard';
 import { NextRequest, NextResponse } from 'next/server';
 
+function getUserMetadataValue(
+  metadata: Record<string, unknown>,
+  ...keys: string[]
+): string | null {
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
 export async function GET() {
   const unauthenticated = requireSupabaseAuth();
   if (unauthenticated) return unauthenticated;
