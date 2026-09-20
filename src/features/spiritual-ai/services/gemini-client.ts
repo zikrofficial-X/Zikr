@@ -1,4 +1,4 @@
-'use server';
+import "server-only";
 
 import { generateText, streamText } from 'ai';
 import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory, type GenerationConfig } from '@google/generative-ai';
