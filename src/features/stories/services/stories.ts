@@ -81,15 +81,15 @@ export async function getStories(limit = 100): Promise<Story[]> {
     }
 
     if (response.length === 0) {
-      console.info("[stories] Supabase returned no published stories");
-      cachedStories = { data: [], timestamp: Date.now() };
-      return [];
+      console.info("[stories] Supabase returned no published stories; using curated fallback");
+      cachedStories = { data: FALLBACK_STORIES, timestamp: Date.now() };
+      return FALLBACK_STORIES;
     }
 
     if (!response.every(isStoryRow)) {
-      console.error("[stories] Response validation failed");
-      cachedStories = { data: [], timestamp: Date.now() };
-      return [];
+      console.error("[stories] Response validation failed; using curated fallback");
+      cachedStories = { data: FALLBACK_STORIES, timestamp: Date.now() };
+      return FALLBACK_STORIES;
     }
 
     const mapped = response.map(mapStoryRow);
