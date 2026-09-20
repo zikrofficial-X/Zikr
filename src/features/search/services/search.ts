@@ -1,5 +1,5 @@
 import type { SearchResult } from '@/lib/types/common';
-import { searchQuran } from '@/features/quran/services/quran';
+import { searchLocalQuran } from '@/features/quran/services/quran-server';
 import { searchHadith } from '@/features/hadith/services/hadith';
 import { searchScholars } from '@/features/scholars/services/scholars';
 import { getStories } from '@/features/stories/services/stories';
@@ -15,7 +15,7 @@ export async function globalSearch(query: string): Promise<GlobalSearchResult[]>
   if (!q) return [];
 
   const [quran, hadith, scholars, stories] = await Promise.all([
-    searchQuran(q, 'ar'),
+    searchLocalQuran(q, 'ar'),
     searchHadith(q),
     searchScholars(q),
     getStories(),
