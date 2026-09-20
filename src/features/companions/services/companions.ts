@@ -89,7 +89,6 @@ async function loadOfflineJson<T>(fileName: string): Promise<T> {
 function mapCompanionRow(row: Record<string, unknown>): CompanionSummary {
   return {
     id: String(row.id ?? ""),
-    companion_id: String(row.companion_id ?? ""),
     name_ar: String(row.name_ar ?? ""),
     name_en: typeof row.name_en === "string" ? row.name_en : null,
     title_ar: typeof row.title_ar === "string" ? row.title_ar : null,
@@ -102,6 +101,7 @@ function mapCompanionRow(row: Record<string, unknown>): CompanionSummary {
 function mapStoryRow(row: Record<string, unknown>): CompanionStory {
   return {
     id: String(row.id ?? ""),
+    companion_id: String(row.companion_id ?? ""),
     title_ar: String(row.title_ar ?? ""),
     title_en: typeof row.title_en === "string" ? row.title_en : null,
     content_ar: String(row.content_ar ?? ""),
