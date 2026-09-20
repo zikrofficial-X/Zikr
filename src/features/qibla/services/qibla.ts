@@ -19,6 +19,17 @@ export interface QiblaDirection {
 const MECCA_LATITUDE = 21.4225;
 const MECCA_LONGITUDE = 39.8262;
 
+export const QIBLA_CITIES = [
+  { nameAr: "القاهرة", lat: 30.0444, lng: 31.2357 },
+  { nameAr: "دبي", lat: 25.2048, lng: 55.2708 },
+  { nameAr: "الرياض", lat: 24.7136, lng: 46.6753 },
+  { nameAr: "إسطنبول", lat: 41.0082, lng: 28.9784 },
+  { nameAr: "لندن", lat: 51.5074, lng: -0.1278 },
+  { nameAr: "نيويورك", lat: 40.7128, lng: -74.006 },
+  { nameAr: "كوالالمبور", lat: 3.139, lng: 101.6869 },
+  { nameAr: "جاكرتا", lat: -6.2088, lng: 106.8456 },
+] as const;
+
 /**
  * Calculate the bearing (direction) from point A to point B
  * Returns degrees from North (0-360)
