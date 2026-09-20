@@ -4,43 +4,10 @@ import { useEffect, useState } from 'react';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-
-// Well-known cities for quick selection
-const KAABA_LAT = 21.422487;
-const KAABA_LNG = 39.826206;
-
-const CITIES = [
-  { nameAr: 'القاهرة', lat: 30.0444, lng: 31.2357 },
-  { nameAr: 'دبي', lat: 25.2048, lng: 55.2708 },
-  { nameAr: 'الرياض', lat: 24.7136, lng: 46.6753 },
-  { nameAr: 'إسطنبول', lat: 41.0082, lng: 28.9784 },
-  { nameAr: 'لندن', lat: 51.5074, lng: -0.1278 },
-  { nameAr: 'نيويورك', lat: 40.7128, lng: -74.006 },
-  { nameAr: 'كوالالمبور', lat: 3.139, lng: 101.6869 },
-  { nameAr: 'جاكرتا', lat: -6.2088, lng: 106.8456 },
-];
-
-function calculateQiblaDirection(lat: number, lng: number): number {
-  const phiK = (KAABA_LAT * Math.PI) / 180;
-  const lambdaK = (KAABA_LNG * Math.PI) / 180;
-  const phi = (lat * Math.PI) / 180;
-  const lambda = (lng * Math.PI) / 180;
-  const y = Math.sin(lambdaK - lambda);
-  const x = Math.cos(phi) * Math.tan(phiK) - Math.sin(phi) * Math.cos(lambdaK - lambda);
-  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
-}
-
-function calculateDistance(lat: number, lng: number): number {
-  const R = 6371;
-  const dLat = ((KAABA_LAT - lat) * Math.PI) / 180;
-  const dLng = ((KAABA_LNG - lng) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat * Math.PI) / 180) *
-      Math.cos((KAABA_LAT * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
+import {
+  calculateQibla,
+  getDistanceToMecca,
+} from '@/features/qibla/services/qibla';
 
 export function QiblaPage() {
   const [coords, setCoords] = useState<{ lat: number; lng: number; label: string } | null>(null);
@@ -108,8 +75,12 @@ export function QiblaPage() {
     return () => window.removeEventListener('deviceorientation', handler, true);
   }, [coords]);
 
-  const qiblaDirection = coords ? calculateQiblaDirection(coords.lat, coords.lng) : null;
-  const distance = coords ? calculateDistance(coords.lat, coords.lng) : null;
+  const qiblaDirection = coords
+    ? calculateQibla({ latitude: coords.lat, longitude: coords.lng }).direction
+    : null;
+  const distance = coords
+    ? getDistanceToMecca({ latitude: coords.lat, longitude: coords.lng })
+    : null;
   const compassRotation =
     heading != null && qiblaDirection != null ? qiblaDirection - heading : qiblaDirection;
 
