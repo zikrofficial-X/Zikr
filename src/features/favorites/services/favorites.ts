@@ -11,7 +11,7 @@ export type FavoriteItemType =
 
 export type Favorite = {
   id: string;
-  item_type: FavoriteItemType | string;
+  item_type: FavoriteItemType;
   item_ref: string;
   created_at: string;
 };
