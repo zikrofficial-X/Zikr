@@ -1,6 +1,6 @@
 # 🎬 ZIKR Media — Video Publishing & Content Generation Guide
 
-**Status:** ✅ **FULLY OPERATIONAL**  
+**Status:** Implemented; external credentials and deployment gates are required for live publishing  
 **Updated:** September 19, 2026  
 
 ---
@@ -260,9 +260,9 @@ curl -X POST https://zikrmediaofficial.vercel.app/api/admin/social \
 ### Background Job Processing
 
 **Automated Jobs:**
-- ⚙️ `video-background-batch-size: 3` — Process 3 videos concurrently
-- ⚙️ `social-background-batch-size: 10` — Publish 10 items per batch
-- ⏰ Every hour: Check and process queued videos
+- ⚙️ `video-background-batch-size: 3` — Process video jobs in controlled batches
+- ⚙️ `social-background-batch-size: 10` — Publish social jobs in controlled batches
+- ⏱️ Background execution is opt-in through the CircleCI pipeline; there is no implicit hourly Vercel scheduler
 
 ---
 
