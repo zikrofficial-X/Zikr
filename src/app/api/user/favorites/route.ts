@@ -53,13 +53,13 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await addCurrentUserFavorite(itemRef, itemType);
-    if (result.error === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (result.error === "Invalid") {
-      return NextResponse.json({ error: "Invalid favorite" }, { status: 400 });
-    }
     if (!result.ok) {
+      if (result.error === "Unauthorized") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (result.error === "Invalid") {
+        return NextResponse.json({ error: "Invalid favorite" }, { status: 400 });
+      }
       return NextResponse.json({ error: "Failed to create favorite" }, { status: 500 });
     }
 
@@ -83,13 +83,13 @@ export async function DELETE(request: NextRequest) {
 
     if (id) {
       const result = await removeCurrentUserFavoriteById(id);
-      if (result.error === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (result.error === "Invalid") {
-        return NextResponse.json({ error: "Invalid favorite id" }, { status: 400 });
-      }
       if (!result.ok) {
+        if (result.error === "Unauthorized") {
+          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        if (result.error === "Invalid") {
+          return NextResponse.json({ error: "Invalid favorite id" }, { status: 400 });
+        }
         return NextResponse.json(
           { error: "Failed to delete favorite" },
           { status: 500 },
@@ -106,13 +106,13 @@ export async function DELETE(request: NextRequest) {
     }
 
     const result = await removeCurrentUserFavorite(itemRef, itemTypeValue);
-    if (result.error === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (result.error === "Invalid") {
-      return NextResponse.json({ error: "Invalid favorite" }, { status: 400 });
-    }
     if (!result.ok) {
+      if (result.error === "Unauthorized") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (result.error === "Invalid") {
+        return NextResponse.json({ error: "Invalid favorite" }, { status: 400 });
+      }
       return NextResponse.json({ error: "Failed to delete favorite" }, { status: 500 });
     }
 
