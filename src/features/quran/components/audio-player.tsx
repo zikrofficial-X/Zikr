@@ -1,14 +1,9 @@
 "use client";
 
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { type Reciter } from "@/features/quran/types/quran";
 import { getReciters } from "@/features/quran/services/quran";
 import { Button } from "@/components/ui/button";
-
-// The player receives a canonical Supabase Storage URL from /api/quran/audio.
-function getAudioUrl(databaseAudioUrl?: string | null) {
-  return databaseAudioUrl ? [databaseAudioUrl] : [];
-}
 
 export function QuranAudioPlayer({
   surahId,
@@ -32,28 +27,37 @@ export function QuranAudioPlayer({
   useEffect(() => {
     setIsClient(true);
     // Load reciters from service
-    getReciters().then(data => {
-      setAvailableReciters(data);
-      if (data.length > 0) {
-        const initial =
-          (initialReciterId &&
-            data.find(
-              (item) =>
-                item.id === initialReciterId || item.code === initialReciterId,
-            )) ||
-          data[0];
-        setReciter(initial);
-      }
-    });
+    getReciters()
+      .then(data => {
+        if (!active) return;
+        setAvailableReciters(data);
+        if (data.length > 0) {
+          const initial =
+            (initialReciterId &&
+              data.find(
+                (item) =>
+                  item.id === initialReciterId || item.code === initialReciterId,
+              )) ||
+            data[0];
+          setReciter(initial);
+        } else {
+          setError("لا توجد تلاوات متاحة حاليًا.");
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error("[audio] Failed to load reciters:", error);
+        setError("تعذر تحميل قائمة القراء. حاول مرة أخرى.");
+      });
+    return () => {
+      active = false;
+    };
   }, [initialReciterId]);
-
-  const [audioSourceIndex, setAudioSourceIndex] = useState(0);
 
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
     setDatabaseAudioUrl(null);
-    setAudioSourceIndex(0);
     setError(null);
 
     if (!isClient || !reciter?.code) return () => controller.abort();
@@ -65,7 +69,14 @@ export function QuranAudioPlayer({
       .then(response => (response.ok ? response.json() as Promise<{ audio?: { audio_url?: string } | null }> : null))
       .then(payload => {
         const audioUrl = payload?.audio?.audio_url ?? null;
-        if (active) setDatabaseAudioUrl(audioUrl);
+        if (active) {
+          setDatabaseAudioUrl(audioUrl);
+          setError(
+            audioUrl
+              ? null
+              : "لا تتوفر هذه التلاوة في مكتبة الصوت الداخلية حاليًا.",
+          );
+        }
       })
       .catch(error => {
         if (error instanceof DOMException && error.name === 'AbortError') return;
@@ -78,14 +89,7 @@ export function QuranAudioPlayer({
     };
   }, [isClient, reciter, surahId]);
 
-  const audioSources = useMemo(() => {
-    if (!isClient || !reciter) return [];
-    if (!reciter.code) return [];
-
-    return getAudioUrl(databaseAudioUrl);
-  }, [databaseAudioUrl, reciter, isClient]);
-
-  const src = audioSources[audioSourceIndex] || audioSources[0];
+  const src = isClient ? databaseAudioUrl : null;
 
   useEffect(() => {
     if (!isClient) return;
@@ -120,7 +124,7 @@ export function QuranAudioPlayer({
       console.error("[audio] Supabase Storage source failed:", {
         surahId,
         reciter: reciter?.id,
-        source: audioSources[audioSourceIndex],
+        source: src,
         error: errorMsg,
       });
     };
@@ -153,7 +157,7 @@ export function QuranAudioPlayer({
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("ended", handleEnded);
     };
-  }, [audioSourceIndex, audioSources, isClient, reciter?.id, src, surahId]);
+  }, [databaseAudioUrl, isClient, reciter?.id, src, surahId]);
 
   const togglePlay = () => {
     if (!isClient) return;
@@ -213,7 +217,6 @@ export function QuranAudioPlayer({
 
     console.debug("[audio] Changing reciter to:", newReciter.id);
     setReciter(newReciter);
-    setAudioSourceIndex(0);
     setIsPlaying(false);
     setCurrentTime(0);
     setError(null);
@@ -263,7 +266,7 @@ export function QuranAudioPlayer({
         <div className="flex items-center gap-4">
           <Button
             onClick={togglePlay}
-            disabled={isLoading}
+            disabled={isLoading || !src}
             variant="primary"
             className="w-24"
           >
