@@ -8,9 +8,6 @@ export type SiteAudioAsset = {
   updatedAt: string | null;
 };
 
-const TABLE_PATH =
-  "/rest/v1/site_audio_assets?select=kind,title,storage_path,updated_at&is_primary=eq.true";
-
 export async function getPrimarySiteAudioAssets(): Promise<Record<string, SiteAudioAsset>> {
   const db = createAdminClient();
   const { data, error } = await db
@@ -36,5 +33,3 @@ export async function getPrimarySiteAudioAssets(): Promise<Record<string, SiteAu
       ]),
   );
 }
-
-export { TABLE_PATH };
