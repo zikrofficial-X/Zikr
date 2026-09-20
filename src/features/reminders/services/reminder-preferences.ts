@@ -129,7 +129,9 @@ export async function updateCurrentReminderPreferences(
   if (authError || !user) return null;
 
   const parsed = parseUpdate(input);
-  if ("error" in parsed) return parsed;
+  if ("error" in parsed) {
+    return { ok: false, error: parsed.error };
+  }
 
   const payload = {
     user_id: user.id,

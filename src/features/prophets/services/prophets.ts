@@ -166,7 +166,7 @@ export async function getProphets(): Promise<Prophet[]> {
   }
 
   const database = isSupabaseConfigured() ? await getDatabaseProphets() : null;
-  if (database.length) return mergePublishedBySlug(database, offline);
+  if (database?.length) return mergePublishedBySlug(database, offline);
 
   return offline.length ? offline : FALLBACK_PROPHETS.map(mapFallbackProphet);
 }

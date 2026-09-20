@@ -299,7 +299,7 @@ export function QuranAudioPlayer({
       <audio
         ref={audioRef}
         preload="metadata"
-        src={src}
+        src={src ?? undefined}
         className="hidden"
         controlsList="nodownload"
       />
