@@ -2,9 +2,9 @@
 
 ## Branch state
 - Branch: `finalization-src-20260920`
-- HEAD at checkpoint creation: `402bb24e26a2c70009332ed5fa49a884d2494f81`
-- HEAD commit: `fix: mark storage service server-only`
-- Ahead of `main`: 253
+- HEAD at checkpoint creation: `5c6124241beedcae711028900e059cd13f9aa859`
+- HEAD commit: `chore: remove duplicate Cloudinary server-only import`
+- Ahead of `main`: 265
 - Behind `main`: 0
 
 ## Finalization scope
@@ -43,9 +43,10 @@ The source finalization pass covers the requested layers:
 
 ## Structural checks
 - Page route files: 100
-- API route files: 57
+- API route files: 64
 - No duplicate normalized page-route groups found.
 - `/duas` remains an intentional redirect alias to `/dua`.
+- Route inventory: 164 total routes (100 pages + 64 API handlers)
 - Migration files: 250
 - No duplicate migration timestamp prefixes found.
 
@@ -66,7 +67,7 @@ Current GitHub status on the finalization branch HEAD:
 - Vercel: failure — https://vercel.com/zikrmediaofficial?upgradeToPro=build-rate-limit
 - CircleCI: `ci/circleci: ci-check` pending — https://app.circleci.com/workflow/27d926b5-8446-4008-b1d5-15608cecc685/job/f66ccdeb-6d25-4854-85ce-79159074edf8
 
-No Vercel deployment is currently visible for the finalization HEAD after the latest service refactors. The most recent visible branch deployment was commit `d429810f790d599eea834a73b4742bdd37bd5430`, which failed at the build step with `module_not_found` before the later service files were fully committed. The current GitHub status is a build-rate-limit account/team blocker, so a current-HEAD code build PASS cannot be claimed.
+No Vercel deployment is currently visible for the latest finalization HEAD after the latest service refactors. The most recent visible branch deployment was commit `d429810f790d599eea834a73b4742bdd37bd5430`, which failed at the build step with `module_not_found` before the later service files were fully committed. The current GitHub status is a build-rate-limit account/team blocker, so a current-HEAD code build PASS cannot be claimed.
 
 ### CircleCI
 The repository status remains pending. The CircleCI job page is not accessible from this session, so no successful job result is claimed.
@@ -91,4 +92,4 @@ Release-ready is **not yet asserted** until:
 4. Capacitor sync and signed Android/iOS release builds pass in the release environment.
 
 ## Current continuation result
-The source branch remains `247` commits ahead of `main` and `0` behind at this checkpoint. The latest pass added centralized service boundaries across admin, profile/auth sync, notifications/reminders, favorites, contact, kids games, wird/memorization, media assets, Android release resolution, Quran audio, and related API adapters. Compile-risk regressions found during the pass were corrected before checkpointing.
+The source branch is now `265` commits ahead of `main` and `0` behind at this checkpoint. The latest pass added centralized service boundaries across admin, profile/auth sync, notifications/reminders, favorites, contact, kids games, wird/memorization, media assets, Android release resolution, Quran audio, and related API adapters. Compile-risk regressions found during the pass were corrected before checkpointing.
