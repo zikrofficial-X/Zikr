@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { searchQuran } from '@/features/quran/services/quran';
+import { searchLocalQuran } from '@/features/quran/services/quran-server';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface SearchRow {
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       // common Quranic terms by falling back to the canonical Quran text search.
       const finalResults = results.length > 0
         ? results
-        : (await searchQuran(query, 'ar')).slice(0, 10).map((result) => ({
+        : (await searchLocalQuran(query, 'ar')).slice(0, 10).map((result) => ({
             id: `quran-${result.number}-${result.numberInSurah}`,
             title: result.text,
             type: 'quran' as const,
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       return jsonSearch(finalResults);
     } catch (error) {
       console.warn('[api/search] Supabase unavailable; using Quran API fallback:', error);
-      const quranResults = await searchQuran(query, 'ar');
+      const quranResults = await searchLocalQuran(query, 'ar');
       const results = quranResults.slice(0, 10).map((result) => ({
         id: `${result.number}-${result.numberInSurah}`,
         title: result.text,
