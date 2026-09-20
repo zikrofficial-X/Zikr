@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+import { mergePublishedBySlug } from "@/lib/data/content-merge";
 import { COMPANIONS } from "@/features/companions/data/fallback";
 import { uniqueCompanionSummaries } from "@/features/companions/utils/companions";
 
@@ -170,15 +171,17 @@ async function getDatabaseCompanions(): Promise<CompanionSummary[]> {
 }
 
 export async function getPublishedCompanions(): Promise<CompanionSummary[]> {
+  let offline: CompanionSummary[] = [];
   try {
-    const local = await loadOfflineCompanions();
-    if (local.length > 0) return local;
+    offline = await loadOfflineCompanions();
   } catch (error) {
     console.error("[companions] Offline catalogue unavailable:", error);
   }
 
   const database = await getDatabaseCompanions();
-  return database.length > 0 ? database : FALLBACK_COMPANIONS;
+  if (database.length) return mergePublishedBySlug(database, offline);
+
+  return offline.length ? offline : FALLBACK_COMPANIONS;
 }
 
 export async function getCompanionBySlug(
