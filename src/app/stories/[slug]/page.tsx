@@ -1,4 +1,7 @@
-import { getStoryBySlug } from "@/features/stories/services/stories";
+import {
+  getStories,
+  getStoryBySlug,
+} from "@/features/stories/services/stories";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +18,13 @@ const MIN_PUBLIC_STORY_CHARS = PUBLIC_CONTENT_THRESHOLDS.story;
 
 function hasSubstantialStoryContent(story: { content?: string }): boolean {
   return (story.content?.trim().length ?? 0) >= MIN_PUBLIC_STORY_CHARS;
+}
+
+export async function generateStaticParams() {
+  const stories = await getStories();
+  return stories
+    .filter((story) => story.slug)
+    .map((story) => ({ slug: story.slug }));
 }
 
 export async function generateMetadata({ params }: StoryPageProps): Promise<Metadata> {
