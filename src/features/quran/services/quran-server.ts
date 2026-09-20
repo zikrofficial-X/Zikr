@@ -1,4 +1,4 @@
-"use server";
+import "server-only";
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -433,5 +433,67 @@ export async function getRecitersFromDb(): Promise<Reciter[] | null> {
   } catch (error) {
     console.error("[quran-server] getRecitersFromDb failed:", error);
     return null;
+  }
+}
+
+
+export type QuranAudioRecord = {
+  audio_url: string | null;
+  source_url: string | null;
+  retrieved_at: string | null;
+  storage_url: string | null;
+  storage_status: "pending" | "uploading" | "ready" | "failed" | null;
+  storage_path: string | null;
+};
+
+export async function getQuranAudioFromDb(
+  surahId: number,
+  reciterCode: string,
+): Promise<
+  | { audio: QuranAudioRecord; reason?: undefined; storage_path?: undefined }
+  | { audio: null; reason: string; storage_path: string | null }
+> {
+  const candidates = [...new Set([
+    reciterCode,
+    reciterCode.replace(/^ar./i, ""),
+    `ar.${reciterCode.replace(/^ar\./i, "")}`,
+  ])];
+
+  try {
+    const reciters = await quranDbRequest<Array<{ id: string; code: string | null }>>(
+      `/rest/v1/quran_reciters?select=id,code&code=in.(${candidates.map((value) => encodeURIComponent(value)).join(",")})&limit=10`,
+    );
+    const reciterRow = reciters?.find(
+      (row) => typeof row.code === "string" && candidates.includes(row.code),
+    );
+    if (!reciterRow?.id) {
+      return { audio: null, reason: "reciter_not_found", storage_path: null };
+    }
+
+    const audio = await quranDbRequest<QuranAudioRecord[]>(
+      `/rest/v1/quran_audio?surah_id=eq.${surahId}&reciter_id=eq.${encodeURIComponent(reciterRow.id)}&select=audio_url,source_url,retrieved_at,storage_url,storage_status,storage_path&limit=1`,
+    );
+    const row = audio?.[0] ?? null;
+
+    if (row?.storage_status === "ready" && row.storage_url) {
+      return {
+        audio: {
+          ...row,
+          audio_url: row.storage_url,
+        },
+      };
+    }
+
+    return {
+      audio: null,
+      reason: row?.storage_status ?? "not_imported",
+      storage_path: row?.storage_path ?? null,
+    };
+  } catch (error) {
+    console.error(
+      `[quran-server] getQuranAudioFromDb failed for ${surahId}/${reciterCode}:`,
+      error,
+    );
+    return { audio: null, reason: "storage_unavailable", storage_path: null };
   }
 }
