@@ -1,8 +1,8 @@
 # ZIKR — Current Project Status
 
 **Finalization branch under review:** `finalization-src-20260920`
-**Current finalization HEAD:** `5c6124241beedcae711028900e059cd13f9aa859`
-**Branch relation:** 265 commits ahead of `main`, 0 behind.
+**Current finalization HEAD:** `d3b6b7491b03634f87302e5c99d042e4808674af`
+**Branch relation:** 287 commits ahead of `main`, 0 behind.
 
 
 **Last audited:** 20 September 2026  
@@ -15,7 +15,7 @@ The route inventory currently contains 164 routes: 100 page routes and 64 API ro
 
 The finalization branch is being reviewed as the clean integration branch. Public content modules are being consolidated around canonical feature services and tracked offline snapshots, with duplicated page-local catalogues removed where equivalent repository data already exists.
 
-The current HEAD has not yet been certified by a fresh Vercel build after the latest changes. Static inspection of the modified paths is complete; a successful build and route smoke pass are still required before the branch is declared final.
+The current HEAD has not yet been certified by a successful Vercel build. The latest visible branch deployment is commit `5346acaa30a5faf54877bd6cf9c999bf73cde8e7`, which failed during `pnpm build` with `lint_or_type_error`; later source-finalization commits exist on this branch but have not received a successful Vercel deployment.
 
 The repository has been consolidated onto the canonical source architecture; `finalization-src-20260920` remains the active review branch until release gates pass. Obsolete feature wrappers, duplicate assets, legacy hook/service paths, and root-level historical release clutter were removed or archived.
 
@@ -83,7 +83,7 @@ Capacitor runtime packages are on major version 7, while the repository pins `@c
 
 ## Deployment
 
-Current verification state: GitHub reports Vercel `failure` on the current HEAD with target `upgradeToPro=build-rate-limit`; no deployment for the latest HEAD is currently visible through the connected deployment API. CircleCI `ci-check` remains `pending`, so a successful build is still unverified.
+Current verification state: GitHub reports Vercel `failure` on the current HEAD, while the latest visible branch deployment is an older commit and is in `ERROR` with `lint_or_type_error`. CircleCI `ci-check` remains `pending`. The connected Supabase session also does not currently provide usable SQL execution permission, so live SQL/RLS verification remains pending.
 
 ## Canonical Quran storage
 
