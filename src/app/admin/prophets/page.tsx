@@ -5,19 +5,11 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { requireAdmin } from '@/features/admin/services/admin';
-import { createClient } from '@/lib/supabase/server';
+import { getAdminProphets, type AdminProphet, ADMIN_STATIC_PROPHETS } from '@/features/admin/services/prophets';
 import { revalidatePath } from 'next/cache';
 
-type Prophet = {
-  id: string;
-  name_ar: string;
-  name_en: string | null;
-  slug: string;
-  order_num: number | null;
-  published: boolean;
-  bio_ar: string | null;
-  metadata: Record<string, string> | null;
-};
+type Prophet = AdminProphet;
+
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
@@ -97,15 +89,7 @@ export default async function AdminProphetsPage() {
   }
 
   // Static fallback list for when DB has no rows
-  const staticProphets = [
-    { slug: 'adam', name_ar: 'آدم عليه السلام', order_num: 1 },
-    { slug: 'nuh', name_ar: 'نوح عليه السلام', order_num: 3 },
-    { slug: 'ibrahim', name_ar: 'إبراهيم عليه السلام', order_num: 6 },
-    { slug: 'yusuf', name_ar: 'يوسف عليه السلام', order_num: 11 },
-    { slug: 'musa', name_ar: 'موسى عليه السلام', order_num: 15 },
-    { slug: 'isa', name_ar: 'عيسى عليه السلام', order_num: 24 },
-    { slug: 'muhammad', name_ar: 'محمد صلى الله عليه وسلم', order_num: 25 },
-  ];
+  const staticProphets = ADMIN_STATIC_PROPHETS;
 
   const hasProphets = prophets.length > 0;
 
