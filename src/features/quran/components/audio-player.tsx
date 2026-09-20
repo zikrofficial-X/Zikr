@@ -10,7 +10,13 @@ function getAudioUrl(databaseAudioUrl?: string | null) {
   return databaseAudioUrl ? [databaseAudioUrl] : [];
 }
 
-export function QuranAudioPlayer({ surahId }: { surahId: number }) {
+export function QuranAudioPlayer({
+  surahId,
+  initialReciterId,
+}: {
+  surahId: number;
+  initialReciterId?: string;
+}) {
   const [isClient, setIsClient] = useState(false);
   const [availableReciters, setAvailableReciters] = useState<Reciter[]>([]);
   const [reciter, setReciter] = useState<Reciter | null>(null);
@@ -29,10 +35,17 @@ export function QuranAudioPlayer({ surahId }: { surahId: number }) {
     getReciters().then(data => {
       setAvailableReciters(data);
       if (data.length > 0) {
-        setReciter(data[0]);
+        const initial =
+          (initialReciterId &&
+            data.find(
+              (item) =>
+                item.id === initialReciterId || item.code === initialReciterId,
+            )) ||
+          data[0];
+        setReciter(initial);
       }
     });
-  }, []);
+  }, [initialReciterId]);
 
   const [audioSourceIndex, setAudioSourceIndex] = useState(0);
 
