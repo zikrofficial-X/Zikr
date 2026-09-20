@@ -32,7 +32,7 @@ The following environment variables are optional and are used for integrating wi
 | `FACEBOOK_PAGE_ACCESS_TOKEN`     | Page access token with the Meta Page publishing permissions.                | Server   |
 | `VIDEO_AUTO_PUBLISH`             | Set to `false` to keep completed videos queued without publishing; defaults to automatic publishing when credentials exist. | Server |
 
-## Automatic Video Upload and Social Publishing
+## Video Processing and Social Publishing
 
 Video and social processing are split between the application/API layer and the opt-in CircleCI background worker. Large source-media handling uses the current media registry/queue path; do not assume a browser-uploaded Storage bucket is the only ingestion path. Production automation is not an implicit always-on Supabase scheduler.
 
