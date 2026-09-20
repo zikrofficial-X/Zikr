@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
@@ -39,14 +39,7 @@ export default function SearchPage() {
   const [searched, setSearched] = useState(false);
   const [, startTransition] = useTransition();
 
-  useEffect(() => {
-    const initialQuery = new URLSearchParams(window.location.search).get('q');
-    if (initialQuery?.trim()) {
-      void handleSearch(initialQuery);
-    }
-  }, []);
-
-  const handleSearch = async (q: string) => {
+  const handleSearch = useCallback(async (q: string) => {
     const trimmed = q.trim();
     if (!trimmed) return;
     setQuery(trimmed);
@@ -59,7 +52,14 @@ export default function SearchPage() {
         setSearched(true);
       });
     });
-  };
+  }, [startTransition]);
+
+  useEffect(() => {
+    const initialQuery = new URLSearchParams(window.location.search).get('q');
+    if (initialQuery?.trim()) {
+      void handleSearch(initialQuery);
+    }
+  }, [handleSearch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
