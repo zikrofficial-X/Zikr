@@ -1,4 +1,7 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
+
+const root = process.cwd();
 
 const requiredRoutes = [
   'src/app/page.tsx',
@@ -77,14 +80,98 @@ const requiredRoutes = [
   'public/offline.html',
   'public/icons/icon-192.svg',
   'public/icons/icon-512.svg',
-  // Adhan MP3 files are optional: the player has an offline Web Audio fallback.
 ];
 
-const missing = requiredRoutes.filter((route) => !existsSync(route));
+const failures = [];
+const warnings = [];
 
-if (missing.length > 0) {
-  for (const route of missing) console.error(`❌ Missing required platform route or asset: ${route}`);
+for (const route of requiredRoutes) {
+  if (!existsSync(join(root, route))) {
+    failures.push(`Missing required platform route or asset: ${route}`);
+  }
+}
+
+function walk(dir, out = []) {
+  if (!existsSync(dir)) return out;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) walk(full, out);
+    else if (entry.name === 'page.tsx' || entry.name === 'route.ts') out.push(full);
+  }
+  return out;
+}
+
+function normalizeRoutePath(file) {
+  const relativePath = relative(join(root, 'src', 'app'), file).replaceAll('\\\\', '/');
+  const suffix = relativePath.endsWith('/page.tsx')
+    ? relativePath.slice(0, -'/page.tsx'.length)
+    : relativePath.slice(0, -'/route.ts'.length);
+
+  const cleaned = suffix
+    .split('/')
+    .filter(Boolean)
+    .filter((segment) => !/^\\([^/]+\\)$/.test(segment))
+    .filter((segment) => segment !== '_private')
+    .join('/');
+
+  return '/' + cleaned;
+}
+
+const discoveredRoutes = walk(join(root, 'src', 'app'));
+const pages = discoveredRoutes.filter((file) => file.endsWith('/page.tsx'));
+const apis = discoveredRoutes.filter((file) => file.endsWith('/route.ts'));
+const normalized = new Map();
+
+for (const file of discoveredRoutes) {
+  const routePath = normalizeRoutePath(file);
+  const type = file.endsWith('/page.tsx') ? 'page' : 'api';
+  const key = `${type}:${routePath}`;
+  const existing = normalized.get(key);
+  if (existing) {
+    failures.push(
+      `Duplicate normalized ${type} route: ${routePath} from ${relative(root, existing)} and ${relative(root, file)}`,
+    );
+  } else {
+    normalized.set(key, file);
+  }
+
+  if (routePath === '/') {
+    const conflicting = normalized.get(`api:/`);
+    if (type === 'page' && conflicting) {
+      failures.push('Root path cannot contain both page.tsx and route.ts.');
+    }
+  }
+}
+
+const pagePaths = new Set(pages.map((file) => normalizeRoutePath(file)));
+const apiPaths = new Set(apis.map((file) => normalizeRoutePath(file)));
+
+for (const path of pagePaths) {
+  if (apiPaths.has(path)) {
+    failures.push(`A page and API route resolve to the same normalized path: ${path}`);
+  }
+}
+
+const duplicateRequired = requiredRoutes.filter(
+  (route, index) => requiredRoutes.indexOf(route) !== index,
+);
+if (duplicateRequired.length) {
+  failures.push(`Duplicate required-route declarations: ${[...new Set(duplicateRequired)].join(', ')}`);
+}
+
+if (pages.length < 1) failures.push('No page routes discovered under src/app');
+if (apis.length < 1) failures.push('No API routes discovered under src/app');
+
+if (pages.length !== 99 || apis.length !== 64) {
+  warnings.push(
+    `Route inventory changed: discovered ${pages.length} pages and ${apis.length} API routes. Update this expected baseline intentionally if the route count changed.`,
+  );
+}
+
+if (failures.length) {
+  for (const failure of failures) console.error(`❌ ${failure}`);
   process.exit(1);
 }
 
-console.log(`✅ Verified ${requiredRoutes.length} required ZIKR routes and platform assets`);
+for (const warning of warnings) console.warn(`⚠️ ${warning}`);
+console.log(`✅ Verified ${requiredRoutes.length} required assets plus ${pages.length} page routes and ${apis.length} API routes`);
