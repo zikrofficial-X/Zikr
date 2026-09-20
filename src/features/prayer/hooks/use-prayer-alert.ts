@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  playAzanClip,
   unlockAudioContext,
   isAudioUnlocked,
   refreshSiteAudio,
@@ -297,7 +296,6 @@ export function usePrayerAlert(
 
         if (diff <= 1 && !alreadyFired(prayer)) {
           markFired(prayer);
-          playAzanClip();
           showPrayerNotification(PRAYER_NAMES_AR[prayer]);
           alertCallbackRef.current?.(prayer);
           if (
