@@ -5,6 +5,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { requireAdmin } from '@/features/admin/services/admin';
+import { createClient } from '@/lib/supabase/server';
 import { getAdminProphets, type AdminProphet, ADMIN_STATIC_PROPHETS } from '@/features/admin/services/prophets';
 import { revalidatePath } from 'next/cache';
 
