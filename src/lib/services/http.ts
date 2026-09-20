@@ -14,9 +14,12 @@ export async function safeApiFetch<T = unknown>(
 ): Promise<{ data?: T; error?: Error }> {
   const { timeout = REQUEST_TIMEOUT, retries = MAX_RETRIES, ...fetchOptions } = options;
 
+  const method = (fetchOptions.method ?? 'GET').toUpperCase();
+  const retryableMethod = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+  const retryCount = retryableMethod ? Math.max(0, Math.trunc(retries)) : 0;
   let lastError: Error | null = null;
 
-  for (let attempt = 0; attempt <= retries; attempt++) {
+  for (let attempt = 0; attempt <= retryCount; attempt++) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -51,7 +54,7 @@ export async function safeApiFetch<T = unknown>(
         break;
       }
 
-      if (attempt < retries) {
+      if (attempt < retryCount) {
         // Exponential backoff
         await new Promise((resolve) => setTimeout(resolve, Math.pow(2, attempt) * 1000));
       }
