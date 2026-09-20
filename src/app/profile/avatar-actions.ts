@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { uploadCloudinaryImage } from '@/features/media/services/cloudinary';
+import { updateCurrentProfileAvatar } from '@/features/profile/services/profile';
 import { createClient } from '@/lib/supabase/server';
 
 export async function uploadAvatarAction(formData: FormData) {
@@ -24,12 +25,15 @@ export async function uploadAvatarAction(formData: FormData) {
     tags: ['zikr', 'avatar', user.id],
   });
 
-  const { error } = await supabase.from('profiles').upsert({
-    id: user.id,
-    avatar_url: upload.secureUrl,
-    updated_at: new Date().toISOString(),
-  });
-  if (error) throw error;
+  const result = await updateCurrentProfileAvatar(upload.secureUrl);
+  if (!result.ok) {
+    if (result.error === 'Unauthorized') redirect('/auth/login');
+    throw new Error(
+      result.error === 'Invalid'
+        ? 'رابط الصورة الناتج غير صالح'
+        : 'تعذر تحديث صورة الحساب',
+    );
+  }
 
   revalidatePath('/profile');
 }
