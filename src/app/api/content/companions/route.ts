@@ -1,21 +1,25 @@
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { getPublishedCompanions } from "@/features/companions/services/companions";
 
 export async function GET() {
-  if (!isSupabaseConfigured()) return NextResponse.json([]);
-
   try {
-    const supabase = await createClient();
-    const { data: companions, error } = await supabase
-      .from('companions')
-      .select('*')
-      .eq('published', true)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return NextResponse.json(companions || []);
+    const companions = await getPublishedCompanions();
+    return NextResponse.json(
+      companions.map((companion) => ({
+        id: companion.id,
+        name_ar: companion.name_ar,
+        name_en: companion.name_en,
+        title_ar: companion.title_ar,
+        bio_ar: companion.bio_ar,
+        slug: companion.slug,
+        category: companion.category,
+      })),
+    );
   } catch (error) {
-    console.error('[api/content/companions] GET error:', error);
-    return NextResponse.json({ error: 'Failed to fetch companions' }, { status: 500 });
+    console.error("[api/content/companions] GET error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch companions" },
+      { status: 500 },
+    );
   }
 }
