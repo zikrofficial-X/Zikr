@@ -89,11 +89,12 @@ Never reset production migration history just to reconcile a preview or local br
 ## Repository structure
 
 ```text
-app/                 Next.js routes, pages and API handlers
-components/          Reusable UI and feature components
-lib/                 Shared infrastructure, Supabase clients, types and utilities
+src/app/              Next.js routes, pages and API handlers
+src/components/       Reusable UI and feature components
+src/lib/              Shared infrastructure, Supabase clients, types and utilities
+src/features/         Canonical domain feature modules
 supabase/             Supabase config, functions and canonical migrations
-scripts/              Verification, imports and background workers
+scripts/              Verification, imports and recovery tooling
 android/              Capacitor Android project
 ios/                  Capacitor iOS project
 mobile/               Mobile configuration/assets
