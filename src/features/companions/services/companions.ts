@@ -190,23 +190,16 @@ export async function getCompanionBySlug(
   const cleanSlug = slug.trim();
   if (!cleanSlug) return null;
 
+  let local: CompanionSummary | null = null;
+  let localStories: CompanionStory[] = [];
+
   try {
     const localCompanions = await loadOfflineCompanions();
-    const local = localCompanions.find((item) => item.slug === cleanSlug);
-
+    local = localCompanions.find((item) => item.slug === cleanSlug) ?? null;
     if (local) {
-      const localStories = (await loadOfflineStories()).filter(
-        (story) => story.companion_id === local.id,
+      localStories = (await loadOfflineStories()).filter(
+        (story) => story.companion_id === local?.id,
       );
-
-      return {
-        ...local,
-        birth_place_ar: null,
-        death_place_ar: null,
-        death_year: null,
-        metadata: null,
-        stories: localStories,
-      };
     }
   } catch (error) {
     console.error("[companions] Offline detail unavailable:", error);
@@ -218,57 +211,57 @@ export async function getCompanionBySlug(
     );
 
     const row = rows[0];
-    if (!row) {
-      const fallback = fallbackBySlug(cleanSlug);
-      return fallback
-        ? {
-            ...fallback,
-            birth_place_ar: null,
-            death_place_ar: null,
-            death_year: null,
-            metadata: null,
-            stories: [],
-          }
-        : null;
+    if (row) {
+      const companion = {
+        ...mapCompanionRow(row),
+        birth_place_ar:
+          typeof row.birth_place_ar === "string" ? row.birth_place_ar : null,
+        death_place_ar:
+          typeof row.death_place_ar === "string" ? row.death_place_ar : null,
+        death_year: row.death_year == null ? null : String(row.death_year),
+        metadata:
+          row.metadata && typeof row.metadata === "object"
+            ? (row.metadata as Record<string, unknown>)
+            : null,
+      };
+
+      const stories = await supabaseServerAnonRequest<Record<string, unknown>[]>(
+        `/rest/v1/companion_stories?select=id,companion_id,title_ar,title_en,content_ar,content_en,story_type,order_num&companion_id=eq.${encodeURIComponent(String(row.id))}&order=order_num.asc`,
+      ).catch((error) => {
+        console.error("[companions] Failed to load companion stories:", error);
+        return [];
+      });
+
+      const dbStories = stories.map(mapStoryRow);
+      return {
+        ...companion,
+        stories: dbStories.length ? dbStories : localStories,
+      };
     }
-
-    const companion = {
-      ...mapCompanionRow(row),
-      birth_place_ar:
-        typeof row.birth_place_ar === "string" ? row.birth_place_ar : null,
-      death_place_ar:
-        typeof row.death_place_ar === "string" ? row.death_place_ar : null,
-      death_year:
-        row.death_year == null ? null : String(row.death_year),
-      metadata:
-        row.metadata && typeof row.metadata === "object"
-          ? (row.metadata as Record<string, unknown>)
-          : null,
-    };
-
-    const stories = await supabaseServerAnonRequest<Record<string, unknown>[]>(
-      `/rest/v1/companion_stories?select=id,title_ar,title_en,content_ar,content_en,story_type,order_num&companion_id=eq.${encodeURIComponent(String(row.id))}&order=order_num.asc`,
-    ).catch((error) => {
-      console.error("[companions] Failed to load companion stories:", error);
-      return [];
-    });
-
-    return {
-      ...companion,
-      stories: stories.map(mapStoryRow),
-    };
   } catch (error) {
     console.error("[companions] Failed to load companion detail:", error);
-    const fallback = fallbackBySlug(cleanSlug);
-    return fallback
-      ? {
-          ...fallback,
-          birth_place_ar: null,
-          death_place_ar: null,
-          death_year: null,
-          metadata: null,
-          stories: [],
-        }
-      : null;
   }
+
+  if (local) {
+    return {
+      ...local,
+      birth_place_ar: null,
+      death_place_ar: null,
+      death_year: null,
+      metadata: null,
+      stories: localStories,
+    };
+  }
+
+  const fallback = fallbackBySlug(cleanSlug);
+  return fallback
+    ? {
+        ...fallback,
+        birth_place_ar: null,
+        death_place_ar: null,
+        death_year: null,
+        metadata: null,
+        stories: [],
+      }
+    : null;
 }
