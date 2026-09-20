@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import {
-  compareVersions,
   findApkAsset,
   getAndroidReleaseSetting,
   getLatestStableAndroidRelease,
