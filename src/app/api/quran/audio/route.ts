@@ -64,7 +64,12 @@ export async function GET(request: Request) {
     const row = audio as AudioRow | null;
 
     if (row?.storage_status === "ready" && row.storage_url) {
-      return json({ audio: row });
+      return json({
+        audio: {
+          ...row,
+          audio_url: row.storage_url,
+        },
+      });
     }
 
     return json({
