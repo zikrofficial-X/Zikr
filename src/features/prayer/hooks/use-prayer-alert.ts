@@ -296,7 +296,7 @@ export function usePrayerAlert(
 
         if (diff <= 1 && !alreadyFired(prayer)) {
           markFired(prayer);
-          showPrayerNotification(PRAYER_NAMES_AR[prayer]);
+          void showPrayerNotification(PRAYER_NAMES_AR[prayer]);
           alertCallbackRef.current?.(prayer);
           if (
             "serviceWorker" in navigator &&
