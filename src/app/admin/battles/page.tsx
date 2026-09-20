@@ -5,8 +5,14 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { requireAdmin } from '@/features/admin/services/admin';
-import { createClient } from '@/lib/supabase/server';
-import { getAdminBattles, type AdminBattle, ADMIN_STATIC_BATTLES } from '@/features/admin/services/battles';
+import {
+  ADMIN_STATIC_BATTLES,
+  getAdminBattles,
+  saveAdminBattleVideo,
+  setAdminBattlePublished,
+  type AdminBattle,
+} from '@/features/admin/services/battles';
+import { parseYouTubeVideoId } from '@/features/admin/services/youtube';
 import { revalidatePath } from 'next/cache';
 
 type Battle = AdminBattle;
@@ -21,20 +27,8 @@ async function saveBattleVideoAction(formData: FormData) {
   const rawUrl = String(formData.get('youtube_url') ?? '').trim();
   if (!id) return;
 
-  let videoId: string | null = null;
-  if (rawUrl) {
-    const match = rawUrl.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
-    videoId = match ? match[1] : (rawUrl.length >= 11 ? rawUrl.slice(0, 11) : null);
-  }
-
-  const supabase = await createClient();
-  const { data: current } = await supabase.from('battles').select('metadata').eq('id', id).single();
-  const existingMeta = (current?.metadata as Record<string, string> | null) ?? {};
-  const newMeta = videoId
-    ? { ...existingMeta, youtube_video_id: videoId }
-    : Object.fromEntries(Object.entries(existingMeta).filter(([k]) => k !== 'youtube_video_id'));
-
-  await supabase.from('battles').update({ metadata: newMeta, updated_at: new Date().toISOString() }).eq('id', id);
+  const videoId = parseYouTubeVideoId(rawUrl);
+  await saveAdminBattleVideo(id, videoId);
 
   revalidatePath('/admin/battles');
   revalidatePath('/battles');
@@ -47,8 +41,7 @@ async function toggleBattlePublishAction(formData: FormData) {
   const next = formData.get('next') === 'true';
   if (!id) return;
 
-  const supabase = await createClient();
-  await supabase.from('battles').update({ published: next, updated_at: new Date().toISOString() }).eq('id', id);
+  await setAdminBattlePublished(id, next);
 
   revalidatePath('/admin/battles');
   revalidatePath('/battles');
