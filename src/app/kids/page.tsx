@@ -39,7 +39,7 @@ export const metadata = pageMetadata({
 
 export default async function KidsPage() {
   const content = await getKidsContent();
-  const byAgeGroup = (ageGroup: KidsItem["age_group"]): KidsItem[] =>
+  const byAgeGroup = (ageGroup: string): KidsItem[] =>
     content.filter((item) => item.age_group === ageGroup);
 
   return (
