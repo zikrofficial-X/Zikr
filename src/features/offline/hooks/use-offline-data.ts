@@ -11,10 +11,6 @@ export interface UseOfflineDataOptions<T> {
   key?: string | number;
   initialData?: T;
   fallback?: T;
-  /**
-   * Optional online loader used by refresh() when the browser is online.
-   * The value is cached automatically after a successful load.
-   */
   loadOnline?: () => Promise<T | undefined>;
 }
 
@@ -40,77 +36,89 @@ export function useOfflineData<T>({
   const [isCached, setIsCached] = useState(false);
   const { isOnline } = useOfflineStatus();
 
-  const loadFromCache = useCallback(async () => {
+  const loadFromCache = useCallback(async (): Promise<boolean> => {
     try {
       await offlineDb.initialize();
+
       if (key !== undefined) {
         const cached = await offlineDb.get<T>(storeName, key);
-        if (cached) {
+        if (cached !== undefined) {
           setData(cached);
           setIsCached(true);
           return true;
         }
-      } else {
-        const cached = await offlineDb.getAll<T>(storeName);
-        if (cached.length > 0) {
-          setData(cached as unknown as T);
-          setIsCached(true);
-          return true;
-        }
+        return false;
+      }
+
+      const cached = await offlineDb.getAll<T>(storeName);
+      if (cached.length > 0) {
+        setData(cached as unknown as T);
+        setIsCached(true);
+        return true;
       }
     } catch (err) {
-      console.error(`[OfflineData] Cache load error:`, err);
+      console.error('[OfflineData] Cache load error:', err);
     }
+
     return false;
-  }, [storeName, key]);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (isOnline && loadOnline) {
-        const onlineData = await loadOnline();
-        if (onlineData !== undefined) {
-          setData(onlineData);
-          setIsCached(false);
-          await save(onlineData);
-          setIsCached(true);
-          return;
-        }
-      }
-
-      const cached = await loadFromCache();
-      if (!cached && !isOnline && fallback === undefined) {
-        setError(new Error("No offline data is available."));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setLoading(false);
-    }
-  }, [fallback, isOnline, loadFromCache, loadOnline, save]);
+  }, [key, storeName]);
 
   const save = useCallback(
     async (newData: T) => {
       try {
         await offlineDb.initialize();
         if (key !== undefined) {
-          await offlineDb.set(storeName, { ...(newData as OfflineRecord), id: key });
+          await offlineDb.set(storeName, {
+            ...(newData as OfflineRecord),
+            id: key,
+          });
         } else {
-          await offlineDb.set(storeName, newData as unknown as OfflineRecord);
+          await offlineDb.set(
+            storeName,
+            newData as unknown as OfflineRecord,
+          );
         }
         setData(newData);
         setIsCached(true);
       } catch (err) {
-        setError(err as Error);
-        console.error(`[OfflineData] Save error:`, err);
+        const normalized =
+          err instanceof Error ? err : new Error(String(err));
+        setError(normalized);
+        console.error('[OfflineData] Save error:', normalized);
+        throw normalized;
       }
     },
-    [storeName, key]
+    [key, storeName],
   );
 
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isOnline && loadOnline) {
+        const onlineData = await loadOnline();
+        if (onlineData !== undefined) {
+          await save(onlineData);
+          return;
+        }
+      }
+
+      const cached = await loadFromCache();
+      if (!cached && !isOnline && fallback === undefined) {
+        setError(new Error('No offline data is available.'));
+      }
+    } catch (err) {
+      const normalized =
+        err instanceof Error ? err : new Error(String(err));
+      setError(normalized);
+    } finally {
+      setLoading(false);
+    }
+  }, [fallback, isOnline, loadFromCache, loadOnline, save]);
+
   useEffect(() => {
-    loadFromCache();
+    void loadFromCache();
   }, [loadFromCache]);
 
   return {
