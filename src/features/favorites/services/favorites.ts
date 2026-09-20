@@ -7,9 +7,7 @@ export type FavoriteItemType =
   | "hadith"
   | "story"
   | "scholar"
-  | "dua"
-  | "article"
-  | "video";
+  | "dua";
 
 export type Favorite = {
   id: string;
