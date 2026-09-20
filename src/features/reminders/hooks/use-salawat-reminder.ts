@@ -1,11 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  playSalawatClip,
-  unlockAudioContext,
-  refreshSiteAudio,
-} from "@/lib/audio/spiritual-tones";
+import { unlockAudioContext, refreshSiteAudio } from "@/lib/audio/spiritual-tones";
 import {
   showSalawatNotification,
   isInQuietHours,
@@ -239,8 +235,7 @@ export function useSalawatReminder(
       ) {
         return; // Respect quiet hours — skip silently
       }
-      playSalawatClip();
-      showSalawatNotification();
+      void showSalawatNotification();
       // Also dispatch via SW for background delivery
       if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({
@@ -305,8 +300,7 @@ export function useSalawatReminder(
 
   const testReminder = useCallback(() => {
     unlockAudioContext();
-    playSalawatClip();
-    showSalawatNotification();
+    void showSalawatNotification();
   }, []);
 
   return {
