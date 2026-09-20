@@ -51,8 +51,8 @@ export function QuranAudioPlayer({ surahId }: { surahId: number }) {
     })
       .then(response => (response.ok ? response.json() as Promise<{ audio?: { audio_url?: string } | null }> : null))
       .then(payload => {
-        const audioUrl = payload?.audio?.audio_url;
-        if (active && audioUrl) setDatabaseAudioUrl(audioUrl);
+        const audioUrl = payload?.audio?.audio_url ?? null;
+        if (active) setDatabaseAudioUrl(audioUrl);
       })
       .catch(error => {
         if (error instanceof DOMException && error.name === 'AbortError') return;
