@@ -205,8 +205,9 @@ export async function getCompanionBySlug(
     console.error("[companions] Offline detail unavailable:", error);
   }
 
-  try {
-    const rows = await supabaseServerAnonRequest<Record<string, unknown>[]>(
+  if (isSupabaseConfigured()) {
+    try {
+      const rows = await supabaseServerAnonRequest<Record<string, unknown>[]>(
       `/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,slug,category,birth_place_ar,death_place_ar,death_year,metadata&slug=eq.${encodeURIComponent(cleanSlug)}&published=eq.true&limit=1`,
     );
 
@@ -237,9 +238,10 @@ export async function getCompanionBySlug(
         ...companion,
         stories: dbStories.length ? dbStories : localStories,
       };
+      }
+    } catch (error) {
+      console.error("[companions] Failed to load companion detail:", error);
     }
-  } catch (error) {
-    console.error("[companions] Failed to load companion detail:", error);
   }
 
   if (local) {
