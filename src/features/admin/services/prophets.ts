@@ -36,3 +36,57 @@ export async function getAdminProphets(): Promise<AdminProphet[]> {
     return [];
   }
 }
+
+export async function saveAdminProphetVideo(
+  id: string,
+  videoId: string | null,
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { data: current, error: readError } = await supabase
+    .from("prophets")
+    .select("metadata")
+    .eq("id", id)
+    .single();
+
+  if (readError || !current) return false;
+
+  const existingMeta =
+    (current.metadata as Record<string, string> | null) ?? {};
+  const metadata = videoId
+    ? { ...existingMeta, youtube_video_id: videoId }
+    : Object.fromEntries(
+        Object.entries(existingMeta).filter(
+          ([key]) => key !== "youtube_video_id",
+        ),
+      );
+
+  const { error } = await supabase
+    .from("prophets")
+    .update({ metadata, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    console.error("[admin/prophets] failed to save video:", error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function setAdminProphetPublished(
+  id: string,
+  published: boolean,
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("prophets")
+    .update({ published, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    console.error("[admin/prophets] failed to update published state:", error);
+    return false;
+  }
+
+  return true;
+}
