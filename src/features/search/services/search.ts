@@ -54,7 +54,7 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
       labelAr: "حديث",
       title: item.arab?.slice(0, 90) || `حديث ${item.number}`,
       subtitle: `حديث رقم ${item.number}`,
-      href: `/hadith/${item.id ?? item.number}`,
+      href: "/hadith",
     });
   }
 
