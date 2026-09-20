@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import {
   calculateQibla,
   getDistanceToMecca,
+  QIBLA_CITIES,
 } from '@/features/qibla/services/qibla';
 
 export function QiblaPage() {
@@ -120,7 +121,7 @@ export function QiblaPage() {
 
           {/* Quick city buttons */}
           <div className="flex flex-wrap gap-2 justify-center">
-            {CITIES.map((city) => (
+            {QIBLA_CITIES.map((city) => (
               <button
                 key={city.nameAr}
                 onClick={() => setCoords({ lat: city.lat, lng: city.lng, label: city.nameAr })}
