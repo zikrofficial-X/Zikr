@@ -1,3 +1,5 @@
+import "server-only";
+
 import { searchHadith } from '@/features/hadith/services/hadith';
 import type { Hadith } from '@/features/hadith/types/hadith';
 import { searchQuran } from '@/features/quran/services/quran';
