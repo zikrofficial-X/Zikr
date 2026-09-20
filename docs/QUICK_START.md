@@ -63,7 +63,7 @@ Visit your Vercel URL → It should load without errors ✅
 - Verify Supabase project is active
 
 ### Need help?
-- Read: `SYNC_COMPLETION_CHECKLIST.md` (detailed step-by-step)
+- Read: `DEPLOYMENT_CHECKLIST.md` (detailed deployment gate)
 - Read: `GITHUB_VERCEL_SUPABASE_SYNC.md` (full technical guide)
 - Check: Vercel build logs for exact error
 

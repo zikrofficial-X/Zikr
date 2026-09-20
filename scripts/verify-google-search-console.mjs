@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 
 const failures = [];
-const layout = readFileSync('src/app/layout.tsx', 'utf8');
+const layout = readFileSync('src/src/app/layout.tsx', 'utf8');
 const deferredAnalytics = readFileSync('src/components/layout/deferred-analytics.tsx', 'utf8');
 const approvedGaId = 'G-W30Z9JW0VF';
 const approvedGtmId = 'GTM-PVQCFKCB';
@@ -26,7 +26,7 @@ const expectedTokens = [
   'Of0DQJPyryp-UqLB2Xdr5bDSkQbm_rU7bjbL6l8uGCs',
 ];
 for (const token of expectedTokens) {
-  if (!layout.includes(token)) failures.push(`رمز تحقق غير موجود في app/layout.tsx: ${token}`);
+  if (!layout.includes(token)) failures.push(`رمز تحقق غير موجود في src/app/layout.tsx: ${token}`);
 }
 
 if (!layout.includes('NEXT_PUBLIC_GA_MEASUREMENT_ID')) failures.push('متغير GA4 canonical غير موجود في root layout.');

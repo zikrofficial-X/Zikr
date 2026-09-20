@@ -101,4 +101,4 @@ Run:
 
 `pnpm verify`
 
-The verification suite checks project paths, local imports, content integrity, migrations, mobile configuration, auth/security-sensitive configuration, lint, typecheck, tests, and the production build.
+The verification suite checks project paths, local imports, content integrity, migrations, mobile configuration, auth/security-sensitive configuration, lint, typecheck, and the production build. The current repository has no checked-in automated test suite; browser/native OAuth still requires a real end-to-end session test before release.

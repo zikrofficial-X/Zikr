@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       folder: `zikr/${folder}`,
       publicId: requestedPublicId || `${guard.profile.id}-${Date.now()}`,
       tags: ['zikr', 'admin', folder],
+      maxBytes: MAX_IMAGE_BYTES,
     });
 
     return NextResponse.json(upload, { headers: { 'Cache-Control': 'no-store' } });

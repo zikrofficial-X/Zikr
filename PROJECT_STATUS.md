@@ -1,99 +1,96 @@
 # ZIKR — Current Project Status
 
-**Last audited:** 19 September 2026  
-**Canonical branch:** `main`  
-**Repository:** `Zikrmediaofficial/Zikr`
+**Finalization branch:** `finalization-src-20260920`
+**Current HEAD:** `0ea41332192ebf7fbd44426305a83580aad69306`
+**Branch relation:** 319 commits ahead of `main`, 0 behind.
+**Last audited:** September 20, 2026
 
-## Current state
+## Completion scope
 
-The repository has been consolidated onto a single canonical branch. Obsolete feature wrappers, duplicate assets, legacy hook/service paths, and root-level historical release clutter were removed or archived.
+The repository-wide finalization pass has covered the application source, feature services, API routes, Supabase functions/migrations, scripts, CI/deployment configuration, native Android/iOS projects, PWA/offline assets, and operational documentation.
 
-The GitHub Actions workflows have now been **fully retired from the active repository**. The `.github/workflows/` directory no longer exists on `main`, so new GitHub-hosted runner jobs cannot be started from repository workflow files.
+### Source and routes
 
-Application verification is handled by the existing external CI/deployment systems. This removes the repository-level GitHub Actions execution path that was previously blocked by the account billing/spending restriction.
+- 100 page route files
+- 64 API route files
+- 164 total route handlers/pages
+- No duplicate normalized page-route groups
+- Feature-first service boundaries are enforced
+- Server-only services are explicitly bounded
+- Legacy `src/hooks/` runtime layer is absent
+- Domain implementations were not recreated under `src/lib/services/`; the remaining allowlisted modules are shared infrastructure
 
-## Repository architecture
+### Major source work completed
 
-- `src/app/` — Next.js routes and API routes.
-- `src/features/` — canonical domain modules; feature services/hooks/types/data live here.
-- `src/components/ui/` and `src/components/layout/` — shared application UI and shell.
-- `src/lib/` — cross-cutting infrastructure only.
-- `supabase/migrations/` — canonical database migration chain.
-- `supabase/functions/` — active Edge Functions.
-- `scripts/` — deterministic verification and operational tooling.
-- `__tests__/` — automated tests.
-- `docs/releases/archive/` — historical release notes retained outside the product root.
+- Admin content/knowledge/prophets/battles services centralized.
+- Admin mutations retain privileged server-side authorization.
+- Profile and native auth-profile synchronization centralized.
+- Favorites reads/writes/deletes centralized and aligned to the database enum.
+- Notifications/reminders centralized; salawat audio import defect fixed.
+- Quran audio lookup and reading progress centralized.
+- Wird/memorization persistence centralized with legacy action contracts retained.
+- Kids game/content persistence centralized.
+- Media asset upload/rights/publish operations centralized.
+- Android release metadata/lookup centralized.
+- Contact persistence and public content reads consolidated.
+- Shared UI duplicate files removed.
+- Search, Qibla, offline, audio and public content paths reviewed.
 
-No legacy `src/hooks/` layer or duplicate `src/lib/services/` domain implementation layer remains.
+### Concrete repository fixes completed in this final pass
 
-## Supabase
+- `src/features/notifications/services/notifications.ts`: imported the missing `playSalawatClip` used by the salawat notification path.
+- `ios/App/Podfile`: aligned Capacitor iOS pod paths with the locked runtime versions and restored the missing Geolocation pod.
+- `.github/CODEOWNERS`: corrected stale root `app/` and `lib/` ownership paths to the current `src/app/` and `src/lib/` layout.
+- `components.json`: removed the obsolete `@/hooks` alias because the runtime hook layer no longer exists.
+- `.env.example`: removed unused NextAuth variables.
+- `vercel.json`: removed obsolete NextAuth build environment configuration.
+- `.github/dependabot.yml`: removed the retired GitHub Actions dependency-scan target; npm dependency updates remain.
+- Multiple deployment/auth/offline/mobile/SEO documents were rewritten to match the current architecture and remove stale paths or false readiness claims.
 
-The production database currently exposes **104 public tables**, all with RLS enabled.
+### Dependency/configuration integrity
 
-The live security audit found:
-- No duplicate RLS policy names.
-- No public `SECURITY DEFINER` functions executable by `anon` or `authenticated`.
-- No duplicate index definitions detected.
+- Direct dependencies in `package.json`: 49
+- No direct dependency is missing from `pnpm-lock.yaml`.
+- No `package-lock.json`, `yarn.lock`, or npm shrinkwrap file is tracked.
+- Mobile dependency manifest and `package.json` agree on the declared Capacitor packages.
+- Android generated Capacitor project paths match the locked 7.x runtime packages.
+- iOS Podfile now matches the locked plugin versions.
+- Android: `com.zikr.app`, version 1.0.0, code 53, target SDK 36.
+- iOS: `com.zikr.app`, version 1.0.0, build 53.
+- Capacitor runtime/plugins remain 7.x; the repository CLI is 8.5.1. This mismatch is documented and must not be changed without an intentional lockfile/native-toolchain migration.
 
-The performance advisor currently reports INFO-level unused-index observations. These are advisory workload observations, not runtime errors, and are not being deleted blindly because many support low-frequency, future, foreign-key, or search workloads.
+### Supabase
 
-One Supabase Auth security warning remains: leaked-password protection is disabled. This is an Auth project setting rather than an application-code defect and must be enabled in the Supabase Auth settings.
+- 250 active migration files under `supabase/migrations/`.
+- Static duplicate migration-prefix check completed.
+- Canonical Auth site URL and three redirect entries remain locked in `supabase/config.toml`.
+- Edge Function scheduler/security boundaries were reviewed.
+- Live SQL/RLS/scheduler verification is still blocked because the current Supabase connector exposes no accessible project in this session.
 
-### Database cleanup completed
+### PWA / offline / assets
 
-The following obsolete, empty runtime tables were retired through a migration:
+- Canonical Quran corpus remains Git-tracked under `public/quran/`.
+- Offline v1 datasets and manifest are tracked.
+- Service worker cache strategy was reviewed; generic personalized HTML is not pre-cached.
+- Local audio/branding/icons required by the application are present.
+- Quran audio import remains an explicit operational job; it does not silently run during normal builds.
 
-- `episodes`
-- `research_requests`
-- `generated_research`
-- `payments`
-- `user_subscriptions`
-- `subscriptions`
-- `saved_stories`
+### CI / deployment
 
-The active application alternatives are the current videos/YouTube pipeline, source-verified content pipeline, and `story_favorites`/current account infrastructure.
+- GitHub Actions workflows remain intentionally retired.
+- CircleCI remains the external CI/recovery path.
+- Vercel build command is `pnpm build` with a frozen pnpm install.
+- The latest visible finalization deployments before the source fix failed at the build stage with `lint_or_type_error`.
+- The current Vercel status is still a build-rate-limit/account gate, so a successful production build of the current finalization HEAD has not been established.
+- CircleCI `ci-check` remains pending/unverified from this session.
 
-The existing `tasks` and `user_behavior` tables were intentionally retained because the active admin automation and analytics code still consumes them.
+## Release blockers
 
-## Content and data
+The codebase has undergone the requested repository-wide cleanup and source finalization, but release certification is intentionally not claimed until these external gates are actually successful:
 
-Current populated production content includes Quran tafsir/audio, hadiths, stories, articles, prophets, companions, battles, conquests, duas, scholars, children's content/games, tawasheeh, social-sync queues, and prayer notification history.
+1. A fresh Vercel build of the corrected finalization HEAD completes successfully.
+2. Supabase live SQL/RLS/migration/scheduler checks run with valid project access.
+3. CircleCI required validation completes successfully.
+4. Native Android/iOS sync and signed release builds pass in a real release environment.
 
-The last recorded production audit reported `quran_surahs` = 114, `quran_ayahs` = 6236, `quran_reciters` = 7, `quran_audio` = 798, and `quran_tafsir` = 6236. These live counts were not re-queried during this pass because the current Supabase management connector does not have sufficient permissions. The surah catalog now has canonical `ayahs_count` metadata totaling 6236, with no zero/null counts. Quran audio covers all 114 surahs for all 7 current reciters, with no duplicate `(surah_id, reciter_id)` pairs.
-
-## Mobile
-
-Capacitor runtime packages are on major version 7, while the repository pins `@capacitor/cli` to 8.5.1 in both `package.json` and `mobile/capacitor-dependencies.json`. This is documented as a dependency-maintenance item; the lockfile is kept internally consistent and was not hand-edited to force a speculative major-version migration.
-
-## Deployment
-
-Vercel's last READY production deployment is still commit `2dec7d45c57a01927f10b499ca405e6b07c31739`; the current `main` repair commits have been pushed to GitHub but are not yet present in a newer READY deployment. The last available Vercel runtime-error query showed no grouped runtime errors in the selected 24-hour window; newer deployment attempts were previously blocked by the Vercel build-rate limit.
-
-## Canonical Quran storage
-
-- Quran text is bundled and versioned in Git at `public/quran/mushaf-hafs.json` (114 surahs / 6236 ayahs), with `public/quran/manifest.json` and `public/quran/NOTICE.md` for integrity and attribution.
-- The Quran reader reads the Git-tracked corpus first and uses Supabase `quran_surahs/quran_ayahs` only as a compatibility fallback.
-- Quran runtime services no longer depend on Al Quran Cloud or any other external Quran API.
-- `quran_audio` is modeled as 798 deterministic Supabase Storage targets: one whole-surah track for each of 114 surahs × 7 current reciters.
-- Bucket: `quran-audio` (public read, controlled writes).
-- Audio import remains available through the canonical importer script under `scripts/`; it is no longer exposed through a GitHub Actions workflow.
-- Audio objects are not yet uploaded: `quran-audio` currently contains 0 objects and all 798 rows are `storage_status='pending'`.
-- The current Supabase project is on the Free storage quota shown in the dashboard (1 GB included, 50 MB maximum per file). Full retention of all seven complete reciter libraries should therefore be capacity-checked before the import is run; the importer refuses files above the configured per-file limit rather than silently truncating them.
-
-## Canonical Auth and Quran invariants
-
-- Supabase Auth `site_url` is locked in repository configuration to `https://zikrmediaofficial.vercel.app`.
-- The approved redirect allowlist is exactly `com.zikr.app://auth/callback`, `http://localhost:3000/**`, and `https://zikrmediaofficial.vercel.app/auth/callback`.
-- Deployment/auth verification scripts fail on redirect-list drift.
-- Production client code uses the canonical ZIKR origin instead of a Vercel deployment alias.
-
-## Rules for future changes
-
-- Use `main` as the canonical branch.
-- Use feature-first imports for domain logic.
-- Keep `src/lib/` limited to shared infrastructure.
-- Apply database changes through `supabase/migrations/`.
-- Never reintroduce duplicate compatibility layers without a concrete migration requirement.
-- Do not remove Supabase indexes solely because they are currently unused according to the advisor.
-- Do not recreate `.github/workflows/` unless the GitHub account billing state has been deliberately reviewed and the execution model is explicitly approved.
-- Do not treat archived reports as current project state.
+Older READY production deployments are not used as proof for the finalization branch.

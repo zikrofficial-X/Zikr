@@ -1,16 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
+import { getQuranAudioFromDb } from "@/features/quran/services/quran-server";
 import { NextResponse } from "next/server";
 
 export const revalidate = 86400;
-
-type AudioRow = {
-  audio_url: string | null;
-  source_url: string | null;
-  retrieved_at: string | null;
-  storage_url: string | null;
-  storage_status: "pending" | "uploading" | "ready" | "failed" | null;
-  storage_path: string | null;
-};
 
 function json(data: unknown, status = 200) {
   return NextResponse.json(data, {
@@ -34,46 +25,24 @@ export async function GET(request: Request) {
   }
 
   try {
-    const supabase = await createClient();
-
-    const candidates = [...new Set([
-      reciter,
-      reciter.replace(/^ar\./i, ""),
-      `ar.${reciter.replace(/^ar\./i, "")}`,
-    ])];
-
-    const { data: reciters, error: reciterError } = await supabase
-      .from("quran_reciters")
-      .select("id,code")
-      .in("code", candidates)
-      .limit(10);
-
-    if (reciterError) throw reciterError;
-    const reciterRow = reciters?.find(row => candidates.includes(row.code ?? ""));
-    if (!reciterRow?.id) return json({ audio: null, reason: "reciter_not_found" });
-
-    const { data: audio, error: audioError } = await supabase
-      .from("quran_audio")
-      .select("audio_url,source_url,retrieved_at,storage_url,storage_status,storage_path")
-      .eq("surah_id", surah)
-      .eq("reciter_id", reciterRow.id)
-      .limit(1)
-      .maybeSingle();
-
-    if (audioError) throw audioError;
-    const row = audio as AudioRow | null;
-
-    if (row?.storage_status === "ready" && row.storage_url) {
-      return json({ audio: row });
+    const result = await getQuranAudioFromDb(surah, reciter);
+    if (result.audio) {
+      return json(result);
     }
 
     return json({
       audio: null,
-      reason: row?.storage_status ?? "not_imported",
-      storage_path: row?.storage_path ?? null,
+      reason: result.reason,
+      storage_path: result.storage_path,
     });
   } catch (error) {
-    console.error("[api/quran/audio] canonical Supabase audio unavailable:", error);
-    return json({ audio: null, reason: "storage_unavailable" }, 503);
+    console.error(
+      "[api/quran/audio] canonical Supabase audio unavailable:",
+      error,
+    );
+    return json(
+      { audio: null, reason: "storage_unavailable" },
+      503,
+    );
   }
 }

@@ -32,9 +32,9 @@ The following environment variables are optional and are used for integrating wi
 | `FACEBOOK_PAGE_ACCESS_TOKEN`     | Page access token with the Meta Page publishing permissions.                | Server   |
 | `VIDEO_AUTO_PUBLISH`             | Set to `false` to keep completed videos queued without publishing; defaults to automatic publishing when credentials exist. | Server |
 
-## Automatic Video Upload and Social Publishing
+## Video Processing and Social Publishing
 
-The admin dashboard supports selecting a local MP4/WebM/MOV file. The browser uploads it directly to the Supabase `videos` Storage bucket using an admin-only signed upload URL, then the server action stores the public source URL in the `videos` metadata and creates a durable `social_publish_queue` item. The Supabase scheduled worker processes that queue without requiring the browser to remain open.
+Video and social processing are split between the application/API layer and the opt-in CircleCI background worker. Large source-media handling uses the current media registry/queue path; do not assume a browser-uploaded Storage bucket is the only ingestion path. Production automation is not an implicit always-on Supabase scheduler.
 
 YouTube uploads use OAuth2 and require `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, and `YOUTUBE_REFRESH_TOKEN`; the refresh token must be granted with the official `https://www.googleapis.com/auth/youtube.upload` scope. Facebook publishing uses `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN`; the token must belong to a Page and the Meta app must have the Page publishing permissions required by Meta. Never place these values in client-side code or commit them to Git.
 
@@ -56,4 +56,4 @@ Environment variables are validated at runtime using `zod` to ensure their prese
 
 ## .env.example
 
-The `.env.example` file in the project root provides a template for all environment variables. It should be copied to `.env` and populated with actual values for local development and deployment.
+The `.env.example` file in the project root provides a template for all environment variables. It should be copied to `.env.local` and populated with actual values for local development and deployment.

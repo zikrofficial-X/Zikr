@@ -1,65 +1,63 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { pageMetadata } from "@/lib/site";
+import {
+  getCurrentProfileData,
+  type ProfileFavorite,
+  type ProfileReadingProgress,
+} from "@/features/profile/services/profile";
+import { Card } from "@/components/ui/card";
+import { Container } from "@/components/ui/container";
+import { Button } from "@/components/ui/button";
+import { logoutAction, updateProfileAction } from "@/app/auth/actions";
+import { AvatarUpload } from "@/features/profile/components/avatar-upload";
+import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: 'الملف الشخصي',
-  robots: { index: false, follow: false },
-};
-import { createClient } from '@/lib/supabase/server';
-import { Card } from '@/components/ui/card';
-import { Container } from '@/components/ui/container';
-import { Button } from '@/components/ui/button';
-import { logoutAction, updateProfileAction } from '@/app/auth/actions';
-import { AvatarUpload } from '@/features/profile/components/avatar-upload';
-import Link from 'next/link';
-
-type Favorite = {
-  id: string;
-  item_type: string;
-  item_ref: string;
-  created_at: string;
-};
-
-type ReadingProgress = {
-  id: string;
-  scope: string;
-  ref: string;
-  progress_json: Record<string, unknown>;
-  updated_at: string;
-};
+export const metadata: Metadata = pageMetadata({
+  title: "الملف الشخصي",
+  description: "إدارة بيانات حسابك وتفضيلات القراءة في منصة ذِكر.",
+  path: "/profile",
+  noindex: true,
+});
 
 const typeLabels: Record<string, string> = {
-  quran: 'القرآن',
-  hadith: 'الحديث',
-  story: 'القصص',
-  scholar: 'العلماء',
-  dua: 'الأدعية',
-  article: 'المقالات',
-  video: 'الفيديوهات',
-  poetry: 'الشعر',
+  quran: "القرآن",
+  hadith: "الحديث",
+  story: "القصص",
+  scholar: "العلماء",
+  dua: "الأدعية",
+  article: "المقالات",
+  video: "الفيديوهات",
+  poetry: "الشعر",
 };
 
 const scopeLabels: Record<string, string> = {
-  quran: 'القرآن',
-  hadith: 'الحديث',
-  stories: 'القصص',
+  quran: "القرآن",
+  hadith: "الحديث",
+  stories: "القصص",
 };
 
 function formatDate(value: string | null | undefined) {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('ar-SA', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : date.toLocaleDateString("ar-SA", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
 }
 
-function getUserMetadataValue(metadata: Record<string, unknown>, ...keys: string[]) {
+function getUserMetadataValue(
+  metadata: Record<string, unknown>,
+  ...keys: string[]
+) {
   for (const key of keys) {
     const value = metadata[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (typeof value === "string" && value.trim()) return value.trim();
   }
   return null;
 }
@@ -70,66 +68,38 @@ export default async function ProfilePage({
   searchParams?: Promise<{ error?: string; success?: string }>;
 }) {
   const params = (await searchParams) ?? {};
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const data = await getCurrentProfileData();
 
-  if (!user) redirect('/auth/login?next=/profile');
+  if (!data) redirect("/auth/login?next=/profile");
 
-  // Profile rows are created by the server-side auth callback/trigger. Avoid a
-  // write during a read-only page render: it adds latency and can race RLS.
-  const [profileRes, favoritesRes, progressRes] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('display_name, avatar_url, role, created_at')
-      .eq('id', user.id)
-      .limit(1),
-    supabase
-      .from('favorites')
-      .select('id, item_type, item_ref, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(10),
-    supabase
-      .from('reading_progress')
-      .select('id, scope, ref, progress_json, updated_at')
-      .eq('user_id', user.id)
-      .order('updated_at', { ascending: false })
-      .limit(10),
-  ]);
+  const { user, profile, assignedRole } = data;
+  const favList: ProfileFavorite[] = data.favorites;
+  const progressList: ProfileReadingProgress[] = data.readingProgress;
+  const isAdmin = profile?.role === "admin" || Boolean(assignedRole);
 
-  const profile = profileRes.data?.[0] ?? null;
-  const favList: Favorite[] = favoritesRes.data ?? [];
-  const progressList: ReadingProgress[] = progressRes.data ?? [];
-  const favCount = favList.length;
-  const progressCount = progressList.length;
-
-  const isAdmin = profile?.role === 'admin';
-  const userMetadata = user.user_metadata ?? {};
   const displayName =
     profile?.display_name ??
-    getUserMetadataValue(userMetadata, 'full_name', 'name', 'display_name') ??
-    user.email?.split('@')[0] ??
+    getUserMetadataValue(user.user_metadata, "full_name", "name", "display_name") ??
+    user.email?.split("@")[0] ??
     null;
-  const avatarUrl = profile?.avatar_url ?? getUserMetadataValue(userMetadata, 'avatar_url', 'picture');
+  const avatarUrl =
+    profile?.avatar_url ??
+    getUserMetadataValue(user.user_metadata, "avatar_url", "picture");
   const memberSince = profile?.created_at ?? user.created_at;
   const lastSignIn = user.last_sign_in_at;
   const emailVerified = Boolean(user.email_confirmed_at);
-  const provider = user.app_metadata?.provider ?? 'email';
+  const provider = String(user.app_metadata.provider ?? "email");
   const providerLabels: Record<string, string> = {
-    email: 'البريد الإلكتروني',
-    google: 'جوجل',
-    facebook: 'فيسبوك',
-    github: 'جيت هاب',
+    email: "البريد الإلكتروني",
+    google: "جوجل",
+    facebook: "فيسبوك",
+    github: "جيت هاب",
   };
-
-  // Distinct favorite categories for the stats row
-  const favTypes = new Set(favList.map((f) => f.item_type));
+  const favTypes = new Set(favList.map((favorite) => favorite.item_type));
 
   return (
     <Container className="space-y-5 py-8 sm:py-12 lg:py-16">
-      {params.success === 'profile_saved' && (
+      {params.success === "profile_saved" && (
         <div role="status" className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
           تم حفظ بيانات الحساب بنجاح.
         </div>
@@ -139,7 +109,7 @@ export default async function ProfilePage({
           {params.error}
         </div>
       )}
-      {/* Header card: identity + account details */}
+
       <Card className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl text-brand-gold">الملف الشخصي</h1>
@@ -152,14 +122,8 @@ export default async function ProfilePage({
                 لوحة التحكم
               </Link>
             )}
-            <span
-              className={
-                isAdmin
-                  ? 'rounded-full bg-brand-gold/20 px-3 py-1 text-xs font-semibold text-brand-gold'
-                  : 'rounded-full bg-black/25 px-3 py-1 text-xs text-brand-cream/70 ring-1 ring-brand-gold/20'
-              }
-            >
-              {isAdmin ? 'أدمن' : 'مستخدم'}
+            <span className="rounded-full bg-black/25 px-3 py-1 text-xs text-brand-cream/70 ring-1 ring-brand-gold/20">
+              {isAdmin ? "أدمن" : "مستخدم"}
             </span>
           </div>
         </div>
@@ -168,22 +132,25 @@ export default async function ProfilePage({
           <AvatarUpload
             currentAvatarUrl={avatarUrl}
             displayName={displayName}
-            email={user.email ?? null}
+            email={user.email}
           />
           <div className="space-y-1">
             <p className="text-lg font-semibold text-brand-cream">
-              {displayName ?? 'لم يتم إعداد الاسم بعد'}
+              {displayName ?? "لم يتم إعداد الاسم بعد"}
             </p>
-            <p className="text-sm arabic-muted">{user.email ?? 'البريد غير متاح'}</p>
+            <p className="text-sm arabic-muted">
+              {user.email ?? "البريد غير متاح"}
+            </p>
             <p className="text-xs arabic-muted">
-              {emailVerified ? 'البريد الإلكتروني مُوثّق' : 'البريد الإلكتروني غير مُوثّق بعد'}
-              {' · '}
+              {emailVerified
+                ? "البريد الإلكتروني مُوثّق"
+                : "البريد الإلكتروني غير مُوثّق بعد"}
+              {" · "}
               تسجيل الدخول عبر {providerLabels[provider] ?? provider}
             </p>
           </div>
         </div>
 
-        {/* Account details grid */}
         <div className="grid grid-cols-2 gap-3 rounded-xl bg-black/15 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p className="arabic-muted text-xs">عضو منذ</p>
@@ -195,16 +162,15 @@ export default async function ProfilePage({
           </div>
           <div>
             <p className="arabic-muted text-xs">آخر المفضلة</p>
-            <p className="text-brand-cream/90 tabular-nums">{favCount.toLocaleString('ar-EG')}</p>
+            <p className="text-brand-cream/90 tabular-nums">{favList.length.toLocaleString("ar-EG")}</p>
           </div>
           <div>
             <p className="arabic-muted text-xs">آخر القراءات</p>
-            <p className="text-brand-cream/90 tabular-nums">{progressCount.toLocaleString('ar-EG')}</p>
+            <p className="text-brand-cream/90 tabular-nums">{progressList.length.toLocaleString("ar-EG")}</p>
           </div>
         </div>
       </Card>
 
-      {/* Edit profile */}
       <Card className="space-y-4">
         <h2 className="text-xl text-brand-gold">تعديل البيانات</h2>
         <form action={updateProfileAction} className="max-w-md space-y-4">
@@ -215,15 +181,13 @@ export default async function ProfilePage({
             <input
               id="displayName"
               name="displayName"
-              defaultValue={profile?.display_name ?? ''}
+              defaultValue={profile?.display_name ?? ""}
               placeholder="اكتب اسمك"
               className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-2 text-brand-cream focus:border-brand-gold focus:outline-none"
             />
           </div>
-
           <Button type="submit">حفظ التغييرات</Button>
         </form>
-
         <form action={logoutAction}>
           <Button type="submit" variant="ghost">
             تسجيل الخروج
@@ -231,13 +195,11 @@ export default async function ProfilePage({
         </form>
       </Card>
 
-      {/* Activity summary */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Favorites */}
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl text-brand-gold">المفضلة</h2>
-            {favCount > 0 && (
+            {favList.length > 0 && (
               <Link href="/favorites" className="text-sm text-brand-gold/70 transition-colors hover:text-brand-gold">
                 عرض الكل
               </Link>
@@ -245,68 +207,59 @@ export default async function ProfilePage({
           </div>
           {favTypes.size > 0 && (
             <div className="flex flex-wrap gap-2">
-              {[...favTypes].map((t) => (
-                <span key={t} className="rounded-full bg-brand-gold/10 px-2 py-0.5 text-xs text-brand-gold">
-                  {typeLabels[t] ?? t}
+              {[...favTypes].map((type) => (
+                <span key={type} className="rounded-full bg-brand-gold/10 px-2 py-0.5 text-xs text-brand-gold">
+                  {typeLabels[type] ?? type}
                 </span>
               ))}
             </div>
           )}
           {favList.length === 0 ? (
-            <p className="arabic-muted">
-              لم تقم بحفظ أي عناصر بعد. تصفح المحتوى وأضف ما يعجبك إلى المفضلة.
-            </p>
+            <p className="arabic-muted">لم تقم بحفظ أي عناصر بعد.</p>
           ) : (
             <div className="space-y-2">
-              {favList.map((fav) => (
-                <div
-                  key={fav.id}
-                  className="flex items-center justify-between rounded-lg bg-black/20 p-3"
-                >
+              {favList.map((favorite) => (
+                <div key={favorite.id} className="flex items-center justify-between rounded-lg bg-black/20 p-3">
                   <div>
                     <span className="rounded-full bg-brand-gold/10 px-2 py-0.5 text-xs text-brand-gold">
-                      {typeLabels[fav.item_type] ?? fav.item_type}
+                      {typeLabels[favorite.item_type] ?? favorite.item_type}
                     </span>
-                    <p className="mt-1 text-sm text-brand-cream/90">{fav.item_ref}</p>
+                    <p className="mt-1 text-sm text-brand-cream/90">{favorite.item_ref}</p>
                   </div>
-                  <span className="text-xs arabic-muted">{formatDate(fav.created_at)}</span>
+                  <span className="text-xs arabic-muted">{formatDate(favorite.created_at)}</span>
                 </div>
               ))}
             </div>
           )}
         </Card>
 
-        {/* Reading progress */}
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl text-brand-gold">التقدم في القراءة</h2>
-            {progressCount > 0 && (
+            {progressList.length > 0 && (
               <span className="text-sm arabic-muted">
-                آخر {progressCount.toLocaleString('ar-EG')} سجلات
+                آخر {progressList.length.toLocaleString("ar-EG")} سجلات
               </span>
             )}
           </div>
           {progressList.length === 0 ? (
             <p className="arabic-muted">
-              لم تبدأ أي قراءة بعد.{' '}
+              لم تبدأ أي قراءة بعد.{" "}
               <Link href="/quran" className="text-brand-gold hover:underline">
                 ابدأ بتصفح القرآن
-              </Link>{' '}
-              لتتبع تقدمك.
+              </Link>
+              {" "}لتتبع تقدمك.
             </p>
           ) : (
             <div className="space-y-2">
-              {progressList.map((rp) => (
-                <div
-                  key={rp.id}
-                  className="flex items-center justify-between rounded-lg bg-black/20 p-3 text-sm"
-                >
+              {progressList.map((item) => (
+                <div key={item.id} className="flex items-center justify-between rounded-lg bg-black/20 p-3 text-sm">
                   <span className="text-brand-cream/90">
-                    {rp.ref === 'wird'
-                      ? 'الورد اليومي'
-                      : `${scopeLabels[rp.scope] ?? rp.scope} — ${String(rp.progress_json?.surah_name ?? rp.ref).replace('surah:', 'سورة ')}`}
+                    {item.ref === "wird"
+                      ? "الورد اليومي"
+                      : `${scopeLabels[item.scope] ?? item.scope} — ${String(item.progress_json?.surah_name ?? item.ref).replace("surah:", "سورة ")}`}
                   </span>
-                  <span className="text-xs arabic-muted">{formatDate(rp.updated_at)}</span>
+                  <span className="text-xs arabic-muted">{formatDate(item.updated_at)}</span>
                 </div>
               ))}
             </div>
@@ -314,15 +267,14 @@ export default async function ProfilePage({
         </Card>
       </div>
 
-      {/* Quick links */}
       <Card className="space-y-4">
         <h2 className="text-xl text-brand-gold">روابط سريعة</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { href: '/memorization', label: 'خطط الحفظ' },
-            { href: '/tasbeeh', label: 'المسبحة الإلكترونية' },
-            { href: '/prayer-times', label: 'مواقيت الصلاة' },
-            { href: '/competitions', label: 'المسابقات' },
+            { href: "/memorization", label: "خطط الحفظ" },
+            { href: "/tasbeeh", label: "المسبحة الإلكترونية" },
+            { href: "/prayer-times", label: "مواقيت الصلاة" },
+            { href: "/competitions", label: "المسابقات" },
           ].map((link) => (
             <Link
               key={link.href}

@@ -30,7 +30,7 @@ function extractYoutubeId(value: string) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApi();
+  const auth = await requireAdminApi('media.manage');
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

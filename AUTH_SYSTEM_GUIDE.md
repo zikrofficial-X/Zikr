@@ -79,8 +79,6 @@ The local Supabase Auth URL configuration is in `supabase/config.toml`:
 
 The hosted Google provider being enabled is a Dashboard setting. Repository files cannot prove that the hosted provider toggle and its Client ID/Secret are currently enabled, so that state must be checked in Supabase Authentication → Sign In / Providers → Google.
 
-## Testing
+## Verification
 
-Use the pure auth tests under `__tests__/integration/auth.test.ts` and the native callback test under `__tests__/unit/native-google-oauth-handler.test.ts`.
-
-Then run the full verification suite with `pnpm verify`.
+The repository currently has no checked-in Jest/Vitest-style test suite. Authentication is verified through the repository integrity checks, source/type validation, route checks, and the external CI/build gates. Run `pnpm auth:check`, `pnpm project:check`, `pnpm check`, and `pnpm build`; exercise browser and native OAuth flows in a real environment before release.

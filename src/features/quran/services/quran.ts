@@ -1,5 +1,6 @@
 import { getPublicEnv } from "@/lib/env";
 import type { Ayah, Juz, Surah, Reciter } from "@/features/quran/types/quran";
+import { reciters as FALLBACK_RECITERS } from "@/features/quran/data/fallback";
 import { getCanonicalAyahCount } from "@/features/quran/utils/surah-mapping";
 
 const DEBUG_QURAN = process.env.NODE_ENV !== "production";
@@ -274,10 +275,17 @@ export async function getReciters(): Promise<Reciter[]> {
     const rows = await supabasePublicFetch<DbReciter[]>(
       "/rest/v1/quran_reciters?select=id,code,name_ar,name_en,base_url_template&order=name_en.asc",
     );
-    if (!rows.length) throw new Error("No Quran reciters found in Supabase.");
-    return rows.map(mapDbReciter);
+    if (rows.length > 0) return rows.map(mapDbReciter);
   } catch (error) {
     console.error("[quran-service] canonical Supabase reciter catalog unavailable:", error);
-    return [];
   }
+
+  return FALLBACK_RECITERS.map((reciter) => ({
+    id: reciter.id,
+    nameAr: reciter.nameAr,
+    nameEn: reciter.nameEn,
+    code: reciter.code,
+    baseUrlTemplate: reciter.baseUrlTemplate,
+    type: reciter.type,
+  }));
 }

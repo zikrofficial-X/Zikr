@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getCurrentUserFavorites } from '@/features/favorites/services/favorites';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,28 +17,10 @@ export const metadata = pageMetadata({
   noindex: true,
 });
 
-type Favorite = {
-  id: string;
-  item_type: string;
-  item_ref: string;
-  created_at: string;
-};
-
 export default async function FavoritesPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const favList = await getCurrentUserFavorites();
 
-  if (!user) redirect('/auth/login?next=/favorites');
-
-  const { data: favorites } = await supabase
-    .from('favorites')
-    .select('id, item_type, item_ref, created_at')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-
-  const favList: Favorite[] = favorites ?? [];
+  if (!favList) redirect('/auth/login?next=/favorites');
 
   const quranFavorites = favList.filter((f) => f.item_type === 'quran');
   const hadithFavorites = favList.filter((f) => f.item_type === 'hadith');

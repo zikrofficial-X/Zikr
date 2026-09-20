@@ -1,4 +1,4 @@
-import 'server-only';
+import "server-only";
 
 import { getServerEnv } from '@/lib/env';
 import { validateCloudinaryImage } from '@/features/media/services/cloudinary-validation';
@@ -51,8 +51,9 @@ export async function uploadCloudinaryImage(params: {
   folder: string;
   publicId: string;
   tags?: string[];
+  maxBytes?: number;
 }): Promise<CloudinaryImageUpload> {
-  validateCloudinaryImage(params.file);
+  validateCloudinaryImage(params.file, params.maxBytes);
   const { cloudName, apiKey, apiSecret } = cloudinaryConfig();
 
   const form = new FormData();

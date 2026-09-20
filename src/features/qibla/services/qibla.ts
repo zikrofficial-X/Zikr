@@ -3,12 +3,12 @@
  * Calculates the direction to Mecca (Qibla) from any location
  */
 
-interface LocationCoordinates {
+export interface LocationCoordinates {
   latitude: number;
   longitude: number;
 }
 
-interface QiblaDirection {
+export interface QiblaDirection {
   direction: number; // Degrees from North (0-360)
   directionName: string; // e.g., "North", "Northeast", etc.
   meccaLatitude: number;
@@ -18,6 +18,17 @@ interface QiblaDirection {
 // Mecca coordinates
 const MECCA_LATITUDE = 21.4225;
 const MECCA_LONGITUDE = 39.8262;
+
+export const QIBLA_CITIES = [
+  { nameAr: "القاهرة", lat: 30.0444, lng: 31.2357 },
+  { nameAr: "دبي", lat: 25.2048, lng: 55.2708 },
+  { nameAr: "الرياض", lat: 24.7136, lng: 46.6753 },
+  { nameAr: "إسطنبول", lat: 41.0082, lng: 28.9784 },
+  { nameAr: "لندن", lat: 51.5074, lng: -0.1278 },
+  { nameAr: "نيويورك", lat: 40.7128, lng: -74.006 },
+  { nameAr: "كوالالمبور", lat: 3.139, lng: 101.6869 },
+  { nameAr: "جاكرتا", lat: -6.2088, lng: 106.8456 },
+] as const;
 
 /**
  * Calculate the bearing (direction) from point A to point B
@@ -64,9 +75,24 @@ function bearingToDirectionName(bearing: number): string {
 /**
  * Calculate Qibla direction from given coordinates
  */
+function assertCoordinates(location: LocationCoordinates): void {
+  if (
+    !Number.isFinite(location.latitude) ||
+    !Number.isFinite(location.longitude) ||
+    location.latitude < -90 ||
+    location.latitude > 90 ||
+    location.longitude < -180 ||
+    location.longitude > 180
+  ) {
+    throw new RangeError("Invalid latitude/longitude coordinates.");
+  }
+}
+
 export function calculateQibla(
   location: LocationCoordinates
 ): QiblaDirection {
+  assertCoordinates(location);
+
   const bearing = calculateBearing(
     location.latitude,
     location.longitude,
@@ -87,7 +113,10 @@ export function calculateQibla(
  */
 export async function getQiblaFromGeolocation(): Promise<QiblaDirection | null> {
   return new Promise((resolve) => {
-    if (!navigator.geolocation) {
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.geolocation
+    ) {
       resolve(null);
       return;
     }
@@ -122,6 +151,7 @@ export function formatBearing(bearing: number): string {
 export function getDistanceToMecca(
   location: LocationCoordinates
 ): number {
+  assertCoordinates(location);
   const R = 6371; // Earth's radius in km
   const dLat = (MECCA_LATITUDE - location.latitude) * (Math.PI / 180);
   const dLon = (MECCA_LONGITUDE - location.longitude) * (Math.PI / 180);

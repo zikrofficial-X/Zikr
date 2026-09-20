@@ -2234,37 +2234,37 @@ export type Database = {
       }
       memorization_progress: {
         Row: {
-          ayah_number: number
           created_at: string | null
           id: string
-          last_attempt_at: string | null
-          mastery_level: number | null
-          status: string | null
-          surah_id: number
+          last_reviewed_at: string | null
+          memorized_ayahs: number
+          surah_name: string
+          surah_number: number
+          total_ayahs: number
           updated_at: string | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
-          ayah_number: number
           created_at?: string | null
           id?: string
-          last_attempt_at?: string | null
-          mastery_level?: number | null
-          status?: string | null
-          surah_id: number
+          last_reviewed_at?: string | null
+          memorized_ayahs?: number
+          surah_name: string
+          surah_number: number
+          total_ayahs: number
           updated_at?: string | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
-          ayah_number?: number
           created_at?: string | null
           id?: string
-          last_attempt_at?: string | null
-          mastery_level?: number | null
-          status?: string | null
-          surah_id?: number
+          last_reviewed_at?: string | null
+          memorized_ayahs?: number
+          surah_name?: string
+          surah_number?: number
+          total_ayahs?: number
           updated_at?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -2294,34 +2294,34 @@ export type Database = {
       }
       notifications: {
         Row: {
-          body: string
-          created_at: string | null
+          body: string | null
+          created_at: string
           id: string
-          is_read: boolean | null
-          link: string | null
+          metadata: Json | null
+          read: boolean
           title: string
           type: string | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
-          body: string
-          created_at?: string | null
+          body?: string | null
+          created_at?: string
           id?: string
-          is_read?: boolean | null
-          link?: string | null
+          metadata?: Json | null
+          read?: boolean
           title: string
           type?: string | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
-          body?: string
-          created_at?: string | null
+          body?: string | null
+          created_at?: string
           id?: string
-          is_read?: boolean | null
-          link?: string | null
+          metadata?: Json | null
+          read?: boolean
           title?: string
           type?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }

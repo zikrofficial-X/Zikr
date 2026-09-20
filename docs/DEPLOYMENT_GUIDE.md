@@ -18,7 +18,7 @@ To ensure the project works correctly on production (Vercel) and with Supabase, 
 ### Database
 Supabase SQL migrations are the single official database migration path for this project. All deployable SQL lives in `supabase/migrations`. The application does not use Drizzle or a direct PostgreSQL URL at runtime.
 
-Run exactly one database command before deploying:
+Run the canonical database migration command only from an authenticated Supabase CLI environment when migrations are intentionally pending:
 
 ```bash
 pnpm db:migrate-supabase
@@ -57,7 +57,7 @@ pnpm build
 
 ## 4. Features Status
 
-- **Quran**: Canonical runtime data is served from Supabase; external Quran APIs are ingestion/research sources only.
+- **Quran**: The reader uses the Git-tracked Quran corpus first; Supabase remains the compatibility/content layer where applicable.
 - **Tafsir**: Integrated into Ayah detail pages.
 - **Hadith**: Connected to live API with pagination.
 - **Stories**: Integrated with YouTube embed support.
@@ -67,6 +67,6 @@ pnpm build
 Push the latest changes to your repository:
 ```bash
 git add .
-git commit -m "Fix: APIs, Environment variables, and Content integrations"
+git commit -m "chore: deploy verified source changes"
 git push origin main
 ```

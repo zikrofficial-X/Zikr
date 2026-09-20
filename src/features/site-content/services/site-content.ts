@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createClient } from '@/lib/supabase/server';
 import type { Competition } from '@/features/competitions/types';
 import { FALLBACK_COMPETITIONS } from '@/features/competitions/data/fallback';

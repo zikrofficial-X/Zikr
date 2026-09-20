@@ -1,21 +1,14 @@
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { getStories } from "@/features/stories/services/stories";
 
 export async function GET() {
-  if (!isSupabaseConfigured()) return NextResponse.json([]);
-
   try {
-    const supabase = await createClient();
-    const { data: stories, error } = await supabase
-      .from('stories')
-      .select('*')
-      .eq('published', true)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return NextResponse.json(stories || []);
+    return NextResponse.json(await getStories());
   } catch (error) {
-    console.error('[api/content/stories] GET error:', error);
-    return NextResponse.json({ error: 'Failed to fetch stories' }, { status: 500 });
+    console.error("[api/content/stories] GET error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch stories" },
+      { status: 500 },
+    );
   }
 }

@@ -5,18 +5,18 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { requireAdmin } from '@/features/admin/services/admin';
-import { createClient } from '@/lib/supabase/server';
+import {
+  ADMIN_STATIC_BATTLES,
+  getAdminBattles,
+  saveAdminBattleVideo,
+  setAdminBattlePublished,
+  type AdminBattle,
+} from '@/features/admin/services/battles';
+import { parseYouTubeVideoId } from '@/features/admin/services/youtube';
 import { revalidatePath } from 'next/cache';
 
-type Battle = {
-  id: string;
-  name_ar: string;
-  name_en: string | null;
-  slug: string;
-  year_hijri: number | null;
-  published: boolean;
-  metadata: Record<string, string> | null;
-};
+type Battle = AdminBattle;
+
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
@@ -27,20 +27,8 @@ async function saveBattleVideoAction(formData: FormData) {
   const rawUrl = String(formData.get('youtube_url') ?? '').trim();
   if (!id) return;
 
-  let videoId: string | null = null;
-  if (rawUrl) {
-    const match = rawUrl.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
-    videoId = match ? match[1] : (rawUrl.length >= 11 ? rawUrl.slice(0, 11) : null);
-  }
-
-  const supabase = await createClient();
-  const { data: current } = await supabase.from('battles').select('metadata').eq('id', id).single();
-  const existingMeta = (current?.metadata as Record<string, string> | null) ?? {};
-  const newMeta = videoId
-    ? { ...existingMeta, youtube_video_id: videoId }
-    : Object.fromEntries(Object.entries(existingMeta).filter(([k]) => k !== 'youtube_video_id'));
-
-  await supabase.from('battles').update({ metadata: newMeta, updated_at: new Date().toISOString() }).eq('id', id);
+  const videoId = parseYouTubeVideoId(rawUrl);
+  await saveAdminBattleVideo(id, videoId);
 
   revalidatePath('/admin/battles');
   revalidatePath('/battles');
@@ -53,8 +41,7 @@ async function toggleBattlePublishAction(formData: FormData) {
   const next = formData.get('next') === 'true';
   if (!id) return;
 
-  const supabase = await createClient();
-  await supabase.from('battles').update({ published: next, updated_at: new Date().toISOString() }).eq('id', id);
+  await setAdminBattlePublished(id, next);
 
   revalidatePath('/admin/battles');
   revalidatePath('/battles');
@@ -65,27 +52,11 @@ async function toggleBattlePublishAction(formData: FormData) {
 export default async function AdminBattlesPage() {
   await requireAdmin();
 
-  let battles: Battle[] = [];
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from('battles')
-      .select('id,name_ar,name_en,slug,year_hijri,published,metadata')
-      .order('year_hijri', { ascending: true });
-    battles = data ?? [];
-  } catch {
-    battles = [];
-  }
+  const battles = await getAdminBattles();
+
 
   // Use the same canonical fallback slugs as the public content routes.
-  const staticBattles = [
-    { slug: 'badr', name_ar: 'غزوة بدر الكبرى', year_hijri: 2 },
-    { slug: 'uhud', name_ar: 'غزوة أحد', year_hijri: 3 },
-    { slug: 'khandaq', name_ar: 'غزوة الخندق (الأحزاب)', year_hijri: 5 },
-    { slug: 'khaybar', name_ar: 'غزوة خيبر', year_hijri: 7 },
-    { slug: 'hunayn', name_ar: 'غزوة حنين', year_hijri: 8 },
-    { slug: 'tabuk', name_ar: 'غزوة تبوك', year_hijri: 9 },
-  ];
+  const staticBattles = ADMIN_STATIC_BATTLES;
 
   const hasBattles = battles.length > 0;
 

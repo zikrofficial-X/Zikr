@@ -6,15 +6,19 @@ Phase 1 changes only GitHub/project files. No Supabase schema or scheduler chang
 
 ## Existing integration points
 
-- YouTube feed/cache: `lib/services/youtube.ts`
+- YouTube feed/cache: `src/features/videos/services/videos.ts` and the current YouTube integration services
 - YouTube channel id/API key: `YOUTUBE_CHANNEL_ID`, `YOUTUBE_API_KEY`
-- Existing video media field: `videos.video_url`
+- Video media is resolved through the current `videos`/`social_sync_jobs` media fields and the canonical media service
 - Facebook page credentials: `FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_ACCESS_TOKEN`
 - Existing admin protection: `requireAdminApi`
 
 ## Native-only rule
 
 The future publishing worker must publish only a real media file to Facebook's video publishing endpoint. A YouTube watch URL is never an acceptable media source for native publishing. Items without a real source media URL remain queued as `waiting_media` and are not converted to link posts.
+
+## Current state
+
+The implementation has progressed beyond this original Phase 1 note. The active integration is now represented by the current `supabase/functions/sync-youtube-facebook/` worker, the `social_sync_jobs` queue, and feature-first services under `src/features/`. Treat this document as historical architecture context, not as a current implementation map.
 
 ## Phase 2
 

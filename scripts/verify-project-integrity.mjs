@@ -44,6 +44,7 @@ const requiredFiles = [
   'src/components/layout/offline-navigation-guard.tsx',
   'src/components/layout/native-capacitor-bridge.tsx',
   'src/app/settings/page.tsx',
+  'src/lib/types/supabase.ts',
   'scripts/verify-platform-routes.mjs',
   'scripts/verify-mobile-readiness.mjs',
   'scripts/verify-offline-content.mjs',
@@ -55,6 +56,56 @@ const requiredFiles = [
 ];
 for (const file of requiredFiles) requireFile(file);
 
+// Application-facing type contracts used by finalization-critical paths.
+requireText('src/lib/types/supabase.ts', [
+  'favorite_item_type: "quran" | "hadith" | "story" | "scholar" | "dua"',
+  'surah_number: number',
+  'memorized_ayahs: number',
+  'last_reviewed_at: string | null',
+  'notifications:',
+  'metadata: Json | null',
+  'read: boolean',
+]);
+
+const requiredServerOnlyServices = [
+  'src/features/admin/services/content.ts',
+  'src/features/admin/services/analytics.ts',
+  'src/features/admin/services/prophets.ts',
+  'src/features/admin/services/battles.ts',
+  'src/features/favorites/services/favorites.ts',
+  'src/features/kids/services/games.ts',
+  'src/features/kids/services/kids-content.ts',
+  'src/features/media/services/cloudinary.ts',
+  'src/features/media/services/media-assets.ts',
+  'src/features/memorization/services/progress.ts',
+  'src/features/notifications/services/user-notifications.ts',
+  'src/features/profile/services/profile.ts',
+  'src/features/quran/services/quran-server.ts',
+  'src/features/quran/services/reading-progress.ts',
+  'src/features/releases/services/github-android-release.ts',
+  'src/features/reminders/services/reminder-preferences.ts',
+  'src/features/spiritual-ai/services/ai.ts',
+  'src/features/spiritual-ai/services/gemini-client.ts',
+  'src/features/spiritual-ai/services/retriever.ts',
+  'src/features/wird/services/progress.ts',
+  'src/features/site-content/services/site-content.ts',
+  'src/features/hadith/services/hadith.ts',
+  'src/features/dua/services/dua.ts',
+  'src/features/articles/services/articles.ts',
+  'src/features/stories/services/stories.ts',
+  'src/features/companions/services/companions.ts',
+  'src/features/battles/services/battles.ts',
+  'src/features/conquests/services/conquests.ts',
+  'src/features/videos/services/videos.ts',
+  'src/features/prophets/services/prophets.ts',
+  'src/features/scholars/services/scholars.ts',
+];
+for (const file of requiredServerOnlyServices) {
+  const source = read(file);
+  if (!source.startsWith('import "server-only";') && !source.startsWith("import 'server-only';")) {
+    failures.push(file + ' must declare a server-only boundary');
+  }
+}
 const packageJson = JSON.parse(read('package.json') || '{}');
 if (packageJson.packageManager !== 'pnpm@9.15.0') failures.push('package.json must pin pnpm@9.15.0');
 if (!String(packageJson.engines?.node || '').includes('22')) failures.push('package.json must require Node 22 compatibility');
@@ -62,6 +113,23 @@ if (existsSync(join(root, 'package-lock.json'))) failures.push('package-lock.jso
 if (existsSync(join(root, 'yarn.lock'))) failures.push('yarn.lock must not coexist with pnpm-lock.yaml');
 if (!packageJson.scripts?.verify?.includes('offline:check')) failures.push('pnpm verify must include offline:check');
 if (!packageJson.scripts?.verify?.includes('project:check')) failures.push('pnpm verify must include project:check');
+function discoverPlatformRoutes(dir, out = []) {
+  if (!existsSync(dir)) return out;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const absolute = join(dir, entry.name);
+    if (entry.isDirectory()) discoverPlatformRoutes(absolute, out);
+    else if (entry.name === 'page.tsx' || entry.name === 'route.ts') out.push(absolute);
+  }
+  return out;
+}
+
+const platformRouteFiles = discoverPlatformRoutes(join(root, 'src', 'app'));
+const platformPageRoutes = platformRouteFiles.filter((file) => file.endsWith('/page.tsx')).length;
+const platformApiRoutes = platformRouteFiles.filter((file) => file.endsWith('/route.ts')).length;
+if (platformPageRoutes !== 100 || platformApiRoutes !== 64) {
+  warnings.push('Platform route inventory changed: expected 100 pages + 64 APIs, found ' + platformPageRoutes + ' pages + ' + platformApiRoutes + ' APIs.');
+}
+
 
 const packageVersion = String(packageJson.version || '');
 const releaseTag = read('.release-tag').trim();

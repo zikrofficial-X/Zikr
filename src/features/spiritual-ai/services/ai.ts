@@ -1,3 +1,5 @@
+import "server-only";
+
 import { generateGeminiText } from '@/features/spiritual-ai/services/gemini-client';
 
 interface AIContext {

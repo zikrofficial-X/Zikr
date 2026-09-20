@@ -15,7 +15,7 @@ interface FavoriteRow {
 
 export async function GET() {
   try {
-    const auth = await requireAdminApi();
+    const auth = await requireAdminApi('analytics.read');
     if (!auth.ok) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }

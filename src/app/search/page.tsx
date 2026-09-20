@@ -1,104 +1,35 @@
 'use client';
 
+import { useCallback, useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useEffect, useState, useTransition } from 'react';
-import { surahs } from '@/features/quran/data/fallback';
-import { hadiths } from '@/features/hadith/data/fallback';
-import { prophets } from '@/features/prophets/data/fallback';
-import type { QuranFallbackSurah as Surah } from '@/features/quran/data/fallback';
-import type { HadithFallback as Hadith } from '@/features/hadith/data/fallback';
-import type { ProphetFallback as Prophet } from '@/features/prophets/data/fallback';
 
 type Result = {
-  type: 'surah' | 'hadith' | 'prophet' | 'article';
+  id: string;
+  type: string;
   labelAr: string;
   title: string;
   subtitle: string;
   href: string;
 };
 
-type ArticleSearchItem = {
-  id: string;
-  title: string;
-  slug: string;
-  summary?: string | null;
-  author?: string | null;
-};
-
-function runStaticSearch(query: string): Result[] {
-  if (!query.trim()) return [];
-  const q = query.trim().toLowerCase();
-
-  const surahResults: Result[] = surahs
-    .filter((s: Surah) => s.nameAr.includes(q) || s.nameEn.toLowerCase().includes(q))
-    .slice(0, 5)
-    .map((s: Surah) => ({
-      type: 'surah',
-      labelAr: 'سورة',
-      title: s.nameAr,
-      subtitle: `${s.nameEn} — ${s.ayahCount} آية`,
-      href: `/quran/${s.id}`,
-    }));
-
-  const hadithResults: Result[] = hadiths
-    .filter(
-      (d: Hadith) =>
-        d.textAr.includes(q) ||
-        d.narrator.includes(q) ||
-        d.chapter.includes(q),
-    )
-    .slice(0, 4)
-    .map((d: Hadith) => ({
-      type: 'hadith',
-      labelAr: 'حديث',
-      title: d.textAr.slice(0, 60) + '...',
-      subtitle: `${d.narrator} — ${d.grade}`,
-      href: `/hadith/${d.bookId}`,
-    }));
-
-  const prophetResults: Result[] = prophets
-    .filter((p: Prophet) => p.nameAr.includes(q) || (p.nameEn ?? '').toLowerCase().includes(q))
-    .slice(0, 3)
-    .map((p: Prophet) => ({
-      type: 'prophet',
-      labelAr: 'نبي',
-      title: p.nameAr,
-      subtitle: p.nameEn ?? '',
-      href: `/prophets/${p.slug}`,
-    }));
-
-  return [...surahResults, ...hadithResults, ...prophetResults];
-}
-
 async function runSearch(query: string): Promise<Result[]> {
-  const staticResults = runStaticSearch(query);
+  const response = await fetch(
+    `/api/search?q=${encodeURIComponent(query)}`,
+    {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    },
+  );
 
-  try {
-    const response = await fetch(`/api/content/articles?q=${encodeURIComponent(query)}`, {
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-    });
-    if (!response.ok) return staticResults;
-
-    const articles = (await response.json()) as ArticleSearchItem[];
-    const articleResults: Result[] = articles.map((article) => ({
-      type: 'article',
-      labelAr: 'مقال',
-      title: article.title,
-      subtitle: article.summary ?? article.author ?? 'مقال تعليمي من مكتبة ذِكر',
-      href: `/articles/${article.slug}`,
-    }));
-    return [...staticResults, ...articleResults];
-  } catch (error) {
-    console.error('[search] Failed to fetch article results:', error);
-    return staticResults;
-  }
+  if (!response.ok) return [];
+  return (await response.json()) as Result[];
 }
+
 
 const SUGGESTIONS = ['الفاتحة', 'الكهف', 'موسى', 'إبراهيم', 'الرحمن'];
 
@@ -108,14 +39,7 @@ export default function SearchPage() {
   const [searched, setSearched] = useState(false);
   const [, startTransition] = useTransition();
 
-  useEffect(() => {
-    const initialQuery = new URLSearchParams(window.location.search).get('q');
-    if (initialQuery?.trim()) {
-      void handleSearch(initialQuery);
-    }
-  }, []);
-
-  const handleSearch = async (q: string) => {
+  const handleSearch = useCallback(async (q: string) => {
     const trimmed = q.trim();
     if (!trimmed) return;
     setQuery(trimmed);
@@ -128,7 +52,14 @@ export default function SearchPage() {
         setSearched(true);
       });
     });
-  };
+  }, [startTransition]);
+
+  useEffect(() => {
+    const initialQuery = new URLSearchParams(window.location.search).get('q');
+    if (initialQuery?.trim()) {
+      void handleSearch(initialQuery);
+    }
+  }, [handleSearch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

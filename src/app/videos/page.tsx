@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Badge } from '@/components/ui/badge';
 import { getYoutubeChannelFeed } from '@/features/videos/integrations/youtube';
-import { FALLBACK_VIDEOS } from '@/lib/data/fallback-library';
+import { FALLBACK_VIDEOS } from '@/features/videos/data/fallback';
 
 export const metadata: Metadata = pageMetadata({
   title: 'الفيديوهات الإسلامية',

@@ -1,10 +1,10 @@
 # Sensitive project areas require review from the repository owner.
 * @Zikrmediaofficial
 
-/app/auth/ @Zikrmediaofficial
-/app/api/ @Zikrmediaofficial
-/app/admin/ @Zikrmediaofficial
-/lib/supabase/ @Zikrmediaofficial
+/src/app/auth/ @Zikrmediaofficial
+/src/app/api/ @Zikrmediaofficial
+/src/app/admin/ @Zikrmediaofficial
+/src/lib/supabase/ @Zikrmediaofficial
 /supabase/ @Zikrmediaofficial
 /android/ @Zikrmediaofficial
 /ios/ @Zikrmediaofficial

@@ -1,291 +1,200 @@
 # GitHub + Vercel + Supabase Sync Guide
 
-This document explains how the project integrates GitHub, Vercel, and Supabase for seamless deployment and database synchronization.
+This document describes the current integration between the canonical GitHub repository, the linked Vercel project, and Supabase.
 
-## Architecture Overview
+## Architecture
 
 ```
-GitHub Repository (main branch)
-    ↓ (git push)
-    ↓ → Vercel (automatic deployment)
-    ↓    ├─ Build Phase: Next.js compilation + type checking
-    ↓    ├─ Environment Variables: Injected by Vercel
-    ↓    └─ Deployment: Auto-scales and goes live
-    ↓
-Vercel Environment
-    ↓ (SUPABASE_* env vars)
-    ↓ → Supabase (PostgreSQL database + Auth)
-    ↓    ├─ Database: Stores all app data
-    ↓    ├─ Auth: Google OAuth + session management
-    ↓    └─ RLS Policies: Row-level security
-    ↓
-Live Application
-    ├─ Frontend: Next.js React app
-    ├─ Backend: Next.js API routes + Server Components
-    ├─ Database: Supabase PostgreSQL
-    └─ Auth: Supabase Auth system
+GitHub: Zikrmediaofficial/Zikr
+        |
+        +--> Vercel project: zikr
+        |      |
+        |      +--> Next.js build: pnpm install --frozen-lockfile
+        |      +--> Production build: pnpm build
+        |      +--> Canonical public origin: https://zikrmediaofficial.vercel.app
+        |
+        +--> Supabase
+               +--> PostgreSQL / RLS
+               +--> Auth
+               +--> Storage
+               +--> Edge Functions
+               +--> pg_cron prayer scheduling
+
+Mobile:
+  Capacitor Android/iOS -> https://zikrmediaofficial.vercel.app
 ```
 
-## Step 1: Connect GitHub to Vercel
+## 1. GitHub and Vercel
 
-### If not already connected:
+The canonical repository is:
 
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Click "Add New" → "Project"
-3. Select "Import Git Repository"
-4. Authorize Vercel to access your GitHub account
-5. Select the `Zikrmediaofficial/Zikr` repository
-6. Click "Import"
+`Zikrmediaofficial/Zikr`
 
-### If already connected:
+The canonical production branch is:
 
-- The project should appear in your Vercel dashboard
-- Any push to the `main` branch triggers an automatic deployment
+`main`
 
-## Step 2: Configure Vercel Environment Variables
+The linked Vercel project is:
 
-1. Open your Vercel project dashboard
-2. Go to **Settings** → **Environment Variables**
-3. Add the following variables for ALL environments (Production, Preview, Development):
+`zikr`
 
-### Required Variables:
+Production deployment is expected to build from the connected GitHub repository. Finalization branches such as `finalization-src-20260920` are review branches and must not be treated as production evidence until their deployment is verified.
 
-| Variable | Source | Example |
-|----------|--------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Settings > API | `https://abcdef.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Settings > API | `eyJhbGc...` (public key) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Settings > API | `eyJhbGc...` (secret key) |
-| `NEXT_PUBLIC_SITE_URL` | Your domain | `https://zikrmediaofficial.vercel.app` |
-| `AUTH_CALLBACK_URL` | Locked application callback | `https://zikrmediaofficial.vercel.app/auth/callback` |
+## 2. Vercel environment
 
-### Optional Variables:
+Required application variables:
 
-- `GEMINI_API_KEY` - For AI features
-- `YOUTUBE_API_KEY`, `YOUTUBE_CHANNEL_ID` - For video content
-- Google OAuth is configured in Supabase Authentication; no Google client variables belong in Vercel.
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Public Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public Supabase key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only Supabase service-role credential |
+| `NEXT_PUBLIC_SITE_URL` | Locked canonical origin: `https://zikrmediaofficial.vercel.app` |
+| `AUTH_CALLBACK_URL` | Locked application callback: `https://zikrmediaofficial.vercel.app/auth/callback` |
 
-**Important**: Use the environment selector to add variables to **all environments**. Set "Environments" to include Production, Preview, and Development.
+Optional provider variables are configured only when their feature is enabled, for example YouTube, Facebook, Gemini, and Cloudinary integrations.
 
-## Step 3: Configure Supabase
+Google sign-in provider credentials belong in Supabase Authentication → Sign In / Providers → Google. They are not application runtime credentials for the Supabase Auth flow.
 
-### Get Your Credentials:
+## 3. Supabase
 
-1. Go to [Supabase Console](https://app.supabase.com)
-2. Select your project
-3. Go to **Settings** → **API** to find:
-   - Project URL (use for `NEXT_PUBLIC_SUPABASE_URL`)
-   - Anon Key (use for `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
-   - Service Role Key (use for `SUPABASE_SERVICE_ROLE_KEY`) - **Keep this secret!**
+The canonical database schema lives only under:
 
-### Database migrations (no runtime DATABASE_URL):
+`supabase/migrations/`
 
-1. Manage schema changes through `supabase/migrations/` and the Supabase CLI migration chain.
-Migrations are managed through the Supabase migration chain. Do not add a direct PostgreSQL connection string to the application runtime.
+Do not use a direct `DATABASE_URL` runtime connection or a second ORM schema-push mechanism.
 
-### Optional: Configure Google OAuth
+Supabase Auth application redirects are locked to:
 
-1. Go to **Authentication** → **Providers** → **Google**
-2. Click "Enable Google Provider"
-3. Add your Google OAuth credentials (from Google Cloud Console)
-4. In **Redirect URLs**, add:
-   - Local: `http://localhost:3000/**`
-   - Production: `https://zikrmediaofficial.vercel.app/auth/callback`
-   - **Do NOT use** `/api/auth/callback` (this uses app router)
+- `com.zikr.app://auth/callback`
+- `http://localhost:3000/**`
+- `https://zikrmediaofficial.vercel.app/auth/callback`
 
-## Step 4: Apply Database Migrations
+The Google provider redirect URI is the Supabase provider callback:
 
-### Local Development:
+`https://eydxvcamhjhajxjrsgym.supabase.co/auth/v1/callback`
+
+These are separate by design.
+
+## 4. Database migrations
+
+Use the canonical Supabase migration process from an authenticated environment:
 
 ```bash
-# Run the canonical Supabase migration chain
 pnpm db:migrate-supabase
 ```
 
-### Database deployment
-
-Vercel builds and deploys the application. Database schema changes are applied by the canonical Supabase migration process, not by the Vercel build.
-
-To apply pending migrations:
+For local verification:
 
 ```bash
-# Run the canonical Supabase migration chain
-pnpm db:migrate-supabase
+pnpm supabase:migrations:check
+pnpm supabase:migrations:replay
 ```
 
-## Step 5: Verify Deployment
+Never reset production migration history just to reconcile a local branch or filename.
 
-### Check Vercel Deployment:
+## 5. Verify configuration
 
-1. Go to Vercel project dashboard
-2. Look for the latest deployment (should show ✅ "Ready")
-3. Click "Visit" to see your live app
-
-### Check Environment Variables:
-
-1. Open your app in production
-2. The home page should load without errors
-3. If you see "Environment variable validation failed" in logs:
-   - Go back to Vercel Settings > Environment Variables
-   - Verify all required variables are set
-   - Redeploy (Settings > Deployments > Redeploy)
-
-### Validate Configuration:
+Before promotion:
 
 ```bash
-# Run validation script
 pnpm deploy:check
+pnpm check
+pnpm build
 ```
 
-Expected output should show:
-- ✅ NEXT_PUBLIC_SUPABASE_URL
-- ✅ NEXT_PUBLIC_SUPABASE_ANON_KEY
-- ✅ SUPABASE_SERVICE_ROLE_KEY
-- ✅ Supabase REST API reachable
-
-## Step 6: Deploy Across All Services
-
-### Automatic Deployment (Recommended):
+For the complete repository gate:
 
 ```bash
-git add .
-git commit -m "Fix: Supabase + Vercel sync configuration"
-git push origin main
+pnpm verify
 ```
 
-This triggers:
-1. GitHub receives push
-2. Vercel detects change and starts build
-3. Next.js compiles with Vercel env vars
-4. Deployment goes live in ~2-3 minutes
+Vercel production uses `pnpm install --frozen-lockfile` and `pnpm build`. A successful local check does not replace production deployment verification.
 
-### Manual Redeploy on Vercel:
+## 6. Deployment flow
 
-If you need to force a redeployment (e.g., after updating env vars):
+Push verified changes through the intended GitHub branch/PR process. The linked Vercel project can automatically create a preview deployment for source branches and a production deployment for `main`.
 
-1. Go to Vercel project dashboard
-2. Click **Deployments**
-3. Find latest deployment
-4. Click **...** menu → **Redeploy**
+When an environment variable is changed in Vercel, a new deployment is required before the running application receives the updated value.
 
-This ensures new environment variables are picked up.
+Do not use an arbitrary Vercel deployment alias as the canonical OAuth or metadata origin.
 
-## Troubleshooting Sync Issues
+## 7. Runtime architecture
 
-### Problem: Build fails with "Environment variable validation failed"
+The web application is organized as:
 
-**Solution**:
-1. Check Vercel Settings > Environment Variables
-2. Ensure all REQUIRED variables are set (not empty)
-3. Redeploy: Go to Deployments > Redeploy latest
+- `src/app/` — pages, layouts, API route handlers, and route-local server actions.
+- `src/features/` — canonical domain services, components, hooks, types, data, and integrations.
+- `src/components/` — shared UI and application shell.
+- `src/lib/` — shared infrastructure only.
+- `supabase/functions/` — Edge Functions.
+- `scripts/` — verification/import/recovery tooling.
+- `android/`, `ios/`, `mobile/` — native project and mobile metadata.
+- `public/` — static/PWA/offline assets.
 
-### Problem: Supabase REST API returns 401 Unauthorized
+## 8. Verification after deployment
 
-**Solution**:
-1. Check NEXT_PUBLIC_SUPABASE_URL is correct
-2. Check NEXT_PUBLIC_SUPABASE_ANON_KEY matches your Supabase project
-3. In Supabase: Settings > Authentication > ensure API keys are enabled
+Verify the latest deployment is `READY`, points to the intended commit, and serves the canonical production origin.
 
-### Problem: Database connection fails (migrations don't apply)
+Then smoke-check:
 
-**Solution**:
-1. Verify the Supabase project ID and migration history are correct
-2. Confirm the Supabase project is reachable
-3. Run `pnpm db:migrate-supabase` from an authenticated Supabase CLI environment
-
-### Problem: GitHub changes don't trigger Vercel deployment
-
-**Solution**:
-1. Go to Vercel Settings > Deployments
-2. Check Git Connection shows your GitHub repo
-3. If disconnected, click "Reconnect"
-4. Make a new commit and push to trigger build
-
-### Problem: Errors in production but works locally
-
-**Solution**:
-1. Check Vercel Deployments > Build Logs for errors
-2. Environment variables might not be set in production
-3. Add missing vars to Vercel Settings > Environment Variables
-4. Redeploy after adding variables
-
-## Testing the Full Sync
-
-### Test 1: Local Development
-
-```bash
-cp .env.local.example .env.local
-# Fill in your Supabase credentials
-npm install
-npm run dev
-# Visit http://localhost:3000
+```text
+/
+/auth/login
+/auth/register
+/quran
+/hadith
+/dua
+/prayer-times
+/qibla
+/search
+/settings
+/api/push/public-key
 ```
 
-### Test 2: GitHub Push
+Authenticated checks should also cover profile, favorites, memorization, reminder preferences, admin protection, and native OAuth on a real device.
 
-```bash
-git add .
-git commit -m "test deployment"
-git push origin main
-# Watch Vercel dashboard for automatic deployment
-```
+## 9. CI and background jobs
 
-### Test 3: Verify Production
+GitHub Actions workflows are retired from the active repository.
 
-1. Visit your Vercel deployment URL
-2. Check browser console for any errors
-3. Try authentication flow (if configured)
-4. Verify data loads from Supabase
+CircleCI owns external CI/recovery jobs, including:
 
-## Database Schema & RLS
+- `ci-check`
+- opt-in background video/social jobs
+- opt-in Quran audio import
+- opt-in production smoke
+- opt-in security audit
+- release-specific Android validation
 
-All database tables are created via SQL migrations in `supabase/migrations/`:
+Supabase `pg_cron` owns the minute-level prayer notification worker.
 
-- Schema is managed by the canonical Supabase migration chain
-- Row-Level Security (RLS) policies protect data
-- Users can only see their own private data
-- Admin users have full access (when configured)
+Do not add a second scheduler for the same workload.
 
-Never modify schema through Supabase UI directly. Instead:
+## 10. Troubleshooting
 
-1. Create new migration file
-2. Add SQL to `supabase/migrations/`
-3. Push to GitHub
-4. Supabase migrations are applied through the canonical migration workflow
+### Vercel build fails
+Inspect the current deployment's build result first. The finalization branch currently has an external Vercel build-rate-limit/account blocker; older READY production deployments are not evidence for this branch.
 
-## File Structure for Sync
+### Supabase is unreachable
+Verify the project is healthy and the required environment variables are present. Live SQL/RLS validation must run with an authenticated Supabase project.
 
-```
-project/
-├── .github/
-│   └── workflows/           # GitHub Actions (if used)
-├── supabase/
-│   ├── migrations/          # Canonical SQL migration chain
-│   └── config.json          # Supabase project config
-├── lib/
-│   ├── env.ts              # Environment validation
-│   ├── env-validation.ts   # Env schema (Zod)
-│   └── supabase/
-│       ├── server.ts       # Server-side Supabase client
-│       └── client.ts       # Browser Supabase client
-├── supabase/               # Canonical database config, functions, and migrations
-├── .env.example            # Env vars template
-├── DEPLOYMENT_GUIDE.md     # This file
-└── vercel.json             # Vercel configuration
-```
+### OAuth fails
+Verify the exact application callback and Supabase provider callback listed above. Never use a Vercel preview hostname as the production callback.
 
-## Next Steps
+### Database migration fails
+Use only `supabase/migrations/` and inspect the migration ledger before applying any repair. Never mark an unseen migration as applied just to make deployment green.
 
-1. ✅ Ensure Vercel environment variables are set (Step 2)
-2. ✅ Verify Supabase credentials are correct (Step 3)
-3. ✅ Apply database migrations (Step 4)
-4. ✅ Test deployment (Step 5)
-5. ✅ Verify everything works in production (Step 6)
+## 11. Security
 
-Once all steps are complete, the app will automatically deploy and sync whenever you push to the main branch on GitHub.
+Never commit:
 
-## Questions or Issues?
+- Supabase service-role keys
+- Google OAuth client secrets
+- YouTube refresh tokens
+- Facebook Page access tokens
+- VAPID private keys
+- Android signing keys
+- iOS signing material
 
-- Check logs: Vercel Deployments > select deployment > View Logs
-- Verify env vars: Vercel Settings > Environment Variables
-- Test database: Connect to Supabase PostgreSQL directly
-- GitHub sync: Check repository connection in Vercel > Settings > Git
+If a secret was exposed in Git history or logs, rotate it at the owning provider; deleting the current file is not sufficient.

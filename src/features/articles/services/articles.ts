@@ -1,3 +1,8 @@
+import "server-only";
+
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { getPublicEnv } from "@/lib/env";
 import { normalizedText } from "@/lib/content-quality";
@@ -57,6 +62,35 @@ function mapStaticArticle(item: StaticArticle): Article {
   };
 }
 
+let offlineArticlesPromise: Promise<Article[]> | null = null;
+
+async function loadOfflineArticles(): Promise<Article[]> {
+  if (!offlineArticlesPromise) {
+    offlineArticlesPromise = readFile(
+      path.join(
+        process.cwd(),
+        "public",
+        "offline-content",
+        "v1",
+        "articles.json",
+      ),
+      "utf8",
+    ).then((raw) => {
+      const rows = JSON.parse(raw) as Record<string, unknown>[];
+      return rows
+        .filter((row) => row.published === true)
+        .map(mapRow)
+        .filter(
+          (article) =>
+            article.slug &&
+            normalizedText(article.content).length >= MIN_PUBLIC_ARTICLE_CHARS,
+        );
+    });
+  }
+
+  return offlineArticlesPromise;
+}
+
 const FALLBACK_ARTICLES: Article[] = Array.from(
   new Map(
     [...staticArticles, ...adsenseEditorialArticles]
@@ -112,15 +146,46 @@ export async function getArticles(categoryId?: string, limit = 100): Promise<Art
         .map(mapRow)
         .filter(article => normalizedText(article.content).length >= MIN_PUBLIC_ARTICLE_CHARS);
 
-      if (publicArticles.length > 0) return publicArticles;
+      if (publicArticles.length > 0) {
+        let offlineArticles: Article[] = [];
+        try {
+          offlineArticles = await loadOfflineArticles();
+        } catch (error) {
+          console.error("[articles] Offline catalogue unavailable:", error);
+        }
+
+        return Array.from(
+          new Map(
+            [...offlineArticles, ...publicArticles].map((article) => [
+              article.slug,
+              article,
+            ]),
+          ).values(),
+        )
+          .filter(
+            (article) =>
+              !categoryId ||
+              categoryId === "all" ||
+              article.categoryId === categoryId,
+          )
+          .slice(0, safeLimit);
+      }
     } catch (error) {
       console.error("[articles] Failed to fetch published articles:", error);
     }
   }
 
+  let offline = FALLBACK_ARTICLES;
+  try {
+    const localArticles = await loadOfflineArticles();
+    if (localArticles.length > 0) offline = localArticles;
+  } catch (error) {
+    console.error("[articles] Offline catalogue unavailable:", error);
+  }
+
   const fallback = categoryId && categoryId !== "all"
-    ? FALLBACK_ARTICLES.filter(article => article.categoryId === categoryId)
-    : FALLBACK_ARTICLES;
+    ? offline.filter(article => article.categoryId === categoryId)
+    : offline;
 
   return fallback.slice(0, safeLimit);
 }
@@ -142,6 +207,16 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
     } catch (error) {
       console.error("[articles] Failed to fetch article:", error);
     }
+  }
+
+  try {
+    const offlineArticles = await loadOfflineArticles();
+    const offlineMatch = offlineArticles.find(
+      (article) => article.slug === safeSlug,
+    );
+    if (offlineMatch) return offlineMatch;
+  } catch (error) {
+    console.error("[articles] Offline article catalogue unavailable:", error);
   }
 
   return FALLBACK_ARTICLES.find(article => article.slug === safeSlug) ?? null;

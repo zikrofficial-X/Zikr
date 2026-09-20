@@ -18,7 +18,6 @@ Add all URLs below in Supabase Auth URL configuration and Google OAuth clients:
 ```text
 https://zikrmediaofficial.vercel.app/auth/callback
 com.zikr.app://auth/callback
-com.zikr.app://login-callback
 ```
 
 ## Native capability checklist
@@ -29,7 +28,7 @@ Prayer notifications use the bundled `adhan.wav` asset and the `zikr-prayer-adha
 
 ## Dependency installation
 
-The root `package.json` now includes the Capacitor 7 runtime, platform packages, plugins, and CLI listed in `mobile/capacitor-dependencies.json`. Run `pnpm install --frozen-lockfile` before syncing native projects.
+The root `package.json` includes the Capacitor 7 runtime/platform/plugin packages and the CLI pinned in `mobile/capacitor-dependencies.json`. The CLI is currently 8.5.1 while the native runtime is 7.x; do not change that major version without refreshing the lockfile and validating the native toolchain. Run `pnpm install --frozen-lockfile` before syncing native projects.
 
 ## Build sequence
 

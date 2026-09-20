@@ -4,69 +4,23 @@ import { useRef, useState } from 'react';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { getRadioChannels, type RadioChannel } from '@/features/audio/services/radio';
 
-type Station = {
-  name: string;
-  url: string;
-  description: string;
-};
-
-const stations: Station[] = [
-  {
-    name: 'إذاعة القرآن الكريم - السعودية',
-    url: 'https://qurango.net/radio/tarateel',
-    description: 'تلاوات خاشعة من القرآن الكريم',
-  },
-  {
-    name: 'إذاعة القرآن الكريم - مصر',
-    url: 'https://qurango.net/radio/mishary_alafasy',
-    description: 'تلاوات الشيخ مشاري العفاسي',
-  },
-  {
-    name: 'إذاعة القرآن - المنشاوي',
-    url: 'https://qurango.net/radio/minshawi',
-    description: 'تلاوات الشيخ محمد صديق المنشاوي',
-  },
-  {
-    name: 'إذاعة القرآن - عبد الباسط',
-    url: 'https://qurango.net/radio/abdulbasit',
-    description: 'تلاوات الشيخ عبد الباسط عبد الصمد',
-  },
-  {
-    name: 'إذاعة القرآن - الحصري',
-    url: 'https://qurango.net/radio/husary',
-    description: 'تلاوات الشيخ محمود خليل الحصري',
-  },
-  {
-    name: 'إذاعة القرآن - السديس',
-    url: 'https://qurango.net/radio/sudais',
-    description: 'تلاوات الشيخ عبد الرحمن السديس',
-  },
-  {
-    name: 'إذاعة تلاوات خاشعة',
-    url: 'https://qurango.net/radio/maher_al_muaiqly',
-    description: 'تلاوات الشيخ ماهر المعيقلي',
-  },
-  {
-    name: 'إذاعة القرآن - سعد الغامدي',
-    url: 'https://qurango.net/radio/saad_al_ghamdi',
-    description: 'تلاوات الشيخ سعد الغامدي',
-  },
-];
+const stations = getRadioChannels();
 
 export default function RadioPage() {
-  const [current, setCurrent] = useState<Station | null>(null);
+  const [current, setCurrent] = useState<RadioChannel | null>(null);
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
   const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const playStation = (station: Station) => {
+  const playRadioChannel = (station: RadioChannel) => {
     setError(null);
     if (audioRef.current) {
       audioRef.current.pause();
     }
-    const audio = new Audio(station.url);
+    const audio = new Audio(station.streamUrl);
     audio.volume = volume;
     audioRef.current = audio;
     audio
@@ -137,13 +91,13 @@ export default function RadioPage() {
 
       <section className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
         {stations.map((station) => (
-          <Card key={station.url} className='space-y-3'>
+          <Card key={station.streamUrl} className='space-y-3'>
             <div className='flex items-start justify-between gap-2'>
               <div>
                 <h2 className='text-lg text-brand-gold'>{station.name}</h2>
                 <p className='text-sm leading-6 arabic-muted'>{station.description}</p>
               </div>
-              {current?.url === station.url && playing && (
+              {current?.streamUrl === station.streamUrl && playing && (
                 <span className='flex items-center gap-1 text-xs text-emerald-300'>
                   <span className='h-2 w-2 animate-pulse rounded-full bg-emerald-400' />
                   مباشر
@@ -151,11 +105,11 @@ export default function RadioPage() {
               )}
             </div>
             <Button
-              onClick={() => playStation(station)}
-              variant={current?.url === station.url && playing ? 'secondary' : 'primary'}
+              onClick={() => playRadioChannel(station)}
+              variant={current?.streamUrl === station.streamUrl && playing ? 'secondary' : 'primary'}
               className='w-full'
             >
-              {current?.url === station.url && playing ? 'إيقاف' : 'استماع'}
+              {current?.streamUrl === station.streamUrl && playing ? 'إيقاف' : 'استماع'}
             </Button>
           </Card>
         ))}

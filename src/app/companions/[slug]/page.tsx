@@ -1,6 +1,7 @@
-export const dynamic = "force-dynamic";
+import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,45 +9,19 @@ import {
   ContentReferences,
   getContentReferences,
 } from "@/components/content/content-references";
+import {
+  getCompanionBySlug,
+  getPublishedCompanions,
+} from "@/features/companions/services/companions";
 import { pageMetadata } from "@/lib/site";
-import type { Metadata } from "next";
-import { COMPANIONS } from "@/features/companions/data/fallback";
 
-const STATIC_COMPANION_SLUGS: Record<string, string> = {
-  "أبو بكر الصديق": "abu-bakr",
-  "عمر بن الخطاب": "umar-ibn-khattab",
-  "علي بن أبي طالب": "ali-ibn-abi-talib",
-  "عثمان بن عفان": "uthman-ibn-affan",
-  "خالد بن الوليد": "khalid-ibn-al-walid",
-  "بلال بن رباح": "bilal-ibn-rabah",
-  "سلمان الفارسي": "salman-al-farisi",
-  "عبد الله بن عباس": "abdullah-ibn-abbas",
-  "أبو هريرة": "abu-hurayrah",
-  "سعد بن أبي وقاص": "saad-ibn-abi-waqqas",
-};
+export const revalidate = 3600;
 
-type Companion = {
-  id: string;
-  name_ar: string;
-  name_en: string;
-  title_ar: string | null;
-  bio_ar: string | null;
-  birth_place_ar: string | null;
-  death_place_ar: string | null;
-  death_year: string | null;
-  metadata?: Record<string, string> | null;
-};
-
-type CompanionStory = {
-  id: string;
-  title_ar: string;
-  content_ar: string;
-  story_type: string | null;
-  order_num: number | null;
-};
-
-function safeSlug(slug: string) {
-  return encodeURIComponent(slug);
+export async function generateStaticParams() {
+  const companions = await getPublishedCompanions();
+  return companions
+    .filter((companion) => companion.slug)
+    .map((companion) => ({ slug: companion.slug }));
 }
 
 export async function generateMetadata({
@@ -55,25 +30,15 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  let companion: Companion | null = null;
-  try {
-    const data = await supabaseServerAnonRequest<Companion[]>(
-      `/rest/v1/companions?select=name_ar,title_ar,bio_ar&slug=eq.${safeSlug(slug)}&published=eq.true&limit=1`
-    );
-    companion = data && data.length > 0 ? data[0] : null;
-  } catch {
-    companion = null;
-  }
-  const fallback = COMPANIONS.find(
-    item => STATIC_COMPANION_SLUGS[item.name_ar] === slug
-  );
+  const companion = await getCompanionBySlug(slug);
+
   return pageMetadata({
-    title: companion?.name_ar ?? fallback?.name_ar ?? "صحابي",
+    title: companion?.name_ar ?? "صحابي",
     description:
       companion?.bio_ar?.slice(0, 160) ??
-      fallback?.biography_ar.slice(0, 160) ??
-      "سيرة الصحابي الجليل وأبرز مواقفه.",
+      "سيرة صحابي ومواقف تعليمية من مكتبة ذِكر.",
     path: `/companions/${slug}`,
+    noindex: !companion,
   });
 }
 
@@ -83,125 +48,146 @@ export default async function CompanionDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  let companion: Companion | null = null;
-  let stories: CompanionStory[] = [];
-  try {
-    const data = await supabaseServerAnonRequest<Companion[]>(
-      `/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,birth_place_ar,death_place_ar,death_year,metadata&slug=eq.${safeSlug(slug)}&published=eq.true&limit=1`
-    );
-    companion = data && data.length > 0 ? data[0] : null;
-    if (companion) {
-      stories = await supabaseServerAnonRequest<CompanionStory[]>(
-        `/rest/v1/companion_stories?select=id,title_ar,content_ar,story_type,order_num&companion_id=eq.${encodeURIComponent(companion.id)}&order=order_num.asc`
-      );
-    }
-  } catch {
-    companion = null;
-    stories = [];
-  }
-
-  if (!companion) {
-    const fallback = COMPANIONS.find(
-      item => STATIC_COMPANION_SLUGS[item.name_ar] === slug
-    );
-    companion = fallback
-      ? {
-          id: fallback.id,
-          name_ar: fallback.name_ar,
-          name_en: fallback.name_en,
-          title_ar: fallback.title_ar,
-          bio_ar: fallback.biography_ar,
-          birth_place_ar: null,
-          death_place_ar: null,
-          death_year: String(fallback.death_year),
-        }
-      : null;
-  }
+  const companion = await getCompanionBySlug(slug);
 
   if (!companion) notFound();
+
   const references = getContentReferences(companion.metadata);
 
   return (
-    <Container className="space-y-8 py-10 text-right">
-      <Button href="/companions" variant="ghost">
-        ← العودة للصحابة
-      </Button>
+    <main className="min-h-screen" dir="rtl">
+      <Container className="max-w-4xl space-y-8 py-10">
+        <Button href="/companions" variant="ghost">
+          ← العودة للصحابة
+        </Button>
 
-      <Card className="space-y-4">
-        <div className="flex items-center gap-4">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-gold/20 text-3xl">
-            ⭐
+        <Card className="space-y-6">
+          <div className="flex items-start gap-4">
+            <div
+              className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-brand-gold/20 text-3xl"
+              aria-hidden="true"
+            >
+              ⭐
+            </div>
+
+            <div className="min-w-0">
+              <h1 className="text-3xl font-bold text-brand-gold">
+                {companion.name_ar}
+              </h1>
+              {companion.title_ar && (
+                <p className="mt-1 text-emerald-200">{companion.title_ar}</p>
+              )}
+              {companion.name_en && (
+                <p className="mt-1 text-sm text-brand-cream/50" dir="ltr">
+                  {companion.name_en}
+                </p>
+              )}
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-brand-gold">
-              {companion.name_ar}
-            </h1>
-            {companion.title_ar && (
-              <p className="text-emerald-200">{companion.title_ar}</p>
+
+          {companion.bio_ar && (
+            <section aria-labelledby="companion-bio">
+              <h2 id="companion-bio" className="text-lg font-bold text-brand-gold">
+                السيرة
+              </h2>
+              <p className="mt-2 leading-9 text-brand-cream/80">
+                {companion.bio_ar}
+              </p>
+            </section>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {companion.birth_place_ar && (
+              <div className="rounded-lg border border-brand-gold/10 p-3">
+                <p className="text-xs text-brand-cream/50">مكان الميلاد</p>
+                <p className="mt-1 text-sm">{companion.birth_place_ar}</p>
+              </div>
             )}
-            <p className="text-sm arabic-muted">{companion.name_en}</p>
+            {companion.death_place_ar && (
+              <div className="rounded-lg border border-brand-gold/10 p-3">
+                <p className="text-xs text-brand-cream/50">مكان الوفاة</p>
+                <p className="mt-1 text-sm">{companion.death_place_ar}</p>
+              </div>
+            )}
+            {companion.death_year && (
+              <div className="rounded-lg border border-brand-gold/10 p-3">
+                <p className="text-xs text-brand-cream/50">سنة الوفاة</p>
+                <p className="mt-1 text-sm">{companion.death_year}</p>
+              </div>
+            )}
           </div>
-        </div>
+        </Card>
 
-        {companion.bio_ar && (
-          <div className="space-y-2">
-            <h2 className="text-lg text-brand-gold">السيرة</h2>
-            <p className="leading-8 arabic-muted">{companion.bio_ar}</p>
-          </div>
+        {companion.stories.length > 0 ? (
+          <section className="space-y-5" aria-labelledby="companion-stories-title">
+            <div>
+              <h2
+                id="companion-stories-title"
+                className="text-2xl font-bold text-brand-gold"
+              >
+                مواقف وقصص منشورة
+              </h2>
+              <p className="mt-2 leading-8 text-brand-cream/65">
+                تُعرض المواقف بحسب المادة المنشورة في مكتبة ذِكر، مع توضيح المصدر
+                والمنهجية عند توفر بيانات المراجعة.
+              </p>
+            </div>
+
+            {companion.stories.map((story, index) => (
+              <Card
+                key={story.id}
+                className="space-y-4 border-brand-gold/10 bg-black/20"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brand-gold/20 bg-brand-gold/10 text-xs font-bold text-brand-gold">
+                    {index + 1}
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-bold text-brand-gold">
+                      {story.title_ar}
+                    </h3>
+                    {story.story_type && (
+                      <span className="mt-1 inline-block text-xs text-brand-gold/60">
+                        {story.story_type}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <p className="whitespace-pre-wrap pr-11 leading-9 text-brand-cream/80">
+                  {story.content_ar}
+                </p>
+              </Card>
+            ))}
+          </section>
+        ) : (
+          <section className="rounded-2xl border border-brand-gold/20 bg-brand-gold/5 p-8 text-center">
+            <h2 className="text-xl font-bold text-brand-gold">
+              لا توجد مواقف منشورة إضافية حاليًا
+            </h2>
+            <p className="mt-3 leading-8 text-brand-cream/65">
+              تتوفر البيانات التعريفية فقط، ولن نعرض قصة مصطنعة أو غير موجودة في
+              الكتالوج المنشور.
+            </p>
+          </section>
         )}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {companion.birth_place_ar && (
-            <div className="rounded-lg border border-brand-gold/10 p-3">
-              <p className="text-xs arabic-muted">مكان الميلاد</p>
-              <p className="text-sm">{companion.birth_place_ar}</p>
-            </div>
-          )}
-          {companion.death_place_ar && (
-            <div className="rounded-lg border border-brand-gold/10 p-3">
-              <p className="text-xs arabic-muted">مكان الوفاة</p>
-              <p className="text-sm">{companion.death_place_ar}</p>
-            </div>
-          )}
-          {companion.death_year && (
-            <div className="rounded-lg border border-brand-gold/10 p-3">
-              <p className="text-xs arabic-muted">سنة الوفاة</p>
-              <p className="text-sm">{companion.death_year}</p>
-            </div>
-          )}
-        </div>
-      </Card>
+        <ContentReferences references={references} />
 
-      {stories.length > 0 && (
-        <section className="space-y-5" aria-labelledby="companion-stories-title">
-          <div>
-            <h2 id="companion-stories-title" className="text-2xl font-bold text-brand-gold">
-              مواقف وقصص موثقة
-            </h2>
-            <p className="mt-2 leading-8 arabic-muted">
-              تُعرض هذه المواقف بحسب المادة المنشورة في قاعدة المعرفة، مع التمييز بين الرواية الحديثية والتلخيص التعليمي.
-            </p>
-          </div>
-          {stories.map((story, index) => (
-            <Card key={story.id} className="space-y-4 border-brand-gold/10 bg-black/20">
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brand-gold/20 bg-brand-gold/10 text-xs font-bold text-brand-gold">
-                  {index + 1}
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-brand-gold">{story.title_ar}</h3>
-                  {story.story_type && (
-                    <span className="mt-1 inline-block text-xs text-brand-gold/60">{story.story_type}</span>
-                  )}
-                </div>
-              </div>
-              <p className="whitespace-pre-wrap pr-11 leading-9 arabic-muted">{story.content_ar}</p>
-            </Card>
-          ))}
+        <section className="rounded-2xl border border-brand-gold/20 bg-brand-gold/5 p-6 text-center">
+          <p className="text-sm leading-8 text-brand-cream/65">
+            التلخيص التعليمي لا يغني عن الرجوع إلى كتب الحديث والسيرة المحققة عند
+            دراسة التفاصيل أو نسبة الأقوال والروايات.
+          </p>
+          <Link
+            href="/companions"
+            className="mt-4 inline-flex text-sm font-medium text-brand-gold hover:text-brand-gold/80"
+          >
+            ← جميع الصحابة
+          </Link>
         </section>
-      )}
-
-      <ContentReferences references={references} />
-    </Container>
+      </Container>
+    </main>
   );
 }

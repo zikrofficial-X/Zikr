@@ -8,7 +8,6 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { KidsShare } from "@/features/kids/components/kids-share";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { KidsWorldGameShell } from "@/features/kids/components/games/game-shell";
 import { parseGameContentMetadata } from "@/lib/games/registry";
 import {
@@ -122,52 +121,56 @@ export default function KidsDetailPage() {
   const gameConfig = content?.type === "game" ? parseGameContentMetadata(content.metadata) : null;
 
   useEffect(() => {
+    if (!slug) {
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    let active = true;
+
     const fetchContent = async () => {
-      if (!slug) {
-        setLoading(false);
-        return;
-      }
       try {
         setLoading(true);
         setContent(null);
         setQuizAnswers({});
         setQuizSubmitted(false);
-        const supabase = createBrowserSupabaseClient();
-        let result = await supabase
-          .from("kids_content")
-          .select("*")
-          .eq("slug", slug)
-          .eq("published", true)
-          .eq("is_active", true)
-          .limit(1)
-          .maybeSingle();
 
-        if (result.error) {
-          result = await supabase
-            .from("kids_content")
-            .select("*")
-            .eq("slug", slug)
-            .eq("published", true)
-            .limit(1)
-            .maybeSingle();
+        const response = await fetch(
+          `/api/kids/content/${encodeURIComponent(slug)}`,
+          {
+            signal: controller.signal,
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          },
+        );
+
+        if (response.ok) {
+          const payload = await response.json();
+          const normalized = toDetailContent(payload);
+          if (normalized && active) {
+            setContent(normalized);
+            return;
+          }
         }
 
-        const normalized = result.data ? toDetailContent(result.data) : null;
-        if (normalized) {
-          setContent(normalized);
-        } else {
-          // Fall back to the static content library
-          const staticItem = getKidsItemBySlug(slug);
-          setContent(staticItem ? toDetailContent(staticItem) : null);
-        }
-      } catch {
-        const staticItem = getKidsItemBySlug(slug ?? "");
-        setContent(staticItem ? toDetailContent(staticItem) : null);
+        const staticItem = getKidsItemBySlug(slug);
+        if (active) setContent(staticItem ? toDetailContent(staticItem) : null);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        const staticItem = getKidsItemBySlug(slug);
+        if (active) setContent(staticItem ? toDetailContent(staticItem) : null);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
-    fetchContent();
+
+    void fetchContent();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [slug]);
 
   const handleQuizAnswer = (questionIndex: number, answerIndex: number) => {

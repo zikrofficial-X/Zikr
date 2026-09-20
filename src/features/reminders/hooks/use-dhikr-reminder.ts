@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { playSalawatClip, unlockAudioContext } from '@/lib/audio/spiritual-tones';
+import { unlockAudioContext } from '@/lib/audio/spiritual-tones';
 import { showDhikrNotification, isInQuietHours } from '@/features/notifications/services/notifications';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
@@ -106,7 +106,6 @@ export function useDhikrReminder(): DhikrReminderReturn {
       }
       const text = pickDhikr(rotationRef.current);
       rotationRef.current += 1;
-      playSalawatClip(); // spoken salawat/dhikr clip with offline-safe synthesized fallback
       showDhikrNotification(text);
       // Also dispatch via SW for background delivery
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -162,7 +161,6 @@ export function useDhikrReminder(): DhikrReminderReturn {
 
   const testReminder = useCallback(() => {
     unlockAudioContext();
-    playSalawatClip();
     showDhikrNotification(pickDhikr(rotationRef.current));
     rotationRef.current += 1;
   }, []);

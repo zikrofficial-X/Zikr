@@ -1,3 +1,5 @@
+import "server-only";
+
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { getPublicEnv } from "@/lib/env";
 import { ServiceError } from "@/lib/types/common";

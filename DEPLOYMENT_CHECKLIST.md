@@ -31,7 +31,6 @@ The committed `.circleci/config.yml` owns the external CI/recovery path.
 - Android release runs only for release branches/tags and validates signing material.
 - Background video/social processing is opt-in through `run_background_jobs`.
 - Quran audio import is opt-in through `run_quran_audio_import`.
-- Production smoke is opt-in through `run_production_smoke`.
 - Security audit is opt-in through `run_security_audit`.
 
 Protect all production credentials in CircleCI Project or Context environment variables. Do not put secrets in `.circleci/config.yml`.
@@ -88,4 +87,4 @@ Record the deployed commit SHA, Vercel deployment URL and state, CircleCI job/pi
 
 A deployment is not considered fully validated solely because the Vercel state is `READY`; the smoke checks and scheduler evidence are required as well.
 
-**Last updated:** September 19, 2026
+**Last updated:** September 20, 2026
