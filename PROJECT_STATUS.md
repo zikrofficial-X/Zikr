@@ -1,8 +1,8 @@
 # ZIKR — Current Project Status
 
 **Finalization branch under review:** `finalization-src-20260920`
-**Current finalization HEAD:** `2a72fb325fb47488aba3f1713a0a0a15fce322b9`
-**Branch relation:** 86 commits ahead of `main`, 0 behind.
+**Current finalization HEAD:** `5c6124241beedcae711028900e059cd13f9aa859`
+**Branch relation:** 265 commits ahead of `main`, 0 behind.
 
 
 **Last audited:** 20 September 2026  
@@ -11,11 +11,13 @@
 
 ## Current state
 
+The route inventory currently contains 164 routes: 100 page routes and 64 API route handlers. The route verifier has been upgraded to discover and validate the complete `src/app` route tree rather than relying only on a handwritten subset.
+
 The finalization branch is being reviewed as the clean integration branch. Public content modules are being consolidated around canonical feature services and tracked offline snapshots, with duplicated page-local catalogues removed where equivalent repository data already exists.
 
 The current HEAD has not yet been certified by a fresh Vercel build after the latest changes. Static inspection of the modified paths is complete; a successful build and route smoke pass are still required before the branch is declared final.
 
-The repository has been consolidated onto a single canonical branch. Obsolete feature wrappers, duplicate assets, legacy hook/service paths, and root-level historical release clutter were removed or archived.
+The repository has been consolidated onto the canonical source architecture; `finalization-src-20260920` remains the active review branch until release gates pass. Obsolete feature wrappers, duplicate assets, legacy hook/service paths, and root-level historical release clutter were removed or archived.
 
 The GitHub Actions workflows have now been **fully retired from the active repository**. The `.github/workflows/` directory no longer exists on `main`, so new GitHub-hosted runner jobs cannot be started from repository workflow files.
 
@@ -71,13 +73,17 @@ Current populated production content includes Quran tafsir/audio, hadiths, stori
 
 The last recorded production audit reported `quran_surahs` = 114, `quran_ayahs` = 6236, `quran_reciters` = 7, `quran_audio` = 798, and `quran_tafsir` = 6236. These live counts were not re-queried during this pass because the current Supabase management connector does not have sufficient permissions. The surah catalog now has canonical `ayahs_count` metadata totaling 6236, with no zero/null counts. Quran audio covers all 114 surahs for all 7 current reciters, with no duplicate `(surah_id, reciter_id)` pairs.
 
+## Source service finalization
+
+The finalization pass now centralizes admin mutations, profile/auth sync and updates, favorites, notifications/reminders, contact, kids game persistence, Quran reading progress, wird/memorization progress, media assets, Android release resolution, and Quran audio access behind feature-first server-only service boundaries. Legacy Server Action names used by existing consumers were preserved where required.
+
 ## Mobile
 
 Capacitor runtime packages are on major version 7, while the repository pins `@capacitor/cli` to 8.5.1 in both `package.json` and `mobile/capacitor-dependencies.json`. This is documented as a dependency-maintenance item; the lockfile is kept internally consistent and was not hand-edited to force a speculative major-version migration.
 
 ## Deployment
 
-Current verification state: GitHub reports Vercel `pending` on the current HEAD and `ci/circleci: ci-check` also `pending`. The connected Vercel deployment identifier exposed by the check could not be resolved through the connected deployment API during this audit, so a successful build is still unverified.
+Current verification state: GitHub reports Vercel `failure` on the current HEAD with target `upgradeToPro=build-rate-limit`; no deployment for the latest HEAD is currently visible through the connected deployment API. CircleCI `ci-check` remains `pending`, so a successful build is still unverified.
 
 ## Canonical Quran storage
 
