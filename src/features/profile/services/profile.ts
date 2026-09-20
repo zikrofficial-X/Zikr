@@ -284,3 +284,34 @@ export async function syncAuthProfile(
 
   return { ok: true };
 }
+
+
+export async function updateCurrentProfileAvatar(
+  avatarUrl: string,
+): Promise<{ ok: true } | { ok: false; error: "Unauthorized" | "Invalid" | "Failed" }> {
+  const session = await getAuthenticatedUserForProfile();
+  if (!session) return { ok: false, error: "Unauthorized" };
+
+  const url = avatarUrl.trim();
+  if (!/^https:\/\//i.test(url) || url.length > 2048) {
+    return { ok: false, error: "Invalid" };
+  }
+
+  const { error } = await session.supabase
+    .from("profiles")
+    .upsert(
+      {
+        id: session.user.id,
+        avatar_url: url,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" },
+    );
+
+  if (error) {
+    console.error("[profile] avatar update failed:", error);
+    return { ok: false, error: "Failed" };
+  }
+
+  return { ok: true };
+}
