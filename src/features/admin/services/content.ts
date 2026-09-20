@@ -154,3 +154,100 @@ export async function getAdminContentApi(): Promise<AdminContentApiItem[]> {
     })),
   ];
 }
+
+
+export type ManagedContentTable =
+  | "stories"
+  | "articles"
+  | "competitions"
+  | "memorization_plans"
+  | "pinned_messages";
+
+const MANAGED_CONTENT_TABLES = new Set<ManagedContentTable>([
+  "stories",
+  "articles",
+  "competitions",
+  "memorization_plans",
+  "pinned_messages",
+]);
+
+function assertManagedContentTarget(
+  table: string,
+  id: string,
+): asserts table is ManagedContentTable {
+  if (!MANAGED_CONTENT_TABLES.has(table as ManagedContentTable) || !id.trim()) {
+    throw new Error("عنصر محتوى غير صالح.");
+  }
+}
+
+export async function toggleManagedContent(
+  table: string,
+  id: string,
+  published: boolean,
+  optimisticUpdatedAt?: string | null,
+): Promise<void> {
+  assertManagedContentTarget(table, id);
+  const supabase = await createClient();
+
+  if (optimisticUpdatedAt) {
+    const result = await supabase
+      .from(table)
+      .select("id")
+      .eq("id", id)
+      .eq("updated_at", optimisticUpdatedAt)
+      .maybeSingle();
+    if (result.error) throw result.error;
+    if (!result.data) {
+      throw new Error(
+        "تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
+      );
+    }
+  }
+
+  const column = table === "pinned_messages" ? "is_active" : "published";
+  const { error } = await supabase
+    .from(table)
+    .update({ [column]: published, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
+export async function deleteManagedContent(
+  table: string,
+  id: string,
+  optimisticUpdatedAt?: string | null,
+): Promise<void> {
+  assertManagedContentTarget(table, id);
+  const supabase = await createClient();
+  const column = table === "pinned_messages" ? "is_active" : "published";
+
+  const current = await supabase
+    .from(table)
+    .select(`id,${column},updated_at`)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (current.error) throw current.error;
+  if (!current.data) throw new Error("العنصر غير موجود.");
+  if (Boolean(current.data[column])) {
+    throw new Error(
+      "لا يمكن حذف عنصر منشور. قم بإخفائه أولاً ثم أعد المحاولة.",
+    );
+  }
+  if (
+    optimisticUpdatedAt &&
+    String(current.data.updated_at) !== optimisticUpdatedAt
+  ) {
+    throw new Error(
+      "تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
+    );
+  }
+
+  const { error } = await supabase
+    .from(table)
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}
