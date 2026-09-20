@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getServerEnv } from '@/lib/env';
 import { getCanonicalAuthBaseUrl } from '@/lib/auth-enhanced';
 import { isPwnedPassword } from '@/lib/security/pwned-password';
+import { updateCurrentProfile } from '@/features/profile/services/profile';
 
 type AuthActionResult =
   | { ok: true; next?: string; message?: string }
@@ -173,24 +174,15 @@ export async function logoutAction() {
 
 export async function updateProfileAction(formData: FormData) {
   const displayName = String(formData.get('displayName') || '').trim();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const result = await updateCurrentProfile({ displayName });
 
-  if (!user) redirect('/auth/login');
-
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      display_name: displayName || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', user.id);
-
-  if (error) {
-    console.error('[auth] updateProfileAction error:', error);
-    redirect(`/profile?error=${encodeURIComponent('تعذر حفظ البيانات. حاول مرة أخرى.')}`);
+  if (!result.ok) {
+    if (result.error === 'Unauthorized') redirect('/auth/login');
+    const message =
+      result.error === 'Invalid' && result.message
+        ? result.message
+        : 'تعذر حفظ البيانات. حاول مرة أخرى.';
+    redirect(`/profile?error=${encodeURIComponent(message)}`);
   }
 
   redirect('/profile?success=profile_saved');
