@@ -1,3 +1,5 @@
+import "server-only";
+
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { ServiceError } from "@/lib/types/common";
 import type { Story, StoryCategory } from "@/features/stories/types/stories";
