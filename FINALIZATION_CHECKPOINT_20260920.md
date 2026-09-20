@@ -1,102 +1,76 @@
 # ZIKR Finalization Checkpoint — 2026-09-20
 
-## Branch state
+## Branch
 - Branch: `finalization-src-20260920`
-- Source-fix HEAD before this checkpoint: `718a2b540e4b203c434ada20a1ac1a817e29acd0`
-- Source-fix commit: `fix(notifications): import salawat audio clip`
-- Ahead of `main`: 290
+- Current HEAD: `58ec29514a9738a96e798b8c59e847a13b30fbe1`
+- Ahead of `main`: 320
 - Behind `main`: 0
+- Repository-wide finalization scope has been processed.
 
-## Finalization scope
-The source finalization pass covers the requested layers:
-- admin
-- auth
-- profile
-- notifications
-- social
-- media
-- spiritual-ai
-- kids
-- prayer
-- qibla
-- audio
-- offline
-- shared UI
-- API routes
+## Scope completed
 
-## Continuation work completed
-- Admin content, knowledge, prophets and battles reads use dedicated services; prophet/battle mutations are centralized.
-- Admin content publish/delete mutations retain the privileged REST path after permission, step-up and rate-limit checks.
-- Admin media asset list/upload/rights/publish operations use a server-only media service.
-- Favorites reads/writes/delete paths use one server-only favorites service, with legacy `DELETE ?id=` compatibility preserved and the item type constrained to the database enum.
-- Profile GET/PUT plus native OAuth profile sync use one server-only profile service.
-- Notifications and reminder preferences use dedicated server-only services.
-- Foreground/native prayer, dhikr and salawat notifications use native audio first, with web audio/notification fallback.
-- Quran audio lookup and reading progress are centralized in server-side feature services while the client-safe Quran service remains separate.
-- Contact validation/persistence is centralized.
-- Kids game content/progress/achievements/result RPC handling is centralized.
-- Wird and memorization progress persistence is centralized while legacy Server Action exports remain compatible.
-- Android release lookup/version/download share one server-only GitHub release service.
-- Cloudinary validation/import paths were cleaned of duplicate configuration keys.
-- Qibla/search/audio/offline/public-content service work from the earlier pass remains in place.
-- Four unused shared UI components were removed.
-- The latest build blocker found during source inspection was a missing `playSalawatClip` import in `src/features/notifications/services/notifications.ts`; it was fixed in commit `718a2b540e4b203c434ada20a1ac1a817e29acd0`.
+### Application
+- `src/app/` pages and API routes reviewed.
+- 100 page route files and 64 API route files remain.
+- 164 total route handlers/pages.
+- No duplicate normalized page-route groups.
+- Feature-first service extraction completed for the requested domains: admin, auth, profile, notifications, social, media, spiritual-ai, kids, prayer, qibla, audio, offline, shared UI, and API adapters.
+- Server-only boundaries hardened.
+- Shared UI duplicates removed.
+- Latest concrete TypeScript defect found during the pass (`playSalawatClip` missing import) was fixed in commit `718a2b540e4b203c434ada20a1ac1a817e29acd0`.
 
-## Structural checks
-- Page route files: 100
-- API route files: 64
-- Route inventory: 164 total routes
-- Duplicate normalized page-route groups: none
-- `/duas` remains an intentional redirect alias to `/dua`
-- Migration files: 250
-- Duplicate migration timestamp prefixes: none
-- Deleted shared UI files confirmed absent: `copy-button.tsx`, `empty-state.tsx`, `icon-button.tsx`, `skeleton.tsx`
+### Repository/configuration
+- 49 direct package dependencies checked against `pnpm-lock.yaml`; no missing direct dependency candidates.
+- No tracked `package-lock.json`, `yarn.lock`, or npm shrinkwrap.
+- `.github/CODEOWNERS` aligned with the `src/` architecture.
+- Obsolete `@/hooks` alias removed from `components.json`.
+- Obsolete NextAuth variables/config removed from `.env.example` and `vercel.json`.
+- Dependabot no longer declares a GitHub Actions ecosystem scan because Actions are retired.
+- Vercel configuration is frozen-install + `pnpm build`.
 
-## Static/security checks
-- No audited authorization path derives an admin role from editable `user_metadata`.
-- Admin role assignments remain DB-backed.
-- Secret-bearing feature services have explicit server-only boundaries.
-- Server-only services are not intended to be imported by client components.
-- Public APIs remain bounded to intended upstreams and validated inputs in the audited routes.
-- Legacy favorites and memorization action/API contracts remain preserved.
-
-## External verification gates
-
-### Vercel
-- Project: `zikr`
-- The latest completed branch deployments immediately before the source fix failed at `pnpm build` with `lint_or_type_error`.
-- Deployment `dpl_HozxRPqFgrkfdTvH2efEj9QU6rKD` for commit `b4228105a879c78703e11441f5bf0416091958a3` failed with `errorCode: lint_or_type_error` and `errorMessage: Command "pnpm build" exited with 1`.
-- Deployment `dpl_95zZ3duuH43g49gacmac3t77N72n` for commit `e997d4fb68a6e0c8acf6705c8adba5f6bdbc3416` also failed at the build step.
-- The connected Vercel build-log endpoint is unavailable in the current session, so exact remote log lines cannot be retrieved.
-- A concrete TypeScript failure was identified statically and fixed in the current source branch: `playSalawatClip` was called without being imported.
-- A successful build for the corrected source HEAD is still required before release readiness can be asserted.
+### Native
+- Android project identity and target metadata verified: `com.zikr.app`, version 1.0.0, code 53, target SDK 36.
+- Android generated Capacitor paths align with the locked runtime packages.
+- iOS project identity verified: `com.zikr.app`, version 1.0.0, build 53.
+- iOS Podfile fixed to match the locked Capacitor plugin versions and now includes Geolocation.
+- Mobile README/auth redirect notes corrected.
+- Capacitor runtime/plugins remain 7.x while the CLI is 8.5.1; this is documented and intentionally not changed without a controlled native migration.
 
 ### Supabase
-- The connected Supabase account currently exposes no accessible projects, so live SQL/RLS verification cannot be executed from this session.
-- Static migration inspection remains completed; live migration ledger, RLS policy and scheduler verification are pending.
+- 250 active migration files under `supabase/migrations/`.
+- Static migration-prefix integrity check completed.
+- Canonical Auth URL/redirect contract verified in `supabase/config.toml`.
+- Prayer worker, source-verification worker, and social sync function authentication/config boundaries reviewed.
+- Live SQL/RLS/scheduler verification is not executable because the current connected Supabase session exposes no accessible project.
+
+### PWA/offline/content
+- Git-tracked Quran corpus manifest verified.
+- Offline v1 datasets and manifest tracked.
+- Service worker reviewed: sensitive/private paths are excluded and generic personalized HTML is not pre-cached.
+- Required local audio, branding and PWA icon assets are present.
+- Quran audio import remains explicit and operationally gated.
+
+### Documentation
+- Deployment, auth, OAuth, offline, environment, source-of-truth, social, schema, troubleshooting, Search Console, and launch documents were reconciled with the current architecture.
+- Stale references to root `app/`, root `lib/`, old `lib/services` paths, old OAuth redirects, obsolete NextAuth variables, and false “fully operational” claims were removed where identified.
+- Documentation now distinguishes source finalization from external production certification.
+
+## External gates
+
+### Vercel
+The latest completed finalization deployments immediately before the source fix failed with `lint_or_type_error`. The connected Vercel status currently remains a build-rate-limit/account failure, so no successful build of the corrected finalization HEAD is claimed.
 
 ### CircleCI
-- `ci/circleci: ci-check` remains externally pending/unverified from this session.
-- No successful CircleCI result is claimed.
+The `ci/circleci: ci-check` status remains pending/unverified from this session.
 
-### Android / iOS
-- Android application id: `com.zikr.app`
-- Android version: `1.0.0`, versionCode `53`
-- Android compile/target SDK: `36`
-- iOS bundle id: `com.zikr.app`
-- iOS version/build: `1.0.0 / 53`
-- Native Capacitor runtime/plugins: 7.x
-- Capacitor CLI: 8.5.1 while native Android/iOS projects and iOS Pods reference 7.4.3.
-- Native `cap sync`, Gradle release build and Xcode archive are not executable in this environment.
+### Supabase
+No live project is currently accessible through the connected management session; production SQL/RLS/migration/scheduler evidence therefore remains pending.
 
-## Release readiness
-The source branch has undergone the requested source-structure and service-boundary finalization pass, including a real build-error correction.
+### Native release
+The environment cannot execute signed Android/iOS release builds or a full Capacitor sync/archive cycle.
 
-Release-ready is **not asserted yet** until:
-1. The corrected source HEAD receives a successful Vercel production build.
-2. Live Supabase SQL/RLS and scheduler verification succeeds with valid project access.
-3. CircleCI required checks complete successfully.
-4. Capacitor sync and signed Android/iOS release builds pass in the release environment.
+## Finalization result
 
-## Current continuation result
-The branch contains the requested source finalization work and the latest identified compile defect has been corrected. The next authoritative gate is a fresh build of the corrected HEAD; no older successful deployment is being treated as proof for the final branch.
+The repository-wide source/configuration cleanup and finalization pass is complete to the extent verifiable from the connected GitHub repository. The final branch is intentionally not labeled production-ready until the external build, database, CI, and native release gates pass.
+
+Do not use an older READY production deployment as proof for this finalization branch.
