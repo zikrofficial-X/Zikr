@@ -9,6 +9,8 @@ import { getBattles } from "@/features/battles/services/battles";
 import { getConquests } from "@/features/conquests/services/conquests";
 import { getDuas } from "@/features/dua/services/dua";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = pageMetadata({
   title: "عن منصة ذِكرٌ",
   description:
