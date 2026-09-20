@@ -1,67 +1,23 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { getRadioChannels, type RadioChannel } from '@/features/audio/services/radio';
 
-type Station = {
-  name: string;
-  url: string;
-  description: string;
-};
 
-const stations: Station[] = [
-  {
-    name: 'إذاعة القرآن الكريم - السعودية',
-    url: 'https://qurango.net/radio/tarateel',
-    description: 'تلاوات خاشعة من القرآن الكريم',
-  },
-  {
-    name: 'إذاعة القرآن الكريم - مصر',
-    url: 'https://qurango.net/radio/mishary_alafasy',
-    description: 'تلاوات الشيخ مشاري العفاسي',
-  },
-  {
-    name: 'إذاعة القرآن - المنشاوي',
-    url: 'https://qurango.net/radio/minshawi',
-    description: 'تلاوات الشيخ محمد صديق المنشاوي',
-  },
-  {
-    name: 'إذاعة القرآن - عبد الباسط',
-    url: 'https://qurango.net/radio/abdulbasit',
-    description: 'تلاوات الشيخ عبد الباسط عبد الصمد',
-  },
-  {
-    name: 'إذاعة القرآن - الحصري',
-    url: 'https://qurango.net/radio/husary',
-    description: 'تلاوات الشيخ محمود خليل الحصري',
-  },
-  {
-    name: 'إذاعة القرآن - السديس',
-    url: 'https://qurango.net/radio/sudais',
-    description: 'تلاوات الشيخ عبد الرحمن السديس',
-  },
-  {
-    name: 'إذاعة تلاوات خاشعة',
-    url: 'https://qurango.net/radio/maher_al_muaiqly',
-    description: 'تلاوات الشيخ ماهر المعيقلي',
-  },
-  {
-    name: 'إذاعة القرآن - سعد الغامدي',
-    url: 'https://qurango.net/radio/saad_al_ghamdi',
-    description: 'تلاوات الشيخ سعد الغامدي',
-  },
-];
+
+const stations = getRadioChannels();
 
 export default function RadioPage() {
-  const [current, setCurrent] = useState<Station | null>(null);
+  const [current, setCurrent] = useState<RadioChannel | null>(null);
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
   const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const playStation = (station: Station) => {
+  const playRadioChannel = (station: RadioChannel) => {
     setError(null);
     if (audioRef.current) {
       audioRef.current.pause();
@@ -151,7 +107,7 @@ export default function RadioPage() {
               )}
             </div>
             <Button
-              onClick={() => playStation(station)}
+              onClick={() => playRadioChannel(station)}
               variant={current?.url === station.url && playing ? 'secondary' : 'primary'}
               className='w-full'
             >
