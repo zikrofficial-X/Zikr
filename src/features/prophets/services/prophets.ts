@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+import { mergePublishedBySlug } from "@/lib/data/content-merge";
 
 import type { Prophet } from "@/features/prophets/types/prophets";
 import { prophets as FALLBACK_PROPHETS } from "@/features/prophets/data/fallback";
@@ -155,14 +156,17 @@ async function getDatabaseProphets(): Promise<Prophet[] | null> {
 }
 
 export async function getProphets(): Promise<Prophet[]> {
+  let offline: Prophet[] = [];
   try {
-    const local = await loadOfflineProphets();
-    if (local.length > 0) return local;
+    offline = await loadOfflineProphets();
   } catch (error) {
     console.error("[prophets] Offline prophet catalogue unavailable:", error);
   }
 
-  return (await getDatabaseProphets()) ?? FALLBACK_PROPHETS.map(mapFallbackProphet);
+  const database = await getDatabaseProphets();
+  if (database.length) return mergePublishedBySlug(database, offline);
+
+  return offline.length ? offline : FALLBACK_PROPHETS.map(mapFallbackProphet);
 }
 
 export async function getProphetBySlug(slug: string): Promise<ProphetDetail | null> {
