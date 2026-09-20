@@ -18,6 +18,15 @@
  *   - string: AI-generated evaluation in Arabic
  */
 import { generateGeminiFromAudio, generateGeminiText } from '@/features/spiritual-ai/services/gemini-client';
+import {
+  deleteMemorizationProgress as deleteMemorizationProgressService,
+  getCurrentMemorizationProgress,
+  saveMemorizationProgress,
+  type MemorizationEntry,
+} from "@/features/memorization/services/progress";
+
+export type { MemorizationEntry };
+
 
 export async function evaluateMemorizationAction(formData: FormData) {
   const targetValue = formData.get('target');
@@ -98,17 +107,8 @@ ${sharedContext}
 }
 
 // ---------------------------------------------------------------------------
- // Memorization progress tracking (per-user, stored in Supabase)
- // ---------------------------------------------------------------------------
-
-import {
-  deleteMemorizationProgress,
-  getCurrentMemorizationProgress,
-  saveMemorizationProgress,
-  type MemorizationEntry,
-} from "@/features/memorization/services/progress";
-
-export type { MemorizationEntry };
+// Memorization progress tracking (per-user, stored in Supabase)
+// ---------------------------------------------------------------------------
 
 export async function getMemorizationProgress() {
   return getCurrentMemorizationProgress();
@@ -123,6 +123,6 @@ export async function upsertMemorizationProgress(input: {
   return saveMemorizationProgress(input);
 }
 
-export async function deleteMemorizationProgressAction(surahNumber: number) {
-  return deleteMemorizationProgress(surahNumber);
+export async function deleteMemorizationProgress(surahNumber: number) {
+  return deleteMemorizationProgressService(surahNumber);
 }
