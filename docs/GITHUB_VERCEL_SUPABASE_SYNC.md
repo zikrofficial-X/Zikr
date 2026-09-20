@@ -56,7 +56,7 @@ Live Application
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Settings > API | `eyJhbGc...` (public key) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Settings > API | `eyJhbGc...` (secret key) |
 | `NEXT_PUBLIC_SITE_URL` | Your domain | `https://zikrmediaofficial.vercel.app` |
-| `AUTH_CALLBACK_URL` | Locked application callback | `https://zikrmediaofficial.vercel.app/auth/callback` |
+| `AUTH_CALLBACK_URL` | Locked application callback | `https://zikrmediaofficial.vercel.src/app/auth/callback` |
 
 ### Optional Variables:
 
@@ -224,7 +224,7 @@ npm run dev
 
 ```bash
 git add .
-git commit -m "test deployment"
+git commit -m "chore: verify deployment"
 git push origin main
 # Watch Vercel dashboard for automatic deployment
 ```
@@ -261,7 +261,7 @@ project/
 ├── supabase/
 │   ├── migrations/          # Canonical SQL migration chain
 │   └── config.json          # Supabase project config
-├── lib/
+├── src/lib/
 │   ├── env.ts              # Environment validation
 │   ├── env-validation.ts   # Env schema (Zod)
 │   └── supabase/
@@ -281,7 +281,7 @@ project/
 4. ✅ Test deployment (Step 5)
 5. ✅ Verify everything works in production (Step 6)
 
-Once all steps are complete, the app will automatically deploy and sync whenever you push to the main branch on GitHub.
+Once all steps are complete, pushes to the connected `main` branch can trigger Vercel deployment; database migrations remain a separate authenticated Supabase operation.
 
 ## Questions or Issues?
 
