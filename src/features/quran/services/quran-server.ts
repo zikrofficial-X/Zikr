@@ -455,7 +455,7 @@ export async function getQuranAudioFromDb(
 > {
   const candidates = [...new Set([
     reciterCode,
-    reciterCode.replace(/^ar./i, ""),
+    reciterCode.replace(/^ar\./i, ""),
     `ar.${reciterCode.replace(/^ar\./i, "")}`,
   ])];
 
