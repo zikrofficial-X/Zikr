@@ -238,6 +238,36 @@ export async function getSurahFromDb(
   }
 }
 
+export async function searchLocalQuran(
+  query: string,
+  locale: Locale = "ar",
+): Promise<Ayah[]> {
+  const cleanQuery = query.trim().toLocaleLowerCase();
+  if (!cleanQuery) return [];
+
+  try {
+    const corpus = await loadLocalQuranCorpus();
+    return corpus
+      .filter((row) => {
+        const candidates = [
+          getDisplayedLocalArabicText(row),
+          row.text_ar,
+          row.text_simple ?? "",
+          row.text_uthmani ?? "",
+          row.text_en ?? "",
+        ];
+        return candidates.some((value) =>
+          value.toLocaleLowerCase().includes(cleanQuery),
+        );
+      })
+      .slice(0, 50)
+      .map((row) => mapLocalAyah(row, locale));
+  } catch (error) {
+    console.error("[quran-server] Local Quran search unavailable:", error);
+    return [];
+  }
+}
+
 export async function getAyahFromDb(
   surahId: number,
   ayahNumber: number,
