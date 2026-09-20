@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { COMPANIONS } from "@/features/companions/data/fallback";
 import { uniqueCompanionSummaries } from "@/features/companions/utils/companions";
@@ -10,6 +13,24 @@ export type CompanionSummary = {
   bio_ar: string | null;
   slug: string;
   category: string | null;
+};
+
+export type CompanionDetail = CompanionSummary & {
+  birth_place_ar: string | null;
+  death_place_ar: string | null;
+  death_year: string | null;
+  metadata: Record<string, unknown> | null;
+  stories: CompanionStory[];
+};
+
+export type CompanionStory = {
+  id: string;
+  title_ar: string;
+  title_en: string | null;
+  content_ar: string;
+  content_en: string | null;
+  story_type: string | null;
+  order_num: number | null;
 };
 
 const STATIC_COMPANION_SLUGS: Record<string, string> = {
@@ -39,29 +60,230 @@ const STATIC_COMPANION_CATEGORIES: Record<string, string> = {
 };
 
 const FALLBACK_COMPANIONS: CompanionSummary[] = COMPANIONS.map((companion) => ({
-  id: `static-${companion.id}`,
+  id: "static-" + companion.id,
   name_ar: companion.name_ar,
   name_en: companion.name_en,
   title_ar: companion.title_ar,
   bio_ar: companion.biography_ar,
-  slug: STATIC_COMPANION_SLUGS[companion.name_ar] ?? `static-${companion.id}`,
+  slug:
+    STATIC_COMPANION_SLUGS[companion.name_ar] ??
+    "static-" + companion.id,
   category: STATIC_COMPANION_CATEGORIES[companion.name_ar] ?? null,
 }));
 
-export async function getPublishedCompanions(): Promise<CompanionSummary[]> {
+let offlineCompanionsPromise: Promise<CompanionSummary[]> | null = null;
+let offlineStoriesPromise: Promise<CompanionStory[]> | null = null;
+
+async function loadOfflineJson<T>(fileName: string): Promise<T> {
+  const filePath = path.join(
+    process.cwd(),
+    "public",
+    "offline-content",
+    "v1",
+    fileName,
+  );
+  return JSON.parse(await readFile(filePath, "utf8")) as T;
+}
+
+function mapCompanionRow(row: Record<string, unknown>): CompanionSummary {
+  return {
+    id: String(row.id ?? ""),
+    name_ar: String(row.name_ar ?? ""),
+    name_en: typeof row.name_en === "string" ? row.name_en : null,
+    title_ar: typeof row.title_ar === "string" ? row.title_ar : null,
+    bio_ar: typeof row.bio_ar === "string" ? row.bio_ar : null,
+    slug: String(row.slug ?? ""),
+    category: typeof row.category === "string" ? row.category : null,
+  };
+}
+
+function mapStoryRow(row: Record<string, unknown>): CompanionStory {
+  return {
+    id: String(row.id ?? ""),
+    title_ar: String(row.title_ar ?? ""),
+    title_en: typeof row.title_en === "string" ? row.title_en : null,
+    content_ar: String(row.content_ar ?? ""),
+    content_en: typeof row.content_en === "string" ? row.content_en : null,
+    story_type:
+      typeof row.story_type === "string" ? row.story_type : null,
+    order_num:
+      typeof row.order_num === "number" ? row.order_num : null,
+  };
+}
+
+async function loadOfflineCompanions(): Promise<CompanionSummary[]> {
+  if (!offlineCompanionsPromise) {
+    offlineCompanionsPromise = loadOfflineJson<Record<string, unknown>[]>(
+      "companions.json",
+    ).then((rows) =>
+      uniqueCompanionSummaries(
+        rows
+          .filter((row) => row.published === true)
+          .map(mapCompanionRow)
+          .filter((row) => row.slug && row.name_ar),
+      ),
+    );
+  }
+
+  return offlineCompanionsPromise;
+}
+
+async function loadOfflineStories(): Promise<CompanionStory[]> {
+  if (!offlineStoriesPromise) {
+    offlineStoriesPromise = loadOfflineJson<Record<string, unknown>[]>(
+      "companion_stories.json",
+    ).then((rows) =>
+      rows
+        .map((row) => ({
+          ...mapStoryRow(row),
+          companion_id: String(row.companion_id ?? ""),
+        }))
+        .filter((row) => row.companion_id && row.content_ar)
+        .sort(
+          (a, b) =>
+            (a.order_num ?? Number.MAX_SAFE_INTEGER) -
+            (b.order_num ?? Number.MAX_SAFE_INTEGER),
+        )
+        .map(({ companion_id: _companionId, ...story }) => story),
+    );
+  }
+
+  return offlineStoriesPromise;
+}
+
+function fallbackBySlug(slug: string): CompanionSummary | null {
+  return (
+    FALLBACK_COMPANIONS.find((companion) => companion.slug === slug) ?? null
+  );
+}
+
+async function getDatabaseCompanions(): Promise<CompanionSummary[]> {
   try {
     const rows = await supabaseServerAnonRequest<CompanionSummary[]>(
       "/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,slug,category&published=eq.true&order=name_ar.asc",
-      { cache: "force-cache", next: { revalidate: 3600 } },
     );
-
-    const mapped = Array.isArray(rows)
-      ? uniqueCompanionSummaries(rows)
+    return Array.isArray(rows)
+      ? uniqueCompanionSummaries(rows.filter((row) => row.slug && row.name_ar))
       : [];
-
-    return uniqueCompanionSummaries([...mapped, ...FALLBACK_COMPANIONS]);
   } catch (error) {
     console.error("[companions] Failed to load published content:", error);
-    return FALLBACK_COMPANIONS;
+    return [];
+  }
+}
+
+export async function getPublishedCompanions(): Promise<CompanionSummary[]> {
+  try {
+    const local = await loadOfflineCompanions();
+    if (local.length > 0) return local;
+  } catch (error) {
+    console.error("[companions] Offline catalogue unavailable:", error);
+  }
+
+  const database = await getDatabaseCompanions();
+  return database.length > 0 ? database : FALLBACK_COMPANIONS;
+}
+
+export async function getCompanionBySlug(
+  slug: string,
+): Promise<CompanionDetail | null> {
+  const cleanSlug = slug.trim();
+  if (!cleanSlug) return null;
+
+  try {
+    const localCompanions = await loadOfflineCompanions();
+    const local = localCompanions.find((item) => item.slug === cleanSlug);
+
+    if (local) {
+      const allStories = await loadOfflineStories();
+      const stories = allStories.filter(
+        (story) =>
+          String(story.id) &&
+          local.id &&
+          false,
+      );
+      const rawStories = await loadOfflineJson<Record<string, unknown>[]>(
+        "companion_stories.json",
+      );
+      const localStories = rawStories
+        .filter((row) => String(row.companion_id ?? "") === local.id)
+        .map(mapStoryRow)
+        .filter((story) => story.content_ar)
+        .sort(
+          (a, b) =>
+            (a.order_num ?? Number.MAX_SAFE_INTEGER) -
+            (b.order_num ?? Number.MAX_SAFE_INTEGER),
+        );
+
+      return {
+        ...local,
+        birth_place_ar: null,
+        death_place_ar: null,
+        death_year: null,
+        metadata: null,
+        stories: localStories,
+      };
+    }
+  } catch (error) {
+    console.error("[companions] Offline detail unavailable:", error);
+  }
+
+  try {
+    const rows = await supabaseServerAnonRequest<Record<string, unknown>[]>(
+      `/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,slug,category,birth_place_ar,death_place_ar,death_year,metadata&slug=eq.${encodeURIComponent(cleanSlug)}&published=eq.true&limit=1`,
+    );
+
+    const row = rows[0];
+    if (!row) {
+      const fallback = fallbackBySlug(cleanSlug);
+      return fallback
+        ? {
+            ...fallback,
+            birth_place_ar: null,
+            death_place_ar: null,
+            death_year: null,
+            metadata: null,
+            stories: [],
+          }
+        : null;
+    }
+
+    const companion = {
+      ...mapCompanionRow(row),
+      birth_place_ar:
+        typeof row.birth_place_ar === "string" ? row.birth_place_ar : null,
+      death_place_ar:
+        typeof row.death_place_ar === "string" ? row.death_place_ar : null,
+      death_year:
+        row.death_year == null ? null : String(row.death_year),
+      metadata:
+        row.metadata && typeof row.metadata === "object"
+          ? (row.metadata as Record<string, unknown>)
+          : null,
+    };
+
+    const stories = await supabaseServerAnonRequest<Record<string, unknown>[]>(
+      `/rest/v1/companion_stories?select=id,title_ar,title_en,content_ar,content_en,story_type,order_num&companion_id=eq.${encodeURIComponent(String(row.id))}&order=order_num.asc`,
+    ).catch((error) => {
+      console.error("[companions] Failed to load companion stories:", error);
+      return [];
+    });
+
+    return {
+      ...companion,
+      stories: stories.map(mapStoryRow),
+    };
+  } catch (error) {
+    console.error("[companions] Failed to load companion detail:", error);
+    const fallback = fallbackBySlug(cleanSlug);
+    return fallback
+      ? {
+          ...fallback,
+          birth_place_ar: null,
+          death_place_ar: null,
+          death_year: null,
+          metadata: null,
+          stories: [],
+        }
+      : null;
   }
 }
