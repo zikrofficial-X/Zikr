@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
       publicId: `${auth.profile.id}-${crypto.randomUUID()}`,
       tags: ['zikr', 'admin', 'media', assetFolder],
       maxBytes: MAX_IMAGE_BYTES,
+      maxBytes: MAX_IMAGE_BYTES,
     });
 
     const rows = await supabaseServerAdminRequest<Array<Record<string, unknown>>>('/rest/v1/media_assets', {
