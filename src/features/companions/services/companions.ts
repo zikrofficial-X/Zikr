@@ -25,6 +25,7 @@ export type CompanionDetail = CompanionSummary & {
 
 export type CompanionStory = {
   id: string;
+  companion_id: string;
   title_ar: string;
   title_en: string | null;
   content_ar: string;
@@ -88,6 +89,7 @@ async function loadOfflineJson<T>(fileName: string): Promise<T> {
 function mapCompanionRow(row: Record<string, unknown>): CompanionSummary {
   return {
     id: String(row.id ?? ""),
+    companion_id: String(row.companion_id ?? ""),
     name_ar: String(row.name_ar ?? ""),
     name_en: typeof row.name_en === "string" ? row.name_en : null,
     title_ar: typeof row.title_ar === "string" ? row.title_ar : null,
@@ -134,17 +136,13 @@ async function loadOfflineStories(): Promise<CompanionStory[]> {
       "companion_stories.json",
     ).then((rows) =>
       rows
-        .map((row) => ({
-          ...mapStoryRow(row),
-          companion_id: String(row.companion_id ?? ""),
-        }))
+        .map(mapStoryRow)
         .filter((row) => row.companion_id && row.content_ar)
         .sort(
           (a, b) =>
             (a.order_num ?? Number.MAX_SAFE_INTEGER) -
             (b.order_num ?? Number.MAX_SAFE_INTEGER),
-        )
-        .map(({ companion_id: _companionId, ...story }) => story),
+        ),
     );
   }
 
@@ -194,25 +192,9 @@ export async function getCompanionBySlug(
     const local = localCompanions.find((item) => item.slug === cleanSlug);
 
     if (local) {
-      const allStories = await loadOfflineStories();
-      const stories = allStories.filter(
-        (story) =>
-          String(story.id) &&
-          local.id &&
-          false,
+      const localStories = (await loadOfflineStories()).filter(
+        (story) => story.companion_id === local.id,
       );
-      const rawStories = await loadOfflineJson<Record<string, unknown>[]>(
-        "companion_stories.json",
-      );
-      const localStories = rawStories
-        .filter((row) => String(row.companion_id ?? "") === local.id)
-        .map(mapStoryRow)
-        .filter((story) => story.content_ar)
-        .sort(
-          (a, b) =>
-            (a.order_num ?? Number.MAX_SAFE_INTEGER) -
-            (b.order_num ?? Number.MAX_SAFE_INTEGER),
-        );
 
       return {
         ...local,
