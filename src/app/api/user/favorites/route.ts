@@ -1,29 +1,37 @@
-import { createClient } from '@/lib/supabase/server';
-import { requireSupabaseAuth } from '@/lib/supabase/guard';
-import { NextRequest, NextResponse } from 'next/server';
+import {
+  addCurrentUserFavorite,
+  getCurrentUserFavorites,
+  removeCurrentUserFavorite,
+  type FavoriteItemType,
+} from "@/features/favorites/services/favorites";
+import { requireSupabaseAuth } from "@/lib/supabase/guard";
+import { NextRequest, NextResponse } from "next/server";
+
+function isFavoriteItemType(value: unknown): value is FavoriteItemType {
+  return (
+    value === "quran" ||
+    value === "hadith" ||
+    value === "story" ||
+    value === "scholar" ||
+    value === "dua" ||
+    value === "article" ||
+    value === "video"
+  );
+}
 
 export async function GET() {
   const unauthenticated = requireSupabaseAuth();
   if (unauthenticated) return unauthenticated;
 
   try {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const favorites = await getCurrentUserFavorites();
+    if (favorites === null) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const { data: favorites, error } = await supabase
-      .from('favorites')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return NextResponse.json(favorites || []);
+    return NextResponse.json(favorites);
   } catch (error) {
-    console.error('[api/user/favorites] GET error:', error);
-    return NextResponse.json({ error: 'Failed to fetch favorites' }, { status: 500 });
+    console.error("[api/user/favorites] GET error:", error);
+    return NextResponse.json({ error: "Failed to fetch favorites" }, { status: 500 });
   }
 }
 
@@ -32,31 +40,34 @@ export async function POST(request: NextRequest) {
   if (unauthenticated) return unauthenticated;
 
   try {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const body: unknown = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const body = await request.json();
-    const itemType = body.item_type ?? body.itemType;
-    const itemRef = body.item_ref ?? body.itemRef;
+    const input = body as Record<string, unknown>;
+    const itemType = input.item_type ?? input.itemType ?? "quran";
+    const itemRef = input.item_ref ?? input.itemRef;
 
-    if (!itemType || !itemRef) {
-      return NextResponse.json({ error: 'item_type and item_ref are required' }, { status: 400 });
+    if (!isFavoriteItemType(itemType) || typeof itemRef !== "string") {
+      return NextResponse.json({ error: "Invalid favorite" }, { status: 400 });
     }
 
-    const { data: favorite, error } = await supabase
-      .from('favorites')
-      .insert({ user_id: user.id, item_type: itemType, item_ref: itemRef })
-      .select()
-      .single();
+    const result = await addCurrentUserFavorite(itemRef, itemType);
+    if (result.error === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (result.error === "Invalid") {
+      return NextResponse.json({ error: "Invalid favorite" }, { status: 400 });
+    }
+    if (!result.ok) {
+      return NextResponse.json({ error: "Failed to create favorite" }, { status: 500 });
+    }
 
-    if (error) throw error;
-    return NextResponse.json(favorite, { status: 201 });
+    return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
-    console.error('[api/user/favorites] POST error:', error);
-    return NextResponse.json({ error: 'Failed to create favorite' }, { status: 500 });
+    console.error("[api/user/favorites] POST error:", error);
+    return NextResponse.json({ error: "Failed to create favorite" }, { status: 500 });
   }
 }
 
@@ -65,26 +76,31 @@ export async function DELETE(request: NextRequest) {
   if (unauthenticated) return unauthenticated;
 
   try {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const searchParams = request.nextUrl.searchParams;
+    const itemRef = searchParams.get("item_ref") ?? searchParams.get("itemRef");
+    const itemTypeValue = searchParams.get("item_type") ?? searchParams.get("itemType") ?? "quran";
+
+    if (!itemRef || !isFavoriteItemType(itemTypeValue)) {
+      return NextResponse.json(
+        { error: "item_ref and valid item_type are required" },
+        { status: 400 },
+      );
     }
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ error: 'id param required' }, { status: 400 });
+    const result = await removeCurrentUserFavorite(itemRef, itemTypeValue);
+    if (result.error === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (result.error === "Invalid") {
+      return NextResponse.json({ error: "Invalid favorite" }, { status: 400 });
+    }
+    if (!result.ok) {
+      return NextResponse.json({ error: "Failed to delete favorite" }, { status: 500 });
+    }
 
-    const { error } = await supabase
-      .from('favorites')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id); // scope by user — prevent cross-user deletion
-
-    if (error) throw error;
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.error('[api/user/favorites] DELETE error:', error);
-    return NextResponse.json({ error: 'Failed to delete favorite' }, { status: 500 });
+    console.error("[api/user/favorites] DELETE error:", error);
+    return NextResponse.json({ error: "Failed to delete favorite" }, { status: 500 });
   }
 }
