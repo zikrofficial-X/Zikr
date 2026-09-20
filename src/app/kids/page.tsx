@@ -5,36 +5,7 @@ import { pageMetadata } from "@/lib/site";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/server";
-import {
-  kidsContent as staticKidsContent,
-  normalizeKidsContentRow,
-} from "@/features/kids/data/content";
-
-interface KidsContent {
-  id: string;
-  title_ar: string;
-  slug: string;
-  type:
-    | "story"
-    | "prayer"
-    | "wudu"
-    | "quiz"
-    | "game"
-    | "puzzle"
-    | "coloring"
-    | "matching"
-    | "video"
-    | "memorize";
-  age_group: "3-5" | "6-8" | "9-12" | "13-15";
-  featured_image_url?: string;
-  metadata?: {
-    category?: string;
-    value?: string;
-    reward?: string;
-    objective?: string;
-  };
-}
+import { getKidsContent } from "@/features/kids/services/kids-content";
 
 const typeLabels: Record<string, string> = {
   story: "قصة",
@@ -59,18 +30,6 @@ const ageGroupLabels: Record<string, string> = {
 
 // Full static content library is always merged with the database so a slow
 // or partially unavailable Supabase request cannot hide the local catalogue.
-const STATIC_CONTENT: KidsContent[] = staticKidsContent.map(item => ({
-  id: item.id,
-  title_ar: item.title_ar,
-  slug: item.slug,
-  type: item.type,
-  age_group: item.age_group,
-  featured_image_url: item.featured_image_url,
-  metadata: item.metadata,
-}));
-
-const KIDS_DB_TIMEOUT_MS = 8000;
-
 export const metadata = pageMetadata({
   title: "قسم الأطفال | ذكر",
   description: "محتوى إسلامي تعليمي وترفيهي آمن ومناسب للأطفال",
@@ -78,39 +37,7 @@ export const metadata = pageMetadata({
 });
 
 export default async function KidsPage() {
-  let content: KidsContent[] = STATIC_CONTENT;
-  try {
-    const supabase = await createClient();
-    const { data } = await Promise.race([
-      supabase
-        .from("kids_content")
-        .select("*")
-        .eq("published", true)
-        .order("created_at", { ascending: false })
-        .limit(1000),
-      new Promise<{ data: null }>(resolve =>
-        setTimeout(() => resolve({ data: null }), KIDS_DB_TIMEOUT_MS)
-      ),
-    ]);
-    const normalized = (data ?? [])
-      .map(row => normalizeKidsContentRow(row))
-      .filter((item): item is NonNullable<typeof item> => Boolean(item));
-    if (normalized.length > 0) {
-      const dbSlugs = new Set(normalized.map(item => item.slug));
-      content = [
-        ...normalized,
-        ...STATIC_CONTENT.filter(item => !dbSlugs.has(item.slug)),
-      ];
-    }
-  } catch {
-    // fall through to static content
-  }
-
-  const byAgeGroup = (age: string) => content.filter(c => c.age_group === age);
-  const hasVisibleContent = Object.keys(ageGroupLabels).some(
-    age => byAgeGroup(age).length > 0
-  );
-  if (!hasVisibleContent) content = STATIC_CONTENT;
+  const content = await getKidsContent();
 
   return (
     <Container className="py-12 space-y-12">
