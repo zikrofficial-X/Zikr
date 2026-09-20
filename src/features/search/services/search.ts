@@ -38,7 +38,7 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
 
   for (const surah of quran.slice(0, MAX_RESULTS_PER_TYPE)) {
     results.push({
-      id: `quran-${surah.number}-${surah.numberInSurah}`,
+      id: `quran-${surah.number}`,
       type: "surah",
       labelAr: "آية",
       title: surah.text.slice(0, 90),
