@@ -22,7 +22,7 @@ export default function RadioPage() {
     if (audioRef.current) {
       audioRef.current.pause();
     }
-    const audio = new Audio(station.url);
+    const audio = new Audio(station.streamUrl);
     audio.volume = volume;
     audioRef.current = audio;
     audio
@@ -93,13 +93,13 @@ export default function RadioPage() {
 
       <section className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
         {stations.map((station) => (
-          <Card key={station.url} className='space-y-3'>
+          <Card key={station.streamUrl} className='space-y-3'>
             <div className='flex items-start justify-between gap-2'>
               <div>
                 <h2 className='text-lg text-brand-gold'>{station.name}</h2>
                 <p className='text-sm leading-6 arabic-muted'>{station.description}</p>
               </div>
-              {current?.url === station.url && playing && (
+              {current?.url === station.streamUrl && playing && (
                 <span className='flex items-center gap-1 text-xs text-emerald-300'>
                   <span className='h-2 w-2 animate-pulse rounded-full bg-emerald-400' />
                   مباشر
@@ -108,10 +108,10 @@ export default function RadioPage() {
             </div>
             <Button
               onClick={() => playRadioChannel(station)}
-              variant={current?.url === station.url && playing ? 'secondary' : 'primary'}
+              variant={current?.url === station.streamUrl && playing ? 'secondary' : 'primary'}
               className='w-full'
             >
-              {current?.url === station.url && playing ? 'إيقاف' : 'استماع'}
+              {current?.url === station.streamUrl && playing ? 'إيقاف' : 'استماع'}
             </Button>
           </Card>
         ))}
