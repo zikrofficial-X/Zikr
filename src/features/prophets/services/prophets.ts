@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { mergePublishedBySlug } from "@/lib/data/content-merge";
 
 import type { Prophet } from "@/features/prophets/types/prophets";
@@ -163,7 +163,7 @@ export async function getProphets(): Promise<Prophet[]> {
     console.error("[prophets] Offline prophet catalogue unavailable:", error);
   }
 
-  const database = await getDatabaseProphets();
+  const database = isSupabaseConfigured() ? await getDatabaseProphets() : null;
   if (database.length) return mergePublishedBySlug(database, offline);
 
   return offline.length ? offline : FALLBACK_PROPHETS.map(mapFallbackProphet);
@@ -192,21 +192,25 @@ export async function getProphetBySlug(slug: string): Promise<ProphetDetail | nu
   }
 
   const encodedSlug = encodeURIComponent(cleanSlug);
-  const dbRows = await supabaseServerAnonRequest<ProphetRow[]>(
-    `/rest/v1/prophets?slug=eq.${encodedSlug}&published=eq.true&limit=1`,
-  ).catch((error) => {
-    console.error("[prophets] Failed to fetch prophet detail:", error);
-    return [];
-  });
+  const dbRows = isSupabaseConfigured()
+    ? await supabaseServerAnonRequest<ProphetRow[]>(
+        `/rest/v1/prophets?slug=eq.${encodedSlug}&published=eq.true&limit=1`,
+      ).catch((error) => {
+        console.error("[prophets] Failed to fetch prophet detail:", error);
+        return [];
+      })
+    : [];
 
   const dbProphet = dbRows[0] ? mapProphetRow(dbRows[0]) : null;
   if (dbProphet) {
-    const dbSections = await supabaseServerAnonRequest<ProphetRow[]>(
-      `/rest/v1/prophet_sections?prophet_id=eq.${encodeURIComponent(dbProphet.id)}&select=id,prophet_id,title_ar,title_en,content_ar,content_en,section_type,order_num&order=order_num.asc`,
-    ).catch((error) => {
-      console.error("[prophets] Failed to fetch prophet sections:", error);
-      return [];
-    });
+    const dbSections = isSupabaseConfigured()
+      ? await supabaseServerAnonRequest<ProphetRow[]>(
+          `/rest/v1/prophet_sections?prophet_id=eq.${encodeURIComponent(dbProphet.id)}&select=id,prophet_id,title_ar,title_en,content_ar,content_en,section_type,order_num&order=order_num.asc`,
+        ).catch((error) => {
+          console.error("[prophets] Failed to fetch prophet sections:", error);
+          return [];
+        })
+      : [];
 
     const sections = dbSections.map(mapSectionRow);
     return {
