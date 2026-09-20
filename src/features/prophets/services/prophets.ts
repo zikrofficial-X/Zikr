@@ -170,26 +170,28 @@ export async function getProphets(): Promise<Prophet[]> {
 }
 
 export async function getProphetBySlug(slug: string): Promise<ProphetDetail | null> {
-  let prophet: Prophet | undefined;
+  const cleanSlug = slug.trim();
+  if (!cleanSlug) return null;
+
+  let localProphet: Prophet | undefined;
+  let localSections: ProphetSection[] = [];
 
   try {
-    prophet = (await loadOfflineProphets()).find((item) => item.slug === slug);
-    if (prophet) {
-      const sections = (await loadOfflineSections())
-        .filter((section) => section.prophetId === prophet?.id)
+    localProphet = (await loadOfflineProphets()).find((item) => item.slug === cleanSlug);
+    if (localProphet) {
+      localSections = (await loadOfflineSections())
+        .filter((section) => section.prophetId === localProphet?.id)
         .sort(
           (a, b) =>
             (a.orderNum ?? Number.MAX_SAFE_INTEGER) -
             (b.orderNum ?? Number.MAX_SAFE_INTEGER),
         );
-
-      return { ...prophet, sections };
     }
   } catch (error) {
     console.error("[prophets] Offline prophet detail unavailable:", error);
   }
 
-  const encodedSlug = encodeURIComponent(slug);
+  const encodedSlug = encodeURIComponent(cleanSlug);
   const dbRows = await supabaseServerAnonRequest<ProphetRow[]>(
     `/rest/v1/prophets?slug=eq.${encodedSlug}&published=eq.true&limit=1`,
   ).catch((error) => {
@@ -198,26 +200,28 @@ export async function getProphetBySlug(slug: string): Promise<ProphetDetail | nu
   });
 
   const dbProphet = dbRows[0] ? mapProphetRow(dbRows[0]) : null;
-  if (!dbProphet) {
-    const fallback = FALLBACK_PROPHETS
-      .map(mapFallbackProphet)
-      .find((item) => item.slug === slug);
-    return fallback ? { ...fallback, sections: [] } : null;
+  if (dbProphet) {
+    const dbSections = await supabaseServerAnonRequest<ProphetRow[]>(
+      `/rest/v1/prophet_sections?prophet_id=eq.${encodeURIComponent(dbProphet.id)}&select=id,prophet_id,title_ar,title_en,content_ar,content_en,section_type,order_num&order=order_num.asc`,
+    ).catch((error) => {
+      console.error("[prophets] Failed to fetch prophet sections:", error);
+      return [];
+    });
+
+    const sections = dbSections.map(mapSectionRow);
+    return {
+      ...dbProphet,
+      sections: sections.length ? sections : localSections,
+    };
   }
 
-  const sections = await supabaseServerAnonRequest<ProphetRow[]>(
-    `/rest/v1/prophet_sections?prophet_id=eq.${encodeURIComponent(dbProphet.id)}&select=id,prophet_id,title_ar,title_en,content_ar,content_en,section_type,order_num&order=order_num.asc`,
-  ).catch((error) => {
-    console.error("[prophets] Failed to fetch prophet sections:", error);
-    return [];
-  });
+  if (localProphet) return { ...localProphet, sections: localSections };
 
-  return {
-    ...dbProphet,
-    sections: sections.map(mapSectionRow),
-  };
+  const fallback = FALLBACK_PROPHETS
+    .map(mapFallbackProphet)
+    .find((item) => item.slug === cleanSlug);
+  return fallback ? { ...fallback, sections: [] } : null;
 }
-
 export async function getProphetsWithStats(): Promise<ProphetWithStats[]> {
   const prophets = await getProphets();
   if (!prophets.length) return [];
