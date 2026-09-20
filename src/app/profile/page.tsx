@@ -79,12 +79,17 @@ export default async function ProfilePage({
 
   // Profile rows are created by the server-side auth callback/trigger. Avoid a
   // write during a read-only page render: it adds latency and can race RLS.
-  const [profileRes, favoritesRes, progressRes] = await Promise.all([
+  const [profileRes, assignmentRes, favoritesRes, progressRes] = await Promise.all([
     supabase
       .from('profiles')
       .select('display_name, avatar_url, role, created_at')
       .eq('id', user.id)
       .limit(1),
+    supabase
+      .from('admin_role_assignments')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle(),
     supabase
       .from('favorites')
       .select('id, item_type, item_ref, created_at')
@@ -100,12 +105,15 @@ export default async function ProfilePage({
   ]);
 
   const profile = profileRes.data?.[0] ?? null;
+  const assignedRole = typeof assignmentRes.data?.role === 'string'
+    ? assignmentRes.data.role
+    : null;
   const favList: Favorite[] = favoritesRes.data ?? [];
   const progressList: ReadingProgress[] = progressRes.data ?? [];
   const favCount = favList.length;
   const progressCount = progressList.length;
 
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = profile?.role === 'admin' || Boolean(assignedRole);
   const userMetadata = user.user_metadata ?? {};
   const displayName =
     profile?.display_name ??
