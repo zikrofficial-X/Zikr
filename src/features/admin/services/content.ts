@@ -107,3 +107,50 @@ export async function getManagedContent(): Promise<ManagedContentItem[]> {
     return [];
   }
 }
+
+
+export type AdminContentApiItem = {
+  id: string;
+  title: string;
+  type: "story" | "article";
+  status: "published" | "draft";
+  views: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function getAdminContentApi(): Promise<AdminContentApiItem[]> {
+  const supabase = await createClient();
+  const [storiesRes, articlesRes] = await Promise.all([
+    supabase
+      .from("stories")
+      .select("id, title, published, views, created_at, updated_at"),
+    supabase
+      .from("articles")
+      .select("id, title, published, views, created_at, updated_at"),
+  ]);
+
+  if (storiesRes.error) throw storiesRes.error;
+  if (articlesRes.error) throw articlesRes.error;
+
+  return [
+    ...(storiesRes.data ?? []).map((row) => ({
+      id: row.id,
+      title: row.title,
+      type: "story" as const,
+      status: row.published ? ("published" as const) : ("draft" as const),
+      views: row.views ?? 0,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    })),
+    ...(articlesRes.data ?? []).map((row) => ({
+      id: row.id,
+      title: row.title,
+      type: "article" as const,
+      status: row.published ? ("published" as const) : ("draft" as const),
+      views: row.views ?? 0,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    })),
+  ];
+}
