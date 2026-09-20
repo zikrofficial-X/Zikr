@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createClient } from "@/lib/supabase/server";
+
 const RELEASES_API_BASE =
   "https://api.github.com/repos/Zikrmediaofficial/Zikr/releases";
 const TAG_RELEASE_API =
@@ -7,8 +9,6 @@ const TAG_RELEASE_API =
 const ASSET_API_BASE =
   "https://api.github.com/repos/Zikrmediaofficial/Zikr/releases/assets";
 const MAX_RELEASE_PAGES = 3;
-
-import { createClient } from "@/lib/supabase/server";
 
 export type GitHubReleaseAsset = {
   id?: number;
