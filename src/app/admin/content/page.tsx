@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SectionHeader } from '@/components/ui/section-header';
 import { requireAdminPermission } from '@/features/admin/services/admin';
-import { getManagedContent, type ManagedContentItem } from '@/features/admin/services/content';
+import { getManagedContent } from '@/features/admin/services/content';
 import { safeDeleteContentAction, safeTogglePublishAction } from '../content-actions';
 
 export const metadata: Metadata = { title: 'إدارة المحتوى | الأدمن' };
