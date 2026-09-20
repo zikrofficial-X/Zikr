@@ -1,6 +1,9 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import {
+  createClient,
+  supabaseServerAdminRequest,
+} from "@/lib/supabase/server";
 
 export type ManagedContentItem = {
   id: string;
@@ -120,21 +123,37 @@ export type AdminContentApiItem = {
 };
 
 export async function getAdminContentApi(): Promise<AdminContentApiItem[]> {
-  const supabase = await createClient();
-  const [storiesRes, articlesRes] = await Promise.all([
-    supabase
-      .from("stories")
-      .select("id, title, published, views, created_at, updated_at"),
-    supabase
-      .from("articles")
-      .select("id, title, published, views, created_at, updated_at"),
+  const [stories, articles] = await Promise.all([
+    supabaseServerAdminRequest<
+      Array<{
+        id: string;
+        title: string;
+        published: boolean | null;
+        views: number | null;
+        created_at: string;
+        updated_at: string;
+      }>
+    >(
+      "/rest/v1/stories?select=id,title,published,views,created_at,updated_at",
+      { method: "GET" },
+    ),
+    supabaseServerAdminRequest<
+      Array<{
+        id: string;
+        title: string;
+        published: boolean | null;
+        views: number | null;
+        created_at: string;
+        updated_at: string;
+      }>
+    >(
+      "/rest/v1/articles?select=id,title,published,views,created_at,updated_at",
+      { method: "GET" },
+    ),
   ]);
 
-  if (storiesRes.error) throw storiesRes.error;
-  if (articlesRes.error) throw articlesRes.error;
-
   return [
-    ...(storiesRes.data ?? []).map((row) => ({
+    ...stories.map((row) => ({
       id: row.id,
       title: row.title,
       type: "story" as const,
@@ -143,7 +162,7 @@ export async function getAdminContentApi(): Promise<AdminContentApiItem[]> {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     })),
-    ...(articlesRes.data ?? []).map((row) => ({
+    ...articles.map((row) => ({
       id: row.id,
       title: row.title,
       type: "article" as const,
@@ -187,17 +206,14 @@ export async function toggleManagedContent(
   optimisticUpdatedAt?: string | null,
 ): Promise<void> {
   assertManagedContentTarget(table, id);
-  const supabase = await createClient();
-
   if (optimisticUpdatedAt) {
-    const result = await supabase
-      .from(table)
-      .select("id")
-      .eq("id", id)
-      .eq("updated_at", optimisticUpdatedAt)
-      .maybeSingle();
-    if (result.error) throw result.error;
-    if (!result.data) {
+    const result = await supabaseServerAdminRequest<Array<{ id: string }>>(
+      `/rest/v1/${table}?id=eq.${encodeURIComponent(
+        id,
+      )}&updated_at=eq.${encodeURIComponent(optimisticUpdatedAt)}&select=id`,
+      { method: "GET" },
+    );
+    if (result.length === 0) {
       throw new Error(
         "تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
       );
@@ -205,12 +221,20 @@ export async function toggleManagedContent(
   }
 
   const column = table === "pinned_messages" ? "is_active" : "published";
-  const { error } = await supabase
-    .from(table)
-    .update({ [column]: published, updated_at: new Date().toISOString() })
-    .eq("id", id);
-
-  if (error) throw error;
+  await supabaseServerAdminRequest(
+    `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        [column]: published,
+        updated_at: new Date().toISOString(),
+      }),
+    },
+  );
 }
 
 export async function deleteManagedContent(
@@ -219,35 +243,37 @@ export async function deleteManagedContent(
   optimisticUpdatedAt?: string | null,
 ): Promise<void> {
   assertManagedContentTarget(table, id);
-  const supabase = await createClient();
   const column = table === "pinned_messages" ? "is_active" : "published";
 
-  const current = await supabase
-    .from(table)
-    .select(`id,${column},updated_at`)
-    .eq("id", id)
-    .maybeSingle();
+  const current = await supabaseServerAdminRequest<
+    Array<Record<string, unknown>>
+  >(
+    `/rest/v1/${table}?select=id,${column},updated_at&id=eq.${encodeURIComponent(
+      id,
+    )}&limit=1`,
+    { method: "GET" },
+  );
 
-  if (current.error) throw current.error;
-  if (!current.data) throw new Error("العنصر غير موجود.");
-  if (Boolean(current.data[column])) {
+  if (!current[0]) throw new Error("العنصر غير موجود.");
+  if (Boolean(current[0][column])) {
     throw new Error(
       "لا يمكن حذف عنصر منشور. قم بإخفائه أولاً ثم أعد المحاولة.",
     );
   }
   if (
     optimisticUpdatedAt &&
-    String(current.data.updated_at) !== optimisticUpdatedAt
+    String(current[0].updated_at) !== optimisticUpdatedAt
   ) {
     throw new Error(
       "تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
     );
   }
 
-  const { error } = await supabase
-    .from(table)
-    .delete()
-    .eq("id", id);
-
-  if (error) throw error;
+  await supabaseServerAdminRequest(
+    `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    },
+  );
 }
