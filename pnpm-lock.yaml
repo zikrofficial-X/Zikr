@@ -57,8 +57,8 @@ importers:
         specifier: 7.0.5
         version: 7.0.5(@capacitor/core@7.4.3)
       '@capacitor/status-bar':
-        specifier: 7.0.2
-        version: 7.0.2(@capacitor/core@7.4.3)
+        specifier: 7.0.6
+        version: 7.0.6(@capacitor/core@7.4.3)
       '@capawesome/capacitor-background-task':
         specifier: 7.0.1
         version: 7.0.1(@capacitor/core@7.4.3)
@@ -329,8 +329,8 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
-  '@capacitor/status-bar@7.0.2':
-    resolution: {integrity: sha512-fYYkkdzCbQV+MjZVnaQTFl5I4bddnFW8ZrPVxDjNoGVPTUG7H58Ij1+NcuNxHLXjJvZOoZeYJ3w3I16Wb2zssw==}
+  '@capacitor/status-bar@7.0.6':
+    resolution: {integrity: sha512-7AVqj46b26QikImQzWfsJmzG8NUJZBGkrVSuoeTo+SX/YH3hXH0MqwwFgMqMGHfa/BICDgSvTjM9miVFlq0+RQ==}
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
@@ -3072,7 +3072,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 7.4.3
 
-  '@capacitor/status-bar@7.0.2(@capacitor/core@7.4.3)':
+  '@capacitor/status-bar@7.0.6(@capacitor/core@7.4.3)':
     dependencies:
       '@capacitor/core': 7.4.3
 
