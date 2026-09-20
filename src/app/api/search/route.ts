@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       }
       return jsonSearch(finalResults);
     } catch (error) {
-      console.warn('[api/search] Supabase unavailable; using Quran API fallback:', error);
+      console.warn('[api/search] Supabase unavailable; using local Quran fallback:', error);
       const quranResults = await searchLocalQuran(query, 'ar');
       const results = quranResults.slice(0, 10).map((result) => ({
         id: `${result.number}-${result.numberInSurah}`,
