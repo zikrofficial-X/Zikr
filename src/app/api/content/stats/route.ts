@@ -1,33 +1,7 @@
-import { NextResponse } from "next/server";
 import { getContentStats } from "@/features/content/services/stats";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-
-const CONTENT_TABLES = {
-  quranSurahs: "quran_surahs",
-  quranAyahs: "quran_ayahs",
-  quranTafsir: "quran_tafsir",
-  hadiths: "hadiths",
-  duas: "duas",
-  articles: "articles",
-  prophets: "prophets",
-  companions: "companions",
-  scholars: "scholars",
-  battles: "battles",
-  conquests: "conquests",
-  kidsContent: "kids_content",
-} as const;
-
-const PUBLISHED_TABLES = new Set([
-  "articles",
-  "duas",
-  "prophets",
-  "companions",
-  "scholars",
-  "battles",
-  "conquests",
-  "kids_content",
-]);
 
 export async function GET() {
   try {
