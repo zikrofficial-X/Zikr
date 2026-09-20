@@ -1,4 +1,8 @@
-import { playAzanClip, playDhikrClip } from "@/lib/audio/spiritual-tones";
+import {
+  playAzanClip,
+  playDhikrClip,
+  playSalawatClip,
+} from "@/lib/audio/spiritual-tones";
 import { getAudioSlotForNotification, getNativeAudio } from '@/lib/audio/config';
 
 export type NotificationPermission =
@@ -75,7 +79,6 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   return Notification.requestPermission() as Promise<NotificationPermission>;
 }
 
-
 /**
  * Returns true if the current time falls within the quiet-hours window.
  * Handles windows that cross midnight (e.g. 22:00–06:00).
@@ -94,7 +97,6 @@ export function isInQuietHours(from: string, to: string): boolean {
     if (fromMin <= toMin) {
       return nowMin >= fromMin && nowMin < toMin;
     } else {
-      // Crosses midnight
       return nowMin >= fromMin || nowMin < toMin;
     }
   } catch {
@@ -102,7 +104,6 @@ export function isInQuietHours(from: string, to: string): boolean {
   }
 }
 
-/** Show a browser/native notification for a prayer time. No-ops gracefully if not granted. */
 export async function showPrayerNotification(
   prayerNameAr: string,
 ): Promise<void> {
@@ -129,7 +130,6 @@ export async function showPrayerNotification(
   }
 }
 
-/** Show a browser/native notification reminding the user their zakat is due. */
 export function showZakatNotification(daysLeft: number): void {
   if (typeof window === "undefined") return;
 
@@ -157,7 +157,6 @@ export function showZakatNotification(daysLeft: number): void {
   );
 }
 
-/** Show a browser/native notification with a rotating dhikr phrase. */
 export async function showDhikrNotification(text: string): Promise<void> {
   if (typeof window === "undefined") return;
 
@@ -181,7 +180,6 @@ export async function showDhikrNotification(text: string): Promise<void> {
   }
 }
 
-/** Show a browser/native notification for the Salawat reminder. */
 export async function showSalawatNotification(): Promise<void> {
   if (typeof window === "undefined") return;
 
