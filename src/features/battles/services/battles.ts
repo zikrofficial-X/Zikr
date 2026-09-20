@@ -168,7 +168,7 @@ export async function getBattles(): Promise<BattleRecord[]> {
   const database = await getDatabaseBattles();
   if (!database.length) return offline;
 
-  return mergePublishedBySlug(offline, database);
+  return mergePublishedBySlug(database, offline);
 }
 
 export async function getBattleBySlug(
