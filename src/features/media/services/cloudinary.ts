@@ -1,3 +1,5 @@
+import "server-only";
+
 import 'server-only';
 
 import { getServerEnv } from '@/lib/env';
