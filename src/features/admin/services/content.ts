@@ -134,7 +134,7 @@ export async function getAdminContentApi(): Promise<AdminContentApiItem[]> {
         updated_at: string;
       }>
     >(
-      "/rest/v1/stories?select=id,title,published,views,created_at,updated_at",
+      "/rest/v1/stories?select=id,title,published,views,created_at,updated_at&limit=300",
       { method: "GET" },
     ),
     supabaseServerAdminRequest<
@@ -147,7 +147,7 @@ export async function getAdminContentApi(): Promise<AdminContentApiItem[]> {
         updated_at: string;
       }>
     >(
-      "/rest/v1/articles?select=id,title,published,views,created_at,updated_at",
+      "/rest/v1/articles?select=id,title,published,views,created_at,updated_at&limit=300",
       { method: "GET" },
     ),
   ]);
