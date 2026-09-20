@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getCurrentProfileData } from '@/features/profile/services/profile';
 import { requireSupabaseAuth } from '@/lib/supabase/guard';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -55,42 +56,30 @@ export async function GET() {
   if (unauthenticated) return unauthenticated;
 
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const profileData = await getCurrentProfileData();
+    if (!profileData) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select(PROFILE_SELECT)
-      .eq('id', user.id)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-
-    if (profile) {
-      return NextResponse.json({ ...profile, email: user.email ?? null });
-    }
-
-    const metadata = user.user_metadata ?? {};
+    const profile = profileData.profile;
+    const metadata = profileData.user.user_metadata;
     const now = new Date().toISOString();
 
     return NextResponse.json({
-      id: user.id,
-      email: user.email ?? null,
+      id: profileData.user.id,
+      email: profileData.user.email,
       display_name:
+        profile?.display_name ??
         getUserMetadataValue(metadata, 'display_name', 'full_name', 'name') ??
-        user.email?.split('@')[0] ??
+        profileData.user.email?.split('@')[0] ??
         null,
-      avatar_url: getUserMetadataValue(metadata, 'avatar_url', 'picture'),
-      locale: 'ar',
-      role: 'user',
-      created_at: user.created_at ?? now,
-      updated_at: now,
+      avatar_url:
+        profile?.avatar_url ??
+        getUserMetadataValue(metadata, 'avatar_url', 'picture'),
+      locale: profile?.locale ?? 'ar',
+      role: profile?.role ?? 'user',
+      created_at: profile?.created_at ?? profileData.user.created_at ?? now,
+      updated_at: profile?.updated_at ?? now,
     });
   } catch (error) {
     console.error('[api/user/profile] GET error:', error);
