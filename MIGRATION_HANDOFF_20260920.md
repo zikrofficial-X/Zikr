@@ -4,7 +4,7 @@
 - Current repository: `Zikrmediaofficial/Zikr`
 - Default branch: `main`
 - Migration branch: `migration-ready-20260920`
-- Migration source HEAD: `58ec29514a9738a96e798b8c59e847a13b30fbe1`
+- Migration source HEAD: `b585a88949729887737111c9be9ce6470828a702`
 - Migration branch was created from the verified repository HEAD; the old `finalization-src-20260920` ref is not currently present as a GitHub branch.
 
 ## What is ready
@@ -39,6 +39,15 @@ Reconfigure protected values in the new environment:
 - Site: https://zikrmediaofficial.vercel.app
 - Supabase Auth site URL and redirect contract is tracked in `supabase/config.toml`.
 - Native callback: `com.zikr.app://auth/callback`
+
+## Build fixes included in migration HEAD
+- Strict JSX/database row types for `src/app/admin/knowledge/page.tsx` and its service.
+- Nullable GitHub Android release narrowing in `src/app/api/app-version/route.ts`.
+- Discriminated-union narrowing in `src/app/api/user/favorites/route.ts`.
+- Restored and typed age-group helper in `src/app/kids/page.tsx`.
+- Nullable Supabase prophet catalogue guard in `src/features/prophets/services/prophets.ts`.
+- Nullable audio source normalized to `undefined` in `src/features/quran/components/audio-player.tsx`.
+- Reminder service validation now honors its declared `{ ok, error }` result contract.
 
 ## Post-transfer validation
 Run in the new checkout:
