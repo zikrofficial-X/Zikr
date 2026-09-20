@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   getPrimaryContentSource,
   getPublicContentBySlug,
+  getPublicContentLibrary,
 } from "@/features/content-library/services/content-library";
 import { pageMetadata } from "@/lib/site";
 import type { Metadata } from "next";
@@ -29,10 +30,7 @@ export async function generateMetadata({
 }
 
 export async function generateStaticParams() {
-  const items = await import(
-    "@/features/content-library/services/content-library"
-  ).then(({ getPublicContentLibrary }) => getPublicContentLibrary(100));
-
+  const items = await getPublicContentLibrary(100);
   return items.map((item) => ({ slug: item.slug }));
 }
 
