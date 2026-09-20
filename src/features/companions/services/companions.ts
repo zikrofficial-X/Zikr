@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { mergePublishedBySlug } from "@/lib/data/content-merge";
 import { COMPANIONS } from "@/features/companions/data/fallback";
 import { uniqueCompanionSummaries } from "@/features/companions/utils/companions";
@@ -178,7 +178,7 @@ export async function getPublishedCompanions(): Promise<CompanionSummary[]> {
     console.error("[companions] Offline catalogue unavailable:", error);
   }
 
-  const database = await getDatabaseCompanions();
+  const database = isSupabaseConfigured() ? await getDatabaseCompanions() : [];
   if (database.length) return mergePublishedBySlug(database, offline);
 
   return offline.length ? offline : FALLBACK_COMPANIONS;
