@@ -13,16 +13,7 @@ import { safeDeleteContentAction, safeTogglePublishAction } from '../content-act
 
 export const metadata: Metadata = { title: 'إدارة المحتوى | الأدمن' };
 
-interface ContentItem {
-  id: string;
-  title: string;
-  published: boolean;
-  views: number;
-  created_at: string;
-  updated_at: string;
-  type: string;
-  table: 'stories' | 'articles' | 'competitions' | 'memorization_plans' | 'pinned_messages';
-}
+
 
 export default async function ContentPage() {
   await requireAdminPermission('content.manage');
