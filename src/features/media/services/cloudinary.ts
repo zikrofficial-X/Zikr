@@ -51,8 +51,9 @@ export async function uploadCloudinaryImage(params: {
   folder: string;
   publicId: string;
   tags?: string[];
+  maxBytes?: number;
 }): Promise<CloudinaryImageUpload> {
-  validateCloudinaryImage(params.file);
+  validateCloudinaryImage(params.file, params.maxBytes);
   const { cloudName, apiKey, apiSecret } = cloudinaryConfig();
 
   const form = new FormData();
