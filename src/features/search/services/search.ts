@@ -43,7 +43,7 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
       labelAr: "آية",
       title: surah.text.slice(0, 90),
       subtitle: `القرآن الكريم — آية ${surah.numberInSurah}`,
-      href: `/quran/${surah.surahNumber ?? Math.floor(surah.number / 1000) || 1}`,
+      href: "/quran",
     });
   }
 
