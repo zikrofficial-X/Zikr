@@ -5,8 +5,14 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { requireAdmin } from '@/features/admin/services/admin';
-import { createClient } from '@/lib/supabase/server';
-import { getAdminProphets, type AdminProphet, ADMIN_STATIC_PROPHETS } from '@/features/admin/services/prophets';
+import {
+  ADMIN_STATIC_PROPHETS,
+  getAdminProphets,
+  saveAdminProphetVideo,
+  setAdminProphetPublished,
+  type AdminProphet,
+} from '@/features/admin/services/prophets';
+import { parseYouTubeVideoId } from '@/features/admin/services/youtube';
 import { revalidatePath } from 'next/cache';
 
 type Prophet = AdminProphet;
@@ -21,20 +27,8 @@ async function saveProphetVideoAction(formData: FormData) {
   const rawUrl = String(formData.get('youtube_url') ?? '').trim();
   if (!id) return;
 
-  let videoId: string | null = null;
-  if (rawUrl) {
-    const match = rawUrl.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
-    videoId = match ? match[1] : (rawUrl.length >= 11 ? rawUrl.slice(0, 11) : null);
-  }
-
-  const supabase = await createClient();
-  const { data: current } = await supabase.from('prophets').select('metadata').eq('id', id).single();
-  const existingMeta = (current?.metadata as Record<string, string> | null) ?? {};
-  const newMeta = videoId
-    ? { ...existingMeta, youtube_video_id: videoId }
-    : Object.fromEntries(Object.entries(existingMeta).filter(([k]) => k !== 'youtube_video_id'));
-
-  await supabase.from('prophets').update({ metadata: newMeta, updated_at: new Date().toISOString() }).eq('id', id);
+  const videoId = parseYouTubeVideoId(rawUrl);
+  await saveAdminProphetVideo(id, videoId);
 
   revalidatePath('/admin/prophets');
   revalidatePath('/prophets');
@@ -47,8 +41,7 @@ async function toggleProphetPublishAction(formData: FormData) {
   const next = formData.get('next') === 'true';
   if (!id) return;
 
-  const supabase = await createClient();
-  await supabase.from('prophets').update({ published: next, updated_at: new Date().toISOString() }).eq('id', id);
+  await setAdminProphetPublished(id, next);
 
   revalidatePath('/admin/prophets');
   revalidatePath('/prophets');
@@ -77,17 +70,7 @@ function Field({ name, label, placeholder, defaultValue }: { name: string; label
 export default async function AdminProphetsPage() {
   await requireAdmin();
 
-  let prophets: Prophet[] = [];
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from('prophets')
-      .select('id,name_ar,name_en,slug,order_num,published,bio_ar,metadata')
-      .order('order_num', { ascending: true });
-    prophets = data ?? [];
-  } catch {
-    prophets = [];
-  }
+  const prophets: Prophet[] = await getAdminProphets();
 
   // Static fallback list for when DB has no rows
   const staticProphets = ADMIN_STATIC_PROPHETS;
