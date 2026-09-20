@@ -5,18 +5,11 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { requireAdmin } from '@/features/admin/services/admin';
-import { createClient } from '@/lib/supabase/server';
+import { getAdminBattles, type AdminBattle, ADMIN_STATIC_BATTLES } from '@/features/admin/services/battles';
 import { revalidatePath } from 'next/cache';
 
-type Battle = {
-  id: string;
-  name_ar: string;
-  name_en: string | null;
-  slug: string;
-  year_hijri: number | null;
-  published: boolean;
-  metadata: Record<string, string> | null;
-};
+type Battle = AdminBattle;
+
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
@@ -65,27 +58,11 @@ async function toggleBattlePublishAction(formData: FormData) {
 export default async function AdminBattlesPage() {
   await requireAdmin();
 
-  let battles: Battle[] = [];
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from('battles')
-      .select('id,name_ar,name_en,slug,year_hijri,published,metadata')
-      .order('year_hijri', { ascending: true });
-    battles = data ?? [];
-  } catch {
-    battles = [];
-  }
+  const battles = await getAdminBattles();
+
 
   // Use the same canonical fallback slugs as the public content routes.
-  const staticBattles = [
-    { slug: 'badr', name_ar: 'غزوة بدر الكبرى', year_hijri: 2 },
-    { slug: 'uhud', name_ar: 'غزوة أحد', year_hijri: 3 },
-    { slug: 'khandaq', name_ar: 'غزوة الخندق (الأحزاب)', year_hijri: 5 },
-    { slug: 'khaybar', name_ar: 'غزوة خيبر', year_hijri: 7 },
-    { slug: 'hunayn', name_ar: 'غزوة حنين', year_hijri: 8 },
-    { slug: 'tabuk', name_ar: 'غزوة تبوك', year_hijri: 9 },
-  ];
+  const staticBattles = ADMIN_STATIC_BATTLES;
 
   const hasBattles = battles.length > 0;
 
