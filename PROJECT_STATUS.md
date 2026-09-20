@@ -1,10 +1,19 @@
 # ZIKR — Current Project Status
 
-**Last audited:** 19 September 2026  
+**Finalization branch under review:** `finalization-src-20260920`
+**Current finalization HEAD:** `4efd9a40b6009f702b98217ac6feb782619d1e75`
+**Branch relation:** 72 commits ahead of `main`, 0 behind.
+
+
+**Last audited:** 20 September 2026  
 **Canonical branch:** `main`  
 **Repository:** `Zikrmediaofficial/Zikr`
 
 ## Current state
+
+The finalization branch is being reviewed as the clean integration branch. Public content modules are being consolidated around canonical feature services and tracked offline snapshots, with duplicated page-local catalogues removed where equivalent repository data already exists.
+
+The current HEAD has not yet been certified by a fresh Vercel build after the latest changes. Static inspection of the modified paths is complete; a successful build and route smoke pass are still required before the branch is declared final.
 
 The repository has been consolidated onto a single canonical branch. Obsolete feature wrappers, duplicate assets, legacy hook/service paths, and root-level historical release clutter were removed or archived.
 
@@ -57,6 +66,8 @@ The existing `tasks` and `user_behavior` tables were intentionally retained beca
 
 ## Content and data
 
+Tracked offline content currently includes 114 Quran surahs / 6236 ayahs, 9 hadith books / 2964 hadith records in the tracked snapshot, 25 prophets / 150 story sections, 11 companions / 21 companion stories, 21 battles / 104 battle events, 19 conquests / 60 conquest events, 23 duas, 26 articles, 2 tafsir sources, and 28 kids records.
+
 Current populated production content includes Quran tafsir/audio, hadiths, stories, articles, prophets, companions, battles, conquests, duas, scholars, children's content/games, tawasheeh, social-sync queues, and prayer notification history.
 
 The last recorded production audit reported `quran_surahs` = 114, `quran_ayahs` = 6236, `quran_reciters` = 7, `quran_audio` = 798, and `quran_tafsir` = 6236. These live counts were not re-queried during this pass because the current Supabase management connector does not have sufficient permissions. The surah catalog now has canonical `ayahs_count` metadata totaling 6236, with no zero/null counts. Quran audio covers all 114 surahs for all 7 current reciters, with no duplicate `(surah_id, reciter_id)` pairs.
@@ -67,7 +78,7 @@ Capacitor runtime packages are on major version 7, while the repository pins `@c
 
 ## Deployment
 
-Vercel's last READY production deployment is still commit `2dec7d45c57a01927f10b499ca405e6b07c31739`; the current `main` repair commits have been pushed to GitHub but are not yet present in a newer READY deployment. The last available Vercel runtime-error query showed no grouped runtime errors in the selected 24-hour window; newer deployment attempts were previously blocked by the Vercel build-rate limit.
+Recent Vercel deployments for `finalization-src-20260920` are ERROR on older branch commits. No newer READY deployment for the current finalization HEAD was present during this audit.
 
 ## Canonical Quran storage
 
