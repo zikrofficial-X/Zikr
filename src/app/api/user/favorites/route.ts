@@ -14,9 +14,7 @@ function isFavoriteItemType(value: unknown): value is FavoriteItemType {
     value === "hadith" ||
     value === "story" ||
     value === "scholar" ||
-    value === "dua" ||
-    value === "article" ||
-    value === "video"
+    value === "dua"
   );
 }
 
