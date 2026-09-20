@@ -4,13 +4,6 @@ import { getAudioSlotForNotification, getNativeAudio } from '@/lib/audio/config'
 export type NotificationPermission =
   "granted" | "denied" | "default" | "unsupported";
 
-export interface NotificationPreference {
-  prayerReminders: boolean;
-  adhkarReminders: boolean;
-  quranReminders: boolean;
-  quietHours?: { from: string; to: string };
-}
-
 type NativeNotificationFacade = {
   requestNotificationPermission?: () => Promise<unknown>;
   scheduleLocalNotification?: (notification: {
@@ -25,12 +18,6 @@ type NativeNotificationFacade = {
 
 type NativeNotificationWindow = Window & {
   zikrNative?: NativeNotificationFacade;
-};
-
-const DEFAULT_PREFERENCE: NotificationPreference = {
-  prayerReminders: true,
-  adhkarReminders: true,
-  quranReminders: false,
 };
 
 function notificationId(seed: string): number {
@@ -88,15 +75,6 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   return Notification.requestPermission() as Promise<NotificationPermission>;
 }
 
-export async function saveNotificationPreference(
-  preference: Partial<NotificationPreference>
-): Promise<NotificationPreference> {
-  const merged = { ...DEFAULT_PREFERENCE, ...preference };
-  if (typeof window !== "undefined") {
-    localStorage.setItem("zikr_notification_pref", JSON.stringify(merged));
-  }
-  return merged;
-}
 
 /**
  * Returns true if the current time falls within the quiet-hours window.
