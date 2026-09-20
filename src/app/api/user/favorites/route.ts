@@ -2,6 +2,7 @@ import {
   addCurrentUserFavorite,
   getCurrentUserFavorites,
   removeCurrentUserFavorite,
+  removeCurrentUserFavoriteById,
   type FavoriteItemType,
 } from "@/features/favorites/services/favorites";
 import { requireSupabaseAuth } from "@/lib/supabase/guard";
@@ -77,8 +78,27 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const searchParams = request.nextUrl.searchParams;
+    const id = searchParams.get("id");
     const itemRef = searchParams.get("item_ref") ?? searchParams.get("itemRef");
-    const itemTypeValue = searchParams.get("item_type") ?? searchParams.get("itemType") ?? "quran";
+    const itemTypeValue =
+      searchParams.get("item_type") ?? searchParams.get("itemType") ?? "quran";
+
+    if (id) {
+      const result = await removeCurrentUserFavoriteById(id);
+      if (result.error === "Unauthorized") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (result.error === "Invalid") {
+        return NextResponse.json({ error: "Invalid favorite id" }, { status: 400 });
+      }
+      if (!result.ok) {
+        return NextResponse.json(
+          { error: "Failed to delete favorite" },
+          { status: 500 },
+        );
+      }
+      return new NextResponse(null, { status: 204 });
+    }
 
     if (!itemRef || !isFavoriteItemType(itemTypeValue)) {
       return NextResponse.json(
