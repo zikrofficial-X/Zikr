@@ -2,9 +2,9 @@
 
 ## Branch state
 - Branch: `finalization-src-20260920`
-- HEAD at checkpoint creation: `e74bea62d9a17317cde40b4ef85ae4a90d5a945d`
-- HEAD commit: `chore: normalize release service import order`
-- Ahead of `main`: 247
+- HEAD at checkpoint creation: `402bb24e26a2c70009332ed5fa49a884d2494f81`
+- HEAD commit: `fix: mark storage service server-only`
+- Ahead of `main`: 253
 - Behind `main`: 0
 
 ## Finalization scope
