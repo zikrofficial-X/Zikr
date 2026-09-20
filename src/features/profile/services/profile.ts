@@ -1,6 +1,9 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import {
+  createAdminClient,
+  createClient,
+} from "@/lib/supabase/server";
 
 export type ProfileFavorite = {
   id: string;
@@ -231,4 +234,53 @@ async function getAuthenticatedUserForProfile() {
   } = await supabase.auth.getUser();
   if (error || !user) return null;
   return { supabase, user };
+}
+
+
+export async function syncAuthProfile(
+  user: {
+    id: string;
+    email?: string | null;
+    user_metadata?: Record<string, unknown> | null;
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!user.id.trim()) return { ok: false, error: "Invalid user" };
+
+  const metadata =
+    user.user_metadata && typeof user.user_metadata === "object"
+      ? user.user_metadata
+      : {};
+
+  const displayName =
+    typeof metadata.full_name === "string"
+      ? metadata.full_name.trim()
+      : typeof metadata.name === "string"
+        ? metadata.name.trim()
+        : null;
+
+  const avatarUrl =
+    typeof metadata.avatar_url === "string"
+      ? metadata.avatar_url.trim()
+      : typeof metadata.picture === "string"
+        ? metadata.picture.trim()
+        : null;
+
+  const adminClient = createAdminClient();
+  const { error } = await adminClient.from("profiles").upsert(
+    {
+      id: user.id,
+      email: user.email ?? null,
+      display_name: displayName || null,
+      avatar_url: avatarUrl || null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
+
+  if (error) {
+    console.error("[profile] auth sync failed:", error);
+    return { ok: false, error: "profile_sync_failed" };
+  }
+
+  return { ok: true };
 }
