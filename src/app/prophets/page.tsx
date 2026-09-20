@@ -110,7 +110,7 @@ export default async function ProphetsPage() {
               return (
                 <Link
                   key={prophet.id}
-                  href={"/prophets/" + canonicalProphetSlug(prophet.slug)}
+                  href={"/prophets/" + prophet.slug}
                   className="group block"
                 >
                   <article
