@@ -6,8 +6,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getRadioChannels, type RadioChannel } from '@/features/audio/services/radio';
 
-
-
 const stations = getRadioChannels();
 
 export default function RadioPage() {
@@ -99,7 +97,7 @@ export default function RadioPage() {
                 <h2 className='text-lg text-brand-gold'>{station.name}</h2>
                 <p className='text-sm leading-6 arabic-muted'>{station.description}</p>
               </div>
-              {current?.url === station.streamUrl && playing && (
+              {current?.streamUrl === station.streamUrl && playing && (
                 <span className='flex items-center gap-1 text-xs text-emerald-300'>
                   <span className='h-2 w-2 animate-pulse rounded-full bg-emerald-400' />
                   مباشر
@@ -108,10 +106,10 @@ export default function RadioPage() {
             </div>
             <Button
               onClick={() => playRadioChannel(station)}
-              variant={current?.url === station.streamUrl && playing ? 'secondary' : 'primary'}
+              variant={current?.streamUrl === station.streamUrl && playing ? 'secondary' : 'primary'}
               className='w-full'
             >
-              {current?.url === station.streamUrl && playing ? 'إيقاف' : 'استماع'}
+              {current?.streamUrl === station.streamUrl && playing ? 'إيقاف' : 'استماع'}
             </Button>
           </Card>
         ))}
