@@ -8,6 +8,8 @@ const ASSET_API_BASE =
   "https://api.github.com/repos/Zikrmediaofficial/Zikr/releases/assets";
 const MAX_RELEASE_PAGES = 3;
 
+import { createClient } from "@/lib/supabase/server";
+
 export type GitHubReleaseAsset = {
   id?: number;
   name?: string;
@@ -142,18 +144,23 @@ export async function getStableReleaseByTag(
 }
 
 export async function getAndroidReleaseSetting(): Promise<AndroidReleaseSetting> {
-  const token = getGitHubToken();
-  if (!token) {
-    return { mode: "auto", releaseTag: null };
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "android_release")
+      .maybeSingle();
+    const value = data?.value as AndroidReleaseSetting | null;
+    if (value?.mode === "pinned" && value.releaseTag) {
+      return { mode: "pinned", releaseTag: value.releaseTag };
+    }
+  } catch {
+    // Optional admin setting unavailable: use latest stable release.
   }
 
   return { mode: "auto", releaseTag: null };
 }
-
-/**
- * The website owns the optional pinned-release setting in Supabase. This
- * service only resolves GitHub release metadata; callers provide the setting.
- */
 export function selectAndroidRelease(
   latestStable: GitHubRelease | null,
   pinned: GitHubRelease | null,
