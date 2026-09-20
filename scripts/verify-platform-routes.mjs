@@ -102,7 +102,7 @@ function walk(dir, out = []) {
 }
 
 function normalizeRoutePath(file) {
-  const relativePath = relative(join(root, 'src', 'app'), file).replaceAll('\\\\', '/');
+  const relativePath = relative(join(root, 'src', 'app'), file).replaceAll('\\', '/');
   const suffix = relativePath.endsWith('/page.tsx')
     ? relativePath.slice(0, -'/page.tsx'.length)
     : relativePath.slice(0, -'/route.ts'.length);
@@ -110,7 +110,7 @@ function normalizeRoutePath(file) {
   const cleaned = suffix
     .split('/')
     .filter(Boolean)
-    .filter((segment) => !/^\\([^/]+\\)$/.test(segment))
+    .filter((segment) => !/^\([^/]+\)$/.test(segment))
     .filter((segment) => segment !== '_private')
     .join('/');
 
