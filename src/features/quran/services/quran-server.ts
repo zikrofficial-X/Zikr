@@ -300,6 +300,33 @@ export async function getAyahFromDb(
   }
 }
 
+type LocalTafsirRow = {
+  surah_id: number;
+  ayah_number: number;
+  tafsir_ar: string;
+  tafsir_en: string | null;
+  author: string | null;
+};
+
+let localTafsirPromise: Promise<LocalTafsirRow[]> | null = null;
+
+async function loadLocalTafsir(): Promise<LocalTafsirRow[]> {
+  if (!localTafsirPromise) {
+    localTafsirPromise = readFile(
+      path.join(process.cwd(), "public/offline-content/v1/tafsir.json"),
+      "utf8",
+    ).then((raw) => {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        throw new Error("Local tafsir corpus is invalid.");
+      }
+      return parsed as LocalTafsirRow[];
+    });
+  }
+
+  return localTafsirPromise;
+}
+
 export type QuranTafsirRecord = DbTafsir & {
   author: string | null;
   source_url: string | null;
@@ -308,17 +335,42 @@ export type QuranTafsirRecord = DbTafsir & {
 
 export async function getTafsirRecordFromDb(
   surahId: number,
-  ayahNumber: number
+  ayahNumber: number,
 ): Promise<QuranTafsirRecord | null> {
   try {
+    const local = await loadLocalTafsir();
+    const localRecord = local.find(
+      (row) =>
+        row.surah_id === surahId &&
+        row.ayah_number === ayahNumber &&
+        Boolean(row.tafsir_ar?.trim()),
+    );
+
+    if (localRecord) {
+      return {
+        tafsir_ar: localRecord.tafsir_ar,
+        tafsir_en: localRecord.tafsir_en,
+        author: localRecord.author,
+        source_url: null,
+        retrieved_at: null,
+      };
+    }
+  } catch (error) {
+    console.error(
+      `[quran-server] Local tafsir unavailable for ${surahId}:${ayahNumber}:`,
+      error,
+    );
+  }
+
+  try {
     const result = await quranDbRequest<QuranTafsirRecord[]>(
-      `/rest/v1/quran_tafsir?surah_id=eq.${surahId}&ayah_number=eq.${ayahNumber}&order=author.asc&limit=1&select=tafsir_ar,tafsir_en,author,source_url,retrieved_at`
+      `/rest/v1/quran_tafsir?surah_id=eq.${surahId}&ayah_number=eq.${ayahNumber}&order=author.asc&limit=1&select=tafsir_ar,tafsir_en,author,source_url,retrieved_at`,
     );
     return result?.[0] ?? null;
   } catch (error) {
     console.error(
       `[quran-server] getTafsirRecordFromDb failed for ${surahId}:${ayahNumber}:`,
-      error
+      error,
     );
     return null;
   }
@@ -335,8 +387,25 @@ export async function getTafsirFromDb(
 
 export async function getTafsirSourcesFromDb(): Promise<QuranTafsirSource[]> {
   try {
-    const rows = await quranDbRequest<Array<{ author: string | null; source_url: string | null }>>(
-      "/rest/v1/quran_tafsir?select=author,source_url&order=author.asc&limit=200"
+    const local = await loadLocalTafsir();
+    const byAuthor = new Map<string, QuranTafsirSource>();
+
+    for (const row of local) {
+      const author = row.author?.trim();
+      if (!author || byAuthor.has(author)) continue;
+      byAuthor.set(author, { author, sourceUrl: null });
+    }
+
+    if (byAuthor.size > 0) return [...byAuthor.values()];
+  } catch (error) {
+    console.error("[quran-server] Local tafsir source catalogue unavailable:", error);
+  }
+
+  try {
+    const rows = await quranDbRequest<
+      Array<{ author: string | null; source_url: string | null }>
+    >(
+      "/rest/v1/quran_tafsir?select=author,source_url&order=author.asc&limit=200",
     );
 
     const byAuthor = new Map<string, QuranTafsirSource>();
@@ -345,6 +414,7 @@ export async function getTafsirSourcesFromDb(): Promise<QuranTafsirSource[]> {
       if (!author || byAuthor.has(author)) continue;
       byAuthor.set(author, { author, sourceUrl: row.source_url ?? null });
     }
+
     return [...byAuthor.values()];
   } catch (error) {
     console.error("[quran-server] getTafsirSourcesFromDb failed:", error);
