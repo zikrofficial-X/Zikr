@@ -1,8 +1,8 @@
 # ZIKR — Current Project Status
 
 **Finalization branch under review:** `finalization-src-20260920`
-**Current finalization HEAD:** `e0c3ea1f800c5ef66008bfc08504fe90460bba04`
-**Branch relation:** 82 commits ahead of `main`, 0 behind.
+**Current finalization HEAD:** `2a72fb325fb47488aba3f1713a0a0a15fce322b9`
+**Branch relation:** 86 commits ahead of `main`, 0 behind.
 
 
 **Last audited:** 20 September 2026  
@@ -77,7 +77,7 @@ Capacitor runtime packages are on major version 7, while the repository pins `@c
 
 ## Deployment
 
-Current verification state: GitHub reports Vercel `failure` with the documented `build-rate-limit` account restriction, while `ci/circleci: ci-check` is `pending` for the current branch commit. A fresh successful build has therefore not yet certified this HEAD.
+Current verification state: GitHub reports Vercel `pending` on the current HEAD and `ci/circleci: ci-check` also `pending`. The connected Vercel deployment identifier exposed by the check could not be resolved through the connected deployment API during this audit, so a successful build is still unverified.
 
 ## Canonical Quran storage
 
