@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { unlockAudioContext, refreshSiteAudio } from "@/lib/audio/spiritual-tones";
+import { getNativeAudio } from "@/lib/audio/config";
 import {
   showSalawatNotification,
   isInQuietHours,
@@ -23,7 +24,6 @@ export interface SalawatSettings {
 }
 
 const SETTINGS_KEY = "zikr_salawat_settings";
-const SALAWAT_CHANNEL_ID = "zikr-salawat-v2";
 const SETTINGS_UPDATED_EVENT = "zikr:salawat-settings-updated";
 
 const DEFAULT_SETTINGS: SalawatSettings = {
@@ -104,6 +104,7 @@ async function scheduleNativeSalawatReminders(
   }
 
   const intervalMs = settings.intervalMinutes * 60 * 1000;
+  const nativeAudio = getNativeAudio("salawat");
   let next = new Date(Date.now() + intervalMs);
   let scheduledCount = 0;
   let attempts = 0;
@@ -116,8 +117,8 @@ async function scheduleNativeSalawatReminders(
           title: "تذكير بالصلاة على النبي",
           body: "صل على سيدنا محمد",
           scheduleAt: next.toISOString(),
-          sound: "salawat.wav",
-          channelId: SALAWAT_CHANNEL_ID,
+          sound: nativeAudio.sound,
+          channelId: nativeAudio.channelId,
         });
         scheduledCount += 1;
       } catch (error) {
