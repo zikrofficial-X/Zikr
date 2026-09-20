@@ -88,6 +88,17 @@ const requiredServerOnlyServices = [
   'src/features/spiritual-ai/services/gemini-client.ts',
   'src/features/spiritual-ai/services/retriever.ts',
   'src/features/wird/services/progress.ts',
+  'src/features/site-content/services/site-content.ts',
+  'src/features/hadith/services/hadith.ts',
+  'src/features/dua/services/dua.ts',
+  'src/features/articles/services/articles.ts',
+  'src/features/stories/services/stories.ts',
+  'src/features/companions/services/companions.ts',
+  'src/features/battles/services/battles.ts',
+  'src/features/conquests/services/conquests.ts',
+  'src/features/videos/services/videos.ts',
+  'src/features/prophets/services/prophets.ts',
+  'src/features/scholars/services/scholars.ts',
 ];
 for (const file of requiredServerOnlyServices) {
   const source = read(file);
