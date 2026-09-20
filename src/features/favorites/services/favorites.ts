@@ -102,6 +102,31 @@ export async function removeCurrentUserFavorite(
   return { ok: true };
 }
 
+export async function removeCurrentUserFavoriteById(
+  id: string,
+): Promise<{ ok: true } | { ok: false; error: "Unauthorized" | "Invalid" | "Failed" }> {
+  const session = await getAuthenticatedUser();
+  if (!session) return { ok: false, error: "Unauthorized" };
+
+  const normalizedId = id.trim();
+  if (!normalizedId || normalizedId.length > 200) {
+    return { ok: false, error: "Invalid" };
+  }
+
+  const { error } = await session.supabase
+    .from("favorites")
+    .delete()
+    .eq("user_id", session.user.id)
+    .eq("id", normalizedId);
+
+  if (error) {
+    console.error("[favorites] remove by id failed:", error);
+    return { ok: false, error: "Failed" };
+  }
+
+  return { ok: true };
+}
+
 export async function isCurrentUserFavorite(
   itemRef: string,
   itemType: FavoriteItemType = "quran",
