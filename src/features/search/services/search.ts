@@ -1,3 +1,5 @@
+import "server-only";
+
 import { getArticles } from "@/features/articles/services/articles";
 import { searchHadith } from "@/features/hadith/services/hadith";
 import { getDuas } from "@/features/dua/services/dua";
