@@ -250,7 +250,7 @@ export async function getProphetsWithStats(): Promise<ProphetWithStats[]> {
       .map((prophet) => prophet.id)
       .filter((id) => id.length > 0);
 
-    if (prophetIds.length) {
+    if (isSupabaseConfigured() && prophetIds.length) {
       const encodedIds = prophetIds.map(encodeURIComponent).join(",");
       const rows = await supabaseServerAnonRequest<
         Array<{ prophet_id: string; content_ar: string | null }>
