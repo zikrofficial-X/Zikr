@@ -6,53 +6,16 @@ import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Badge } from '@/components/ui/badge';
 import { requireAdmin } from '@/features/admin/services/admin';
-import { supabaseServerAdminCount } from '@/lib/supabase/server';
-import { createClient } from '@/lib/supabase/server';
+import { getAdminAnalytics } from '@/features/admin/services/analytics';
 
 export const metadata: Metadata = {
   title: 'تحليلات التطبيق | الأدمن',
 };
 
-interface TopArticle {
-  id: string;
-  title: string;
-  views: number;
-  slug: string;
-}
-
-async function getContentStats() {
-  const tables = ['articles', 'stories', 'duas', 'prophets', 'companions', 'scholars', 'videos', 'quran_surahs'] as const;
-  const counts = await Promise.all(tables.map((t) => supabaseServerAdminCount(t)));
-  return Object.fromEntries(tables.map((t, i) => [t, counts[i]]));
-}
-
-async function getTopArticles(): Promise<TopArticle[]> {
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from('articles')
-      .select('id, title, views, slug')
-      .eq('published', true)
-      .order('views', { ascending: false })
-      .limit(10);
-    return data ?? [];
-  } catch {
-    return [];
-  }
-}
-
-async function getUserCount(): Promise<number> {
-  return supabaseServerAdminCount('profiles');
-}
-
 export default async function AnalyticsPage() {
   await requireAdmin();
 
-  const [stats, topArticles, userCount] = await Promise.all([
-    getContentStats(),
-    getTopArticles(),
-    getUserCount(),
-  ]);
+  const { stats, topArticles, userCount } = await getAdminAnalytics();
 
   const contentCards = [
     { label: 'المستخدمون', value: userCount, note: 'حساب مسجل' },
