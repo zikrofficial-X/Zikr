@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { getKidsContent } from "@/features/kids/services/kids-content";
+import type { KidsItem } from "@/features/kids/data/content";
 
 const typeLabels: Record<string, string> = {
   story: "قصة",
@@ -38,6 +39,8 @@ export const metadata = pageMetadata({
 
 export default async function KidsPage() {
   const content = await getKidsContent();
+  const byAgeGroup = (ageGroup: KidsItem["age_group"]): KidsItem[] =>
+    content.filter((item) => item.age_group === ageGroup);
 
   return (
     <Container className="py-12 space-y-12">
@@ -118,7 +121,7 @@ export default async function KidsPage() {
               {label}
             </h2>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map(item => (
+              {items.map((item: KidsItem) => (
                 <Link key={item.id} href={`/kids/${item.slug}`}>
                   <Card className="h-full overflow-hidden hover:border-brand-gold/50 transition-colors cursor-pointer flex flex-col">
                     {item.featured_image_url && (
