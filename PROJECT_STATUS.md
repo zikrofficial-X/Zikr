@@ -1,8 +1,8 @@
 # ZIKR — Current Project Status
 
 **Finalization branch under review:** `finalization-src-20260920`
-**Current finalization HEAD:** `4efd9a40b6009f702b98217ac6feb782619d1e75`
-**Branch relation:** 72 commits ahead of `main`, 0 behind.
+**Current finalization HEAD:** `be8121c21340291730fe83da0e2b2f08e4c8747f`
+**Branch relation:** 78 commits ahead of `main`, 0 behind.
 
 
 **Last audited:** 20 September 2026  
@@ -30,7 +30,6 @@ Application verification is handled by the existing external CI/deployment syste
 - `supabase/migrations/` — canonical database migration chain.
 - `supabase/functions/` — active Edge Functions.
 - `scripts/` — deterministic verification and operational tooling.
-- `__tests__/` — automated tests.
 - `docs/releases/archive/` — historical release notes retained outside the product root.
 
 No legacy `src/hooks/` layer or duplicate `src/lib/services/` domain implementation layer remains.
