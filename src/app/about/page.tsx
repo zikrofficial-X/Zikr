@@ -4,6 +4,10 @@ import { ExternalLink } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { pageMetadata } from "@/lib/site";
+import { getProphets } from "@/features/prophets/services/prophets";
+import { getBattles } from "@/features/battles/services/battles";
+import { getConquests } from "@/features/conquests/services/conquests";
+import { getDuas } from "@/features/dua/services/dua";
 
 export const metadata: Metadata = pageMetadata({
   title: "عن منصة ذِكرٌ",
@@ -23,12 +27,24 @@ const features = [
   { icon: "👶", title: "قسم الأطفال", desc: "قصص وألعاب ومحتوى تعليمي مخصص لأبنائنا الصغار." },
 ];
 
-const stats = [
-  { num: "25", label: "نبي مذكور في القرآن" },
-  { num: "30+", label: "غزوة وفتح إسلامي" },
-  { num: "6236", label: "آية قرآنية" },
-  { num: "100+", label: "دعاء مأثور" },
-];
+async function getAboutStats() {
+  const [prophets, battles, conquests, duas] = await Promise.all([
+    getProphets(),
+    getBattles(),
+    getConquests(),
+    getDuas(undefined, 100),
+  ]);
+
+  return [
+    { num: prophets.length.toLocaleString("ar-EG"), label: "نبيًا في الفهرس" },
+    {
+      num: (battles.length + conquests.length).toLocaleString("ar-EG"),
+      label: "سجلًا تاريخيًا في المكتبة",
+    },
+    { num: "6,236", label: "آية في المصحف المحلي" },
+    { num: duas.length.toLocaleString("ar-EG"), label: "دعاءً متاحًا في الكتالوج" },
+  ];
+}
 
 const team = [
   { name: "فريق المحتوى", role: "تحرير وتنظيم المحتوى مع توثيق المصدر وإتاحة التصحيح", icon: "📝" },
@@ -36,7 +52,9 @@ const team = [
   { name: "فريق التصميم", role: "تجربة عربية واضحة تراعي RTL وإتاحة الاستخدام", icon: "🎨" },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const stats = await getAboutStats();
+
   return (
     <main className="min-h-screen" dir="rtl">
       <section className="relative py-20 bg-gradient-to-b from-[#071A13] via-[#0A2A1E] to-transparent overflow-hidden">
@@ -57,7 +75,7 @@ export default function AboutPage() {
       <Container className="max-w-5xl space-y-16 py-16">
         <section>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {stats.map(s => (
+            {stats.map((s) => (
               <div key={s.label} className="rounded-2xl border border-brand-gold/15 bg-black/20 p-6 text-center space-y-2 hover:border-brand-gold/30 transition-colors">
                 <p className="text-4xl font-bold text-brand-gold">{s.num}</p>
                 <p className="text-sm text-brand-cream/55">{s.label}</p>
