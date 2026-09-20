@@ -5,6 +5,7 @@ import {
   unlockAudioContext,
   isAudioUnlocked,
   refreshSiteAudio,
+  playAzanClip,
 } from "@/lib/audio/spiritual-tones";
 import {
   showPrayerNotification,
