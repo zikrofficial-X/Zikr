@@ -40,7 +40,8 @@ export async function getCurrentUserFavorites(): Promise<Favorite[] | null> {
     .from("favorites")
     .select("id, item_type, item_ref, created_at")
     .eq("user_id", session.user.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(500);
 
   if (error) throw error;
   return (data ?? []) as Favorite[];
