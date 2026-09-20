@@ -60,7 +60,7 @@ The recorded current production audit established:
 - 7 reciter records
 - 798 Quran-audio rows representing 114 × 7 surah/reciter targets
 
-Quran runtime code is intentionally Supabase-only. External Quran APIs may still appear in ingestion/research scripts, but they are not a runtime fallback.
+Quran runtime reads the Git-tracked Hafs/Uthmani corpus first; Supabase remains a compatibility/content layer. External Quran APIs may appear only in ingestion or research tooling and are not required for reader runtime.
 
 ## Security invariants
 
