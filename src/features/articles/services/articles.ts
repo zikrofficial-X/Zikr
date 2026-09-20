@@ -173,9 +173,17 @@ export async function getArticles(categoryId?: string, limit = 100): Promise<Art
     }
   }
 
+  let offline = FALLBACK_ARTICLES;
+  try {
+    const localArticles = await loadOfflineArticles();
+    if (localArticles.length > 0) offline = localArticles;
+  } catch (error) {
+    console.error("[articles] Offline catalogue unavailable:", error);
+  }
+
   const fallback = categoryId && categoryId !== "all"
-    ? FALLBACK_ARTICLES.filter(article => article.categoryId === categoryId)
-    : FALLBACK_ARTICLES;
+    ? offline.filter(article => article.categoryId === categoryId)
+    : offline;
 
   return fallback.slice(0, safeLimit);
 }
