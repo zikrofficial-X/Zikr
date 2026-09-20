@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { getServerEnv } from "@/lib/env";
 import { safeApiFetch } from "@/lib/services/http";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
@@ -6,6 +9,42 @@ import type { PaginationMeta } from "@/lib/types/common";
 
 const HADITH_API_BASE =
   getServerEnv().HADITH_API_BASE_URL || "https://ummahapi.com/api/hadith";
+
+type OfflineHadithBookRow = {
+  id?: string;
+  slug?: string;
+  name_ar?: string;
+  name_en?: string;
+  hadith_count?: number | null;
+};
+
+let offlineBooksPromise: Promise<HadithBook[]> | null = null;
+
+async function loadOfflineHadithBooks(): Promise<HadithBook[]> {
+  if (!offlineBooksPromise) {
+    offlineBooksPromise = readFile(
+      path.join(
+        process.cwd(),
+        "public",
+        "offline-content",
+        "v1",
+        "hadith_books.json",
+      ),
+      "utf8",
+    ).then((raw) => {
+      const rows = JSON.parse(raw) as OfflineHadithBookRow[];
+      return rows
+        .filter((row) => row.slug && row.name_ar)
+        .map((row) => ({
+          id: String(row.slug),
+          slug: String(row.slug),
+          name: String(row.name_ar),
+          available: Number(row.hadith_count) || 0,
+        }));
+    });
+  }
+  return offlineBooksPromise;
+}
 
 type DbHadithBook = {
   id: string;
@@ -176,7 +215,17 @@ export async function getHadithBooks(): Promise<HadithBook[]> {
   );
   if (dbBooks?.length) return dbBooks.map(mapDbHadithBook);
 
-  return getUmmahBooks();
+  const remote = await getUmmahBooks();
+  if (remote.length > 0) return remote;
+
+  try {
+    const local = await loadOfflineHadithBooks();
+    if (local.length > 0) return local;
+  } catch (error) {
+    console.error("[hadith-service] Offline book catalogue unavailable:", error);
+  }
+
+  return [];
 }
 
 export async function getHadithBook(
