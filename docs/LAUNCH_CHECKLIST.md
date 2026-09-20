@@ -16,7 +16,7 @@ The lockfile must remain unchanged after installation. The repository integrity 
 
 ## Vercel configuration
 
-The project must be linked to the `zikr` Vercel project and the canonical domain must be `https://zikrmediaofficial.vercel.app`. Confirm that the build uses `pnpm install --frozen-lockfile` and `pnpm verify`, that the latest production deployment is `READY`, and that the custom domain is not password protected.
+The project must be linked to the `zikr` Vercel project and the canonical domain must be `https://zikrmediaofficial.vercel.app`. Confirm that the build uses `pnpm install --frozen-lockfile` and `pnpm build`, that the latest production deployment is `READY`, and that the custom domain is not password protected.
 
 Set the required public and server-side variables in the correct Vercel environments. The public Supabase URL and anon/publishable key may be exposed to the browser; the service-role key, OAuth client secret, provider tokens, VAPID private key, and scheduler secret must remain server-only. Optional integrations should be configured only when their feature is intentionally enabled.
 
