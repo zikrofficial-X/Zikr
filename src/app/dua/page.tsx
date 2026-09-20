@@ -46,7 +46,7 @@ export default async function DuaPage() {
                 key={cat.id}
                 className="rounded-full border border-brand-gold/30 px-4 py-1.5 text-sm text-brand-cream/70 hover:border-brand-gold hover:text-brand-gold transition-colors cursor-pointer"
               >
-                {cat.name_ar}
+                {cat.nameAr}
               </span>
             ))}
           </div>
@@ -68,21 +68,21 @@ export default async function DuaPage() {
             >
               <Card className="p-6 space-y-4 hover:border-brand-gold/50 transition-colors cursor-pointer">
                 <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-xl font-bold text-brand-gold">{dua.title_ar}</h3>
-                  {dua.source_ar && (
-                    <Badge variant="outline" className="shrink-0 text-xs">{dua.source_ar}</Badge>
+                  <h3 className="text-xl font-bold text-brand-gold">{dua.titleAr}</h3>
+                  {dua.sourceAr && (
+                    <Badge variant="outline" className="shrink-0 text-xs">{dua.sourceAr}</Badge>
                   )}
                 </div>
                 <p
                   className="text-brand-cream/90 text-lg leading-loose font-arabic"
                   dir="rtl"
                 >
-                  {dua.text_ar}
+                  {dua.textAr}
                 </p>
-                {dua.occasion_ar && (
+                {dua.occasionAr && (
                   <p className="text-sm text-brand-gold/70 border-t border-brand-gold/15 pt-3">
                     <span className="font-semibold">المناسبة: </span>
-                    {dua.occasion_ar}
+                    {dua.occasionAr}
                   </p>
                 )}
               </Card>
