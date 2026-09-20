@@ -10,16 +10,12 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { QuranAudioPlayer } from '@/features/quran/components/audio-player';
 
 const SURAHS = FALLBACK_SURAHS.map((surah) => ({
   number: surah.id,
   nameAr: surah.nameAr,
 }));
-
-function getAudioUrl(baseUrlTemplate: string, surahNumber: number): string {
-  const paddedNumber = String(surahNumber).padStart(3, '0');
-  return `${baseUrlTemplate}/${paddedNumber}.mp3`;
-}
 
 export default function ReciterPage() {
   const params = useParams();
@@ -64,8 +60,6 @@ export default function ReciterPage() {
   }
 
   const filtered = SURAHS.filter((s) => s.nameAr.includes(search));
-  const audioUrl = currentSurah ? getAudioUrl(reciter.baseUrlTemplate, currentSurah) : null;
-
   return (
     <Container className="py-12 space-y-8">
       {/* Header */}
@@ -84,23 +78,12 @@ export default function ReciterPage() {
         <Badge variant="secondary">{reciter.type === 'surah' ? 'تلاوة كاملة' : 'تلاوة مقطعية'}</Badge>
       </section>
 
-      {/* Now playing */}
-      {audioUrl && currentSurah && (
-        <Card className="space-y-3 border-brand-gold/40">
-          <p className="text-sm arabic-muted text-center">
-            يُشغّل الآن: سورة {SURAHS.find((s) => s.number === currentSurah)?.nameAr}
-          </p>
-          <audio
-            key={audioUrl}
-            controls
-            autoPlay
-            className="w-full"
-            aria-label={`تلاوة سورة ${SURAHS.find((s) => s.number === currentSurah)?.nameAr} بصوت ${reciter.nameAr}`}
-          >
-            <source src={audioUrl} type="audio/mpeg" />
-            المتصفح لا يدعم تشغيل الصوت.
-          </audio>
-        </Card>
+      {/* Canonical Quran audio */}
+      {currentSurah && (
+        <QuranAudioPlayer
+          surahId={currentSurah}
+          initialReciterId={reciter.id}
+        />
       )}
 
       {/* Search surahs */}
@@ -134,15 +117,7 @@ export default function ReciterPage() {
       </section>
 
       <p className="text-center text-xs arabic-muted">
-        مصدر التلاوات:{' '}
-        <a
-          href="https://www.mp3quran.net"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-brand-gold/70 hover:underline"
-        >
-          mp3quran.net
-        </a>
+        التلاوات المتاحة عبر مكتبة الصوت الداخلية لمنصة ذِكر. يُعرض المصدر الأصلي في بيانات التسجيل عند توفره.
       </p>
     </Container>
   );
