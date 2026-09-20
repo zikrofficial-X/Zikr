@@ -25,6 +25,7 @@ export function QuranAudioPlayer({
 
   // Hydration guard - ensure component only renders on client
   useEffect(() => {
+    let active = true;
     setIsClient(true);
     // Load reciters from service
     getReciters()
@@ -108,9 +109,7 @@ export function QuranAudioPlayer({
 
     const handleCanPlay = () => {
       setIsLoading(false);
-      console.debug(
-        `[audio] Successfully loaded from source ${audioSourceIndex + 1}`
-      );
+      console.debug("[audio] Successfully loaded from Supabase Storage");
     };
 
     const handleError = (event: Event) => {
