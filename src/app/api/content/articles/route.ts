@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getArticles, type Article } from "@/features/articles/services/articles";
+import { getArticles } from "@/features/articles/services/articles";
+import type { Article } from "@/features/articles/types/articles";
 
 type ArticleSearchItem = {
   id: string;
