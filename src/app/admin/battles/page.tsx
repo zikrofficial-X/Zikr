@@ -5,6 +5,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { requireAdmin } from '@/features/admin/services/admin';
+import { createClient } from '@/lib/supabase/server';
 import { getAdminBattles, type AdminBattle, ADMIN_STATIC_BATTLES } from '@/features/admin/services/battles';
 import { revalidatePath } from 'next/cache';
 
