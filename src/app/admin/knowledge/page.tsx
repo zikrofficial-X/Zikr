@@ -41,6 +41,18 @@ export default async function KnowledgeAdminPage() {
       </div>
     </section>
 
-    <section className="space-y-4"><h2 className="text-xl font-bold text-brand-gold">آخر السجلات للمراجعة</h2><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{[ ['الصحابة', data.companions.map((x) => x.name_ar)], ['العلماء', data.scholars.map((x) => x.name_ar)], ['السور', data.surahs.map((x) => x.name_ar)], ['الأحاديث', data.hadiths.map((x) => `#${x.hadith_number}`)] ].map(([label, values]) => <Card key={String(label)}><h3 className="font-semibold text-brand-gold">{label}</h3><p className="mt-2 text-sm text-brand-cream/55">{(values as string[]).join('، ') || 'لا توجد سجلات'}</p></Card>)}</div></section>
+    <section className="space-y-4"><h2 className="text-xl font-bold text-brand-gold">آخر السجلات للمراجعة</h2><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {([
+        { label: 'الصحابة', values: data.companions.map((x) => x.name_ar) },
+        { label: 'العلماء', values: data.scholars.map((x) => x.name_ar) },
+        { label: 'السور', values: data.surahs.map((x) => x.name_ar) },
+        { label: 'الأحاديث', values: data.hadiths.map((x) => `#${x.hadith_number ?? ''}`) },
+      ] as Array<{ label: string; values: string[] }>).map(({ label, values }) => (
+        <Card key={label}>
+          <h3 className="font-semibold text-brand-gold">{label}</h3>
+          <p className="mt-2 text-sm text-brand-cream/55">{values.join('، ') || 'لا توجد سجلات'}</p>
+        </Card>
+      ))}
+    </div></section>
   </Container>;
 }
