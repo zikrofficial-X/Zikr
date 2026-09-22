@@ -32,7 +32,10 @@ function pick(name: string): string | undefined {
 // Direct literal reads so Next.js inlines these at build time for client
 // bundles instead of falling back to the guarded `e` object above.
 const NEXT_PUBLIC_SUPABASE_URL_RAW = process.env.NEXT_PUBLIC_SUPABASE_URL || undefined;
-const NEXT_PUBLIC_SUPABASE_ANON_KEY_RAW = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || undefined;
+const NEXT_PUBLIC_SUPABASE_ANON_KEY_RAW =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  undefined;
 const NEXT_PUBLIC_SITE_URL_RAW = process.env.NEXT_PUBLIC_SITE_URL || undefined;
 const NEXT_PUBLIC_GA_MEASUREMENT_ID_RAW = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || undefined;
 const NEXT_PUBLIC_GTM_ID_RAW = process.env.NEXT_PUBLIC_GTM_ID || undefined;
@@ -64,7 +67,7 @@ const rawEnv: Record<string, string | undefined> = {
   NEXT_PUBLIC_SUPABASE_URL: normalizeSupabaseUrl(
     pick("NEXT_PUBLIC_SUPABASE_URL") || pick("SUPABASE_URL")
   ),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: pick("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: pick("NEXT_PUBLIC_SUPABASE_ANON_KEY") || pick("SUPABASE_ANON_KEY"),
   SUPABASE_SERVICE_ROLE_KEY: pick("SUPABASE_SERVICE_ROLE_KEY"),
 
   // ── Cloudinary ───────────────────────────────────────────────────────────
