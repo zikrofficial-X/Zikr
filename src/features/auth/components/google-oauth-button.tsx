@@ -63,8 +63,24 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
     const safeNext = getSafeNextPath(next);
 
     try {
-      const supabase = createBrowserSupabaseClient();
       const isNative = Capacitor.isNativePlatform();
+
+      // PKCE verifier cookies are scoped to the current browser origin. If a
+      // user opened a Vercel alias, move them to the canonical origin before
+      // creating the verifier; otherwise Google returns to the canonical host
+      // while the verifier remains stranded on the alias.
+      if (!isNative && typeof window !== "undefined") {
+        const canonicalOrigin = new URL(PRODUCTION_URL).origin;
+        const currentOrigin = new URL(window.location.origin).origin;
+        if (currentOrigin !== canonicalOrigin) {
+          const canonicalLogin = new URL("/auth/login", canonicalOrigin);
+          canonicalLogin.searchParams.set("next", safeNext);
+          window.location.assign(canonicalLogin.toString());
+          return;
+        }
+      }
+
+      const supabase = createBrowserSupabaseClient();
 
       // Native OAuth returns directly to the app deep link. The PKCE verifier
       // remains in this WebView's Supabase client while Google runs in the
