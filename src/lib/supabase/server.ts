@@ -88,6 +88,7 @@ export async function getSupabaseUser() {
 type RestRequestInit = RequestInit & {
   timeoutMs?: number;
   retries?: number;
+  next?: { revalidate?: number };
 };
 
 function isRetryableTransportError(error: unknown): boolean {
@@ -202,7 +203,11 @@ export const supabaseServerAnonRequest = <T>(
   init?: RestRequestInit
 ) => {
   const { anonKey } = getClientEnv();
-  return restRequest<T>(path, init, anonKey);
+  return restRequest<T>(
+    path,
+    init ?? { cache: "force-cache", next: { revalidate: 900 } },
+    anonKey,
+  );
 };
 
 export const supabaseServerAdminRequest = <T>(

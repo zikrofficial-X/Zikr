@@ -10,13 +10,9 @@ import {
   getAdminBattles,
   saveAdminBattleVideo,
   setAdminBattlePublished,
-  type AdminBattle,
 } from '@/features/admin/services/battles';
 import { parseYouTubeVideoId } from '@/features/admin/services/youtube';
 import { revalidatePath } from 'next/cache';
-
-type Battle = AdminBattle;
-
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 

@@ -14,15 +14,6 @@ export const metadata: Metadata = pageMetadata({
   path: "/prophets",
 });
 
-const PROPHET_SLUG_ALIASES: Record<string, string> = {
-  dhulkifl: "dhul-kifl",
-  zakariyya: "zakariya",
-};
-
-function canonicalProphetSlug(slug: string): string {
-  return PROPHET_SLUG_ALIASES[slug] ?? slug;
-}
-
 export default async function ProphetsPage() {
   const displayProphets = await getProphetsWithStats();
 

@@ -112,7 +112,8 @@ async function supabasePublicFetch<T>(
   const { url, key } = getSupabaseConfig();
   const response = await fetch(`${url}${path}`, {
     ...init,
-    cache: init.cache ?? "no-store",
+    cache: init.cache ?? "force-cache",
+    next: init.next ?? { revalidate: 900 },
     headers: {
       Accept: "application/json",
       apikey: key,

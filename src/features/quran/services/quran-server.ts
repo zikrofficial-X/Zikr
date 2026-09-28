@@ -25,10 +25,17 @@ const quranDbRequest = async <T>(path: string): Promise<T> => {
     return await supabaseServerAdminRequest<T>(path, {
       timeoutMs: 15_000,
       retries: 1,
+      cache: "force-cache",
+      next: { revalidate: 86400 },
     });
   } catch (adminError) {
     console.warn("[quran-server] admin read unavailable; trying public read:", adminError);
-    return supabaseServerAnonRequest<T>(path, { timeoutMs: 15_000, retries: 1 });
+    return supabaseServerAnonRequest<T>(path, {
+      timeoutMs: 15_000,
+      retries: 1,
+      cache: "force-cache",
+      next: { revalidate: 86400 },
+    });
   }
 };
 
