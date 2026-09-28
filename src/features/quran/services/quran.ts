@@ -271,6 +271,18 @@ export async function searchQuran(
 }
 
 export async function getReciters(): Promise<Reciter[]> {
+  const { NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY } = getPublicEnv();
+  if (!NEXT_PUBLIC_SUPABASE_URL || !NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return FALLBACK_RECITERS.map((reciter) => ({
+      id: reciter.id,
+      nameAr: reciter.nameAr,
+      nameEn: reciter.nameEn,
+      code: reciter.code,
+      baseUrlTemplate: reciter.baseUrlTemplate,
+      type: reciter.type,
+    }));
+  }
+
   try {
     const rows = await supabasePublicFetch<DbReciter[]>(
       "/rest/v1/quran_reciters?select=id,code,name_ar,name_en,base_url_template&order=name_en.asc",

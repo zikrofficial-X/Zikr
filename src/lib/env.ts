@@ -1,6 +1,14 @@
 import { enforceCanonicalProductionUrl, PRODUCTION_URL } from "@/lib/site";
 
-const e = process.env;
+// `process` is not polyfilled in browser bundles, so a bare `process.env`
+// object reference throws `ReferenceError: process is not defined` if this
+// module ever gets pulled into a client bundle (e.g. transitively via a
+// 'use client' component). Guard the full env object for server-only use,
+// and read NEXT_PUBLIC_* values via direct literal `process.env.NEXT_PUBLIC_X`
+// access below — Next.js inlines those at build time, so they stay correct
+// (and safe) in the browser too.
+const e: Record<string, string | undefined> =
+  typeof process !== "undefined" ? process.env : {};
 
 /** Normalize Supabase project URLs supplied by integrations or local scripts. */
 function normalizeSupabaseUrl(value: string | undefined): string | undefined {
@@ -21,8 +29,19 @@ function pick(name: string): string | undefined {
   return value !== undefined && value !== "" ? value : undefined;
 }
 
+// Direct literal reads so Next.js inlines these at build time for client
+// bundles instead of falling back to the guarded `e` object above.
+const NEXT_PUBLIC_SUPABASE_URL_RAW = process.env.NEXT_PUBLIC_SUPABASE_URL || undefined;
+const NEXT_PUBLIC_SUPABASE_ANON_KEY_RAW =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  undefined;
+const NEXT_PUBLIC_SITE_URL_RAW = process.env.NEXT_PUBLIC_SITE_URL || undefined;
+const NEXT_PUBLIC_GA_MEASUREMENT_ID_RAW = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || undefined;
+const NEXT_PUBLIC_GTM_ID_RAW = process.env.NEXT_PUBLIC_GTM_ID || undefined;
+
 const siteUrl = enforceCanonicalProductionUrl(
-  pick("NEXT_PUBLIC_SITE_URL") || PRODUCTION_URL
+  NEXT_PUBLIC_SITE_URL_RAW || PRODUCTION_URL
 );
 
 /**
@@ -48,7 +67,7 @@ const rawEnv: Record<string, string | undefined> = {
   NEXT_PUBLIC_SUPABASE_URL: normalizeSupabaseUrl(
     pick("NEXT_PUBLIC_SUPABASE_URL") || pick("SUPABASE_URL")
   ),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: pick("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: pick("NEXT_PUBLIC_SUPABASE_ANON_KEY") || pick("SUPABASE_ANON_KEY"),
   SUPABASE_SERVICE_ROLE_KEY: pick("SUPABASE_SERVICE_ROLE_KEY"),
 
   // ── Cloudinary ───────────────────────────────────────────────────────────
