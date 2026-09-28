@@ -491,6 +491,19 @@ export async function getQuranAudioFromDb(
       };
     }
 
+    // Supabase Storage is an optional cache.  The canonical Quran audio
+    // records retain a verified external source URL, so playback continues
+    // to work on the Free plan after the oversized local cache is removed.
+    const externalUrl = row?.source_url ?? row?.audio_url;
+    if (externalUrl && /^https?:\/\//i.test(externalUrl)) {
+      return {
+        audio: {
+          ...row,
+          audio_url: externalUrl,
+        },
+      };
+    }
+
     return {
       audio: null,
       reason: row?.storage_status ?? "not_imported",
