@@ -22,6 +22,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABAS
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BUCKET = "quran-audio";
 const MAX_FILE_MB = Number(process.env.QURAN_AUDIO_MAX_FILE_MB || "50");
+const MAX_BUCKET_MIB = Number(process.env.QURAN_AUDIO_MAX_BUCKET_MIB || "800");
 const CONCURRENCY = Math.max(1, Math.min(4, Number(process.env.QURAN_AUDIO_CONCURRENCY || "2")));
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -34,6 +35,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
 const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "zikr-quran-audio-"));
 const limitBytes = MAX_FILE_MB * 1024 * 1024;
+const maxBucketBytes = MAX_BUCKET_MIB * 1024 * 1024;
+if (!Number.isFinite(MAX_FILE_MB) || MAX_FILE_MB <= 0) throw new Error("QURAN_AUDIO_MAX_FILE_MB must be a positive number.");
+if (!Number.isFinite(MAX_BUCKET_MIB) || MAX_BUCKET_MIB <= 0) throw new Error("QURAN_AUDIO_MAX_BUCKET_MIB must be a positive number.");
+
+let currentBucketBytes = 0;
+const existingObjectSizes = new Map();
 
 function sourceUrl(row) {
   if (row.audio_url && /^https?:\/\//i.test(row.audio_url)) return row.audio_url;
@@ -53,6 +60,47 @@ function publicUrl(filePath) {
 async function updateRow(id, patch) {
   const { error } = await supabase.from("quran_audio").update(patch).eq("id", id);
   if (error) throw error;
+}
+
+async function readBucketObjectSizes() {
+  const sizes = new Map();
+  const pageSize = 100;
+
+  async function listFolder(prefix = "") {
+    let offset = 0;
+    while (true) {
+      const { data, error } = await supabase.storage.from(BUCKET).list(prefix, {
+        limit: pageSize,
+        offset,
+        sortBy: { column: "name", order: "asc" },
+      });
+      if (error) {
+        throw new Error(`Cannot verify ${BUCKET} usage; import stopped safely: ${error.message}`);
+      }
+
+      const entries = data || [];
+      const folders = [];
+      for (const entry of entries) {
+        const objectPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+        if (entry.id) {
+          const size = Number(entry.metadata?.size);
+          if (!Number.isFinite(size) || size < 0) {
+            throw new Error(`Cannot verify size for existing ${BUCKET}/${objectPath}; import stopped safely.`);
+          }
+          sizes.set(objectPath, size);
+        } else if (entry.name && entry.name !== "." && entry.name !== "..") {
+          folders.push(objectPath);
+        }
+      }
+
+      for (const folder of folders) await listFolder(folder);
+      offset += entries.length;
+      if (entries.length < pageSize) break;
+    }
+  }
+
+  await listFolder("");
+  return sizes;
 }
 
 async function uploadOne(row, reciter) {
@@ -94,6 +142,16 @@ async function uploadOne(row, reciter) {
       throw new Error(`Downloaded file is ${(stat.size / 1024 / 1024).toFixed(2)} MB, above the configured ${MAX_FILE_MB} MB limit.`);
     }
 
+    const previousSize = existingObjectSizes.get(filePath) || 0;
+    const reservedGrowth = Math.max(0, stat.size - previousSize);
+    if (currentBucketBytes + reservedGrowth > maxBucketBytes) {
+      throw new Error(`Import would exceed the ${MAX_BUCKET_MIB} MiB quran-audio bucket limit; file was not uploaded.`);
+    }
+    // Reserve before upload so concurrent workers cannot race past the cap.
+    // If an upload response is ambiguous, keeping the reservation is safer
+    // than assuming the object was not written.
+    currentBucketBytes += reservedGrowth;
+
     const buffer = await fs.readFile(tmpFile);
     const sha256 = createHash("sha256").update(buffer).digest("hex");
 
@@ -106,6 +164,9 @@ async function uploadOne(row, reciter) {
       });
 
     if (uploadError) throw uploadError;
+
+    currentBucketBytes += Math.min(0, stat.size - previousSize);
+    existingObjectSizes.set(filePath, stat.size);
 
     const internalUrl = publicUrl(filePath);
     await updateRow(row.id, {
@@ -135,6 +196,15 @@ async function uploadOne(row, reciter) {
 }
 
 async function main() {
+  const bucketSizes = await readBucketObjectSizes();
+  existingObjectSizes.clear();
+  for (const [objectPath, size] of bucketSizes) existingObjectSizes.set(objectPath, size);
+  currentBucketBytes = [...bucketSizes.values()].reduce((total, size) => total + size, 0);
+  console.log(`Current ${BUCKET} usage: ${(currentBucketBytes / 1024 / 1024).toFixed(1)} MiB; cap=${MAX_BUCKET_MIB} MiB`);
+  if (currentBucketBytes > maxBucketBytes) {
+    throw new Error(`${BUCKET} already exceeds the configured ${MAX_BUCKET_MIB} MiB cap; no uploads were attempted.`);
+  }
+
   const { data: surahs, error: surahError } = await supabase
     .from("quran_surahs")
     .select("id,ayahs_count")
@@ -176,8 +246,8 @@ async function main() {
       if (index >= tasks.length) return;
       const task = tasks[index];
 
-      if (task.row.storage_status === "ready") {
-        console.log(`SKIP ${task.reciter.code} ${task.row.surah_id}: already ready`);
+      if (task.row.storage_status === "ready" || task.row.storage_status === "external") {
+        console.log(`SKIP ${task.reciter.code} ${task.row.surah_id}: already available (${task.row.storage_status})`);
         succeeded++;
         continue;
       }

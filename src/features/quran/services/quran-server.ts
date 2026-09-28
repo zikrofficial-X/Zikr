@@ -449,9 +449,22 @@ export type QuranAudioRecord = {
   source_url: string | null;
   retrieved_at: string | null;
   storage_url: string | null;
-  storage_status: "pending" | "uploading" | "ready" | "failed" | null;
+  storage_status: "pending" | "uploading" | "ready" | "failed" | "external" | null;
   storage_path: string | null;
 };
+
+function isDirectExternalMp3Url(value: string | null | undefined): value is string {
+  if (!value) return false;
+
+  try {
+    const parsed = new URL(value);
+    return (parsed.protocol === "https:" || parsed.protocol === "http:")
+      && /\.mp3$/i.test(parsed.pathname)
+      && !/\/storage\/v1\/object\//i.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
 
 export async function getQuranAudioFromDb(
   surahId: number,
@@ -491,11 +504,11 @@ export async function getQuranAudioFromDb(
       };
     }
 
-    // Supabase Storage is an optional cache.  The canonical Quran audio
-    // records retain a verified external source URL, so playback continues
-    // to work on the Free plan after the oversized local cache is removed.
-    const externalUrl = row?.source_url ?? row?.audio_url;
-    if (externalUrl && /^https?:\/\//i.test(externalUrl)) {
+    // source_url is an attribution page on mp3quran.net, not an audio file.
+    // Only hand a direct MP3 URL to the player; never return a homepage or a
+    // stale Supabase Storage URL as an external fallback.
+    const externalUrl = [row?.audio_url, row?.source_url].find(isDirectExternalMp3Url);
+    if (externalUrl) {
       return {
         audio: {
           ...row,
