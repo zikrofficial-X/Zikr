@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
 import { loginAction } from '@/features/auth/actions';
 import { GoogleOAuthButton } from '@/features/auth/components/google-oauth-button';
+import { PRODUCTION_URL } from '@/lib/site';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 const MESSAGE_MAP: Record<string, string> = {
@@ -27,6 +28,21 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const canonicalHost = new URL(PRODUCTION_URL).hostname.toLowerCase();
+    const currentHost = window.location.hostname.toLowerCase();
+    if (
+      currentHost.endsWith('.vercel.app') &&
+      currentHost !== canonicalHost
+    ) {
+      const canonicalUrl = new URL(
+        `${window.location.pathname}${window.location.search}`,
+        PRODUCTION_URL,
+      );
+      window.location.replace(canonicalUrl.toString());
+    }
+  }, []);
 
   useEffect(() => setIsClient(true), []);
 
