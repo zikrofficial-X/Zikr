@@ -287,7 +287,7 @@ BEGIN
         '* * * * *',
         $cron$
           select net.http_post(
-            url := 'https://eydxvcamhjhajxjrsgym.supabase.co/functions/v1/prayer-notification-worker',
+            url := 'https://kdotmrjfecgafiommzwz.supabase.co/functions/v1/prayer-notification-worker',
             headers := jsonb_build_object(
               'Content-Type', 'application/json',
               'Authorization', 'Bearer ' || public.get_push_scheduler_secret()

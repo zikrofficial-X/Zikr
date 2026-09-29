@@ -201,7 +201,8 @@ jobs:
       - image: cimg/node:22.11.0
     resource_class: medium
     environment:
-      QURAN_AUDIO_MAX_FILE_MB: "200"
+      QURAN_AUDIO_MAX_FILE_MB: "50"
+      QURAN_AUDIO_MAX_BUCKET_MIB: "800"
     steps:
       - checkout
       - run:
@@ -230,8 +231,10 @@ jobs:
             test -n "$SUPABASE_URL"
             test -n "$SUPABASE_SERVICE_ROLE_KEY"
             : "${QURAN_AUDIO_MAX_FILE_MB:=50}"
+            : "${QURAN_AUDIO_MAX_BUCKET_MIB:=800}"
             : "${QURAN_AUDIO_CONCURRENCY:=2}"
             case "$QURAN_AUDIO_MAX_FILE_MB" in ''|*[!0-9]*) echo "QURAN_AUDIO_MAX_FILE_MB must be numeric"; exit 1;; esac
+            case "$QURAN_AUDIO_MAX_BUCKET_MIB" in ''|*[!0-9]*) echo "QURAN_AUDIO_MAX_BUCKET_MIB must be numeric"; exit 1;; esac
             case "$QURAN_AUDIO_CONCURRENCY" in ''|*[!0-9]*) echo "QURAN_AUDIO_CONCURRENCY must be numeric"; exit 1;; esac
       - run:
           name: Run canonical Quran audio importer
@@ -435,7 +438,7 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            REPO="Zikrmediaofficial/Zikr"
+            REPO="zikr-org/Zikr"
             RELEASE_TAG="$ANDROID_RELEASE_TAG"
             APK="android/app/build/outputs/apk/release/app-release.apk"
             AAB="android/app/build/outputs/bundle/release/app-release.aab"

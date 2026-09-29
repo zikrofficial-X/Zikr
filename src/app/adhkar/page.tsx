@@ -1,5 +1,29 @@
-import { AdhkarPage } from '@/features/adhkar/components/adhkar-page';
+import { ContentGuide } from "@/components/content/content-guide";
+import { AdhkarPage } from "@/features/adhkar/components/adhkar-page";
 
 export default function Page() {
-  return <AdhkarPage />;
+  return (
+    <>
+      <AdhkarPage />
+      <div className="container mx-auto px-4 pb-12">
+        <ContentGuide
+          title="دليل الأذكار ومصادرها"
+          intro="تجمع هذه الصفحة أذكار الصباح والمساء والنوم والاستيقاظ وما بعد الصلاة في واجهة عدّاد عملية. عبارات الثواب تُعرض عندما تكون مضافة إلى العنصر، مع إحالة المستخدم إلى مصادر الحديث للرجوع والتحقق."
+          items={[
+            "يمكنك اختيار الفترة المناسبة ثم الضغط على بطاقة الذكر لاحتساب التكرار حتى العدد المحدد.",
+            "العدادات تُحفظ محليًا في المتصفح، ويمكن تصفير عدادات الفترة الحالية في أي وقت.",
+            "الأذكار الواردة ليست بديلًا عن الرجوع إلى المصدر عند الحاجة إلى التحقق من اللفظ أو درجة الحديث.",
+            "يمكن بناء عادة ثابتة بربط أذكار الصباح ببداية اليوم، وأذكار المساء بنهايته، وأذكار النوم بتهيئة وقت النوم.",
+          ]}
+          links={[
+            { label: "القرآن — سورة الأحزاب 41–42", href: "https://quran.com/33/41-42" },
+            { label: "صحيح البخاري 6306 — سيد الاستغفار", href: "https://sunnah.com/bukhari:6306" },
+            { label: "صحيح البخاري 6405 — سبحان الله وبحمده", href: "https://sunnah.com/bukhari:6405" },
+            { label: "صحيح مسلم 591 — الذكر بعد الصلاة", href: "https://sunnah.com/muslim/5/171" },
+          ]}
+          note="المراجع الخارجية تُستخدم للرجوع والتحقق. لا تعتمد المنصة على نص خارجي وقت التشغيل لعرض العداد نفسه."
+        />
+      </div>
+    </>
+  );
 }

@@ -19,6 +19,23 @@ type QuranRow = {
   audio_url: string | null;
 };
 
+type HadithRow = {
+  id: string;
+  hadith_number: string | null;
+  text_ar: string;
+  grade_ar: string | null;
+  ref: string | null;
+};
+
+type DuaRow = {
+  id: string;
+  slug: string;
+  title_ar: string;
+  text_ar: string;
+  occasion_ar: string | null;
+  source_ar: string | null;
+};
+
 type ExistingRow = { id: string; status: string; automation_key: string | null };
 type GeneratedRequest = {
   id: string;
@@ -59,16 +76,18 @@ function wrapArabic(value: string, max = 30) {
 function assEscape(value: string) {
   return value.replace(/[{}]/g, "").replace(/\\/g, "\\\\");
 }
-function makeAss(text: string, title: string, sourceUrl: string) {
+function makeAss(text: string, title: string, sourceUrl: string, reflection?: string | null) {
   const textLines = wrapArabic(text, 34);
+  const reflectionLines = reflection ? wrapArabic(reflection, 38) : [];
   const sourceLines = wrapArabic(`المصدر: ${sourceUrl}`, 55);
   const events = [
     `Dialogue: 0,0:00:00.00,0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Title,,0,0,0,,${assEscape(title)}`,
     `Dialogue: 1,0:00:00.50,0:00:${Math.max(1, VIDEO_SECONDS - 1).toFixed(2).padStart(5, "0")},Verse,,0,0,0,,${textLines.map(assEscape).join("\\N")}`,
+    ...(reflectionLines.length > 0 ? [`Dialogue: 4,0:00:${Math.max(0.8, VIDEO_SECONDS - 4).toFixed(2).padStart(5, "0")},0:00:${Math.max(1, VIDEO_SECONDS - 1).toFixed(2).padStart(5, "0")},Reflection,,0,0,0,,${reflectionLines.map(assEscape).join("\\N")}`] : []),
     `Dialogue: 2,0:00:${Math.max(1, VIDEO_SECONDS - 3).toFixed(2).padStart(5, "0")},0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Source,,0,0,0,,${sourceLines.map(assEscape).join("\\N")}`,
     `Dialogue: 3,0:00:00.00,0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Brand,,0,0,0,,ZIKR • ذِكرٌ`,
   ];
-  return `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\nYCbCr Matrix: TV.709\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Title,Noto Naskh Arabic,60,&H00EFD39A,&H00000000,&H00101513,&H60000000,1,0,0,0,100,100,0,0,1,2,2,8,55,55,120,1\nStyle: Verse,Noto Naskh Arabic,70,&H00FFFFFF,&H00000000,&H00101513,&H80000000,0,0,0,0,100,100,0,0,1,3,2,5,85,85,170,1\nStyle: Source,Noto Sans Arabic,24,&H00D8C8A6,&H00000000,&H00101513,&H60000000,0,0,0,0,100,100,0,0,1,1,1,2,55,55,115,1\nStyle: Brand,Noto Sans,26,&H00E1D3B3,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,45,45,55,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join("\n")}\n`;
+  return `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\nYCbCr Matrix: TV.709\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Title,Noto Naskh Arabic,60,&H00EFD39A,&H00000000,&H00101513,&H60000000,1,0,0,0,100,100,0,0,1,2,2,8,55,55,120,1\nStyle: Verse,Noto Naskh Arabic,70,&H00FFFFFF,&H00000000,&H00101513,&H80000000,0,0,0,0,100,100,0,0,1,3,2,5,85,85,170,1\nStyle: Source,Noto Sans Arabic,24,&H00D8C8A6,&H00000000,&H00101513,&H60000000,0,0,0,0,100,100,0,0,1,1,1,2,55,55,115,1\nStyle: Reflection,Noto Naskh Arabic,34,&H00EFD39A,&H00000000,&H00101513,&H60000000,0,0,0,0,100,100,0,0,1,2,1,5,80,80,280,1\nStyle: Brand,Noto Sans,26,&H00E1D3B3,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,45,45,55,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join("\n")}\n`;
 }
 async function getQuranRow(index: number): Promise<QuranRow> {
   const total = await supabaseServerAdminCount("quran_ayahs");
@@ -87,6 +106,31 @@ async function getSurahName(surahId: number) {
   );
   return rows?.[0]?.name_ar || `السورة ${surahId}`;
 }
+
+async function getHadithRow(index: number): Promise<HadithRow> {
+  const total = await supabaseServerAdminCount("hadiths");
+  if (!total) throw new Error("hadiths is empty; cannot create an automatic hadith video.");
+  const offset = index % total;
+  const rows = await supabaseServerAdminRequest<HadithRow[]>(
+    `/rest/v1/hadiths?select=id,hadith_number,text_ar,grade_ar,ref&published=eq.true&order=created_at.asc&offset=${offset}&limit=1`,
+  );
+  const row = rows?.[0];
+  if (!row) throw new Error(`No published hadith found at offset ${offset}.`);
+  return row;
+}
+
+async function getDuaRow(index: number): Promise<DuaRow> {
+  const total = await supabaseServerAdminCount("duas");
+  if (!total) throw new Error("duas is empty; cannot create an automatic dua video.");
+  const offset = index % total;
+  const rows = await supabaseServerAdminRequest<DuaRow[]>(
+    `/rest/v1/duas?select=id,slug,title_ar,text_ar,occasion_ar,source_ar&published=eq.true&order=created_at.asc&offset=${offset}&limit=1`,
+  );
+  const row = rows?.[0];
+  if (!row) throw new Error(`No published dua found at offset ${offset}.`);
+  return row;
+}
+
 async function findByAutomationKey(table: string, key: string) {
   const rows = await supabaseServerAdminRequest<ExistingRow[]>(
     `/rest/v1/${table}?automation_key=eq.${encodeURIComponent(key)}&select=id,status,automation_key&limit=1`,
@@ -96,20 +140,26 @@ async function findByAutomationKey(table: string, key: string) {
 export async function seedAutomatedVideoRequests() {
   if (process.env.AUTO_VIDEO_ENABLED?.toLowerCase() === "false") return 0;
   const now = new Date();
+  const baseSlot = slotIndex(now);
   let created = 0;
+
   for (let i = 0; i < BATCH_SIZE; i += 1) {
-    const slot = slotIndex(now) + i;
-    const key = `quran:${dayIndex(now)}:${slot}`;
-    if (await findByAutomationKey("video_generation_requests", key)) continue;
-    const row = await getQuranRow(dayIndex(now) * 4 + slot);
-    const surahName = await getSurahName(row.surah_id);
-    const sourceUrl = `https://quran.com/${row.surah_id}/${row.ayah_number}`;
-    await supabaseServerAdminRequest("/rest/v1/video_generation_requests", {
-      method: "POST",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({
+    const slot = baseSlot + i;
+    const day = dayIndex(now);
+    const mode = slot % 4;
+
+    let payload: Record<string, unknown>;
+    let key = "";
+
+    if (mode === 0 || mode === 1) {
+      key = `quran:${day}:${slot}`;
+      if (await findByAutomationKey("video_generation_requests", key)) continue;
+      const row = await getQuranRow(day * 4 + slot);
+      const surahName = await getSurahName(row.surah_id);
+      const sourceUrl = `https://quran.com/${row.surah_id}/${row.ayah_number}`;
+      payload = {
         title: `آية اليوم — ${surahName} ${row.surah_id}:${row.ayah_number}`,
-        description: `فيديو تعليمي قصير يعرض آية موثقة من ${surahName} مع رابط المصدر.`,
+        description: `فيديو آلي يعرض آية موثقة من ${surahName} مع تصميم ذِكر ومصدر مباشر.`,
         category: "quran",
         content: {
           renderer: "template",
@@ -123,14 +173,72 @@ export async function seedAutomatedVideoRequests() {
           audioUrl: row.audio_url,
           publicPath: `/quran/${row.surah_id}/${row.ayah_number}`,
           automationKey: key,
+          aiMode: "source_locked",
         },
         duration: VIDEO_SECONDS,
         status: "pending",
         automation_key: key,
-      }),
+      };
+    } else if (mode === 2) {
+      key = `hadith:${day}:${slot}`;
+      if (await findByAutomationKey("video_generation_requests", key)) continue;
+      const row = await getHadithRow(day * 4 + slot);
+      const sourceUrl = "https://sunnah.com";
+      payload = {
+        title: `حديث اليوم — رقم ${row.hadith_number || "مرجعي"}`,
+        description: "فيديو آلي لحديث منشور في مكتبة ذِكر مع نص الحديث ودرجته ومرجع البحث.",
+        category: "hadith",
+        content: {
+          renderer: "template",
+          type: "hadith",
+          sourceType: "hadith",
+          sourceUrl,
+          sourceLabel: `السنة النبوية — المرجع ${row.ref || row.hadith_number || "متاح في قاعدة البيانات"}`,
+          textAr: row.text_ar,
+          gradeAr: row.grade_ar,
+          publicPath: "/hadith",
+          automationKey: key,
+          aiMode: "source_locked",
+        },
+        duration: VIDEO_SECONDS,
+        status: "pending",
+        automation_key: key,
+      };
+    } else {
+      key = `dua:${day}:${slot}`;
+      if (await findByAutomationKey("video_generation_requests", key)) continue;
+      const row = await getDuaRow(day * 4 + slot);
+      const sourceUrl = `https://zikrmediaofficial.vercel.app/dua/${row.slug}`;
+      payload = {
+        title: `دعاء اليوم — ${row.title_ar}`,
+        description: row.occasion_ar || "دعاء موثق من مكتبة ذِكر.",
+        category: "dua",
+        content: {
+          renderer: "template",
+          type: "dua",
+          sourceType: "dua",
+          sourceUrl,
+          sourceLabel: row.source_ar || "دعاء من مكتبة ذِكر",
+          textAr: row.text_ar,
+          occasionAr: row.occasion_ar,
+          publicPath: `/dua/${row.slug}`,
+          automationKey: key,
+          aiMode: "source_locked",
+        },
+        duration: VIDEO_SECONDS,
+        status: "pending",
+        automation_key: key,
+      };
+    }
+
+    await supabaseServerAdminRequest("/rest/v1/video_generation_requests", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify(payload),
     });
     created += 1;
   }
+
   return created;
 }
 function contentText(request: GeneratedRequest) {
@@ -146,6 +254,39 @@ function contentSourceUrl(request: GeneratedRequest) {
   const value = request.content?.sourceUrl;
   return typeof value === "string" && /^https?:\/\//i.test(value) ? value : "https://zikrmediaofficial.vercel.app";
 }
+function aiPlanEnabled() {
+  return Boolean(process.env.GEMINI_API_KEY?.trim());
+}
+
+async function generateAiCaption(request: GeneratedRequest): Promise<string | null> {
+  if (!aiPlanEnabled()) return null;
+  const sourceText = contentText(request).slice(0, 5000);
+  if (!sourceText) return null;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.GEMINI_MODEL || "gemini-2.0-flash-lite")}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY || "")}`;
+  const prompt = [
+    "أنت محرر محتوى لمنصة إسلامية.",
+    "المصدر أدناه موثق بالفعل. لا تغيّر نص المصدر ولا تضف حكمًا شرعيًا جديدًا.",
+    "اكتب سطرًا تأمليًا قصيرًا فقط، بالعربية، لا يتجاوز 110 أحرف، مستندًا حرفيًا إلى معنى المصدر دون ادعاء مصدر جديد.",
+    `العنوان: ${request.title}`,
+    `المصدر: ${contentSourceUrl(request)}`,
+    `النص:${sourceText}`,
+    'أعد السطر فقط بدون علامات اقتباس أو Markdown.',
+  ].join("\n");
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 120 },
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`);
+  const payload = await response.json();
+  const raw = payload.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("").trim() || "";
+  return raw.replace(/[<>]/g, "").replace(/\s+/g, " ").slice(0, 160) || null;
+}
+
 function contentAudioUrl(request: GeneratedRequest) {
   const value = request.content?.audioUrl;
   return typeof value === "string" && /^https:\/\//i.test(value.trim()) ? value.trim() : "";
@@ -168,7 +309,13 @@ async function renderVideo(request: GeneratedRequest) {
   const outputPath = `${temp}/video.mp4`;
   const audioPath = `${temp}/recitation.m4a`;
   try {
-    await writeFile(assPath, makeAss(text, request.title, sourceUrl), "utf8");
+    let reflection: string | null = null;
+    try {
+      reflection = await generateAiCaption(request);
+    } catch (error) {
+      console.warn(`[template-video] Gemini reflection skipped for ${request.id}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    await writeFile(assPath, makeAss(text, request.title, sourceUrl, reflection), "utf8");
     const filter = [
       `subtitles=${assPath}:fontsdir=/usr/share/fonts/truetype/noto`,
       "eq=contrast=1.04:saturation=0.92:brightness=0.01",

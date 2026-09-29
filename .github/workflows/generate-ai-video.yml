@@ -1,58 +1,109 @@
-name: Generate ZIKR AI Video
+name: ZIKR Autonomous AI Video Worker
 
 on:
+  schedule:
+    # Generate and publish content automatically without manual intervention.
+    # Two-hour cadence keeps the free runner practical while maintaining a steady feed.
+    - cron: "0 */2 * * *"
+  push:
+    # Run once when this workflow itself changes so an existing pending queue is
+    # processed immediately after deployment. Normal source pushes do not trigger it.
+    paths:
+      - ".github/workflows/generate-ai-video.yml"
   workflow_dispatch:
     inputs:
-      title:
-        description: Video topic or title
-        required: true
-        default: Daily Islamic Reminder
-        type: string
-      language:
-        description: Content language
-        required: true
-        default: ar
-        type: string
-      seconds:
-        description: Approximate duration in seconds
-        required: true
-        default: '12'
+      batch_size:
+        description: "Number of new video jobs to seed in this run"
+        required: false
+        default: "2"
         type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: generate-ai-video
+  group: zikr-autonomous-video-worker
   cancel-in-progress: false
 
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     env:
-      VIDEO_TITLE: ${{ inputs.title }}
-      VIDEO_LANGUAGE: ${{ inputs.language }}
-      VIDEO_SECONDS: ${{ inputs.seconds }}
+      # The canonical Supabase URL is public configuration; only the service-role key remains secret.
+      SUPABASE_URL: https://kdotmrjfecgafiommzwz.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://kdotmrjfecgafiommzwz.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.0-flash-lite' }}
-      VIDEO_OUTPUT_DIR: generated-video
+      AUTO_VIDEO_ENABLED: "true"
+      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '2' }}
+      VIDEO_BACKGROUND_BATCH_SIZE: "2"
+      AUTO_VIDEO_SECONDS: "16"
+      BACKGROUND_JOB_TARGET: "all"
+      # Generated videos are automatically handed to the configured social publishers.
+      SOCIAL_PUBLISH_ENABLED: "true"
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+      FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+      FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+      FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install free rendering tools
+      - name: Configure Node and pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.0 --activate
+          node --version
+          pnpm --version
+
+      - name: Install production dependencies
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Install free rendering tools and Arabic fonts
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg librsvg2-bin fonts-noto-core fonts-noto-extra
+          sudo apt-get install -y --no-install-recommends ffmpeg librsvg2-bin fonts-noto-core fonts-noto-extra fonts-noto-cjk
 
-      - name: Generate AI-assisted MP4
-        run: node scripts/generate-ai-video.mjs
+      - name: Validate automation secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "Missing GitHub Actions secret: SUPABASE_SERVICE_ROLE_KEY" >&2; exit 1; }
+          if [[ -z "${YOUTUBE_CLIENT_ID:-}" && -z "${FACEBOOK_PAGE_ID:-}" ]]; then
+            echo "Warning: no social provider credentials are configured; videos can still be generated but cannot be published." >&2
+          fi
 
-      - name: Upload generated video artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: zikr-ai-video-${{ github.run_number }}
-          path: generated-video/
-          if-no-files-found: error
-          retention-days: 14
+      - name: Verify Supabase data-plane access
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status="$(curl -sS -o "$response_file" -w '%{http_code}' \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            "$SUPABASE_URL/rest/v1/quran_ayahs?select=id&limit=1")"
+          echo "Supabase REST quran_ayahs HTTP status: $status"
+          if [[ "$status" != "200" ]]; then
+            echo "Supabase data-plane authentication/configuration failed:" >&2
+            head -c 500 "$response_file" >&2 || true
+            exit 1
+          fi
+
+      - name: Run autonomous queue
+        run: pnpm background:jobs
+
+      - name: Print run summary
+        if: always()
+        run: |
+          echo "ZIKR autonomous video worker completed."
+          echo "The queue seeds source-locked Quran/Hadith/Dua videos and renders them with free FFmpeg."
+          echo "Generated videos are automatically queued for configured YouTube/Facebook publishing."
+          echo "Gemini is used only for a bounded reflection layer when GEMINI_API_KEY is configured."
+          echo "Worker retry trigger: Supabase data-plane verification added."

@@ -14,6 +14,13 @@ export type AdminMetric = {
   tone?: "neutral" | "success" | "warning" | "danger";
 };
 
+export type AdminCountRow = {
+  table: string;
+  label: string;
+  count: number | null;
+  state: "available" | "unavailable";
+};
+
 export type AdminAuditRow = {
   id: string;
   action: string;
@@ -29,7 +36,7 @@ export type AdminAuditRow = {
 
 export type AdminHealth = {
   database: "healthy" | "degraded";
-  tables: Array<{ table: string; count: number; state: "healthy" | "empty" | "unavailable" }>;
+  tables: Array<{ table: string; count: number | null; state: "healthy" | "empty" | "unavailable" }>;
   queues: {
     socialQueued: number;
     socialFailed: number;
@@ -55,21 +62,20 @@ const COUNT_TABLES: Array<{ table: string; label: string }> = [
   { table: "media_assets", label: "الوسائط" },
 ];
 
-async function safeCount(table: string) {
+async function safeCount(table: string): Promise<number | null> {
   try {
     return await supabaseServerAdminCount(table);
   } catch {
-    return 0;
+    return null;
   }
 }
 
 export async function getAdminSnapshot() {
-  const counts = await Promise.all(
-    COUNT_TABLES.map(async ({ table, label }) => ({
-      table,
-      label,
-      count: await safeCount(table),
-    })),
+  const counts: AdminCountRow[] = await Promise.all(
+    COUNT_TABLES.map(async ({ table, label }) => {
+      const count = await safeCount(table);
+      return { table, label, count, state: count === null ? "unavailable" : "available" };
+    }),
   );
 
   const [audit, socialQueue, videoQueue, contentDrafts] = await Promise.all([
@@ -170,7 +176,7 @@ export async function getAdminOverview() {
       : {};
 
   return {
-    counts: Object.fromEntries(counts),
+    counts: Object.fromEntries(counts.map(({ table, label, count }) => [table, { label, count }])),
     videoGeneration: countStatuses(videoRequests),
     socialQueue: countStatuses(socialQueue),
     sections: {
@@ -194,7 +200,7 @@ export async function getAdminHealth(): Promise<AdminHealth> {
           state: count === 0 ? "empty" : "healthy",
         } as const;
       } catch {
-        return { table, count: 0, state: "unavailable" } as const;
+        return { table, count: null, state: "unavailable" } as const;
       }
     }),
   );

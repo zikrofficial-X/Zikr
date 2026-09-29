@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireAdmin } from '@/features/admin/services/admin';
+import { requireAdminPermission } from '@/features/admin/services/admin';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
 
 function text(formData: FormData, key: string, required = false) {
@@ -20,7 +20,7 @@ function slug(value: string) {
 }
 
 export async function saveCompanionAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission("knowledge.manage");
   const nameAr = text(formData, 'name_ar', true)!;
   const nameEn = text(formData, 'name_en') ?? nameAr;
   const normalizedSlug = slug(text(formData, 'slug') ?? nameAr);
@@ -33,7 +33,7 @@ export async function saveCompanionAction(formData: FormData) {
 }
 
 export async function saveScholarAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission("knowledge.manage");
   const nameAr = text(formData, 'name_ar', true)!;
   const nameEn = text(formData, 'name_en') ?? nameAr;
   const normalizedSlug = slug(text(formData, 'slug') ?? nameAr);
@@ -46,7 +46,7 @@ export async function saveScholarAction(formData: FormData) {
 }
 
 export async function saveSurahAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission("knowledge.manage");
   const surahId = Number(text(formData, 'id'));
   const order = Number(text(formData, 'order'));
   const ayahsCount = Number(text(formData, 'ayahs_count'));
@@ -59,7 +59,7 @@ export async function saveSurahAction(formData: FormData) {
 }
 
 export async function saveHadithAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission("knowledge.manage");
   const bookId = text(formData, 'book_id', true)!;
   const hadithNumber = text(formData, 'hadith_number', true)!;
   const textAr = text(formData, 'text_ar', true)!;

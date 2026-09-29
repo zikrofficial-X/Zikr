@@ -1,16 +1,45 @@
-# ZIKR GitHub AI Video Action
+# ZIKR Autonomous AI Video Worker
 
-The repository includes a manual workflow at `.github/workflows/generate-ai-video.yml`. It creates a vertical 1080×1920 MP4 on a standard GitHub-hosted runner and uploads the result as a downloadable artifact. The renderer uses free open-source FFmpeg and SVG tooling; it does not call a paid video-generation provider.
+The production video automation workflow lives at `.github/workflows/generate-ai-video.yml`.
 
-When the repository secret `GEMINI_API_KEY` is present, the workflow asks Gemini's free-tier API for a short, structured scene plan. If the secret is absent or the API is unavailable, the workflow automatically uses the reviewed safe fallback scenes, so the action remains runnable without paid credentials. The fallback is intentionally general and does not fabricate Quran or hadith citations.
+## Automatic operation
 
-Run it from **GitHub → Actions → Generate ZIKR AI Video → Run workflow**, then enter a title, language, and approximate duration. The resulting MP4 and metadata are available under the workflow run's artifact. The workflow is manual-only by design; it does not create an uncontrolled recurring publisher or change Supabase data.
+The workflow runs every two hours and supports manual dispatch for diagnostics. It invokes:
 
-## Optional configuration
+```bash
+pnpm background:jobs
+```
 
-| Name | Where | Purpose |
-|---|---|---|
-| `GEMINI_API_KEY` | GitHub Actions secret | Optional free-tier scene planning through Gemini |
-| `GEMINI_MODEL` | GitHub Actions variable | Optional model override; defaults to `gemini-2.0-flash-lite` |
+The worker:
 
-No Vercel variable is required for this artifact-only workflow. Vercel variables such as `VIDEO_GENERATOR`, `VIDEO_AUTO_PUBLISH`, and `VIDEO_BACKGROUND_BATCH_SIZE` belong to the production queue and are separate from this manual workflow. Publishing to YouTube, Facebook, or Supabase storage is deliberately not enabled by this action.
+1. Seeds idempotent source-locked Quran/Hadith/Dua requests.
+2. Renders videos with the free deterministic FFmpeg template renderer.
+3. Stores generated MP4 files in Supabase Storage.
+4. Places successful videos into the social publishing queue.
+5. Publishes automatically to configured YouTube and Facebook targets.
+
+## Safety
+
+The workflow does not rewrite Quran or hadith source text. Gemini is optional and is restricted to a short reflection/caption layer. Provider credentials are read from GitHub Actions secrets.
+
+Required production secrets include:
+
+```text
+SUPABASE_SERVICE_ROLE_KEY
+YOUTUBE_CLIENT_ID
+YOUTUBE_CLIENT_SECRET
+YOUTUBE_REFRESH_TOKEN
+YOUTUBE_CHANNEL_ID
+FACEBOOK_PAGE_ID
+FACEBOOK_PAGE_ACCESS_TOKEN
+```
+
+Only the credentials for configured providers are required for that provider's publishing path. Video generation remains independent of social-provider availability.
+
+## Manual diagnostics
+
+Use GitHub Actions → **ZIKR Autonomous AI Video Worker** → **Run workflow** to process a controlled batch manually. Normal operation does not require opening the admin panel or pressing a generate button.
+
+## Recovery
+
+CircleCI's `background-jobs` parameter remains available as a manual recovery path. It must not be configured as a second recurring schedule.

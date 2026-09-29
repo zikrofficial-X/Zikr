@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/features/admin/services/admin";
+import { requireAdminPermission } from "@/features/admin/services/admin";
 import { uploadCloudinaryImage } from "@/features/media/services/cloudinary";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { isRegisteredGameId } from "@/lib/games/registry";
@@ -39,7 +39,7 @@ function normalizeSlug(slug: string) {
 }
 
 export async function saveKidsContentAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission("kids.manage");
 
   const title_ar = String(formData.get("title_ar") ?? "").trim();
   const slug = normalizeSlug(String(formData.get("slug") ?? "").trim());

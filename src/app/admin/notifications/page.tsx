@@ -8,12 +8,12 @@ import { createAdminNotificationAction, markAdminNotificationsReadAction } from 
 
 export const metadata: Metadata = { title: "تنبيهات الإدارة | الأدمن" };
 
-type NotificationRow = { id: string; title: string; body: string; type: string | null; is_read: boolean; link: string | null; created_at: string };
+type NotificationRow = { id: string; title: string; body: string; type: string | null; read: boolean; metadata: Record<string, unknown> | null; created_at: string };
 
 export default async function AdminNotificationsPage() {
   await requireAdminPermission("notifications.manage");
   const rows = await supabaseServerAdminRequest<NotificationRow[]>(
-    "/rest/v1/notifications?select=id,title,body,type,is_read,link,created_at&user_id=is.null&order=created_at.desc&limit=100",
+    "/rest/v1/notifications?select=id,title,body,type,read,metadata,created_at&user_id=is.null&order=created_at.desc&limit=100",
     { method: "GET" },
   ).catch(() => []);
 
@@ -37,7 +37,14 @@ export default async function AdminNotificationsPage() {
       </form>
 
       <section className="space-y-3">
-        {rows.map((row) => <article key={row.id} className={`rounded-2xl border p-4 ${row.is_read ? 'border-brand-gold/8 bg-black/10' : 'border-brand-gold/20 bg-brand-gold/5'}`}><div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-brand-cream">{row.title}</h2><time className="text-[11px] text-brand-cream/30">{new Date(row.created_at).toLocaleString('ar-EG')}</time></div><p className="mt-2 text-sm leading-7 text-brand-cream/55">{row.body}</p>{row.link && <a className="mt-2 inline-block text-xs text-brand-gold" href={row.link}>فتح الرابط</a>}</article>)}
+        {rows.map((row) => {
+          const link = typeof row.metadata?.link === "string" ? row.metadata.link : null;
+          return <article key={row.id} className={`rounded-2xl border p-4 ${row.read ? 'border-brand-gold/8 bg-black/10' : 'border-brand-gold/20 bg-brand-gold/5'}`}>
+            <div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-brand-cream">{row.title}</h2><time className="text-[11px] text-brand-cream/30">{new Date(row.created_at).toLocaleString('ar-EG')}</time></div>
+            <p className="mt-2 text-sm leading-7 text-brand-cream/55">{row.body}</p>
+            {link && <a className="mt-2 inline-block text-xs text-brand-gold" href={link}>فتح الرابط</a>}
+          </article>;
+        })}
         {rows.length === 0 && <p className="rounded-2xl border border-brand-gold/10 p-8 text-center text-sm text-brand-cream/40">لا توجد تنبيهات.</p>}
       </section>
     </Container>

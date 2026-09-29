@@ -11,7 +11,6 @@ import type { Scholar } from "@/features/scholars/types/scholars";
 
 type Props = { scholars: Scholar[] };
 
-const categories = ["الكل", "متقدمين", "معاصرين"] as const;
 
 function getCategory(scholar: Scholar): string {
   const value = scholar.metadata?.category;
@@ -26,6 +25,12 @@ function getField(scholar: Scholar): string {
 export default function ScholarsPageView({ scholars }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<string>("الكل");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const categories = useMemo(() => {
+    const values = new Set<string>();
+    scholars.forEach((scholar) => values.add(getCategory(scholar)));
+    return ["الكل", ...Array.from(values).sort()];
+  }, [scholars]);
 
   const filteredScholars = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

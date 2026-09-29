@@ -6,7 +6,7 @@ import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 export async function deleteFailedVideoGenerationAction() {
-  await requireAdminStepUp("video.delete", "/admin/control");
+  await requireAdminStepUp("video.delete", "/admin/videos");
   await supabaseServerAdminRequest("/rest/v1/video_generation_requests?status=eq.failed", {
     method: "DELETE",
     headers: { Prefer: "return=minimal" },
@@ -17,6 +17,6 @@ export async function deleteFailedVideoGenerationAction() {
     resourceType: "video_generation_requests",
     metadata: { filter: "status=failed" },
   });
-  revalidatePath("/admin/control");
   revalidatePath("/admin/videos");
+  revalidatePath("/admin");
 }

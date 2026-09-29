@@ -56,8 +56,8 @@ export async function createAdminNotificationAction(formData: FormData) {
       title,
       body,
       type,
-      is_read: false,
-      link,
+      read: false,
+      metadata: link ? { link } : {},
     }),
   });
 
@@ -73,10 +73,10 @@ export async function createAdminNotificationAction(formData: FormData) {
 
 export async function markAdminNotificationsReadAction() {
   await requireAdminPermission("notifications.manage");
-  await supabaseServerAdminRequest("/rest/v1/notifications?user_id=is.null&is_read=eq.false", {
+  await supabaseServerAdminRequest("/rest/v1/notifications?user_id=is.null&read=eq.false", {
     method: "PATCH",
     headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ is_read: true }),
+    body: JSON.stringify({ read: true }),
   });
   await recordAdminAuditEvent({
     action: "admin.notification.mark_all_read",
