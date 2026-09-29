@@ -1,5 +1,6 @@
-import { ContentGuide } from "@/components/content/content-guide";
 'use client';
+
+import { ContentGuide } from "@/components/content/content-guide";
 
 import { QiblaPage } from '@/features/qibla/components/qibla-page';
 
