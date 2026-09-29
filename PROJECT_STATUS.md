@@ -22,13 +22,14 @@ A repository-wide and live-environment audit was performed across application so
 ### Supabase live state
 
 - Connected target project: `kdotmrjfecgafiommzwz` and currently `ACTIVE_HEALTHY`.
-- The previously missing remote migration `20260929025052` is now reconciled locally and Supabase Preview passes.
-- Live migration history now includes the security/performance hardening migrations applied during this audit.
+- The previously missing remote migration `20260929025052` is reconciled locally.
+- The security/performance hardening migrations were applied to the connected target and their repository filenames were corrected to the exact versions Supabase assigned (`20260929035722`, `20260929035746`, `20260929035802`, `20260929035817`, `20260929035845`).
 - Verified redundant indexes were removed and missing foreign-key covering indexes were added.
 - Unrestricted authenticated CRUD policies on `videos` and `video_categories` were removed; admin writes remain behind `private.is_admin_user()` and public reads are restricted to published content.
 - Tawasheeh owner policies were consolidated and changed to initplan-safe `select auth.uid()` expressions.
 - Public execution of `handle_new_user()` was revoked; the function remains available to the database trigger mechanism.
 - `update_updated_at_column()` now has a fixed `pg_catalog` search path.
+- Exact duplicate public-read policies were removed; the live database now reports zero exact duplicate policy groups for public schema policies.
 
 ### Remaining Supabase advisory items
 
@@ -47,14 +48,15 @@ A repository-wide and live-environment audit was performed across application so
 - GitHub Actions are intentionally retired from the production CI path.
 - CircleCI remains the CI/recovery path.
 - Vercel builds with the repository's frozen pnpm install and `pnpm build`.
-- Supabase Preview is currently green on the latest hardening commit.
-- Vercel and CircleCI checks are still pending for the latest `main` commit and therefore production release certification is not claimed yet.
+- The connected production Supabase project is healthy, but the GitHub Supabase Preview check is still linked to the old restricted Supabase organization/project (`eydxvcamhjhajxjrsgym`). The check now fails because that old organization is under service restrictions, not because of the current target database schema.
+- Vercel and CircleCI checks are pending for the latest `main` commit and therefore production release certification is not claimed yet.
 
 ## Release blockers
 
-1. Vercel must complete a fresh successful production build for the latest `main` commit.
-2. CircleCI `ci-check` must complete successfully.
-3. Native Android/iOS release builds require validation in their real release environments.
-4. Supabase Auth leaked-password protection should be enabled in the project security settings.
+1. Reconnect the GitHub Supabase integration/Preview check from the retired restricted project to the current `kdotmrjfecgafiommzwz` project. This cannot be corrected by repository SQL alone because it is an external GitHub/Supabase integration setting.
+2. Vercel must complete a fresh successful production build for the latest `main` commit.
+3. CircleCI `ci-check` must complete successfully.
+4. Native Android/iOS release builds require validation in their real release environments.
+5. Supabase Auth leaked-password protection should be enabled in the project security settings.
 
 Historical ZIP exports and older deployment artifacts are not treated as competing sources of truth.
