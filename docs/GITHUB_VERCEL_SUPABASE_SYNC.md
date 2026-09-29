@@ -72,7 +72,7 @@ Supabase Auth application redirects are locked to:
 
 The Google provider redirect URI is the Supabase provider callback:
 
-`https://eydxvcamhjhajxjrsgym.supabase.co/auth/v1/callback`
+`https://kdotmrjfecgafiommzwz.supabase.co/auth/v1/callback`
 
 These are separate by design.
 

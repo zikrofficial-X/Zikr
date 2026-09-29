@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { requireAdmin } from '@/features/admin/services/admin';
+import { requireAdminPermission } from '@/features/admin/services/admin';
 import { getKnowledgeAdminData } from '@/features/admin/services/knowledge';
 import { saveCompanionAction, saveHadithAction, saveScholarAction, saveSurahAction } from './actions';
 
@@ -19,7 +19,7 @@ function Published({ checked = true }: { checked?: boolean }) { return <label cl
 
 const getData = getKnowledgeAdminData;
 export default async function KnowledgeAdminPage() {
-  await requireAdmin();
+  await requireAdminPermission("knowledge.manage");
   const data = await getData();
   return <Container className="space-y-10 py-8 text-right" dir="rtl">
     <header className="space-y-2"><Link href="/admin" className="text-xs text-brand-gold/60 hover:text-brand-gold">← العودة إلى لوحة التحكم</Link><h1 className="text-3xl font-bold text-brand-gold">إدارة المعرفة الإسلامية</h1><p className="max-w-3xl text-sm leading-7 text-brand-cream/55">نماذج موحّدة لإضافة وتحرير الصحابة والعلماء والسور والأحاديث. لا تُنشئ نصوصًا دينية تلقائيًا؛ أدخل النص الموثق ومصدره ثم راجعه قبل النشر.</p></header>

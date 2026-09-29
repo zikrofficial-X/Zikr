@@ -8,7 +8,7 @@ import { AudioChoiceField } from "@/features/admin/components/audio-choice-field
 import { normalizeAudioSettings } from '@/lib/audio/config';
 import { getSiteSetting } from '@/features/site-content/services/site-content';
 import { Container } from "@/components/ui/container";
-import { requireAdmin } from "@/features/admin/services/admin";
+import { requireAdminPermission } from "@/features/admin/services/admin";
 import { runApiHealthChecks } from "@/lib/services/api-health";
 import { getVideoPublishingConfig } from "@/features/videos/services/video-automation";
 import { supabaseServerAdminCount } from "@/lib/supabase/server";
@@ -222,7 +222,7 @@ function MiniBar({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default async function AdminPage() {
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission("dashboard.view");
   const [
     checks,
     storiesCount,

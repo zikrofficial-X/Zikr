@@ -65,7 +65,7 @@ WHERE a.surah_id between 1 and 114;
 
 UPDATE public.quran_audio AS a
 SET storage_url =
-  'https://eydxvcamhjhajxjrsgym.supabase.co/storage/v1/object/public/quran-audio/' ||
+  'https://kdotmrjfecgafiommzwz.supabase.co/storage/v1/object/public/quran-audio/' ||
   a.storage_path
 WHERE a.storage_bucket = 'quran-audio'
   AND a.storage_path IS NOT NULL;

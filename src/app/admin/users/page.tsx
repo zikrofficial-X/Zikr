@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { requireAdmin } from "@/features/admin/services/admin";
+import { requireAdminPermission } from "@/features/admin/services/admin";
 import {
   supabaseServerAdminRequest,
   supabaseServerAdminCount,
@@ -61,7 +61,7 @@ async function getUsers(): Promise<UserProfile[]> {
 }
 
 export default async function AdminUsersPage() {
-  const currentAdmin = await requireAdmin();
+  const currentAdmin = await requireAdminPermission("users.read");
   const [users, totalUsers, recentActions] = await Promise.all([
     getUsers(),
     supabaseServerAdminCount("profiles"),

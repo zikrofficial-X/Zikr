@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { requireAdmin } from '@/features/admin/services/admin';
+import { requireAdminPermission } from '@/features/admin/services/admin';
 import {
   ADMIN_STATIC_PROPHETS,
   getAdminProphets,
@@ -22,7 +22,7 @@ type Prophet = AdminProphet;
 
 async function saveProphetVideoAction(formData: FormData) {
   'use server';
-  await requireAdmin();
+  await requireAdminPermission("prophets.manage");
   const id = String(formData.get('id') ?? '').trim();
   const rawUrl = String(formData.get('youtube_url') ?? '').trim();
   if (!id) return;
@@ -36,7 +36,7 @@ async function saveProphetVideoAction(formData: FormData) {
 
 async function toggleProphetPublishAction(formData: FormData) {
   'use server';
-  await requireAdmin();
+  await requireAdminPermission("prophets.manage");
   const id = String(formData.get('id') ?? '').trim();
   const next = formData.get('next') === 'true';
   if (!id) return;
@@ -68,7 +68,7 @@ function Field({ name, label, placeholder, defaultValue }: { name: string; label
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function AdminProphetsPage() {
-  await requireAdmin();
+  await requireAdminPermission("prophets.manage");
 
   const prophets: Prophet[] = await getAdminProphets();
 

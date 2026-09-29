@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { Container } from "@/components/ui/container";
-import { requireAdmin } from "@/features/admin/services/admin";
+import { requireAdminPermission } from "@/features/admin/services/admin";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import YoutubeMediaImporter from "./YoutubeMediaImporter";
 
@@ -16,7 +16,7 @@ type Job = {
 };
 
 export default async function YoutubeFacebookImportPage() {
-  await requireAdmin();
+  await requireAdminPermission("social.manage");
   let jobs: Job[] = [];
 
   try {

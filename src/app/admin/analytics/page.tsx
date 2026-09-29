@@ -5,7 +5,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Badge } from '@/components/ui/badge';
-import { requireAdmin } from '@/features/admin/services/admin';
+import { requireAdminPermission } from '@/features/admin/services/admin';
 import { getAdminAnalytics } from '@/features/admin/services/analytics';
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AnalyticsPage() {
-  await requireAdmin();
+  await requireAdminPermission("analytics.read");
 
   const { stats, topArticles, userCount } = await getAdminAnalytics();
 

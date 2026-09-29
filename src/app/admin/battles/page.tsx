@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { requireAdmin } from '@/features/admin/services/admin';
+import { requireAdminPermission } from '@/features/admin/services/admin';
 import {
   ADMIN_STATIC_BATTLES,
   getAdminBattles,
@@ -18,7 +18,7 @@ import { revalidatePath } from 'next/cache';
 
 async function saveBattleVideoAction(formData: FormData) {
   'use server';
-  await requireAdmin();
+  await requireAdminPermission("battles.manage");
   const id = String(formData.get('id') ?? '').trim();
   const rawUrl = String(formData.get('youtube_url') ?? '').trim();
   if (!id) return;
@@ -32,7 +32,7 @@ async function saveBattleVideoAction(formData: FormData) {
 
 async function toggleBattlePublishAction(formData: FormData) {
   'use server';
-  await requireAdmin();
+  await requireAdminPermission("battles.manage");
   const id = String(formData.get('id') ?? '').trim();
   const next = formData.get('next') === 'true';
   if (!id) return;
@@ -46,7 +46,7 @@ async function toggleBattlePublishAction(formData: FormData) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function AdminBattlesPage() {
-  await requireAdmin();
+  await requireAdminPermission("battles.manage");
 
   const battles = await getAdminBattles();
 

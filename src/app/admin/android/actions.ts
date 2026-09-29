@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/features/admin/services/admin";
+import { requireAdminPermission } from "@/features/admin/services/admin";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 export async function saveAndroidReleaseAction(formData: FormData) {
-  await requireAdmin();
+  await requireAdminPermission("android.manage");
 
   const mode = String(formData.get("mode") ?? "auto").trim();
   const releaseTag = String(formData.get("releaseTag") ?? "").trim();
