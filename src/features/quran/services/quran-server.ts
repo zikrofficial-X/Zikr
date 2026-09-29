@@ -467,8 +467,12 @@ export async function getQuranAudioFromDb(
   ])];
 
   try {
-    const reciters = await quranDbRequest<Array<{ id: string; code: string | null }>>(
-      `/rest/v1/quran_reciters?select=id,code&code=in.(${candidates.map((value) => encodeURIComponent(value)).join(",")})&limit=10`,
+    const reciters = await quranDbRequest<Array<{
+      id: string;
+      code: string | null;
+      base_url_template: string | null;
+    }>>(
+      `/rest/v1/quran_reciters?select=id,code,base_url_template&code=in.(${candidates.map((value) => encodeURIComponent(value)).join(",")})&limit=10`,
     );
     const reciterRow = reciters?.find(
       (row) => typeof row.code === "string" && candidates.includes(row.code),
@@ -494,7 +498,18 @@ export async function getQuranAudioFromDb(
     // Supabase Storage is an optional cache.  The canonical Quran audio
     // records retain a verified external source URL, so playback continues
     // to work on the Free plan after the oversized local cache is removed.
-    const externalUrl = row?.source_url ?? row?.audio_url;
+    // `source_url` is the provider homepage; `audio_url` is the playable file
+    // URL. Prefer the file URL whenever the Storage cache is unavailable.
+    const storedUrl = row?.audio_url;
+    const isSupabaseStorageUrl =
+      typeof storedUrl === "string" &&
+      storedUrl.includes(".supabase.co/storage/v1/object/");
+    const externalUrl =
+      !isSupabaseStorageUrl && storedUrl
+        ? storedUrl
+        : reciterRow.base_url_template
+          ? `${reciterRow.base_url_template.replace(/\/$/, "")}/${String(surahId).padStart(3, "0")}.mp3`
+          : row?.source_url;
     if (externalUrl && /^https?:\/\//i.test(externalUrl)) {
       return {
         audio: {
