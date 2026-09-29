@@ -37,7 +37,7 @@ function getNextApiKey(): string | null {
 }
 
 function getDirectModel(): string {
-  return getServerEnv().GEMINI_MODEL?.replace(/^google\//, '') ?? 'gemini-2.5-flash-lite';
+  return getServerEnv().GEMINI_MODEL?.replace(/^google\//, '') ?? 'gemini-3.1-flash-lite';
 }
 
 const BLOCK_ONLY_HIGH = 'BLOCK_ONLY_HIGH' as unknown as HarmBlockThreshold;
