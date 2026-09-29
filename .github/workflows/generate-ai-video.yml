@@ -70,10 +70,49 @@ jobs:
       - name: Install production dependencies
         run: pnpm install --frozen-lockfile --prod=false
 
-      - name: Install free rendering tools and Arabic fonts
+      - name: Verify and install rendering dependencies only when missing
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg librsvg2-bin fonts-noto-core fonts-noto-extra fonts-noto-cjk
+          set -euo pipefail
+
+          missing=""
+          need_install=0
+
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            missing="$missing ffmpeg"
+            need_install=1
+          fi
+
+          if ! command -v rsvg-convert >/dev/null 2>&1; then
+            missing="$missing librsvg2-bin"
+            need_install=1
+          fi
+
+          # The renderer explicitly uses these two Arabic font families.
+          # fonts-noto-core contains both; avoid the much larger extra/CJK
+          # packages unless a future renderer actually needs them.
+          if [[ ! -f /usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf ||
+                ! -f /usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf ]]; then
+            missing="$missing fonts-noto-core"
+            need_install=1
+          fi
+
+          if [ "$need_install" -eq 1 ]; then
+            echo "Installing missing rendering dependencies:$missing"
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends $missing
+          else
+            echo "All rendering dependencies are already available on the runner."
+          fi
+
+          command -v ffmpeg >/dev/null
+          command -v rsvg-convert >/dev/null
+          test -f /usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf
+          test -f /usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf
+
+          echo "ffmpeg: $(ffmpeg -version | head -n 1)"
+          echo "rsvg-convert: $(rsvg-convert --version 2>&1 | head -n 1)"
+          echo "Arabic fonts: Noto Naskh Arabic + Noto Sans Arabic available"
 
       - name: Smoke-test video worker imports
         run: |
