@@ -80,6 +80,22 @@ jobs:
             echo "Warning: no social provider credentials are configured; videos can still be generated but cannot be published." >&2
           fi
 
+      - name: Verify Supabase data-plane access
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status="$(curl -sS -o "$response_file" -w '%{http_code}' \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            "$SUPABASE_URL/rest/v1/quran_ayahs?select=id&limit=1")"
+          echo "Supabase REST quran_ayahs HTTP status: $status"
+          if [[ "$status" != "200" ]]; then
+            echo "Supabase data-plane authentication/configuration failed:" >&2
+            head -c 500 "$response_file" >&2 || true
+            exit 1
+          fi
+
       - name: Run autonomous queue
         run: pnpm background:jobs
 
@@ -90,4 +106,4 @@ jobs:
           echo "The queue seeds source-locked Quran/Hadith/Dua videos and renders them with free FFmpeg."
           echo "Generated videos are automatically queued for configured YouTube/Facebook publishing."
           echo "Gemini is used only for a bounded reflection layer when GEMINI_API_KEY is configured."
-          echo "Worker retry trigger: server count fix + video_url schema reconciliation."
+          echo "Worker retry trigger: Supabase data-plane verification added."
