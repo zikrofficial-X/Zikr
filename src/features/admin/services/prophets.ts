@@ -13,16 +13,6 @@ export type AdminProphet = {
   metadata: Record<string, string> | null;
 };
 
-export const ADMIN_STATIC_PROPHETS = [
-  { slug: "adam", name_ar: "آدم عليه السلام", order_num: 1 },
-  { slug: "nuh", name_ar: "نوح عليه السلام", order_num: 3 },
-  { slug: "ibrahim", name_ar: "إبراهيم عليه السلام", order_num: 6 },
-  { slug: "yusuf", name_ar: "يوسف عليه السلام", order_num: 11 },
-  { slug: "musa", name_ar: "موسى عليه السلام", order_num: 15 },
-  { slug: "isa", name_ar: "عيسى عليه السلام", order_num: 24 },
-  { slug: "muhammad", name_ar: "محمد صلى الله عليه وسلم", order_num: 25 },
-] as const;
-
 export async function getAdminProphets(): Promise<AdminProphet[]> {
   try {
     const supabase = await createClient();

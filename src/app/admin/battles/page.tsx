@@ -4,9 +4,8 @@ import Link from 'next/link';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { requireAdmin } from '@/features/admin/services/admin';
+import { requireAdminPermission } from '@/features/admin/services/admin';
 import {
-  ADMIN_STATIC_BATTLES,
   getAdminBattles,
   saveAdminBattleVideo,
   setAdminBattlePublished,
@@ -18,13 +17,14 @@ import { revalidatePath } from 'next/cache';
 
 async function saveBattleVideoAction(formData: FormData) {
   'use server';
-  await requireAdmin();
+  await requireAdminPermission("battles.manage");
   const id = String(formData.get('id') ?? '').trim();
   const rawUrl = String(formData.get('youtube_url') ?? '').trim();
   if (!id) return;
 
   const videoId = parseYouTubeVideoId(rawUrl);
-  await saveAdminBattleVideo(id, videoId);
+  const ok = await saveAdminBattleVideo(id, videoId);
+  if (!ok) throw new Error("تعذر حفظ فيديو الغزوة. راجع صلاحيات قاعدة البيانات وسجل الأخطاء.");
 
   revalidatePath('/admin/battles');
   revalidatePath('/battles');
@@ -32,12 +32,13 @@ async function saveBattleVideoAction(formData: FormData) {
 
 async function toggleBattlePublishAction(formData: FormData) {
   'use server';
-  await requireAdmin();
+  await requireAdminPermission("battles.manage");
   const id = String(formData.get('id') ?? '').trim();
   const next = formData.get('next') === 'true';
   if (!id) return;
 
-  await setAdminBattlePublished(id, next);
+  const ok = await setAdminBattlePublished(id, next);
+  if (!ok) throw new Error("تعذر تحديث حالة نشر الغزوة.");
 
   revalidatePath('/admin/battles');
   revalidatePath('/battles');
@@ -46,13 +47,9 @@ async function toggleBattlePublishAction(formData: FormData) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function AdminBattlesPage() {
-  await requireAdmin();
+  await requireAdminPermission("battles.manage");
 
   const battles = await getAdminBattles();
-
-
-  // Use the same canonical fallback slugs as the public content routes.
-  const staticBattles = ADMIN_STATIC_BATTLES;
 
   const hasBattles = battles.length > 0;
 
@@ -145,23 +142,9 @@ export default async function AdminBattlesPage() {
           })}
         </section>
       ) : (
-        <section className="space-y-4">
-          <div className="rounded-xl border border-amber-500/25 bg-amber-950/15 p-4 text-sm text-amber-300/80" dir="rtl">
-            لم تُضف بعد غزوات في قاعدة البيانات. الصفحات تعمل بالبيانات الثابتة حالياً.
-          </div>
-          <p className="text-xs text-brand-cream/35">الغزوات المتاحة حالياً بالبيانات الثابتة:</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {staticBattles.map((b) => (
-              <Link
-                key={b.slug}
-                href={`/battles/${b.slug}`}
-                className="rounded-xl border border-brand-gold/15 bg-black/20 p-4 text-center hover:border-brand-gold/30 transition-colors"
-              >
-                <p className="text-sm font-semibold text-brand-gold">{b.name_ar}</p>
-                <p className="text-xs text-brand-cream/35 mt-1">{b.year_hijri} هـ</p>
-              </Link>
-            ))}
-          </div>
+        <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-center space-y-2">
+          <h2 className="font-semibold text-amber-300">لا توجد سجلات غزوات في قاعدة البيانات</h2>
+          <p className="text-sm text-brand-cream/50">لن يعرض مركز الإدارة بيانات ثابتة أو وهمية. أضف السجلات إلى قاعدة البيانات أولًا ثم ستظهر هنا.</p>
         </section>
       )}
     </Container>

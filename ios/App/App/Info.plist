@@ -9,9 +9,9 @@
   <key>CFBundleName</key>
   <string>ZIKR</string>
   <key>CFBundleShortVersionString</key>
-  <string>1.0.0</string>
+  <string>1.1.0</string>
   <key>CFBundleVersion</key>
-  <string>53</string>
+  <string>54</string>
   <key>CFBundleURLTypes</key>
   <array>
     <dict>
@@ -59,7 +59,7 @@
   <key>WKAppBoundDomains</key>
   <array>
     <string>zikrmediaofficial.vercel.app</string>
-    <string>eydxvcamhjhajxjrsgym.supabase.co</string>
+    <string>kdotmrjfecgafiommzwz.supabase.co</string>
   </array>
   <key>ITSAppUsesNonExemptEncryption</key>
   <false/>

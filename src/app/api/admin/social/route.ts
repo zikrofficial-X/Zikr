@@ -164,6 +164,12 @@ export async function POST(request: NextRequest) {
               error_message: null,
               updated_at: new Date().toISOString(),
               scheduled_at: new Date().toISOString(),
+              metadata: {
+                ...(item.metadata ?? {}),
+                authBlocked: false,
+                attempts: 0,
+                nextRetryAt: null,
+              },
             }),
           },
         );

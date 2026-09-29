@@ -1,6 +1,6 @@
 # ZIKR — CircleCI and Supabase environment matrix
 
-**Last updated:** September 19, 2026
+**Last updated:** September 29, 2026
 
 This document is the authoritative inventory for the current CircleCI recovery/CI path and the Supabase Edge Function runtime. Secret values must never be committed to Git.
 
@@ -16,20 +16,12 @@ This document is the authoritative inventory for the current CircleCI recovery/C
 - `SUPABASE_ANON_KEY` — public/low-sensitivity runtime key.
 - `NEXT_PUBLIC_SITE_URL` — non-secret; pinned by the config.
 
-### Required for `quran-audio-import`
-- `SUPABASE_URL` — protected variable.
-- `SUPABASE_SERVICE_ROLE_KEY` — secret/protected.
-
-Optional operational values:
-- `QURAN_AUDIO_MAX_FILE_MB` (default 50)
-- `QURAN_AUDIO_CONCURRENCY` (default 2)
-
 ### Required only for Android release
 - `ANDROID_KEYSTORE_BASE64` — secret/protected.
 - `ANDROID_KEYSTORE_PASSWORD` — secret/protected.
 - `ANDROID_KEY_ALIAS` — protected.
 - `ANDROID_KEY_PASSWORD` — secret/protected.
-- `GH_TOKEN` — secret/protected with permission to create/update tags and releases in `Zikrmediaofficial/Zikr`.
+- `GH_TOKEN` — secret/protected with permission to create/update tags and releases in `zikr-org/Zikr`.
 
 ### Required only when social publishing is deliberately enabled
 For YouTube:
@@ -57,11 +49,18 @@ These are intentionally defined in `.circleci/config.yml` or supplied as pipelin
 - `SOCIAL_PUBLISH_ENABLED=false` by default
 - `run_background_jobs`
 - `background_target`
-- `run_quran_audio_import`
 - `run_production_smoke`
 - `run_security_audit`
 
 CircleCI also supplies built-in values such as `CIRCLE_SHA1`, `CIRCLE_BRANCH`, and `CIRCLE_TAG`; they must not be manually created as secrets.
+
+## Quran audio policy
+
+The production Free-plan architecture does **not** require a Quran audio Storage importer. The new Supabase project is intentionally kept at zero Quran audio objects.
+
+The application stores validated external HTTPS values in `public.quran_audio.audio_url` and does not use Supabase Storage for the Quran MP3 catalogue. The old `quran-audio` import job and its service-role-only bulk upload path have been retired from CircleCI.
+
+Do not recreate `QURAN_AUDIO_MAX_FILE_MB`, `QURAN_AUDIO_MAX_BUCKET_MIB`, `QURAN_AUDIO_CONCURRENCY`, or any equivalent import controls unless the architecture is intentionally changed away from the Free-plan design.
 
 ## Supabase Edge Function runtime
 

@@ -1,72 +1,62 @@
 # Background jobs runbook
 
-ZIKR's production video and social queues are executed outside GitHub Actions.
-
-The authoritative recovery worker is the CircleCI `background-jobs` job. It installs FFmpeg and Arabic fonts, validates protected runtime configuration, and executes the deterministic template/video and social queues when the corresponding CircleCI pipeline parameter is deliberately enabled.
-
-GitHub Actions workflows are retired from the repository and must not be recreated.
-
-The legacy Supabase `zikr-video-processing` job is retired and must not be recreated. The authenticated `/api/internal/video-processing` route remains a compatibility/recovery endpoint, not a scheduler. The route does **not** render or publish media on Vercel.
-
-The prayer notification path is separate: Supabase `pg_cron` invokes the `prayer-notification-worker` Edge Function every minute.
+ZIKR's production video and social queues are executed automatically by the repository's GitHub Actions worker `.github/workflows/generate-ai-video.yml`.
 
 ## Production video generation
 
-Production generation is locked to the free `template` renderer. It uses trusted Quran content from `quran_ayahs`, FFmpeg, Arabic captions, optional HTTPS recitation audio, and Supabase Storage. HeyGen is not selected, submitted, polled, or required by the production queue.
+The autonomous worker runs every two hours and also supports manual dispatch for diagnostics. It invokes `pnpm background:jobs` with the free deterministic `template` renderer.
 
-Historical HeyGen columns and migrations are retained only for schema/backward compatibility.
+Production generation uses trusted Quran/Hadith/Dua content, FFmpeg, Arabic fonts, optional HTTPS recitation audio, and Supabase Storage. Gemini is optional and is limited to a short reflection/caption layer; it does not replace or rewrite source religious text.
 
-## Social publishing
+The queue is idempotent through `video_generation_requests.automation_key` and conditional pending claims, so scheduled reruns do not create duplicate automated jobs.
 
-Generated MP4 files are queued for configured platforms. YouTube uses OAuth 2.0 upload credentials; Facebook uses the Page access token and Page ID. Per-platform outcomes are tracked and partial failures are not silently reported as complete success.
+## Automatic social publishing
 
-## CircleCI execution
+The scheduled worker runs with `SOCIAL_PUBLISH_ENABLED=true`. Every successfully rendered video is placed into `social_publish_queue` and then processed automatically for configured providers.
 
-Operational jobs are disabled by default and run only when their pipeline parameter is explicitly enabled.
-
-Background processing:
+YouTube requires:
 
 ```text
-run_background_jobs=true
-background_target=all|videos|social
+YOUTUBE_CLIENT_ID
+YOUTUBE_CLIENT_SECRET
+YOUTUBE_REFRESH_TOKEN
+YOUTUBE_CHANNEL_ID
 ```
 
-The CircleCI job sets:
+Facebook requires:
 
 ```text
-VIDEO_GENERATOR=template
-AUTO_VIDEO_ENABLED=true
+FACEBOOK_PAGE_ID
+FACEBOOK_PAGE_ACCESS_TOKEN
 ```
 
-and uses protected project/context variables for Supabase, YouTube, and Facebook credentials.
+Secrets are GitHub Actions secrets and are never committed to the repository.
 
-Quran audio import is a separate opt-in job:
+If a provider credential is missing or expired, that platform is recorded as failed instead of pretending that publication succeeded. Video generation itself remains independent from a single provider failure.
+
+## Current schedule
 
 ```text
-run_quran_audio_import=true
+Every 2 hours
+2 new source-locked video requests per run
+16-second free FFmpeg videos
+Automatic social queue processing
 ```
 
-It executes `scripts/import-quran-audio-to-supabase.mjs` with protected Supabase credentials and configurable file-size/concurrency limits.
+The workflow also supports manual `workflow_dispatch` for controlled diagnostics; normal operation does not require manual intervention.
 
-Production smoke and security audit are also opt-in CircleCI jobs:
+## Recovery
 
-```text
-run_production_smoke=true
-run_security_audit=true
-```
+CircleCI remains available for CI verification, Android builds, and deliberate background recovery. It is not part of the normal video publishing schedule.
 
-## No automatic duplicate scheduler
+The prayer notification path remains separate: Supabase `pg_cron` invokes `prayer-notification-worker` every minute.
 
-There is no automatic GitHub Actions schedule for video/social queues and no active Supabase video cron in the current architecture. CircleCI operational jobs are manual by parameter to avoid turning the CI provider into an uncontrolled production scheduler.
+The legacy Supabase `zikr-video-processing` job and the Vercel `/api/internal/video-processing` compatibility endpoint are not production schedulers.
 
-Do not add another Vercel Cron, Supabase video cron, GitHub workflow, or duplicate worker for the same queue.
+## Safety
 
-## Safety and recovery
+Queue claiming is conditional on `status=pending`, and automation keys prevent duplicate generated videos and duplicate social queue records. Provider secrets remain server-side.
 
-Queue claiming is conditional on `status=pending`, and automation keys prevent duplicate generated requests and duplicate social queue records. Provider secrets remain server-side and are never committed.
+A generated video is only considered published when the provider returns its publication identifier and the queue records the provider result.
 
-For a fresh YouTube verification, inspect the provider-side upload result and resulting `youtube_id`; database rows without a current provider upload must not be presented as proof of successful publication.
-
-For Facebook, verify the current protected CircleCI provider variables through a fresh worker result. Do not use historical GitHub Actions or Vercel logs as evidence about current publishing credentials.
-
-**Last updated:** September 19, 2026
+**Last updated:** September 29, 2026

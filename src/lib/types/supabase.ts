@@ -365,7 +365,6 @@ export type Database = {
           slug: string
           summary: string | null
           summary_ar: string | null
-          summary_en: string | null
           tags: string[] | null
           title: string
           title_ar: string
@@ -389,7 +388,6 @@ export type Database = {
           slug: string
           summary?: string | null
           summary_ar?: string | null
-          summary_en?: string | null
           tags?: string[] | null
           title: string
           title_ar: string

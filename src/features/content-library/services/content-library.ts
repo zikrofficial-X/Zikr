@@ -15,7 +15,6 @@ export type PublicContentLibraryItem = {
   title_ar: string;
   title_en: string | null;
   summary_ar: string | null;
-  summary_en: string | null;
   body_ar: string | null;
   body_en: string | null;
   content_type: string;
@@ -40,10 +39,10 @@ function mapSource(value: unknown): ContentSource | ContentSource[] | null {
   const row = value as RawItem;
 
   return {
-    name: String(row.name ?? ""),
-    reference: typeof row.reference === "string" ? row.reference : null,
+    name: String(row.name_ar ?? row.name_en ?? ""),
+    reference: typeof row.url === "string" ? row.url : null,
     author: typeof row.author === "string" ? row.author : null,
-    publisher: typeof row.publisher === "string" ? row.publisher : null,
+    publisher: null,
     license: typeof row.license === "string" ? row.license : null,
     attribution:
       typeof row.attribution === "string" ? row.attribution : null,
@@ -58,8 +57,6 @@ function mapItem(row: RawItem): PublicContentLibraryItem {
     title_en: typeof row.title_en === "string" ? row.title_en : null,
     summary_ar:
       typeof row.summary_ar === "string" ? row.summary_ar : null,
-    summary_en:
-      typeof row.summary_en === "string" ? row.summary_en : null,
     body_ar: typeof row.body_ar === "string" ? row.body_ar : null,
     body_en: typeof row.body_en === "string" ? row.body_en : null,
     content_type: String(row.content_type ?? ""),
@@ -76,7 +73,7 @@ function mapItem(row: RawItem): PublicContentLibraryItem {
 }
 
 const SELECT_LIST =
-  "id,slug,title_ar,title_en,summary_ar,summary_en,body_ar,body_en,content_type,category,tags,author,published_at,source_id,content_sources(name,reference,author,publisher,license,attribution)";
+  "id,slug,title_ar,title_en,summary_ar,body_ar,body_en,content_type,category,tags,author,published_at,source_id,content_sources(name_ar,name_en,url,license,attribution,authority_level,notes,verified)";
 
 export async function getPublicContentLibrary(
   limit = 60,

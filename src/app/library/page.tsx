@@ -49,7 +49,7 @@ export default async function LibraryPage() {
                 </p>
               )}
               <p className="mt-3 line-clamp-3 text-sm leading-7 text-brand-cream/60">
-                {item.summary_ar ?? item.summary_en}
+                {item.summary_ar}
               </p>
               {item.tags && item.tags.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-1">

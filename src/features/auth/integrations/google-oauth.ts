@@ -8,8 +8,9 @@ import {
 
 export const dynamic = "force-dynamic";
 
-function buildNativeOAuthRedirectUri(nextPath: string): string {
-  const url = new URL("com.zikr.app://auth/callback");
+function buildNativeOAuthRedirectUri(nextPath: string, authOrigin: string): string {
+  const url = new URL("/auth/callback", authOrigin);
+  url.searchParams.set("native", "1");
   url.searchParams.set("next", nextPath);
   return url.toString();
 }
@@ -29,7 +30,7 @@ export async function handleGoogleOAuth(request: NextRequest) {
     return NextResponse.redirect(canonicalStart, 308);
   }
   const redirectTo = native
-    ? buildNativeOAuthRedirectUri(safePath)
+    ? buildNativeOAuthRedirectUri(safePath, authOrigin)
     : buildOAuthRedirectUri(authOrigin, safePath);
   const loginUrl = new URL("/auth/login", authOrigin);
   loginUrl.searchParams.set("next", safePath);

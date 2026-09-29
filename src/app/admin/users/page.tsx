@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { requireAdmin } from "@/features/admin/services/admin";
+import { requireAdminPermission } from "@/features/admin/services/admin";
 import {
   supabaseServerAdminRequest,
   supabaseServerAdminCount,
@@ -21,16 +21,16 @@ interface UserProfile {
 
 interface AdminActionAudit {
   id: string;
-  user_id: string | null;
+  actor_user_id: string | null;
   action: string;
-  meta: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
 }
 
 async function getRecentAdminActions(): Promise<AdminActionAudit[]> {
   try {
     return await supabaseServerAdminRequest<AdminActionAudit[]>(
-      "/rest/v1/admin_actions_audit?select=id,user_id,action,meta,created_at&order=created_at.desc&limit=12",
+      "/rest/v1/admin_audit_events?select=id,actor_user_id,action,metadata,created_at&order=created_at.desc&limit=12",
       { cache: "no-store" }
     );
   } catch (error) {
@@ -61,19 +61,34 @@ async function getUsers(): Promise<UserProfile[]> {
 }
 
 export default async function AdminUsersPage() {
-  const currentAdmin = await requireAdmin();
-  const [users, totalUsers, recentActions] = await Promise.all([
+  const currentAdmin = await requireAdminPermission("users.read");
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [users, totalUsers, recentActions, adminAssignments, legacyAdmins, recentProfiles] = await Promise.all([
     getUsers(),
     supabaseServerAdminCount("profiles"),
     getRecentAdminActions(),
+    supabaseServerAdminRequest<Array<{ user_id: string }>>(
+      "/rest/v1/admin_role_assignments?select=user_id&role=neq.user&limit=5000",
+      { cache: "no-store" },
+    ).catch(() => []),
+    supabaseServerAdminRequest<Array<{ id: string }>>(
+      "/rest/v1/profiles?select=id&role=eq.admin&limit=5000",
+      { cache: "no-store" },
+    ).catch(() => []),
+    supabaseServerAdminRequest<Array<{ id: string }>>(
+      `/rest/v1/profiles?select=id&created_at=gte.${encodeURIComponent(thirtyDaysAgo)}&limit=5000`,
+      { cache: "no-store" },
+    ).catch(() => []),
   ]);
 
-  const adminCount = users.filter(u => (u.effective_role ?? u.role) !== "user").length;
-  const now = new Date().getTime();
-  const thirtyDaysAgoMs = now - 30 * 24 * 60 * 60 * 1000;
-  const recentCount = users.filter(
-    u => u.created_at && new Date(u.created_at).getTime() > thirtyDaysAgoMs
-  ).length;
+  const adminIds = new Set([
+    ...adminAssignments.map((row) => row.user_id),
+    ...legacyAdmins.map((row) => row.id),
+  ]);
+  const adminCount = adminIds.size;
+  const recentCount = recentProfiles.length;
 
   return (
     <Container className="space-y-8 py-10 text-right">
@@ -140,8 +155,8 @@ export default async function AdminUsersPage() {
                 <div>
                   <p className="text-sm text-brand-cream">{action.action}</p>
                   <p className="text-xs arabic-muted">
-                    {action.user_id
-                      ? `المستخدم: ${action.user_id}`
+                    {action.actor_user_id
+                      ? `المستخدم: ${action.actor_user_id}`
                       : "إجراء عام"}
                   </p>
                 </div>

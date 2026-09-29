@@ -1,6 +1,4 @@
-import "server-only";
-
-import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { publishToFacebook, publishToYoutube } from "@/features/videos/services/video-automation";
 import { getServerEnv } from "@/lib/env";
 
@@ -278,7 +276,7 @@ async function publishPlatform(
 export async function processSocialPublishItem(
   item: SocialPublishQueueItem,
   options: { alreadyClaimed?: boolean } = {}
-): Promise<boolean> {
+): Promise<"published" | "auth_blocked" | "failed"> {
   if (!options.alreadyClaimed) {
     await markQueueItem(item.id, "processing");
   }
@@ -290,7 +288,7 @@ export async function processSocialPublishItem(
     await markQueueItem(item.id, "failed", {
       error_message: "No supported target platforms selected",
     });
-    return false;
+    return "failed";
   }
 
   const previous =
@@ -328,6 +326,7 @@ export async function processSocialPublishItem(
     (failure.platform === "facebook" || failure.platform === "facebook_reels") &&
     isFacebookAuthFailure(failure.error)
   );
+  const hasNonAuthFailure = failures.some(failure => !isFacebookAuthFailure(failure.error));
 
   const attempts = Number(item.metadata?.attempts ?? 0) + 1;
   const maxAttempts = Math.max(1, Number(item.metadata?.maxAttempts ?? 5));
@@ -356,5 +355,7 @@ export async function processSocialPublishItem(
     },
   });
 
-  return nextStatus === "published";
+  if (nextStatus === "published") return "published";
+  if (hasAuthFailure && !hasNonAuthFailure) return "auth_blocked";
+  return "failed";
 }

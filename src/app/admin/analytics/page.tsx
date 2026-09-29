@@ -5,7 +5,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Badge } from '@/components/ui/badge';
-import { requireAdmin } from '@/features/admin/services/admin';
+import { requireAdminPermission } from '@/features/admin/services/admin';
 import { getAdminAnalytics } from '@/features/admin/services/analytics';
 
 export const metadata: Metadata = {
@@ -13,26 +13,26 @@ export const metadata: Metadata = {
 };
 
 export default async function AnalyticsPage() {
-  await requireAdmin();
+  await requireAdminPermission("analytics.read");
 
   const { stats, topArticles, userCount } = await getAdminAnalytics();
 
   const contentCards = [
     { label: 'المستخدمون', value: userCount, note: 'حساب مسجل' },
-    { label: 'المقالات', value: stats.articles, note: 'مقالة منشورة' },
-    { label: 'القصص', value: stats.stories, note: 'قصة إسلامية' },
-    { label: 'الأدعية', value: stats.duas, note: 'دعاء مأثور' },
-    { label: 'الأنبياء', value: stats.prophets, note: 'قصة نبي' },
-    { label: 'الصحابة', value: stats.companions, note: 'صحابي' },
-    { label: 'العلماء', value: stats.scholars, note: 'ترجمة عالم' },
-    { label: 'الفيديوهات', value: stats.videos, note: 'فيديو' },
+    { label: 'المقالات', value: stats.articles, note: 'سجل في قاعدة البيانات' },
+    { label: 'القصص', value: stats.stories, note: 'سجل في قاعدة البيانات' },
+    { label: 'الأدعية', value: stats.duas, note: 'سجل في قاعدة البيانات' },
+    { label: 'الأنبياء', value: stats.prophets, note: 'سجل في قاعدة البيانات' },
+    { label: 'الصحابة', value: stats.companions, note: 'سجل في قاعدة البيانات' },
+    { label: 'العلماء', value: stats.scholars, note: 'سجل في قاعدة البيانات' },
+    { label: 'الفيديوهات', value: stats.videos, note: 'سجل في قاعدة البيانات' },
   ];
 
   return (
     <Container className="py-10 space-y-10 text-right">
       <section className="space-y-2">
         <h1 className="text-3xl font-bold text-brand-gold">تحليلات التطبيق</h1>
-        <p className="arabic-muted leading-7">إحصائيات شاملة عن المحتوى والمستخدمين</p>
+        <p className="arabic-muted leading-7">أرقام فعلية من قاعدة الإنتاج، مع فصل واضح بين العدّ التشغيلي وبيانات المشاهدة.</p>
       </section>
 
       {/* Content Stats Grid */}
@@ -99,8 +99,8 @@ export default async function AnalyticsPage() {
           <a href="/admin/users" className="text-sm text-brand-gold hover:underline">الذهاب للإدارة</a>
         </Card>
         <Card className="p-5 space-y-2 hover:border-brand-gold/40 transition-colors">
-          <h3 className="text-lg font-bold text-brand-gold">إدارة الفيديوهات</h3>
-          <p className="text-sm arabic-muted">مزامنة يوتيوب وإدارة الفيديوهات</p>
+          <h3 className="text-lg font-bold text-brand-gold">طابور الفيديو</h3>
+          <p className="text-sm arabic-muted">مراقبة عمليات التوليد وإعادة المحاولة</p>
           <a href="/admin/videos" className="text-sm text-brand-gold hover:underline">الذهاب للإدارة</a>
         </Card>
         <Card className="p-5 space-y-2 hover:border-brand-gold/40 transition-colors">

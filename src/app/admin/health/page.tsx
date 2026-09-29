@@ -42,7 +42,7 @@ export default async function AdminHealthPage() {
         {health.tables.map((table) => (
           <div key={table.table} className="grid grid-cols-[1fr_auto_auto] gap-3 border-b border-brand-gold/8 px-5 py-3 text-sm last:border-0">
             <span className="font-mono text-brand-cream/70">{table.table}</span>
-            <span className="tabular-nums text-brand-cream/50">{table.count.toLocaleString('ar-EG')}</span>
+            <span className="tabular-nums text-brand-cream/50">{table.count === null ? 'غير متاح' : table.count.toLocaleString('ar-EG')}</span>
             <span className={table.state === 'unavailable' ? 'text-red-300' : table.state === 'empty' ? 'text-amber-300' : 'text-emerald-300'}>{table.state}</span>
           </div>
         ))}

@@ -32,10 +32,11 @@ function getCanonicalBrowserOrigin(): string {
 }
 
 function buildNativeOAuthRedirect(nextPath: string): string {
-  // Return directly to the Capacitor Activity. A web callback bridge adds a
-  // second redirect through the external browser and can leave Android on the
-  // Google/Vercel page instead of delivering appUrlOpen to the WebView.
-  const url = new URL("com.zikr.app://auth/callback");
+  // Start with the canonical HTTPS application callback. Supabase/Google can
+  // reliably validate this URI, and the callback route hands the code back to
+  // the app deep link after Google completes authentication.
+  const url = new URL("/auth/callback", getCanonicalBrowserOrigin());
+  url.searchParams.set("native", "1");
   url.searchParams.set("next", nextPath);
   return url.toString();
 }
@@ -82,9 +83,9 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
 
       const supabase = createBrowserSupabaseClient();
 
-      // Native OAuth returns directly to the app deep link. The PKCE verifier
-      // remains in this WebView's Supabase client while Google runs in the
-      // external Chrome Custom Tab.
+      // Native OAuth starts at the canonical HTTPS app callback. The callback
+      // route then hands the authorization code back to the app deep link,
+      // while the PKCE verifier remains in this WebView's Supabase client.
       const redirectTo = isNative
         ? buildNativeOAuthRedirect(safeNext)
         : new URL(

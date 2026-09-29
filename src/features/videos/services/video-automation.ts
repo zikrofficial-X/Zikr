@@ -1,4 +1,4 @@
-import { supabaseServerAdminRequest } from '@/lib/supabase/server';
+import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
 import { getServerEnv } from '@/lib/env';
 import type { VideoGenerationRequest } from '@/lib/types/video';
 
@@ -246,25 +246,43 @@ function assertRemoteVideoUrl(videoUrl: string, target: string): string {
   return parsed.toString();
 }
 
-async function getYoutubeAccessToken(): Promise<string | null> {
+async function getYoutubeAccessToken(): Promise<string> {
   const clientId = getEnv('YOUTUBE_CLIENT_ID');
   const clientSecret = getEnv('YOUTUBE_CLIENT_SECRET');
   const refreshToken = getEnv('YOUTUBE_REFRESH_TOKEN');
-  if (!clientId || !clientSecret || !refreshToken) return null;
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error('YouTube OAuth is not configured: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET and YOUTUBE_REFRESH_TOKEN are required');
+  }
 
   try {
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, grant_type: 'refresh_token' }),
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
       signal: AbortSignal.timeout(20_000),
     });
-    if (!response.ok) return null;
-    const payload = (await response.json()) as { access_token?: string };
-    return payload.access_token ?? null;
+    const payload = (await response.json().catch(() => ({}))) as {
+      access_token?: string;
+      error?: string;
+      error_description?: string;
+    };
+    if (!response.ok) {
+      throw new Error(
+        `YouTube OAuth token refresh failed (HTTP ${response.status}): ${payload.error_description || payload.error || 'unknown OAuth error'}`,
+      );
+    }
+    if (!payload.access_token) {
+      throw new Error('YouTube OAuth token refresh succeeded without an access token');
+    }
+    return payload.access_token;
   } catch (error) {
     console.error('[video-automation] YouTube token refresh failed:', error);
-    return null;
+    throw error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -272,55 +290,71 @@ export async function publishToYoutube(
   videoId: string,
   metadata: ReturnType<typeof generateYoutubeMetadata>,
   videoUrl: string,
-): Promise<string | null> {
+): Promise<string> {
   void videoId;
-  try {
-    const accessToken = await getYoutubeAccessToken();
-    if (!accessToken) return null;
-    const source = assertRemoteVideoUrl(videoUrl, 'YouTube');
-    const videoResponse = await fetch(source, { signal: AbortSignal.timeout(60_000) });
-    if (!videoResponse.ok) throw new Error(`Could not download generated video (HTTP ${videoResponse.status})`);
-    const videoBuffer = await videoResponse.arrayBuffer();
-
-    const initResponse = await fetch(
-      'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json; charset=UTF-8',
-          'X-Upload-Content-Type': 'video/mp4',
-          'X-Upload-Content-Length': String(videoBuffer.byteLength),
-        },
-        body: JSON.stringify({
-          snippet: {
-            title: metadata.title.slice(0, 100),
-            description: metadata.description.slice(0, 5000),
-            tags: metadata.tags,
-            categoryId: metadata.categoryId,
-          },
-          status: { privacyStatus: 'public', selfDeclaredMadeForKids: false },
-        }),
-        signal: AbortSignal.timeout(30_000),
-      },
-    );
-    if (!initResponse.ok) return null;
-    const uploadLocation = initResponse.headers.get('location');
-    if (!uploadLocation) return null;
-
-    const uploadResponse = await fetch(uploadLocation, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(videoBuffer.byteLength) },
-      body: videoBuffer,
-      signal: AbortSignal.timeout(120_000),
-    });
-    if (!uploadResponse.ok) return null;
-    const payload = (await uploadResponse.json()) as { id?: string };
-    return payload.id ?? null;
-  } catch (error) {
-    console.error('[video-automation] Failed to publish to YouTube:', error);
-    return null;
+  const accessToken = await getYoutubeAccessToken();
+  const source = assertRemoteVideoUrl(videoUrl, 'YouTube');
+  const videoResponse = await fetch(source, { signal: AbortSignal.timeout(60_000) });
+  if (!videoResponse.ok) {
+    throw new Error(`Could not download generated video (HTTP ${videoResponse.status})`);
   }
+  const videoBuffer = await videoResponse.arrayBuffer();
+  if (videoBuffer.byteLength < 1024) {
+    throw new Error('Generated video download was empty or invalid');
+  }
+
+  const initResponse = await fetch(
+    'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json; charset=UTF-8',
+        'X-Upload-Content-Type': 'video/mp4',
+        'X-Upload-Content-Length': String(videoBuffer.byteLength),
+      },
+      body: JSON.stringify({
+        snippet: {
+          title: metadata.title.slice(0, 100),
+          description: metadata.description.slice(0, 5000),
+          tags: metadata.tags,
+          categoryId: metadata.categoryId,
+        },
+        status: { privacyStatus: 'public', selfDeclaredMadeForKids: false },
+      }),
+      signal: AbortSignal.timeout(30_000),
+    },
+  );
+  const initBody = await initResponse.text();
+  if (!initResponse.ok) {
+    throw new Error(`YouTube upload initialization failed (HTTP ${initResponse.status}): ${initBody.slice(0, 500)}`);
+  }
+  const uploadLocation = initResponse.headers.get('location');
+  if (!uploadLocation) {
+    throw new Error('YouTube upload initialization succeeded without a resumable upload URL');
+  }
+
+  const uploadResponse = await fetch(uploadLocation, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(videoBuffer.byteLength) },
+    body: videoBuffer,
+    signal: AbortSignal.timeout(120_000),
+  });
+  const uploadBody = await uploadResponse.text();
+  if (!uploadResponse.ok) {
+    throw new Error(`YouTube video upload failed (HTTP ${uploadResponse.status}): ${uploadBody.slice(0, 500)}`);
+  }
+
+  let payload: { id?: string };
+  try {
+    payload = JSON.parse(uploadBody) as { id?: string };
+  } catch {
+    throw new Error('YouTube video upload returned an invalid JSON response');
+  }
+  if (!payload.id) {
+    throw new Error('YouTube video upload completed without returning a video ID');
+  }
+  return payload.id;
 }
 
 function isFacebookAuthFailureMessage(error: unknown): boolean {

@@ -1,14 +1,15 @@
 # ZIKR Production Scheduling
 
-ZIKR has one authoritative execution owner per production workload.
+ZIKR has one authoritative execution owner per production workload. Quran audio is intentionally externalized and is **not** imported into Supabase Storage.
 
 | Workload | Authoritative execution owner | Cadence | Safety boundary |
 |---|---|---:|---|
 | Prayer Web Push planning and delivery | Supabase `pg_cron` → `prayer-notification-worker` | Every minute | Private scheduler token, per-device uniqueness, atomic claims, bounded retries, invalid-subscription deactivation. |
 | Client-local azan and reminder sounds | Browser / native client | While active | Local/offline fallback; it does not create server delivery rows. |
-| Video generation queue | CircleCI `background-jobs` → `pnpm background:jobs` → template/FFmpeg worker | Manual pipeline parameter | Persisted queue, deterministic renderer, Supabase Storage, protected CircleCI variables. |
+| Video generation queue | CircleCI `background-jobs` → `pnpm background:jobs` → template/FFmpeg worker | Manual pipeline parameter | Persisted queue, deterministic renderer, protected CircleCI variables, bounded work. |
 | Social publishing queue | CircleCI `background-jobs` → `pnpm background:jobs` → social publisher | Manual pipeline parameter | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
-| Quran audio import | CircleCI `quran-audio-import` → canonical importer | Manual pipeline parameter | Storage quota gate, service-role secret, bounded concurrency, no GitHub runner. |
+| Quran text/catalog | Local canonical corpus → Supabase fallback | Request time | 114 surahs / 6,236 ayahs are verified; Supabase remains compatibility data. |
+| Quran audio playback | External HTTPS audio URLs via `quran_audio.audio_url` | On demand | No Supabase Storage dependency; no bulk MP3 import job is permitted. |
 | Repository verification | CircleCI `ci-check` + Vercel build gate | Source changes / every deployment | `pnpm verify` is the canonical validation command. |
 | Production smoke | CircleCI `production-smoke` | Manual pipeline parameter | Public HTTP checks only. |
 | Security audit | CircleCI `security-audit` | Manual pipeline parameter | No production publishing credentials required. |
@@ -17,9 +18,15 @@ ZIKR has one authoritative execution owner per production workload.
 
 The Supabase migration `20260915004110_retire_vercel_video_processing_cron.sql` retires the legacy `zikr-video-processing` cron job. The old Vercel route must not become an alternate scheduler.
 
-GitHub Actions are retired from the active repository. Do not recreate `.github/workflows/`.
+GitHub Actions are not the active scheduler in the current repository. Do not recreate `.github/workflows/` as a recurring scheduler unless the architecture is deliberately changed and documented.
 
 Supabase owns minute-level prayer scheduling. CircleCI is used as an external CI/recovery execution environment and does not become an automatic production scheduler unless explicitly configured through a deliberate CircleCI scheduled pipeline.
+
+## Quran audio architecture
+
+The Free-plan architecture deliberately stores **zero Quran MP3 binaries** in Supabase Storage. The `quran_audio` table retains validated external HTTPS URLs. The application rejects old Supabase Storage URLs and can derive a verified external URL from the reciter catalog when needed.
+
+The repository no longer contains an operational CircleCI job for importing Quran audio into Storage. This is intentional and protects the Free Storage quota.
 
 ## Prayer Web Push lifecycle
 
@@ -31,7 +38,7 @@ Each delivery uses a unique subscription/prayer/time key and is claimed before s
 
 ## Video and social lifecycle
 
-```text
+```
 video_generation_requests
         │
         ▼
@@ -57,9 +64,10 @@ The CircleCI configuration is parameterized so operational jobs are **opt-in** a
 Pipeline parameters:
 
 - `run_background_jobs=true` with `background_target=all|videos|social`
-- `run_quran_audio_import=true`
 - `run_production_smoke=true`
 - `run_security_audit=true`
+
+There is intentionally **no `run_quran_audio_import` parameter**. Quran audio is externalized and must not be bulk-uploaded to Supabase Storage.
 
 These parameters are submitted through the CircleCI pipeline trigger/API. The ordinary source-change workflow runs only `ci-check`; Android release work remains restricted to release branches/tags.
 

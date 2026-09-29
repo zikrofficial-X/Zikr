@@ -7,7 +7,7 @@ import {
 
 const RELEASE_DOWNLOAD_ENDPOINT = "/api/download/android";
 const RELEASE_DOWNLOAD_BASE =
-  "https://github.com/Zikrmediaofficial/Zikr/releases/download";
+  "https://github.com/zikr-org/Zikr/releases/download";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";

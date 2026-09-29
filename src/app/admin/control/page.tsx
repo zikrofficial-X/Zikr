@@ -1,12 +1,9 @@
-import { Container } from '@/components/ui/container';
-import { AdminPlatformCommandCenter } from '@/features/admin/components/admin-platform-command-center';
+import { redirect } from "next/navigation";
+import { requireAdminPermission } from "@/features/admin/services/admin";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export default function AdminControlPage() {
-  return (
-    <Container className="py-8">
-      <AdminPlatformCommandCenter />
-    </Container>
-  );
+export default async function AdminControlRedirectPage() {
+  await requireAdminPermission("dashboard.view");
+  redirect("/admin");
 }

@@ -1,10 +1,11 @@
+import { requireAdminPermission } from "@/features/admin/services/admin";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { getSiteSetting, type SiteSettingValue } from "@/features/site-content/services/site-content";
 import { saveAndroidReleaseAction } from "./actions";
 
 const RELEASES_API_BASE =
-  "https://api.github.com/repos/Zikrmediaofficial/Zikr/releases";
+  "https://api.github.com/repos/zikr-org/Zikr/releases";
 const MAX_RELEASE_PAGES = 5;
 const githubToken = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
 const githubHeaders: HeadersInit = {
@@ -92,6 +93,7 @@ async function getReleases(): Promise<Release[]> {
 }
 
 export default async function AndroidReleaseAdminPage() {
+  await requireAdminPermission("android.manage");
   const [releases, setting] = await Promise.all([
     getReleases(),
     getSiteSetting("android_release"),

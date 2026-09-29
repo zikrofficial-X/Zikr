@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { updateUserRoleAuditedAction } from "@/app/admin/user-actions";
+import { updateUserRoleAuditedAction } from "@/features/admin/actions/users";
 import type { AdminRole } from "@/features/admin/services/permissions";
 
 type UserProfile = {

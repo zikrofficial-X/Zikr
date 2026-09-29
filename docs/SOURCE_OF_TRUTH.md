@@ -4,9 +4,8 @@
 
 The canonical application source for ZIKR is:
 
-- GitHub repository: `Zikrmediaofficial/Zikr`
+- GitHub repository: `zikr-org/Zikr`
 - Production branch: `main`
-- Vercel project: `zikr`
 - Vercel project: `zikr`
 - Production domain: `https://zikrmediaofficial.vercel.app`
 
@@ -16,11 +15,7 @@ Vercel production must build from the GitHub `main` branch. The repository is th
 
 ## Current verified state
 
-The current repository `main` commit is:
-
-`dba6588ea8950ba36e733064d58ccc3ad63602f6`
-
-The current finalization branch is ahead of this production baseline. A fresh successful production deployment for the finalization branch has not been verified because Vercel is currently returning a build-rate-limit/account condition. Until a new deployment is successfully built and verified against this commit, the repository remains the canonical source.
+The current repository `main` commit is the authoritative release source. A fresh successful production deployment must be verified against the exact Git commit before treating deployment as release evidence.
 
 ## Runtime baseline
 

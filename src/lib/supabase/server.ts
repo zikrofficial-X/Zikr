@@ -232,37 +232,30 @@ export async function supabaseServerAdminCount(table: string): Promise<number> {
     );
   }
   const key = serviceKey;
-  try {
-    const res = await fetch(`${url}/rest/v1/${table}?select=id`, {
-      method: "HEAD",
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        Prefer: "count=exact",
-      },
-      cache: "no-store",
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) {
-      if (process.env.NODE_ENV === "development") {
-        console.warn(
-          `[supabase] Count failed for ${table}: HTTP ${res.status}`
-        );
-      }
-      return 0;
-    }
-    const range = res.headers.get("content-range") ?? "";
-    const total = Number(range.split("/")[1]);
-    return Number.isFinite(total) ? total : 0;
-  } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.warn(
-        `[supabase] Count failed for ${table}:`,
-        error instanceof Error ? error.message : error
-      );
-    }
-    return 0;
+
+  // Use a bounded GET with an explicit range instead of HEAD. Some Supabase
+  // REST deployments do not reliably return Content-Range for HEAD requests,
+  // which previously made non-empty tables look empty to background workers.
+  const res = await fetch(`${url}/rest/v1/${table}?select=id&limit=1`, {
+    method: "GET",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      Prefer: "count=exact",
+      Range: "0-0",
+    },
+    cache: "no-store",
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Supabase REST ${res.status}: ${body.slice(0, 500)}`);
   }
+  const range = res.headers.get("content-range") ?? "";
+  const total = Number(range.split("/")[1]);
+  if (Number.isFinite(total)) return total;
+  const rows = await res.json().catch(() => []);
+  return Array.isArray(rows) && rows.length > 0 ? 1 : 0;
 }
 
 export async function assertSupabaseConnection() {
