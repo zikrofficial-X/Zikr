@@ -309,8 +309,8 @@ function normalizeAiVideoPlan(value: unknown): AiVideoPlan {
 
 function parseGeminiJson(raw: string): unknown {
   const cleaned = raw
-    .replace(/^\\s*\`\`\`(?:json)?/i, "")
-    .replace(/\`\`\`\\s*$/i, "")
+    .replace(/^\s*```(?:json)?/i, "")
+    .replace(/```\s*$/i, "")
     .trim();
   try {
     return JSON.parse(cleaned);
@@ -408,13 +408,6 @@ async function renderVideo(request: GeneratedRequest) {
       console.warn(`[template-video] Gemini plan skipped for ${request.id}: ${error instanceof Error ? error.message : String(error)}`);
     }
     await writeFile(assPath, makeAss(text, request.title, sourceUrl, aiPlan.reflection || null), "utf8");
-    const filter = [
-      `subtitles=${assPath}:fontsdir=/usr/share/fonts/truetype/noto`,
-      "eq=contrast=1.04:saturation=0.92:brightness=0.01",
-      "vignette=PI/5",
-      ...motionFilters,
-      "format=yuv420p",
-    ].join(",");
     const persistedAi = request.content?.ai && typeof request.content.ai === "object"
       ? (request.content.ai as Partial<AiVideoPlan> & { scene?: AiVideoPlan["scene"]; motion?: AiVideoPlan["motion"] })
       : null;
@@ -430,6 +423,13 @@ async function renderVideo(request: GeneratedRequest) {
     const motionFilters = motion === "fade"
       ? [`fade=t=in:st=0:d=0.7`, `fade=t=out:st=${fadeOutStart.toFixed(2)}:d=0.8`]
       : [`fade=t=in:st=0:d=0.5`];
+    const filter = [
+      `subtitles=${assPath}:fontsdir=/usr/share/fonts/truetype/noto`,
+      "eq=contrast=1.04:saturation=0.92:brightness=0.01",
+      "vignette=PI/5",
+      ...motionFilters,
+      "format=yuv420p",
+    ].join(",");
     const videoInput = `color=c=${AI_SCENE_COLORS[scene]}:s=${width}x${height}:r=30:d=${VIDEO_SECONDS}`;
     const args = ["-y", "-f", "lavfi", "-i", videoInput];
     if (audioUrl) {
