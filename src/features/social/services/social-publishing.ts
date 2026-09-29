@@ -1,6 +1,4 @@
-import "server-only";
-
-import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { publishToFacebook, publishToYoutube } from "@/features/videos/services/video-automation";
 import { getServerEnv } from "@/lib/env";
 

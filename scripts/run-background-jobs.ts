@@ -21,7 +21,7 @@ const REQUIRED_ENV = [
 function validateRequiredEnv() {
   const missing = REQUIRED_ENV.filter(name => !process.env[name]);
   if (missing.length > 0) {
-    throw new Error(`Missing required CircleCI environment variable(s): ${missing.join(", ")}`);
+    throw new Error(`Missing required background-worker environment variable(s): ${missing.join(", ")}`);
   }
 
   if (SOCIAL_PUBLISH_ENABLED) {

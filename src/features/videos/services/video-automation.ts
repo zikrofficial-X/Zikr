@@ -1,4 +1,4 @@
-import { supabaseServerAdminRequest } from '@/lib/supabase/server';
+import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
 import { getServerEnv } from '@/lib/env';
 import type { VideoGenerationRequest } from '@/lib/types/video';
 

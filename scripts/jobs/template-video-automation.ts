@@ -5,7 +5,7 @@ import { promisify } from "node:util";
 import {
   supabaseServerAdminCount,
   supabaseServerAdminRequest,
-} from "../../src/lib/supabase/server";
+} from "../../src/lib/supabase/admin-rest";
 
 const execFileAsync = promisify(execFile);
 const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 1));

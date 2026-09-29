@@ -6,8 +6,10 @@ on:
     # Two-hour cadence keeps the free runner practical while maintaining a steady feed.
     - cron: "0 */2 * * *"
   push:
-    # Run once when this workflow itself changes so an existing pending queue is
-    # processed immediately after deployment. Normal source pushes do not trigger it.
+    # A workflow change on main is a deliberate production smoke/deploy trigger.
+    # Feature-branch edits do not consume runner time.
+    branches:
+      - main
     paths:
       - ".github/workflows/generate-ai-video.yml"
   workflow_dispatch:
@@ -15,7 +17,7 @@ on:
       batch_size:
         description: "Number of new video jobs to seed in this run"
         required: false
-        default: "2"
+        default: "1"
         type: string
 
 permissions:
@@ -39,8 +41,8 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.0-flash-lite' }}
       AUTO_VIDEO_ENABLED: "true"
-      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '2' }}
-      VIDEO_BACKGROUND_BATCH_SIZE: "2"
+      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '1' }}
+      VIDEO_BACKGROUND_BATCH_SIZE: "1"
       AUTO_VIDEO_SECONDS: "16"
       BACKGROUND_JOB_TARGET: "all"
       # Generated videos are automatically handed to the configured social publishers.
@@ -70,6 +72,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ffmpeg librsvg2-bin fonts-noto-core fonts-noto-extra fonts-noto-cjk
+
+      - name: Smoke-test video worker imports
+        run: |
+          set -euo pipefail
+          pnpm exec tsx -e 'await import("./scripts/jobs/template-video-automation.ts"); await import("./src/features/social/services/social-publishing.ts"); console.log("Video worker module smoke test: OK")'
+          ffmpeg -version | head -n 1
 
       - name: Validate automation secrets
         shell: bash
