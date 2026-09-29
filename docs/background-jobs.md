@@ -1,10 +1,10 @@
 # Background jobs runbook
 
-ZIKR's production video and social queues are now executed automatically by the repository's GitHub Actions worker `.github/workflows/generate-ai-video.yml`.
+ZIKR's production video and social queues are executed automatically by the repository's GitHub Actions worker `.github/workflows/generate-ai-video.yml`.
 
 ## Production video generation
 
-The autonomous worker runs every two hours and also runs when the workflow definition changes so a pending queue is not left waiting after deployment. It runs `pnpm background:jobs` with the free deterministic `template` renderer.
+The autonomous worker runs every two hours and also supports manual dispatch for diagnostics. It invokes `pnpm background:jobs` with the free deterministic `template` renderer.
 
 Production generation uses trusted Quran/Hadith/Dua content, FFmpeg, Arabic fonts, optional HTTPS recitation audio, and Supabase Storage. Gemini is optional and is limited to a short reflection/caption layer; it does not replace or rewrite source religious text.
 
@@ -12,7 +12,7 @@ The queue is idempotent through `video_generation_requests.automation_key` and c
 
 ## Automatic social publishing
 
-The scheduled worker runs with `SOCIAL_PUBLISH_ENABLED=true`. Every successfully rendered video is placed into the social publishing queue and then processed automatically for the configured providers.
+The scheduled worker runs with `SOCIAL_PUBLISH_ENABLED=true`. Every successfully rendered video is placed into `social_publish_queue` and then processed automatically for configured providers.
 
 YouTube requires:
 
@@ -43,20 +43,20 @@ Every 2 hours
 Automatic social queue processing
 ```
 
-The workflow also supports manual `workflow_dispatch` for diagnostics, but normal operation does not require manual intervention.
+The workflow also supports manual `workflow_dispatch` for controlled diagnostics; normal operation does not require manual intervention.
 
-## Other jobs
+## Recovery
 
-CircleCI remains available for CI verification, Android builds, and manual recovery operations. It is not required for the normal video publishing schedule.
+CircleCI remains available for CI verification, Android builds, and deliberate background recovery. It is not part of the normal video publishing schedule.
 
 The prayer notification path remains separate: Supabase `pg_cron` invokes `prayer-notification-worker` every minute.
 
-The legacy Supabase `zikr-video-processing` job and the Vercel `/api/internal/video-processing` compatibility endpoint are not used as the production scheduler.
+The legacy Supabase `zikr-video-processing` job and the Vercel `/api/internal/video-processing` compatibility endpoint are not production schedulers.
 
-## Safety and recovery
+## Safety
 
 Queue claiming is conditional on `status=pending`, and automation keys prevent duplicate generated videos and duplicate social queue records. Provider secrets remain server-side.
 
-A generated video is only considered published when the provider returns its publication identifier and the queue records the provider result. A pending/failed record is never treated as successful publication.
+A generated video is only considered published when the provider returns its publication identifier and the queue records the provider result.
 
 **Last updated:** September 29, 2026
