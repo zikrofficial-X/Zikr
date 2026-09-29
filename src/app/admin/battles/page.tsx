@@ -146,7 +146,7 @@ export default async function AdminBattlesPage() {
           <h2 className="font-semibold text-amber-300">لا توجد سجلات غزوات في قاعدة البيانات</h2>
           <p className="text-sm text-brand-cream/50">لن يعرض مركز الإدارة بيانات ثابتة أو وهمية. أضف السجلات إلى قاعدة البيانات أولًا ثم ستظهر هنا.</p>
         </section>
-      )
+      )}
     </Container>
   );
 }
