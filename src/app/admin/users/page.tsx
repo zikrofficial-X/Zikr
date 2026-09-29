@@ -62,18 +62,33 @@ async function getUsers(): Promise<UserProfile[]> {
 
 export default async function AdminUsersPage() {
   const currentAdmin = await requireAdminPermission("users.read");
-  const [users, totalUsers, recentActions] = await Promise.all([
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [users, totalUsers, recentActions, adminAssignments, legacyAdmins, recentProfiles] = await Promise.all([
     getUsers(),
     supabaseServerAdminCount("profiles"),
     getRecentAdminActions(),
+    supabaseServerAdminRequest<Array<{ user_id: string }>>(
+      "/rest/v1/admin_role_assignments?select=user_id&role=neq.user&limit=5000",
+      { cache: "no-store" },
+    ).catch(() => []),
+    supabaseServerAdminRequest<Array<{ id: string }>>(
+      "/rest/v1/profiles?select=id&role=eq.admin&limit=5000",
+      { cache: "no-store" },
+    ).catch(() => []),
+    supabaseServerAdminRequest<Array<{ id: string }>>(
+      `/rest/v1/profiles?select=id&created_at=gte.${encodeURIComponent(thirtyDaysAgo)}&limit=5000`,
+      { cache: "no-store" },
+    ).catch(() => []),
   ]);
 
-  const adminCount = users.filter(u => (u.effective_role ?? u.role) !== "user").length;
-  const now = new Date().getTime();
-  const thirtyDaysAgoMs = now - 30 * 24 * 60 * 60 * 1000;
-  const recentCount = users.filter(
-    u => u.created_at && new Date(u.created_at).getTime() > thirtyDaysAgoMs
-  ).length;
+  const adminIds = new Set([
+    ...adminAssignments.map((row) => row.user_id),
+    ...legacyAdmins.map((row) => row.id),
+  ]);
+  const adminCount = adminIds.size;
+  const recentCount = recentProfiles.length;
 
   return (
     <Container className="space-y-8 py-10 text-right">
