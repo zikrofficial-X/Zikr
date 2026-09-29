@@ -117,9 +117,17 @@ async function queueSocialPublish(input: {
 }) {
   if (input.targetPlatforms.length === 0) return;
 
-  await supabaseServerAdminRequest("/rest/v1/social_publish_queue", {
+  const automationKey = [
+    "admin",
+    input.contentType,
+    input.contentId ?? crypto.randomUUID(),
+    input.scheduledAt ?? "immediate",
+    [...input.targetPlatforms].sort().join(","),
+  ].join(":");
+
+  await supabaseServerAdminRequest("/rest/v1/social_publish_queue?on_conflict=automation_key", {
     method: "POST",
-    headers: { Prefer: "return=minimal" },
+    headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
     body: JSON.stringify({
       content_type: input.contentType,
       content_id: input.contentId,
@@ -129,7 +137,8 @@ async function queueSocialPublish(input: {
       video_url: input.videoUrl,
       target_platforms: input.targetPlatforms,
       scheduled_at: input.scheduledAt,
-      metadata: input.metadata ?? {},
+      metadata: { ...(input.metadata ?? {}), source: "admin" },
+      automation_key: automationKey,
     }),
   });
 }
