@@ -1,4 +1,4 @@
-import { generateGeminiFromAudio } from "../src/features/spiritual-ai/services/gemini-client";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 function makeWav(seconds = 1, sampleRate = 16_000): Buffer {
   const samples = Math.floor(seconds * sampleRate);
@@ -10,8 +10,8 @@ function makeWav(seconds = 1, sampleRate = 16_000): Buffer {
   buffer.write("WAVE", 8);
   buffer.write("fmt ", 12);
   buffer.writeUInt32LE(16, 16);
-  buffer.writeUInt16LE(1, 20); // PCM
-  buffer.writeUInt16LE(1, 22); // mono
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
   buffer.writeUInt32LE(sampleRate, 24);
   buffer.writeUInt32LE(sampleRate * 2, 28);
   buffer.writeUInt16LE(2, 32);
@@ -19,7 +19,6 @@ function makeWav(seconds = 1, sampleRate = 16_000): Buffer {
   buffer.write("data", 36);
   buffer.writeUInt32LE(dataSize, 40);
 
-  // Low-volume non-speech tone. This is a transport test, not a recitation sample.
   for (let i = 0; i < samples; i += 1) {
     const value = Math.round(Math.sin((2 * Math.PI * 440 * i) / sampleRate) * 1200);
     buffer.writeInt16LE(value, 44 + i * 2);
@@ -27,7 +26,13 @@ function makeWav(seconds = 1, sampleRate = 16_000): Buffer {
   return buffer;
 }
 
+const apiKey = process.env.GEMINI_API_KEY?.trim();
+if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
+
+const configured = (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim();
+const models = [...new Set([configured, "gemini-3.5-flash-lite"])];
 const audio = makeWav();
+
 const prompt = [
   "This is a production plumbing smoke test for ZIKR's memorization audio path.",
   "The attached audio is a synthetic non-speech tone and contains no Quran recitation.",
@@ -38,34 +43,44 @@ const prompt = [
   "State explicitly that the sample is not intelligible speech.",
 ].join("\n");
 
-const raw = await generateGeminiFromAudio(prompt, {
-  data: audio.toString("base64"),
-  mimeType: "audio/wav",
-});
+let lastError: unknown = null;
 
-if (!raw) {
-  throw new Error("Gemini audio smoke test returned no response.");
+for (const modelId of models) {
+  try {
+    const client = new GoogleGenerativeAI(apiKey);
+    const model = client.getGenerativeModel({
+      model: modelId,
+      generationConfig: {
+        temperature: 0,
+        maxOutputTokens: 160,
+        responseMimeType: "application/json",
+      },
+    });
+
+    const response = await model.generateContent([
+      prompt,
+      { inlineData: { data: audio.toString("base64"), mimeType: "audio/wav" } },
+    ] as never);
+
+    const raw = response.response.text().trim();
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+    if (parsed.ok !== true || typeof parsed.audioQuality !== "string" || typeof parsed.summary !== "string") {
+      throw new Error(`Invalid Gemini audio JSON contract from ${modelId}: ${raw.slice(0, 500)}`);
+    }
+
+    console.log(`Gemini audio smoke test: OK (${modelId})`);
+    console.log(JSON.stringify({
+      ok: parsed.ok,
+      model: modelId,
+      audioQuality: parsed.audioQuality,
+      summary: parsed.summary,
+    }, null, 2));
+    process.exit(0);
+  } catch (error) {
+    lastError = error;
+    console.warn(`Gemini audio smoke test failed on ${modelId}: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
-let parsed: unknown;
-try {
-  parsed = JSON.parse(raw);
-} catch {
-  throw new Error(`Gemini audio smoke test returned non-JSON output: ${raw.slice(0, 500)}`);
-}
-
-if (!parsed || typeof parsed !== "object") {
-  throw new Error("Gemini audio smoke test returned an invalid JSON object.");
-}
-
-const value = parsed as Record<string, unknown>;
-if (value.ok !== true || typeof value.audioQuality !== "string" || typeof value.summary !== "string") {
-  throw new Error("Gemini audio smoke test JSON contract is invalid.");
-}
-
-console.log("Gemini audio smoke test: OK");
-console.log(JSON.stringify({
-  ok: value.ok,
-  audioQuality: value.audioQuality,
-  summary: value.summary,
-}, null, 2));
+throw new Error(`Gemini audio smoke test failed across free models: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
