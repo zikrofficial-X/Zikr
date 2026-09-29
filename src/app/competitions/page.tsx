@@ -6,11 +6,15 @@ import { Container } from '@/components/ui/container';
 import { getCompetitions } from '@/features/site-content/services/site-content';
 import { pageMetadata } from '@/lib/site';
 
-export const metadata: Metadata = pageMetadata({
-  title: 'المسابقات الإسلامية',
-  description: 'شارك في المسابقات الإسلامية القرآنية والدينية على منصة ذِكرٌ واحصل على جوائز قيّمة.',
-  path: '/competitions',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const competitions = await getCompetitions();
+  return pageMetadata({
+    title: 'المسابقات الإسلامية',
+    description: 'شارك في المسابقات الإسلامية القرآنية والدينية على منصة ذِكرٌ.',
+    path: '/competitions',
+    noindex: competitions.length === 0,
+  });
+}
 
 export default async function CompetitionsPage() {
   const competitions = await getCompetitions();
