@@ -41,7 +41,7 @@ jobs:
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash-lite' }}
       AUTO_VIDEO_ENABLED: "true"
       AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '1' }}
       VIDEO_BACKGROUND_BATCH_SIZE: "1"
@@ -157,5 +157,5 @@ jobs:
           echo "ZIKR autonomous video worker completed."
           echo "The queue seeds source-locked Quran/Hadith/Dua videos and renders them with free FFmpeg."
           echo "Generated videos are automatically queued for configured YouTube/Facebook publishing."
-          echo "Gemini is used only for a bounded reflection layer when GEMINI_API_KEY is configured."
+          echo "Gemini uses the configured free-tier model for source-locked planning, reflection, social captioning, and deterministic FFmpeg rendering."
           echo "Worker validation includes Node import, FFmpeg, and Supabase data-plane smoke tests."
