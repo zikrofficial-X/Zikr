@@ -9,7 +9,7 @@ const title = process.env.VIDEO_TITLE || 'آية اليوم';
 const language = process.env.VIDEO_LANGUAGE || 'ar';
 const duration = Number(process.env.VIDEO_SECONDS || 12);
 const geminiKey = process.env.GEMINI_API_KEY;
-const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
 const fallbackScenes = [
   { heading: 'ذِكرٌ', body: 'وَاذْكُرْ رَبَّكَ إِذَا نَسِيتَ', footer: 'لحظة هدوء • تلاوة • تدبر' },
