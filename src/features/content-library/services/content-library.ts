@@ -73,7 +73,7 @@ function mapItem(row: RawItem): PublicContentLibraryItem {
 }
 
 const SELECT_LIST =
-  "id,slug,title_ar,title_en,summary_ar,body_ar,body_en,content_type,category,tags,author,published_at,source_id";
+  "id,slug,title_ar,title_en,summary_ar,body_ar,body_en,content_type,category,tags,author,published_at,source_id,content_sources(name,reference,author,publisher,license,attribution)";
 
 export async function getPublicContentLibrary(
   limit = 60,
