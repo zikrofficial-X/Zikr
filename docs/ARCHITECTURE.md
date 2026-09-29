@@ -14,7 +14,8 @@ This document describes the **current canonical architecture**. Historical audit
 - **Package manager:** pnpm; `pnpm-lock.yaml` is the only lockfile
 - **Mobile:** Capacitor with Android and iOS projects
 - **Hosting:** Vercel
-- **Verification:** repository integrity checks plus Vercel production build
+- **Automation:** GitHub Actions for the scheduled free video/social worker; CircleCI for source verification, releases, and manual recovery operations
+- **Prayer scheduling:** Supabase `pg_cron` → `prayer-notification-worker`
 
 ## Canonical Directory Map
 
@@ -24,7 +25,7 @@ This document describes the **current canonical architecture**. Historical audit
 | `src/features/` | Canonical feature modules. Domain components, hooks, services, types, data, and integrations live here |
 | `src/components/ui/` | Shared design-system primitives and reusable UI building blocks |
 | `src/components/layout/` | Shared application shell and cross-feature layout integrations |
-| `src/lib/` | Cross-cutting infrastructure only: Supabase clients, environment handling, HTTP transport, storage helpers, offline persistence, i18n, site metadata, and shared types/utils |
+| `src/lib/` | Cross-cutting infrastructure only |
 | `src/config/` | Application configuration |
 | `src/types/` | Global TypeScript types |
 | `public/` | Static assets, PWA files, icons, audio, and offline content |
@@ -32,10 +33,9 @@ This document describes the **current canonical architecture**. Historical audit
 | `supabase/migrations_archive/` | Historical/legacy migration copies; never treated as the active migration chain |
 | `supabase/functions/` | Supabase Edge Functions |
 | `scripts/` | Deterministic verification, maintenance, migration, content, and release tooling |
-| Main release tree | Production application code only |
 | `android/`, `ios/`, `mobile/` | Native projects and mobile build metadata |
-| `.github/` | Repository metadata only; GitHub Actions workflows are intentionally retired |
-| `.circleci/` | CircleCI configuration retained for secondary CI/recovery validation |
+| `.github/workflows/` | Active scheduled/dispatchable automation workflows |
+| `.circleci/` | Secondary CI, release, and manual recovery configuration |
 | `docs/` | Current operational documentation |
 
 ### Path ownership rules
@@ -48,8 +48,6 @@ The repository uses **feature-first imports** for domain code.
 - Do not recreate domain services under `src/lib/services/`.
 - Do not create a second domain hook layer under `src/hooks/`.
 - Legacy compatibility bridges that have no live consumers are removed rather than retained as parallel implementations.
-
-The import verifier enforces the remaining infrastructure boundary. The only permitted feature/app imports through `@/lib/services/*` are the shared infrastructure modules explicitly allowlisted by the verifier.
 
 ## Routes
 
@@ -72,8 +70,8 @@ Major public areas include:
 
 ## Supabase Layer
 
-- **Server client:** `src/lib/supabase/server.ts` provides the async server client.
-- **Browser client:** `src/lib/supabase/client.ts` provides the browser Supabase client.
+- **Server client:** `src/lib/supabase/server.ts`
+- **Browser client:** `src/lib/supabase/client.ts`
 - **Migrations:** only `supabase/migrations/` is canonical.
 - **RLS:** all production public tables are expected to remain protected by RLS.
 - **Security:** privileged functions and admin data must remain scoped and must not be exposed to public roles.
@@ -111,9 +109,23 @@ pnpm build
 
 All changes must leave the repository buildable and must not introduce a second implementation path for an existing feature.
 
+## Automation Ownership
+
+### Scheduled video and social worker
+
+`.github/workflows/generate-ai-video.yml` is the normal production worker. It runs every two hours, creates idempotent source-locked Quran/Hadith/Dua video requests, renders them with free FFmpeg, stores the generated MP4 in Supabase Storage, and processes the social publishing queue when provider credentials are configured.
+
+### CircleCI
+
+CircleCI runs the canonical verification suite and release workflows. Its background worker is a manual recovery path, not a second automatic scheduler.
+
+### Supabase
+
+Supabase `pg_cron` remains the authoritative scheduler for minute-level prayer notifications. The retired Vercel video cron is not restored.
+
 ## Known Operational Boundaries
 
 - Vercel deployment success and application-code correctness are separate checks.
 - External provider credentials (for example social publishing tokens) are runtime configuration, not source-code constants.
 - Supabase performance advisories about unused indexes are informational and require workload evidence before destructive index removal.
-- GitHub Actions workflows are intentionally absent from the active repository. Do not recreate them for CI, scheduling, releases, or background processing.
+- Do not add duplicate schedulers for the video or social queues.
