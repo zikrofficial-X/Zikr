@@ -65,7 +65,7 @@ SUPABASE_SERVICE_ROLE_KEY=[from Vercel secrets]
 
 # Video Generation
 GEMINI_API_KEY=[if generating AI videos]
-GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_MODEL=gemini-3.1-flash-lite
 
 # Social Publishing (prepare for future)
 YOUTUBE_API_KEY=[when ready]
