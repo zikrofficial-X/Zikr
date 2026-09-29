@@ -40,7 +40,7 @@ Add the following variables to your Vercel project settings:
 | `GEMINI_API_KEY` | Optional: For AI features |
 | `YOUTUBE_API_KEY` | Optional: For fetching YouTube data |
 | `YOUTUBE_CHANNEL_ID` | Optional: YouTube channel ID for the video feed |
-| `GEMINI_MODEL` | Optional: Gemini model name, default `gemini-2.5-flash-lite` |
+| `GEMINI_MODEL` | Optional: Gemini model name, default `gemini-3.1-flash-lite` |
 
 ## 3. Pre-deployment Validation
 
