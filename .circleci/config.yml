@@ -438,7 +438,7 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            REPO="Zikrmediaofficial/Zikr"
+            REPO="zikr-org/Zikr"
             RELEASE_TAG="$ANDROID_RELEASE_TAG"
             APK="android/app/build/outputs/apk/release/app-release.apk"
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
