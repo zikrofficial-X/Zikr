@@ -95,7 +95,7 @@ const rawEnv: Record<string, string | undefined> = {
 
   // ── Gemini AI ─────────────────────────────────────────────────────────────
   GEMINI_API_KEY: pick("GEMINI_API_KEY"),
-  GEMINI_MODEL: pick("GEMINI_MODEL") || "gemini-2.5-flash",
+  GEMINI_MODEL: pick("GEMINI_MODEL") || "gemini-2.5-flash-lite",
 
   // ── Islamic content API ───────────────────────────────────────────────────
   HADITH_API_BASE_URL: pick("HADITH_API_BASE_URL"),
