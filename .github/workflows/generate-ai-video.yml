@@ -8,6 +8,8 @@ on:
   push:
     # A workflow change on main is a deliberate production smoke/deploy trigger.
     # Feature-branch edits do not consume runner time.
+    # This also gives us a safe, one-shot queue recovery path when an item is
+    # already due but the scheduled event has not arrived yet.
     branches:
       - main
     paths:
