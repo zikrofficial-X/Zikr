@@ -149,6 +149,7 @@ jobs:
       # Manual queue recovery verified 2026-09-29: process due pending videos before social publishing.
       # Free-tier AI path: Gemini plans the source-locked presentation; FFmpeg performs the render locally.
       # Validation pass 2026-09-29: Flash-Lite defaults and structured memorization evaluation are enabled.
+      # Isolated Gemini/FFmpeg E2E queue test is prepared in Supabase; social publishing is skipped for the test request.
 
       - name: Run autonomous queue
         run: pnpm background:jobs
