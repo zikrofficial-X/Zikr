@@ -111,14 +111,14 @@ export async function AdminPlatformCommandCenter() {
       <section>
         <h2 className="mb-4 text-xl font-bold text-brand-gold">جرد البيانات</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-          {snapshot.counts ? Object.entries(snapshot.counts).map(([key, value]) => (
-            <div key={key} className={`rounded-2xl border p-4 ${value.count === null ? "border-red-500/15 bg-red-500/5" : "border-brand-gold/8 bg-black/10"}`}>
+          {snapshot.counts.map((value) => (
+            <div key={value.table} className={`rounded-2xl border p-4 ${value.count === null ? "border-red-500/15 bg-red-500/5" : "border-brand-gold/8 bg-black/10"}`}>
               <p className="text-xs text-brand-cream/35">{value.label}</p>
               <p className="mt-1 text-xl font-bold text-brand-cream">
                 {value.count === null ? "غير متاح" : value.count.toLocaleString("ar-EG")}
               </p>
             </div>
-          )) : null}
+          ))}
         </div>
       </section>
 
