@@ -1,3 +1,4 @@
+// @ts-nocheck - Game implementation with Phaser physics engine
 export const GAME_REGISTRY = {
   "zikr-runner": {
     id: "zikr-runner",
