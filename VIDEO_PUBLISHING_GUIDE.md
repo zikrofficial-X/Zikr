@@ -118,7 +118,7 @@ Generate videos automatically using Google Gemini API.
 
 **Configuration:**
 1. Set `GEMINI_API_KEY` in environment
-2. Set `GEMINI_MODEL` (default: `gemini-2.5-flash-lite`)
+2. Set `GEMINI_MODEL` (default: `gemini-3.1-flash-lite`)
 3. Set `VIDEO_GENERATOR=template` (in `.env`)
 
 ### Generate Video
