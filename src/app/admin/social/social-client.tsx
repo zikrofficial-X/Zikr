@@ -59,7 +59,7 @@ export default function AdminSocialPage() {
   const allVisibleRetryableSelected = visibleRetryable.length > 0 && visibleRetryable.every((item) => selected.includes(item.id));
 
   const runAction = useCallback(async (action: 'retry' | 'retry_all_failed' | 'delete' | 'delete_failed') => {
-    if (action !== 'retry' && !window.confirm(action === 'delete_failed' ? `سيتم حذف ${failed.length} عملية فاشلة نهائيًا.` : 'سيتم حذف العمليات الفاشلة المحددة نهائيًا.')) return;
+    if (action !== 'retry' && !window.confirm(action === 'delete_failed' ? `سيتم حذف ${retryable.length} عملية فاشلة أو نشر جزئي نهائيًا.` : 'سيتم حذف العمليات الفاشلة أو الجزئية المحددة نهائيًا.')) return;
     const ids = action === 'retry_all_failed' || action === 'delete_failed' ? [] : selected;
     if ((action === 'retry' || action === 'delete') && ids.length === 0) {
       setError('حدد عملية فاشلة أو نشرًا جزئيًا أولًا.');
@@ -79,7 +79,7 @@ export default function AdminSocialPage() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'تعذر تنفيذ الإجراء.');
     } finally { setBusy(false); }
-  }, [failed.length, load, selected]);
+  }, [load, retryable.length, selected]);
 
   function toggleVisibleRetryable() {
     const ids = visibleRetryable.map((item) => item.id);

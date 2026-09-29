@@ -82,7 +82,7 @@ The project uses Supabase RLS, server-side service-role boundaries, protected OA
 
 ## Release process
 
-The current release metadata baseline is `1.0.0` / versionCode `53` / `com.zikr.app` / target SDK 36.
+The current release metadata baseline is `1.1.0` / versionCode `54` / `com.zikr.app` / target SDK 36.
 
 Before releasing:
 
