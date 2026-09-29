@@ -1,5 +1,6 @@
-import { ContentGuide } from "@/components/content/content-guide";
 'use client';
+
+import { ContentGuide } from "@/components/content/content-guide";
 
 import { PrayerTimesPage } from '@/features/prayer/components/prayer-times-page';
 
