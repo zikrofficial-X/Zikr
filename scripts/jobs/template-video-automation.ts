@@ -333,7 +333,7 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
   const sourceText = contentText(request).slice(0, 5000);
   if (!sourceText) return { ...DEFAULT_AI_VIDEO_PLAN };
 
-  const model = (process.env.GEMINI_MODEL || "gemini-2.5-flash-lite").trim();
+  const model = (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim();
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY || "")}`;
   const prompt = [
     "أنت مخطط محتوى بصري لمنصة ذِكر الإسلامية.",
@@ -395,7 +395,7 @@ async function renderVideo(request: GeneratedRequest) {
         ...request.content,
         ai: {
           provider: "google-gemini",
-          model: (process.env.GEMINI_MODEL || "gemini-2.5-flash-lite").trim(),
+          model: (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim(),
           reflection: aiPlan.reflection || null,
           socialCaption: aiPlan.socialCaption || null,
           scene: aiPlan.scene,
