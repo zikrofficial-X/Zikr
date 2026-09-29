@@ -42,6 +42,7 @@ jobs:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_MODEL: gemini-3.1-flash-lite
+      GEMINI_AUDIO_SMOKE_TEST: "true"
       AUTO_VIDEO_ENABLED: "true"
       AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '1' }}
       VIDEO_BACKGROUND_BATCH_SIZE: "1"
@@ -119,6 +120,10 @@ jobs:
           set -euo pipefail
           pnpm exec tsx -e 'Promise.all([import("./scripts/jobs/template-video-automation.ts"), import("./src/features/social/services/social-publishing.ts")]).then(() => console.log("Video worker module smoke test: OK")).catch((error) => { console.error(error); process.exitCode = 1 })'
           ffmpeg -version | head -n 1
+
+      - name: Gemini audio evaluation smoke test
+        if: env.GEMINI_AUDIO_SMOKE_TEST == 'true'
+        run: pnpm exec tsx scripts/verify-gemini-audio.ts
 
       - name: Validate automation secrets
         shell: bash
