@@ -1,6 +1,5 @@
 import { ContentGuide } from "@/components/content/content-guide";
 import type { Metadata } from "next";
-import { pageMetadata } from "@/lib/site";
 import KidsProgressDashboard from "@/features/kids/components/games/progress-dashboard";
 
 export const dynamic = "force-static";

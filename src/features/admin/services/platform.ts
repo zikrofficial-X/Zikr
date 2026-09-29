@@ -176,7 +176,7 @@ export async function getAdminOverview() {
       : {};
 
   return {
-    counts: Object.fromEntries(counts.map(({ table, label, count }) => [table, { label, count }])),
+    counts: Object.fromEntries(counts),
     videoGeneration: countStatuses(videoRequests),
     socialQueue: countStatuses(socialQueue),
     sections: {

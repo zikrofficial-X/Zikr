@@ -190,7 +190,7 @@ export default function AdminVideosClient() {
               <div><dt className="text-brand-cream/35">آخر تحديث</dt><dd className="mt-1 text-brand-cream/75">{new Date(details.updated_at).toLocaleString("ar-EG")}</dd></div>
             </dl>
             {details.video_url && <a href={details.video_url} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex rounded-xl border border-emerald-500/20 px-4 py-2 text-sm text-emerald-300">فتح الفيديو الناتج</a>}
-            {details.content && <pre className="mt-5 overflow-auto rounded-xl border border-brand-gold/10 bg-black/30 p-4 text-xs text-brand-cream/55">{JSON.stringify(details.content, null, 2)}</pre>}
+            {details.content !== null && details.content !== undefined ? <pre className="mt-5 overflow-auto rounded-xl border border-brand-gold/10 bg-black/30 p-4 text-xs text-brand-cream/55">{JSON.stringify(details.content, null, 2)}</pre> : null}
           </Card>
         </div>
       )}
