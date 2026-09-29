@@ -13,6 +13,14 @@ GitHub: zikr-org/Zikr
         |      +--> Production build: pnpm build
         |      +--> Canonical public origin: https://zikrmediaofficial.vercel.app
         |
+        +--> GitHub Actions
+        |      +--> every 2 hours: autonomous video/social worker
+        |      +--> manual dispatch: diagnostics/recovery
+        |
+        +--> CircleCI
+        |      +--> ci-check and release validation
+        |      +--> manual recovery operations
+        |
         +--> Supabase
                +--> PostgreSQL / RLS
                +--> Auth
@@ -124,9 +132,9 @@ Then smoke-check:
 
 ## 9. CI and background jobs
 
-GitHub Actions workflows are retired from the active repository.
+GitHub Actions is the normal scheduled owner of the video/social worker.
 
-CircleCI owns external CI/recovery jobs, including validation, opt-in background jobs, Quran audio import, security checks, and release-specific Android validation.
+CircleCI remains the canonical source-verification, Android-release, security-audit, and manual-recovery environment. Its background-jobs parameter can be used deliberately for recovery; it must not become a second automatic scheduler.
 
 Supabase `pg_cron` owns the minute-level prayer notification worker.
 
