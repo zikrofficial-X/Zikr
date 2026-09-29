@@ -56,7 +56,6 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     label: "النشر والإصدار",
     items: [
       { href: "/admin/social", label: "النشر الاجتماعي", permission: "social.manage" },
-      { href: "/admin/social/youtube-import", label: "استيراد YouTube", permission: "media.manage" },
       { href: "/admin/android", label: "إصدارات Android", permission: "android.manage" },
       { href: "/admin/release", label: "بوابة الإصدار", permission: "release.manage" },
     ],
