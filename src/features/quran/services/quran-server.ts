@@ -453,19 +453,6 @@ export type QuranAudioRecord = {
   storage_path: string | null;
 };
 
-function isDirectExternalMp3Url(value: string | null | undefined): value is string {
-  if (!value) return false;
-
-  try {
-    const parsed = new URL(value);
-    return (parsed.protocol === "https:" || parsed.protocol === "http:")
-      && /\.mp3$/i.test(parsed.pathname)
-      && !/\/storage\/v1\/object\//i.test(parsed.pathname);
-  } catch {
-    return false;
-  }
-}
-
 export async function getQuranAudioFromDb(
   surahId: number,
   reciterCode: string,
