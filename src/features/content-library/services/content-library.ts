@@ -41,8 +41,8 @@ function mapSource(value: unknown): ContentSource | ContentSource[] | null {
   return {
     name: String(row.name_ar ?? row.name_en ?? ""),
     reference: typeof row.url === "string" ? row.url : null,
-    author: typeof row.author ?? row.name_ar === "string" ? String(row.author ?? row.name_ar) : null,
-    publisher: typeof row.publisher === "string" ? row.publisher : null,
+    author: typeof row.author === "string" ? row.author : null,
+    publisher: null,
     license: typeof row.license === "string" ? row.license : null,
     attribution:
       typeof row.attribution === "string" ? row.attribution : null,
