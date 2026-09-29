@@ -1,70 +1,140 @@
-# ZIKR SUPABASE FREE MIGRATION — FINAL REPORT
+# ZIKR — Supabase Free Migration / Quran Audio Finalization
 
-## 1. OLD PROJECT
-- Project ref: `eydxvcamhjhajxjrsgym`
-- Organization: `Alone`
-- Region: `eu-west-1`
-- Status observed: `INACTIVE`
-- Database: PostgreSQL 17.6.1.104
-- Destructive changes: none
+**Date:** September 29, 2026
 
-## 2. NEW PROJECT
+## 1. New Supabase Free project
+
+- Organization: `zikr`
+- Organization plan: Free
+- Organization ID: `vercel_icfg_OSj2EHD4iDH5UdnZfWzOegIl`
+- Project: `Zikrmediaofficial`
 - Project ref: `kdotmrjfecgafiommzwz`
-- Organization: `zikr` / `Zikrmediaofficial`
 - Region: `us-east-1`
-- Status observed: `ACTIVE_HEALTHY`
-- Database: PostgreSQL 17.6.1.166
-- Production connection switch: not performed
+- Postgres: 17.6.1.166
+- Status at verification: ACTIVE_HEALTHY
 
-## 3. FREE PLAN VALIDATION
-Official Supabase documentation confirmed that Free organizations have two active free projects and 10 GB bandwidth (5 GB cached plus 5 GB uncached). Storage/database byte quotas and live project usage were not safely measurable through the available connected tools in this run.
+The old `Zikr` project ref `eydxvcamhjhajxjrsgym` was preserved and not deleted by this migration work.
 
-## 4. SCHEMA AND DATA MIGRATION
-Not executed. The old project is inactive, and a direct target schema query ended with a connection timeout. No schema, data, auth users, functions, RLS policies, triggers, or storage objects were modified.
+## 2. Database/content verification
 
-## 5. QURAN VALIDATION
-Not executed against live databases. Required gate remains pending:
+Verified directly in the new project:
 
-- 114 surahs
-- 6,236 ayahs
-- 7 reciters
-- 798 audio rows
-- 798 valid external HTTPS URLs
-- 0 internal `quran-audio` URLs
+- Quran surahs: **114**
+- Quran ayahs: **6,236**
+- Quran reciter catalog rows: **172**
+- Quran audio rows: **19,608**
+- Reciters with complete 114-surah coverage: **172 / 172**
+- Quran audio rows with external HTTPS `audio_url`: **19,608 / 19,608**
+- Quran audio rows with missing URL: **0**
+- Quran audio rows with Supabase Storage URL: **0**
+- Quran audio rows with `storage_url`: **0**
+- Quran audio rows with non-null `storage_bucket`: **0**
+- Quran audio rows with `storage_status=ready`: **0**
 
-No Quran URLs were fabricated or changed.
+The seven canonical reciters requested for the original ZIKR catalogue are present:
 
-## 6. STORAGE DECISIONS
-- `quran-audio`: DO NOT MIGRATE; no objects copied or deleted.
-- Other buckets: not safely inventoried because the source project is inactive and Storage inventory was unavailable.
-- New-project storage usage: unverified.
+- Mishary Rashid Alafasy (`alafasy`)
+- Muhammad Siddiq Al-Minshawi (`minshawi`)
+- Maher Al-Muaiqly (`mahermuaiqly`)
+- Saad Al-Ghamdi (`ghamdi`)
+- Abdul Basit Abdul Samad (`abdulbasit`)
+- Abdurrahman As-Sudais (`sudais`)
+- Saud Al-Shuraim (`shuraim`)
 
-## 7. AUTHENTICATION
-Not migrated or modified. Session preservation and user-count parity remain unverified.
+## 3. Storage verification
 
-## 8. SECURITY / RLS
-No target security changes were made. No service-role value was exposed or committed. Old production remains available as the rollback source, subject to its inactive state.
+The new project has **zero Storage objects and zero stored bytes** in all inspected buckets, including `quran-audio`.
 
-## 9. APPLICATION / ENVIRONMENT
-No production environment values were changed. Repository inspection found historical documentation references to the old Supabase OAuth callback; these were not rewritten without a verified target Auth configuration.
+The Free-plan design therefore does not copy the historical multi-GB Quran MP3 archive.
 
-## 10. VERIFICATION
-Completed:
-- Supabase integration status check: connected.
-- Organization and project inventory.
-- Target project metadata inspection.
-- Official Free-plan documentation lookup.
-- Repository migration/code reference inspection.
-- Safety check confirming no destructive migration occurred.
+Quran playback is externalized through the `quran_audio.audio_url` field. The application code also rejects old Supabase Storage URLs and can derive an external URL from the reciter catalogue when required.
 
-Blocked:
-- Old live audit/export: old project inactive.
-- Target live schema/data verification: connection timeout.
-- Full Storage/Auth/function inventory: unavailable through current connected tools.
-- Preview/Production deployment verification: intentionally not attempted.
+## 4. Application compatibility
 
-## 11. ROLLBACK
-The old project was not deleted, reset, modified, or replaced. No rollback operation is required.
+The repository's current `src/features/quran/services/quran-server.ts` is compatible with the new storage architecture:
 
-## 12. FINAL STATUS
-**Migration incomplete and not production-ready.** The safe next prerequisite is to restore/read-enable the old project and resolve target database connectivity, then rerun read-only audits before any migration writes or Vercel switch.
+- local Quran corpus is preferred for Quran text;
+- Supabase remains a compatibility fallback;
+- direct external HTTPS `audio_url` values are accepted;
+- old Supabase Storage URLs are not used for playback;
+- Storage is not required for Quran audio playback.
+
+The repository `.env.example` already points to:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://kdotmrjfecgafiommzwz.supabase.co
+```
+
+## 5. GitHub changes
+
+Branch:
+
+`chore/retire-quran-audio-storage-import`
+
+Changes completed on this branch:
+
+- removed CircleCI `run_quran_audio_import` parameter;
+- removed the `quran-audio-import` CircleCI job;
+- removed the `manual-quran-audio-import` workflow;
+- removed `scripts/import-quran-audio-to-supabase.mjs`;
+- updated production scheduling documentation;
+- updated CircleCI/Supabase environment documentation;
+- preserved the Free-plan external-audio architecture.
+
+## 6. Vercel
+
+Current verified Vercel project:
+
+- Project ID: `prj_JAsYThJCoUT3DzPxOU2EdmuwxiV5`
+- Team ID: `team_hjit6v49jMgWo0GImI1tqCUj`
+- Repository: `zikr-org/Zikr`
+
+Latest verified production deployment before this branch change:
+
+`https://zikr-nnf7mj3oi-zikr1.vercel.app`
+
+The production homepage and Quran routes returned HTTP 200 through the Vercel access tool.
+
+The connector available in this session does **not** expose Vercel environment-variable mutation, so this migration report does not claim that the Vercel Production environment variables were changed.
+
+## 7. Remaining Vercel cutover
+
+The Vercel Dashboard must point Production to the new Supabase project.
+
+Required production values:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://kdotmrjfecgafiommzwz.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<new project publishable/anon key>
+```
+
+Do not create a duplicate variable. The screenshot from the current Vercel connection flow showed the duplicate `NEXT_PUBLIC_SUPABASE_ANON_KEY` warning; the custom environment-variable prefix should remain empty.
+
+After the environment values are confirmed, trigger a fresh Production deployment and verify runtime behavior.
+
+## 8. Supabase advisor state
+
+The new project still reports separate advisory items:
+
+- leaked-password protection disabled;
+- three RLS-enabled tables without policies;
+- two RLS auth-initplan performance warnings;
+- multiple unused-index notices.
+
+These were intentionally not mass-modified during the migration because they are separate hardening work and broad automatic policy/index changes could alter application behavior.
+
+## 9. Old project
+
+The old project was not deleted or reset.
+
+It remains the rollback source. Its former `quran-audio` archive was not copied into the new project.
+
+## 10. Final status
+
+**Supabase target project: verified and suitable for the Free-plan Quran-audio architecture.**
+
+**Quran content/audio externalization: verified.**
+
+**Old Quran Storage importer retirement: completed on GitHub branch.**
+
+**Vercel Production environment cutover: not yet verified through the available connector and therefore not claimed complete.**
