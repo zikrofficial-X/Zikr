@@ -21,16 +21,16 @@ interface UserProfile {
 
 interface AdminActionAudit {
   id: string;
-  user_id: string | null;
+  actor_user_id: string | null;
   action: string;
-  meta: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
 }
 
 async function getRecentAdminActions(): Promise<AdminActionAudit[]> {
   try {
     return await supabaseServerAdminRequest<AdminActionAudit[]>(
-      "/rest/v1/admin_actions_audit?select=id,user_id,action,meta,created_at&order=created_at.desc&limit=12",
+      "/rest/v1/admin_audit_events?select=id,actor_user_id,action,metadata,created_at&order=created_at.desc&limit=12",
       { cache: "no-store" }
     );
   } catch (error) {
@@ -155,8 +155,8 @@ export default async function AdminUsersPage() {
                 <div>
                   <p className="text-sm text-brand-cream">{action.action}</p>
                   <p className="text-xs arabic-muted">
-                    {action.user_id
-                      ? `المستخدم: ${action.user_id}`
+                    {action.actor_user_id
+                      ? `المستخدم: ${action.actor_user_id}`
                       : "إجراء عام"}
                   </p>
                 </div>
