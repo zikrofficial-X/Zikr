@@ -90,3 +90,4 @@ jobs:
           echo "The queue seeds source-locked Quran/Hadith/Dua videos and renders them with free FFmpeg."
           echo "Generated videos are automatically queued for configured YouTube/Facebook publishing."
           echo "Gemini is used only for a bounded reflection layer when GEMINI_API_KEY is configured."
+          echo "Worker retry trigger: server count fix + video_url schema reconciliation."
