@@ -36,7 +36,7 @@ export type AdminAuditRow = {
 
 export type AdminHealth = {
   database: "healthy" | "degraded";
-  tables: Array<{ table: string; count: number; state: "healthy" | "empty" | "unavailable" }>;
+  tables: Array<{ table: string; count: number | null; state: "healthy" | "empty" | "unavailable" }>;
   queues: {
     socialQueued: number;
     socialFailed: number;
@@ -200,7 +200,7 @@ export async function getAdminHealth(): Promise<AdminHealth> {
           state: count === 0 ? "empty" : "healthy",
         } as const;
       } catch {
-        return { table, count: 0, state: "unavailable" } as const;
+        return { table, count: null, state: "unavailable" } as const;
       }
     }),
   );
