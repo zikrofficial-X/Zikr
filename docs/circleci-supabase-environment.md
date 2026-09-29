@@ -22,6 +22,7 @@ This document is the authoritative inventory for the current CircleCI recovery/C
 
 Optional operational values:
 - `QURAN_AUDIO_MAX_FILE_MB` (default 50)
+- `QURAN_AUDIO_MAX_BUCKET_MIB` (default 800; the importer checks actual bucket usage before upload and reserves headroom for other Storage buckets)
 - `QURAN_AUDIO_CONCURRENCY` (default 2)
 
 ### Required only for Android release
