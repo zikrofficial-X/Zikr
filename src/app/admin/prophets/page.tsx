@@ -27,7 +27,8 @@ async function saveProphetVideoAction(formData: FormData) {
   if (!id) return;
 
   const videoId = parseYouTubeVideoId(rawUrl);
-  await saveAdminProphetVideo(id, videoId);
+  const ok = await saveAdminProphetVideo(id, videoId);
+  if (!ok) throw new Error("تعذر حفظ فيديو النبي. راجع صلاحيات قاعدة البيانات وسجل الأخطاء.");
 
   revalidatePath('/admin/prophets');
   revalidatePath('/prophets');
@@ -40,7 +41,8 @@ async function toggleProphetPublishAction(formData: FormData) {
   const next = formData.get('next') === 'true';
   if (!id) return;
 
-  await setAdminProphetPublished(id, next);
+  const ok = await setAdminProphetPublished(id, next);
+  if (!ok) throw new Error("تعذر تحديث حالة نشر النبي.");
 
   revalidatePath('/admin/prophets');
   revalidatePath('/prophets');
