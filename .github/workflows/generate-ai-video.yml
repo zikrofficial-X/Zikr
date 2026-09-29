@@ -30,9 +30,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      # The canonical Supabase URL is public configuration; only the service-role key remains secret.
+      SUPABASE_URL: https://kdotmrjfecgafiommzwz.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://kdotmrjfecgafiommzwz.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.0-flash-lite' }}
@@ -68,6 +70,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ffmpeg librsvg2-bin fonts-noto-core fonts-noto-extra fonts-noto-cjk
+
+      - name: Validate automation secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "Missing GitHub Actions secret: SUPABASE_SERVICE_ROLE_KEY" >&2; exit 1; }
+          if [[ -z "${YOUTUBE_CLIENT_ID:-}" && -z "${FACEBOOK_PAGE_ID:-}" ]]; then
+            echo "Warning: no social provider credentials are configured; videos can still be generated but cannot be published." >&2
+          fi
 
       - name: Run autonomous queue
         run: pnpm background:jobs
