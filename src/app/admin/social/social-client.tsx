@@ -96,7 +96,6 @@ export default function AdminSocialPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" disabled={busy} onClick={() => void load()}>تحديث</Button>
-          <Link href="/admin/social/youtube-import" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20">استيراد فيديوهات قديمة</Link>
         </div>
       </section>
 
