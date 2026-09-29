@@ -133,7 +133,7 @@ export function getServerEnv() {
     CLOUDINARY_API_SECRET: validatedEnv.CLOUDINARY_API_SECRET || "",
     AUTH_CALLBACK_URL: validatedEnv.AUTH_CALLBACK_URL || "",
     GEMINI_API_KEY: validatedEnv.GEMINI_API_KEY || "",
-    GEMINI_MODEL: validatedEnv.GEMINI_MODEL || "gemini-2.5-flash",
+    GEMINI_MODEL: validatedEnv.GEMINI_MODEL || "gemini-2.5-flash-lite",
     HADITH_API_BASE_URL:
       validatedEnv.HADITH_API_BASE_URL || "https://ummahapi.com/api/hadith",
     YOUTUBE_API_KEY: validatedEnv.YOUTUBE_API_KEY || "",
