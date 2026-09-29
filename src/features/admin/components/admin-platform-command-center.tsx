@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getAdminSnapshot } from "@/features/admin/services/platform";
 import { ADMIN_NAVIGATION } from "@/features/admin/config/navigation";
-import { deleteFailedVideoGenerationAction } from "@/app/admin/video-actions";
+import { deleteFailedVideoGenerationAction } from "@/features/admin/actions/video";
 
 export async function AdminPlatformCommandCenter() {
   const snapshot = await getAdminSnapshot();
