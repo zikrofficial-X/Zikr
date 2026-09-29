@@ -54,6 +54,27 @@ type GeneratedRequest = {
   video_url?: string | null;
 };
 
+type AiVideoPlan = {
+  reflection: string;
+  socialCaption: string;
+  scene: "calm" | "dawn" | "night" | "gold";
+  motion: "fade" | "slow";
+};
+
+const DEFAULT_AI_VIDEO_PLAN: AiVideoPlan = {
+  reflection: "",
+  socialCaption: "",
+  scene: "calm",
+  motion: "slow",
+};
+
+const AI_SCENE_COLORS: Record<AiVideoPlan["scene"], string> = {
+  calm: "0x081D1A",
+  dawn: "0x173C34",
+  night: "0x0C1528",
+  gold: "0x2A2110",
+};
+
 function siteUrl() {
   return "https://zikrmediaofficial.vercel.app";
 }
@@ -265,33 +286,84 @@ function aiPlanEnabled() {
   return Boolean(process.env.GEMINI_API_KEY?.trim());
 }
 
-async function generateAiCaption(request: GeneratedRequest): Promise<string | null> {
-  if (!aiPlanEnabled()) return null;
+function normalizeAiVideoPlan(value: unknown): AiVideoPlan {
+  if (!value || typeof value !== "object") return { ...DEFAULT_AI_VIDEO_PLAN };
+  const candidate = value as Record<string, unknown>;
+  const reflection = typeof candidate.reflection === "string" ? candidate.reflection : "";
+  const socialCaption = typeof candidate.socialCaption === "string" ? candidate.socialCaption : "";
+  const scene =
+    candidate.scene === "dawn" ||
+    candidate.scene === "night" ||
+    candidate.scene === "gold" ||
+    candidate.scene === "calm"
+      ? candidate.scene
+      : "calm";
+  const motion = candidate.motion === "fade" || candidate.motion === "slow" ? candidate.motion : "slow";
+  return {
+    reflection: reflection.replace(/[<>]/g, "").replace(/\s+/g, " ").slice(0, 180),
+    socialCaption: socialCaption.replace(/[<>]/g, "").replace(/\s+/g, " ").slice(0, 320),
+    scene,
+    motion,
+  };
+}
+
+function parseGeminiJson(raw: string): unknown {
+  const cleaned = raw
+    .replace(/^\\s*\`\`\`(?:json)?/i, "")
+    .replace(/\`\`\`\\s*$/i, "")
+    .trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const first = cleaned.indexOf("{");
+    const last = cleaned.lastIndexOf("}");
+    if (first >= 0 && last > first) {
+      try {
+        return JSON.parse(cleaned.slice(first, last + 1));
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
+async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPlan> {
+  if (!aiPlanEnabled()) return { ...DEFAULT_AI_VIDEO_PLAN };
   const sourceText = contentText(request).slice(0, 5000);
-  if (!sourceText) return null;
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.GEMINI_MODEL || "gemini-2.5-flash")}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY || "")}`;
+  if (!sourceText) return { ...DEFAULT_AI_VIDEO_PLAN };
+
+  const model = (process.env.GEMINI_MODEL || "gemini-2.5-flash-lite").trim();
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY || "")}`;
   const prompt = [
-    "أنت محرر محتوى لمنصة إسلامية.",
-    "المصدر أدناه موثق بالفعل. لا تغيّر نص المصدر ولا تضف حكمًا شرعيًا جديدًا.",
-    "اكتب سطرًا تأمليًا قصيرًا فقط، بالعربية، لا يتجاوز 110 أحرف، مستندًا حرفيًا إلى معنى المصدر دون ادعاء مصدر جديد.",
+    "أنت مخطط محتوى بصري لمنصة ذِكر الإسلامية.",
+    "المصدر أدناه موثق بالفعل. ممنوع تغيير نص المصدر أو اختراع نص ديني أو حكم شرعي جديد.",
+    "صمّم خطة قصيرة لفيديو عمودي يُرندر محليًا بواسطة FFmpeg.",
+    "أعد JSON فقط بالمفاتيح الإنجليزية التالية:",
+    '{"reflection":"...","socialCaption":"...","scene":"calm|dawn|night|gold","motion":"fade|slow"}',
+    "reflection: تأمل عربي قصير جدًا لا يتجاوز 110 أحرف، ولا ينسب قولًا جديدًا للمصدر.",
+    "socialCaption: وصف/كابشن عربي قصير للنشر لا يتجاوز 220 حرفًا، بدون معلومات غير موجودة في المصدر.",
+    "scene: اختر مشهدًا هادئًا من القائمة فقط.",
+    "motion: fade أو slow فقط.",
     `العنوان: ${request.title}`,
     `المصدر: ${contentSourceUrl(request)}`,
     `النص:${sourceText}`,
-    'أعد السطر فقط بدون علامات اقتباس أو Markdown.',
   ].join("\n");
+
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 120 },
+      generationConfig: { temperature: 0.2, maxOutputTokens: 260 },
     }),
     signal: AbortSignal.timeout(30_000),
   });
   if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`);
+
   const payload = await response.json();
   const raw = payload.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("").trim() || "";
-  return raw.replace(/[<>]/g, "").replace(/\s+/g, " ").slice(0, 160) || null;
+  return normalizeAiVideoPlan(parseGeminiJson(raw));
 }
 
 function contentAudioUrl(request: GeneratedRequest) {
@@ -316,20 +388,49 @@ async function renderVideo(request: GeneratedRequest) {
   const outputPath = `${temp}/video.mp4`;
   const audioPath = `${temp}/recitation.m4a`;
   try {
-    let reflection: string | null = null;
+    let aiPlan: AiVideoPlan = { ...DEFAULT_AI_VIDEO_PLAN };
     try {
-      reflection = await generateAiCaption(request);
+      aiPlan = await generateAiVideoPlan(request);
+      request.content = {
+        ...request.content,
+        ai: {
+          provider: "google-gemini",
+          model: (process.env.GEMINI_MODEL || "gemini-2.5-flash-lite").trim(),
+          reflection: aiPlan.reflection || null,
+          socialCaption: aiPlan.socialCaption || null,
+          scene: aiPlan.scene,
+          motion: aiPlan.motion,
+          generatedAt: new Date().toISOString(),
+          sourceLocked: true,
+        },
+      };
     } catch (error) {
-      console.warn(`[template-video] Gemini reflection skipped for ${request.id}: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn(`[template-video] Gemini plan skipped for ${request.id}: ${error instanceof Error ? error.message : String(error)}`);
     }
-    await writeFile(assPath, makeAss(text, request.title, sourceUrl, reflection), "utf8");
+    await writeFile(assPath, makeAss(text, request.title, sourceUrl, aiPlan.reflection || null), "utf8");
     const filter = [
       `subtitles=${assPath}:fontsdir=/usr/share/fonts/truetype/noto`,
       "eq=contrast=1.04:saturation=0.92:brightness=0.01",
       "vignette=PI/5",
+      ...motionFilters,
       "format=yuv420p",
     ].join(",");
-    const videoInput = `color=c=0x081D1A:s=${width}x${height}:r=30:d=${VIDEO_SECONDS}`;
+    const persistedAi = request.content?.ai && typeof request.content.ai === "object"
+      ? (request.content.ai as Partial<AiVideoPlan> & { scene?: AiVideoPlan["scene"]; motion?: AiVideoPlan["motion"] })
+      : null;
+    const scene =
+      persistedAi?.scene === "dawn" ||
+      persistedAi?.scene === "night" ||
+      persistedAi?.scene === "gold" ||
+      persistedAi?.scene === "calm"
+        ? persistedAi.scene
+        : "calm";
+    const motion = persistedAi?.motion === "fade" ? "fade" : "slow";
+    const fadeOutStart = Math.max(0, VIDEO_SECONDS - 0.8);
+    const motionFilters = motion === "fade"
+      ? [`fade=t=in:st=0:d=0.7`, `fade=t=out:st=${fadeOutStart.toFixed(2)}:d=0.8`]
+      : [`fade=t=in:st=0:d=0.5`];
+    const videoInput = `color=c=${AI_SCENE_COLORS[scene]}:s=${width}x${height}:r=30:d=${VIDEO_SECONDS}`;
     const args = ["-y", "-f", "lavfi", "-i", videoInput];
     if (audioUrl) {
       const response = await fetch(audioUrl, { headers: { Accept: "audio/*" }, signal: AbortSignal.timeout(60_000) });
@@ -414,7 +515,14 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
         content_type: `${request.category || "content"}_video`,
         content_id: request.id,
         title: request.title,
-        body: `${request.description || ""}\n\nالمصدر: ${contentSourceUrl(request)}\n${siteUrl()}${publicPath}`,
+        body: [
+          request.description || "",
+          typeof content.ai === "object" && content.ai && typeof (content.ai as Record<string, unknown>).socialCaption === "string"
+            ? String((content.ai as Record<string, unknown>).socialCaption)
+            : "",
+          `المصدر: ${contentSourceUrl(request)}`,
+          `${siteUrl()}${publicPath}`,
+        ].filter(Boolean).join("\n\n"),
         video_url: videoUrl,
         target_platforms: targets,
         status: "queued",
@@ -427,6 +535,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
           attempts: 0,
           maxAttempts: 5,
           nextRetryAt: null,
+          ai: content.ai && typeof content.ai === "object" ? content.ai : null,
         },
         automation_key: socialKey,
       }),
@@ -515,7 +624,14 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
       await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ status: "completed", video_url: videoUrl, updated_at: new Date().toISOString(), error_message: null, error_details: null }),
+        body: JSON.stringify({
+          status: "completed",
+          video_url: videoUrl,
+          content: request.content,
+          updated_at: new Date().toISOString(),
+          error_message: null,
+          error_details: null,
+        }),
       });
       await queueSocialItems(request, videoUrl);
       succeeded += 1;
