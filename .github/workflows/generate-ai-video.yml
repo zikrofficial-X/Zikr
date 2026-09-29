@@ -1,58 +1,72 @@
-name: Generate ZIKR AI Video
+name: ZIKR Autonomous AI Video Worker
 
 on:
+  schedule:
+    - cron: "0 */6 * * *"
   workflow_dispatch:
     inputs:
-      title:
-        description: Video topic or title
-        required: true
-        default: Daily Islamic Reminder
-        type: string
-      language:
-        description: Content language
-        required: true
-        default: ar
-        type: string
-      seconds:
-        description: Approximate duration in seconds
-        required: true
-        default: '12'
+      batch_size:
+        description: "Number of new video jobs to seed in this run"
+        required: false
+        default: "4"
         type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: generate-ai-video
+  group: zikr-autonomous-video-worker
   cancel-in-progress: false
 
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     env:
-      VIDEO_TITLE: ${{ inputs.title }}
-      VIDEO_LANGUAGE: ${{ inputs.language }}
-      VIDEO_SECONDS: ${{ inputs.seconds }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.0-flash-lite' }}
-      VIDEO_OUTPUT_DIR: generated-video
+      AUTO_VIDEO_ENABLED: "true"
+      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '4' }}
+      VIDEO_BACKGROUND_BATCH_SIZE: "4"
+      AUTO_VIDEO_SECONDS: "16"
+      BACKGROUND_JOB_TARGET: "all"
+      SOCIAL_PUBLISH_ENABLED: "true"
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+      FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+      FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+      FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install free rendering tools
+      - name: Configure Node and pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.0 --activate
+          node --version
+          pnpm --version
+
+      - name: Install production dependencies
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Install free rendering tools and Arabic fonts
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg librsvg2-bin fonts-noto-core fonts-noto-extra
+          sudo apt-get install -y --no-install-recommends ffmpeg librsvg2-bin fonts-noto-core fonts-noto-extra fonts-noto-cjk
 
-      - name: Generate AI-assisted MP4
-        run: node scripts/generate-ai-video.mjs
+      - name: Run autonomous queue
+        run: pnpm background:jobs
 
-      - name: Upload generated video artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: zikr-ai-video-${{ github.run_number }}
-          path: generated-video/
-          if-no-files-found: error
-          retention-days: 14
+      - name: Print run summary
+        if: always()
+        run: |
+          echo "ZIKR autonomous AI video worker completed."
+          echo "The queue seeds source-locked Quran/Hadith/Dua videos and renders them with FFmpeg."
+          echo "Gemini is used for a bounded reflection layer when GEMINI_API_KEY is configured."
