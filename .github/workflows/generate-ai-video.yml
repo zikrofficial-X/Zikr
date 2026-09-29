@@ -156,6 +156,7 @@ jobs:
       # Validation pass 2026-09-29: Flash-Lite defaults and structured memorization evaluation are enabled.
       # Isolated Gemini/FFmpeg E2E queue test is prepared in Supabase; social publishing is skipped for the test request.
       # Validation rerun: exercise the free-model fallback path after 3.1 Flash-Lite service availability errors.
+      # Audio smoke fix: invoke the Gemini SDK directly in a standalone Node smoke test.
 
       - name: Run autonomous queue
         run: pnpm background:jobs
