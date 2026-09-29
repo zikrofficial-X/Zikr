@@ -76,7 +76,7 @@ jobs:
       - name: Smoke-test video worker imports
         run: |
           set -euo pipefail
-          pnpm exec tsx -e 'await import("./scripts/jobs/template-video-automation.ts"); await import("./src/features/social/services/social-publishing.ts"); console.log("Video worker module smoke test: OK")'
+          pnpm exec tsx -e 'Promise.all([import("./scripts/jobs/template-video-automation.ts"), import("./src/features/social/services/social-publishing.ts")]).then(() => console.log("Video worker module smoke test: OK")).catch((error) => { console.error(error); process.exitCode = 1 })'
           ffmpeg -version | head -n 1
 
       - name: Validate automation secrets
