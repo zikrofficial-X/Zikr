@@ -30,7 +30,12 @@ drop policy if exists insert_video_categories on public.video_categories;
 drop policy if exists select_video_categories on public.video_categories;
 drop policy if exists select_video_categories_anon on public.video_categories;
 
+-- videos_public_read is created by the canonical 202507/202607 RLS migration chain.
+-- Reconcile it explicitly here so this migration is safe on both a replayed preview DB
+-- and the current production schema. PostgreSQL does not support CREATE POLICY IF NOT EXISTS.
+drop policy if exists videos_public_read on public.videos;
 create policy videos_public_read on public.videos for select to public using (published = true);
+
 create policy video_categories_public_read on public.video_categories for select to public using (published = true);
 
 drop policy if exists allow_user_delete_favorites on public.tawasheeh_favorites;
