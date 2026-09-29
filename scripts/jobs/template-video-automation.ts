@@ -37,6 +37,12 @@ type DuaRow = {
 };
 
 type ExistingRow = { id: string; status: string; automation_key: string | null };
+type SocialQueueRow = {
+  id: string;
+  status: string;
+  target_platforms: string[] | null;
+  metadata: Record<string, unknown> | null;
+};
 type GeneratedRequest = {
   id: string;
   title: string;
@@ -369,16 +375,37 @@ async function renderVideo(request: GeneratedRequest) {
     await rm(temp, { recursive: true, force: true });
   }
 }
+async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueRow | null> {
+  const rows = await supabaseServerAdminRequest<SocialQueueRow[]>(
+    `/rest/v1/social_publish_queue?automation_key=eq.${encodeURIComponent(key)}&select=id,status,target_platforms,metadata&limit=1`,
+  );
+  return rows?.[0] ?? null;
+}
+
 async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
   const content = request.content;
   const key = request.automation_key || request.id;
-  const publicPath = typeof content.publicPath === "string" && content.publicPath.startsWith("/") ? content.publicPath : "/quran";
+  const publicPath =
+    typeof content.publicPath === "string" && content.publicPath.startsWith("/")
+      ? content.publicPath
+      : "/quran";
   const targets: string[] = [];
-  if (process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET && process.env.YOUTUBE_REFRESH_TOKEN) targets.push("youtube");
-  if (process.env.FACEBOOK_PAGE_ID && process.env.FACEBOOK_PAGE_ACCESS_TOKEN) targets.push("facebook_reels");
+  if (
+    process.env.YOUTUBE_CLIENT_ID &&
+    process.env.YOUTUBE_CLIENT_SECRET &&
+    process.env.YOUTUBE_REFRESH_TOKEN
+  ) {
+    targets.push("youtube");
+  }
+  if (process.env.FACEBOOK_PAGE_ID && process.env.FACEBOOK_PAGE_ACCESS_TOKEN) {
+    targets.push("facebook_reels");
+  }
   if (!targets.length) return;
+
   const socialKey = `${key}:social-video`;
-  if (!(await findByAutomationKey("social_publish_queue", socialKey))) {
+  const existing = await findSocialQueueByAutomationKey(socialKey);
+
+  if (!existing) {
     await supabaseServerAdminRequest("/rest/v1/social_publish_queue", {
       method: "POST",
       headers: { Prefer: "return=minimal" },
@@ -390,12 +417,86 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
         video_url: videoUrl,
         target_platforms: targets,
         status: "queued",
-        metadata: { automationKey: socialKey, publicPath, videoFormat: content.videoFormat === "horizontal" ? "horizontal" : "vertical", sourceUrl: contentSourceUrl(request) },
+        metadata: {
+          automationKey: socialKey,
+          publicPath,
+          videoFormat: content.videoFormat === "horizontal" ? "horizontal" : "vertical",
+          sourceUrl: contentSourceUrl(request),
+          authBlocked: false,
+          attempts: 0,
+          maxAttempts: 5,
+          nextRetryAt: null,
+        },
         automation_key: socialKey,
       }),
     });
+    return;
+  }
+
+  const existingTargets = Array.isArray(existing.target_platforms)
+    ? existing.target_platforms.filter(Boolean)
+    : [];
+  const desiredTargets = [...new Set([...existingTargets, ...targets])];
+  const platformResults =
+    existing.metadata?.platformResults && typeof existing.metadata.platformResults === "object"
+      ? (existing.metadata.platformResults as Record<string, unknown>)
+      : {};
+
+  const newlyEnabledTargets = desiredTargets.filter(
+    target =>
+      targets.includes(target) &&
+      !existingTargets.includes(target) &&
+      !(
+        platformResults[target] &&
+        typeof platformResults[target] === "object" &&
+        (platformResults[target] as { ok?: unknown }).ok === true
+      ),
+  );
+
+  if (desiredTargets.length !== existingTargets.length || newlyEnabledTargets.length > 0) {
+    await supabaseServerAdminRequest(
+      `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(existing.id)}`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          video_url: videoUrl,
+          target_platforms: desiredTargets,
+          status: "queued",
+          scheduled_at: new Date().toISOString(),
+          error_message: null,
+          updated_at: new Date().toISOString(),
+          metadata: {
+            ...(existing.metadata ?? {}),
+            authBlocked: false,
+            nextRetryAt: null,
+          },
+        }),
+      },
+    );
   }
 }
+
+export async function reconcileCompletedVideoSocialQueue(limit = 100) {
+  const rows = await supabaseServerAdminRequest<GeneratedRequest[]>(
+    `/rest/v1/video_generation_requests?status=eq.completed&video_url=not.is.null&select=id,title,description,category,content,status,automation_key,video_url&order=updated_at.desc&limit=${Math.max(1, Math.min(500, limit))}`,
+  );
+  let reconciled = 0;
+  for (const request of rows || []) {
+    if (!request.video_url) continue;
+    try {
+      await queueSocialItems(request, request.video_url);
+      reconciled += 1;
+    } catch (error) {
+      console.error(
+        `[template-video] Failed to reconcile social queue for ${request.id}: `,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+  return reconciled;
+}
+
 export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
   const rows = await supabaseServerAdminRequest<GeneratedRequest[]>(
     `/rest/v1/video_generation_requests?status=eq.pending&content->>renderer=eq.template&select=id,title,description,category,content,status,automation_key&order=created_at.asc&limit=${Math.max(1, Math.min(10, limit))}`,
