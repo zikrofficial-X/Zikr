@@ -117,18 +117,18 @@ export const RADIO_CHANNELS: RadioChannel[] = [
   {
     id: "tawasheeh-maher",
     name: "إذاعة تلاوات - ماهر المعيقلي",
-    streamUrl: "https://qurango.net/radio/maher_al_muaiqly",
-    description: "قناة مخصصة لتلاوات ماهر المعيقلي.",
+    streamUrl: "https://qurango.net/radio/abu_bakr_al_shatri",
+    description: "قناة تلاوات الشيخ أبو بكر الشاطري.",
     category: "tawasheeh",
-    tags: ["تلاوات", "ماهر المعيقلي"],
+    tags: ["تلاوات", "أبو بكر الشاطري"],
   },
   {
     id: "tawasheeh-ghamdi",
     name: "إذاعة التلاوات - سعد الغامدي",
-    streamUrl: "https://qurango.net/radio/saad_al_ghamdi",
-    description: "قناة تلاوات سعد الغامدي للاستماع الطويل.",
+    streamUrl: "https://qurango.net/radio/fahad_al_kandari",
+    description: "قناة تلاوات الشيخ فهد الكندري.",
     category: "tawasheeh",
-    tags: ["تلاوات", "سعد الغامدي"],
+    tags: ["تلاوات", "فهد الكندري"],
   },
 ];
 
