@@ -1,0 +1,37 @@
+name: Temporary ZIKR CI Diagnostic
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable Node and pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.0 --activate
+          node --version
+          pnpm --version
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          pnpm config set fetch-retries 5
+          pnpm config set fetch-timeout 120000
+          pnpm config set fetch-retry-mintimeout 20000
+          pnpm config set fetch-retry-maxtimeout 120000
+          pnpm config set network-concurrency 8
+          pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+
+      - name: Run canonical verification suite
+        run: |
+          set -euo pipefail
+          pnpm verify
