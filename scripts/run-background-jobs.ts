@@ -1,5 +1,6 @@
 import {
   processTemplateVideoQueue,
+  reconcileCompletedVideoSocialQueue,
   seedAutomatedVideoRequests,
 } from "./jobs/template-video-automation";
 import {
@@ -117,7 +118,7 @@ async function main() {
 
   console.log(
     "[background-jobs] Summary:",
-    JSON.stringify({ target, videos, social, durationMs: Date.now() - startedAt }, null, 2)
+    JSON.stringify({ target, videos, reconciledSocialQueue, social, durationMs: Date.now() - startedAt }, null, 2)
   );
 
   if (failed > 0) {
