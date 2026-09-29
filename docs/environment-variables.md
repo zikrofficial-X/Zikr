@@ -21,7 +21,7 @@ The following environment variables are optional and are used for integrating wi
 | Variable Name             | Description                                                                 | Type     |
 | :------------------------ | :-------------------------------------------------------------------------- | :------- |
 | `GEMINI_API_KEY`                | API key for Google Gemini services.                                         | Server   |
-| `GEMINI_MODEL`                  | Optional Gemini model override (recommended: `gemini-2.5-flash`).           | Server   |
+| `GEMINI_MODEL`                  | Optional Gemini model override (default: `gemini-2.5-flash-lite`; Google documents a Free Tier for the Standard API).           | Server   |
 | `HADITH_API_BASE_URL`          | Base URL for the Hadith API; defaults to `https://ummahapi.com/api/hadith` and can be overridden with a provider exposing the configured contract. | Server   |
 | `YOUTUBE_API_KEY`               | API key for YouTube services.                                               | Server   |
 | `YOUTUBE_CHANNEL_ID`            | YouTube channel ID.                                                         | Server   |
