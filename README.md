@@ -21,36 +21,9 @@ ZIKR is an Arabic-first Islamic content and spiritual platform covering Quran, H
 
 Production video generation uses the free deterministic FFmpeg template renderer. Queue processing is executed by the configured external/server-side automation path and is not dependent on GitHub Actions.
 
-```text
-video_generation_requests
-        ↓
-server-side / Supabase queue processing
-        ↓
-FFmpeg template renderer
-        ↓
-Supabase Storage
-        ↓
-social_publish_queue
-        ├── YouTube
-        └── Facebook / Reels
-```
-
-HeyGen is not required for production video generation. Historical HeyGen database fields are retained only for migration compatibility.
-
 ## Required runtime configuration
 
 Use `.env.example` as the configuration reference. Production secrets must remain in protected server-side stores and must never be committed.
-
-Core variables include:
-
-- `NEXT_PUBLIC_SITE_URL`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` / `YOUTUBE_REFRESH_TOKEN` for YouTube publishing
-- `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_ACCESS_TOKEN` for Facebook publishing
-- `FACEBOOK_GRAPH_API_VERSION` for the canonical Meta publisher
-- `GEMINI_API_KEY` for optional AI features
 
 ## Development
 
@@ -77,7 +50,7 @@ pnpm verify
 
 ## Database migrations
 
-`supabase/migrations/` is the only canonical deployment migration chain. Do not introduce a second schema-migration mechanism.
+`supabase/migrations/` is the only canonical deployment migration chain.
 
 ```bash
 pnpm supabase:migrations:check
@@ -109,7 +82,7 @@ The project uses Supabase RLS, server-side service-role boundaries, protected OA
 
 ## Release process
 
-The current release metadata baseline is `1.0.0` / versionCode `53` / `com.zikr.app` / target SDK 36. The v1.4.x documents are historical release records.
+The current release metadata baseline is `1.0.0` / versionCode `53` / `com.zikr.app` / target SDK 36.
 
 Before releasing:
 
@@ -121,7 +94,7 @@ pnpm mobile:check
 ## Support
 
 - Website: https://zikrmediaofficial.vercel.app
-- Repository: `Zikrmediaofficial/Zikr`
+- Repository: `zikr-org/Zikr`
 - Issues: use GitHub Issues for reproducible bugs and feature requests
 
 ## License
