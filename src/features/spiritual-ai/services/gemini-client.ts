@@ -36,8 +36,9 @@ function getNextApiKey(): string | null {
   return key;
 }
 
-function getDirectModel(): string {
-  return getServerEnv().GEMINI_MODEL?.replace(/^google\//, '') ?? 'gemini-3.1-flash-lite';
+function getDirectModels(): string[] {
+  const configured = (getServerEnv().GEMINI_MODEL?.replace(/^google\//, '') ?? 'gemini-3.1-flash-lite').trim();
+  return [...new Set([configured, 'gemini-3.5-flash-lite'])];
 }
 
 const BLOCK_ONLY_HIGH = 'BLOCK_ONLY_HIGH' as unknown as HarmBlockThreshold;
@@ -85,15 +86,25 @@ async function callDirectSdk(prompt: string, maxOutputTokens = 1500): Promise<st
     if (!key) break;
     try {
       const client = new GoogleGenerativeAI(key);
-      const modelId = getDirectModel();
-      const model = client.getGenerativeModel({
-        model: modelId,
-        safetySettings,
-        generationConfig: { ...generationConfig, maxOutputTokens },
-      });
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().trim();
-      if (text) return text;
+      for (const modelId of getDirectModels()) {
+        try {
+          const model = client.getGenerativeModel({
+            model: modelId,
+            safetySettings,
+            generationConfig: { ...generationConfig, maxOutputTokens },
+          });
+          const result = await model.generateContent(prompt);
+          const text = result.response.text().trim();
+          if (text) return text;
+        } catch (err: unknown) {
+          if (isTransientGeminiError(err)) {
+            console.warn(`[gemini] transient failure on model ${modelId}; trying fallback model/key`);
+            continue;
+          }
+          console.error(`[gemini] Direct SDK error on model ${modelId}:`, err instanceof Error ? err.message : err);
+          break;
+        }
+      }
     } catch (err: unknown) {
       if (isTransientGeminiError(err)) {
         console.warn(`[gemini] transient upstream failure on rotated key ${attempt + 1}; retrying`);
@@ -120,7 +131,7 @@ export async function* streamGeminiText(prompt: string): AsyncGenerator<string, 
     try {
       const client = new GoogleGenerativeAI(key);
       const model = client.getGenerativeModel({
-        model: getDirectModel(),
+        model: getDirectModels()[0],
         safetySettings,
         generationConfig,
       });
@@ -153,21 +164,32 @@ export async function generateGeminiFromAudio(
     if (!key) break;
     try {
       const client = new GoogleGenerativeAI(key);
-      const model = client.getGenerativeModel({
-        model: getDirectModel(),
-        safetySettings,
-        generationConfig: {
-          ...generationConfig,
-          maxOutputTokens: 2000,
-          responseMimeType: 'application/json',
-        } as GenerationConfig,
-      });
-      const result = await model.generateContent([
-        prompt,
-        { inlineData: { data: audio.data, mimeType: audio.mimeType } },
-      ] as never);
-      const text = result.response.text().trim();
-      if (text) return text;
+      for (const modelId of getDirectModels()) {
+        try {
+          const model = client.getGenerativeModel({
+            model: modelId,
+            safetySettings,
+            generationConfig: {
+              ...generationConfig,
+              maxOutputTokens: 2000,
+              responseMimeType: 'application/json',
+            } as GenerationConfig,
+          });
+          const result = await model.generateContent([
+            prompt,
+            { inlineData: { data: audio.data, mimeType: audio.mimeType } },
+          ] as never);
+          const text = result.response.text().trim();
+          if (text) return text;
+        } catch (err: unknown) {
+          if (isTransientGeminiError(err)) {
+            console.warn(`[gemini] transient audio failure on model ${modelId}; trying fallback model/key`);
+            continue;
+          }
+          console.error(`[gemini] Audio generation failed on model ${modelId}:`, err instanceof Error ? err.message : err);
+          break;
+        }
+      }
     } catch (err: unknown) {
       if (isTransientGeminiError(err)) {
         console.warn(`[gemini] transient audio failure on rotated key ${attempt + 1}; retrying`);
