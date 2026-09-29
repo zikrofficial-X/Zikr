@@ -23,7 +23,8 @@ async function saveBattleVideoAction(formData: FormData) {
   if (!id) return;
 
   const videoId = parseYouTubeVideoId(rawUrl);
-  await saveAdminBattleVideo(id, videoId);
+  const ok = await saveAdminBattleVideo(id, videoId);
+  if (!ok) throw new Error("تعذر حفظ فيديو الغزوة. راجع صلاحيات قاعدة البيانات وسجل الأخطاء.");
 
   revalidatePath('/admin/battles');
   revalidatePath('/battles');
@@ -36,7 +37,8 @@ async function toggleBattlePublishAction(formData: FormData) {
   const next = formData.get('next') === 'true';
   if (!id) return;
 
-  await setAdminBattlePublished(id, next);
+  const ok = await setAdminBattlePublished(id, next);
+  if (!ok) throw new Error("تعذر تحديث حالة نشر الغزوة.");
 
   revalidatePath('/admin/battles');
   revalidatePath('/battles');
