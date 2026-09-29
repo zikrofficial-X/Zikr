@@ -9,7 +9,7 @@ import { searchAdminContent } from "@/features/admin/services/platform";
 export const metadata: Metadata = { title: "بحث الإدارة | الأدمن" };
 
 export default async function AdminSearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  await requireAdminPermission("dashboard.view");
+  await requireAdminPermission("content.manage");
   const params = await searchParams;
   const query = String(params.q ?? "").trim();
   const results = query ? await searchAdminContent(query) : [];
