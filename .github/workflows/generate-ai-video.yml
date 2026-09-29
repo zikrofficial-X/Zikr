@@ -147,6 +147,7 @@ jobs:
 
 
       # Manual queue recovery verified 2026-09-29: process due pending videos before social publishing.
+      # Free-tier AI path: Gemini plans the source-locked presentation; FFmpeg performs the render locally.
 
       - name: Run autonomous queue
         run: pnpm background:jobs
