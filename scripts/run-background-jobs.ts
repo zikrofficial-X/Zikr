@@ -17,7 +17,13 @@ function validateRequiredEnv() {
 async function processVideos() {
   const seeded = await seedAutomatedVideoRequests();
   console.log(`[background-jobs] Seeded ${seeded} free Quran video request(s).`);
-  return processTemplateVideoQueue();
+  const result = await processTemplateVideoQueue();
+  return {
+    processed: result.processed || 0,
+    succeeded: result.succeeded || 0,
+    authBlocked: 0,
+    failed: result.failed || 0,
+  };
 }
 
 async function processSocial() {
