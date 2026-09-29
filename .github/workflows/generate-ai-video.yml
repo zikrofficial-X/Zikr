@@ -2,13 +2,20 @@ name: ZIKR Autonomous AI Video Worker
 
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    # Generate and publish content automatically without manual intervention.
+    # Two-hour cadence keeps the free runner practical while maintaining a steady feed.
+    - cron: "0 */2 * * *"
+  push:
+    # Run once when this workflow itself changes so an existing pending queue is
+    # processed immediately after deployment. Normal source pushes do not trigger it.
+    paths:
+      - ".github/workflows/generate-ai-video.yml"
   workflow_dispatch:
     inputs:
       batch_size:
         description: "Number of new video jobs to seed in this run"
         required: false
-        default: "4"
+        default: "2"
         type: string
 
 permissions:
@@ -30,11 +37,12 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.0-flash-lite' }}
       AUTO_VIDEO_ENABLED: "true"
-      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '4' }}
-      VIDEO_BACKGROUND_BATCH_SIZE: "4"
+      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '2' }}
+      VIDEO_BACKGROUND_BATCH_SIZE: "2"
       AUTO_VIDEO_SECONDS: "16"
       BACKGROUND_JOB_TARGET: "all"
-      SOCIAL_PUBLISH_ENABLED: "false"
+      # Generated videos are automatically handed to the configured social publishers.
+      SOCIAL_PUBLISH_ENABLED: "true"
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
@@ -67,6 +75,7 @@ jobs:
       - name: Print run summary
         if: always()
         run: |
-          echo "ZIKR autonomous AI video worker completed."
-          echo "The queue seeds source-locked Quran/Hadith/Dua videos and renders them with FFmpeg."
-          echo "Gemini is used for a bounded reflection layer when GEMINI_API_KEY is configured."
+          echo "ZIKR autonomous video worker completed."
+          echo "The queue seeds source-locked Quran/Hadith/Dua videos and renders them with free FFmpeg."
+          echo "Generated videos are automatically queued for configured YouTube/Facebook publishing."
+          echo "Gemini is used only for a bounded reflection layer when GEMINI_API_KEY is configured."
