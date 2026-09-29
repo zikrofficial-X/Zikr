@@ -333,8 +333,8 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
   const sourceText = contentText(request).slice(0, 5000);
   if (!sourceText) return { ...DEFAULT_AI_VIDEO_PLAN };
 
-  const model = (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim();
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY || "")}`;
+  const configuredModel = (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim();
+  const models = [...new Set([configuredModel, "gemini-3.5-flash-lite"])];
   const prompt = [
     "أنت مخطط محتوى بصري لمنصة ذِكر الإسلامية.",
     "المصدر أدناه موثق بالفعل. ممنوع تغيير نص المصدر أو اختراع نص ديني أو حكم شرعي جديد.",
@@ -350,20 +350,32 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
     `النص:${sourceText}`,
   ].join("\n");
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 260 },
-    }),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`);
+  let lastStatus = 0;
+  for (const model of models) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY || "")}`;
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 260 },
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (response.ok) {
+      const payload = await response.json();
+      const raw = payload.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("").trim() || "";
+      console.log(`[template-video] Gemini plan generated with ${model}`);
+      return normalizeAiVideoPlan(parseGeminiJson(raw));
+    }
 
-  const payload = await response.json();
-  const raw = payload.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("").trim() || "";
-  return normalizeAiVideoPlan(parseGeminiJson(raw));
+    lastStatus = response.status;
+    if (![429, 500, 502, 503, 504].includes(response.status)) {
+      throw new Error(`Gemini HTTP ${response.status} for ${model}`);
+    }
+    console.warn(`[template-video] Gemini HTTP ${response.status} for ${model}; trying free fallback model.`);
+  }
+  throw new Error(`Gemini HTTP ${lastStatus || 503} after free-model fallback`);
 }
 
 function contentAudioUrl(request: GeneratedRequest) {
