@@ -1,4 +1,3 @@
-import { ContentGuide } from "@/components/content/content-guide";
 import type { Metadata } from "next";
 import KidsProgressDashboard from "@/features/kids/components/games/progress-dashboard";
 
