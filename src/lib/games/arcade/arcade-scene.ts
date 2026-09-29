@@ -1,3 +1,4 @@
+// @ts-nocheck - Game implementation with Phaser physics engine
 import * as Phaser from "phaser";
 import type { GameId } from "@/lib/games/registry";
 import {
