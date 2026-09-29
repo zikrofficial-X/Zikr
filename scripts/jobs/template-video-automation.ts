@@ -486,6 +486,10 @@ async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueR
 
 async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
   const content = request.content;
+  if (content.skipSocialPublish === true) {
+    console.log(`[template-video] Social publishing skipped for test request ${request.id}`);
+    return;
+  }
   const key = request.automation_key || request.id;
   const publicPath =
     typeof content.publicPath === "string" && content.publicPath.startsWith("/")
