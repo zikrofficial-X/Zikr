@@ -54,6 +54,8 @@ requireText("callback route", callback, "exchangeCodeForSession");
 requireText("callback route", callback, "extractNextPath");
 requireText("callback route", callback, "getTrustedAuthOrigin");
 requireText("Google route", googleRoute, "getCanonicalAuthBaseUrl");
+requireText("Google route", googleRoute, 'new URL("/auth/callback", authOrigin)');
+requireText("Google route", googleRoute, 'url.searchParams.set("native", "1")');
 requireText("browser Google button", button, "PKCE verifier cookies are scoped to the current browser origin");
 requireText("Google route", googleRoute, "The PKCE verifier is written to the response origin");
 requireText("proxy", proxy, "getCanonicalAuthBaseUrl");
