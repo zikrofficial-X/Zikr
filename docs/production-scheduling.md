@@ -32,23 +32,30 @@ Each delivery uses a unique subscription/prayer/time key and is claimed before s
 ## Video and social lifecycle
 
 ```text
+scheduled GitHub Actions worker (every 6 hours)
+        │
+        ├── seedAutomatedVideoRequests()
+        │      ├── Quran source-locked jobs
+        │      ├── Hadith source-locked jobs
+        │      └── Dua source-locked jobs
+        │
+        ▼
 video_generation_requests
         │
         ▼
-CircleCI background-jobs (manual parameter)
+free FFmpeg template renderer
         │
-        ├── seed queue items
-        ├── FFmpeg template renderer
-        ├── Supabase Storage
-        └── social_publish_queue
-                    │
-                    ├── YouTube OAuth upload
-                    └── Facebook / Reels publish
+        ├── exact source text
+        └── bounded Gemini reflection (when GEMINI_API_KEY exists)
+        │
+        ▼
+Supabase Storage /videos/automated/*
+        │
+        ▼
+optional social publishing queue
 ```
 
-Production video generation uses the deterministic FFmpeg template renderer. HeyGen fields/migrations remain only for historical compatibility and must not become an alternate production execution path.
-
-The worker requires a direct HTTPS media URL for social publication and rejects YouTube watch URLs as media sources. Social queue items record platform-level success/failure and retry only unfinished platforms.
+Video generation no longer depends on a person opening the admin page or manually pressing a generate button. The worker is scheduled every six hours and is idempotent by `automation_key`.
 
 ## Manual CircleCI operations
 
