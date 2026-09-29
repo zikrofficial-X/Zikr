@@ -1,3 +1,4 @@
+import { requireAdminPermission } from "@/features/admin/services/admin";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { getSiteSetting, type SiteSettingValue } from "@/features/site-content/services/site-content";
@@ -92,6 +93,7 @@ async function getReleases(): Promise<Release[]> {
 }
 
 export default async function AndroidReleaseAdminPage() {
+  await requireAdminPermission("android.manage");
   const [releases, setting] = await Promise.all([
     getReleases(),
     getSiteSetting("android_release"),
