@@ -146,6 +146,7 @@ export const appRoutes = [
   { path: "/videos", label: "الفيديوهات", sitemap: { changeFrequency: "daily", priority: 0.8 } },
   { path: "/youtube", label: "يوتيوب", sitemap: { changeFrequency: "daily", priority: 0.7 }, nav: "more" },
   { path: "/kids", label: "الأطفال", sitemap: { changeFrequency: "weekly", priority: 0.7 } },
+  { path: "/kids/adventures", label: "مغامرات الأطفال", sitemap: { changeFrequency: "weekly", priority: 0.7 } },
   { path: "/memorization", label: "الحفظ", sitemap: { changeFrequency: "weekly", priority: 0.6 }, nav: "more", footer: "tools" },
   { path: "/wird", label: "الورد اليومي", sitemap: { changeFrequency: "weekly", priority: 0.6 }, footer: "tools" },
   { path: "/zakat", label: "الزكاة", sitemap: { changeFrequency: "monthly", priority: 0.6 }, footer: "tools" },
