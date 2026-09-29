@@ -16,7 +16,7 @@ The audit distinguishes between a genuinely weak/empty page, a thin route wrappe
 - /quran — reading/listening guide and source/architecture notes.
 - /prayer-times — location, calculation, fallback, and notification guidance.
 - /qibla — bearing/compass/location guidance and accuracy notes.
-- /scholars — editorial methodology and source-handling guidance.
+- /scholars — editorial methodology, source-handling guidance, and an expanded source-verified scholar catalog.
 - /tafsir — explanation of the distinction between Quran text and tafsir material.
 - /kids/achievements — parent/child usage and purpose guidance.
 - /kids/audio — audio content and recording guidance.
@@ -73,7 +73,7 @@ New explanatory content added during this audit is operational/editorial guidanc
 
 ## Remaining work
 
-The next content pass should focus on database-backed depth, not adding filler to route components:
+The next content pass should focus on database-backed depth, not adding filler to route components. The scholar catalog was expanded from 4 to 8 published profiles, all classified for the catalog filter and linked to source references:
 
 - audit every published article/story/prophet/companion/scholar record for length, source, Arabic quality, metadata, and missing sections;
 - identify database categories with zero or very low published records;
