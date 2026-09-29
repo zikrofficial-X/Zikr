@@ -106,6 +106,9 @@ jobs:
             exit 1
           fi
 
+
+      # Manual queue recovery verified 2026-09-29: process due pending videos before social publishing.
+
       - name: Run autonomous queue
         run: pnpm background:jobs
 
