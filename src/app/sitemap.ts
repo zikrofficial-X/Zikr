@@ -23,7 +23,7 @@ type SlugRow = { slug: string };
 const MIN_INDEXABLE_EDITORIAL_CHARS = PUBLIC_CONTENT_THRESHOLDS.article;
 const MIN_INDEXABLE_STORY_CHARS = PUBLIC_CONTENT_THRESHOLDS.story;
 const SITEMAP_URL_LIMIT = 50_000;
-const NON_INDEXABLE_PATHS = new Set(["/admin", "/api", "/auth", "/favorites", "/profile", "/settings", "/search", "/qibla", "/prayer-times", "/tasbeeh", "/memorization", "/wird", "/zakat", "/offline-library", "/spiritual-ai", "/competitions", "/radio", "/youtube", "/videos", "/reciters", "/tawasheeh"]);
+const NON_INDEXABLE_PATHS = new Set(["/admin", "/api", "/auth", "/favorites", "/profile", "/settings", "/search", "/qibla", "/prayer-times", "/tasbeeh", "/memorization", "/wird", "/zakat", "/offline-library", "/spiritual-ai", "/radio", "/youtube", "/videos", "/reciters", "/tawasheeh"]);
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +63,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
   }));
 
   try {
-    const [surahs, scholars, hadithBooks, stories, articles, prophets, battles, duas, companions, conquests] = await Promise.all([
+    const [surahs, scholars, hadithBooks, stories, articles, prophets, battles, duas, companions, conquests, competitions] = await Promise.all([
       Promise.resolve(fallbackSurahs.map(surah => ({ number: surah.id, name: surah.nameAr, englishName: surah.nameEn, englishNameTranslation: "", numberOfAyahs: surah.ayahCount, revelationType: surah.revelationPlace === "meccan" ? "Meccan" : "Medinan" }) satisfies Surah)),
       getAllScholars().catch((error): Scholar[] => { console.error("[sitemap] Scholars fetch failed:", error); return []; }),
       getHadithBooks().catch((error): HadithBook[] => { console.error("[sitemap] Hadith fetch failed:", error); return []; }),
@@ -74,6 +74,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       getDuas().catch((): Dua[] => []),
       getPublishedSlugs("companions"),
       getPublishedSlugs("conquests"),
+      supabaseServerAnonRequest<{ id: string }[]>("/rest/v1/competitions?select=id&published=eq.true&limit=1").catch(() => []),
     ]);
 
     const dynamicRoutes: MetadataRoute.Sitemap = [
@@ -89,6 +90,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       ...battles.map((battle: SlugRow) => route(`/battles/${battle.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
       ...companions.map((companion: SlugRow) => route(`/companions/${companion.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
       ...conquests.map((conquest: SlugRow) => route(`/conquests/${conquest.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
+      ...(competitions.length > 0 ? [route("/competitions", { lastModified: now, changeFrequency: "weekly", priority: 0.6 })] : []),
     ];
 
     const safeEntries = uniqueRoutes([...staticRoutes, ...dynamicRoutes]).slice(0, SITEMAP_URL_LIMIT);
