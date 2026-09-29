@@ -42,7 +42,7 @@ jobs:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_MODEL: gemini-3.1-flash-lite
-      GEMINI_AUDIO_SMOKE_TEST: "true"
+      GEMINI_AUDIO_SMOKE_TEST: "false"
       AUTO_VIDEO_ENABLED: "true"
       AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '1' }}
       VIDEO_BACKGROUND_BATCH_SIZE: "1"
