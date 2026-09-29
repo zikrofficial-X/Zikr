@@ -76,16 +76,18 @@ function wrapArabic(value: string, max = 30) {
 function assEscape(value: string) {
   return value.replace(/[{}]/g, "").replace(/\\/g, "\\\\");
 }
-function makeAss(text: string, title: string, sourceUrl: string) {
+function makeAss(text: string, title: string, sourceUrl: string, reflection?: string | null) {
   const textLines = wrapArabic(text, 34);
+  const reflectionLines = reflection ? wrapArabic(reflection, 38) : [];
   const sourceLines = wrapArabic(`المصدر: ${sourceUrl}`, 55);
   const events = [
     `Dialogue: 0,0:00:00.00,0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Title,,0,0,0,,${assEscape(title)}`,
     `Dialogue: 1,0:00:00.50,0:00:${Math.max(1, VIDEO_SECONDS - 1).toFixed(2).padStart(5, "0")},Verse,,0,0,0,,${textLines.map(assEscape).join("\\N")}`,
+    ...(reflectionLines.length > 0 ? [`Dialogue: 4,0:00:${Math.max(0.8, VIDEO_SECONDS - 4).toFixed(2).padStart(5, "0")},0:00:${Math.max(1, VIDEO_SECONDS - 1).toFixed(2).padStart(5, "0")},Reflection,,0,0,0,,${reflectionLines.map(assEscape).join("\\N")}`] : []),
     `Dialogue: 2,0:00:${Math.max(1, VIDEO_SECONDS - 3).toFixed(2).padStart(5, "0")},0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Source,,0,0,0,,${sourceLines.map(assEscape).join("\\N")}`,
     `Dialogue: 3,0:00:00.00,0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Brand,,0,0,0,,ZIKR • ذِكرٌ`,
   ];
-  return `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\nYCbCr Matrix: TV.709\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Title,Noto Naskh Arabic,60,&H00EFD39A,&H00000000,&H00101513,&H60000000,1,0,0,0,100,100,0,0,1,2,2,8,55,55,120,1\nStyle: Verse,Noto Naskh Arabic,70,&H00FFFFFF,&H00000000,&H00101513,&H80000000,0,0,0,0,100,100,0,0,1,3,2,5,85,85,170,1\nStyle: Source,Noto Sans Arabic,24,&H00D8C8A6,&H00000000,&H00101513,&H60000000,0,0,0,0,100,100,0,0,1,1,1,2,55,55,115,1\nStyle: Brand,Noto Sans,26,&H00E1D3B3,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,45,45,55,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join("\n")}\n`;
+  return `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\nYCbCr Matrix: TV.709\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Title,Noto Naskh Arabic,60,&H00EFD39A,&H00000000,&H00101513,&H60000000,1,0,0,0,100,100,0,0,1,2,2,8,55,55,120,1\nStyle: Verse,Noto Naskh Arabic,70,&H00FFFFFF,&H00000000,&H00101513,&H80000000,0,0,0,0,100,100,0,0,1,3,2,5,85,85,170,1\nStyle: Source,Noto Sans Arabic,24,&H00D8C8A6,&H00000000,&H00101513,&H60000000,0,0,0,0,100,100,0,0,1,1,1,2,55,55,115,1\nStyle: Reflection,Noto Naskh Arabic,34,&H00EFD39A,&H00000000,&H00101513,&H60000000,0,0,0,0,100,100,0,0,1,2,1,5,80,80,280,1\nStyle: Brand,Noto Sans,26,&H00E1D3B3,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,45,45,55,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join("\n")}\n`;
 }
 async function getQuranRow(index: number): Promise<QuranRow> {
   const total = await supabaseServerAdminCount("quran_ayahs");
@@ -313,8 +315,7 @@ async function renderVideo(request: GeneratedRequest) {
     } catch (error) {
       console.warn(`[template-video] Gemini reflection skipped for ${request.id}: ${error instanceof Error ? error.message : String(error)}`);
     }
-    const displayText = reflection ? `${text}\\N\\N${reflection}` : text;
-    await writeFile(assPath, makeAss(displayText, request.title, sourceUrl), "utf8");
+    await writeFile(assPath, makeAss(text, request.title, sourceUrl, reflection), "utf8");
     const filter = [
       `subtitles=${assPath}:fontsdir=/usr/share/fonts/truetype/noto`,
       "eq=contrast=1.04:saturation=0.92:brightness=0.01",
