@@ -25,6 +25,16 @@ import {
   type MemorizationEntry,
 } from "@/features/memorization/services/progress";
 
+type MemorizationEvaluation = {
+  score: number;
+  summary: string;
+  memorization: string;
+  errors: string[];
+  tajweed: string[];
+  audioQuality: string;
+  revisionPlan: string[];
+};
+
 export type { MemorizationEntry };
 
 
@@ -53,53 +63,99 @@ export async function evaluateMemorizationAction(formData: FormData) {
 المقرر / الورد: ${hasTarget ? target : 'غير محدد — قيّم ما سمعت'}
 النص المتوقع أو سؤال أكمل: ${hasExpected ? expectedText : 'غير محدد'}`;
 
-  const audioPrompt = `أنت مصحح قرآني خبير ومعلم تجويد. استمع للتسجيل الصوتي وقيّم التسميع بدقة واحترافية باللغة العربية.
+  const outputContract = `أعد JSON فقط بدون Markdown وبدون أي نص خارج JSON، بالشكل:
+{
+  "score": 0,
+  "summary": "",
+  "memorization": "",
+  "errors": [],
+  "tajweed": [],
+  "audioQuality": "",
+  "revisionPlan": []
+}
+score رقم صحيح من 0 إلى 100.
+errors قائمة بالأخطاء المسموعة فقط مع ذكر الكلمة/الموضع والتصحيح عند الإمكان.
+tajweed قائمة قصيرة بأبرز الملاحظات المسموعة فعلًا. لا تخترع أحكامًا لم تسمعها.
+revisionPlan قائمة من 3 إلى 5 خطوات عملية لمدة أسبوع.`;
 
+  const audioPrompt = `أنت مصحح تسميع قرآن ومعلم تجويد. استمع للتسجيل الصوتي وقيّم أداء المستخدم بدقة باللغة العربية.
+لا تغيّر النص القرآني المرجعي ولا تنشئ حكمًا شرعيًا جديدًا. لا تدّع سماع خطأ إن كان الصوت غير واضح.
 ${sharedContext}
 
-يجب أن يشمل تقييمك هذه المحاور بالترتيب:
+${outputContract}
 
-**أولاً — جودة الحفظ**
-حدد هل الحفظ سليم أم يوجد أخطاء. إن وُجدت أخطاء اذكرها بالتفصيل (الآية أو الكلمة الخاطئة وتصحيحها).
+إذا كان التسجيل غير واضح، اجعل audioQuality يشرح المشكلة وخفّض الثقة في الاستنتاجات بدل اختلاق أخطاء.`;
 
-**ثانيًا — أحكام التجويد**
-قيّم: المدود (مد طبيعي، مد واجب، مد لازم)، الغنة والإدغام، القلقلة، مخارج الحروف، الوقف والابتداء.
-
-**ثالثًا — الدرجة الإجمالية**
-أعطِ درجة من 100 مع مبررها.
-
-**رابعًا — خطة المراجعة**
-خطوات عملية محددة لتثبيت الحفظ وتحسين التجويد خلال أسبوع.
-
-إذا كان الصوت غير واضح أو به تشويش، اذكر ذلك واطلب إعادة التسجيل في بيئة هادئة.`;
-
-  const textFallbackPrompt = `أنت مصحح قرآني خبير ومعلم تجويد. المستخدم لم يرفع تسجيلًا صوتيًا، لكنه حدد المقرر الآتي:
+  const textFallbackPrompt = `أنت مساعد في خطة حفظ القرآن ومراجعة التجويد. لا يوجد تسجيل صوتي؛ لا تدّع أنك قيّمت أداءً فعليًا.
+المقرر:
 ${sharedContext}
 
-بناءً على هذا المقرر:
+${outputContract}
 
-**أولاً — معلومات عن هذا الجزء**
-اذكر ما يميز هذا الجزء من القرآن من حيث المدود والأحكام الشائعة فيه.
+ضع score = 0، واجعل summary يوضح أن التقييم الشخصي يحتاج تسجيلًا صوتيًا، واستخدم errors فارغة، واذكر في tajweed نقاطًا تعليمية عامة مرتبطة بالمقرر فقط.`;
 
-**ثانيًا — أبرز أحكام التجويد في هذا الجزء**
-اذكر 5 أحكام تجويد مهمة يجب التركيز عليها عند تسميع هذا الورد (مع أمثلة من الآيات إن أمكن).
+  function parseEvaluation(raw: string): MemorizationEvaluation | null {
+    const cleaned = raw
+      .replace(/^\s*```(?:json)?/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      const first = cleaned.indexOf("{");
+      const last = cleaned.lastIndexOf("}");
+      if (first >= 0 && last > first) {
+        try { parsed = JSON.parse(cleaned.slice(first, last + 1)); } catch { parsed = null; }
+      }
+    }
+    if (!parsed || typeof parsed !== "object") return null;
+    const value = parsed as Record<string, unknown>;
+    const arrayOfStrings = (input: unknown) =>
+      Array.isArray(input)
+        ? input.filter((item): item is string => typeof item === "string").map(item => item.trim()).filter(Boolean).slice(0, 8)
+        : [];
+    const score = Number(value.score);
+    if (!Number.isFinite(score)) return null;
+    return {
+      score: Math.max(0, Math.min(100, Math.round(score))),
+      summary: typeof value.summary === "string" ? value.summary.trim().slice(0, 600) : "",
+      memorization: typeof value.memorization === "string" ? value.memorization.trim().slice(0, 400) : "",
+      errors: arrayOfStrings(value.errors),
+      tajweed: arrayOfStrings(value.tajweed),
+      audioQuality: typeof value.audioQuality === "string" ? value.audioQuality.trim().slice(0, 300) : "",
+      revisionPlan: arrayOfStrings(value.revisionPlan),
+    };
+  }
 
-**ثالثًا — الأخطاء الشائعة في هذا الجزء**
-ما أكثر الأخطاء التي يقع فيها المتعلمون في هذا الجزء تحديدًا.
-
-**رابعًا — خطة مراجعة أسبوعية**
-جدول مقترح لمراجعة وتثبيت هذا الورد خلال 7 أيام.
-
-**تنبيه:** سجّل تسميعك الصوتي في القسم أعلاه للحصول على تقييم شخصي دقيق لأدائك.`;
+  function formatEvaluation(evaluation: MemorizationEvaluation): string {
+    const score = `الدرجة: ${evaluation.score}/100`;
+    const sections = [
+      score,
+      evaluation.summary ? `التقييم العام: ${evaluation.summary}` : "",
+      evaluation.memorization ? `جودة الحفظ: ${evaluation.memorization}` : "",
+      evaluation.audioQuality ? `جودة التسجيل: ${evaluation.audioQuality}` : "",
+      evaluation.errors.length ? `أخطاء التسميع:\n- ${evaluation.errors.join("\n- ")}` : "أخطاء التسميع: لم تُرصد أخطاء محددة في التسجيل.",
+      evaluation.tajweed.length ? `ملاحظات التجويد:\n- ${evaluation.tajweed.join("\n- ")}` : "",
+      evaluation.revisionPlan.length ? `خطة المراجعة:\n- ${evaluation.revisionPlan.join("\n- ")}` : "",
+    ].filter(Boolean);
+    return sections.join("\n\n");
+  }
 
   if (hasAudio) {
     const bytes = Buffer.from(await audio.arrayBuffer()).toString('base64');
     const response = await generateGeminiFromAudio(audioPrompt, { data: bytes, mimeType: audio.type || 'audio/webm' });
-    if (response) return response;
+    if (response) {
+      const structured = parseEvaluation(response);
+      return structured ? formatEvaluation(structured) : response;
+    }
   }
 
-  const result = await generateGeminiText(textFallbackPrompt, 2000);
-  if (result) return result;
+  const result = await generateGeminiText(textFallbackPrompt, 1600);
+  if (result) {
+    const structured = parseEvaluation(result);
+    return structured ? formatEvaluation(structured) : result;
+  }
 
   return hasTarget
     ? `لم يتمكن النظام من الاتصال بالذكاء الاصطناعي حاليًا. المقرر المحدد: "${target}". تأكد من تفعيل GEMINI_API_KEY وحاول مجددًا.`
