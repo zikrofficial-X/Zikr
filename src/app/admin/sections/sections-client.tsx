@@ -40,9 +40,7 @@ const ALL_SECTIONS = [
 const GROUPS = ['الكل', 'الأساسيات', 'المعرفة', 'تفاعلي', 'الإعلام', 'عام'];
 
 export default function AdminSectionsPage() {
-  const [enabled, setEnabled] = useState<Record<string, boolean>>(
-    Object.fromEntries(ALL_SECTIONS.map((s) => [s.key, true]))
-  );
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -56,7 +54,13 @@ export default function AdminSectionsPage() {
       .then(async (response) => {
         const payload = await response.json() as { visibility?: Record<string, boolean>; error?: string };
         if (!response.ok) throw new Error(payload.error || 'تعذر تحميل إعدادات الأقسام');
-        if (!cancelled && payload.visibility) setEnabled((current) => ({ ...current, ...payload.visibility }));
+        if (!cancelled) {
+          const persisted = payload.visibility ?? {};
+          setEnabled(Object.fromEntries(ALL_SECTIONS.map((section) => [
+            section.key,
+            persisted[section.key] ?? false,
+          ])));
+        }
       })
       .catch((loadError: unknown) => {
         if (!cancelled) setError(loadError instanceof Error ? loadError.message : 'تعذر تحميل إعدادات الأقسام');
@@ -100,8 +104,10 @@ export default function AdminSectionsPage() {
     return matchGroup && matchSearch;
   });
 
-  const enabledCount = Object.values(enabled).filter(Boolean).length;
-  const disabledCount = ALL_SECTIONS.length - enabledCount;
+  const enabledCount = ALL_SECTIONS.filter((section) => enabled[section.key] === true).length;
+  const disabledCount = ALL_SECTIONS.filter((section) => enabled[section.key] === false).length;
+
+  const ready = !loading && Object.keys(enabled).length === ALL_SECTIONS.length;
 
   return (
     <div className="py-8 px-4 space-y-8 text-right" dir="rtl">
@@ -183,7 +189,7 @@ export default function AdminSectionsPage() {
         </div>
 
         {/* Sections grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 ${!ready ? "pointer-events-none opacity-50" : ""}`}>
           {filtered.map((section) => {
             const isOn = enabled[section.key];
             return (
@@ -251,6 +257,7 @@ export default function AdminSectionsPage() {
           <div className="flex gap-3">
             <button
               onClick={() => {
+                if (!ready) return;
                 setEnabled(Object.fromEntries(ALL_SECTIONS.map((s) => [s.key, true])));
                 setSaved(false);
               }}
@@ -260,6 +267,7 @@ export default function AdminSectionsPage() {
             </button>
             <button
               onClick={() => {
+                if (!ready) return;
                 const essentials = ['quran', 'hadith', 'adhkar', 'dua', 'prayer-times', 'qibla'];
                 setEnabled(Object.fromEntries(ALL_SECTIONS.map((s) => [s.key, essentials.includes(s.key)])));
                 setSaved(false);
