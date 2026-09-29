@@ -53,16 +53,16 @@ export default function AdminSocialPage() {
   useEffect(() => { void load(); }, [load]);
 
   const filtered = useMemo(() => filter === 'all' ? items : items.filter((item) => item.status === filter), [filter, items]);
-  const failed = items.filter((item) => item.status === 'failed');
-  const selectedFailedCount = selected.filter((id) => failed.some((item) => item.id === id)).length;
-  const visibleFailed = filtered.filter((item) => item.status === 'failed');
-  const allVisibleFailedSelected = visibleFailed.length > 0 && visibleFailed.every((item) => selected.includes(item.id));
+  const retryable = items.filter((item) => item.status === 'failed' || item.status === 'partial');
+  const selectedRetryableCount = selected.filter((id) => retryable.some((item) => item.id === id)).length;
+  const visibleRetryable = filtered.filter((item) => item.status === 'failed' || item.status === 'partial');
+  const allVisibleRetryableSelected = visibleRetryable.length > 0 && visibleRetryable.every((item) => selected.includes(item.id));
 
   const runAction = useCallback(async (action: 'retry' | 'retry_all_failed' | 'delete' | 'delete_failed') => {
     if (action !== 'retry' && !window.confirm(action === 'delete_failed' ? `سيتم حذف ${failed.length} عملية فاشلة نهائيًا.` : 'سيتم حذف العمليات الفاشلة المحددة نهائيًا.')) return;
     const ids = action === 'retry_all_failed' || action === 'delete_failed' ? [] : selected;
     if ((action === 'retry' || action === 'delete') && ids.length === 0) {
-      setError('حدد عملية فاشلة أولًا.');
+      setError('حدد عملية فاشلة أو نشرًا جزئيًا أولًا.');
       return;
     }
     setBusy(true); setError(''); setMessage('');
@@ -81,9 +81,9 @@ export default function AdminSocialPage() {
     } finally { setBusy(false); }
   }, [failed.length, load, selected]);
 
-  function toggleVisibleFailed() {
-    const ids = visibleFailed.map((item) => item.id);
-    setSelected((current) => allVisibleFailedSelected ? current.filter((id) => !ids.includes(id)) : [...new Set([...current, ...ids])]);
+  function toggleVisibleRetryable() {
+    const ids = visibleRetryable.map((item) => item.id);
+    setSelected((current) => allVisibleRetryableSelected ? current.filter((id) => !ids.includes(id)) : [...new Set([...current, ...ids])]);
   }
 
   return (
@@ -117,22 +117,22 @@ export default function AdminSocialPage() {
             <p className="text-xs text-brand-cream/40">لا تحتاج لاختيار العناصر عند إعادة محاولة جميع العمليات الفاشلة.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" disabled={!failed.length || busy} onClick={() => void runAction('retry_all_failed')}>إعادة محاولة الكل ({failed.length})</Button>
-            <Button variant="outline" disabled={!selectedFailedCount || busy} onClick={() => void runAction('retry')}>إعادة المحدد ({selectedFailedCount})</Button>
-            <Button variant="outline" disabled={!failed.length || busy} onClick={() => void runAction('delete_failed')}>حذف الفاشلة ({failed.length})</Button>
+            <Button variant="outline" disabled={!retryable.length || busy} onClick={() => void runAction('retry_all_failed')}>إعادة محاولة الفاشلة/الجزئية ({retryable.length})</Button>
+            <Button variant="outline" disabled={!selectedRetryableCount || busy} onClick={() => void runAction('retry')}>إعادة المحدد ({selectedRetryableCount})</Button>
+            <Button variant="outline" disabled={!retryable.length || busy} onClick={() => void runAction('delete_failed')}>حذف الفاشلة/الجزئية ({retryable.length})</Button>
           </div>
         </div>
 
         <div className="overflow-auto rounded-xl border border-brand-gold/10">
           <table className="min-w-[900px] w-full text-sm">
             <thead className="bg-black/20 text-brand-cream/50"><tr>
-              <th className="p-3 text-right"><input type="checkbox" checked={allVisibleFailedSelected} onChange={toggleVisibleFailed} disabled={!visibleFailed.length || busy} aria-label="تحديد الفاشلة الظاهرة" /></th>
+              <th className="p-3 text-right"><input type="checkbox" checked={allVisibleRetryableSelected} onChange={toggleVisibleRetryable} disabled={!visibleRetryable.length || busy} aria-label="تحديد الفاشلة والنشر الجزئي الظاهر" /></th>
               <th className="p-3 text-right">العنوان</th><th className="p-3 text-right">النوع</th><th className="p-3 text-right">المنصات</th><th className="p-3 text-right">الحالة</th><th className="p-3 text-right">الموعد</th><th className="p-3 text-right">الخطأ</th>
             </tr></thead>
             <tbody className="divide-y divide-brand-gold/10">
               {filtered.map((item) => {
                 const status = STATUS_ORDER.includes(item.status as Status) ? item.status as Status : 'failed';
-                const selectable = status === 'failed';
+                const selectable = status === 'failed' || status === 'partial';
                 return <tr key={item.id} className="align-top hover:bg-black/10">
                   <td className="p-3"><input type="checkbox" checked={selected.includes(item.id)} disabled={!selectable || busy} onChange={() => setSelected((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])} aria-label={`تحديد ${item.title}`} /></td>
                   <td className="p-3 text-brand-cream">{item.title}</td><td className="p-3 text-brand-cream/55">{item.content_type}</td><td className="p-3 text-brand-cream/55">{item.target_platforms.join('، ')}</td>
