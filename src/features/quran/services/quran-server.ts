@@ -7,7 +7,10 @@ import {
   supabaseServerAnonRequest,
 } from "@/lib/supabase/server";
 import type { Surah, Ayah, Reciter, QuranTafsirSource } from "@/features/quran/types/quran";
-import { surahs as fallbackSurahs } from "@/features/quran/data/fallback";
+import {
+  reciters as fallbackReciters,
+  surahs as fallbackSurahs,
+} from "@/features/quran/data/fallback";
 import {
   mapDbSurah,
   mapDbAyah,
@@ -477,12 +480,36 @@ export async function getQuranAudioFromDb(
     const reciterRow = reciters?.find(
       (row) => typeof row.code === "string" && candidates.includes(row.code),
     );
-    if (!reciterRow?.id) {
+    const fallbackReciter = fallbackReciters.find((item) => candidates.includes(item.code));
+    const resolvedReciter = reciterRow ?? (fallbackReciter
+      ? {
+          id: fallbackReciter.id,
+          code: fallbackReciter.code,
+          base_url_template: fallbackReciter.baseUrlTemplate,
+        }
+      : null);
+    if (!resolvedReciter?.id) {
       return { audio: null, reason: "reciter_not_found", storage_path: null };
     }
 
+    if (!reciterRow?.id) {
+      if (!fallbackReciter?.baseUrlTemplate) {
+        return { audio: null, reason: "reciter_not_found", storage_path: null };
+      }
+      return {
+        audio: {
+          audio_url: `${fallbackReciter.baseUrlTemplate.replace(/\/$/, "")}/${String(surahId).padStart(3, "0")}.mp3`,
+          source_url: "https://www.mp3quran.net/",
+          retrieved_at: null,
+          storage_url: null,
+          storage_status: "external",
+          storage_path: null,
+        },
+      };
+    }
+
     const audio = await quranDbRequest<QuranAudioRecord[]>(
-      `/rest/v1/quran_audio?surah_id=eq.${surahId}&reciter_id=eq.${encodeURIComponent(reciterRow.id)}&select=audio_url,source_url,retrieved_at,storage_url,storage_status,storage_path&limit=1`,
+      `/rest/v1/quran_audio?surah_id=eq.${surahId}&reciter_id=eq.${encodeURIComponent(resolvedReciter.id)}&select=audio_url,source_url,retrieved_at,storage_url,storage_status,storage_path&limit=1`,
     );
     const row = audio?.[0] ?? null;
 
@@ -502,8 +529,8 @@ export async function getQuranAudioFromDb(
       /^https?:\/\//i.test(storedUrl) &&
       !storedUrl.includes(".supabase.co/storage/v1/object/")
         ? storedUrl
-        : reciterRow.base_url_template
-          ? `${reciterRow.base_url_template.replace(/\/$/, "")}/${String(surahId).padStart(3, "0")}.mp3`
+        : resolvedReciter.base_url_template
+          ? `${resolvedReciter.base_url_template.replace(/\/$/, "")}/${String(surahId).padStart(3, "0")}.mp3`
           : null;
     if (externalUrl) {
       return {
