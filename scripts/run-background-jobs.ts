@@ -66,23 +66,25 @@ async function processSocial() {
     console.log(
       "[background-jobs] Social publishing is disabled; leaving queued social items untouched."
     );
-    return { processed: 0, succeeded: 0, failed: 0 };
+    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
   }
 
   console.log(`[background-jobs] Claiming up to ${SOCIAL_BATCH_SIZE} queued social publish item(s).`);
   const items = await claimPendingSocialPublishItems(SOCIAL_BATCH_SIZE);
   if (items.length === 0) {
     console.log("[background-jobs] No queued social publish items claimed.");
-    return { processed: 0, succeeded: 0, failed: 0 };
+    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
   }
 
   let succeeded = 0;
+  let authBlocked = 0;
   let failed = 0;
   for (const item of items) {
     console.log(`[background-jobs] Processing social publish item ${item.id}.`);
     try {
-      const ok = await processSocialPublishItem(item, { alreadyClaimed: true });
-      if (ok) succeeded += 1;
+      const result = await processSocialPublishItem(item, { alreadyClaimed: true });
+      if (result === "published") succeeded += 1;
+      else if (result === "auth_blocked") authBlocked += 1;
       else failed += 1;
     } catch (error) {
       failed += 1;
@@ -90,7 +92,7 @@ async function processSocial() {
     }
   }
 
-  return { processed: items.length, succeeded, failed };
+  return { processed: items.length, succeeded, authBlocked, failed };
 }
 
 async function main() {
@@ -107,7 +109,7 @@ async function main() {
 
   const videos = target === "all" || target === "videos"
     ? await processVideos()
-    : { processed: 0, succeeded: 0, failed: 0 };
+    : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
   const social = target === "all" || target === "social"
     ? await processSocial()
     : { processed: 0, succeeded: 0, failed: 0 };

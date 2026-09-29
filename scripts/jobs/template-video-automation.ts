@@ -262,7 +262,7 @@ async function generateAiCaption(request: GeneratedRequest): Promise<string | nu
   if (!aiPlanEnabled()) return null;
   const sourceText = contentText(request).slice(0, 5000);
   if (!sourceText) return null;
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.GEMINI_MODEL || "gemini-2.0-flash-lite")}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY || "")}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(process.env.GEMINI_MODEL || "gemini-2.5-flash")}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY || "")}`;
   const prompt = [
     "أنت محرر محتوى لمنصة إسلامية.",
     "المصدر أدناه موثق بالفعل. لا تغيّر نص المصدر ولا تضف حكمًا شرعيًا جديدًا.",
