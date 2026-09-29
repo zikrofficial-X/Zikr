@@ -1,5 +1,6 @@
-import { ContentGuide } from "@/components/content/content-guide";
 'use client';
+
+import { ContentGuide } from "@/components/content/content-guide";
 
 import { TasbeehPage } from '@/features/tasbeeh/components/tasbeeh-page';
 
