@@ -1,7 +1,29 @@
+import { ContentGuide } from "@/components/content/content-guide";
 'use client';
 
 import { PrayerTimesPage } from '@/features/prayer/components/prayer-times-page';
 
 export default function Page() {
-  return <PrayerTimesPage />;
+  return (
+    <>
+      <PrayerTimesPage />
+      <div className="container mx-auto px-4 pb-12">
+        <ContentGuide
+          title="كيف تعمل مواقيت الصلاة؟"
+          intro="تحسب صفحة المواقيت أوقات اليوم من موقعك أو المدينة التي تختارها، ثم تعرض الصلاة الحالية والقادمة مع أدوات التنبيه المتاحة في جهازك."
+          items={[
+            "يمكن تحديد الموقع تلقائيًا، أو البحث عن مدينة، أو الاعتماد على الموقع المحفوظ في المتصفح.",
+            "عند تعذر تحديد الموقع يمكن استخدام المدينة الافتراضية بدل ترك الصفحة فارغة.",
+            "المواعيد المعروضة تعتمد على بيانات خدمة الحساب المستخدمة في التطبيق؛ قد تظهر فروق بسيطة عن بعض الجداول المحلية.",
+            "إعدادات التنبيه والصوت منفصلة عن عرض المواقيت، ويمكن تعطيلها من الإعدادات دون إخفاء الأوقات.",
+          ]}
+          links={[
+            { label: "إعدادات التطبيق", href: "/settings" },
+            { label: "اتجاه القبلة", href: "/qibla" },
+          ]}
+          note="لا تستخدم الصفحة GPS إلا بعد طلب الإذن. إذا رفضت الإذن، يمكنك اختيار المدينة يدويًا."
+        />
+      </div>
+    </>
+  );
 }
