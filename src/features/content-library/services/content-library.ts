@@ -39,9 +39,9 @@ function mapSource(value: unknown): ContentSource | ContentSource[] | null {
   const row = value as RawItem;
 
   return {
-    name: String(row.name ?? ""),
-    reference: typeof row.reference === "string" ? row.reference : null,
-    author: typeof row.author === "string" ? row.author : null,
+    name: String(row.name_ar ?? row.name_en ?? ""),
+    reference: typeof row.url === "string" ? row.url : null,
+    author: typeof row.author ?? row.name_ar === "string" ? String(row.author ?? row.name_ar) : null,
     publisher: typeof row.publisher === "string" ? row.publisher : null,
     license: typeof row.license === "string" ? row.license : null,
     attribution:
@@ -73,7 +73,7 @@ function mapItem(row: RawItem): PublicContentLibraryItem {
 }
 
 const SELECT_LIST =
-  "id,slug,title_ar,title_en,summary_ar,body_ar,body_en,content_type,category,tags,author,published_at,source_id,content_sources(name,reference,author,publisher,license,attribution)";
+  "id,slug,title_ar,title_en,summary_ar,body_ar,body_en,content_type,category,tags,author,published_at,source_id,content_sources(name_ar,name_en,url,license,attribution,authority_level,notes,verified)";
 
 export async function getPublicContentLibrary(
   limit = 60,
