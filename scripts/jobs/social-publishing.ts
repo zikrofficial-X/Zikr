@@ -12,19 +12,21 @@ const supabase = createClient(
 
 interface SocialPublishJob {
   id: string;
-  video_id: string;
-  platform: 'youtube' | 'facebook' | 'both';
-  title_ar: string;
-  title_en: string;
-  description_ar: string;
-  description_en: string;
-  tags: string[];
-  status: 'pending' | 'processing' | 'published' | 'failed';
-  error_message?: string;
-  retry_count: number;
-  max_retries: number;
-  created_at: string;
+  content_type: string;
+  content_id?: string;
+  title: string;
+  body?: string;
+  image_url?: string;
+  video_url?: string;
+  target_platforms: string[];
+  status: 'queued' | 'processing' | 'published' | 'partial' | 'failed';
+  scheduled_at?: string;
   published_at?: string;
+  error_message?: string;
+  metadata?: Record<string, unknown>;
+  automation_key?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 /**
@@ -32,17 +34,24 @@ interface SocialPublishJob {
  */
 async function publishVideoToSocial(job: SocialPublishJob): Promise<boolean> {
   try {
-    console.log(`[social-publishing] Processing job ${job.id} for video ${job.video_id}`);
+    console.log(
+      `[social-publishing] Processing job ${job.id} (${job.content_type}) to ${job.target_platforms.join(', ')}`
+    );
 
     // Update status to processing
     await supabase
       .from('social_publish_queue')
-      .update({ status: 'processing' })
+      .update({ status: 'processing', updated_at: new Date().toISOString() })
       .eq('id', job.id);
 
     // Placeholder for actual publishing logic
     // In production, this would call YouTube Data API and Facebook Graph API
-    console.log(`[social-publishing] Would publish to ${job.platform}`);
+    const platforms = job.target_platforms || [];
+    console.log(`[social-publishing] Publishing content to platforms: ${platforms.join(', ')}`);
+
+    if (job.video_url) {
+      console.log(`[social-publishing] Video URL: ${job.video_url}`);
+    }
 
     // Mark as published
     const { error } = await supabase
@@ -50,6 +59,7 @@ async function publishVideoToSocial(job: SocialPublishJob): Promise<boolean> {
       .update({
         status: 'published',
         published_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', job.id);
 
@@ -63,16 +73,12 @@ async function publishVideoToSocial(job: SocialPublishJob): Promise<boolean> {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[social-publishing] Error publishing job ${job.id}:`, errorMessage);
 
-    // Update retry count and status
-    const newRetryCount = job.retry_count + 1;
-    const shouldRetry = newRetryCount < job.max_retries;
-
     await supabase
       .from('social_publish_queue')
       .update({
-        status: shouldRetry ? 'pending' : 'failed',
-        retry_count: newRetryCount,
+        status: 'failed',
         error_message: errorMessage,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', job.id);
 
@@ -99,12 +105,11 @@ export async function processSocialPublishQueue(limit: number = 10): Promise<Soc
   };
 
   try {
-    // Get pending jobs
+    // Get queued jobs (not yet processing)
     const { data: jobs, error } = await supabase
       .from('social_publish_queue')
       .select('*')
-      .eq('status', 'pending')
-      .lt('retry_count', 'max_retries')
+      .eq('status', 'queued')
       .order('created_at', { ascending: true })
       .limit(limit);
 
