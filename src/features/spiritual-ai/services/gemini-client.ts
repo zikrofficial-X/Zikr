@@ -11,7 +11,7 @@ import { getServerEnv } from '@/lib/env';
  */
 
 function getGatewayModelId(): string {
-  const raw = (getServerEnv().GEMINI_MODEL ?? 'gemini-2.5-flash').trim();
+  const raw = (getServerEnv().GEMINI_MODEL ?? 'gemini-2.5-flash-lite').trim();
   if (raw.includes('/')) return raw;
   if (raw.startsWith('gemini-1.5')) return 'google/gemini-2.5-flash';
   return `google/${raw}`;
@@ -51,7 +51,7 @@ function getNextApiKey(): string | null {
 }
 
 function getDirectModel(): string {
-  return getServerEnv().GEMINI_MODEL?.replace(/^google\//, '') ?? 'gemini-2.5-flash';
+  return getServerEnv().GEMINI_MODEL?.replace(/^google\//, '') ?? 'gemini-2.5-flash-lite';
 }
 
 const BLOCK_ONLY_HIGH = 'BLOCK_ONLY_HIGH' as unknown as HarmBlockThreshold;
