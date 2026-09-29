@@ -1,28 +1,14 @@
 import "server-only";
 
-import { generateText, streamText } from 'ai';
 import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory, type GenerationConfig } from '@google/generative-ai';
 import { getServerEnv } from '@/lib/env';
 
 /**
- * Gemini client with:
- * 1. Vercel AI Gateway (uses AI_GATEWAY_API_KEY, zero-config for Google models)
- * 2. Direct Google SDK with key rotation across all configured keys
+ * Gemini client:
+ * Direct Google SDK with key rotation across configured Gemini keys.
+ * This keeps the AI path on Google's Gemini API Free Tier instead of routing
+ * requests through a separate paid gateway.
  */
-
-function getGatewayModelId(): string {
-  const raw = (getServerEnv().GEMINI_MODEL ?? 'gemini-2.5-flash-lite').trim();
-  if (raw.includes('/')) return raw;
-  if (raw.startsWith('gemini-1.5')) return 'google/gemini-2.5-flash';
-  return `google/${raw}`;
-}
-
-function gatewayAvailable(): boolean {
-  return Boolean(
-    (process.env.AI_GATEWAY_API_KEY?.trim()) ||
-    (process.env.VERCEL_OIDC_TOKEN?.trim())
-  );
-}
 
 let cachedKeys: string[] | null = null;
 let keyIndex = 0;
@@ -122,41 +108,10 @@ async function callDirectSdk(prompt: string, maxOutputTokens = 1500): Promise<st
 }
 
 export async function generateGeminiText(prompt: string, maxTokens = 1500): Promise<string | null> {
-  if (gatewayAvailable()) {
-    try {
-      const { text } = await generateText({
-        model: getGatewayModelId(),
-        prompt,
-        temperature: 0.5,
-        maxOutputTokens: maxTokens,
-      });
-      const trimmed = text?.trim();
-      if (trimmed) return trimmed;
-    } catch (err) {
-      console.warn('[gemini] Gateway failed, falling back to direct SDK:', err instanceof Error ? err.message : err);
-    }
-  }
   return callDirectSdk(prompt, maxTokens);
 }
 
 export async function* streamGeminiText(prompt: string): AsyncGenerator<string, void, unknown> {
-  if (gatewayAvailable()) {
-    try {
-      const result = streamText({
-        model: getGatewayModelId(),
-        prompt,
-        temperature: 0.5,
-        maxOutputTokens: 1500,
-      });
-      for await (const chunk of result.textStream) {
-        if (chunk) yield chunk;
-      }
-      return;
-    } catch (err) {
-      console.warn('[gemini] Gateway stream failed, falling back:', err instanceof Error ? err.message : err);
-    }
-  }
-
   const keys = getAvailableKeys();
   const attempts = Math.min(Math.max(keys.length, 3), 6);
   for (let attempt = 0; attempt < attempts; attempt++) {
@@ -201,7 +156,11 @@ export async function generateGeminiFromAudio(
       const model = client.getGenerativeModel({
         model: getDirectModel(),
         safetySettings,
-        generationConfig: { ...generationConfig, maxOutputTokens: 2000 },
+        generationConfig: {
+          ...generationConfig,
+          maxOutputTokens: 2000,
+          responseMimeType: 'application/json',
+        } as GenerationConfig,
       });
       const result = await model.generateContent([
         prompt,
