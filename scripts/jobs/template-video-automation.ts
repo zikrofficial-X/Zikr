@@ -51,6 +51,7 @@ type GeneratedRequest = {
   content: Record<string, unknown>;
   status: string;
   automation_key: string | null;
+  video_url?: string | null;
 };
 
 function siteUrl() {
