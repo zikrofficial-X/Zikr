@@ -25,7 +25,7 @@ This file records migrations applied directly to the live ZIKR Supabase project 
 - Content migrations must be idempotent where practical and must not fabricate Quran, hadith or historical attributions.
 - When a future local migration replay is required, generate the SQL from a fresh schema/content snapshot rather than inventing historical migration bodies.
 
-Last updated: 2026-09-19.
+Last updated: 2026-09-29.
 
 
 Validation note: the rebuild branch is being validated through GitHub Actions after schema/type compatibility fixes. No production-success claim is made until the current quality gate and deployment are green.
