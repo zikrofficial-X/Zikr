@@ -1,0 +1,13 @@
+{
+  "routes": [
+    { "path": "/", "title": "الرئيسية" },
+    { "path": "/kids", "title": "عالم الأطفال" },
+    { "path": "/kids/games", "title": "ألعاب الأطفال" },
+    { "path": "/kids/:slug", "title": "نشاط الأطفال" },
+    { "path": "/kids/progress", "title": "تقدم الطفل" },
+    { "path": "/kids/achievements", "title": "إنجازات الطفل" },
+    { "path": "/kids/adventures", "title": "مغامرات الأطفال" },
+    { "path": "/kids/audio", "title": "صوتيات الأطفال" },
+    { "path": "/kids/puzzle", "title": "ألغاز الأطفال" }
+  ]
+}

@@ -1,278 +1,106 @@
-/**
- * Kids Section - Main Page
- * v1.1.0 - Comprehensive Kids Gaming Hub
- * 
- * Features:
- * - 8 fully enhanced games with levels
- * - Beautiful UI with vibrant colors
- * - Gamification system with achievements
- * - Age-appropriate content
- * - Full Arabic and English support
- */
+"use client";
 
-'use client';
+import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import { Container } from "@/components/ui/container";
+import { kidsContent } from "@/features/kids/data/content";
+import { GAME_REGISTRY } from "@/lib/games/registry";
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { GAMES_REGISTRY, getGamesStatistics, getGamesByAgeGroup } from '@/features/kids/data/games-index';
+const journeys = [
+  {
+    icon: "📖",
+    title: "حكاية اليوم",
+    description: "اقرأ قصة قصيرة، ثم اكتشف قيمة عملية يمكنك تجربتها اليوم.",
+    href: "/kids/story-ibrahim",
+    color: "from-amber-400/25 to-orange-500/5",
+  },
+  {
+    icon: "💧",
+    title: "خطوة نتعلمها",
+    description: "تعلم الوضوء والصلاة والأدعية بلغة سهلة وخطوات واضحة.",
+    href: "/kids/wudu-steps",
+    color: "from-sky-400/25 to-cyan-500/5",
+  },
+  {
+    icon: "🎮",
+    title: "جولة ممتعة",
+    description: "اختر لعبة قصيرة تنمي التركيز والذاكرة والإبداع بلا ضغط.",
+    href: "/kids/games",
+    color: "from-fuchsia-400/25 to-violet-500/5",
+  },
+];
+
+const contentTypeLabels: Record<string, string> = {
+  story: "قصة",
+  prayer: "دعاء",
+  wudu: "تعلم",
+  quiz: "اختبار",
+  memorize: "حفظ",
+  puzzle: "لغز",
+};
+
+const contentTypeIcons: Record<string, string> = {
+  story: "📖",
+  prayer: "🤲",
+  wudu: "💧",
+  quiz: "🧠",
+  memorize: "🌟",
+  puzzle: "🧩",
+};
 
 export default function KidsPage() {
-  const [selectedAge, setSelectedAge] = useState<number>(7);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [isLoading, setIsLoading] = useState(true);
-  const [language, setLanguage] = useState<'ar' | 'en'>('en');
-
-  useEffect(() => {
-    // Set loading to false after component mounts
-    setIsLoading(false);
-  }, []);
-
-  // Filter games based on age and category
-  const filteredGames = GAMES_REGISTRY.filter((game) => {
-    const ageMatch = selectedAge >= game.ageMin && selectedAge <= game.ageMax;
-    const categoryMatch = selectedCategory === 'all' || game.category === selectedCategory;
-    return ageMatch && categoryMatch;
-  });
-
-  const stats = getGamesStatistics();
-  const categoryEmojis: { [key: string]: string } = {
-    action: '⚡',
-    educational: '📚',
-    memory: '🧠',
-    puzzle: '🧩',
-    creativity: '🎨',
-    learning: '👨‍🎓',
-  };
-
-  const difficultyColors: { [key: string]: string } = {
-    easy: 'bg-green-400',
-    medium: 'bg-yellow-400',
-    hard: 'bg-orange-400',
-    expert: 'bg-red-400',
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-green-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-bounce text-6xl mb-4">🎮</div>
-          <h2 className="text-2xl font-bold text-purple-800">جاري التحميل...</h2>
-          <p className="text-gray-600">Loading amazing games...</p>
-        </div>
-      </div>
-    );
-  }
+  const featuredContent = kidsContent.filter((item) => ["story", "prayer", "wudu", "quiz"].includes(item.type)).slice(0, 6);
+  const featuredGames = Object.values(GAME_REGISTRY).slice(0, 6);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-green-50">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 text-white shadow-lg sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-4xl font-bold">🎮 {language === 'ar' ? 'قسم الأطفال' : 'Kids Zone'}</h1>
-            <button
-              onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-              className="bg-white text-purple-600 px-4 py-2 rounded-full font-bold hover:bg-purple-100 transition"
-            >
-              {language === 'ar' ? 'English' : 'العربية'}
-            </button>
+    <main dir="rtl" className="min-h-screen overflow-hidden bg-[#061b24] text-brand-cream">
+      <section className="relative isolate overflow-hidden border-b border-brand-gold/15 bg-[radial-gradient(circle_at_15%_10%,rgba(199,168,107,.26),transparent_30%),radial-gradient(circle_at_85%_0%,rgba(73,185,170,.22),transparent_32%),linear-gradient(135deg,#092631,#07151d)]">
+        <div className="pointer-events-none absolute -left-24 top-10 h-64 w-64 rounded-full bg-fuchsia-400/15 blur-3xl" aria-hidden="true" />
+        <div className="pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-sky-400/10 blur-3xl" aria-hidden="true" />
+        <Container className="relative grid gap-8 py-14 lg:grid-cols-[1.1fr_.9fr] lg:items-center lg:py-20">
+          <div className="space-y-6">
+            <span className="inline-flex items-center gap-2 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm font-bold text-brand-gold">🌈 عالم ذِكر للأطفال</span>
+            <div className="space-y-4">
+              <h1 className="max-w-3xl text-4xl font-black leading-[1.2] text-brand-cream md:text-6xl">نتعلم، نلعب،<br /><span className="text-brand-gold">ونكبر بخطوة جميلة</span></h1>
+              <p className="max-w-2xl text-base leading-8 text-brand-cream/75 md:text-xl">مساحة هادئة وآمنة للأطفال: قصص قصيرة، أذكار وأدعية، أنشطة تعليمية، وألعاب تنمي المهارات دون مقارنات أو ضغط.</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/kids/games" className="rounded-2xl bg-brand-gold px-6 py-3 font-bold text-black shadow-lg shadow-brand-gold/15 transition hover:-translate-y-0.5 hover:bg-[#e1c27d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold">ابدأ اللعب 🎮</Link>
+              <Link href="#learning" className="rounded-2xl border border-brand-cream/20 bg-white/5 px-6 py-3 font-bold text-brand-cream transition hover:border-brand-gold hover:text-brand-gold">اكتشف مسار التعلم</Link>
+            </div>
           </div>
-          <p className="text-lg opacity-90">
-            {language === 'ar'
-              ? `اختر لعبتك المفضلة وابدأ المرح - ${stats.totalGames} لعبة رائعة تنتظرك!`
-              : `Choose your favorite game and start the fun - ${stats.totalGames} amazing games waiting for you!`}
-          </p>
-        </div>
-      </header>
-
-      {/* Statistics Banner */}
-      <section className="bg-white shadow-md">
-        <div className="container mx-auto px-4 py-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-purple-600">{stats.totalGames}</div>
-            <p className="text-sm text-gray-600">{language === 'ar' ? 'ألعاب' : 'Games'}</p>
+          <div className="relative mx-auto w-full max-w-md">
+            <div className="rounded-[2rem] border border-brand-cream/15 bg-white/[.06] p-5 shadow-2xl backdrop-blur-sm">
+              <div className="flex items-center justify-between rounded-2xl bg-gradient-to-l from-fuchsia-500/25 via-violet-500/20 to-sky-400/20 p-5">
+                <div><p className="text-sm text-brand-cream/70">رحلتك اليوم</p><h2 className="mt-1 text-2xl font-black text-brand-gold">3 خطوات لطيفة</h2></div><span className="text-5xl" aria-hidden="true">🪁</span>
+              </div>
+              <div className="mt-4 grid gap-3">
+                {["اقرأ قصة قصيرة", "تعلّم قيمة واحدة", "العب جولة من 3 دقائق"].map((step, index) => <div key={step} className="flex items-center gap-3 rounded-2xl border border-brand-cream/10 bg-black/15 p-3"><span className="grid h-8 w-8 place-items-center rounded-full bg-brand-gold text-sm font-black text-black">{index + 1}</span><span className="text-sm font-semibold text-brand-cream/85">{step}</span><span className="mr-auto text-brand-emerald">✓</span></div>)}
+              </div>
+              <p className="mt-4 text-center text-xs leading-6 text-brand-cream/55">يمكنك التوقف متى شئت. التعلم الممتع أهم من السرعة.</p>
+            </div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600">{stats.totalLevels}</div>
-            <p className="text-sm text-gray-600">{language === 'ar' ? 'مستويات' : 'Levels'}</p>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-600">{stats.totalRewards}</div>
-            <p className="text-sm text-gray-600">{language === 'ar' ? 'نقاط' : 'Rewards'}</p>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-pink-600">{stats.uniqueCategories}</div>
-            <p className="text-sm text-gray-600">{language === 'ar' ? 'فئات' : 'Categories'}</p>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-orange-600">{stats.ageRange.min}-{stats.ageRange.max}</div>
-            <p className="text-sm text-gray-600">{language === 'ar' ? 'سن' : 'Age'}</p>
-          </div>
-        </div>
+        </Container>
       </section>
 
-      {/* Controls Section */}
-      <section className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-6 text-purple-700">
-            {language === 'ar' ? 'اختر المستوى العمري والفئة' : 'Select Age & Category'}
-          </h2>
-          
-          {/* Age Selector */}
-          <div className="mb-6">
-            <label className="block text-lg font-bold text-gray-700 mb-3">
-              {language === 'ar' ? 'عمرك' : 'Your Age'}: {selectedAge} {language === 'ar' ? 'سنة' : 'years'}
-            </label>
-            <input
-              type="range"
-              min="4"
-              max="15"
-              value={selectedAge}
-              onChange={(e) => setSelectedAge(parseInt(e.target.value))}
-              className="w-full h-3 bg-gradient-to-r from-purple-300 to-blue-300 rounded-lg appearance-none cursor-pointer"
-            />
-            <div className="flex justify-between text-sm text-gray-600 mt-2">
-              <span>4 {language === 'ar' ? 'سنوات' : 'years'}</span>
-              <span>15 {language === 'ar' ? 'سنة' : 'years'}</span>
-            </div>
-          </div>
+      <Container className="space-y-14 py-12 md:py-16">
+        <section aria-labelledby="journeys-heading" className="space-y-5">
+          <div><p className="text-sm font-bold text-brand-emerald">اختيار بسيط</p><h2 id="journeys-heading" className="mt-2 text-3xl font-black text-brand-cream">ما الذي تحب أن تفعله اليوم؟</h2></div>
+          <div className="grid gap-4 md:grid-cols-3">{journeys.map((journey) => <Link key={journey.title} href={journey.href} className="group"><Card className={`h-full border-brand-cream/10 bg-gradient-to-br ${journey.color} p-6 transition duration-200 hover:-translate-y-1 hover:border-brand-gold/50`}><span className="text-4xl" aria-hidden="true">{journey.icon}</span><h3 className="mt-5 text-xl font-bold text-brand-gold">{journey.title}</h3><p className="mt-2 leading-8 text-brand-cream/70">{journey.description}</p><span className="mt-5 inline-block text-sm font-bold text-brand-cream underline decoration-brand-gold/50 underline-offset-4 group-hover:text-brand-gold">افتح المسار ←</span></Card></Link>)}</div>
+        </section>
 
-          {/* Category Filter */}
-          <div>
-            <label className="block text-lg font-bold text-gray-700 mb-3">
-              {language === 'ar' ? 'نوع اللعبة' : 'Game Type'}
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className={`p-3 rounded-lg font-bold transition transform hover:scale-105 ${
-                  selectedCategory === 'all'
-                    ? 'bg-purple-500 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {language === 'ar' ? 'الكل' : 'All'}
-              </button>
-              {['action', 'educational', 'memory', 'puzzle', 'creativity', 'learning'].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`p-3 rounded-lg font-bold transition transform hover:scale-105 ${
-                    selectedCategory === cat
-                      ? 'bg-blue-500 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  <span className="text-xl">{categoryEmojis[cat]}</span>
-                  <div className="text-xs mt-1">
-                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <section id="learning" aria-labelledby="learning-heading" className="space-y-5 scroll-mt-6">
+          <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-bold text-brand-emerald">محتوى مناسب للعمر</p><h2 id="learning-heading" className="mt-2 text-3xl font-black text-brand-cream">نتعلم معًا</h2></div><Link href="/kids/adventures" className="text-sm font-bold text-brand-gold underline underline-offset-4">كل الأنشطة ←</Link></div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{featuredContent.map((item) => <Link key={item.slug} href={`/kids/${item.slug}`} className="group"><Card className="h-full border-brand-cream/10 bg-black/20 p-5 transition hover:-translate-y-1 hover:border-brand-emerald/50"><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-emerald/10 text-2xl" aria-hidden="true">{contentTypeIcons[item.type] ?? "✨"}</span><span className="rounded-full border border-brand-gold/20 bg-brand-gold/10 px-3 py-1 text-xs font-bold text-brand-gold">{contentTypeLabels[item.type] ?? "نشاط"}</span></div><h3 className="mt-5 text-xl font-bold text-brand-cream group-hover:text-brand-gold">{item.title_ar}</h3><p className="mt-2 line-clamp-3 text-sm leading-7 text-brand-cream/65">{item.content_ar?.split("\n")[0] ?? "نشاط تعليمي قصير وممتع."}</p><p className="mt-4 text-sm font-bold text-brand-emerald">مناسب لعمر {item.age_group} سنوات ←</p></Card></Link>)}</div>
+        </section>
 
-        {/* Games Grid */}
-        <div>
-          <h2 className="text-2xl font-bold mb-6 text-purple-700">
-            {language === 'ar' 
-              ? `الألعاب المناسبة (${filteredGames.length})` 
-              : `Available Games (${filteredGames.length})`}
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredGames.map((game) => (
-              <Link
-                key={game.id}
-                href={`/kids/games/${game.id}`}
-              >
-                <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transform hover:scale-105 transition cursor-pointer border-4 border-transparent hover:border-purple-300">
-                  {/* Game Card Header */}
-                  <div className="bg-gradient-to-r from-purple-400 to-pink-400 p-6 text-center">
-                    <div className="text-6xl mb-2">{game.icon}</div>
-                    <h3 className="text-2xl font-bold text-white">
-                      {language === 'ar' ? game.nameAr : game.nameEn}
-                    </h3>
-                  </div>
+        <section aria-labelledby="games-heading" className="space-y-5">
+          <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-bold text-brand-emerald">لعب هادف</p><h2 id="games-heading" className="mt-2 text-3xl font-black text-brand-cream">ألعاب تنمي مهاراتك</h2></div><Link href="/kids/games" className="text-sm font-bold text-brand-gold underline underline-offset-4">عرض كل الألعاب ←</Link></div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{featuredGames.map((game) => <Link key={game.id} href={`/kids/${game.id}`} className="group flex items-center gap-4 rounded-2xl border border-brand-cream/10 bg-white/[.04] p-4 transition hover:border-brand-gold/50 hover:bg-brand-gold/5"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand-gold/20 to-brand-emerald/10 text-2xl text-brand-gold" aria-hidden="true">{game.icon}</span><span className="min-w-0"><strong className="block truncate text-base text-brand-cream group-hover:text-brand-gold">{game.titleAr}</strong><span className="mt-1 block text-xs text-brand-cream/55">{game.skillAr} · {game.durationMinutes} دقائق</span></span><span className="mr-auto text-brand-gold" aria-hidden="true">←</span></Link>)}</div>
+        </section>
 
-                  {/* Game Card Body */}
-                  <div className="p-4">
-                    {/* Description */}
-                    <p className="text-sm text-gray-700 mb-4 line-clamp-2">
-                      {language === 'ar' ? game.descriptionAr : game.descriptionEn}
-                    </p>
-
-                    {/* Stats */}
-                    <div className="grid grid-cols-3 gap-2 mb-4">
-                      <div className="bg-blue-100 rounded-lg p-2 text-center">
-                        <div className="text-lg font-bold text-blue-600">{game.levels}</div>
-                        <div className="text-xs text-blue-700">{language === 'ar' ? 'مستويات' : 'Levels'}</div>
-                      </div>
-                      <div className="bg-green-100 rounded-lg p-2 text-center">
-                        <div className="text-lg font-bold text-green-600">{game.duration}m</div>
-                        <div className="text-xs text-green-700">{language === 'ar' ? 'وقت' : 'Time'}</div>
-                      </div>
-                      <div className="bg-yellow-100 rounded-lg p-2 text-center">
-                        <div className="text-lg font-bold text-yellow-600">{game.rewards.perCompletion}</div>
-                        <div className="text-xs text-yellow-700">{language === 'ar' ? 'جوائز' : 'Reward'}</div>
-                      </div>
-                    </div>
-
-                    {/* Difficulty Badge */}
-                    <div className={`${difficultyColors[game.difficulty]} text-white py-2 px-3 rounded-lg text-center font-bold text-sm mb-3`}>
-                      {language === 'ar'
-                        ? { easy: 'سهل', medium: 'متوسط', hard: 'صعب', mixed: 'مختلط' }[game.difficulty]
-                        : { easy: 'Easy', medium: 'Medium', hard: 'Hard', mixed: 'Mixed' }[game.difficulty]}
-                    </div>
-
-                    {/* Age Group */}
-                    <div className="bg-purple-100 rounded-lg p-2 text-center mb-3">
-                      <p className="text-xs text-purple-700 font-bold">
-                        {language === 'ar' 
-                          ? `من ${game.ageMin} إلى ${game.ageMax} سنة`
-                          : `${game.ageMin}-${game.ageMax} years old`}
-                      </p>
-                    </div>
-
-                    {/* Play Button */}
-                    <button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-3 rounded-lg hover:from-purple-600 hover:to-pink-600 transition shadow-md">
-                      {language === 'ar' ? '▶ العب الآن' : '▶ Play Now'}
-                    </button>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          {filteredGames.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-6xl mb-4">😢</div>
-              <p className="text-xl text-gray-600">
-                {language === 'ar'
-                  ? 'لا توجد ألعاب مناسبة لهذا الاختيار'
-                  : 'No games match your selection'}
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gradient-to-r from-purple-600 to-blue-600 text-white mt-12 py-8">
-        <div className="container mx-auto px-4 text-center">
-          <p className="mb-2">
-            {language === 'ar'
-              ? '✨ مرحباً بك في قسم الأطفال الآمن والتعليمي'
-              : '✨ Welcome to our Safe & Educational Kids Zone'}
-          </p>
-          <p className="text-sm opacity-75">
-            {language === 'ar'
-              ? 'مكان آمن للأطفال للتعلم واللعب واكتشاف قيم إسلامية'
-              : 'A safe place for kids to learn, play, and discover Islamic values'}
-          </p>
-        </div>
-      </footer>
-    </div>
+        <section className="rounded-[2rem] border border-brand-gold/20 bg-gradient-to-l from-brand-gold/10 via-brand-emerald/5 to-transparent p-6 text-center md:p-10"><p className="text-4xl" aria-hidden="true">🌟</p><h2 className="mt-3 text-2xl font-black text-brand-gold">كل محاولة تقدم صغير</h2><p className="mx-auto mt-3 max-w-2xl leading-8 text-brand-cream/70">اللعب هنا للتعلم والفرح. شجّع طفلك على التجربة، وخذوا استراحة عندما تحتاجون، واحتفلوا بالخطوات الصغيرة معًا.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Link href="/kids/progress" className="rounded-xl border border-brand-emerald/40 px-5 py-3 text-sm font-bold text-brand-emerald transition hover:border-brand-gold hover:text-brand-gold">شاهد التقدم</Link><Link href="/kids/achievements" className="rounded-xl border border-brand-gold/40 px-5 py-3 text-sm font-bold text-brand-gold transition hover:bg-brand-gold hover:text-black">الشارات والإنجازات</Link></div></section>
+      </Container>
+    </main>
   );
 }
