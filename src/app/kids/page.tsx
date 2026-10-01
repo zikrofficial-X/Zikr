@@ -1,236 +1,278 @@
-export const dynamic = "force-dynamic";
-import Image from "next/image";
-import { pageMetadata } from "@/lib/site";
+/**
+ * Kids Section - Main Page
+ * v1.1.0 - Comprehensive Kids Gaming Hub
+ * 
+ * Features:
+ * - 8 fully enhanced games with levels
+ * - Beautiful UI with vibrant colors
+ * - Gamification system with achievements
+ * - Age-appropriate content
+ * - Full Arabic and English support
+ */
 
-import Link from "next/link";
-import { Container } from "@/components/ui/container";
-import { Card } from "@/components/ui/card";
-import { getKidsContent } from "@/features/kids/services/kids-content";
-import type { KidsItem } from "@/features/kids/data/content";
+'use client';
 
-const typeLabels: Record<string, string> = {
-  story: "قصة",
-  prayer: "دعاء",
-  wudu: "الوضوء",
-  quiz: "اختبار",
-  game: "لعبة",
-  video: "فيديو",
-  memorize: "حفظ",
-  puzzle: "لغز",
-  coloring: "تلوين",
-  matching: "توصيل",
-  lesson: "درس",
-};
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { GAMES_REGISTRY, getGamesStatistics, getGamesByAgeGroup } from '@/features/kids/data/games-index';
 
-const ageGroupLabels: Record<string, string> = {
-  "3-5": "3-5 سنوات",
-  "6-8": "6-8 سنوات",
-  "9-12": "9-12 سنة",
-  "13-15": "13-15 سنة",
-};
+export default function KidsPage() {
+  const [selectedAge, setSelectedAge] = useState<number>(7);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [language, setLanguage] = useState<'ar' | 'en'>('en');
 
-// Full static content library is always merged with the database so a slow
-// or partially unavailable Supabase request cannot hide the local catalogue.
-export const metadata = pageMetadata({
-  title: "قسم الأطفال | ذكر",
-  description: "محتوى إسلامي تعليمي وترفيهي آمن ومناسب للأطفال",
-  path: "/kids",
-});
+  useEffect(() => {
+    // Set loading to false after component mounts
+    setIsLoading(false);
+  }, []);
 
-export default async function KidsPage() {
-  const content = await getKidsContent();
-  const byAgeGroup = (ageGroup: string): KidsItem[] =>
-    content.filter((item) => item.age_group === ageGroup);
+  // Filter games based on age and category
+  const filteredGames = GAMES_REGISTRY.filter((game) => {
+    const ageMatch = selectedAge >= game.ageMin && selectedAge <= game.ageMax;
+    const categoryMatch = selectedCategory === 'all' || game.category === selectedCategory;
+    return ageMatch && categoryMatch;
+  });
+
+  const stats = getGamesStatistics();
+  const categoryEmojis: { [key: string]: string } = {
+    action: '⚡',
+    educational: '📚',
+    memory: '🧠',
+    puzzle: '🧩',
+    creativity: '🎨',
+    learning: '👨‍🎓',
+  };
+
+  const difficultyColors: { [key: string]: string } = {
+    easy: 'bg-green-400',
+    medium: 'bg-yellow-400',
+    hard: 'bg-orange-400',
+    expert: 'bg-red-400',
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-100 to-green-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-bounce text-6xl mb-4">🎮</div>
+          <h2 className="text-2xl font-bold text-purple-800">جاري التحميل...</h2>
+          <p className="text-gray-600">Loading amazing games...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Container className="py-12 space-y-12">
-      <section className="text-center space-y-4">
-        <span className="inline-flex rounded-full border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm text-brand-gold">
-          مدينة ذِكر للصغار
-        </span>
-        <h1 className="text-4xl font-bold text-brand-gold md:text-5xl">قسم الأطفال</h1>
-        <p className="text-brand-cream/70 max-w-2xl mx-auto text-lg leading-relaxed">
-          قصص قصيرة، قيم جميلة، ألعاب ذكية ومهام عائلية تجعل التعلم الإسلامي رحلة محبة واكتشاف.
-        </p>
-        <div className="flex flex-wrap justify-center gap-3 pt-2 text-sm" aria-label="إحصاءات قسم الأطفال">
-          <span className="rounded-full bg-brand-emerald/15 px-4 py-2 text-brand-emerald">{content.length} نشاطًا ومحتوى</span>
-          <span className="rounded-full bg-brand-gold/15 px-4 py-2 text-brand-gold">4 مسارات عمرية</span>
-          <span className="rounded-full bg-brand-cream/10 px-4 py-2 text-brand-cream/80">آمن مع إشراف الأسرة</span>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-green-50">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 text-white shadow-lg sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-4xl font-bold">🎮 {language === 'ar' ? 'قسم الأطفال' : 'Kids Zone'}</h1>
+            <button
+              onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+              className="bg-white text-purple-600 px-4 py-2 rounded-full font-bold hover:bg-purple-100 transition"
+            >
+              {language === 'ar' ? 'English' : 'العربية'}
+            </button>
+          </div>
+          <p className="text-lg opacity-90">
+            {language === 'ar'
+              ? `اختر لعبتك المفضلة وابدأ المرح - ${stats.totalGames} لعبة رائعة تنتظرك!`
+              : `Choose your favorite game and start the fun - ${stats.totalGames} amazing games waiting for you!`}
+          </p>
+        </div>
+      </header>
+
+      {/* Statistics Banner */}
+      <section className="bg-white shadow-md">
+        <div className="container mx-auto px-4 py-6 grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-purple-600">{stats.totalGames}</div>
+            <p className="text-sm text-gray-600">{language === 'ar' ? 'ألعاب' : 'Games'}</p>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-blue-600">{stats.totalLevels}</div>
+            <p className="text-sm text-gray-600">{language === 'ar' ? 'مستويات' : 'Levels'}</p>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-green-600">{stats.totalRewards}</div>
+            <p className="text-sm text-gray-600">{language === 'ar' ? 'نقاط' : 'Rewards'}</p>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-pink-600">{stats.uniqueCategories}</div>
+            <p className="text-sm text-gray-600">{language === 'ar' ? 'فئات' : 'Categories'}</p>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-orange-600">{stats.ageRange.min}-{stats.ageRange.max}</div>
+            <p className="text-sm text-gray-600">{language === 'ar' ? 'سن' : 'Age'}</p>
+          </div>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" aria-labelledby="kids-quick-start">
-        <h2 id="kids-quick-start" className="sr-only">ابدأ رحلة التعلم</h2>
-        <Link href="/kids/adventures" className="group">
-          <Card className="h-full border-brand-gold/30 bg-gradient-to-br from-brand-gold/15 to-transparent p-5 transition-transform group-hover:-translate-y-1">
-            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-brand-gold/70">المسار الأول</p>
-            <h3 className="text-xl font-bold text-brand-gold">مغامرات القيم</h3>
-            <p className="mt-2 text-sm leading-relaxed text-brand-cream/70">مهام صغيرة للتعاون والصدق والرحمة والسلامة الرقمية.</p>
-          </Card>
-        </Link>
-        <Link href="/kids/adventures?mode=memory" className="group">
-          <Card className="h-full border-brand-emerald/30 bg-gradient-to-br from-brand-emerald/15 to-transparent p-5 transition-transform group-hover:-translate-y-1">
-            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-brand-emerald/70">العب وتعلم</p>
-            <h3 className="text-xl font-bold text-brand-emerald">مختبر الذاكرة</h3>
-            <p className="mt-2 text-sm leading-relaxed text-brand-cream/70">ألعاب ذاكرة وأسئلة سريعة تربط الذكر بالمواقف اليومية.</p>
-          </Card>
-        </Link>
-        <Link href="/kids/puzzle" className="group">
-          <Card className="h-full border-brand-gold/30 bg-gradient-to-br from-brand-gold/10 to-transparent p-5 transition-transform group-hover:-translate-y-1">
-            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-brand-gold/70">تحدي اليوم</p>
-            <h3 className="text-xl font-bold text-brand-gold">مركز الترتيب</h3>
-            <p className="mt-2 text-sm leading-relaxed text-brand-cream/70">رتّب الأركان والصلوات وخطوات الوضوء واكسب نقاطًا تعليمية.</p>
-          </Card>
-        </Link>
-        <Link href="/kids/quiz-akhlaq-adventure" className="group">
-          <Card className="h-full border-brand-emerald/30 bg-gradient-to-br from-brand-emerald/10 to-transparent p-5 transition-transform group-hover:-translate-y-1">
-            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-brand-emerald/70">اختبر نفسك</p>
-            <h3 className="text-xl font-bold text-brand-emerald">أبطال الأخلاق</h3>
-            <p className="mt-2 text-sm leading-relaxed text-brand-cream/70">مواقف تفاعلية تساعد الطفل على التفكير واختيار التصرف الحسن.</p>
-          </Card>
-        </Link>
-        <Link href="/kids/audio" className="group">
-          <Card className="h-full border-brand-gold/30 bg-gradient-to-br from-brand-gold/10 to-transparent p-5 transition-transform group-hover:-translate-y-1">
-            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-brand-gold/70">اسمع وردد</p>
-            <h3 className="text-xl font-bold text-brand-gold">صوتيات الصغار</h3>
-            <p className="mt-2 text-sm leading-relaxed text-brand-cream/70">قصص وأناشيد وأذكار مع تسجيل القراءة محليًا على جهازك.</p>
-          </Card>
-        </Link>
-        <Link href="/kids/achievements" className="group">
-          <Card className="h-full border-brand-emerald/30 bg-gradient-to-br from-brand-emerald/10 to-transparent p-5 transition-transform group-hover:-translate-y-1">
-            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-brand-emerald/70">شجع نفسك</p>
-            <h3 className="text-xl font-bold text-brand-emerald">نادي النجوم</h3>
-            <p className="mt-2 text-sm leading-relaxed text-brand-cream/70">شارات ونجوم ولوحة شرف محلية تحتفل بالتقدم دون مقارنة.</p>
-          </Card>
-        </Link>
-        <Link href="/kids/games" className="group">
-          <Card className="h-full border-brand-gold/30 bg-gradient-to-br from-brand-gold/10 to-transparent p-5 transition-transform group-hover:-translate-y-1">
-            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-brand-gold/70">العالم الجديد</p>
-            <h3 className="text-xl font-bold text-brand-gold">عالم ألعاب ذِكر</h3>
-            <p className="mt-2 text-sm leading-relaxed text-brand-cream/70">اثنتا عشرة لعبة أصلية للحركة والذاكرة والتعلم والإبداع.</p>
-          </Card>
-        </Link>
-      </section>
+      {/* Controls Section */}
+      <section className="container mx-auto px-4 py-8">
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+          <h2 className="text-2xl font-bold mb-6 text-purple-700">
+            {language === 'ar' ? 'اختر المستوى العمري والفئة' : 'Select Age & Category'}
+          </h2>
+          
+          {/* Age Selector */}
+          <div className="mb-6">
+            <label className="block text-lg font-bold text-gray-700 mb-3">
+              {language === 'ar' ? 'عمرك' : 'Your Age'}: {selectedAge} {language === 'ar' ? 'سنة' : 'years'}
+            </label>
+            <input
+              type="range"
+              min="4"
+              max="15"
+              value={selectedAge}
+              onChange={(e) => setSelectedAge(parseInt(e.target.value))}
+              className="w-full h-3 bg-gradient-to-r from-purple-300 to-blue-300 rounded-lg appearance-none cursor-pointer"
+            />
+            <div className="flex justify-between text-sm text-gray-600 mt-2">
+              <span>4 {language === 'ar' ? 'سنوات' : 'years'}</span>
+              <span>15 {language === 'ar' ? 'سنة' : 'years'}</span>
+            </div>
+          </div>
 
-      {Object.entries(ageGroupLabels).map(([age, label]) => {
-        const items = byAgeGroup(age);
-        if (items.length === 0) return null;
-        return (
-          <section key={age} className="space-y-6">
-            <h2 className="text-2xl font-bold text-brand-gold border-b border-brand-gold/20 pb-3">
-              {label}
-            </h2>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map((item: KidsItem) => (
-                <Link key={item.id} href={`/kids/${item.slug}`}>
-                  <Card className="h-full overflow-hidden hover:border-brand-gold/50 transition-colors cursor-pointer flex flex-col">
-                    {item.featured_image_url && (
-                      <div className="w-full h-40 bg-brand-gold/10 overflow-hidden">
-                        <Image
-                          src={item.featured_image_url}
-                          alt={item.title_ar}
-                          width={800}
-                          height={600}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform"
-                        />
-                      </div>
-                    )}
-                    <div className="p-4 space-y-3 flex-1 flex flex-col">
-                      <h3 className="text-lg font-bold text-brand-gold leading-relaxed">
-                        {item.title_ar}
-                      </h3>
-                      <div className="flex gap-2 flex-wrap mt-auto">
-                        <span className="px-2 py-1 bg-brand-gold/20 text-brand-gold rounded text-xs font-medium">
-                          {typeLabels[item.type] ?? item.type}
-                        </span>
-                        <span className="px-2 py-1 bg-brand-emerald/20 text-brand-emerald rounded text-xs font-medium">
-                          {label}
-                        </span>
-                      </div>
-                    </div>
-                  </Card>
-                </Link>
+          {/* Category Filter */}
+          <div>
+            <label className="block text-lg font-bold text-gray-700 mb-3">
+              {language === 'ar' ? 'نوع اللعبة' : 'Game Type'}
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+              <button
+                onClick={() => setSelectedCategory('all')}
+                className={`p-3 rounded-lg font-bold transition transform hover:scale-105 ${
+                  selectedCategory === 'all'
+                    ? 'bg-purple-500 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {language === 'ar' ? 'الكل' : 'All'}
+              </button>
+              {['action', 'educational', 'memory', 'puzzle', 'creativity', 'learning'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`p-3 rounded-lg font-bold transition transform hover:scale-105 ${
+                    selectedCategory === cat
+                      ? 'bg-blue-500 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <span className="text-xl">{categoryEmojis[cat]}</span>
+                  <div className="text-xs mt-1">
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </div>
+                </button>
               ))}
             </div>
-          </section>
-        );
-      })}
+          </div>
+        </div>
 
-      {/* Games section */}
-      <section className="space-y-6">
-        <h2 className="text-2xl font-bold text-brand-gold border-b border-brand-gold/20 pb-3">
-          الألعاب التعليمية
-        </h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <Link href="/kids/puzzle">
-            <Card className="h-full hover:border-brand-gold/50 transition-colors cursor-pointer flex flex-col">
-              <div className="w-full h-40 bg-brand-gold/10 flex items-center justify-center">
-                <span
-                  className="text-5xl text-brand-gold/60"
-                  aria-hidden="true"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-16 h-16"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 01-.657.643 48.39 48.39 0 01-4.163-.3c.186 1.613.293 3.25.315 4.907a.656.656 0 01-.658.663v0c-.355 0-.676-.186-.959-.401a1.647 1.647 0 00-1.003-.349c-1.036 0-1.875 1.007-1.875 2.25s.84 2.25 1.875 2.25c.369 0 .713-.128 1.003-.349.283-.215.604-.401.959-.401v0c.31 0 .555.26.532.57a48.039 48.039 0 01-.642 5.056c1.518.19 3.058.309 4.616.354a.64.64 0 00.657-.643v0c0-.355-.186-.676-.401-.959a1.647 1.647 0 01-.349-1.003c0-1.035 1.008-1.875 2.25-1.875 1.243 0 2.25.84 2.25 1.875 0 .369-.128.713-.349 1.003-.215.283-.4.604-.4.959v0c0 .333.277.599.61.58a48.1 48.1 0 005.427-.63 48.05 48.05 0 00.582-4.717.532.532 0 00-.533-.57v0c-.355 0-.676.186-.959.401-.29.221-.634.349-1.003.349-1.035 0-1.875-1.007-1.875-2.25s.84-2.25 1.875-2.25c.37 0 .713.128 1.003.349.283.215.604.401.959.401v0a.656.656 0 00.658-.663 48.422 48.422 0 00-.37-5.36c-1.886.342-3.81.574-5.766.689a.578.578 0 01-.61-.58v0z"
-                    />
-                  </svg>
-                </span>
-              </div>
-              <div className="p-4 space-y-3 flex-1 flex flex-col">
-                <h3 className="text-lg font-bold text-brand-gold leading-relaxed">
-                  لعبة الترتيب الإسلامية
-                </h3>
-                <p className="text-brand-cream/60 text-sm leading-relaxed">
-                  رتّب أركان الإسلام والوضوء والخلفاء في لعبة تفاعلية ممتعة
-                </p>
-                <div className="flex gap-2 flex-wrap mt-auto">
-                  <span className="px-2 py-1 bg-brand-gold/20 text-brand-gold rounded text-xs font-medium">
-                    لعبة
-                  </span>
-                  <span className="px-2 py-1 bg-brand-emerald/20 text-brand-emerald rounded text-xs font-medium">
-                    6-12 سنة
-                  </span>
+        {/* Games Grid */}
+        <div>
+          <h2 className="text-2xl font-bold mb-6 text-purple-700">
+            {language === 'ar' 
+              ? `الألعاب المناسبة (${filteredGames.length})` 
+              : `Available Games (${filteredGames.length})`}
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filteredGames.map((game) => (
+              <Link
+                key={game.id}
+                href={`/kids/games/${game.id}`}
+              >
+                <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transform hover:scale-105 transition cursor-pointer border-4 border-transparent hover:border-purple-300">
+                  {/* Game Card Header */}
+                  <div className="bg-gradient-to-r from-purple-400 to-pink-400 p-6 text-center">
+                    <div className="text-6xl mb-2">{game.icon}</div>
+                    <h3 className="text-2xl font-bold text-white">
+                      {language === 'ar' ? game.nameAr : game.nameEn}
+                    </h3>
+                  </div>
+
+                  {/* Game Card Body */}
+                  <div className="p-4">
+                    {/* Description */}
+                    <p className="text-sm text-gray-700 mb-4 line-clamp-2">
+                      {language === 'ar' ? game.descriptionAr : game.descriptionEn}
+                    </p>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      <div className="bg-blue-100 rounded-lg p-2 text-center">
+                        <div className="text-lg font-bold text-blue-600">{game.levels}</div>
+                        <div className="text-xs text-blue-700">{language === 'ar' ? 'مستويات' : 'Levels'}</div>
+                      </div>
+                      <div className="bg-green-100 rounded-lg p-2 text-center">
+                        <div className="text-lg font-bold text-green-600">{game.duration}m</div>
+                        <div className="text-xs text-green-700">{language === 'ar' ? 'وقت' : 'Time'}</div>
+                      </div>
+                      <div className="bg-yellow-100 rounded-lg p-2 text-center">
+                        <div className="text-lg font-bold text-yellow-600">{game.rewards.perCompletion}</div>
+                        <div className="text-xs text-yellow-700">{language === 'ar' ? 'جوائز' : 'Reward'}</div>
+                      </div>
+                    </div>
+
+                    {/* Difficulty Badge */}
+                    <div className={`${difficultyColors[game.difficulty]} text-white py-2 px-3 rounded-lg text-center font-bold text-sm mb-3`}>
+                      {language === 'ar'
+                        ? { easy: 'سهل', medium: 'متوسط', hard: 'صعب', mixed: 'مختلط' }[game.difficulty]
+                        : { easy: 'Easy', medium: 'Medium', hard: 'Hard', mixed: 'Mixed' }[game.difficulty]}
+                    </div>
+
+                    {/* Age Group */}
+                    <div className="bg-purple-100 rounded-lg p-2 text-center mb-3">
+                      <p className="text-xs text-purple-700 font-bold">
+                        {language === 'ar' 
+                          ? `من ${game.ageMin} إلى ${game.ageMax} سنة`
+                          : `${game.ageMin}-${game.ageMax} years old`}
+                      </p>
+                    </div>
+
+                    {/* Play Button */}
+                    <button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-3 rounded-lg hover:from-purple-600 hover:to-pink-600 transition shadow-md">
+                      {language === 'ar' ? '▶ العب الآن' : '▶ Play Now'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </Card>
-          </Link>
-          <Link href="/kids/adventures">
-            <Card className="h-full hover:border-brand-emerald/50 transition-colors cursor-pointer flex flex-col border-brand-emerald/25 bg-brand-emerald/5">
-              <div className="w-full h-40 bg-brand-emerald/10 flex items-center justify-center">
-                <div className="rounded-full border-2 border-brand-emerald/50 px-5 py-3 text-center text-brand-emerald">
-                  <span className="block text-xs">مركز</span>
-                  <span className="text-lg font-bold">المغامرات</span>
-                </div>
-              </div>
-              <div className="p-4 space-y-3 flex-1 flex flex-col">
-                <h3 className="text-lg font-bold text-brand-emerald leading-relaxed">مغامرات ذِكر</h3>
-                <p className="text-brand-cream/60 text-sm leading-relaxed">مهام قيم، ذاكرة أذكار، ومواقف آمنة تساعدك على التفكير والاختيار.</p>
-                <div className="flex gap-2 flex-wrap mt-auto">
-                  <span className="px-2 py-1 bg-brand-emerald/20 text-brand-emerald rounded text-xs font-medium">مغامرة</span>
-                  <span className="px-2 py-1 bg-brand-gold/20 text-brand-gold rounded text-xs font-medium">3-12 سنة</span>
-                </div>
-              </div>
-            </Card>
-          </Link>
+              </Link>
+            ))}
+          </div>
+
+          {filteredGames.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">😢</div>
+              <p className="text-xl text-gray-600">
+                {language === 'ar'
+                  ? 'لا توجد ألعاب مناسبة لهذا الاختيار'
+                  : 'No games match your selection'}
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
-      <Card className="p-6 text-center space-y-3 bg-brand-gold/10 border-brand-gold/30">
-        <h3 className="text-xl font-bold text-brand-gold">محتوى آمن ومعتمد</h3>
-        <p className="text-brand-cream/80 leading-relaxed">
-          جميع محتويات قسم الأطفال تم اختيارها بعناية لتكون آمنة ومفيدة ومناسبة
-          لكل مرحلة عمرية
-        </p>
-      </Card>
-    </Container>
+      {/* Footer */}
+      <footer className="bg-gradient-to-r from-purple-600 to-blue-600 text-white mt-12 py-8">
+        <div className="container mx-auto px-4 text-center">
+          <p className="mb-2">
+            {language === 'ar'
+              ? '✨ مرحباً بك في قسم الأطفال الآمن والتعليمي'
+              : '✨ Welcome to our Safe & Educational Kids Zone'}
+          </p>
+          <p className="text-sm opacity-75">
+            {language === 'ar'
+              ? 'مكان آمن للأطفال للتعلم واللعب واكتشاف قيم إسلامية'
+              : 'A safe place for kids to learn, play, and discover Islamic values'}
+          </p>
+        </div>
+      </footer>
+    </div>
   );
 }
