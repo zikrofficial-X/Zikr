@@ -29,3 +29,7 @@ Last updated: 2026-09-29.
 
 
 Validation note: the rebuild branch is being validated through GitHub Actions after schema/type compatibility fixes. No production-success claim is made until the current quality gate and deployment are green.
+- **20261001214711 — kids_games_schema_reconciliation_20261002**
+  - Applied to production on 2026-10-02.
+  - Reconciles the 20260929 kids-game schema regression with the canonical generated Supabase types.
+  - Restores atomic/idempotent game-result processing, achievement catalog integrity, progress uniqueness, and the 12-game catalog.
