@@ -33,3 +33,7 @@ Validation note: the rebuild branch is being validated through GitHub Actions af
   - Applied to production on 2026-10-02.
   - Reconciles the 20260929 kids-game schema regression with the canonical generated Supabase types.
   - Restores atomic/idempotent game-result processing, achievement catalog integrity, progress uniqueness, and the 12-game catalog.
+- **20261001221622 — kids_games_enhanced_content**
+  - Applied to production on 2026-10-02 as a schema-neutral migration-history reconciliation marker.
+  - Replaced the legacy 8-digit `20260929` history entry so hosted Supabase migration ordering no longer collides with 14-digit `20260929xxxxxx` versions.
+  - The original enhanced-content SQL is preserved under `supabase/legacy_migrations/` for audit/history reference.
