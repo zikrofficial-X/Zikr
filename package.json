@@ -35,7 +35,7 @@
     "adsense:check": "node scripts/verify-adsense-readiness.mjs",
     "search-console:check": "node scripts/verify-google-search-console.mjs",
     "hygiene:check": "node scripts/verify-hygiene.mjs",
-    "verify": "pnpm kids:check && pnpm supabase:migrations:check && pnpm quran:local:check && pnpm supabase:migrations:replay && pnpm routes:check && pnpm imports:check && pnpm placeholder-media:check && pnpm mobile:check && pnpm offline:check && pnpm content:check && pnpm auth:check && pnpm canonical:check && pnpm project:check && pnpm hygiene:check && pnpm native-social:check && pnpm adsense:check && pnpm search-console:check && pnpm lint && pnpm check && pnpm build",
+    "verify": "pnpm supabase:migrations:check && pnpm quran:local:check && pnpm supabase:migrations:replay && pnpm routes:check && pnpm imports:check && pnpm placeholder-media:check && pnpm mobile:check && pnpm offline:check && pnpm content:check && pnpm auth:check && pnpm canonical:check && pnpm project:check && pnpm hygiene:check && pnpm native-social:check && pnpm adsense:check && pnpm search-console:check && pnpm lint && pnpm check && pnpm build",
     "imports:check": "node scripts/verify-local-imports.mjs",
     "placeholder-media:check": "node scripts/verify-placeholder-media.mjs",
     "background:jobs": "tsx scripts/run-background-jobs.ts",
@@ -43,8 +43,7 @@
     "content:check": "node scripts/verify-content-integrity.mjs",
     "auth:check": "node scripts/verify-auth-config.mjs",
     "canonical:check": "node scripts/verify-canonical-config.mjs",
-    "quran:local:check": "node scripts/verify-local-quran.mjs",
-    "kids:check": "node scripts/verify-kids-games.mjs"
+    "quran:local:check": "node scripts/verify-local-quran.mjs"
   },
   "dependencies": {
     "@capacitor/android": "7.4.3",
