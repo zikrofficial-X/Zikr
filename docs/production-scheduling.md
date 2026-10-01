@@ -53,7 +53,7 @@ CircleCI background-jobs (manual parameter)
                     └── Facebook / Reels publish
 ```
 
-Production video generation uses the deterministic FFmpeg template renderer. HeyGen fields/migrations remain only for historical compatibility and must not become an alternate production execution path.
+Production video generation uses the deterministic FFmpeg template renderer. Quran videos use the verified external recitation URL from the Quran catalog. All other source-locked videos receive Arabic narration from the free `edge-tts` worker helper when no source recording exists; silent output is not allowed. HeyGen fields/migrations remain only for historical compatibility and must not become an alternate production execution path.
 
 The worker requires a direct HTTPS media URL for social publication and rejects YouTube watch URLs as media sources. Social queue items record platform-level success/failure and retry only unfinished platforms.
 

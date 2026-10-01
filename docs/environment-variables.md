@@ -31,12 +31,17 @@ The following environment variables are optional and are used for integrating wi
 | `FACEBOOK_PAGE_ID`               | Facebook Page ID that receives uploaded videos and Reels.                   | Server   |
 | `FACEBOOK_PAGE_ACCESS_TOKEN`     | Page access token with the Meta Page publishing permissions.                | Server   |
 | `VIDEO_AUTO_PUBLISH`             | Set to `false` to keep completed videos queued without publishing; defaults to automatic publishing when credentials exist. | Server |
+| `ARABIC_TTS_VOICE`               | Optional free Edge TTS Arabic voice for hadith, dua, adhkar, story, and any video without a source recording. Defaults to `ar-SA-ZariyahNeural`. | Worker |
+| `ARABIC_TTS_RATE`                | Optional narration speed override for the free Arabic TTS fallback. Defaults to `-12%`. | Worker |
+| `ARABIC_TTS_PITCH`               | Optional narration pitch override for the free Arabic TTS fallback. Defaults to `-2Hz`. | Worker |
 
 ## Video Processing and Social Publishing
 
 Video and social processing are split between the application/API layer and the opt-in CircleCI background worker. Large source-media handling uses the current media registry/queue path; do not assume a browser-uploaded Storage bucket is the only ingestion path. Production automation is not an implicit always-on Supabase scheduler.
 
 YouTube uploads use OAuth2 and require `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, and `YOUTUBE_REFRESH_TOKEN`; the refresh token must be granted with the official `https://www.googleapis.com/auth/youtube.upload` scope. Facebook publishing uses `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN`; the token must belong to a Page and the Meta app must have the Page publishing permissions required by Meta. Never place these values in client-side code or commit them to Git.
+
+Video audio is now mandatory: Quran items use their verified `audio_url` recitation when available; hadith, dua, adhkar, story, and other source-locked items use the free Arabic Edge TTS fallback when no recording is supplied. The worker fails rather than publishing a silent video.
 
 ## Deployment Validation
 

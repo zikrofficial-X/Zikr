@@ -10,6 +10,7 @@ import {
 const execFileAsync = promisify(execFile);
 const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 1));
 const VIDEO_SECONDS = Math.min(30, Math.max(8, Number(process.env.AUTO_VIDEO_SECONDS ?? 14)));
+const ARABIC_TTS_VOICE = process.env.ARABIC_TTS_VOICE ?? "ar-SA-ZariyahNeural";
 
 type QuranRow = {
   surah_id: number;
@@ -382,6 +383,10 @@ function contentAudioUrl(request: GeneratedRequest) {
   const value = request.content?.audioUrl;
   return typeof value === "string" && /^https:\/\//i.test(value.trim()) ? value.trim() : "";
 }
+function contentAudioKind(request: GeneratedRequest, audioUrl: string) {
+  if (audioUrl) return request.category === "quran" ? "verified_quran_recitation" : "source_audio";
+  return "arabic_tts_narration";
+}
 function requestedVideoShape(request: GeneratedRequest) {
   const resolution = request.content?.resolution;
   if (typeof resolution === "string" && /^\d+x\d+$/.test(resolution)) return resolution;
@@ -398,7 +403,7 @@ async function renderVideo(request: GeneratedRequest) {
   const temp = await mkdtemp(`${tmpdir()}/zikr-template-video-`);
   const assPath = `${temp}/captions.ass`;
   const outputPath = `${temp}/video.mp4`;
-  const audioPath = `${temp}/recitation.m4a`;
+  const audioPath = `${temp}/narration.mp3`;
   try {
     let aiPlan: AiVideoPlan = { ...DEFAULT_AI_VIDEO_PLAN };
     try {
@@ -444,12 +449,22 @@ async function renderVideo(request: GeneratedRequest) {
     ].join(",");
     const videoInput = `color=c=${AI_SCENE_COLORS[scene]}:s=${width}x${height}:r=30:d=${VIDEO_SECONDS}`;
     const args = ["-y", "-f", "lavfi", "-i", videoInput];
+    let audioKind = contentAudioKind(request, audioUrl);
     if (audioUrl) {
       const response = await fetch(audioUrl, { headers: { Accept: "audio/*" }, signal: AbortSignal.timeout(60_000) });
       if (!response.ok) throw new Error(`Audio download failed (HTTP ${response.status}).`);
       const bytes = new Uint8Array(await response.arrayBuffer());
       if (bytes.length < 1024) throw new Error("Audio download was empty or invalid.");
       await writeFile(audioPath, bytes);
+      args.push("-i", audioPath);
+    } else {
+      await execFileAsync("python3", [
+        "scripts/generate-arabic-voice.py",
+        "--text", text,
+        "--output", audioPath,
+        "--voice", ARABIC_TTS_VOICE,
+      ], { maxBuffer: 4 * 1024 * 1024 });
+      audioKind = "arabic_tts_narration";
       args.push("-i", audioPath);
     }
     args.push(
@@ -463,7 +478,7 @@ async function renderVideo(request: GeneratedRequest) {
       "-movflags", "+faststart",
       "-metadata:s:v:0", "language=ara",
     );
-    if (audioUrl) {
+    if (audioUrl || audioKind === "arabic_tts_narration") {
       args.push("-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-shortest", "-metadata:s:a:0", "language=ara");
     } else {
       args.push("-an");
@@ -484,6 +499,15 @@ async function renderVideo(request: GeneratedRequest) {
       signal: AbortSignal.timeout(60_000),
     });
     if (!upload.ok) throw new Error(`Video storage upload failed (HTTP ${upload.status}): ${(await upload.text()).slice(0, 300)}`);
+    request.content = {
+      ...request.content,
+      audio: {
+        kind: audioKind,
+        voice: audioKind === "arabic_tts_narration" ? ARABIC_TTS_VOICE : null,
+        sourceUrl: audioUrl || null,
+        generatedAt: new Date().toISOString(),
+      },
+    };
     return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/videos/${objectPath}`;
   } finally {
     await rm(temp, { recursive: true, force: true });

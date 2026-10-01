@@ -84,7 +84,14 @@ const lastPng = resolve(outDir, `scene-${scenes.length}.png`);
 concatLines.push(`file '${lastPng.replaceAll("'", "'\\''")}'`);
 const concatPath = join(outDir, 'concat.txt');
 await writeFile(concatPath, `${concatLines.join('\n')}\n`);
+const narrationPath = join(outDir, 'arabic-narration.mp3');
+const narrationText = scenes.map((scene) => scene.body).join('، ');
+await exec('python3', [
+  'scripts/generate-arabic-voice.py',
+  '--text', narrationText,
+  '--output', narrationPath,
+]);
 const outputPath = join(outDir, 'zikr-ai-reminder.mp4');
-await exec('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', concatPath, '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=48000', '-t', String(sceneSeconds * scenes.length), '-vf', 'format=yuv420p', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-c:a', 'aac', '-shortest', outputPath]);
-await writeFile(join(outDir, 'metadata.json'), JSON.stringify({ title, mode, duration: sceneSeconds * scenes.length, scenes, generatedAt: new Date().toISOString() }, null, 2));
+await exec('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', concatPath, '-i', narrationPath, '-t', String(sceneSeconds * scenes.length), '-vf', 'format=yuv420p', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2', '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-shortest', outputPath]);
+await writeFile(join(outDir, 'metadata.json'), JSON.stringify({ title, mode, audio: { kind: 'arabic_tts_narration', voice: process.env.ARABIC_TTS_VOICE || 'ar-SA-ZariyahNeural' }, duration: sceneSeconds * scenes.length, scenes, generatedAt: new Date().toISOString() }, null, 2));
 console.log(`[ai-video] Created ${outputPath} using ${mode}`);

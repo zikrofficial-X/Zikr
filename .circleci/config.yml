@@ -166,6 +166,9 @@ jobs:
             set -euo pipefail
             sudo apt-get update
             sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-core fonts-noto-extra
+            python3 -m venv .tts-venv
+            .tts-venv/bin/pip install --quiet --no-cache-dir edge-tts
+            echo 'export PATH="$CIRCLE_WORKING_DIRECTORY/.tts-venv/bin:$PATH"' >> "$BASH_ENV"
             ffmpeg -version | head -n 1
             fc-match "Noto Naskh Arabic"
       - run:
