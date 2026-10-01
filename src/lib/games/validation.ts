@@ -1,4 +1,3 @@
-// @ts-nocheck - Game implementation with Phaser physics engine
 import {
   getGameDefinition,
   normalizeDifficulty,
