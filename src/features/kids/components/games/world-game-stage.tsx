@@ -223,6 +223,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
   if (gameId === "zikr-quiz") return <QuizGame {...localProps} />;
   if (gameId === "good-deeds") return <GoodDeedsGame {...localProps} />;
   if (gameId === "mosque-cleanup") return <CleanupGame {...localProps} />;
+  if (gameId === "zikr-coloring") return <ColoringGame {...localProps} />;
   return <ColoringGame {...localProps} />;
 }
 
