@@ -99,9 +99,7 @@ export function getEnabledGames(): GameMetadata[] {
   return GAMES_REGISTRY.filter(game => game.isEnabled);
 }
 
-export function getGamesByCategory(
-  category: GameMetadata["category"],
-): GameMetadata[] {
+export function getGamesByCategory(category: string): GameMetadata[] {
   return GAMES_REGISTRY.filter(game => game.category === category);
 }
 
