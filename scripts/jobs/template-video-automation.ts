@@ -387,6 +387,23 @@ function contentAudioKind(request: GeneratedRequest, audioUrl: string) {
   if (audioUrl) return request.category === "quran" ? "verified_quran_recitation" : "source_audio";
   return "arabic_tts_narration";
 }
+async function assertPlayableOutput(outputPath: string) {
+  const { stdout } = await execFileAsync("ffprobe", [
+    "-v", "error",
+    "-show_entries", "format=duration:stream=codec_type,codec_name",
+    "-of", "json",
+    outputPath,
+  ], { maxBuffer: 2 * 1024 * 1024 });
+  const probe = JSON.parse(stdout) as {
+    streams?: Array<{ codec_type?: string; codec_name?: string }>;
+    format?: { duration?: string };
+  };
+  const streams = probe.streams ?? [];
+  if (!streams.some(stream => stream.codec_type === "video")) throw new Error("Rendered output has no video stream.");
+  if (!streams.some(stream => stream.codec_type === "audio")) throw new Error("Rendered output has no narration/audio stream.");
+  const duration = Number(probe.format?.duration ?? 0);
+  if (!Number.isFinite(duration) || duration < 1) throw new Error("Rendered output has an invalid duration.");
+}
 function requestedVideoShape(request: GeneratedRequest) {
   const resolution = request.content?.resolution;
   if (typeof resolution === "string" && /^\d+x\d+$/.test(resolution)) return resolution;
@@ -485,6 +502,7 @@ async function renderVideo(request: GeneratedRequest) {
     }
     args.push(outputPath);
     await execFileAsync("ffmpeg", args, { maxBuffer: 4 * 1024 * 1024 });
+    await assertPlayableOutput(outputPath);
 
     const bytes = await readFile(outputPath);
     const storageKey = request.automation_key || request.id;
@@ -540,7 +558,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
     targets.push("youtube");
   }
   if (process.env.FACEBOOK_PAGE_ID && process.env.FACEBOOK_PAGE_ACCESS_TOKEN) {
-    targets.push("facebook_reels");
+    targets.push(content.videoFormat === "horizontal" ? "facebook" : "facebook_reels");
   }
   if (!targets.length) return;
 
@@ -648,8 +666,27 @@ export async function reconcileCompletedVideoSocialQueue(limit = 100) {
 }
 
 export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
+  const staleBefore = new Date(Date.now() - 30 * 60_000).toISOString();
+  const stale = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    `/rest/v1/video_generation_requests?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&video_url=is.null&select=id&limit=50`,
+  );
+  for (const request of stale ?? []) {
+    await supabaseServerAdminRequest(
+      `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=eq.processing&video_url=is.null`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({
+          status: "pending",
+          error_message: "تمت استعادة عملية عالقة تلقائيًا.",
+          error_details: null,
+          updated_at: new Date().toISOString(),
+        }),
+      },
+    );
+  }
   const rows = await supabaseServerAdminRequest<GeneratedRequest[]>(
-    `/rest/v1/video_generation_requests?status=eq.pending&content->>renderer=eq.template&select=id,title,description,category,content,status,automation_key&order=created_at.asc&limit=${Math.max(1, Math.min(10, limit))}`,
+    `/rest/v1/video_generation_requests?status=eq.pending&select=id,title,description,category,content,status,automation_key&order=created_at.asc&limit=${Math.max(1, Math.min(10, limit))}`,
   );
   let succeeded = 0;
   let failed = 0;

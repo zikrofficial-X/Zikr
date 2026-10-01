@@ -144,8 +144,9 @@ export async function claimPendingSocialPublishItems(
 
   for (const item of items) {
     try {
+      const claimStatus = item.status === "partial" ? "partial" : item.status === "failed" ? "failed" : "queued";
       const result = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-        `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&or=(status.eq.queued,status.eq.partial,status.eq.failed)`,
+        `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${claimStatus}`,
         {
           method: "PATCH",
           headers: {
