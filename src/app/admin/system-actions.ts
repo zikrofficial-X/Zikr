@@ -91,13 +91,18 @@ export async function requestVideoAutomationRunAction() {
   const profile = await requireAdminPermission("system.manage");
   const key = "video_automation_run_now";
   const value = new Date().toISOString();
+  const request = {
+    requestedAt: value,
+    requestedBy: profile.id,
+    dispatchedAt: null as string | null,
+  };
 
   await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
     body: JSON.stringify({
       key,
-      value,
+      value: request,
       updated_by: profile.id,
       updated_at: value,
     }),
@@ -108,7 +113,7 @@ export async function requestVideoAutomationRunAction() {
     permission: "system.manage",
     resourceType: "admin_settings",
     resourceId: key,
-    metadata: { requestedAt: value },
+    metadata: { requestedAt: value, priority: "urgent" },
   });
 
   revalidatePath("/admin/automation");

@@ -8,12 +8,19 @@ import {
 import { processSocialPublishQueue } from "./jobs/social-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
+type VideoAutomationRunNow = {
+  requestedAt: string;
+  requestedBy?: string | null;
+  dispatchedAt?: string | null;
+};
+
 type VideoAutomationSettings = {
   enabled: boolean;
   batchSize: number;
   aiEnabled: boolean;
   autoPublish: boolean;
   facebookEnabled: boolean;
+  runNowRequest: VideoAutomationRunNow | null;
 };
 
 function parseBoolSetting(value: unknown, fallback: boolean) {
@@ -31,9 +38,25 @@ function parseNumberSetting(value: unknown, fallback: number) {
   return Number.isFinite(numeric) ? Math.max(1, Math.min(10, Math.floor(numeric))) : fallback;
 }
 
+function parseRunNowRequest(value: unknown): VideoAutomationRunNow | null {
+  if (typeof value === "string" && value.trim()) {
+    return { requestedAt: value.trim() };
+  }
+  if (!value || typeof value !== "object") return null;
+  const requestedAt = (value as { requestedAt?: unknown }).requestedAt;
+  if (typeof requestedAt !== "string" || !requestedAt.trim()) return null;
+  const requestedBy = (value as { requestedBy?: unknown }).requestedBy;
+  const dispatchedAt = (value as { dispatchedAt?: unknown }).dispatchedAt;
+  return {
+    requestedAt: requestedAt.trim(),
+    requestedBy: typeof requestedBy === "string" ? requestedBy : null,
+    dispatchedAt: typeof dispatchedAt === "string" ? dispatchedAt : null,
+  };
+}
+
 async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
   const rows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
-    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled)&select=key,value",
+    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled,video_automation_run_now)&select=key,value",
   ).catch(() => []);
 
   const values = Object.fromEntries((rows ?? []).map((row) => [row.key, row.value]));
@@ -52,7 +75,34 @@ async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
       values.video_automation_facebook_enabled,
       process.env.SOCIAL_PUBLISH_FACEBOOK_ENABLED === "true",
     ),
+    runNowRequest: parseRunNowRequest(values.video_automation_run_now),
   };
+}
+
+async function clearRunNowRequest(requestedAt: string) {
+  const filter = encodeURIComponent(JSON.stringify(requestedAt));
+  const result = await supabaseServerAdminRequest(
+    `/rest/v1/admin_settings?key=eq.video_automation_run_now&value=eq.${filter}`,
+    {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    },
+  ).catch(() => null);
+
+  if (result !== null) return;
+
+  const current = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
+    "/rest/v1/admin_settings?key=eq.video_automation_run_now&select=key,value&limit=1",
+  ).catch(() => []);
+
+  const parsed = parseRunNowRequest(current?.[0]?.value);
+  if (!parsed || parsed.requestedAt !== requestedAt) return;
+
+  await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq.video_automation_run_now", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({ value: null, updated_at: new Date().toISOString() }),
+  });
 }
 
 function applyVideoAutomationSettings(settings: VideoAutomationSettings) {
@@ -182,6 +232,7 @@ async function recordAutomationRun(summary: {
   failed: number;
   socialProcessed: number;
   socialSucceeded: number;
+  urgentRunRequestedAt: string | null;
 }) {
   try {
     const config = getVideoEngineConfig();
@@ -206,6 +257,7 @@ async function recordAutomationRun(summary: {
           socialProcessed: summary.socialProcessed,
           socialSucceeded: summary.socialSucceeded,
           generator: "multi-provider-free-ai",
+          urgentRunRequestedAt: runNowRequestedAt,
         },
       }),
     });
@@ -220,6 +272,7 @@ async function main() {
   validateRequiredEnv();
   const target = process.env.BACKGROUND_JOB_TARGET ?? "all";
   const videoSettings = await getVideoAutomationSettings();
+  const runNowRequestedAt = videoSettings.runNowRequest?.requestedAt ?? null;
   applyVideoAutomationSettings(videoSettings);
   console.log("[background-jobs] Admin video settings:", JSON.stringify(videoSettings));
   if (!["all", "videos", "social"].includes(target)) {
@@ -242,6 +295,11 @@ async function main() {
     `[background-jobs] Reconciled ${reconciledSocialQueue} completed video(s) with the current social publishing targets.`
   );
 
+  if (runNowRequestedAt && (target === "all" || target === "videos") && videos.failed === 0) {
+    await clearRunNowRequest(runNowRequestedAt);
+    console.log(`[background-jobs] Cleared completed urgent video run request ${runNowRequestedAt}.`);
+  }
+
   const social = target === "all" || target === "social"
     ? await processSocial(videoSettings)
     : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
@@ -255,6 +313,7 @@ async function main() {
     failed,
     socialProcessed: social.processed,
     socialSucceeded: social.succeeded,
+    urgentRunRequestedAt: runNowRequestedAt,
   });
 
   console.log(

@@ -54,7 +54,7 @@ export default async function AdminAutomationPage() {
   );
 
   const settingsRows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
-    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled)&select=key,value",
+    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled,video_automation_run_now)&select=key,value",
     { method: "GET" },
   ).catch(() => []);
   const settings = Object.fromEntries((settingsRows ?? []).map((row) => [row.key, row.value]));
@@ -106,7 +106,7 @@ export default async function AdminAutomationPage() {
             <p className="mt-1 text-sm leading-6 text-brand-cream/45">الإعدادات محفوظة في قاعدة البيانات ويقرأها عامل GitHub Actions في كل دورة تشغيل.</p>
           </div>
           <form action={requestVideoAutomationRunAction}>
-            <button type="submit" className="rounded-xl border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20">طلب تشغيل في أقرب دورة</button>
+            <button type="submit" className="rounded-xl border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20">تشغيل التوليد الآن</button>
           </form>
         </div>
 
@@ -144,7 +144,10 @@ export default async function AdminAutomationPage() {
         </div>
 
         <div className="rounded-xl border border-sky-500/15 bg-sky-500/5 p-4 text-sm leading-7 text-sky-100/75">
-          العامل المجدول يعمل خارج Vercel عبر GitHub Actions. زر «طلب تشغيل في أقرب دورة» يسجل الطلب، والعامل يلتقطه في دورة GitHub Actions المجدولة التالية.
+          العامل يعمل خارج Vercel عبر GitHub Actions. زر «تشغيل التوليد الآن» يضع طلبًا عاجلًا، ويقوم موزّع خفيف بفحصه كل 5 دقائق ثم يشغّل عامل الفيديو، بدون انتظار الدورة الساعةية.
+        </div>
+        <div className="rounded-xl border border-brand-gold/10 bg-black/10 p-4 text-sm text-brand-cream/55">
+          حالة الطلب العاجل: {settings.video_automation_run_now ? "مطلوب التنفيذ / في طريقه للتشغيل" : "لا يوجد طلب عاجل"}
         </div>
       </section>
 
