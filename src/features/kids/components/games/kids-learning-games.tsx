@@ -477,10 +477,11 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
     const wrong = question.options
       .map((_, optionIndex) => optionIndex)
       .filter(optionIndex => optionIndex !== question.correctAnswer);
-    const first = wrong[(meta.seed + index) % wrong.length];
-    const second = wrong[(meta.seed + index + 1) % wrong.length];
-    setHiddenOptions([...new Set([first, second])]);
-    setFeedback("تم حذف إجابتين غير صحيحتين. ركّز على الباقي.");
+    const hideCount = Math.max(0, Math.min(2, wrong.length - 1));
+    const start = wrong.length ? (meta.seed + index) % wrong.length : 0;
+    const hidden = Array.from({ length: hideCount }, (_, offset) => wrong[(start + offset) % wrong.length]);
+    setHiddenOptions(hidden);
+    setFeedback(hideCount > 0 ? "تم حذف عدد محدود من الإجابات الخاطئة. بقيت إجابتان محتملتان." : "لا توجد إجابات خاطئة كافية لتطبيق 50/50.");
     onSound("move");
   };
 
@@ -521,6 +522,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
 
   return (
     <KidsGameStage theme="library" ariaLabel="اختبار ذِكر">
+      <KidsGameWorld gameId="zikr-quiz" />
       <KidsGameHeader eyebrow="ZIKR QUIZ" title="اختبار ذِكر" description={question.category + " • " + meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(index / questions.length) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="px-4 sm:px-6"><KidsGameHud items={[
         { label: "النقاط", value: score, tone: "text-brand-gold" },
