@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { getGameDefinition, type GameDifficulty, type GameId, type GameResultPayload } from "@/lib/games/registry";
 import { enqueueGameResult, getQueuedGameResultCount, syncQueuedGameResults } from "@/lib/games/offline-queue";
 import { WorldGameStage, type StageController, type WorldHud } from "@/features/kids/components/games/world-game-stage";
-import { ZikrQuizGame } from "@/features/kids/components/games/zikr-quiz-game";
 
 function formatNumber(value: number) { return new Intl.NumberFormat("ar-SA").format(value); }
 function createSubmissionId() { return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `game-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
@@ -26,7 +25,6 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   const [restartToken, setRestartToken] = useState(0);
   const [initializing, setInitializing] = useState(true);
   const lastHudUpdate = useRef(0);
-  const isQuiz = gameId === "zikr-quiz";
 
   const refreshQueue = useCallback(async () => setQueuedCount(await getQueuedGameResultCount()), []);
   useEffect(() => {
@@ -36,9 +34,6 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     return () => window.removeEventListener("online", sync);
   }, [refreshQueue]);
 
-  useEffect(() => {
-    if (isQuiz) setInitializing(false);
-  }, [isQuiz]);
 
   const handleHud = useCallback((next: WorldHud) => {
     const now = Date.now();
@@ -117,7 +112,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-cream/10 bg-black/20 p-3"><div className="flex flex-wrap gap-2" aria-label="مستوى الصعوبة">{definition.difficulties.map(item => <button key={item} type="button" onClick={() => { if (!result) { setDifficulty(item); restart(); } }} aria-pressed={difficulty === item} className={`rounded-lg px-3 py-2 text-sm ${difficulty === item ? "bg-brand-gold text-black" : "border border-brand-cream/15 text-brand-cream/70"}`}>{item === "easy" ? "سهل" : item === "normal" ? "متوسط" : "متقدم"}</button>)}</div><span className="text-sm text-brand-cream/60">{definition.category}</span></div>
     <div className="grid grid-cols-5 gap-2 rounded-xl border border-brand-gold/20 bg-black/20 p-3 text-center" aria-live="polite"><div><span className="block text-xs text-brand-cream/60">النقاط</span><strong className="text-lg text-brand-gold">{formatNumber(hud.score)}</strong></div><div><span className="block text-xs text-brand-cream/60">النجوم</span><strong className="text-lg text-brand-gold">{formatNumber(hud.collectibles)}</strong></div><div><span className="block text-xs text-brand-cream/60">المسافة</span><strong className="text-lg text-brand-gold">{formatNumber(hud.distance)}م</strong></div><div><span className="block text-xs text-brand-cream/60">السلسلة</span><strong className="text-lg text-brand-gold">{formatNumber(hud.combo)}</strong></div><div><span className="block text-xs text-brand-cream/60">المستوى</span><strong className="text-lg text-brand-gold">{formatNumber(hud.level)}</strong></div></div>
     <div id="kids-world-game-frame" className="relative">
-      {isQuiz ? <ZikrQuizGame difficulty={difficulty} restartToken={restartToken} paused={paused} onHud={handleHud} onResult={handleResult} onSound={() => undefined} /> : <WorldGameStage gameId={gameId} difficulty={difficulty} muted={muted} paused={paused} restartToken={restartToken} onPausedChange={setPaused} onReady={handleStageReady} onHud={handleHud} onResult={handleResult} onError={handleStageError} />}
+      <WorldGameStage gameId={gameId} difficulty={difficulty} muted={muted} paused={paused} restartToken={restartToken} onPausedChange={setPaused} onReady={handleStageReady} onHud={handleHud} onResult={handleResult} onError={handleStageError} />
       {initializing && <div className="absolute inset-0 grid place-items-center rounded-2xl bg-[#071b24]/90 text-brand-cream" role="status"><div className="text-center"><div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-2 border-brand-gold/20 border-t-brand-gold" /><p>بنجهز مغامرتك...</p></div></div>}
       {result && <div className="absolute inset-0 grid place-items-center rounded-2xl bg-[radial-gradient(circle_at_top,rgba(199,168,107,0.18),transparent_40%),rgba(7,27,36,0.97)] p-4 sm:p-8"><div className="w-full max-w-md space-y-5 text-center"><div className="mx-auto grid h-20 w-20 place-items-center rounded-full border border-brand-gold/50 bg-brand-gold/10 text-4xl shadow-[0_0_50px_rgba(199,168,107,0.2)]" aria-hidden="true">{result.completed ? "🏆" : "🌱"}</div><div><p className="text-3xl font-black text-brand-gold">{result.completed ? "أحسنت! 🎉" : "جولة جميلة!"}</p><p className="mt-2 text-sm leading-7 text-brand-cream/75">{result.completed ? definition.goalAr : "كل محاولة بتخليك أفضل. جرّب مرة تانية وشوف إيه اللي هتكتشفه."}</p></div><div className="flex items-center justify-center gap-1" aria-label={`نجوم الجولة: ${earnedStars} من 3`}>{[1,2,3].map(star => <span key={star} className={`text-4xl transition ${star <= earnedStars ? "text-brand-gold drop-shadow-[0_0_10px_rgba(199,168,107,0.45)]" : "text-white/15"}`}>★</span>)}</div><div className="grid grid-cols-3 gap-2"><div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3"><span className="block text-xs text-brand-cream/55">النقاط</span><strong className="mt-1 block text-lg text-brand-gold">{formatNumber(result.score)}</strong></div><div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3"><span className="block text-xs text-brand-cream/55">النجوم</span><strong className="mt-1 block text-lg text-brand-gold">{formatNumber(result.collectibles)}</strong></div><div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3"><span className="block text-xs text-brand-cream/55">المستوى</span><strong className="mt-1 block text-lg text-brand-gold">{formatNumber(result.level)}</strong></div></div><div className="grid gap-2 sm:grid-cols-2"><Button type="button" onClick={restart}>🚀 جولة جديدة</Button><Link href="/kids/games" className="grid min-h-11 place-items-center rounded-md border border-brand-cream/20 px-4 text-sm font-medium text-brand-cream transition hover:border-brand-gold hover:text-brand-gold">🎮 اختر لعبة أخرى</Link></div></div></div>}
     </div>
