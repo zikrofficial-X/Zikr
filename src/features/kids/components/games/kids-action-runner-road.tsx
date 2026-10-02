@@ -66,7 +66,6 @@ type RunnerModel = {
 };
 
 const RUNNER_WIDTH = 760;
-const RUNNER_HEIGHT = 430;
 const RUNNER_GROUND = 350;
 const RUNNER_PLAYER_X = 155;
 const RUNNER_PLAYER_SIZE = 70;
@@ -584,7 +583,7 @@ export function ZikrRoadGame({
 }: ActionGameProps) {
   const rules = getZikrRoadRules(difficulty);
   const questions = getApprovedRoadQuestions();
-  const stateRef = useRef<RoadModel>({
+  const createRoadState = (): RoadModel => ({
     lane: 1,
     distance: 0,
     score: 0,
@@ -597,7 +596,8 @@ export function ZikrRoadGame({
     objects: [],
     seed: difficulty.length * 71 + 4,
   });
-  const [state, setState] = useState<RoadModel>(() => ({ ...stateRef.current }));
+  const stateRef = useRef<RoadModel>(createRoadState());
+  const [state, setState] = useState<RoadModel>(createRoadState);
   const [question, setQuestion] = useState<VerifiedQuizQuestion | null>(null);
   const [answer, setAnswer] = useState<number | null>(null);
   const [feedback, setFeedback] = useState("غيّر المسار واجمع النجوم وتوقف عند محطات التعلم.");
