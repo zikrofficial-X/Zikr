@@ -1,0 +1,185 @@
+import { getServerEnv } from '@/lib/env';
+import { createAdminClient } from '@/lib/supabase/server';
+
+export type FacebookPageProfile = {
+  id: string;
+  name: string;
+  description: string;
+  category: string | null;
+  website: string | null;
+  avatarUrl: string | null;
+  coverUrl: string | null;
+  pageUrl: string;
+  likesCount: number | null;
+  followersCount: number | null;
+  followingCount: number | null;
+  syncedAt: string | null;
+  stale: boolean;
+  configured: boolean;
+  error?: string;
+};
+
+type CachedRow = Record<string, unknown>;
+
+const PROFILE_TTL_MS = 30 * 60 * 1000;
+const FALLBACK_PAGE_URL = 'https://www.facebook.com/zikrmediaofficial1';
+
+function toProfile(row: CachedRow | null, pageId: string): FacebookPageProfile | null {
+  if (!row || row.platform !== 'facebook') return null;
+  return {
+    id: String(row.external_id ?? pageId),
+    name: String(row.name ?? 'ذِكر | ZIKR'),
+    description: String(row.description ?? ''),
+    category: row.category ? String(row.category) : null,
+    website: row.website ? String(row.website) : null,
+    avatarUrl: row.avatar_url ? String(row.avatar_url) : null,
+    coverUrl: row.cover_url ? String(row.cover_url) : null,
+    pageUrl: String(row.page_url ?? FALLBACK_PAGE_URL),
+    likesCount: row.likes_count == null ? null : Number(row.likes_count),
+    followersCount: row.followers_count == null ? null : Number(row.followers_count),
+    followingCount: row.following_count == null ? null : Number(row.following_count),
+    syncedAt: row.synced_at ? String(row.synced_at) : null,
+    stale: false,
+    configured: true,
+  };
+}
+
+async function readCachedProfile(pageId: string): Promise<FacebookPageProfile | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('social_platform_profiles')
+    .select('*')
+    .eq('platform', 'facebook')
+    .maybeSingle();
+  if (error) throw error;
+  return toProfile((data ?? null) as CachedRow | null, pageId);
+}
+
+async function fetchGraphProfile(pageId: string, accessToken: string, version: string) {
+  const url = new URL(`https://graph.facebook.com/${version}/${encodeURIComponent(pageId)}`);
+  url.searchParams.set('fields', 'id,name,about,description,category,website,link,picture.type(large),cover,fan_count,followers_count');
+  url.searchParams.set('access_token', accessToken);
+
+  const response = await fetch(url, {
+    headers: { accept: 'application/json' },
+    signal: AbortSignal.timeout(15_000),
+    cache: 'no-store',
+  });
+  const body = await response.json().catch(() => ({})) as Record<string, any>;
+  if (!response.ok || body.error) {
+    throw new Error(String(body?.error?.message ?? `Facebook Graph API failed (${response.status}).`));
+  }
+  return body;
+}
+
+export async function getFacebookPageProfile(): Promise<FacebookPageProfile | null> {
+  const { FACEBOOK_PAGE_ID, FACEBOOK_PAGE_ACCESS_TOKEN, FACEBOOK_GRAPH_API_VERSION } = getServerEnv();
+  const pageId = FACEBOOK_PAGE_ID?.trim() ?? '';
+  if (!pageId) return null;
+
+  const fallbackAvatar = `https://graph.facebook.com/${encodeURIComponent(pageId)}/picture?type=large`;
+
+  let cached: FacebookPageProfile | null = null;
+  try {
+    cached = await readCachedProfile(pageId);
+  } catch {
+    cached = null;
+  }
+
+  const nextSyncAt = cached?.syncedAt ? new Date(cached.syncedAt).getTime() + PROFILE_TTL_MS : 0;
+  if (cached && nextSyncAt > Date.now()) return { ...cached, avatarUrl: cached.avatarUrl ?? fallbackAvatar };
+
+  if (!FACEBOOK_PAGE_ACCESS_TOKEN || !FACEBOOK_GRAPH_API_VERSION) {
+    return cached
+      ? { ...cached, stale: true, avatarUrl: cached.avatarUrl ?? fallbackAvatar, error: 'Facebook Page credentials are not configured.' }
+      : {
+          id: pageId,
+          name: 'ذِكر | ZIKR',
+          description: 'تابع أحدث محتوى ذِكر على صفحتنا الرسمية على فيسبوك.',
+          category: 'منصة محتوى إسلامي',
+          website: null,
+          avatarUrl: fallbackAvatar,
+          coverUrl: null,
+          pageUrl: FALLBACK_PAGE_URL,
+          likesCount: null,
+          followersCount: null,
+          followingCount: null,
+          syncedAt: null,
+          stale: true,
+          configured: true,
+          error: 'Facebook Page credentials are not configured.',
+        };
+  }
+
+  try {
+    const body = await fetchGraphProfile(pageId, FACEBOOK_PAGE_ACCESS_TOKEN, FACEBOOK_GRAPH_API_VERSION);
+    const syncedAt = new Date().toISOString();
+    const profile = {
+      platform: 'facebook',
+      external_id: String(body.id ?? pageId),
+      handle: null,
+      name: String(body.name ?? 'ذِكر | ZIKR'),
+      description: String(body.description ?? body.about ?? 'تابع أحدث محتوى ذِكر على صفحتنا الرسمية على فيسبوك.'),
+      category: body.category ? String(body.category) : null,
+      website: body.website ? String(body.website) : null,
+      avatar_url: body?.picture?.data?.url ? String(body.picture.data.url) : fallbackAvatar,
+      cover_url: body?.cover?.source ? String(body.cover.source) : null,
+      page_url: String(body.link ?? FALLBACK_PAGE_URL),
+      subscribers_count: null,
+      followers_count: body.followers_count == null ? null : Number(body.followers_count),
+      likes_count: body.fan_count == null ? null : Number(body.fan_count),
+      following_count: null,
+      view_count: null,
+      video_count: null,
+      synced_at: syncedAt,
+      status: 'ok',
+      last_error: null,
+    };
+
+    const supabase = createAdminClient();
+    const { error } = await supabase.from('social_platform_profiles').upsert(profile, { onConflict: 'platform' });
+    if (error) throw error;
+
+    return {
+      id: profile.external_id,
+      name: profile.name,
+      description: profile.description,
+      category: profile.category,
+      website: profile.website,
+      avatarUrl: profile.avatar_url,
+      coverUrl: profile.cover_url,
+      pageUrl: profile.page_url,
+      likesCount: profile.likes_count,
+      followersCount: profile.followers_count,
+      followingCount: profile.following_count,
+      syncedAt,
+      stale: false,
+      configured: true,
+    };
+  } catch (error) {
+    return cached
+      ? {
+          ...cached,
+          stale: true,
+          avatarUrl: cached.avatarUrl ?? fallbackAvatar,
+          error: error instanceof Error ? error.message : 'تعذر تحديث بيانات صفحة فيسبوك.',
+        }
+      : {
+          id: pageId,
+          name: 'ذِكر | ZIKR',
+          description: 'تابع أحدث محتوى ذِكر على صفحتنا الرسمية على فيسبوك.',
+          category: 'منصة محتوى إسلامي',
+          website: null,
+          avatarUrl: fallbackAvatar,
+          coverUrl: null,
+          pageUrl: FALLBACK_PAGE_URL,
+          likesCount: null,
+          followersCount: null,
+          followingCount: null,
+          syncedAt: null,
+          stale: true,
+          configured: true,
+          error: error instanceof Error ? error.message : 'تعذر تحميل بيانات صفحة فيسبوك.',
+        };
+  }
+}

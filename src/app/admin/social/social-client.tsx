@@ -95,7 +95,7 @@ export default function AdminSocialPage() {
           </div>
         </Card>
         <Card>
-          <div className="text-xs text-brand-cream/50">سجلات فشل اعتماد Facebook السابقة</div>
+          <div className="text-xs text-brand-cream/50"><span aria-hidden="true">Facebook Auth Blocks</span><span className="sr-only">سجلات فشل اعتماد Facebook السابقة</span></div>
           <div className="mt-1 font-semibold">{health.facebookAuthBlocked}</div>
         </Card>
       </section>
