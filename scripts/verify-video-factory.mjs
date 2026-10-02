@@ -12,7 +12,7 @@ const read = (path) => {
 
 const router = read("src/features/videos/providers/provider-router.ts");
 if (!router.includes("availability check threw")) failures.push("provider availability exceptions must not abort fallback routing");
-if (!router.includes("Provider " + " + name + " + " threw")) failures.push("provider generation exceptions must not abort fallback routing");
+if (!router.includes('"Provider " + name + " threw')) failures.push("provider generation exceptions must not abort fallback routing");
 if (!router.includes("!templateAttempted")) failures.push("template provider must not be executed twice in one router pass");
 
 const template = read("scripts/jobs/template-video-automation.ts");
