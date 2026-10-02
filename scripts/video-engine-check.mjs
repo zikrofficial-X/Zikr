@@ -6,15 +6,44 @@ const required = [
   "src/features/videos/providers/template-provider.ts",
   "src/features/videos/providers/comfyui-provider.ts",
   "src/features/videos/providers/free-api-provider.ts",
+  "src/features/videos/providers/hf-space-provider.ts",
   "src/features/videos/providers/provider-router.ts",
   "src/features/videos/providers/content-hash.ts",
+  "scripts/jobs/hf-space-video.py",
   "src/app/api/internal/video-generation/daily/route.ts",
   "supabase/migrations/20261002100000_multi_provider_free_video_engine.sql",
 ];
-for (const file of required) if (!existsSync(file)) throw new Error(`Missing video engine file: ${file}`);
+
+for (const file of required) {
+  if (!existsSync(file)) throw new Error("Missing video engine file: " + file);
+}
+
+const types = readFileSync("src/features/videos/providers/types.ts", "utf8");
+for (const token of ["hf_wan", "hf_ltx25", "preferredProvider", "hfWanEnabled", "hfLtx25Enabled"]) {
+  if (!types.includes(token)) throw new Error("Video provider configuration missing " + token);
+}
+
 const route = readFileSync("src/app/api/internal/video-generation/daily/route.ts", "utf8");
-if (!route.includes("INTERNAL_JOB_SECRET") || !route.includes("daily_verified_video_seed")) throw new Error("Internal daily route is not protected/configured.");
+if (!route.includes("INTERNAL_JOB_SECRET") || !route.includes("daily_verified_video_seed")) {
+  throw new Error("Internal daily route is not protected/configured.");
+}
+
 const migration = readFileSync("supabase/migrations/20261002100000_multi_provider_free_video_engine.sql", "utf8");
-for (const token of ["content_hash", "source_hash", "video_automation_runs", "IF NOT EXISTS"]) if (!migration.includes(token)) throw new Error(`Migration missing ${token}`);
+for (const token of ["content_hash", "source_hash", "video_automation_runs", "IF NOT EXISTS"]) {
+  if (!migration.includes(token)) throw new Error("Migration missing " + token);
+}
+
+const workflow = readFileSync(".github/workflows/generate-ai-video.yml", "utf8");
+for (const token of [
+  "VIDEO_AI_ENABLED: \"true\"",
+  "HF_WAN_VIDEO_ENABLED: \"true\"",
+  "HF_LTX25_VIDEO_ENABLED: \"true\"",
+  "AUTO_VIDEO_PUBLISH_ENABLED: \"true\"",
+  "AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: \"false\"",
+  "VIDEO_PROVIDER_ORDER",
+]) {
+  if (!workflow.includes(token)) throw new Error("Workflow missing " + token);
+}
+
 execFileSync("ffprobe", ["-version"], { stdio: "ignore" });
 console.log("Video engine structural check passed.");
