@@ -18,7 +18,6 @@ import {
   getVerifiedMemoryPairs,
   getVerifiedWuduContent,
   getVerifiedKidsQuizQuestions,
-  type VerifiedQuizQuestion,
 } from "@/lib/games/verified-content";
 import { getVersePuzzleRules, getVersePuzzleLevelSeed } from "@/lib/games/verse-puzzle";
 import { isVerseOrderComplete, seededShuffle, shuffleVerseTokens, type IndexedVerseToken } from "@/lib/games/gameplay-helpers";
