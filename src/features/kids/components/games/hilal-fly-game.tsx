@@ -129,6 +129,7 @@ function snapshotFromModel(model: FlyModel): Snapshot {
     completedLevelCount: model.completedLevelCount,
     completed: model.completed,
     gameOver: model.gameOver,
+    invulnerable: model.invulnerableUntil > performance.now(),
     objects: model.objects,
   };
 }
@@ -497,8 +498,6 @@ export function HilalFlyGame({
   const levelProgress =
     (snapshot.distance % (rules.goalDistance / levels.length)) /
     (rules.goalDistance / levels.length);
-  const invulnerable = !pausedRef.current &&
-    modelRef.current.invulnerableUntil > Date.now();
 
   return (
     <section
@@ -686,7 +685,7 @@ export function HilalFlyGame({
         <div
           className={[
             "absolute z-20 -translate-x-1/2 -translate-y-1/2 transition-[top] duration-75 ease-out",
-            invulnerable ? "opacity-55" : "opacity-100",
+            snapshot.invulnerable ? "opacity-55" : "opacity-100",
           ].join(" ")}
           style={{
             left: String((PLAYER_X / VIEW_WIDTH) * 100) + "%",
