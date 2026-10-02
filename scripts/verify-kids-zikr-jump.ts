@@ -43,7 +43,7 @@ const easy = getZikrJumpRules("easy");
 const normal = getZikrJumpRules("normal");
 const hard = getZikrJumpRules("hard");
 
-if (!(easy.levelCount < normal.levelCount && normal.levelCount < hard.levelCount)) {
+if (!(easy.levelCount === 20 && normal.levelCount === 20 && hard.levelCount === 20)) {
   throw new Error("ZIKR Jump level count must increase with difficulty.");
 }
 
