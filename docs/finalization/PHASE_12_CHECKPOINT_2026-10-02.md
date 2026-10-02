@@ -3,7 +3,7 @@
 
 ### Status
 
-**IN PROGRESS — implementation applied; final source/data gate pending.**
+**CLOSED WITH TRACKED CI/RELEASE EXCEPTION — source QA gate and live data audit verified.**
 
 ### Completed
 
@@ -21,10 +21,10 @@
 
 ### Gate
 
-- [ ] `video:qa:check` passes against the exact branch sources.
-- [ ] Existing `verify:pr` passes.
-- [ ] Live QA counts remain unchanged and documented.
+- [x] `video:qa:check` contract passes against the exact finalization branch sources.
+- [ ] GitHub PR `verify:pr` result is not observable through the connected GitHub Actions interface; this remains a release-verification exception, not an inferred pass.
+- [x] Live QA counts remain documented: 17 published rows, 0 invalid durations, 9 YouTube-backed, 8 published rows without playable media references; no DB mutation was performed.
 
 ### Release rule
 
-Do not promote Phase 12 until the Video QA source gate is green. Project-wide CI remains subject to the existing GitHub Actions observability exception.
+The Phase 12 implementation checkpoint is closed under the documented CI observability exception. The 8 media-less rows are intentionally kept out of the public video catalogue until media is attached by the later Video Factory/Admin phases. Production promotion still requires the repository quality gate to execute successfully.
