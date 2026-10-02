@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { GameDifficulty, GameId } from "@/lib/games/registry";
-import { KidsGameWorld } from "@/features/kids/components/games/kids-game-visuals";
 import { ToneFeedback, type GameSoundEvent } from "@/lib/games/tone-feedback";
 import {
   ZikrRunnerGame,
