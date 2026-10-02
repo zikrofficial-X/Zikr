@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
 import { getZikrRoadLevel, getZikrRoadRules } from "@/lib/games/zikr-road";
 import {
-  getApprovedScenarioQuestions,
+  getApprovedRoadQuestions,
   type VerifiedQuizQuestion,
 } from "@/lib/games/verified-content";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
@@ -91,7 +91,7 @@ export function ZikrRoadGame({
 }: Props) {
   const rules = getZikrRoadRules(difficulty);
   const questions = useMemo(
-    () => getApprovedScenarioQuestions().slice(0, rules.checkpointDistances.length),
+    () => getApprovedRoadQuestions().slice(0, rules.checkpointDistances.length),
     [rules.checkpointDistances.length]
   );
 
