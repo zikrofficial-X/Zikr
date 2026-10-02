@@ -303,6 +303,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   const [feedback, setFeedback] = useState("جاري تجهيز النص القرآني...");
   const [loading, setLoading] = useState(true);
   const [available, setAvailable] = useState(true);
+  const [hintVisible, setHintVisible] = useState(false);
   const completionRef = useRef(false);
 
   useEffect(() => {
@@ -332,6 +333,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
     setTokens(shuffleVerseTokens(baseWords, String(getVersePuzzleLevelSeed(difficulty, levelIndex)) + ":" + restartToken));
     setAnswer([]);
     setMistakes(0);
+    setHintVisible(false);
     setFeedback(meta.subtitleAr);
     completionRef.current = false;
   }, [baseWords, difficulty, levelIndex, meta.subtitleAr, restartToken]);
@@ -354,6 +356,15 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
       onResult(hud);
     }
   }, [answer.length, complete, levelIndex, mistakes, onHud, onResult, onSound, rules.mistakePenalty, score]);
+
+  const useVerseHint = () => {
+    if (paused || complete || hintVisible || answer.length >= tokens.length) return;
+    setHintVisible(true);
+    setMistakes(value => value + 1);
+    setFeedback("التلميح: ركّز على الكلمة التالية في ترتيب النص.");
+    onSound("move");
+    window.setTimeout(() => setHintVisible(false), 1400);
+  };
 
   const choose = (tokenIndex: number) => {
     if (paused || complete || answer.includes(tokenIndex)) return;
@@ -382,7 +393,11 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
         { label: "الأخطاء", value: mistakes, tone: "text-rose-100" },
         { label: "السلسلة", value: Math.max(0, answer.length - mistakes), tone: "text-brand-emerald" },
         { label: "المستوى", value: levelIndex + 1, tone: "text-amber-200" },
-      ]} /></div>
+      ]} />
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-brand-cream/45">التلميح يضيف خطأً واحدًا لكنه يوضح اتجاه الحل.</p>
+        <button type="button" onClick={useVerseHint} disabled={paused || complete || hintVisible} className="rounded-xl border border-brand-gold/30 bg-brand-gold/5 px-4 py-2 text-xs font-black text-brand-gold disabled:opacity-40">🔎 تلميح</button>
+      </div></div>
       <div className="mx-4 mt-4 rounded-[2rem] border border-violet-200/10 bg-black/20 p-5 sm:mx-6">
         <div className="min-h-28 rounded-[1.5rem] border border-violet-200/15 bg-violet-200/[0.04] p-5 text-center text-xl leading-[2.5] text-brand-gold">{answer.length ? answer.map(index => tokens.find(token => token.index === index)?.text ?? "").join(" ") : <span className="text-sm text-brand-cream/30">ابدأ من الكلمة الأولى</span>}</div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
