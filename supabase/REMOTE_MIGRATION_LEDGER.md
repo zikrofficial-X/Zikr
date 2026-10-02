@@ -66,3 +66,8 @@ Repeated descriptive names elsewhere in the history are also not duplicate versi
 The repository's `scripts/validate-migrations.mjs` remains the canonical local replay validator. This phase did not mutate production migration history or schema.
 
 Last reconciled: 2026-10-02.
+
+- **20261002073929 — phase6_security_hardening_20261002**
+  - Applied to production on 2026-10-02.
+  - Revokes anonymous DML privileges from the public schema while preserving the public contact-form insert path.
+  - Removes Data API table privileges for `admin_audit_log`, `admin_settings`, `content_revisions`, `video_automation_runs`, and `youtube_sync_state` from `anon` and `authenticated`; service-role access remains available for server/worker paths.
