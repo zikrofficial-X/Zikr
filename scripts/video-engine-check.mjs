@@ -19,7 +19,7 @@ for (const file of required) {
 }
 
 const types = readFileSync("src/features/videos/providers/types.ts", "utf8");
-for (const token of ["hf_wan", "hf_ltx25", "preferredProvider", "hfWanEnabled", "hfLtx25Enabled"]) {
+for (const token of ["hf_wan", "hf_ltx_fast", "preferredProvider", "hfWanEnabled", "hfLtxFastEnabled"]) {
   if (!types.includes(token)) throw new Error("Video provider configuration missing " + token);
 }
 
@@ -37,7 +37,7 @@ const workflow = readFileSync(".github/workflows/generate-ai-video.yml", "utf8")
 for (const token of [
   "VIDEO_AI_ENABLED: \"true\"",
   "HF_WAN_VIDEO_ENABLED: \"true\"",
-  "HF_LTX25_VIDEO_ENABLED: \"true\"",
+  "HF_LTX_FAST_VIDEO_ENABLED: \"true\"",
   "AUTO_VIDEO_PUBLISH_ENABLED: \"true\"",
   "AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: \"false\"",
   "VIDEO_PROVIDER_ORDER",
