@@ -9,6 +9,7 @@ import { normalizedText } from "@/lib/content-quality";
 import type { ArticleCategory, Article } from "@/features/articles/types/articles";
 import { staticArticles, type StaticArticle } from "@/features/articles/data/articles";
 import { adsenseEditorialArticles } from "@/features/articles/data/adsense-editorial";
+import { extendedEditorialArticles } from "@/features/articles/data/extended-editorial";
 
 const MIN_PUBLIC_ARTICLE_CHARS = 1800;
 
@@ -93,7 +94,7 @@ async function loadOfflineArticles(): Promise<Article[]> {
 
 const FALLBACK_ARTICLES: Article[] = Array.from(
   new Map(
-    [...staticArticles, ...adsenseEditorialArticles]
+    [...staticArticles, ...adsenseEditorialArticles, ...extendedEditorialArticles]
       .map(mapStaticArticle)
       .filter(article => normalizedText(article.content).length >= MIN_PUBLIC_ARTICLE_CHARS)
       .map(article => [article.slug, article]),
