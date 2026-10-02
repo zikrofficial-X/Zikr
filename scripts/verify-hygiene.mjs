@@ -91,6 +91,31 @@ function walkRuntime(relativeDir) {
 for (const file of envAndRuntimeFiles) scanFile(file);
 for (const dir of envAndRuntimeDirs) walkRuntime(dir);
 
+
+// Prevent accidental literal "\\n" tokens from being committed where array
+// separators were intended to be real source newlines. These tokens can turn
+// an otherwise valid TypeScript list into invalid syntax.
+function scanLayoutEscapes(relativeDir) {
+  const absolute = path.join(root, relativeDir);
+  if (!existsSync(absolute)) return;
+  for (const entry of readdirSync(absolute, { withFileTypes: true })) {
+    const relativePath = path.join(relativeDir, entry.name);
+    const full = path.join(root, relativePath);
+    if (entry.isDirectory()) {
+      scanLayoutEscapes(relativePath);
+      continue;
+    }
+    if (!/\.(?:ts|tsx)$/.test(entry.name)) continue;
+    let source = '';
+    try { source = readFileSync(full, 'utf8'); } catch { continue; }
+    if (/\\n\s{0,4}(?:\{\s*href:|\];)/.test(source)) {
+      fail(`Literal newline escape token detected in ${relativePath}; use a real source newline.`);
+    }
+  }
+}
+
+scanLayoutEscapes('src/components/layout');
+
 for (const legacyDir of ['app', 'pages', 'src/hooks']) {
   if (existsSync(path.join(root, legacyDir))) fail(`Legacy runtime directory must not exist: ${legacyDir}`);
 }
