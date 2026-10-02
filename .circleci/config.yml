@@ -386,6 +386,8 @@ jobs:
             test -n "$APKSIGNER"
             test -n "$APKANALYZER"
             "$APKSIGNER" verify --verbose "$APK"
+            jarsigner -verify "$AAB" >/tmp/aab-signature-check.txt 2>&1
+            grep -E "jar verified" /tmp/aab-signature-check.txt
             "$APKANALYZER" manifest application-id "$APK" | grep -Fx 'com.zikr.app'
             "$APKANALYZER" manifest version-name "$APK" | grep -Fx "${ANDROID_RELEASE_TAG#v}"
             "$APKANALYZER" manifest target-sdk "$APK" | grep -Fx '36'
@@ -429,6 +431,7 @@ jobs:
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
             test -s "$APK"
             test -s "$AAB"
+
             if ! gh api "/repos/$REPO/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
               echo "Creating missing lightweight tag $RELEASE_TAG at $CIRCLE_SHA1 via GitHub API"
               gh api \
@@ -439,11 +442,24 @@ jobs:
             else
               echo "Tag $RELEASE_TAG already exists."
             fi
-            if gh release view "$RELEASE_TAG" --repo "$REPO" >/dev/null 2>&1; then
-              gh release upload "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --repo "$REPO" --clobber
-            else
-              gh release create "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --repo "$REPO" --verify-tag --generate-notes --title "ZIKR $RELEASE_TAG"
+
+            if ! gh release view "$RELEASE_TAG" --repo "$REPO" >/dev/null 2>&1; then
+              echo "Creating fallback draft release because no admin-created draft was found."
+              gh release create "$RELEASE_TAG" --repo "$REPO" --verify-tag --draft --generate-notes --title "ZIKR $RELEASE_TAG"
             fi
+
+            gh release upload "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --repo "$REPO" --clobber
+
+            assets="$(gh release view "$RELEASE_TAG" --repo "$REPO" --json assets --jq '[.assets[].name] | join("\n")')"
+            echo "$assets"
+            for asset in "$(basename "$APK")" "$(basename "$AAB")" "SHA256SUMS"; do
+              echo "$assets" | grep -Fx "$asset" >/dev/null || {
+                echo "Missing release asset: $asset" >&2
+                exit 1
+              }
+            done
+
+            gh release edit "$RELEASE_TAG" --repo "$REPO" --draft=false
             echo "Android release published successfully: $RELEASE_TAG"
       - run:
           name: Remove signing material
@@ -479,6 +495,23 @@ workflows:
             branches:
               only:
                 - /^android-release-v[0-9]+\.[0-9]+\.[0-9]+$/
+            tags:
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+
+  android-release-on-tag:
+    jobs:
+      - ci-check:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+      - android-rebuild:
+          requires:
+            - ci-check
+          filters:
+            branches:
+              ignore: /.*/
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
 

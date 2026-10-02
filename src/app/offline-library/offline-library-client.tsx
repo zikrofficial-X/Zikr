@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import {
   fetchOfflineManifest,
   hydrateOfflineContent,
+  clearOfflineLibrary,
   requestOfflineRouteCache,
   isCacheableOfflinePageRoute,
 } from '@/lib/offline-pack';
@@ -101,6 +102,7 @@ export default function OfflineLibraryClient() {
   const [failedRoutes, setFailedRoutes] = useState<string[]>([]);
   const [activeBatch, setActiveBatch] = useState(0);
   const [quota, setQuota] = useState<{ usage?: number; quota?: number }>({});
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -153,6 +155,23 @@ export default function OfflineLibraryClient() {
     const quotaMb = quota.quota / 1024 / 1024;
     return `${usedMb.toFixed(1)} MB / ${quotaMb.toFixed(1)} MB`;
   }, [quota]);
+
+  const clearLibrary = async () => {
+    if (isHydrating || isClearing) return;
+    setIsClearing(true);
+    setStatus('جاري إفراغ المكتبة المحلية مع الإبقاء على الإعدادات والمفضلة…');
+    try {
+      await clearOfflineLibrary();
+      setCachedRoutes(0);
+      setFailedRoutes([]);
+      setStatus('تم إفراغ مكتبة الأوفلاين. اضغط «تحديث وتجهيز المكتبة كاملة» لإعادة تنزيل أحدث نسخة.');
+    } catch (error) {
+      console.warn('[OfflineLibrary] Clear failed', error);
+      setStatus('تعذر إفراغ المكتبة المحلية بالكامل. أعد المحاولة بعد إغلاق الصفحات المفتوحة.');
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   const hydrate = async () => {
     if (!navigator.onLine) {
@@ -285,10 +304,18 @@ export default function OfflineLibraryClient() {
       </Card>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={hydrate} disabled={isHydrating}>
+        <Button onClick={hydrate} disabled={isHydrating || isClearing}>
           {isHydrating ? 'جاري تجهيز المكتبة الكاملة…' : 'تحديث وتجهيز المكتبة كاملة'}
         </Button>
-        <span className="text-sm text-muted-foreground">يتم الحفظ محليًا في IndexedDB وCache Storage.</span>
+        <Button
+          type="button"
+          onClick={clearLibrary}
+          disabled={isHydrating || isClearing}
+          className="border border-red-400/25 bg-transparent text-red-200 hover:bg-red-500/10"
+        >
+          {isClearing ? 'جاري إفراغ التخزين…' : 'إفراغ المكتبة المحلية'}
+        </Button>
+        <span className="text-sm text-muted-foreground">الحفظ يتم في IndexedDB وCache Storage، مع الاحتفاظ بالمفضلة وإعدادات المستخدم.</span>
       </div>
 
       {failedRoutes.length > 0 && (

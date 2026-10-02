@@ -1,5 +1,5 @@
 // Service Worker for Zikr PWA
-const CACHE_NAME = "zikr-v12";
+const CACHE_NAME = "zikr-v13";
 const OFFLINE_CONTENT_PREFIX = "/offline-content/";
 const MAX_OFFLINE_ROUTES = 400;
 const ROUTE_CACHE_CONCURRENCY = 4;
@@ -415,6 +415,31 @@ self.addEventListener("fetch", event => {
 });
 
 self.addEventListener("message", event => {
+  if (event.data && event.data.type === "CLEAR_OFFLINE_LIBRARY") {
+    event.waitUntil(
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const keep = new Set(CORE_INSTALL_ASSETS);
+        const keys = await cache.keys();
+        await Promise.all(
+          keys
+            .filter(request => {
+              const path = new URL(request.url).pathname;
+              return !keep.has(path);
+            })
+            .map(request => cache.delete(request)),
+        );
+        if (event.ports?.[0]) event.ports[0].postMessage({ ok: true });
+      })().catch(error => {
+        event.ports?.[0]?.postMessage({
+          ok: false,
+          error: error instanceof Error ? error.message : "Offline cache clear failed",
+        });
+      }),
+    );
+    return;
+  }
+
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
     return;

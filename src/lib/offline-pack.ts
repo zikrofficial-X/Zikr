@@ -34,10 +34,30 @@ const MANIFEST_URL = "/offline-content/v1/manifest.json";
 const MANIFEST_DB_KEY = "offline_manifest";
 const COMPLETION_DB_KEY = "offline_completion_v1";
 // v4 reflects the expanded public-route discovery and batched offline strategy.
-const VERSION_KEY = "offline-content-version-v4";
-const OFFLINE_CACHE_NAME = "zikr-v12";
+const VERSION_KEY = "offline-content-version-v5";
+const OFFLINE_CACHE_NAME = "zikr-v13";
 // Keep the client verifier, offline pack, and Service Worker on one cache name.
 const ROUTE_CACHE_REQUEST = "CACHE_OFFLINE_ROUTES";
+const CLEAR_OFFLINE_REQUEST = "CLEAR_OFFLINE_LIBRARY";
+
+const OFFLINE_CONTENT_STORES = [
+  "surahs",
+  "ayahs",
+  "tafsir",
+  "hadith_books",
+  "hadith",
+  "prophets",
+  "prophet_sections",
+  "battles",
+  "battle_events",
+  "conquests",
+  "conquest_events",
+  "articles",
+  "duas",
+  "kids",
+  "companions",
+  "companion_stories",
+] as const;
 
 export function isCacheableOfflinePageRoute(route: string): boolean {
   if (typeof route !== "string" || !route.startsWith("/") || route.startsWith("//")) {
@@ -250,6 +270,66 @@ export async function requestOfflineRouteCache(
     });
   } catch {
     return { cachedRoutes: 0, failedRoutes: routes };
+  }
+}
+
+export async function clearOfflineLibrary(): Promise<void> {
+  await offlineDb.initialize();
+
+  for (const storeName of OFFLINE_CONTENT_STORES) {
+    await offlineDb.clear(
+      ({
+        surahs: "surahs",
+        ayahs: "ayahs",
+        tafsir: "tafsir",
+        hadith_books: "hadithBooks",
+        hadith: "hadith",
+        prophets: "prophets",
+        prophet_sections: "prophetSections",
+        battles: "battles",
+        battle_events: "battleEvents",
+        conquests: "conquests",
+        conquest_events: "conquestEvents",
+        articles: "articles",
+        duas: "duas",
+        kids: "kids",
+        companions: "companions",
+        companion_stories: "companionStories",
+      } as const)[storeName],
+    );
+  }
+
+  await offlineDb.clear("cache");
+  await offlineDb.delete("settings", MANIFEST_DB_KEY).catch(() => undefined);
+  await offlineDb.delete("settings", COMPLETION_DB_KEY).catch(() => undefined);
+
+  try {
+    window.localStorage.removeItem(VERSION_KEY);
+  } catch {
+    // Ignore restricted localStorage.
+  }
+
+  if ("serviceWorker" in navigator) {
+    const registration = await navigator.serviceWorker.ready;
+    const worker =
+      registration.active ?? registration.waiting ?? registration.installing;
+
+    if (worker) {
+      await new Promise<void>(resolve => {
+        const channel = new MessageChannel();
+        const timeoutId = window.setTimeout(() => {
+          channel.port1.onmessage = null;
+          resolve();
+        }, 30_000);
+
+        channel.port1.onmessage = () => {
+          window.clearTimeout(timeoutId);
+          resolve();
+        };
+
+        worker.postMessage({ type: CLEAR_OFFLINE_REQUEST }, [channel.port2]);
+      });
+    }
   }
 }
 

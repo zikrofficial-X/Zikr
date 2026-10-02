@@ -188,6 +188,16 @@ export function findApkAsset(
   );
 }
 
+export function findAabAsset(
+  release: GitHubRelease | null,
+): GitHubReleaseAsset | null {
+  return (
+    release?.assets?.find((asset) =>
+      asset.name?.toLowerCase().endsWith(".aab"),
+    ) ?? null
+  );
+}
+
 export async function getSignedGitHubAssetUrl(
   assetId: number,
 ): Promise<string | null> {
