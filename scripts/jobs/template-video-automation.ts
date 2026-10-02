@@ -90,7 +90,7 @@ const DEFAULT_AI_VIDEO_PLAN: AiVideoPlan = {
 };
 
 function siteUrl() {
-  return "https://zikrmediaofficial.vercel.app";
+  return getServerEnv().NEXT_PUBLIC_SITE_URL;
 }
 
 function backgroundAsset(scene: AiVideoPlan["scene"]) {
