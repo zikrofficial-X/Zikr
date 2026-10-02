@@ -32,7 +32,7 @@ const service = await read('src/features/articles/services/articles.ts');
 if (!service.includes('extended-editorial')) failures.push('خدمة المقالات لا تستورد حزمة المحتوى التحريري الموسعة.');
 
 const extended = await read('src/features/articles/data/extended-editorial.ts');
-const ids = extractQuoted(extended, /id:\s*['"]([^'"]+)['"]/g);
+const ids = [...extended.matchAll(/makeArticle\(\{\s*id:\s*['"]([^'"]+)['"]/g)].map(match => match[1]);
 const slugs = extractQuoted(extended, /slug:\s*['"]([^'"]+)['"]/g);
 const duplicateIds = ids.filter((value,index)=>ids.indexOf(value)!==index);
 const duplicateSlugs = slugs.filter((value,index)=>slugs.indexOf(value)!==index);
