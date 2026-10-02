@@ -265,7 +265,7 @@ export async function syncYoutubeFeed(maxResults = 24): Promise<YoutubeChannelFe
       synced_at: syncedAt,
       status: 'ok',
       last_error: null,
-    };
+    } : null;
     const { error: profileError } = await supabase.from('social_platform_profiles').upsert(channelProfile, { onConflict: 'platform' });
     if (profileError) throw profileError;
 
