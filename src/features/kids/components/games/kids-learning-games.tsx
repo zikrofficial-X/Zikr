@@ -61,6 +61,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [locked, setLocked] = useState(false);
+  const [hintId, setHintId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("افتح بطاقتين وابحث عن الموقف والذكر المناسبين.");
   const completionRef = useRef(false);
   const advancingRef = useRef(false);
@@ -83,6 +84,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
     setScore(0);
     setCombo(0);
     setLocked(false);
+    setHintId(null);
     setFeedback(meta.subtitleAr);
     completionRef.current = false;
     advancingRef.current = false;
@@ -90,6 +92,17 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   }, [difficulty, levelIndex, meta.subtitleAr, onHud, restartToken]);
 
   const complete = matched.length === cards.length && cards.length > 0;
+
+  const useHint = () => {
+    if (paused || locked || complete || hintId) return;
+    const unmatched = cards.find(card => !matched.includes(card.id));
+    if (!unmatched) return;
+    setHintId(unmatched.pairId);
+    setScore(value => Math.max(0, value - 35));
+    setFeedback("تلميح صغير: البطاقتان المظللتان تنتميان إلى نفس الزوج.");
+    onSound("move");
+    window.setTimeout(() => setHintId(null), difficulty === "hard" ? 900 : 1300);
+  };
 
   useEffect(() => {
     if (!complete || completionRef.current || advancingRef.current) return;
@@ -157,6 +170,10 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
           { label: "السلسلة", value: combo, tone: "text-violet-200" },
           { label: "المستوى", value: levelIndex + 1, tone: "text-amber-200" },
         ]} />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-brand-cream/45">التلميح يخصم 35 نقطة ويكشف الزوج بصريًا للحظات.</p>
+          <button type="button" onClick={useHint} disabled={paused || locked || complete || Boolean(hintId)} className="rounded-xl border border-brand-gold/30 bg-brand-gold/5 px-4 py-2 text-xs font-black text-brand-gold disabled:opacity-40">💡 تلميح</button>
+        </div>
       </div>
       <div className="relative mx-4 mt-4 grid grid-cols-2 gap-3 p-1 sm:mx-6 sm:grid-cols-3 sm:gap-4">
         {cards.map(card => {
@@ -165,7 +182,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
             <button key={card.id} type="button" disabled={paused || locked || matched.includes(card.id)} onClick={() => choose(card.id)}
               className={[
                 "group min-h-36 rounded-[1.5rem] border p-4 text-right transition duration-200",
-                visible ? "border-brand-gold/45 bg-brand-gold/10 shadow-[0_12px_30px_rgba(243,201,105,.08)]" : "border-white/10 bg-[#081823]/90 hover:-translate-y-1 hover:border-brand-emerald/40",
+                visible ? "border-brand-gold/45 bg-brand-gold/10 shadow-[0_12px_30px_rgba(243,201,105,.08)]" : hintId === card.pairId ? "border-brand-gold/80 bg-brand-gold/5 ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-[#081823]/90 hover:-translate-y-1 hover:border-brand-emerald/40",
                 matched.includes(card.id) ? "opacity-55" : "",
               ].join(" ")}>
               {visible ? <>
