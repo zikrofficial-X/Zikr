@@ -184,7 +184,6 @@ export function ZikrJumpGame({
     jumpRequest: false,
   });
   const completedRef = useRef(false);
-  const feedbackTimeoutRef = useRef<number | null>(null);
   const hudAccumulatorRef = useRef(0);
   const lastFrameRef = useRef<number | null>(null);
 
@@ -444,6 +443,7 @@ export function ZikrJumpGame({
       }
 
       if (difficulty !== "easy") {
+        let hazardHit = false;
         for (const hazard of level.hazards) {
           const platform = level.platforms[hazard.platformIndex];
           if (!platform) continue;
@@ -461,10 +461,12 @@ export function ZikrJumpGame({
               34
             )
           ) {
+            hazardHit = true;
             failAttempt("انتبه للعائق على المنصة.");
             break;
           }
         }
+        if (hazardHit) return;
       }
 
       if (model.gameOver || model.completed) {
@@ -492,6 +494,7 @@ export function ZikrJumpGame({
       const goalPlatform = level.platforms[level.goalPlatformIndex];
       if (
         goalPlatform &&
+        player.grounded &&
         player.y <= goalPlatform.y + 10 &&
         player.x >
           goalPlatform.x - goalPlatform.width / 2 &&
@@ -545,14 +548,6 @@ export function ZikrJumpGame({
     paused,
     rules,
   ]);
-
-  useEffect(() => {
-    return () => {
-      if (feedbackTimeoutRef.current !== null) {
-        window.clearTimeout(feedbackTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const currentLevel = levels[scene.levelIndex] ?? levels[levels.length - 1];
   const theme = currentLevel.theme;
