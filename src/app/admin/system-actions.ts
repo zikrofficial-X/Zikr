@@ -40,6 +40,80 @@ export async function saveAdminSettingAction(formData: FormData) {
   revalidatePath("/admin/security");
 }
 
+export async function saveVideoAutomationSettingAction(formData: FormData) {
+  const profile = await requireAdminPermission("system.manage");
+  const key = formValue(formData, "key");
+  if (!key.startsWith("video_automation_")) throw new Error("إعداد أتمتة الفيديو غير صالح.");
+
+  const rawValue = formValue(formData, "value");
+  let value: unknown = rawValue;
+
+  if (
+    key === "video_automation_enabled" ||
+    key === "video_automation_ai_enabled" ||
+    key === "video_automation_auto_publish" ||
+    key === "video_automation_facebook_enabled"
+  ) {
+    value = rawValue === "true";
+  } else if (key === "video_automation_batch_size") {
+    const numeric = Number(rawValue);
+    if (!Number.isInteger(numeric) || numeric < 1 || numeric > 10) {
+      throw new Error("حجم الدفعة يجب أن يكون بين 1 و10.");
+    }
+    value = numeric;
+  } else {
+    throw new Error("إعداد أتمتة فيديو غير مدعوم.");
+  }
+
+  await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({
+      key,
+      value,
+      updated_by: profile.id,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  await recordAdminAuditEvent({
+    action: "admin.video_automation.setting_update",
+    permission: "system.manage",
+    resourceType: "admin_settings",
+    resourceId: key,
+    metadata: { value },
+  });
+
+  revalidatePath("/admin/automation");
+}
+
+export async function requestVideoAutomationRunAction() {
+  const profile = await requireAdminPermission("system.manage");
+  const key = "video_automation_run_now";
+  const value = new Date().toISOString();
+
+  await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({
+      key,
+      value,
+      updated_by: profile.id,
+      updated_at: value,
+    }),
+  });
+
+  await recordAdminAuditEvent({
+    action: "admin.video_automation.run_requested",
+    permission: "system.manage",
+    resourceType: "admin_settings",
+    resourceId: key,
+    metadata: { requestedAt: value },
+  });
+
+  revalidatePath("/admin/automation");
+}
+
 export async function createAdminNotificationAction(formData: FormData) {
   const profile = await requireAdminPermission("notifications.manage");
   const title = formValue(formData, "title");

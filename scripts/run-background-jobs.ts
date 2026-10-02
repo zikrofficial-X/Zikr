@@ -8,6 +8,60 @@ import {
 import { processSocialPublishQueue } from "./jobs/social-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
+type VideoAutomationSettings = {
+  enabled: boolean;
+  batchSize: number;
+  aiEnabled: boolean;
+  autoPublish: boolean;
+  facebookEnabled: boolean;
+};
+
+function parseBoolSetting(value: unknown, fallback: boolean) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+  return fallback;
+}
+
+function parseNumberSetting(value: unknown, fallback: number) {
+  const numeric = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numeric) ? Math.max(1, Math.min(10, Math.floor(numeric))) : fallback;
+}
+
+async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
+  const rows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
+    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled)&select=key,value",
+  ).catch(() => []);
+
+  const values = Object.fromEntries((rows ?? []).map((row) => [row.key, row.value]));
+  return {
+    enabled: parseBoolSetting(values.video_automation_enabled, true),
+    batchSize: parseNumberSetting(
+      values.video_automation_batch_size,
+      Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 5) || 5),
+    ),
+    aiEnabled: parseBoolSetting(values.video_automation_ai_enabled, true),
+    autoPublish: parseBoolSetting(
+      values.video_automation_auto_publish,
+      process.env.AUTO_VIDEO_PUBLISH_ENABLED !== "false",
+    ),
+    facebookEnabled: parseBoolSetting(
+      values.video_automation_facebook_enabled,
+      process.env.SOCIAL_PUBLISH_FACEBOOK_ENABLED === "true",
+    ),
+  };
+}
+
+function applyVideoAutomationSettings(settings: VideoAutomationSettings) {
+  process.env.VIDEO_AI_ENABLED = String(settings.aiEnabled);
+  process.env.AUTO_VIDEO_PUBLISH_ENABLED = String(settings.autoPublish);
+  process.env.AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL = String(!settings.autoPublish);
+  process.env.SOCIAL_PUBLISH_FACEBOOK_ENABLED = String(settings.facebookEnabled);
+}
+
 
 const SOCIAL_PUBLISH_ENABLED = process.env.SOCIAL_PUBLISH_ENABLED !== "false";
 const VIDEO_DRY_RUN = (process.env.VIDEO_AUTOMATION_DRY_RUN ?? "true").toLowerCase() === "true";
@@ -56,15 +110,20 @@ function validateRequiredEnv() {
   }
 }
 
-async function processVideos() {
+async function processVideos(settings: VideoAutomationSettings) {
+  if (!settings.enabled) {
+    console.log("[background-jobs] Video automation disabled from Admin settings.");
+    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
+  }
   if (VIDEO_DRY_RUN) {
     console.log("[background-jobs] VIDEO_AUTOMATION_DRY_RUN=true; planning only.");
     return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
   }
+  applyVideoAutomationSettings(settings);
   ensureArabicTtsRuntime();
-  const seeded = await seedAutomatedVideoRequests();
+  const seeded = await seedAutomatedVideoRequests(settings.batchSize);
   console.log(`[background-jobs] Seeded ${seeded} video request(s) across Quran, Hadith, Dua, Adhkar, verified stories, and editorial reminders.`);
-  const result = await processTemplateVideoQueue();
+  const result = await processTemplateVideoQueue(settings.batchSize);
   return {
     processed: result.processed || 0,
     succeeded: result.succeeded || 0,
@@ -74,7 +133,11 @@ async function processVideos() {
   };
 }
 
-async function processSocial() {
+async function processSocial(settings: VideoAutomationSettings) {
+  if (!settings.autoPublish) {
+    console.log("[background-jobs] Automatic social publishing is paused from Admin settings.");
+    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
+  }
   if (!SOCIAL_PUBLISH_ENABLED) {
     console.log("[background-jobs] Social publishing disabled.");
     return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
@@ -134,6 +197,9 @@ async function recordAutomationRun(summary: {
 async function main() {
   validateRequiredEnv();
   const target = process.env.BACKGROUND_JOB_TARGET ?? "all";
+  const videoSettings = await getVideoAutomationSettings();
+  applyVideoAutomationSettings(videoSettings);
+  console.log("[background-jobs] Admin video settings:", JSON.stringify(videoSettings));
   if (!["all", "videos", "social"].includes(target)) {
     throw new Error(`Invalid BACKGROUND_JOB_TARGET: ${target}`);
   }
@@ -144,7 +210,7 @@ async function main() {
   const startedAt = Date.now();
 
   const videos = target === "all" || target === "videos"
-    ? await processVideos()
+    ? await processVideos(videoSettings)
     : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
 
   const reconciledSocialQueue = target === "all" || target === "social"
@@ -155,7 +221,7 @@ async function main() {
   );
 
   const social = target === "all" || target === "social"
-    ? await processSocial()
+    ? await processSocial(videoSettings)
     : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
   const failed = videos.failed + social.failed;
 

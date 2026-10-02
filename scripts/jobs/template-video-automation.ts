@@ -24,7 +24,7 @@ const ARABIC_TTS_VOICE = process.env.ARABIC_TTS_VOICE ?? "ar-SA-HamedNeural";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
 const VIDEO_TEMPLATE_VERSION = "2026-10-02-quality-v2";
-const ENGINE_CONFIG = getVideoEngineConfig();
+const engineConfig = () => getVideoEngineConfig();
 const AI_ATTEMPTS_PER_RUN = Math.max(0, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 2) || 2);
 let aiAttemptsUsed = 0;
 function getArabicTtsPython() {
@@ -36,7 +36,6 @@ type QuranRow = {
   ayah_number: number;
   text_ar: string;
   text_uthmani: string | null;
-  audio_url: string | null;
 };
 
 type HadithRow = {
@@ -255,7 +254,7 @@ async function getQuranRow(index: number): Promise<QuranRow> {
   for (let attempt = 0; attempt < Math.min(total, 40); attempt += 1) {
     const offset = (index + attempt * 97) % total;
     const rows = await supabaseServerAdminRequest<QuranRow[]>(
-      `/rest/v1/quran_ayahs?select=surah_id,ayah_number,text_ar,text_uthmani,audio_url&order=surah_id.asc,ayah_number.asc&offset=${offset}&limit=1`,
+      `/rest/v1/quran_ayahs?select=surah_id,ayah_number,text_ar,text_uthmani&order=surah_id.asc,ayah_number.asc&offset=${offset}&limit=1`,
     );
     const row = rows?.[0];
     if (row && (row.text_uthmani || row.text_ar).length <= 300) return row;
@@ -293,13 +292,13 @@ async function findByAutomationKey(table: string, key: string) {
   );
   return rows?.[0] ?? null;
 }
-export async function seedAutomatedVideoRequests() {
+export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   if (process.env.AUTO_VIDEO_ENABLED?.toLowerCase() === "false") return 0;
   const now = new Date();
   const baseSlot = slotIndex(now);
   let created = 0;
 
-  for (let i = 0; i < BATCH_SIZE; i += 1) {
+  for (let i = 0; i < Math.max(1, Math.min(10, batchSize)); i += 1) {
     const slot = baseSlot + i;
     const day = dayIndex(now);
     const mode = slot % 6;
@@ -330,7 +329,7 @@ export async function seedAutomatedVideoRequests() {
           surahId: row.surah_id,
           ayahNumber: row.ayah_number,
           textAr: row.text_uthmani || row.text_ar,
-          audioUrl: row.audio_url,
+          audioUrl: null,
           publicPath: `/quran/${row.surah_id}/${row.ayah_number}`,
           automationKey: key,
           aiMode: "source_locked",
@@ -492,11 +491,11 @@ export async function seedAutomatedVideoRequests() {
 
     const content = payload.content as Record<string, unknown>;
     const text = typeof content.textAr === "string" ? content.textAr : "";
-    const format = content.videoFormat === "horizontal" ? "horizontal" : ENGINE_CONFIG.defaultFormat;
+    const format = content.videoFormat === "horizontal" ? "horizontal" : engineConfig().defaultFormat;
     const contentHash = videoContentHash({ category: String(payload.category), sourceId: String(content.sourceId ?? ""), text, format, templateVersion: VIDEO_TEMPLATE_VERSION, language: "ar", style: String(content.style ?? "default") });
     const sourceHashValue = sourceHash({ sourceId: String(content.sourceId ?? ""), sourceUrl: String(content.sourceUrl ?? ""), text });
     payload.content = { ...content, videoFormat: format, templateVersion: VIDEO_TEMPLATE_VERSION, contentHash, sourceHash: sourceHashValue };
-    if (ENGINE_CONFIG.dryRun) {
+    if (engineConfig().dryRun) {
       console.log(`[template-video] dry-run planned ${key} (${contentHash.slice(0, 12)})`);
       created += 1;
       continue;
@@ -771,8 +770,8 @@ async function renderVideo(request: GeneratedRequest) {
         : undefined;
 
     if (
-      ENGINE_CONFIG.aiEnabled &&
-      ENGINE_CONFIG.order.some((provider) => provider !== "template") &&
+      engineConfig().aiEnabled &&
+      engineConfig().order.some((provider) => provider !== "template") &&
       aiAttemptsUsed < AI_ATTEMPTS_PER_RUN
     ) {
       aiAttemptsUsed += 1;
@@ -820,7 +819,7 @@ async function renderVideo(request: GeneratedRequest) {
           ? null
           : aiResult.error || "AI providers unavailable",
       };
-    } else if (ENGINE_CONFIG.aiEnabled && aiAttemptsUsed >= AI_ATTEMPTS_PER_RUN) {
+    } else if (engineConfig().aiEnabled && aiAttemptsUsed >= AI_ATTEMPTS_PER_RUN) {
       request.content = {
         ...request.content,
         aiProvider: null,
@@ -938,7 +937,7 @@ async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueR
 }
 
 async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
-  if (!ENGINE_CONFIG.autoPublishEnabled || ENGINE_CONFIG.requiresApproval) {
+  if (!engineConfig().autoPublishEnabled || engineConfig().requiresApproval) {
     console.log(`[template-video] Social draft retained for ${request.id}; public publishing is disabled or approval is required.`);
     return;
   }
@@ -1074,11 +1073,11 @@ export async function reconcileCompletedVideoSocialQueue(limit = 100) {
 }
 
 export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
-  if (ENGINE_CONFIG.dryRun) {
+  if (engineConfig().dryRun) {
     console.log(`[template-video] dry-run enabled; no video generation, upload, or publishing will occur (limit=${limit}).`);
     return { processed: 0, succeeded: 0, failed: 0 };
   }
-  const staleBefore = new Date(Date.now() - ENGINE_CONFIG.staleAfterMinutes * 60_000).toISOString();
+  const staleBefore = new Date(Date.now() - engineConfig().staleAfterMinutes * 60_000).toISOString();
   const stale = await supabaseServerAdminRequest<Array<{ id: string }>>(
     `/rest/v1/video_generation_requests?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&video_url=is.null&select=id&limit=50`,
   );
@@ -1137,7 +1136,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
       failed += 1;
       const message = error instanceof Error ? error.message : String(error);
       const attempts = (request.generation_attempts ?? 0) + 1;
-      const terminalStatus = attempts >= ENGINE_CONFIG.maxRetries ? "failed" : "retry_wait";
+      const terminalStatus = attempts >= engineConfig().maxRetries ? "failed" : "retry_wait";
       await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },

@@ -22,7 +22,6 @@ type QuranRow = {
   ayah_number: number;
   text_ar: string;
   text_uthmani: string | null;
-  audio_url: string | null;
 };
 
 type HadithRow = {
@@ -74,7 +73,7 @@ async function quranSource(
   )
     return null;
   const rows = await supabaseServerAdminRequest<QuranRow[]>(
-    `/rest/v1/quran_ayahs?surah_id=eq.${surahId}&ayah_number=eq.${ayahNumber}&select=surah_id,ayah_number,text_ar,text_uthmani,audio_url&limit=1`
+    `/rest/v1/quran_ayahs?surah_id=eq.${surahId}&ayah_number=eq.${ayahNumber}&select=surah_id,ayah_number,text_ar,text_uthmani&limit=1`
   );
   const row = rows?.[0];
   const text = row?.text_uthmani || row?.text_ar;
@@ -90,7 +89,7 @@ async function quranSource(
     text,
     sourceLabel: `القرآن الكريم — سورة ${surahName}، الآية ${ayahNumber}`,
     sourceUrl: `${QURAN_BASE}/${surahId}/${ayahNumber}`,
-    audioUrl: row.audio_url,
+    audioUrl: null,
   };
 }
 

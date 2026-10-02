@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { supabaseServerAdminCount, supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { saveVideoAutomationSettingAction, requestVideoAutomationRunAction } from "@/app/admin/system-actions";
 
 export const metadata: Metadata = { title: "الأتمتة والمهام | الأدمن" };
 
@@ -16,6 +17,22 @@ const JOB_TABLES = [
 ] as const;
 
 type QueueStatus = { status: string };
+type VideoAutomationRun = {
+  finished_at: string | null;
+  created_count: number | null;
+  processed_count: number | null;
+  completed_count: number | null;
+  failed_count: number | null;
+  error_summary: string | null;
+};
+
+const VIDEO_SETTINGS = [
+  ["video_automation_enabled", "التشغيل التلقائي", "boolean"],
+  ["video_automation_batch_size", "عدد الطلبات في كل دورة", "number"],
+  ["video_automation_ai_enabled", "توليد المشاهد بالـAI", "boolean"],
+  ["video_automation_auto_publish", "النشر التلقائي", "boolean"],
+  ["video_automation_facebook_enabled", "Facebook / Reels", "boolean"],
+] as const;
 
 async function readCount(table: string) {
   try {
@@ -35,6 +52,16 @@ export default async function AdminAutomationPage() {
       ...(await readCount(table)),
     })),
   );
+
+  const settingsRows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
+    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled)&select=key,value",
+    { method: "GET" },
+  ).catch(() => []);
+  const settings = Object.fromEntries((settingsRows ?? []).map((row) => [row.key, row.value]));
+  const latestRuns = await supabaseServerAdminRequest<VideoAutomationRun[]>(
+    "/rest/v1/video_automation_runs?select=finished_at,created_count,processed_count,completed_count,failed_count,error_summary&order=finished_at.desc&limit=1",
+    { method: "GET" },
+  ).catch(() => []);
 
   const [videoQueue, socialQueue] = await Promise.all([
     supabaseServerAdminRequest<QueueStatus[]>(
@@ -70,6 +97,55 @@ export default async function AdminAutomationPage() {
             <p className="mt-1 text-xs text-brand-cream/30">{job.state === "available" ? "متاح" : "تعذر الاستعلام"}</p>
           </div>
         ))}
+      </section>
+
+      <section className="rounded-2xl border border-brand-gold/10 bg-black/15 p-6 space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-brand-gold">تحكم تشغيل الفيديو</h2>
+            <p className="mt-1 text-sm leading-6 text-brand-cream/45">الإعدادات محفوظة في قاعدة البيانات ويقرأها عامل GitHub Actions في كل دورة تشغيل.</p>
+          </div>
+          <form action={requestVideoAutomationRunAction}>
+            <button type="submit" className="rounded-xl border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20">طلب تشغيل في أقرب دورة</button>
+          </form>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          {VIDEO_SETTINGS.map(([key, label, kind]) => {
+            const value = settings[key];
+            const checked = value === true || value === "true";
+            return (
+              <form key={key} action={saveVideoAutomationSettingAction} className="rounded-xl border border-brand-gold/10 bg-black/10 p-4 space-y-3">
+                <input type="hidden" name="key" value={key} />
+                <div>
+                  <h3 className="font-semibold text-brand-cream/80">{label}</h3>
+                  <p className="mt-1 text-xs text-brand-cream/30" dir="ltr">{key}</p>
+                </div>
+
+                {kind === "boolean" ? (
+                  <label className="flex items-center gap-3 text-sm text-brand-cream/60">
+                    <input type="checkbox" name="value" value="true" defaultChecked={checked} className="h-4 w-4" />
+                    مفعّل
+                  </label>
+                ) : (
+                  <input
+                    name="value"
+                    type="number"
+                    min={1}
+                    max={10}
+                    defaultValue={typeof value === "number" || typeof value === "string" ? String(value) : "2"}
+                    className="w-full rounded-xl border border-brand-gold/15 bg-black/20 px-3 py-2 text-sm text-brand-cream"
+                  />
+                )}
+                <button type="submit" className="rounded-lg border border-brand-gold/20 px-3 py-2 text-xs text-brand-gold hover:bg-brand-gold/10">حفظ</button>
+              </form>
+            );
+          })}
+        </div>
+
+        <div className="rounded-xl border border-sky-500/15 bg-sky-500/5 p-4 text-sm leading-7 text-sky-100/75">
+          العامل المجدول يعمل خارج Vercel عبر GitHub Actions. زر «طلب تشغيل في أقرب دورة» يسجل الطلب، والعامل يلتقطه في دورة GitHub Actions المجدولة التالية.
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -112,6 +188,20 @@ export default async function AdminAutomationPage() {
             ))}
           </div>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-brand-gold/10 bg-black/10 p-5">
+        <h2 className="font-semibold text-brand-gold">آخر تشغيل للعامل</h2>
+        {latestRuns[0] ? (
+          <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-6">
+            <div><span className="text-brand-cream/35">وقت الانتهاء</span><p className="mt-1 text-brand-cream/75">{latestRuns[0].finished_at ? new Date(latestRuns[0].finished_at).toLocaleString("ar-EG") : "غير معروف"}</p></div>
+            <div><span className="text-brand-cream/35">أُنشئ</span><p className="mt-1 font-bold text-brand-gold">{latestRuns[0].created_count ?? 0}</p></div>
+            <div><span className="text-brand-cream/35">عولج</span><p className="mt-1 font-bold text-brand-gold">{latestRuns[0].processed_count ?? 0}</p></div>
+            <div><span className="text-brand-cream/35">اكتمل</span><p className="mt-1 font-bold text-emerald-300">{latestRuns[0].completed_count ?? 0}</p></div>
+            <div><span className="text-brand-cream/35">فشل</span><p className="mt-1 font-bold text-red-300">{latestRuns[0].failed_count ?? 0}</p></div>
+            <div><span className="text-brand-cream/35">الحالة</span><p className="mt-1 text-brand-cream/75">{latestRuns[0].error_summary ? "توجد أخطاء" : "سليم"}</p></div>
+          </div>
+        ) : <p className="mt-3 text-sm text-brand-cream/40">لا يوجد سجل تشغيل للعامل حتى الآن.</p>}
       </section>
 
       <section className="rounded-2xl border border-brand-gold/10 bg-black/10 p-5 text-sm leading-7 text-brand-cream/50">
