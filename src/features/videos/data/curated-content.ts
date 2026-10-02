@@ -1,6 +1,7 @@
 import type { VideoSource, VideoSourceCategory } from "@/features/videos/services/video-sources";
 
-type CuratedVideoSource = VideoSource & {
+type CuratedVideoSource = Omit<VideoSource, "category"> & {
+  category: VideoSourceCategory | "other";
   editorialNote?: string;
 };
 
@@ -52,11 +53,7 @@ export const CURATED_GENERAL_MESSAGES: CuratedVideoSource[] = [
   { id: "curated-message-balanced-learning", category: "other", title: "تعلم بتدرج", text: "اجمع بين القراءة والاستماع والتطبيق. اقرأ النص الأصلي عندما يكون متاحاً، ثم استخدم الشرح لفهم السياق، واكتب سؤالاً واضحاً عند وجود مسألة تحتاج إلى عالم أو مختص بدلاً من تحويل مقطع قصير إلى فتوى.", sourceLabel: "مادة تحريرية من ذِكر — ليست آية ولا حديثاً", sourceUrl: `${ZIKR}/about`, editorialNote: "رسالة عامة غير منسوبة إلى نص ديني." },
 ];
 
-export const CURATED_VIDEO_SOURCES: CuratedVideoSource[] = [
-  ...CURATED_STORY_SOURCES,
-  ...CURATED_ADHKAR_SOURCES,
-  ...CURATED_GENERAL_MESSAGES,
-];
+export const CURATED_VIDEO_SOURCES: CuratedVideoSource[] = [...CURATED_STORY_SOURCES, ...CURATED_ADHKAR_SOURCES, ...CURATED_GENERAL_MESSAGES];
 
 export function listCuratedVideoSources(category: VideoSourceCategory | "other") {
   return CURATED_VIDEO_SOURCES.filter(item => item.category === category);
