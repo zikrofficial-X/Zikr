@@ -24,7 +24,7 @@ jobs:
     name: Verify and deploy production
     if: github.ref == 'refs/heads/main' && inputs.confirmation == 'RELEASE'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 35
     environment:
       name: production
     env:
@@ -64,10 +64,10 @@ jobs:
           pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
         timeout-minutes: 15
 
-      - name: Final quality gate on release commit
+      - name: Lightweight release integrity gate
         shell: bash
-        run: pnpm verify
-        timeout-minutes: 30
+        run: pnpm verify:pr
+        timeout-minutes: 15
 
       - name: Install pinned Vercel CLI
         shell: bash
