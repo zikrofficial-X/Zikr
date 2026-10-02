@@ -69,7 +69,7 @@ function hudFromModel(
 ): WorldHud {
   const level = getZikrRoadLevel(model.distance, goalDistance);
   const completionBonus = model.completed ? 500 : 0;
-  const score = Math.max(0, Math.floor(model.distance) + model.collectibles * 50 + model.combo * 10 + completionBonus);
+  const score = Math.max(0, Math.floor(model.score) + completionBonus);
 
   return {
     score,
@@ -189,10 +189,12 @@ export function ZikrRoadGame({
       }
 
       const dt = TICK_MS / 1000;
-      model.distance = Math.min(
-        rules.goalDistance,
-        model.distance + rules.speed * dt
+      const distanceStep = Math.min(
+        rules.goalDistance - model.distance,
+        rules.speed * dt
       );
+      model.distance += Math.max(0, distanceStep);
+      model.score += Math.max(0, distanceStep);
 
       const movement = Math.max(0.75, (rules.speed / 8) * dt);
       let nextObjects = model.objects.map((object) => ({
@@ -414,7 +416,7 @@ export function ZikrRoadGame({
         {[
           ["النقاط", hud.score, "text-brand-gold"],
           ["النجوم", hud.collectibles, "text-brand-emerald"],
-          ["الأخطاء", hud.combo, "text-brand-cream"],
+          ["الأخطاء", modelRef.current.mistakes, "text-brand-cream"],
           ["المسافة", hud.distance, "text-sky-200"],
           ["المستوى", hud.level, "text-violet-200"],
         ].map(([label, value, className]) => (
