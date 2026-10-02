@@ -35,8 +35,8 @@
     "adsense:check": "node scripts/verify-adsense-readiness.mjs",
     "search-console:check": "node scripts/verify-google-search-console.mjs",
     "hygiene:check": "node scripts/verify-hygiene.mjs",
-    "verify:pr": "pnpm supabase:migrations:check && pnpm kids:memory:check && pnpm kids:wudu:check && pnpm kids:verse:check && pnpm kids:quiz:check && pnpm kids:mosque:check && pnpm kids:road:check && pnpm kids:jump:check && pnpm kids:hilal:check && pnpm kids:games:check && pnpm video:engine:check && pnpm routes:check && pnpm information-architecture:check && pnpm imports:check && pnpm content:check && pnpm auth:check && pnpm canonical:check && pnpm project:check && pnpm hygiene:check && pnpm security:check && pnpm lint && pnpm check",
-    "verify": "pnpm supabase:migrations:check && pnpm quran:local:check && pnpm supabase:migrations:replay && pnpm kids:memory:check && pnpm kids:wudu:check && pnpm kids:verse:check && pnpm kids:quiz:check && pnpm kids:mosque:check && pnpm kids:road:check && pnpm kids:jump:check && pnpm kids:hilal:check && pnpm kids:games:check && pnpm video:engine:check && pnpm routes:check && pnpm information-architecture:check && pnpm imports:check && pnpm placeholder-media:check && pnpm mobile:check && pnpm offline:check && pnpm content:check && pnpm auth:check && pnpm canonical:check && pnpm project:check && pnpm hygiene:check && pnpm security:check && pnpm native-social:check && pnpm adsense:check && pnpm search-console:check && pnpm lint && pnpm check && pnpm build",
+    "verify:pr": "pnpm supabase:migrations:check && pnpm kids:memory:check && pnpm kids:wudu:check && pnpm kids:verse:check && pnpm kids:quiz:check && pnpm kids:mosque:check && pnpm kids:road:check && pnpm kids:jump:check && pnpm kids:hilal:check && pnpm kids:games:check && pnpm video:engine:check && pnpm routes:check && pnpm information-architecture:check && pnpm imports:check && pnpm content:check && pnpm content:canonical:check && pnpm auth:check && pnpm canonical:check && pnpm project:check && pnpm hygiene:check && pnpm security:check && pnpm lint && pnpm check",
+    "verify": "pnpm supabase:migrations:check && pnpm quran:local:check && pnpm supabase:migrations:replay && pnpm kids:memory:check && pnpm kids:wudu:check && pnpm kids:verse:check && pnpm kids:quiz:check && pnpm kids:mosque:check && pnpm kids:road:check && pnpm kids:jump:check && pnpm kids:hilal:check && pnpm kids:games:check && pnpm video:engine:check && pnpm routes:check && pnpm information-architecture:check && pnpm imports:check && pnpm placeholder-media:check && pnpm mobile:check && pnpm offline:check && pnpm content:check && pnpm content:canonical:check && pnpm auth:check && pnpm canonical:check && pnpm project:check && pnpm hygiene:check && pnpm security:check && pnpm native-social:check && pnpm adsense:check && pnpm search-console:check && pnpm lint && pnpm check && pnpm build",
     "imports:check": "node scripts/verify-local-imports.mjs",
     "placeholder-media:check": "node scripts/verify-placeholder-media.mjs",
     "background:jobs": "tsx scripts/run-background-jobs.ts",
@@ -56,7 +56,8 @@
     "kids:hilal:check": "tsx scripts/verify-kids-hilal-fly.ts",
     "kids:games:check": "tsx scripts/verify-kids-games-final.ts",
     "information-architecture:check": "node scripts/verify-information-architecture.mjs",
-    "security:check": "node scripts/verify-security-hardening.mjs"
+    "security:check": "node scripts/verify-security-hardening.mjs",
+    "content:canonical:check": "node scripts/verify-content-canonicalization.mjs"
   },
   "dependencies": {
     "@capacitor/android": "7.4.3",

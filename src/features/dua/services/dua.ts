@@ -9,6 +9,7 @@ import {
 } from "@/lib/supabase/server";
 
 import type { DuaCategory, Dua } from "@/features/dua/types/dua";
+import { resolveCanonicalPublished } from "@/lib/data/content-merge";
 import {
   FALLBACK_DUA_CATEGORIES,
   FALLBACK_DUAS,
@@ -143,11 +144,7 @@ export async function getDuas(
     .map(mapDuaRow)
     .filter((dua) => dua.slug && dua.textAr);
 
-  return Array.from(
-    new Map(
-      [...fallback, ...mapped].map((dua) => [dua.slug, dua]),
-    ).values(),
-  ).slice(0, safeLimit);
+  return resolveCanonicalPublished(mapped, fallback).slice(0, safeLimit);
 }
 
 export async function getDuaBySlug(slug: string): Promise<Dua | null> {

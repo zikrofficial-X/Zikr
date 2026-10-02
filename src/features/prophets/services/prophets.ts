@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
-import { mergePublishedBySlug } from "@/lib/data/content-merge";
+import { resolveCanonicalPublished } from "@/lib/data/content-merge";
 
 import type { Prophet } from "@/features/prophets/types/prophets";
 import { prophets as FALLBACK_PROPHETS } from "@/features/prophets/data/fallback";
@@ -166,7 +166,7 @@ export async function getProphets(): Promise<Prophet[]> {
   }
 
   const database = isSupabaseConfigured() ? await getDatabaseProphets() : null;
-  if (database?.length) return mergePublishedBySlug(database, offline);
+  if (database?.length) return resolveCanonicalPublished(database, offline);
 
   return offline.length ? offline : FALLBACK_PROPHETS.map(mapFallbackProphet);
 }
