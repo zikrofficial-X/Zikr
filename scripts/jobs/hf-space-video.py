@@ -8,7 +8,7 @@ from urllib.request import urlopen
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--provider", choices=["wan2_2_fast", "ltx2_5"], required=True)
+    parser.add_argument("--provider", choices=["wan2_2_fast", "ltx_fast"], required=True)
     parser.add_argument("--space", required=True)
     parser.add_argument("--prompt-file", required=True)
     parser.add_argument("--output", required=True)
@@ -82,17 +82,25 @@ def main():
             api_name="/generate_video",
         )
     else:
+        # LTX-Video Distilled current public Space contract:
+        # text_to_video(prompt, negative_prompt, input_image, input_video,
+        #               height, width, mode, duration, frames_to_use,
+        #               seed, randomize_seed, guidance_scale, improve_texture)
         result = client.predict(
             prompt,
-            handle_file(args.image) if args.image else None,
-            1472,
-            832,
-            max(2, min(15, int(round(args.duration)))),
+            "worst quality, inconsistent motion, blurry, jittery, distorted",
+            None,
+            None,
+            512,
+            704,
+            "text-to-video",
+            max(2, min(8, int(round(args.duration)))),
+            9,
             args.seed,
-            "conv",
-            False,
             True,
-            api_name="/generate_video",
+            3.0,
+            True,
+            api_name="/text_to_video",
         )
 
     video_value = result[0] if isinstance(result, (tuple, list)) else result
