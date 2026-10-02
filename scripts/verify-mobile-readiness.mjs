@@ -163,12 +163,12 @@ try {
 }
 
 const offlinePack = read("src/lib/offline-pack.ts");
-for (const token of ["offline_manifest", "requestOfflineRouteCache", "cacheRoutes?: boolean", "offline-content-version-v4"]) {
+for (const token of ["offline_manifest", "requestOfflineRouteCache", "cacheRoutes?: boolean", "offline-content-version-v5"]) {
   if (!offlinePack.includes(token)) failures.push(`Offline pack is missing ${token}`);
 }
 
 const serviceWorker = read("public/sw.js");
-for (const token of ['CACHE_NAME = "zikr-v12"', "OFFLINE_CONTENT_PREFIX", "CACHE_OFFLINE_ROUTES", "cacheReferencedStaticAssets"]) {
+for (const token of ['CACHE_NAME = "zikr-v13"', "OFFLINE_CONTENT_PREFIX", "CACHE_OFFLINE_ROUTES", "cacheReferencedStaticAssets"]) {
   if (!serviceWorker.includes(token)) failures.push(`Service worker missing ${token}`);
 }
 
