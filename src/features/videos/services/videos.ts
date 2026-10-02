@@ -6,6 +6,32 @@ import type { VideoCategory, Video } from "@/features/videos/types/videos";
 import { FALLBACK_VIDEO_CATEGORIES, FALLBACK_VIDEOS } from "@/features/videos/data/fallback";
 import { defaultOgImage } from "@/lib/site";
 
+function resolveVideoMediaUrl(row: Record<string, unknown>): string | null {
+  const metadata =
+    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? (row.metadata as Record<string, unknown>)
+      : {};
+
+  const candidates = [
+    metadata.sourceVideoUrl,
+    metadata.generatedVideoUrl,
+    metadata.videoUrl,
+    metadata.video_url,
+    metadata.content_ref,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && /^https?:\/\//i.test(value.trim())) return value.trim();
+  }
+
+  const youtubeId = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
+  if (/^[A-Za-z0-9_-]{6,20}$/.test(youtubeId)) {
+    return `https://www.youtube.com/watch?v=${encodeURIComponent(youtubeId)}`;
+  }
+
+  return null;
+}
+
 function resolveVideoThumbnail(row: Record<string, unknown>): string {
   const direct = typeof row.thumbnail_url === "string" ? row.thumbnail_url.trim() : "";
   if (direct) return direct;
@@ -28,6 +54,11 @@ function resolveVideoThumbnail(row: Record<string, unknown>): string {
   return defaultOgImage;
 }
 
+
+function isPubliclyRenderableVideo(row: Record<string, unknown>): boolean {
+  return Boolean(resolveVideoMediaUrl(row));
+}
+
 // Videos
 export async function getVideoCategories(): Promise<VideoCategory[]> {
   if (!isSupabaseConfigured()) return FALLBACK_VIDEO_CATEGORIES;
@@ -40,7 +71,10 @@ export async function getVideoCategories(): Promise<VideoCategory[]> {
 
   if (rows.length === 0) return FALLBACK_VIDEO_CATEGORIES;
 
-  return rows.map(r => ({
+  const renderableRows = rows.filter(isPubliclyRenderableVideo);
+  if (renderableRows.length === 0) return fallback.slice(0, safeLimit);
+
+  return renderableRows.map(r => ({
     id: r.id as string,
     nameAr: r.name_ar as string,
     nameEn: r.name_en as string,
@@ -105,7 +139,9 @@ export async function getVideoBySlug(slug: string): Promise<Video | null> {
     return [];
   });
 
-  if (!rows.length) return FALLBACK_VIDEOS.find((video) => video.slug === slug.trim()) ?? null;
+  if (!rows.length || !isPubliclyRenderableVideo(rows[0])) {
+    return FALLBACK_VIDEOS.find((video) => video.slug === slug.trim()) ?? null;
+  }
   const r = rows[0];
 
   return {
