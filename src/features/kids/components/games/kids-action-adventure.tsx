@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
 import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
@@ -89,9 +89,16 @@ export function ZikrJumpGame({
 }: AdventureGameProps) {
   const rules = getZikrJumpRules(difficulty);
   const levels = getZikrJumpLevels(difficulty);
-  const stateRef = useRef<JumpSnapshot>({
+  const createInitialJumpState = (): JumpSnapshot => ({
     levelIndex: 0,
-    player: { x: levels[0].platforms[0].x, y: levels[0].platforms[0].y - JUMP_PLAYER_H / 2, vx: 0, vy: 0, grounded: true, coyote: 0 },
+    player: {
+      x: levels[0].platforms[0].x,
+      y: levels[0].platforms[0].y - JUMP_PLAYER_H / 2,
+      vx: 0,
+      vy: 0,
+      grounded: true,
+      coyote: 0,
+    },
     cameraY: 0,
     score: 0,
     stars: 0,
@@ -101,8 +108,9 @@ export function ZikrJumpGame({
     completed: false,
     collected: [],
   });
+  const stateRef = useRef<JumpSnapshot>(createInitialJumpState());
   const inputRef = useRef({ left: false, right: false, jump: false });
-  const [snapshot, setSnapshot] = useState<JumpSnapshot>(() => ({ ...stateRef.current, player: { ...stateRef.current.player }, collected: [] }));
+  const [snapshot, setSnapshot] = useState<JumpSnapshot>(createInitialJumpState);
   const [feedback, setFeedback] = useState("تحرك يمينًا ويسارًا، اقفز، واجمع النجوم.");
   const completeRef = useRef(false);
 
@@ -820,7 +828,6 @@ export function MosqueAdventureGame({
   const rules = getMosqueAdventureRules(difficulty);
   const questions = getApprovedScenarioQuestions();
   const [position, setPosition] = useState(0);
-  const [visited, setVisited] = useState<string[]>([]);
   const [score, setScore] = useState(0);
   const [stars, setStars] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -833,7 +840,6 @@ export function MosqueAdventureGame({
 
   useEffect(() => {
     setPosition(0);
-    setVisited([]);
     setScore(0);
     setStars(0);
     setCombo(0);
