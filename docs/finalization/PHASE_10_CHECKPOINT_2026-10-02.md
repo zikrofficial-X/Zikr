@@ -3,7 +3,7 @@
 
 ### Status
 
-**IN PROGRESS — implementation applied; final source gate pending.**
+**CLOSED WITH TRACKED CI/RELEASE EXCEPTION — source and live-data Video Factory gates verified.**
 
 ### Completed
 
@@ -20,10 +20,10 @@
 
 ### Gate
 
-- [ ] `video:factory:check` passes against the exact branch sources.
-- [ ] Existing `verify:pr` passes.
-- [ ] No DB migration is required.
+- [x] `video:factory:check` contract passes against the exact finalization branch sources.
+- [ ] GitHub PR `verify:pr` result is not observable through the connected GitHub Actions interface; this remains a release-verification exception, not an inferred pass.
+- [x] No DB migration is required; Phase 10 changes are runtime/code-path hardening only.
 
 ### Release rule
 
-Do not promote Phase 10 until the Video Factory source gate is green. Project-wide CI remains subject to the existing GitHub Actions observability exception.
+The Phase 10 implementation checkpoint is closed under the documented CI observability exception. Production promotion still requires the repository quality gate to execute successfully.
