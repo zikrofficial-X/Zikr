@@ -1,4 +1,5 @@
--- Curated human/open audio catalogue. Existing schema already allows dhikr.
+-- Human/open audio catalogue for adhan, salawat and dhikr.
+-- Applied remotely as 20261002160440_human_audio_library_20261002.
 update public.site_audio_assets
 set is_primary = false
 where kind in ('adhan', 'salawat', 'dhikr');
