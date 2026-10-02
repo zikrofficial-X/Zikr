@@ -45,9 +45,9 @@ jobs:
       GEMINI_MODEL: gemini-3.1-flash-lite
       GEMINI_AUDIO_SMOKE_TEST: "false"
       AUTO_VIDEO_ENABLED: "true"
-      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '4' }}
+      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '8' }}
       VIDEO_BACKGROUND_BATCH_SIZE: "1"
-      DAILY_VIDEO_TARGET: "4"
+      DAILY_VIDEO_TARGET: "8"
       VIDEO_DAILY_LIMIT: "24"
       VIDEO_AUTOMATION_DRY_RUN: "false"
       VIDEO_AI_ENABLED: "true"
@@ -58,6 +58,7 @@ jobs:
       HF_WAN_SPACE: "zerogpu-aoti/wan2-2-fp8da-aoti-faster"
       HF_LTX25_SPACE: "akhaliq/LTX-2.5-workflow"
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_VIDEO_PYTHON: ${{ github.workspace }}/.video-venv/bin/python
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
       AUTO_VIDEO_SECONDS: "16"
