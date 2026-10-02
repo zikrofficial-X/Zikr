@@ -3,7 +3,7 @@ export type VideoProviderName =
   | "comfyui"
   | "free_api"
   | "hf_wan"
-  | "hf_ltx25";
+  | "hf_ltx_fast";
 
 export type VideoGenerationInput = {
   requestId: string;
