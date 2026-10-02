@@ -407,7 +407,10 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
       <div className="mx-4 mt-4 rounded-[2rem] border border-violet-200/10 bg-black/20 p-5 sm:mx-6">
         <div className="min-h-28 rounded-[1.5rem] border border-violet-200/15 bg-violet-200/[0.04] p-5 text-center text-xl leading-[2.5] text-brand-gold">{answer.length ? answer.map(index => tokens.find(token => token.index === index)?.text ?? "").join(" ") : <span className="text-sm text-brand-cream/30">ابدأ من الكلمة الأولى</span>}</div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {tokens.map(token => <button key={token.id} type="button" onClick={() => choose(token.index)} disabled={paused || answer.includes(token.index) || complete} className={"min-h-16 rounded-2xl border p-4 text-right text-base font-semibold transition " + (answer.includes(token.index) ? "border-brand-emerald/20 bg-brand-emerald/5 text-brand-cream/20" : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-violet-200/50")}>{token.text}</button>)}
+          {tokens.map(token => {
+            const hinted = hintVisible && token.index === answer.length;
+            return <button key={token.id} type="button" onClick={() => choose(token.index)} disabled={paused || answer.includes(token.index) || complete} className={"min-h-16 rounded-2xl border p-4 text-right text-base font-semibold transition " + (answer.includes(token.index) ? "border-brand-emerald/20 bg-brand-emerald/5 text-brand-cream/20" : hinted ? "border-brand-gold/80 bg-brand-gold/10 text-brand-gold ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-violet-200/50")}>{hinted ? "✨ " + token.text : token.text}</button>;
+          })}
         </div>
       </div>
       <GameToast tone={complete && levelIndex === KIDS_LEVEL_COUNT - 1 ? "emerald" : "gold"}>{feedback}</GameToast>
