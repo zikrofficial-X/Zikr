@@ -418,6 +418,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
   const [selected, setSelected] = useState<number | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [feedback, setFeedback] = useState("اقرأ السؤال ثم اختر الإجابة.");
+  const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   const advancingRef = useRef(false);
   const meta = getKidsLevelMeta("zikr-quiz", difficulty, levelIndex);
   const count = Math.max(4, Math.min(allQuestions.length, (difficulty === "hard" ? 10 : difficulty === "normal" ? 7 : 5) + (levelIndex % 2)));
@@ -432,6 +433,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
     setSelected(null);
     setSeconds(0);
     setFeedback(meta.subtitleAr);
+    setHiddenOptions([]);
     advancingRef.current = false;
   }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
 
@@ -460,6 +462,18 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
       onResult(hud);
     }
   }, [complete, correct, levelIndex, onHud, onResult, onSound, score, streak]);
+
+  const useFiftyFifty = () => {
+    if (paused || selected !== null || !question || hiddenOptions.length > 0) return;
+    const wrong = question.options
+      .map((_, optionIndex) => optionIndex)
+      .filter(optionIndex => optionIndex !== question.correctAnswer);
+    const first = wrong[(meta.seed + index) % wrong.length];
+    const second = wrong[(meta.seed + index + 1) % wrong.length];
+    setHiddenOptions([...new Set([first, second])]);
+    setFeedback("تم حذف إجابتين غير صحيحتين. ركّز على الباقي.");
+    onSound("move");
+  };
 
   const choose = (answer: number) => {
     if (paused || selected !== null || !question) return;
@@ -504,15 +518,20 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
         { label: "السلسلة", value: streak, tone: "text-violet-200" },
         { label: "الوقت", value: formatSeconds(seconds), tone: "text-sky-200" },
         { label: "المستوى", value: levelIndex + 1, tone: "text-amber-200" },
-      ]} /></div>
+      ]} />
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-brand-cream/45">ميزة 50/50 متاحة مرة واحدة لكل سؤال، وتفتح لك آخر خيارين محتملين.</p>
+        <button type="button" onClick={useFiftyFifty} disabled={paused || selected !== null || hiddenOptions.length > 0} className="rounded-xl border border-brand-gold/30 bg-brand-gold/5 px-4 py-2 text-xs font-black text-brand-gold disabled:opacity-40">✂️ 50/50</button>
+      </div></div>
       <div className="mx-4 mt-4 rounded-[2rem] border border-white/10 bg-black/20 p-5 sm:mx-6 sm:p-7">
         <div className="rounded-[1.7rem] border border-brand-gold/15 bg-brand-gold/[0.04] p-5"><p className="text-xs font-black tracking-[0.18em] text-brand-emerald/80">السؤال {index + 1}</p><h4 className="mt-3 text-2xl font-black leading-10 text-brand-cream">{question.text}</h4></div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {question.options.map((option, optionIndex) => {
             const isCorrect = optionIndex === question.correctAnswer;
             const isSelected = optionIndex === selected;
-            return <button key={option + ":" + optionIndex} type="button" onClick={() => choose(optionIndex)} disabled={selected !== null} className={[
-              "min-h-24 rounded-2xl border p-4 text-right transition",
+            const hidden = hiddenOptions.includes(optionIndex);
+            return <button key={option + ":" + optionIndex} type="button" onClick={() => choose(optionIndex)} disabled={selected !== null || hidden} className={[
+              "min-h-24 rounded-2xl border p-4 text-right transition " + (hidden ? "opacity-20 blur-[1px]" : ""),
               isSelected ? (isCorrect ? "border-brand-emerald bg-brand-emerald/15 text-brand-emerald" : "border-rose-300/35 bg-rose-300/10 text-rose-100")
                 : selected !== null && isCorrect ? "border-brand-emerald/60 bg-brand-emerald/10 text-brand-emerald"
                 : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-brand-gold/45",
