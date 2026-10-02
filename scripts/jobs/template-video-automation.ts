@@ -7,7 +7,7 @@ import {
   supabaseServerAdminCount,
   supabaseServerAdminRequest,
 } from "../../src/lib/supabase/admin-rest";
-import { resolveVideoSource } from "../../src/features/videos/services/video-sources";
+import { listVideoSources, resolveVideoSource } from "../../src/features/videos/services/video-sources";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
@@ -22,6 +22,8 @@ const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
 const VIDEO_TEMPLATE_VERSION = "2026-10-02-quality-v2";
 const ENGINE_CONFIG = getVideoEngineConfig();
+const AI_ATTEMPTS_PER_RUN = Math.max(0, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 2) || 2);
+let aiAttemptsUsed = 0;
 function getArabicTtsPython() {
   return process.env.ARABIC_TTS_PYTHON?.trim() || "python3";
 }
@@ -297,15 +299,18 @@ export async function seedAutomatedVideoRequests() {
   for (let i = 0; i < BATCH_SIZE; i += 1) {
     const slot = baseSlot + i;
     const day = dayIndex(now);
-    const mode = slot % 4;
+    const mode = slot % 6;
 
     let payload: Record<string, unknown>;
     let key = "";
 
-    if (mode === 0 || mode === 1) {
+    const aiProviderHint =
+      slot % 2 === 0 ? ("hf_ltx25" as const) : ("hf_wan" as const);
+
+    if (mode === 0) {
       key = `quran:${day}:${slot}`;
       if (await findByAutomationKey("video_generation_requests", key)) continue;
-      const row = await getQuranRow(day * 4 + slot);
+      const row = await getQuranRow(day * 6 + slot);
       const surahName = await getSurahName(row.surah_id);
       const sourceUrl = `https://quran.com/${row.surah_id}/${row.ayah_number}`;
       payload = {
@@ -318,7 +323,7 @@ export async function seedAutomatedVideoRequests() {
           sourceType: "quran",
           sourceId: `quran:${row.surah_id}:${row.ayah_number}`,
           sourceUrl,
-          sourceLabel: `القرآن الكريم — ${surahName}، الآية ${row.ayah_number}`,
+          sourceLabel: `القرآن الكريم — سورة ${surahName}، الآية ${row.ayah_number}`,
           surahId: row.surah_id,
           ayahNumber: row.ayah_number,
           textAr: row.text_uthmani || row.text_ar,
@@ -326,16 +331,17 @@ export async function seedAutomatedVideoRequests() {
           publicPath: `/quran/${row.surah_id}/${row.ayah_number}`,
           automationKey: key,
           aiMode: "source_locked",
+          aiProviderHint,
         },
         duration: TARGET_VIDEO_SECONDS,
         status: "pending",
         automation_key: key,
       };
-    } else if (mode === 2) {
+    } else if (mode === 1) {
       key = `hadith:${day}:${slot}`;
       if (await findByAutomationKey("video_generation_requests", key)) continue;
-      const row = await getHadithRow(day * 4 + slot);
-      const sourceUrl = "https://sunnah.com";
+      const row = await getHadithRow(day * 6 + slot);
+      const sourceUrl = row.ref ? `https://sunnah.com/${encodeURIComponent(row.ref)}` : "https://sunnah.com";
       payload = {
         title: `حديث اليوم — رقم ${row.hadith_number || "مرجعي"}`,
         description: "فيديو آلي لحديث منشور في مكتبة ذِكر مع نص الحديث ودرجته ومرجع البحث.",
@@ -352,15 +358,16 @@ export async function seedAutomatedVideoRequests() {
           publicPath: "/hadith",
           automationKey: key,
           aiMode: "source_locked",
+          aiProviderHint,
         },
         duration: TARGET_VIDEO_SECONDS,
         status: "pending",
         automation_key: key,
       };
-    } else {
+    } else if (mode === 2) {
       key = `dua:${day}:${slot}`;
       if (await findByAutomationKey("video_generation_requests", key)) continue;
-      const row = await getDuaRow(day * 4 + slot);
+      const row = await getDuaRow(day * 6 + slot);
       const sourceUrl = `https://zikrmediaofficial.vercel.app/dua/${row.slug}`;
       payload = {
         title: `دعاء اليوم — ${row.title_ar}`,
@@ -378,6 +385,95 @@ export async function seedAutomatedVideoRequests() {
           publicPath: `/dua/${row.slug}`,
           automationKey: key,
           aiMode: "source_locked",
+          aiProviderHint,
+        },
+        duration: TARGET_VIDEO_SECONDS,
+        status: "pending",
+        automation_key: key,
+      };
+    } else if (mode === 3) {
+      key = `adhkar:${day}:${slot}`;
+      if (await findByAutomationKey("video_generation_requests", key)) continue;
+      const sources = await listVideoSources("adhkar");
+      if (!sources.length) throw new Error("No verified adhkar sources are available.");
+      const row = sources[(day * 6 + slot) % sources.length];
+      payload = {
+        title: row.title,
+        description: "فيديو ألي لذكر مأثور مع المصدر والدرجة المسجلة في مكتبة ذِكر.",
+        category: "adhkar",
+        content: {
+          renderer: "template",
+          type: "adhkar",
+          sourceType: "hadith",
+          sourceId: row.id,
+          sourceUrl: row.sourceUrl,
+          sourceLabel: row.sourceLabel,
+          textAr: row.text,
+          gradeAr: row.grade,
+          additionalSources: row.additionalSources ?? [],
+          publicPath: "/adhkar",
+          automationKey: key,
+          aiMode: "source_locked",
+          aiProviderHint,
+        },
+        duration: TARGET_VIDEO_SECONDS,
+        status: "pending",
+        automation_key: key,
+      };
+    } else if (mode === 4) {
+      key = `story:${day}:${slot}`;
+      if (await findByAutomationKey("video_generation_requests", key)) continue;
+      const sources = await listVideoSources("story");
+      if (!sources.length) throw new Error("No verified story sources are available.");
+      const row = sources[(day * 6 + slot) % sources.length];
+      payload = {
+        title: row.title,
+        description: "قصة موثقة في مكتبة ذِكر مع إحالة إلى مصدرها الأساسي.",
+        category: "story",
+        content: {
+          renderer: "template",
+          type: "story",
+          sourceType: "story",
+          sourceId: row.id,
+          sourceUrl: row.sourceUrl,
+          sourceLabel: row.sourceLabel,
+          additionalSources: row.additionalSources ?? [],
+          textAr: row.text,
+          publicPath: "/stories",
+          automationKey: key,
+          aiMode: "source_locked",
+          aiProviderHint,
+        },
+        duration: TARGET_VIDEO_SECONDS,
+        status: "pending",
+        automation_key: key,
+      };
+    } else {
+      const reminders = [
+        "اجعل التقنية خادمة للعبادة: اختر وقتًا هادئًا للقراءة والذكر وأغلق ما يشتت قلبك.",
+        "القليل الثابت يبني عادة أقوى من قائمة طويلة لا تستمر عليها؛ اختر وردًا تستطيع المحافظة عليه.",
+        "قبل مشاركة أي معلومة دينية، ابحث عن مصدرها واقرأ النص كاملًا ولا تعتمد على صورة متداولة وحدها.",
+        "خذ دقيقة هادئة في منتصف يومك، ابتعد عن الضوضاء، وراجع ما تريد أن تحمله معك لبقية اليوم.",
+        "اجعل هاتفك أداة تساعدك على الخير: قلل الإشعارات، واحفظ وقتك للمهم، واستخدم التقنية بوعي.",
+        "ابدأ بخطوة صغيرة اليوم، ثم كررها غدًا؛ الاستمرارية في العادات النافعة تصنع فرقًا كبيرًا.",
+      ];
+      key = `other:${day}:${slot}`;
+      if (await findByAutomationKey("video_generation_requests", key)) continue;
+      const textAr = reminders[(day * 6 + slot) % reminders.length];
+      payload = {
+        title: "رسالة اليوم — خطوة صغيرة ثابتة",
+        description: "رسالة تحريرية أصلية من ذِكر، غير منسوبة إلى آية أو حديث.",
+        category: "other",
+        content: {
+          renderer: "template",
+          type: "general_reminder",
+          sourceType: "editorial",
+          sourceLabel: "محتوى تحريري أصلي من منصة ذِكر",
+          textAr,
+          publicPath: "/articles",
+          automationKey: key,
+          aiMode: "general_reminder",
+          aiProviderHint,
         },
         duration: TARGET_VIDEO_SECONDS,
         status: "pending",
@@ -652,30 +748,66 @@ async function renderVideo(request: GeneratedRequest) {
       }
     }
 
-    if (ENGINE_CONFIG.aiEnabled && ENGINE_CONFIG.order.some((provider) => provider !== "template")) {
-      const router = createVideoProviderRouter(async () => ({ ok: false, provider: "template" as const, error: "The existing template renderer is handled by this worker." }));
+    const preferredProvider =
+      request.content.aiProviderHint === "hf_ltx25" ||
+      request.content.aiProviderHint === "hf_wan"
+        ? (request.content.aiProviderHint as "hf_ltx25" | "hf_wan")
+        : undefined;
+
+    if (
+      ENGINE_CONFIG.aiEnabled &&
+      ENGINE_CONFIG.order.some((provider) => provider !== "template") &&
+      aiAttemptsUsed < AI_ATTEMPTS_PER_RUN
+    ) {
+      aiAttemptsUsed += 1;
+      const router = createVideoProviderRouter(async () => ({
+        ok: false,
+        provider: "template" as const,
+        error: "The existing template renderer is handled by this worker.",
+      }));
       const aiResult = await router.generate({
         requestId: request.id,
         title: request.title,
         description: request.description || "",
         category: request.category,
         text,
-        sourceId: typeof request.content.sourceId === "string" ? request.content.sourceId : undefined,
+        sourceId:
+          typeof request.content.sourceId === "string"
+            ? request.content.sourceId
+            : undefined,
         sourceUrl,
         format: isVertical ? "vertical" : "horizontal",
         durationSeconds: TARGET_VIDEO_SECONDS,
         language: "ar",
         style: scene,
+        preferredProvider,
       });
-      if (aiResult.ok && aiResult.localPath) aiVideoPath = aiResult.localPath;
-      else if (aiResult.ok && aiResult.videoUrl) {
-        const response = await fetch(aiResult.videoUrl, { signal: AbortSignal.timeout(60_000) });
-        if (response.ok) {
-          aiVideoPath = temp + "/ai-source.mp4";
-          await writeFile(aiVideoPath, new Uint8Array(await response.arrayBuffer()));
+      if (aiResult.ok && aiResult.localPath) {
+        aiVideoPath = aiResult.localPath;
+      } else if (aiResult.ok && aiResult.videoUrl) {
+        const response = await fetch(aiResult.videoUrl, {
+          signal: AbortSignal.timeout(60_000),
+        });
+        if (!response.ok) {
+          throw new Error("AI provider returned a video URL that could not be downloaded.");
         }
+        aiVideoPath = temp + "/ai-source.mp4";
+        await writeFile(aiVideoPath, new Uint8Array(await response.arrayBuffer()));
       }
-      request.content = { ...request.content, aiProvider: aiResult.ok ? aiResult.provider : null, aiFallbackReason: aiResult.ok ? null : aiResult.error || "AI providers unavailable" };
+      request.content = {
+        ...request.content,
+        aiProvider: aiResult.ok ? aiResult.provider : null,
+        aiProviderJobId: aiResult.providerJobId ?? null,
+        aiFallbackReason: aiResult.ok
+          ? null
+          : aiResult.error || "AI providers unavailable",
+      };
+    } else if (ENGINE_CONFIG.aiEnabled && aiAttemptsUsed >= AI_ATTEMPTS_PER_RUN) {
+      request.content = {
+        ...request.content,
+        aiProvider: null,
+        aiFallbackReason: "AI per-run budget exhausted; deterministic template fallback used.",
+      };
     }
     const backgroundPath = aiVideoPath || await renderBackground(temp, scene, width, height);
     let audioKind = contentAudioKind(request, audioUrl);
@@ -958,6 +1090,14 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
         body: JSON.stringify({
           status: "completed",
           video_url: videoUrl,
+          provider:
+            typeof request.content.aiProvider === "string"
+              ? request.content.aiProvider
+              : "template",
+          provider_job_id:
+            typeof request.content.aiProviderJobId === "string"
+              ? request.content.aiProviderJobId
+              : null,
           content: request.content,
           updated_at: new Date().toISOString(),
           error_message: null,
