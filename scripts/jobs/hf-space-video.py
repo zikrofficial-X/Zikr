@@ -25,7 +25,7 @@ def extract_file_value(value):
     if isinstance(value, str):
         return value
     if isinstance(value, dict):
-        for key in ("path", "url", "file", "name"):
+        for key in ("path", "url", "file", "name", "video"):
             candidate = value.get(key)
             if candidate:
                 return candidate
