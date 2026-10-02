@@ -4,10 +4,10 @@ import { useCallback, useRef, useState, useEffect } from 'react';
 import {
   AZAN_CLIP_URL,
   playAzanTone,
-  getAudioUrl,
   refreshSiteAudio,
   unlockAudioContext,
 } from '@/lib/audio/spiritual-tones';
+import { getAudioUrl } from '@/lib/audio/config';
 
 export type AdhanVoice = 'makkah' | 'madinah';
 
