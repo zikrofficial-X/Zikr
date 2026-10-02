@@ -719,7 +719,7 @@ export function HilalFlyGame({
       cancelAnimationFrame(frame);
       previous = null;
     };
-  }, [levels, onHud, onResult, onSound, paused, rules]);
+  }, [difficulty, levels, onHud, onResult, onSound, paused, rules]);
 
   const level = levels[state.levelIndex];
   const progress = (state.distance / rules.goalDistance) * 100;
