@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { CURATED_ADHKAR_SOURCES, CURATED_GENERAL_MESSAGES, CURATED_STORY_SOURCES } from "@/features/videos/data/curated-content";
+import { requireAdminPermission } from "@/features/admin/services/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,9 @@ function Section({ title, description, items }: { title: string; description: st
   );
 }
 
-export default function CuratedVideoLibraryPage() {
+export default async function CuratedVideoLibraryPage() {
+  await requireAdminPermission("video.manage");
+
   return (
     <Container className="space-y-12 py-10 text-right" dir="rtl">
       <header className="space-y-3">

@@ -32,11 +32,26 @@ async def synthesize(text: str, output: Path, voice: str, rate: str, pitch: str)
         raise RuntimeError("Arabic TTS returned an empty audio file")
 
 
+# Male Arabic Edge TTS voice profiles (ARABIC_TTS_PROFILE). ARABIC_TTS_VOICE overrides the profile.
+VOICE_PROFILES = {
+    "msa": "ar-SA-HamedNeural",
+    "egyptian": "ar-EG-ShakirNeural",
+}
+DEFAULT_PROFILE = "msa"
+
+
+def default_voice() -> str:
+    explicit = os.getenv("ARABIC_TTS_VOICE", "").strip()
+    if explicit:
+        return explicit
+    return VOICE_PROFILES.get(os.getenv("ARABIC_TTS_PROFILE", DEFAULT_PROFILE).strip().lower(), VOICE_PROFILES[DEFAULT_PROFILE])
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--text", required=True)
     parser.add_argument("--output", required=True)
-    parser.add_argument("--voice", default=os.getenv("ARABIC_TTS_VOICE", "ar-SA-ZariyahNeural"))
+    parser.add_argument("--voice", default=default_voice())
     parser.add_argument("--rate", default=os.getenv("ARABIC_TTS_RATE", "-12%"))
     parser.add_argument("--pitch", default=os.getenv("ARABIC_TTS_PITCH", "-2Hz"))
     args = parser.parse_args()

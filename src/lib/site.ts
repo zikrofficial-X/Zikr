@@ -71,6 +71,7 @@ export function pageMetadata(opts: {
   description: string;
   path: string;
   noindex?: boolean;
+  images?: string[];
 }): Metadata {
   const { title, description, path } = opts;
   const shouldNoindex = opts.noindex ?? isNoindexPath(path);
@@ -99,13 +100,13 @@ export function pageMetadata(opts: {
       type: "website",
       locale: siteConfig.locale,
       siteName: siteConfig.shortName,
-      images: [{ url: defaultOgImage, width: 1200, height: 630 }],
+      images: (opts.images?.length ? opts.images.map(url => ({ url })) : [{ url: defaultOgImage, width: 1200, height: 630 }]),
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [defaultOgImage],
+      images: opts.images?.length ? opts.images : [defaultOgImage],
     },
   };
 }

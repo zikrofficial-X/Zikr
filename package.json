@@ -55,6 +55,7 @@
     "kids:jump:check": "tsx scripts/verify-kids-zikr-jump.ts",
     "kids:hilal:check": "tsx scripts/verify-kids-hilal-fly.ts",
     "kids:games:check": "tsx scripts/verify-kids-games-final.ts",
+    "kids:production:check": "node scripts/verify-kids-production.mjs",
     "information-architecture:check": "node scripts/verify-information-architecture.mjs",
     "security:check": "node scripts/verify-security-hardening.mjs",
     "content:canonical:check": "node scripts/verify-content-canonicalization.mjs",

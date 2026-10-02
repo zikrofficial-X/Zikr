@@ -286,6 +286,11 @@ async function getYoutubeAccessToken(): Promise<string> {
   }
 }
 
+function resolveYoutubePrivacy(): 'public' | 'unlisted' | 'private' {
+  const value = process.env.YOUTUBE_UPLOAD_PRIVACY?.trim().toLowerCase();
+  return value === 'unlisted' || value === 'private' ? value : 'public';
+}
+
 export async function publishToYoutube(
   videoId: string,
   metadata: ReturnType<typeof generateYoutubeMetadata>,
@@ -320,7 +325,7 @@ export async function publishToYoutube(
           tags: metadata.tags,
           categoryId: metadata.categoryId,
         },
-        status: { privacyStatus: 'public', selfDeclaredMadeForKids: false },
+        status: { privacyStatus: resolveYoutubePrivacy(), selfDeclaredMadeForKids: false },
       }),
       signal: AbortSignal.timeout(30_000),
     },
