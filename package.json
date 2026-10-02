@@ -72,7 +72,8 @@
     "db:indexes:check": "node scripts/verify-phase-19-index-governance.mjs",
     "assets:hygiene:check": "node scripts/verify-asset-hygiene.mjs",
     "test:phase21": "pnpm exec tsx scripts/tests/phase21-games.test.ts",
-    "tests:check": "pnpm test:phase21"
+    "test:video-contract": "pnpm exec tsx scripts/tests/video-contract.test.ts",
+    "tests:check": "pnpm test:phase21 && pnpm test:video-contract"
   },
   "dependencies": {
     "@capacitor/android": "7.4.3",

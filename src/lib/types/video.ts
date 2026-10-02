@@ -10,7 +10,7 @@ export interface VideoGenerationRequest {
   content: unknown;
   duration?: number | null;
   thumbnail_url?: string | null;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'retry_wait' | 'cancelled';
   youtube_id?: string | null;
   facebook_id?: string | null;
   video_url?: string | null;
