@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
 import { getZikrRoadLevel, getZikrRoadRules } from "@/lib/games/zikr-road";
 import {
@@ -348,11 +348,11 @@ export function ZikrRoadGame({
     }, 650);
   };
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     touchStartRef.current = { x: event.clientX, y: event.clientY };
   };
 
-  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerUp = (event: PointerEvent<HTMLDivElement>) => {
     const start = touchStartRef.current;
     touchStartRef.current = null;
     if (!start || paused || modelRef.current.questionOpen) return;
