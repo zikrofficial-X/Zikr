@@ -3,7 +3,7 @@
 
 ### Status
 
-**IN PROGRESS — implementation applied; final source gate pending.**
+**CLOSED WITH TRACKED CI/RELEASE EXCEPTION — AI Visual Factory source and live-usage gates verified.**
 
 ### Completed
 
@@ -19,10 +19,10 @@
 
 ### Gate
 
-- [ ] `ai:visual:check` passes against the exact branch sources.
-- [ ] Existing `verify:pr` passes.
-- [ ] No DB migration is required.
+- [x] `ai:visual:check` contract passes against the exact finalization branch sources.
+- [ ] GitHub PR `verify:pr` result is not observable through the connected GitHub Actions interface; this remains a release-verification exception, not an inferred pass.
+- [x] No DB migration is required; Phase 11 changes are policy/code-path hardening only.
 
 ### Release rule
 
-Do not promote Phase 11 until the AI Visual Factory source gate is green. Project-wide CI remains subject to the existing GitHub Actions observability exception.
+The Phase 11 implementation checkpoint is closed under the documented CI observability exception. Production promotion still requires the repository quality gate to execute successfully.
