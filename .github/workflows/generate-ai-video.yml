@@ -26,6 +26,11 @@ on:
         required: false
         default: "10"
         type: string
+      urgent:
+        description: "Whether this dispatch originated from the admin Run Now control"
+        required: false
+        default: "false"
+        type: string
 
 permissions:
   contents: read
