@@ -4,15 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: "Type RELEASE to authorize a production deployment from main"
+        description: "Type RELEASE to authorize a production verification from main"
         required: true
         type: string
       release_reason:
         description: "Stage or milestone being released"
         required: true
         type: string
-  # One-shot release hook for the verified admin refactor. It is guarded by
-  # the exact release marker below and does not enable general auto-deploys.
   workflow_run:
     workflows: ["ZIKR Quality Gate"]
     types: [completed]
@@ -25,8 +23,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Verify and deploy production
+  verify:
+    name: Verify Vercel Git production
     if: >-
       (
         github.event_name == 'workflow_dispatch' &&
@@ -40,103 +38,76 @@ jobs:
         contains(github.event.workflow_run.head_commit.message, 'ZIKR_ADMIN_RELEASE_20261002')
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     environment:
       name: production
     env:
-      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      VERCEL_ORG_ID: zikr1
-      VERCEL_PROJECT_ID: prj_JAsYThJCoUT3DzPxOU2EdmuwxiV5
+      SITE_URL: https://zikrmediaofficial.vercel.app
     steps:
       - name: Checkout exact release commit
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9.15.0
           run_install: false
-
       - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-
-      - name: Verify toolchain
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --version
-          pnpm --version
-
-      - name: Install dependencies
+      - name: Lightweight release integrity gate
         shell: bash
         run: |
           set -euo pipefail
           pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+          pnpm verify:pr
         timeout-minutes: 15
-
-      - name: Lightweight release integrity gate
+      - name: Verify Vercel Git production deployment
         shell: bash
-        run: pnpm verify:pr
-        timeout-minutes: 15
-
-      - name: Install pinned Vercel CLI
-        shell: bash
-        run: npm install --global vercel@59.23.1
-
-      - name: Validate release configuration
-        shell: bash
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          test -n "${VERCEL_TOKEN:-}" || { echo "Missing GitHub Actions secret: VERCEL_TOKEN" >&2; exit 1; }
-          test -n "${VERCEL_ORG_ID:-}" || { echo "Missing Vercel team scope." >&2; exit 1; }
-          test -n "${VERCEL_PROJECT_ID:-}" || { echo "Missing Vercel project ID." >&2; exit 1; }
 
-      - name: Link exact Vercel project
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          set -euo pipefail
-          rm -rf .vercel
-          vercel link --yes --project="${VERCEL_PROJECT_ID}" --scope="${VERCEL_ORG_ID}" --token="${VERCEL_TOKEN}"
+          check_url() {
+            local url="$1"
+            local expected="$2"
+            local body=""
+            local status=""
 
-      - name: Pull production Vercel configuration
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel pull --yes --environment=production --token="${VERCEL_TOKEN}"
+            for attempt in $(seq 1 30); do
+              status="$(curl -L -sS -o /tmp/zikr-response.txt -w "%{http_code}" --max-time 30 "$url" || true)"
+              body="$(cat /tmp/zikr-response.txt 2>/dev/null || true)"
 
-      - name: Build Vercel production artifact
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel build --prod --token="${VERCEL_TOKEN}"
+              if [ "$status" = "200" ] && printf "%s" "$body" | grep -qi "$expected"; then
+                echo "PASS $url"
+                return 0
+              fi
 
-      - name: Deploy prebuilt artifact to production
-        id: deploy
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          set -euo pipefail
-          url="$(vercel deploy --prebuilt --prod --yes --token="${VERCEL_TOKEN}")"
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "Production deployment: $url"
 
+              echo "WAIT $attempt/30 $url -> HTTP ${status:-0}"
+              sleep 20
+            done
+
+
+            echo "FAILED $url"
+            return 1
+          }
+
+          check_url "$SITE_URL/" "ذِكر"
+          check_url "$SITE_URL/robots.txt" "Sitemap:"
+          check_url "$SITE_URL/sitemap.xml" "<urlset"
       - name: Release evidence
-        env:
-          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
         run: |
           {
             echo "## ZIKR Production Release"
             echo ""
-            echo "- Stage: ${{ github.event_name == 'workflow_run' && 'إصدار لوحة الإدارة بعد بوابة الجودة' || inputs.release_reason }}"
+            echo "- Stage: ${{ github.event_name == 'workflow_run' && 'إصدار الإنتاج بعد بوابة الجودة' || inputs.release_reason }}"
             echo "- Commit: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"
-            echo "- Deployment: ${DEPLOYMENT_URL}"
+            echo "- Deployment: Vercel Git integration"
             echo "- Quality gate: PASSED"
-            echo "- Vercel Git auto-deploy: DISABLED"
+            echo "- Production smoke verification: PASSED"
+            echo "- Vercel CLI token workflow: retired"
           } >> "$GITHUB_STEP_SUMMARY"
