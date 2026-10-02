@@ -28,9 +28,9 @@ if (!runner.includes("ensureArabicTtsRuntime")) failures.push("background runner
 const queue = read("scripts/jobs/template-video-automation.ts");
 if (!queue.includes("ENGINE_CONFIG.staleAfterMinutes")) failures.push("video queue must enforce stale-processing recovery");
 if (!queue.includes("status=eq.processing")) failures.push("video queue stale recovery query is missing");
-if (!queue.includes("status: "pending"")) failures.push("stale processing requests must return to pending");
+if (!queue.includes('status: "pending"')) failures.push("stale processing requests must return to pending");
 if (!queue.includes("status=in.(pending,retry_wait)")) failures.push("queue must claim pending and due retry_wait requests");
-if (!queue.includes("terminalStatus = attempts >= ENGINE_CONFIG.maxRetries ? "failed" : "retry_wait"")) failures.push("retry policy must remain bounded");
+if (!queue.includes('terminalStatus = attempts >= ENGINE_CONFIG.maxRetries ? "failed" : "retry_wait"')) failures.push("retry policy must remain bounded");
 
 const env = read(".env.example");
 if (!env.includes("VIDEO_MAX_RETRIES=3")) failures.push("video retry default is not documented");
