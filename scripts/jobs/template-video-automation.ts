@@ -8,9 +8,12 @@ import {
   supabaseServerAdminRequest,
 } from "../../src/lib/supabase/admin-rest";
 import { resolveVideoSource } from "../../src/features/videos/services/video-sources";
+import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
+import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
+import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
 
 const execFileAsync = promisify(execFile);
-const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 1));
+const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? process.env.DAILY_VIDEO_TARGET ?? 5));
 const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_VIDEO_SECONDS ?? 16)));
 const MIN_VIDEO_SECONDS = Math.min(TARGET_VIDEO_SECONDS, 10);
 const MAX_VIDEO_SECONDS = Math.max(TARGET_VIDEO_SECONDS, 45);
@@ -18,6 +21,7 @@ const ARABIC_TTS_VOICE = process.env.ARABIC_TTS_VOICE ?? "ar-SA-ZariyahNeural";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
 const VIDEO_TEMPLATE_VERSION = "2026-10-02-quality-v2";
+const ENGINE_CONFIG = getVideoEngineConfig();
 function getArabicTtsPython() {
   return process.env.ARABIC_TTS_PYTHON?.trim() || "python3";
 }
@@ -63,6 +67,8 @@ type GeneratedRequest = {
   status: string;
   automation_key: string | null;
   video_url?: string | null;
+  generation_attempts?: number | null;
+  next_retry_at?: string | null;
 };
 
 type AiVideoPlan = {
@@ -379,10 +385,21 @@ export async function seedAutomatedVideoRequests() {
       };
     }
 
+    const content = payload.content as Record<string, unknown>;
+    const text = typeof content.textAr === "string" ? content.textAr : "";
+    const format = content.videoFormat === "horizontal" ? "horizontal" : ENGINE_CONFIG.defaultFormat;
+    const contentHash = videoContentHash({ category: String(payload.category), sourceId: String(content.sourceId ?? ""), text, format, templateVersion: VIDEO_TEMPLATE_VERSION, language: "ar", style: String(content.style ?? "default") });
+    const sourceHashValue = sourceHash({ sourceId: String(content.sourceId ?? ""), sourceUrl: String(content.sourceUrl ?? ""), text });
+    payload.content = { ...content, videoFormat: format, templateVersion: VIDEO_TEMPLATE_VERSION, contentHash, sourceHash: sourceHashValue };
+    if (ENGINE_CONFIG.dryRun) {
+      console.log(`[template-video] dry-run planned ${key} (${contentHash.slice(0, 12)})`);
+      created += 1;
+      continue;
+    }
     await supabaseServerAdminRequest("/rest/v1/video_generation_requests", {
       method: "POST",
       headers: { Prefer: "return=minimal" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, content_hash: contentHash, source_hash: sourceHashValue, provider: "template", template_version: VIDEO_TEMPLATE_VERSION }),
     });
     created += 1;
   }
@@ -597,6 +614,7 @@ async function renderVideo(request: GeneratedRequest) {
   const assPath = temp + "/captions.ass";
   const outputPath = temp + "/video.mp4";
   const audioPath = temp + "/narration.mp3";
+  let aiVideoPath: string | null = null;
   try {
     let aiPlan: AiVideoPlan = { ...DEFAULT_AI_VIDEO_PLAN };
     try {
@@ -634,7 +652,32 @@ async function renderVideo(request: GeneratedRequest) {
       }
     }
 
-    const backgroundPath = await renderBackground(temp, scene, width, height);
+    if (ENGINE_CONFIG.aiEnabled && ENGINE_CONFIG.order.some((provider) => provider !== "template")) {
+      const router = createVideoProviderRouter(async () => ({ ok: false, provider: "template" as const, error: "The existing template renderer is handled by this worker." }));
+      const aiResult = await router.generate({
+        requestId: request.id,
+        title: request.title,
+        description: request.description || "",
+        category: request.category,
+        text,
+        sourceId: typeof request.content.sourceId === "string" ? request.content.sourceId : undefined,
+        sourceUrl,
+        format: isVertical ? "vertical" : "horizontal",
+        durationSeconds: TARGET_VIDEO_SECONDS,
+        language: "ar",
+        style: scene,
+      });
+      if (aiResult.ok && aiResult.localPath) aiVideoPath = aiResult.localPath;
+      else if (aiResult.ok && aiResult.videoUrl) {
+        const response = await fetch(aiResult.videoUrl, { signal: AbortSignal.timeout(60_000) });
+        if (response.ok) {
+          aiVideoPath = temp + "/ai-source.mp4";
+          await writeFile(aiVideoPath, new Uint8Array(await response.arrayBuffer()));
+        }
+      }
+      request.content = { ...request.content, aiProvider: aiResult.ok ? aiResult.provider : null, aiFallbackReason: aiResult.ok ? null : aiResult.error || "AI providers unavailable" };
+    }
+    const backgroundPath = aiVideoPath || await renderBackground(temp, scene, width, height);
     let audioKind = contentAudioKind(request, audioUrl);
     if (audioUrl) {
       const response = await fetch(audioUrl, { headers: { Accept: "audio/*" }, signal: AbortSignal.timeout(60_000) });
@@ -666,7 +709,7 @@ async function renderVideo(request: GeneratedRequest) {
     const cardW = width - cardX * 2;
     const cardH = Math.round(height * 0.46);
     const filter = [
-      `zoompan=z='min(zoom+0.00018,1.075)':d=1:s=${width}x${height}:fps=30`,
+      aiVideoPath ? `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2` : `zoompan=z='min(zoom+0.00018,1.075)':d=1:s=${width}x${height}:fps=30`,
       "drawbox=x=" + cardX + ":y=" + cardY + ":w=" + cardW + ":h=" + cardH + ":color=0x06110D@0.58:t=fill",
       "drawbox=x=" + cardX + ":y=" + cardY + ":w=" + cardW + ":h=" + cardH + ":color=0xEFD39A@0.18:t=2",
       "eq=contrast=1.05:saturation=0.94:brightness=0.00",
@@ -677,7 +720,7 @@ async function renderVideo(request: GeneratedRequest) {
     ].join(",");
 
     const args = [
-      "-y", "-loop", "1", "-framerate", "30", "-i", backgroundPath, "-i", audioPath,
+      "-y", ...(aiVideoPath ? ["-stream_loop", "-1", "-i", backgroundPath] : ["-loop", "1", "-framerate", "30", "-i", backgroundPath]), "-i", audioPath,
       "-t", duration.toFixed(2),
       "-vf", filter,
       "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-profile:v", "high",
@@ -731,6 +774,7 @@ async function renderVideo(request: GeneratedRequest) {
     return supabaseUrl.replace(/\/$/, "") + "/storage/v1/object/public/videos/" + objectPath;
   } finally {
     await rm(temp, { recursive: true, force: true });
+    if (aiVideoPath && aiVideoPath.startsWith(tmpdir()) && !aiVideoPath.startsWith(temp)) await rm(path.dirname(aiVideoPath), { recursive: true, force: true });
   }
 }
 async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueRow | null> {
@@ -741,6 +785,10 @@ async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueR
 }
 
 async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
+  if (!ENGINE_CONFIG.autoPublishEnabled || ENGINE_CONFIG.requiresApproval) {
+    console.log(`[template-video] Social draft retained for ${request.id}; public publishing is disabled or approval is required.`);
+    return;
+  }
   const content = request.content;
   if (content.skipSocialPublish === true) {
     console.log(`[template-video] Social publishing skipped for test request ${request.id}`);
@@ -868,7 +916,11 @@ export async function reconcileCompletedVideoSocialQueue(limit = 100) {
 }
 
 export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
-  const staleBefore = new Date(Date.now() - 30 * 60_000).toISOString();
+  if (ENGINE_CONFIG.dryRun) {
+    console.log(`[template-video] dry-run enabled; no video generation, upload, or publishing will occur (limit=${limit}).`);
+    return { processed: 0, succeeded: 0, failed: 0 };
+  }
+  const staleBefore = new Date(Date.now() - ENGINE_CONFIG.staleAfterMinutes * 60_000).toISOString();
   const stale = await supabaseServerAdminRequest<Array<{ id: string }>>(
     `/rest/v1/video_generation_requests?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&video_url=is.null&select=id&limit=50`,
   );
@@ -888,13 +940,13 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
     );
   }
   const rows = await supabaseServerAdminRequest<GeneratedRequest[]>(
-    `/rest/v1/video_generation_requests?status=eq.pending&select=id,title,description,category,content,status,automation_key&order=created_at.asc&limit=${Math.max(1, Math.min(10, limit))}`,
+    `/rest/v1/video_generation_requests?status=in.(pending,retry_wait)&or=(status.eq.pending,next_retry_at.lte.${encodeURIComponent(new Date().toISOString())})&select=id,title,description,category,content,status,automation_key,generation_attempts,next_retry_at&order=created_at.asc&limit=${Math.max(1, Math.min(10, limit))}`,
   );
   let succeeded = 0;
   let failed = 0;
   for (const request of rows || []) {
     const claimed = await supabaseServerAdminRequest<GeneratedRequest[]>(
-      `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=eq.pending`,
+      `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=in.(pending,retry_wait)`,
       { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ status: "processing", error_message: null, error_details: null, updated_at: new Date().toISOString() }) },
     );
     if (!claimed?.[0]) continue;
@@ -918,10 +970,12 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
     } catch (error) {
       failed += 1;
       const message = error instanceof Error ? error.message : String(error);
+      const attempts = (request.generation_attempts ?? 0) + 1;
+      const terminalStatus = attempts >= ENGINE_CONFIG.maxRetries ? "failed" : "retry_wait";
       await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ status: "failed", error_message: "Template generation failed", error_details: message.slice(0, 2000), updated_at: new Date().toISOString() }),
+        body: JSON.stringify({ status: terminalStatus, generation_attempts: attempts, next_retry_at: terminalStatus === "retry_wait" ? new Date(Date.now() + Math.min(60, attempts * 15) * 60_000).toISOString() : null, last_attempt_at: new Date().toISOString(), error_message: "Template generation failed", error_details: message.slice(0, 2000), updated_at: new Date().toISOString() }),
       });
       console.error(`[template-video] Failed ${request.id}: ${message}`);
     }

@@ -162,7 +162,7 @@ const concatPath = join(outDir, "concat.txt");
 await writeFile(concatPath, `${concatLines.join("\n")}\n`);
 const narrationPath = join(outDir, "arabic-narration.mp3");
 const narrationText = scenes.map(scene => scene.body).join("، ");
-await exec("python3", [
+await exec(process.env.ARABIC_TTS_PYTHON || "python3", [
   "scripts/generate-arabic-voice.py",
   "--text",
   narrationText,

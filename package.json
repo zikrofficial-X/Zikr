@@ -40,6 +40,7 @@
     "imports:check": "node scripts/verify-local-imports.mjs",
     "placeholder-media:check": "node scripts/verify-placeholder-media.mjs",
     "background:jobs": "tsx scripts/run-background-jobs.ts",
+    "video:engine:check": "node scripts/video-engine-check.mjs",
     "social:backfill:native": "node scripts/import-youtube-takeout-native-facebook.mjs",
     "content:check": "node scripts/verify-content-integrity.mjs",
     "auth:check": "node scripts/verify-auth-config.mjs",

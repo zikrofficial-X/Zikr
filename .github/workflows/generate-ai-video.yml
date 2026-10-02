@@ -44,8 +44,13 @@ jobs:
       GEMINI_MODEL: gemini-3.1-flash-lite
       GEMINI_AUDIO_SMOKE_TEST: "false"
       AUTO_VIDEO_ENABLED: "true"
-      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '1' }}
+      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '5' }}
       VIDEO_BACKGROUND_BATCH_SIZE: "1"
+      DAILY_VIDEO_TARGET: "5"
+      VIDEO_DAILY_LIMIT: "20"
+      VIDEO_AUTOMATION_DRY_RUN: "false"
+      AUTO_VIDEO_PUBLISH_ENABLED: "false"
+      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"
       AUTO_VIDEO_SECONDS: "16"
       BACKGROUND_JOB_TARGET: "all"
       VIDEO_TEMPLATE_VERSION: "2026-10-02-quality-v2"

@@ -8,6 +8,7 @@ import {
 import { processSocialPublishQueue } from "./jobs/social-publishing";
 
 const SOCIAL_PUBLISH_ENABLED = process.env.SOCIAL_PUBLISH_ENABLED !== "false";
+const VIDEO_DRY_RUN = (process.env.VIDEO_AUTOMATION_DRY_RUN ?? "true").toLowerCase() === "true";
 
 const EDGE_TTS_VERSION = "7.2.8";
 const TTS_VENV_DIR = process.env.ARABIC_TTS_VENV?.trim() || join(process.cwd(), ".tts-venv");
@@ -54,6 +55,10 @@ function validateRequiredEnv() {
 }
 
 async function processVideos() {
+  if (VIDEO_DRY_RUN) {
+    console.log("[background-jobs] VIDEO_AUTOMATION_DRY_RUN=true; planning only.");
+    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
+  }
   ensureArabicTtsRuntime();
   const seeded = await seedAutomatedVideoRequests();
   console.log(`[background-jobs] Seeded ${seeded} free Quran video request(s).`);
