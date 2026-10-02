@@ -62,7 +62,8 @@ jobs:
       AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
       AUTO_VIDEO_SECONDS: "16"
       BACKGROUND_JOB_TARGET: "all"
-      VIDEO_TEMPLATE_VERSION: "2026-10-02-quality-v2"\n      VERIFY_VIDEO_RUNTIME_TOOLS: "true"
+      VIDEO_TEMPLATE_VERSION: "2026-10-02-quality-v2"
+      VERIFY_VIDEO_RUNTIME_TOOLS: "true"
       # Generated videos are automatically handed to the configured social publishers.
       SOCIAL_PUBLISH_ENABLED: "true"
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
