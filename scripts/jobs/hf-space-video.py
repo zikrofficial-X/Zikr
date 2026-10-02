@@ -67,7 +67,7 @@ def main():
 
     prompt = Path(args.prompt_file).read_text(encoding="utf-8").strip()
     token = args.hf_token or None
-    client = Client(args.space, token=token, hf_token=token, verbose=False)
+    client_kwargs = {"verbose": False}\n    if token:\n        client_kwargs["token"] = token\n    client = Client(args.space, **client_kwargs)
 
     if args.provider == "wan2_2_fast":
         if not args.image:
