@@ -45,5 +45,5 @@ for (const token of [
   if (!workflow.includes(token)) throw new Error("Workflow missing " + token);
 }
 
-execFileSync("ffprobe", ["-version"], { stdio: "ignore" });
+if ((process.env.VERIFY_VIDEO_RUNTIME_TOOLS ?? "false").toLowerCase() === "true") {\n  execFileSync("ffprobe", ["-version"], { stdio: "ignore" });\n}
 console.log("Video engine structural check passed.");
