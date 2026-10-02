@@ -59,7 +59,7 @@ Set these in Vercel Project Settings → Environment Variables:
 
 ```
 # Supabase (already configured)
-NEXT_PUBLIC_SUPABASE_URL=https://eydxvcamhjhajxjrsgym.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://kdotmrjfecgafiommzwz.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=[from Vercel secrets]
 SUPABASE_SERVICE_ROLE_KEY=[from Vercel secrets]
 
