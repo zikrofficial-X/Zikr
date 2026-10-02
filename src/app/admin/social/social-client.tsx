@@ -80,12 +80,27 @@ export default function AdminSocialPage() {
       </section>
 
       <section className="grid gap-3 md:grid-cols-3">
-        <Card><div className="text-xs text-brand-cream/50">YouTube</div><div className="mt-1 font-semibold">{health.youtubeConfigured ? 'جاهز للنشر' : 'بيانات OAuth غير مكتملة'}</div></Card>
-        <Card><div className="text-xs text-brand-cream/50">Facebook</div><div className="mt-1 font-semibold">{health.facebookEnabled && health.facebookCredentialsConfigured ? 'مفعّل' : 'موقوف حتى إصلاح الاعتماد'}</div></Card>
-        <Card><div className="text-xs text-brand-cream/50">Facebook Auth Blocks</div><div className="mt-1 font-semibold">{health.facebookAuthBlocked}</div></Card>
+        <Card>
+          <div className="text-xs text-brand-cream/50">YouTube</div>
+          <div className="mt-1 font-semibold">{health.youtubeConfigured ? 'جاهز للنشر' : 'بيانات OAuth غير مكتملة'}</div>
+        </Card>
+        <Card>
+          <div className="text-xs text-brand-cream/50">Facebook</div>
+          <div className="mt-1 font-semibold">
+            {!health.facebookCredentialsConfigured
+              ? 'يحتاج إعداد الاعتماد'
+              : !health.facebookEnabled
+                ? 'معطّل من إعدادات النشر'
+                : 'مفعّل ومهيأ للنشر'}
+          </div>
+        </Card>
+        <Card>
+          <div className="text-xs text-brand-cream/50">سجلات فشل اعتماد Facebook السابقة</div>
+          <div className="mt-1 font-semibold">{health.facebookAuthBlocked}</div>
+        </Card>
       </section>
 
-      {!health.facebookEnabled && health.facebookAuthBlocked > 0 && <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Facebook متوقف حاليًا بسبب اعتماد منتهي. نجاح YouTube لا يتأثر، ولن تتم إعادة محاولة عناصر Facebook المحجوبة تلقائيًا حتى يتم إصلاح الاعتماد.</div>}
+      {health.facebookAuthBlocked > 0 && <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-200">تم تسجيل {health.facebookAuthBlocked} عنصرًا سابقًا بفشل اعتماد Facebook. هذا العداد تاريخي للعناصر الموجودة في الطابور، ولا يعني أن اعتماد Facebook الحالي منتهي. {health.facebookCredentialsConfigured && health.facebookEnabled ? 'إعداد Facebook الحالي ما زال مفعّلًا ومهيأً للنشر.' : !health.facebookCredentialsConfigured ? 'تحقق من بيانات Page ID وPage Access Token الحالية.' : 'تحقق من مفتاح التشغيل الحالي للنشر الاجتماعي.'}</div>}
       {error && <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
       {message && <div role="status" className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{message}</div>}
 
