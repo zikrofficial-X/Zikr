@@ -9,6 +9,7 @@ import { normalizedText } from "@/lib/content-quality";
 import type { ArticleCategory, Article } from "@/features/articles/types/articles";
 import { staticArticles, type StaticArticle } from "@/features/articles/data/articles";
 import { adsenseEditorialArticles } from "@/features/articles/data/adsense-editorial";
+import { resolveCanonicalPublished } from "@/lib/data/content-merge";
 import { extendedEditorialArticles } from "@/features/articles/data/extended-editorial";
 
 const MIN_PUBLIC_ARTICLE_CHARS = 1800;
@@ -155,14 +156,7 @@ export async function getArticles(categoryId?: string, limit = 100): Promise<Art
           console.error("[articles] Offline catalogue unavailable:", error);
         }
 
-        return Array.from(
-          new Map(
-            [...offlineArticles, ...FALLBACK_ARTICLES, ...publicArticles].map((article) => [
-              article.slug,
-              article,
-            ]),
-          ).values(),
-        )
+        return resolveCanonicalPublished(publicArticles, [...offlineArticles, ...FALLBACK_ARTICLES])
           .filter(
             (article) =>
               !categoryId ||
