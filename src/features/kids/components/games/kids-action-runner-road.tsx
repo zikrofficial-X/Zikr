@@ -139,7 +139,7 @@ export function ZikrRunnerGame({
   const rules = useMemo(() => getZikrRunnerRules(difficulty), [difficulty]);
   const levels = useMemo(() => getZikrRunnerLevels(difficulty), [difficulty]);
   const renderClockRef = useRef(0);
-  const questions = getApprovedRoadQuestions();
+  const questions = useMemo(() => getApprovedRoadQuestions(), []);
   const modelRef = useRef<RunnerModel>(newRunnerModel(rules, levels));
   const inputRef = useRef({ jump: false });
   const completionRef = useRef(false);
@@ -578,6 +578,7 @@ type RoadModel = {
   completed: boolean;
   objects: RoadObject[];
   seed: number;
+  levelIndex: number;
 };
 
 const ROAD_LANES = 3;
@@ -592,7 +593,7 @@ export function ZikrRoadGame({
   onSound,
 }: ActionGameProps) {
   const rules = useMemo(() => getZikrRoadRules(difficulty), [difficulty]);
-  const questions = getApprovedRoadQuestions();
+  const questions = useMemo(() => getApprovedRoadQuestions(), []);
   const createRoadState = (): RoadModel => ({
     lane: 1,
     distance: 0,
@@ -699,14 +700,17 @@ export function ZikrRoadGame({
         onSound("success");
       }
 
-      current.seed = (current.seed * 1664525 + 1013904223) >>> 0;
+      current.seed = (current.seed * 1664525 + 1013904223 + levelMeta.seed) >>> 0;
+
+      const stageHazardInterval = Math.max(280, rules.hazardInterval / (0.9 + (levelMeta.pattern % 5) * 0.08));
+      const stageStarInterval = Math.max(170, rules.starInterval / (0.95 + (levelMeta.pattern % 4) * 0.07));
 
       let nextObjects = current.objects.map(object => ({
         ...object,
-        position: object.position + Math.max(0.85, rules.speed * dt / 8),
+        position: object.position + Math.max(0.85, stageSpeed * dt / 8),
       }));
 
-      if (Math.floor(current.distance / rules.hazardInterval) > Math.floor((current.distance - rules.speed * dt) / rules.hazardInterval)) {
+      if (Math.floor(current.distance / stageHazardInterval) > Math.floor((current.distance - stageSpeed * dt) / stageHazardInterval)) {
         const lane = current.seed % ROAD_LANES;
         nextObjects.push({
           id: current.seed,
@@ -717,7 +721,7 @@ export function ZikrRoadGame({
         });
       }
 
-      if (Math.floor(current.distance / rules.starInterval) > Math.floor((current.distance - rules.speed * dt) / rules.starInterval)) {
+      if (Math.floor(current.distance / stageStarInterval) > Math.floor((current.distance - stageSpeed * dt) / stageStarInterval)) {
         const lane = (current.seed >>> 5) % ROAD_LANES;
         nextObjects.push({
           id: current.seed + 1,
@@ -732,7 +736,7 @@ export function ZikrRoadGame({
         item =>
           item.lane === current.lane &&
           item.position < ROAD_PLAYER_POSITION &&
-          item.position + Math.max(0.75, rules.speed * dt / 8) >= ROAD_PLAYER_POSITION
+          item.position + Math.max(0.75, stageSpeed * dt / 8) >= ROAD_PLAYER_POSITION
       );
 
       for (const hit of hits) {
