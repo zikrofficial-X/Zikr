@@ -1,4 +1,3 @@
-
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -9,11 +8,11 @@ import type { VideoGenerationInput, VideoGenerationResult, VideoProvider } from 
 
 const execFileAsync = promisify(execFile);
 
-type HuggingFaceVariant = "wan2_2_fast" | "ltx2_5";
+type HuggingFaceVariant = "wan2_2_fast" | "ltx_fast";
 
 const DEFAULT_SPACES: Record<HuggingFaceVariant, string> = {
   wan2_2_fast: "zerogpu-aoti/wan2-2-fp8da-aoti-faster",
-  ltx2_5: "akhaliq/LTX-2.5-workflow",
+  ltx_fast: "Lightricks/ltx-video-distilled",
 };
 
 const PYTHON_TIMEOUT_MS =
@@ -21,7 +20,7 @@ const PYTHON_TIMEOUT_MS =
 
 function configuredSpace(variant: HuggingFaceVariant) {
   const value =
-    variant === "wan2_2_fast" ? process.env.HF_WAN_SPACE : process.env.HF_LTX25_SPACE;
+    variant === "wan2_2_fast" ? process.env.HF_WAN_SPACE : process.env.HF_LTX_FAST_SPACE;
   return value?.trim() || DEFAULT_SPACES[variant];
 }
 
@@ -29,7 +28,7 @@ function configuredEnabled(variant: HuggingFaceVariant) {
   return (
     (variant === "wan2_2_fast"
       ? process.env.HF_WAN_VIDEO_ENABLED
-      : process.env.HF_LTX25_VIDEO_ENABLED)?.toLowerCase() === "true"
+      : process.env.HF_LTX_FAST_VIDEO_ENABLED)?.toLowerCase() === "true"
   );
 }
 
@@ -71,12 +70,12 @@ async function writePromptFile(tempDir: string, input: VideoGenerationInput) {
 }
 
 export class HuggingFaceSpaceVideoProvider implements VideoProvider {
-  readonly name: "hf_wan" | "hf_ltx25";
+  readonly name: "hf_wan" | "hf_ltx_fast";
   private readonly variant: HuggingFaceVariant;
 
   constructor(variant: HuggingFaceVariant) {
     this.variant = variant;
-    this.name = variant === "wan2_2_fast" ? "hf_wan" : "hf_ltx25";
+    this.name = variant === "wan2_2_fast" ? "hf_wan" : "hf_ltx_fast";
   }
 
   async isAvailable() {
@@ -123,7 +122,7 @@ export class HuggingFaceSpaceVideoProvider implements VideoProvider {
         "--output",
         outputPath,
         "--duration",
-        String(Math.min(15, Math.max(2, Math.round(input.durationSeconds ?? 8)))),
+        String(Math.min(8, Math.max(2, Math.round(input.durationSeconds ?? 6)))),
         "--seed",
         String(Math.abs(hashCode(input.requestId))),
       ];
@@ -146,7 +145,7 @@ export class HuggingFaceSpaceVideoProvider implements VideoProvider {
         provider: this.name,
         localPath: outputPath,
         durationSeconds: input.durationSeconds,
-        audioPresent: this.variant === "ltx2_5",
+        audioPresent: false,
       };
     } catch (error) {
       return {
