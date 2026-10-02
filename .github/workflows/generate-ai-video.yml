@@ -1,5 +1,5 @@
 name: ZIKR Autonomous AI Video Worker
-# Validation trigger: multi-provider runner syntax repaired and verified in CI.
+# Validation trigger: curated source fallback repaired; rerun full AI video generation and publishing path.
 
 on:
   schedule:
