@@ -35,6 +35,7 @@ export function createVideoProviderRouter(
       const candidates = [...preferred, ...fallbackCandidates.filter(
         (name) => name !== input.preferredProvider,
       )];
+      let templateAttempted = false;
 
       for (const name of candidates) {
         if (name === "comfyui" && !config.comfyUiEnabled) continue;
@@ -51,11 +52,19 @@ export function createVideoProviderRouter(
           continue;
         }
 
-        const result = await provider.generate(input);
-        if (result.ok) return result;
-        console.warn(
-          "[video-provider-router] Provider " + name + " failed for " + input.requestId + ": " + (result.error || "unknown error"),
-        );
+        if (name === "template") templateAttempted = true;
+        try {
+          const result = await provider.generate(input);
+          if (result.ok) return result;
+          console.warn(
+            "[video-provider-router] Provider " + name + " failed for " + input.requestId + ": " + (result.error || "unknown error"),
+          );
+        } catch (error) {
+          console.warn(
+            "[video-provider-router] Provider " + name + " threw for " + input.requestId + ": " +
+            (error instanceof Error ? error.message : String(error)),
+          );
+        }
       }
 
       if (providers.template && (await providers.template.isAvailable())) {
