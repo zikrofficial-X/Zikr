@@ -55,7 +55,7 @@ function buildLevel(index: number, difficulty: GameDifficulty): ZikrJumpLevel {
     x: platform.x + (i % 2 === 0 ? -25 : 25),
     y: platform.y - 58,
   }));
-  const hazardCount = difficulty === "easy" ? Math.max(0, Math.floor(index / 7)) : difficulty === "normal" ? 1 + Math.floor(index / 5) : 2 + Math.floor(index / 4);
+  const hazardCount = difficulty === "easy" ? 0 : difficulty === "normal" ? 1 + Math.floor(index / 5) : 2 + Math.floor(index / 4);
   const hazards = Array.from({ length: Math.min(hazardCount, Math.max(0, count - 2)) }, (_, i) => ({
     platformIndex: 2 + ((i * 3 + index) % Math.max(1, count - 3)),
     offset: ((i + index) % 2 === 0 ? 1 : -1) * (18 + ((index + i) % 4) * 12),
