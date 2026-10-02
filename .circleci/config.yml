@@ -53,6 +53,16 @@ jobs:
             pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
           no_output_timeout: 20m
       - run:
+          name: Install video verification tools
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends ffmpeg librsvg2-bin fonts-noto-core
+            ffprobe -version | head -n 1
+            rsvg-convert --version 2>&1 | head -n 1
+
+      - run:
           name: Verify installed toolchain
           shell: /bin/bash
           command: |
