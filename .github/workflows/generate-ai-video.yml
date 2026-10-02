@@ -1,5 +1,5 @@
 name: ZIKR Autonomous AI Video Worker
-# Validation trigger: execute full multi-provider generation, curated fallback, social queue, and publishing path on latest main.
+# Validation trigger: validate latest provider router, curated fallback, rendering runtime, social queue, and publishing path.
 
 on:
   schedule:
@@ -62,7 +62,7 @@ jobs:
       AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
       AUTO_VIDEO_SECONDS: "16"
       BACKGROUND_JOB_TARGET: "all"
-      VIDEO_TEMPLATE_VERSION: "2026-10-02-quality-v2"
+      VIDEO_TEMPLATE_VERSION: "2026-10-02-quality-v2"\n      VERIFY_VIDEO_RUNTIME_TOOLS: "true"
       # Generated videos are automatically handed to the configured social publishers.
       SOCIAL_PUBLISH_ENABLED: "true"
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
