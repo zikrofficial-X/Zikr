@@ -64,7 +64,7 @@ export const GAME_REGISTRY = {
     version: 1,
     defaultDifficulty: "easy",
     supportedAgeGroups: ["6-8", "9-12"] as const,
-    difficulties: ["easy", "normal"] as const,
+    difficulties: ["easy", "normal", "hard"] as const,
     maxScore: 20_000,
     maxCollectibles: 100,
     maxDistance: 0,

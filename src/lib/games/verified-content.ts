@@ -5,20 +5,22 @@ export type VerifiedQuizQuestion = KidsQuizQuestion & {
   sourceSlug: string;
 };
 
-export type WuduStep = {
-  order: number;
-  text: string;
-};
-
 function isQuestion(value: unknown): value is KidsQuizQuestion {
   if (!value || typeof value !== "object") return false;
   const question = value as Partial<KidsQuizQuestion>;
   const options = question.options;
   const correctAnswer = question.correctAnswer;
-  return typeof question.text === "string" && question.text.length > 0 && Array.isArray(options)
-    && options.length >= 2 && options.every(option => typeof option === "string")
-    && typeof correctAnswer === "number" && Number.isInteger(correctAnswer)
-    && correctAnswer >= 0 && correctAnswer < options.length;
+  return (
+    typeof question.text === "string" &&
+    question.text.length > 0 &&
+    Array.isArray(options) &&
+    options.length >= 2 &&
+    options.every(option => typeof option === "string") &&
+    typeof correctAnswer === "number" &&
+    Number.isInteger(correctAnswer) &&
+    correctAnswer >= 0 &&
+    correctAnswer < options.length
+  );
 }
 
 export function getVerifiedKidsQuizQuestions(): VerifiedQuizQuestion[] {
@@ -33,18 +35,37 @@ export function getVerifiedKidsQuizQuestions(): VerifiedQuizQuestion[] {
   });
 }
 
-export function getVerifiedWuduSteps(): WuduStep[] {
+export type VerifiedWuduStep = {
+  order: number;
+  text: string;
+};
+
+export type WuduStep = VerifiedWuduStep;
+
+export type VerifiedWuduContent = {
+  steps: VerifiedWuduStep[];
+  afterDhikr: string;
+};
+
+export function getVerifiedWuduContent(): VerifiedWuduContent {
   const source = kidsContent.find(item => item.slug === "wudu-steps");
-  if (!source?.content_ar) return [];
-  return source.content_ar
-    .split("\n")
-    .map(line => line.trim())
-    .map(line => {
-      const match = line.match(/^(\d+)\.\s+(.+)$/);
-      return match ? { order: Number(match[1]), text: match[2] } : null;
-    })
-    .filter((step): step is WuduStep => Boolean(step))
-    .filter(step => step.order >= 1 && step.order <= 9);
+  const steps = source?.wudu_steps?.filter(
+    step =>
+      Number.isInteger(step.order) &&
+      step.order >= 1 &&
+      typeof step.text === "string" &&
+      step.text.trim().length > 0
+  ) ?? [];
+
+  return {
+    steps,
+    afterDhikr:
+      typeof source?.wudu_after_dhikr === "string" ? source.wudu_after_dhikr : "",
+  };
+}
+
+export function getVerifiedWuduSteps(): VerifiedWuduStep[] {
+  return getVerifiedWuduContent().steps;
 }
 
 export function getApprovedScenarioQuestions(): VerifiedQuizQuestion[] {

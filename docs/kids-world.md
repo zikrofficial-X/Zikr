@@ -51,3 +51,10 @@ ZIKR Memory uses the structured `memory_pairs` field from the existing `game-mem
 Difficulty is gameplay, not metadata only: easy uses 3 pairs, normal 4, and hard 5. The content integrity check `pnpm kids:memory:check` is part of both PR and main canonical verification.
 
 The current pair count is intentionally small so the first reference game remains readable and touch-friendly. New pairs should be added to the structured source first, then covered by the integrity check before the runtime is expanded.
+
+
+## Wudu Challenge content contract
+
+Wudu Challenge consumes the structured `wudu_steps` and `wudu_after_dhikr` fields from the existing `wudu-steps` Kids content item through `getVerifiedWuduContent()`. The game must not parse numbered prose from `content_ar` or duplicate the approved step wording in the runtime.
+
+Difficulty is gameplay: easy uses 5 steps, normal 7, and hard 9. The hard level completes the full structured sequence and then shows the existing completion dhikr. The content integrity check `pnpm kids:wudu:check` is part of PR and main verification.

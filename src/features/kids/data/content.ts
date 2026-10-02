@@ -14,6 +14,11 @@ export type KidsMemoryPair = {
   dhikr: string;
 };
 
+export type KidsWuduStep = {
+  order: number;
+  text: string;
+};
+
 export interface KidsItem {
   id: string;
   title_ar: string;
@@ -34,6 +39,8 @@ export interface KidsItem {
   content_ar?: string;
   quiz_data?: { questions: KidsQuizQuestion[] };
   memory_pairs?: KidsMemoryPair[];
+  wudu_steps?: KidsWuduStep[];
+  wudu_after_dhikr?: string;
   featured_image_url?: string;
   video_url?: string;
   youtube_video_id?: string;
@@ -291,6 +298,18 @@ export const kidsContent: KidsItem[] = [
     slug: "wudu-steps",
     type: "wudu",
     age_group: "6-8",
+    wudu_steps: [
+      { order: 1, text: "النية: انوِ في قلبك أنك تتوضأ لله، وقل: بِسْمِ اللَّهِ" },
+      { order: 2, text: "غسل اليدين: اغسل يديك ثلاث مرات حتى الرسغين" },
+      { order: 3, text: "المضمضة: ضع الماء في فمك وحرّكه ثم أخرجه، ثلاث مرات" },
+      { order: 4, text: "الاستنشاق: استنشق الماء بأنفك ثم أخرجه، ثلاث مرات" },
+      { order: 5, text: "غسل الوجه: اغسل وجهك كله ثلاث مرات، من أعلى الجبهة إلى الذقن" },
+      { order: 6, text: "غسل اليدين إلى المرفقين: اغسل يدك اليمنى ثم اليسرى مع المرفق، ثلاث مرات" },
+      { order: 7, text: "مسح الرأس: امسح رأسك بيديك المبللتين مرة واحدة" },
+      { order: 8, text: "مسح الأذنين: امسح داخل أذنيك وخلفهما مرة واحدة" },
+      { order: 9, text: "غسل القدمين: اغسل قدمك اليمنى ثم اليسرى مع الكعبين، ثلاث مرات" },
+    ],
+    wudu_after_dhikr: "أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ",
     content_ar: `تعال نتعلم الوضوء خطوة بخطوة:
 
 1. النية: انوِ في قلبك أنك تتوضأ لله، وقل: بِسْمِ اللَّهِ

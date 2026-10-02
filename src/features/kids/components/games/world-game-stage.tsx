@@ -7,12 +7,10 @@ import type {
 } from "@/lib/games/registry";
 import {
   getVerifiedKidsQuizQuestions,
-  getVerifiedWuduSteps,
 } from "@/lib/games/verified-content";
 import {
   isVerseOrderComplete,
   shuffleVerseTokens,
-  shuffleWuduSteps,
   type IndexedVerseToken,
 } from "@/lib/games/gameplay-helpers";
 import { ArcadeGame } from "@/features/kids/components/games/arcade-game";
@@ -27,6 +25,7 @@ import type {
 } from "@/lib/games/zikr-runner/runner-scene";
 import { ToneFeedback, type GameSoundEvent } from "@/lib/games/tone-feedback";
 import { ZikrMemoryGame } from "@/features/kids/components/games/zikr-memory-game";
+import { WuduChallengeGame } from "@/features/kids/components/games/wudu-challenge-game";
 
 export type WorldHud = {
   score: number;
@@ -219,7 +218,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
     onSound: playLocalSound,
   };
   if (gameId === "zikr-memory") return <ZikrMemoryGame {...localProps} />;
-  if (gameId === "wudu-challenge") return <OrderingGame {...localProps} />;
+  if (gameId === "wudu-challenge") return <WuduChallengeGame {...localProps} />;
   if (gameId === "verse-puzzle") return <VersePuzzleGame {...localProps} />;
   if (gameId === "zikr-quiz") return <QuizGame {...localProps} />;
   if (gameId === "good-deeds") return <GoodDeedsGame {...localProps} />;
@@ -235,95 +234,6 @@ type LocalGameProps = {
   onResult: (result: WorldHud) => void;
   onSound: (event: GameSoundEvent) => void;
 };
-
-function OrderingGame({
-  difficulty,
-  restartToken,
-  paused,
-  onHud,
-  onResult,
-  onSound,
-}: LocalGameProps) {
-  const source = useMemo(() => getVerifiedWuduSteps(), []);
-  const steps = difficulty === "easy" ? source.slice(0, 6) : source;
-  const choices = useMemo(
-    () => shuffleWuduSteps(steps, `${difficulty}:${restartToken}`),
-    [difficulty, restartToken, steps]
-  );
-  const [order, setOrder] = useState<number[]>([]);
-  const [mistakes, setMistakes] = useState(0);
-  const [feedback, setFeedback] = useState("");
-  useEffect(() => {
-    setOrder([]);
-    setMistakes(0);
-    setFeedback("");
-  }, [restartToken, steps.length]);
-  const next = order.length + 1;
-  const choose = (step: number) => {
-    if (paused || order.includes(step) || steps.length === 0) return;
-    if (step !== next) {
-      onSound("miss");
-      setMistakes(value => value + 1);
-      setFeedback("حاول مرة أخرى، راجع ترتيب الخطوات المعتمد.");
-      return;
-    }
-    onSound("collect");
-    setOrder(value => [...value, step]);
-    setFeedback("إجابة صحيحة");
-  };
-  const completed = steps.length > 0 && order.length === steps.length;
-  const hud = useMemo(() => ({
-    score: Math.max(0, order.length * 220 - mistakes * 30),
-    collectibles: order.length,
-    distance: 0,
-    combo: Math.max(0, order.length - mistakes),
-    level: difficulty === "easy" ? 1 : 2,
-    completed,
-  }), [completed, difficulty, mistakes, order.length]);
-  useEffect(() => {
-    onHud(hud);
-    if (completed) {
-      onSound("success");
-      onResult(hud);
-    }
-  }, [
-    completed,
-    mistakes,
-    onHud,
-    onResult,
-    onSound,
-    order.length,
-    hud,
-  ]);
-  if (steps.length === 0)
-    return <Unavailable text="لا تتوفر خطوات الوضوء المعتمدة حاليًا." />;
-  return (
-    <div className="space-y-4 rounded-2xl border border-brand-gold/30 bg-[#071b24] p-5">
-      <p className="text-sm text-brand-cream/70">
-        اختر الخطوة التالية بالترتيب الصحيح. تظهر الخيارات بترتيب متغير، والنص
-        المعتمد محفوظ كما هو.
-      </p>
-      <div className="grid gap-3">
-        {choices.map(step => (
-          <button
-            key={step.order}
-            type="button"
-            onClick={() => choose(step.order)}
-            disabled={order.includes(step.order)}
-            className={`rounded-xl border p-4 text-right transition ${order.includes(step.order) ? "border-brand-emerald/40 bg-brand-emerald/10 opacity-60" : "border-brand-cream/15 bg-black/20 hover:border-brand-gold"}`}
-          >
-            {step.text}
-          </button>
-        ))}
-      </div>
-      {feedback && (
-        <p className="text-sm text-brand-emerald" role="status">
-          {feedback}
-        </p>
-      )}
-    </div>
-  );
-}
 
 function VersePuzzleGame({
   difficulty,
