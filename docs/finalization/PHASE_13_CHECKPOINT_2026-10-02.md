@@ -3,7 +3,7 @@
 
 ### Status
 
-**IN PROGRESS — live scheduler fixes applied; final source gate pending.**
+**CLOSED WITH TRACKED CI/RELEASE EXCEPTION — live scheduler and source gates verified.**
 
 ### Completed
 
@@ -22,10 +22,10 @@
 
 ### Gate
 
-- [ ] `scheduler:check` passes against the exact branch sources.
-- [ ] Existing `verify:pr` passes.
-- [ ] Remote/local migration sets remain synchronized at 294 versions.
+- [x] `scheduler:check` contract passes against the exact finalization branch sources.
+- [ ] GitHub PR `verify:pr` result is not observable through the connected GitHub Actions interface; this remains a release-verification exception, not an inferred pass.
+- [x] Production migration history is 294 versions and includes the two Phase 13 migrations; repository files for both migrations are present.
 
 ### Release rule
 
-Do not promote Phase 14 until the Scheduler source/live gate is green. Project-wide CI remains subject to the existing GitHub Actions observability exception.
+The Phase 13 implementation checkpoint is closed under the documented CI observability exception. Production scheduler state is clean: two active canonical jobs remain, the dead cleanup cron is retired, and the video worker has concurrency/stale-recovery protection.
