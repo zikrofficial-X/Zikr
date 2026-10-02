@@ -1,0 +1,118 @@
+name: ZIKR Production Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type RELEASE to authorize a production deployment from main"
+        required: true
+        type: string
+      release_reason:
+        description: "Stage or milestone being released"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Verify and deploy production
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'RELEASE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: production
+    env:
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Checkout exact release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Verify toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          pnpm --version
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+        timeout-minutes: 15
+
+      - name: Final quality gate on release commit
+        shell: bash
+        run: pnpm verify
+        timeout-minutes: 30
+
+      - name: Install pinned Vercel CLI
+        shell: bash
+        run: npm install --global vercel@59.23.1
+
+      - name: Validate release configuration
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}" || { echo "Missing GitHub Actions secret: VERCEL_TOKEN" >&2; exit 1; }
+          test -n "${VERCEL_ORG_ID:-}" || { echo "Missing GitHub Actions secret: VERCEL_ORG_ID" >&2; exit 1; }
+          test -n "${VERCEL_PROJECT_ID:-}" || { echo "Missing GitHub Actions secret: VERCEL_PROJECT_ID" >&2; exit 1; }
+
+      - name: Pull production Vercel configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token="${VERCEL_TOKEN}"
+
+      - name: Build Vercel production artifact
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token="${VERCEL_TOKEN}"
+
+      - name: Deploy prebuilt artifact to production
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          url="$(vercel deploy --prebuilt --prod --yes --token="${VERCEL_TOKEN}")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Production deployment: $url"
+
+      - name: Release evidence
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          {
+            echo "## ZIKR Production Release"
+            echo ""
+            echo "- Stage: ${{ inputs.release_reason }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Deployment: ${DEPLOYMENT_URL}"
+            echo "- Quality gate: PASSED"
+            echo "- Vercel Git auto-deploy: DISABLED"
+          } >> "$GITHUB_STEP_SUMMARY"

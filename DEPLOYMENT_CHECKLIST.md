@@ -2,7 +2,7 @@
 
 **Canonical production URL:** `https://zikrmediaofficial.vercel.app`
 
-This checklist reflects the current production architecture. GitHub Actions owns the automatic video/social worker, CircleCI provides source verification and manual recovery/release validation, Vercel provides deployment/build validation, and Supabase owns prayer scheduling.
+This checklist reflects the current production architecture. GitHub Actions owns repository quality checks and the automatic video/social worker, CircleCI remains a secondary verification/recovery path, Vercel is production-only release infrastructure, and Supabase owns prayer scheduling.
 
 ## Before deployment
 
