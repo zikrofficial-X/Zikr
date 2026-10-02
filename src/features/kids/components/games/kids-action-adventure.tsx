@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
 import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
@@ -87,8 +87,9 @@ export function ZikrJumpGame({
   onResult,
   onSound,
 }: AdventureGameProps) {
-  const rules = getZikrJumpRules(difficulty);
-  const levels = getZikrJumpLevels(difficulty);
+  const rules = useMemo(() => getZikrJumpRules(difficulty), [difficulty]);
+  const levels = useMemo(() => getZikrJumpLevels(difficulty), [difficulty]);
+  const renderClockRef = useRef(0);
   const createInitialJumpState = (): JumpSnapshot => ({
     levelIndex: 0,
     player: {
@@ -339,9 +340,12 @@ export function ZikrJumpGame({
         }
       }
 
-      const snapshotNext = { ...state, player: { ...state.player }, collected: [...state.collected] };
-      setSnapshot(snapshotNext);
-      onHud(jumpHud(snapshotNext, levels.length, false));
+      if (timestamp - renderClockRef.current >= 50) {
+        renderClockRef.current = timestamp;
+        const snapshotNext = { ...state, player: { ...state.player }, collected: [...state.collected] };
+        setSnapshot(snapshotNext);
+        onHud(jumpHud(snapshotNext, levels.length, false));
+      }
     };
 
     frame = requestAnimationFrame(tick);
@@ -512,8 +516,9 @@ export function HilalFlyGame({
   onResult,
   onSound,
 }: AdventureGameProps) {
-  const rules = getHilalFlyRules(difficulty);
-  const levels = getHilalFlyLevels(difficulty);
+  const rules = useMemo(() => getHilalFlyRules(difficulty), [difficulty]);
+  const levels = useMemo(() => getHilalFlyLevels(difficulty), [difficulty]);
+  const renderClockRef = useRef(0);
   const create = (): FlyState => ({
     y: FLY_HEIGHT / 2,
     vy: 0,
@@ -695,9 +700,12 @@ export function HilalFlyGame({
         return;
       }
 
-      const nextState = { ...state, objects: [...state.objects] };
-      setState(nextState);
-      onHud(flyHud(nextState, levels.length));
+      if (time - renderClockRef.current >= 50) {
+        renderClockRef.current = time;
+        const nextState = { ...state, objects: [...state.objects] };
+        setState(nextState);
+        onHud(flyHud(nextState, levels.length));
+      }
     };
 
     frame = requestAnimationFrame(tick);
@@ -809,13 +817,15 @@ type AdventureNode = {
   icon: string;
 };
 
-const ADVENTURE_NODES: AdventureNode[] = [
-  { id: "gate", title: "البوابة", label: "البداية", x: 12, y: 72, icon: "⌂" },
-  { id: "courtyard", title: "الساحة", label: "استكشف", x: 31, y: 52, icon: "✦" },
-  { id: "library", title: "مكتبة صغيرة", label: "تعلم", x: 51, y: 34, icon: "▤" },
-  { id: "garden", title: "حديقة المسجد", label: "تأمل", x: 70, y: 51, icon: "✿" },
-  { id: "light", title: "بوابة النور", label: "النهاية", x: 88, y: 28, icon: "★" },
-];
+const NODE_TEMPLATES = [
+  { title: "البوابة", label: "البداية", icon: "⌂" },
+  { title: "الساحة", label: "استكشف", icon: "✦" },
+  { title: "المكتبة", label: "تعلم", icon: "▤" },
+  { title: "الحديقة", label: "تأمل", icon: "✿" },
+  { title: "المئذنة", label: "اكتشف", icon: "☾" },
+  { title: "ممر النجوم", label: "اجمع", icon: "★" },
+  { title: "بوابة النور", label: "النهاية", icon: "✧" },
+] as const;
 
 export function MosqueAdventureGame({
   difficulty,
@@ -825,8 +835,9 @@ export function MosqueAdventureGame({
   onResult,
   onSound,
 }: AdventureGameProps) {
-  const rules = getMosqueAdventureRules(difficulty);
-  const questions = getApprovedScenarioQuestions();
+  const rules = useMemo(() => getMosqueAdventureRules(difficulty), [difficulty]);
+  const questions = useMemo(() => getApprovedScenarioQuestions(), []);
+  const [levelIndex, setLevelIndex] = useState(0);
   const [position, setPosition] = useState(0);
   const [score, setScore] = useState(0);
   const [stars, setStars] = useState(0);
@@ -837,8 +848,29 @@ export function MosqueAdventureGame({
   const [feedback, setFeedback] = useState("اضغط على المحطة التالية لاستكشاف الخريطة.");
   const [completed, setCompleted] = useState(false);
   const completionRef = useRef(false);
+  const advancingRef = useRef(false);
 
-  useEffect(() => {
+  const levelMeta = useMemo(() => getKidsLevelMeta("mosque-adventure", difficulty, levelIndex), [difficulty, levelIndex]);
+  const stationCount = rules.nodeCount + (levelMeta.pattern % 2);
+  const nodes = useMemo<AdventureNode[]>(() => {
+    const count = Math.max(5, Math.min(7, stationCount));
+    return Array.from({ length: count }, (_, index) => {
+      const template = NODE_TEMPLATES[(index + levelMeta.pattern) % NODE_TEMPLATES.length];
+      const progress = count <= 1 ? 0.5 : index / (count - 1);
+      const sway = ((levelMeta.seed + index * 37) % 13) - 6;
+      return {
+        id: levelMeta.id + "-" + index,
+        title: template.title + " " + (index + 1),
+        label: template.label,
+        icon: template.icon,
+        x: Math.max(8, Math.min(92, 10 + progress * 80)),
+        y: Math.max(22, Math.min(78, 72 - progress * 48 + sway)),
+      };
+    });
+  }, [levelMeta.id, levelMeta.pattern, levelMeta.seed, stationCount]);
+
+  const reset = () => {
+    setLevelIndex(0);
     setPosition(0);
     setScore(0);
     setStars(0);
@@ -849,45 +881,67 @@ export function MosqueAdventureGame({
     setFeedback("اضغط على المحطة التالية لاستكشاف الخريطة.");
     setCompleted(false);
     completionRef.current = false;
-    onHud({ score: 0, collectibles: 0, distance: 0, combo: 0, level: rules.level, completed: false });
-  }, [difficulty, onHud, restartToken, rules]);
+    advancingRef.current = false;
+    onHud({ score: 0, collectibles: 0, distance: 0, combo: 0, level: 1, completed: false });
+  };
 
-  const stationCount = Math.min(ADVENTURE_NODES.length, rules.nodeCount);
-  const progress = stationCount <= 1 ? 100 : (position / (stationCount - 1)) * 100;
+  useEffect(() => { reset(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [difficulty, restartToken]);
+
+  const progress = nodes.length <= 1 ? 100 : (position / (nodes.length - 1)) * 100;
 
   const visit = (index: number) => {
     if (paused || completed || question) return;
-    if (index !== position + 1 || index >= stationCount) return;
+    if (index !== position + 1 || index >= nodes.length) return;
 
+    const nextScore = score + 300;
+    const nextStars = stars + 1;
+    const nextCombo = combo + 1;
     setPosition(index);
-    setStars(value => value + 1);
-    setScore(value => value + 300);
-    setCombo(value => value + 1);
+    setStars(nextStars);
+    setScore(nextScore);
+    setCombo(nextCombo);
     onSound("collect");
-    setFeedback("وصلت إلى " + ADVENTURE_NODES[index].title + ".");
+    setFeedback("وصلت إلى " + nodes[index].title + ".");
 
     if (rules.questionStationIndexes.includes(index) && questions.length > 0) {
-      setQuestion(questions[Math.min(index - 1, questions.length - 1)]);
+      const questionIndex = (levelIndex * 2 + index) % questions.length;
+      setQuestion(questions[questionIndex]);
       setAnswer(null);
       setFeedback("محطة تعلم: اختر الإجابة ثم واصل الاستكشاف.");
       return;
     }
 
-    if (index === stationCount - 1) {
-      const finalHud: WorldHud = {
-        score: score + 300 + 700,
-        collectibles: stars + 1,
-        distance: stationCount,
-        combo: combo + 1,
-        level: rules.level,
-        completed: true,
-      };
-      setCompleted(true);
-      onHud(finalHud);
-      if (!completionRef.current) {
-        completionRef.current = true;
+    if (index === nodes.length - 1 && !advancingRef.current) {
+      if (levelIndex + 1 < rules.levelCount) {
+        advancingRef.current = true;
+        setScore(value => value + 500);
+        setFeedback("اكتملت " + levelMeta.titleAr + ". خريطة مختلفة في الطريق...");
         onSound("success");
-        onResult(finalHud);
+        window.setTimeout(() => {
+          setLevelIndex(value => value + 1);
+          setPosition(0);
+          setQuestion(null);
+          setAnswer(null);
+          setCombo(0);
+          advancingRef.current = false;
+        }, 650);
+      } else {
+        const finalHud: WorldHud = {
+          score: nextScore + 500,
+          collectibles: nextStars,
+          distance: nodes.length,
+          combo: nextCombo,
+          level: rules.levelCount,
+          completed: true,
+        };
+        setCompleted(true);
+        onHud(finalHud);
+        if (!completionRef.current) {
+          completionRef.current = true;
+          onSound("success");
+          setFeedback("أكملت جميع مستويات مغامرة المسجد.");
+          onResult(finalHud);
+        }
       }
     }
   };
@@ -906,13 +960,12 @@ export function MosqueAdventureGame({
       setCombo(0);
       setScore(value => Math.max(0, value - rules.mistakePenalty));
       onSound("miss");
-      setFeedback(rules.mistakePenalty > 0 ? "إجابة غير صحيحة، لكن الرحلة مستمرة." : "إجابة غير صحيحة. في المستوى السهل لا يوجد خصم.");
+      setFeedback(rules.mistakePenalty > 0 ? "إجابة غير صحيحة، لكن الرحلة مستمرة." : "إجابة غير صحيحة. لا يوجد خصم في السهل.");
     }
-
     window.setTimeout(() => {
       setQuestion(null);
       setAnswer(null);
-    }, 650);
+    }, 500);
   };
 
   useEffect(() => {
@@ -921,73 +974,56 @@ export function MosqueAdventureGame({
       collectibles: stars,
       distance: position,
       combo,
-      level: rules.level,
+      level: levelIndex + 1,
       completed,
     });
-  }, [combo, completed, onHud, position, rules.level, score, stars]);
+  }, [combo, completed, levelIndex, onHud, position, score, stars]);
 
   return (
     <KidsGameStage theme="mosque" ariaLabel="مغامرة المسجد">
-      <KidsGameHeader
-        eyebrow="MOSQUE ADVENTURE"
-        title="مغامرة المسجد"
-        description="خريطة خيالية من المحطات. كل انتقال يكشف مشهدًا جديدًا ومحطة تعلم معتمدة."
-        right={<div className="hidden w-52 sm:block"><KidsProgress value={progress} label="استكشاف الخريطة" /></div>}
-      />
+      <KidsGameHeader eyebrow="MOSQUE ADVENTURE" title="مغامرة المسجد" description={levelMeta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={progress} label={"المستوى " + (levelIndex + 1) + "/" + rules.levelCount} /></div>} />
       <div className="px-4 sm:px-6">
-        <KidsGameHud
-          items={[
-            { label: "النقاط", value: score, tone: "text-brand-gold" },
-            { label: "المحطات", value: position + "/" + Math.max(1, stationCount - 1), tone: "text-brand-emerald" },
-            { label: "السلسلة", value: combo, tone: "text-violet-200" },
-            { label: "الأخطاء", value: mistakes, tone: "text-rose-100" },
-            { label: "المستوى", value: rules.level, tone: "text-amber-200" },
-          ]}
-        />
+        <KidsGameHud items={[
+          { label: "النقاط", value: score, tone: "text-brand-gold" },
+          { label: "المحطات", value: position + "/" + Math.max(1, nodes.length - 1), tone: "text-brand-emerald" },
+          { label: "السلسلة", value: combo, tone: "text-violet-200" },
+          { label: "الأخطاء", value: mistakes, tone: "text-rose-100" },
+          { label: "المستوى", value: (levelIndex + 1) + "/" + rules.levelCount, tone: "text-amber-200" },
+        ]} />
       </div>
 
       <div className="relative mx-4 mt-4 h-[500px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#09232f] sm:mx-6">
         <MosqueBackdrop />
         <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full opacity-50" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M12 72 C25 55 28 65 40 45 S61 48 70 51 S82 39 88 28" fill="none" stroke="#f3c969" strokeOpacity=".35" strokeWidth="1.2" strokeDasharray="3 2" />
-          <path d="M12 72 C25 55 28 65 40 45 S61 48 70 51 S82 39 88 28" fill="none" stroke="#5fd1a6" strokeOpacity=".18" strokeWidth="4" />
+          <path d="M10 72 C25 55 34 62 44 46 S64 48 74 38 S84 31 90 24" fill="none" stroke="#f3c969" strokeOpacity=".35" strokeWidth="1.2" strokeDasharray="3 2" />
+          <path d="M10 72 C25 55 34 62 44 46 S64 48 74 38 S84 31 90 24" fill="none" stroke="#5fd1a6" strokeOpacity=".18" strokeWidth="4" />
         </svg>
 
-        {ADVENTURE_NODES.slice(0, stationCount).map((node, index) => {
+        {nodes.map((node, index) => {
           const unlocked = index <= position;
           const next = index === position + 1;
           return (
-            <button
-              key={node.id}
-              type="button"
-              onClick={() => visit(index)}
-              disabled={!next || paused || Boolean(question) || completed}
+            <button key={node.id} type="button" onClick={() => visit(index)} disabled={!next || paused || Boolean(question) || completed}
               className={[
                 "absolute grid h-20 w-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-[1.6rem] border-2 transition",
-                unlocked
-                  ? "border-brand-gold/50 bg-brand-gold/10 text-brand-gold shadow-[0_0_34px_rgba(243,201,105,.12)]"
-                  : next
-                    ? "border-brand-emerald/60 bg-brand-emerald/10 text-brand-emerald animate-pulse"
-                    : "border-white/10 bg-black/20 text-brand-cream/35",
+                unlocked ? "border-brand-gold/50 bg-brand-gold/10 text-brand-gold shadow-[0_0_34px_rgba(243,201,105,.12)]"
+                  : next ? "border-brand-emerald/60 bg-brand-emerald/10 text-brand-emerald animate-pulse"
+                  : "border-white/10 bg-black/20 text-brand-cream/35",
               ].join(" ")}
-              style={{ left: node.x + "%", top: node.y + "%" }}
-            >
+              style={{ left: node.x + "%", top: node.y + "%" }}>
               <span className="text-2xl">{unlocked ? node.icon : "•"}</span>
               <span className="absolute -bottom-8 whitespace-nowrap text-xs text-brand-cream/65">{node.title}</span>
             </button>
           );
         })}
 
-        <div
-          className="absolute z-20 transition-all duration-500"
-          style={{ left: ADVENTURE_NODES[position].x + "%", top: (ADVENTURE_NODES[position].y - 10) + "%", transform: "translate(-50%,-50%)" }}
-        >
+        <div className="absolute z-20 transition-all duration-500" style={{ left: nodes[position]?.x + "%", top: (nodes[position]?.y - 10) + "%", transform: "translate(-50%,-50%)" }}>
           <KidCharacter variant="explorer" state={completed ? "celebrate" : "run"} size={68} />
         </div>
 
         <div className="absolute bottom-0 inset-x-0 z-30 border-t border-white/10 bg-black/25 p-4 text-center backdrop-blur-md">
           <p className="text-xs text-brand-cream/50">المحطة الحالية</p>
-          <p className="mt-1 text-sm font-bold text-brand-gold">{ADVENTURE_NODES[position].label}</p>
+          <p className="mt-1 text-sm font-bold text-brand-gold">{nodes[position]?.label}</p>
         </div>
 
         {question && (
@@ -997,22 +1033,8 @@ export function MosqueAdventureGame({
               <h4 className="mt-3 text-2xl font-black text-brand-cream">{question.text}</h4>
               <div className="mt-5 grid gap-3">
                 {question.options.map((option, index) => (
-                  <button
-                    key={option}
-                    type="button"
-                    disabled={answer !== null}
-                    onClick={() => answerStation(index)}
-                    className={[
-                      "rounded-2xl border p-4 text-right",
-                      answer === index
-                        ? index === question.correctAnswer
-                          ? "border-brand-emerald bg-brand-emerald/15"
-                          : "border-rose-300/30 bg-rose-300/10"
-                        : answer !== null && index === question.correctAnswer
-                          ? "border-brand-emerald/60 bg-brand-emerald/10"
-                          : "border-white/10 bg-white/[0.03] hover:border-brand-gold/35",
-                    ].join(" ")}
-                  >
+                  <button key={option} type="button" disabled={answer !== null} onClick={() => answerStation(index)}
+                    className={["rounded-2xl border p-4 text-right", answer === index ? (index === question.correctAnswer ? "border-brand-emerald bg-brand-emerald/15" : "border-rose-300/30 bg-rose-300/10") : answer !== null && index === question.correctAnswer ? "border-brand-emerald/60 bg-brand-emerald/10" : "border-white/10 bg-white/[0.03] hover:border-brand-gold/35"].join(" ")}>
                     {option}
                   </button>
                 ))}
@@ -1021,7 +1043,7 @@ export function MosqueAdventureGame({
           </div>
         )}
       </div>
-      <GameToast>{feedback}</GameToast>
+      <GameToast tone={completed ? "emerald" : "gold"}>{feedback}</GameToast>
     </KidsGameStage>
   );
 }
