@@ -23,9 +23,9 @@ if (!verified.includes("isQuestion")) {
   throw new Error("Kids Quiz question validation is missing.");
 }
 
-const componentPath = path.join(process.cwd(), "src/features/kids/components/games/zikr-quiz-game.tsx");
+const componentPath = path.join(process.cwd(), "src/features/kids/components/games/kids-learning-games.tsx");
 const component = await readFile(componentPath, "utf8");
-for (const marker of ["QUESTION_COUNT", "feedback", "onResult", "getVerifiedKidsQuizQuestions"]) {
+for (const marker of ["feedback", "onResult", "getVerifiedKidsQuizQuestions", "question.correctAnswer"]) {
   if (!component.includes(marker)) throw new Error(`ZIKR Quiz runtime contract is missing: ${marker}`);
 }
 
