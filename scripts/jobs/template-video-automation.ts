@@ -23,6 +23,7 @@ const ARABIC_TTS_VOICE = process.env.ARABIC_TTS_VOICE ?? "ar-SA-ZariyahNeural";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
 const VIDEO_TEMPLATE_VERSION = "2026-10-02-quality-v2";
+const AI_VISUAL_POLICY_VERSION = "2026-10-02-source-locked-v1";
 const ENGINE_CONFIG = getVideoEngineConfig();
 const AI_ATTEMPTS_PER_RUN = Math.max(0, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 2) || 2);
 let aiAttemptsUsed = 0;
@@ -739,6 +740,7 @@ async function renderVideo(request: GeneratedRequest) {
           motion: aiPlan.motion,
           generatedAt: new Date().toISOString(),
           sourceLocked: true,
+          policyVersion: AI_VISUAL_POLICY_VERSION,
         },
       };
     } catch (error) {
@@ -916,7 +918,8 @@ async function renderVideo(request: GeneratedRequest) {
         durationSeconds: duration,
         scene,
         motion,
-        sourceLocked: request.category === "quran" || request.category === "hadith" || request.category === "dua",
+        sourceLocked: ["quran", "hadith", "dua", "adhkar", "story"].includes(request.category),
+        aiVisualPolicyVersion: AI_VISUAL_POLICY_VERSION,
         generatedAt: new Date().toISOString(),
       },
     };
