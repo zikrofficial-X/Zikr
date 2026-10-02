@@ -18,9 +18,7 @@ if (!publisher.includes("authBlocked: hasAuthFailure")) failures.push("Facebook 
 if (!publisher.includes("platformResults")) failures.push("platform-level results must be persisted");
 if (!publisher.includes("pendingPlatforms")) failures.push("already-successful platforms must be excluded from retries");
 if (!publisher.includes("remoteId")) failures.push("successful providers must persist their remote platform IDs");
-if (publisher.includes("console.log(pageAccessToken") || publisher.includes("console.log(env.FACEBOOK_PAGE_ACCESS_TOKEN")) {
-  failures.push("Facebook access tokens must never be logged");
-}
+if (publisher.includes("console.log(pageAccessToken") || publisher.includes("console.log(env.FACEBOOK_PAGE_ACCESS_TOKEN")) failures.push("Facebook access tokens must never be logged");
 
 const queue = read("scripts/jobs/template-video-automation.ts");
 if (!queue.includes('process.env.SOCIAL_PUBLISH_FACEBOOK_ENABLED === "true"')) failures.push("new Facebook queue targets must be explicitly enabled");
@@ -36,6 +34,16 @@ if (!example.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED=false")) failures.push(".
 
 const workflow = read(".github/workflows/generate-ai-video.yml");
 if (!workflow.includes('SOCIAL_PUBLISH_FACEBOOK_ENABLED: "false"')) failures.push("autonomous GitHub worker must keep Facebook publishing disabled until credentials are repaired");
+
+const adminApi = read("src/app/api/admin/social/route.ts");
+if (!adminApi.includes("authBlockedPlatforms")) failures.push("Admin retry path must understand Facebook auth-blocked platforms");
+if (!adminApi.includes("youtubeConfigured")) failures.push("Admin social health must expose YouTube configuration");
+if (!adminApi.includes("facebookAuthBlocked")) failures.push("Admin social health must expose Facebook auth-block count");
+if (!adminApi.includes("target_platforms: platforms")) failures.push("Admin retry must narrow targets to actually retryable platforms");
+
+const adminUi = read("src/app/admin/social/social-client.tsx");
+if (!adminUi.includes("Facebook Auth Blocks")) failures.push("Admin social UI must show Facebook auth-block count");
+if (!adminUi.includes("Facebook متوقف حاليًا")) failures.push("Admin social UI must explain the disabled Facebook state");
 
 const migration = read("supabase/migrations/20260929045633_create_social_publish_queue_20260929.sql");
 if (!migration.includes("idx_social_publish_queue_automation_key")) failures.push("social queue must retain unique automation-key idempotency");
