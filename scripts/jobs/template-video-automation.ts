@@ -20,7 +20,7 @@ const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? proce
 const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_VIDEO_SECONDS ?? 16)));
 const MIN_VIDEO_SECONDS = Math.min(TARGET_VIDEO_SECONDS, 10);
 const MAX_VIDEO_SECONDS = Math.max(TARGET_VIDEO_SECONDS, 45);
-const ARABIC_TTS_VOICE = process.env.ARABIC_TTS_VOICE ?? "ar-SA-ZariyahNeural";
+const ARABIC_TTS_VOICE = process.env.ARABIC_TTS_VOICE ?? "ar-SA-HamedNeural";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
 const VIDEO_TEMPLATE_VERSION = "2026-10-02-quality-v2";
