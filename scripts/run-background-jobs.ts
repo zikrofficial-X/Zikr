@@ -81,15 +81,13 @@ async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
 
 async function clearRunNowRequest(requestedAt: string) {
   const filter = encodeURIComponent(JSON.stringify(requestedAt));
-  const result = await supabaseServerAdminRequest(
+  await supabaseServerAdminRequest(
     `/rest/v1/admin_settings?key=eq.video_automation_run_now&value=eq.${filter}`,
     {
       method: "DELETE",
       headers: { Prefer: "return=minimal" },
     },
-  ).catch(() => null);
-
-  if (result !== null) return;
+  ).catch(() => undefined);
 
   const current = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
     "/rest/v1/admin_settings?key=eq.video_automation_run_now&select=key,value&limit=1",
@@ -257,7 +255,7 @@ async function recordAutomationRun(summary: {
           socialProcessed: summary.socialProcessed,
           socialSucceeded: summary.socialSucceeded,
           generator: "multi-provider-free-ai",
-          urgentRunRequestedAt: runNowRequestedAt,
+          urgentRunRequestedAt: summary.urgentRunRequestedAt,
         },
       }),
     });
