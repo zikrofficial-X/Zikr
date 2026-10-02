@@ -28,7 +28,7 @@ export function QuranAudioPlayer({
     let active = true;
     setIsClient(true);
     // Load reciters from service
-    getReciters()
+    getQuranReciters()
       .then(data => {
         if (!active) return;
         setAvailableReciters(data);
