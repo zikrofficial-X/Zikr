@@ -215,6 +215,7 @@ function coloringSvg(sheetId: string, fill: (index: number) => string, paint: (i
 export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onResult, onSound }: Props) {
   const [levelIndex, setLevelIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState(COLOR_PALETTE[0]);
+  const [customColors, setCustomColors] = useState<string[]>([]);
   const [fills, setFills] = useState<string[]>([]);
   const [history, setHistory] = useState<string[][]>([]);
   const [feedback, setFeedback] = useState("اختر لونًا ثم اضغط على أجزاء اللوحة.");
@@ -237,6 +238,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
       lastRestartRef.current = restartToken;
       setFills([]);
       setHistory([]);
+      setCustomColors([]);
       setSaved(value => {
         const next = { ...value, [storageKey]: [] };
         try { localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(next)); } catch {}
@@ -257,6 +259,18 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
     setSaved(value => { const nextSaved = { ...value, [storageKey]: next }; localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(nextSaved)); return nextSaved; });
     onSound("collect");
     setFeedback("تم تلوين جزء جديد.");
+  };
+
+  const mixColor = () => {
+    const base = selectedColor.replace("#", "");
+    const gold = "f3c969";
+    const rgb = (value: string) => parseInt(value, 16);
+    const blend = (a: number, b: number) => Math.round((a + b) / 2).toString(16).padStart(2, "0");
+    const mixed = "#" + blend(rgb(base.slice(0,2)), rgb(gold.slice(0,2))) + blend(rgb(base.slice(2,4)), rgb(gold.slice(2,4))) + blend(rgb(base.slice(4,6)), rgb(gold.slice(4,6)));
+    setCustomColors(colors => colors.includes(mixed) ? colors : [...colors.slice(-3), mixed]);
+    setSelectedColor(mixed);
+    onSound("collect");
+    setFeedback("صنعت لونًا جديدًا. جرّبه في اللوحة.");
   };
 
   const undo = () => setHistory(previous => {
@@ -291,7 +305,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
       <div className="mx-4 mt-4 grid gap-4 sm:mx-6 lg:grid-cols-[1fr_.72fr]">
         <div className="rounded-[2rem] border border-white/10 bg-black/20 p-4 sm:p-6">
           <div className="rounded-[1.7rem] border border-brand-gold/15 bg-[#071923] p-3 sm:p-5">{coloringSvg(current.id, index => fills[index] || "#14303a", paint)}</div>
-          <div className="mt-4 flex flex-wrap gap-2">{COLOR_PALETTE.map((color, index) => <button key={color} type="button" onClick={() => setSelectedColor(color)} disabled={paused} aria-label={"اختيار اللون " + (index + 1)} className={"h-10 w-10 rounded-full border-2 transition " + (selectedColor === color ? "scale-110 border-white shadow-lg" : "border-white/15")} style={{ background: color }} />)}<button type="button" onClick={undo} disabled={!history.length || paused} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-brand-cream/70">تراجع</button></div>
+          <div className="mt-4 flex flex-wrap gap-2">{[...COLOR_PALETTE, ...customColors].map((color, index) => <button key={color} type="button" onClick={() => setSelectedColor(color)} disabled={paused} aria-label={"اختيار اللون " + (index + 1)} className={"h-10 w-10 rounded-full border-2 transition " + (selectedColor === color ? "scale-110 border-white shadow-lg" : "border-white/15")} style={{ background: color }} />)}<button type="button" onClick={undo} disabled={!history.length || paused} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-brand-cream/70">تراجع</button></div>
         </div>
         <div className="space-y-3">
           <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5"><div className="flex items-center justify-between"><div><p className="text-xs font-black tracking-[0.18em] text-brand-gold">المرحلة</p><h4 className="mt-1 text-xl font-black text-brand-cream">{current.title}</h4><p className="mt-1 text-xs text-brand-cream/45">{filled}/{rules.regionTarget} مناطق</p></div><KidCharacter variant="reader" state={complete ? "celebrate" : "idle"} size={70} /></div><div className="mt-4 grid grid-cols-2 gap-2">{Array.from({ length: 10 }, (_, i) => <StarToken key={i} size={27} active={i < filled} />)}</div></div>
