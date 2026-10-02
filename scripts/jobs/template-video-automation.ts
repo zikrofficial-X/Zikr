@@ -521,7 +521,7 @@ function contentText(request: GeneratedRequest) {
 }
 function contentSourceUrl(request: GeneratedRequest) {
   const value = request.content?.sourceUrl;
-  return typeof value === "string" && /^https?:\/\//i.test(value) ? value : "https://zikrmediaofficial.vercel.app";
+  return typeof value === "string" && /^https?:\/\//i.test(value) ? value : siteUrl();
 }
 function aiPlanEnabled() {
   return Boolean(process.env.GEMINI_API_KEY?.trim());
