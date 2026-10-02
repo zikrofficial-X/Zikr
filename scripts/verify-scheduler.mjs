@@ -11,7 +11,7 @@ const read = (path) => {
 };
 
 const workflow = read(".github/workflows/generate-ai-video.yml");
-if (!workflow.includes('cron: "0 */2 * * *"')) failures.push("video worker must remain on the documented 2-hour cadence");
+if (!workflow.includes('cron: "0 * * * *"')) failures.push("video worker must remain on the documented hourly cadence");
 if (!workflow.includes("concurrency:")) failures.push("video worker must define concurrency protection");
 if (!workflow.includes("group: zikr-autonomous-video-worker")) failures.push("video worker concurrency group is missing");
 if (!workflow.includes("cancel-in-progress: false")) failures.push("video worker must not cancel an active generation run");

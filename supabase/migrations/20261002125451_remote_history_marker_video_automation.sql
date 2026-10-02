@@ -1,0 +1,4 @@
+-- Historical remote migration marker retained for Supabase Preview parity.
+-- This version was already present in the production migration history.
+-- The effective video automation change is represented by the canonical
+-- 20261002160000 migration in this repository.

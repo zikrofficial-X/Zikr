@@ -5,7 +5,7 @@ name: ZIKR Autonomous AI Video Worker
 on:
   schedule:
     # Generate and publish content automatically without manual intervention.
-    # Two-hour cadence keeps the free runner practical while maintaining a steady feed.
+    # Hourly cadence keeps the queue moving while preserving a bounded free-runner workload.
     - cron: "0 * * * *"
   push:
     # A workflow change on main is a deliberate production smoke/deploy trigger.
