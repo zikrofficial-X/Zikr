@@ -18,6 +18,9 @@ const required = [
   "src/features/kids/components/games/kids-values-coloring.tsx",
   "src/features/kids/components/games/world-game-stage.tsx",
   "src/features/kids/components/games/game-shell.tsx",
+  "src/lib/games/game-missions.ts",
+  "src/features/kids/components/games/kids-game-art.tsx",
+  "supabase/migrations/20261003010000_kids_games_level_catalog.sql",
   "src/lib/games/zikr-runner.ts",
   "src/lib/games/zikr-road.ts",
   "src/lib/games/zikr-jump.ts",
@@ -117,6 +120,19 @@ if (!readFileSync(join(root, "src/features/kids/components/games/kids-game-kit.t
 if (!readFileSync(join(root, "src/features/kids/components/games/game-shell.tsx"), "utf8").includes("syncQueuedGameResults")) {
   throw new Error("The existing offline result pipeline is no longer connected.");
 }
+
+
+const shellSource = readFileSync(join(root, "src/features/kids/components/games/game-shell.tsx"), "utf8");
+if (!shellSource.includes("getDailyMission") || !shellSource.includes("dailyMissionCompleted")) throw new Error("Daily mission integration is missing.");
+const artIndexSource = readFileSync(join(root, "src/features/kids/components/games/games-index.tsx"), "utf8");
+if (!artIndexSource.includes("KidsGameArt")) throw new Error("Unique game art is not connected.");
+const missionSource = readFileSync(join(root, "src/lib/games/game-missions.ts"), "utf8");
+if (!missionSource.includes("getDailyMission") || !missionSource.includes("getMissionProgress")) throw new Error("Game mission system is incomplete.");
+const artSource = readFileSync(join(root, "src/features/kids/components/games/kids-game-art.tsx"), "utf8");
+for (const id of gameIds) if (!artSource.includes('case "' + id + '"')) throw new Error("Visual identity missing for " + id);
+const migrationSource = readFileSync(join(root, "supabase/migrations/20261003010000_kids_games_level_catalog.sql"), "utf8");
+if (!migrationSource.includes("generate_series(1, 20)") || !migrationSource.includes("array['easy','normal','hard']")) throw new Error("Level catalog migration incomplete.");
+for (const id of gameIds) if (!migrationSource.includes("('" + id + "'")) throw new Error("Migration catalog missing " + id);
 
 const registry = readFileSync(join(root, "src/lib/games/registry.ts"), "utf8");
 if (!registry.includes('difficulties: ["easy", "normal", "hard"] as const')) throw new Error("Registry does not expose all 3 difficulties.");

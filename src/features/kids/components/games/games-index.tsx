@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { GAME_REGISTRY, type GameAgeGroup, type GameDefinition, type GameDifficulty } from "@/lib/games/registry";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
+import { KidsGameArt } from "@/features/kids/components/games/kids-game-art";
 
 const ageLabels: Record<GameAgeGroup, string> = { "3-5": "3–5", "6-8": "6–8", "9-12": "9–12", "13-15": "13–15" };
 const difficultyLabels: Record<GameDifficulty, string> = { easy: "سهل", normal: "متوسط", hard: "متقدم" };
@@ -75,40 +76,15 @@ export default function KidsGamesIndex() {
 }
 
 function GameCardArt({ game }: { game: GameDefinition }) {
-  const artClass =
-    game.runtimeKind === "runner" || game.runtimeKind === "road"
-      ? "from-emerald-500/20 via-teal-500/10 to-[#071b24]"
-      : game.runtimeKind === "memory" || game.runtimeKind === "quiz" || game.runtimeKind === "verse"
-        ? "from-violet-500/20 via-indigo-500/10 to-[#071b24]"
-        : game.runtimeKind === "ordering"
-          ? "from-sky-400/20 via-cyan-500/10 to-[#071b24]"
-          : game.runtimeKind === "jump" || game.runtimeKind === "fly"
-            ? "from-amber-400/20 via-indigo-500/10 to-[#071b24]"
-            : game.runtimeKind === "adventure"
-              ? "from-emerald-500/20 via-sky-500/10 to-[#071b24]"
-              : game.runtimeKind === "coloring"
-                ? "from-fuchsia-500/20 via-pink-500/10 to-[#071b24]"
-                : "from-rose-400/20 via-emerald-500/10 to-[#071b24]";
-
   return (
-    <div className={"relative h-40 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br " + artClass}>
-      <div className="absolute -left-8 -top-10 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
-      <div className="absolute -right-8 bottom-[-2rem] h-36 w-36 rounded-full bg-brand-gold/10 blur-2xl" />
-      <div className="absolute inset-x-6 bottom-6 h-8 rounded-full bg-black/20 blur-sm" />
-      <div className="absolute left-[12%] top-[18%] text-xs text-white/30">✦</div>
-      <div className="absolute left-[28%] top-[34%] text-sm text-brand-gold/50">•</div>
-      <div className="absolute right-[20%] top-[22%] text-lg text-white/35">✦</div>
-      <div className="absolute right-[10%] bottom-[25%] text-xs text-brand-emerald/45">·</div>
-      <div className="absolute left-1/2 top-1/2 grid h-20 w-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-[1.7rem] border-2 border-brand-gold/35 bg-black/20 text-4xl text-brand-gold shadow-[0_0_45px_rgba(243,201,105,.12)]">
-        {game.icon}
-      </div>
-      <div className="absolute inset-x-0 bottom-3 text-center text-[11px] font-semibold tracking-wide text-brand-cream/50">
+    <div className="relative h-40 overflow-hidden rounded-2xl border border-white/10 bg-[#071923]">
+      <KidsGameArt gameId={game.id} />
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-4 pb-3 pt-8 text-center text-[11px] font-semibold tracking-wide text-brand-cream/70">
         {game.category}
       </div>
     </div>
   );
 }
-
 function RecommendedCard({ game, bestScore }: { game: GameDefinition; bestScore: number }) {
   return <Link href={`/kids/${game.id}`} className="group block"><Card className={`relative h-full overflow-hidden border-brand-gold/20 bg-gradient-to-br ${themeClasses[game.theme]} from-10% p-5 transition duration-200 hover:-translate-y-1 hover:border-brand-gold/60`}><div className="relative"><GameCardArt game={game} /></div><div className="relative mt-4 flex items-start justify-between gap-3"><div><h3 className="text-xl font-bold text-brand-cream">{game.titleAr}</h3><p className="mt-1 text-xs text-brand-cream/50">{game.titleEn}</p></div><span className="rounded-full bg-brand-gold px-3 py-1 text-xs font-bold text-black">مقترحة</span></div><div className="relative mt-3 space-y-2"><p className="text-sm leading-7 text-brand-cream/70">{game.storyAr}</p><p className="text-sm font-semibold text-brand-gold">{game.goalAr}</p></div><div className="relative mt-5 flex items-center justify-between gap-3 text-xs text-brand-cream/60"><span>{game.durationMinutes} دقائق · {ageLabels[game.supportedAgeGroups[0]]} سنوات</span><span>{bestScore > 0 ? `أفضل نتيجة ${bestScore.toLocaleString("ar-SA")}` : "لم تبدأ بعد"}</span></div><div className="relative mt-4 rounded-xl bg-brand-gold px-4 py-3 text-center text-sm font-bold text-black transition group-hover:bg-brand-gold/90">ابدأ الآن</div></Card></Link>;
 }

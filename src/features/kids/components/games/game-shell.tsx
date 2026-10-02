@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getGameDefinition, type GameDifficulty, type GameId, type GameResultPayload } from "@/lib/games/registry";
 import { enqueueGameResult, getQueuedGameResultCount, syncQueuedGameResults } from "@/lib/games/offline-queue";
 import { WorldGameStage, type StageController, type WorldHud } from "@/features/kids/components/games/world-game-stage";
+import { getDailyMission, getMissionProgress } from "@/lib/games/game-missions";
 
 function formatNumber(value: number) { return new Intl.NumberFormat("ar-SA").format(value); }
 function createSubmissionId() { return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `game-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
@@ -25,6 +26,8 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   const [restartToken, setRestartToken] = useState(0);
   const [initializing, setInitializing] = useState(true);
   const lastHudUpdate = useRef(0);
+  const dailyMission = useMemo(() => getDailyMission(gameId), [gameId]);
+  const missionProgress = useMemo(() => getMissionProgress(dailyMission, hud), [dailyMission, hud]);
 
   const refreshQueue = useCallback(async () => setQueuedCount(await getQueuedGameResultCount()), []);
   useEffect(() => {
@@ -52,7 +55,12 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
       level: Math.max(0, Math.floor(next.level)),
       combo: Math.max(0, Math.floor(next.combo)),
       completed: next.completed,
-      metadata: { source: "kids-world", runtime: definition.runtimeKind },
+      metadata: {
+        source: "kids-world",
+        runtime: definition.runtimeKind,
+        dailyMissionId: dailyMission.id,
+        dailyMissionCompleted: getMissionProgress(dailyMission, next).completed,
+      },
     };
     const clientSubmissionId = createSubmissionId();
     if (!navigator.onLine) {
@@ -79,7 +87,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
       setMessage("تعذر المزامنة الآن، فتم حفظ النتيجة محليًا للمحاولة لاحقًا.");
       await refreshQueue();
     }
-  }, [definition.runtimeKind, difficulty, gameId, refreshQueue]);
+  }, [dailyMission, definition.runtimeKind, difficulty, gameId, refreshQueue]);
 
   const handleResult = useCallback((next: WorldHud) => {
     setHud(next); setResult(next); setPaused(false); void submitResult(next);
@@ -111,6 +119,14 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.2em] text-brand-emerald/80">عالم ذِكر للأطفال</p><h2 id="game-heading" className="text-2xl font-bold text-brand-gold">{definition.titleAr}</h2><p className="mt-1 max-w-2xl text-sm leading-7 text-brand-cream/65">{definition.storyAr}</p></div><Link href="/kids/games" className="text-sm text-brand-cream/70 underline underline-offset-4 hover:text-brand-gold">العودة إلى الألعاب</Link></div>
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-cream/10 bg-black/20 p-3"><div className="flex flex-wrap gap-2" aria-label="مستوى الصعوبة">{definition.difficulties.map(item => <button key={item} type="button" onClick={() => { if (!result) { setDifficulty(item); restart(); } }} aria-pressed={difficulty === item} className={`rounded-lg px-3 py-2 text-sm ${difficulty === item ? "bg-brand-gold text-black" : "border border-brand-cream/15 text-brand-cream/70"}`}>{item === "easy" ? "سهل" : item === "normal" ? "متوسط" : "متقدم"}</button>)}</div><span className="text-sm text-brand-cream/60">{definition.category}</span></div>
     <div className="grid grid-cols-5 gap-2 rounded-xl border border-brand-gold/20 bg-black/20 p-3 text-center" aria-live="polite"><div><span className="block text-xs text-brand-cream/60">النقاط</span><strong className="text-lg text-brand-gold">{formatNumber(hud.score)}</strong></div><div><span className="block text-xs text-brand-cream/60">النجوم</span><strong className="text-lg text-brand-gold">{formatNumber(hud.collectibles)}</strong></div><div><span className="block text-xs text-brand-cream/60">المسافة</span><strong className="text-lg text-brand-gold">{formatNumber(hud.distance)}م</strong></div><div><span className="block text-xs text-brand-cream/60">السلسلة</span><strong className="text-lg text-brand-gold">{formatNumber(hud.combo)}</strong></div><div><span className="block text-xs text-brand-cream/60">المستوى</span><strong className="text-lg text-brand-gold">{formatNumber(hud.level)}</strong></div></div>
+    <div className="rounded-2xl border border-brand-gold/20 bg-brand-gold/5 p-4" aria-live="polite">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><p className="text-xs font-black tracking-[0.18em] text-brand-gold/75">مهمة اليوم</p><h3 className="mt-1 text-base font-bold text-brand-cream">{dailyMission.titleAr}</h3><p className="mt-1 text-sm text-brand-cream/65">{dailyMission.descriptionAr}</p></div>
+        <span className={"rounded-full border px-3 py-1 text-xs font-bold " + (missionProgress.completed ? "border-brand-emerald/30 bg-brand-emerald/10 text-brand-emerald" : "border-brand-gold/25 bg-black/10 text-brand-gold")}>{missionProgress.completed ? "مكتملة" : dailyMission.rewardLabel}</span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/20"><div className="h-full rounded-full bg-gradient-to-r from-brand-gold via-brand-emerald to-sky-300 transition-[width] duration-200" style={{ width: missionProgress.percent + "%" }} /></div>
+      <p className="mt-2 text-xs text-brand-cream/50">{missionProgress.value.toLocaleString("ar-EG")} / {missionProgress.target.toLocaleString("ar-EG")}</p>
+    </div>
     <div id="kids-world-game-frame" className="relative">
       <WorldGameStage gameId={gameId} difficulty={difficulty} muted={muted} paused={paused} restartToken={restartToken} onPausedChange={setPaused} onReady={handleStageReady} onHud={handleHud} onResult={handleResult} onError={handleStageError} />
       {initializing && <div className="absolute inset-0 grid place-items-center rounded-2xl bg-[#071b24]/90 text-brand-cream" role="status"><div className="text-center"><div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-2 border-brand-gold/20 border-t-brand-gold" /><p>بنجهز مغامرتك...</p></div></div>}
