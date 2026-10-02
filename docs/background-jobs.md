@@ -12,7 +12,7 @@ The queue is idempotent through `video_generation_requests.automation_key` and c
 
 ## Automatic social publishing
 
-The scheduled worker runs with `SOCIAL_PUBLISH_ENABLED=true`. Every successfully rendered video is placed into `social_publish_queue` and then processed automatically for configured providers.
+The scheduled worker runs with `SOCIAL_PUBLISH_ENABLED=true`. YouTube publishing can remain active independently; Facebook requires the explicit `SOCIAL_PUBLISH_FACEBOOK_ENABLED=true` gate and valid Meta credentials. Every successfully rendered video is placed into `social_publish_queue` and then processed automatically for enabled providers.
 
 YouTube requires:
 
