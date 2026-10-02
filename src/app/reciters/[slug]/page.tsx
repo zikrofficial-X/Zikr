@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getReciters } from '@/features/quran/services/quran';
+import { getQuranReciters } from '@/features/quran/services/quran-client';
 import type { Reciter } from '@/features/quran/types/quran';
 import { surahs as FALLBACK_SURAHS } from '@/features/quran/data/fallback';
 import Link from 'next/link';
