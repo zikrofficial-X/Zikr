@@ -12,62 +12,112 @@ export type AdminNavigationGroup = {
   items: readonly AdminNavigationItem[];
 };
 
+/**
+ * Canonical Admin information architecture.
+ *
+ * Keep this list intentionally aligned with the product's final Admin tree.
+ * Functional legacy routes may continue to exist for compatibility, but they
+ * are not part of the primary navigation once a canonical module route exists.
+ */
 export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
   {
     key: "operations",
-    label: "مركز التشغيل",
+    label: "Operations",
     items: [
-      { href: "/admin", label: "لوحة العمليات", permission: "dashboard.view" },
-      { href: "/admin/analytics", label: "التحليلات", permission: "analytics.read" },
-      { href: "/admin/health", label: "صحة النظام", permission: "system.manage" },
-      { href: "/admin/audit", label: "سجل الإدارة", permission: "audit.read" },
-      { href: "/admin/notifications", label: "التنبيهات", permission: "notifications.manage" },
-      { href: "/admin/automation", label: "الأتمتة", permission: "system.manage" },
+      { href: "/admin", label: "Dashboard", permission: "dashboard.view" },
+      { href: "/admin/health", label: "Health", permission: "system.manage" },
+      { href: "/admin/alerts", label: "Alerts", permission: "notifications.manage" },
+      { href: "/admin/audit", label: "Audit", permission: "audit.read" },
     ],
   },
   {
     key: "content",
-    label: "المحتوى والمراجعة",
+    label: "Content",
     items: [
-      { href: "/admin/library", label: "المكتبة", permission: "library.manage" },
-      { href: "/admin/content", label: "المحتوى التحريري", permission: "content.manage" },
-      { href: "/admin/knowledge", label: "المعرفة الإسلامية", permission: "knowledge.manage" },
-      { href: "/admin/editorial", label: "سير التحرير", permission: "knowledge.manage" },
-      { href: "/admin/sections", label: "أقسام الموقع", permission: "sections.manage" },
-      { href: "/admin/sources", label: "المصادر والتوثيق", permission: "sources.manage" },
-      { href: "/admin/search", label: "البحث المركزي", permission: "content.manage" },
-      { href: "/admin/prophets", label: "قصص الأنبياء", permission: "prophets.manage" },
-      { href: "/admin/battles", label: "الغزوات", permission: "battles.manage" },
-      { href: "/admin/kids", label: "محتوى الأطفال", permission: "kids.manage" },
+      { href: "/admin/library", label: "Library", permission: "library.manage" },
+      { href: "/admin/sources", label: "Sources", permission: "sources.manage" },
+      { href: "/admin/editorial", label: "Editorial", permission: "knowledge.manage" },
+      { href: "/admin/categories", label: "Categories", permission: "content.manage" },
+      { href: "/admin/search", label: "Search", permission: "content.manage" },
     ],
   },
   {
-    key: "media",
-    label: "الوسائط والفيديو",
+    key: "video-factory",
+    label: "Video Factory",
     items: [
-      { href: "/admin/media", label: "الوسائط والحقوق", permission: "media.manage" },
-      { href: "/admin/videos", label: "طابور الفيديو", permission: "video.manage" },
-      { href: "/admin/ai-video", label: "استوديو الفيديو", permission: "video.manage" },
-      { href: "/admin/site-audio", label: "الصوت والأذان", permission: "audio.manage" },
+      { href: "/admin/video-factory", label: "Dashboard", permission: "video.manage" },
+      { href: "/admin/video-factory/sources", label: "Sources", permission: "video.manage" },
+      { href: "/admin/video-factory/scripts", label: "Scripts", permission: "video.manage" },
+      { href: "/admin/video-factory/voices", label: "Voices", permission: "video.manage" },
+      { href: "/admin/video-factory/visuals", label: "Visuals", permission: "video.manage" },
+      { href: "/admin/video-factory/templates", label: "Templates", permission: "video.manage" },
+      { href: "/admin/video-factory/queue", label: "Queue", permission: "video.manage" },
+      { href: "/admin/video-factory/qa", label: "QA", permission: "video.manage" },
+      { href: "/admin/video-factory/scheduler", label: "Scheduler", permission: "video.manage" },
+      { href: "/admin/video-factory/publishing", label: "Publishing", permission: "video.manage" },
     ],
   },
   {
-    key: "publishing",
-    label: "النشر والإصدار",
+    key: "social",
+    label: "Social",
     items: [
-      { href: "/admin/social", label: "النشر الاجتماعي", permission: "social.manage" },
-      { href: "/admin/android", label: "إصدارات Android", permission: "android.manage" },
-      { href: "/admin/release", label: "بوابة الإصدار", permission: "release.manage" },
+      { href: "/admin/social", label: "Social", permission: "social.manage" },
     ],
   },
   {
-    key: "access",
-    label: "المستخدمون والأمن",
+    key: "kids",
+    label: "Kids",
     items: [
-      { href: "/admin/users", label: "المستخدمون", permission: "users.read" },
-      { href: "/admin/security", label: "الأمن والصلاحيات", permission: "security.manage" },
-      { href: "/admin/settings", label: "إعدادات الإدارة", permission: "settings.manage" },
-      { href: "/admin/seo", label: "SEO وAdSense", permission: "settings.manage" },
+      { href: "/admin/kids/content", label: "Content", permission: "kids.manage" },
+      { href: "/admin/kids/games", label: "Games", permission: "kids.manage" },
+      { href: "/admin/kids/levels", label: "Levels", permission: "kids.manage" },
+      { href: "/admin/kids/assets", label: "Assets", permission: "kids.manage" },
+      { href: "/admin/kids/analytics", label: "Analytics", permission: "kids.manage" },
+    ],
+  },
+  {
+    key: "audio",
+    label: "Audio",
+    items: [
+      { href: "/admin/audio/quran", label: "Quran", permission: "audio.manage" },
+      { href: "/admin/audio/adhan", label: "Adhan", permission: "audio.manage" },
+      { href: "/admin/audio/tts", label: "TTS", permission: "audio.manage" },
+      { href: "/admin/audio/site-audio", label: "Site Audio", permission: "audio.manage" },
+    ],
+  },
+  {
+    key: "users",
+    label: "Users",
+    items: [
+      { href: "/admin/users", label: "Users", permission: "users.read" },
+    ],
+  },
+  {
+    key: "security",
+    label: "Security",
+    items: [
+      { href: "/admin/security", label: "Security", permission: "security.manage" },
+    ],
+  },
+  {
+    key: "seo",
+    label: "SEO",
+    items: [
+      { href: "/admin/seo", label: "SEO", permission: "settings.manage" },
+    ],
+  },
+  {
+    key: "android",
+    label: "Android",
+    items: [
+      { href: "/admin/android", label: "Android", permission: "android.manage" },
+    ],
+  },
+  {
+    key: "settings",
+    label: "Settings",
+    items: [
+      { href: "/admin/settings", label: "Settings", permission: "settings.manage" },
     ],
   },
 ] as const;
