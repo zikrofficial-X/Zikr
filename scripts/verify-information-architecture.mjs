@@ -19,6 +19,9 @@ function extractQuoted(text, pattern) {
 const catalog = await read('src/lib/navigation/catalog.ts');
 const sitemap = await read('src/app/sitemap.ts');
 const videosPage = await read('src/app/videos/page.tsx');
+const audioPage = await read('src/app/audio/page.tsx');
+const kidsLayout = await read('src/app/kids/layout.tsx');
+const site = await read('src/lib/site.ts');
 const catalogHrefs = extractQuoted(catalog, /href:\s*['"]([^'"]+)['"]/g);
 if (sitemap.includes('"/videos"') && sitemap.includes('NON_INDEXABLE_PATHS')) {
   const blockedSection = sitemap.match(/const NON_INDEXABLE_PATHS[\s\S]*?;/)?.[0] ?? '';
@@ -28,6 +31,21 @@ if (sitemap.includes('"/videos"') && sitemap.includes('NON_INDEXABLE_PATHS')) {
 }
 if (!videosPage.includes("path: '/videos'") || videosPage.includes("noindex: true")) {
   failures.push('Public /videos hub metadata is not indexable as expected.');
+}
+if (!site.includes('path: "/library"') || !site.includes('path: "/audio"')) {
+  failures.push('Public library/audio hubs must be registered in the site route catalog.');
+}
+if (!sitemap.includes('siteConfigRoutes().map')) {
+  failures.push('Sitemap must derive public static routes from the canonical site route catalog.');
+}
+if (!audioPage.includes("path: '/audio'")) {
+  failures.push('Audio hub must expose page-level canonical metadata.');
+}
+if (!kidsLayout.includes('path: "/kids"')) {
+  failures.push('Kids hub must expose a route-level canonical metadata contract.');
+}
+if (!sitemap.includes('getPublicContentLibrary(100)')) {
+  failures.push('Sitemap must evaluate substantive public library content routes.');
 }
 const duplicateCatalogHrefs = catalogHrefs.filter((href, index) => catalogHrefs.indexOf(href) !== index);
 if (duplicateCatalogHrefs.length) failures.push(`تكرار روابط في كتالوج الأقسام: ${unique(duplicateCatalogHrefs).join(', ')}`);
@@ -64,7 +82,6 @@ if (!prayerPage.includes('getSavedPrayerLocation')) failures.push('Prayer page d
 if (!prayerPage.includes('return;\n      }\n\n      if (!disposed)')) failures.push('Prayer page may fall back to device location after a saved-location lookup.');
 if (!home.includes('DEFAULT_CITY')) notes.push('Home keeps no hard-coded default city; first-time location is requested only after no saved location is found.');
 
-const audioPage = await read('src/app/audio/page.tsx');
 const audioLibrary = await read('src/components/audio/audio-library.tsx');
 if (!audioPage.includes('AudioLibrary')) failures.push('صفحة الصوت لا تستخدم المكتبة الموحدة.');
 if (!audioLibrary.includes('/api/site-audio')) failures.push('مكتبة الصوت لا تستخدم API الصوت الموحد.');

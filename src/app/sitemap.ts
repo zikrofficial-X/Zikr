@@ -5,6 +5,7 @@ import { getStories } from "@/features/stories/services/stories";
 import { getArticles } from "@/features/articles/services/articles";
 import { getDuas } from "@/features/dua/services/dua";
 import { getProphets } from "@/features/prophets/services/prophets";
+import { getPublicContentLibrary } from "@/features/content-library/services/content-library";
 import { surahs as fallbackSurahs } from "@/features/quran/data/fallback";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { appRoutes, siteConfig } from "@/lib/site";
@@ -63,7 +64,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
   }));
 
   try {
-    const [surahs, scholars, hadithBooks, stories, articles, prophets, battles, duas, companions, conquests, competitions] = await Promise.all([
+    const [surahs, scholars, hadithBooks, stories, articles, prophets, battles, duas, companions, conquests, competitions, publicContent] = await Promise.all([
       Promise.resolve(fallbackSurahs.map(surah => ({ number: surah.id, name: surah.nameAr, englishName: surah.nameEn, englishNameTranslation: "", numberOfAyahs: surah.ayahCount, revelationType: surah.revelationPlace === "meccan" ? "Meccan" : "Medinan" }) satisfies Surah)),
       getAllScholars().catch((error): Scholar[] => { console.error("[sitemap] Scholars fetch failed:", error); return []; }),
       getHadithBooks().catch((error): HadithBook[] => { console.error("[sitemap] Hadith fetch failed:", error); return []; }),
@@ -75,6 +76,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       getPublishedSlugs("companions"),
       getPublishedSlugs("conquests"),
       supabaseServerAnonRequest<{ id: string }[]>("/rest/v1/competitions?select=id&published=eq.true&limit=1").catch(() => []),
+      getPublicContentLibrary(100).catch(() => []),
     ]);
 
     const dynamicRoutes: MetadataRoute.Sitemap = [
@@ -91,6 +93,13 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       ...companions.map((companion: SlugRow) => route(`/companions/${companion.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
       ...conquests.map((conquest: SlugRow) => route(`/conquests/${conquest.slug}`, { lastModified: now, changeFrequency: "monthly", priority: 0.7 })),
       ...(competitions.length > 0 ? [route("/competitions", { lastModified: now, changeFrequency: "weekly", priority: 0.6 })] : []),
+      ...publicContent
+        .filter((item) => (item.body_ar?.trim().length ?? 0) >= 600)
+        .map((item) => route(`/content/${item.slug}`, {
+          lastModified: item.published_at ? new Date(item.published_at) : now,
+          changeFrequency: "monthly",
+          priority: 0.6,
+        })),
     ];
 
     const safeEntries = uniqueRoutes([...staticRoutes, ...dynamicRoutes]).slice(0, SITEMAP_URL_LIMIT);

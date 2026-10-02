@@ -1,11 +1,14 @@
+import type { Metadata } from 'next';
 import { Container } from '@/components/ui/container';
 import { AudioLibrary } from '@/components/audio/audio-library';
 import { Headphones, ShieldCheck } from 'lucide-react';
+import { pageMetadata } from '@/lib/site';
 
-export const metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'مكتبة الصوتيات',
   description: 'مكتبة موحدة للأذان والذكر والصلاة على النبي والتذكيرات الصوتية في منصة ذِكر.',
-};
+  path: '/audio',
+});
 
 export default function AudioPage() {
   return (
