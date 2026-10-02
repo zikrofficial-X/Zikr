@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { GameId } from "@/lib/games/registry";
 
 const SKY_STARS = Array.from({ length: 18 }, (_, index) => ({
@@ -32,7 +33,7 @@ function SceneShell({
   children,
   topGlow = "#f3c969",
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   topGlow?: string;
 }) {
   return (
@@ -59,7 +60,7 @@ function SceneShell({
   );
 }
 
-function WorldLabel({ children }: { children: React.ReactNode }) {
+function WorldLabel({ children }: { children: ReactNode }) {
   return (
     <div className="absolute left-4 top-4 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-black tracking-[.18em] text-brand-cream/55 backdrop-blur-sm">
       {children}
@@ -346,6 +347,8 @@ export function KidsGameWorld({ gameId }: { gameId: GameId }) {
       return <CleanupWorld />;
     case "zikr-coloring":
       return <ColoringWorld />;
+    default:
+      return null;
   }
 }
 
