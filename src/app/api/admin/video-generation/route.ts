@@ -108,14 +108,15 @@ export async function PATCH(request: NextRequest) {
         youtube_id: string | null;
         facebook_id: string | null;
         video_url: string | null;
-      }>>(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}&select=id,status,heygen_video_id,youtube_id,facebook_id,video_url&limit=1`);
+        updated_at: string;
+      }>>(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}&select=id,status,heygen_video_id,youtube_id,facebook_id,video_url,updated_at&limit=1`);
       const current = rows?.[0];
       if (!current) return NextResponse.json({ error: 'عملية الفيديو غير موجودة.' }, { status: 404 });
       if (!current.heygen_video_id && !current.video_url) {
         return NextResponse.json({ error: 'لا توجد مهمة توليد مكتملة يمكن إعادة نشرها.' }, { status: 409 });
       }
 
-      await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}`, {
+      await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}&status=eq.${encodeURIComponent(current.status)}&updated_at=eq.${encodeURIComponent(current.updated_at)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
