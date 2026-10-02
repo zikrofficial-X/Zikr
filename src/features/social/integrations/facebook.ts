@@ -1,5 +1,3 @@
-'use server';
-
 import { getServerEnv } from '@/lib/env';
 import { createAdminClient } from '@/lib/supabase/server';
 
