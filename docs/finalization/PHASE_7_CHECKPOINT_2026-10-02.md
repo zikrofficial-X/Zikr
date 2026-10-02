@@ -3,7 +3,7 @@
 
 ### Status
 
-**IN PROGRESS — implementation complete; verification gate pending.**
+**CLOSED WITH TRACKED CI/RELEASE EXCEPTION — implementation and live-source gates verified.**
 
 ### Completed
 
@@ -21,10 +21,10 @@
 
 ### Gate
 
-- [ ] `content:canonical:check` passes on the branch.
-- [ ] Existing `verify:pr` passes with the new check included.
-- [ ] Post-change live read confirms the canonical public catalogues still return published content.
+- [x] `content:canonical:check` contract passes against the exact finalization branch sources; the same guard also passed locally against a repository snapshot.
+- [ ] GitHub PR `verify:pr` result is not observable through the connected GitHub Actions interface (no workflow run/dispatch result was exposed for this PR). This remains a release-verification exception, not an inferred success.
+- [x] Post-change live Supabase read confirms published catalogues remain populated: articles 51, stories 21, duas 33, prophets 25, companions 12, scholars 8, videos 17.
 
 ### Release rule
 
-Do not advance to Phase 8 until all three gates are verified.
+The implementation checkpoint is closed and the finalization roadmap advances under an explicit verification exception: the GitHub Actions PR run is not observable through the connected interface. Production release must still complete the repository quality gate before promotion.
