@@ -70,7 +70,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   };
 
   return (
-    <KidsGameStage theme="garden" ariaLabel="أعمال الخير"><KidsGameWorld gameId="good-deeds" /><KidsGameWorld gameId="good-deeds" />
+    <KidsGameStage theme="garden" ariaLabel="أعمال الخير"><KidsGameWorld gameId="good-deeds" />
       <KidsGameHeader eyebrow="GOOD DEEDS" title="مغامرة أعمال الخير" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(done.length / Math.max(1, deeds.length)) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="px-4 sm:px-6"><KidsGameHud items={[
         { label: "النقاط", value: complete ? score + rules.completionBonus : score, tone: "text-brand-gold" },
@@ -161,7 +161,7 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
   const remaining = items.filter(item => !placed[item.id]);
 
   return (
-    <KidsGameStage theme="mosque" ariaLabel="ترتيب المكان"><KidsGameWorld gameId="mosque-cleanup" /><KidsGameWorld gameId="mosque-cleanup" />
+    <KidsGameStage theme="mosque" ariaLabel="ترتيب المكان"><KidsGameWorld gameId="mosque-cleanup" />
       <KidsGameHeader eyebrow="MOSQUE CLEANUP" title="ترتيب المكان" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(Object.keys(placed).length / Math.max(1, items.length)) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="px-4 sm:px-6"><KidsGameHud items={[
         { label: "النقاط", value: score, tone: "text-brand-gold" },
@@ -271,7 +271,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   }, [complete, filled, levelIndex, onHud, onResult, onSound, rules.completionBonus]);
 
   return (
-    <KidsGameStage theme="garden" ariaLabel="تلوين ذِكر"><KidsGameWorld gameId="zikr-coloring" /><KidsGameWorld gameId="zikr-coloring" />
+    <KidsGameStage theme="garden" ariaLabel="تلوين ذِكر"><KidsGameWorld gameId="zikr-coloring" />
       <KidsGameHeader eyebrow="ZIKR COLORING" title="استوديو تلوين ذِكر" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(filled / rules.regionTarget) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="mx-4 mt-4 grid gap-4 sm:mx-6 lg:grid-cols-[1fr_.72fr]">
         <div className="rounded-[2rem] border border-white/10 bg-black/20 p-4 sm:p-6">
