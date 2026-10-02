@@ -2,16 +2,16 @@ import { readFile, access } from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-const failures: string[] = [];
-const notes: string[] = [];
+const failures = [];
+const notes = [];
 
-async function exists(relativePath: string) {
+async function exists(relativePath) {
   try { await access(path.join(root, relativePath)); return true; } catch { return false; }
 }
-async function read(relativePath: string) { return readFile(path.join(root, relativePath), 'utf8'); }
-function unique(values: string[]) { return [...new Set(values)]; }
-function extractQuoted(text: string, pattern: RegExp) {
-  const values: string[] = [];
+async function read(relativePath) { return readFile(path.join(root, relativePath), 'utf8'); }
+function unique(values) { return [...new Set(values)]; }
+function extractQuoted(text, pattern) {
+  const values = [];
   for (const match of text.matchAll(pattern)) if (match[1]) values.push(match[1]);
   return values;
 }
