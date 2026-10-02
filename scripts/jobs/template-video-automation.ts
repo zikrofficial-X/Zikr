@@ -312,7 +312,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
     if (mode === 0) {
       key = `quran:${day}:${slot}`;
       if (await findByAutomationKey("video_generation_requests", key)) continue;
-      const row = await getQuranRow(day * 6 + slot);
+      const row = await getQuranRow(day * 16 + slot);
       const surahName = await getSurahName(row.surah_id);
       const sourceUrl = `https://quran.com/${row.surah_id}/${row.ayah_number}`;
       payload = {
@@ -342,7 +342,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
     } else if (mode === 1) {
       key = `hadith:${day}:${slot}`;
       if (await findByAutomationKey("video_generation_requests", key)) continue;
-      const row = await getHadithRow(day * 6 + slot);
+      const row = await getHadithRow(day * 16 + slot);
       const sourceUrl = row.ref ? `https://sunnah.com/${encodeURIComponent(row.ref)}` : "https://sunnah.com";
       payload = {
         title: `حديث اليوم — رقم ${row.hadith_number || "مرجعي"}`,
@@ -369,7 +369,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
     } else if (mode === 2) {
       key = `dua:${day}:${slot}`;
       if (await findByAutomationKey("video_generation_requests", key)) continue;
-      const row = await getDuaRow(day * 6 + slot);
+      const row = await getDuaRow(day * 16 + slot);
       const sourceUrl = `${siteUrl()}/dua/${row.slug}`;
       payload = {
         title: `دعاء اليوم — ${row.title_ar}`,
@@ -399,7 +399,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
       const sources = await listVideoSources("adhkar");
       const pool = sources.length ? sources : listCuratedVideoSources("adhkar");
       if (!pool.length) throw new Error("No verified adhkar sources are available.");
-      const row = pool[(day * 6 + slot) % pool.length];
+      const row = pool[(day * 16 + slot) % pool.length];
       payload = {
         title: row.title,
         description: "فيديو آلي لذكر مأثور مع المصدر والدرجة المسجلة في مكتبة ذِكر.",
@@ -431,7 +431,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
       const sources = await listVideoSources("story");
       const pool = sources.length ? sources : listCuratedVideoSources("story");
       if (!pool.length) throw new Error("No verified story sources are available.");
-      const row = pool[(day * 6 + slot) % pool.length];
+      const row = pool[(day * 16 + slot) % pool.length];
       payload = {
         title: row.title,
         description: "قصة موثقة في مكتبة ذِكر مع إحالة إلى مصدرها الأساسي.",
@@ -467,7 +467,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
       ];
       key = `other:${day}:${slot}`;
       if (await findByAutomationKey("video_generation_requests", key)) continue;
-      const textAr = reminders[(day * 6 + slot) % reminders.length];
+      const textAr = reminders[(day * 16 + slot) % reminders.length];
       payload = {
         title: "رسالة اليوم — خطوة صغيرة ثابتة",
         description: "رسالة تحريرية أصلية من ذِكر، غير منسوبة إلى آية أو حديث.",
@@ -500,12 +500,30 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
       created += 1;
       continue;
     }
-    await supabaseServerAdminRequest("/rest/v1/video_generation_requests", {
-      method: "POST",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ ...payload, content_hash: contentHash, source_hash: sourceHashValue, provider: "template", template_version: VIDEO_TEMPLATE_VERSION }),
-    });
-    created += 1;
+    try {
+      await supabaseServerAdminRequest("/rest/v1/video_generation_requests", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          ...payload,
+          content_hash: contentHash,
+          source_hash: sourceHashValue,
+          provider: "template",
+          template_version: VIDEO_TEMPLATE_VERSION,
+        }),
+      });
+      created += 1;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const isContentHashConflict =
+        message.includes("video_generation_requests_content_hash_unique") ||
+        message.includes("duplicate key value violates unique constraint") &&
+          message.includes("content_hash");
+      if (!isContentHashConflict) throw error;
+      console.warn(
+        `[template-video] Skipping duplicate content hash for ${key} (${contentHash.slice(0, 12)}); an equivalent video request already exists.`,
+      );
+    }
   }
 
   return created;

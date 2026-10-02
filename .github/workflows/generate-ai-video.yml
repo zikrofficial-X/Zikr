@@ -16,6 +16,9 @@ on:
       - main
     paths:
       - ".github/workflows/generate-ai-video.yml"
+      - "scripts/jobs/template-video-automation.ts"
+      - "scripts/run-background-jobs.ts"
+      - "src/features/videos/providers/**"
   workflow_dispatch:
     inputs:
       batch_size:

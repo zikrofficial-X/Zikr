@@ -24,6 +24,9 @@ if (!template.includes("assertPlayableOutput")) failures.push("rendered videos m
 if (!template.includes("assertAudibleAudio")) failures.push("rendered videos must pass audible-audio QA");
 if (!template.includes("Rendered output resolution mismatch")) failures.push("rendered video resolution must be validated");
 if (!template.includes("Rendered output video bitrate is too low")) failures.push("rendered video bitrate must be validated");
+if (!template.includes("content_hash")) failures.push("video seed must persist a deterministic content hash");
+if (!template.includes("video_generation_requests_content_hash_unique")) failures.push("video seed must tolerate duplicate content-hash races without aborting the worker");
+if (!template.includes("day * 16 + slot")) failures.push("video seed source index must not overlap across day boundaries");
 
 const sourceService = read("src/features/videos/services/video-sources.ts");
 if (sourceService.includes("https://zikrmediaofficial.vercel.app")) failures.push("video source service must not hardcode the production origin");
