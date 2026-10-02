@@ -10,7 +10,7 @@ const navItems = [
   ['القرآن', 'Quran', '/quran'], ['الحديث', 'Hadith', '/hadith'], ['الأذكار', 'Adhkar', '/adhkar'],
   ['الأدعية', 'Dua', '/dua'], ['الأنبياء', 'Prophets', '/prophets'], ['الصحابة', 'Companions', '/companions'],
   ['المقالات', 'Articles', '/articles'], ['الفيديوهات', 'Videos', '/videos'], ['الصلاة', 'Prayer', '/prayer-times'],
-  ['القبلة', 'Qibla', '/qibla'], ['المزيد', 'More', '#all-sections'],
+  ['القبلة', 'Qibla', '/qibla'], ['الأقسام', 'Sections', '/sections'],
 ] as const;
 
 const featured = [
@@ -23,7 +23,7 @@ const featured = [
 ] as const;
 
 const moreContent = [
-  ['المصحف الشريف', 'Mushaf', '/mushaf', '📖'], ['الأطفال', 'Kids', '/kids', '🌟'], ['حفظ القرآن', 'Memorization', '/memorization', '🧠'],
+  ['مكتبة الصوت', 'Audio', '/audio', '🎧'], ['دليل الأقسام', 'Sections', '/sections', '🧭'],\n  ['المصحف الشريف', 'Mushaf', '/mushaf', '📖'], ['الأطفال', 'Kids', '/kids', '🌟'], ['حفظ القرآن', 'Memorization', '/memorization', '🧠'],
   ['إذاعة القرآن', 'Quran Radio', '/radio', '📻'], ['القراء', 'Reciters', '/reciters', '🎙️'], ['الشعر', 'Poetry', '/poetry', '✒️'],
   ['الغزوات', 'Battles', '/battles', '☾'], ['الفتوحات', 'Conquests', '/conquests', '🏛️'], ['المداحون', 'Nasheed', '/tawasheeh', '🎵'],
   ['عداد التسبيح', 'Tasbeeh', '/tasbeeh', '◉'], ['المكتبة بلا إنترنت', 'Offline Library', '/offline-library', '⬇️'], ['البحث', 'Search', '/search', '⌕'],

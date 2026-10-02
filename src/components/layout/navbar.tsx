@@ -22,7 +22,7 @@ const links: NavLink[] = [
   { href: "/scholars", label: "العلماء", labelEn: "Scholars" },
   { href: "/spiritual-ai", label: "الروحاني", labelEn: "Spiritual AI" },
   { href: "/kids", label: "الأطفال", labelEn: "Kids" },
-  { href: "/search", label: "بحث", labelEn: "Search" },
+  { href: "/audio", label: "الصوت", labelEn: "Audio" },\n  { href: "/sections", label: "الأقسام", labelEn: "Sections" },\n  { href: "/search", label: "بحث", labelEn: "Search" },
   {
     href: "/platform#android-download-title",
     label: "تحميل التطبيق",

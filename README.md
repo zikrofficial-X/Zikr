@@ -15,7 +15,7 @@ ZIKR is an Arabic-first Islamic content and spiritual platform covering Quran, H
 - **Media:** Supabase Storage and Cloudinary where required
 - **Web deployment:** Vercel
 - **Mobile:** Capacitor Android/iOS
-- **Automation:** Supabase `pg_cron` owns production prayer Web Push scheduling; no GitHub Actions workflow is part of the production runtime or build pipeline
+- **Automation:** Supabase `pg_cron` owns production prayer Web Push scheduling; GitHub Actions handles repository quality gates, releases and the authoritative video worker
 
 ## Video and social automation
 
@@ -72,11 +72,11 @@ android/              Capacitor Android project
 ios/                  Capacitor iOS project
 mobile/               Mobile configuration/assets
 public/               Public static assets and offline/PWA files
-.github/              Repository metadata only; GitHub Actions workflows are intentionally retired
+.github/              GitHub Actions quality gates, releases and automated video workflows
 .circleci/            Secondary/recovery CI configuration
 ```
 
-## Security
+## Information architecture\n\nThe canonical public section map lives in `src/lib/navigation/catalog.ts`. The `/sections` route is the single navigation index for public sections; `/audio` is the unified visitor audio library. New public sections must be added to the catalog and pass `pnpm information-architecture:check`.\n\n## Security
 
 The project uses Supabase RLS, server-side service-role boundaries, protected OAuth credentials, HTTPS, security headers, and external verification gates. Never expose service-role keys, refresh tokens, page access tokens, or scheduler secrets to client code.
 
