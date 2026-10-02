@@ -10,10 +10,10 @@ export const dynamic = 'force-dynamic';
 
 const QUICK_ACTIONS = [
   { href: '/quran', ar: 'القرآن', en: 'Quran', icon: '📖', tone: 'قراءة وتلاوة' },
-  { href: '/prayer-times', ar: 'الصلاة', en: 'Prayer', icon: '🕌', tone: 'المواقيت والتنبيهات' },
+  { href: '/hadith', ar: 'الحديث', en: 'Hadith', icon: '📜', tone: 'السنة والمصادر' },
   { href: '/adhkar', ar: 'الأذكار', en: 'Adhkar', icon: '📿', tone: 'الورد اليومي' },
+  { href: '/prayer-times', ar: 'الصلاة', en: 'Prayer', icon: '🕌', tone: 'المواقيت والتنبيهات' },
   { href: '/audio', ar: 'الصوت', en: 'Audio', icon: '🎧', tone: 'أذان وذكر وتلاوات' },
-  { href: '/search', ar: 'البحث', en: 'Search', icon: '⌕', tone: 'ابحث في ذِكر' },
   { href: '/kids', ar: 'الأطفال', en: 'Kids', icon: '🌟', tone: 'تعلم ولعب' },
 ] as const;
 
@@ -23,7 +23,35 @@ const DAILY_TOOLS = [
   { href: '/wird', ar: 'الورد اليومي', en: 'Daily Wird', icon: '☀️', text: 'خطة بسيطة للقراءة والذكر والاستمرارية.' },
   { href: '/qibla', ar: 'القبلة', en: 'Qibla', icon: '🧭', text: 'حدد اتجاه القبلة من جهازك.' },
   { href: '/memorization', ar: 'الحفظ', en: 'Memorization', icon: '🧠', text: 'قسّم الحفظ والمراجعة إلى جلسات قابلة للمتابعة.' },
+  { href: '/tasbeeh', ar: 'التسبيح', en: 'Tasbeeh', icon: '🔘', text: 'عداد بسيط للذكر مع حفظ التقدم على جهازك.' },
   { href: '/offline-library', ar: 'المكتبة بلا إنترنت', en: 'Offline Library', icon: '⬇️', text: 'ارجع للمحتوى المحفوظ عند ضعف الاتصال.' },
+] as const;
+
+const GUIDED_PATHS = [
+  {
+    href: '/quran',
+    ar: 'ابدأ بالقرآن',
+    en: 'Start with Quran',
+    textAr: 'اقرأ أو استمع ثم افتح التفسير عند الحاجة، بدون تشتيت بين أكثر من مسار.',
+    textEn: 'Read or listen, then open tafsir when you need context without losing the flow.',
+    icon: '📖',
+  },
+  {
+    href: '/adhkar',
+    ar: 'ثبّت وردك اليومي',
+    en: 'Build a daily practice',
+    textAr: 'اجعل أذكار الصباح والمساء والورد اليومي نقطة ثابتة في يومك.',
+    textEn: 'Make morning, evening adhkar and your daily wird part of a consistent routine.',
+    icon: '📿',
+  },
+  {
+    href: '/memorization',
+    ar: 'ابنِ خطة حفظ',
+    en: 'Build a memorization plan',
+    textAr: 'قسّم الحفظ والمراجعة إلى جلسات قصيرة يمكن متابعتها وتطويرها.',
+    textEn: 'Break memorization and review into short sessions you can track and improve.',
+    icon: '🧠',
+  },
 ] as const;
 
 const dailyVerse = 'إِنَّ هَٰذَا الْقُرْآنَ يَهْدِي لِلَّتِي هِيَ أَقْوَمُ';
@@ -61,7 +89,7 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-brand-emeraldDeep text-brand-cream">
       <section
-        className="relative overflow-hidden border-b border-brand-gold/15 bg-[radial-gradient(circle_at_50%_10%,rgba(199,168,107,0.14),transparent_34%),linear-gradient(180deg,#050f0a_0%,#0A2A1E_58%,#071f16_100%)]"
+        className="relative overflow-hidden border-b border-brand-gold/15 bg-[radial-gradient(circle_at_50%_8%,rgba(199,168,107,0.18),transparent_34%),radial-gradient(circle_at_12%_44%,rgba(14,75,69,0.36),transparent_28%),linear-gradient(180deg,#06140f_0%,#0A2A1E_55%,#072e2a_100%)]"
         aria-label={isEnglish ? 'Home page' : 'الصفحة الرئيسية'}
       >
         <Container className="relative z-10 pb-8 pt-8 sm:pb-12 sm:pt-12">
@@ -86,6 +114,27 @@ export default async function HomePage() {
               {homeBody}
             </p>
             <HomeInteractive locale={locale} showPrayerTimes={showPrayerTimes} />
+
+            <form action="/search" method="get" role="search" className="mx-auto mt-7 max-w-3xl" dir={dir}>
+              <label htmlFor="home-search" className="sr-only">
+                {isEnglish ? 'Search ZIKR' : 'البحث في ذِكر'}
+              </label>
+              <div className="flex gap-2 rounded-2xl border border-brand-gold/20 bg-black/20 p-1.5 shadow-[0_14px_50px_rgba(0,0,0,0.16)]">
+                <input
+                  id="home-search"
+                  name="q"
+                  type="search"
+                  placeholder={isEnglish ? 'Search Quran, hadith, stories…' : 'ابحث في القرآن، الحديث، القصص…'}
+                  className="min-w-0 flex-1 rounded-xl bg-transparent px-4 py-3 text-sm text-brand-cream outline-none placeholder:text-brand-cream/35"
+                />
+                <button
+                  type="submit"
+                  className="shrink-0 rounded-xl bg-brand-gold px-5 py-3 text-sm font-bold text-brand-emeraldDeep transition hover:bg-brand-goldSoft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold"
+                >
+                  {isEnglish ? 'Search' : 'بحث'}
+                </button>
+              </div>
+            </form>
           </div>
         </Container>
       </section>
@@ -156,7 +205,7 @@ export default async function HomePage() {
               {visibleGroups.map(group => (
                 <article
                   key={group.id}
-                  className="rounded-3xl border border-brand-gold/12 bg-black/15 p-5 sm:p-6"
+                  className="rounded-3xl border border-brand-gold/14 bg-brand-emerald/18 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.14)] sm:p-6"
                   dir={dir}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -196,8 +245,52 @@ export default async function HomePage() {
           </Container>
         </section>
 
+
         <section
-          className="border-b border-brand-gold/10 px-3 py-9 sm:px-4 sm:py-12"
+          className="border-b border-brand-gold/10 bg-brand-emerald/6 px-3 py-9 sm:px-4 sm:py-12"
+          aria-labelledby="guided-heading"
+        >
+          <Container>
+            <div className="flex items-end justify-between gap-4" dir={dir}>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-gold/55">
+                  {isEnglish ? 'Guided starts' : 'بدايات مقترحة'}
+                </p>
+                <h2 id="guided-heading" className="mt-2 text-2xl font-bold text-brand-gold">
+                  {isEnglish ? 'Choose the next step that fits you' : 'اختار الخطوة التالية المناسبة لك'}
+                </h2>
+              </div>
+              <Link href="/platform" className="text-sm text-brand-gold/70 transition hover:text-brand-gold">
+                {isEnglish ? 'How ZIKR works' : 'كيف تعمل ذِكر'}
+              </Link>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {GUIDED_PATHS.map(path => (
+                <Link
+                  key={path.href}
+                  href={path.href}
+                  className="group rounded-3xl border border-brand-gold/13 bg-black/12 p-5 transition hover:-translate-y-0.5 hover:border-brand-gold/35"
+                  dir={dir}
+                >
+                  <span className="text-2xl" aria-hidden="true">{path.icon}</span>
+                  <h3 className="mt-4 text-lg font-bold text-brand-cream group-hover:text-brand-gold">
+                    {isEnglish ? path.en : path.ar}
+                  </h3>
+                  <p className="mt-2 text-sm leading-7 text-brand-cream/55">
+                    {isEnglish ? path.textEn : path.textAr}
+                  </p>
+                  <span className="mt-4 inline-block text-xs font-semibold text-brand-gold/65">
+                    {isEnglish ? 'Open path →' : 'ابدأ المسار ←'}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </Container>
+        </section>
+
+        <section
+          className="border-b border-brand-gold/10 bg-[#0a332b]/45 px-3 py-9 sm:px-4 sm:py-12"
           aria-labelledby="editorial-heading"
           style={{ contentVisibility: 'auto', containIntrinsicSize: '0 560px' }}
         >
@@ -243,7 +336,7 @@ export default async function HomePage() {
         </section>
 
         <section
-          className="border-b border-brand-gold/10 px-3 py-9 sm:px-4 sm:py-12"
+          className="border-b border-brand-gold/10 bg-brand-emerald/10 px-3 py-9 sm:px-4 sm:py-12"
           aria-labelledby="tools-heading"
           style={{ contentVisibility: 'auto', containIntrinsicSize: '0 420px' }}
         >
@@ -280,7 +373,7 @@ export default async function HomePage() {
           </Container>
         </section>
 
-        <section className="px-3 py-10 sm:px-4 sm:py-14" aria-labelledby="verse-heading">
+        <section className="bg-[radial-gradient(circle_at_50%_10%,rgba(199,168,107,0.08),transparent_44%)] px-3 py-10 sm:px-4 sm:py-14" aria-labelledby="verse-heading">
           <Container className="mx-auto max-w-4xl text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-gold/45">
               {isEnglish ? 'Daily reflection' : 'تدبر اليوم'}
