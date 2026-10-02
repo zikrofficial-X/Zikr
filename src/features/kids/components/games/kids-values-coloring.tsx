@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
 import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
@@ -36,18 +36,20 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   const [done, setDone] = useState<string[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("اختر مشهدًا وأكمله.");
+  const advancingRef = useRef(false);
   const rules = getGoodDeedsRules(difficulty, levelIndex);
   const meta = getKidsLevelMeta("good-deeds", difficulty, levelIndex);
   const deeds = useMemo(() => seededShuffle(DEEDS, "deeds:" + meta.seed).slice(0, Math.min(DEEDS.length, rules.sceneCount)), [meta.seed, rules.sceneCount]);
   const complete = done.length === deeds.length;
   const score = done.length * rules.rewardPerScene;
 
-  useEffect(() => { setDone([]); setActive(null); setFeedback(meta.subtitleAr); }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
+  useEffect(() => { setDone([]); setActive(null); setFeedback(meta.subtitleAr); advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
 
   useEffect(() => {
     const hud: WorldHud = { score: complete ? score + rules.completionBonus : score, collectibles: done.length, distance: 0, combo: done.length, level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
     onHud(hud);
-    if (!complete) return;
+    if (!complete || advancingRef.current) return;
+    advancingRef.current = true;
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
       setFeedback("اكتمل " + levelLabel(levelIndex) + ". مشاهد جديدة في الطريق.");
       onSound("success");
@@ -121,18 +123,20 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
   const [placed, setPlaced] = useState<Record<string, string>>({});
   const [mistakes, setMistakes] = useState(0);
   const [feedback, setFeedback] = useState("اختر غرضًا ثم اضغط منطقة الترتيب المناسبة.");
+  const advancingRef = useRef(false);
   const rules = getMosqueCleanupRules(difficulty, levelIndex);
   const meta = getKidsLevelMeta("mosque-cleanup", difficulty, levelIndex);
   const items = useMemo(() => seededShuffle(CLEANUP_ITEMS, "cleanup:" + meta.seed).slice(0, rules.itemCount), [meta.seed, rules.itemCount]);
   const complete = Object.keys(placed).length === items.length;
   const score = Math.max(0, Object.keys(placed).length * 170 - mistakes * rules.mistakePenalty);
 
-  useEffect(() => { setSelected(null); setPlaced({}); setMistakes(0); setFeedback(meta.subtitleAr); }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
+  useEffect(() => { setSelected(null); setPlaced({}); setMistakes(0); setFeedback(meta.subtitleAr); advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
 
   useEffect(() => {
     const hud: WorldHud = { score: complete ? score + rules.completionBonus : score, collectibles: Object.keys(placed).length, distance: 0, combo: Math.max(0, Object.keys(placed).length - mistakes), level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
     onHud(hud);
-    if (!complete) return;
+    if (!complete || advancingRef.current) return;
+    advancingRef.current = true;
     onSound("success");
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
       setFeedback("اكتمل " + levelLabel(levelIndex) + ". توزيع جديد للعناصر جاهز.");
@@ -200,6 +204,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   const [history, setHistory] = useState<string[][]>([]);
   const [feedback, setFeedback] = useState("اختر لونًا ثم اضغط على أجزاء اللوحة.");
   const [saved, setSaved] = useState<Record<string, string[]>>({});
+  const advancingRef = useRef(false);
   const rules = getZikrColoringRules(difficulty, levelIndex);
   const meta = getKidsLevelMeta("zikr-coloring", difficulty, levelIndex);
   const sheetIndex = meta.pattern % COLORING_SHEETS.length;
@@ -239,7 +244,8 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   useEffect(() => {
     const hud: WorldHud = { score: filled * 115 + (complete ? rules.completionBonus : 0), collectibles: filled, distance: 0, combo: filled, level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
     onHud(hud);
-    if (!complete) return;
+    if (!complete || advancingRef.current) return;
+    advancingRef.current = true;
     onSound("success");
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
       setFeedback("اكتملت " + levelLabel(levelIndex) + ". لوحة مختلفة جاهزة.");
