@@ -46,7 +46,9 @@ function buildLevel(index: number, difficulty: GameDifficulty): ZikrJumpLevel {
     platforms.push({
       x: Math.max(125, Math.min(635, 380 + wave * 215 + zig * 0.35)),
       y: 2180 - i * gap,
-      width: Math.max(150, 230 - ((index + i) % 5) * 14 - (difficulty === "hard" ? 12 : difficulty === "easy" ? -8 : 0)),
+      width: i === 0
+        ? 240
+        : Math.max(150, 230 - ((index + i) % 5) * 14 - (difficulty === "hard" ? 12 : difficulty === "easy" ? -8 : 0)),
     });
   }
   const stars = platforms.slice(1, -1).filter((_, i) => ((i + meta.pattern) % 2 === 0)).map((platform, i) => ({
