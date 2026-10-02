@@ -60,7 +60,7 @@ const gameIds = [
   "zikr-runner", "zikr-memory", "wudu-challenge", "verse-puzzle",
   "zikr-quiz", "mosque-adventure", "zikr-road", "zikr-jump",
   "hilal-fly", "good-deeds", "mosque-cleanup", "zikr-coloring",
-];
+] as const;
 for (const id of gameIds) {
   if (!stage.includes('"' + id + '"')) {
     throw new Error("Unified stage is missing game route: " + id);
