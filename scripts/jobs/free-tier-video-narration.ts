@@ -194,7 +194,7 @@ async function generateAudioWithProvider(
 /**
  * Google Cloud TTS Free Tier (1M chars/month free)
  */
-async function generateWithGoogleTTS(text: string, language: string): Promise<string> {
+async function generateWithGoogleTTS(text: string, _language: string): Promise<string> {
   // Placeholder - requires Google Cloud API setup
   // In production: https://cloud.google.com/text-to-speech/docs/quickstart-client-libraries
   console.log(`[google-tts] Would generate audio for: ${text.substring(0, 50)}...`);
@@ -206,7 +206,7 @@ async function generateWithGoogleTTS(text: string, language: string): Promise<st
 /**
  * Azure Cognitive Services Free Tier (5M chars/month)
  */
-async function generateWithAzureTTS(text: string, language: string): Promise<string> {
+async function generateWithAzureTTS(text: string, _language: string): Promise<string> {
   // Placeholder - requires Azure API setup
   // In production: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/text-to-speech
   console.log(`[azure-tts] Would generate audio for: ${text.substring(0, 50)}...`);
@@ -217,7 +217,7 @@ async function generateWithAzureTTS(text: string, language: string): Promise<str
 /**
  * Play.ht Free Tier (100k chars/month)
  */
-async function generateWithPlayHT(text: string, language: string): Promise<string> {
+async function generateWithPlayHT(text: string, _language: string): Promise<string> {
   // Placeholder - requires Play.ht API setup
   // In production: https://docs.play.ht/reference/api-overview
   console.log(`[playht-tts] Would generate audio for: ${text.substring(0, 50)}...`);
