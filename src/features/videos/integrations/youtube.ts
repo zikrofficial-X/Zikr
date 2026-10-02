@@ -265,12 +265,14 @@ export async function syncYoutubeFeed(maxResults = 24): Promise<YoutubeChannelFe
       synced_at: syncedAt,
       status: 'ok',
       last_error: null,
-    };
-    const { error: profileError } = await supabase.from('social_platform_profiles').upsert(channelProfile, { onConflict: 'platform' });
-    if (profileError) throw profileError;
+    } : null;
+    if (channelProfile) {
+      const { error: profileError } = await supabase.from('social_platform_profiles').upsert(channelProfile, { onConflict: 'platform' });
+      if (profileError) throw profileError;
+    }
 
     const videos = await readCachedVideos(channelId);
-    const channel = toYoutubeChannel(channelProfile as unknown as Record<string, unknown>);
+    const channel = toYoutubeChannel(channelProfile);
     const playlists: YoutubePlaylist[] = (playlistsResponse.items ?? []).map((item) => ({ id: item.id, title: item.snippet.title, description: item.snippet.description ?? '', thumbnailUrl: pickThumbnail(item.snippet), itemCount: item.contentDetails?.itemCount ?? null }));
     await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: channelId, status: 'ok', last_attempted_at: syncedAt, last_success_at: syncedAt, next_allowed_sync_at: new Date(Date.now() + CACHE_TTL_MS).toISOString(), last_error: null });
     return { configured: true, channelId, channel, videos: videos.slice(0, maxResults), playlists, stale: false };
