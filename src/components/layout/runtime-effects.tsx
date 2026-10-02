@@ -23,7 +23,6 @@ const NON_AD_PATHS = [
   "/spiritual-ai",
   "/competitions",
   "/radio",
-  "/youtube",
   "/videos",
   "/reciters",
   "/tawasheeh",
