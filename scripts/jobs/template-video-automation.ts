@@ -12,6 +12,7 @@ import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/fe
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
+import { AI_VISUAL_POLICY_VERSION, aiVisualPolicyPromptLine } from "../../src/features/videos/providers/ai-visual-policy";
 import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
 
 const execFileAsync = promisify(execFile);
@@ -23,7 +24,6 @@ const ARABIC_TTS_VOICE = process.env.ARABIC_TTS_VOICE ?? "ar-SA-ZariyahNeural";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
 const VIDEO_TEMPLATE_VERSION = "2026-10-02-quality-v2";
-const AI_VISUAL_POLICY_VERSION = "2026-10-02-source-locked-v1";
 const ENGINE_CONFIG = getVideoEngineConfig();
 const AI_ATTEMPTS_PER_RUN = Math.max(0, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 2) || 2);
 let aiAttemptsUsed = 0;
