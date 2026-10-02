@@ -43,7 +43,9 @@ if (!adminApi.includes("target_platforms: platforms")) failures.push("Admin retr
 
 const adminUi = read("src/app/admin/social/social-client.tsx");
 if (!adminUi.includes("Facebook Auth Blocks")) failures.push("Admin social UI must show Facebook auth-block count");
-if (!adminUi.includes("Facebook متوقف حاليًا")) failures.push("Admin social UI must explain the disabled Facebook state");
+if (!adminUi.includes("سجلات فشل اعتماد Facebook السابقة")) failures.push("Admin social UI must label Facebook auth-blocks as historical queue records");
+if (adminUi.includes("Facebook متوقف حاليًا بسبب اعتماد منتهي")) failures.push("Admin social UI must not claim current Facebook credentials are expired based only on historical queue failures");
+if (!adminUi.includes("هذا العداد تاريخي")) failures.push("Admin social UI must explicitly distinguish historical auth-blocks from current Facebook health");
 
 const migration = read("supabase/migrations/20260929045633_create_social_publish_queue_20260929.sql");
 if (!migration.includes("idx_social_publish_queue_automation_key")) failures.push("social queue must retain unique automation-key idempotency");

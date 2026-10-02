@@ -233,10 +233,10 @@ export async function supabaseServerAdminCount(table: string): Promise<number> {
   }
   const key = serviceKey;
 
-  // Use a bounded GET with an explicit range instead of HEAD. Some Supabase
-  // REST deployments do not reliably return Content-Range for HEAD requests,
-  // which previously made non-empty tables look empty to background workers.
-  const res = await fetch(`${url}/rest/v1/${table}?select=id&limit=1`, {
+  // Use a bounded GET with an explicit range and a wildcard projection so
+  // the helper works for tables whose primary key is not named `id`
+  // (for example `admin_settings` uses `key`).
+  const res = await fetch(`${url}/rest/v1/${table}?select=*&limit=1`, {
     method: "GET",
     headers: {
       apikey: key,

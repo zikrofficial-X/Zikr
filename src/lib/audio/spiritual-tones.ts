@@ -1,14 +1,12 @@
 /**
- * spiritual-tones.ts
- * Pure Web Audio API tone generator — no external dependencies.
- * Browsers block autoplay until a user gesture has occurred.
- * Call unlockAudioContext() inside a click/touch handler to prime the context.
+ * Shared real-audio playback helpers for adhan, dhikr and salawat.
+ * Synthesized tones remain technical fallbacks only.
  */
 
-import { getAudioUrl } from '@/lib/audio/config';
+import { getAudioUrl, loadAudioSettings } from "@/lib/audio/config";
 
 let ctx: AudioContext | null = null;
-let masterVolume = 0.7; // 0.0 – 1.0
+let masterVolume = 0.7;
 
 function getCtx(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -16,8 +14,7 @@ function getCtx(): AudioContext | null {
     try {
       ctx = new (
         window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext })
-          .webkitAudioContext
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
       )();
     } catch {
       return null;
@@ -26,16 +23,12 @@ function getCtx(): AudioContext | null {
   return ctx;
 }
 
-/** Call this on the first intentional user gesture to unlock the AudioContext. */
 export function unlockAudioContext(): void {
   const context = getCtx();
   if (!context) return;
-  if (context.state === "suspended") {
-    context.resume().catch(() => {});
-  }
+  if (context.state === "suspended") context.resume().catch(() => {});
 }
 
-/** Returns true when the AudioContext is ready to play. */
 export function isAudioUnlocked(): boolean {
   const context = getCtx();
   return !!context && context.state === "running";
@@ -49,122 +42,88 @@ export function getToneVolume(): number {
   return masterVolume;
 }
 
-/**
- * Play a 3-note rising tone sequence to signal prayer time.
- * 440 Hz → 550 Hz → 660 Hz, ~2 sec total.
- * Gracefully no-ops if audio context is suspended.
- */
-export function playAzanTone(): void {
+function playFallbackTone(frequencies: number[], duration: number, peak = 0.35): void {
   const context = getCtx();
   if (!context || context.state !== "running") return;
 
-  const notes = [440, 550, 660];
-  const noteDuration = 0.5;
-  const gapDuration = 0.1;
-
-  notes.forEach((freq, i) => {
-    const startTime = context.currentTime + i * (noteDuration + gapDuration);
-
+  frequencies.forEach((frequency, index) => {
+    const startTime = context.currentTime + index * (duration + 0.1);
     const osc = context.createOscillator();
     const gainNode = context.createGain();
 
     osc.type = "sine";
-    osc.frequency.setValueAtTime(freq, startTime);
-
+    osc.frequency.setValueAtTime(frequency, startTime);
     gainNode.gain.setValueAtTime(0, startTime);
-    gainNode.gain.linearRampToValueAtTime(masterVolume * 0.4, startTime + 0.05);
-    gainNode.gain.setValueAtTime(
-      masterVolume * 0.4,
-      startTime + noteDuration - 0.1
-    );
-    gainNode.gain.linearRampToValueAtTime(0, startTime + noteDuration);
-
+    gainNode.gain.linearRampToValueAtTime(masterVolume * peak, startTime + 0.05);
+    gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
     osc.connect(gainNode);
     gainNode.connect(context.destination);
-
     osc.start(startTime);
-    osc.stop(startTime + noteDuration);
+    osc.stop(startTime + duration);
   });
 }
 
-/**
- * Real audio clip URLs.
- * - Azan: full adhan (call to prayer) recitation.
- * - Salawat: a local Arabic voice clip containing salawat and short authentic dhikr phrases.
- * Both clips are packaged locally so foreground playback also works offline.
- */
+export function playAzanTone(): void {
+  playFallbackTone([440, 550, 660], 0.5, 0.4);
+}
+
 export const AZAN_CLIP_URL = "/audio/adhan.wav";
 export const SALAWAT_CLIP_URL = "/audio/salawat.wav";
 
 let azanEl: HTMLAudioElement | null = null;
 let dhikrEl: HTMLAudioElement | null = null;
 let salawatEl: HTMLAudioElement | null = null;
-type SiteAudioKind = 'adhan' | 'salawat';
-const siteAudioUrls: Partial<Record<SiteAudioKind, string>> = {};
-let siteAudioRequest: Promise<void> | null = null;
+let refreshRequest: Promise<void> | null = null;
 
-/** Load the administrator-selected clips without making playback depend on the request. */
 export function refreshSiteAudio(): Promise<void> {
-  if (typeof window === 'undefined') return Promise.resolve();
-  if (!siteAudioRequest) {
-    siteAudioRequest = fetch('/api/site-audio', { cache: 'no-store' })
-      .then(response => response.ok ? response.json() : null)
-      .then(payload => {
-        for (const kind of ['adhan', 'salawat'] as const) {
-          const url = payload?.assets?.[kind]?.url;
-          if (typeof url === 'string' && url.startsWith('http')) siteAudioUrls[kind] = url;
-        }
-      })
+  if (typeof window === "undefined") return Promise.resolve();
+  if (!refreshRequest) {
+    refreshRequest = loadAudioSettings()
+      .then(() => undefined)
       .catch(() => undefined)
-      .finally(() => { siteAudioRequest = null; });
+      .finally(() => {
+        refreshRequest = null;
+      });
   }
-  return siteAudioRequest;
+  return refreshRequest;
 }
 
-export function getSiteAudioUrl(kind: SiteAudioKind): string | null {
-  return siteAudioUrls[kind] ?? null;
+function configure(
+  el: HTMLAudioElement,
+  slot: "prayer" | "dhikr" | "salawat",
+): HTMLAudioElement {
+  const nextUrl = getAudioUrl(slot);
+  const absoluteUrl = new URL(nextUrl, window.location.href).href;
+  if (el.src !== absoluteUrl) el.src = nextUrl;
+  el.preload = "none";
+  el.volume = masterVolume;
+  return el;
 }
+
 function getClipEl(kind: "azan" | "dhikr" | "salawat"): HTMLAudioElement | null {
   if (typeof window === "undefined") return null;
   if (kind === "azan") {
-    if (!azanEl) {
-      azanEl = new Audio(getSiteAudioUrl('adhan') || getAudioUrl('prayer') || AZAN_CLIP_URL);
-      azanEl.preload = "none";
-    }
-    return azanEl;
+    if (!azanEl) azanEl = new Audio();
+    return configure(azanEl, "prayer");
   }
-  if (kind === 'dhikr') {
-    if (!dhikrEl) {
-      dhikrEl = new Audio(getAudioUrl('dhikr') || SALAWAT_CLIP_URL);
-      dhikrEl.preload = 'none';
-    }
-    return dhikrEl;
+  if (kind === "dhikr") {
+    if (!dhikrEl) dhikrEl = new Audio();
+    return configure(dhikrEl, "dhikr");
   }
-  if (!salawatEl) {
-    salawatEl = new Audio(getSiteAudioUrl('salawat') || getAudioUrl('salawat') || SALAWAT_CLIP_URL);
-    salawatEl.preload = "none";
-  }
-  return salawatEl;
+  if (!salawatEl) salawatEl = new Audio();
+  return configure(salawatEl, "salawat");
 }
 
-/**
- * Play the real adhan clip. Falls back to the synthesized tone
- * if the audio fails to load or autoplay is blocked.
- */
 export function playAzanClip(): void {
   const el = getClipEl("azan");
   if (!el) {
     playAzanTone();
     return;
   }
-  const siteUrl = getSiteAudioUrl('adhan');
-  if (siteUrl && el.src !== siteUrl) el.src = siteUrl;
-  el.volume = masterVolume;
   el.currentTime = 0;
   el.play().catch(() => playAzanTone());
 }
 
-/** Stop the currently playing adhan clip. */
 export function stopAzanClip(): void {
   if (azanEl) {
     azanEl.pause();
@@ -172,17 +131,12 @@ export function stopAzanClip(): void {
   }
 }
 
-/**
- * Play the real "صلي على رسول الله" salawat clip.
- * Falls back to the soft bell tone if playback fails.
- */
 export function playDhikrClip(): void {
-  const el = getClipEl('dhikr');
+  const el = getClipEl("dhikr");
   if (!el) {
     playSalawatTone();
     return;
   }
-  el.volume = masterVolume;
   el.currentTime = 0;
   el.play().catch(() => playSalawatTone());
 }
@@ -193,14 +147,10 @@ export function playSalawatClip(): void {
     playSalawatTone();
     return;
   }
-  const siteUrl = getSiteAudioUrl('salawat');
-  if (siteUrl && el.src !== siteUrl) el.src = siteUrl;
-  el.volume = masterVolume;
   el.currentTime = 0;
   el.play().catch(() => playSalawatTone());
 }
 
-/** Stop the currently playing salawat clip. */
 export function stopSalawatClip(): void {
   if (salawatEl) {
     salawatEl.pause();
@@ -208,31 +158,6 @@ export function stopSalawatClip(): void {
   }
 }
 
-/**
- * Play a soft synthesized fallback tone to signal the Salawat reminder.
- * 528 Hz (solfeggio MI tone), ~1.5 sec.
- */
 export function playSalawatTone(): void {
-  const context = getCtx();
-  if (!context || context.state !== "running") return;
-
-  const osc = context.createOscillator();
-  const gainNode = context.createGain();
-
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(528, context.currentTime);
-
-  gainNode.gain.setValueAtTime(0, context.currentTime);
-  gainNode.gain.linearRampToValueAtTime(
-    masterVolume * 0.35,
-    context.currentTime + 0.08
-  );
-  gainNode.gain.setValueAtTime(masterVolume * 0.35, context.currentTime + 0.8);
-  gainNode.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 1.5);
-
-  osc.connect(gainNode);
-  gainNode.connect(context.destination);
-
-  osc.start(context.currentTime);
-  osc.stop(context.currentTime + 1.6);
+  playFallbackTone([528], 1.5, 0.35);
 }

@@ -11,18 +11,26 @@ const STATE_LABELS: Record<string, string> = {
   healthy: "سليم",
   degraded: "متدهور",
   available: "متاح",
-  unavailable: "غير متاح",
-  empty: "فارغ",
+  unavailable: "تعذر الفحص",
+  empty: "لا توجد بيانات",
   socialQueued: "النشر الاجتماعي — في الانتظار",
+  socialProcessing: "النشر الاجتماعي — قيد التنفيذ",
+  socialPartial: "النشر الاجتماعي — يحتاج معالجة",
   socialFailed: "فشل النشر الاجتماعي",
-  videoQueued: "الفيديو — في الانتظار",
+  videoPending: "الفيديو — في الانتظار",
+  videoProcessing: "الفيديو — قيد التنفيذ",
+  videoRetryWait: "الفيديو — إعادة المحاولة",
   videoFailed: "فشل الفيديو",
 };
 
 export default async function AdminHealthPage() {
   await requireAdminPermission("system.manage");
   const health = await getAdminHealth();
-  const queueFailure = health.queues.socialFailed + health.queues.videoFailed;
+  const queueAttention =
+    health.queues.socialPartial +
+    health.queues.socialFailed +
+    health.queues.videoRetryWait +
+    health.queues.videoFailed;
 
   return (
     <Container className="py-10 space-y-6" dir="rtl">
@@ -37,9 +45,9 @@ export default async function AdminHealthPage() {
           <p className="text-xs text-brand-cream/40">قاعدة البيانات</p>
           <p className="mt-2 text-xl font-bold">{health.database === 'healthy' ? 'سليمة' : 'متدهورة'}</p>
         </div>
-        <div className={`rounded-2xl border p-5 ${queueFailure ? 'border-red-500/25 bg-red-500/10' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
-          <p className="text-xs text-brand-cream/40">أخطاء الطوابير</p>
-          <p className="mt-2 text-xl font-bold">{queueFailure}</p>
+        <div className={`rounded-2xl border p-5 ${queueAttention ? 'border-amber-500/25 bg-amber-500/10' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
+          <p className="text-xs text-brand-cream/40">حالات تحتاج معالجة</p>
+          <p className="mt-2 text-xl font-bold">{queueAttention}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <p className="text-xs text-brand-cream/40">آخر فحص</p>
@@ -60,7 +68,16 @@ export default async function AdminHealthPage() {
         ))}
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      {health.tables.some((table) => table.state === "empty") && (
+        <section className="rounded-2xl border border-amber-500/15 bg-amber-500/5 px-5 py-4">
+          <p className="text-sm font-semibold text-amber-200">تنبيه بيانات</p>
+          <p className="mt-1 text-sm leading-6 text-brand-cream/55">
+            الجداول الفارغة ليست عطل اتصال، لكنها تعني أن المصدر لم تتم تعبئته بعد. راجع مكتبة المحتوى والوسائط قبل اعتبار القسم جاهزًا للإنتاج.
+          </p>
+        </section>
+      )}
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Object.entries(health.queues).map(([key, value]) => (
           <div key={key} className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4"><p className="text-xs text-brand-cream/35">{STATE_LABELS[key] ?? key}</p><p className="mt-1 text-2xl font-bold text-brand-cream">{value}</p></div>
         ))}

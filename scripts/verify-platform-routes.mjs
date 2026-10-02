@@ -39,6 +39,7 @@ const requiredRoutes = [
   'src/app/auth/forgot/page.tsx',
   'src/app/auth/reset/page.tsx',
   'src/app/auth/callback/route.ts',
+  'src/app/api/download/android/aab/route.ts',
   'src/app/admin/page.tsx',
   'src/app/admin/analytics/page.tsx',
   'src/app/admin/battles/page.tsx',
@@ -162,7 +163,7 @@ if (duplicateRequired.length) {
 if (pages.length < 1) failures.push('No page routes discovered under src/app');
 if (apis.length < 1) failures.push('No API routes discovered under src/app');
 
-if (pages.length !== 125 || apis.length !== 71) {
+if (pages.length !== 125 || apis.length !== 72) {
   warnings.push(
     `Route inventory drift: discovered ${pages.length} pages and ${apis.length} API routes.`,
   );

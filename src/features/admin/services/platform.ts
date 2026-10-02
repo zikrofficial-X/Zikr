@@ -39,9 +39,12 @@ export type AdminHealth = {
   tables: Array<{ table: string; count: number | null; state: "healthy" | "empty" | "unavailable" }>;
   queues: {
     socialQueued: number;
+    socialProcessing: number;
+    socialPartial: number;
     socialFailed: number;
     videoPending: number;
     videoProcessing: number;
+    videoRetryWait: number;
     videoFailed: number;
   };
   generatedAt: string;
@@ -221,9 +224,12 @@ export async function getAdminHealth(): Promise<AdminHealth> {
     tables,
     queues: {
       socialQueued: social.filter((row) => row.status === "queued").length,
+      socialProcessing: social.filter((row) => row.status === "processing").length,
+      socialPartial: social.filter((row) => row.status === "partial").length,
       socialFailed: social.filter((row) => row.status === "failed").length,
       videoPending: video.filter((row) => row.status === "pending").length,
       videoProcessing: video.filter((row) => row.status === "processing").length,
+      videoRetryWait: video.filter((row) => row.status === "retry_wait").length,
       videoFailed: video.filter((row) => row.status === "failed").length,
     },
     generatedAt: new Date().toISOString(),

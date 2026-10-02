@@ -83,6 +83,7 @@ const requiredServerOnlyServices = [
   'src/features/quran/services/quran-server.ts',
   'src/features/quran/services/reading-progress.ts',
   'src/features/releases/services/github-android-release.ts',
+  'src/features/releases/services/github-release-manager.ts',
   'src/features/reminders/services/reminder-preferences.ts',
   'src/features/spiritual-ai/services/ai.ts',
   'src/features/spiritual-ai/services/gemini-client.ts',
@@ -126,8 +127,8 @@ function discoverPlatformRoutes(dir, out = []) {
 const platformRouteFiles = discoverPlatformRoutes(join(root, 'src', 'app'));
 const platformPageRoutes = platformRouteFiles.filter((file) => file.endsWith('/page.tsx')).length;
 const platformApiRoutes = platformRouteFiles.filter((file) => file.endsWith('/route.ts')).length;
-if (platformPageRoutes !== 125 || platformApiRoutes !== 71) {
-  warnings.push('Platform route inventory changed: expected 125 pages + 71 APIs, found ' + platformPageRoutes + ' pages + ' + platformApiRoutes + ' APIs.');
+if (platformPageRoutes !== 125 || platformApiRoutes !== 72) {
+  warnings.push('Platform route inventory changed: expected 125 pages + 72 APIs, found ' + platformPageRoutes + ' pages + ' + platformApiRoutes + ' APIs.');
 }
 
 
@@ -212,7 +213,7 @@ for (const route of offlineManifest.routes || []) {
 }
 
 requireText('public/sw.js', [
-  'const CACHE_NAME = "zikr-v12"',
+  'const CACHE_NAME = "zikr-v13"',
   'CACHE_OFFLINE_ROUTES',
   'OFFLINE_CONTENT_PREFIX',
   'pathname.startsWith("/api/")',

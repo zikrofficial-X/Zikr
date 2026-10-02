@@ -103,7 +103,7 @@ export async function GET() {
       return acc;
     }, {});
     const env = getServerEnv();
-    const facebookAuthBlocked = rows.filter(item => authBlockedPlatforms(item.metadata).size > 0).length;
+    const facebookAuthBlocked = rows.filter(item => retryableStatuses.has(item.status) && authBlockedPlatforms(item.metadata).size > 0).length;
     return NextResponse.json({
       items: rows,
       counts,

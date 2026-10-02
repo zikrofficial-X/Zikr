@@ -172,7 +172,7 @@ export async function claimPendingSocialPublishItems(
 async function publishFacebookPost(item: SocialPublishQueueItem): Promise<string | null> {
   const env = getServerEnv();
   if (env.SOCIAL_PUBLISH_FACEBOOK_ENABLED !== "true") {
-    throw new Error("Facebook publishing is disabled until the Page access token is repaired");
+    throw new Error("Facebook publishing is disabled by configuration (SOCIAL_PUBLISH_FACEBOOK_ENABLED)");
   }
   const pageId = env.FACEBOOK_PAGE_ID;
   const pageAccessToken = env.FACEBOOK_PAGE_ACCESS_TOKEN;
