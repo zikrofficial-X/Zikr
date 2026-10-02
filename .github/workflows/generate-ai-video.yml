@@ -67,6 +67,8 @@ jobs:
       VERIFY_VIDEO_RUNTIME_TOOLS: "true"
       # Generated videos are automatically handed to the configured social publishers.
       SOCIAL_PUBLISH_ENABLED: "true"
+      # Facebook publishing is explicitly disabled until the expired Page token is renewed.
+      SOCIAL_PUBLISH_FACEBOOK_ENABLED: "false"
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
