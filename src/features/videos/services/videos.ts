@@ -4,6 +4,29 @@ import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/
 
 import type { VideoCategory, Video } from "@/features/videos/types/videos";
 import { FALLBACK_VIDEO_CATEGORIES, FALLBACK_VIDEOS } from "@/features/videos/data/fallback";
+import { defaultOgImage } from "@/lib/site";
+
+function resolveVideoThumbnail(row: Record<string, unknown>): string {
+  const direct = typeof row.thumbnail_url === "string" ? row.thumbnail_url.trim() : "";
+  if (direct) return direct;
+
+  const metadata =
+    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? (row.metadata as Record<string, unknown>)
+      : {};
+
+  for (const key of ["thumbnailUrl", "thumbnail_url", "sourceThumbnailUrl", "generatedThumbnailUrl"]) {
+    const value = metadata[key];
+    if (typeof value === "string" && /^https?:\/\//i.test(value.trim())) return value.trim();
+  }
+
+  const youtubeId = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
+  if (/^[A-Za-z0-9_-]{6,20}$/.test(youtubeId)) {
+    return `https://i.ytimg.com/vi/${encodeURIComponent(youtubeId)}/hqdefault.jpg`;
+  }
+
+  return defaultOgImage;
+}
 
 // Videos
 export async function getVideoCategories(): Promise<VideoCategory[]> {
@@ -60,7 +83,7 @@ export async function getVideos(
     slug: r.slug as string,
     description: r.description as string | undefined,
     youtubeId: r.youtube_id as string | undefined,
-    thumbnailUrl: r.thumbnail_url as string | undefined,
+    thumbnailUrl: resolveVideoThumbnail(r),
     duration: (r.duration as number) || undefined,
     views: (r.views as number) || 0,
     published: r.published as boolean,
