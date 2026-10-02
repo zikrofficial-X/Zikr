@@ -306,7 +306,7 @@ export async function seedAutomatedVideoRequests() {
     let key = "";
 
     const aiProviderHint =
-      slot % 2 === 0 ? ("hf_ltx25" as const) : ("hf_wan" as const);
+      slot % 2 === 0 ? ("hf_ltx_fast" as const) : ("hf_wan" as const);
 
     if (mode === 0) {
       key = `quran:${day}:${slot}`;
@@ -407,7 +407,9 @@ export async function seedAutomatedVideoRequests() {
           renderer: "template",
           type: "adhkar",
           sourceType: "hadith",
-          sourceId: row.id,
+          ...(typeof row.id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.id)
+            ? { sourceId: row.id }
+            : { curatedSourceId: row.id }),
           sourceUrl: row.sourceUrl,
           sourceLabel: row.sourceLabel,
           textAr: row.text,
@@ -437,7 +439,9 @@ export async function seedAutomatedVideoRequests() {
           renderer: "template",
           type: "story",
           sourceType: "story",
-          sourceId: row.id,
+          ...(typeof row.id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.id)
+            ? { sourceId: row.id }
+            : { curatedSourceId: row.id }),
           sourceUrl: row.sourceUrl,
           sourceLabel: row.sourceLabel,
           additionalSources: row.additionalSources ?? [],
@@ -630,7 +634,12 @@ async function validateSourceContent(request: GeneratedRequest) {
   const text = contentText(request);
   if (!text) throw new Error("Template video requires text/script/narration content.");
   if (["quran", "hadith", "dua", "adhkar", "story"].includes(request.category)) {
-    let sourceId = typeof content.sourceId === "string" ? content.sourceId : "";
+    let sourceId =
+      typeof content.sourceId === "string"
+        ? content.sourceId
+        : typeof content.curatedSourceId === "string"
+          ? content.curatedSourceId
+          : "";
     if (request.category === "quran" && !sourceId) {
       const surahId = Number(content.surahId);
       const ayahNumber = Number(content.ayahNumber);
@@ -642,7 +651,7 @@ async function validateSourceContent(request: GeneratedRequest) {
     if (text !== source.text) throw new Error(`${request.category} video rejected: narration does not exactly match the current published source text.`);
     request.content = {
       ...content,
-      sourceId: source.id,
+      ...(request.content.curatedSourceId ? { curatedSourceId: source.id } : { sourceId: source.id }),
       sourceType: request.category,
       sourceUrl: source.sourceUrl,
       sourceLabel: source.sourceLabel,
@@ -777,7 +786,9 @@ async function renderVideo(request: GeneratedRequest) {
         sourceId:
           typeof request.content.sourceId === "string"
             ? request.content.sourceId
-            : undefined,
+            : typeof request.content.curatedSourceId === "string"
+              ? request.content.curatedSourceId
+              : undefined,
         sourceUrl,
         format: isVertical ? "vertical" : "horizontal",
         durationSeconds: TARGET_VIDEO_SECONDS,
@@ -856,6 +867,8 @@ async function renderVideo(request: GeneratedRequest) {
 
     const args = [
       "-y", ...(aiVideoPath ? ["-stream_loop", "-1", "-i", backgroundPath] : ["-loop", "1", "-framerate", "30", "-i", backgroundPath]), "-i", audioPath,
+      "-map", "0:v:0",
+      "-map", "1:a:0",
       "-t", duration.toFixed(2),
       "-vf", filter,
       "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-profile:v", "high",
