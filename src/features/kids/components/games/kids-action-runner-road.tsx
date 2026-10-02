@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
 import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
+import { KidsGameWorld } from "@/features/kids/components/games/kids-game-visuals";
 import {
   GameToast,
   GardenBackdrop,
@@ -419,7 +420,7 @@ export function ZikrRunnerGame({
     <KidsGameStage
       theme={theme === "market" ? "oasis" : theme === "mosque" ? "mosque" : theme === "stars" || theme === "dawn" || theme === "gold" ? "night" : "garden"}
       ariaLabel="ZIKR Runner"
-    >
+    ><KidsGameWorld gameId="zikr-runner" />
       <KidsGameHeader
         eyebrow="ZIKR RUNNER • المرجع البصري"
         title="ذِكر رانر"
@@ -825,7 +826,7 @@ export function ZikrRoadGame({
   };
 
   return (
-    <KidsGameStage theme="oasis" ariaLabel="طريق ذِكر">
+    <KidsGameStage theme="oasis" ariaLabel="طريق ذِكر"><KidsGameWorld gameId="zikr-road" />
       <KidsGameHeader
         eyebrow="ZIKR ROAD"
         title="طريق ذِكر"
