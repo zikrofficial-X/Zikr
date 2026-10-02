@@ -9,7 +9,6 @@ import { getSavedPrayerLocation, persistPrayerLocation, type SavedPrayerLocation
 type Locale = 'ar' | 'en';
 type Props = { locale: Locale; showPrayerTimes?: boolean };
 
-const DEFAULT_CITY = 'Cairo';
 const prayerNames = [
   { key: 'Fajr', ar: 'الفجر', en: 'Fajr' },
   { key: 'Sunrise', ar: 'الشروق', en: 'Sunrise' },
