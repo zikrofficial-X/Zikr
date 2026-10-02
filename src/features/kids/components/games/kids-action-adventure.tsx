@@ -31,6 +31,7 @@ import {
   getApprovedScenarioQuestions,
   type VerifiedQuizQuestion,
 } from "@/lib/games/verified-content";
+import { getKidsLevelMeta } from "@/lib/games/kids-level-system";
 
 export type AdventureGameProps = {
   difficulty: GameDifficulty;
@@ -602,24 +603,38 @@ export function HilalFlyGame({
       state.y += state.vy * dt;
       state.y = Math.max(48, Math.min(FLY_HEIGHT - 92, state.y));
 
-      state.distance = Math.min(rules.goalDistance, state.distance + rules.speed * dt);
-      state.score += rules.speed * dt * 0.62;
+      const stageDistance = rules.goalDistance / levels.length;
+      const nextLevel = Math.min(levels.length - 1, Math.floor(state.distance / Math.max(1, stageDistance)));
+      const levelMeta = getKidsLevelMeta("hilal-fly", difficulty, nextLevel);
+      const level = levels[nextLevel];
+      const stageSpeed = rules.speed * (0.9 + levelMeta.pace * 0.06);
+      state.distance = Math.min(rules.goalDistance, state.distance + stageSpeed * dt);
+      state.score += stageSpeed * dt * 0.62;
 
-      state.seed = (state.seed * 1664525 + 1013904223) >>> 0;
+      if (nextLevel !== state.levelIndex) {
+        state.levelIndex = nextLevel;
+        state.objects = [];
+        state.nextObstacle = state.distance + Math.max(180, rules.speed * (rules.spawnInterval / 1000) * (1.02 - levelMeta.density * 0.03));
+        state.nextStar = state.distance + Math.max(150, rules.speed * (rules.starInterval / 1000));
+        state.combo = 0;
+        onSound("success");
+        setFeedback("دخلت " + level.titleAr + ".");
+      }
+
+      const gap = Math.max(110, rules.gapHeight * level.gapScale);
       while (state.distance >= state.nextObstacle) {
-        const margin = rules.gapHeight / 2 + 60;
+        const margin = gap / 2 + 60;
         const random = state.seed / 4294967296;
         const gapY = margin + random * (FLY_HEIGHT - margin * 2);
-        const level = levels[state.levelIndex];
         state.objects.push({
           id: state.seed,
           kind: "obstacle",
           x: FLY_WIDTH + 50,
           gapY,
-          gap: rules.gapHeight,
+          gap,
           style: level.obstacleStyle,
         });
-        state.nextObstacle += Math.max(190, rules.speed * (rules.spawnInterval / 1000));
+        state.nextObstacle += Math.max(190, stageSpeed * (rules.spawnInterval / 1000));
         state.seed = (state.seed * 1664525 + 1013904223) >>> 0;
       }
       while (state.distance >= state.nextStar) {
@@ -630,11 +645,11 @@ export function HilalFlyGame({
           x: FLY_WIDTH + 40,
           y: 70 + random * (FLY_HEIGHT - 150),
         });
-        state.nextStar += Math.max(160, rules.speed * (rules.starInterval / 1000));
+        state.nextStar += Math.max(160, stageSpeed * (rules.starInterval / 1000));
         state.seed = (state.seed * 1664525 + 1013904223) >>> 0;
       }
 
-      for (const item of state.objects) item.x -= rules.speed * dt;
+      for (const item of state.objects) item.x -= stageSpeed * dt;
 
       if (time >= state.invulnerableUntil) {
         const hit = state.objects.find(item => item.kind === "obstacle" && flyObstacleHit(state.y, item));
@@ -675,15 +690,6 @@ export function HilalFlyGame({
       }
 
       state.objects = state.objects.filter(item => !collected.has(item.id) && item.x > -100);
-
-      const stageDistance = rules.goalDistance / levels.length;
-      const nextLevel = Math.min(levels.length - 1, Math.floor(state.distance / stageDistance));
-      if (nextLevel > state.levelIndex) {
-        state.levelIndex = nextLevel;
-        state.score += rules.levelBonus;
-        onSound("success");
-        setFeedback("دخلت " + levels[nextLevel].titleAr + ".");
-      }
 
       if (state.distance >= rules.goalDistance) {
         state.completed = true;
