@@ -34,6 +34,7 @@ export async function generateMetadata({ params }: VideoDetailPageProps): Promis
     // The videos hub remains public while these detail URLs stay out of the
     // monetized search inventory.
     noindex: true,
+    images: video.thumbnailUrl ? [video.thumbnailUrl] : undefined,
   });
 }
 
