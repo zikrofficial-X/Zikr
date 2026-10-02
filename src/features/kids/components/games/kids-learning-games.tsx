@@ -147,7 +147,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   }, [combo, complete, levelIndex, matched.length, onHud, score]);
 
   return (
-    <KidsGameStage theme="night" ariaLabel="ذاكرة ذِكر">
+    <KidsGameStage theme="night" ariaLabel="ذاكرة ذِكر"><KidsGameWorld gameId="zikr-memory" />
       <KidsGameHeader eyebrow="ZIKR MEMORY" title="ذاكرة ذِكر" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(matched.length / Math.max(1, cards.length)) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="px-4 sm:px-6">
         <KidsGameHud items={[
@@ -252,7 +252,7 @@ export function WuduChallengeGame({ difficulty, restartToken, paused, onHud, onR
   const waterLevel = Math.min(100, Math.round((state.stepIndex / Math.max(1, steps.length)) * 100));
 
   return (
-    <KidsGameStage theme="sea" ariaLabel="تحدي الوضوء">
+    <KidsGameStage theme="sea" ariaLabel="تحدي الوضوء"><KidsGameWorld gameId="wudu-challenge" />
       <KidsGameHeader eyebrow="WUDU CHALLENGE" title="تحدي الوضوء" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={waterLevel} label={levelLabel(levelIndex)} /></div>} />
       <div className="px-4 sm:px-6"><KidsGameHud items={[
         { label: "النقاط", value: state.score, tone: "text-brand-gold" },
@@ -357,7 +357,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   if (!available || !source || !baseWords.length) return <div className="grid min-h-[320px] place-items-center rounded-3xl border border-brand-gold/20 bg-[#071b24] p-6 text-center text-brand-cream/70">لا يتوفر نص قرآني موثق للعبة حاليًا.</div>;
 
   return (
-    <KidsGameStage theme="library" ariaLabel="لغز الآية">
+    <KidsGameStage theme="library" ariaLabel="لغز الآية"><KidsGameWorld gameId="verse-puzzle" />
       <KidsGameHeader eyebrow="VERSE PUZZLE" title="لغز الآية" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(answer.length / tokens.length) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="px-4 sm:px-6"><KidsGameHud items={[
         { label: "النقاط", value: score, tone: "text-brand-gold" },
@@ -451,7 +451,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
 
   if (!question) {
     return (
-      <KidsGameStage theme="library" ariaLabel="اختبار ذِكر">
+      <KidsGameStage theme="library" ariaLabel="اختبار ذِكر"><KidsGameWorld gameId="zikr-quiz" />
         <KidsGameHeader eyebrow="ZIKR QUIZ" title="اختبار ذِكر" description={meta.subtitleAr} />
         <div className="mx-4 rounded-[2rem] border border-brand-gold/20 bg-black/20 p-8 text-center sm:mx-6">
           <KidCharacter variant="reader" state={levelIndex === KIDS_LEVEL_COUNT - 1 ? "celebrate" : "think"} size={92} />
