@@ -144,10 +144,16 @@ const RULES: Record<GameDifficulty, HilalFlyRules> = {
 
 export const HILAL_FLY_LEVELS = LEVELS;
 
+const DIFFICULTY_LEVELS: Record<GameDifficulty, HilalFlyLevel[]> = {
+  easy: LEVELS.slice(0, RULES.easy.levelCount),
+  normal: LEVELS.slice(0, RULES.normal.levelCount),
+  hard: LEVELS.slice(0, RULES.hard.levelCount),
+};
+
 export function getHilalFlyRules(difficulty: GameDifficulty): HilalFlyRules {
   return RULES[difficulty];
 }
 
 export function getHilalFlyLevels(difficulty: GameDifficulty): HilalFlyLevel[] {
-  return LEVELS.slice(0, RULES[difficulty].levelCount);
+  return DIFFICULTY_LEVELS[difficulty];
 }
