@@ -1,5 +1,5 @@
 name: ZIKR Autonomous AI Video Worker
-# Validation trigger: dedicated LTX-fast provider test plus production multi-provider queue and publishing checks.
+# Validation trigger: rerun dedicated LTX-fast provider after accepting Gradio video result objects.
 
 on:
   schedule:
