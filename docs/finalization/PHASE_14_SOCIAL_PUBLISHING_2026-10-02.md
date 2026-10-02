@@ -3,7 +3,7 @@
 
 ### Objective
 
-Make YouTube/Facebook publishing idempotent, concurrency-safe, and independently controllable so a provider failure cannot cause duplicate publication or block successful platforms.
+Make YouTube/Facebook publishing idempotent, concurrency-safe, and independently controllable so a provider failure cannot cause duplicate publication or an uncontrolled retry loop.
 
 ### Live audit
 
@@ -14,43 +14,38 @@ Production `social_publish_queue` currently has:
 - 40/40 already have successful YouTube publication metadata with a non-empty remote YouTube video ID.
 - The remaining failure is Facebook / Facebook Reels authentication.
 - 0 duplicate `automation_key` groups exist.
-
-Observed live Facebook error:
-
-`Error validating access token: Session has expired on Tuesday, 29-Sep-26 06:00:00 PDT`
-
-The failure corresponds to Meta OAuth error code 190 / subcode 463 in the Facebook feed path.
+- The production Facebook Page access token is expired.
 
 ### Code changes
 
 1. **Optimistic queue claiming**
-   - Social queue claim now matches both status and the row's current `updated_at`.
-   - Two workers cannot safely claim the same row after one worker has already changed it.
+   - Social queue claims match both status and `updated_at`.
 
 2. **Per-platform idempotency**
    - Existing successful platform results are preserved in `metadata.platformResults`.
-   - Retry processing excludes platforms whose previous result already has `ok=true` and a remote ID.
-   - Therefore a Facebook retry does not re-upload an already-published YouTube video.
+   - Retry processing excludes platforms that already have `ok=true` and a remote ID.
 
 3. **Facebook emergency gate**
-   - Added `SOCIAL_PUBLISH_FACEBOOK_ENABLED`.
-   - Facebook is explicit opt-in and defaults to `false`.
-   - The autonomous GitHub Actions worker currently sets it to `false` because the production Page token is expired.
-   - YouTube remains independent and can continue publishing.
+   - `SOCIAL_PUBLISH_FACEBOOK_ENABLED` is explicit opt-in and currently `false` in the autonomous worker.
+   - YouTube remains independent.
 
-4. **Publisher boundary enforcement**
-   - Direct Facebook and Facebook Reels publishing also enforce the same gate, not only queue creation.
+4. **Admin auth-block recovery**
+   - Admin retry logic now identifies Facebook auth-blocked platforms separately.
+   - `retry all` no longer requeues a Facebook platform whose failure is known to be an expired/invalid OAuth credential.
+   - If all remaining targets are already successfully published or permanently auth-blocked, the queue item can be resolved without another provider call.
 
-5. **Existing idempotency preserved**
-   - `social_publish_queue.automation_key` remains unique.
-   - No duplicate automation groups are present in production.
+5. **Publisher health visibility**
+   - Admin Social API now reports YouTube configuration, Facebook enablement/credential presence, and the number of auth-blocked queue items.
+   - Admin UI displays these states explicitly so an operator does not mistake a credential outage for a video-generation failure.
+
+6. **Publisher boundary enforcement**
+   - Direct Facebook and Facebook Reels publishing enforce the same feature gate as queue creation.
 
 ### Data safety
 
-- No social queue rows were deleted.
-- Existing partial rows remain auditable and auth-blocked.
-- No replacement Meta credential was invented or written.
-- No already-successful YouTube result will be retried solely because Facebook remains blocked.
+- No social queue rows were deleted or rewritten by Phase 14.
+- No credentials were exposed, fabricated, or rotated.
+- Successful YouTube publication remains preserved.
 
 ### Required external action
 
@@ -58,8 +53,8 @@ Production Facebook publishing requires a valid Meta Page access token. The curr
 
 ### Verification
 
-Added `scripts/verify-social-publishing.mjs` and registered `social:publish:check` in `verify:pr` and `verify`.
+`scripts/verify-social-publishing.mjs` now verifies the publisher contract, the Facebook gate, idempotency, and the Admin auth-block recovery path. `social:publish:check` is already registered in `verify:pr` and `verify`.
 
 ### Release gate
 
-The source and live-data Social Publishing contract is deterministic. GitHub Actions PR workflow results remain subject to the existing connector observability exception.
+Phase 14 source implementation is complete. The remaining production blocker is the external Facebook credential. GitHub Actions PR results remain subject to the existing connector observability exception.
