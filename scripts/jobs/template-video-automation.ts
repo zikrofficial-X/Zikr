@@ -12,6 +12,7 @@ import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/fe
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
+import { AI_VISUAL_POLICY_VERSION, aiVisualPolicyPromptLine } from "../../src/features/videos/providers/ai-visual-policy";
 import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
 
 const execFileAsync = promisify(execFile);
@@ -580,6 +581,7 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
   const prompt = [
     "أنت مخطط محتوى بصري لمنصة ذِكر الإسلامية.",
     "المصدر أدناه موثق بالفعل. ممنوع تغيير نص المصدر أو اختراع نص ديني أو حكم شرعي جديد.",
+    aiVisualPolicyPromptLine(),
     "صمّم خطة قصيرة لفيديو عمودي يُرندر محليًا بواسطة FFmpeg.",
     "أعد JSON فقط بالمفاتيح الإنجليزية التالية:",
     '{"reflection":"...","socialCaption":"...","scene":"calm|dawn|night|gold","motion":"fade|slow"}',
@@ -739,6 +741,7 @@ async function renderVideo(request: GeneratedRequest) {
           motion: aiPlan.motion,
           generatedAt: new Date().toISOString(),
           sourceLocked: true,
+          policyVersion: AI_VISUAL_POLICY_VERSION,
         },
       };
     } catch (error) {
@@ -916,7 +919,8 @@ async function renderVideo(request: GeneratedRequest) {
         durationSeconds: duration,
         scene,
         motion,
-        sourceLocked: request.category === "quran" || request.category === "hadith" || request.category === "dua",
+        sourceLocked: ["quran", "hadith", "dua", "adhkar", "story"].includes(request.category),
+        aiVisualPolicyVersion: AI_VISUAL_POLICY_VERSION,
         generatedAt: new Date().toISOString(),
       },
     };
