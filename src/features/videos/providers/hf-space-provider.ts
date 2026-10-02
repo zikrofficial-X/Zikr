@@ -5,6 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import type { VideoGenerationInput, VideoGenerationResult, VideoProvider } from "./types";
+import { aiVisualPolicyPromptLine } from "./ai-visual-policy";
 
 const execFileAsync = promisify(execFile);
 
@@ -59,7 +60,7 @@ async function writePromptFile(tempDir: string, input: VideoGenerationInput) {
     "Section: " + input.category + ".",
     "Verified source text: " + input.text.slice(0, 1800) + ".",
     input.sourceUrl ? "Reference URL: " + input.sourceUrl + "." : "",
-    "Visual rules: respectful, contemplative, no depictions of prophets or sacred figures, no invented Arabic scripture, no subtitles embedded into the generated scene, cinematic camera movement, natural light, refined green/gold palette.",
+    aiVisualPolicyPromptLine(),
     "Treat the supplied source text as factual content context, not as a license to invent religious quotations.",
   ]
     .filter(Boolean)
