@@ -18,8 +18,8 @@ for (const difficulty of ["easy", "normal", "hard"] as const) {
     );
   }
 
-  if (levels.length > LEVEL_COUNT) {
-    throw new Error("Hilal Fly exposes more levels than the canonical six-level set.");
+  if (levels.length !== LEVEL_COUNT) {
+    throw new Error("Hilal Fly must expose exactly 20 levels per difficulty.");
   }
 
   if (levels.some(level => !level.titleAr || !level.subtitleAr || !level.theme)) {
