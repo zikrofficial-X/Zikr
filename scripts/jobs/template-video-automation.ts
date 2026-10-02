@@ -11,6 +11,7 @@ import { listVideoSources, resolveVideoSource } from "../../src/features/videos/
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
+import { getServerEnv } from "../../src/lib/env";
 import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
 
 const execFileAsync = promisify(execFile);
