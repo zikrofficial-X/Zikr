@@ -1,5 +1,5 @@
 name: ZIKR Autonomous AI Video Worker
-# Validation trigger: validate latest provider router, curated fallback, rendering runtime, social queue, and publishing path.
+# Validation trigger: run latest multi-provider AI generation, curated fallback, YouTube/Facebook publishing path, and end-to-end telemetry.
 
 on:
   schedule:
