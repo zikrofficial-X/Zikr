@@ -5,7 +5,19 @@ import type { GameId } from "@/lib/games/registry";
 import type { ArcadeGameScene, ArcadeHud } from "@/lib/games/arcade/arcade-scene";
 
 export type ArcadeGameProps = {
-  gameId: Exclude<GameId, "zikr-runner" | "zikr-memory" | "wudu-challenge" | "verse-puzzle" | "zikr-quiz" | "good-deeds" | "mosque-cleanup" | "zikr-coloring">;
+  gameId: Exclude<
+    GameId,
+    | "zikr-runner"
+    | "zikr-memory"
+    | "wudu-challenge"
+    | "verse-puzzle"
+    | "zikr-quiz"
+    | "mosque-adventure"
+    | "zikr-road"
+    | "good-deeds"
+    | "mosque-cleanup"
+    | "zikr-coloring"
+  >;
   muted: boolean;
   onReady: (scene: ArcadeGameScene) => void;
   onHud: (hud: ArcadeHud) => void;

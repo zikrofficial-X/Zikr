@@ -23,6 +23,7 @@ import { ZikrMemoryGame } from "@/features/kids/components/games/zikr-memory-gam
 import { WuduChallengeGame } from "@/features/kids/components/games/wudu-challenge-game";
 import { VersePuzzleGame } from "@/features/kids/components/games/verse-puzzle-game";
 import { MosqueAdventureGame } from "@/features/kids/components/games/mosque-adventure-game";
+import { ZikrRoadGame } from "@/features/kids/components/games/zikr-road-game";
 
 export type WorldHud = {
   score: number;
@@ -109,10 +110,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
     localTone.current?.playEvent(event);
   }, []);
   const isRunner = gameId === "zikr-runner";
-  const isArcade =
-    gameId === "zikr-road" ||
-    gameId === "zikr-jump" ||
-    gameId === "hilal-fly";
+  const isArcade = gameId === "zikr-jump" || gameId === "hilal-fly";
 
   useEffect(() => {
     setRunnerScene(null);
@@ -217,6 +215,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
   if (gameId === "wudu-challenge") return <WuduChallengeGame {...localProps} />;
   if (gameId === "verse-puzzle") return <VersePuzzleGame {...localProps} />;
   if (gameId === "mosque-adventure") return <MosqueAdventureGame {...localProps} />;
+  if (gameId === "zikr-road") return <ZikrRoadGame {...localProps} />;
   if (gameId === "zikr-quiz") return <QuizGame {...localProps} />;
   if (gameId === "good-deeds") return <GoodDeedsGame {...localProps} />;
   if (gameId === "mosque-cleanup") return <CleanupGame {...localProps} />;

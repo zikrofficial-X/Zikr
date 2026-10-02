@@ -79,6 +79,20 @@ export function getApprovedScenarioQuestions(): VerifiedQuizQuestion[] {
 }
 
 
+export function getApprovedRoadQuestions(): VerifiedQuizQuestion[] {
+  const sourceSlugs = ["game-scenario-smart-choice", "quiz-akhlaq-adventure"] as const;
+  return sourceSlugs.flatMap(sourceSlug => {
+    const source = kidsContent.find(item => item.slug === sourceSlug);
+    const questions = source?.quiz_data?.questions?.filter(isQuestion) ?? [];
+    return questions.map(question => ({
+      ...question,
+      category: source?.metadata?.category ?? "الأخلاق والمهارات",
+      sourceSlug,
+    }));
+  });
+}
+
+
 export type VerifiedMemoryPair = {
   id: string;
   situation: string;
