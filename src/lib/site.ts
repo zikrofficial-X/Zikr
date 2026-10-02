@@ -44,7 +44,6 @@ const NOINDEX_PATHS = new Set([
   "/profile",
   "/spiritual-ai",
   "/radio",
-  "/youtube",
   "/reciters",
   "/tawasheeh",
   "/kids/puzzle",
