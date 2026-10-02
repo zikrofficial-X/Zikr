@@ -43,3 +43,11 @@ pnpm verify
 ```
 
 For live Supabase verification, confirm the new migration appears in the migration list, inspect function grants for both result processors, query only bounded metadata, and run security and performance advisors. For browser verification, test `/kids`, `/kids/games`, each registered game, `/kids/progress`, `/kids/achievements`, a non-game Kids detail page, guest score handling, pause/mute/restart, touch behavior, and console/runtime errors. Production deployment status must be reported from the actual Vercel deployment state; a blocked deployment is not a successful live verification.
+
+## ZIKR Memory content contract
+
+ZIKR Memory uses the structured `memory_pairs` field from the existing `game-memory-dhikr-cards` Kids content item. The runtime must consume these verified pairs through `getVerifiedMemoryPairs()`; it must not parse prose from `content_ar` or duplicate the pair text inside the component.
+
+Difficulty is gameplay, not metadata only: easy uses 3 pairs, normal 4, and hard 5. The content integrity check `pnpm kids:memory:check` is part of both PR and main canonical verification.
+
+The current pair count is intentionally small so the first reference game remains readable and touch-friendly. New pairs should be added to the structured source first, then covered by the integrity check before the runtime is expanded.

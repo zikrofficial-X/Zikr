@@ -8,6 +8,12 @@ export type KidsQuizQuestion = {
   correctAnswer: number;
 };
 
+export type KidsMemoryPair = {
+  id: string;
+  situation: string;
+  dhikr: string;
+};
+
 export interface KidsItem {
   id: string;
   title_ar: string;
@@ -27,6 +33,7 @@ export interface KidsItem {
   age_group: "3-5" | "6-8" | "9-12" | "13-15";
   content_ar?: string;
   quiz_data?: { questions: KidsQuizQuestion[] };
+  memory_pairs?: KidsMemoryPair[];
   featured_image_url?: string;
   video_url?: string;
   youtube_video_id?: string;
@@ -941,6 +948,13 @@ export const kidsContent: KidsItem[] = [
     slug: "game-memory-dhikr-cards",
     type: "game",
     age_group: "6-8",
+    memory_pairs: [
+      { id: "before-sleep", situation: "قبل النوم", dhikr: "باسمك اللهم أموت وأحيا" },
+      { id: "before-food", situation: "قبل الطعام", dhikr: "بسم الله" },
+      { id: "after-food", situation: "بعد الطعام", dhikr: "الحمد لله" },
+      { id: "after-sneeze", situation: "عند العطاس", dhikr: "الحمد لله" },
+      { id: "enter-home", situation: "عند دخول البيت", dhikr: "السلام على الأهل" },
+    ],
     content_ar: `لعبة بطاقات الذاكرة: اقلب البطاقات وابحث عن كل موقف والذكر المناسب له. استخدم بطاقات آمنة من إعداد الأسرة، ولا تجعل الفوز أهم من التعلم.
 
 الأزواج المقترحة: قبل النوم / باسمك اللهم أموت وأحيا، قبل الطعام / بسم الله، بعد الطعام / الحمد لله، عند العطاس / الحمد لله، عند دخول البيت / السلام على الأهل.

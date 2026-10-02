@@ -80,7 +80,7 @@ export function ZikrMemoryGame({
     const second = cards.find(card => card.id === secondId);
     if (!first || !second) return;
 
-    const isMatch = first.pairId === second.pairId && first.side !== second.side;
+    const isMatch = first.id === second.id && first.side !== second.side;
 
     const timer = window.setTimeout(() => {
       setMoves(value => value + 1);
