@@ -130,16 +130,19 @@ export async function loadAudioSettings(): Promise<AudioSettings> {
       }>;
     };
 
-    const remote = (audioPayload.library ?? []).map(choice => ({
-      key: "site:id:" + choice.id,
-      label: choice.title ?? "مقطع صوتي",
-      webUrl: choice.url,
-      nativeFile: null,
-      slot: choice.kind === "adhan" ? "prayer" : choice.kind,
-      human: true,
-      sourceUrl: choice.sourceUrl ?? undefined,
-      license: choice.license ?? undefined,
-    })) satisfies AudioChoice[];
+    const remote = (audioPayload.library ?? []).map(choice => {
+      const slot: AudioSlot = choice.kind === "adhan" ? "prayer" : choice.kind;
+      return {
+        key: "site:id:" + choice.id,
+        label: choice.title ?? "مقطع صوتي",
+        webUrl: choice.url,
+        nativeFile: null,
+        slot,
+        human: true,
+        sourceUrl: choice.sourceUrl ?? undefined,
+        license: choice.license ?? undefined,
+      } satisfies AudioChoice;
+    });
 
     registerAudioChoices(remote);
 
