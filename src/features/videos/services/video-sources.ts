@@ -55,7 +55,7 @@ type StoryRow = {
 
 const QURAN_BASE = "https://quran.com";
 const HADITH_BASE = "https://sunnah.com";
-const SITE_BASE = "https://zikrmediaofficial.vercel.app";
+const SITE_BASE = getServerEnv().NEXT_PUBLIC_SITE_URL;
 
 function clean(value: string | null | undefined) {
   return value?.replace(/\s+/g, " ").trim() ?? "";
