@@ -25,7 +25,7 @@ This file records migrations applied directly to the live ZIKR Supabase project 
 - Content migrations must be idempotent where practical and must not fabricate Quran, hadith or historical attributions.
 - When a future local migration replay is required, generate the SQL from a fresh schema/content snapshot rather than inventing historical migration bodies.
 
-Last updated: 2026-09-29.
+Last updated: 2026-10-02.
 
 
 Validation note: the rebuild branch is being validated through GitHub Actions after schema/type compatibility fixes. No production-success claim is made until the current quality gate and deployment are green.
@@ -37,3 +37,32 @@ Validation note: the rebuild branch is being validated through GitHub Actions af
   - Applied to production on 2026-10-02 as a schema-neutral migration-history reconciliation marker.
   - Replaced the legacy 8-digit `20260929` history entry so hosted Supabase migration ordering no longer collides with 14-digit `20260929xxxxxx` versions.
   - The original enhanced-content SQL is preserved under `supabase/legacy_migrations/` for audit/history reference.
+
+## Phase 4 reconciliation addendum — 2026-10-02
+
+A live-versus-repository reconciliation was completed against the production migration history.
+
+| Metric | Result |
+|---|---:|
+| Repository migrations | 291 |
+| Remote migration history entries | 291 |
+| Local-only versions | 0 |
+| Remote-only versions | 0 |
+| Duplicate version IDs | 0 |
+| Shared version IDs | 291 |
+| Exact descriptive-name matches | 288 |
+| Historical descriptive-name mismatches | 3 |
+
+The three historical naming differences are:
+
+- **20261001221622** — repository file `kids_games_history_repair`; remote name `kids_games_enhanced_content`. This is the schema-neutral migration-history reconciliation marker. The original enhanced-content SQL remains under `supabase/legacy_migrations/`.
+- **20261002054010** — repository file `finish_rls_overlap_cleanup_20261002`; remote name `20261002120000_finish_rls_overlap_cleanup_20261002`. The repository commit explicitly aligned the migration timestamp history.
+- **20261002054042** — repository file `finish_admin_public_policy_merge_20261002`; remote name `20261002130000_finish_admin_public_policy_merge_20261002`. The repository commit explicitly aligned the migration timestamp history.
+
+These are descriptive-name differences for versions that exist on both sides. No migration repair is required.
+
+Repeated descriptive names elsewhere in the history are also not duplicate version IDs; each repeated name maps to distinct migration versions.
+
+The repository's `scripts/validate-migrations.mjs` remains the canonical local replay validator. This phase did not mutate production migration history or schema.
+
+Last reconciled: 2026-10-02.
