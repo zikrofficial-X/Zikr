@@ -94,7 +94,7 @@ export async function claimPendingVideoRequests(limit = 100): Promise<VideoGener
   for (const request of pending) {
     try {
       const result = await supabaseServerAdminRequest<VideoGenerationRequest[]>(
-        `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=eq.pending`,
+        `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=eq.pending&updated_at=eq.${encodeURIComponent(request.updated_at)}`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
