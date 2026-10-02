@@ -245,6 +245,9 @@ export type Database = {
         Row: {
           dhikr_enabled: boolean
           dhikr_interval_minutes: number
+          quran_enabled: boolean
+          quran_message: string
+          quran_time: string
           quiet_hours_end: string | null
           quiet_hours_start: string | null
           salawat_enabled: boolean
@@ -255,6 +258,9 @@ export type Database = {
         Insert: {
           dhikr_enabled?: boolean
           dhikr_interval_minutes?: number
+          quran_enabled?: boolean
+          quran_message?: string
+          quran_time?: string
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           salawat_enabled?: boolean
@@ -2485,35 +2491,47 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
           created_at: string
+          daily_wird_target: number
           display_name: string | null
           email: string | null
           id: string
           last_login_at: string | null
           locale: string
+          preferred_reciter_code: string | null
           role: Database["public"]["Enums"]["role"]
+          timezone: string
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
+          daily_wird_target?: number
           display_name?: string | null
           email?: string | null
           id: string
           last_login_at?: string | null
           locale?: string
+          preferred_reciter_code?: string | null
           role?: Database["public"]["Enums"]["role"]
+          timezone?: string
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string
+          daily_wird_target?: number
           display_name?: string | null
           email?: string | null
           id?: string
           last_login_at?: string | null
           locale?: string
+          preferred_reciter_code?: string | null
           role?: Database["public"]["Enums"]["role"]
+          timezone?: string
           updated_at?: string
         }
         Relationships: []

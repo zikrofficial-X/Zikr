@@ -10,6 +10,9 @@ export type ReminderPreferences = {
   dhikr_interval_minutes: number;
   salawat_enabled: boolean;
   salawat_interval_minutes: number;
+  quran_enabled: boolean;
+  quran_time: string;
+  quran_message: string;
   quiet_hours_start: string | null;
   quiet_hours_end: string | null;
   updated_at?: string;
@@ -20,6 +23,9 @@ export type ReminderPreferenceUpdate = {
   dhikr_interval_minutes?: number;
   salawat_enabled?: boolean;
   salawat_interval_minutes?: number;
+  quran_enabled?: boolean;
+  quran_time?: string;
+  quran_message?: string;
   quiet_hours_start?: string | null;
   quiet_hours_end?: string | null;
 };
@@ -29,6 +35,9 @@ const DEFAULT_PREFERENCES = {
   dhikr_interval_minutes: 60,
   salawat_enabled: false,
   salawat_interval_minutes: 60,
+  quran_enabled: false,
+  quran_time: "20:00",
+  quran_message: "اهدأ قليلًا… وافتح وردك اليومي. آية واحدة قد تغيّر يومك.",
   quiet_hours_start: null,
   quiet_hours_end: null,
 } as const;
@@ -73,6 +82,23 @@ function parseUpdate(value: unknown): ReminderPreferenceUpdate | { error: string
     }
   }
 
+  if (body.quran_enabled !== undefined) {
+    if (typeof body.quran_enabled !== "boolean") return { error: "Invalid quran_enabled value" };
+    updates.quran_enabled = body.quran_enabled;
+  }
+
+  if (body.quran_time !== undefined) {
+    if (!isClockTime(body.quran_time)) return { error: "Invalid quran_time" };
+    updates.quran_time = body.quran_time;
+  }
+
+  if (body.quran_message !== undefined) {
+    if (typeof body.quran_message !== "string") return { error: "Invalid quran_message" };
+    const message = body.quran_message.trim();
+    if (message.length > 240) return { error: "quran_message is too long" };
+    updates.quran_message = message || DEFAULT_PREFERENCES.quran_message;
+  }
+
   for (const key of ["quiet_hours_start", "quiet_hours_end"] as const) {
     if (body[key] !== undefined) {
       const value = body[key];
@@ -98,7 +124,7 @@ export async function getCurrentReminderPreferences(): Promise<ReminderPreferenc
   const { data, error } = await supabase
     .from("background_reminder_preferences")
     .select(
-      "user_id,dhikr_enabled,dhikr_interval_minutes,salawat_enabled,salawat_interval_minutes,quiet_hours_start,quiet_hours_end,updated_at",
+      "user_id,dhikr_enabled,dhikr_interval_minutes,salawat_enabled,salawat_interval_minutes,quran_enabled,quran_time,quran_message,quiet_hours_start,quiet_hours_end,updated_at",
     )
     .eq("user_id", user.id)
     .maybeSingle();

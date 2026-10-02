@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { getNativeAudio, loadAudioSettings } from "@/lib/audio/config";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { Capacitor } from "@capacitor/core";
+import { syncQuranReminderFromAccount } from "@/features/notifications/services/quran-reminder";
 
 type CapacitorPlugin = Record<
   string,
@@ -23,6 +25,9 @@ type CapacitorWindow = Window & {
     haptic: (style?: "LIGHT" | "MEDIUM" | "HEAVY") => Promise<void>;
     pickImage: () => Promise<unknown>;
     writeFile: (path: string, data: string) => Promise<unknown>;
+    downloadFile: (url: string, path: string) => Promise<{ path?: string; uri?: string }>;
+    deleteFile: (path: string) => Promise<void>;
+    getFileUrl: (path: string) => Promise<string | null>;
     getNetworkStatus: () => Promise<unknown>;
     scheduleLocalNotification: (notification: {
       id: number;
@@ -87,6 +92,49 @@ function installNativeFacade(
         directory: "DATA",
         recursive: true,
       });
+    },
+    async downloadFile(url, path) {
+      const filesystem = plugins.Filesystem;
+      if (filesystem?.downloadFile) {
+        const result = await filesystem.downloadFile({
+          url,
+          path,
+          directory: "DATA",
+          recursive: true,
+        });
+        return (result as { path?: string; uri?: string }) ?? { path };
+      }
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Audio download failed");
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      let binary = "";
+      const chunkSize = 0x8000;
+      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        binary += String.fromCharCode(
+          ...bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)),
+        );
+      }
+      await filesystem?.writeFile?.({
+        path,
+        data: btoa(binary),
+        directory: "DATA",
+        recursive: true,
+      });
+      return { path };
+    },
+    async deleteFile(path) {
+      await plugins.Filesystem?.deleteFile?.({
+        path,
+        directory: "DATA",
+      });
+    },
+    async getFileUrl(path) {
+      const uriResult = (await plugins.Filesystem?.getUri?.({
+        path,
+        directory: "DATA",
+      })) as { uri?: string } | undefined;
+      return uriResult?.uri ? Capacitor.convertFileSrc(uriResult.uri) : null;
     },
     async getNetworkStatus() {
       return plugins.Network?.getStatus?.();
@@ -235,6 +283,9 @@ export function NativeCapacitorBridge() {
           });
         }
 
+        // Keep the account's Quran reminder schedule alive after app restart.
+        await syncQuranReminderFromAccount();
+
         // Permission is requested only from the user action that enables
         // reminders. Initializing channels must not trigger a system prompt.
       } catch (error) {
@@ -286,6 +337,7 @@ export function NativeCapacitorBridge() {
       const isActive = (state as { isActive?: boolean })?.isActive === true;
       if (isActive) {
         window.dispatchEvent(new CustomEvent("zikr:native-resumed"));
+        void syncQuranReminderFromAccount();
       }
       window.dispatchEvent(
         new CustomEvent("zikr:native-app-state", { detail: state })

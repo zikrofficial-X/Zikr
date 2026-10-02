@@ -174,7 +174,21 @@ export async function logoutAction() {
 
 export async function updateProfileAction(formData: FormData) {
   const displayName = String(formData.get('displayName') || '').trim();
-  const result = await updateCurrentProfile({ displayName });
+  const locale = String(formData.get('locale') || 'ar').trim();
+  const bio = String(formData.get('bio') || '').trim();
+  const preferredReciterCode = String(formData.get('preferredReciterCode') || '').trim();
+  const dailyWirdTargetRaw = String(formData.get('dailyWirdTarget') || '20').trim();
+  const dailyWirdTarget = Number(dailyWirdTargetRaw);
+  const timezone = String(formData.get('timezone') || 'Africa/Cairo').trim();
+
+  const result = await updateCurrentProfile({
+    displayName,
+    locale,
+    bio,
+    preferredReciterCode: preferredReciterCode || null,
+    dailyWirdTarget,
+    timezone,
+  });
 
   if (!result.ok) {
     if (result.error === 'Unauthorized') redirect('/auth/login');

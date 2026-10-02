@@ -13,6 +13,9 @@ import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { logoutAction, updateProfileAction } from "@/app/auth/actions";
 import { AvatarUpload } from "@/features/profile/components/avatar-upload";
+import { ProfileLocalSettings } from "@/features/profile/components/profile-local-settings";
+import { getRecitersFromDb } from "@/features/quran/services/quran-server";
+import { getCurrentReminderPreferences } from "@/features/reminders/services/reminder-preferences";
 import Link from "next/link";
 
 export const metadata: Metadata = pageMetadata({
@@ -68,11 +71,16 @@ export default async function ProfilePage({
   searchParams?: Promise<{ error?: string; success?: string }>;
 }) {
   const params = (await searchParams) ?? {};
-  const data = await getCurrentProfileData();
+  const [data, reciters, reminderPreferences] = await Promise.all([
+    getCurrentProfileData(),
+    getRecitersFromDb(),
+    getCurrentReminderPreferences(),
+  ]);
 
   if (!data) redirect("/auth/login?next=/profile");
 
   const { user, profile, assignedRole } = data;
+  const availableReciters = reciters ?? [];
   const favList: ProfileFavorite[] = data.favorites;
   const progressList: ProfileReadingProgress[] = data.readingProgress;
   const isAdmin = profile?.role === "admin" || Boolean(assignedRole);
@@ -168,12 +176,16 @@ export default async function ProfilePage({
             <p className="arabic-muted text-xs">آخر القراءات</p>
             <p className="text-brand-cream/90 tabular-nums">{progressList.length.toLocaleString("ar-EG")}</p>
           </div>
+          <div>
+            <p className="arabic-muted text-xs">هدف الورد اليومي</p>
+            <p className="text-brand-cream/90 tabular-nums">{(profile?.daily_wird_target ?? 20).toLocaleString("ar-EG")} آية</p>
+          </div>
         </div>
       </Card>
 
       <Card className="space-y-4">
         <h2 className="text-xl text-brand-gold">تعديل البيانات</h2>
-        <form action={updateProfileAction} className="max-w-md space-y-4">
+        <form action={updateProfileAction} className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1">
             <label className="block text-sm arabic-muted" htmlFor="displayName">
               الاسم المعروض
@@ -183,10 +195,74 @@ export default async function ProfilePage({
               name="displayName"
               defaultValue={profile?.display_name ?? ""}
               placeholder="اكتب اسمك"
-              className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-2 text-brand-cream focus:border-brand-gold focus:outline-none"
+              className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-3 text-brand-cream focus:border-brand-gold focus:outline-none"
             />
           </div>
-          <Button type="submit">حفظ التغييرات</Button>
+          <div className="space-y-1">
+            <label className="block text-sm arabic-muted" htmlFor="locale">
+              لغة الواجهة
+            </label>
+            <select
+              id="locale"
+              name="locale"
+              defaultValue={profile?.locale ?? "ar"}
+              className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-3 text-brand-cream focus:border-brand-gold focus:outline-none"
+            >
+              <option value="ar">العربية</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <label className="block text-sm arabic-muted" htmlFor="bio">
+              نبذة قصيرة
+            </label>
+            <textarea
+              id="bio"
+              name="bio"
+              defaultValue={profile?.bio ?? ""}
+              maxLength={500}
+              rows={3}
+              placeholder="اكتب ما يساعد ذِكر على تخصيص تجربتك القرآنية."
+              className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-3 text-brand-cream leading-7 focus:border-brand-gold focus:outline-none"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-sm arabic-muted" htmlFor="preferredReciterCode">
+              القارئ المفضل
+            </label>
+            <select
+              id="preferredReciterCode"
+              name="preferredReciterCode"
+              defaultValue={profile?.preferred_reciter_code ?? ""}
+              className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-3 text-brand-cream focus:border-brand-gold focus:outline-none"
+            >
+              <option value="">اختيار تلقائي</option>
+              {availableReciters.slice(0, 120).map((reciter) => (
+                <option key={reciter.id} value={reciter.code}>
+                  {reciter.nameAr}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-sm arabic-muted" htmlFor="dailyWirdTarget">
+              هدف الورد اليومي (آيات)
+            </label>
+            <input
+              id="dailyWirdTarget"
+              name="dailyWirdTarget"
+              type="number"
+              min={1}
+              max={6236}
+              defaultValue={profile?.daily_wird_target ?? 20}
+              className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-3 text-brand-cream focus:border-brand-gold focus:outline-none"
+            />
+          </div>
+          <input type="hidden" name="timezone" value={profile?.timezone ?? "Africa/Cairo"} />
+          <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-brand-cream/50">تُحفظ بيانات الملف مباشرة في حسابك، وليس داخل تخزين الجهاز فقط.</p>
+            <Button type="submit">حفظ التغييرات</Button>
+          </div>
         </form>
         <form action={logoutAction}>
           <Button type="submit" variant="ghost">
@@ -266,6 +342,51 @@ export default async function ProfilePage({
           )}
         </Card>
       </div>
+
+      {(() => {
+        const wird = progressList.find((item) => item.scope === "quran" && item.ref === "wird");
+        const wirdState = wird?.progress_json ?? null;
+        return (
+          <Card className="space-y-5">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.18em] text-brand-gold/70">YOUR QURAN JOURNEY</p>
+                <h2 className="mt-1 text-2xl font-bold text-brand-gold">رحلتك مع القرآن</h2>
+              </div>
+              <Link href="/wird" className="text-sm text-brand-gold hover:underline">فتح صفحة الورد</Link>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-brand-gold/15 bg-black/15 p-4">
+                <p className="text-xs arabic-muted">قراءة اليوم</p>
+                <p className="mt-2 text-2xl font-bold text-brand-cream">{Number(wirdState?.todayCount ?? 0).toLocaleString("ar-EG")}</p>
+                <p className="text-xs arabic-muted">من {Number(wirdState?.dailyTarget ?? profile?.daily_wird_target ?? 20).toLocaleString("ar-EG")}</p>
+              </div>
+              <div className="rounded-2xl border border-brand-gold/15 bg-black/15 p-4">
+                <p className="text-xs arabic-muted">الاستمرارية</p>
+                <p className="mt-2 text-2xl font-bold text-brand-cream">{Number(wirdState?.streak ?? 0).toLocaleString("ar-EG")} يوم</p>
+              </div>
+              <div className="rounded-2xl border border-brand-gold/15 bg-black/15 p-4">
+                <p className="text-xs arabic-muted">الختمات</p>
+                <p className="mt-2 text-2xl font-bold text-brand-cream">{Number(wirdState?.khatmaCount ?? 0).toLocaleString("ar-EG")}</p>
+              </div>
+              <div className="rounded-2xl border border-brand-gold/15 bg-black/15 p-4">
+                <p className="text-xs arabic-muted">الموضع الحالي</p>
+                <p className="mt-2 text-lg font-bold text-brand-cream">{wirdState?.position ? `آية ${Number(wirdState.position).toLocaleString("ar-EG")}` : "لم تبدأ بعد"}</p>
+              </div>
+            </div>
+          </Card>
+        );
+      })()}
+
+      <ProfileLocalSettings
+        initialReminder={{
+          quran_enabled: reminderPreferences?.quran_enabled ?? false,
+          quran_time: reminderPreferences?.quran_time?.slice(0, 5) ?? "20:00",
+          quran_message:
+            reminderPreferences?.quran_message ??
+            "اهدأ قليلًا… وافتح وردك اليومي. آية واحدة قد تغيّر يومك.",
+        }}
+      />
 
       <Card className="space-y-4">
         <h2 className="text-xl text-brand-gold">روابط سريعة</h2>

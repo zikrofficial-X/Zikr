@@ -35,6 +35,10 @@ export type CurrentProfileData = {
     avatar_url: string | null;
     locale: string | null;
     role: string | null;
+    bio: string | null;
+    preferred_reciter_code: string | null;
+    daily_wird_target: number;
+    timezone: string;
     created_at: string | null;
     updated_at: string | null;
   } | null;
@@ -55,7 +59,7 @@ export async function getCurrentProfileData(): Promise<CurrentProfileData | null
     await Promise.all([
       supabase
         .from("profiles")
-        .select("display_name, avatar_url, locale, role, created_at, updated_at")
+        .select("display_name, avatar_url, locale, role, bio, preferred_reciter_code, daily_wird_target, timezone, created_at, updated_at")
         .eq("id", user.id)
         .limit(1),
       supabase
@@ -99,6 +103,10 @@ export async function getCurrentProfileData(): Promise<CurrentProfileData | null
           avatar_url: profileRes.data[0].avatar_url ?? null,
           locale: profileRes.data[0].locale ?? null,
           role: profileRes.data[0].role ?? null,
+          bio: profileRes.data[0].bio ?? null,
+          preferred_reciter_code: profileRes.data[0].preferred_reciter_code ?? null,
+          daily_wird_target: profileRes.data[0].daily_wird_target ?? 20,
+          timezone: profileRes.data[0].timezone ?? "Africa/Cairo",
           created_at: profileRes.data[0].created_at ?? null,
           updated_at: profileRes.data[0].updated_at ?? null,
         }
@@ -117,6 +125,10 @@ export type ProfileUpdateInput = {
   display_name?: string | null;
   displayName?: string | null;
   locale?: unknown;
+  bio?: unknown;
+  preferredReciterCode?: unknown;
+  dailyWirdTarget?: unknown;
+  timezone?: unknown;
 };
 
 export type ProfileUpdateResult =
@@ -132,6 +144,10 @@ function parseProfileUpdate(
   | {
       display_name?: string | null;
       locale?: string;
+      bio?: string | null;
+      preferred_reciter_code?: string | null;
+      daily_wird_target?: number;
+      timezone?: string;
     }
   | { error: string } {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -142,10 +158,14 @@ function parseProfileUpdate(
   const hasSnake = Object.hasOwn(body, "display_name");
   const hasCamel = Object.hasOwn(body, "displayName");
   const hasLocale = Object.hasOwn(body, "locale");
+  const hasBio = Object.hasOwn(body, "bio");
+  const hasPreferredReciter = Object.hasOwn(body, "preferredReciterCode");
+  const hasDailyTarget = Object.hasOwn(body, "dailyWirdTarget");
+  const hasTimezone = Object.hasOwn(body, "timezone");
 
-  if (!hasSnake && !hasCamel && !hasLocale) {
+  if (!hasSnake && !hasCamel && !hasLocale && !hasBio && !hasPreferredReciter && !hasDailyTarget && !hasTimezone) {
     return {
-      error: "Provide display_name, displayName, or locale to update the profile",
+      error: "Provide at least one profile field to update",
     };
   }
 
@@ -175,6 +195,43 @@ function parseProfileUpdate(
     parsed.locale = body.locale;
   }
 
+  if (hasBio) {
+    if (typeof body.bio !== "string" && body.bio !== null) {
+      return { error: "bio must be a string" };
+    }
+    const bio = typeof body.bio === "string" ? body.bio.trim() : "";
+    if (bio.length > 500) return { error: "bio must not exceed 500 characters" };
+    parsed.bio = bio || null;
+  }
+
+  if (hasPreferredReciter) {
+    if (body.preferredReciterCode !== null && typeof body.preferredReciterCode !== "string") {
+      return { error: "preferredReciterCode must be a string" };
+    }
+    const value = typeof body.preferredReciterCode === "string"
+      ? body.preferredReciterCode.trim()
+      : "";
+    if (value.length > 120) return { error: "preferredReciterCode is too long" };
+    parsed.preferred_reciter_code = value || null;
+  }
+
+  if (hasDailyTarget) {
+    if (typeof body.dailyWirdTarget !== "number" || !Number.isInteger(body.dailyWirdTarget)) {
+      return { error: "dailyWirdTarget must be an integer" };
+    }
+    if (body.dailyWirdTarget < 1 || body.dailyWirdTarget > 6236) {
+      return { error: "dailyWirdTarget must be between 1 and 6236" };
+    }
+    parsed.daily_wird_target = body.dailyWirdTarget;
+  }
+
+  if (hasTimezone) {
+    if (typeof body.timezone !== "string" || body.timezone.length > 80) {
+      return { error: "timezone must be a valid string" };
+    }
+    parsed.timezone = body.timezone.trim() || "Africa/Cairo";
+  }
+
   return parsed;
 }
 
@@ -193,6 +250,10 @@ export async function updateCurrentProfile(
     id: string;
     display_name?: string | null;
     locale?: string;
+    bio?: string | null;
+    preferred_reciter_code?: string | null;
+    daily_wird_target?: number;
+    timezone?: string;
     updated_at: string;
   } = {
     id: session.user.id,
@@ -205,12 +266,24 @@ export async function updateCurrentProfile(
   if (Object.hasOwn(parsed, "locale")) {
     updates.locale = parsed.locale;
   }
+  if (Object.hasOwn(parsed, "bio")) {
+    updates.bio = parsed.bio;
+  }
+  if (Object.hasOwn(parsed, "preferred_reciter_code")) {
+    updates.preferred_reciter_code = parsed.preferred_reciter_code;
+  }
+  if (Object.hasOwn(parsed, "daily_wird_target")) {
+    updates.daily_wird_target = parsed.daily_wird_target;
+  }
+  if (Object.hasOwn(parsed, "timezone")) {
+    updates.timezone = parsed.timezone;
+  }
 
   const { data, error } = await session.supabase
     .from("profiles")
     .upsert(updates, { onConflict: "id" })
     .select(
-      "id, display_name, avatar_url, locale, role, created_at, updated_at",
+      "id, display_name, avatar_url, locale, role, bio, preferred_reciter_code, daily_wird_target, timezone, created_at, updated_at",
     )
     .single();
 
