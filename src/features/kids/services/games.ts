@@ -163,13 +163,18 @@ export type KidsGameResultResponse = {
   };
 };
 
-export async function recordCurrentKidsGameResult(
+export async function recordKidsGameResultForUser(
+  userId: string,
   body: unknown,
 ): Promise<
   | KidsGameResultResponse
   | { success: false; status: 400 | 401; error: string }
   | { success: false; status: 500; error: string }
 > {
+  if (!userId) {
+    return { success: false, status: 401, error: "Unauthorized" };
+  }
+
   const payload: ValidatedGameResultPayload | null =
     validateGameResultPayload(body);
   if (!payload) {
@@ -181,16 +186,11 @@ export async function recordCurrentKidsGameResult(
     };
   }
 
-  const session = await getCurrentUser();
-  if (!session) {
-    return { success: false, status: 401, error: "Unauthorized" };
-  }
-
   const admin = createAdminClient();
   const { data, error } = await admin.rpc(
     "kids_record_game_result_internal",
     {
-      p_user_id: session.user.id,
+      p_user_id: userId,
       p_game_id: payload.gameId,
       p_client_submission_id: payload.clientSubmissionId,
       p_score: payload.score,
@@ -242,4 +242,19 @@ export async function recordCurrentKidsGameResult(
       difficulty: payload.difficulty,
     },
   };
+}
+
+export async function recordCurrentKidsGameResult(
+  body: unknown,
+): Promise<
+  | KidsGameResultResponse
+  | { success: false; status: 400 | 401; error: string }
+  | { success: false; status: 500; error: string }
+> {
+  const session = await getCurrentUser();
+  if (!session) {
+    return { success: false, status: 401, error: "Unauthorized" };
+  }
+
+  return recordKidsGameResultForUser(session.user.id, body);
 }
