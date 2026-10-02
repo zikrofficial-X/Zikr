@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { GameDifficulty, GameId } from "@/lib/games/registry";
 import { ToneFeedback, type GameSoundEvent } from "@/lib/games/tone-feedback";
-import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
 import {
   ZikrRunnerGame,
   ZikrRoadGame,
@@ -25,7 +24,15 @@ import {
   ZikrColoringGame,
 } from "@/features/kids/components/games/kids-values-coloring";
 
-export type { WorldHud };
+
+export type WorldHud = {
+  score: number;
+  collectibles: number;
+  distance: number;
+  combo: number;
+  level: number;
+  completed: boolean;
+};
 
 type WorldGameStageProps = {
   gameId: GameId;
