@@ -67,3 +67,12 @@ Verse Puzzle consumes exact Quran text from the existing server-only Quran retri
 Difficulty is gameplay, not metadata only: easy uses a guided mode with an optional next-word hint and no mistake penalty; normal removes the hint and counts mistakes; hard removes the hint and resets the current sequence after a wrong choice. The content source remains exact in every difficulty.
 
 The content integrity check `pnpm kids:verse:check` verifies the configured difficulty/source mapping against the local canonical Quran corpus and the gameplay rules.
+
+
+## ZIKR Quiz presentation contract
+
+ZIKR Quiz consumes only the verified questions returned by `getVerifiedKidsQuizQuestions()`. The dedicated runtime does not duplicate question text, invent explanations, or alter the approved answer indexes.
+
+The rebuild is presentation/feedback focused: it adds a clear question/progress hierarchy, category context, score/correct/streak HUD, selected-answer states, explicit correct/incorrect feedback, responsive answer cards, and a completion result through the existing Game Shell submission/offline path. Difficulty remains meaningful through 5/7/10 questions for easy/normal/hard.
+
+The content integrity check `pnpm kids:quiz:check` is included in both PR and main verification and ensures the verified adapter and dedicated runtime remain present.
