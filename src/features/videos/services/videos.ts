@@ -71,10 +71,7 @@ export async function getVideoCategories(): Promise<VideoCategory[]> {
 
   if (rows.length === 0) return FALLBACK_VIDEO_CATEGORIES;
 
-  const renderableRows = rows.filter(isPubliclyRenderableVideo);
-  if (renderableRows.length === 0) return fallback.slice(0, safeLimit);
-
-  return renderableRows.map(r => ({
+  return rows.map(r => ({
     id: r.id as string,
     nameAr: r.name_ar as string,
     nameEn: r.name_en as string,
@@ -110,8 +107,10 @@ export async function getVideos(
   });
 
   if (rows.length === 0) return fallback.slice(0, safeLimit);
+  const renderableRows = rows.filter(isPubliclyRenderableVideo);
+  if (renderableRows.length === 0) return fallback.slice(0, safeLimit);
 
-  return rows.map(r => ({
+  return renderableRows.map(r => ({
     id: r.id as string,
     title: r.title as string,
     slug: r.slug as string,
@@ -150,7 +149,7 @@ export async function getVideoBySlug(slug: string): Promise<Video | null> {
     slug: r.slug as string,
     description: r.description as string | undefined,
     youtubeId: r.youtube_id as string | undefined,
-    thumbnailUrl: r.thumbnail_url as string | undefined,
+    thumbnailUrl: resolveVideoThumbnail(r),
     duration: (r.duration as number) || undefined,
     views: (r.views as number) || 0,
     published: r.published as boolean,
