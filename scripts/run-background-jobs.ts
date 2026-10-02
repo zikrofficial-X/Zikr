@@ -6,6 +6,8 @@ import {
   seedAutomatedVideoRequests,
 } from "./jobs/template-video-automation";
 import { processSocialPublishQueue } from "./jobs/social-publishing";
+import { getVideoEngineConfig } from "../src/features/videos/providers/types";
+import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
 
 const SOCIAL_PUBLISH_ENABLED = process.env.SOCIAL_PUBLISH_ENABLED !== "false";
 const VIDEO_DRY_RUN = (process.env.VIDEO_AUTOMATION_DRY_RUN ?? "true").toLowerCase() === "true";
@@ -57,7 +59,7 @@ function validateRequiredEnv() {
 async function processVideos() {
   if (VIDEO_DRY_RUN) {
     console.log("[background-jobs] VIDEO_AUTOMATION_DRY_RUN=true; planning only.");
-    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
+    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
   }
   ensureArabicTtsRuntime();
   const seeded = await seedAutomatedVideoRequests();
@@ -68,6 +70,7 @@ async function processVideos() {
     succeeded: result.succeeded || 0,
     authBlocked: 0,
     failed: result.failed || 0,
+    seeded,
   };
 }
 
@@ -85,6 +88,49 @@ async function processSocial() {
   return result;
 }
 
+
+async function recordAutomationRun(summary: {
+  target: string;
+  seeded: number;
+  processed: number;
+  completed: number;
+  failed: number;
+  socialProcessed: number;
+  socialSucceeded: number;
+}) {
+  try {
+    const config = getVideoEngineConfig();
+    await supabaseServerAdminRequest("/rest/v1/video_automation_runs", {
+      method: "POST",
+      headers: { Prefer: "return=minimal", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        run_type: "github_actions_video_worker",
+        finished_at: new Date().toISOString(),
+        created_count: summary.seeded,
+        processed_count: summary.processed,
+        completed_count: summary.completed,
+        failed_count: summary.failed,
+        provider_stats: {
+          order: config.order,
+          aiEnabled: config.aiEnabled,
+          aiAttemptsPerRun: process.env.VIDEO_AI_ATTEMPTS_PER_RUN || "2",
+        },
+        error_summary: summary.failed > 0 ? "One or more background items failed." : null,
+        metadata: {
+          target: summary.target,
+          socialProcessed: summary.socialProcessed,
+          socialSucceeded: summary.socialSucceeded,
+          generator: "multi-provider-free-ai",
+        },
+      }),
+    });
+  } catch (error) {
+    console.error(
+      "[background-jobs] Failed to persist automation audit:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+}
 async function main() {
   validateRequiredEnv();
   const target = process.env.BACKGROUND_JOB_TARGET ?? "all";
@@ -99,7 +145,7 @@ async function main() {
 
   const videos = target === "all" || target === "videos"
     ? await processVideos()
-    : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
+    : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
 
   const reconciledSocialQueue = target === "all" || target === "social"
     ? await reconcileCompletedVideoSocialQueue(100)
@@ -112,6 +158,16 @@ async function main() {
     ? await processSocial()
     : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
   const failed = videos.failed + social.failed;
+
+  await recordAutomationRun({
+    target,
+    seeded: videos.seeded || 0,
+    processed: videos.processed,
+    completed: videos.succeeded,
+    failed,
+    socialProcessed: social.processed,
+    socialSucceeded: social.succeeded,
+  });
 
   console.log(
     "[background-jobs] Summary:",
