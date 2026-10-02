@@ -8,6 +8,7 @@ import {
   supabaseServerAdminRequest,
 } from "../../src/lib/supabase/admin-rest";
 import { listVideoSources, resolveVideoSource } from "../../src/features/videos/services/video-sources";
+import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
@@ -395,8 +396,9 @@ export async function seedAutomatedVideoRequests() {
       key = `adhkar:${day}:${slot}`;
       if (await findByAutomationKey("video_generation_requests", key)) continue;
       const sources = await listVideoSources("adhkar");
-      if (!sources.length) throw new Error("No verified adhkar sources are available.");
-      const row = sources[(day * 6 + slot) % sources.length];
+      const pool = sources.length ? sources : listCuratedVideoSources("adhkar");
+      if (!pool.length) throw new Error("No verified adhkar sources are available.");
+      const row = pool[(day * 6 + slot) % pool.length];
       payload = {
         title: row.title,
         description: "فيديو آلي لذكر مأثور مع المصدر والدرجة المسجلة في مكتبة ذِكر.",
@@ -424,8 +426,9 @@ export async function seedAutomatedVideoRequests() {
       key = `story:${day}:${slot}`;
       if (await findByAutomationKey("video_generation_requests", key)) continue;
       const sources = await listVideoSources("story");
-      if (!sources.length) throw new Error("No verified story sources are available.");
-      const row = sources[(day * 6 + slot) % sources.length];
+      const pool = sources.length ? sources : listCuratedVideoSources("story");
+      if (!pool.length) throw new Error("No verified story sources are available.");
+      const row = pool[(day * 6 + slot) % pool.length];
       payload = {
         title: row.title,
         description: "قصة موثقة في مكتبة ذِكر مع إحالة إلى مصدرها الأساسي.",
@@ -634,8 +637,8 @@ async function validateSourceContent(request: GeneratedRequest) {
       if (Number.isInteger(surahId) && Number.isInteger(ayahNumber)) sourceId = `quran:${surahId}:${ayahNumber}`;
     }
     if (!sourceId) throw new Error(`${request.category} video rejected: a selected, published source is required.`);
-    const source = await resolveVideoSource(request.category, sourceId);
-    if (!source) throw new Error(`${request.category} video rejected: source is missing, unpublished, unreferenced, or has no recorded grade.`);
+    const source = (await resolveVideoSource(request.category, sourceId)) ?? resolveCuratedVideoSource(sourceId);
+    if (!source || source.category !== request.category) throw new Error(`${request.category} video rejected: source is missing, unpublished, unreferenced, or has no recorded grade.`);
     if (text !== source.text) throw new Error(`${request.category} video rejected: narration does not exactly match the current published source text.`);
     request.content = {
       ...content,
