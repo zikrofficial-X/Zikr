@@ -35,7 +35,9 @@ export function Footer() {
     { href: "/hadith", ar: "الأحاديث النبوية", en: "Prophetic Hadith" },
     { href: "/adhkar", ar: "حصن المسلم", en: "Fortress of the Muslim" },
     { href: "/prophets", ar: "قصص الأنبياء", en: "Stories of the Prophets" },
-    { href: "/scholars", ar: "تراجم العلماء", en: "Scholar Biographies" },\n    { href: "/sections", ar: "دليل الأقسام", en: "Sections Guide" },\n    { href: "/audio", ar: "مكتبة الصوت", en: "Audio Library" },
+    { href: "/scholars", ar: "تراجم العلماء", en: "Scholar Biographies" },
+    { href: "/sections", ar: "دليل الأقسام", en: "Sections Guide" },
+    { href: "/audio", ar: "مكتبة الصوت", en: "Audio Library" },
   ];
   const toolLinks = [
     { href: "/prayer-times", ar: "مواقيت الصلاة", en: "Prayer Times" },
@@ -46,7 +48,8 @@ export function Footer() {
       en: "Spiritual AI Companion",
     },
     { href: "/poetry", ar: "ديوان الشعر", en: "Poetry Collection" },
-    { href: "/search", ar: "البحث الشامل", en: "Universal Search" },\n  ];
+    { href: "/search", ar: "البحث الشامل", en: "Universal Search" },
+  ];
   const legalLinks = [
     { href: "/about", ar: "عن المنصة", en: "About" },
     { href: "/platform", ar: "دليل المنصة", en: "Platform Guide" },

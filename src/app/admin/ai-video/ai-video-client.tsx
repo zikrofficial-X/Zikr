@@ -81,6 +81,7 @@ export default function AdminAiVideoPage() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [batchLoading, setBatchLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -258,6 +259,39 @@ export default function AdminAiVideoPage() {
       );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function createVerifiedBatch() {
+    setError(null);
+    setMessage(null);
+    setBatchLoading(true);
+    const plans: Array<{ category: Category; title: string; description: string; sourceId?: string; narration?: string }> = [
+      { category: "quran", title: "تدبر سورة الفاتحة: خريطة العبودية والهداية", description: "إنتاج تعليمي من نص المصحف ومصدر التفسير المرفق.", sourceId: "quran:1:1" },
+      { category: "quran", title: "سورة العصر: رأس مال الوقت والعمل الصالح", description: "إنتاج تعليمي من نص المصحف ومصدر التفسير المرفق.", sourceId: "quran:103:1" },
+      { category: "other", title: "رسالة عامة: تثبت قبل أن تشارك", description: "رسالة توعوية أصلية عن التثبت قبل نشر المحتوى الديني.", narration: "قبل أن تشارك أي نص ديني، اسأل عن مصدره ونصه الكامل وسياقه. الشهرة لا تساوي الصحة، والصورة الجميلة لا تثبت نسبة الكلام إلى عالم. إذا وجدت خطأً بعد النشر فصححه بوضوح، واجعل التثبت عادة تحمي القارئ وتحفظ قيمة الكلمة." },
+      { category: "other", title: "رسالة عامة: اجعل التقنية خادمة للعبادة", description: "رسالة توعوية أصلية عن الاستخدام الهادئ للتقنية.", narration: "اجعل التقنية خادمة للعبادة لا بديلًا عنها. اختر وردًا واحدًا، قلل الإشعارات، واقرأ النص كاملًا قبل تشغيل العداد. الأرقام تساعد على التذكير لكنها لا تقيس الخشوع، والمحتوى التعليمي لا يغني عن سؤال أهل العلم في المسائل الخاصة." },
+    ];
+    try {
+      for (const category of ["hadith", "story", "dua", "adhkar"] as const) {
+        const response = await fetch(`/api/admin/video-generation/sources?category=${category}`, { cache: "no-store" });
+        const data = await response.json().catch(() => ({}));
+        const firstTwo = Array.isArray(data.sources) ? data.sources.slice(0, 2) as Source[] : [];
+        for (const source of firstTwo) plans.push({ category, title: source.title, description: source.sourceLabel, sourceId: source.id });
+      }
+      let created = 0;
+      for (const plan of plans) {
+        const response = await fetch("/api/admin/videos/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+          title: plan.title, description: plan.description, category: plan.category, sourceId: plan.sourceId, narration: plan.narration,
+          content: { renderer: "template", workflow: "verified-batch", videoFormat: "vertical", language: "ar", resolution: "1080x1920" },
+        }) });
+        if (response.ok) created += 1;
+      }
+      setMessage(`تم إنشاء ${created} طلبًا موثقًا من الأقسام المتاحة. افتح طابور الفيديوهات لمتابعة الرندر.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر إنشاء دفعة الفيديوهات.");
+    } finally {
+      setBatchLoading(false);
     }
   }
 
@@ -555,6 +589,17 @@ export default function AdminAiVideoPage() {
           >
             مركز النشر الاجتماعي
           </Link>
+        </div>
+        <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="font-bold text-emerald-200">إنتاج دفعة موثقة من كل الأقسام</h2>
+              <p className="mt-1 text-sm leading-6 text-brand-cream/55">ينشئ النظام فيديوهين من القرآن، والحديث، والقصص، والدعاء، والأذكار، ورسالتين عامتين، مع إعادة التحقق من المصدر قبل الحفظ.</p>
+            </div>
+            <Button variant="outline" onClick={() => void createVerifiedBatch()} disabled={batchLoading || loading}>
+              {batchLoading ? "جارٍ إنشاء الدفعة…" : "إنشاء دفعة موثقة"}
+            </Button>
+          </div>
         </div>
       </Card>
 

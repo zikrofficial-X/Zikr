@@ -12,6 +12,7 @@ const QUICK_ACTIONS = [
   { href: '/quran', ar: 'القرآن', en: 'Quran', icon: '📖', tone: 'قراءة وتلاوة' },
   { href: '/prayer-times', ar: 'الصلاة', en: 'Prayer', icon: '🕌', tone: 'المواقيت والتنبيهات' },
   { href: '/adhkar', ar: 'الأذكار', en: 'Adhkar', icon: '📿', tone: 'الورد اليومي' },
+  { href: '/hadith', ar: 'الأحاديث', en: 'Hadith', icon: '📚', tone: 'قراءة وتحقق' },
   { href: '/audio', ar: 'الصوت', en: 'Audio', icon: '🎧', tone: 'أذان وذكر وتلاوات' },
   { href: '/search', ar: 'البحث', en: 'Search', icon: '⌕', tone: 'ابحث في ذِكر' },
   { href: '/kids', ar: 'الأطفال', en: 'Kids', icon: '🌟', tone: 'تعلم ولعب' },

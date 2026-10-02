@@ -30,6 +30,7 @@ import { usePrayerAlert, PRAYER_NAMES_AR } from "@/features/prayer/hooks/use-pra
 import { resolveLocationLabel } from "@/lib/location/reverse-geocode";
 import { getSavedPrayerLocation, persistPrayerLocation } from "@/features/prayer/services/saved-prayer-location";
 
+const CAIRO = { lat: 30.0444, lon: 31.2357, city: "القاهرة" };
 
 export function PrayerTimesPage() {
   const [prayerData, setPrayerData] = useState<PrayerTimesResponse | null>(null);

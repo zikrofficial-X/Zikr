@@ -8,7 +8,8 @@ import { getPublicEnv } from "@/lib/env";
 import { normalizedText } from "@/lib/content-quality";
 import type { ArticleCategory, Article } from "@/features/articles/types/articles";
 import { staticArticles, type StaticArticle } from "@/features/articles/data/articles";
-import { adsenseEditorialArticles } from "@/features/articles/data/adsense-editorial";\nimport { extendedEditorialArticles } from "@/features/articles/data/extended-editorial";
+import { adsenseEditorialArticles } from "@/features/articles/data/adsense-editorial";
+import { extendedEditorialArticles } from "@/features/articles/data/extended-editorial";
 
 const MIN_PUBLIC_ARTICLE_CHARS = 1800;
 

@@ -9,6 +9,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Badge } from '@/components/ui/badge';
 import { getYoutubeChannelFeed } from '@/features/videos/integrations/youtube';
 import { FALLBACK_VIDEOS } from '@/features/videos/data/fallback';
+import { VERIFIED_VIDEO_CONTENT } from '@/features/videos/data/verified-content';
 
 export const metadata: Metadata = pageMetadata({
   title: 'الفيديوهات الإسلامية',
@@ -99,6 +100,33 @@ export default async function VideosPage() {
                 <div className="p-5 space-y-3 flex-1"><Badge variant="outline">مادة تعليمية</Badge><h2 className="text-lg font-bold text-brand-gold leading-snug group-hover:text-brand-goldSoft">{item.title}</h2><p className="text-sm leading-7 arabic-muted">{item.description}</p><span className="inline-flex text-sm text-brand-cream/80 group-hover:text-brand-gold">فتح المادة ←</span></div>
               </Card>
             </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-6" aria-labelledby="verified-video-guides">
+        <SectionHeader title="دليل الإنتاج المرئي الموثق" subtitle="محتوى موسع جاهز للتحويل إلى فيديو من ستة مسارات، مع فصل النص الأصلي عن الشرح التحريري وإظهار المراجع." />
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {VERIFIED_VIDEO_CONTENT.map((item) => (
+            <Card key={item.slug} className="h-full border-brand-gold/15 bg-black/20 p-5 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <Badge variant="outline">{item.category}</Badge>
+                <span className="text-xs text-brand-cream/40">{item.sources.length} مراجع</span>
+              </div>
+              <h2 className="text-xl font-bold leading-8 text-brand-gold">{item.title}</h2>
+              <p className="text-sm leading-7 text-brand-cream/70">{item.summary}</p>
+              <ul className="space-y-2 text-sm leading-6 text-brand-cream/60">
+                {item.learningPoints.map((point) => <li key={point} className="before:ml-2 before:text-brand-gold before:content-['•']">{point}</li>)}
+              </ul>
+              <div className="border-t border-brand-gold/10 pt-3">
+                <p className="mb-2 text-xs text-brand-cream/40">المصادر</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-2">
+                  {item.sources.map((source) => (
+                    <a key={source.url} href={source.url} target={source.url.startsWith('http') ? '_blank' : undefined} rel={source.url.startsWith('http') ? 'noopener noreferrer' : undefined} className="text-xs text-brand-gold underline decoration-brand-gold/30 underline-offset-4 hover:text-brand-goldSoft">{source.label}</a>
+                  ))}
+                </div>
+              </div>
+            </Card>
           ))}
         </div>
       </section>

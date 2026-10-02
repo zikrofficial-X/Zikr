@@ -21,8 +21,11 @@ export interface StaticArticle {
   views: number;
   created_at: string;
   tags: string[];
+  featured?: boolean;
   category_id?: string;
   metadata?: {
+    editorial?: boolean;
+    reviewedAt?: string;
     references?: ArticleReference[];
     source_urls?: string[];
   };
