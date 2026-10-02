@@ -28,7 +28,6 @@ const ALL_SECTIONS = [
   { key: 'reciters', label: 'قراء القرآن', href: '/reciters', desc: 'تلاوات القراء المميزين', group: 'الإعلام' },
   { key: 'radio', label: 'إذاعة القرآن', href: '/radio', desc: 'بث مباشر للقرآن', group: 'الإعلام' },
   { key: 'videos', label: 'الفيديوهات', href: '/videos', desc: 'فيديوهات دينية وتعليمية', group: 'الإعلام' },
-  { key: 'youtube', label: 'قناة يوتيوب', href: '/youtube', desc: 'رابط لقناة يوتيوب', group: 'الإعلام' },
   { key: 'tafsir', label: 'التفسير', href: '/tafsir', desc: 'تفسير آيات القرآن', group: 'الأساسيات' },
   { key: 'favorites', label: 'المفضلة', href: '/favorites', desc: 'المحتوى المحفوظ للمستخدم', group: 'تفاعلي' },
   { key: 'search', label: 'البحث الشامل', href: '/search', desc: 'بحث في كل محتوى الموقع', group: 'تفاعلي' },
