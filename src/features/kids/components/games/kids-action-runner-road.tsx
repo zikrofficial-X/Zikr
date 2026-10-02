@@ -704,7 +704,7 @@ export function ZikrRoadGame({
       const stageHazardInterval = Math.max(280, rules.hazardInterval / (0.9 + (levelMeta.pattern % 5) * 0.08));
       const stageStarInterval = Math.max(170, rules.starInterval / (0.95 + (levelMeta.pattern % 4) * 0.07));
 
-      let nextObjects = current.objects.map(object => ({
+      const nextObjects = current.objects.map(object => ({
         ...object,
         position: object.position + Math.max(0.85, stageSpeed * dt / 8),
       }));
