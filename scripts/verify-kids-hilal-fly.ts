@@ -69,9 +69,9 @@ if (!(easy.lives > normal.lives || easy.lives === normal.lives)) {
 }
 
 if (getHilalFlyLevels("hard").length !== LEVEL_COUNT) {
-  throw new Error("Hilal Fly hard mode must cover the complete six-level visual route.");
+  throw new Error("Hilal Fly hard mode must cover the complete 20-level visual route.");
 }
 
 console.log(
-  "Hilal Fly check passed: six-level visual route + real difficulty progression + dedicated runtime contract."
+  "Hilal Fly check passed: 20-level visual route + real difficulty progression + dedicated runtime contract."
 );
