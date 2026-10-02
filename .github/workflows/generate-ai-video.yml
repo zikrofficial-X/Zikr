@@ -1,5 +1,5 @@
 name: ZIKR Autonomous AI Video Worker
-# Validation trigger: verify provider Python binding, multi-provider AI generation, curated fallback, and publishing.
+# Validation trigger: full multi-provider AI generation, curated-source safety, rendering, Supabase queue, and social publishing.
 
 on:
   schedule:
