@@ -11,6 +11,11 @@ on:
         description: "Stage or milestone being released"
         required: true
         type: string
+  # One-shot release hook for the verified admin refactor. It is guarded by
+  # the exact release marker below and does not enable general auto-deploys.
+  workflow_run:
+    workflows: ["ZIKR Quality Gate"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -22,7 +27,18 @@ concurrency:
 jobs:
   release:
     name: Verify and deploy production
-    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'RELEASE'
+    if: >-
+      (
+        github.event_name == 'workflow_dispatch' &&
+        github.ref == 'refs/heads/main' &&
+        inputs.confirmation == 'RELEASE'
+      ) ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        contains(github.event.workflow_run.head_commit.message, 'ZIKR_ADMIN_RELEASE_20261002')
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 35
     environment:
@@ -35,7 +51,7 @@ jobs:
       - name: Checkout exact release commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -118,8 +134,8 @@ jobs:
           {
             echo "## ZIKR Production Release"
             echo ""
-            echo "- Stage: ${{ inputs.release_reason }}"
-            echo "- Commit: ${{ github.sha }}"
+            echo "- Stage: ${{ github.event_name == 'workflow_run' && 'إصدار لوحة الإدارة بعد بوابة الجودة' || inputs.release_reason }}"
+            echo "- Commit: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"
             echo "- Deployment: ${DEPLOYMENT_URL}"
             echo "- Quality gate: PASSED"
             echo "- Vercel Git auto-deploy: DISABLED"
