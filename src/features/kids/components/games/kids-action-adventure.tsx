@@ -860,7 +860,6 @@ export function MosqueAdventureGame({
     if (index !== position + 1 || index >= stationCount) return;
 
     setPosition(index);
-    setVisited(value => [...value, ADVENTURE_NODES[index].id]);
     setStars(value => value + 1);
     setScore(value => value + 300);
     setCombo(value => value + 1);
