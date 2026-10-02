@@ -28,8 +28,8 @@ import type { PrayerTimesResponse } from "@/features/prayer/services/prayer-time
 import { unlockAudioContext, isAudioUnlocked } from "@/lib/audio/spiritual-tones";
 import { usePrayerAlert, PRAYER_NAMES_AR } from "@/features/prayer/hooks/use-prayer-alert";
 import { resolveLocationLabel } from "@/lib/location/reverse-geocode";
+import { getSavedPrayerLocation, persistPrayerLocation } from "@/features/prayer/services/saved-prayer-location";
 
-const CAIRO = { lat: 30.0444, lon: 31.2357, city: "القاهرة (افتراضي)" };
 
 export function PrayerTimesPage() {
   const [prayerData, setPrayerData] = useState<PrayerTimesResponse | null>(null);
@@ -58,10 +58,14 @@ export function PrayerTimesPage() {
       if (data) {
         setPrayerData(data);
         setError(null);
-        try {
-          localStorage.setItem("zikr_prayer_location", JSON.stringify({ lat, lon, city, timings: data.data.timings, date: data.data.date, cachedAt: Date.now() }));
-          window.dispatchEvent(new Event("zikr:prayer-location-updated"));
-        } catch {}
+        await persistPrayerLocation({
+          city,
+          latitude: lat,
+          longitude: lon,
+          timezone: data.data.meta.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          isDefault: true,
+          updatedAt: new Date().toISOString(),
+        });
       } else {
         setError("فشل في جلب مواقيت الصلاة");
       }
@@ -115,12 +119,19 @@ export function PrayerTimesPage() {
     try {
       const data = await getPrayerTimesByCity(city);
       if (data) {
+        const latitude = data.data.meta.latitude;
+        const longitude = data.data.meta.longitude;
+        const timezone = data.data.meta.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
         setPrayerData(data);
-        setCurrentLocation({ lat: data.data.meta.latitude, lon: data.data.meta.longitude, city });
-        try {
-          localStorage.setItem("zikr_prayer_location", JSON.stringify({ lat: data.data.meta.latitude, lon: data.data.meta.longitude, city, timings: data.data.timings, date: data.data.date, cachedAt: Date.now() }));
-          window.dispatchEvent(new Event("zikr:prayer-location-updated"));
-        } catch {}
+        setCurrentLocation({ lat: latitude, lon: longitude, city });
+        await persistPrayerLocation({
+          city,
+          latitude,
+          longitude,
+          timezone,
+          isDefault: true,
+          updatedAt: new Date().toISOString(),
+        });
       } else {
         setError("لم يتم العثور على المدينة");
       }
@@ -145,20 +156,39 @@ export function PrayerTimesPage() {
   }, [prayerData]);
 
   useEffect(() => {
-    try {
-      const cached = localStorage.getItem("zikr_prayer_location");
-      if (cached) {
-        const parsed = JSON.parse(cached) as { lat: number; lon: number; city: string; timings: PrayerTimesResponse["data"]["timings"]; date: PrayerTimesResponse["data"]["date"] };
-        if (parsed.timings && parsed.date) {
-          setPrayerData({ code: 200, status: "OK", data: { timings: parsed.timings, date: parsed.date, meta: { latitude: parsed.lat, longitude: parsed.lon, timezone: "", method: { id: 4, name: "Cached", params: {} }, latitudeAdjustmentMethod: "", midnightMethod: "", school: "", offset: {} } } });
-          setCurrentLocation({ lat: parsed.lat, lon: parsed.lon, city: parsed.city });
+    let disposed = false;
+    void (async () => {
+      const saved = await getSavedPrayerLocation();
+      if (saved) {
+        setCurrentLocation({ lat: saved.latitude, lon: saved.longitude, city: saved.city });
+        const data = await getPrayerTimes(saved.latitude, saved.longitude);
+        if (!disposed && data) {
+          setPrayerData(data);
           setLoading(false);
+          setIsFetching(false);
+          setError(null);
+          const timezone = data.data.meta.timezone || saved.timezone;
+          if (timezone !== saved.timezone) {
+            await persistPrayerLocation({ ...saved, timezone, updatedAt: new Date().toISOString() });
+          }
+        } else if (!disposed) {
+          setLoading(false);
+          setIsFetching(false);
+          setError("تعذر تحديث مواقيت هذا الموقع الآن، لكن موقعك المحفوظ لم يتغير.");
         }
+        return;
       }
-    } catch {
-      // Ignore malformed/unavailable cache and fetch a fresh schedule below.
-    }
-    void requestLocation();
+
+      if (!disposed) {
+        // Only request device location for a first-time user. A saved location
+        // is authoritative and is never replaced automatically on reload.
+        await requestLocation();
+      }
+    })();
+
+    return () => {
+      disposed = true;
+    };
   }, [requestLocation]);
 
   const timings = prayerData?.data?.timings;

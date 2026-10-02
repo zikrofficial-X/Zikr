@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { convertTo12Hour, getPrayerTimes, getPrayerTimesByCity } from '@/features/prayer/services/prayer-times';
 import type { PrayerTimes } from '@/lib/types/prayer';
 import { resolveLocationLabel } from '@/lib/location/reverse-geocode';
+import { getSavedPrayerLocation, persistPrayerLocation, type SavedPrayerLocation } from '@/features/prayer/services/saved-prayer-location';
 
 type Locale = 'ar' | 'en';
 type Props = { locale: Locale; showPrayerTimes?: boolean };
@@ -92,11 +93,12 @@ function Clock({ locale }: { locale: Locale }) {
 function PrayerTimesPanel({ locale }: { locale: Locale }) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const [prayerTimes, setPrayerTimes] = useState<PrayerTimes | null>(null);
-  const [prayerCity, setPrayerCity] = useState(DEFAULT_CITY);
+  const [savedLocation, setSavedLocation] = useState<SavedPrayerLocation | null>(null);
   const [cityInput, setCityInput] = useState('');
   const [now, setNow] = useState(() => new Date());
   const [loading, setLoading] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [ready, setReady] = useState(false);
   const isEnglish = locale === 'en';
 
   useEffect(() => {
@@ -110,102 +112,117 @@ function PrayerTimesPanel({ locale }: { locale: Locale }) {
       setVisible(true);
       return;
     }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '500px 0px' },
-    );
-
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '500px 0px' });
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
 
-  const loadCity = useCallback(async (city: string) => {
-    setLoading(true);
-    try {
-      const cacheKey = `zikr:prayer:${city.toLowerCase()}`;
-      const cached = window.sessionStorage.getItem(cacheKey);
-
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached) as { at: number; timings: PrayerTimes };
-          if (Date.now() - parsed.at < 10 * 60 * 1000) {
-            setPrayerTimes(parsed.timings);
-            return;
-          }
-        } catch {
-          window.sessionStorage.removeItem(cacheKey);
-        }
-      }
-
-      const response = await getPrayerTimesByCity(city, 'Egypt');
-      if (!response?.data?.timings) return;
-
-      const timings = response.data.timings as PrayerTimes;
-      setPrayerTimes(timings);
-      window.sessionStorage.setItem(
-        cacheKey,
-        JSON.stringify({ at: Date.now(), timings }),
-      );
-    } catch {
-      // Keep the current UI usable when the prayer service is unavailable.
-    } finally {
-      setLoading(false);
-    }
+  const applyLocation = useCallback(async (location: SavedPrayerLocation, timings: PrayerTimes) => {
+    setSavedLocation(location);
+    setPrayerTimes(timings);
+    await persistPrayerLocation(location);
   }, []);
 
-  useEffect(() => {
-    if (!visible) return;
-
-    if (window.requestIdleCallback) {
-      const handle = window.requestIdleCallback(
-        () => void loadCity(DEFAULT_CITY),
-        { timeout: 1800 },
-      );
-      return () => window.cancelIdleCallback?.(handle);
+  const loadSavedLocation = useCallback(async () => {
+    const location = await getSavedPrayerLocation();
+    if (!location) {
+      setReady(true);
+      return false;
     }
 
-    const timer = window.setTimeout(() => void loadCity(DEFAULT_CITY), 500);
-    return () => window.clearTimeout(timer);
-  }, [loadCity, visible]);
+    setSavedLocation(location);
+    try {
+      const response = await getPrayerTimes(location.latitude, location.longitude);
+      if (response?.data?.timings) {
+        setPrayerTimes(response.data.timings as PrayerTimes);
+        const timezone = response.data.meta.timezone || location.timezone;
+        if (timezone !== location.timezone) {
+          await persistPrayerLocation({ ...location, timezone, updatedAt: new Date().toISOString() });
+        }
+      }
+    } catch {
+      // The saved location remains authoritative even if fetching today's schedule fails.
+    }
 
-  const chooseLocation = useCallback(() => {
-    if (!navigator.geolocation) return;
+    setReady(true);
+    return true;
+  }, []);
 
+  const chooseCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setReady(true);
+      return;
+    }
     setLoading(true);
     navigator.geolocation.getCurrentPosition(
       async ({ coords: { latitude, longitude } }) => {
         try {
           const response = await getPrayerTimes(latitude, longitude);
-          if (response?.data?.timings) {
-            setPrayerTimes(response.data.timings as PrayerTimes);
-          }
-
+          if (!response?.data?.timings) return;
           const label = await resolveLocationLabel(latitude, longitude);
-          setPrayerCity(label ?? (isEnglish ? 'Current location' : 'موقعك الحالي'));
-        } catch {
-          // Preserve the existing prayer times on lookup failure.
+          const location: SavedPrayerLocation = {
+            city: label ?? (isEnglish ? 'Current location' : 'موقعك الحالي'),
+            latitude,
+            longitude,
+            timezone: response.data.meta.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+            isDefault: true,
+            updatedAt: new Date().toISOString(),
+          };
+          await applyLocation(location, response.data.timings as PrayerTimes);
         } finally {
           setLoading(false);
+          setReady(true);
         }
       },
-      () => setLoading(false),
+      () => {
+        setLoading(false);
+        setReady(true);
+      },
       { timeout: 6000, maximumAge: 300000 },
     );
-  }, [isEnglish]);
+  }, [applyLocation, isEnglish]);
+
+  const loadCity = useCallback(async (city: string) => {
+    setLoading(true);
+    try {
+      const response = await getPrayerTimesByCity(city);
+      if (!response?.data?.timings) return;
+      const location: SavedPrayerLocation = {
+        city,
+        country: null,
+        latitude: response.data.meta.latitude,
+        longitude: response.data.meta.longitude,
+        timezone: response.data.meta.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+        isDefault: true,
+        updatedAt: new Date().toISOString(),
+      };
+      await applyLocation(location, response.data.timings as PrayerTimes);
+      setCityInput('');
+    } finally {
+      setLoading(false);
+      setReady(true);
+    }
+  }, [applyLocation]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let disposed = false;
+    void (async () => {
+      const found = await loadSavedLocation();
+      if (!found && !disposed) chooseCurrentLocation();
+    })();
+    return () => { disposed = true; };
+  }, [chooseCurrentLocation, loadSavedLocation, visible]);
 
   const submitCity = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const city = cityInput.trim();
     if (!city) return;
-
-    setPrayerCity(city);
-    setCityInput('');
     void loadCity(city);
   };
 
@@ -214,86 +231,39 @@ function PrayerTimesPanel({ locale }: { locale: Locale }) {
     : { active: null as MainPrayerKey | null, next: 'Fajr' as MainPrayerKey };
 
   return (
-    <section
-      ref={sectionRef}
-      className="mt-8 border-t border-brand-gold/10 pt-8 text-left"
-      aria-labelledby="prayer-times-heading"
-    >
+    <section ref={sectionRef} className="mt-8 border-t border-brand-gold/10 pt-8 text-left" aria-labelledby="prayer-times-heading">
       <div className="mx-auto w-full max-w-7xl">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div dir={isEnglish ? 'ltr' : 'rtl'}>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold/45">
-              {isEnglish ? 'Prayer Times' : 'مواقيت الصلاة'}
-            </p>
-            <h2 id="prayer-times-heading" className="text-2xl font-bold text-brand-gold">
-              {isEnglish ? "Today's Prayer Times" : 'أوقات الصلاة اليوم'}
-            </h2>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-brand-gold/45">{isEnglish ? 'Prayer Times' : 'مواقيت الصلاة'}</p>
+            <h2 id="prayer-times-heading" className="text-2xl font-bold text-brand-gold">{isEnglish ? "Today's Prayer Times" : 'أوقات الصلاة اليوم'}</h2>
             <p className="mt-1 text-sm text-brand-cream/40">
-              {prayerCity} · {loading ? (isEnglish ? 'Updating…' : 'جاري التحديث…') : isEnglish ? 'Cached for this visit' : 'محفوظة لهذه الزيارة'}
+              {savedLocation ? (
+                <>{savedLocation.city} · {isEnglish ? 'Saved for you' : 'محفوظة لموقعك'}</>
+              ) : ready ? (
+                isEnglish ? 'Choose your city or location' : 'اختر مدينتك أو موقعك'
+              ) : loading ? (
+                isEnglish ? 'Loading…' : 'جاري التحميل…'
+              ) : null}
             </p>
           </div>
-
-          <form
-            onSubmit={submitCity}
-            className="flex w-full gap-2 sm:w-auto"
-            dir={isEnglish ? 'ltr' : 'rtl'}
-          >
-            <input
-              value={cityInput}
-              onChange={(event) => setCityInput(event.target.value)}
-              placeholder={isEnglish ? 'City name' : 'اسم المدينة'}
-              aria-label={isEnglish ? 'City name' : 'اسم المدينة'}
-              className="min-w-0 flex-1 rounded-xl border border-brand-gold/15 bg-black/20 px-3 py-2 text-sm text-brand-cream outline-none focus:border-brand-gold/45 sm:w-36 sm:flex-none"
-            />
-            <button
-              type="submit"
-              className="rounded-xl border border-brand-gold/25 px-4 py-2 text-sm font-semibold text-brand-gold"
-            >
-              {isEnglish ? 'Change' : 'تغيير'}
-            </button>
-            <button
-              type="button"
-              onClick={chooseLocation}
-              className="rounded-xl border border-brand-gold/15 px-3 py-2 text-sm text-brand-cream/60"
-            >
-              {isEnglish ? 'My location' : 'موقعي'}
-            </button>
+          <form onSubmit={submitCity} className="flex w-full gap-2 sm:w-auto" dir={isEnglish ? 'ltr' : 'rtl'}>
+            <input value={cityInput} onChange={event => setCityInput(event.target.value)} placeholder={isEnglish ? 'City name' : 'اسم المدينة'} aria-label={isEnglish ? 'City name' : 'اسم المدينة'} className="min-w-0 flex-1 rounded-xl border border-brand-gold/15 bg-black/20 px-3 py-2 text-sm text-brand-cream outline-none focus:border-brand-gold/45 sm:w-36 sm:flex-none" />
+            <button type="submit" disabled={loading} className="rounded-xl border border-brand-gold/25 px-4 py-2 text-sm font-semibold text-brand-gold">{isEnglish ? 'Save city' : 'حفظ المدينة'}</button>
+            <button type="button" onClick={chooseCurrentLocation} disabled={loading} className="rounded-xl border border-brand-gold/15 px-3 py-2 text-sm text-brand-cream/60">{isEnglish ? 'Use my location' : 'استخدم موقعي'}</button>
           </form>
         </div>
-
         <div className="mt-5 grid grid-cols-2 gap-2 min-[360px]:grid-cols-3 md:grid-cols-6 md:gap-3">
           {prayerNames.map(({ key, ar, en }) => {
             const active = prayerState.active === key;
             const next = prayerState.next === key;
-            const value = prayerTimes?.[key]
-              ? convertTo12Hour(prayerTimes[key], !isEnglish)
-              : '--:--';
-
+            const value = prayerTimes?.[key] ? convertTo12Hour(prayerTimes[key], !isEnglish) : '--:--';
             return (
-              <div
-                key={key}
-                className={`min-h-[90px] rounded-2xl border p-3 text-center ${
-                  active
-                    ? 'border-brand-gold/60 bg-brand-gold/10'
-                    : next
-                      ? 'border-brand-gold/30 bg-brand-gold/5'
-                      : 'border-brand-gold/10 bg-black/15'
-                }`}
-              >
-                <p className="text-xs text-brand-gold/60" dir={isEnglish ? 'ltr' : 'rtl'}>
-                  {isEnglish ? en : ar}
-                </p>
+              <div key={key} className={active ? 'min-h-[90px] rounded-2xl border border-brand-gold/60 bg-brand-gold/10 p-3 text-center' : next ? 'min-h-[90px] rounded-2xl border border-brand-gold/30 bg-brand-gold/5 p-3 text-center' : 'min-h-[90px] rounded-2xl border border-brand-gold/10 bg-black/15 p-3 text-center'}>
+                <p className="text-xs text-brand-gold/60" dir={isEnglish ? 'ltr' : 'rtl'}>{isEnglish ? en : ar}</p>
                 <p className="mt-2 text-lg font-bold text-brand-cream tabular-nums">{value}</p>
-                {active && (
-                  <span className="mt-1 inline-block rounded-full bg-brand-gold/10 px-2 py-0.5 text-[10px] font-bold text-brand-gold">
-                    {isEnglish ? 'Now' : 'الآن'}
-                  </span>
-                )}
-                {!active && next && (
-                  <span className="mt-1 inline-block text-[10px] font-semibold text-brand-gold/45">
-                    {isEnglish ? 'Next' : 'التالية'}
-                  </span>
-                )}
+                {active && <span className="mt-1 inline-block rounded-full bg-brand-gold/10 px-2 py-0.5 text-[10px] font-bold text-brand-gold">{isEnglish ? 'Now' : 'الآن'}</span>}
+                {!active && next && <span className="mt-1 inline-block text-[10px] font-semibold text-brand-gold/45">{isEnglish ? 'Next' : 'التالية'}</span>}
               </div>
             );
           })}
