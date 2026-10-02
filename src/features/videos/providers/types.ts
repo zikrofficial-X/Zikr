@@ -45,7 +45,7 @@ export type VideoEngineConfig = {
   comfyUiEnabled: boolean;
   freeApiEnabled: boolean;
   hfWanEnabled: boolean;
-  hfLtx25Enabled: boolean;
+  hfLtxFastEnabled: boolean;
   dailyLimit: number;
   maxRetries: number;
   staleAfterMinutes: number;
@@ -57,7 +57,7 @@ export type VideoEngineConfig = {
 };
 
 const PROVIDERS: VideoProviderName[] = [
-  "hf_ltx25",
+  "hf_ltx_fast",
   "hf_wan",
   "comfyui",
   "free_api",
@@ -70,7 +70,7 @@ function bool(value: string | undefined, fallback: boolean) {
 }
 
 export function getVideoEngineConfig(env = process.env): VideoEngineConfig {
-  const order = (env.VIDEO_PROVIDER_ORDER ?? "hf_ltx25,hf_wan,comfyui,free_api")
+  const order = (env.VIDEO_PROVIDER_ORDER ?? "hf_ltx_fast,hf_wan,comfyui,free_api")
     .split(",")
     .map((value) => value.trim() as VideoProviderName)
     .filter(
@@ -79,12 +79,12 @@ export function getVideoEngineConfig(env = process.env): VideoEngineConfig {
     );
 
   return {
-    order: order.length ? order : ["hf_ltx25", "hf_wan", "comfyui", "free_api"],
+    order: order.length ? order : ["hf_ltx_fast", "hf_wan", "comfyui", "free_api"],
     aiEnabled: bool(env.VIDEO_AI_ENABLED, false),
     comfyUiEnabled: bool(env.COMFYUI_ENABLED, false),
     freeApiEnabled: bool(env.FREE_VIDEO_PROVIDER_ENABLED, false),
     hfWanEnabled: bool(env.HF_WAN_VIDEO_ENABLED, false),
-    hfLtx25Enabled: bool(env.HF_LTX25_VIDEO_ENABLED, false),
+    hfLtxFastEnabled: bool(env.HF_LTX_FAST_VIDEO_ENABLED, false),
     dailyLimit: Math.max(1, Number(env.VIDEO_DAILY_LIMIT ?? 10) || 10),
     maxRetries: Math.max(1, Number(env.VIDEO_MAX_RETRIES ?? 3) || 3),
     staleAfterMinutes: Math.max(
