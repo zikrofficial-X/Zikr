@@ -103,13 +103,15 @@ export function ZikrRoadGame({
 
   const [objects, setObjects] = useState<RoadObject[]>([]);
   const [lane, setLane] = useState(1);
+  const [mistakes, setMistakes] = useState(0);
+  const [completedCheckpoints, setCompletedCheckpoints] = useState(0);
   const [questionIndex, setQuestionIndex] = useState<number | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [feedback, setFeedback] = useState(
     "تحرك بين المسارات، اجمع النجوم، وتوقف عند محطات التعلم."
   );
   const [hud, setHud] = useState<WorldHud>(() =>
-    hudFromModel(modelRef.current, difficulty, rules.goalDistance)
+    hudFromModel(createModel(rules), difficulty, rules.goalDistance)
   );
 
   const syncHud = () => {
@@ -145,6 +147,8 @@ export function ZikrRoadGame({
     completionReportedRef.current = false;
     setObjects([]);
     setLane(1);
+    setMistakes(0);
+    setCompletedCheckpoints(0);
     setQuestionIndex(null);
     setSelectedAnswer(null);
     setFeedback(
@@ -238,6 +242,7 @@ export function ZikrRoadGame({
           setFeedback("نجمة! حافظ على التركيز واستمر في الطريق.");
         } else {
           model.mistakes += 1;
+          setMistakes(value => value + 1);
           model.combo = 0;
           model.score = Math.max(0, model.score - rules.mistakePenalty);
           onSound("miss");
@@ -323,6 +328,7 @@ export function ZikrRoadGame({
       setFeedback("إجابة صحيحة! افتح الطريق واستمر.");
     } else {
       model.mistakes += 1;
+      setMistakes(value => value + 1);
       model.combo = 0;
       model.score = Math.max(0, model.score - rules.mistakePenalty);
       onSound("miss");
@@ -336,6 +342,7 @@ export function ZikrRoadGame({
     timeoutRef.current = window.setTimeout(() => {
       model.questionOpen = false;
       model.checkpointIndex += 1;
+      setCompletedCheckpoints(value => value + 1);
       setQuestionIndex(null);
       setSelectedAnswer(null);
       syncHud();
@@ -416,7 +423,7 @@ export function ZikrRoadGame({
         {[
           ["النقاط", hud.score, "text-brand-gold"],
           ["النجوم", hud.collectibles, "text-brand-emerald"],
-          ["الأخطاء", modelRef.current.mistakes, "text-brand-cream"],
+          ["الأخطاء", mistakes, "text-brand-cream"],
           ["المسافة", hud.distance, "text-sky-200"],
           ["المستوى", hud.level, "text-violet-200"],
         ].map(([label, value, className]) => (
@@ -439,7 +446,7 @@ export function ZikrRoadGame({
           المسار الحالي: {lane + 1} / {LANE_COUNT}
         </span>
         <span>
-          المحطات التعليمية: {Math.min(hud.completed ? rules.checkpointDistances.length : modelRef.current.checkpointIndex, rules.checkpointDistances.length)} / {rules.checkpointDistances.length}
+          المحطات التعليمية: {Math.min(completedCheckpoints, rules.checkpointDistances.length)} / {rules.checkpointDistances.length}
         </span>
       </div>
 
@@ -499,7 +506,7 @@ export function ZikrRoadGame({
           <button
             type="button"
             onClick={() => moveLane(-1)}
-            disabled={paused || modelRef.current.questionOpen || modelRef.current.completed}
+            disabled={paused || questionIndex !== null || hud.completed}
             className="min-h-14 min-w-20 rounded-2xl border border-brand-cream/15 bg-black/25 px-5 text-2xl text-brand-cream transition hover:border-brand-gold disabled:opacity-40"
             aria-label="الانتقال إلى اليسار"
           >
@@ -514,7 +521,7 @@ export function ZikrRoadGame({
           <button
             type="button"
             onClick={() => moveLane(1)}
-            disabled={paused || modelRef.current.questionOpen || modelRef.current.completed}
+            disabled={paused || questionIndex !== null || hud.completed}
             className="min-h-14 min-w-20 rounded-2xl border border-brand-cream/15 bg-black/25 px-5 text-2xl text-brand-cream transition hover:border-brand-gold disabled:opacity-40"
             aria-label="الانتقال إلى اليمين"
           >
