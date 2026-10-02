@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type PointerEvent,
@@ -176,7 +175,7 @@ export function ZikrJumpGame({
   onSound,
 }: Props) {
   const rules = getZikrJumpRules(difficulty);
-  const levels = useMemo(() => getZikrJumpLevels(difficulty), [difficulty]);
+  const levels = getZikrJumpLevels(difficulty);
   const modelRef = useRef<JumpModel>(makeInitialModel(levels, rules));
   const inputRef = useRef({
     left: false,
