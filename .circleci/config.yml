@@ -64,6 +64,25 @@ jobs:
             pnpm verify
           no_output_timeout: 30m
 
+  supabase-production-gate:
+    docker:
+      - image: cimg/node:22.11.0
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Validate production Supabase runtime
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+              if [[ -z "${!name:-}" ]]; then
+                echo "::error::Missing required CircleCI production Supabase variable: $name"
+                exit 1
+              fi
+            done
+            node scripts/verify-supabase-production.mjs
+
   security-audit:
     docker:
       - image: cimg/node:22.11.0
@@ -426,6 +445,14 @@ workflows:
   build-and-release:
     jobs:
       - ci-check:
+          filters:
+            branches:
+              only: /.*/
+            tags:
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+      - supabase-production-gate:
+          requires:
+            - ci-check
           filters:
             branches:
               only: /.*/
