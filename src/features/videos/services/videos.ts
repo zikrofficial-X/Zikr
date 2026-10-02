@@ -4,6 +4,59 @@ import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/
 
 import type { VideoCategory, Video } from "@/features/videos/types/videos";
 import { FALLBACK_VIDEO_CATEGORIES, FALLBACK_VIDEOS } from "@/features/videos/data/fallback";
+import { defaultOgImage } from "@/lib/site";
+
+function resolveVideoMediaUrl(row: Record<string, unknown>): string | null {
+  const metadata =
+    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? (row.metadata as Record<string, unknown>)
+      : {};
+
+  const candidates = [
+    metadata.sourceVideoUrl,
+    metadata.generatedVideoUrl,
+    metadata.videoUrl,
+    metadata.video_url,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && /^https?:\/\//i.test(value.trim())) return value.trim();
+  }
+
+  const youtubeId = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
+  if (/^[A-Za-z0-9_-]{6,20}$/.test(youtubeId)) {
+    return `https://www.youtube.com/watch?v=${encodeURIComponent(youtubeId)}`;
+  }
+
+  return null;
+}
+
+function resolveVideoThumbnail(row: Record<string, unknown>): string {
+  const direct = typeof row.thumbnail_url === "string" ? row.thumbnail_url.trim() : "";
+  if (direct) return direct;
+
+  const metadata =
+    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? (row.metadata as Record<string, unknown>)
+      : {};
+
+  for (const key of ["thumbnailUrl", "thumbnail_url", "sourceThumbnailUrl", "generatedThumbnailUrl"]) {
+    const value = metadata[key];
+    if (typeof value === "string" && /^https?:\/\//i.test(value.trim())) return value.trim();
+  }
+
+  const youtubeId = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
+  if (/^[A-Za-z0-9_-]{6,20}$/.test(youtubeId)) {
+    return `https://i.ytimg.com/vi/${encodeURIComponent(youtubeId)}/hqdefault.jpg`;
+  }
+
+  return defaultOgImage;
+}
+
+
+function isPubliclyRenderableVideo(row: Record<string, unknown>): boolean {
+  return Boolean(resolveVideoMediaUrl(row));
+}
 
 // Videos
 export async function getVideoCategories(): Promise<VideoCategory[]> {
@@ -43,7 +96,7 @@ export async function getVideos(
     query += `&category_id=eq.${encodeURIComponent(categoryId)}`;
   }
 
-  query += `&limit=${safeLimit}`;
+  query += `&limit=${Math.min(100, safeLimit * 2)}`;
 
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
     query
@@ -53,14 +106,16 @@ export async function getVideos(
   });
 
   if (rows.length === 0) return fallback.slice(0, safeLimit);
+  const renderableRows = rows.filter(isPubliclyRenderableVideo);
+  if (renderableRows.length === 0) return fallback.slice(0, safeLimit);
 
-  return rows.map(r => ({
+  return renderableRows.slice(0, safeLimit).map(r => ({
     id: r.id as string,
     title: r.title as string,
     slug: r.slug as string,
     description: r.description as string | undefined,
     youtubeId: r.youtube_id as string | undefined,
-    thumbnailUrl: r.thumbnail_url as string | undefined,
+    thumbnailUrl: resolveVideoThumbnail(r),
     duration: (r.duration as number) || undefined,
     views: (r.views as number) || 0,
     published: r.published as boolean,
@@ -82,7 +137,9 @@ export async function getVideoBySlug(slug: string): Promise<Video | null> {
     return [];
   });
 
-  if (!rows.length) return FALLBACK_VIDEOS.find((video) => video.slug === slug.trim()) ?? null;
+  if (!rows.length || !isPubliclyRenderableVideo(rows[0])) {
+    return FALLBACK_VIDEOS.find((video) => video.slug === slug.trim()) ?? null;
+  }
   const r = rows[0];
 
   return {
@@ -91,7 +148,7 @@ export async function getVideoBySlug(slug: string): Promise<Video | null> {
     slug: r.slug as string,
     description: r.description as string | undefined,
     youtubeId: r.youtube_id as string | undefined,
-    thumbnailUrl: r.thumbnail_url as string | undefined,
+    thumbnailUrl: resolveVideoThumbnail(r),
     duration: (r.duration as number) || undefined,
     views: (r.views as number) || 0,
     published: r.published as boolean,
