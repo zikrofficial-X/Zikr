@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getReciters } from '@/features/quran/services/quran';
+import { getQuranReciters } from '@/features/quran/services/quran-client';
 import type { Reciter } from '@/features/quran/types/quran';
 import { surahs as FALLBACK_SURAHS } from '@/features/quran/data/fallback';
 import Link from 'next/link';
@@ -27,7 +27,7 @@ export default function ReciterPage() {
 
   useEffect(() => {
     let active = true;
-    getReciters().then((rows) => {
+    getQuranReciters().then((rows) => {
       if (!active) return;
       setReciter(rows.find((r) => r.id === slug || r.code === slug) ?? null);
       setLoading(false);

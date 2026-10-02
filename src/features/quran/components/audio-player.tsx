@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { type Reciter } from "@/features/quran/types/quran";
-import { getReciters } from "@/features/quran/services/quran";
+import { getQuranReciters } from "@/features/quran/services/quran-client";
 import { Button } from "@/components/ui/button";
 
 export function QuranAudioPlayer({
@@ -28,7 +28,7 @@ export function QuranAudioPlayer({
     let active = true;
     setIsClient(true);
     // Load reciters from service
-    getReciters()
+    getQuranReciters()
       .then(data => {
         if (!active) return;
         setAvailableReciters(data);
