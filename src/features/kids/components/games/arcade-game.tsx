@@ -14,6 +14,7 @@ export type ArcadeGameProps = {
     | "zikr-quiz"
     | "mosque-adventure"
     | "zikr-road"
+    | "hilal-fly"
     | "good-deeds"
     | "mosque-cleanup"
     | "zikr-coloring"
