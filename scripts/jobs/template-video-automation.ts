@@ -761,9 +761,9 @@ async function renderVideo(request: GeneratedRequest) {
     }
 
     const preferredProvider =
-      request.content.aiProviderHint === "hf_ltx25" ||
+      request.content.aiProviderHint === "hf_ltx_fast" ||
       request.content.aiProviderHint === "hf_wan"
-        ? (request.content.aiProviderHint as "hf_ltx25" | "hf_wan")
+        ? (request.content.aiProviderHint as "hf_ltx_fast" | "hf_wan")
         : undefined;
 
     if (
