@@ -16,7 +16,7 @@ if (!worker.includes("aiVisualPolicyPromptLine()")) failures.push("AI planner mu
 if (!worker.includes("sourceLocked: true")) failures.push("AI planning metadata must record source locking");
 if (!worker.includes("aiVisualPolicyVersion: AI_VISUAL_POLICY_VERSION")) failures.push("render metadata must record the AI visual policy version");
 if (!worker.includes('["quran", "hadith", "dua", "adhkar", "story"].includes(request.category)')) failures.push("verified source categories must all be marked sourceLocked");
-if (!worker.includes('ENGINE_CONFIG.aiEnabled')) failures.push("AI visual provider gate must remain configuration-controlled");
+if (!worker.includes("engineConfig().aiEnabled")) failures.push("AI visual provider gate must remain configuration-controlled");
 if (!worker.includes("AI_ATTEMPTS_PER_RUN")) failures.push("AI visual attempts must remain bounded per worker run");
 if (!worker.includes("source text")) failures.push("AI planner must operate from source text");
 if (!worker.includes("sourceLocked")) failures.push("AI planner must preserve source-lock semantics");
