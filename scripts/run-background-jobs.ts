@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+import { join } from "node:path";
 import {
   processTemplateVideoQueue,
   reconcileCompletedVideoSocialQueue,
@@ -7,6 +9,43 @@ import { processSocialPublishQueue } from "./jobs/social-publishing";
 
 const SOCIAL_PUBLISH_ENABLED = process.env.SOCIAL_PUBLISH_ENABLED !== "false";
 
+const EDGE_TTS_VERSION = "7.2.8";
+const TTS_VENV_DIR = process.env.ARABIC_TTS_VENV?.trim() || join(process.cwd(), ".tts-venv");
+
+function hasEdgeTts(python: string) {
+  try {
+    execFileSync(python, ["-c", "import edge_tts"], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function ensureArabicTtsRuntime() {
+  const configuredPython = process.env.ARABIC_TTS_PYTHON?.trim();
+  if (configuredPython && hasEdgeTts(configuredPython)) {
+    return;
+  }
+
+  const venvPython = join(TTS_VENV_DIR, "bin", "python3");
+  if (!hasEdgeTts(venvPython)) {
+    console.log(`[background-jobs] Arabic TTS runtime missing; bootstrapping edge-tts==${EDGE_TTS_VERSION} in ${TTS_VENV_DIR}.`);
+    execFileSync("python3", ["-m", "venv", TTS_VENV_DIR], { stdio: "inherit" });
+    execFileSync(
+      venvPython,
+      ["-m", "pip", "install", "--disable-pip-version-check", "--no-cache-dir", `edge-tts==${EDGE_TTS_VERSION}`],
+      { stdio: "inherit" },
+    );
+  }
+
+  if (!hasEdgeTts(venvPython)) {
+    throw new Error(`Arabic TTS runtime could not be initialized at ${venvPython}.`);
+  }
+
+  process.env.ARABIC_TTS_PYTHON = venvPython;
+  console.log(`[background-jobs] Arabic TTS ready: ${venvPython} (edge-tts ${EDGE_TTS_VERSION}).`);
+}
+
 function validateRequiredEnv() {
   const required = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"];
   for (const key of required) {
@@ -15,6 +54,7 @@ function validateRequiredEnv() {
 }
 
 async function processVideos() {
+  ensureArabicTtsRuntime();
   const seeded = await seedAutomatedVideoRequests();
   console.log(`[background-jobs] Seeded ${seeded} free Quran video request(s).`);
   const result = await processTemplateVideoQueue();

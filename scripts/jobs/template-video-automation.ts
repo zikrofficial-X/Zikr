@@ -11,6 +11,9 @@ const execFileAsync = promisify(execFile);
 const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 1));
 const VIDEO_SECONDS = Math.min(30, Math.max(8, Number(process.env.AUTO_VIDEO_SECONDS ?? 14)));
 const ARABIC_TTS_VOICE = process.env.ARABIC_TTS_VOICE ?? "ar-SA-ZariyahNeural";
+function getArabicTtsPython() {
+  return process.env.ARABIC_TTS_PYTHON?.trim() || "python3";
+}
 
 type QuranRow = {
   surah_id: number;
@@ -475,12 +478,19 @@ async function renderVideo(request: GeneratedRequest) {
       await writeFile(audioPath, bytes);
       args.push("-i", audioPath);
     } else {
-      await execFileAsync("python3", [
-        "scripts/generate-arabic-voice.py",
-        "--text", text,
-        "--output", audioPath,
-        "--voice", ARABIC_TTS_VOICE,
-      ], { maxBuffer: 4 * 1024 * 1024 });
+      try {
+        await execFileAsync(getArabicTtsPython(), [
+          "scripts/generate-arabic-voice.py",
+          "--text", text,
+          "--output", audioPath,
+          "--voice", ARABIC_TTS_VOICE,
+        ], { maxBuffer: 4 * 1024 * 1024 });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(
+          `Arabic TTS failed (python=${getArabicTtsPython()}, voice=${ARABIC_TTS_VOICE}): ${message}`,
+        );
+      }
       audioKind = "arabic_tts_narration";
       args.push("-i", audioPath);
     }

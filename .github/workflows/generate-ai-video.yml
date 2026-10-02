@@ -115,6 +115,18 @@ jobs:
           echo "rsvg-convert: $(rsvg-convert --version 2>&1 | head -n 1)"
           echo "Arabic fonts: Noto Naskh Arabic + Noto Sans Arabic available"
 
+      - name: Install and verify Arabic TTS runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3-venv
+          python3 -m venv "$GITHUB_WORKSPACE/.tts-venv"
+          "$GITHUB_WORKSPACE/.tts-venv/bin/python" -m pip install --quiet --disable-pip-version-check --no-cache-dir "edge-tts==7.2.8"
+          echo "$GITHUB_WORKSPACE/.tts-venv/bin" >> "$GITHUB_PATH"
+          "$GITHUB_WORKSPACE/.tts-venv/bin/python" -c 'import edge_tts; print("edge-tts import: OK")'
+          "$GITHUB_WORKSPACE/.tts-venv/bin/edge-tts" --version
+
       - name: Smoke-test video worker imports
         run: |
           set -euo pipefail
