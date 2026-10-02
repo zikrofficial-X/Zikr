@@ -7,6 +7,7 @@ import {
   supabaseServerAdminCount,
   supabaseServerAdminRequest,
 } from "../../src/lib/supabase/admin-rest";
+import { resolveVideoSource } from "../../src/features/videos/services/video-sources";
 
 const execFileAsync = promisify(execFile);
 const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 1));
@@ -76,13 +77,6 @@ const DEFAULT_AI_VIDEO_PLAN: AiVideoPlan = {
   socialCaption: "",
   scene: "calm",
   motion: "slow",
-};
-
-const AI_SCENE_COLORS: Record<AiVideoPlan["scene"], string> = {
-  calm: "0x081D1A",
-  dawn: "0x173C34",
-  night: "0x0C1528",
-  gold: "0x2A2110",
 };
 
 function siteUrl() {
@@ -247,13 +241,15 @@ function makeAss(
 async function getQuranRow(index: number): Promise<QuranRow> {
   const total = await supabaseServerAdminCount("quran_ayahs");
   if (!total) throw new Error("quran_ayahs is empty; cannot create an automatic video.");
-  const offset = index % total;
-  const rows = await supabaseServerAdminRequest<QuranRow[]>(
-    `/rest/v1/quran_ayahs?select=surah_id,ayah_number,text_ar,text_uthmani,audio_url&order=surah_id.asc,ayah_number.asc&offset=${offset}&limit=1`,
-  );
-  const row = rows?.[0];
-  if (!row) throw new Error(`No Quran ayah found at offset ${offset}.`);
-  return row;
+  for (let attempt = 0; attempt < Math.min(total, 40); attempt += 1) {
+    const offset = (index + attempt * 97) % total;
+    const rows = await supabaseServerAdminRequest<QuranRow[]>(
+      `/rest/v1/quran_ayahs?select=surah_id,ayah_number,text_ar,text_uthmani,audio_url&order=surah_id.asc,ayah_number.asc&offset=${offset}&limit=1`,
+    );
+    const row = rows?.[0];
+    if (row && (row.text_uthmani || row.text_ar).length <= 300) return row;
+  }
+  throw new Error("No short Quran ayah is available for an automated social video.");
 }
 async function getSurahName(surahId: number) {
   const rows = await supabaseServerAdminRequest<Array<{ name_ar: string }>>(
@@ -263,27 +259,21 @@ async function getSurahName(surahId: number) {
 }
 
 async function getHadithRow(index: number): Promise<HadithRow> {
-  const total = await supabaseServerAdminCount("hadiths");
-  if (!total) throw new Error("hadiths is empty; cannot create an automatic hadith video.");
-  const offset = index % total;
   const rows = await supabaseServerAdminRequest<HadithRow[]>(
-    `/rest/v1/hadiths?select=id,hadith_number,text_ar,grade_ar,ref&published=eq.true&order=created_at.asc&offset=${offset}&limit=1`,
+    "/rest/v1/hadiths?select=id,hadith_number,text_ar,grade_ar,ref&published=eq.true&grade_ar=not.is.null&order=created_at.asc&limit=500",
   );
-  const row = rows?.[0];
-  if (!row) throw new Error(`No published hadith found at offset ${offset}.`);
-  return row;
+  const eligible = (rows ?? []).filter((row) => row.text_ar.trim().length >= 12 && row.text_ar.length <= 360 && row.grade_ar?.trim());
+  if (!eligible.length) throw new Error("No short published hadith with a recorded grade is available.");
+  return eligible[index % eligible.length];
 }
 
 async function getDuaRow(index: number): Promise<DuaRow> {
-  const total = await supabaseServerAdminCount("duas");
-  if (!total) throw new Error("duas is empty; cannot create an automatic dua video.");
-  const offset = index % total;
   const rows = await supabaseServerAdminRequest<DuaRow[]>(
-    `/rest/v1/duas?select=id,slug,title_ar,text_ar,occasion_ar,source_ar&published=eq.true&order=created_at.asc&offset=${offset}&limit=1`,
+    "/rest/v1/duas?select=id,slug,title_ar,text_ar,occasion_ar,source_ar&published=eq.true&source_ar=not.is.null&order=created_at.asc&limit=500",
   );
-  const row = rows?.[0];
-  if (!row) throw new Error(`No published dua found at offset ${offset}.`);
-  return row;
+  const eligible = (rows ?? []).filter((row) => row.text_ar.trim().length >= 8 && row.text_ar.length <= 360 && row.source_ar?.trim());
+  if (!eligible.length) throw new Error("No short published dua with a recorded source is available.");
+  return eligible[index % eligible.length];
 }
 
 async function findByAutomationKey(table: string, key: string) {
@@ -320,6 +310,7 @@ export async function seedAutomatedVideoRequests() {
           renderer: "template",
           type: "quran",
           sourceType: "quran",
+          sourceId: `quran:${row.surah_id}:${row.ayah_number}`,
           sourceUrl,
           sourceLabel: `القرآن الكريم — ${surahName}، الآية ${row.ayah_number}`,
           surahId: row.surah_id,
@@ -347,6 +338,7 @@ export async function seedAutomatedVideoRequests() {
           renderer: "template",
           type: "hadith",
           sourceType: "hadith",
+          sourceId: row.id,
           sourceUrl,
           sourceLabel: `السنة النبوية — المرجع ${row.ref || row.hadith_number || "متاح في قاعدة البيانات"}`,
           textAr: row.text_ar,
@@ -372,6 +364,7 @@ export async function seedAutomatedVideoRequests() {
           renderer: "template",
           type: "dua",
           sourceType: "dua",
+          sourceId: row.id,
           sourceUrl,
           sourceLabel: row.source_ar || "دعاء من مكتبة ذِكر",
           textAr: row.text_ar,
@@ -456,6 +449,7 @@ function parseGeminiJson(raw: string): unknown {
 }
 
 async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPlan> {
+  if (request.category === "other") return { ...DEFAULT_AI_VIDEO_PLAN };
   if (!aiPlanEnabled()) return { ...DEFAULT_AI_VIDEO_PLAN };
   const sourceText = contentText(request).slice(0, 5000);
   if (!sourceText) return { ...DEFAULT_AI_VIDEO_PLAN };
@@ -510,25 +504,38 @@ function contentAudioUrl(request: GeneratedRequest) {
   return typeof value === "string" && /^https:\/\//i.test(value.trim()) ? value.trim() : "";
 }
 function contentAudioKind(request: GeneratedRequest, audioUrl: string) {
+  if (request.content?.audioSource === "human_recording") return "user_supplied_human_recording";
   if (audioUrl) return request.category === "quran" ? "verified_quran_recitation" : "source_audio";
   return "arabic_tts_narration";
 }
 
-function validateSourceContent(request: GeneratedRequest) {
+async function validateSourceContent(request: GeneratedRequest) {
   const content = request.content || {};
   const text = contentText(request);
   if (!text) throw new Error("Template video requires text/script/narration content.");
-  if (request.category === "quran") {
-    const sourceType = typeof content.sourceType === "string" ? content.sourceType : "";
-    const surahId = Number(content.surahId);
-    const ayahNumber = Number(content.ayahNumber);
-    const sourceUrl = typeof content.sourceUrl === "string" ? content.sourceUrl : "";
-    if (sourceType !== "quran" || !Number.isInteger(surahId) || surahId < 1 || surahId > 114 || !Number.isInteger(ayahNumber) || ayahNumber < 1 || !sourceUrl) {
-      throw new Error("Quran video rejected: verified surah, ayah, and source URL are required. Generic placeholder scripts are not publishable as Quran content.");
+  if (["quran", "hadith", "dua", "adhkar", "story"].includes(request.category)) {
+    let sourceId = typeof content.sourceId === "string" ? content.sourceId : "";
+    if (request.category === "quran" && !sourceId) {
+      const surahId = Number(content.surahId);
+      const ayahNumber = Number(content.ayahNumber);
+      if (Number.isInteger(surahId) && Number.isInteger(ayahNumber)) sourceId = `quran:${surahId}:${ayahNumber}`;
     }
+    if (!sourceId) throw new Error(`${request.category} video rejected: a selected, published source is required.`);
+    const source = await resolveVideoSource(request.category, sourceId);
+    if (!source) throw new Error(`${request.category} video rejected: source is missing, unpublished, unreferenced, or has no recorded grade.`);
+    if (text !== source.text) throw new Error(`${request.category} video rejected: narration does not exactly match the current published source text.`);
+    request.content = {
+      ...content,
+      sourceId: source.id,
+      sourceType: request.category,
+      sourceUrl: source.sourceUrl,
+      sourceLabel: source.sourceLabel,
+      textAr: source.text,
+      text: source.text,
+      ...(source.grade ? { gradeAr: source.grade } : {}),
+      ...(source.audioUrl ? { audioUrl: source.audioUrl } : {}),
+    };
   }
-  if (request.category === "hadith" && text.length < 12) throw new Error("Hadith video rejected: source text is too short.");
-  if (request.category === "dua" && text.length < 8) throw new Error("Dua video rejected: source text is too short.");
 }
 
 async function getVerifiedQuranAyahAudioUrl(surahId: number, ayahNumber: number) {
@@ -562,6 +569,17 @@ async function assertPlayableOutput(outputPath: string, expectedWidth: number, e
   if (Number.isFinite(bitrate) && bitrate > 0 && bitrate < 350_000) throw new Error("Rendered output video bitrate is too low: " + bitrate + "bps.");
 }
 
+async function assertAudibleAudio(pathname: string) {
+  const { stderr } = await execFileAsync("ffmpeg", [
+    "-hide_banner", "-i", pathname, "-vn", "-af", "volumedetect", "-f", "null", "-",
+  ], { maxBuffer: 4 * 1024 * 1024 });
+  const maximum = stderr.match(/max_volume:\s*(-?\d+(?:\.\d+)?)\s*dB/i);
+  const peakDb = maximum ? Number(maximum[1]) : Number.NEGATIVE_INFINITY;
+  if (!Number.isFinite(peakDb) || peakDb < -50) {
+    throw new Error("Rendered audio is silent or too quiet; refusing to mark the video complete.");
+  }
+}
+
 function requestedVideoShape(request: GeneratedRequest) {
   const resolution = request.content?.resolution;
   if (typeof resolution === "string" && /^\d+x\d+$/.test(resolution)) return resolution;
@@ -569,7 +587,7 @@ function requestedVideoShape(request: GeneratedRequest) {
 }
 
 async function renderVideo(request: GeneratedRequest) {
-  validateSourceContent(request);
+  await validateSourceContent(request);
   const text = contentText(request);
   const sourceUrl = contentSourceUrl(request);
   const [width, height] = requestedVideoShape(request).split("x").map(Number);
@@ -648,6 +666,7 @@ async function renderVideo(request: GeneratedRequest) {
     const cardW = width - cardX * 2;
     const cardH = Math.round(height * 0.46);
     const filter = [
+      `zoompan=z='min(zoom+0.00018,1.075)':d=1:s=${width}x${height}:fps=30`,
       "drawbox=x=" + cardX + ":y=" + cardY + ":w=" + cardW + ":h=" + cardH + ":color=0x06110D@0.58:t=fill",
       "drawbox=x=" + cardX + ":y=" + cardY + ":w=" + cardW + ":h=" + cardH + ":color=0xEFD39A@0.18:t=2",
       "eq=contrast=1.05:saturation=0.94:brightness=0.00",
@@ -673,6 +692,7 @@ async function renderVideo(request: GeneratedRequest) {
     ];
     await execFileAsync("ffmpeg", args, { maxBuffer: 4 * 1024 * 1024 });
     await assertPlayableOutput(outputPath, width, height);
+    await assertAudibleAudio(outputPath);
 
     const bytes = await readFile(outputPath);
     const storageKey = request.automation_key || request.id;
