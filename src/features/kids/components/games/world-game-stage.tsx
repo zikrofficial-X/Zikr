@@ -151,6 +151,6 @@ export function WorldGameStage(props: WorldGameStageProps) {
     case "zikr-coloring":
       return <ZikrColoringGame {...common} />;
     default:
-      return <div className="rounded-2xl border border-rose-300/20 bg-rose-300/10 p-6 text-center text-rose-100">{onError("اللعبة غير متاحة حاليًا.")}</div>;
+      return <div className="rounded-2xl border border-rose-300/20 bg-rose-300/10 p-6 text-center text-rose-100">اللعبة غير متاحة حاليًا.</div>;
   }
 }
