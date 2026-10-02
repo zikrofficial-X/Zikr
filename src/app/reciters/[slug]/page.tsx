@@ -27,7 +27,7 @@ export default function ReciterPage() {
 
   useEffect(() => {
     let active = true;
-    getReciters().then((rows) => {
+    getQuranReciters().then((rows) => {
       if (!active) return;
       setReciter(rows.find((r) => r.id === slug || r.code === slug) ?? null);
       setLoading(false);
