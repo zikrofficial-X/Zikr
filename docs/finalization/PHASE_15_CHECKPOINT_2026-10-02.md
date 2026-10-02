@@ -1,31 +1,28 @@
-# Phase 15 Checkpoint — Kids Production Integrity
+# Phase 15 Checkpoint — Admin Video Factory
 ## ZIKR Finalization — 2026-10-02
 
 ### Status
 
-**IN PROGRESS — implementation applied; final source execution gate pending.**
+**IN PROGRESS — implementation applied; final source gate pending.**
 
 ### Completed
 
-- [x] Audited the live Kids Games database.
-- [x] Confirmed 12 published games and 9 game-result rows.
-- [x] Confirmed no negative score/duration/XP values in the audited result columns.
-- [x] Confirmed the frontend's canonical visual source is the TypeScript registry, not the empty DB cover/icon fields.
-- [x] Added `scripts/verify-kids-production.mjs`.
-- [x] Wired `kids:production:check` into `verify` and `verify:pr`.
-- [x] Preserved existing detailed Kids game verification.
-- [x] No production DB mutation performed.
+- [x] Audited admin video studio and queue APIs.
+- [x] Audited admin permissions and route guards.
+- [x] Added optimistic concurrency to video generation claims.
+- [x] Added optimistic concurrency to admin publish retry.
+- [x] Added audio file signature validation.
+- [x] Preserved source locking for Quran/hadith/story/dua/adhkar.
+- [x] Preserved dedicated human-narration storage boundary.
+- [x] Added Admin Video Factory regression guard.
+- [x] No production data mutation.
 
 ### Gate
 
-- [ ] `kids:production:check` executes successfully in a real project checkout.
+- [ ] `admin:video:check` passes against the exact branch sources.
 - [ ] Existing `verify:pr` passes.
-- [ ] Registry TypeScript suppression is resolved in a dedicated type-safety phase.
-
-### Known data-model debt
-
-All 12 `kids_games` rows currently have empty `cover_url` and `icon_url`. This is not treated as a rendering defect because the current public UI generates deterministic game art from the canonical registry. These fields should be either populated from an approved asset pipeline or explicitly deprecated in a later schema-cleanup phase.
+- [ ] No DB migration is required.
 
 ### Release rule
 
-Do not treat Phase 15 as fully closed until the new gate and the repository-wide quality gate execute successfully. The GitHub Actions observability limitation remains documented and must not be interpreted as a passing CI result.
+Do not promote Phase 16 until the Admin Video Factory code gate is green. Project-wide CI remains subject to the existing GitHub Actions observability exception.
