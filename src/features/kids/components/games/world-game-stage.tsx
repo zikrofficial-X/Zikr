@@ -26,6 +26,7 @@ import type {
   ZikrRunnerScene,
 } from "@/lib/games/zikr-runner/runner-scene";
 import { ToneFeedback, type GameSoundEvent } from "@/lib/games/tone-feedback";
+import { ZikrMemoryGame } from "@/features/kids/components/games/zikr-memory-game";
 
 export type WorldHud = {
   score: number;
@@ -217,7 +218,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
     onResult,
     onSound: playLocalSound,
   };
-  if (gameId === "zikr-memory") return <MemoryGame {...localProps} />;
+  if (gameId === "zikr-memory") return <ZikrMemoryGame {...localProps} />;
   if (gameId === "wudu-challenge") return <OrderingGame {...localProps} />;
   if (gameId === "verse-puzzle") return <VersePuzzleGame {...localProps} />;
   if (gameId === "zikr-quiz") return <QuizGame {...localProps} />;
@@ -234,119 +235,6 @@ type LocalGameProps = {
   onResult: (result: WorldHud) => void;
   onSound: (event: GameSoundEvent) => void;
 };
-
-const SYMBOLS = ["✦", "☾", "◇", "⌂", "◌", "○"];
-
-function MemoryGame({
-  difficulty,
-  restartToken,
-  paused,
-  onHud,
-  onResult,
-  onSound,
-}: LocalGameProps) {
-  const pairCount = difficulty === "hard" ? 6 : difficulty === "normal" ? 5 : 4;
-  const [cards, setCards] = useState(() => createMemoryCards(pairCount));
-  const [flipped, setFlipped] = useState<number[]>([]);
-  const [matched, setMatched] = useState<number[]>([]);
-  const [moves, setMoves] = useState(0);
-  const [combo, setCombo] = useState(0);
-  const [startedAt, setStartedAt] = useState(Date.now());
-  const completedRef = useRef(false);
-
-  useEffect(() => {
-    setCards(createMemoryCards(pairCount));
-    setFlipped([]);
-    setMatched([]);
-    setMoves(0);
-    setCombo(0);
-    setStartedAt(Date.now());
-    completedRef.current = false;
-  }, [pairCount, restartToken]);
-
-  useEffect(() => {
-    if (paused || flipped.length !== 2) return;
-    const [first, second] = flipped;
-    const isMatch = cards[first]?.symbol === cards[second]?.symbol;
-    const timer = window.setTimeout(
-      () => {
-        setMoves(value => value + 1);
-        if (isMatch) {
-          onSound("collect");
-          setMatched(value => [...value, first, second]);
-          setCombo(value => value + 1);
-        } else {
-          onSound("miss");
-          setCombo(0);
-        }
-        setFlipped([]);
-      },
-      isMatch ? 180 : 700
-    );
-    return () => window.clearTimeout(timer);
-  }, [cards, flipped, onSound, paused]);
-
-  useEffect(() => {
-    const score = Math.max(0, matched.length * 120 + combo * 25 - moves * 8);
-    const hud = {
-      score,
-      collectibles: matched.length / 2,
-      distance: 0,
-      combo,
-      level: 1,
-      completed: matched.length === cards.length,
-    };
-    onHud(hud);
-    if (hud.completed && !completedRef.current) {
-      completedRef.current = true;
-      onResult({
-        ...hud,
-        score:
-          score +
-          Math.max(0, 600 - Math.floor((Date.now() - startedAt) / 1000) * 5),
-      });
-    }
-  }, [cards.length, combo, matched.length, moves, onHud, onResult, startedAt]);
-
-  const flip = (index: number) => {
-    if (
-      paused ||
-      flipped.length >= 2 ||
-      matched.includes(index) ||
-      flipped.includes(index)
-    )
-      return;
-    onSound("move");
-    setFlipped(value => [...value, index]);
-  };
-  return (
-    <div
-      className="grid grid-cols-4 gap-3 rounded-2xl border border-brand-gold/30 bg-[#071b24] p-5"
-      aria-label="بطاقات ذاكرة ذِكر"
-    >
-      {cards.map((card, index) => {
-        const visible = flipped.includes(index) || matched.includes(index);
-        return (
-          <button
-            key={card.id}
-            type="button"
-            onClick={() => flip(index)}
-            aria-label={visible ? `بطاقة ${card.symbol}` : "بطاقة مخفية"}
-            className={`aspect-square rounded-xl border text-3xl transition ${visible ? "border-brand-gold bg-brand-gold/20 text-brand-gold" : "border-brand-emerald/30 bg-brand-emerald/10 text-brand-cream/50 hover:border-brand-gold"}`}
-          >
-            {visible ? card.symbol : "?"}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function createMemoryCards(pairCount: number) {
-  return [...SYMBOLS.slice(0, pairCount), ...SYMBOLS.slice(0, pairCount)]
-    .sort(() => Math.random() - 0.5)
-    .map((symbol, index) => ({ id: `${symbol}-${index}`, symbol }));
-}
 
 function OrderingGame({
   difficulty,

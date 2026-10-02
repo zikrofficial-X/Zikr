@@ -56,3 +56,35 @@ export function getApprovedScenarioQuestions(): VerifiedQuizQuestion[] {
     sourceSlug: source?.slug ?? "quiz-akhlaq-adventure",
   }));
 }
+
+
+export type VerifiedMemoryPair = {
+  id: string;
+  situation: string;
+  dhikr: string;
+  text: string;
+  pairId: string;
+};
+
+export function getVerifiedMemoryPairs(): VerifiedMemoryPair[] {
+  const source = kidsContent.find(item => item.slug === "game-memory-dhikr-cards");
+  if (!source?.content_ar) return [];
+
+  const pairsSection = source.content_ar.match(/الأزواج المقترحة:\s*(.+?)\s*(?:طريقة اللعب:|$)/s)?.[1];
+  if (!pairsSection) return [];
+
+  return pairsSection
+    .split("،")
+    .map((entry, index) => {
+      const [situation, dhikr] = entry.split("/").map(value => value.trim());
+      if (!situation || !dhikr) return null;
+      return {
+        id: `memory-${index + 1}`,
+        pairId: `memory-${index + 1}`,
+        situation,
+        dhikr,
+        text: situation,
+      };
+    })
+    .filter((pair): pair is VerifiedMemoryPair => Boolean(pair));
+}
