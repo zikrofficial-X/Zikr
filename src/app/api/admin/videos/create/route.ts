@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { createVideoGenerationRequest } from "@/features/videos/services/video-automation";
 import { resolveVideoSource } from "@/features/videos/services/video-sources";
+import { resolveCuratedVideoSource } from "@/features/videos/data/curated-content";
 
 const VALID_CATEGORIES = [
   "quran",
@@ -104,7 +105,9 @@ export async function POST(request: NextRequest) {
         );
       }
       source = await resolveVideoSource(category, sourceId);
-      if (!source) {
+      if (!source)
+        source = resolveCuratedVideoSource(sourceId) as typeof source;
+      if (!source || source.category !== category) {
         return NextResponse.json(
           {
             error:

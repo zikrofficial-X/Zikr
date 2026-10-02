@@ -21,19 +21,7 @@ const themeClasses: Record<string, string> = {
   lime: "from-lime-400/25 via-green-500/10 to-transparent",
   fuchsia: "from-fuchsia-400/25 via-pink-500/10 to-transparent",
 };
-const themeArt: Record<string, string> = {
-  emerald: "/kids/games/scene-night-garden.png",
-  gold: "/kids/games/scene-night-garden.png",
-  sky: "/kids/games/scene-mosque-courtyard.png",
-  violet: "/kids/games/scene-moon-sky.png",
-  blue: "/kids/games/scene-moon-sky.png",
-  teal: "/kids/games/scene-mosque-courtyard.png",
-  amber: "/kids/games/scene-moon-sky.png",
-  rose: "/kids/games/scene-mosque-courtyard.png",
-  indigo: "/kids/games/scene-moon-sky.png",
-  lime: "/kids/games/scene-night-garden.png",
-  fuchsia: "/kids/games/scene-night-garden.png",
-};
+
 
 type ProgressResponse = { games?: Array<{ gameId: string; bestScore: number }> };
 

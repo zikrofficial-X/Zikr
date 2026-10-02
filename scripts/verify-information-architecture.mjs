@@ -2,16 +2,16 @@ import { readFile, access } from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-const failures: string[] = [];
-const notes: string[] = [];
+const failures = [];
+const notes = [];
 
-async function exists(relativePath: string) {
+async function exists(relativePath) {
   try { await access(path.join(root, relativePath)); return true; } catch { return false; }
 }
-async function read(relativePath: string) { return readFile(path.join(root, relativePath), 'utf8'); }
-function unique(values: string[]) { return [...new Set(values)]; }
-function extractQuoted(text: string, pattern: RegExp) {
-  const values: string[] = [];
+async function read(relativePath) { return readFile(path.join(root, relativePath), 'utf8'); }
+function unique(values) { return [...new Set(values)]; }
+function extractQuoted(text, pattern) {
+  const values = [];
   for (const match of text.matchAll(pattern)) if (match[1]) values.push(match[1]);
   return values;
 }
@@ -32,7 +32,7 @@ const service = await read('src/features/articles/services/articles.ts');
 if (!service.includes('extended-editorial')) failures.push('خدمة المقالات لا تستورد حزمة المحتوى التحريري الموسعة.');
 
 const extended = await read('src/features/articles/data/extended-editorial.ts');
-const ids = extractQuoted(extended, /id:\s*['"]([^'"]+)['"]/g);
+const ids = [...extended.matchAll(/makeArticle\(\{\s*id:\s*['"]([^'"]+)['"]/g)].map(match => match[1]);
 const slugs = extractQuoted(extended, /slug:\s*['"]([^'"]+)['"]/g);
 const duplicateIds = ids.filter((value,index)=>ids.indexOf(value)!==index);
 const duplicateSlugs = slugs.filter((value,index)=>slugs.indexOf(value)!==index);
@@ -51,7 +51,7 @@ if (!homeInteractive.includes('getSavedPrayerLocation')) failures.push('Home pra
 if (!homeInteractive.includes('if (!found && !disposed) chooseCurrentLocation()')) failures.push('Home prayer panel no longer protects the saved-location-first flow.');
 if (!prayerPage.includes('getSavedPrayerLocation')) failures.push('Prayer page does not restore the saved user location first.');
 if (!prayerPage.includes('return;\n      }\n\n      if (!disposed)')) failures.push('Prayer page may fall back to device location after a saved-location lookup.');
-if (home.includes('DEFAULT_CITY')) notes.push('Home keeps no hard-coded default city; first-time location is requested only after no saved location is found.');
+if (!home.includes('DEFAULT_CITY')) notes.push('Home keeps no hard-coded default city; first-time location is requested only after no saved location is found.');
 
 const audioPage = await read('src/app/audio/page.tsx');
 const audioLibrary = await read('src/components/audio/audio-library.tsx');

@@ -61,6 +61,72 @@ DO $do$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role; END IF;
 END $do$;
+
+-- Production still contains these runtime tables from the archived 20260929
+-- kids/video migration family. They are intentionally kept outside the active
+-- migration directory, so the validator seeds a minimal schema baseline here.
+CREATE TABLE IF NOT EXISTS public.game_scenarios (
+  game_id text primary key,
+  title_ar text,
+  title_en text,
+  difficulty text,
+  sound_theme text
+);
+CREATE TABLE IF NOT EXISTS public.game_graphics (
+  game_id text primary key,
+  updated_at timestamptz default now()
+);
+CREATE TABLE IF NOT EXISTS public.video_narrations (
+  id uuid primary key default gen_random_uuid(),
+  video_id text unique,
+  title text,
+  narration_ar text,
+  narration_en text,
+  status text,
+  cached boolean default false,
+  free_tier boolean default true,
+  duration_seconds integer,
+  cost_usd numeric,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+CREATE TABLE IF NOT EXISTS public.free_tier_usage (
+  id uuid primary key default gen_random_uuid(),
+  month_year text not null,
+  service_type text not null,
+  requests_count integer default 0,
+  videos_generated integer default 0,
+  cache_hits integer default 0,
+  quota_limit integer,
+  quota_used integer,
+  quota_remaining integer,
+  updated_at timestamptz default now(),
+  unique(month_year, service_type)
+);
+CREATE OR REPLACE FUNCTION public.update_game_scenarios_timestamp()
+RETURNS trigger LANGUAGE plpgsql AS $stub$ BEGIN NEW.updated_at = now(); RETURN NEW; END $stub$;
+CREATE OR REPLACE FUNCTION public.update_game_graphics_timestamp()
+RETURNS trigger LANGUAGE plpgsql AS $stub$ BEGIN NEW.updated_at = now(); RETURN NEW; END $stub$;
+CREATE OR REPLACE FUNCTION public.update_video_narrations_timestamp()
+RETURNS trigger LANGUAGE plpgsql AS $stub$ BEGIN NEW.updated_at = now(); RETURN NEW; END $stub$;
+CREATE OR REPLACE FUNCTION public.update_kids_game_progress_timestamp()
+RETURNS trigger LANGUAGE plpgsql AS $stub$ BEGIN NEW.updated_at = now(); RETURN NEW; END $stub$;
+CREATE OR REPLACE FUNCTION public.update_kids_character_selection_timestamp()
+RETURNS trigger LANGUAGE plpgsql AS $stub$ BEGIN NEW.updated_at = now(); RETURN NEW; END $stub$;
+CREATE OR REPLACE FUNCTION public.track_free_tier_usage()
+RETURNS void LANGUAGE plpgsql AS $stub$ BEGIN NULL; END $stub$;
+CREATE OR REPLACE VIEW public.free_tier_statistics AS
+SELECT
+  to_char(now(), 'YYYY-MM') AS current_month,
+  count(DISTINCT video_id) AS total_videos_narrated,
+  count(CASE WHEN cached = true THEN 1 END) AS cached_narrations,
+  count(CASE WHEN free_tier = true THEN 1 END) AS free_tier_usage,
+  sum(coalesce(duration_seconds, 0)) AS total_duration_seconds,
+  sum(coalesce(cost_usd, 0)) AS estimated_cost,
+  'Zero Cost - Free Tier'::text AS current_plan
+FROM public.video_narrations
+WHERE date_trunc('month', created_at) = date_trunc('month', now())
+GROUP BY to_char(now(), 'YYYY-MM');
 `;
 
 await db.exec(stubs);

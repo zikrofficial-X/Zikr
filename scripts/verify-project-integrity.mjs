@@ -126,8 +126,8 @@ function discoverPlatformRoutes(dir, out = []) {
 const platformRouteFiles = discoverPlatformRoutes(join(root, 'src', 'app'));
 const platformPageRoutes = platformRouteFiles.filter((file) => file.endsWith('/page.tsx')).length;
 const platformApiRoutes = platformRouteFiles.filter((file) => file.endsWith('/route.ts')).length;
-if (platformPageRoutes !== 100 || platformApiRoutes !== 66) {
-  warnings.push('Platform route inventory changed: expected 100 pages + 66 APIs, found ' + platformPageRoutes + ' pages + ' + platformApiRoutes + ' APIs.');
+if (platformPageRoutes !== 102 || platformApiRoutes !== 69) {
+  warnings.push('Platform route inventory changed: expected 102 pages + 69 APIs, found ' + platformPageRoutes + ' pages + ' + platformApiRoutes + ' APIs.');
 }
 
 

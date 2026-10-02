@@ -24,7 +24,7 @@ function makeArticle(input: {
   content_ar: string;
 }): StaticArticle {
   const depthNote = depthNotes[input.category_id] ?? depthNotes.tazkiyah;
-  const content = `${input.content_ar.trim()}\\n\\n${depthNote}`;
+  const content = `${input.content_ar.trim()}\n\n${depthNote}\n\n${platformNote}`;
   return {
     ...input,
     title: input.title_ar,
