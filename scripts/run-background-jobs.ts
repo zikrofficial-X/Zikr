@@ -80,15 +80,6 @@ async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
 }
 
 async function clearRunNowRequest(requestedAt: string) {
-  const filter = encodeURIComponent(JSON.stringify(requestedAt));
-  await supabaseServerAdminRequest(
-    `/rest/v1/admin_settings?key=eq.video_automation_run_now&value=eq.${filter}`,
-    {
-      method: "DELETE",
-      headers: { Prefer: "return=minimal" },
-    },
-  ).catch(() => undefined);
-
   const current = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
     "/rest/v1/admin_settings?key=eq.video_automation_run_now&select=key,value&limit=1",
   ).catch(() => []);
@@ -96,11 +87,13 @@ async function clearRunNowRequest(requestedAt: string) {
   const parsed = parseRunNowRequest(current?.[0]?.value);
   if (!parsed || parsed.requestedAt !== requestedAt) return;
 
-  await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq.video_automation_run_now", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-    body: JSON.stringify({ value: null, updated_at: new Date().toISOString() }),
-  });
+  await supabaseServerAdminRequest(
+    "/rest/v1/admin_settings?key=eq.video_automation_run_now",
+    {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" },
+    },
+  );
 }
 
 function applyVideoAutomationSettings(settings: VideoAutomationSettings) {
