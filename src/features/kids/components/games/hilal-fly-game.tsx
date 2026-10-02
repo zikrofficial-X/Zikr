@@ -65,6 +65,7 @@ type Snapshot = {
   completedLevelCount: number;
   completed: boolean;
   gameOver: boolean;
+  invulnerable: boolean;
   objects: FlyObject[];
 };
 
@@ -241,7 +242,7 @@ export function HilalFlyGame({
     setSnapshot(next);
     onHudRef.current(hudFromSnapshot(next, levels.length));
     setFeedback("حرّك الهلال لأعلى أو لأسفل، مر بين الحواجز واجمع النجوم.");
-  }, [difficulty, restartToken]);
+  }, [difficulty, restartToken, levels, rules]);
 
   useEffect(() => {
     let frame = 0;
@@ -438,7 +439,7 @@ export function HilalFlyGame({
       window.cancelAnimationFrame(frame);
       lastFrameRef.current = null;
     };
-  }, [difficulty, levels, restartToken]);
+  }, [difficulty, levels, restartToken, rules]);
 
   useEffect(() => {
     const keyDown = (event: KeyboardEvent) => {
