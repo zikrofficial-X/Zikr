@@ -75,9 +75,9 @@ WHERE NOT EXISTS (
 -- Retire the legacy narration subsystem as one unit.
 DROP VIEW IF EXISTS public.free_tier_statistics;
 DROP FUNCTION IF EXISTS public.track_free_tier_usage();
-DROP FUNCTION IF EXISTS public.update_video_narrations_timestamp();
 DROP TABLE IF EXISTS public.video_narrations;
 DROP TABLE IF EXISTS public.free_tier_usage;
+DROP FUNCTION IF EXISTS public.update_video_narrations_timestamp();
 
 -- Retire the obsolete publication-config table.
 DROP TABLE IF EXISTS public.video_publishing_config;
@@ -87,8 +87,8 @@ DROP TABLE IF EXISTS public.admin_actions_audit;
 DROP TABLE IF EXISTS public.admin_audit_log;
 
 -- Retire empty game asset metadata and its trigger function.
-DROP FUNCTION IF EXISTS public.update_game_graphics_timestamp();
 DROP TABLE IF EXISTS public.game_graphics;
+DROP FUNCTION IF EXISTS public.update_game_graphics_timestamp();
 
 -- Retire the empty legacy kids achievements compatibility table.
 DROP TABLE IF EXISTS public.kids_achievements_legacy_20261002;
