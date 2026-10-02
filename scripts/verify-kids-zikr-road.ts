@@ -1,7 +1,7 @@
 import { getApprovedRoadQuestions } from "@/lib/games/verified-content";
 import { getZikrRoadRules } from "@/lib/games/zikr-road";
 
-const questions = getApprovedScenarioQuestions();
+const questions = getApprovedRoadQuestions();
 
 if (questions.length < 3) {
   throw new Error(
