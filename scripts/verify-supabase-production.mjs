@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const required = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"];
+const required = ["SUPABASE_URL", "SUPABASE_PUBLIC_KEY"];
 
 for (const name of required) {
   if (!process.env[name]) {
@@ -10,19 +10,19 @@ for (const name of required) {
 }
 
 const baseUrl = process.env.SUPABASE_URL.replace(/\/$/, "");
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const publicKey = process.env.SUPABASE_PUBLIC_KEY;
 
 const headers = {
-  apikey: serviceRoleKey,
-  Authorization: `Bearer ${serviceRoleKey}`,
+  apikey: publicKey,
+  Authorization: `Bearer ${publicKey}`,
   Accept: "application/json",
 };
 
 const checks = [
-  { name: "Auth settings", path: "/auth/v1/settings" },
-  { name: "Quran surahs API", path: "/rest/v1/quran_surahs?select=*&limit=1" },
-  { name: "Kids games API", path: "/rest/v1/kids_games?select=*&limit=1" },
-  { name: "Kids game progress API", path: "/rest/v1/kids_game_progress?select=*&limit=1" },
+  { name: "Supabase Auth settings", path: "/auth/v1/settings" },
+  { name: "Quran surahs API", path: "/rest/v1/quran_surahs?select=id&limit=1" },
+  { name: "Kids games API", path: "/rest/v1/kids_games?select=id&limit=1" },
+  { name: "Kids content API", path: "/rest/v1/kids_content?select=id&limit=1" },
 ];
 
 const timeoutMs = 15000;

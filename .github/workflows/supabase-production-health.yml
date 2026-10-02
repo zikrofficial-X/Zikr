@@ -1,0 +1,36 @@
+name: ZIKR Supabase Production Health
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-supabase-production-health-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  health:
+    name: Supabase production health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: https://kdotmrjfecgafiommzwz.supabase.co
+      SUPABASE_PUBLIC_KEY: sb_publishable_RiSTGj6inEEyKwhdngAXrA_uPgnfRIi
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run production Supabase health gate
+        run: node scripts/verify-supabase-production.mjs

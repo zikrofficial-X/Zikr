@@ -11,6 +11,9 @@ version: 2.1
 # variables. GitHub Environment secrets are NOT automatically inherited here.
 # Never put secret values in this file.
 parameters:
+  run_circleci_ci:
+    type: boolean
+    default: false
   run_background_jobs:
     type: boolean
     default: false
@@ -443,6 +446,7 @@ jobs:
 
 workflows:
   build-and-release:
+    when: << pipeline.parameters.run_circleci_ci >>
     jobs:
       - ci-check:
           filters:
