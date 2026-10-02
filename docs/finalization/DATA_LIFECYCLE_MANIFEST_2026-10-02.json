@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-10-02",
+  "phase": 17,
+  "policy": "Empty runtime-optional tables with no active src consumer are retired from the runtime contract; historical migration/type references remain until coordinated DB retirement.",
+  "entries": [
+    {
+      "table": "hadith_explanations",
+      "state": "RETIRED",
+      "reason": "0 rows; no active src runtime consumer found."
+    },
+    {
+      "table": "recent_recitations",
+      "state": "RETIRED",
+      "reason": "0 rows; no active src runtime consumer found."
+    },
+    {
+      "table": "reciter_favorites",
+      "state": "RETIRED",
+      "reason": "0 rows; no active src runtime consumer found."
+    },
+    {
+      "table": "tawasheeh_favorites",
+      "state": "RETIRED",
+      "reason": "0 rows; no active src runtime consumer found."
+    },
+    {
+      "table": "tawasheeh_playlists",
+      "state": "RETIRED",
+      "reason": "0 rows; no active src runtime consumer found."
+    },
+    {
+      "table": "tawasheeh_playlist_items",
+      "state": "RETIRED",
+      "reason": "0 rows; no active src runtime consumer found."
+    }
+  ]
+}
