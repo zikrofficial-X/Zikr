@@ -87,8 +87,10 @@ async function upsertTextFile(path: string, content: string, sha: string | undef
 }
 
 function parseAndroidVersion(buildGradle: string) {
-  const versionName = buildGradle.match(/versionName\\s+"([^"]+)"/)?.[1];
-  const versionCode = Number.parseInt(buildGradle.match(/versionCode\\s+(\\d+)/)?.[1] ?? "", 10);
+  // Gradle is plain text here. Keep the parser tolerant of tabs/newlines and
+  // harmless inline formatting so the release UI does not fail in production.
+  const versionName = buildGradle.match(/\bversionName\s+["']([^"']+)["']/)?.[1]?.trim();
+  const versionCode = Number.parseInt(buildGradle.match(/\bversionCode\s+(\d+)\b/)?.[1] ?? "", 10);
   if (!versionName || !Number.isFinite(versionCode)) {
     throw new Error("تعذر قراءة versionName/versionCode من Android.");
   }
