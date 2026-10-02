@@ -104,17 +104,17 @@ CREATE TABLE IF NOT EXISTS public.free_tier_usage (
   unique(month_year, service_type)
 );
 CREATE OR REPLACE FUNCTION public.update_game_scenarios_timestamp()
-RETURNS trigger LANGUAGE plpgsql AS $ BEGIN NEW.updated_at = now(); RETURN NEW; END $;
+RETURNS trigger LANGUAGE plpgsql AS $stub$ BEGIN NEW.updated_at = now(); RETURN NEW; END $stub$;
 CREATE OR REPLACE FUNCTION public.update_game_graphics_timestamp()
-RETURNS trigger LANGUAGE plpgsql AS $ BEGIN NEW.updated_at = now(); RETURN NEW; END $;
+RETURNS trigger LANGUAGE plpgsql AS $stub$ BEGIN NEW.updated_at = now(); RETURN NEW; END $stub$;
 CREATE OR REPLACE FUNCTION public.update_video_narrations_timestamp()
-RETURNS trigger LANGUAGE plpgsql AS $ BEGIN NEW.updated_at = now(); RETURN NEW; END $;
+RETURNS trigger LANGUAGE plpgsql AS $stub$ BEGIN NEW.updated_at = now(); RETURN NEW; END $stub$;
 CREATE OR REPLACE FUNCTION public.update_kids_game_progress_timestamp()
-RETURNS trigger LANGUAGE plpgsql AS $ BEGIN NEW.updated_at = now(); RETURN NEW; END $;
+RETURNS trigger LANGUAGE plpgsql AS $stub$ BEGIN NEW.updated_at = now(); RETURN NEW; END $stub$;
 CREATE OR REPLACE FUNCTION public.update_kids_character_selection_timestamp()
-RETURNS trigger LANGUAGE plpgsql AS $ BEGIN NEW.updated_at = now(); RETURN NEW; END $;
+RETURNS trigger LANGUAGE plpgsql AS $stub$ BEGIN NEW.updated_at = now(); RETURN NEW; END $stub$;
 CREATE OR REPLACE FUNCTION public.track_free_tier_usage()
-RETURNS void LANGUAGE plpgsql AS $ BEGIN NULL; END $;
+RETURNS void LANGUAGE plpgsql AS $stub$ BEGIN NULL; END $stub$;
 CREATE OR REPLACE VIEW public.free_tier_statistics AS
 SELECT
   to_char(now(), 'YYYY-MM') AS current_month,
