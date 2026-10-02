@@ -17,7 +17,7 @@ for (const token of [
   "function isPubliclyRenderableVideo",
   "https://i.ytimg.com/vi/",
   "defaultOgImage",
-  "renderableRows.filter",
+  "rows.filter(isPubliclyRenderableVideo)",
 ]) {
   if (!service.includes(token)) failures.push(`video service missing QA contract: ${token}`);
 }
