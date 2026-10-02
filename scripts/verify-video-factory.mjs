@@ -12,7 +12,7 @@ const read = (path) => {
 
 const router = read("src/features/videos/providers/provider-router.ts");
 if (!router.includes("availability check threw")) failures.push("provider availability exceptions must not abort fallback routing");
-if (!router.includes('"Provider " + name + " threw')) failures.push("provider generation exceptions must not abort fallback routing");
+if (!router.includes('Provider " + name + " threw for')) failures.push("provider generation exceptions must not abort fallback routing");
 if (!router.includes("!templateAttempted")) failures.push("template provider must not be executed twice in one router pass");
 
 const template = read("scripts/jobs/template-video-automation.ts");
@@ -23,7 +23,7 @@ if (!template.includes("narration does not exactly match the current published s
 if (!template.includes("assertPlayableOutput")) failures.push("rendered videos must pass media integrity QA");
 if (!template.includes("assertAudibleAudio")) failures.push("rendered videos must pass audible-audio QA");
 if (!template.includes("Rendered output resolution mismatch")) failures.push("rendered video resolution must be validated");
-if (!template.includes("Rendered output bitrate is too low")) failures.push("rendered video bitrate must be validated");
+if (!template.includes("Rendered output video bitrate is too low")) failures.push("rendered video bitrate must be validated");
 
 const sourceService = read("src/features/videos/services/video-sources.ts");
 if (sourceService.includes("https://zikrmediaofficial.vercel.app")) failures.push("video source service must not hardcode the production origin");
