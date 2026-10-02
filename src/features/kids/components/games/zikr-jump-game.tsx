@@ -59,6 +59,7 @@ type SceneSnapshot = {
   lives: number;
   completed: boolean;
   gameOver: boolean;
+  collectedStarIds: string[];
 };
 
 const WORLD_WIDTH = 720;
@@ -125,6 +126,7 @@ function snapshotFromModel(model: JumpModel): SceneSnapshot {
     lives: model.lives,
     completed: model.completed,
     gameOver: model.gameOver,
+    collectedStarIds: Array.from(model.collectedStarIds),
   };
 }
 
@@ -694,7 +696,7 @@ export function ZikrJumpGame({
         {currentLevel.stars.map((star, index) => {
           const starId = String(scene.levelIndex) + ":" + String(index);
           const isCollected =
-            modelRef.current.collectedStarIds.has(starId);
+            scene.collectedStarIds.includes(starId);
           const screenY = star.y - scene.cameraY;
           if (isCollected || screenY < -40 || screenY > VIEW_HEIGHT + 40) {
             return null;
