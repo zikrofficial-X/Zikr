@@ -85,9 +85,9 @@ function routeExists(href) {
 for (const [groupLabel, items] of Object.entries(CANONICAL_ARCHITECTURE)) {
   for (const [href, label, permission] of items) {
     const expected = [
-      \`href: "\${href}"\`,
-      \`label: "\${label}"\`,
-      \`permission: "\${permission}"\`,
+      `href: "\${href}"`,
+      `label: "\${label}"`,
+      `permission: "\${permission}"`,
     ];
     const blockFound =
       navigation.includes(expected[0]) &&
@@ -96,7 +96,7 @@ for (const [groupLabel, items] of Object.entries(CANONICAL_ARCHITECTURE)) {
 
     if (!blockFound) {
       failures.push(
-        \`missing canonical navigation item: \${groupLabel} > \${label} (\${href})\`,
+        `missing canonical navigation item: \${groupLabel} > \${label} (\${href})`,
       );
     }
 
@@ -149,5 +149,5 @@ const count = Object.values(CANONICAL_ARCHITECTURE).reduce(
   0,
 );
 console.log(
-  \`✅ Final Admin Architecture checks passed: \${expectedGroups.length} groups, \${count} canonical routes.\`,
+  `✅ Final Admin Architecture checks passed: \${expectedGroups.length} groups, \${count} canonical routes.`,
 );
