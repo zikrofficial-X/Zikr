@@ -71,3 +71,9 @@ Last reconciled: 2026-10-02.
   - Applied to production on 2026-10-02.
   - Revokes anonymous DML privileges from the public schema while preserving the public contact-form insert path.
   - Removes Data API table privileges for `admin_audit_log`, `admin_settings`, `content_revisions`, `video_automation_runs`, and `youtube_sync_state` from `anon` and `authenticated`; service-role access remains available for server/worker paths.
+
+- **20261002113000** — `scheduler_hardening_20261002`
+  - Applied to production in Phase 13 to pin active cron endpoints to the canonical Supabase project URL.
+- **20261002114000** — `retire_dead_media_cleanup_cron_20261002`
+  - Applied to production in Phase 13 to retire the cron job targeting an undeployed media-cleanup Edge Function.
+
