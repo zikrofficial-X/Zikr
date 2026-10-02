@@ -399,7 +399,7 @@ export async function seedAutomatedVideoRequests() {
       const row = sources[(day * 6 + slot) % sources.length];
       payload = {
         title: row.title,
-        description: "فيديو ألي لذكر مأثور مع المصدر والدرجة المسجلة في مكتبة ذِكر.",
+        description: "فيديو آلي لذكر مأثور مع المصدر والدرجة المسجلة في مكتبة ذِكر.",
         category: "adhkar",
         content: {
           renderer: "template",
