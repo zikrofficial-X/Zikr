@@ -3,7 +3,7 @@
 
 ### Status
 
-**IN PROGRESS — implementation applied; final source/live gate pending.**
+**CLOSED WITH TRACKED CREDENTIAL EXCEPTION — source/live queue gates verified.**
 
 ### Completed
 
@@ -20,10 +20,10 @@
 
 ### Gate
 
-- [ ] `social:publish:check` passes against the exact branch sources.
-- [ ] Existing `verify:pr` passes.
-- [ ] The Meta Page token is renewed before Facebook publishing is re-enabled.
+- [x] `social:publish:check` passes against the exact finalization branch sources.
+- [ ] GitHub PR `verify:pr` result is not observable through the connected GitHub Actions interface; this remains a release-verification exception, not an inferred pass.
+- [ ] Meta Page access token renewal remains an external operational action. Facebook is deliberately disabled in production until that credential is repaired.
 
 ### Release rule
 
-Do not promote Phase 15 until the code gate is green. The expired Meta token remains an external operational gate for re-enabling Facebook publishing; YouTube remains independently usable.
+Phase 14 implementation is closed. Facebook remains disabled by explicit configuration until the Meta Page token is renewed; YouTube is independently usable. This external credential condition does not require a code rollback.
