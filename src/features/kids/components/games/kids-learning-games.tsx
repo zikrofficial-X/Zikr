@@ -22,6 +22,7 @@ import {
 import { getVersePuzzleRules, getVersePuzzleLevelSeed } from "@/lib/games/verse-puzzle";
 import { isVerseOrderComplete, seededShuffle, shuffleVerseTokens, type IndexedVerseToken } from "@/lib/games/gameplay-helpers";
 import { getKidsLevelMeta, KIDS_LEVEL_COUNT } from "@/lib/games/kids-level-system";
+import { KidsGameWorld } from "@/features/kids/components/games/kids-game-visuals";
 
 export type LearningGameProps = {
   difficulty: GameDifficulty;
