@@ -51,18 +51,6 @@ export const CURATED_AUDIO_LIBRARY: readonly CuratedAudio[] = [
     human: true,
   },
   {
-    key: "adhan:istanbul",
-    kind: "adhan",
-    title: "الأذان — تسجيل إسطنبول",
-    description: "تسجيل ميداني بشري للأذان، منشور كمصدر مفتوح.",
-    webUrl: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Adhan_in_Istanbul.webm",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Adhan_in_Istanbul.webm",
-    sourceName: "Wikimedia Commons — Viceskeeni2",
-    license: "CC0 1.0",
-    attribution: "Viceskeeni2",
-    human: true,
-  },
-  {
     key: "salawat:muhammad-pbuh",
     kind: "salawat",
     title: "الصلاة على النبي ﷺ — تسجيل بشري",

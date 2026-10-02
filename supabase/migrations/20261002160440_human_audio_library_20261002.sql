@@ -9,7 +9,6 @@ values
   ('adhan', 'الأذان — Beautiful Adhan', 'curated:adhan:beautiful', 'audio/ogg', 1600000, true),
   ('adhan', 'الأذان — تسجيل بشري قصير', 'curated:adhan:short', 'audio/ogg', 350000, false),
   ('adhan', 'الأذان — تسجيل بشري كامل', 'curated:adhan:full', 'audio/ogg', 1600000, false),
-  ('adhan', 'الأذان — تسجيل إسطنبول', 'curated:adhan:istanbul', 'audio/webm', 1100000, false),
   ('salawat', 'الصلاة على النبي ﷺ — تسجيل بشري', 'curated:salawat:muhammad-pbuh', 'audio/wav', 452000, true),
   ('salawat', 'ذكر محمد ﷺ — تسجيل بشري', 'curated:salawat:muhammad', 'audio/wav', 234000, false),
   ('dhikr', 'تسبيح — نطق بشري 1', 'curated:dhikr:subhanallah-1', 'audio/wav', 147000, true),
