@@ -16,7 +16,7 @@ export default function RecitersPage() {
 
   useEffect(() => {
     let active = true;
-    getReciters().then((rows) => {
+    getQuranReciters().then((rows) => {
       if (!active) return;
       setReciters(rows);
       setLoading(false);
