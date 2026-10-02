@@ -1,4 +1,5 @@
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import { getServerEnv } from "@/lib/env";
 import { PRIMARY_STORY_SOURCES } from "@/features/stories/data/fallback";
 
 export type VideoSourceCategory =
@@ -54,7 +55,7 @@ type StoryRow = {
 
 const QURAN_BASE = "https://quran.com";
 const HADITH_BASE = "https://sunnah.com";
-const SITE_BASE = "https://zikrmediaofficial.vercel.app";
+const SITE_BASE = getServerEnv().NEXT_PUBLIC_SITE_URL;
 
 function clean(value: string | null | undefined) {
   return value?.replace(/\s+/g, " ").trim() ?? "";

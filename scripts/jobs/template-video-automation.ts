@@ -11,6 +11,7 @@ import { listVideoSources, resolveVideoSource } from "../../src/features/videos/
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
+import { getServerEnv } from "../../src/lib/env";
 import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
 
 const execFileAsync = promisify(execFile);
@@ -89,7 +90,7 @@ const DEFAULT_AI_VIDEO_PLAN: AiVideoPlan = {
 };
 
 function siteUrl() {
-  return "https://zikrmediaofficial.vercel.app";
+  return getServerEnv().NEXT_PUBLIC_SITE_URL;
 }
 
 function backgroundAsset(scene: AiVideoPlan["scene"]) {
@@ -369,7 +370,7 @@ export async function seedAutomatedVideoRequests() {
       key = `dua:${day}:${slot}`;
       if (await findByAutomationKey("video_generation_requests", key)) continue;
       const row = await getDuaRow(day * 6 + slot);
-      const sourceUrl = `https://zikrmediaofficial.vercel.app/dua/${row.slug}`;
+      const sourceUrl = `${siteUrl()}/dua/${row.slug}`;
       payload = {
         title: `دعاء اليوم — ${row.title_ar}`,
         description: row.occasion_ar || "دعاء موثق من مكتبة ذِكر.",
@@ -520,7 +521,7 @@ function contentText(request: GeneratedRequest) {
 }
 function contentSourceUrl(request: GeneratedRequest) {
   const value = request.content?.sourceUrl;
-  return typeof value === "string" && /^https?:\/\//i.test(value) ? value : "https://zikrmediaofficial.vercel.app";
+  return typeof value === "string" && /^https?:\/\//i.test(value) ? value : siteUrl();
 }
 function aiPlanEnabled() {
   return Boolean(process.env.GEMINI_API_KEY?.trim());

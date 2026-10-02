@@ -35,6 +35,7 @@ export function createVideoProviderRouter(
       const candidates = [...preferred, ...fallbackCandidates.filter(
         (name) => name !== input.preferredProvider,
       )];
+      let templateAttempted = false;
 
       for (const name of candidates) {
         if (name === "comfyui" && !config.comfyUiEnabled) continue;
@@ -45,21 +46,46 @@ export function createVideoProviderRouter(
 
         const provider = providers[name];
         if (!provider) continue;
-        const available = await provider.isAvailable();
+        let available = false;
+        try {
+          available = await provider.isAvailable();
+        } catch (error) {
+          console.warn(
+            "[video-provider-router] Provider " + name + " availability check threw: " +
+            (error instanceof Error ? error.message : String(error)),
+          );
+          continue;
+        }
         if (!available) {
           console.warn("[video-provider-router] Provider unavailable: " + name);
           continue;
         }
 
-        const result = await provider.generate(input);
-        if (result.ok) return result;
-        console.warn(
-          "[video-provider-router] Provider " + name + " failed for " + input.requestId + ": " + (result.error || "unknown error"),
-        );
+        if (name === "template") templateAttempted = true;
+        try {
+          const result = await provider.generate(input);
+          if (result.ok) return result;
+          console.warn(
+            "[video-provider-router] Provider " + name + " failed for " + input.requestId + ": " + (result.error || "unknown error"),
+          );
+        } catch (error) {
+          console.warn(
+            "[video-provider-router] Provider " + name + " threw for " + input.requestId + ": " +
+            (error instanceof Error ? error.message : String(error)),
+          );
+        }
       }
 
-      if (providers.template && (await providers.template.isAvailable())) {
-        return providers.template.generate(input);
+      if (!templateAttempted && providers.template && (await providers.template.isAvailable())) {
+        try {
+          return await providers.template.generate(input);
+        } catch (error) {
+          return {
+            ok: false,
+            provider: "template",
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
       }
 
       return {
