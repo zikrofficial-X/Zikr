@@ -63,7 +63,7 @@ async function processVideos() {
   }
   ensureArabicTtsRuntime();
   const seeded = await seedAutomatedVideoRequests();
-  console.log(`[background-jobs] Seeded ${seeded} free Quran video request(s).`);
+  console.log(`[background-jobs] Seeded ${seeded} video request(s) across Quran, Hadith, Dua, Adhkar, verified stories, and editorial reminders.`);
   const result = await processTemplateVideoQueue();
   return {
     processed: result.processed || 0,
@@ -139,7 +139,7 @@ async function main() {
   }
 
   console.log(
-    `[background-jobs] Starting autonomous background job runner (target=${target}, generator=template, social=${SOCIAL_PUBLISH_ENABLED ? "enabled" : "disabled"}).`
+    `[background-jobs] Starting autonomous background job runner (target=${target}, generator=multi-provider-free-ai, social=${SOCIAL_PUBLISH_ENABLED ? "enabled" : "disabled"}).`
   );
   const startedAt = Date.now();
 
