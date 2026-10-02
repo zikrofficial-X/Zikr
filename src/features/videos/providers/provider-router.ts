@@ -44,7 +44,7 @@ export function createVideoProviderRouter(
         if (!config.aiEnabled && name !== "template") continue;
 
         const provider = providers[name];
-        if (!provider || !(await provider.isAvailable())) continue;
+        if (!provider) continue;\n        const available = await provider.isAvailable();\n        if (!available) {\n          console.warn("[video-provider-router] Provider unavailable: " + name);\n          continue;\n        }
 
         const result = await provider.generate(input);
         if (result.ok) return result;
