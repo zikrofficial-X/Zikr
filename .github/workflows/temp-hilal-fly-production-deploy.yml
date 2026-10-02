@@ -1,0 +1,102 @@
+name: Temporary Hilal Fly Production Validation
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temp-hilal-fly-production-validation
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event.before == 'ff69d186740711656c58f582fec3b431ca4c73fd'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment:
+      name: production
+    env:
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Checkout exact Hilal Fly release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ff69d186740711656c58f582fec3b431ca4c73fd
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+        timeout-minutes: 15
+
+      - name: Verify release
+        run: pnpm verify:pr
+        timeout-minutes: 15
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@59.23.1
+
+      - name: Validate release configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}" || { echo "Missing VERCEL_TOKEN" >&2; exit 1; }
+          test -n "${VERCEL_ORG_ID:-}" || { echo "Missing VERCEL_ORG_ID" >&2; exit 1; }
+          test -n "${VERCEL_PROJECT_ID:-}" || { echo "Missing VERCEL_PROJECT_ID" >&2; exit 1; }
+
+      - name: Link Vercel project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          rm -rf .vercel
+          vercel link --yes --project="${VERCEL_PROJECT_ID}" --scope="${VERCEL_ORG_ID}" --token="${VERCEL_TOKEN}"
+
+      - name: Pull production configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token="${VERCEL_TOKEN}"
+
+      - name: Build production artifact
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token="${VERCEL_TOKEN}"
+
+      - name: Deploy production artifact
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          url="$(vercel deploy --prebuilt --prod --yes --token="${VERCEL_TOKEN}")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Production deployment: $url"
+
+      - name: Release evidence
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          {
+            echo "## Hilal Fly Production Validation"
+            echo ""
+            echo "- Source commit: ff69d186740711656c58f582fec3b431ca4c73fd"
+            echo "- Deployment: ${DEPLOYMENT_URL}"
+            echo "- Validation: PASSED"
+          } >> "$GITHUB_STEP_SUMMARY"
