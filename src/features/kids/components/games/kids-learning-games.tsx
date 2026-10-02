@@ -492,6 +492,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
     }
     window.setTimeout(() => {
       setSelected(null);
+      setHiddenOptions([]);
       setIndex(value => value + 1);
     }, 600);
   };
