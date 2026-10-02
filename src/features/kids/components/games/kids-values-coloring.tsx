@@ -10,6 +10,7 @@ import { getMosqueCleanupRules } from "@/lib/games/mosque-cleanup";
 import { getZikrColoringRules } from "@/lib/games/zikr-coloring";
 import { getKidsLevelMeta, KIDS_LEVEL_COUNT } from "@/lib/games/kids-level-system";
 import { seededShuffle } from "@/lib/games/gameplay-helpers";
+import { KidsGameWorld } from "@/features/kids/components/games/kids-game-visuals";
 
 type Props = { difficulty: GameDifficulty; restartToken: number; paused: boolean; onHud: (hud: WorldHud) => void; onResult: (result: WorldHud) => void; onSound: (event: GameSoundEvent) => void };
 
