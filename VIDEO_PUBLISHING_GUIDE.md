@@ -260,9 +260,10 @@ curl -X POST https://zikrmediaofficial.vercel.app/api/admin/social \
 ### Background Job Processing
 
 **Automated Jobs:**
-- ⚙️ `video-background-batch-size: 3` — Process video jobs in controlled batches
-- ⚙️ `social-background-batch-size: 10` — Publish social jobs in controlled batches
-- ⏱️ Background execution is opt-in through the CircleCI pipeline; there is no implicit hourly Vercel scheduler
+- ⚙️ GitHub Actions `ZIKR Autonomous AI Video Worker` runs every 2 hours and supports manual dispatch.
+- ⚙️ The worker processes persisted video jobs with the deterministic FFmpeg renderer and then the social queue.
+- ⚙️ CircleCI `background-jobs` is retained for deliberate manual recovery only; it is not a second automatic scheduler.
+- ⏱️ Vercel has no video-processing cron.
 
 ---
 

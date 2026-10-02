@@ -3,8 +3,8 @@ version: 2.1
 # ZIKR execution is intentionally outside GitHub Actions.
 # - ci-check runs on source changes.
 # - android-rebuild runs only for release branches/tags.
-# - operational jobs are opt-in through CircleCI pipeline parameters.
-# - production scheduling remains owned by Supabase pg_cron / Edge Functions.
+# - background processing in CircleCI is opt-in and is a manual recovery path.
+# - automatic video/social scheduling remains owned by GitHub Actions.
 #
 # IMPORTANT:
 # CircleCI receives runtime values from CircleCI Project/Context environment
@@ -187,7 +187,7 @@ jobs:
           command: |
             set -euo pipefail
             sudo apt-get update
-            sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-core fonts-noto-extra
+            sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-core fonts-noto-extra librsvg2-bin
             python3 -m venv .tts-venv
             .tts-venv/bin/pip install --quiet --no-cache-dir edge-tts==7.2.8
             echo 'export PATH="$CIRCLE_WORKING_DIRECTORY/.tts-venv/bin:$PATH"' >> "$BASH_ENV"

@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import path from "node:path";
 import { promisify } from "node:util";
 import {
   supabaseServerAdminCount,
@@ -9,8 +10,13 @@ import {
 
 const execFileAsync = promisify(execFile);
 const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 1));
-const VIDEO_SECONDS = Math.min(30, Math.max(8, Number(process.env.AUTO_VIDEO_SECONDS ?? 14)));
+const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_VIDEO_SECONDS ?? 16)));
+const MIN_VIDEO_SECONDS = Math.min(TARGET_VIDEO_SECONDS, 10);
+const MAX_VIDEO_SECONDS = Math.max(TARGET_VIDEO_SECONDS, 45);
 const ARABIC_TTS_VOICE = process.env.ARABIC_TTS_VOICE ?? "ar-SA-ZariyahNeural";
+const QURAN_AYAH_AUDIO_BASE_URL =
+  process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
+const VIDEO_TEMPLATE_VERSION = "2026-10-02-quality-v2";
 function getArabicTtsPython() {
   return process.env.ARABIC_TTS_PYTHON?.trim() || "python3";
 }
@@ -83,6 +89,46 @@ function siteUrl() {
   return "https://zikrmediaofficial.vercel.app";
 }
 
+function backgroundAsset(scene: AiVideoPlan["scene"]) {
+  const map: Record<AiVideoPlan["scene"], string> = {
+    calm: "public/video/templates/calm.svg",
+    dawn: "public/video/templates/dawn.svg",
+    night: "public/video/templates/night.svg",
+    gold: "public/video/templates/gold.svg",
+  };
+  return map[scene] || map.calm;
+}
+
+async function renderBackground(temp: string, scene: AiVideoPlan["scene"], width: number, height: number) {
+  const source = path.join(process.cwd(), backgroundAsset(scene));
+  const output = path.join(temp, "background.png");
+  await execFileAsync("rsvg-convert", ["-w", String(width), "-h", String(height), source, "-o", output], { maxBuffer: 2 * 1024 * 1024 });
+  return output;
+}
+
+async function probeMedia(pathname: string) {
+  const { stdout } = await execFileAsync("ffprobe", [
+    "-v", "error",
+    "-show_entries",
+    "format=duration:stream=codec_type,codec_name,width,height,bit_rate,sample_rate,channels",
+    "-of", "json",
+    pathname,
+  ], { maxBuffer: 2 * 1024 * 1024 });
+  return JSON.parse(stdout) as {
+    streams?: Array<{ codec_type?: string; codec_name?: string; width?: number; height?: number; bit_rate?: string; sample_rate?: string; channels?: number }>;
+    format?: { duration?: string };
+  };
+}
+
+function resolveRenderDuration(audioDuration: number) {
+  if (!Number.isFinite(audioDuration) || audioDuration <= 0) return TARGET_VIDEO_SECONDS;
+  const desired = Math.max(MIN_VIDEO_SECONDS, audioDuration + 0.8);
+  if (desired > MAX_VIDEO_SECONDS) {
+    throw new Error("Narration is too long for an automated short: " + audioDuration.toFixed(1) + "s > " + MAX_VIDEO_SECONDS.toFixed(1) + "s max.");
+  }
+  return Math.min(MAX_VIDEO_SECONDS, desired);
+}
+
 function dayIndex(date = new Date()) {
   return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 86400000);
 }
@@ -108,18 +154,95 @@ function wrapArabic(value: string, max = 30) {
 function assEscape(value: string) {
   return value.replace(/[{}]/g, "").replace(/\\/g, "\\\\");
 }
-function makeAss(text: string, title: string, sourceUrl: string, reflection?: string | null) {
-  const textLines = wrapArabic(text, 34);
-  const reflectionLines = reflection ? wrapArabic(reflection, 38) : [];
-  const sourceLines = wrapArabic(`المصدر: ${sourceUrl}`, 55);
+function categoryLabel(category: string) {
+  const labels: Record<string, string> = {
+    quran: "القرآن الكريم",
+    hadith: "الحديث الشريف",
+    dua: "دعاء",
+    adhkar: "أذكار",
+    story: "قصة",
+    stories: "قصص",
+    other: "رسالة إيمانية",
+  };
+  return labels[category] || "ذِكر";
+}
+
+function paginateArabic(value: string, lineChars: number, linesPerPage: number) {
+  const lines = wrapArabic(value, lineChars);
+  const pages: string[] = [];
+  for (let index = 0; index < lines.length; index += linesPerPage) {
+    pages.push(lines.slice(index, index + linesPerPage).join("\\N"));
+  }
+  return pages.length ? pages : [value.trim()];
+}
+
+function makeAss(
+  text: string,
+  title: string,
+  sourceUrl: string,
+  reflection: string | null | undefined,
+  duration: number,
+  category: string,
+  isVertical: boolean,
+) {
+  const playResX = isVertical ? 1080 : 1920;
+  const playResY = isVertical ? 1920 : 1080;
+  const lineChars = isVertical ? 30 : 52;
+  const titleSize = isVertical ? 54 : 46;
+  const verseSize = isVertical ? 66 : 56;
+  const sourceSize = isVertical ? 23 : 20;
+  const brandSize = isVertical ? 27 : 23;
+  const reflectionSize = isVertical ? 31 : 27;
+  const textPages = paginateArabic(text, lineChars, isVertical ? 3 : 2);
+  const start = Math.min(1.2, duration * 0.08);
+  const end = Math.max(start + 2, duration - 2);
+  const totalChars = textPages.reduce((sum, page) => sum + page.replace(/\\N/g, "").length, 0) || 1;
+  let cursor = start;
+  const textEvents = textPages.map((page, index) => {
+    const weight = (page.replace(/\\N/g, "").length || 1) / totalChars;
+    const remaining = textPages.length - index - 1;
+    const slice = remaining === 0 ? end - cursor : Math.max(2.2, weight * (end - start));
+    const pageEnd = index === textPages.length - 1 ? end : Math.min(end, cursor + slice);
+    const event = "Dialogue: 1,0:00:" + cursor.toFixed(2).padStart(5, "0") + ",0:00:" + pageEnd.toFixed(2).padStart(5, "0") + ",Verse,,0,0,0,," + assEscape(page);
+    cursor = pageEnd;
+    return event;
+  });
+  const badge = assEscape(categoryLabel(category));
+  const source = assEscape("المصدر: " + sourceUrl);
+  const reflectionText = reflection ? assEscape(reflection) : "";
   const events = [
-    `Dialogue: 0,0:00:00.00,0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Title,,0,0,0,,${assEscape(title)}`,
-    `Dialogue: 1,0:00:00.50,0:00:${Math.max(1, VIDEO_SECONDS - 1).toFixed(2).padStart(5, "0")},Verse,,0,0,0,,${textLines.map(assEscape).join("\\N")}`,
-    ...(reflectionLines.length > 0 ? [`Dialogue: 4,0:00:${Math.max(0.8, VIDEO_SECONDS - 4).toFixed(2).padStart(5, "0")},0:00:${Math.max(1, VIDEO_SECONDS - 1).toFixed(2).padStart(5, "0")},Reflection,,0,0,0,,${reflectionLines.map(assEscape).join("\\N")}`] : []),
-    `Dialogue: 2,0:00:${Math.max(1, VIDEO_SECONDS - 3).toFixed(2).padStart(5, "0")},0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Source,,0,0,0,,${sourceLines.map(assEscape).join("\\N")}`,
-    `Dialogue: 3,0:00:00.00,0:00:${VIDEO_SECONDS.toFixed(2).padStart(5, "0")},Brand,,0,0,0,,ZIKR • ذِكرٌ`,
+    "Dialogue: 5,0:00:00.00,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Badge,,0,0,0,," + badge,
+    "Dialogue: 0,0:00:00.20,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Title,,0,0,0,," + assEscape(title),
+    "Dialogue: 3,0:00:00.00,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Brand,,0,0,0,,ZIKR • ذِكرٌ",
+    ...textEvents,
+    "Dialogue: 2,0:00:" + Math.max(0.6, duration - 3).toFixed(2).padStart(5, "0") + ",0:00:" + duration.toFixed(2).padStart(5, "0") + ",Source,,0,0,0,," + source,
   ];
-  return `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\nYCbCr Matrix: TV.709\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Title,Noto Naskh Arabic,60,&H00EFD39A,&H00000000,&H00101513,&H60000000,1,0,0,0,100,100,0,0,1,2,2,8,55,55,120,1\nStyle: Verse,Noto Naskh Arabic,70,&H00FFFFFF,&H00000000,&H00101513,&H80000000,0,0,0,0,100,100,0,0,1,3,2,5,85,85,170,1\nStyle: Source,Noto Sans Arabic,24,&H00D8C8A6,&H00000000,&H00101513,&H60000000,0,0,0,0,100,100,0,0,1,1,1,2,55,55,115,1\nStyle: Reflection,Noto Naskh Arabic,34,&H00EFD39A,&H00000000,&H00101513,&H60000000,0,0,0,0,100,100,0,0,1,2,1,5,80,80,280,1\nStyle: Brand,Noto Sans,26,&H00E1D3B3,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,45,45,55,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join("\n")}\n`;
+  if (reflectionText) {
+    events.push("Dialogue: 4,0:00:" + Math.max(0.9, duration - 4.5).toFixed(2).padStart(5, "0") + ",0:00:" + Math.max(1.4, duration - 1.8).toFixed(2).padStart(5, "0") + ",Reflection,,0,0,0,," + reflectionText);
+  }
+  return [
+    "[Script Info]",
+    "ScriptType: v4.00+",
+    "PlayResX: " + playResX,
+    "PlayResY: " + playResY,
+    "WrapStyle: 2",
+    "ScaledBorderAndShadow: yes",
+    "YCbCr Matrix: TV.709",
+    "",
+    "[V4+ Styles]",
+    "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+    "Style: Badge,Noto Sans Arabic,24,&H00F4D78A,&H00000000,&H00101513,&H9807110E,1,0,0,0,100,100,0,0,1,2,2,8,60,60,120,1",
+    "Style: Title,Noto Naskh Arabic," + titleSize + ",&H00EFD39A,&H00000000,&H00101513,&H7007110E,1,0,0,0,100,100,0,0,1,2,2,8,70,70,215,1",
+    "Style: Verse,Noto Naskh Arabic," + verseSize + ",&H00FFFFFF,&H00000000,&H00101513,&H9A07110E,0,0,0,0,100,100,0,0,1,3,3,5,100,100,190,1",
+    "Style: Source,Noto Sans Arabic," + sourceSize + ",&H00D8C8A6,&H00000000,&H00101513,&H7007110E,0,0,0,0,100,100,0,0,1,1,1,2,70,70,105,1",
+    "Style: Reflection,Noto Naskh Arabic," + reflectionSize + ",&H00EFD39A,&H00000000,&H00101513,&H7407110E,0,0,0,0,100,100,0,0,1,2,1,5,85,85,300,1",
+    "Style: Brand,Noto Naskh Arabic," + brandSize + ",&H00E8D8B4,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,55,55,60,1",
+    "",
+    "[Events]",
+    "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+    ...events,
+    "",
+  ].join("\n");
 }
 async function getQuranRow(index: number): Promise<QuranRow> {
   const total = await supabaseServerAdminCount("quran_ayahs");
@@ -207,7 +330,7 @@ export async function seedAutomatedVideoRequests() {
           automationKey: key,
           aiMode: "source_locked",
         },
-        duration: VIDEO_SECONDS,
+        duration: TARGET_VIDEO_SECONDS,
         status: "pending",
         automation_key: key,
       };
@@ -232,7 +355,7 @@ export async function seedAutomatedVideoRequests() {
           automationKey: key,
           aiMode: "source_locked",
         },
-        duration: VIDEO_SECONDS,
+        duration: TARGET_VIDEO_SECONDS,
         status: "pending",
         automation_key: key,
       };
@@ -257,7 +380,7 @@ export async function seedAutomatedVideoRequests() {
           automationKey: key,
           aiMode: "source_locked",
         },
-        duration: VIDEO_SECONDS,
+        duration: TARGET_VIDEO_SECONDS,
         status: "pending",
         automation_key: key,
       };
@@ -390,40 +513,72 @@ function contentAudioKind(request: GeneratedRequest, audioUrl: string) {
   if (audioUrl) return request.category === "quran" ? "verified_quran_recitation" : "source_audio";
   return "arabic_tts_narration";
 }
-async function assertPlayableOutput(outputPath: string) {
-  const { stdout } = await execFileAsync("ffprobe", [
-    "-v", "error",
-    "-show_entries", "format=duration:stream=codec_type,codec_name",
-    "-of", "json",
-    outputPath,
-  ], { maxBuffer: 2 * 1024 * 1024 });
-  const probe = JSON.parse(stdout) as {
-    streams?: Array<{ codec_type?: string; codec_name?: string }>;
-    format?: { duration?: string };
-  };
+
+function validateSourceContent(request: GeneratedRequest) {
+  const content = request.content || {};
+  const text = contentText(request);
+  if (!text) throw new Error("Template video requires text/script/narration content.");
+  if (request.category === "quran") {
+    const sourceType = typeof content.sourceType === "string" ? content.sourceType : "";
+    const surahId = Number(content.surahId);
+    const ayahNumber = Number(content.ayahNumber);
+    const sourceUrl = typeof content.sourceUrl === "string" ? content.sourceUrl : "";
+    if (sourceType !== "quran" || !Number.isInteger(surahId) || surahId < 1 || surahId > 114 || !Number.isInteger(ayahNumber) || ayahNumber < 1 || !sourceUrl) {
+      throw new Error("Quran video rejected: verified surah, ayah, and source URL are required. Generic placeholder scripts are not publishable as Quran content.");
+    }
+  }
+  if (request.category === "hadith" && text.length < 12) throw new Error("Hadith video rejected: source text is too short.");
+  if (request.category === "dua" && text.length < 8) throw new Error("Dua video rejected: source text is too short.");
+}
+
+async function getVerifiedQuranAyahAudioUrl(surahId: number, ayahNumber: number) {
+  const url = QURAN_AYAH_AUDIO_BASE_URL.replace(/\/$/, "") + "/" + String(surahId).padStart(3, "0") + String(ayahNumber).padStart(3, "0") + ".mp3";
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Range: "bytes=0-1023", Accept: "audio/mpeg" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (response.ok || response.status === 206) return url;
+  } catch {}
+  return null;
+}
+
+async function assertPlayableOutput(outputPath: string, expectedWidth: number, expectedHeight: number) {
+  const probe = await probeMedia(outputPath);
   const streams = probe.streams ?? [];
-  if (!streams.some(stream => stream.codec_type === "video")) throw new Error("Rendered output has no video stream.");
-  if (!streams.some(stream => stream.codec_type === "audio")) throw new Error("Rendered output has no narration/audio stream.");
+  const video = streams.find((stream) => stream.codec_type === "video");
+  const audio = streams.find((stream) => stream.codec_type === "audio");
+  if (!video) throw new Error("Rendered output has no video stream.");
+  if (!audio) throw new Error("Rendered output has no narration/audio stream.");
   const duration = Number(probe.format?.duration ?? 0);
   if (!Number.isFinite(duration) || duration < 1) throw new Error("Rendered output has an invalid duration.");
+  if ((video.width ?? 0) !== expectedWidth || (video.height ?? 0) !== expectedHeight) {
+    throw new Error("Rendered output resolution mismatch: expected " + expectedWidth + "x" + expectedHeight + ", got " + (video.width || 0) + "x" + (video.height || 0) + ".");
+  }
+  if (video.codec_name !== "h264") throw new Error("Unexpected video codec: " + (video.codec_name || "unknown"));
+  if (audio.codec_name !== "aac") throw new Error("Unexpected audio codec: " + (audio.codec_name || "unknown"));
+  const bitrate = Number(video.bit_rate ?? 0);
+  if (Number.isFinite(bitrate) && bitrate > 0 && bitrate < 350_000) throw new Error("Rendered output video bitrate is too low: " + bitrate + "bps.");
 }
+
 function requestedVideoShape(request: GeneratedRequest) {
   const resolution = request.content?.resolution;
   if (typeof resolution === "string" && /^\d+x\d+$/.test(resolution)) return resolution;
   return request.content?.videoFormat === "horizontal" ? "1920x1080" : "1080x1920";
 }
+
 async function renderVideo(request: GeneratedRequest) {
+  validateSourceContent(request);
   const text = contentText(request);
-  if (!text) throw new Error("Template video requires text/script/narration content.");
   const sourceUrl = contentSourceUrl(request);
-  const audioUrl = contentAudioUrl(request);
   const [width, height] = requestedVideoShape(request).split("x").map(Number);
   if (!width || !height) throw new Error("Invalid video resolution.");
 
-  const temp = await mkdtemp(`${tmpdir()}/zikr-template-video-`);
-  const assPath = `${temp}/captions.ass`;
-  const outputPath = `${temp}/video.mp4`;
-  const audioPath = `${temp}/narration.mp3`;
+  const temp = await mkdtemp(tmpdir() + "/zikr-template-video-");
+  const assPath = temp + "/captions.ass";
+  const outputPath = temp + "/video.mp4";
+  const audioPath = temp + "/narration.mp3";
   try {
     let aiPlan: AiVideoPlan = { ...DEFAULT_AI_VIDEO_PLAN };
     try {
@@ -442,91 +597,99 @@ async function renderVideo(request: GeneratedRequest) {
         },
       };
     } catch (error) {
-      console.warn(`[template-video] Gemini plan skipped for ${request.id}: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn("[template-video] Gemini plan skipped for " + request.id + ": " + (error instanceof Error ? error.message : String(error)));
     }
-    await writeFile(assPath, makeAss(text, request.title, sourceUrl, aiPlan.reflection || null), "utf8");
+
     const persistedAi = request.content?.ai && typeof request.content.ai === "object"
       ? (request.content.ai as Partial<AiVideoPlan> & { scene?: AiVideoPlan["scene"]; motion?: AiVideoPlan["motion"] })
       : null;
-    const scene =
-      persistedAi?.scene === "dawn" ||
-      persistedAi?.scene === "night" ||
-      persistedAi?.scene === "gold" ||
-      persistedAi?.scene === "calm"
-        ? persistedAi.scene
-        : "calm";
+    const scene = persistedAi?.scene === "dawn" || persistedAi?.scene === "night" || persistedAi?.scene === "gold" || persistedAi?.scene === "calm" ? persistedAi.scene : "calm";
     const motion = persistedAi?.motion === "fade" ? "fade" : "slow";
-    const fadeOutStart = Math.max(0, VIDEO_SECONDS - 0.8);
-    const motionFilters = motion === "fade"
-      ? [`fade=t=in:st=0:d=0.7`, `fade=t=out:st=${fadeOutStart.toFixed(2)}:d=0.8`]
-      : [`fade=t=in:st=0:d=0.5`];
-    const filter = [
-      `subtitles=${assPath}:fontsdir=/usr/share/fonts/truetype/noto`,
-      "eq=contrast=1.04:saturation=0.92:brightness=0.01",
-      "vignette=PI/5",
-      ...motionFilters,
-      "format=yuv420p",
-    ].join(",");
-    const videoInput = `color=c=${AI_SCENE_COLORS[scene]}:s=${width}x${height}:r=30:d=${VIDEO_SECONDS}`;
-    const args = ["-y", "-f", "lavfi", "-i", videoInput];
+    const isVertical = height >= width;
+
+    let audioUrl = contentAudioUrl(request);
+    if (request.category === "quran" && !audioUrl) {
+      const verifiedAyahAudio = await getVerifiedQuranAyahAudioUrl(Number(request.content?.surahId), Number(request.content?.ayahNumber));
+      if (verifiedAyahAudio) {
+        audioUrl = verifiedAyahAudio;
+        request.content = { ...request.content, audioUrl: verifiedAyahAudio, audioSource: "quran-ayah-cdn" };
+      }
+    }
+
+    const backgroundPath = await renderBackground(temp, scene, width, height);
     let audioKind = contentAudioKind(request, audioUrl);
     if (audioUrl) {
       const response = await fetch(audioUrl, { headers: { Accept: "audio/*" }, signal: AbortSignal.timeout(60_000) });
-      if (!response.ok) throw new Error(`Audio download failed (HTTP ${response.status}).`);
+      if (!response.ok) throw new Error("Audio download failed (HTTP " + response.status + ").");
       const bytes = new Uint8Array(await response.arrayBuffer());
       if (bytes.length < 1024) throw new Error("Audio download was empty or invalid.");
       await writeFile(audioPath, bytes);
-      args.push("-i", audioPath);
     } else {
       try {
-        await execFileAsync(getArabicTtsPython(), [
-          "scripts/generate-arabic-voice.py",
-          "--text", text,
-          "--output", audioPath,
-          "--voice", ARABIC_TTS_VOICE,
-        ], { maxBuffer: 4 * 1024 * 1024 });
+        await execFileAsync(getArabicTtsPython(), ["scripts/generate-arabic-voice.py", "--text", text, "--output", audioPath, "--voice", ARABIC_TTS_VOICE], { maxBuffer: 4 * 1024 * 1024 });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        throw new Error(
-          `Arabic TTS failed (python=${getArabicTtsPython()}, voice=${ARABIC_TTS_VOICE}): ${message}`,
-        );
+        throw new Error("Arabic TTS failed (python=" + getArabicTtsPython() + ", voice=" + ARABIC_TTS_VOICE + "): " + message);
       }
       audioKind = "arabic_tts_narration";
-      args.push("-i", audioPath);
     }
-    args.push(
+
+    const audioProbe = await probeMedia(audioPath);
+    const audioDuration = Number(audioProbe.format?.duration ?? 0);
+    const duration = resolveRenderDuration(audioDuration);
+    await writeFile(assPath, makeAss(text, request.title, sourceUrl, aiPlan.reflection || null, duration, request.category, isVertical), "utf8");
+
+    const fadeOutStart = Math.max(0, duration - 0.8);
+    const motionFilters = motion === "fade"
+      ? ["fade=t=in:st=0:d=0.7", "fade=t=out:st=" + fadeOutStart.toFixed(2) + ":d=0.8"]
+      : ["fade=t=in:st=0:d=0.5"];
+    const cardX = Math.round(width * 0.07);
+    const cardY = Math.round(height * 0.245);
+    const cardW = width - cardX * 2;
+    const cardH = Math.round(height * 0.46);
+    const filter = [
+      "drawbox=x=" + cardX + ":y=" + cardY + ":w=" + cardW + ":h=" + cardH + ":color=0x06110D@0.58:t=fill",
+      "drawbox=x=" + cardX + ":y=" + cardY + ":w=" + cardW + ":h=" + cardH + ":color=0xEFD39A@0.18:t=2",
+      "eq=contrast=1.05:saturation=0.94:brightness=0.00",
+      "vignette=PI/5",
+      ...motionFilters,
+      "subtitles=" + assPath + ":fontsdir=/usr/share/fonts/truetype/noto",
+      "format=yuv420p",
+    ].join(",");
+
+    const args = [
+      "-y", "-loop", "1", "-framerate", "30", "-i", backgroundPath, "-i", audioPath,
+      "-t", duration.toFixed(2),
       "-vf", filter,
-      "-c:v", "libx264",
-      "-preset", "medium",
-      "-crf", "20",
-      "-profile:v", "high",
-      "-pix_fmt", "yuv420p",
-      "-r", "30",
-      "-movflags", "+faststart",
+      "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-profile:v", "high",
+      "-pix_fmt", "yuv420p", "-r", "30", "-movflags", "+faststart",
       "-metadata:s:v:0", "language=ara",
-    );
-    if (audioUrl || audioKind === "arabic_tts_narration") {
-      args.push("-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-shortest", "-metadata:s:a:0", "language=ara");
-    } else {
-      args.push("-an");
-    }
-    args.push(outputPath);
+      "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
+      "-af", `loudnorm=I=-16:TP=-1.5:LRA=11,apad=whole_dur=${duration.toFixed(2)}s`,
+      "-metadata:s:a:0", "language=ara",
+      "-metadata", "title=" + request.title.slice(0, 180),
+      "-metadata", "comment=ZIKR template " + VIDEO_TEMPLATE_VERSION,
+      outputPath,
+    ];
     await execFileAsync("ffmpeg", args, { maxBuffer: 4 * 1024 * 1024 });
-    await assertPlayableOutput(outputPath);
+    await assertPlayableOutput(outputPath, width, height);
 
     const bytes = await readFile(outputPath);
     const storageKey = request.automation_key || request.id;
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseUrl || !serviceKey) throw new Error("Supabase storage environment is not configured.");
-    const objectPath = `automated/${storageKey}.mp4`;
-    const upload = await fetch(`${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/videos/${objectPath}`, {
-      method: "POST",
-      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "video/mp4", "x-upsert": "true" },
-      body: bytes,
-      signal: AbortSignal.timeout(60_000),
-    });
-    if (!upload.ok) throw new Error(`Video storage upload failed (HTTP ${upload.status}): ${(await upload.text()).slice(0, 300)}`);
+    const objectPath = "automated/" + storageKey + ".mp4";
+    const upload = await fetch(
+      supabaseUrl.replace(/\/$/, "") + "/storage/v1/object/videos/" + objectPath,
+      {
+        method: "POST",
+        headers: { apikey: serviceKey, Authorization: "Bearer " + serviceKey, "Content-Type": "video/mp4", "x-upsert": "true" },
+        body: bytes,
+        signal: AbortSignal.timeout(60_000),
+      },
+    );
+    if (!upload.ok) throw new Error("Video storage upload failed (HTTP " + upload.status + "): " + (await upload.text()).slice(0, 300));
     request.content = {
       ...request.content,
       audio: {
@@ -535,8 +698,17 @@ async function renderVideo(request: GeneratedRequest) {
         sourceUrl: audioUrl || null,
         generatedAt: new Date().toISOString(),
       },
+      render: {
+        templateVersion: VIDEO_TEMPLATE_VERSION,
+        resolution: width + "x" + height,
+        durationSeconds: duration,
+        scene,
+        motion,
+        sourceLocked: request.category === "quran" || request.category === "hadith" || request.category === "dua",
+        generatedAt: new Date().toISOString(),
+      },
     };
-    return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/videos/${objectPath}`;
+    return supabaseUrl.replace(/\/$/, "") + "/storage/v1/object/public/videos/" + objectPath;
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

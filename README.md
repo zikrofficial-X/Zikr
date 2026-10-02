@@ -19,7 +19,7 @@ ZIKR is an Arabic-first Islamic content and spiritual platform covering Quran, H
 
 ## Video and social automation
 
-Production video generation uses the free deterministic FFmpeg template renderer. Queue processing is executed by the configured external/server-side automation path and is not dependent on GitHub Actions.
+Production video generation uses the free deterministic FFmpeg template renderer. The authoritative automatic worker is GitHub Actions; CircleCI is retained for deliberate manual recovery.
 
 ## Required runtime configuration
 

@@ -6,7 +6,7 @@ ZIKR has one authoritative execution owner per production workload. Quran audio 
 |---|---|---:|---|
 | Prayer Web Push planning and delivery | Supabase `pg_cron` → `prayer-notification-worker` | Every minute | Private scheduler token, per-device uniqueness, atomic claims, bounded retries, invalid-subscription deactivation. |
 | Client-local azan and reminder sounds | Browser / native client | While active | Local/offline fallback; it does not create server delivery rows. |
-| Video generation queue | CircleCI `background-jobs` → `pnpm background:jobs` → template/FFmpeg worker | Manual pipeline parameter | Persisted queue, deterministic renderer, protected CircleCI variables, bounded work. |
+| Video generation queue | GitHub Actions `ZIKR Autonomous AI Video Worker` → `pnpm background:jobs` → template/FFmpeg worker | Every 2 hours + manual dispatch | Persisted queue, deterministic renderer, protected GitHub secrets, bounded work. |
 | Social publishing queue | CircleCI `background-jobs` → `pnpm background:jobs` → social publisher | Manual pipeline parameter | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
 | Quran text/catalog | Local canonical corpus → Supabase fallback | Request time | 114 surahs / 6,236 ayahs are verified; Supabase remains compatibility data. |
 | Quran audio playback | External HTTPS audio URLs via `quran_audio.audio_url` | On demand | No Supabase Storage dependency; no bulk MP3 import job is permitted. |
@@ -20,7 +20,7 @@ The Supabase migration `20260915004110_retire_vercel_video_processing_cron.sql` 
 
 GitHub Actions are not the active scheduler in the current repository. Do not recreate `.github/workflows/` as a recurring scheduler unless the architecture is deliberately changed and documented.
 
-Supabase owns minute-level prayer scheduling. CircleCI is used as an external CI/recovery execution environment and does not become an automatic production scheduler unless explicitly configured through a deliberate CircleCI scheduled pipeline.
+Supabase owns minute-level prayer scheduling. GitHub Actions is the authoritative automatic video/social worker. CircleCI remains a manual CI/recovery environment and must not become a second automatic video scheduler.
 
 ## Quran audio architecture
 
@@ -42,7 +42,7 @@ Each delivery uses a unique subscription/prayer/time key and is claimed before s
 video_generation_requests
         │
         ▼
-CircleCI background-jobs (manual parameter)
+GitHub Actions scheduled worker
         │
         ├── seed queue items
         ├── FFmpeg template renderer
