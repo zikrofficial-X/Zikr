@@ -5,7 +5,7 @@ on:
   schedule:
     # Generate and publish content automatically without manual intervention.
     # Two-hour cadence keeps the free runner practical while maintaining a steady feed.
-    - cron: "0 */2 * * *"
+    - cron: "0 * * * *"
   push:
     # A workflow change on main is a deliberate production smoke/deploy trigger.
     # Feature-branch edits do not consume runner time.
@@ -20,7 +20,7 @@ on:
       batch_size:
         description: "Number of new video jobs to seed in this run"
         required: false
-        default: "2"
+        default: "10"
         type: string
 
 permissions:
@@ -45,7 +45,7 @@ jobs:
       GEMINI_MODEL: gemini-3.1-flash-lite
       GEMINI_AUDIO_SMOKE_TEST: "false"
       AUTO_VIDEO_ENABLED: "true"
-      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '2' }}
+      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '10' }}
       VIDEO_BACKGROUND_BATCH_SIZE: "1"
       DAILY_VIDEO_TARGET: "8"
       VIDEO_DAILY_LIMIT: "24"

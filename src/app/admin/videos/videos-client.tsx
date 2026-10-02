@@ -7,12 +7,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { VideoGenerationRequest } from "@/features/videos/services/video-automation";
 
-type Status = "pending" | "processing" | "completed" | "failed";
+type Status = "pending" | "processing" | "retry_wait" | "completed" | "failed";
 
 const STATUS_LABELS: Record<Status, string> = {
   pending: "قيد الانتظار",
   processing: "قيد المعالجة",
   completed: "مكتمل",
+  retry_wait: "إعادة المحاولة لاحقًا",
   failed: "فشل",
 };
 
@@ -20,6 +21,7 @@ const STATUS_CLASSES: Record<Status, string> = {
   pending: "border-amber-500/25 bg-amber-500/10 text-amber-300",
   processing: "border-sky-500/25 bg-sky-500/10 text-sky-300",
   completed: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+  retry_wait: "border-violet-500/25 bg-violet-500/10 text-violet-300",
   failed: "border-red-500/25 bg-red-500/10 text-red-300",
 };
 
@@ -58,6 +60,7 @@ export default function AdminVideosClient() {
       pending: requests.filter((r) => r.status === "pending").length,
       processing: requests.filter((r) => r.status === "processing").length,
       completed: requests.filter((r) => r.status === "completed").length,
+      retry_wait: requests.filter((r) => r.status === "retry_wait").length,
       failed: requests.filter((r) => r.status === "failed").length,
     }),
     [requests],
@@ -101,9 +104,22 @@ export default function AdminVideosClient() {
 
   return (
     <Container className="space-y-7 py-10 text-right" dir="rtl">
+      <nav aria-label="تنقل استوديو الفيديو" className="sticky top-0 z-20 -mx-2 overflow-x-auto rounded-2xl border border-brand-gold/10 bg-brand-emeraldDeep/95 p-2 backdrop-blur">
+        <div className="flex min-w-max items-center gap-2">
+          <a href="#queue" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold">الطابور</a>
+          <a href="#qa" className="rounded-xl border border-brand-gold/10 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/25 hover:text-brand-gold">ضبط الجودة</a>
+          <a href="#templates" className="rounded-xl border border-brand-gold/10 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/25 hover:text-brand-gold">القوالب</a>
+          <a href="#visuals" className="rounded-xl border border-brand-gold/10 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/25 hover:text-brand-gold">العناصر المرئية</a>
+          <a href="#voices" className="rounded-xl border border-brand-gold/10 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/25 hover:text-brand-gold">الأصوات</a>
+          <span className="mx-1 h-6 w-px bg-brand-gold/10" aria-hidden="true" />
+          <Link href="/admin/ai-video" className="rounded-xl border border-brand-gold/20 px-4 py-2 text-sm text-brand-gold hover:bg-brand-gold/10">استوديو الإنشاء</Link>
+          <Link href="/admin/social" className="rounded-xl border border-brand-gold/10 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/25 hover:text-brand-gold">النشر الاجتماعي</Link>
+          <Link href="/admin/automation" className="rounded-xl border border-brand-gold/10 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/25 hover:text-brand-gold">التشغيل الآلي</Link>
+        </div>
+      </nav>
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs tracking-[0.2em] text-brand-cream/30">VIDEO QUEUE</p>
+          <p className="text-xs tracking-[0.2em] text-brand-cream/30">طابور الفيديو</p>
           <h1 className="mt-2 text-3xl font-bold text-brand-gold">طابور توليد الفيديو</h1>
           <p className="mt-2 text-sm leading-7 text-brand-cream/50">هذه الصفحة للمراقبة وإعادة المحاولة والتفاصيل فقط. إنشاء الطلبات موجود في استوديو الفيديو حتى لا تتكرر أدوات الإنشاء.</p>
         </div>
@@ -116,8 +132,8 @@ export default function AdminVideosClient() {
       {error && <div role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
       {message && <div role="status" className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm text-emerald-200">{message}</div>}
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        {(["all", "pending", "processing", "completed", "failed"] as const).map((status) => (
+      <section id="queue" className="grid grid-cols-2 gap-3 md:grid-cols-6 scroll-mt-24">
+        {(["all", "pending", "processing", "retry_wait", "completed", "failed"] as const).map((status) => (
           <button
             key={status}
             type="button"
@@ -172,6 +188,51 @@ export default function AdminVideosClient() {
             </Card>
           );
         })}
+      </section>
+
+      <section id="qa" className="grid gap-4 lg:grid-cols-2 scroll-mt-24">
+        <Card className="border-brand-gold/10 p-5">
+          <h2 className="text-lg font-bold text-brand-gold">ضبط الجودة</h2>
+          <p className="mt-2 text-sm leading-7 text-brand-cream/50">الـworker يرفض الفيديو قبل اكتماله إذا فشل أي فحص أساسي.</p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {["مطابقة النص مع المصدر", "وجود مسار صوتي", "التأكد من عدم صمت الصوت", "الدقة والترميز الصحيح", "صلاحية ملف MP4", "نجاح رفع التخزين"].map(item => (
+              <div key={item} className="rounded-xl border border-emerald-500/15 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-200/80">✓ {item}</div>
+            ))}
+          </div>
+        </Card>
+        <Card id="templates" className="border-brand-gold/10 p-5 scroll-mt-24">
+          <h2 className="text-lg font-bold text-brand-gold">القوالب</h2>
+          <p className="mt-2 text-sm leading-7 text-brand-cream/50">القوالب الحالية المستخدمة في التصيير المحلي.</p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {[["هادئ","calm.svg"],["فجر","dawn.svg"],["ليل","night.svg"],["ذهبي","gold.svg"]].map(([label,file]) => (
+              <div key={file} className="rounded-xl border border-brand-gold/10 bg-black/15 p-3">
+                <p className="font-semibold text-brand-cream/80">{label}</p>
+                <p className="mt-1 font-mono text-[10px] text-brand-cream/25">{file}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <Card id="visuals" className="border-brand-gold/10 p-5 scroll-mt-24">
+          <h2 className="text-lg font-bold text-brand-gold">العناصر المرئية</h2>
+          <p className="mt-2 text-sm leading-7 text-brand-cream/50">ترتيب مزودي المشاهد قبل السقوط إلى قالب FFmpeg الحتمي.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {["LTX السريع","Wan","ComfyUI","مزود مرئي مجاني","قالب FFmpeg"].map(item => (
+              <span key={item} className="rounded-full border border-brand-gold/10 bg-black/15 px-3 py-1.5 text-xs text-brand-cream/70">{item}</span>
+            ))}
+          </div>
+        </Card>
+        <Card id="voices" className="border-brand-gold/10 p-5 scroll-mt-24">
+          <h2 className="text-lg font-bold text-brand-gold">الأصوات</h2>
+          <p className="mt-2 text-sm leading-7 text-brand-cream/50">أصوات السرد العربية الافتراضية داخل العامل.</p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {["العربية الفصحى — رجل — Hamed","العربية المصرية — رجل — Shakir"].map(item => (
+              <div key={item} className="rounded-xl border border-brand-gold/10 bg-black/15 px-3 py-2 text-xs text-brand-cream/70">{item}</div>
+            ))}
+          </div>
+        </Card>
       </section>
 
       {details && (

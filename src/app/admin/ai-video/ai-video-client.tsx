@@ -475,8 +475,8 @@ export default function AdminAiVideoPage() {
               onChange={event => setFormat(event.target.value as Format)}
               className="w-full rounded-lg border border-brand-gold/20 bg-black/30 px-4 py-3 text-brand-cream"
             >
-              <option value="vertical">9:16 — Shorts / Reels</option>
-              <option value="horizontal">16:9 — YouTube</option>
+              <option value="vertical">9:16 — مقاطع قصيرة / ريلز</option>
+              <option value="horizontal">16:9 — يوتيوب</option>
             </select>
           </div>
         </div>

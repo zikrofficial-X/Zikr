@@ -16,7 +16,7 @@ import { AI_VISUAL_POLICY_VERSION, aiVisualPolicyPromptLine } from "../../src/fe
 import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
 
 const execFileAsync = promisify(execFile);
-const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? process.env.DAILY_VIDEO_TARGET ?? 5));
+const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? process.env.DAILY_VIDEO_TARGET ?? 10));
 const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_VIDEO_SECONDS ?? 16)));
 const MIN_VIDEO_SECONDS = Math.min(TARGET_VIDEO_SECONDS, 10);
 const MAX_VIDEO_SECONDS = Math.max(TARGET_VIDEO_SECONDS, 45);
@@ -621,6 +621,12 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
   throw new Error(`Gemini HTTP ${lastStatus || 503} after free-model fallback`);
 }
 
+function comparableSourceText(value: string) {
+  return value
+    .normalize("NFC")
+    .replace(/[\uFEFF\u200B-\u200D\u200E\u200F\u2060\u2066-\u2069\u202A-\u202E]/g, "");
+}
+
 function contentAudioUrl(request: GeneratedRequest) {
   const value = request.content?.audioUrl;
   return typeof value === "string" && /^https:\/\//i.test(value.trim()) ? value.trim() : "";
@@ -650,7 +656,7 @@ async function validateSourceContent(request: GeneratedRequest) {
     if (!sourceId) throw new Error(`${request.category} video rejected: a selected, published source is required.`);
     const source = (await resolveVideoSource(request.category, sourceId)) ?? resolveCuratedVideoSource(sourceId);
     if (!source || source.category !== request.category) throw new Error(`${request.category} video rejected: source is missing, unpublished, unreferenced, or has no recorded grade.`);
-    if (text !== source.text) throw new Error(`${request.category} video rejected: narration does not exactly match the current published source text.`);
+    if (comparableSourceText(text) !== comparableSourceText(source.text)) throw new Error(`${request.category} video rejected: narration does not exactly match the current published source text.`);
     request.content = {
       ...content,
       ...(request.content.curatedSourceId ? { curatedSourceId: source.id } : { sourceId: source.id }),

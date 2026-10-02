@@ -41,7 +41,7 @@ async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
     enabled: parseBoolSetting(values.video_automation_enabled, true),
     batchSize: parseNumberSetting(
       values.video_automation_batch_size,
-      Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 5) || 5),
+      Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 10) || 10),
     ),
     aiEnabled: parseBoolSetting(values.video_automation_ai_enabled, true),
     autoPublish: parseBoolSetting(
@@ -119,16 +119,38 @@ async function processVideos(settings: VideoAutomationSettings) {
     console.log("[background-jobs] VIDEO_AUTOMATION_DRY_RUN=true; planning only.");
     return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
   }
+
   applyVideoAutomationSettings(settings);
   ensureArabicTtsRuntime();
-  const seeded = await seedAutomatedVideoRequests(settings.batchSize);
-  console.log(`[background-jobs] Seeded ${seeded} video request(s) across Quran, Hadith, Dua, Adhkar, verified stories, and editorial reminders.`);
-  const result = await processTemplateVideoQueue(settings.batchSize);
+
+  // Drain the existing backlog before adding new jobs. Seeding and processing the
+  // same batch size on every run can otherwise keep a persistent queue permanently
+  // non-empty. Only use remaining capacity for fresh scheduled items.
+  const backlog = await processTemplateVideoQueue(settings.batchSize);
+  let processed = backlog.processed || 0;
+  let succeeded = backlog.succeeded || 0;
+  let failed = backlog.failed || 0;
+  let seeded = 0;
+
+  const remainingCapacity = Math.max(0, settings.batchSize - processed);
+  if (remainingCapacity > 0) {
+    seeded = await seedAutomatedVideoRequests(remainingCapacity);
+    console.log(`[background-jobs] Seeded ${seeded} new video request(s) after backlog processing.`);
+    if (seeded > 0) {
+      const fresh = await processTemplateVideoQueue(remainingCapacity);
+      processed += fresh.processed || 0;
+      succeeded += fresh.succeeded || 0;
+      failed += fresh.failed || 0;
+    }
+  } else {
+    console.log(`[background-jobs] Backlog consumed the full batch capacity (${processed}/${settings.batchSize}); seeding deferred to the next run.`);
+  }
+
   return {
-    processed: result.processed || 0,
-    succeeded: result.succeeded || 0,
+    processed,
+    succeeded,
     authBlocked: 0,
-    failed: result.failed || 0,
+    failed,
     seeded,
   };
 }

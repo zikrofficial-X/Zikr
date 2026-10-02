@@ -79,7 +79,7 @@ export default async function AdminAutomationPage() {
   return (
     <Container className="py-10 space-y-8" dir="rtl">
       <header>
-        <p className="text-xs tracking-[0.2em] text-brand-cream/30">AUTOMATION OPS</p>
+        <p className="text-xs tracking-[0.2em] text-brand-cream/30">مركز التشغيل الآلي</p>
         <h1 className="mt-2 text-3xl font-bold text-brand-gold">الأتمتة والتشغيل</h1>
         <p className="mt-2 max-w-4xl text-sm leading-7 text-brand-cream/50">
           هذه الصفحة تعرض فقط الطوابير الموجودة فعليًا في الإنتاج. لا تُظهر جداول أو وظائف غير موجودة كأنها صفر.
