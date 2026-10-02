@@ -53,11 +53,16 @@ export function getZikrRunnerRules(difficulty: GameDifficulty): RunnerRules {
 }
 
 export function getZikrRunnerLevels(difficulty: GameDifficulty): RunnerLevel[] {
-  return RUNNER_LEVELS.map((level, index) => ({
-    ...level,
-    id: level.id.replace(":normal:", ":" + difficulty + ":"),
-    speedMultiplier: level.speedMultiplier + (difficulty === "normal" ? 0 : difficulty === "hard" ? 0.07 : -0.04),
-    hazardMultiplier: level.hazardMultiplier + (difficulty === "hard" ? 0.12 : difficulty === "easy" ? -0.10 : 0),
-    starOffset: level.starOffset + (difficulty === "hard" ? 20 : difficulty === "easy" ? -12 : 0) + index * 2,
-  }));
+  return RUNNER_LEVELS.map((level, index) => {
+    const meta = getKidsLevelMeta("zikr-runner", difficulty, index);
+    return {
+      ...level,
+      id: meta.id,
+      titleAr: meta.titleAr,
+      subtitleAr: meta.subtitleAr,
+      speedMultiplier: level.speedMultiplier + (difficulty === "normal" ? 0 : difficulty === "hard" ? 0.07 : -0.04),
+      hazardMultiplier: level.hazardMultiplier + (difficulty === "hard" ? 0.12 : difficulty === "easy" ? -0.10 : 0),
+      starOffset: level.starOffset + (difficulty === "hard" ? 20 : difficulty === "easy" ? -12 : 0) + index * 2,
+    };
+  });
 }
