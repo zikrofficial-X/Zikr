@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getReciters } from '@/features/quran/services/quran';
+import { getQuranReciters } from '@/features/quran/services/quran-client';
 import type { Reciter } from '@/features/quran/types/quran';
 import Link from 'next/link';
 import { Container } from '@/components/ui/container';
