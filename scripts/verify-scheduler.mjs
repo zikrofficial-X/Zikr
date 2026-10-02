@@ -37,7 +37,7 @@ if (!env.includes("VIDEO_MAX_RETRIES=3")) failures.push("video retry default is 
 if (!env.includes("VIDEO_STALE_AFTER_MINUTES=30")) failures.push("video stale timeout default is not documented");
 
 const scheduling = read("docs/production-scheduling.md");
-if (!scheduling.includes("GitHub Actions is the authoritative automatic video/social worker.")) failures.push("production scheduler ownership documentation is stale");
+if (!scheduling.includes("GitHub Actions is the authoritative automatic video/social worker")) failures.push("production scheduler ownership documentation is stale");
 if (scheduling.includes("GitHub Actions are not the active scheduler in the current repository.")) failures.push("stale contradictory scheduler documentation remains");
 
 const mig1 = read("supabase/migrations/20261002113000_scheduler_hardening_20261002.sql");
