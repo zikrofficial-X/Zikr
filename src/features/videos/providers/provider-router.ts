@@ -46,7 +46,16 @@ export function createVideoProviderRouter(
 
         const provider = providers[name];
         if (!provider) continue;
-        const available = await provider.isAvailable();
+        let available = false;
+        try {
+          available = await provider.isAvailable();
+        } catch (error) {
+          console.warn(
+            "[video-provider-router] Provider " + name + " availability check threw: " +
+            (error instanceof Error ? error.message : String(error)),
+          );
+          continue;
+        }
         if (!available) {
           console.warn("[video-provider-router] Provider unavailable: " + name);
           continue;
@@ -67,8 +76,16 @@ export function createVideoProviderRouter(
         }
       }
 
-      if (providers.template && (await providers.template.isAvailable())) {
-        return providers.template.generate(input);
+      if (!templateAttempted && providers.template && (await providers.template.isAvailable())) {
+        try {
+          return await providers.template.generate(input);
+        } catch (error) {
+          return {
+            ok: false,
+            provider: "template",
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
       }
 
       return {
