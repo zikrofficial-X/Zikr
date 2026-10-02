@@ -33,7 +33,7 @@ const example = read(".env.example");
 if (!example.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED=false")) failures.push(".env.example must keep Facebook publishing disabled by default");
 
 const workflow = read(".github/workflows/generate-ai-video.yml");
-if (!workflow.includes('SOCIAL_PUBLISH_FACEBOOK_ENABLED: "false"')) failures.push("autonomous GitHub worker must keep Facebook publishing disabled until credentials are repaired");
+if (!workflow.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN != '' && secrets.FACEBOOK_PAGE_ID != '' }}")) failures.push("autonomous GitHub worker must keep Facebook publishing configuration-controlled by repository secrets");
 
 const adminApi = read("src/app/api/admin/social/route.ts");
 if (!adminApi.includes("authBlockedPlatforms")) failures.push("Admin retry path must understand Facebook auth-blocked platforms");
