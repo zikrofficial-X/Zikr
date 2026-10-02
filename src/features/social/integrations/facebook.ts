@@ -55,6 +55,21 @@ async function readCachedProfile(pageId: string): Promise<FacebookPageProfile | 
   return toProfile((data ?? null) as CachedRow | null, pageId);
 }
 
+type FacebookGraphProfileResponse = {
+  id?: unknown;
+  name?: unknown;
+  about?: unknown;
+  description?: unknown;
+  category?: unknown;
+  website?: unknown;
+  link?: unknown;
+  picture?: { data?: { url?: unknown } };
+  cover?: { source?: unknown };
+  fan_count?: unknown;
+  followers_count?: unknown;
+  error?: { message?: unknown };
+};
+
 async function fetchGraphProfile(pageId: string, accessToken: string, version: string) {
   const url = new URL(`https://graph.facebook.com/${version}/${encodeURIComponent(pageId)}`);
   url.searchParams.set('fields', 'id,name,about,description,category,website,link,picture.type(large),cover,fan_count,followers_count');
@@ -65,7 +80,7 @@ async function fetchGraphProfile(pageId: string, accessToken: string, version: s
     signal: AbortSignal.timeout(15_000),
     cache: 'no-store',
   });
-  const body = await response.json().catch(() => ({})) as Record<string, any>;
+  const body = await response.json().catch(() => ({})) as FacebookGraphProfileResponse;
   if (!response.ok || body.error) {
     throw new Error(String(body?.error?.message ?? `Facebook Graph API failed (${response.status}).`));
   }
