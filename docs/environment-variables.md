@@ -51,6 +51,7 @@ Facebook / Meta:
 - `FACEBOOK_APP_SECRET`
 - `FACEBOOK_PAGE_ID`
 - `FACEBOOK_PAGE_ACCESS_TOKEN`
+- `SOCIAL_PUBLISH_FACEBOOK_ENABLED` (explicit opt-in; currently `false` until the Page access token is renewed)
 - `FACEBOOK_GRAPH_API_VERSION` (current default: `v26.0`)
 
 Native social:

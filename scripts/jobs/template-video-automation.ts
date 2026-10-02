@@ -960,7 +960,12 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
   ) {
     targets.push("youtube");
   }
-  if (process.env.FACEBOOK_PAGE_ID && process.env.FACEBOOK_PAGE_ACCESS_TOKEN) {
+  const facebookPublishingEnabled = process.env.SOCIAL_PUBLISH_FACEBOOK_ENABLED === "true";
+  if (
+    facebookPublishingEnabled &&
+    process.env.FACEBOOK_PAGE_ID &&
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN
+  ) {
     targets.push(content.videoFormat === "horizontal" ? "facebook" : "facebook_reels");
   }
   if (!targets.length) return;
