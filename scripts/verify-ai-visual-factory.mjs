@@ -12,9 +12,7 @@ const read = (path) => {
 
 const worker = read("scripts/jobs/template-video-automation.ts");
 if (!worker.includes('AI_VISUAL_POLICY_VERSION = "2026-10-02-source-locked-v1"')) failures.push("AI visual policy must be explicitly versioned");
-if (!worker.includes("Visual policy version: " + " + AI_VISUAL_POLICY_VERSION + ")) failures.push("AI provider prompt must carry the policy version");
-if (!worker.includes("no depictions of prophets or sacred figures")) failures.push("AI visual policy must prohibit depictions of prophets/sacred figures");
-if (!worker.includes("no invented Arabic scripture")) failures.push("AI visual policy must prohibit invented scripture");
+if (!worker.includes("aiVisualPolicyPromptLine()")) failures.push("AI planner must consume the shared visual policy");
 if (!worker.includes("sourceLocked: true")) failures.push("AI planning metadata must record source locking");
 if (!worker.includes("aiVisualPolicyVersion: AI_VISUAL_POLICY_VERSION")) failures.push("render metadata must record the AI visual policy version");
 if (!worker.includes('["quran", "hadith", "dua", "adhkar", "story"].includes(request.category)')) failures.push("verified source categories must all be marked sourceLocked");
@@ -23,10 +21,14 @@ if (!worker.includes("AI_ATTEMPTS_PER_RUN")) failures.push("AI visual attempts m
 if (!worker.includes("source text")) failures.push("AI planner must operate from source text");
 if (!worker.includes("sourceLocked")) failures.push("AI planner must preserve source-lock semantics");
 
+const policy = read("src/features/videos/providers/ai-visual-policy.ts");
+if (!policy.includes('AI_VISUAL_POLICY_VERSION = "2026-10-02-source-locked-v1"')) failures.push("AI visual policy version is missing");
+for (const token of ["prophets or sacred figures", "invented Arabic scripture", "invented religious quotations"]) {
+  if (!policy.includes(token)) failures.push(`shared AI visual policy missing: ${token}`);
+}
 const hf = read("src/features/videos/providers/hf-space-provider.ts");
 if (!hf.includes("Verified source text:")) failures.push("HF provider prompt must receive verified source text");
-if (!hf.includes("no depictions of prophets or sacred figures")) failures.push("HF provider must inherit sacred-figure visual restriction");
-if (!hf.includes("no invented Arabic scripture")) failures.push("HF provider must inherit scripture restriction");
+if (!hf.includes("aiVisualPolicyPromptLine()")) failures.push("HF provider must consume the shared visual policy");
 
 const router = read("src/features/videos/providers/provider-router.ts");
 if (!router.includes("preferredProvider")) failures.push("AI provider preference routing is missing");
