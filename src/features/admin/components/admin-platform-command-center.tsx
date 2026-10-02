@@ -8,13 +8,22 @@ export async function AdminPlatformCommandCenter() {
   const failedVideoJobs = snapshot.queues.videoFailed;
 
   const groups = ADMIN_NAVIGATION.filter((group) => group.key !== "operations");
+  const queueLabels: Record<string, string> = {
+    content_agent_queue: "طابور وكيل المحتوى",
+    content_agent_runs: "تشغيلات وكيل المحتوى",
+    video: "طابور توليد الفيديو",
+    social: "طابور النشر الاجتماعي",
+    videoGeneration: "طلبات توليد الفيديو",
+    socialPublish: "طابور النشر الاجتماعي",
+  };
+  const outcomeLabels: Record<string, string> = { success: "ناجح", denied: "مرفوض", failed: "فشل" };
 
   return (
     <div className="space-y-8" dir="rtl">
       <header className="rounded-3xl border border-brand-gold/15 bg-black/20 p-6 md:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs tracking-[0.2em] text-brand-cream/30">ZIKR ADMIN OPERATIONS</p>
+            <p className="text-xs tracking-[0.18em] text-brand-cream/30">مركز إدارة وتشغيل ذِكر</p>
             <h1 className="mt-2 text-3xl font-bold text-brand-gold">لوحة العمليات الرئيسية</h1>
             <p className="mt-2 max-w-4xl text-sm leading-7 text-brand-cream/50">
               مركز واحد لمراقبة التشغيل، المحتوى، الوسائط، النشر، المستخدمين، والأمن بدون تكرار صفحات أو مؤشرات غير حقيقية.
@@ -47,7 +56,7 @@ export async function AdminPlatformCommandCenter() {
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {Object.entries(snapshot.queues).map(([key, value]) => (
               <div key={key} className="rounded-xl border border-brand-gold/8 bg-black/10 p-3">
-                <p className="text-[11px] text-brand-cream/35">{key}</p>
+                <p className="text-[11px] text-brand-cream/35">{queueLabels[key] ?? key}</p>
                 <p className="mt-1 text-xl font-bold text-brand-cream">{value.toLocaleString("ar-EG")}</p>
               </div>
             ))}
@@ -66,7 +75,7 @@ export async function AdminPlatformCommandCenter() {
                   <p className="truncate text-sm text-brand-cream/75">{event.action}</p>
                   <p className="text-[11px] text-brand-cream/30">{event.permission ?? "—"} · {event.resource_type ?? "system"}</p>
                 </div>
-                <span className={event.outcome === "success" ? "text-emerald-300" : event.outcome === "denied" ? "text-amber-300" : "text-red-300"}>{event.outcome}</span>
+                <span className={event.outcome === "success" ? "text-emerald-300" : event.outcome === "denied" ? "text-amber-300" : "text-red-300"}>{outcomeLabels[event.outcome] ?? event.outcome}</span>
               </div>
             ))}
             {snapshot.audit.length === 0 && <p className="text-sm text-brand-cream/35">لا توجد عمليات حديثة.</p>}
@@ -122,7 +131,7 @@ export async function AdminPlatformCommandCenter() {
         </div>
       </section>
 
-      <p className="text-center text-xs text-brand-cream/20">آخر تحديث: {new Date(snapshot.generatedAt).toLocaleString("ar-EG")}</p>
+      <p className="text-center text-xs text-brand-cream/20">آخر تحديث للبيانات: {new Date(snapshot.generatedAt).toLocaleString("ar-EG")}</p>
     </div>
   );
 }

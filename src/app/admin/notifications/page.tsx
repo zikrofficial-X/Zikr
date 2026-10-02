@@ -21,7 +21,7 @@ export default async function AdminNotificationsPage() {
     <Container className="py-10 space-y-6" dir="rtl">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs tracking-[0.2em] text-brand-cream/30">ADMIN NOTIFICATIONS</p>
+          <p className="text-xs tracking-[0.2em] text-brand-cream/30">إدارة التنبيهات</p>
           <h1 className="mt-2 text-3xl font-bold text-brand-gold">تنبيهات الإدارة</h1>
           <p className="mt-2 text-sm leading-7 text-brand-cream/50">قناة تشغيلية للتنبيهات العامة الخاصة بالإدارة، مع سجل تدقيق.</p>
         </div>

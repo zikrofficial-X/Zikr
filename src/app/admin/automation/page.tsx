@@ -31,7 +31,7 @@ const VIDEO_SETTINGS = [
   ["video_automation_batch_size", "عدد الطلبات في كل دورة", "number"],
   ["video_automation_ai_enabled", "توليد المشاهد بالـAI", "boolean"],
   ["video_automation_auto_publish", "النشر التلقائي", "boolean"],
-  ["video_automation_facebook_enabled", "Facebook / Reels", "boolean"],
+  ["video_automation_facebook_enabled", "فيسبوك وريلز", "boolean"],
 ] as const;
 
 async function readCount(table: string) {

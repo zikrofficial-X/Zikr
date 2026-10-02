@@ -198,7 +198,7 @@ export default async function AdminLibraryPage({
   return (
     <main className="mx-auto max-w-[1600px] space-y-8 p-4 md:p-8 text-right" dir="rtl">
       <header>
-        <p className="text-xs tracking-[0.2em] text-brand-cream/35 uppercase">ZIKR CONTENT OPERATIONS</p>
+        <p className="text-xs tracking-[0.2em] text-brand-cream/35 uppercase">تشغيل المحتوى والمكتبة</p>
         <h1 className="mt-2 text-3xl font-bold text-brand-gold">المكتبة الإسلامية ومركز المحتوى</h1>
         <p className="mt-2 max-w-4xl text-sm leading-7 text-brand-cream/55">إدارة المحتوى والمصادر والمراجعة والنشر من مكان واحد. المواد التأسيسية لا تُنشر تلقائيًا.</p>
       </header>

@@ -8,11 +8,11 @@ import { getAdminHealth } from "@/features/admin/services/platform";
 export const metadata: Metadata = { title: "مركز الإصدار | الأدمن" };
 
 const checks = [
-  ["CI / Verify", "CircleCI → ci-check"],
-  ["Production build", "vercel.json → pnpm build"],
-  ["Migration integrity", "pnpm supabase:migrations:check"],
-  ["Routes integrity", "pnpm routes:check"],
-  ["Mobile readiness", "pnpm mobile:check"],
+  ["التحقق الآلي", "CircleCI → ci-check"],
+  ["بناء الإنتاج", "vercel.json → pnpm build"],
+  ["سلامة الترحيلات", "pnpm supabase:migrations:check"],
+  ["سلامة المسارات", "pnpm routes:check"],
+  ["جاهزية الهاتف", "pnpm mobile:check"],
 ] as const;
 
 export default async function AdminReleasePage() {
@@ -24,14 +24,14 @@ export default async function AdminReleasePage() {
   return (
     <Container className="py-10 space-y-6" dir="rtl">
       <header>
-        <p className="text-xs tracking-[0.2em] text-brand-cream/30">RELEASE OPERATIONS</p>
+        <p className="text-xs tracking-[0.18em] text-brand-cream/30">إدارة الإصدار</p>
         <h1 className="mt-2 text-3xl font-bold text-brand-gold">مركز الإصدار</h1>
         <p className="mt-2 text-sm leading-7 text-brand-cream/50">بوابة تعرض معلومات الإصدار الفعلية والتحققات المطلوبة. وجود اسم التحقق هنا لا يعني أنه نجح؛ النتيجة النهائية تأتي من CI/Deployment.</p>
       </header>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">Branch</p><p className="mt-2 font-mono text-sm text-brand-cream/70">{branch}</p></div>
-        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5 md:col-span-2"><p className="text-xs text-brand-cream/35">Commit</p><p className="mt-2 break-all font-mono text-sm text-brand-cream/70">{commit}</p></div>
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">الفرع</p><p className="mt-2 font-mono text-sm text-brand-cream/70">{branch}</p></div>
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5 md:col-span-2"><p className="text-xs text-brand-cream/35">الإصدار البرمجي</p><p className="mt-2 break-all font-mono text-sm text-brand-cream/70">{commit}</p></div>
       </section>
 
       <section className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
@@ -43,7 +43,7 @@ export default async function AdminReleasePage() {
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className={`rounded-2xl border p-5 ${health.database === 'healthy' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/20 bg-red-500/5'}`}><h2 className="font-semibold text-brand-gold">اتصال قاعدة البيانات</h2><p className="mt-2 text-sm text-brand-cream/55">{health.database === 'healthy' ? 'تم الاتصال بقاعدة الإنتاج بنجاح في آخر فحص.' : 'تعذر تأكيد سلامة الاتصال في آخر فحص.'}</p></div>
-        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><h2 className="font-semibold text-brand-gold">الطوابير</h2><p className="mt-2 text-sm text-brand-cream/55">Social failed: {health.queues.socialFailed} · Video failed: {health.queues.videoFailed}</p></div>
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><h2 className="font-semibold text-brand-gold">الطوابير</h2><p className="mt-2 text-sm text-brand-cream/55">فشل النشر الاجتماعي: {health.queues.socialFailed} · فشل الفيديو: {health.queues.videoFailed}</p></div>
       </section>
     </Container>
   );

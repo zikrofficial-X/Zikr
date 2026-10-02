@@ -22,7 +22,7 @@ export default async function AdminSettingsPage() {
   return (
     <Container className="py-10 space-y-6" dir="rtl">
       <header>
-        <p className="text-xs tracking-[0.2em] text-brand-cream/30">ADMIN CONFIG</p>
+        <p className="text-xs tracking-[0.2em] text-brand-cream/30">إعدادات الإدارة</p>
         <h1 className="mt-2 text-3xl font-bold text-brand-gold">إعدادات لوحة الإدارة</h1>
         <p className="mt-2 text-sm leading-7 text-brand-cream/50">الإعدادات التشغيلية الحساسة محفوظة في admin_settings مع تدقيق مركزي لكل تعديل.</p>
       </header>

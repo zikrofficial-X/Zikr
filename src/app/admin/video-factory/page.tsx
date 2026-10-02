@@ -8,7 +8,7 @@ export default async function VideoFactoryDashboardPage() {
   return (
     <AdminSectionHub
       eyebrow="VIDEO FACTORY"
-      title="Video Factory Dashboard"
+      title="لوحة مصنع الفيديو"
       description="المركز الرسمي لدورة إنتاج الفيديو: المصدر، النص، الصوت، الصورة، القالب، الطابور، الجودة، الجدولة والنشر."
       links={[
         { href: "/admin/video-factory/sources", label: "Sources", description: "اختيار المصادر الموثقة التي يبدأ منها الإنتاج." },

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { AdminSectionHub } from "@/features/admin/components/admin-section-hub";
 

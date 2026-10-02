@@ -24,7 +24,7 @@ export default async function AdminAuditPage() {
   return (
     <Container className="py-10 space-y-6" dir="rtl">
       <header>
-        <p className="text-xs tracking-[0.2em] text-brand-cream/30">ADMIN SECURITY</p>
+        <p className="text-xs tracking-[0.18em] text-brand-cream/30">الأمن والتدقيق</p>
         <h1 className="mt-2 text-3xl font-bold text-brand-gold">سجل الإدارة المركزي</h1>
         <p className="mt-2 text-sm leading-7 text-brand-cream/50">سجل append-only للعمليات الإدارية، مع النتيجة، الصلاحية، المورد، ومعرّف الطلب.</p>
       </header>
@@ -34,7 +34,7 @@ export default async function AdminAuditPage() {
           <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-black/25 text-brand-gold/70">
               <tr>
-                {['التاريخ','الإجراء','الصلاحية','المورد','النتيجة','Request ID'].map((h) => <th key={h} className="px-4 py-3 text-right font-semibold">{h}</th>)}
+                {['التاريخ','الإجراء','الصلاحية','المورد','النتيجة','معرّف الطلب'].map((h) => <th key={h} className="px-4 py-3 text-right font-semibold">{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -44,7 +44,7 @@ export default async function AdminAuditPage() {
                   <td className="px-4 py-3 text-brand-cream/85 font-medium">{row.action}</td>
                   <td className="px-4 py-3 text-brand-cream/50">{row.permission ?? '—'}</td>
                   <td className="px-4 py-3 text-brand-cream/45">{row.resource_type ?? '—'}{row.resource_id ? ` / ${row.resource_id}` : ''}</td>
-                  <td className={`px-4 py-3 font-semibold ${outcomeClass(row.outcome)}`}>{row.outcome}</td>
+                  <td className={`px-4 py-3 font-semibold ${outcomeClass(row.outcome)}`}>{row.outcome === "success" ? "ناجح" : row.outcome === "denied" ? "مرفوض" : row.outcome === "failed" ? "فشل" : row.outcome}</td>
                   <td className="px-4 py-3 font-mono text-[11px] text-brand-cream/35">{row.request_id ?? '—'}</td>
                 </tr>
               ))}

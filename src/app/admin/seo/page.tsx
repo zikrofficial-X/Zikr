@@ -32,7 +32,7 @@ export default async function AdminSeoPage() {
 
   return (
     <Container className="py-10 space-y-6" dir="rtl">
-      <header><p className="text-xs tracking-[0.2em] text-brand-cream/30">SEO / ADSENSE</p><h1 className="mt-2 text-3xl font-bold text-brand-gold">SEO والجاهزية للمونتزة</h1><p className="mt-2 text-sm leading-7 text-brand-cream/50">مركز تدقيق سريع لأساسيات العنوان، المحتوى المنشور، والسوشيال، مع روابط مباشرة للأصول العامة.</p></header>
+      <header><p className="text-xs tracking-[0.2em] text-brand-cream/30">SEO والجاهزية للمونتزة</p><h1 className="mt-2 text-3xl font-bold text-brand-gold">SEO والجاهزية للمونتزة</h1><p className="mt-2 text-sm leading-7 text-brand-cream/50">مركز تدقيق سريع لأساسيات العنوان، المحتوى المنشور، والسوشيال، مع روابط مباشرة للأصول العامة.</p></header>
       <div className="grid gap-3 md:grid-cols-2">
         {checks.map(([name, ok, detail]) => <div key={name} className={`rounded-2xl border p-5 ${ok ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}><div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-brand-cream">{name}</h2><span className={ok ? 'text-emerald-300' : 'text-amber-300'}>{ok ? 'OK' : 'راجع'}</span></div><p className="mt-2 text-xs text-brand-cream/40">{detail}</p></div>)}
       </div>

@@ -18,50 +18,67 @@ const navigationPath = "src/features/admin/config/navigation.ts";
 const navigation = read(navigationPath);
 
 const CANONICAL_ARCHITECTURE = {
-  Operations: [
-    ["/admin", "Dashboard", "dashboard.view"],
-    ["/admin/health", "Health", "system.manage"],
-    ["/admin/alerts", "Alerts", "notifications.manage"],
-    ["/admin/audit", "Audit", "audit.read"],
+  "التشغيل والمراقبة": [
+    ["/admin", "لوحة التحكم", "dashboard.view"],
+    ["/admin/automation", "التشغيل الآلي", "system.manage"],
+    ["/admin/health", "صحة النظام", "system.manage"],
+    ["/admin/notifications", "التنبيهات", "notifications.manage"],
+    ["/admin/audit", "سجل التدقيق", "audit.read"],
+    ["/admin/release", "مركز الإصدار", "release.manage"],
   ],
-  Content: [
-    ["/admin/library", "Library", "library.manage"],
-    ["/admin/sources", "Sources", "sources.manage"],
-    ["/admin/editorial", "Editorial", "knowledge.manage"],
-    ["/admin/categories", "Categories", "content.manage"],
-    ["/admin/search", "Search", "content.manage"],
+  "المحتوى والمعرفة": [
+    ["/admin/content", "إدارة المحتوى", "content.manage"],
+    ["/admin/library", "مكتبة المحتوى", "library.manage"],
+    ["/admin/sources", "مصادر المحتوى", "sources.manage"],
+    ["/admin/editorial", "التحرير والنشر", "knowledge.manage"],
+    ["/admin/knowledge", "المعرفة الإسلامية", "knowledge.manage"],
+    ["/admin/prophets", "الأنبياء", "prophets.manage"],
+    ["/admin/battles", "الغزوات", "battles.manage"],
+    ["/admin/categories", "التصنيفات", "content.manage"],
+    ["/admin/sections", "الأقسام وترتيبها", "sections.manage"],
+    ["/admin/search", "البحث والفهرسة", "content.manage"],
   ],
-  "Video Factory": [
-    ["/admin/video-factory", "Dashboard", "video.manage"],
-    ["/admin/video-factory/sources", "Sources", "video.manage"],
-    ["/admin/video-factory/scripts", "Scripts", "video.manage"],
-    ["/admin/video-factory/voices", "Voices", "video.manage"],
-    ["/admin/video-factory/visuals", "Visuals", "video.manage"],
-    ["/admin/video-factory/templates", "Templates", "video.manage"],
-    ["/admin/video-factory/queue", "Queue", "video.manage"],
-    ["/admin/video-factory/qa", "QA", "video.manage"],
-    ["/admin/video-factory/scheduler", "Scheduler", "video.manage"],
-    ["/admin/video-factory/publishing", "Publishing", "video.manage"],
+  "الفيديو والوسائط": [
+    ["/admin/video-factory", "مصنع الفيديو", "video.manage"],
+    ["/admin/ai-video", "استوديو إنشاء الفيديو", "video.manage"],
+    ["/admin/ai-video/curated", "المحتوى الموثق للفيديو", "video.manage"],
+    ["/admin/videos", "طابور توليد الفيديو", "video.manage"],
+    ["/admin/video-factory/sources", "مصادر الفيديو", "video.manage"],
+    ["/admin/video-factory/scripts", "نصوص السرد", "video.manage"],
+    ["/admin/video-factory/voices", "الأصوات", "video.manage"],
+    ["/admin/video-factory/visuals", "العناصر المرئية", "video.manage"],
+    ["/admin/video-factory/templates", "القوالب", "video.manage"],
+    ["/admin/video-factory/qa", "ضبط الجودة", "video.manage"],
+    ["/admin/media", "مكتبة الوسائط", "media.manage"],
   ],
-  Social: [["/admin/social", "Social", "social.manage"]],
-  Kids: [
-    ["/admin/kids/games", "Games", "kids.manage"],
-    ["/admin/kids/levels", "Levels", "kids.manage"],
-    ["/admin/kids/content", "Content", "kids.manage"],
-    ["/admin/kids/assets", "Assets", "kids.manage"],
-    ["/admin/kids/analytics", "Analytics", "kids.manage"],
+  "الصوت": [
+    ["/admin/audio", "مركز الصوت", "audio.manage"],
+    ["/admin/audio/quran", "تلاوات القرآن", "audio.manage"],
+    ["/admin/audio/adhan", "الأذان", "audio.manage"],
+    ["/admin/audio/tts", "تحويل النص إلى صوت", "audio.manage"],
+    ["/admin/site-audio", "صوت الموقع والتذكيرات", "audio.manage"],
   ],
-  Audio: [
-    ["/admin/audio/quran", "Quran", "audio.manage"],
-    ["/admin/audio/adhan", "Adhan", "audio.manage"],
-    ["/admin/audio/tts", "TTS", "audio.manage"],
-    ["/admin/audio/site-audio", "Site Audio", "audio.manage"],
+  "النشر الاجتماعي": [
+    ["/admin/social", "مركز النشر الاجتماعي", "social.manage"],
   ],
-  Users: [["/admin/users", "Users", "users.read"]],
-  Security: [["/admin/security", "Security", "security.manage"]],
-  SEO: [["/admin/seo", "SEO", "settings.manage"]],
-  Android: [["/admin/android", "Android", "android.manage"]],
-  Settings: [["/admin/settings", "Settings", "settings.manage"]],
+  "قسم الأطفال": [
+    ["/admin/kids", "لوحة الأطفال", "kids.manage"],
+    ["/admin/kids/content", "محتوى الأطفال", "kids.manage"],
+    ["/admin/kids/games", "الألعاب", "kids.manage"],
+    ["/admin/kids/levels", "المستويات", "kids.manage"],
+    ["/admin/kids/assets", "الأصول", "kids.manage"],
+    ["/admin/kids/analytics", "تحليلات الأطفال", "kids.manage"],
+  ],
+  "المستخدمون والتحليلات": [
+    ["/admin/users", "المستخدمون والأدوار", "users.read"],
+    ["/admin/analytics", "تحليلات المنصة", "analytics.read"],
+  ],
+  "الأمن والإعدادات": [
+    ["/admin/security", "أمن لوحة الإدارة", "security.manage"],
+    ["/admin/seo", "تحسين الظهور", "settings.manage"],
+    ["/admin/android", "إصدار أندرويد", "android.manage"],
+    ["/admin/settings", "إعدادات الإدارة", "settings.manage"],
+  ],
 };
 
 const expectedGroups = Object.keys(CANONICAL_ARCHITECTURE);
@@ -103,6 +120,30 @@ for (const [groupLabel, items] of Object.entries(CANONICAL_ARCHITECTURE)) {
     if (!routeExists(href)) {
       failures.push("canonical navigation target has no page: " + href);
     }
+  }
+}
+
+
+const visibleLabels = [
+  ...navigation.matchAll(/label:\s*["']([^"']+)["']/g),
+].map((m) => m[1]);
+for (const label of visibleLabels) {
+  if (/[A-Za-z]{3,}/.test(label)) {
+    failures.push("admin navigation label is not Arabic: " + label);
+  }
+}
+
+const legacyRedirects = {
+  "src/app/admin/alerts/page.tsx": "/admin/notifications",
+  "src/app/admin/audio/site-audio/page.tsx": "/admin/site-audio",
+  "src/app/admin/video-factory/queue/page.tsx": "/admin/videos",
+  "src/app/admin/video-factory/publishing/page.tsx": "/admin/social",
+  "src/app/admin/video-factory/scheduler/page.tsx": "/admin/automation",
+};
+for (const [path, target] of Object.entries(legacyRedirects)) {
+  const page = read(path);
+  if (!page.includes(`redirect("${target}")`)) {
+    failures.push(`legacy admin route must redirect to canonical path: ${path} -> ${target}`);
   }
 }
 
@@ -149,5 +190,5 @@ const count = Object.values(CANONICAL_ARCHITECTURE).reduce(
   0,
 );
 console.log(
-  `✅ Final Admin Architecture checks passed: ${expectedGroups.length} groups, ${count} canonical routes.`,
+  `✅ فحص بنية لوحة الإدارة نجح: ${expectedGroups.length} مجموعات، ${count} مسارًا أساسيًا.`,
 );
