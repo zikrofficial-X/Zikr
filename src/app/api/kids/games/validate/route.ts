@@ -3,10 +3,10 @@
  * v1.1.0 - Validates all games and returns comprehensive status
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { GAMES_REGISTRY, getGamesStatistics } from '@/features/kids/data/games-index';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const validation = {
       timestamp: new Date().toISOString(),
