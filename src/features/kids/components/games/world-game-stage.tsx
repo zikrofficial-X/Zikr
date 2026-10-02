@@ -8,11 +8,6 @@ import type {
 import {
   getVerifiedKidsQuizQuestions,
 } from "@/lib/games/verified-content";
-import { ArcadeGame } from "@/features/kids/components/games/arcade-game";
-import type {
-  ArcadeGameScene,
-  ArcadeHud,
-} from "@/lib/games/arcade/arcade-scene";
 import { ZikrRunnerGame } from "@/features/kids/components/games/zikr-runner-game";
 import type {
   RunnerHud,
@@ -25,6 +20,7 @@ import { VersePuzzleGame } from "@/features/kids/components/games/verse-puzzle-g
 import { MosqueAdventureGame } from "@/features/kids/components/games/mosque-adventure-game";
 import { ZikrRoadGame } from "@/features/kids/components/games/zikr-road-game";
 import { ZikrJumpGame } from "@/features/kids/components/games/zikr-jump-game";
+import { HilalFlyGame } from "@/features/kids/components/games/hilal-fly-game";
 
 export type WorldHud = {
   score: number;
@@ -66,17 +62,6 @@ function runnerHud(hud: RunnerHud): WorldHud {
   };
 }
 
-function arcadeHud(hud: ArcadeHud): WorldHud {
-  return {
-    score: hud.score,
-    collectibles: hud.collectibles,
-    distance: hud.distance,
-    combo: hud.combo,
-    level: hud.level,
-    completed: hud.completed,
-  };
-}
-
 export function WorldGameStage(props: WorldGameStageProps) {
   const {
     gameId,
@@ -91,7 +76,6 @@ export function WorldGameStage(props: WorldGameStageProps) {
     onError,
   } = props;
   const [runnerScene, setRunnerScene] = useState<ZikrRunnerScene | null>(null);
-  const [arcadeScene, setArcadeScene] = useState<ArcadeGameScene | null>(null);
   const localTone = useRef<ToneFeedback | null>(null);
 
   useEffect(() => {
@@ -111,11 +95,9 @@ export function WorldGameStage(props: WorldGameStageProps) {
     localTone.current?.playEvent(event);
   }, []);
   const isRunner = gameId === "zikr-runner";
-  const isArcade = gameId === "hilal-fly";
 
   useEffect(() => {
     setRunnerScene(null);
-    setArcadeScene(null);
     onReady(null);
   }, [gameId, onReady]);
 
@@ -126,14 +108,6 @@ export function WorldGameStage(props: WorldGameStageProps) {
     },
     [onPausedChange]
   );
-  const handleArcadeReady = useCallback(
-    (scene: ArcadeGameScene) => {
-      setArcadeScene(scene);
-      onPausedChange(false);
-    },
-    [onPausedChange]
-  );
-
   useEffect(() => {
     const controller = runnerScene
       ? {
@@ -144,40 +118,28 @@ export function WorldGameStage(props: WorldGameStageProps) {
           setMuted: (value: boolean) => runnerScene.setMuted(value),
           isPaused: () => runnerScene.scene.isPaused(),
         }
-      : arcadeScene
+      : !isRunner
         ? {
-            pause: () => arcadeScene.pauseGame(),
-            resume: () => arcadeScene.resumeGame(),
-            restart: () => arcadeScene.restartGame(),
-            toggleMute: () => arcadeScene.toggleMute(),
-            setMuted: (value: boolean) => arcadeScene.setMuted(value),
-            isPaused: () => arcadeScene.scene.isPaused(),
+            pause: () => undefined,
+            resume: () => undefined,
+            restart: () => undefined,
+            toggleMute: () => false,
+            setMuted: () => undefined,
+            isPaused: () => false,
           }
-        : !isRunner && !isArcade
-          ? {
-              pause: () => undefined,
-              resume: () => undefined,
-              restart: () => undefined,
-              toggleMute: () => false,
-              setMuted: () => undefined,
-              isPaused: () => false,
-            }
-          : null;
+        : null;
     onReady(controller);
-  }, [arcadeScene, isArcade, isRunner, onReady, runnerScene]);
+  }, [isRunner, onReady, runnerScene]);
 
   useEffect(() => {
     if (paused) runnerScene?.pauseGame();
     else runnerScene?.resumeGame();
-    if (paused) arcadeScene?.pauseGame();
-    else arcadeScene?.resumeGame();
-  }, [arcadeScene, paused, runnerScene]);
+  }, [paused, runnerScene]);
 
   useEffect(() => {
     if (restartToken === 0) return;
     runnerScene?.restartGame();
-    arcadeScene?.restartGame();
-  }, [arcadeScene, restartToken, runnerScene]);
+  }, [restartToken, runnerScene]);
 
   if (isRunner) {
     return (
@@ -186,19 +148,6 @@ export function WorldGameStage(props: WorldGameStageProps) {
         onReady={handleRunnerReady}
         onHud={hud => onHud(runnerHud(hud))}
         onGameOver={hud => onResult(runnerHud(hud))}
-        onError={onError}
-      />
-    );
-  }
-
-  if (isArcade) {
-    return (
-      <ArcadeGame
-        gameId={gameId}
-        muted={muted}
-        onReady={handleArcadeReady}
-        onHud={hud => onHud(arcadeHud(hud))}
-        onGameOver={hud => onResult(arcadeHud(hud))}
         onError={onError}
       />
     );
@@ -218,6 +167,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
   if (gameId === "mosque-adventure") return <MosqueAdventureGame {...localProps} />;
   if (gameId === "zikr-road") return <ZikrRoadGame {...localProps} />;
   if (gameId === "zikr-jump") return <ZikrJumpGame {...localProps} />;
+  if (gameId === "hilal-fly") return <HilalFlyGame {...localProps} />;
   if (gameId === "zikr-quiz") return <QuizGame {...localProps} />;
   if (gameId === "good-deeds") return <GoodDeedsGame {...localProps} />;
   if (gameId === "mosque-cleanup") return <CleanupGame {...localProps} />;
