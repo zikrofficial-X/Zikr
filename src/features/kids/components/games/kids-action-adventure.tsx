@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
 import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
@@ -875,7 +875,7 @@ export function MosqueAdventureGame({
     });
   }, [levelMeta.id, levelMeta.pattern, levelMeta.seed, stationCount]);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setLevelIndex(0);
     setPosition(0);
     setScore(0);
@@ -889,9 +889,11 @@ export function MosqueAdventureGame({
     completionRef.current = false;
     advancingRef.current = false;
     onHud({ score: 0, collectibles: 0, distance: 0, combo: 0, level: 1, completed: false });
-  };
+  }, [onHud]);
 
-  useEffect(() => { reset(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [difficulty, restartToken]);
+  useEffect(() => {
+    reset();
+  }, [difficulty, reset, restartToken]);
 
   const progress = nodes.length <= 1 ? 100 : (position / (nodes.length - 1)) * 100;
 
