@@ -35,8 +35,8 @@
     "adsense:check": "node scripts/verify-adsense-readiness.mjs",
     "search-console:check": "node scripts/verify-google-search-console.mjs",
     "hygiene:check": "node scripts/verify-hygiene.mjs",
-    "verify:pr": "pnpm supabase:migrations:check && pnpm kids:memory:check && pnpm kids:wudu:check && pnpm kids:verse:check && pnpm kids:quiz:check && pnpm routes:check && pnpm imports:check && pnpm content:check && pnpm auth:check && pnpm canonical:check && pnpm project:check && pnpm hygiene:check && pnpm lint && pnpm check",
-    "verify": "pnpm supabase:migrations:check && pnpm quran:local:check && pnpm supabase:migrations:replay && pnpm kids:memory:check && pnpm kids:wudu:check && pnpm kids:verse:check && pnpm kids:quiz:check && pnpm routes:check && pnpm imports:check && pnpm placeholder-media:check && pnpm mobile:check && pnpm offline:check && pnpm content:check && pnpm auth:check && pnpm canonical:check && pnpm project:check && pnpm hygiene:check && pnpm native-social:check && pnpm adsense:check && pnpm search-console:check && pnpm lint && pnpm check && pnpm build",
+    "verify:pr": "pnpm supabase:migrations:check && pnpm kids:memory:check && pnpm kids:wudu:check && pnpm kids:verse:check && pnpm kids:quiz:check && pnpm kids:mosque:check && pnpm routes:check && pnpm imports:check && pnpm content:check && pnpm auth:check && pnpm canonical:check && pnpm project:check && pnpm hygiene:check && pnpm lint && pnpm check",
+    "verify": "pnpm supabase:migrations:check && pnpm quran:local:check && pnpm supabase:migrations:replay && pnpm kids:memory:check && pnpm kids:wudu:check && pnpm kids:verse:check && pnpm kids:quiz:check && pnpm kids:mosque:check && pnpm routes:check && pnpm imports:check && pnpm placeholder-media:check && pnpm mobile:check && pnpm offline:check && pnpm content:check && pnpm auth:check && pnpm canonical:check && pnpm project:check && pnpm hygiene:check && pnpm native-social:check && pnpm adsense:check && pnpm search-console:check && pnpm lint && pnpm check && pnpm build",
     "imports:check": "node scripts/verify-local-imports.mjs",
     "placeholder-media:check": "node scripts/verify-placeholder-media.mjs",
     "background:jobs": "tsx scripts/run-background-jobs.ts",
@@ -48,7 +48,8 @@
     "kids:memory:check": "tsx scripts/verify-kids-memory.ts",
     "kids:wudu:check": "tsx scripts/verify-kids-wudu.ts",
     "kids:verse:check": "tsx scripts/verify-kids-verse.ts",
-    "kids:quiz:check": "tsx scripts/verify-kids-quiz.ts"
+    "kids:quiz:check": "tsx scripts/verify-kids-quiz.ts",
+    "kids:mosque:check": "tsx scripts/verify-kids-mosque-adventure.ts"
   },
   "dependencies": {
     "@capacitor/android": "7.4.3",
@@ -104,6 +105,8 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^6.0.3"
   },
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "packageManager": "pnpm@9.15.0"
 }

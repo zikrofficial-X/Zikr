@@ -22,6 +22,7 @@ import { ToneFeedback, type GameSoundEvent } from "@/lib/games/tone-feedback";
 import { ZikrMemoryGame } from "@/features/kids/components/games/zikr-memory-game";
 import { WuduChallengeGame } from "@/features/kids/components/games/wudu-challenge-game";
 import { VersePuzzleGame } from "@/features/kids/components/games/verse-puzzle-game";
+import { MosqueAdventureGame } from "@/features/kids/components/games/mosque-adventure-game";
 
 export type WorldHud = {
   score: number;
@@ -109,7 +110,6 @@ export function WorldGameStage(props: WorldGameStageProps) {
   }, []);
   const isRunner = gameId === "zikr-runner";
   const isArcade =
-    gameId === "mosque-adventure" ||
     gameId === "zikr-road" ||
     gameId === "zikr-jump" ||
     gameId === "hilal-fly";
@@ -216,6 +216,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
   if (gameId === "zikr-memory") return <ZikrMemoryGame {...localProps} />;
   if (gameId === "wudu-challenge") return <WuduChallengeGame {...localProps} />;
   if (gameId === "verse-puzzle") return <VersePuzzleGame {...localProps} />;
+  if (gameId === "mosque-adventure") return <MosqueAdventureGame {...localProps} />;
   if (gameId === "zikr-quiz") return <QuizGame {...localProps} />;
   if (gameId === "good-deeds") return <GoodDeedsGame {...localProps} />;
   if (gameId === "mosque-cleanup") return <CleanupGame {...localProps} />;

@@ -76,3 +76,12 @@ ZIKR Quiz consumes only the verified questions returned by `getVerifiedKidsQuizQ
 The rebuild is presentation/feedback focused: it adds a clear question/progress hierarchy, category context, score/correct/streak HUD, selected-answer states, explicit correct/incorrect feedback, responsive answer cards, and a completion result through the existing Game Shell submission/offline path. Difficulty remains meaningful through 5/7/10 questions for easy/normal/hard.
 
 The content integrity check `pnpm kids:quiz:check` is included in both PR and main verification and ensures the verified adapter and dedicated runtime remain present.
+
+
+## Mosque Adventure gameplay contract
+
+Mosque Adventure uses a dedicated React runtime instead of the shared lane-based Phaser adventure mode. The map is a sequential fictional learning route with touch-friendly station interaction, verified scenario checkpoints, progress, mistakes, score, and completion feedback.
+
+Scenario text and answer indexes come only from `getApprovedScenarioQuestions()`; the runtime must not duplicate or invent scenario question content. Difficulty is gameplay: easy uses 3 stations and one scenario checkpoint, normal uses 4 stations and two checkpoints, and hard uses 5 stations with two checkpoints and a larger mistake penalty.
+
+The content integrity check `pnpm kids:mosque:check` is part of PR and main verification.
