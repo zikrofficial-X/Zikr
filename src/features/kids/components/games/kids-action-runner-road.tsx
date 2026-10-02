@@ -61,7 +61,6 @@ type RunnerModel = {
   gameOver: boolean;
   invulnerableUntil: number;
   seed: number;
-  levelIndex: number;
 };
 
 const RUNNER_WIDTH = 760;
