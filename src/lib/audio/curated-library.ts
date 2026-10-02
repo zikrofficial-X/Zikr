@@ -110,7 +110,7 @@ export function getCuratedAudioByStoragePath(storagePath: string): CuratedAudio 
 export const CURATED_AUDIO_CHOICES = CURATED_AUDIO_LIBRARY.map(audio => ({
   key: "site:" + audio.key,
   label: audio.title,
-  slot: audio.kind === "adhan" ? "prayer" : audio.kind,
+  slot: (audio.kind === "adhan" ? "prayer" : audio.kind) as "prayer" | "salawat" | "dhikr",
   webUrl: audio.webUrl,
   nativeFile: null,
   human: true,
