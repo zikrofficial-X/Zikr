@@ -239,7 +239,7 @@ await writeFile(
       mode,
       audio: {
         kind: "arabic_tts_narration",
-        voice: process.env.ARABIC_TTS_VOICE || "ar-SA-ZariyahNeural",
+        voice: process.env.ARABIC_TTS_VOICE || "ar-SA-HamedNeural",
       },
       duration: sceneSeconds * scenes.length,
       scenes,

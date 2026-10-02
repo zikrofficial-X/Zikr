@@ -39,7 +39,7 @@ for (const token of [
   "HF_WAN_VIDEO_ENABLED: \"true\"",
   "HF_LTX_FAST_VIDEO_ENABLED: \"true\"",
   "AUTO_VIDEO_PUBLISH_ENABLED: \"true\"",
-  "AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: \"true\"",
+  "AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: \"false\"",
   "VIDEO_PROVIDER_ORDER",
 ]) {
   if (!workflow.includes(token)) throw new Error("Workflow missing " + token);

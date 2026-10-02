@@ -60,7 +60,7 @@ jobs:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HF_VIDEO_PYTHON: ${{ github.workspace }}/.video-venv/bin/python
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
-      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"
+      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
       AUTO_VIDEO_SECONDS: "16"
       BACKGROUND_JOB_TARGET: "all"
       VIDEO_TEMPLATE_VERSION: "2026-10-02-quality-v2"
