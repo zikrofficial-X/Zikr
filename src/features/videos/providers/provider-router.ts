@@ -21,7 +21,7 @@ export function createVideoProviderRouter(
     comfyui: new ComfyUIVideoProvider(env.COMFYUI_BASE_URL),
     free_api: new FreeApiVideoProvider(),
     hf_wan: new HuggingFaceSpaceVideoProvider("wan2_2_fast"),
-    hf_ltx25: new HuggingFaceSpaceVideoProvider("ltx2_5"),
+    hf_ltx_fast: new HuggingFaceSpaceVideoProvider("ltx_fast"),
   };
 
   return {
@@ -40,11 +40,16 @@ export function createVideoProviderRouter(
         if (name === "comfyui" && !config.comfyUiEnabled) continue;
         if (name === "free_api" && !config.freeApiEnabled) continue;
         if (name === "hf_wan" && !config.hfWanEnabled) continue;
-        if (name === "hf_ltx25" && !config.hfLtx25Enabled) continue;
+        if (name === "hf_ltx_fast" && !config.hfLtxFastEnabled) continue;
         if (!config.aiEnabled && name !== "template") continue;
 
         const provider = providers[name];
-        if (!provider) continue;\n        const available = await provider.isAvailable();\n        if (!available) {\n          console.warn("[video-provider-router] Provider unavailable: " + name);\n          continue;\n        }
+        if (!provider) continue;
+        const available = await provider.isAvailable();
+        if (!available) {
+          console.warn("[video-provider-router] Provider unavailable: " + name);
+          continue;
+        }
 
         const result = await provider.generate(input);
         if (result.ok) return result;
