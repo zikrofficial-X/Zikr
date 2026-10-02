@@ -189,8 +189,12 @@ export async function resolveVideoSource(
     const match = sourceId.match(/^quran:(\d+):(\d+)$/);
     return match ? quranSource(Number(match[1]), Number(match[2])) : null;
   }
-  if (category === "hadith" || category === "adhkar")
+  if (category === "hadith" || category === "adhkar") {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sourceId)) {
+      return null;
+    }
     return hadithSource(sourceId, category);
+  }
   if (category === "dua") return duaSource(sourceId);
   if (category === "story" && sourceId.startsWith("story:"))
     return storySource(sourceId.slice("story:".length));
