@@ -17,7 +17,6 @@ function resolveVideoMediaUrl(row: Record<string, unknown>): string | null {
     metadata.generatedVideoUrl,
     metadata.videoUrl,
     metadata.video_url,
-    metadata.content_ref,
   ];
 
   for (const value of candidates) {
@@ -97,7 +96,7 @@ export async function getVideos(
     query += `&category_id=eq.${encodeURIComponent(categoryId)}`;
   }
 
-  query += `&limit=${safeLimit}`;
+  query += `&limit=${Math.min(100, safeLimit * 2)}`;
 
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
     query
@@ -110,7 +109,7 @@ export async function getVideos(
   const renderableRows = rows.filter(isPubliclyRenderableVideo);
   if (renderableRows.length === 0) return fallback.slice(0, safeLimit);
 
-  return renderableRows.map(r => ({
+  return renderableRows.slice(0, safeLimit).map(r => ({
     id: r.id as string,
     title: r.title as string,
     slug: r.slug as string,
