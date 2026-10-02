@@ -171,6 +171,9 @@ export async function claimPendingSocialPublishItems(
 
 async function publishFacebookPost(item: SocialPublishQueueItem): Promise<string | null> {
   const env = getServerEnv();
+  if (env.SOCIAL_PUBLISH_FACEBOOK_ENABLED !== "true") {
+    throw new Error("Facebook publishing is disabled until the Page access token is repaired");
+  }
   const pageId = env.FACEBOOK_PAGE_ID;
   const pageAccessToken = env.FACEBOOK_PAGE_ACCESS_TOKEN;
   if (!pageId || !pageAccessToken) {
@@ -199,9 +202,12 @@ async function publishFacebookPost(item: SocialPublishQueueItem): Promise<string
 }
 
 async function publishFacebookReelItem(item: SocialPublishQueueItem): Promise<string | null> {
+  const env = getServerEnv();
+  if (env.SOCIAL_PUBLISH_FACEBOOK_ENABLED !== "true") {
+    throw new Error("Facebook publishing is disabled until the Page access token is repaired");
+  }
   if (!item.video_url) throw new Error("Facebook Reels publishing requires video_url");
   const mediaUrl = assertPublishableVideoUrl(item.video_url, "facebook");
-  const env = getServerEnv();
   if (!env.FACEBOOK_PAGE_ID) throw new Error("FACEBOOK_PAGE_ID is not configured");
   if (!env.FACEBOOK_PAGE_ACCESS_TOKEN) throw new Error("FACEBOOK_PAGE_ACCESS_TOKEN is not configured");
   return publishToFacebook(
