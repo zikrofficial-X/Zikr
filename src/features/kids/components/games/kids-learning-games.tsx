@@ -280,6 +280,11 @@ export function WuduChallengeGame({ difficulty, restartToken, paused, onHud, onR
         { label: "المستوى", value: levelIndex + 1, tone: "text-violet-200" },
       ]} /></div>
       <div className="mx-4 mt-4 rounded-[2rem] border border-white/10 bg-[#072530]/70 p-5 sm:mx-6 sm:p-6">
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="تسلسل خطوات الوضوء">
+          {steps.map((step, index) => <div key={step.order} className={"rounded-xl border px-3 py-2 text-xs transition " + (index < state.stepIndex ? "border-brand-emerald/30 bg-brand-emerald/10 text-brand-emerald" : index === state.stepIndex ? "border-sky-200/40 bg-sky-200/10 text-sky-100" : "border-white/10 bg-white/[0.02] text-brand-cream/35")}>
+            <span className="block font-black">{index + 1}</span><span className="mt-1 block truncate">{step.text}</span>
+          </div>)}
+        </div>
         <div className="relative mx-auto max-w-3xl overflow-hidden rounded-[1.8rem] border border-sky-200/15 bg-[linear-gradient(160deg,#0b4356,#09212d)] p-5">
           <div className="relative flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-black tracking-[0.18em] text-sky-200/70">محطة الماء</p><h4 className="mt-2 text-2xl font-black text-brand-cream">{steps[state.stepIndex]?.text ?? "اكتمل المستوى"}</h4><p className="mt-2 text-sm leading-7 text-brand-cream/55">اختر البطاقة التي تمثل الخطوة التالية.</p></div><div className="grid h-24 w-24 place-items-center rounded-full border-2 border-sky-200/40 bg-sky-200/10 text-4xl text-sky-200">💧</div></div>
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-sky-300 transition-[width] duration-300" style={{ width: waterLevel + "%" }} /></div>
