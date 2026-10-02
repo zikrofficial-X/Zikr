@@ -41,7 +41,7 @@ if (
     hard.checkpointDistances.length === 5
   )
 ) {
-  throw new Error("ZIKR Road must expose 1/2/3 learning checkpoints by difficulty.");
+  throw new Error("ZIKR Road must expose 3/4/5 learning checkpoints by difficulty.");
 }
 
 for (const difficulty of ["easy", "normal", "hard"] as const) {
