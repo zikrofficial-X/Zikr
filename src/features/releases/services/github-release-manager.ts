@@ -86,13 +86,24 @@ async function upsertTextFile(path: string, content: string, sha: string | undef
   );
 }
 
-function parseAndroidVersion(buildGradle: string) {
-  // Gradle is plain text here. Keep the parser tolerant of tabs/newlines and
-  // harmless inline formatting so the release UI does not fail in production.
-  const versionName = buildGradle.match(/\bversionName\s+["']([^"']+)["']/)?.[1]?.trim();
-  const versionCode = Number.parseInt(buildGradle.match(/\bversionCode\s+(\d+)\b/)?.[1] ?? "", 10);
+function parseAndroidVersion(
+  buildGradle: string,
+  packageVersionText = "",
+  packageJsonText = "",
+) {
+  const normalizedGradle = buildGradle.replace(/\r/g, "");
+  const versionName =
+    normalizedGradle.match(/\bversionName\s*(?:=\s*)?["']([^"']+)["']/)?.[1]?.trim() ??
+    packageVersionText.match(/^ZIKR\s+v([^\r\n]+)\s*$/mi)?.[1]?.trim() ??
+    packageJsonText.match(/"version"\s*:\s*"([^"]+)"/)?.[1]?.trim();
+
+  const versionCodeRaw =
+    normalizedGradle.match(/\bversionCode\s*(?:=\s*)?(\d+)\b/)?.[1] ??
+    packageVersionText.match(/^versionCode\s*=\s*(\d+)\s*$/mi)?.[1];
+  const versionCode = Number.parseInt(versionCodeRaw ?? "", 10);
+
   if (!versionName || !Number.isFinite(versionCode)) {
-    throw new Error("تعذر قراءة versionName/versionCode من Android.");
+    throw new Error("تعذر قراءة بيانات إصدار Android من build.gradle أو PACKAGE_VERSION.txt.");
   }
   return { versionName, versionCode };
 }
@@ -160,8 +171,13 @@ export async function prepareAndroidRelease() {
 
   const buildFile = await getTextFile("android/app/build.gradle");
   const packageFile = await getTextFile("package.json");
+  const packageVersionFile = await getTextFile("PACKAGE_VERSION.txt");
   const packageJson = JSON.parse(packageFile.content) as { version?: string };
-  const current = parseAndroidVersion(buildFile.content);
+  const current = parseAndroidVersion(
+    buildFile.content,
+    packageVersionFile.content,
+    packageFile.content,
+  );
   const nextVersion = bumpPatch(current.versionName || packageJson.version || "1.0.0");
   const nextVersionCode = current.versionCode + 1;
   const tag = "v" + nextVersion;

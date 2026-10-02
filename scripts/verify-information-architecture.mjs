@@ -17,7 +17,18 @@ function extractQuoted(text, pattern) {
 }
 
 const catalog = await read('src/lib/navigation/catalog.ts');
+const sitemap = await read('src/app/sitemap.ts');
+const videosPage = await read('src/app/videos/page.tsx');
 const catalogHrefs = extractQuoted(catalog, /href:\s*['"]([^'"]+)['"]/g);
+if (sitemap.includes('"/videos"') && sitemap.includes('NON_INDEXABLE_PATHS')) {
+  const blockedSection = sitemap.match(/const NON_INDEXABLE_PATHS[\s\S]*?;/)?.[0] ?? '';
+  if (blockedSection.includes('"/videos"')) {
+    failures.push('Public /videos hub must remain indexable and must not be excluded from sitemap generation.');
+  }
+}
+if (!videosPage.includes("path: '/videos'") || videosPage.includes("noindex: true")) {
+  failures.push('Public /videos hub metadata is not indexable as expected.');
+}
 const duplicateCatalogHrefs = catalogHrefs.filter((href, index) => catalogHrefs.indexOf(href) !== index);
 if (duplicateCatalogHrefs.length) failures.push(`تكرار روابط في كتالوج الأقسام: ${unique(duplicateCatalogHrefs).join(', ')}`);
 

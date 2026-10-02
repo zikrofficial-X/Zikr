@@ -169,7 +169,14 @@ function parseProfileUpdate(
     };
   }
 
-  const parsed: { display_name?: string | null; locale?: string } = {};
+  const parsed: {
+    display_name?: string | null;
+    locale?: string;
+    bio?: string | null;
+    preferred_reciter_code?: string | null;
+    daily_wird_target?: number;
+    timezone?: string;
+  } = {};
 
   if (hasSnake || hasCamel) {
     const value = hasSnake ? body.display_name : body.displayName;

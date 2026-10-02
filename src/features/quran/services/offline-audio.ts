@@ -163,7 +163,12 @@ export async function downloadQuranAudio(
     );
   }
 
-  const blob = new Blob(chunks, {
+  const blobParts = chunks.map((chunk): ArrayBuffer => {
+    const copy = new Uint8Array(new ArrayBuffer(chunk.byteLength));
+    copy.set(chunk);
+    return copy.buffer;
+  });
+  const blob = new Blob(blobParts, {
     type: response.headers.get("content-type") || "audio/mpeg",
   });
   const cache = await caches.open(CACHE_NAME);
