@@ -18,14 +18,9 @@ for (const difficulty of ["easy", "normal", "hard"] as const) {
     throw new Error("Invalid question station index for " + difficulty + ".");
   }
 
-  if (difficulty === "easy" && rules.questionStationIndexes.length !== 2) {
-    throw new Error("Easy Mosque Adventure should expose one scenario checkpoint.");
-  }
-
-  if (difficulty === "normal" && rules.questionStationIndexes.length !== 3) {
-    if (difficulty === "hard" && rules.questionStationIndexes.length !== 3) {
-      throw new Error("Hard Mosque Adventure should expose three scenario checkpoints.");
-    }
+  const expectedQuestions = difficulty === "easy" ? 2 : 3;
+  if (rules.questionStationIndexes.length !== expectedQuestions) {
+    throw new Error(difficulty + " Mosque Adventure should expose " + expectedQuestions + " scenario checkpoints.");
   }
 }
 
