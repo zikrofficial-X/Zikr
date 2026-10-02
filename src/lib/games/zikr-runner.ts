@@ -1,4 +1,5 @@
 import type { GameDifficulty } from "@/lib/games/registry";
+import { KIDS_LEVEL_COUNT, getKidsLevelMeta } from "@/lib/games/kids-level-system";
 
 export type RunnerRules = {
   levelCount: number;
@@ -17,51 +18,9 @@ export type RunnerRules = {
 };
 
 const RULES: Record<GameDifficulty, RunnerRules> = {
-  easy: {
-    levelCount: 3,
-    goalDistance: 1800,
-    speed: 185,
-    jumpVelocity: 590,
-    gravity: 1450,
-    obstacleInterval: 520,
-    starInterval: 260,
-    checkpointDistances: [900],
-    lives: 4,
-    obstaclePenalty: 35,
-    starReward: 90,
-    levelBonus: 260,
-    completionBonus: 700,
-  },
-  normal: {
-    levelCount: 5,
-    goalDistance: 3000,
-    speed: 220,
-    jumpVelocity: 610,
-    gravity: 1500,
-    obstacleInterval: 430,
-    starInterval: 230,
-    checkpointDistances: [750, 1900],
-    lives: 3,
-    obstaclePenalty: 65,
-    starReward: 105,
-    levelBonus: 340,
-    completionBonus: 900,
-  },
-  hard: {
-    levelCount: 6,
-    goalDistance: 4200,
-    speed: 255,
-    jumpVelocity: 635,
-    gravity: 1560,
-    obstacleInterval: 350,
-    starInterval: 205,
-    checkpointDistances: [700, 1700, 2850],
-    lives: 3,
-    obstaclePenalty: 95,
-    starReward: 120,
-    levelBonus: 450,
-    completionBonus: 1200,
-  },
+  easy: { levelCount: KIDS_LEVEL_COUNT, goalDistance: 18000, speed: 175, jumpVelocity: 590, gravity: 1450, obstacleInterval: 570, starInterval: 285, checkpointDistances: [3600, 9600, 15400], lives: 5, obstaclePenalty: 30, starReward: 85, levelBonus: 260, completionBonus: 900 },
+  normal: { levelCount: KIDS_LEVEL_COUNT, goalDistance: 21000, speed: 205, jumpVelocity: 610, gravity: 1500, obstacleInterval: 490, starInterval: 250, checkpointDistances: [3500, 8200, 12400, 17000], lives: 4, obstaclePenalty: 55, starReward: 100, levelBonus: 340, completionBonus: 1100 },
+  hard: { levelCount: KIDS_LEVEL_COUNT, goalDistance: 24000, speed: 235, jumpVelocity: 630, gravity: 1560, obstacleInterval: 410, starInterval: 220, checkpointDistances: [3200, 7200, 11200, 15600, 19800], lives: 3, obstaclePenalty: 85, starReward: 115, levelBonus: 450, completionBonus: 1400 },
 };
 
 export type RunnerLevel = {
@@ -69,27 +28,36 @@ export type RunnerLevel = {
   titleAr: string;
   subtitleAr: string;
   theme: "garden" | "market" | "mosque" | "stars" | "dawn" | "gold";
+  speedMultiplier: number;
+  hazardMultiplier: number;
+  starOffset: number;
 };
 
-export const RUNNER_LEVELS: RunnerLevel[] = [
-  { id: "dhikr-garden", titleAr: "حديقة الذكر", subtitleAr: "تعلّم الإيقاع واجمع أول نجوم الرحلة.", theme: "garden" },
-  { id: "honesty-market", titleAr: "سوق الأمانة", subtitleAr: "مر بين العربات واترك مساحة للهدوء.", theme: "market" },
-  { id: "mosque-path", titleAr: "طريق المسجد", subtitleAr: "اقترب من البوابة الذهبية بثبات.", theme: "mosque" },
-  { id: "star-valley", titleAr: "وادي النجوم", subtitleAr: "الممر أسرع، فراقب القفزات.", theme: "stars" },
-  { id: "moon-dawn", titleAr: "الفجر الهادئ", subtitleAr: "حافظ على السلسلة حتى آخر بوابة.", theme: "dawn" },
-  { id: "golden-gate", titleAr: "البوابة الذهبية", subtitleAr: "التحدي الأخير قبل إتمام الرحلة.", theme: "gold" },
-];
+const THEMES: RunnerLevel["theme"][] = ["garden","market","mosque","stars","dawn","gold"];
 
-const LEVELS_BY_DIFFICULTY: Record<GameDifficulty, RunnerLevel[]> = {
-  easy: RUNNER_LEVELS.slice(0, RULES.easy.levelCount),
-  normal: RUNNER_LEVELS.slice(0, RULES.normal.levelCount),
-  hard: RUNNER_LEVELS.slice(0, RULES.hard.levelCount),
-};
+export const RUNNER_LEVELS: RunnerLevel[] = Array.from({ length: KIDS_LEVEL_COUNT }, (_, index) => {
+  const meta = getKidsLevelMeta("zikr-runner", "normal", index);
+  return {
+    id: meta.id,
+    titleAr: meta.titleAr,
+    subtitleAr: meta.subtitleAr,
+    theme: THEMES[index % THEMES.length],
+    speedMultiplier: 0.94 + (index % 6) * 0.025,
+    hazardMultiplier: 0.82 + (index % 7) * 0.07,
+    starOffset: (index % 5) * 44,
+  };
+});
 
 export function getZikrRunnerRules(difficulty: GameDifficulty): RunnerRules {
   return RULES[difficulty];
 }
 
 export function getZikrRunnerLevels(difficulty: GameDifficulty): RunnerLevel[] {
-  return LEVELS_BY_DIFFICULTY[difficulty];
+  return RUNNER_LEVELS.map((level, index) => ({
+    ...level,
+    id: level.id.replace(":normal:", ":" + difficulty + ":"),
+    speedMultiplier: level.speedMultiplier + (difficulty === "normal" ? 0 : difficulty === "hard" ? 0.07 : -0.04),
+    hazardMultiplier: level.hazardMultiplier + (difficulty === "hard" ? 0.12 : difficulty === "easy" ? -0.10 : 0),
+    starOffset: level.starOffset + (difficulty === "hard" ? 20 : difficulty === "easy" ? -12 : 0) + index * 2,
+  }));
 }
