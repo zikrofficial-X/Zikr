@@ -11,7 +11,7 @@ const read = (path) => {
 };
 
 const worker = read("scripts/jobs/template-video-automation.ts");
-if (!worker.includes('AI_VISUAL_POLICY_VERSION = "2026-10-02-source-locked-v1"')) failures.push("AI visual policy must be explicitly versioned");
+if (!worker.includes('AI_VISUAL_POLICY_VERSION') || !worker.includes('from "../../src/features/videos/providers/ai-visual-policy"')) failures.push("AI visual policy must be explicitly versioned and imported from the shared policy module");
 if (!worker.includes("aiVisualPolicyPromptLine()")) failures.push("AI planner must consume the shared visual policy");
 if (!worker.includes("sourceLocked: true")) failures.push("AI planning metadata must record source locking");
 if (!worker.includes("aiVisualPolicyVersion: AI_VISUAL_POLICY_VERSION")) failures.push("render metadata must record the AI visual policy version");

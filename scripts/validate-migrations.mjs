@@ -113,6 +113,44 @@ CREATE OR REPLACE FUNCTION public.update_kids_game_progress_timestamp()
 RETURNS trigger LANGUAGE plpgsql AS $stub$ BEGIN NEW.updated_at = now(); RETURN NEW; END $stub$;
 CREATE OR REPLACE FUNCTION public.update_kids_character_selection_timestamp()
 RETURNS trigger LANGUAGE plpgsql AS $stub$ BEGIN NEW.updated_at = now(); RETURN NEW; END $stub$;
+CREATE TABLE IF NOT EXISTS public.video_automation_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  run_type text NOT NULL,
+  started_at timestamptz NOT NULL DEFAULT now(),
+  finished_at timestamptz,
+  created_count integer NOT NULL DEFAULT 0,
+  processed_count integer NOT NULL DEFAULT 0,
+  completed_count integer NOT NULL DEFAULT 0,
+  failed_count integer NOT NULL DEFAULT 0,
+  provider_stats jsonb NOT NULL DEFAULT '{}'::jsonb,
+  error_summary text,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+
+-- pg_cron is a managed Supabase extension and is not present in the PGlite
+-- replay environment. Keep only the minimal relation shape needed by the
+-- migration chain's defensive existence checks; migrations that require the
+-- real extension are already guarded by pg_extension checks.
+CREATE SCHEMA IF NOT EXISTS cron;
+CREATE TABLE IF NOT EXISTS cron.job (
+  jobid bigint PRIMARY KEY,
+  jobname text
+);
+
+CREATE OR REPLACE FUNCTION cron.schedule(name text, schedule text, command text)
+RETURNS bigint
+LANGUAGE plpgsql
+AS $cron_stub$
+DECLARE
+  next_id bigint;
+BEGIN
+  SELECT COALESCE(MAX(jobid), 0) + 1 INTO next_id FROM cron.job;
+  INSERT INTO cron.job(jobid, jobname) VALUES (next_id, name)
+  ON CONFLICT (jobid) DO NOTHING;
+  RETURN next_id;
+END;
+$cron_stub$;
+
 CREATE OR REPLACE FUNCTION public.track_free_tier_usage()
 RETURNS void LANGUAGE plpgsql AS $stub$ BEGIN NULL; END $stub$;
 CREATE OR REPLACE VIEW public.free_tier_statistics AS
