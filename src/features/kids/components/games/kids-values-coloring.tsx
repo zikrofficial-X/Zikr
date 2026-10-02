@@ -35,6 +35,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   const [levelIndex, setLevelIndex] = useState(0);
   const [done, setDone] = useState<string[]>([]);
   const [active, setActive] = useState<string | null>(null);
+  const [actionSteps, setActionSteps] = useState<Record<string, number>>({});
   const [feedback, setFeedback] = useState("اختر مشهدًا وأكمله.");
   const advancingRef = useRef(false);
   const rules = getGoodDeedsRules(difficulty, levelIndex);
@@ -43,7 +44,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   const complete = done.length === deeds.length;
   const score = done.length * rules.rewardPerScene;
 
-  useEffect(() => { setDone([]); setActive(null); setFeedback(meta.subtitleAr); advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
+  useEffect(() => { setDone([]); setActive(null); setActionSteps({}); setFeedback(meta.subtitleAr); advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
 
   useEffect(() => {
     const hud: WorldHud = { score: complete ? score + rules.completionBonus : score, collectibles: done.length, distance: 0, combo: done.length, level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
@@ -63,8 +64,16 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
 
   const finish = (id: string) => {
     if (paused || !active || done.includes(id)) return;
+    const currentStep = actionSteps[id] ?? 0;
+    if (currentStep < 2) {
+      setActionSteps(value => ({ ...value, [id]: currentStep + 1 }));
+      onSound("move");
+      setFeedback("خطوة " + (currentStep + 2) + " من 3 في " + (deeds.find(d => d.id === id)?.title ?? "المشهد") + ".");
+      return;
+    }
     setDone(value => [...value, id]);
     setActive(null);
+    setActionSteps(value => ({ ...value, [id]: 0 }));
     onSound("collect");
     setFeedback("اكتملت " + deeds.find(d => d.id === id)?.title + ".");
   };
@@ -89,7 +98,13 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
                 <div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl border text-2xl" style={{ borderColor: deed.color + "55", background: deed.color + "15" }}>{doneAlready ? "✓" : deed.icon}</span><span className="text-xs text-brand-cream/35">مشهد {index + 1}</span></div>
                 <h4 className="mt-4 text-lg font-black text-brand-cream">{deed.title}</h4><p className="mt-2 text-sm leading-7 text-brand-cream/60">{deed.description}</p>
               </button>
-              {isActive && !doneAlready && <div className="mt-4 rounded-2xl border border-brand-gold/15 bg-brand-gold/[0.05] p-3"><div className="flex items-center gap-3"><KidCharacter variant="helper" state="help" size={58} /><p className="text-xs leading-6 text-brand-cream/55">نفّذ الحركة البسيطة ثم أنهِ المشهد.</p></div><button type="button" onClick={() => finish(deed.id)} className="mt-3 w-full rounded-xl bg-brand-gold px-4 py-3 text-sm font-black text-[#241c08]">إنهاء المشهد</button></div>}
+              {isActive && !doneAlready && <div className="mt-4 rounded-2xl border border-brand-gold/15 bg-brand-gold/[0.05] p-3">
+  <div className="flex items-center gap-3"><KidCharacter variant="helper" state="help" size={58} /><p className="text-xs leading-6 text-brand-cream/55">نفّذ 3 خطوات صغيرة لبناء العادة ثم أغلق المشهد.</p></div>
+  <div className="mt-3 grid grid-cols-3 gap-2">
+    {[1,2,3].map(step => <div key={step} className={"h-2 rounded-full " + (step <= (actionSteps[deed.id] ?? 0) ? "bg-brand-emerald" : "bg-white/10")} />)}
+  </div>
+  <button type="button" onClick={() => finish(deed.id)} className="mt-3 w-full rounded-xl bg-brand-gold px-4 py-3 text-sm font-black text-[#241c08]">{(actionSteps[deed.id] ?? 0) < 2 ? "تنفيذ الخطوة " + ((actionSteps[deed.id] ?? 0) + 1) : "إتمام المشهد"}</button>
+</div>}
             </div>;
           })}
         </div>
