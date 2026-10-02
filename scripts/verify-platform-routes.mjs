@@ -162,9 +162,9 @@ if (duplicateRequired.length) {
 if (pages.length < 1) failures.push('No page routes discovered under src/app');
 if (apis.length < 1) failures.push('No API routes discovered under src/app');
 
-if (pages.length !== 103 || apis.length !== 71) {
+if (pages.length !== 125 || apis.length !== 71) {
   warnings.push(
-    `Route inventory changed: discovered ${pages.length} pages and ${apis.length} API routes. Update this expected baseline intentionally if the route count changed.`,
+    `Route inventory drift: discovered ${pages.length} pages and ${apis.length} API routes.`,
   );
 }
 
