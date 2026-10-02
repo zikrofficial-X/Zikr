@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
 import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
+import { KidsGameWorld } from "@/features/kids/components/games/kids-game-visuals";
 import {
   Cloud,
   GameToast,
@@ -360,7 +361,7 @@ export function ZikrJumpGame({
   const percent = level ? Math.min(100, Math.round((1 - (snapshot.player.y - (level.platforms[level.goalPlatformIndex]?.y ?? 0)) / 1700) * 100)) : 0;
 
   return (
-    <KidsGameStage theme={level.theme === "garden" ? "garden" : level.theme === "courtyard" ? "mosque" : level.theme === "dawn" ? "dawn" : "night"} ariaLabel="قفزة ذِكر">
+    <KidsGameStage theme={level.theme === "garden" ? "garden" : level.theme === "courtyard" ? "mosque" : level.theme === "dawn" ? "dawn" : "night"} ariaLabel="قفزة ذِكر"><KidsGameWorld gameId="zikr-jump" />
       <KidsGameHeader
         eyebrow="ZIKR JUMP"
         title="قفزة ذِكر"
@@ -725,7 +726,7 @@ export function HilalFlyGame({
   const progress = (state.distance / rules.goalDistance) * 100;
 
   return (
-    <KidsGameStage theme="night" ariaLabel="طيران الهلال">
+    <KidsGameStage theme="night" ariaLabel="طيران الهلال"><KidsGameWorld gameId="hilal-fly" />
       <KidsGameHeader
         eyebrow="HILAL FLY"
         title="طيران الهلال"
@@ -988,7 +989,7 @@ export function MosqueAdventureGame({
   }, [combo, completed, levelIndex, onHud, position, score, stars]);
 
   return (
-    <KidsGameStage theme="mosque" ariaLabel="مغامرة المسجد">
+    <KidsGameStage theme="mosque" ariaLabel="مغامرة المسجد"><KidsGameWorld gameId="mosque-adventure" />
       <KidsGameHeader eyebrow="MOSQUE ADVENTURE" title="مغامرة المسجد" description={levelMeta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={progress} label={"المستوى " + (levelIndex + 1) + "/" + rules.levelCount} /></div>} />
       <div className="px-4 sm:px-6">
         <KidsGameHud items={[

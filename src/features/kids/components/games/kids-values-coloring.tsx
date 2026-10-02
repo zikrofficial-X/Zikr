@@ -10,6 +10,7 @@ import { getMosqueCleanupRules } from "@/lib/games/mosque-cleanup";
 import { getZikrColoringRules } from "@/lib/games/zikr-coloring";
 import { getKidsLevelMeta, KIDS_LEVEL_COUNT } from "@/lib/games/kids-level-system";
 import { seededShuffle } from "@/lib/games/gameplay-helpers";
+import { KidsGameWorld } from "@/features/kids/components/games/kids-game-visuals";
 
 type Props = { difficulty: GameDifficulty; restartToken: number; paused: boolean; onHud: (hud: WorldHud) => void; onResult: (result: WorldHud) => void; onSound: (event: GameSoundEvent) => void };
 
@@ -35,6 +36,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   const [levelIndex, setLevelIndex] = useState(0);
   const [done, setDone] = useState<string[]>([]);
   const [active, setActive] = useState<string | null>(null);
+  const [actionSteps, setActionSteps] = useState<Record<string, number>>({});
   const [feedback, setFeedback] = useState("اختر مشهدًا وأكمله.");
   const advancingRef = useRef(false);
   const rules = getGoodDeedsRules(difficulty, levelIndex);
@@ -43,7 +45,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   const complete = done.length === deeds.length;
   const score = done.length * rules.rewardPerScene;
 
-  useEffect(() => { setDone([]); setActive(null); setFeedback(meta.subtitleAr); advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
+  useEffect(() => { setDone([]); setActive(null); setActionSteps({}); setFeedback(meta.subtitleAr); advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
 
   useEffect(() => {
     const hud: WorldHud = { score: complete ? score + rules.completionBonus : score, collectibles: done.length, distance: 0, combo: done.length, level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
@@ -63,14 +65,22 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
 
   const finish = (id: string) => {
     if (paused || !active || done.includes(id)) return;
+    const currentStep = actionSteps[id] ?? 0;
+    if (currentStep < 2) {
+      setActionSteps(value => ({ ...value, [id]: currentStep + 1 }));
+      onSound("move");
+      setFeedback("خطوة " + (currentStep + 2) + " من 3 في " + (deeds.find(d => d.id === id)?.title ?? "المشهد") + ".");
+      return;
+    }
     setDone(value => [...value, id]);
     setActive(null);
+    setActionSteps(value => ({ ...value, [id]: 0 }));
     onSound("collect");
     setFeedback("اكتملت " + deeds.find(d => d.id === id)?.title + ".");
   };
 
   return (
-    <KidsGameStage theme="garden" ariaLabel="أعمال الخير">
+    <KidsGameStage theme="garden" ariaLabel="أعمال الخير"><KidsGameWorld gameId="good-deeds" />
       <KidsGameHeader eyebrow="GOOD DEEDS" title="مغامرة أعمال الخير" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(done.length / Math.max(1, deeds.length)) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="px-4 sm:px-6"><KidsGameHud items={[
         { label: "النقاط", value: complete ? score + rules.completionBonus : score, tone: "text-brand-gold" },
@@ -89,7 +99,13 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
                 <div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl border text-2xl" style={{ borderColor: deed.color + "55", background: deed.color + "15" }}>{doneAlready ? "✓" : deed.icon}</span><span className="text-xs text-brand-cream/35">مشهد {index + 1}</span></div>
                 <h4 className="mt-4 text-lg font-black text-brand-cream">{deed.title}</h4><p className="mt-2 text-sm leading-7 text-brand-cream/60">{deed.description}</p>
               </button>
-              {isActive && !doneAlready && <div className="mt-4 rounded-2xl border border-brand-gold/15 bg-brand-gold/[0.05] p-3"><div className="flex items-center gap-3"><KidCharacter variant="helper" state="help" size={58} /><p className="text-xs leading-6 text-brand-cream/55">نفّذ الحركة البسيطة ثم أنهِ المشهد.</p></div><button type="button" onClick={() => finish(deed.id)} className="mt-3 w-full rounded-xl bg-brand-gold px-4 py-3 text-sm font-black text-[#241c08]">إنهاء المشهد</button></div>}
+              {isActive && !doneAlready && <div className="mt-4 rounded-2xl border border-brand-gold/15 bg-brand-gold/[0.05] p-3">
+  <div className="flex items-center gap-3"><KidCharacter variant="helper" state="help" size={58} /><p className="text-xs leading-6 text-brand-cream/55">نفّذ 3 خطوات صغيرة لبناء العادة ثم أغلق المشهد.</p></div>
+  <div className="mt-3 grid grid-cols-3 gap-2">
+    {[1,2,3].map(step => <div key={step} className={"h-2 rounded-full " + (step <= (actionSteps[deed.id] ?? 0) ? "bg-brand-emerald" : "bg-white/10")} />)}
+  </div>
+  <button type="button" onClick={() => finish(deed.id)} className="mt-3 w-full rounded-xl bg-brand-gold px-4 py-3 text-sm font-black text-[#241c08]">{(actionSteps[deed.id] ?? 0) < 2 ? "تنفيذ الخطوة " + ((actionSteps[deed.id] ?? 0) + 1) : "إتمام المشهد"}</button>
+</div>}
             </div>;
           })}
         </div>
@@ -161,7 +177,7 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
   const remaining = items.filter(item => !placed[item.id]);
 
   return (
-    <KidsGameStage theme="mosque" ariaLabel="ترتيب المكان">
+    <KidsGameStage theme="mosque" ariaLabel="ترتيب المكان"><KidsGameWorld gameId="mosque-cleanup" />
       <KidsGameHeader eyebrow="MOSQUE CLEANUP" title="ترتيب المكان" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(Object.keys(placed).length / Math.max(1, items.length)) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="px-4 sm:px-6"><KidsGameHud items={[
         { label: "النقاط", value: score, tone: "text-brand-gold" },
@@ -172,10 +188,10 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
       ]} /></div>
       <div className="mx-4 mt-4 grid gap-4 sm:mx-6 lg:grid-cols-[1fr_.9fr]">
         <div className="relative min-h-[420px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#092027] p-4 sm:p-5"><MosqueBackdrop compact /><div className="relative z-10"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-black tracking-[0.18em] text-brand-gold">العناصر</p><p className="mt-1 text-sm text-brand-cream/45">اختر عنصرًا ثم اختر ركنه.</p></div><KidCharacter variant="helper" state="help" size={66} /></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {remaining.map(item => <button key={item.id} type="button" onClick={() => setSelected(item.id)} disabled={paused} className={["min-h-28 rounded-2xl border p-3 text-center transition", selected === item.id ? "border-brand-gold/70 bg-brand-gold/10 -translate-y-1" : "border-white/10 bg-black/20 hover:border-brand-gold/30"].join(" ")}><div className="text-3xl">{item.icon}</div><p className="mt-2 text-xs text-brand-cream/70">{item.name}</p></button>)}
+          {remaining.map(item => <button key={item.id} type="button" draggable={!paused} onDragStart={() => setSelected(item.id)} onClick={() => setSelected(item.id)} disabled={paused} className={["min-h-28 rounded-2xl border p-3 text-center transition", selected === item.id ? "border-brand-gold/70 bg-brand-gold/10 -translate-y-1" : "border-white/10 bg-black/20 hover:border-brand-gold/30"].join(" ")}><div className="text-3xl">{item.icon}</div><p className="mt-2 text-xs text-brand-cream/70">{item.name}</p></button>)}
         </div></div></div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-          {CLEANUP_ZONES.map(zone => <button key={zone.id} type="button" onClick={() => place(zone)} disabled={paused || !selected} className="group min-h-28 rounded-[1.7rem] border border-white/10 bg-black/20 p-4 text-right transition hover:border-brand-gold/40 disabled:opacity-50"><div className="flex items-center justify-between"><div className="grid h-12 w-12 place-items-center rounded-2xl border border-brand-gold/15 bg-brand-gold/5 text-2xl">{zone.icon}</div><span className="text-xs text-brand-cream/40">{items.filter(item => placed[item.id] === zone.id).length} عناصر</span></div><h4 className="mt-3 font-black text-brand-cream">{zone.title}</h4><p className="mt-1 text-xs text-brand-cream/45">ضع العنصر المحدد هنا</p></button>)}
+          {CLEANUP_ZONES.map(zone => <button key={zone.id} type="button" onDrop={(event) => { event.preventDefault(); place(zone); }} onDragOver={(event) => event.preventDefault()} onClick={() => place(zone)} disabled={paused || !selected} className="group min-h-28 rounded-[1.7rem] border border-white/10 bg-black/20 p-4 text-right transition hover:border-brand-gold/40 disabled:opacity-50"><div className="flex items-center justify-between"><div className="grid h-12 w-12 place-items-center rounded-2xl border border-brand-gold/15 bg-brand-gold/5 text-2xl">{zone.icon}</div><span className="text-xs text-brand-cream/40">{items.filter(item => placed[item.id] === zone.id).length} عناصر</span></div><h4 className="mt-3 font-black text-brand-cream">{zone.title}</h4><p className="mt-1 text-xs text-brand-cream/45">اضغط أو اسحب العنصر إلى هذا الركن</p></button>)}
         </div>
       </div>
       <GameToast tone={complete && levelIndex === KIDS_LEVEL_COUNT - 1 ? "emerald" : "gold"}>{feedback}</GameToast>
@@ -200,6 +216,7 @@ function coloringSvg(sheetId: string, fill: (index: number) => string, paint: (i
 export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onResult, onSound }: Props) {
   const [levelIndex, setLevelIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState(COLOR_PALETTE[0]);
+  const [customColors, setCustomColors] = useState<string[]>([]);
   const [fills, setFills] = useState<string[]>([]);
   const [history, setHistory] = useState<string[][]>([]);
   const [feedback, setFeedback] = useState("اختر لونًا ثم اضغط على أجزاء اللوحة.");
@@ -222,6 +239,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
       lastRestartRef.current = restartToken;
       setFills([]);
       setHistory([]);
+      setCustomColors([]);
       setSaved(value => {
         const next = { ...value, [storageKey]: [] };
         try { localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(next)); } catch {}
@@ -242,6 +260,18 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
     setSaved(value => { const nextSaved = { ...value, [storageKey]: next }; localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(nextSaved)); return nextSaved; });
     onSound("collect");
     setFeedback("تم تلوين جزء جديد.");
+  };
+
+  const mixColor = () => {
+    const base = selectedColor.replace("#", "");
+    const gold = "f3c969";
+    const rgb = (value: string) => parseInt(value, 16);
+    const blend = (a: number, b: number) => Math.round((a + b) / 2).toString(16).padStart(2, "0");
+    const mixed = "#" + blend(rgb(base.slice(0,2)), rgb(gold.slice(0,2))) + blend(rgb(base.slice(2,4)), rgb(gold.slice(2,4))) + blend(rgb(base.slice(4,6)), rgb(gold.slice(4,6)));
+    setCustomColors(colors => colors.includes(mixed) ? colors : [...colors.slice(-3), mixed]);
+    setSelectedColor(mixed);
+    onSound("collect");
+    setFeedback("صنعت لونًا جديدًا. جرّبه في اللوحة.");
   };
 
   const undo = () => setHistory(previous => {
@@ -271,12 +301,12 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   }, [complete, filled, levelIndex, onHud, onResult, onSound, rules.completionBonus]);
 
   return (
-    <KidsGameStage theme="garden" ariaLabel="تلوين ذِكر">
+    <KidsGameStage theme="garden" ariaLabel="تلوين ذِكر"><KidsGameWorld gameId="zikr-coloring" />
       <KidsGameHeader eyebrow="ZIKR COLORING" title="استوديو تلوين ذِكر" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(filled / rules.regionTarget) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="mx-4 mt-4 grid gap-4 sm:mx-6 lg:grid-cols-[1fr_.72fr]">
         <div className="rounded-[2rem] border border-white/10 bg-black/20 p-4 sm:p-6">
           <div className="rounded-[1.7rem] border border-brand-gold/15 bg-[#071923] p-3 sm:p-5">{coloringSvg(current.id, index => fills[index] || "#14303a", paint)}</div>
-          <div className="mt-4 flex flex-wrap gap-2">{COLOR_PALETTE.map((color, index) => <button key={color} type="button" onClick={() => setSelectedColor(color)} disabled={paused} aria-label={"اختيار اللون " + (index + 1)} className={"h-10 w-10 rounded-full border-2 transition " + (selectedColor === color ? "scale-110 border-white shadow-lg" : "border-white/15")} style={{ background: color }} />)}<button type="button" onClick={undo} disabled={!history.length || paused} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-brand-cream/70">تراجع</button></div>
+          <div className="mt-4 flex flex-wrap gap-2">{[...COLOR_PALETTE, ...customColors].map((color, index) => <button key={color} type="button" onClick={() => setSelectedColor(color)} disabled={paused} aria-label={"اختيار اللون " + (index + 1)} className={"h-10 w-10 rounded-full border-2 transition " + (selectedColor === color ? "scale-110 border-white shadow-lg" : "border-white/15")} style={{ background: color }} />)}<button type="button" onClick={mixColor} disabled={paused} className="rounded-xl border border-brand-gold/30 px-4 py-2 text-xs font-black text-brand-gold">🎨 مزج</button><button type="button" onClick={undo} disabled={!history.length || paused} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-brand-cream/70">تراجع</button></div>
         </div>
         <div className="space-y-3">
           <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5"><div className="flex items-center justify-between"><div><p className="text-xs font-black tracking-[0.18em] text-brand-gold">المرحلة</p><h4 className="mt-1 text-xl font-black text-brand-cream">{current.title}</h4><p className="mt-1 text-xs text-brand-cream/45">{filled}/{rules.regionTarget} مناطق</p></div><KidCharacter variant="reader" state={complete ? "celebrate" : "idle"} size={70} /></div><div className="mt-4 grid grid-cols-2 gap-2">{Array.from({ length: 10 }, (_, i) => <StarToken key={i} size={27} active={i < filled} />)}</div></div>

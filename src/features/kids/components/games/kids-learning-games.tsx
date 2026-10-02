@@ -22,6 +22,7 @@ import {
 import { getVersePuzzleRules, getVersePuzzleLevelSeed } from "@/lib/games/verse-puzzle";
 import { isVerseOrderComplete, seededShuffle, shuffleVerseTokens, type IndexedVerseToken } from "@/lib/games/gameplay-helpers";
 import { getKidsLevelMeta, KIDS_LEVEL_COUNT } from "@/lib/games/kids-level-system";
+import { KidsGameWorld } from "@/features/kids/components/games/kids-game-visuals";
 
 export type LearningGameProps = {
   difficulty: GameDifficulty;
@@ -61,6 +62,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [locked, setLocked] = useState(false);
+  const [hintId, setHintId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("افتح بطاقتين وابحث عن الموقف والذكر المناسبين.");
   const completionRef = useRef(false);
   const advancingRef = useRef(false);
@@ -83,6 +85,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
     setScore(0);
     setCombo(0);
     setLocked(false);
+    setHintId(null);
     setFeedback(meta.subtitleAr);
     completionRef.current = false;
     advancingRef.current = false;
@@ -90,6 +93,17 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   }, [difficulty, levelIndex, meta.subtitleAr, onHud, restartToken]);
 
   const complete = matched.length === cards.length && cards.length > 0;
+
+  const useHint = () => {
+    if (paused || locked || complete || hintId) return;
+    const unmatched = cards.find(card => !matched.includes(card.id));
+    if (!unmatched) return;
+    setHintId(unmatched.pairId);
+    setScore(value => Math.max(0, value - 35));
+    setFeedback("تلميح صغير: البطاقتان المظللتان تنتميان إلى نفس الزوج.");
+    onSound("move");
+    window.setTimeout(() => setHintId(null), difficulty === "hard" ? 900 : 1300);
+  };
 
   useEffect(() => {
     if (!complete || completionRef.current || advancingRef.current) return;
@@ -147,7 +161,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   }, [combo, complete, levelIndex, matched.length, onHud, score]);
 
   return (
-    <KidsGameStage theme="night" ariaLabel="ذاكرة ذِكر">
+    <KidsGameStage theme="night" ariaLabel="ذاكرة ذِكر"><KidsGameWorld gameId="zikr-memory" />
       <KidsGameHeader eyebrow="ZIKR MEMORY" title="ذاكرة ذِكر" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(matched.length / Math.max(1, cards.length)) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="px-4 sm:px-6">
         <KidsGameHud items={[
@@ -157,6 +171,10 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
           { label: "السلسلة", value: combo, tone: "text-violet-200" },
           { label: "المستوى", value: levelIndex + 1, tone: "text-amber-200" },
         ]} />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-brand-cream/45">التلميح يخصم 35 نقطة ويكشف الزوج بصريًا للحظات.</p>
+          <button type="button" onClick={useHint} disabled={paused || locked || complete || Boolean(hintId)} className="rounded-xl border border-brand-gold/30 bg-brand-gold/5 px-4 py-2 text-xs font-black text-brand-gold disabled:opacity-40">💡 تلميح</button>
+        </div>
       </div>
       <div className="relative mx-4 mt-4 grid grid-cols-2 gap-3 p-1 sm:mx-6 sm:grid-cols-3 sm:gap-4">
         {cards.map(card => {
@@ -165,7 +183,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
             <button key={card.id} type="button" disabled={paused || locked || matched.includes(card.id)} onClick={() => choose(card.id)}
               className={[
                 "group min-h-36 rounded-[1.5rem] border p-4 text-right transition duration-200",
-                visible ? "border-brand-gold/45 bg-brand-gold/10 shadow-[0_12px_30px_rgba(243,201,105,.08)]" : "border-white/10 bg-[#081823]/90 hover:-translate-y-1 hover:border-brand-emerald/40",
+                visible ? "border-brand-gold/45 bg-brand-gold/10 shadow-[0_12px_30px_rgba(243,201,105,.08)]" : hintId === card.pairId ? "border-brand-gold/80 bg-brand-gold/5 ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-[#081823]/90 hover:-translate-y-1 hover:border-brand-emerald/40",
                 matched.includes(card.id) ? "opacity-55" : "",
               ].join(" ")}>
               {visible ? <>
@@ -252,7 +270,7 @@ export function WuduChallengeGame({ difficulty, restartToken, paused, onHud, onR
   const waterLevel = Math.min(100, Math.round((state.stepIndex / Math.max(1, steps.length)) * 100));
 
   return (
-    <KidsGameStage theme="sea" ariaLabel="تحدي الوضوء">
+    <KidsGameStage theme="sea" ariaLabel="تحدي الوضوء"><KidsGameWorld gameId="wudu-challenge" />
       <KidsGameHeader eyebrow="WUDU CHALLENGE" title="تحدي الوضوء" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={waterLevel} label={levelLabel(levelIndex)} /></div>} />
       <div className="px-4 sm:px-6"><KidsGameHud items={[
         { label: "النقاط", value: state.score, tone: "text-brand-gold" },
@@ -262,6 +280,11 @@ export function WuduChallengeGame({ difficulty, restartToken, paused, onHud, onR
         { label: "المستوى", value: levelIndex + 1, tone: "text-violet-200" },
       ]} /></div>
       <div className="mx-4 mt-4 rounded-[2rem] border border-white/10 bg-[#072530]/70 p-5 sm:mx-6 sm:p-6">
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="تسلسل خطوات الوضوء">
+          {steps.map((step, index) => <div key={step.order} className={"rounded-xl border px-3 py-2 text-xs transition " + (index < state.stepIndex ? "border-brand-emerald/30 bg-brand-emerald/10 text-brand-emerald" : index === state.stepIndex ? "border-sky-200/40 bg-sky-200/10 text-sky-100" : "border-white/10 bg-white/[0.02] text-brand-cream/35")}>
+            <span className="block font-black">{index + 1}</span><span className="mt-1 block truncate">{step.text}</span>
+          </div>)}
+        </div>
         <div className="relative mx-auto max-w-3xl overflow-hidden rounded-[1.8rem] border border-sky-200/15 bg-[linear-gradient(160deg,#0b4356,#09212d)] p-5">
           <div className="relative flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-black tracking-[0.18em] text-sky-200/70">محطة الماء</p><h4 className="mt-2 text-2xl font-black text-brand-cream">{steps[state.stepIndex]?.text ?? "اكتمل المستوى"}</h4><p className="mt-2 text-sm leading-7 text-brand-cream/55">اختر البطاقة التي تمثل الخطوة التالية.</p></div><div className="grid h-24 w-24 place-items-center rounded-full border-2 border-sky-200/40 bg-sky-200/10 text-4xl text-sky-200">💧</div></div>
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-sky-300 transition-[width] duration-300" style={{ width: waterLevel + "%" }} /></div>
@@ -286,6 +309,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   const [feedback, setFeedback] = useState("جاري تجهيز النص القرآني...");
   const [loading, setLoading] = useState(true);
   const [available, setAvailable] = useState(true);
+  const [hintVisible, setHintVisible] = useState(false);
   const completionRef = useRef(false);
 
   useEffect(() => {
@@ -315,6 +339,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
     setTokens(shuffleVerseTokens(baseWords, String(getVersePuzzleLevelSeed(difficulty, levelIndex)) + ":" + restartToken));
     setAnswer([]);
     setMistakes(0);
+    setHintVisible(false);
     setFeedback(meta.subtitleAr);
     completionRef.current = false;
   }, [baseWords, difficulty, levelIndex, meta.subtitleAr, restartToken]);
@@ -338,6 +363,15 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
     }
   }, [answer.length, complete, levelIndex, mistakes, onHud, onResult, onSound, rules.mistakePenalty, score]);
 
+  const useVerseHint = () => {
+    if (paused || complete || hintVisible || answer.length >= tokens.length) return;
+    setHintVisible(true);
+    setMistakes(value => value + 1);
+    setFeedback("التلميح: ركّز على الكلمة التالية في ترتيب النص.");
+    onSound("move");
+    window.setTimeout(() => setHintVisible(false), 1400);
+  };
+
   const choose = (tokenIndex: number) => {
     if (paused || complete || answer.includes(tokenIndex)) return;
     const expected = answer.length;
@@ -357,7 +391,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   if (!available || !source || !baseWords.length) return <div className="grid min-h-[320px] place-items-center rounded-3xl border border-brand-gold/20 bg-[#071b24] p-6 text-center text-brand-cream/70">لا يتوفر نص قرآني موثق للعبة حاليًا.</div>;
 
   return (
-    <KidsGameStage theme="library" ariaLabel="لغز الآية">
+    <KidsGameStage theme="library" ariaLabel="لغز الآية"><KidsGameWorld gameId="verse-puzzle" />
       <KidsGameHeader eyebrow="VERSE PUZZLE" title="لغز الآية" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(answer.length / tokens.length) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="px-4 sm:px-6"><KidsGameHud items={[
         { label: "النقاط", value: score, tone: "text-brand-gold" },
@@ -365,11 +399,18 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
         { label: "الأخطاء", value: mistakes, tone: "text-rose-100" },
         { label: "السلسلة", value: Math.max(0, answer.length - mistakes), tone: "text-brand-emerald" },
         { label: "المستوى", value: levelIndex + 1, tone: "text-amber-200" },
-      ]} /></div>
+      ]} />
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-brand-cream/45">التلميح يضيف خطأً واحدًا لكنه يوضح اتجاه الحل.</p>
+        <button type="button" onClick={useVerseHint} disabled={paused || complete || hintVisible} className="rounded-xl border border-brand-gold/30 bg-brand-gold/5 px-4 py-2 text-xs font-black text-brand-gold disabled:opacity-40">🔎 تلميح</button>
+      </div></div>
       <div className="mx-4 mt-4 rounded-[2rem] border border-violet-200/10 bg-black/20 p-5 sm:mx-6">
         <div className="min-h-28 rounded-[1.5rem] border border-violet-200/15 bg-violet-200/[0.04] p-5 text-center text-xl leading-[2.5] text-brand-gold">{answer.length ? answer.map(index => tokens.find(token => token.index === index)?.text ?? "").join(" ") : <span className="text-sm text-brand-cream/30">ابدأ من الكلمة الأولى</span>}</div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {tokens.map(token => <button key={token.id} type="button" onClick={() => choose(token.index)} disabled={paused || answer.includes(token.index) || complete} className={"min-h-16 rounded-2xl border p-4 text-right text-base font-semibold transition " + (answer.includes(token.index) ? "border-brand-emerald/20 bg-brand-emerald/5 text-brand-cream/20" : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-violet-200/50")}>{token.text}</button>)}
+          {tokens.map(token => {
+            const hinted = hintVisible && token.index === answer.length;
+            return <button key={token.id} type="button" onClick={() => choose(token.index)} disabled={paused || answer.includes(token.index) || complete} className={"min-h-16 rounded-2xl border p-4 text-right text-base font-semibold transition " + (answer.includes(token.index) ? "border-brand-emerald/20 bg-brand-emerald/5 text-brand-cream/20" : hinted ? "border-brand-gold/80 bg-brand-gold/10 text-brand-gold ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-violet-200/50")}>{hinted ? "✨ " + token.text : token.text}</button>;
+          })}
         </div>
       </div>
       <GameToast tone={complete && levelIndex === KIDS_LEVEL_COUNT - 1 ? "emerald" : "gold"}>{feedback}</GameToast>
@@ -386,6 +427,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
   const [selected, setSelected] = useState<number | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [feedback, setFeedback] = useState("اقرأ السؤال ثم اختر الإجابة.");
+  const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   const advancingRef = useRef(false);
   const meta = getKidsLevelMeta("zikr-quiz", difficulty, levelIndex);
   const count = Math.max(4, Math.min(allQuestions.length, (difficulty === "hard" ? 10 : difficulty === "normal" ? 7 : 5) + (levelIndex % 2)));
@@ -400,6 +442,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
     setSelected(null);
     setSeconds(0);
     setFeedback(meta.subtitleAr);
+    setHiddenOptions([]);
     advancingRef.current = false;
   }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
 
@@ -429,6 +472,19 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
     }
   }, [complete, correct, levelIndex, onHud, onResult, onSound, score, streak]);
 
+  const useFiftyFifty = () => {
+    if (paused || selected !== null || !question || hiddenOptions.length > 0) return;
+    const wrong = question.options
+      .map((_, optionIndex) => optionIndex)
+      .filter(optionIndex => optionIndex !== question.correctAnswer);
+    const hideCount = Math.max(0, Math.min(2, wrong.length - 1));
+    const start = wrong.length ? (meta.seed + index) % wrong.length : 0;
+    const hidden = Array.from({ length: hideCount }, (_, offset) => wrong[(start + offset) % wrong.length]);
+    setHiddenOptions(hidden);
+    setFeedback(hideCount > 0 ? "تم حذف عدد محدود من الإجابات الخاطئة. بقيت إجابتان محتملتان." : "لا توجد إجابات خاطئة كافية لتطبيق 50/50.");
+    onSound("move");
+  };
+
   const choose = (answer: number) => {
     if (paused || selected !== null || !question) return;
     const ok = answer === question.correctAnswer;
@@ -445,13 +501,14 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
     }
     window.setTimeout(() => {
       setSelected(null);
+      setHiddenOptions([]);
       setIndex(value => value + 1);
     }, 600);
   };
 
   if (!question) {
     return (
-      <KidsGameStage theme="library" ariaLabel="اختبار ذِكر">
+      <KidsGameStage theme="library" ariaLabel="اختبار ذِكر"><KidsGameWorld gameId="zikr-quiz" />
         <KidsGameHeader eyebrow="ZIKR QUIZ" title="اختبار ذِكر" description={meta.subtitleAr} />
         <div className="mx-4 rounded-[2rem] border border-brand-gold/20 bg-black/20 p-8 text-center sm:mx-6">
           <KidCharacter variant="reader" state={levelIndex === KIDS_LEVEL_COUNT - 1 ? "celebrate" : "think"} size={92} />
@@ -465,6 +522,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
 
   return (
     <KidsGameStage theme="library" ariaLabel="اختبار ذِكر">
+      <KidsGameWorld gameId="zikr-quiz" />
       <KidsGameHeader eyebrow="ZIKR QUIZ" title="اختبار ذِكر" description={question.category + " • " + meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(index / questions.length) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="px-4 sm:px-6"><KidsGameHud items={[
         { label: "النقاط", value: score, tone: "text-brand-gold" },
@@ -472,15 +530,20 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
         { label: "السلسلة", value: streak, tone: "text-violet-200" },
         { label: "الوقت", value: formatSeconds(seconds), tone: "text-sky-200" },
         { label: "المستوى", value: levelIndex + 1, tone: "text-amber-200" },
-      ]} /></div>
+      ]} />
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-brand-cream/45">ميزة 50/50 متاحة مرة واحدة لكل سؤال، وتفتح لك آخر خيارين محتملين.</p>
+        <button type="button" onClick={useFiftyFifty} disabled={paused || selected !== null || hiddenOptions.length > 0} className="rounded-xl border border-brand-gold/30 bg-brand-gold/5 px-4 py-2 text-xs font-black text-brand-gold disabled:opacity-40">✂️ 50/50</button>
+      </div></div>
       <div className="mx-4 mt-4 rounded-[2rem] border border-white/10 bg-black/20 p-5 sm:mx-6 sm:p-7">
         <div className="rounded-[1.7rem] border border-brand-gold/15 bg-brand-gold/[0.04] p-5"><p className="text-xs font-black tracking-[0.18em] text-brand-emerald/80">السؤال {index + 1}</p><h4 className="mt-3 text-2xl font-black leading-10 text-brand-cream">{question.text}</h4></div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {question.options.map((option, optionIndex) => {
             const isCorrect = optionIndex === question.correctAnswer;
             const isSelected = optionIndex === selected;
-            return <button key={option + ":" + optionIndex} type="button" onClick={() => choose(optionIndex)} disabled={selected !== null} className={[
-              "min-h-24 rounded-2xl border p-4 text-right transition",
+            const hidden = hiddenOptions.includes(optionIndex);
+            return <button key={option + ":" + optionIndex} type="button" onClick={() => choose(optionIndex)} disabled={selected !== null || hidden} className={[
+              "min-h-24 rounded-2xl border p-4 text-right transition " + (hidden ? "opacity-20 blur-[1px]" : ""),
               isSelected ? (isCorrect ? "border-brand-emerald bg-brand-emerald/15 text-brand-emerald" : "border-rose-300/35 bg-rose-300/10 text-rose-100")
                 : selected !== null && isCorrect ? "border-brand-emerald/60 bg-brand-emerald/10 text-brand-emerald"
                 : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-brand-gold/45",

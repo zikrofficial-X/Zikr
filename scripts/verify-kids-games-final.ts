@@ -21,6 +21,8 @@ const required = [
   "src/lib/games/game-missions.ts",
   "src/features/kids/components/games/kids-game-art.tsx",
   "supabase/migrations/20261003010000_kids_games_level_catalog.sql",
+  "src/features/kids/components/games/kids-game-visuals.tsx",
+  "supabase/migrations/20261003030000_kids_games_gameplay_visual_catalog.sql",
   "src/lib/games/zikr-runner.ts",
   "src/lib/games/zikr-road.ts",
   "src/lib/games/zikr-jump.ts",
@@ -133,6 +135,33 @@ for (const id of gameIds) if (!artSource.includes('case "' + id + '"')) throw ne
 const migrationSource = readFileSync(join(root, "supabase/migrations/20261003010000_kids_games_level_catalog.sql"), "utf8");
 if (!migrationSource.includes("generate_series(1, 20)") || !migrationSource.includes("array['easy','normal','hard']")) throw new Error("Level catalog migration incomplete.");
 for (const id of gameIds) if (!migrationSource.includes("('" + id + "'")) throw new Error("Migration catalog missing " + id);
+
+const visuals = readFileSync(join(root, "src/features/kids/components/games/kids-game-visuals.tsx"), "utf8");
+for (const id of gameIds) {
+  if (!visuals.includes('case "' + id + '"')) throw new Error("Dedicated visual world missing for " + id);
+}
+const runtimeFiles: Record<string, string> = {
+  "src/features/kids/components/games/kids-action-runner-road.tsx": "zikr-runner,zikr-road",
+  "src/features/kids/components/games/kids-action-adventure.tsx": "zikr-jump,hilal-fly,mosque-adventure",
+  "src/features/kids/components/games/kids-learning-games.tsx": "zikr-memory,wudu-challenge,verse-puzzle,zikr-quiz",
+  "src/features/kids/components/games/kids-values-coloring.tsx": "good-deeds,mosque-cleanup,zikr-coloring",
+};
+for (const [path, ids] of Object.entries(runtimeFiles)) {
+  const source = readFileSync(join(root, path), "utf8");
+  for (const id of ids.split(",")) {
+    if (!source.includes('<KidsGameWorld gameId="' + id + '" />')) throw new Error("World scene is not mounted for " + id);
+  }
+}
+const learning = readFileSync(join(root, "src/features/kids/components/games/kids-learning-games.tsx"), "utf8");
+if (!learning.includes("useHint") && !learning.includes("useVerseHint")) throw new Error("Hint mechanics missing from learning games.");
+if (!learning.includes("useFiftyFifty")) throw new Error("Quiz 50/50 mechanic missing.");
+if (!learning.includes("getVerifiedWuduContent")) throw new Error("Verified Wudu content path missing.");
+const values = readFileSync(join(root, "src/features/kids/components/games/kids-values-coloring.tsx"), "utf8");
+if (!values.includes("actionSteps")) throw new Error("Good Deeds multi-step interaction missing.");
+if (!values.includes("onDragStart") || !values.includes("onDrop")) throw new Error("Mosque Cleanup drag-and-drop interaction missing.");
+if (!values.includes("mixColor")) throw new Error("Color mixing interaction missing.");
+const gameplayMigration = readFileSync(join(root, "supabase/migrations/20261003030000_kids_games_gameplay_visual_catalog.sql"), "utf8");
+if (!gameplayMigration.includes("gameplayVersion", 0) || !gameplayMigration.includes("visualVersion")) throw new Error("Gameplay/visual catalog migration is incomplete.");
 
 const registry = readFileSync(join(root, "src/lib/games/registry.ts"), "utf8");
 if (!registry.includes('difficulties: ["easy", "normal", "hard"] as const')) throw new Error("Registry does not expose all 3 difficulties.");
