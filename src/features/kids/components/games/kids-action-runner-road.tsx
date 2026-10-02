@@ -798,7 +798,7 @@ export function ZikrRoadGame({
     }, 50);
 
     return () => window.clearInterval(interval);
-  }, [onHud, onResult, onSound, paused, questions, rules]);
+  }, [difficulty, onHud, onResult, onSound, paused, questions, rules]);
 
   const answerCheckpoint = (index: number) => {
     if (!question || answer !== null) return;
