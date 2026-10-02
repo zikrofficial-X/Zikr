@@ -9,7 +9,7 @@ const FACEBOOK_PAGE_ID = Deno.env.get('FACEBOOK_PAGE_ID') ?? ''
 const FACEBOOK_PAGE_ACCESS_TOKEN = Deno.env.get('FACEBOOK_PAGE_ACCESS_TOKEN') ?? ''
 type JsonObject = Record<string, unknown>;
 
-const FACEBOOK_GRAPH_API_VERSION = Deno.env.get('FACEBOOK_GRAPH_API_VERSION') ?? ''
+const FACEBOOK_GRAPH_API_VERSION = Deno.env.get('FACEBOOK_GRAPH_API_VERSION') ?? 'v26.0'
 const MEDIA_BUCKET = Deno.env.get('YOUTUBE_FACEBOOK_MEDIA_BUCKET') ?? 'youtube-facebook-media'
 const BATCH_SIZE = Math.max(1, Math.min(10, Number(Deno.env.get('SOCIAL_SYNC_BATCH_SIZE') ?? '3')))
 const MAX_DISCOVERY_PAGES_PER_RUN = Math.max(1, Math.min(10, Number(Deno.env.get('SOCIAL_SYNC_DISCOVERY_PAGES_PER_RUN') ?? '5')))
@@ -32,6 +32,13 @@ async function sha256(value: string) {
 }
 
 async function auth(req: Request) {
+  const authorization = req.headers.get('authorization') ?? ''
+  const bearer = authorization.replace(/^Bearer\\s+/i, '').trim()
+  if (bearer) {
+    const { data, error } = await supabase.rpc('get_push_scheduler_secret')
+    if (!error && typeof data === 'string' && data.length > 0 && bearer === data) return
+  }
+
   const supplied = req.headers.get('x-zikr-sync-secret') ?? ''
   if (!supplied) throw new Error('Unauthorized sync request.')
   const { data, error } = await supabase
@@ -39,27 +46,23 @@ async function auth(req: Request) {
     .select('sync_secret_hash')
     .eq('id', 1)
     .maybeSingle()
-  if (error || !data?.sync_secret_hash || (await sha256(supplied)) !== data.sync_secret_hash) {
-    throw new Error('Unauthorized sync request.')
-  }
+  if (!error && data?.sync_secret_hash && (await sha256(supplied)) === data.sync_secret_hash) return
+  throw new Error('Unauthorized sync request.')
 }
-
 function requireConfig() {
   const missing = [
     ['SUPABASE_URL', SUPABASE_URL],
     ['SUPABASE_SERVICE_ROLE_KEY', SUPABASE_SERVICE_ROLE_KEY],
     ['YOUTUBE_API_KEY', YOUTUBE_API_KEY],
     ['YOUTUBE_CHANNEL_ID', YOUTUBE_CHANNEL_ID],
-    ['FACEBOOK_PAGE_ID', FACEBOOK_PAGE_ID],
-    ['FACEBOOK_PAGE_ACCESS_TOKEN', FACEBOOK_PAGE_ACCESS_TOKEN],
-    ['FACEBOOK_GRAPH_API_VERSION', FACEBOOK_GRAPH_API_VERSION],
   ].filter(([, value]) => !value).map(([name]) => name)
   if (missing.length) throw new Error(`Missing configuration: ${missing.join(', ')}`)
-  if (!/^v\d+\.\d+$/.test(FACEBOOK_GRAPH_API_VERSION)) {
+
+  const hasFacebookConfig = Boolean(FACEBOOK_PAGE_ID && FACEBOOK_PAGE_ACCESS_TOKEN)
+  if (hasFacebookConfig && !/^v\\d+\\.\\d+$/.test(FACEBOOK_GRAPH_API_VERSION)) {
     throw new Error(`Invalid Meta Graph API version: ${FACEBOOK_GRAPH_API_VERSION}`)
   }
 }
-
 async function youtube(path: string, params: Record<string, string | number | undefined>) {
   const url = new URL(`https://www.googleapis.com/youtube/v3/${path}`)
   url.searchParams.set('key', YOUTUBE_API_KEY)
@@ -462,6 +465,9 @@ async function publishFacebookVideo(job: JsonObject) {
 }
 
 async function processReadyJobs() {
+  if (!FACEBOOK_PAGE_ID || !FACEBOOK_PAGE_ACCESS_TOKEN) {
+    return { selected: 0, published: 0, failed: 0, skipped: 0, maxAttempts: 0 }
+  }
   const jobs = await getReadyJobs(BATCH_SIZE)
   const summary = { selected: jobs.length, published: 0, failed: 0, skipped: 0, maxAttempts: 0 }
 
