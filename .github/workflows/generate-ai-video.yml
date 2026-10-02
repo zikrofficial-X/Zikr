@@ -1,3 +1,4 @@
+# Queue recovery trigger: post-merge execution uses the backlog-first worker path.
 name: ZIKR Autonomous AI Video Worker
 # Validation trigger: rerun dedicated LTX-fast provider after accepting Gradio video result objects.
 
