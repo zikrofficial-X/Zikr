@@ -581,6 +581,7 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
   const prompt = [
     "أنت مخطط محتوى بصري لمنصة ذِكر الإسلامية.",
     "المصدر أدناه موثق بالفعل. ممنوع تغيير نص المصدر أو اختراع نص ديني أو حكم شرعي جديد.",
+    aiVisualPolicyPromptLine(),
     "صمّم خطة قصيرة لفيديو عمودي يُرندر محليًا بواسطة FFmpeg.",
     "أعد JSON فقط بالمفاتيح الإنجليزية التالية:",
     '{"reflection":"...","socialCaption":"...","scene":"calm|dawn|night|gold","motion":"fade|slow"}',
