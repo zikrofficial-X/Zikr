@@ -58,3 +58,12 @@ The current pair count is intentionally small so the first reference game remain
 Wudu Challenge consumes the structured `wudu_steps` and `wudu_after_dhikr` fields from the existing `wudu-steps` Kids content item through `getVerifiedWuduContent()`. The game must not parse numbered prose from `content_ar` or duplicate the approved step wording in the runtime.
 
 Difficulty is gameplay: easy uses 5 steps, normal 7, and hard 9. The hard level completes the full structured sequence and then shows the existing completion dhikr. The content integrity check `pnpm kids:wudu:check` is part of PR and main verification.
+
+
+## Verse Puzzle content and gameplay contract
+
+Verse Puzzle consumes exact Quran text from the existing server-only Quran retrieval path through `/api/kids/games/verse`. The runtime may shuffle and index tokens for play, but it must never normalize, paraphrase, generate, or replace Quran text.
+
+Difficulty is gameplay, not metadata only: easy uses a guided mode with an optional next-word hint and no mistake penalty; normal removes the hint and counts mistakes; hard removes the hint and resets the current sequence after a wrong choice. The content source remains exact in every difficulty.
+
+The content integrity check `pnpm kids:verse:check` verifies the configured difficulty/source mapping against the local canonical Quran corpus and the gameplay rules.

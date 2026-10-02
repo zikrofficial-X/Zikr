@@ -8,11 +8,6 @@ import type {
 import {
   getVerifiedKidsQuizQuestions,
 } from "@/lib/games/verified-content";
-import {
-  isVerseOrderComplete,
-  shuffleVerseTokens,
-  type IndexedVerseToken,
-} from "@/lib/games/gameplay-helpers";
 import { ArcadeGame } from "@/features/kids/components/games/arcade-game";
 import type {
   ArcadeGameScene,
@@ -26,6 +21,7 @@ import type {
 import { ToneFeedback, type GameSoundEvent } from "@/lib/games/tone-feedback";
 import { ZikrMemoryGame } from "@/features/kids/components/games/zikr-memory-game";
 import { WuduChallengeGame } from "@/features/kids/components/games/wudu-challenge-game";
+import { VersePuzzleGame } from "@/features/kids/components/games/verse-puzzle-game";
 
 export type WorldHud = {
   score: number;
@@ -234,123 +230,6 @@ type LocalGameProps = {
   onResult: (result: WorldHud) => void;
   onSound: (event: GameSoundEvent) => void;
 };
-
-function VersePuzzleGame({
-  difficulty,
-  restartToken,
-  paused,
-  onHud,
-  onResult,
-  onSound,
-}: LocalGameProps) {
-  const [tokens, setTokens] = useState<IndexedVerseToken[]>([]);
-  const [answer, setAnswer] = useState<number[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [available, setAvailable] = useState(true);
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setAnswer([]);
-    setTokens([]);
-    fetch(`/api/kids/games/verse?difficulty=${difficulty}`, {
-      credentials: "include",
-    })
-      .then(response =>
-        response.ok
-          ? (response.json() as Promise<{ words?: string[] }>)
-          : Promise.reject(new Error("unavailable"))
-      )
-      .then(data => {
-        if (!active) return;
-        const words = Array.isArray(data.words) ? data.words : [];
-        setTokens(shuffleVerseTokens(words, `${difficulty}:${restartToken}`));
-        setAvailable(words.length > 0);
-      })
-      .catch(() => {
-        if (active) setAvailable(false);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [difficulty, restartToken]);
-  const completed =
-    tokens.length > 0 && isVerseOrderComplete(answer, tokens.length);
-  const choose = (tokenIndex: number) => {
-    if (paused || answer.includes(tokenIndex)) return;
-    onSound("move");
-    setAnswer(value => [...value, tokenIndex]);
-  };
-  const selectedTokens = answer.map(
-    index => tokens.find(token => token.index === index)?.text ?? ""
-  );
-  const score = Math.max(
-    0,
-    answer.length * 180 - Math.max(0, answer.length - 1) * 12
-  );
-  const hud = useMemo(() => ({
-    score,
-    collectibles: answer.length,
-    distance: 0,
-    combo: answer.length,
-    level: difficulty === "hard" ? 3 : difficulty === "normal" ? 2 : 1,
-    completed,
-  }), [answer.length, completed, difficulty, score]);
-  useEffect(() => {
-    onHud(hud);
-    if (completed) {
-      onSound("success");
-      onResult(hud);
-    }
-  }, [
-    answer.length,
-    completed,
-    onHud,
-    onResult,
-    onSound,
-    score,
-    hud,
-  ]);
-  if (loading)
-    return (
-      <div
-        className="grid min-h-[280px] place-items-center rounded-2xl border border-brand-gold/30 bg-[#071b24] text-brand-cream/70"
-        role="status"
-      >
-        جاري تجهيز نص موثق...
-      </div>
-    );
-  if (!available)
-    return (
-      <Unavailable text="لغز الآية يحتاج إلى نص قرآني موثق متاح من قاعدة المعرفة." />
-    );
-  return (
-    <div className="space-y-5 rounded-2xl border border-brand-gold/30 bg-[#071b24] p-5">
-      <p className="text-sm text-brand-cream/70">
-        اضغط الكلمات بالترتيب. النص مأخوذ كما هو من المصدر الموثق، وكل كلمة
-        تحتفظ بموقعها الأصلي حتى تتكرر بأمان.
-      </p>
-      <div className="min-h-16 rounded-xl border border-brand-emerald/30 bg-brand-emerald/5 p-4 text-center leading-10 text-brand-gold">
-        {selectedTokens.join(" ")}
-      </div>
-      <div className="flex flex-wrap justify-center gap-2">
-        {tokens.map(token => (
-          <button
-            key={token.id}
-            type="button"
-            onClick={() => choose(token.index)}
-            disabled={answer.includes(token.index)}
-            className="rounded-lg border border-brand-cream/20 bg-black/20 px-3 py-2 text-brand-cream disabled:opacity-30"
-          >
-            {token.text}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function QuizGame({
   difficulty,
