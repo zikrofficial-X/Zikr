@@ -2,7 +2,7 @@ import "server-only";
 
 import { searchHadith } from '@/features/hadith/services/hadith';
 import type { Hadith } from '@/features/hadith/types/hadith';
-import { searchQuran } from '@/features/quran/services/quran';
+import { searchLocalQuran } from '@/features/quran/services/quran-server';
 import { supabaseServerAnonRequest } from '@/lib/supabase/server';
 
 export type SpiritualSourceKind =
@@ -198,7 +198,7 @@ async function retrieveLocalQuran(query: string): Promise<SpiritualSource[]> {
 
 async function retrieveFallbackQuran(query: string): Promise<SpiritualSource[]> {
   try {
-    const verses = await searchQuran(query, 'ar');
+    const verses = await searchLocalQuran(query, 'ar');
     return verses.slice(0, 5).map(verse => ({
       kind: 'quran' as const,
       label: 'آية قرآنية',
