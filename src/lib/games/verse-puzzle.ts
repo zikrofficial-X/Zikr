@@ -17,7 +17,8 @@ const RULES: Record<GameDifficulty, VersePuzzleRules> = {
 
 export function getVersePuzzleRules(difficulty: GameDifficulty): VersePuzzleRules { return RULES[difficulty]; }
 export function getVersePuzzleAyah(difficulty: GameDifficulty, levelIndex = 0): number {
-  return 1 + (levelIndex % 2);
+  const base = difficulty === "easy" ? 1 : 2;
+  return base + (levelIndex % 2);
 }
 export function getVersePuzzleLevelSeed(difficulty: GameDifficulty, levelIndex: number) {
   return getKidsLevelMeta("verse-puzzle", difficulty, levelIndex).seed;
