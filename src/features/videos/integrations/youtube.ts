@@ -255,7 +255,7 @@ export async function syncYoutubeFeed(maxResults = 24): Promise<YoutubeChannelFe
       website: null,
       avatar_url: channelItem.snippet?.thumbnails?.high?.url ?? channelItem.snippet?.thumbnails?.default?.url ?? null,
       cover_url: null,
-      page_url: channelItem.snippet?.customUrl ? `https://www.youtube.com/${channelItem.snippet.customUrl.replace(/^\\//, '')}` : `https://www.youtube.com/channel/${channelId}`,
+      page_url: channelItem.snippet?.customUrl ? `https://www.youtube.com/${channelItem.snippet.customUrl.replace(/^\//, '')}` : `https://www.youtube.com/channel/${channelId}`,
       subscribers_count: channelItem.statistics?.subscriberCount ? Number(channelItem.statistics.subscriberCount) : null,
       followers_count: null,
       likes_count: null,
