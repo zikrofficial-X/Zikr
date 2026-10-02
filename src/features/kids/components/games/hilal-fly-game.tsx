@@ -217,7 +217,7 @@ export function HilalFlyGame({
   const lastFrameRef = useRef<number | null>(null);
 
   const [snapshot, setSnapshot] = useState<Snapshot>(() =>
-    snapshotFromModel(modelRef.current)
+    snapshotFromModel(createModel(rules, levels[0]))
   );
   const [feedback, setFeedback] = useState(
     "حرّك الهلال لأعلى أو لأسفل، مر بين الحواجز واجمع النجوم."
