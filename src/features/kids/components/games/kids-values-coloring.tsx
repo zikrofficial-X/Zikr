@@ -215,11 +215,25 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   }, []);
 
   const storageKey = current.id + ":" + difficulty + ":" + levelIndex;
-  useEffect(() => { setFills(saved[storageKey] ?? []); setHistory([]); setFeedback(meta.subtitleAr); }, [meta.subtitleAr, saved, storageKey]);
-
+  const lastRestartRef = useRef(restartToken);
   useEffect(() => {
-    setFills([]); setHistory([]); setFeedback(meta.subtitleAr);
-  }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
+    const restarting = lastRestartRef.current !== restartToken && restartToken > 0;
+    if (restarting) {
+      lastRestartRef.current = restartToken;
+      setFills([]);
+      setHistory([]);
+      setSaved(value => {
+        const next = { ...value, [storageKey]: [] };
+        try { localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(next)); } catch {}
+        return next;
+      });
+      setFeedback(meta.subtitleAr);
+      return;
+    }
+    setFills(saved[storageKey] ?? []);
+    setHistory([]);
+    setFeedback(meta.subtitleAr);
+  }, [meta.subtitleAr, restartToken, saved, storageKey]);
 
   const paint = (index: number) => {
     if (paused) return;
