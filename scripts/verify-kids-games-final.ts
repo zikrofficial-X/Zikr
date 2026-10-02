@@ -20,9 +20,9 @@ const required = [
   "src/features/kids/components/games/game-shell.tsx",
   "src/lib/games/game-missions.ts",
   "src/features/kids/components/games/kids-game-art.tsx",
-  "supabase/migrations/20261003010000_kids_games_level_catalog.sql",
+  "supabase/migrations/20261002211738_20261003010000_kids_games_level_catalog.sql",
   "src/features/kids/components/games/kids-game-visuals.tsx",
-  "supabase/migrations/20261003030000_kids_games_gameplay_visual_catalog.sql",
+  "supabase/migrations/20261002212922_20261003030000_kids_games_gameplay_visual_catalog.sql",
   "src/lib/games/zikr-runner.ts",
   "src/lib/games/zikr-road.ts",
   "src/lib/games/zikr-jump.ts",
@@ -90,39 +90,18 @@ for (const difficulty of ["easy", "normal", "hard"] as const) {
   const cleanup = getMosqueCleanupRules(difficulty);
   const coloring = getZikrColoringRules(difficulty);
 
-  if (!(runner.levelCount >= 20 && runner.speed > 0 && runner.goalDistance > 0 && runner.obstacleInterval > 0)) {
-    throw new Error("Invalid Runner progression rules for " + difficulty);
-  }
-  if (!(road.levelCount >= 20 && road.speed > 0 && road.goalDistance > 0 && road.checkpointDistances.length > 0)) {
-    throw new Error("Invalid Road progression rules for " + difficulty);
-  }
-  if (!(jump.levelCount >= 20 && jump.jumpVelocity > 0 && jump.gravity > 0)) {
-    throw new Error("Invalid Jump progression rules for " + difficulty);
-  }
-  if (!(hilal.levelCount >= 20 && hilal.speed > 0 && hilal.gapHeight > 0)) {
-    throw new Error("Invalid Hilal Fly progression rules for " + difficulty);
-  }
-  if (!(deeds.levelCount >= 20 && deeds.sceneCount >= 3 && deeds.rewardPerScene > 0)) {
-    throw new Error("Invalid Good Deeds progression rules for " + difficulty);
-  }
-  if (!(cleanup.levelCount >= 20 && cleanup.itemCount >= 5 && cleanup.mistakePenalty >= 0)) {
-    throw new Error("Invalid Cleanup progression rules for " + difficulty);
-  }
-  if (!(coloring.levelCount >= 20 && coloring.regionTarget >= 6 && coloring.completionBonus > 0)) {
-    throw new Error("Invalid Coloring progression rules for " + difficulty);
-  }
+  if (!(runner.levelCount >= 20 && runner.speed > 0 && runner.goalDistance > 0 && runner.obstacleInterval > 0)) throw new Error("Invalid Runner progression rules for " + difficulty);
+  if (!(road.levelCount >= 20 && road.speed > 0 && road.goalDistance > 0 && road.checkpointDistances.length > 0)) throw new Error("Invalid Road progression rules for " + difficulty);
+  if (!(jump.levelCount >= 20 && jump.jumpVelocity > 0 && jump.gravity > 0)) throw new Error("Invalid Jump progression rules for " + difficulty);
+  if (!(hilal.levelCount >= 20 && hilal.speed > 0 && hilal.gapHeight > 0)) throw new Error("Invalid Hilal Fly progression rules for " + difficulty);
+  if (!(deeds.levelCount >= 20 && deeds.sceneCount >= 3 && deeds.rewardPerScene > 0)) throw new Error("Invalid Good Deeds progression rules for " + difficulty);
+  if (!(cleanup.levelCount >= 20 && cleanup.itemCount >= 5 && cleanup.mistakePenalty >= 0)) throw new Error("Invalid Cleanup progression rules for " + difficulty);
+  if (!(coloring.levelCount >= 20 && coloring.regionTarget >= 6 && coloring.completionBonus > 0)) throw new Error("Invalid Coloring progression rules for " + difficulty);
 }
 
-if (!readFileSync(join(root, "src/features/kids/components/games/kids-game-kit.tsx"), "utf8").includes("KidCharacter")) {
-  throw new Error("Unified character system is missing.");
-}
-if (!readFileSync(join(root, "src/features/kids/components/games/kids-game-kit.tsx"), "utf8").includes("StarToken")) {
-  throw new Error("Unified collectible system is missing.");
-}
-if (!readFileSync(join(root, "src/features/kids/components/games/game-shell.tsx"), "utf8").includes("syncQueuedGameResults")) {
-  throw new Error("The existing offline result pipeline is no longer connected.");
-}
-
+if (!readFileSync(join(root, "src/features/kids/components/games/kids-game-kit.tsx"), "utf8").includes("KidCharacter")) throw new Error("Unified character system is missing.");
+if (!readFileSync(join(root, "src/features/kids/components/games/kids-game-kit.tsx"), "utf8").includes("StarToken")) throw new Error("Unified collectible system is missing.");
+if (!readFileSync(join(root, "src/features/kids/components/games/game-shell.tsx"), "utf8").includes("syncQueuedGameResults")) throw new Error("The existing offline result pipeline is no longer connected.");
 
 const shellSource = readFileSync(join(root, "src/features/kids/components/games/game-shell.tsx"), "utf8");
 if (!shellSource.includes("getDailyMission") || !shellSource.includes("dailyMissionCompleted")) throw new Error("Daily mission integration is missing.");
@@ -132,14 +111,12 @@ const missionSource = readFileSync(join(root, "src/lib/games/game-missions.ts"),
 if (!missionSource.includes("getDailyMission") || !missionSource.includes("getMissionProgress")) throw new Error("Game mission system is incomplete.");
 const artSource = readFileSync(join(root, "src/features/kids/components/games/kids-game-art.tsx"), "utf8");
 for (const id of gameIds) if (!artSource.includes('case "' + id + '"')) throw new Error("Visual identity missing for " + id);
-const migrationSource = readFileSync(join(root, "supabase/migrations/20261003010000_kids_games_level_catalog.sql"), "utf8");
+const migrationSource = readFileSync(join(root, "supabase/migrations/20261002211738_20261003010000_kids_games_level_catalog.sql"), "utf8");
 if (!migrationSource.includes("generate_series(1, 20)") || !migrationSource.includes("array['easy','normal','hard']")) throw new Error("Level catalog migration incomplete.");
 for (const id of gameIds) if (!migrationSource.includes("('" + id + "'")) throw new Error("Migration catalog missing " + id);
 
 const visuals = readFileSync(join(root, "src/features/kids/components/games/kids-game-visuals.tsx"), "utf8");
-for (const id of gameIds) {
-  if (!visuals.includes('case "' + id + '"')) throw new Error("Dedicated visual world missing for " + id);
-}
+for (const id of gameIds) if (!visuals.includes('case "' + id + '"')) throw new Error("Dedicated visual world missing for " + id);
 const runtimeFiles: Record<string, string> = {
   "src/features/kids/components/games/kids-action-runner-road.tsx": "zikr-runner,zikr-road",
   "src/features/kids/components/games/kids-action-adventure.tsx": "zikr-jump,hilal-fly,mosque-adventure",
@@ -148,9 +125,7 @@ const runtimeFiles: Record<string, string> = {
 };
 for (const [path, ids] of Object.entries(runtimeFiles)) {
   const source = readFileSync(join(root, path), "utf8");
-  for (const id of ids.split(",")) {
-    if (!source.includes('<KidsGameWorld gameId="' + id + '" />')) throw new Error("World scene is not mounted for " + id);
-  }
+  for (const id of ids.split(",")) if (!source.includes('<KidsGameWorld gameId="' + id + '" />')) throw new Error("World scene is not mounted for " + id);
 }
 const learning = readFileSync(join(root, "src/features/kids/components/games/kids-learning-games.tsx"), "utf8");
 if (!learning.includes("useHint") && !learning.includes("useVerseHint")) throw new Error("Hint mechanics missing from learning games.");
@@ -160,7 +135,7 @@ const values = readFileSync(join(root, "src/features/kids/components/games/kids-
 if (!values.includes("actionSteps")) throw new Error("Good Deeds multi-step interaction missing.");
 if (!values.includes("onDragStart") || !values.includes("onDrop")) throw new Error("Mosque Cleanup drag-and-drop interaction missing.");
 if (!values.includes("mixColor")) throw new Error("Color mixing interaction missing.");
-const gameplayMigration = readFileSync(join(root, "supabase/migrations/20261003030000_kids_games_gameplay_visual_catalog.sql"), "utf8");
+const gameplayMigration = readFileSync(join(root, "supabase/migrations/20261002212922_20261003030000_kids_games_gameplay_visual_catalog.sql"), "utf8");
 if (!gameplayMigration.includes("gameplayVersion", 0) || !gameplayMigration.includes("visualVersion")) throw new Error("Gameplay/visual catalog migration is incomplete.");
 
 const registry = readFileSync(join(root, "src/lib/games/registry.ts"), "utf8");
