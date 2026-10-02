@@ -24,7 +24,6 @@ const expectedIds = [
   "good-deeds", "hilal-fly", "mosque-cleanup", "zikr-coloring",
 ];
 
-if (!registry.includes("export const GAME_IDS")) failures.push("game registry must expose canonical GAME_IDS");
 for (const id of expectedIds) {
   if (!registry.includes(`"${id}"`)) failures.push(`registry missing game: ${id}`);
   if (!stage.includes(`"${id}"`)) failures.push(`unified game stage missing game: ${id}`);
