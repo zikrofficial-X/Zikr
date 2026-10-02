@@ -51,7 +51,7 @@ if (!homeInteractive.includes('getSavedPrayerLocation')) failures.push('Home pra
 if (!homeInteractive.includes('if (!found && !disposed) chooseCurrentLocation()')) failures.push('Home prayer panel no longer protects the saved-location-first flow.');
 if (!prayerPage.includes('getSavedPrayerLocation')) failures.push('Prayer page does not restore the saved user location first.');
 if (!prayerPage.includes('return;\n      }\n\n      if (!disposed)')) failures.push('Prayer page may fall back to device location after a saved-location lookup.');
-if (home.includes('DEFAULT_CITY')) notes.push('Home keeps no hard-coded default city; first-time location is requested only after no saved location is found.');
+if (!home.includes('DEFAULT_CITY')) notes.push('Home keeps no hard-coded default city; first-time location is requested only after no saved location is found.');
 
 const audioPage = await read('src/app/audio/page.tsx');
 const audioLibrary = await read('src/components/audio/audio-library.tsx');
