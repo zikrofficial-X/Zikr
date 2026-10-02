@@ -1,6 +1,6 @@
 import { getHilalFlyLevels, getHilalFlyRules } from "@/lib/games/hilal-fly";
 
-const LEVEL_COUNT = 6;
+const LEVEL_COUNT = 20;
 
 for (const difficulty of ["easy", "normal", "hard"] as const) {
   const rules = getHilalFlyRules(difficulty);
