@@ -139,14 +139,19 @@ export const ZIKR_JUMP_LEVELS: ZikrJumpLevel[] = LEVEL_THEMES.map((_, index) =>
   buildLevel(index)
 );
 
+const DIFFICULTY_LEVELS: Record<GameDifficulty, ZikrJumpLevel[]> = {
+  easy: ZIKR_JUMP_LEVELS.slice(0, RULES.easy.levelCount).map(level => ({
+    ...level,
+    hazards: [],
+  })),
+  normal: ZIKR_JUMP_LEVELS.slice(0, RULES.normal.levelCount),
+  hard: ZIKR_JUMP_LEVELS.slice(0, RULES.hard.levelCount),
+};
+
 export function getZikrJumpRules(difficulty: GameDifficulty): ZikrJumpRules {
   return RULES[difficulty];
 }
 
 export function getZikrJumpLevels(difficulty: GameDifficulty): ZikrJumpLevel[] {
-  const levels = ZIKR_JUMP_LEVELS.slice(0, RULES[difficulty].levelCount);
-  if (difficulty === "easy") {
-    return levels.map(level => ({ ...level, hazards: [] }));
-  }
-  return levels;
+  return DIFFICULTY_LEVELS[difficulty];
 }
