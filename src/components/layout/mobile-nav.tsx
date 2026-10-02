@@ -23,7 +23,6 @@ const allLinks = [
   { href: "/stories", label: "القصص الإسلامية", labelEn: "Islamic Stories" },
   { href: "/articles", label: "المقالات", labelEn: "Articles" },
   { href: "/videos", label: "الفيديوهات", labelEn: "Videos" },
-  { href: "/youtube", label: "قناة يوتيوب", labelEn: "YouTube" },
   { href: "/radio", label: "إذاعة القرآن", labelEn: "Quran Radio" },
   { href: "/audio", label: "مكتبة الصوت", labelEn: "Audio Library" },
   { href: "/sections", label: "دليل الأقسام", labelEn: "Sections Guide" },
