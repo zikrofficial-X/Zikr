@@ -38,7 +38,7 @@ The active AI visual providers are routed through the canonical provider router:
 
 Introduced `AI_VISUAL_POLICY_VERSION = 2026-10-02-source-locked-v1`.
 
-The version is now stored in AI planning metadata and render metadata. Source-locked metadata now covers all verified public religious-source categories:
+The shared policy is injected into both the Gemini planner and the Hugging Face visual prompt, and the version is stored in AI planning metadata and render metadata. Source-locked metadata now covers all verified public religious-source categories:
 
 - Quran
 - Hadith
