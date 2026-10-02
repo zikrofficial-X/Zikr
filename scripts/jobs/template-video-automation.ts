@@ -370,7 +370,7 @@ export async function seedAutomatedVideoRequests() {
       key = `dua:${day}:${slot}`;
       if (await findByAutomationKey("video_generation_requests", key)) continue;
       const row = await getDuaRow(day * 6 + slot);
-      const sourceUrl = `https://zikrmediaofficial.vercel.app/dua/${row.slug}`;
+      const sourceUrl = `${siteUrl()}/dua/${row.slug}`;
       payload = {
         title: `دعاء اليوم — ${row.title_ar}`,
         description: row.occasion_ar || "دعاء موثق من مكتبة ذِكر.",
