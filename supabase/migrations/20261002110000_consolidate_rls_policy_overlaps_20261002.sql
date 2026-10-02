@@ -21,9 +21,11 @@ drop policy if exists content_admin_write_tafsir on public.quran_tafsir;
 drop policy if exists content_admin_write_scholars on public.scholars;
 drop policy if exists content_admin_write_stories on public.stories;
 
--- These admin policies had no action-specific authenticated equivalents.
-alter policy "Admins only can modify game graphics" on public.game_graphics to authenticated;
-alter policy "Admins only can modify game scenarios" on public.game_scenarios to authenticated;
+-- These policies are replaced by action-specific authenticated policies in a
+-- later game-assets migration. Drop them idempotently here because an earlier
+-- cleanup may already have removed them.
+drop policy if exists "Admins only can modify game graphics" on public.game_graphics;
+drop policy if exists "Admins only can modify game scenarios" on public.game_scenarios;
 
 -- video_narrations already has a public SELECT policy. Restrict the admin
 -- policy to write operations so authenticated admins do not overlap with it.
