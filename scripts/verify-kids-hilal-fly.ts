@@ -1,6 +1,6 @@
 import { getHilalFlyLevels, getHilalFlyRules } from "@/lib/games/hilal-fly";
 
-const LEVEL_COUNT = 6;
+const LEVEL_COUNT = 20;
 
 for (const difficulty of ["easy", "normal", "hard"] as const) {
   const rules = getHilalFlyRules(difficulty);
@@ -18,8 +18,8 @@ for (const difficulty of ["easy", "normal", "hard"] as const) {
     );
   }
 
-  if (levels.length > LEVEL_COUNT) {
-    throw new Error("Hilal Fly exposes more levels than the canonical six-level set.");
+  if (levels.length !== LEVEL_COUNT) {
+    throw new Error("Hilal Fly must expose exactly 20 levels per difficulty.");
   }
 
   if (levels.some(level => !level.titleAr || !level.subtitleAr || !level.theme)) {
@@ -69,9 +69,9 @@ if (!(easy.lives > normal.lives || easy.lives === normal.lives)) {
 }
 
 if (getHilalFlyLevels("hard").length !== LEVEL_COUNT) {
-  throw new Error("Hilal Fly hard mode must cover the complete six-level visual route.");
+  throw new Error("Hilal Fly hard mode must cover the complete 20-level visual route.");
 }
 
 console.log(
-  "Hilal Fly check passed: six-level visual route + real difficulty progression + dedicated runtime contract."
+  "Hilal Fly check passed: 20-level visual route + real difficulty progression + dedicated runtime contract."
 );

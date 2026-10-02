@@ -7,6 +7,7 @@ import { getHilalFlyRules } from "../src/lib/games/hilal-fly";
 import { getGoodDeedsRules } from "../src/lib/games/good-deeds";
 import { getMosqueCleanupRules } from "../src/lib/games/mosque-cleanup";
 import { getZikrColoringRules } from "../src/lib/games/zikr-coloring";
+import { KIDS_LEVEL_COUNT, getKidsLevelMeta } from "../src/lib/games/kids-level-system";
 
 const root = process.cwd();
 const required = [
@@ -59,10 +60,19 @@ const gameIds = [
   "zikr-runner", "zikr-memory", "wudu-challenge", "verse-puzzle",
   "zikr-quiz", "mosque-adventure", "zikr-road", "zikr-jump",
   "hilal-fly", "good-deeds", "mosque-cleanup", "zikr-coloring",
-];
+] as const;
 for (const id of gameIds) {
   if (!stage.includes('"' + id + '"')) {
     throw new Error("Unified stage is missing game route: " + id);
+  }
+}
+
+if (KIDS_LEVEL_COUNT < 20) throw new Error("Kids level system must provide at least 20 levels.");
+
+for (const gameId of gameIds) {
+  for (const difficulty of ["easy", "normal", "hard"] as const) {
+    const ids = new Set(Array.from({ length: KIDS_LEVEL_COUNT }, (_, index) => getKidsLevelMeta(gameId, difficulty, index).id));
+    if (ids.size !== KIDS_LEVEL_COUNT) throw new Error("Duplicate generated level ids for " + gameId + "/" + difficulty);
   }
 }
 
@@ -75,25 +85,25 @@ for (const difficulty of ["easy", "normal", "hard"] as const) {
   const cleanup = getMosqueCleanupRules(difficulty);
   const coloring = getZikrColoringRules(difficulty);
 
-  if (!(runner.speed > 0 && runner.goalDistance > 0 && runner.obstacleInterval > 0)) {
+  if (!(runner.levelCount >= 20 && runner.speed > 0 && runner.goalDistance > 0 && runner.obstacleInterval > 0)) {
     throw new Error("Invalid Runner progression rules for " + difficulty);
   }
-  if (!(road.speed > 0 && road.goalDistance > 0 && road.checkpointDistances.length > 0)) {
+  if (!(road.levelCount >= 20 && road.speed > 0 && road.goalDistance > 0 && road.checkpointDistances.length > 0)) {
     throw new Error("Invalid Road progression rules for " + difficulty);
   }
-  if (!(jump.levelCount >= 3 && jump.jumpVelocity > 0 && jump.gravity > 0)) {
+  if (!(jump.levelCount >= 20 && jump.jumpVelocity > 0 && jump.gravity > 0)) {
     throw new Error("Invalid Jump progression rules for " + difficulty);
   }
-  if (!(hilal.levelCount >= 3 && hilal.speed > 0 && hilal.gapHeight > 0)) {
+  if (!(hilal.levelCount >= 20 && hilal.speed > 0 && hilal.gapHeight > 0)) {
     throw new Error("Invalid Hilal Fly progression rules for " + difficulty);
   }
-  if (!(deeds.sceneCount >= 3 && deeds.rewardPerScene > 0)) {
+  if (!(deeds.levelCount >= 20 && deeds.sceneCount >= 3 && deeds.rewardPerScene > 0)) {
     throw new Error("Invalid Good Deeds progression rules for " + difficulty);
   }
-  if (!(cleanup.itemCount >= 5 && cleanup.mistakePenalty >= 0)) {
+  if (!(cleanup.levelCount >= 20 && cleanup.itemCount >= 5 && cleanup.mistakePenalty >= 0)) {
     throw new Error("Invalid Cleanup progression rules for " + difficulty);
   }
-  if (!(coloring.regionTarget >= 6 && coloring.completionBonus > 0)) {
+  if (!(coloring.levelCount >= 20 && coloring.regionTarget >= 6 && coloring.completionBonus > 0)) {
     throw new Error("Invalid Coloring progression rules for " + difficulty);
   }
 }
@@ -108,4 +118,7 @@ if (!readFileSync(join(root, "src/features/kids/components/games/game-shell.tsx"
   throw new Error("The existing offline result pipeline is no longer connected.");
 }
 
-console.log("Kids Games final check passed: 12 rebuilt runtimes, shared visual kit, no legacy game runtimes, real difficulty rules, and preserved progress/offline shell.");
+const registry = readFileSync(join(root, "src/lib/games/registry.ts"), "utf8");
+if (!registry.includes('difficulties: ["easy", "normal", "hard"] as const')) throw new Error("Registry does not expose all 3 difficulties.");
+
+console.log("Kids Games final check passed: 12 rebuilt runtimes, 20 deterministic levels per game/difficulty, no legacy game runtimes, stabilized runtime rules, and preserved progress/offline shell.");

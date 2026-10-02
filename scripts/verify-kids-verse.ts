@@ -35,7 +35,7 @@ const cases = [
 
 for (const item of cases) {
   const rules = getVersePuzzleRules(item.difficulty);
-  if (getVersePuzzleAyah(item.difficulty) !== item.ayah) {
+  if (getVersePuzzleAyah(item.difficulty, 0) !== item.ayah) {
     throw new Error(`Verse difficulty mapping mismatch for ${item.difficulty}.`);
   }
 

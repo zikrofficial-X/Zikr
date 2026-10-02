@@ -1,7 +1,8 @@
 import type { GameDifficulty } from "@/lib/games/registry";
+import { KIDS_LEVEL_COUNT, getKidsLevelMeta } from "@/lib/games/kids-level-system";
 
 export type VersePuzzleRules = {
-  level: 1 | 2 | 3;
+  levelCount: number;
   allowHint: boolean;
   tolerateMistakes: boolean;
   resetOnMistake: boolean;
@@ -9,33 +10,16 @@ export type VersePuzzleRules = {
 };
 
 const RULES: Record<GameDifficulty, VersePuzzleRules> = {
-  easy: {
-    level: 1,
-    allowHint: true,
-    tolerateMistakes: false,
-    resetOnMistake: false,
-    mistakePenalty: 0,
-  },
-  normal: {
-    level: 2,
-    allowHint: false,
-    tolerateMistakes: true,
-    resetOnMistake: false,
-    mistakePenalty: 35,
-  },
-  hard: {
-    level: 3,
-    allowHint: false,
-    tolerateMistakes: false,
-    resetOnMistake: true,
-    mistakePenalty: 70,
-  },
+  easy: { levelCount: KIDS_LEVEL_COUNT, allowHint: true, tolerateMistakes: true, resetOnMistake: false, mistakePenalty: 0 },
+  normal: { levelCount: KIDS_LEVEL_COUNT, allowHint: false, tolerateMistakes: true, resetOnMistake: false, mistakePenalty: 35 },
+  hard: { levelCount: KIDS_LEVEL_COUNT, allowHint: false, tolerateMistakes: false, resetOnMistake: true, mistakePenalty: 70 },
 };
 
-export function getVersePuzzleRules(difficulty: GameDifficulty): VersePuzzleRules {
-  return RULES[difficulty];
+export function getVersePuzzleRules(difficulty: GameDifficulty): VersePuzzleRules { return RULES[difficulty]; }
+export function getVersePuzzleAyah(difficulty: GameDifficulty, levelIndex = 0): number {
+  const base = difficulty === "easy" ? 1 : 2;
+  return base + (levelIndex % 2);
 }
-
-export function getVersePuzzleAyah(difficulty: GameDifficulty): number {
-  return difficulty === "easy" ? 1 : 2;
+export function getVersePuzzleLevelSeed(difficulty: GameDifficulty, levelIndex: number) {
+  return getKidsLevelMeta("verse-puzzle", difficulty, levelIndex).seed;
 }

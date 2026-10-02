@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
 import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
@@ -17,14 +17,12 @@ import {
   TouchArrows,
 } from "@/features/kids/components/games/kids-game-kit";
 import { getZikrRunnerLevels, getZikrRunnerRules } from "@/lib/games/zikr-runner";
+import { getKidsLevelMeta } from "@/lib/games/kids-level-system";
 import {
   getApprovedRoadQuestions,
   type VerifiedQuizQuestion,
 } from "@/lib/games/verified-content";
-import {
-  getZikrRoadLevel,
-  getZikrRoadRules,
-} from "@/lib/games/zikr-road";
+import { getZikrRoadRules } from "@/lib/games/zikr-road";
 
 export type ActionGameProps = {
   difficulty: GameDifficulty;
@@ -137,9 +135,10 @@ export function ZikrRunnerGame({
   onResult,
   onSound,
 }: ActionGameProps) {
-  const rules = getZikrRunnerRules(difficulty);
-  const levels = getZikrRunnerLevels(difficulty);
-  const questions = getApprovedRoadQuestions();
+  const rules = useMemo(() => getZikrRunnerRules(difficulty), [difficulty]);
+  const levels = useMemo(() => getZikrRunnerLevels(difficulty), [difficulty]);
+  const renderClockRef = useRef(0);
+  const questions = useMemo(() => getApprovedRoadQuestions(), []);
   const modelRef = useRef<RunnerModel>(newRunnerModel(rules, levels));
   const inputRef = useRef({ jump: false });
   const completionRef = useRef(false);
@@ -229,9 +228,25 @@ export function ZikrRunnerGame({
         state.coyote = Math.max(0, state.coyote - dt);
       }
 
-      state.distance = Math.min(rules.goalDistance, state.distance + rules.speed * dt);
-      state.score += rules.speed * dt * 0.75;
+      const activeLevel = levels[state.levelIndex] ?? levels[levels.length - 1];
+      const stageSpeed = rules.speed * activeLevel.speedMultiplier;
+      state.distance = Math.min(rules.goalDistance, state.distance + stageSpeed * dt);
+      state.score += stageSpeed * dt * 0.75;
 
+      const levelSize = rules.goalDistance / levels.length;
+      const nextLevelIndex = Math.min(levels.length - 1, Math.floor(state.distance / Math.max(1, levelSize)));
+      if (nextLevelIndex !== state.levelIndex) {
+        state.levelIndex = nextLevelIndex;
+        state.objects = [];
+        state.nextHazard = state.distance + Math.max(240, rules.obstacleInterval / activeLevel.hazardMultiplier);
+        state.nextStar = state.distance + Math.max(160, rules.starInterval);
+        state.combo = Math.max(0, state.combo);
+        onSound("success");
+        setFeedback("دخلت " + levels[nextLevelIndex].titleAr + ".");
+      }
+
+      const hazardGap = Math.max(240, rules.obstacleInterval / Math.max(0.65, activeLevel.hazardMultiplier));
+      const starGap = Math.max(160, rules.starInterval + activeLevel.starOffset);
       while (state.distance >= state.nextHazard && state.nextHazard <= rules.goalDistance) {
         const random = nextRunnerRandom(state);
         state.objects.push({
@@ -241,7 +256,7 @@ export function ZikrRunnerGame({
           y: RUNNER_GROUND - 28,
           variant: random < 0.34 ? "box" : random < 0.67 ? "cone" : "stone",
         });
-        state.nextHazard += rules.obstacleInterval;
+        state.nextHazard += hazardGap;
       }
 
       while (state.distance >= state.nextStar && state.nextStar <= rules.goalDistance) {
@@ -253,7 +268,7 @@ export function ZikrRunnerGame({
           y: 220 + random * 70,
           variant: "stone",
         });
-        state.nextStar += rules.starInterval;
+        state.nextStar += starGap;
       }
 
       for (const item of state.objects) item.x -= rules.speed * dt;
@@ -328,15 +343,6 @@ export function ZikrRunnerGame({
 
       state.objects = state.objects.filter(item => !collected.has(item.id) && item.x > -100);
 
-      const levelSize = rules.goalDistance / levels.length;
-      const nextLevel = Math.min(levels.length - 1, Math.floor(state.distance / levelSize));
-      if (nextLevel > state.levelIndex) {
-        state.levelIndex = nextLevel;
-        state.score += rules.levelBonus;
-        onSound("success");
-        setFeedback("وصلت إلى " + levels[nextLevel].titleAr + ".");
-      }
-
       const checkpointDistance = rules.checkpointDistances[state.checkpointIndex];
       if (
         checkpointDistance !== undefined &&
@@ -365,9 +371,12 @@ export function ZikrRunnerGame({
         return;
       }
 
-      const snapshot = { ...state, objects: [...state.objects] };
-      setModel(snapshot);
-      onHud(runnerHud(state, levels.length));
+      if (timestamp - renderClockRef.current >= 50) {
+        renderClockRef.current = timestamp;
+        const snapshot = { ...state, objects: [...state.objects] };
+        setModel(snapshot);
+        onHud(runnerHud(state, levels.length));
+      }
     };
 
     frame = requestAnimationFrame(tick);
@@ -568,6 +577,7 @@ type RoadModel = {
   completed: boolean;
   objects: RoadObject[];
   seed: number;
+  levelIndex: number;
 };
 
 const ROAD_LANES = 3;
@@ -581,8 +591,8 @@ export function ZikrRoadGame({
   onResult,
   onSound,
 }: ActionGameProps) {
-  const rules = getZikrRoadRules(difficulty);
-  const questions = getApprovedRoadQuestions();
+  const rules = useMemo(() => getZikrRoadRules(difficulty), [difficulty]);
+  const questions = useMemo(() => getApprovedRoadQuestions(), []);
   const createRoadState = (): RoadModel => ({
     lane: 1,
     distance: 0,
@@ -595,6 +605,7 @@ export function ZikrRoadGame({
     completed: false,
     objects: [],
     seed: difficulty.length * 71 + 4,
+    levelIndex: 0,
   });
   const stateRef = useRef<RoadModel>(createRoadState());
   const [state, setState] = useState<RoadModel>(createRoadState);
@@ -616,6 +627,7 @@ export function ZikrRoadGame({
       completed: false,
       objects: [],
       seed: difficulty.length * 71 + 4,
+      levelIndex: 0,
     };
     stateRef.current = next;
     setState({ ...next });
@@ -672,21 +684,32 @@ export function ZikrRoadGame({
       if (paused || current.questionOpen || current.completed) return;
 
       const dt = 0.05;
-      current.distance = Math.min(rules.goalDistance, current.distance + rules.speed * dt);
-      current.score += rules.speed * dt;
+      const levelSize = rules.goalDistance / rules.levelCount;
+      const nextLevelIndex = Math.min(rules.levelCount - 1, Math.floor(current.distance / Math.max(1, levelSize)));
+      const levelMeta = getKidsLevelMeta("zikr-road", difficulty, nextLevelIndex);
+      const stageSpeed = rules.speed * levelMeta.pace;
+      current.distance = Math.min(rules.goalDistance, current.distance + stageSpeed * dt);
+      current.score += stageSpeed * dt;
 
-      current.seed = (current.seed * 1664525 + 1013904223) >>> 0;
-
-      let nextObjects = current.objects.map(object => ({
-        ...object,
-        position: object.position + Math.max(0.85, rules.speed * dt / 8),
-      }));
-
-      while (current.distance >= current.distance + 1 && false) {
-        nextObjects = nextObjects;
+      if (nextLevelIndex !== current.levelIndex) {
+        current.levelIndex = nextLevelIndex;
+        current.objects = [];
+        current.combo = 0;
+        setFeedback("دخلت " + levelMeta.titleAr + ".");
+        onSound("success");
       }
 
-      if (Math.floor(current.distance / rules.hazardInterval) > Math.floor((current.distance - rules.speed * dt) / rules.hazardInterval)) {
+      current.seed = (current.seed * 1664525 + 1013904223 + levelMeta.seed) >>> 0;
+
+      const stageHazardInterval = Math.max(280, rules.hazardInterval / (0.9 + (levelMeta.pattern % 5) * 0.08));
+      const stageStarInterval = Math.max(170, rules.starInterval / (0.95 + (levelMeta.pattern % 4) * 0.07));
+
+      const nextObjects = current.objects.map(object => ({
+        ...object,
+        position: object.position + Math.max(0.85, stageSpeed * dt / 8),
+      }));
+
+      if (Math.floor(current.distance / stageHazardInterval) > Math.floor((current.distance - stageSpeed * dt) / stageHazardInterval)) {
         const lane = current.seed % ROAD_LANES;
         nextObjects.push({
           id: current.seed,
@@ -697,7 +720,7 @@ export function ZikrRoadGame({
         });
       }
 
-      if (Math.floor(current.distance / rules.starInterval) > Math.floor((current.distance - rules.speed * dt) / rules.starInterval)) {
+      if (Math.floor(current.distance / stageStarInterval) > Math.floor((current.distance - stageSpeed * dt) / stageStarInterval)) {
         const lane = (current.seed >>> 5) % ROAD_LANES;
         nextObjects.push({
           id: current.seed + 1,
@@ -712,7 +735,7 @@ export function ZikrRoadGame({
         item =>
           item.lane === current.lane &&
           item.position < ROAD_PLAYER_POSITION &&
-          item.position + Math.max(0.75, rules.speed * dt / 8) >= ROAD_PLAYER_POSITION
+          item.position + Math.max(0.75, stageSpeed * dt / 8) >= ROAD_PLAYER_POSITION
       );
 
       for (const hit of hits) {
@@ -749,7 +772,7 @@ export function ZikrRoadGame({
           collectibles: current.collectibles,
           distance: Math.floor(current.distance),
           combo: current.combo,
-          level: 3,
+          level: rules.levelCount,
           completed: true,
         };
         setState({ ...current, objects: [...current.objects] });
@@ -767,7 +790,7 @@ export function ZikrRoadGame({
         collectibles: current.collectibles,
         distance: Math.floor(current.distance),
         combo: current.combo,
-        level: getZikrRoadLevel(current.distance, rules.goalDistance),
+        level: current.levelIndex + 1,
         completed: false,
       };
       setState({ ...current, objects: [...current.objects] });
@@ -775,7 +798,7 @@ export function ZikrRoadGame({
     }, 50);
 
     return () => window.clearInterval(interval);
-  }, [onHud, onResult, onSound, paused, questions, rules]);
+  }, [difficulty, onHud, onResult, onSound, paused, questions, rules]);
 
   const answerCheckpoint = (index: number) => {
     if (!question || answer !== null) return;
@@ -816,7 +839,7 @@ export function ZikrRoadGame({
             { label: "النجوم", value: state.collectibles, tone: "text-brand-emerald" },
             { label: "الأخطاء", value: state.mistakes, tone: "text-rose-100" },
             { label: "المسافة", value: state.distance, tone: "text-sky-200" },
-            { label: "المستوى", value: getZikrRoadLevel(state.distance, rules.goalDistance), tone: "text-violet-200" },
+            { label: "المستوى", value: state.levelIndex + 1 + "/" + rules.levelCount, tone: "text-violet-200" },
           ]}
         />
       </div>

@@ -1,33 +1,22 @@
 import type { GameDifficulty } from "@/lib/games/registry";
+import { KIDS_LEVEL_COUNT, getKidsLevelMeta } from "@/lib/games/kids-level-system";
 
 export type MosqueAdventureRules = {
-  level: 1 | 2 | 3;
+  levelCount: number;
   nodeCount: number;
   questionStationIndexes: number[];
   mistakePenalty: number;
 };
 
-const RULES: Record<GameDifficulty, MosqueAdventureRules> = {
-  easy: {
-    level: 1,
-    nodeCount: 3,
-    questionStationIndexes: [1],
-    mistakePenalty: 0,
-  },
-  normal: {
-    level: 2,
-    nodeCount: 4,
-    questionStationIndexes: [1, 3],
-    mistakePenalty: 35,
-  },
-  hard: {
-    level: 3,
-    nodeCount: 5,
-    questionStationIndexes: [1, 3],
-    mistakePenalty: 70,
-  },
-};
-
 export function getMosqueAdventureRules(difficulty: GameDifficulty): MosqueAdventureRules {
-  return RULES[difficulty];
+  return {
+    levelCount: KIDS_LEVEL_COUNT,
+    nodeCount: 5 + (difficulty === "hard" ? 2 : difficulty === "normal" ? 1 : 0),
+    questionStationIndexes: [1, 3, 5].filter(index => index < 5 + (difficulty === "hard" ? 2 : difficulty === "normal" ? 1 : 0)),
+    mistakePenalty: difficulty === "hard" ? 70 : difficulty === "normal" ? 35 : 0,
+  };
+}
+
+export function getMosqueAdventureLevel(difficulty: GameDifficulty, index: number) {
+  return getKidsLevelMeta("mosque-adventure", difficulty, index);
 }
