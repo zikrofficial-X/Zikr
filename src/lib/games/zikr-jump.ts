@@ -144,5 +144,9 @@ export function getZikrJumpRules(difficulty: GameDifficulty): ZikrJumpRules {
 }
 
 export function getZikrJumpLevels(difficulty: GameDifficulty): ZikrJumpLevel[] {
-  return ZIKR_JUMP_LEVELS.slice(0, RULES[difficulty].levelCount);
+  const levels = ZIKR_JUMP_LEVELS.slice(0, RULES[difficulty].levelCount);
+  if (difficulty === "easy") {
+    return levels.map(level => ({ ...level, hazards: [] }));
+  }
+  return levels;
 }
