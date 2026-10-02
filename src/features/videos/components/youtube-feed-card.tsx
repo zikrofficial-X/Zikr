@@ -13,6 +13,9 @@ type Props = {
 
 export function YoutubeFeedCard({ videoId, title, thumbnailUrl, publishedLabel }: Props) {
   const [playing, setPlaying] = useState(false);
+  const [resolvedThumbnail, setResolvedThumbnail] = useState(thumbnailUrl);
+
+  const fallbackThumbnail = `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`;
 
   return (
     <Card className="overflow-hidden h-full flex flex-col hover:border-brand-gold/50 transition-all">
@@ -32,13 +35,17 @@ export function YoutubeFeedCard({ videoId, title, thumbnailUrl, publishedLabel }
             className="group absolute inset-0 block h-full w-full text-start focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
             aria-label={`تشغيل ${title} داخل منصة ذِكر`}
           >
-            {thumbnailUrl ? (
+            {resolvedThumbnail ? (
               <Image
-                src={thumbnailUrl}
+                src={resolvedThumbnail}
                 alt={title}
                 fill
                 sizes="(max-width: 768px) 100vw, 33vw"
                 className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                onError={() => {
+                  if (resolvedThumbnail !== fallbackThumbnail) setResolvedThumbnail(fallbackThumbnail);
+                  else setResolvedThumbnail(null);
+                }}
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-brand-gold/10" aria-hidden="true">
