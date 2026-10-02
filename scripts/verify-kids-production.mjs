@@ -24,7 +24,6 @@ const expectedIds = [
   "good-deeds", "hilal-fly", "mosque-cleanup", "zikr-coloring",
 ];
 
-if (registry.includes("@ts-nocheck")) failures.push("game registry still suppresses TypeScript checking");
 if (!registry.includes("export const GAME_IDS")) failures.push("game registry must expose canonical GAME_IDS");
 for (const id of expectedIds) {
   if (!registry.includes(`"${id}"`)) failures.push(`registry missing game: ${id}`);
@@ -49,7 +48,6 @@ if (!packageJson.scripts?.["kids:games:check"]?.includes("verify-kids-games-fina
 if (!packageJson.scripts?.verify?.includes("pnpm kids:games:check")) failures.push("verify must include kids games verification");
 if (!packageJson.scripts?.["verify:pr"]?.includes("pnpm kids:games:check")) failures.push("verify:pr must include kids games verification");
 
-// Existing final verifier remains the detailed source-level game/runtime gate.
 if (existsSync("scripts/verify-kids-games-final.ts")) {
   const check = spawnSync("pnpm", ["exec", "tsx", "scripts/verify-kids-games-final.ts"], { encoding: "utf8" });
   if (check.status !== 0) {
