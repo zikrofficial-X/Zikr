@@ -40,6 +40,7 @@ try {
 const envAndRuntimeFiles = [
   '.env.example',
   'src/lib/env.ts',
+  'PRODUCTION_DEPLOYMENT_v1.1.0.md',
 ];
 const envAndRuntimeDirs = [
   'src/app',
@@ -52,6 +53,7 @@ const staleRuntimeTokens = [
   'mohamedalaa7785-cpu/Zikr',
   'zikr-zikrmediaofficial.vercel.app',
   'qjcrvgbgmumwhzxdbgad',
+  'eydxvcamhjhajxjrsgym.supabase.co',
   'NEXT_PUBLIC_QURAN_API',
   'NEXT_PUBLIC_HADITH_API',
   'QURAN_AUDIO_CDN_URL',

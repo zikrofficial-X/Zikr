@@ -1,64 +1,261 @@
-# Environment Variables
+# ZIKR Environment Variables
 
-This document outlines the environment variables used in the ZIKR project, their purpose, and whether they are public or server-side.
+Last reconciled: **2026-10-02**
 
-## Required Environment Variables
+This document describes the current environment contract for the web application, GitHub Actions/background workers, CircleCI recovery jobs, and Supabase Edge Functions.
 
-The following environment variables are required for the application to function correctly.
+Secret values are never stored in Git. This repository documents variable **names, ownership, scope, and validation rules** only.
 
-| Variable Name             | Description                                                                 | Type     |
-| :------------------------ | :-------------------------------------------------------------------------- | :------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | The public URL for your Supabase project.                                   | Public   |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | The public anonymous key for your Supabase project.                         | Public   |
-| `NEXT_PUBLIC_SITE_URL`          | The locked canonical public URL: https://zikrmediaofficial.vercel.app.                                        | Public   |
-| `SUPABASE_SERVICE_ROLE_KEY`     | The Supabase service role key, used for server-side operations.             | Server   |
-| `AUTH_CALLBACK_URL`             | Locked application callback: `https://zikrmediaofficial.vercel.app/auth/callback`. Google provider registration uses Supabase's provider callback separately. | Server   |
+## 1. Canonical web/runtime variables
 
-## Optional Integration Environment Variables
+These are the variables required by the Next.js application.
 
-The following environment variables are optional and are used for integrating with external services. Hadith reads Supabase first and uses the configured Ummah-compatible provider only when the database is unavailable. File uploads use the Supabase Storage buckets configured in `supabase/config.toml`; no AWS S3 variables are required.
+| Variable | Scope | Required | Notes |
+|---|---|---:|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | Canonical project: `https://kdotmrjfecgafiommzwz.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Yes | Public/publishable Supabase client credential |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only | Yes | Never expose to browser/client code |
+| `NEXT_PUBLIC_SITE_URL` | Public | Yes | Locked canonical origin: `https://zikrmediaofficial.vercel.app` |
+| `AUTH_CALLBACK_URL` | Server/config | Yes | Locked application callback: `https://zikrmediaofficial.vercel.app/auth/callback` |
 
-| Variable Name             | Description                                                                 | Type     |
-| :------------------------ | :-------------------------------------------------------------------------- | :------- |
-| `GEMINI_API_KEY`                | API key for Google Gemini services.                                         | Server   |
-| `GEMINI_MODEL`                  | Optional Gemini model override (default: `gemini-3.1-flash-lite`; Google documents a Free Tier for the Standard API).           | Server   |
-| `HADITH_API_BASE_URL`          | Base URL for the Hadith API; defaults to `https://ummahapi.com/api/hadith` and can be overridden with a provider exposing the configured contract. | Server   |
-| `YOUTUBE_API_KEY`               | API key for YouTube services.                                               | Server   |
-| `YOUTUBE_CHANNEL_ID`            | YouTube channel ID.                                                         | Server   |
-| `YOUTUBE_CLIENT_ID`              | OAuth client ID used for YouTube uploads.                                   | Server   |
-| `YOUTUBE_CLIENT_SECRET`          | OAuth client secret used for YouTube uploads. Keep secret.                  | Server   |
-| `YOUTUBE_REFRESH_TOKEN`          | Long-lived OAuth refresh token granted with the `youtube.upload` scope.     | Server   |
-| `FACEBOOK_PAGE_ID`               | Facebook Page ID that receives uploaded videos and Reels.                   | Server   |
-| `FACEBOOK_PAGE_ACCESS_TOKEN`     | Page access token with the Meta Page publishing permissions.                | Server   |
-| `VIDEO_AUTO_PUBLISH`             | Set to `false` to keep completed videos queued without publishing; defaults to automatic publishing when credentials exist. | Server |
-| `ARABIC_TTS_VOICE`               | Optional free Edge TTS Arabic voice for hadith, dua, adhkar, story, and any video without a source recording. Defaults to `ar-SA-ZariyahNeural`. | Worker |
-| `ARABIC_TTS_RATE`                | Optional narration speed override for the free Arabic TTS fallback. Defaults to `-12%`. | Worker |
-| `ARABIC_TTS_PITCH`               | Optional narration pitch override for the free Arabic TTS fallback. Defaults to `-2Hz`. | Worker |
+The application treats `NEXT_PUBLIC_SUPABASE_ANON_KEY` as the browser-facing canonical name. `SUPABASE_ANON_KEY` is retained only as a server/worker compatibility alias.
 
-## Video Processing and Social Publishing
+## 2. Optional application integrations
 
-Video and social processing are split between the application/API layer and the opt-in CircleCI background worker. Large source-media handling uses the current media registry/queue path; do not assume a browser-uploaded Storage bucket is the only ingestion path. Production automation is not an implicit always-on Supabase scheduler.
+| Variable | Scope | Purpose |
+|---|---|---|
+| `GEMINI_API_KEY` | Server | Gemini AI |
+| `GEMINI_MODEL` | Server | Gemini model override; current default is `gemini-3.1-flash-lite` |
+| `HADITH_API_BASE_URL` | Server | External Hadith fallback |
+| `CLOUDINARY_CLOUD_NAME` | Server | Cloudinary account |
+| `CLOUDINARY_API_KEY` | Server | Cloudinary API |
+| `CLOUDINARY_API_SECRET` | Server | Cloudinary secret |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Public | Google Analytics |
+| `NEXT_PUBLIC_GTM_ID` | Public | Google Tag Manager |
+| `NEXT_PUBLIC_ADSENSE_CLIENT` | Public | AdSense publisher identifier |
+| `AI_GATEWAY_API_KEY` | Server | Optional Vercel AI Gateway path; no current core-runtime requirement |
 
-YouTube uploads use OAuth2 and require `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, and `YOUTUBE_REFRESH_TOKEN`; the refresh token must be granted with the official `https://www.googleapis.com/auth/youtube.upload` scope. Facebook publishing uses `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN`; the token must belong to a Page and the Meta app must have the Page publishing permissions required by Meta. Never place these values in client-side code or commit them to Git.
+## 3. YouTube / Facebook publishing
 
-Video audio is now mandatory: Quran items use their verified `audio_url` recitation when available; hadith, dua, adhkar, story, and other source-locked items use the free Arabic Edge TTS fallback when no recording is supplied. The worker fails rather than publishing a silent video.
+YouTube:
 
-## Deployment Validation
+- `YOUTUBE_API_KEY`
+- `YOUTUBE_CHANNEL_ID`
+- `YOUTUBE_CLIENT_ID`
+- `YOUTUBE_CLIENT_SECRET`
+- `YOUTUBE_REFRESH_TOKEN`
 
-Run the deployment environment check before shipping a release:
+Facebook / Meta:
+
+- `FACEBOOK_APP_ID`
+- `FACEBOOK_APP_SECRET`
+- `FACEBOOK_PAGE_ID`
+- `FACEBOOK_PAGE_ACCESS_TOKEN`
+- `FACEBOOK_GRAPH_API_VERSION` (current default: `v26.0`)
+
+Native social:
+
+- `NATIVE_SOCIAL_SYNC_ENABLED`
+
+The canonical Meta variable name is `FACEBOOK_GRAPH_API_VERSION`. `META_GRAPH_API_VERSION` is retired.
+
+## 4. Video worker contract
+
+Production video rendering and publishing are owned by the GitHub Actions worker. CircleCI remains a manual recovery path.
+
+Worker/runtime configuration includes:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SITE_URL`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL`
+- `AUTO_VIDEO_ENABLED`
+- `AUTO_VIDEO_BATCH_SIZE`
+- `AUTO_VIDEO_SECONDS`
+- `DAILY_VIDEO_TARGET`
+- `VIDEO_DAILY_LIMIT`
+- `VIDEO_AUTOMATION_DRY_RUN`
+- `VIDEO_AI_ENABLED`
+- `VIDEO_AI_ATTEMPTS_PER_RUN`
+- `VIDEO_PROVIDER_ORDER`
+- `HF_WAN_VIDEO_ENABLED`
+- `HF_LTX_FAST_VIDEO_ENABLED`
+- `HF_WAN_SPACE`
+- `HF_LTX_FAST_SPACE`
+- `HF_TOKEN`
+- `HF_VIDEO_PYTHON`
+- `VIDEO_TEMPLATE_VERSION`
+- `VERIFY_VIDEO_RUNTIME_TOOLS`
+- `BACKGROUND_JOB_TARGET`
+- `VIDEO_AUTO_PUBLISH`
+- `AUTO_VIDEO_PUBLISH_ENABLED`
+- `AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL`
+- `SOCIAL_PUBLISH_ENABLED`
+- `VIDEO_PUBLISH_SCHEDULE`
+- `VIDEO_GENERATOR`
+- `COMFYUI_ENABLED`
+- `COMFYUI_BASE_URL`
+- `COMFYUI_TIMEOUT_MS`
+- `COMFYUI_MODEL`
+- `COMFYUI_WAN_WORKFLOW_JSON`
+- `COMFYUI_LTX_WORKFLOW_JSON`
+- `FREE_VIDEO_PROVIDER_ENABLED`
+- `FREE_VIDEO_PROVIDER_URL`
+- `FREE_VIDEO_PROVIDER_TOKEN`
+- `VIDEO_MAX_RETRIES`
+- `VIDEO_STALE_AFTER_MINUTES`
+- `VIDEO_DEFAULT_FORMAT`
+- `VIDEO_DEFAULT_DURATION`
+- `VIDEO_TIMEZONE`
+- `VIDEO_BACKGROUND_BATCH_SIZE`
+- `SOCIAL_BACKGROUND_BATCH_SIZE`
+- `INTERNAL_JOB_SECRET`
+
+Optional Arabic TTS worker overrides:
+
+- `ARABIC_TTS_VOICE`
+- `ARABIC_TTS_RATE`
+- `ARABIC_TTS_PITCH`
+
+Internal YouTube sync endpoint:
+
+- `YOUTUBE_SYNC_SECRET`
+
+## 5. Supabase Edge Function contract
+
+### prayer-notification-worker
+
+Required through the Supabase runtime:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+Optional:
+
+- `PUSH_CONTACT`
+
+The scheduler secret and VAPID private material are intentionally stored in the private `push_runtime_settings` data path and are not repository variables.
+
+### source-verified-content-agent
+
+Required:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+External source credentials are resolved from the production `content_agent_sources.api_key_secret_name` values.
+
+### spiritual-ai
+
+The current Edge Function does not require a separate external API secret; it is protected by JWT.
+
+### health
+
+No project secret is required.
+
+The repository contains a `sync-youtube-facebook` function source, but it is not part of the active production `supabase/config.toml` function set. Do not re-enable it accidentally.
+
+## 6. CI/CD ownership
+
+### GitHub Actions
+
+Current production roles:
+
+- `quality-gate.yml`: verification only
+- `release-vercel.yml`: manual production Vercel release
+- `generate-ai-video.yml`: scheduled video generation + social publishing
+- `supabase-production-health.yml`: public Supabase health probe
+
+GitHub Actions secrets are referenced by canonical names in workflow files. Secret values are not stored in Git.
+
+### CircleCI
+
+CircleCI is a manual recovery/release path and requires its own protected project/context variables.
+
+Android release additionally requires:
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+- `GH_TOKEN`
+
+## 7. System-managed Vercel variables
+
+These are not application secrets and should not be manually provisioned just to make the application work:
+
+- `VERCEL`
+- `VERCEL_ENV`
+- `VERCEL_GIT_COMMIT_SHA`
+- `VERCEL_GIT_COMMIT_REF`
+- `NODE_ENV`
+
+## 8. Retired variables
+
+The deployment validator rejects these in application runtime configuration:
+
+- `DATABASE_URL`
+- `POSTGRES_URL`
+- `POSTGRES_PRISMA_URL`
+- `POSTGRES_URL_NON_POOLING`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+
+Do not provision a direct Postgres application URL. Database schema changes are managed through Supabase migrations and Supabase client/API access.
+
+## 9. Validation
+
+Run:
 
 ```bash
 pnpm deploy:check
+pnpm auth:check
+pnpm canonical:check
+pnpm native-social:check
+pnpm hygiene:check
 ```
 
-The command validates required runtime variables, URL shape, Supabase REST reachability, optional YouTube reachability, and common retired-variable mistakes without printing secret values.
+The deployment environment validator checks:
 
-> Security note: never commit real Supabase service-role keys, database URLs, Gemini keys, YouTube keys, or Google OAuth secrets. If any secret is shared in chat or logs, rotate it in the provider dashboard before deploying.
+- required variable presence;
+- canonical production URL;
+- canonical Supabase URL;
+- callback URL shape;
+- Facebook Graph API version format;
+- retired environment names;
+- Supabase Auth reachability.
 
-## Runtime Validation
+The repository does **not** contain or print production secret values.
 
-Environment variables are validated at runtime using `zod` to ensure their presence and correct format. Missing or invalid required variables will cause the application to throw an error during startup, preventing potential issues.
+## 10. Phase 5 reconciliation result
 
-## .env.example
+The current repository contract is internally aligned around:
 
-The `.env.example` file in the project root provides a template for all environment variables. It should be copied to `.env.local` and populated with actual values for local development and deployment.
+- Supabase project `kdotmrjfecgafiommzwz`;
+- canonical site `https://zikrmediaofficial.vercel.app`;
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` as the browser-facing key;
+- `SUPABASE_SERVICE_ROLE_KEY` as the server-only key;
+- GitHub Actions as the owner of autonomous video scheduling;
+- CircleCI as manual recovery/release infrastructure.
+
+A previous production deployment emitted `Missing NEXT_PUBLIC_SUPABASE_ANON_KEY` errors, but those occurrences ended on 2026-09-28 and belong to an older deployment. No `Missing` or `SUPABASE` runtime logs were observed in the latest 24-hour production window during this reconciliation.
+
+Exact secret values were not inspected or modified.
+
+## Security rules
+
+Never commit:
+
+- Supabase service-role keys;
+- YouTube client secrets or refresh tokens;
+- Facebook page access tokens;
+- Gemini keys;
+- Hugging Face tokens;
+- Android signing material;
+- internal job/webhook secrets;
+- VAPID private keys.
+
+Only placeholders and variable names belong in repository documentation.
