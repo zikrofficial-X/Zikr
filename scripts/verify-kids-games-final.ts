@@ -1,12 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getZikrRunnerRules } from "../src/lib/games/zikr-runner.ts";
-import { getZikrRoadRules } from "../src/lib/games/zikr-road.ts";
-import { getZikrJumpRules } from "../src/lib/games/zikr-jump.ts";
-import { getHilalFlyRules } from "../src/lib/games/hilal-fly.ts";
-import { getGoodDeedsRules } from "../src/lib/games/good-deeds.ts";
-import { getMosqueCleanupRules } from "../src/lib/games/mosque-cleanup.ts";
-import { getZikrColoringRules } from "../src/lib/games/zikr-coloring.ts";
+import { getZikrRunnerRules } from "../src/lib/games/zikr-runner";
+import { getZikrRoadRules } from "../src/lib/games/zikr-road";
+import { getZikrJumpRules } from "../src/lib/games/zikr-jump";
+import { getHilalFlyRules } from "../src/lib/games/hilal-fly";
+import { getGoodDeedsRules } from "../src/lib/games/good-deeds";
+import { getMosqueCleanupRules } from "../src/lib/games/mosque-cleanup";
+import { getZikrColoringRules } from "../src/lib/games/zikr-coloring";
 
 const root = process.cwd();
 const required = [
