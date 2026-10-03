@@ -292,22 +292,8 @@ async function findByAutomationKey(table: string, key: string) {
   );
   return rows?.[0] ?? null;
 }
-async function isVideoAutomationPaused() {
-  try {
-    const rows = await supabaseServerAdminRequest<Array<{ value: { paused?: boolean } | null }>>(
-      "/rest/v1/admin_settings?key=eq.video_automation&select=value&limit=1",
-    );
-    return rows?.[0]?.value?.paused === true;
-  } catch {
-    return false;
-  }
-}
 export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   if (process.env.AUTO_VIDEO_ENABLED?.toLowerCase() === "false") return 0;
-  if (await isVideoAutomationPaused()) {
-    console.log("[template-video] automation paused from the admin control center; seeding skipped.");
-    return 0;
-  }
   const now = new Date();
   const baseSlot = slotIndex(now);
   let created = 0;
@@ -1111,10 +1097,6 @@ export async function reconcileCompletedVideoSocialQueue(limit = 100) {
 }
 
 export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
-  if (await isVideoAutomationPaused()) {
-    console.log("[template-video] automation paused from the admin control center; rendering skipped.");
-    return { processed: 0, succeeded: 0, failed: 0 };
-  }
   if (engineConfig().dryRun) {
     console.log(`[template-video] dry-run enabled; no video generation, upload, or publishing will occur (limit=${limit}).`);
     return { processed: 0, succeeded: 0, failed: 0 };
