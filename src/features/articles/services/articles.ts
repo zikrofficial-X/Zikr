@@ -73,7 +73,7 @@ function mapStaticArticle(item: StaticArticle, locale: Locale): Article {
   };
 }
 
-let offlineArticlesPromise = new Map<Locale, Promise<Article[]>>();
+const offlineArticlesPromise = new Map<Locale, Promise<Article[]>>();
 
 async function loadOfflineArticles(locale: Locale): Promise<Article[]> {
   if (!offlineArticlesPromise.has(locale)) {

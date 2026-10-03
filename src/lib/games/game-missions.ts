@@ -16,7 +16,7 @@ export type GameMission = {
   rewardLabelEn: string;
 };
 
-const MISSION_TEMPLATES: Array<Omit<GameMission, "id" | "gameId" | "titleAr" | "descriptionAr"> & { key: string }> = [
+const MISSION_TEMPLATES: Array<Omit<GameMission, "id" | "gameId" | "titleAr" | "titleEn" | "descriptionAr" | "descriptionEn"> & { key: string }> = [
   { key: "focus", metric: "collectibles", target: 5, difficulty: "easy", rewardLabel: "شارة التركيز", rewardLabelEn: "Focus badge" },
   { key: "score", metric: "score", target: 1200, difficulty: "normal", rewardLabel: "شارة النقاط", rewardLabelEn: "Score badge" },
   { key: "combo", metric: "combo", target: 3, difficulty: "normal", rewardLabel: "شارة السلسلة", rewardLabelEn: "Combo badge" },

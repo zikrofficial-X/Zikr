@@ -14,7 +14,7 @@ export const revalidate = 1800;
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
   return pageMetadata({
-    title: locale === "en" ? "Islamic Articles" : "{isEnglish ? "Islamic Articles" : "المقالات الإسلامية"}",
+title: locale === "en" ? "Islamic Articles" : "المقالات الإسلامية",
     description:
       locale === "en"
         ? "Original editorially reviewed articles about Islam, Quran, Hadith, Seerah, spiritual development, and practical learning."

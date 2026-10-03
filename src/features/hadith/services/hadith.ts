@@ -76,6 +76,9 @@ type UmmahHadith = {
   hadithnumber?: number | string;
   arabic?: string;
   text_ar?: string;
+  hadith_english?: string;
+  english?: string;
+  text_en?: string;
 };
 
 type UmmahBooksResponse = {
@@ -147,11 +150,13 @@ function mapUmmahBook(book: UmmahCollection, locale: Locale = "ar"): HadithBook 
 function mapUmmahHadith(hadith: UmmahHadith): Hadith | null {
   const rawNumber = Number(hadith.hadithnumber);
   const arab = hadith.arabic || hadith.text_ar;
+  const english = hadith.hadith_english || hadith.english || hadith.text_en;
   if (!Number.isFinite(rawNumber) || !arab) return null;
 
   return {
     number: rawNumber,
     arab,
+    english: english?.trim() || undefined,
     id: hadith.id || String(rawNumber),
   };
 }
@@ -171,7 +176,7 @@ async function getUmmahBook(
   slug: string,
   page: number,
   limit: number,
-  locale: Locale = "ar",
+  _locale: Locale = "ar",
 ): Promise<HadithResponse<Hadith[]> | null> {
   const params = new URLSearchParams({
     limit: String(limit),
@@ -209,7 +214,7 @@ async function getUmmahBook(
 async function getUmmahHadithByNumber(
   book: string,
   number: number,
-  locale: Locale = "ar",
+  _locale: Locale = "ar",
 ): Promise<Hadith | null> {
   const { data, error } = await safeApiFetch<UmmahSingleResponse>(
     `${HADITH_API_BASE.replace(/\/$/, "")}/${encodeURIComponent(book)}/${number}`,
@@ -262,21 +267,33 @@ export async function getHadithBook(
       totalPages: Math.max(1, Math.ceil(total / limit)),
     };
 
-    return {
-      name: locale === "en" && dbBooks[0].name_en ? dbBooks[0].name_en : dbBooks[0].name_ar,
-      slug: dbBooks[0].slug,
-      total,
-      pagination,
-      data: (dbHadiths ?? []).map(mapDbHadith),
-    };
+    const localizedData = (dbHadiths ?? [])
+      .map(mapDbHadith)
+      .filter((hadith) => locale === "ar" || Boolean(hadith.english?.trim()));
+
+    if (locale === "ar" || localizedData.length > 0) {
+      return {
+        name: locale === "en" && dbBooks[0].name_en ? dbBooks[0].name_en : dbBooks[0].name_ar,
+        slug: dbBooks[0].slug,
+        total,
+        pagination,
+        data: localizedData,
+      };
+    }
+
+    const remoteLocalized = await getUmmahBook(clean, page, limit, locale);
+    if (remoteLocalized) return remoteLocalized;
   }
 
-  return getUmmahBook(clean, page, limit, locale);
+  return locale === "en"
+    ? null
+    : getUmmahBook(clean, page, limit, locale);
 }
 
 export async function getHadithByNumber(
   book: string,
   number: number,
+  locale: Locale = "ar",
 ): Promise<Hadith | null> {
   if (!book.trim() || number < 1) return null;
 
@@ -287,10 +304,16 @@ export async function getHadithByNumber(
     const dbHadiths = await readSupabase<DbHadith[]>(
       `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&book_id=eq.${dbBooks[0].id}&hadith_number=eq.${number}&published=eq.true&limit=1`,
     );
-    if (dbHadiths?.[0]) return mapDbHadith(dbHadiths[0]);
+    if (dbHadiths?.[0]) {
+      const mapped = mapDbHadith(dbHadiths[0]);
+      if (locale === "en" && !mapped.english?.trim()) return null;
+      return mapped;
+    }
   }
 
-  return getUmmahHadithByNumber(book, number);
+  const remote = await getUmmahHadithByNumber(book, number, locale);
+  if (locale === "en") return remote?.english?.trim() ? remote : null;
+  return remote;
 }
 
 export async function searchHadith(query: string, locale: Locale = "ar"): Promise<Hadith[]> {
@@ -298,10 +321,15 @@ export async function searchHadith(query: string, locale: Locale = "ar"): Promis
   if (!q) return [];
 
   const escapedQuery = q.replace(/[*,()]/g, "");
+  const field = locale === "en" ? "text_en" : "text_ar";
   const dbHadiths = await readSupabase<DbHadith[]>(
-    `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&published=eq.true&or=${encodeURIComponent(`(text_ar.ilike.*${escapedQuery}*,ref.ilike.*${escapedQuery}*)`)}&limit=50`,
+    `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&published=eq.true&or=${encodeURIComponent(`(${field}.ilike.*${escapedQuery}*,ref.ilike.*${escapedQuery}*)`)}&limit=50`,
   );
-  if (dbHadiths?.length) return dbHadiths.map(mapDbHadith);
+  if (dbHadiths?.length) {
+    return dbHadiths
+      .map(mapDbHadith)
+      .filter((item) => locale === "ar" || Boolean(item.english?.trim()));
+  }
 
   const books = await getHadithBooks(locale);
   const seedBooks = books.slice(0, 3);
@@ -311,7 +339,8 @@ export async function searchHadith(query: string, locale: Locale = "ar"): Promis
   );
   return collections
     .flatMap(collection => collection?.data ?? [])
-    .filter(
-      item => item.arab?.toLowerCase().includes(q) || item.id?.toLowerCase().includes(q),
-    );
+    .filter((item) => {
+      const haystack = locale === "en" ? item.english?.toLowerCase() : item.arab?.toLowerCase();
+      return haystack?.includes(q) || item.id?.toLowerCase().includes(q);
+    });
 }

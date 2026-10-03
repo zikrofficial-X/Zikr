@@ -195,10 +195,11 @@ export default async function ProphetDetailPage({
             <div className="mt-3 flex flex-wrap gap-2 text-xs text-brand-cream/65">
               <span className="rounded-full border border-brand-gold/15 px-3 py-1">
                 {storyStatus === "published"
-                  ? "{isEnglish ? "Story content available" : "المحتوى القصصي متاح"}"
+                  ? (isEnglish ? "Story content available" : "المحتوى القصصي متاح")
                   : storyStatus === "summary_only"
-                    ? "{isEnglish ? "Only the profile is currently available" : "المتاح حاليًا نبذة تعريفية"}"
-                    : "{isEnglish ? "Content follows the publishing and review record" : "المحتوى مرتبط بسجل النشر والمراجعة"}"}
+                    ? (isEnglish ? "Only the profile is currently available" : "المتاح حاليًا نبذة تعريفية")
+                    : (isEnglish ? "Content follows the publishing and review record" : "المحتوى مرتبط بسجل النشر والمراجعة")
+                }
               </span>
               <span className="rounded-full border border-brand-gold/15 px-3 py-1">
                 {isEnglish ? "Sources and references are shown below when available" : "المصدر والمراجع معروضة أسفل الصفحة عند توفرها"}

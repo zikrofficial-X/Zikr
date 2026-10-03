@@ -1,0 +1,68 @@
+name: ZIKR English Content Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      article_batch_size:
+        description: "Number of articles to translate in this run"
+        required: false
+        default: "5"
+      hadith_batch_size:
+        description: "Number of Hadith records to synchronize in this run"
+        required: false
+        default: "50"
+  schedule:
+    - cron: "17 */6 * * *"
+
+concurrency:
+  group: zikr-english-content-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  articles:
+    name: "Gemini article translations"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+      TRANSLATION_BATCH_SIZE: ${{ github.event.inputs.article_batch_size || '5' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+      - run: pnpm translate:articles:en
+
+  hadith:
+    name: "Canonical Hadith English sync"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      HADITH_API_BASE_URL: https://ummahapi.com/api/hadith
+      HADITH_TRANSLATION_BATCH_SIZE: ${{ github.event.inputs.hadith_batch_size || '50' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+          run_install: false
+      - run: pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+      - run: pnpm sync:hadith:en

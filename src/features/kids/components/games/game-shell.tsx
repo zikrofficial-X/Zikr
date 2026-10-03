@@ -95,7 +95,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
       setMessage(isEnglish ? "Sync is unavailable right now, so the result was saved locally for another attempt." : "تعذر المزامنة الآن، فتم حفظ النتيجة محليًا للمحاولة لاحقًا.");
       await refreshQueue();
     }
-  }, [dailyMission, definition.runtimeKind, difficulty, gameId, refreshQueue]);
+  }, [dailyMission, definition.runtimeKind, difficulty, gameId, isEnglish, refreshQueue]);
 
   const handleResult = useCallback((next: WorldHud) => {
     setHud(next); setResult(next); setPaused(false); void submitResult(next);
@@ -111,7 +111,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     if (!element) return;
     try { if (document.fullscreenElement) await document.exitFullscreen(); else await element.requestFullscreen(); }
     catch { setMessage(isEnglish ? "This browser does not support fullscreen mode." : "لا يدعم هذا المتصفح وضع ملء الشاشة."); }
-  }, []);
+  }, [isEnglish]);
   const handleStageReady = useCallback((value: StageController | null) => {
     setController(value);
     setInitializing(false);

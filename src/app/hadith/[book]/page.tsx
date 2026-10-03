@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 
 import { pageMetadata } from '@/lib/site';
 import type { Metadata } from 'next';
+import { getRequestLocale } from '@/lib/i18n/server';
 
 interface BookPageProps {
   params: Promise<{ book: string }>;

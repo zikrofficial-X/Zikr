@@ -119,10 +119,16 @@ export async function getDuas(
   const activeLocale = locale ?? await getRequestLocale();
   const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
   const localDuas = await getOfflineOrFallbackDuas();
-  const fallback =
+  const localeReady = (dua: Dua) =>
+    activeLocale === "en"
+      ? Boolean(dua.titleEn?.trim() && dua.textEn?.trim())
+      : Boolean(dua.titleAr?.trim() && dua.textAr?.trim());
+
+  const fallbackBase =
     categoryId && categoryId !== "all"
       ? localDuas.filter((dua) => dua.categoryId === categoryId)
       : localDuas;
+  const fallback = fallbackBase.filter(localeReady);
 
   if (!isSupabaseConfigured()) return fallback.slice(0, safeLimit);
 
@@ -146,7 +152,7 @@ export async function getDuas(
 
   const mapped = rows
     .map(mapDuaRow)
-    .filter((dua) => dua.slug && dua.textAr);
+    .filter((dua) => dua.slug && localeReady(dua));
 
   return resolveCanonicalPublished(mapped, fallback).slice(0, safeLimit);
 }
@@ -159,7 +165,13 @@ export async function getDuaBySlug(slug: string, locale?: Locale): Promise<Dua |
   const localDuas = await getOfflineOrFallbackDuas();
   const localMatch = localDuas.find((dua) => dua.slug === cleanSlug);
 
-  if (!isSupabaseConfigured()) return localMatch ?? null;
+  if (!isSupabaseConfigured()) {
+    return localMatch && (activeLocale === "en"
+      ? Boolean(localMatch.titleEn?.trim() && localMatch.textEn?.trim())
+      : Boolean(localMatch.titleAr?.trim() && localMatch.textAr?.trim()))
+      ? localMatch
+      : null;
+  }
 
   const safeSlug = encodeURIComponent(cleanSlug);
   const rows = await supabaseServerAnonRequest<DuaRow[]>(
@@ -171,5 +183,8 @@ export async function getDuaBySlug(slug: string, locale?: Locale): Promise<Dua |
 
   if (!rows.length) return localMatch ?? null;
 
-  return mapDuaRow(rows[0]);
+  const mapped = mapDuaRow(rows[0]);
+  return activeLocale === "en"
+    ? (mapped.titleEn?.trim() && mapped.textEn?.trim() ? mapped : null)
+    : mapped;
 }

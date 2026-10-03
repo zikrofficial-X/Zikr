@@ -68,7 +68,9 @@
     "scheduler:check": "node scripts/verify-scheduler.mjs",
     "social:publish:check": "node scripts/verify-social-publishing.mjs",
     "admin:video:check": "node scripts/verify-admin-video-factory.mjs",
-    "admin:architecture:check": "node scripts/verify-admin-architecture.mjs"
+    "admin:architecture:check": "node scripts/verify-admin-architecture.mjs",
+    "translate:articles:en": "tsx scripts/translate-published-articles-en.ts",
+    "sync:hadith:en": "tsx scripts/sync-hadith-english.ts"
   },
   "dependencies": {
     "@capacitor/android": "7.4.3",

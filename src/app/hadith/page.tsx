@@ -101,7 +101,7 @@ export default async function HadithPage() {
 
       <section className="space-y-6" aria-labelledby="hadith-books">
         <SectionHeader
-          title="{isEnglish ? "Hadith collections" : "كتب الحديث"}"
+title={isEnglish ? "Hadith collections" : "كتب الحديث"}
           subtitle={
             books.length > 0
               ? `${books.length.toLocaleString("en-US")} ${isEnglish ? "collections listed in the index" : "كتب مدرجة في الفهرس"}`
