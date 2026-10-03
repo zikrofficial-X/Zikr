@@ -6,7 +6,8 @@ const migrations = readdirSync("supabase/migrations").filter((f) => f.endsWith("
 const sql = migrations.map((f) => readFileSync("supabase/migrations/" + f, "utf8")).join("\n");
 
 function latestConstraintValues(name: string): string[] {
-  const re = new RegExp(name + "[\\s\\S]*?ARRAY\\[([^\\]]+)\\]|" + name + "[\\s\\S]*?IN\\s*\\(([^)]+)\\)", "gi");
+  // Anchor tightly: constraint name, CHECK ( column IN (...) | = ANY (ARRAY[...]) ) with no other statement in between.
+  const re = new RegExp(name + "\\s+CHECK\\s*\\(\\s*\\(?\\s*\\w+\\s*(?:IN\\s*\\(([^)]+)\\)|=\\s*ANY\\s*\\(\\s*(?:\\()?ARRAY\\[([^\\]]+)\\])", "gi");
   let last: string | undefined;
   for (const m of sql.matchAll(re)) last = m[1] ?? m[2];
   assert.ok(last, "no migration defines " + name);
