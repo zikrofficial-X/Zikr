@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { retryFailedVideoGenerationAction, setVideoAutomationPausedAction } from "@/features/admin/actions/automation";
 import { supabaseServerAdminCount, supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { saveVideoAutomationSettingAction, requestVideoAutomationRunAction } from "@/app/admin/system-actions";
 
@@ -74,6 +75,13 @@ export default async function AdminAutomationPage() {
     ).catch(() => []),
   ]);
 
+  const paused = await supabaseServerAdminRequest<Array<{ value: { paused?: boolean } | null }>>(
+    "/rest/v1/admin_settings?key=eq.video_automation&select=value&limit=1",
+    { method: "GET" },
+  )
+    .then((rows) => rows?.[0]?.value?.paused === true)
+    .catch(() => false);
+
   const countStatus = (rows: QueueStatus[], status: string) => rows.filter((row) => row.status === status).length;
 
   return (
@@ -85,6 +93,27 @@ export default async function AdminAutomationPage() {
           هذه الصفحة تعرض فقط الطوابير الموجودة فعليًا في الإنتاج. لا تُظهر جداول أو وظائف غير موجودة كأنها صفر.
         </p>
       </header>
+
+      <section className="rounded-2xl border border-brand-gold/10 bg-black/15 p-6">
+        <h2 className="font-semibold text-brand-gold">التحكم في التوليد والنشر التلقائي</h2>
+        <p className="mt-2 text-sm leading-7 text-brand-cream/50">
+          الحالة الحالية: <strong className={paused ? "text-red-400" : "text-emerald-400"}>{paused ? "متوقف مؤقتًا" : "يعمل تلقائيًا"}</strong>.
+          التوليد والنشر يتمان تلقائيًا كل ساعتين، والإيقاف هنا يمنع التوليد الجديد والمعالجة في التشغيل التالي.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <form action={setVideoAutomationPausedAction}>
+            <input type="hidden" name="paused" value={paused ? "false" : "true"} />
+            <button type="submit" className="rounded-xl border border-brand-gold/30 px-4 py-2 text-sm text-brand-gold hover:bg-brand-gold/10">
+              {paused ? "استئناف التوليد التلقائي" : "إيقاف التوليد مؤقتًا"}
+            </button>
+          </form>
+          <form action={retryFailedVideoGenerationAction}>
+            <button type="submit" className="rounded-xl border border-brand-gold/30 px-4 py-2 text-sm text-brand-gold hover:bg-brand-gold/10">
+              إعادة محاولة الطلبات الفاشلة
+            </button>
+          </form>
+        </div>
+      </section>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {jobs.map((job) => (
