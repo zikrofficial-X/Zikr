@@ -83,7 +83,9 @@ async function supabase<T>(
   if (!response.ok) {
     throw new Error(`Supabase ${response.status}: ${await response.text()}`);
   }
-  return response.json() as Promise<T>;
+
+  const raw = await response.text();
+  return (raw.trim() ? JSON.parse(raw) : {}) as T;
 }
 
 function hashSource(article: ArticleRow): string {
