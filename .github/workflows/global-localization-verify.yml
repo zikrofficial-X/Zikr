@@ -1,9 +1,6 @@
 name: Global Localization Verify
 
 on:
-  push:
-    branches:
-      - feat/global-localization
   pull_request:
     branches:
       - main
