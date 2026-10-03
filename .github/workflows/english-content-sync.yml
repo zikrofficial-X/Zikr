@@ -1,6 +1,15 @@
 name: ZIKR English Content Sync
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/english-content-sync.yml"
+      - "scripts/translate-published-articles-en.ts"
+      - "scripts/sync-hadith-english.ts"
+      - "src/features/articles/**"
+      - "src/features/hadith/**"
   workflow_dispatch:
     inputs:
       article_batch_size:
