@@ -8,13 +8,19 @@ import { Badge } from "@/components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
 import { getHadithBooks } from "@/features/hadith/services/hadith";
 import { pageMetadata } from "@/lib/site";
+import { getRequestLocale } from "@/lib/i18n/server";
 
-export const metadata: Metadata = pageMetadata({
-  title: "الأحاديث النبوية",
-  description:
-    "فهرس كتب الحديث النبوي مع تصفح النصوص العربية المتاحة في كل كتاب داخل منصة ذِكر.",
-  path: "/hadith",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  return pageMetadata({
+    title: locale === "en" ? "Prophetic Hadith" : "الأحاديث النبوية",
+    description:
+      locale === "en"
+        ? "Browse Hadith collections and available English translations in ZIKR."
+        : "فهرس كتب الحديث النبوي مع تصفح النصوص العربية المتاحة في كل كتاب داخل منصة ذِكر.",
+    path: "/hadith",
+  });
+}
 
 const featuredHadiths = [
   {
@@ -44,54 +50,62 @@ const featuredHadiths = [
 ];
 
 export default async function HadithPage() {
-  const books = await getHadithBooks();
+  const locale = await getRequestLocale();
+  const isEnglish = locale === "en";
+  const books = await getHadithBooks(locale);
 
   return (
-    <Container className="space-y-12 py-12" dir="rtl">
+    <Container className="space-y-12 py-12" dir={isEnglish ? "ltr" : "rtl"}>
       <section className="space-y-4 text-center">
         <h1 className="text-4xl font-bold text-brand-gold">
-          الأحاديث النبوية الشريفة
+          {isEnglish ? "Prophetic Hadith" : "الأحاديث النبوية الشريفة"}
         </h1>
         <p className="mx-auto max-w-2xl text-lg leading-8 arabic-muted">
-          فهرس كتب السنة مع روابط مباشرة إلى المواد المتاحة للقراءة والبحث.
+          {isEnglish ? "An index of Hadith collections with direct links to available material for reading and research." : "فهرس كتب السنة مع روابط مباشرة إلى المواد المتاحة للقراءة والبحث."}
         </p>
       </section>
 
       <section className="space-y-6" aria-labelledby="featured-hadith">
         <SectionHeader
-          title="نماذج مختارة"
-          subtitle="أحاديث مشهورة من كتب السنة"
+          title={isEnglish ? "Featured selections" : "نماذج مختارة"}
+          subtitle={isEnglish ? "Selected Hadith from the Sunnah collections" : "أحاديث مشهورة من كتب السنة"}
         />
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {featuredHadiths.map((hadith) => (
-            <Card key={hadith.reference} className="space-y-4">
-              <p className="font-arabic text-xl leading-loose text-brand-cream">
-                &quot;{hadith.text}&quot;
-              </p>
-              <div className="space-y-1 border-t border-brand-gold/20 pt-3">
-                <p className="text-sm text-brand-gold">
-                  الراوي: {hadith.narrator}
+        {isEnglish ? (
+          <Card className="p-6 text-center text-brand-cream/65">
+            English translations for the featured sample cards are not available in the current canonical content source.
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {featuredHadiths.map((hadith) => (
+              <Card key={hadith.reference} className="space-y-4">
+                <p className="font-arabic text-xl leading-loose text-brand-cream" dir="rtl">
+                  &quot;{hadith.text}&quot;
                 </p>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{hadith.source}</Badge>
-                  <span className="text-xs arabic-muted">
-                    {hadith.reference}
-                  </span>
+                <div className="space-y-1 border-t border-brand-gold/20 pt-3">
+                  <p className="text-sm text-brand-gold">
+                    الراوي: {hadith.narrator}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{hadith.source}</Badge>
+                    <span className="text-xs arabic-muted">
+                      {hadith.reference}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="space-y-6" aria-labelledby="hadith-books">
         <SectionHeader
-          title="كتب الحديث"
+          title="{isEnglish ? "Hadith collections" : "كتب الحديث"}"
           subtitle={
             books.length > 0
-              ? `${books.length.toLocaleString("ar-EG")} كتب مدرجة في الفهرس`
-              : "الفهرس غير متاح حاليًا"
+              ? `${books.length.toLocaleString("en-US")} ${isEnglish ? "collections listed in the index" : "كتب مدرجة في الفهرس"}`
+              : (isEnglish ? "The index is currently unavailable" : "الفهرس غير متاح حاليًا")
           }
         />
 
@@ -112,12 +126,12 @@ export default async function HadithPage() {
                     </p>
                   </div>
                   <Badge variant="secondary">
-                    {book.available.toLocaleString("ar-EG")}
+                    {book.available.toLocaleString(isEnglish ? "en-US" : "ar-EG")}
                   </Badge>
                 </div>
 
                 <p className="text-sm leading-7 text-brand-cream/60">
-                  العدد المسجل للكتاب في مصدر الفهرس.
+                  {isEnglish ? "The collection count recorded in the catalog source." : "العدد المسجل للكتاب في مصدر الفهرس."}
                 </p>
 
                 <Button
@@ -125,40 +139,41 @@ export default async function HadithPage() {
                   href={`/hadith/${book.slug ?? book.id}`}
                   className="w-full"
                 >
-                  تصفح الأحاديث
+                  {isEnglish ? "Browse Hadith" : "تصفح الأحاديث"}
                 </Button>
               </Card>
             ))}
           </div>
         ) : (
           <Card className="p-8 text-center text-brand-cream/65">
-            تعذر تحميل فهرس الكتب الآن. حاول فتح الصفحة مرة أخرى.
+            {isEnglish ? "Unable to load the collection index. Please try again." : "تعذر تحميل فهرس الكتب الآن. حاول فتح الصفحة مرة أخرى."}
           </Card>
         )}
       </section>
 
       <section className="space-y-4 text-center">
         <Card className="space-y-4 bg-brand-gold/5 py-8">
-          <h2 className="text-2xl text-brand-gold">ابحث في المحتوى</h2>
+          <h2 className="text-2xl text-brand-gold">{isEnglish ? "Search the content" : "ابحث في المحتوى"}</h2>
           <p className="mx-auto max-w-xl leading-7 arabic-muted">
-            يمكنك البحث في الأحاديث وبقية مكتبة ذِكر من صفحة البحث الموحدة.
+            {isEnglish ? "Search Hadith and the rest of the ZIKR library from the unified search page." : "يمكنك البحث في الأحاديث وبقية مكتبة ذِكر من صفحة البحث الموحدة."}
           </p>
           <Button href="/search" variant="secondary">
-            الذهاب للبحث
+            {isEnglish ? "Go to search" : "الذهاب للبحث"}
           </Button>
         </Card>
       </section>
 
       <section className="text-center">
         <p className="text-sm leading-7 text-brand-cream/45">
-          النصوص والبيانات تُعرض بحسب المصدر المتاح في الكتالوج، ويُنصح بالرجوع إلى
-          الأصل عند الدراسة أو التحقق من الرواية.
+          {isEnglish
+            ? "Texts and data are displayed according to the catalog source. Refer to the original source for study or verification."
+            : "النصوص والبيانات تُعرض بحسب المصدر المتاح في الكتالوج، ويُنصح بالرجوع إلى الأصل عند الدراسة أو التحقق من الرواية."}
         </p>
         <Link
           href="/editorial-policy"
           className="mt-2 inline-flex text-sm text-brand-gold hover:text-brand-gold/80"
         >
-          معايير المصادر والمراجعة
+          {isEnglish ? "Source and review standards" : "معايير المصادر والمراجعة"}
         </Link>
       </section>
     </Container>

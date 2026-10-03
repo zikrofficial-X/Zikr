@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { KidsShare } from "@/features/kids/components/kids-share";
 import { KidsWorldGameShell } from "@/features/kids/components/games/game-shell";
 import { parseGameContentMetadata } from "@/lib/games/registry";
+import { useLanguage } from "@/components/layout/language-provider";
 import {
   getKidsItemBySlug,
   normalizeKidsContentRow,
@@ -19,6 +20,8 @@ type QuizQuestion = {
   text: string;
   options: string[];
   correctAnswer: number;
+  textEn?: string;
+  optionsEn?: string[];
 };
 
 type QuizData = {
@@ -80,11 +83,15 @@ function isQuizQuestion(value: unknown): value is QuizQuestion {
   );
 }
 
-function getQuizQuestions(quizData: unknown): QuizQuestion[] {
+function getQuizQuestions(quizData: unknown, isEnglish: boolean): QuizQuestion[] {
   if (!quizData || typeof quizData !== "object") return [];
   const d = quizData as Partial<QuizData>;
   if (!Array.isArray(d.questions)) return [];
-  return d.questions.filter(isQuizQuestion);
+  if (!isEnglish) return d.questions.filter(isQuizQuestion);
+  return d.questions
+    .filter(isQuizQuestion)
+    .filter((q) => typeof q.textEn === "string" && Array.isArray(q.optionsEn) && q.optionsEn.every((option) => typeof option === "string"))
+    .map((q) => ({ ...q, text: q.textEn as string, options: q.optionsEn as string[] }));
 }
 
 function toDetailContent(row: unknown): KidsContent | null {
@@ -95,6 +102,7 @@ function toDetailContent(row: unknown): KidsContent | null {
         title_ar: item.title_ar,
         title_en: item.title_en,
         content_ar: item.content_ar,
+        content_en: item.content_en,
         type: item.type,
         age_group: item.age_group,
         featured_image_url: item.featured_image_url,
@@ -106,6 +114,7 @@ function toDetailContent(row: unknown): KidsContent | null {
 }
 
 export default function KidsDetailPage() {
+  const { isEnglish } = useLanguage();
   const params = useParams();
   const rawSlug = params.slug;
   const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
@@ -115,8 +124,8 @@ export default function KidsDetailPage() {
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const quizQuestions = useMemo(
-    () => getQuizQuestions(content?.quiz_data),
-    [content?.quiz_data]
+    () => getQuizQuestions(content?.quiz_data, isEnglish),
+    [content?.quiz_data, isEnglish]
   );
   const gameConfig = content?.type === "game" ? parseGameContentMetadata(content.metadata) : null;
 
@@ -171,7 +180,7 @@ export default function KidsDetailPage() {
       active = false;
       controller.abort();
     };
-  }, [slug]);
+  }, [slug, isEnglish]);
 
   const handleQuizAnswer = (questionIndex: number, answerIndex: number) => {
     if (!quizSubmitted) {
@@ -190,7 +199,7 @@ export default function KidsDetailPage() {
   if (loading) {
     return (
       <Container className="py-12">
-        <p className="text-center text-brand-cream/70">جاري التحميل...</p>
+        <p className="text-center text-brand-cream/70">{isEnglish ? "Loading..." : "جاري التحميل..."}</p>
       </Container>
     );
   }
@@ -198,21 +207,24 @@ export default function KidsDetailPage() {
     return (
       <Container className="py-12">
         <p className="text-center text-brand-cream/70">
-          لم يتم العثور على المحتوى
+          {isEnglish ? "This content is not available in English yet." : "لم يتم العثور على المحتوى"}
         </p>
       </Container>
     );
   }
 
   return (
-    <Container className="py-12 space-y-8 max-w-3xl">
+    <Container className="py-12 space-y-8 max-w-3xl" dir={isEnglish ? "ltr" : "rtl"}>
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-brand-gold">
-          {content.title_ar}
+          {isEnglish ? content.title_en : content.title_ar}
         </h1>
         <div className="flex justify-center gap-3">
           <span className="px-3 py-1 bg-brand-gold/20 text-brand-gold rounded-full">
-            {typeLabels[content.type] ?? "محتوى"}
+            {isEnglish ? ({
+              story: "Story", prayer: "Dua", wudu: "Wudu", quiz: "Quiz", game: "Game", video: "Video",
+              memorize: "Memorization", puzzle: "Puzzle", coloring: "Coloring", matching: "Matching",
+            }[content.type] ?? "Content") : (typeLabels[content.type] ?? "محتوى")}
           </span>
         </div>
       </div>
@@ -222,8 +234,8 @@ export default function KidsDetailPage() {
           <KidsWorldGameShell gameId={gameConfig.gameId} initialDifficulty={gameConfig.difficulty} />
         ) : (
           <Card className="border-red-400/30 bg-red-950/20 p-6 text-center" role="alert">
-            <h2 className="text-xl font-bold text-brand-gold">اللعبة غير متاحة حاليًا</h2>
-            <p className="mt-2 text-brand-cream/70">لم يتم العثور على إعداد صالح لهذه اللعبة. جرّب نشاطًا آخر من قسم الأطفال.</p>
+            <h2 className="text-xl font-bold text-brand-gold">{isEnglish ? "Game unavailable" : "اللعبة غير متاحة حاليًا"}</h2>
+            <p className="mt-2 text-brand-cream/70">{isEnglish ? "A valid configuration for this game was not found. Try another kids activity." : "لم يتم العثور على إعداد صالح لهذه اللعبة. جرّب نشاطًا آخر من قسم الأطفال."}</p>
           </Card>
         )
       )}
@@ -232,7 +244,7 @@ export default function KidsDetailPage() {
         <div className="w-full h-96 rounded-lg overflow-hidden">
           <Image
             src={content.featured_image_url}
-            alt={content.title_ar}
+            alt={isEnglish ? content.title_en : content.title_ar}
             width={800}
             height={600}
             className="w-full h-full object-cover"
@@ -246,7 +258,7 @@ export default function KidsDetailPage() {
             width="100%"
             height="100%"
             src={content.video_url}
-            title={content.title_ar}
+            title={isEnglish ? content.title_en : content.title_ar}
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
@@ -254,18 +266,18 @@ export default function KidsDetailPage() {
         </div>
       )}
 
-      {content.type !== "game" && content.content_ar && (
+      {content.type !== "game" && (isEnglish ? content.content_en : content.content_ar) && (
         <Card className="p-8 bg-black/30 border-brand-gold/30">
           <p
-            dir="rtl"
+            dir={isEnglish ? "ltr" : "rtl"}
             className="whitespace-pre-wrap text-lg text-brand-cream leading-relaxed"
           >
-            {content.content_ar}
+            {isEnglish ? content.content_en : content.content_ar}
           </p>
         </Card>
       )}
 
-      {content.type !== "game" && content.metadata && (
+      {!isEnglish && content.type !== "game" && content.metadata && (
           <Card className="p-6 space-y-5 bg-brand-gold/10 border-brand-gold/30">
             <h2 className="text-2xl font-bold text-brand-gold text-center">
               بطاقة التعلم والتشجيع
@@ -352,12 +364,10 @@ export default function KidsDetailPage() {
 
       {content.type === "quiz" && (
         <Card className="p-8 space-y-6 bg-black/30 border-brand-gold/30">
-          <h2 className="text-2xl font-bold text-brand-gold text-center">
-            اختبر معلوماتك
-          </h2>
+          <h2 className="text-2xl font-bold text-brand-gold text-center">{isEnglish ? "Test your knowledge" : "اختبر معلوماتك"}</h2>
           {quizQuestions.length === 0 ? (
             <p className="text-center text-brand-cream/60">
-              لا توجد أسئلة صالحة لهذا الاختبار حاليًا.
+              {isEnglish ? "No English questions are available for this quiz yet." : "لا توجد أسئلة صالحة لهذا الاختبار حاليًا."}
             </p>
           ) : (
             <>
@@ -399,12 +409,12 @@ export default function KidsDetailPage() {
                   className="w-full"
                   variant="primary"
                 >
-                  تقديم الإجابات
+                  {isEnglish ? "Submit answers" : "تقديم الإجابات"}
                 </Button>
               ) : (
                 <div className="text-center space-y-3 p-4 bg-brand-gold/10 rounded-lg">
                   <p className="text-2xl font-bold text-brand-gold">
-                    النتيجة: {calculateQuizScore()}%
+                    {isEnglish ? "Score: " : "النتيجة: "}{calculateQuizScore()}%
                   </p>
                   <Button
                     onClick={() => {
@@ -413,7 +423,7 @@ export default function KidsDetailPage() {
                     }}
                     variant="outline"
                   >
-                    إعادة المحاولة
+                    {isEnglish ? "Try again" : "إعادة المحاولة"}
                   </Button>
                 </div>
               )}

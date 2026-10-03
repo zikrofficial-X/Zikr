@@ -7,18 +7,27 @@ import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Badge } from "@/components/ui/badge";
 import { getArticleCategories, getArticles } from "@/features/articles/services/articles";
+import { getRequestLocale } from "@/lib/i18n/server";
 
 export const revalidate = 1800;
 
-export const metadata: Metadata = pageMetadata({
-  title: "المقالات الإسلامية",
-  description: "مقالات أصلية ومراجعة تحريرياً عن الإسلام والقرآن والحديث والسيرة والتزكية والتطبيق العملي من منصة ذِكر.",
-  path: "/articles",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  return pageMetadata({
+    title: locale === "en" ? "Islamic Articles" : "{isEnglish ? "Islamic Articles" : "المقالات الإسلامية"}",
+    description:
+      locale === "en"
+        ? "Original editorially reviewed articles about Islam, Quran, Hadith, Seerah, spiritual development, and practical learning."
+        : "مقالات أصلية ومراجعة تحريرياً عن الإسلام والقرآن والحديث والسيرة والتزكية والتطبيق العملي من منصة ذِكر.",
+    path: "/articles",
+  });
+}
 
 export default async function ArticlesPage() {
+  const locale = await getRequestLocale();
+  const isEnglish = locale === "en";
   const [articles, categories] = await Promise.all([
-    getArticles(undefined, 100),
+    getArticles(undefined, 100, locale),
     getArticleCategories(),
   ]);
 
@@ -30,23 +39,23 @@ export default async function ArticlesPage() {
   );
 
   return (
-    <Container className="py-12 space-y-10">
+    <Container className="py-12 space-y-10" dir={isEnglish ? "ltr" : "rtl"}>
       <section className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-brand-gold text-balance">المقالات الإسلامية</h1>
         <p className="max-w-2xl mx-auto text-lg leading-8 arabic-muted text-pretty">
-          مكتبة مقالات تحريرية قابلة للمراجعة والتحقق، مع مصدر واحد للبيانات بين لوحة الإدارة والواجهة العامة.
+          {isEnglish ? "An editorially reviewed article library with one data source shared between the admin area and public site." : "مكتبة مقالات تحريرية قابلة للمراجعة والتحقق، مع مصدر واحد للبيانات بين لوحة الإدارة والواجهة العامة."}
         </p>
       </section>
 
       {categories.length > 0 && (
-        <section className="flex flex-wrap justify-center gap-3" aria-label="تصنيفات المقالات">
+        <section className="flex flex-wrap justify-center gap-3" aria-label={isEnglish ? "Article categories" : "تصنيفات المقالات"}>
           {categories.map(category => (
             <span
               key={category.id}
               className="rounded-full border border-brand-gold/30 px-4 py-1.5 text-sm text-brand-cream/70"
             >
               {category.icon && <span className="mr-1">{category.icon}</span>}
-              {category.nameAr}
+              {isEnglish ? category.nameEn : category.nameAr}
               <span className="mr-2 text-brand-gold/70">
                 ({categoryCounts.get(category.id) ?? 0})
               </span>
@@ -56,7 +65,7 @@ export default async function ArticlesPage() {
       )}
 
       <section className="space-y-6">
-        <SectionHeader title="المقالات المنشورة" subtitle={`${articles.length} مقالة`} />
+        <SectionHeader title={isEnglish ? "Published articles" : "المقالات المنشورة"} subtitle={isEnglish ? `${articles.length} articles` : `${articles.length} مقالة`} />
 
         {articles.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -91,7 +100,7 @@ export default async function ArticlesPage() {
                       {article.author && <span>{article.author}</span>}
                       {article.views > 0 && (
                         <Badge variant="outline" className="text-[10px]">
-                          {article.views.toLocaleString("ar-EG")} مشاهدة
+                          {article.views.toLocaleString(isEnglish ? "en-US" : "ar-EG")} {isEnglish ? "views" : "مشاهدة"}
                         </Badge>
                       )}
                     </div>
@@ -102,21 +111,21 @@ export default async function ArticlesPage() {
           </div>
         ) : (
           <Card className="p-8 text-center text-brand-cream/70">
-            لا توجد مقالات منشورة مكتملة حالياً. تُعرض المقالات بعد اكتمال المراجعة التحريرية والمصادر.
+            {isEnglish ? "No complete published articles are currently available in this language. Articles appear after editorial and source review." : "لا توجد مقالات منشورة مكتملة حالياً. تُعرض المقالات بعد اكتمال المراجعة التحريرية والمصادر."}
           </Card>
         )}
       </section>
 
       <Card className="p-8 text-center space-y-4 bg-brand-gold/5">
-        <h2 className="text-2xl font-bold text-brand-gold">مصادر ومراجعة المحتوى</h2>
+        <h2 className="text-2xl font-bold text-brand-gold">{isEnglish ? "Content sources and review" : "مصادر ومراجعة المحتوى"}</h2>
         <p className="max-w-xl mx-auto arabic-muted leading-7">
-          اكتمال المادة، وضوح نسبتها، وصلاحية مصادرها تسبق النشر العام. راجع معايير التحرير قبل اعتماد أي مادة جديدة.
+          {isEnglish ? "Completeness, attribution, and source validity come before publication. Review the editorial standards before approving new material." : "اكتمال المادة، وضوح نسبتها، وصلاحية مصادرها تسبق النشر العام. راجع معايير التحرير قبل اعتماد أي مادة جديدة."}
         </p>
         <Link
           href="/editorial-policy"
           className="inline-flex rounded-lg bg-brand-gold px-6 py-2.5 text-sm font-semibold text-brand-emeraldDeep"
         >
-          معايير التحرير والمصادر
+          {isEnglish ? "Editorial and source standards" : "معايير التحرير والمصادر"}
         </Link>
       </Card>
     </Container>

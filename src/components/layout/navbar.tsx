@@ -6,6 +6,7 @@ import { MobileNav } from "./mobile-nav";
 import { AuthNavActions } from "./auth-nav-actions";
 import { LanguageToggle } from "./language-toggle";
 import { LanguageAwareNav, type NavLink } from "./language-aware-nav";
+import { getRequestLocale } from "@/lib/i18n/server";
 
 const links: NavLink[] = [
   { href: "/quran", label: "القرآن", labelEn: "Quran" },
@@ -33,6 +34,8 @@ const links: NavLink[] = [
 ];
 
 export async function Navbar() {
+  const locale = await getRequestLocale();
+  const isEnglish = locale === "en";
   let user = null;
   let isAdmin = false;
 
@@ -63,10 +66,10 @@ export async function Navbar() {
         <Link
           href="/"
           className="flex items-center gap-2 group"
-          aria-label="ZIKR - الرئيسية"
+          aria-label={isEnglish ? "ZIKR - Home" : "ZIKR - الرئيسية"}
         >
           <span className="text-2xl font-bold text-brand-gold tracking-tight group-hover:opacity-80 transition-opacity">
-            ذِكرٌ
+            {isEnglish ? "ZIKR" : "ذِكرٌ"}
           </span>
           <span className="hidden sm:block text-xs text-brand-gold/40 font-mono tracking-widest pt-1">
             ZIKR
@@ -79,7 +82,7 @@ export async function Navbar() {
           <LanguageToggle />
           <Link
             href="/settings"
-            aria-label="الإعدادات"
+            aria-label={isEnglish ? "Settings" : "الإعدادات"}
             className="rounded-md p-2 text-brand-cream/60 transition-colors hover:text-brand-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
           >
             <Settings className="h-5 w-5" aria-hidden="true" />

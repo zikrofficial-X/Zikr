@@ -4,17 +4,25 @@ import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
 import { getProphetsWithStats } from "@/features/prophets/services/prophets";
 import { pageMetadata } from "@/lib/site";
+import { getRequestLocale } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = pageMetadata({
-  title: "قصص الأنبياء والرسل",
-  description:
-    "قصص الأنبياء والرسل عليهم السلام — فهرس معرفي منظم مع نبذات ومحتوى قصصي قابل للقراءة.",
-  path: "/prophets",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  return pageMetadata({
+    title: locale === "en" ? "Prophets and Messengers" : "قصص الأنبياء والرسل",
+    description:
+      locale === "en"
+        ? "An organized knowledge index of the prophets and messengers mentioned in the Quran."
+        : "قصص الأنبياء والرسل عليهم السلام — فهرس معرفي منظم مع نبذات ومحتوى قصصي قابل للقراءة.",
+    path: "/prophets",
+  });
+}
 
 export default async function ProphetsPage() {
+  const locale = await getRequestLocale();
+  const isEnglish = locale === "en";
   const displayProphets = await getProphetsWithStats();
 
   const totalStorySections = displayProphets.reduce(
@@ -27,7 +35,7 @@ export default async function ProphetsPage() {
   );
 
   return (
-    <main className="min-h-screen" dir="rtl">
+    <main className="min-h-screen" dir={isEnglish ? "ltr" : "rtl"}>
       <section className="relative overflow-hidden bg-gradient-to-b from-[#0A2A1E] to-[#071A13] py-20 text-center">
         <div className="pointer-events-none absolute inset-0 select-none opacity-10">
           <div className="absolute left-1/4 top-8 h-32 w-px rotate-12 bg-brand-gold" />
@@ -36,16 +44,17 @@ export default async function ProphetsPage() {
 
         <Container className="relative space-y-6">
           <p className="font-arabic text-sm tracking-widest text-brand-gold/60">
-            ﴿ وَكُلًّا نَّقُصُّ عَلَيْكَ مِنْ أَنبَاءِ الرُّسُلِ ﴾
+            {isEnglish ? "Prophets and messengers mentioned in the Quran" : "﴿ وَكُلًّا نَّقُصُّ عَلَيْكَ مِنْ أَنبَاءِ الرُّسُلِ ﴾"}
           </p>
 
           <h1 className="font-arabic text-5xl font-bold leading-tight text-brand-gold md:text-6xl">
-            قصص الأنبياء والرسل
+            {isEnglish ? "Prophets and Messengers" : "قصص الأنبياء والرسل"}
           </h1>
 
           <p className="mx-auto max-w-2xl text-lg leading-8 text-brand-cream/70">
-            فهرس منظم للأنبياء والرسل المذكورين في القرآن الكريم، مع نبذة لكل نبي
-            وروابط مباشرة إلى القصة والمحتوى المتاح.
+            {isEnglish
+              ? "An organized index of prophets and messengers mentioned in the Quran, with profiles and direct links to available stories."
+              : "فهرس منظم للأنبياء والرسل المذكورين في القرآن الكريم، مع نبذة لكل نبي وروابط مباشرة إلى القصة والمحتوى المتاح."}
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-8 text-center">
@@ -53,16 +62,16 @@ export default async function ProphetsPage() {
               <p className="text-3xl font-bold text-brand-gold">
                 {displayProphets.length}
               </p>
-              <p className="text-xs text-brand-cream/50">نبيًا ورسولًا في الفهرس</p>
+              <p className="text-xs text-brand-cream/50">{isEnglish ? "prophets and messengers in the index" : "نبيًا ورسولًا في الفهرس"}</p>
             </div>
 
             <div className="h-10 w-px bg-brand-gold/20" />
 
             <div>
               <p className="text-3xl font-bold text-brand-gold">
-                {totalStorySections.toLocaleString("ar-EG")}
+                {totalStorySections.toLocaleString(isEnglish ? "en-US" : "ar-EG")}
               </p>
-              <p className="text-xs text-brand-cream/50">قسمًا قصصيًا متاحًا</p>
+              <p className="text-xs text-brand-cream/50">{isEnglish ? "story sections available" : "قسمًا قصصيًا متاحًا"}</p>
             </div>
 
             <div className="h-10 w-px bg-brand-gold/20" />
@@ -71,7 +80,7 @@ export default async function ProphetsPage() {
               <p className="text-3xl font-bold text-brand-gold">
                 {totalStoryChars.toLocaleString("ar-EG")}
               </p>
-              <p className="text-xs text-brand-cream/50">حرفًا من المحتوى القصصي</p>
+              <p className="text-xs text-brand-cream/50">{isEnglish ? "characters of story content" : "حرفًا من المحتوى القصصي"}</p>
             </div>
           </div>
         </Container>
@@ -81,10 +90,10 @@ export default async function ProphetsPage() {
         {displayProphets.length === 0 ? (
           <section className="rounded-2xl border border-brand-gold/20 bg-brand-gold/5 p-8 text-center">
             <h2 className="text-2xl font-bold text-brand-gold">
-              لا يوجد محتوى متاح حاليًا
+              {isEnglish ? "No content is currently available" : "لا يوجد محتوى متاح حاليًا"}
             </h2>
             <p className="mt-3 text-brand-cream/60">
-              تعذر تحميل فهرس الأنبياء في هذه اللحظة. حاول فتح الصفحة مرة أخرى.
+              {isEnglish ? "Unable to load the prophets index. Please try again." : "تعذر تحميل فهرس الأنبياء في هذه اللحظة. حاول فتح الصفحة مرة أخرى."}
             </p>
           </section>
         ) : (
@@ -111,7 +120,7 @@ export default async function ProphetsPage() {
                       <div className="relative shrink-0">
                         <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-brand-gold/30 bg-brand-gold/10 transition-colors group-hover:border-brand-gold/60">
                           <span className="font-arabic text-lg font-bold text-brand-gold">
-                            {prophet.nameAr.slice(0, 2)}
+                            {(isEnglish ? prophet.nameEn : prophet.nameAr).slice(0, 2)}
                           </span>
                         </div>
                         <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-brand-gold/40 bg-[#0A2A1E] text-[9px] font-bold text-brand-gold/70">
@@ -121,46 +130,42 @@ export default async function ProphetsPage() {
 
                       <div className="min-w-0 flex-1">
                         <h2 className="text-lg font-bold leading-snug text-brand-gold">
-                          {prophet.nameAr}
+                          {isEnglish ? prophet.nameEn : prophet.nameAr}
                         </h2>
 
-                        {prophet.nameEn && (
-                          <p className="mt-0.5 text-xs text-brand-cream/40" dir="ltr">
-                            {prophet.nameEn}
-                          </p>
-                        )}
+                        
 
                         <Badge
                           variant="outline"
                           className="mt-1.5 border-brand-gold/30 text-[10px] text-brand-gold/70"
                         >
                           {prophet.storySections > 0
-                            ? prophet.storySections + " أقسام قصصية"
-                            : "نبذة وتعريف"}
+                            ? prophet.storySections + (isEnglish ? " story sections" : " أقسام قصصية")
+                            : (isEnglish ? "Profile" : "نبذة وتعريف")}
                         </Badge>
                       </div>
                     </div>
 
-                    {prophet.bioAr && (
+                    {(isEnglish ? prophet.bioEn : prophet.bioAr) && (
                       <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-brand-cream/70">
-                        {prophet.bioAr}
+                        {isEnglish ? prophet.bioEn : prophet.bioAr}
                       </p>
                     )}
 
                     <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-brand-cream/55">
                       <span className="rounded-full border border-brand-gold/20 px-2 py-1 text-brand-gold/75">
-                        صفحة النبي
+                        {isEnglish ? "Prophet page" : "صفحة النبي"}
                       </span>
 
                       {prophet.storySections > 0 && (
                         <span>
-                          {prophet.storyChars.toLocaleString("ar-EG")} حرفًا
+                          {prophet.storyChars.toLocaleString(isEnglish ? "en-US" : "ar-EG")} {isEnglish ? "characters" : "حرفًا"}
                         </span>
                       )}
                     </div>
 
                     <div className="mt-3 flex items-center gap-1 text-xs text-brand-gold/60 transition-colors group-hover:text-brand-gold/90">
-                      <span>اقرأ المحتوى</span>
+                      <span>{isEnglish ? "Read content" : "اقرأ المحتوى"}</span>
                       <span aria-hidden="true">←</span>
                     </div>
                   </article>
@@ -171,12 +176,18 @@ export default async function ProphetsPage() {
         )}
 
         <section className="mt-8 space-y-4 rounded-2xl border border-brand-gold/20 bg-brand-gold/5 p-8 text-center">
-          <p className="font-arabic text-2xl leading-loose text-brand-cream" dir="rtl">
-            ﴿ تِلْكَ الرُّسُلُ فَضَّلْنَا بَعْضَهُمْ عَلَىٰ بَعْضٍ مِّنْهُم مَّن كَلَّمَ اللَّهُ وَرَفَعَ بَعْضَهُمْ دَرَجَاتٍ ﴾
-          </p>
-          <p className="text-sm text-brand-gold/60">
-            سورة البقرة — الآية 253
-          </p>
+          {isEnglish ? (
+            <p className="text-sm leading-7 text-brand-cream/65">
+              Quran quotations are shown in their original Arabic in Arabic mode.
+            </p>
+          ) : (
+            <>
+              <p className="font-arabic text-2xl leading-loose text-brand-cream" dir="rtl">
+                ﴿ تِلْكَ الرُّسُلُ فَضَّلْنَا بَعْضَهُمْ عَلَىٰ بَعْضٍ مِّنْهُم مَّن كَلَّمَ اللَّهُ وَرَفَعَ بَعْضَهُمْ دَرَجَاتٍ ﴾
+              </p>
+              <p className="text-sm text-brand-gold/60">سورة البقرة — الآية 253</p>
+            </>
+          )}
         </section>
       </Container>
     </main>

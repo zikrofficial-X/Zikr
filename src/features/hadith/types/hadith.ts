@@ -4,12 +4,15 @@ export interface HadithBook {
   id: string;
   slug?: string;
   name: string;
+  nameAr?: string;
+  nameEn?: string;
   available: number;
 }
 
 export interface Hadith {
   number: number;
   arab?: string;
+  english?: string;
   id?: string;
 }
 

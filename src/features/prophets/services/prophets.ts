@@ -94,9 +94,17 @@ function mapProphetRow(row: ProphetRow): Prophet {
       typeof row.birth_place_ar === "string"
         ? row.birth_place_ar
         : undefined,
+    birthPlaceEn:
+      typeof row.birth_place_en === "string"
+        ? row.birth_place_en
+        : undefined,
     deathPlaceAr:
       typeof row.death_place_ar === "string"
         ? row.death_place_ar
+        : undefined,
+    deathPlaceEn:
+      typeof row.death_place_en === "string"
+        ? row.death_place_en
         : undefined,
     featuredImageUrl:
       typeof row.featured_image_url === "string"

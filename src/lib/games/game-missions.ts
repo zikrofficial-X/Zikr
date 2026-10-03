@@ -6,19 +6,22 @@ export type GameMission = {
   id: string;
   gameId: GameId;
   titleAr: string;
+  titleEn: string;
   descriptionAr: string;
+  descriptionEn: string;
   metric: GameMissionMetric;
   target: number;
   difficulty: GameDifficulty;
   rewardLabel: string;
+  rewardLabelEn: string;
 };
 
 const MISSION_TEMPLATES: Array<Omit<GameMission, "id" | "gameId" | "titleAr" | "descriptionAr"> & { key: string }> = [
-  { key: "focus", metric: "collectibles", target: 5, difficulty: "easy", rewardLabel: "شارة التركيز" },
-  { key: "score", metric: "score", target: 1200, difficulty: "normal", rewardLabel: "شارة النقاط" },
-  { key: "combo", metric: "combo", target: 3, difficulty: "normal", rewardLabel: "شارة السلسلة" },
-  { key: "distance", metric: "distance", target: 3500, difficulty: "easy", rewardLabel: "شارة الرحلة" },
-  { key: "complete", metric: "complete", target: 1, difficulty: "easy", rewardLabel: "شارة الإنجاز" },
+  { key: "focus", metric: "collectibles", target: 5, difficulty: "easy", rewardLabel: "شارة التركيز", rewardLabelEn: "Focus badge" },
+  { key: "score", metric: "score", target: 1200, difficulty: "normal", rewardLabel: "شارة النقاط", rewardLabelEn: "Score badge" },
+  { key: "combo", metric: "combo", target: 3, difficulty: "normal", rewardLabel: "شارة السلسلة", rewardLabelEn: "Combo badge" },
+  { key: "distance", metric: "distance", target: 3500, difficulty: "easy", rewardLabel: "شارة الرحلة", rewardLabelEn: "Journey badge" },
+  { key: "complete", metric: "complete", target: 1, difficulty: "easy", rewardLabel: "شارة الإنجاز", rewardLabelEn: "Completion badge" },
 ];
 
 const TITLES: Record<string, string> = {
@@ -29,12 +32,28 @@ const TITLES: Record<string, string> = {
   complete: "مهمة الإكمال",
 };
 
+const TITLES_EN: Record<string, string> = {
+  focus: "Focus mission",
+  score: "Score mission",
+  combo: "Combo mission",
+  distance: "Journey mission",
+  complete: "Completion mission",
+};
+
 const DESCRIPTIONS: Record<string, (target: number) => string> = {
   focus: target => `اجمع ${target} عناصر في جولة اليوم.`,
   score: target => `حقق ${target.toLocaleString("ar-EG")} نقطة أو أكثر.`,
   combo: target => `كوّن سلسلة من ${target} حركات متتالية.`,
   distance: target => `اقطع مسافة ${target.toLocaleString("ar-EG")} مترًا.`,
   complete: () => "أكمل الجولة حتى النهاية.",
+};
+
+const DESCRIPTIONS_EN: Record<string, (target: number) => string> = {
+  focus: target => `Collect ${target.toLocaleString("en-US")} items in today's round.`,
+  score: target => `Reach at least ${target.toLocaleString("en-US")} points.`,
+  combo: target => `Build a combo of ${target.toLocaleString("en-US")} consecutive moves.`,
+  distance: target => `Travel ${target.toLocaleString("en-US")} meters.`,
+  complete: () => "Complete the round to the end.",
 };
 
 function dayKey(date: Date) {
@@ -54,11 +73,14 @@ export function getDailyMission(gameId: GameId, date = new Date()): GameMission 
     id: `daily:${key}:${gameId}:${template.key}`,
     gameId,
     titleAr: TITLES[template.key],
+    titleEn: TITLES_EN[template.key],
     descriptionAr: DESCRIPTIONS[template.key](template.target),
+    descriptionEn: DESCRIPTIONS_EN[template.key](template.target),
     metric: template.metric,
     target: template.target,
     difficulty: template.difficulty,
     rewardLabel: template.rewardLabel,
+    rewardLabelEn: template.rewardLabelEn,
   };
 }
 

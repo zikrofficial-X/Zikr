@@ -7,7 +7,9 @@ export type KidsLevelMeta = {
   number: number;
   id: string;
   titleAr: string;
+  titleEn: string;
   subtitleAr: string;
+  subtitleEn: string;
   seed: number;
   pace: number;
   density: number;
@@ -55,12 +57,19 @@ export function getKidsLevelMeta(gameId: GameId, difficulty: GameDifficulty, lev
     number: index + 1,
     id: gameId + "-" + difficulty + "-" + String(index + 1).padStart(2, "0"),
     titleAr: TITLES[gameId][index % TITLES[gameId].length] + " " + (index + 1),
+    titleEn: "Level " + (index + 1),
     subtitleAr:
       index === 0
         ? "ابدأ بهدوء وتعرّف على طريقة اللعب."
         : index === KIDS_LEVEL_COUNT - 1
           ? "المرحلة الأخيرة في هذه الصعوبة. اجمع ما تستطيع."
           : "مرحلة مختلفة بنمط " + (["ألف","باء","جيم","دال","هاء","واو","زاي"][index % 7]) + "؛ ركّز قبل الحركة.",
+    subtitleEn:
+      index === 0
+        ? "Start calmly and learn how the game works."
+        : index === KIDS_LEVEL_COUNT - 1
+          ? "The final level at this difficulty. Collect what you can."
+          : "A different pattern is waiting. Focus before you move.",
     seed,
     pace: 0.92 + difficultyBoost + index * 0.018 + random() * 0.08,
     density: 0.86 + difficultyBoost * 0.7 + (index % 9) * 0.055 + random() * 0.08,

@@ -9,6 +9,7 @@ import { DeferredRuntime } from "@/components/layout/deferred-runtime";
 import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
 import { NativeCapacitorBridgeLoader } from "@/components/layout/native-capacitor-bridge-loader";
+import { getRequestLocaleContext } from "@/lib/i18n/server";
 
 // Use system fallback fonts for Arabic text
 // Google Fonts will be loaded via CSS fallback in globals.css
@@ -28,77 +29,90 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteConfig.url),
-  verification: {
-    google: [
-      "wq9nowZwnBPIzL-Er-1I1Va4CMv-RQ4QqtEsIbdO8fs",
-      "Of0DQJPyryp-UqLB2Xdr5bDSkQbm_rU7bjbL6l8uGCs",
-    ],
-  },
-  title: {
-    default: siteConfig.name,
-    template: `%s | ${siteConfig.shortName}`,
-  },
-  description: siteConfig.description,
-  alternates: {
-    canonical: "/",
-  },
-  openGraph: {
-    title: siteConfig.name,
-    description: siteConfig.description,
-    type: "website",
-    locale: siteConfig.locale,
-    url: siteConfig.url,
-    siteName: siteConfig.shortName,
-    images: [{ url: defaultOgImage }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: siteConfig.name,
-    description: siteConfig.description,
-    images: [defaultOgImage],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale, htmlLocale } = await getRequestLocaleContext();
+  const isEnglish = locale === "en";
+  const name = isEnglish ? "ZIKR | Islamic Platform" : siteConfig.name;
+  const description = isEnglish
+    ? "ZIKR is a comprehensive Islamic platform for Quran, Hadith, Prophets, prayer times, remembrance, learning, and family-friendly content."
+    : siteConfig.description;
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "WebSite",
-      "@id": `${siteConfig.url}/#website`,
-      name: siteConfig.name,
+  return {
+    metadataBase: new URL(siteConfig.url),
+    verification: {
+      google: [
+        "wq9nowZwnBPIzL-Er-1I1Va4CMv-RQ4QqtEsIbdO8fs",
+        "Of0DQJPyryp-UqLB2Xdr5bDSkQbm_rU7bjbL6l8uGCs",
+      ],
+    },
+    title: {
+      default: name,
+      template: `%s | ${siteConfig.shortName}`,
+    },
+    description,
+    alternates: { canonical: "/" },
+    openGraph: {
+      title: name,
+      description,
+      type: "website",
+      locale: htmlLocale.replace("-", "_"),
       url: siteConfig.url,
-      description: siteConfig.description,
-      inLanguage: "ar",
-      potentialAction: {
-        "@type": "SearchAction",
-        target: {
-          "@type": "EntryPoint",
-          urlTemplate: `${siteConfig.url}/search?q={search_term_string}`,
+      siteName: siteConfig.shortName,
+      images: [{ url: defaultOgImage }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: name,
+      description,
+      images: [defaultOgImage],
+    },
+  };
+}
+
+function buildJsonLd(locale: "ar" | "en") {
+  const isEnglish = locale === "en";
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": siteConfig.url + "/#website",
+        name: isEnglish ? "ZIKR | Islamic Platform" : siteConfig.name,
+        url: siteConfig.url,
+        description: isEnglish ? "ZIKR Islamic platform" : siteConfig.description,
+        inLanguage: isEnglish ? "en" : "ar",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: siteConfig.url + "/search?q={search_term_string}",
+          },
+          "query-input": "required name=search_term_string",
         },
-        "query-input": "required name=search_term_string",
       },
-    },
-    {
-      "@type": "Organization",
-      "@id": `${siteConfig.url}/#organization`,
-      name: siteConfig.shortName,
-      url: siteConfig.url,
-      logo: `${siteConfig.url}/branding/logo-gold.png`,
-    },
-  ],
-};
+      {
+        "@type": "Organization",
+        "@id": siteConfig.url + "/#organization",
+        name: siteConfig.shortName,
+        url: siteConfig.url,
+        logo: siteConfig.url + "/branding/logo-gold.png",
+      },
+    ],
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { locale, dir, lang } = await getRequestLocaleContext();
+  const jsonLd = buildJsonLd(locale);
+
   return (
     <html
-      lang="ar"
-      dir={siteConfig.dir}
+      lang={lang}
+      dir={dir}
       data-scroll-behavior="smooth"
       className={`bg-black ${notoNaskhArabic.variable}`}
       suppressHydrationWarning={true}
@@ -142,7 +156,7 @@ gtag('config', '${googleAnalyticsId}', { send_page_view: true });`}
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
         <link rel="manifest" href="/manifest.webmanifest" />
       </head>
-      <body className="font-arabic antialiased">
+      <body className={locale === "ar" ? "font-arabic antialiased" : "font-sans antialiased"}>
         {process.env.NODE_ENV === "production" && isValidGoogleTagManagerId && (
           <noscript>
             <iframe

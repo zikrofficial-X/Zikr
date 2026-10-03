@@ -7,6 +7,7 @@ import { getServerEnv } from "@/lib/env";
 import { safeApiFetch } from "@/lib/services/http";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import type { Hadith, HadithBook, HadithResponse } from "@/features/hadith/types/hadith";
+import type { Locale } from "@/lib/i18n";
 import type { PaginationMeta } from "@/lib/types/common";
 
 const HADITH_API_BASE =
@@ -59,6 +60,7 @@ type DbHadithBook = {
 type DbHadith = {
   hadith_number: string;
   text_ar: string;
+  text_en: string | null;
   ref: string | null;
 };
 
@@ -110,11 +112,13 @@ async function readSupabase<T>(path: string): Promise<T | null> {
   }
 }
 
-function mapDbHadithBook(book: DbHadithBook): HadithBook {
+function mapDbHadithBook(book: DbHadithBook, locale: Locale = "ar"): HadithBook {
   return {
     id: book.slug,
     slug: book.slug,
-    name: book.name_ar,
+    name: locale === "en" && book.name_en ? book.name_en : book.name_ar,
+    nameAr: book.name_ar,
+    nameEn: book.name_en,
     available: book.hadith_count ?? 0,
   };
 }
@@ -123,18 +127,19 @@ function mapDbHadith(hadith: DbHadith): Hadith {
   return {
     number: Number.parseInt(hadith.hadith_number, 10),
     arab: hadith.text_ar,
+    english: hadith.text_en ?? undefined,
     id: hadith.ref ?? hadith.hadith_number,
   };
 }
 
-function mapUmmahBook(book: UmmahCollection): HadithBook | null {
+function mapUmmahBook(book: UmmahCollection, locale: Locale = "ar"): HadithBook | null {
   const slug = book.key?.trim();
   if (!slug) return null;
 
   return {
     id: slug,
     slug,
-    name: book.arabic_name || book.name || slug,
+    name: locale === "en" ? (book.name || book.arabic_name || slug) : (book.arabic_name || book.name || slug),
     available: Number(book.total_hadiths) || 0,
   };
 }
@@ -151,14 +156,14 @@ function mapUmmahHadith(hadith: UmmahHadith): Hadith | null {
   };
 }
 
-async function getUmmahBooks(): Promise<HadithBook[]> {
+async function getUmmahBooks(locale: Locale = "ar"): Promise<HadithBook[]> {
   const { data, error } = await safeApiFetch<UmmahBooksResponse>(
     `${HADITH_API_BASE.replace(/\/$/, "")}/collections`,
   );
   if (error || !data?.success) return [];
 
   return (data.data?.collections ?? [])
-    .map(mapUmmahBook)
+    .map((book) => mapUmmahBook(book, locale))
     .filter((book): book is HadithBook => Boolean(book));
 }
 
@@ -166,6 +171,7 @@ async function getUmmahBook(
   slug: string,
   page: number,
   limit: number,
+  locale: Locale = "ar",
 ): Promise<HadithResponse<Hadith[]> | null> {
   const params = new URLSearchParams({
     limit: String(limit),
@@ -203,6 +209,7 @@ async function getUmmahBook(
 async function getUmmahHadithByNumber(
   book: string,
   number: number,
+  locale: Locale = "ar",
 ): Promise<Hadith | null> {
   const { data, error } = await safeApiFetch<UmmahSingleResponse>(
     `${HADITH_API_BASE.replace(/\/$/, "")}/${encodeURIComponent(book)}/${number}`,
@@ -211,13 +218,13 @@ async function getUmmahHadithByNumber(
   return data.data ? mapUmmahHadith(data.data) : null;
 }
 
-export async function getHadithBooks(): Promise<HadithBook[]> {
+export async function getHadithBooks(locale: Locale = "ar"): Promise<HadithBook[]> {
   const dbBooks = await readSupabase<DbHadithBook[]>(
     "/rest/v1/hadith_books?select=id,slug,name_ar,name_en,hadith_count&order=slug.asc",
   );
-  if (dbBooks?.length) return dbBooks.map(mapDbHadithBook);
+  if (dbBooks?.length) return dbBooks.map((book) => mapDbHadithBook(book, locale));
 
-  const remote = await getUmmahBooks();
+  const remote = await getUmmahBooks(locale);
   if (remote.length > 0) return remote;
 
   try {
@@ -234,6 +241,7 @@ export async function getHadithBook(
   slug: string,
   page = 1,
   limit = 20,
+  locale: Locale = "ar",
 ): Promise<HadithResponse<Hadith[]> | null> {
   const clean = slug.trim();
   if (!clean) return null;
@@ -244,7 +252,7 @@ export async function getHadithBook(
   if (dbBooks?.[0]) {
     const from = Math.max(0, (page - 1) * limit);
     const dbHadiths = await readSupabase<DbHadith[]>(
-      `/rest/v1/hadiths?select=hadith_number,text_ar,ref&book_id=eq.${dbBooks[0].id}&published=eq.true&order=hadith_number.asc&offset=${from}&limit=${limit}`,
+      `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&book_id=eq.${dbBooks[0].id}&published=eq.true&order=hadith_number.asc&offset=${from}&limit=${limit}`,
     );
     const total = dbBooks[0].hadith_count ?? dbHadiths?.length ?? 0;
     const pagination: PaginationMeta = {
@@ -255,7 +263,7 @@ export async function getHadithBook(
     };
 
     return {
-      name: dbBooks[0].name_ar,
+      name: locale === "en" && dbBooks[0].name_en ? dbBooks[0].name_en : dbBooks[0].name_ar,
       slug: dbBooks[0].slug,
       total,
       pagination,
@@ -263,7 +271,7 @@ export async function getHadithBook(
     };
   }
 
-  return getUmmahBook(clean, page, limit);
+  return getUmmahBook(clean, page, limit, locale);
 }
 
 export async function getHadithByNumber(
@@ -277,7 +285,7 @@ export async function getHadithByNumber(
   );
   if (dbBooks?.[0]) {
     const dbHadiths = await readSupabase<DbHadith[]>(
-      `/rest/v1/hadiths?select=hadith_number,text_ar,ref&book_id=eq.${dbBooks[0].id}&hadith_number=eq.${number}&published=eq.true&limit=1`,
+      `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&book_id=eq.${dbBooks[0].id}&hadith_number=eq.${number}&published=eq.true&limit=1`,
     );
     if (dbHadiths?.[0]) return mapDbHadith(dbHadiths[0]);
   }
@@ -285,21 +293,21 @@ export async function getHadithByNumber(
   return getUmmahHadithByNumber(book, number);
 }
 
-export async function searchHadith(query: string): Promise<Hadith[]> {
+export async function searchHadith(query: string, locale: Locale = "ar"): Promise<Hadith[]> {
   const q = query.trim().toLowerCase();
   if (!q) return [];
 
   const escapedQuery = q.replace(/[*,()]/g, "");
   const dbHadiths = await readSupabase<DbHadith[]>(
-    `/rest/v1/hadiths?select=hadith_number,text_ar,ref&published=eq.true&or=${encodeURIComponent(`(text_ar.ilike.*${escapedQuery}*,ref.ilike.*${escapedQuery}*)`)}&limit=50`,
+    `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&published=eq.true&or=${encodeURIComponent(`(text_ar.ilike.*${escapedQuery}*,ref.ilike.*${escapedQuery}*)`)}&limit=50`,
   );
   if (dbHadiths?.length) return dbHadiths.map(mapDbHadith);
 
-  const books = await getHadithBooks();
+  const books = await getHadithBooks(locale);
   const seedBooks = books.slice(0, 3);
 
   const collections = await Promise.all(
-    seedBooks.map(book => getHadithBook(book.id, 1, 50)),
+    seedBooks.map(book => getHadithBook(book.id, 1, 50, locale)),
   );
   return collections
     .flatMap(collection => collection?.data ?? [])

@@ -83,7 +83,7 @@ export function mapDbSurah(surah: DbSurah, locale: Locale): Surah {
 export function mapDbAyah(ayah: DbAyah, locale: Locale): Ayah {
   return {
     number: ayah.ayah_number,
-    text: locale === "en" ? ayah.text_en ?? ayah.text_ar : ayah.text_ar,
+    text: locale === "en" ? ayah.text_en ?? "" : ayah.text_ar,
     numberInSurah: ayah.ayah_number,
     juz: ayah.juz ?? 0,
     manzil: 0,
@@ -198,6 +198,7 @@ export async function getAyah(
 export async function getTafsir(
   surahId: number,
   ayahId: number,
+  locale: Locale = "ar",
 ): Promise<string | null> {
   if (surahId < 1 || surahId > 114 || ayahId < 1) return null;
 
@@ -205,7 +206,7 @@ export async function getTafsir(
     const rows = await supabasePublicFetch<DbTafsir[] & Array<{ author?: string | null }>>(
       `/rest/v1/quran_tafsir?surah_id=eq.${surahId}&ayah_number=eq.${ayahId}&order=author.asc&limit=1&select=tafsir_ar,tafsir_en,author`,
     );
-    return rows[0]?.tafsir_ar ?? null;
+    return locale === "en" ? rows[0]?.tafsir_en ?? null : rows[0]?.tafsir_ar ?? null;
   } catch (error) {
     console.error(`[quran-service] Supabase tafsir ${surahId}:${ayahId} unavailable:`, error);
     return null;

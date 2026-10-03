@@ -388,10 +388,11 @@ export async function getTafsirRecordFromDb(
 
 export async function getTafsirFromDb(
   surahId: number,
-  ayahNumber: number
+  ayahNumber: number,
+  locale: Locale = "ar",
 ): Promise<string | null> {
   const record = await getTafsirRecordFromDb(surahId, ayahNumber);
-  return record?.tafsir_ar ?? null;
+  return locale === "en" ? record?.tafsir_en ?? null : record?.tafsir_ar ?? null;
 }
 
 

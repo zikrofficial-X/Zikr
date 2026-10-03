@@ -6,7 +6,9 @@ export interface Prophet {
   bioAr?: string;
   bioEn?: string;
   birthPlaceAr?: string;
+  birthPlaceEn?: string;
   deathPlaceAr?: string;
+  deathPlaceEn?: string;
   featuredImageUrl?: string;
   thumbnailUrl?: string;
   orderNum?: number;

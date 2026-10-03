@@ -1,0 +1,33 @@
+name: Global Localization Verify
+
+on:
+  push:
+    branches:
+      - feat/global-localization
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: global-localization-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+          run_install: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm check
+      - run: pnpm routes:check
+      - run: pnpm kids:games:check

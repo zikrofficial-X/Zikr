@@ -37,6 +37,7 @@ export interface KidsItem {
     | "memorize";
   age_group: "3-5" | "6-8" | "9-12" | "13-15";
   content_ar?: string;
+  content_en?: string;
   quiz_data?: { questions: KidsQuizQuestion[] };
   memory_pairs?: KidsMemoryPair[];
   wudu_steps?: KidsWuduStep[];
@@ -115,6 +116,10 @@ export function normalizeKidsContentRow(row: KidsLegacyRow): KidsItem | null {
     type,
     age_group: ageGroup as KidsItem["age_group"],
     content_ar: row.content_ar ?? row.summary_ar ?? undefined,
+    content_en:
+      typeof (row as Record<string, unknown>).content_en === "string"
+        ? String((row as Record<string, unknown>).content_en)
+        : undefined,
     quiz_data: row.quiz_data as KidsItem["quiz_data"],
     featured_image_url: row.featured_image_url ?? undefined,
     video_url: row.video_url ?? undefined,

@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from './language-provider';
 
@@ -8,14 +7,7 @@ export type NavLink = { href: string; label: string; labelEn: string };
 
 export function LanguageAwareNav({ links }: { links: NavLink[] }) {
   const { isEnglish } = useLanguage();
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
-  // Use default (Arabic) during SSR to match server rendering
-  const shouldShowEnglish = isHydrated ? isEnglish : false;
+  const shouldShowEnglish = isEnglish;
   const ariaLabel = shouldShowEnglish ? 'Primary navigation' : 'القائمة الرئيسية';
 
   return (

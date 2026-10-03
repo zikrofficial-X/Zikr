@@ -14,6 +14,8 @@ import {
   FALLBACK_DUA_CATEGORIES,
   FALLBACK_DUAS,
 } from "@/features/dua/data/fallback";
+import { getRequestLocale } from "@/lib/i18n/server";
+import type { Locale } from "@/lib/i18n";
 
 type DuaRow = Record<string, unknown>;
 
@@ -112,7 +114,9 @@ export async function getDuaCategories(): Promise<DuaCategory[]> {
 export async function getDuas(
   categoryId?: string,
   limit = 50,
+  locale?: Locale,
 ): Promise<Dua[]> {
+  const activeLocale = locale ?? await getRequestLocale();
   const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
   const localDuas = await getOfflineOrFallbackDuas();
   const fallback =
@@ -147,7 +151,8 @@ export async function getDuas(
   return resolveCanonicalPublished(mapped, fallback).slice(0, safeLimit);
 }
 
-export async function getDuaBySlug(slug: string): Promise<Dua | null> {
+export async function getDuaBySlug(slug: string, locale?: Locale): Promise<Dua | null> {
+  const activeLocale = locale ?? await getRequestLocale();
   const cleanSlug = slug?.trim() ?? "";
   if (!cleanSlug) return null;
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getPublicContentLibrary } from "@/features/content-library/services/content-library";
 import { pageMetadata } from "@/lib/site";
 import type { Metadata } from "next";
+import { getRequestLocale } from "@/lib/i18n/server";
 
 export const metadata: Metadata = pageMetadata({
   title: "المكتبة الإسلامية",
@@ -14,20 +15,23 @@ export const metadata: Metadata = pageMetadata({
 export const revalidate = 1800;
 
 export default async function LibraryPage() {
-  const items = await getPublicContentLibrary(60);
+  const locale = await getRequestLocale();
+  const isEnglish = locale === "en";
+  const items = await getPublicContentLibrary(60, locale);
 
   return (
-    <main className="min-h-screen bg-brand-emeraldDeep text-brand-cream" dir="rtl">
+    <main className="min-h-screen bg-brand-emeraldDeep text-brand-cream" dir={isEnglish ? "ltr" : "rtl"}>
       <section className="mx-auto max-w-7xl px-4 py-12 md:px-8">
         <p className="text-xs uppercase tracking-[0.2em] text-brand-cream/35">
           ZIKR KNOWLEDGE LIBRARY
         </p>
         <h1 className="mt-2 text-4xl font-bold text-brand-gold">
-          المكتبة الإسلامية
+          {isEnglish ? "Islamic Library" : "المكتبة الإسلامية"}
         </h1>
         <p className="mt-3 max-w-3xl leading-8 text-brand-cream/60">
-          مكتبة قابلة للتوسع للقراءة والتعلم والبحث. لا يظهر فيها إلا المحتوى
-          الذي اجتاز حالة الاعتماد والنشر.
+          {isEnglish
+            ? "A growing library for reading, learning, and research. Only approved and published content is shown."
+            : "مكتبة قابلة للتوسع للقراءة والتعلم والبحث. لا يظهر فيها إلا المحتوى الذي اجتاز حالة الاعتماد والنشر."}
         </p>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -41,15 +45,11 @@ export default async function LibraryPage() {
                 {item.category} · {item.content_type}
               </div>
               <h2 className="mt-2 text-xl font-bold text-brand-gold">
-                {item.title_ar}
+                {item.title}
               </h2>
-              {item.title_en && (
-                <p className="mt-1 text-sm text-brand-cream/45" dir="ltr">
-                  {item.title_en}
-                </p>
-              )}
+
               <p className="mt-3 line-clamp-3 text-sm leading-7 text-brand-cream/60">
-                {item.summary_ar}
+                {item.summary ?? (isEnglish ? "English translation unavailable." : "لا يتوفر ملخص منشور لهذه المادة.")}
               </p>
               {item.tags && item.tags.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-1">
@@ -69,7 +69,7 @@ export default async function LibraryPage() {
 
         {items.length === 0 && (
           <div className="mt-10 rounded-2xl border border-brand-gold/10 bg-black/20 p-8 text-center text-brand-cream/50">
-            المكتبة قيد الإثراء. المواد الجديدة ستظهر بعد اعتمادها.
+            {isEnglish ? "The library is being expanded. New material appears after approval." : "المكتبة قيد الإثراء. المواد الجديدة ستظهر بعد اعتمادها."}
           </div>
         )}
       </section>

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, isLocale, localeMeta, type Locale } from '@/lib/i18n';
+import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, LOCALE_STORAGE_KEY, isLocale, localeMeta, type Locale } from '@/lib/i18n';
 import { getOfflinePreference, saveOfflinePreference } from '@/lib/offline-settings';
 
 type LanguageContextValue = {
@@ -17,9 +17,6 @@ type LanguageProviderProps = {
   children: React.ReactNode;
   initialLocale?: Locale;
 };
-
-const LOCALE_COOKIE = 'zikr-locale';
-const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
@@ -88,6 +85,7 @@ export function LanguageProvider({ children, initialLocale = DEFAULT_LOCALE }: L
     document.documentElement.dir = meta.dir;
     document.documentElement.dataset.locale = locale;
     document.body.dir = meta.dir;
+    document.body.dataset.locale = locale;
     persistLocale(locale);
   }, [locale, isHydrated]);
 

@@ -7,6 +7,8 @@ import {
   normalizeKidsContentRow,
   type KidsItem,
 } from "@/features/kids/data/content";
+import type { Locale } from "@/lib/i18n";
+import { getRequestLocale } from "@/lib/i18n/server";
 
 type KidsDbRow = Record<string, unknown>;
 
@@ -42,25 +44,35 @@ async function getDatabaseKidsContent(): Promise<KidsItem[]> {
   }
 }
 
-export async function getKidsContent(): Promise<KidsItem[]> {
+export async function getKidsContent(locale?: Locale): Promise<KidsItem[]> {
+  const activeLocale = locale ?? await getRequestLocale();
   const database = await getDatabaseKidsContent();
-  if (!database.length) return FALLBACK_KIDS_CONTENT;
+  if (!database.length) {
+    return activeLocale === "en"
+      ? FALLBACK_KIDS_CONTENT.filter((item) => Boolean(item.content_en?.trim()))
+      : FALLBACK_KIDS_CONTENT;
+  }
 
   const databaseSlugs = new Set(
     database.map((item) => item.slug.trim().toLowerCase()),
   );
 
-  return [
+  const merged = [
     ...database,
     ...FALLBACK_KIDS_CONTENT.filter(
       (item) => !databaseSlugs.has(item.slug.trim().toLowerCase()),
     ),
   ];
+  return activeLocale === "en"
+    ? merged.filter((item) => Boolean(item.title_en?.trim() && item.content_en?.trim()))
+    : merged;
 }
 
 export async function getKidsContentBySlug(
   slug: string,
+  locale?: Locale,
 ): Promise<KidsItem | null> {
+  const activeLocale = locale ?? await getRequestLocale();
   const cleanSlug = slug.trim().toLowerCase();
   if (!cleanSlug) return null;
 
@@ -75,11 +87,16 @@ export async function getKidsContentBySlug(
       const databaseItem = rows[0]
         ? normalizeKidsContentRow(rows[0])
         : null;
-      if (databaseItem) return databaseItem;
+      if (databaseItem) {
+        if (activeLocale === "en" && !databaseItem.content_en?.trim()) return null;
+        return databaseItem;
+      }
     } catch (error) {
       console.error("[kids] Failed to load content by slug:", error);
     }
   }
 
-  return getKidsItemBySlug(cleanSlug);
+  const fallback = getKidsItemBySlug(cleanSlug);
+  if (activeLocale === "en" && !fallback?.content_en?.trim()) return null;
+  return fallback;
 }

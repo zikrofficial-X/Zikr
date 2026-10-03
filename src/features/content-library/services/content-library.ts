@@ -1,7 +1,8 @@
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 
 export type ContentSource = {
-  name: string;
+  nameAr: string;
+  nameEn: string;
   reference: string | null;
   author: string | null;
   publisher: string | null;
@@ -11,10 +12,14 @@ export type ContentSource = {
 
 export type PublicContentLibraryItem = {
   id: string;
+  title: string;
+  summary: string | null;
+  body: string | null;
   slug: string;
   title_ar: string;
   title_en: string | null;
   summary_ar: string | null;
+  summary_en: string | null;
   body_ar: string | null;
   body_en: string | null;
   content_type: string;
@@ -39,7 +44,8 @@ function mapSource(value: unknown): ContentSource | ContentSource[] | null {
   const row = value as RawItem;
 
   return {
-    name: String(row.name_ar ?? row.name_en ?? ""),
+    nameAr: String(row.name_ar ?? ""),
+    nameEn: String(row.name_en ?? row.name_ar ?? ""),
     reference: typeof row.url === "string" ? row.url : null,
     author: typeof row.author === "string" ? row.author : null,
     publisher: null,
@@ -50,15 +56,25 @@ function mapSource(value: unknown): ContentSource | ContentSource[] | null {
 }
 
 function mapItem(row: RawItem): PublicContentLibraryItem {
+  const titleAr = String(row.title_ar ?? "");
+  const titleEn = typeof row.title_en === "string" ? row.title_en : null;
+  const summaryAr = typeof row.summary_ar === "string" ? row.summary_ar : null;
+  const summaryEn = typeof row.summary_en === "string" ? row.summary_en : null;
+  const bodyAr = typeof row.body_ar === "string" ? row.body_ar : null;
+  const bodyEn = typeof row.body_en === "string" ? row.body_en : null;
+
   return {
     id: String(row.id ?? ""),
+    title: titleAr,
+    summary: summaryAr,
+    body: bodyAr,
     slug: String(row.slug ?? ""),
     title_ar: String(row.title_ar ?? ""),
-    title_en: typeof row.title_en === "string" ? row.title_en : null,
-    summary_ar:
-      typeof row.summary_ar === "string" ? row.summary_ar : null,
-    body_ar: typeof row.body_ar === "string" ? row.body_ar : null,
-    body_en: typeof row.body_en === "string" ? row.body_en : null,
+    title_en: titleEn,
+    summary_ar: summaryAr,
+    summary_en: summaryEn,
+    body_ar: bodyAr,
+    body_en: bodyEn,
     content_type: String(row.content_type ?? ""),
     category: String(row.category ?? ""),
     tags: Array.isArray(row.tags)
@@ -73,10 +89,11 @@ function mapItem(row: RawItem): PublicContentLibraryItem {
 }
 
 const SELECT_LIST =
-  "id,slug,title_ar,title_en,summary_ar,body_ar,body_en,content_type,category,tags,author,published_at,source_id,content_sources(name_ar,name_en,url,license,attribution,authority_level,notes,verified)";
+  "id,slug,title_ar,title_en,summary_ar,summary_en,body_ar,body_en,content_type,category,tags,author,published_at,source_id,content_sources(name_ar,name_en,url,license,attribution,authority_level,notes,verified)";
 
 export async function getPublicContentLibrary(
   limit = 60,
+  locale: "ar" | "en" = "ar",
 ): Promise<PublicContentLibraryItem[]> {
   const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
 
@@ -88,7 +105,13 @@ export async function getPublicContentLibrary(
 
     return rows
       .map(mapItem)
-      .filter((item) => item.slug && item.title_ar);
+      .map((item) => ({
+        ...item,
+        title: locale === "en" ? (item.title_en ?? "") : item.title_ar,
+        summary: locale === "en" ? item.summary_en ?? null : item.summary_ar,
+        body: locale === "en" ? item.body_en ?? null : item.body_ar,
+      }))
+      .filter((item) => item.slug && item.title);
   } catch (error) {
     console.error("[content-library] Failed to load public library:", error);
     return [];
@@ -97,6 +120,7 @@ export async function getPublicContentLibrary(
 
 export async function getPublicContentBySlug(
   slug: string,
+  locale: "ar" | "en" = "ar",
 ): Promise<PublicContentLibraryItem | null> {
   const cleanSlug = slug.trim();
   if (!cleanSlug) return null;
@@ -107,7 +131,14 @@ export async function getPublicContentBySlug(
       { cache: "force-cache", next: { revalidate: 1800 } },
     );
 
-    return rows[0] ? mapItem(rows[0]) : null;
+    if (!rows[0]) return null;
+    const item = mapItem(rows[0]);
+    return {
+      ...item,
+      title: locale === "en" ? (item.title_en ?? "") : item.title_ar,
+      summary: locale === "en" ? item.summary_en ?? null : item.summary_ar,
+      body: locale === "en" ? item.body_en ?? null : item.body_ar,
+    };
   } catch (error) {
     console.error("[content-library] Failed to load content item:", error);
     return null;

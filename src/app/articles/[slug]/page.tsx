@@ -7,6 +7,7 @@ import { getArticleBySlug } from "@/features/articles/services/articles";
 import type { Article } from "@/features/articles/types/articles";
 import { pageMetadata, siteConfig } from "@/lib/site";
 import { estimateReadingMinutes, PUBLIC_CONTENT_THRESHOLDS, splitEditorialParagraphs } from "@/lib/content-quality";
+import { getRequestLocale } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ interface ArticleReference {
   sourceType?: string;
 }
 
-function getArticleReferences(metadata: Article["metadata"]): ArticleReference[] {
+function getArticleReferences(metadata: Article["metadata"], isEnglish: boolean): ArticleReference[] {
   const references = metadata?.references;
   if (!Array.isArray(references)) return [];
 
@@ -34,11 +35,13 @@ function getArticleReferences(metadata: Article["metadata"]): ArticleReference[]
         {
           url: parsed.toString(),
           title:
-            typeof item.title_ar === "string" && item.title_ar.trim()
-              ? item.title_ar
-              : "فتح المصدر للتحقق",
+            isEnglish
+              ? "Open source for verification"
+              : typeof item.title_ar === "string" && item.title_ar.trim()
+                ? item.title_ar
+                : "فتح المصدر للتحقق",
           sourceType:
-            typeof item.source_type === "string" ? item.source_type : undefined,
+            !isEnglish && typeof item.source_type === "string" ? item.source_type : undefined,
         },
       ];
     } catch {
@@ -47,7 +50,7 @@ function getArticleReferences(metadata: Article["metadata"]): ArticleReference[]
   });
 }
 
-function getMetadataReferences(metadata: Article["metadata"]): ArticleReference[] {
+function getMetadataReferences(metadata: Article["metadata"], isEnglish: boolean): ArticleReference[] {
   const sourceUrls = metadata?.source_urls;
   if (!Array.isArray(sourceUrls)) return [];
 
@@ -56,7 +59,7 @@ function getMetadataReferences(metadata: Article["metadata"]): ArticleReference[
     try {
       const parsed = new URL(url);
       if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return [];
-      return [{ url: parsed.toString(), title: "مصدر للتحقق" }];
+      return [{ url: parsed.toString(), title: isEnglish ? "Source for verification" : "مصدر للتحقق" }];
     } catch {
       return [];
     }
@@ -67,8 +70,8 @@ function dedupeReferences(references: ArticleReference[]) {
   return Array.from(new Map(references.map(item => [item.url, item])).values());
 }
 
-async function loadArticle(slug: string): Promise<Article | null> {
-  return getArticleBySlug(slug);
+async function loadArticle(slug: string, locale?: "ar" | "en"): Promise<Article | null> {
+  return getArticleBySlug(slug, locale);
 }
 
 function hasSubstantialContent(
@@ -86,12 +89,14 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const article = await loadArticle(slug);
+  const locale = await getRequestLocale();
+  const isEnglish = locale === "en";
+  const article = await loadArticle(slug, locale);
 
   if (!article) {
     return pageMetadata({
-      title: "المقال غير موجود",
-      description: "لم يتم العثور على المقال المطلوب في منصة ذِكرٌ.",
+      title: isEnglish ? "Article not found" : "المقال غير موجود",
+      description: isEnglish ? "The requested article was not found on ZIKR." : "لم يتم العثور على المقال المطلوب في منصة ذِكرٌ.",
       path: `/articles/${slug}`,
       noindex: true,
     });
@@ -120,15 +125,17 @@ export default async function ArticleDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const article = await loadArticle(slug);
+  const locale = await getRequestLocale();
+  const isEnglish = locale === "en";
+  const article = await loadArticle(slug, locale);
 
   if (!hasSubstantialContent(article)) {
     notFound();
   }
 
   const references = dedupeReferences([
-    ...getArticleReferences(article.metadata),
-    ...getMetadataReferences(article.metadata),
+    ...getArticleReferences(article.metadata, isEnglish),
+    ...getMetadataReferences(article.metadata, isEnglish),
   ]);
   const content = article.content.trim();
   const paragraphs = splitEditorialParagraphs(content);
@@ -136,7 +143,7 @@ export default async function ArticleDetailPage({
   const readingMinutes = estimateReadingMinutes(content);
 
   return (
-    <Container className="py-12 space-y-8 max-w-3xl" dir="rtl">
+    <Container className="py-12 space-y-8 max-w-3xl" dir={isEnglish ? "ltr" : "rtl"}>
       {article.featuredImageUrl && (
         <div className="w-full h-96 rounded-lg overflow-hidden">
           <Image
@@ -155,26 +162,26 @@ export default async function ArticleDetailPage({
           <p className="text-brand-cream/70 text-lg leading-8">{article.summary}</p>
         )}
         <div className="flex flex-wrap justify-center gap-6 text-sm text-brand-cream/60">
-          {article.author && <span>الكاتب: {article.author}</span>}
+          {article.author && <span>{isEnglish ? "Author: " : "الكاتب: "}{article.author}</span>}
           <time dateTime={article.createdAt}>
-            {new Date(article.createdAt).toLocaleDateString("ar-SA")}
+            {new Date(article.createdAt).toLocaleDateString(isEnglish ? "en-US" : "ar-SA")}
           </time>
-          <span aria-label="مدة القراءة التقريبية">قراءة: {readingMinutes} دقيقة</span>
-          <span>{wordCount.toLocaleString("ar-EG")} كلمة تقريبًا</span>
+          <span aria-label={isEnglish ? "Approximate reading time" : "مدة القراءة التقريبية"}>{isEnglish ? `Reading: ${readingMinutes} min` : `قراءة: ${readingMinutes} دقيقة`}</span>
+          <span>{wordCount.toLocaleString(isEnglish ? "en-US" : "ar-EG")} {isEnglish ? "approx. words" : "كلمة تقريبًا"}</span>
         </div>
       </header>
-      <section className="grid gap-4 sm:grid-cols-3" aria-label="ملخص بيانات القراءة">
+      <section className="grid gap-4 sm:grid-cols-3" aria-label={isEnglish ? "Reading summary" : "ملخص بيانات القراءة"}>
         <div className="rounded-2xl border border-brand-gold/15 bg-brand-gold/5 p-4 text-center">
-          <p className="text-xs text-brand-cream/50">نوع المادة</p>
-          <p className="mt-2 font-semibold text-brand-gold">مقالة تحريرية تعليمية</p>
+          <p className="text-xs text-brand-cream/50">{isEnglish ? "Content type" : "نوع المادة"}</p>
+          <p className="mt-2 font-semibold text-brand-gold">{isEnglish ? "Educational editorial" : "مقالة تحريرية تعليمية"}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/15 bg-brand-gold/5 p-4 text-center">
-          <p className="text-xs text-brand-cream/50">المراجع المتاحة</p>
-          <p className="mt-2 font-semibold text-brand-gold">{references.length.toLocaleString("ar-EG")} مصدرًا</p>
+          <p className="text-xs text-brand-cream/50">{isEnglish ? "Available references" : "المراجع المتاحة"}</p>
+          <p className="mt-2 font-semibold text-brand-gold">{references.length.toLocaleString("ar-EG")} {isEnglish ? "sources" : "مصدرًا"}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/15 bg-brand-gold/5 p-4 text-center">
-          <p className="text-xs text-brand-cream/50">طريقة الاستخدام</p>
-          <p className="mt-2 font-semibold text-brand-gold">اقرأ ثم تحقق من المصدر</p>
+          <p className="text-xs text-brand-cream/50">{isEnglish ? "How to use" : "طريقة الاستخدام"}</p>
+          <p className="mt-2 font-semibold text-brand-gold">{isEnglish ? "Read, then verify the source" : "اقرأ ثم تحقق من المصدر"}</p>
         </div>
       </section>
 
@@ -187,8 +194,8 @@ export default async function ArticleDetailPage({
             headline: article.title,
             description: article.summary || undefined,
             datePublished: article.createdAt,
-            author: { "@type": "Organization", name: article.author || "فريق ذِكر" },
-            publisher: { "@type": "Organization", name: "ZIKR | ذِكرٌ" },
+            author: { "@type": "Organization", name: article.author || (isEnglish ? "ZIKR Editorial Team" : "فريق ذِكر") },
+            publisher: { "@type": "Organization", name: "ZIKR" },
             mainEntityOfPage: `${siteConfig.url}/articles/${article.slug}`,
             keywords: article.tags?.join(", ") || undefined,
           }),
@@ -206,7 +213,9 @@ export default async function ArticleDetailPage({
       </Card>
 
       <aside className="rounded-3xl border border-brand-gold/20 bg-brand-gold/5 p-5 text-sm leading-7 text-brand-cream/75">
-        هذه صفحة تحريرية تعليمية من فريق ذِكر. عند نقل نص شرعي أو معلومة تاريخية، نضع مصدر التحقق قدر الإمكان، ولا تُعد المقالات العامة فتوى شخصية أو بديلاً عن سؤال أهل العلم.
+        {isEnglish
+          ? "This is an educational editorial page from the ZIKR team. When transmitting religious or historical information, we provide verification sources where possible. General articles are not personal fatwas or a substitute for qualified scholarly guidance."
+          : "هذه صفحة تحريرية تعليمية من فريق ذِكر. عند نقل نص شرعي أو معلومة تاريخية، نضع مصدر التحقق قدر الإمكان، ولا تُعد المقالات العامة فتوى شخصية أو بديلاً عن سؤال أهل العلم."}
       </aside>
 
       {references.length > 0 && (
@@ -215,7 +224,7 @@ export default async function ArticleDetailPage({
           className="rounded-3xl border border-brand-gold/20 bg-black/20 p-6"
         >
           <h2 id="article-references" className="text-xl font-bold text-brand-gold">
-            المراجع ومصادر التحقق
+            {isEnglish ? "References and verification sources" : "المراجع ومصادر التحقق"}
           </h2>
           <ol className="mt-4 space-y-3 text-sm leading-7 text-brand-cream/80">
             {references.map((reference, index) => (
@@ -238,7 +247,7 @@ export default async function ArticleDetailPage({
       )}
 
       {article.tags && article.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 justify-center" aria-label="وسوم المقال">
+        <div className="flex flex-wrap gap-2 justify-center" aria-label={isEnglish ? "Article tags" : "وسوم المقال"}>
           {article.tags.map(tag => (
             <span
               key={tag}
