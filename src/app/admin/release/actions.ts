@@ -27,12 +27,16 @@ export async function createAndroidReleaseAction() {
     current.startedAt &&
     Date.now() - Date.parse(current.startedAt) < 6 * 60 * 60 * 1000
   ) {
-    throw new Error(
-      "يوجد إصدار Android قيد البناء بالفعل. انتظر اكتماله قبل إطلاق إصدار جديد.",
-    );
+    redirect("/admin/release?android_release_error=" + encodeURIComponent("يوجد إصدار Android قيد البناء بالفعل. انتظر اكتماله قبل إطلاق إصدار جديد."));
   }
 
-  const result = await prepareAndroidRelease();
+  let result: Awaited<ReturnType<typeof prepareAndroidRelease>>;
+  try {
+    result = await prepareAndroidRelease();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "تعذر تجهيز إصدار Android.";
+    redirect("/admin/release?android_release_error=" + encodeURIComponent(reason));
+  }
 
   const now = new Date().toISOString();
 

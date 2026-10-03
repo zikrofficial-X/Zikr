@@ -56,6 +56,8 @@ export default async function AdminReleasePage({
       ? params.tag
       : null;
 
+  const releaseError = typeof params.android_release_error === "string" ? params.android_release_error.slice(0, 300) : null;
+
   const branch = process.env.VERCEL_GIT_COMMIT_REF ?? "غير متاح";
   const commit = process.env.VERCEL_GIT_COMMIT_SHA ?? "غير متاح خارج Vercel";
 
@@ -70,6 +72,12 @@ export default async function AdminReleasePage({
           يترك CircleCI يبني APK/AAB ويحقق التوقيع وSHA-256 قبل نشر الـRelease.
         </p>
       </header>
+
+      {releaseError ? (
+        <section role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/5 p-5 text-sm leading-7 text-red-200">
+          تعذر إنشاء إصدار Android: {releaseError}
+        </section>
+      ) : null}
 
       {startedTag ? (
         <section className="rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-5">
