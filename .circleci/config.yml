@@ -411,8 +411,12 @@ jobs:
             test -n "$APKSIGNER"
             test -n "$APKANALYZER"
             "$APKSIGNER" verify --verbose "$APK"
-            jarsigner -verify "$AAB" >/tmp/aab-signature-check.txt 2>&1
-            grep -E "jar verified" /tmp/aab-signature-check.txt
+            if ! jarsigner -verify "$AAB" >/tmp/aab-signature-check.txt 2>&1; then
+              cat /tmp/aab-signature-check.txt
+              echo "AAB JAR signature verification failed." >&2
+              exit 1
+            fi
+            cat /tmp/aab-signature-check.txt
             "$APKANALYZER" manifest application-id "$APK" | grep -Fx 'com.zikr.app'
             "$APKANALYZER" manifest version-name "$APK" | grep -Fx "${ANDROID_RELEASE_TAG#v}"
             "$APKANALYZER" manifest target-sdk "$APK" | grep -Fx '36'
