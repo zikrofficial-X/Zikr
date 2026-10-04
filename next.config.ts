@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   poweredByHeader: false,
+  outputFileTracingExcludes: {
+    '/*': ['./.env.local', './.env.*.local'],
+  },
   compress: true,
   images: {
     unoptimized: false,

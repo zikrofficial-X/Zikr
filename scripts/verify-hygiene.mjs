@@ -118,6 +118,23 @@ function scanLayoutEscapes(relativeDir) {
 
 scanLayoutEscapes('src/components/layout');
 
+const nextConfig = read('next.config.ts');
+const requiredTraceExclusions = [
+  'outputFileTracingExcludes:',
+  "'/*'",
+  "'./.env.local'",
+  "'./.env.*.local'",
+];
+if (requiredTraceExclusions.some((entry) => !nextConfig.includes(entry))) {
+  fail('Next.js output tracing must exclude local environment files from all route traces.');
+}
+const vercelIgnorePatterns = new Set(read('.vercelignore').split(/\r?\n/).map((line) => line.trim()));
+for (const pattern of ['.env.local', '.env.*.local']) {
+  if (!vercelIgnorePatterns.has(pattern)) {
+    fail(`Local environment files must remain excluded from Vercel uploads: ${pattern}`);
+  }
+}
+
 for (const legacyDir of ['app', 'pages', 'src/hooks']) {
   if (existsSync(path.join(root, legacyDir))) fail(`Legacy runtime directory must not exist: ${legacyDir}`);
 }

@@ -496,6 +496,14 @@ jobs:
             rm -f "$CIRCLE_WORKING_DIRECTORY/.circleci-signing/zikr-release.keystore"
 
 workflows:
+  main-source-verification:
+    jobs:
+      - ci-check:
+          filters:
+            branches:
+              only:
+                - main
+
   build-and-release:
     when: << pipeline.parameters.run_circleci_ci >>
     jobs:
