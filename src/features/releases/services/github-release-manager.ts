@@ -249,6 +249,18 @@ export async function prepareAndroidRelease() {
     "release: update Android metadata " + tag,
   );
 
+  const footerFile = await getTextFile("src/components/layout/footer.tsx");
+  const nextFooter = footerFile.content.replace(
+    /const APP_VERSION = "[^"]+";/,
+    'const APP_VERSION = "' + nextVersion + '";',
+  );
+  await upsertTextFile(
+    "src/components/layout/footer.tsx",
+    nextFooter,
+    footerFile.sha,
+    "release: align footer version with " + tag,
+  );
+
   const releaseTagFile = await getTextFile(".release-tag");
   await upsertTextFile(
     ".release-tag",
