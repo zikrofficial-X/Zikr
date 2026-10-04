@@ -2,6 +2,8 @@ name: Publish Android Release Assets
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*.*.*'
 
@@ -15,11 +17,25 @@ concurrency:
 jobs:
   publish:
     name: Verify and publish Android release
+    if: startsWith(github.ref, 'refs/tags/v') || hashFiles('docs/finalization/RELEASE_RETRY.flag') != ''
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}
-      SUPABASE_PUBLIC_BASE: https://kdotmrjfecgafiommzwz.supabase.co/storage/v1/object/public/android-releases/android/${{ github.ref_name }}
+      SUPABASE_PUBLIC_ROOT: https://kdotmrjfecgafiommzwz.supabase.co/storage/v1/object/public/android-releases/android
     steps:
+      - name: Resolve release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            TAG="${TAG}"
+          else
+            TAG="$(tr -d '\r\n' < .release-tag)"
+          fi
+          test "$TAG" = "v1.1.2"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "SUPABASE_PUBLIC_BASE=${SUPABASE_PUBLIC_ROOT}/${TAG}" >> "$GITHUB_ENV"
+
       - name: Checkout tagged source
         uses: actions/checkout@v4
 
@@ -54,7 +70,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${TAG}"
           VERSION="${TAG#v}"
           test "$(jq -r .tag release-metadata.json)" = "$TAG"
           test "$(jq -r .version release-metadata.json)" = "$VERSION"
@@ -94,7 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 30); do
-            if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
               exit 0
             fi
             echo "Waiting for release draft (attempt $attempt/30)..."
@@ -107,6 +123,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh release upload "$GITHUB_REF_NAME"             app-release.apk             app-release.aab             SHA256SUMS             release-metadata.json             --repo "$GITHUB_REPOSITORY"             --clobber
-          gh release edit "$GITHUB_REF_NAME"             --repo "$GITHUB_REPOSITORY"             --draft=false             --prerelease=false             --latest=true
-          echo "Published Android release $GITHUB_REF_NAME."
+          gh release upload "$TAG"             app-release.apk             app-release.aab             SHA256SUMS             release-metadata.json             --repo "$GITHUB_REPOSITORY"             --clobber
+          gh release edit "$TAG"             --repo "$GITHUB_REPOSITORY"             --draft=false             --prerelease=false             --latest=true
+          echo "Published Android release $TAG."
