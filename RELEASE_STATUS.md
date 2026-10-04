@@ -1,5 +1,10 @@
 # ZIKR Project Release & Build Status
 
+> **Update 2026-10-04:** v1.1.2 is published (APK, AAB, SHA256SUMS, release-metadata.json). The one-off recovery workflows
+> `build-publish-android.yml`, `trigger-circleci-android-release.yml` and `android-release-diagnostic.yml`, and the
+> `RELEASE_RETRY.flag`, were removed because they were hardcoded to v1.1.2. Sections below that mention them are historical.
+
+
 **Last Updated:** 2026-10-04T14:00:00Z  
 **Current Release:** v1.1.2  
 **Status:** ✅ STABLE & PRODUCTION READY
