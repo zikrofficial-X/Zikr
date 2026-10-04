@@ -251,11 +251,12 @@ jobs:
             REQUIRED_VARS=(
               NEXT_PUBLIC_SUPABASE_URL
               NEXT_PUBLIC_SUPABASE_ANON_KEY
+              SUPABASE_URL
+              SUPABASE_SERVICE_ROLE_KEY
               ANDROID_KEYSTORE_BASE64
               ANDROID_KEYSTORE_PASSWORD
               ANDROID_KEY_ALIAS
               ANDROID_KEY_PASSWORD
-              GH_TOKEN
             )
             for name in "${REQUIRED_VARS[@]}"; do
               if [[ -z "${!name:-}" ]]; then
@@ -423,73 +424,103 @@ jobs:
             sha256sum "$APK" "$AAB" > SHA256SUMS
             cat SHA256SUMS
       - run:
-          name: Install GitHub CLI
+          name: Upload verified Android assets to Supabase Storage
           shell: /bin/bash
           command: |
             set -euo pipefail
-            if command -v gh >/dev/null 2>&1; then
-              gh --version
-              exit 0
-            fi
-            sudo apt-get update
-            sudo apt-get install -y curl
-            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
-            sudo apt-get update
-            sudo apt-get install -y gh
-            gh --version
-      - run:
-          name: Verify GitHub CLI authentication
-          shell: /bin/bash
-          command: |
-            set -euo pipefail
-            if [[ -z "${GH_TOKEN:-}" ]]; then
-              echo "GH_TOKEN is missing from CircleCI environment." >&2
-              exit 1
-            fi
-            gh auth status
-      - run:
-          name: Publish Android release assets
-          shell: /bin/bash
-          command: |
-            set -euo pipefail
-            REPO="zikr-org/Zikr"
             RELEASE_TAG="$ANDROID_RELEASE_TAG"
             APK="android/app/build/outputs/apk/release/app-release.apk"
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
-            test -s "$APK"
-            test -s "$AAB"
+            SHA_FILE="SHA256SUMS"
 
-            if ! gh api "/repos/$REPO/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
-              echo "Creating missing lightweight tag $RELEASE_TAG at $CIRCLE_SHA1 via GitHub API"
-              gh api \
-                --method POST \
-                "/repos/$REPO/git/refs" \
-                -f "ref=refs/tags/$RELEASE_TAG" \
-                -f "sha=$CIRCLE_SHA1"
+            SUPABASE_URL="${SUPABASE_URL%/}"
+            BUCKET="android-releases"
+            BASE_PATH="android/${RELEASE_TAG}"
+            STORAGE_API="${SUPABASE_URL}/storage/v1/object"
+            PUBLIC_BASE="${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${BASE_PATH}"
+
+            upload_object() {
+              local file_path="$1"
+              local object_path="$2"
+              local mime_type="$3"
+              curl --fail --silent --show-error --location \
+                --request POST "${STORAGE_API}/${BUCKET}/${object_path}" \
+                --header "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+                --header "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+                --header "x-upsert: true" \
+                --header "Content-Type: ${mime_type}" \
+                --data-binary "@${file_path}" >/dev/null
+            }
+
+            APK_SHA="$(sha256sum "$APK" | awk '{print $1}')"
+            AAB_SHA="$(sha256sum "$AAB" | awk '{print $1}')"
+            VERSION_NAME="$(sed -n 's/.*versionName \"\([^\"]*\)\".*/\1/p' android/app/build.gradle | head -1)"
+            APKANALYZER="$(find "$ANDROID_HOME" -type f -name apkanalyzer 2>/dev/null | sort -V | tail -1)"
+            if [[ -n "$APKANALYZER" ]]; then
+              VERSION_CODE="$("$APKANALYZER" manifest version-code "$APK")"
             else
-              echo "Tag $RELEASE_TAG already exists."
+              VERSION_CODE="56"
             fi
 
-            if ! gh release view "$RELEASE_TAG" --repo "$REPO" >/dev/null 2>&1; then
-              echo "Creating fallback draft release because no admin-created draft was found."
-              gh release create "$RELEASE_TAG" --repo "$REPO" --verify-tag --draft --generate-notes --title "ZIKR $RELEASE_TAG"
-            fi
+            upload_object "$APK" "${BASE_PATH}/app-release.apk" "application/vnd.android.package-archive"
+            upload_object "$AAB" "${BASE_PATH}/app-release.aab" "application/octet-stream"
+            upload_object "$SHA_FILE" "${BASE_PATH}/SHA256SUMS" "text/plain"
 
-            gh release upload "$RELEASE_TAG" "$APK" "$AAB" SHA256SUMS --repo "$REPO" --clobber
+            cat > /tmp/release-metadata.json <<EOF
+            {
+              "tag": "${RELEASE_TAG}",
+              "version": "${VERSION_NAME}",
+              "versionCode": ${VERSION_CODE},
+              "applicationId": "com.zikr.app",
+              "targetSdk": 36,
+              "sourceCommit": "${CIRCLE_SHA1}",
+              "apkSha256": "${APK_SHA}",
+              "aabSha256": "${AAB_SHA}",
+              "apkUrl": "${PUBLIC_BASE}/app-release.apk",
+              "aabUrl": "${PUBLIC_BASE}/app-release.aab",
+              "sha256Url": "${PUBLIC_BASE}/SHA256SUMS"
+            }
+            EOF
 
-            assets="$(gh release view "$RELEASE_TAG" --repo "$REPO" --json assets --jq '[.assets[].name] | join("\n")')"
-            echo "$assets"
-            for asset in "$(basename "$APK")" "$(basename "$AAB")" "SHA256SUMS"; do
-              echo "$assets" | grep -Fx "$asset" >/dev/null || {
-                echo "Missing release asset: $asset" >&2
-                exit 1
+            upload_object /tmp/release-metadata.json "${BASE_PATH}/release-metadata.json" "application/json"
+
+            curl --fail --silent --show-error --location "${PUBLIC_BASE}/app-release.apk" -o /tmp/verified-app-release.apk
+            curl --fail --silent --show-error --location "${PUBLIC_BASE}/app-release.aab" -o /tmp/verified-app-release.aab
+            test "$(sha256sum /tmp/verified-app-release.apk | awk '{print $1}')" = "${APK_SHA}"
+            test "$(sha256sum /tmp/verified-app-release.aab | awk '{print $1}')" = "${AAB_SHA}"
+
+            cat > /tmp/site-setting.json <<EOF
+            {
+              "key": "android_release",
+              "value": {
+                "mode": "github-supabase",
+                "status": "assets_ready",
+                "releaseTag": "${RELEASE_TAG}",
+                "version": "${VERSION_NAME}",
+                "versionCode": ${VERSION_CODE},
+                "applicationId": "com.zikr.app",
+                "targetSdk": 36,
+                "sourceCommit": "${CIRCLE_SHA1}",
+                "releaseUrl": "https://github.com/zikr-org/Zikr/releases/tag/${RELEASE_TAG}",
+                "apkUrl": "${PUBLIC_BASE}/app-release.apk",
+                "aabUrl": "${PUBLIC_BASE}/app-release.aab",
+                "sha256Url": "${PUBLIC_BASE}/SHA256SUMS",
+                "metadataUrl": "${PUBLIC_BASE}/release-metadata.json",
+                "apkSha256": "${APK_SHA}",
+                "aabSha256": "${AAB_SHA}"
               }
-            done
+            }
+            EOF
 
-            gh release edit "$RELEASE_TAG" --repo "$REPO" --draft=false
-            echo "Android release published successfully: $RELEASE_TAG"
+            curl --fail --silent --show-error --location \
+              --request PATCH "${SUPABASE_URL}/rest/v1/site_settings?key=eq.android_release" \
+              --header "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+              --header "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+              --header "Content-Type: application/json" \
+              --header "Prefer: return=minimal" \
+              --data-binary @/tmp/site-setting.json >/dev/null
+
+            echo "Supabase Android release assets uploaded and checksum-verified."
       - run:
           name: Remove signing material
           when: always
