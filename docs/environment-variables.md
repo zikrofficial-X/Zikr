@@ -165,7 +165,8 @@ The repository contains a `sync-youtube-facebook` function source, but it is not
 Current production roles:
 
 - `quality-gate.yml`: verification only
-- `release-vercel.yml`: manual production Vercel release
+- `release-vercel.yml`: manual post-deploy verification of the live production site (home, robots.txt, sitemap.xml); it does not deploy
+- `release-finalization.yml`: controlled production deployment through the Vercel CLI (needs a valid `VERCEL_TOKEN` for team `zikr1`)
 - `generate-ai-video.yml`: scheduled video generation + social publishing
 - `supabase-production-health.yml`: public Supabase health probe
 

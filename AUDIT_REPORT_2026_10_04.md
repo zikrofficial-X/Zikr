@@ -546,3 +546,18 @@ Copy from .env.example and fill in Supabase/Google credentials
 ---
 
 **Generated:** October 4, 2026 | **Repository:** zikr-org/Zikr
+
+---
+
+## Addendum — verification of the findings (2026-10-04)
+
+Each critical finding was checked against the repository and live CI history before changing anything.
+
+| Finding | Result | Action |
+|---|---|---|
+| Dated `ZIKR_ADMIN_RELEASE_20261002` condition in `release-vercel.yml` | Confirmed. It could only match commits carrying that marker, and the trigger produced a skipped run after every Quality Gate (25 skipped runs in the last 100). | Removed the `workflow_run` trigger. The workflow is manual (`workflow_dispatch`, input `RELEASE`) only. |
+| "Delete `release-vercel.yml`, keep `release-finalization.yml`" | Not adopted. `release-finalization.yml` uses the Vercel CLI path whose "Link exact Vercel project" step failed on 2026-10-02/03, so it is not proven to be working. `release-vercel.yml` is the only post-deploy site verification. | Both kept; roles documented in `docs/controlled-release.md`. |
+| Video worker race condition / missing concurrency | Not confirmed. `generate-ai-video.yml` already has `concurrency` group `zikr-autonomous-video-worker` with `cancel-in-progress: false`, so runs queue instead of overlapping. | None needed. |
+| `verify-hygiene.mjs` "stale tokens" | Not a defect. The list is a deny-list of leaked credential prefixes that must never be committed. | None needed. |
+| Capacitor CLI 8.5.1 vs runtime 7.4.3 listed as "properly pinned" | Disputed. Mixed major versions are a known risk and the project's own finalization notes defer the native migration. | Left unchanged; requires an Android/iOS build to validate. |
+| Duplicated release documentation | Confirmed: `docs/controlled-release.md` described a CLI-based `release-vercel.yml` that no longer exists. | Corrected. |

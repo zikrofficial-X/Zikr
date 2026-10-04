@@ -39,3 +39,11 @@ These are CI secrets and must never be committed to the repository.
 ## Important
 
 The current GitHub connector does not expose branch-protection or ruleset write operations for this private repository. The quality workflow is implemented, but making its checks formally required for merging must be completed in GitHub Repository Settings once those controls are available.
+
+## Current release mechanics (verified 2026-10-04)
+
+- `vercel.json` sets `git.deploymentEnabled=false`, so a push never deploys by itself.
+- `release-finalization.yml` deploys with the Vercel CLI (`VERCEL_TOKEN`, team `team_hjit6v49jMgWo0GImI1tqCUj`, project `prj_JAsYThJCoUT3DzPxOU2EdmuwxiV5`). Runs on 2026-10-02/03 failed at the "Link exact Vercel project" step; if that happens again, check that `VERCEL_TOKEN` belongs to a member of the `zikr1` team.
+- Fallback that has worked: create a production deployment from the exact `main` commit through the Vercel API/dashboard (`gitSource`: org `zikr-org`, repo `Zikr`, ref `main`, sha = release commit).
+- `release-vercel.yml` (manual, input `RELEASE`) only verifies the live site after a deployment. It has no automatic trigger.
+- Quality Gate and Supabase Production Health must be green on the release commit before deploying.
