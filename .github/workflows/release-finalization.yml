@@ -84,13 +84,29 @@ jobs:
           test -n "${VERCEL_ORG_ID:-}"
           test -n "${VERCEL_PROJECT_ID:-}"
 
-      - name: Link exact Vercel project
+      - name: Authenticate and link exact Vercel project
+        shell: bash
         run: |
-          rm -rf .vercel
-          vercel link --yes --project="${VERCEL_PROJECT_ID}" --scope="${VERCEL_ORG_ID}" --token="${VERCEL_TOKEN}"
+          set -uo pipefail
+          # Fail with a readable annotation instead of a bare "exit code 1".
+          if ! who="$(vercel whoami --token "${VERCEL_TOKEN}" 2>&1)"; then
+            echo "::error title=Vercel token rejected::$(printf '%s' "$who" | tail -n 3 | tr '\n' ' ' | cut -c1-300)"
+            exit 1
+          fi
+          echo "Authenticated to Vercel as: ${who}"
+          # Pin the project through project.json (orgId = team id) so no slug/scope lookup is needed.
+          rm -rf .vercel && mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "${VERCEL_ORG_ID}" "${VERCEL_PROJECT_ID}" > .vercel/project.json
 
       - name: Pull production Vercel configuration
-        run: vercel pull --yes --environment=production --token="${VERCEL_TOKEN}"
+        shell: bash
+        run: |
+          set -uo pipefail
+          if ! out="$(vercel pull --yes --environment=production --token="${VERCEL_TOKEN}" 2>&1)"; then
+            echo "::error title=vercel pull failed::$(printf '%s' "$out" | tail -n 4 | tr '\n' ' ' | cut -c1-350)"
+            exit 1
+          fi
+          printf '%s\n' "$out" | tail -n 3
 
       - name: Build production artifact
         run: vercel build --prod --token="${VERCEL_TOKEN}"
