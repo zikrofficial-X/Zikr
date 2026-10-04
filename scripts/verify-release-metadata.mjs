@@ -22,6 +22,7 @@ const androidBuild = read("android/app/build.gradle");
 const iosProject = read("ios/App/App.xcodeproj/project.pbxproj");
 const iosInfoPlist = read("ios/App/App/Info.plist");
 const releaseNotes = read(`docs/releases/${version}.md`);
+const footerSource = read("src/components/layout/footer.tsx");
 
 const iosMarketingVersions = [...iosProject.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map((match) => match[1].trim());
 const iosProjectVersions = [...iosProject.matchAll(/CURRENT_PROJECT_VERSION = ([^;]+);/g)].map((match) => match[1].trim());
@@ -29,9 +30,11 @@ const iosShortVersion = iosInfoPlist.match(/<key>CFBundleShortVersionString<\/ke
 const iosBundleVersion = iosInfoPlist.match(/<key>CFBundleVersion<\/key>\s*<string>([^<]+)<\/string>/)?.[1];
 
 const androidVariables = read("android/variables.gradle");
+const footerVersion = footerSource.match(/const APP_VERSION = "([^"]+)";/)?.[1];
 
 if (!/^\d+\.\d+\.\d+$/.test(version)) fail("package.json version must be a semantic release version");
 if (releaseTag !== `v${version}`) fail(`release tag must be v${version}`);
+if (footerVersion !== version) fail(`src/components/layout/footer.tsx APP_VERSION must be ${version}`);
 
 if (releaseNotes) {
   const releaseHeadings = [...releaseNotes.matchAll(/^# ZIKR Android v(\d+\.\d+\.\d+)\s*$/gm)].map((match) => match[1]);
