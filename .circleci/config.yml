@@ -358,6 +358,8 @@ jobs:
             fi
             if [[ "${CIRCLE_TAG:-}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
               RELEASE_TAG="$CIRCLE_TAG"
+            elif [[ "${CIRCLE_TAG:-}" == "v1.1.2-build" ]]; then
+              RELEASE_TAG="v1.1.2"
             elif [[ "${CIRCLE_BRANCH:-}" =~ ^android-release-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
               RELEASE_TAG="v${BASH_REMATCH[1]}"
             else
@@ -582,6 +584,31 @@ workflows:
               ignore: /.*/
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+
+  android-release-on-build-tag:
+    jobs:
+      - ci-check:
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v1\.1\.2-build$/
+      - supabase-production-gate:
+          requires:
+            - ci-check
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v1\.1\.2-build$/
+      - android-rebuild:
+          requires:
+            - ci-check
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v1\.1\.2-build$/
 
   manual-background-processing:
     when: << pipeline.parameters.run_background_jobs >>
