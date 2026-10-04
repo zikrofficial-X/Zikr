@@ -10,9 +10,14 @@ permissions:
   contents: read
   actions: write
 
+concurrency:
+  group: zikr-urgent-video-dispatcher
+  cancel-in-progress: true
+
 jobs:
   dispatch:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
@@ -27,9 +32,9 @@ jobs:
           test -n "${SUPABASE_URL:-}" || { echo "Missing SUPABASE_URL secret." >&2; exit 1; }
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "Missing SUPABASE_SERVICE_ROLE_KEY secret." >&2; exit 1; }
 
-          response="$(curl -fsS \
-            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          response="$(curl -fsS \\
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \\
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \\
             "$SUPABASE_URL/rest/v1/admin_settings?key=eq.video_automation_run_now&select=key,value&limit=1")"
 
           request_type="$(jq -r 'if length == 0 then "none" elif (.[0].value | type) == "object" then "object" elif (.[0].value | type) == "string" then "string" else "none" end' <<<"$response")"
@@ -57,10 +62,10 @@ jobs:
             fi
           fi
 
-          batch_size="$(curl -fsS \
-            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-            "$SUPABASE_URL/rest/v1/admin_settings?key=eq.video_automation_batch_size&select=value&limit=1" \
+          batch_size="$(curl -fsS \\
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \\
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \\
+            "$SUPABASE_URL/rest/v1/admin_settings?key=eq.video_automation_batch_size&select=value&limit=1" \\
             | jq -r 'if length == 0 then "1" elif (.[0].value|type)=="number" then (.[0].value|tostring) elif (.[0].value|type)=="string" then .[0].value else "1" end')"
           if ! [[ "$batch_size" =~ ^[0-9]+$ ]]; then batch_size="1"; fi
           if (( batch_size < 1 )); then batch_size="1"; fi
@@ -69,31 +74,31 @@ jobs:
           current_value="$(jq -c '.[0].value | if type == "object" then . else {requestedAt: .} end' <<<"$response")"
           claimed_value="$(jq -c --arg now "$now_iso" '.dispatchedAt=$now' <<<"$current_value")"
 
-          curl -fsS -X PATCH \
-            -H "Content-Type: application/json" \
-            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Prefer: return=minimal" \
-            "$SUPABASE_URL/rest/v1/admin_settings?key=eq.video_automation_run_now" \
-            --data "{\"value\":$claimed_value,\"updated_at\":\"$now_iso\"}" >/dev/null
+          curl -fsS -X PATCH \\
+            -H "Content-Type: application/json" \\
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \\
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \\
+            -H "Prefer: return=minimal" \\
+            "$SUPABASE_URL/rest/v1/admin_settings?key=eq.video_automation_run_now" \\
+            --data "{\\"value\\":$claimed_value,\\"updated_at\\":\\"$now_iso\\"}" >/dev/null
 
           dispatch_payload="$(jq -nc --arg batch "$batch_size" '{ref:"main",inputs:{batch_size:$batch,urgent:"true"}}')"
-          if curl -fsS -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/generate-ai-video.yml/dispatches" \
+          if curl -fsS -X POST \\
+            -H "Accept: application/vnd.github+json" \\
+            -H "Authorization: Bearer $GITHUB_TOKEN" \\
+            -H "X-GitHub-Api-Version: 2022-11-28" \\
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/generate-ai-video.yml/dispatches" \\
             --data "$dispatch_payload" >/dev/null; then
             echo "Dispatched urgent video worker for request $requested_at with batch_size=$batch_size."
           else
             reset_value="$(jq -c 'del(.dispatchedAt)' <<<"$claimed_value")"
-            curl -fsS -X PATCH \
-              -H "Content-Type: application/json" \
-              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-              -H "Prefer: return=minimal" \
-              "$SUPABASE_URL/rest/v1/admin_settings?key=eq.video_automation_run_now" \
-              --data "{\"value\":$reset_value,\"updated_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" >/dev/null || true
+            curl -fsS -X PATCH \\
+              -H "Content-Type: application/json" \\
+              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \\
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \\
+              -H "Prefer: return=minimal" \\
+              "$SUPABASE_URL/rest/v1/admin_settings?key=eq.video_automation_run_now" \\
+              --data "{\\"value\\":$reset_value,\\"updated_at\\":\\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\"}" >/dev/null || true
             echo "GitHub workflow dispatch failed; request was returned to the waiting state." >&2
             exit 1
           fi

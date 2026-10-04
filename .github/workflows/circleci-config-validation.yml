@@ -1,0 +1,46 @@
+name: CircleCI Config Validation
+
+on:
+  pull_request:
+    paths:
+      - ".circleci/config.yml"
+      - ".github/workflows/circleci-config-validation.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".circleci/config.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-circleci-config-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate CircleCI configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install CircleCI CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -1sLf 'https://packages.circleci.com/public/setup.deb.sh' | sudo -E bash
+          sudo apt-get install -y circleci
+          circleci --version
+
+      - name: Validate CircleCI config
+        shell: bash
+        run: |
+          set -euo pipefail
+          circleci config validate .circleci/config.yml
+          circleci config process .circleci/config.yml >/tmp/circleci-expanded.yml
+          test -s /tmp/circleci-expanded.yml
+          echo "CircleCI config validation: PASS"

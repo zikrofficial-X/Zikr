@@ -468,7 +468,7 @@ jobs:
             upload_object "$AAB" "${BASE_PATH}/app-release.aab" "application/octet-stream"
             upload_object "$SHA_FILE" "${BASE_PATH}/SHA256SUMS" "text/plain"
 
-            cat > /tmp/release-metadata.json <<EOF
+            cat > /tmp/release-metadata.json \<<EOF
             {
               "tag": "${RELEASE_TAG}",
               "version": "${VERSION_NAME}",
@@ -491,7 +491,7 @@ jobs:
             test "$(sha256sum /tmp/verified-app-release.apk | awk '{print $1}')" = "${APK_SHA}"
             test "$(sha256sum /tmp/verified-app-release.aab | awk '{print $1}')" = "${AAB_SHA}"
 
-            cat > /tmp/site-setting.json <<EOF
+            cat > /tmp/site-setting.json \<<EOF
             {
               "key": "android_release",
               "value": {

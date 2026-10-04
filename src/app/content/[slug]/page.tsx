@@ -4,13 +4,12 @@ import Link from "next/link";
 import {
   getPrimaryContentSource,
   getPublicContentBySlug,
-  getPublicContentLibrary,
 } from "@/features/content-library/services/content-library";
 import { pageMetadata } from "@/lib/site";
 import type { Metadata } from "next";
 import { getRequestLocale } from "@/lib/i18n/server";
 
-export const revalidate = 1800;
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -26,15 +25,12 @@ export async function generateMetadata({
     title: item?.title || (isEnglish ? "Content" : "محتوى"),
     description:
       item?.summary?.slice(0, 160) ??
-      (isEnglish ? "Published material from the ZIKR Islamic library." : "مادة منشورة ضمن مكتبة ذِكر الإسلامية."),
+      (isEnglish
+        ? "Published material from the ZIKR Islamic library."
+        : "مادة منشورة ضمن مكتبة ذِكر الإسلامية."),
     path: `/content/${slug}`,
     noindex: !item,
   });
-}
-
-export async function generateStaticParams() {
-  const items = await getPublicContentLibrary(100);
-  return items.map((item) => ({ slug: item.slug }));
 }
 
 export default async function ContentDetails({
@@ -51,15 +47,21 @@ export default async function ContentDetails({
 
   const source = getPrimaryContentSource(item.content_sources);
   const publishedDate = item.published_at
-    ? new Date(item.published_at).toLocaleDateString(isEnglish ? "en-US" : "ar-EG", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+    ? new Date(item.published_at).toLocaleDateString(
+        isEnglish ? "en-US" : "ar-EG",
+        {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        },
+      )
     : null;
 
   return (
-    <main className="min-h-screen bg-brand-emeraldDeep text-brand-cream" dir={isEnglish ? "ltr" : "rtl"}>
+    <main
+      className="min-h-screen bg-brand-emeraldDeep text-brand-cream"
+      dir={isEnglish ? "ltr" : "rtl"}
+    >
       <article className="mx-auto max-w-4xl px-4 py-12 md:px-8">
         <Link
           href="/library"
@@ -84,7 +86,11 @@ export default async function ContentDetails({
                 : `المؤلف: ${item.author}`
               : ""}
             {item.author && publishedDate ? " · " : ""}
-            {publishedDate ? (isEnglish ? `Published ${publishedDate}` : `نُشر ${publishedDate}`) : ""}
+            {publishedDate
+              ? isEnglish
+                ? `Published ${publishedDate}`
+                : `نُشر ${publishedDate}`
+              : ""}
           </div>
         )}
 
@@ -100,7 +106,9 @@ export default async function ContentDetails({
           </div>
         ) : (
           <div className="mt-10 rounded-2xl border border-brand-gold/10 bg-black/15 p-6 text-brand-cream/55">
-            {isEnglish ? "A full published text is not currently available in this language." : "لا يتوفر نص كامل منشور لهذه المادة حاليًا."}
+            {isEnglish
+              ? "A full published text is not currently available in this language."
+              : "لا يتوفر نص كامل منشور لهذه المادة حاليًا."}
           </div>
         )}
 
@@ -119,7 +127,9 @@ export default async function ContentDetails({
 
         {source && (
           <section className="mt-10 rounded-2xl border border-brand-gold/15 bg-black/20 p-5">
-            <h2 className="font-bold text-brand-gold">{isEnglish ? "Source & verification" : "المصدر والتوثيق"}</h2>
+            <h2 className="font-bold text-brand-gold">
+              {isEnglish ? "Source & verification" : "المصدر والتوثيق"}
+            </h2>
             <p className="mt-2 text-sm leading-7 text-brand-cream/55">
               {isEnglish ? source.nameEn : source.nameAr}
               {source.reference ? ` · ${source.reference}` : ""}
