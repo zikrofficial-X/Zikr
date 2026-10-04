@@ -17,13 +17,29 @@ concurrency:
 jobs:
   publish:
     name: Verify and publish Android release
-    if: startsWith(github.ref, 'refs/tags/v') || hashFiles('docs/finalization/RELEASE_RETRY.flag') != ''
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}
       SUPABASE_PUBLIC_ROOT: https://kdotmrjfecgafiommzwz.supabase.co/storage/v1/object/public/android-releases/android
     steps:
+      - name: Checkout tagged/source release
+        uses: actions/checkout@v4
+
+      - name: Decide whether this is a release publish run
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          PUBLISH=false
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            PUBLISH=true
+          elif [[ -f docs/finalization/RELEASE_RETRY.flag ]]; then
+            PUBLISH=true
+          fi
+          echo "publish=${PUBLISH}" >> "$GITHUB_OUTPUT"
+
       - name: Resolve release tag
+        if: steps.gate.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -36,21 +52,21 @@ jobs:
           echo "TAG=$TAG" >> "$GITHUB_ENV"
           echo "SUPABASE_PUBLIC_BASE=${SUPABASE_PUBLIC_ROOT}/${TAG}" >> "$GITHUB_ENV"
 
-      - name: Checkout tagged source
-        uses: actions/checkout@v4
-
       - name: Install Android SDK
+        if: steps.gate.outputs.publish == 'true'
         uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
 
       - name: Install Java 21
+        if: steps.gate.outputs.publish == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Wait for Supabase Android artifacts
+        if: steps.gate.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -70,6 +86,7 @@ jobs:
           exit 1
 
       - name: Verify release metadata
+        if: steps.gate.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -82,6 +99,7 @@ jobs:
           grep -F "${TAG}" .release-tag
 
       - name: Verify checksums
+        if: steps.gate.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -90,6 +108,7 @@ jobs:
           test "$(jq -r .aabSha256 release-metadata.json)" = "$(sha256sum app-release.aab | awk '{print $1}')"
 
       - name: Verify APK signature and manifest
+        if: steps.gate.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -103,12 +122,14 @@ jobs:
           "$APKANALYZER" manifest target-sdk app-release.apk | grep -Fx '36'
 
       - name: Verify signed AAB
+        if: steps.gate.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
           jarsigner -verify app-release.aab
 
       - name: Ensure GitHub draft release exists
+        if: steps.gate.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -123,6 +144,7 @@ jobs:
           exit 1
 
       - name: Upload release assets and publish
+        if: steps.gate.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
