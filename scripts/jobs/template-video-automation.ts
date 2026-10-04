@@ -136,9 +136,6 @@ function resolveRenderDuration(audioDuration: number) {
 function dayIndex(date = new Date()) {
   return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 86400000);
 }
-function slotIndex(date = new Date()) {
-  return Math.floor(date.getUTCHours() / 6);
-}
 function wrapArabic(value: string, max = 30) {
   const words = value.trim().split(/\s+/).filter(Boolean);
   const lines: string[] = [];
@@ -295,12 +292,23 @@ async function findByAutomationKey(table: string, key: string) {
 export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   if (process.env.AUTO_VIDEO_ENABLED?.toLowerCase() === "false") return 0;
   const now = new Date();
-  const baseSlot = slotIndex(now);
+  const day = dayIndex(now);
   let created = 0;
 
-  for (let i = 0; i < Math.max(1, Math.min(10, batchSize)); i += 1) {
-    const slot = baseSlot + i;
-    const day = dayIndex(now);
+  // Daily quota: keys are unique per UTC day (kind:day:counter) so every run can create new
+  // videos, and the DAILY_VIDEO_TARGET is spread evenly across the day instead of bursting.
+  // Urgent admin "Run Now" requests bypass the pacing and use the requested batch size.
+  const todaysRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    `/rest/v1/video_generation_requests?automation_key=like.*:${day}:*&select=id&limit=1000`,
+  );
+  const alreadySeededToday = todaysRows?.length ?? 0;
+  const dailyTarget = Math.max(1, Number(process.env.DAILY_VIDEO_TARGET ?? 8) || 8);
+  const dueByNow = Math.ceil((dailyTarget * (now.getUTCHours() + 1)) / 24);
+  const urgent = process.env.AUTO_VIDEO_URGENT?.toLowerCase() === "true";
+  const allowed = urgent ? Math.min(10, batchSize) : Math.min(10, batchSize, Math.max(0, dueByNow - alreadySeededToday));
+
+  for (let i = 0; i < allowed; i += 1) {
+    const slot = alreadySeededToday + i;
     const mode = slot % 6;
 
     let payload: Record<string, unknown>;

@@ -57,6 +57,7 @@ jobs:
       AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '10' }}
       VIDEO_BACKGROUND_BATCH_SIZE: "1"
       DAILY_VIDEO_TARGET: "8"
+      AUTO_VIDEO_URGENT: ${{ inputs.urgent || 'false' }}
       VIDEO_DAILY_LIMIT: "24"
       VIDEO_AUTOMATION_DRY_RUN: "false"
       VIDEO_AI_ENABLED: "true"
