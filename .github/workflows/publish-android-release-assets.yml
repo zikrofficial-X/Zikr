@@ -1,0 +1,112 @@
+name: Publish Android Release Assets
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-publish-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify and publish Android release
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SUPABASE_PUBLIC_BASE: https://kdotmrjfecgafiommzwz.supabase.co/storage/v1/object/public/android-releases/android/${{ github.ref_name }}
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@v4
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
+
+      - name: Install Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Wait for Supabase Android artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if curl -fsSL "$SUPABASE_PUBLIC_BASE/release-metadata.json" -o release-metadata.json               && curl -fsSL "$SUPABASE_PUBLIC_BASE/app-release.apk" -o app-release.apk               && curl -fsSL "$SUPABASE_PUBLIC_BASE/app-release.aab" -o app-release.aab               && curl -fsSL "$SUPABASE_PUBLIC_BASE/SHA256SUMS" -o SHA256SUMS; then
+              echo "Android artifacts are available."
+              exit 0
+            fi
+            echo "Waiting for CircleCI/Supabase artifacts (attempt $attempt/60)..."
+            rm -f release-metadata.json app-release.apk app-release.aab SHA256SUMS
+            sleep 10
+          done
+          echo "Timed out waiting for Supabase Android artifacts." >&2
+          exit 1
+
+      - name: Verify release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          test "$(jq -r .tag release-metadata.json)" = "$TAG"
+          test "$(jq -r .version release-metadata.json)" = "$VERSION"
+          test "$(jq -r .applicationId release-metadata.json)" = "com.zikr.app"
+          test "$(jq -r .targetSdk release-metadata.json)" = "36"
+          grep -F "${TAG}" .release-tag
+
+      - name: Verify checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum -c SHA256SUMS
+          test "$(jq -r .apkSha256 release-metadata.json)" = "$(sha256sum app-release.apk | awk '{print $1}')"
+          test "$(jq -r .aabSha256 release-metadata.json)" = "$(sha256sum app-release.aab | awk '{print $1}')"
+
+      - name: Verify APK signature and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          APKANALYZER="$(find "$ANDROID_HOME" -type f -name apkanalyzer | sort -V | tail -1)"
+          test -n "$APKSIGNER"
+          test -n "$APKANALYZER"
+          "$APKSIGNER" verify --verbose app-release.apk
+          "$APKANALYZER" manifest application-id app-release.apk | grep -Fx 'com.zikr.app'
+          "$APKANALYZER" manifest version-name app-release.apk | grep -Fx "${GITHUB_REF_NAME#v}"
+          "$APKANALYZER" manifest target-sdk app-release.apk | grep -Fx '36'
+
+      - name: Verify signed AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          jarsigner -verify app-release.aab
+
+      - name: Ensure GitHub draft release exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              exit 0
+            fi
+            echo "Waiting for release draft (attempt $attempt/30)..."
+            sleep 5
+          done
+          echo "GitHub draft release not found." >&2
+          exit 1
+
+      - name: Upload release assets and publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "$GITHUB_REF_NAME"             app-release.apk             app-release.aab             SHA256SUMS             release-metadata.json             --repo "$GITHUB_REPOSITORY"             --clobber
+          gh release edit "$GITHUB_REF_NAME"             --repo "$GITHUB_REPOSITORY"             --draft=false             --prerelease=false             --latest=true
+          echo "Published Android release $GITHUB_REF_NAME."
