@@ -148,13 +148,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh release upload "$TAG" \
-            app-release.apk \
-            app-release.aab \
-            SHA256SUMS \
-            release-metadata.json \
-            --repo "$GITHUB_REPOSITORY" \
-            --clobber
+          existing_assets="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' 2>/dev/null || true)"
+
+          for asset in app-release.apk app-release.aab SHA256SUMS release-metadata.json; do
+            if printf '%s\n' "$existing_assets" | grep -Fxq "$asset"; then
+              echo "Asset already exists in release $TAG: $asset"
+              continue
+            fi
+            gh release upload "$TAG" "$asset" --repo "$GITHUB_REPOSITORY"
+          done
+
           gh release edit "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --draft=false \
