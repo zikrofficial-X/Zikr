@@ -164,7 +164,10 @@ export default async function AboutPage() {
             <div className="space-y-3">
               <h3 className="font-semibold text-brand-cream">متاح الآن وما بعده</h3>
               <ul className="space-y-2 text-sm text-brand-cream/60 list-inside">
-                <li className="flex items-start gap-2"><span className="text-brand-gold mt-0.5">◆</span> تطبيق Android — الإصدار 1.3.1 متاح حاليًا</li>
+                <li className="flex items-start gap-2">
+                  <span className="text-brand-gold mt-0.5" aria-hidden="true">◆</span>
+                  <span>تطبيق Android — نزّل الإصدار الرسمي المستقر من <Link href="/platform" className="text-brand-gold underline underline-offset-4">صفحة التنزيل</Link>.</span>
+                </li>
                 <li className="flex items-start gap-2"><span className="text-brand-gold mt-0.5">◆</span> تطبيق iOS — ضمن خطط التطوير القادمة</li>
                 <li className="flex items-start gap-2"><span className="text-brand-gold mt-0.5">◆</span> مزامنة التقدم بين الأجهزة وخطط حفظ مخصصة بالذكاء الاصطناعي</li>
               </ul>

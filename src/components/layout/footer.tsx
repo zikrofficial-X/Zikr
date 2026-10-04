@@ -164,7 +164,7 @@ export function Footer() {
                 variant="outline"
                 className="border-brand-gold/20 text-brand-gold/40 text-[10px]"
               >
-                Version {APP_VERSION}
+                {`Version ${APP_VERSION}`}
               </Badge>
             </li>
           </ul>
