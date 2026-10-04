@@ -19,12 +19,20 @@ concurrency:
 jobs:
   trigger:
     name: Trigger CircleCI v1.1.2
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, '[PRODUCTION RELEASE]') || hashFiles('docs/finalization/RELEASE_RETRY.flag') != ''
     runs-on: ubuntu-24.04
     env:
       CIRCLE_TOKEN: ${{ secrets.CIRCLE_TOKEN || secrets.CIRCLECI_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Release gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f docs/finalization/RELEASE_RETRY.flag && "${{ github.event_name }}" != "workflow_dispatch" ]]; then
+            echo "No release retry flag; nothing to trigger."
+            exit 0
+          fi
 
       - name: Resolve release tag
         shell: bash
