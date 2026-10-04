@@ -21,6 +21,7 @@ const packageVersionText = read("PACKAGE_VERSION.txt");
 const androidBuild = read("android/app/build.gradle");
 const iosProject = read("ios/App/App.xcodeproj/project.pbxproj");
 const iosInfoPlist = read("ios/App/App/Info.plist");
+const releaseNotes = read(`docs/releases/${version}.md`);
 
 const iosMarketingVersions = [...iosProject.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map((match) => match[1].trim());
 const iosProjectVersions = [...iosProject.matchAll(/CURRENT_PROJECT_VERSION = ([^;]+);/g)].map((match) => match[1].trim());
@@ -31,6 +32,13 @@ const androidVariables = read("android/variables.gradle");
 
 if (!/^\d+\.\d+\.\d+$/.test(version)) fail("package.json version must be a semantic release version");
 if (releaseTag !== `v${version}`) fail(`release tag must be v${version}`);
+
+if (releaseNotes) {
+  const releaseHeadings = [...releaseNotes.matchAll(/^# ZIKR Android v(\d+\.\d+\.\d+)\s*$/gm)].map((match) => match[1]);
+  if (releaseHeadings.length !== 1 || releaseHeadings[0] !== version) {
+    fail(`docs/releases/${version}.md must contain exactly one matching ZIKR Android release heading`);
+  }
+}
 
 const packageVersion = packageVersionText.match(/^ZIKR\s+v([^\r\n]+)\s*$/m)?.[1];
 const packageCode = packageVersionText.match(/^versionCode=(\d+)\s*$/m)?.[1];

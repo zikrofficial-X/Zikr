@@ -234,6 +234,7 @@ jobs:
       - image: cimg/android:2026.08.1-node
     resource_class: medium
     environment:
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       GRADLE_OPTS: >-
         -Dorg.gradle.daemon=false
         -Dorg.gradle.workers.max=1
@@ -242,6 +243,30 @@ jobs:
         -Dfile.encoding=UTF-8
     steps:
       - checkout
+      - run:
+          name: Validate Android release configuration
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            REQUIRED_VARS=(
+              NEXT_PUBLIC_SUPABASE_URL
+              NEXT_PUBLIC_SUPABASE_ANON_KEY
+              ANDROID_KEYSTORE_BASE64
+              ANDROID_KEYSTORE_PASSWORD
+              ANDROID_KEY_ALIAS
+              ANDROID_KEY_PASSWORD
+              GH_TOKEN
+            )
+            for name in "${REQUIRED_VARS[@]}"; do
+              if [[ -z "${!name:-}" ]]; then
+                echo "Missing required CircleCI Android release variable: ${name}" >&2
+                exit 1
+              fi
+            done
+            if [[ "$NEXT_PUBLIC_SUPABASE_URL" != "https://kdotmrjfecgafiommzwz.supabase.co" ]]; then
+              echo "NEXT_PUBLIC_SUPABASE_URL does not match the canonical ZIKR Supabase project." >&2
+              exit 1
+            fi
       - run:
           name: Enable pnpm
           shell: /bin/bash

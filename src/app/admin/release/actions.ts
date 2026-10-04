@@ -59,7 +59,7 @@ export async function createAndroidReleaseAction() {
         startedAt: now,
         startedBy: profile.id,
         note:
-          "Draft GitHub Release created. CircleCI will build, verify APK/AAB signatures, upload SHA256SUMS, then publish the release.",
+          "Draft GitHub Release created. Confirm the CircleCI tag pipeline starts (trigger it manually if absent); publish only after APK/AAB signatures and SHA256SUMS pass.",
       },
       updated_at: now,
     }),

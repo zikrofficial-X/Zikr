@@ -17,6 +17,9 @@ This document is the authoritative inventory for the current CircleCI recovery/C
 - `NEXT_PUBLIC_SITE_URL` — non-secret; pinned by the config.
 
 ### Required only for Android release
+- `NEXT_PUBLIC_SUPABASE_URL` — public URL of the canonical Supabase project; validated before the Android build.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — public browser/mobile client key required at build time; validated before the Android build.
+- `NEXT_PUBLIC_SITE_URL` — non-secret production origin, pinned by the `android-rebuild` job.
 - `ANDROID_KEYSTORE_BASE64` — secret/protected.
 - `ANDROID_KEYSTORE_PASSWORD` — secret/protected.
 - `ANDROID_KEY_ALIAS` — protected.

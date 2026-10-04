@@ -289,7 +289,7 @@ export async function prepareAndroidRelease() {
 
   await upsertTextFile(
     "docs/releases/" + nextVersion + ".md",
-    "# ZIKR Android v" + nextVersion + "\n\n" + notes + "\n",
+    notes + "\n",
     undefined,
     "docs: add Android release notes " + tag,
   );

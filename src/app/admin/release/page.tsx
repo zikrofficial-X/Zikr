@@ -55,6 +55,11 @@ export default async function AdminReleasePage({
     typeof params.tag === "string"
       ? params.tag
       : null;
+  const operationIsActive = Boolean(
+    operation?.status === "building" &&
+      operation.startedAt &&
+      Date.now() - Date.parse(operation.startedAt) < 6 * 60 * 60 * 1000,
+  );
 
   const releaseError = typeof params.android_release_error === "string" ? params.android_release_error.slice(0, 300) : null;
 
@@ -68,8 +73,9 @@ export default async function AdminReleasePage({
         <h1 className="mt-2 text-3xl font-bold text-brand-gold">مركز الإصدار</h1>
         <p className="mt-2 max-w-4xl text-sm leading-7 text-brand-cream/50">
           مركز واحد لإطلاق إصدار Android رسمي من أحدث نسخة على main. الزر ينشئ
-          version جديدًا، يحدّث metadata، ينشئ Git tag موثق وDraft Release، ثم
-          يترك CircleCI يبني APK/AAB ويحقق التوقيع وSHA-256 قبل نشر الـRelease.
+          version جديدًا، يحدّث metadata، وينشئ Git tag موثقًا وDraft Release.
+          يجب التأكد من ظهور pipeline الوسم في CircleCI؛ شغّله يدويًا إذا لم يبدأ تلقائيًا،
+          ولا تنشر الـRelease قبل نجاح فحوص APK/AAB والتوقيع وSHA-256.
         </p>
       </header>
 
@@ -84,8 +90,17 @@ export default async function AdminReleasePage({
           <h2 className="font-semibold text-emerald-300">تم إطلاق عملية الإصدار</h2>
           <p className="mt-2 text-sm leading-7 text-brand-cream/70">
             تم إنشاء <span className="font-mono text-brand-gold">{startedTag}</span> كـGit tag وإنشاء Draft Release.
-            يبدأ الآن بناء Android تلقائيًا من CircleCI، ولن يصبح الإصدار عامًا حتى تنجح فحوص APK/AAB.
+            تحقق من pipeline الخاص بالوسم في CircleCI؛ إذا لم يبدأ تلقائيًا فشغّله يدويًا.
+            سيظل الإصدار غير عام حتى تنجح فحوص APK/AAB.
           </p>
+          <a
+            href="https://app.circleci.com/pipelines/github/zikr-org/Zikr"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="mt-3 inline-flex text-sm text-brand-gold underline"
+          >
+            فتح pipelines في CircleCI
+          </a>
         </section>
       ) : null}
 
@@ -102,9 +117,9 @@ export default async function AdminReleasePage({
             <button
               type="submit"
               className="rounded-xl bg-brand-gold px-6 py-3 font-bold text-black hover:bg-brand-gold/90"
-              disabled={operation?.status === "building"}
+              disabled={operationIsActive}
             >
-              {operation?.status === "building" ? "يوجد إصدار قيد البناء" : "إطلاق أحدث نسخة Android"}
+              {operationIsActive ? "يوجد إصدار قيد البناء" : "إطلاق أحدث نسخة Android"}
             </button>
           </form>
         </div>
@@ -113,7 +128,7 @@ export default async function AdminReleasePage({
           <div className="rounded-xl border border-brand-gold/10 bg-black/10 p-4">
             <p className="text-xs text-brand-cream/35">حالة العملية</p>
             <p className="mt-2 font-semibold text-brand-cream/80">
-              {operation?.status === "building" ? "قيد بناء APK/AAB" : "جاهز لإطلاق إصدار جديد"}
+              {operationIsActive ? "قيد بناء APK/AAB" : "جاهز لإطلاق إصدار جديد"}
             </p>
           </div>
           <div className="rounded-xl border border-brand-gold/10 bg-black/10 p-4">
@@ -128,9 +143,9 @@ export default async function AdminReleasePage({
           </div>
         </div>
 
-        {operation?.status === "building" ? (
+        {operationIsActive ? (
           <div className="rounded-xl border border-sky-500/15 bg-sky-500/5 p-4 text-sm leading-7 text-sky-100/75">
-            {operation.note ?? "تم إنشاء الـDraft Release، والـCI مسؤول عن البناء والتحقق والنشر بعد نجاح الفحوص."}
+            {operation?.note ?? "تم إنشاء الـDraft Release، والـCI مسؤول عن البناء والتحقق والنشر بعد نجاح الفحوص."}
           </div>
         ) : null}
       </section>
