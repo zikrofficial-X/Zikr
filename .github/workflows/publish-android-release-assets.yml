@@ -28,7 +28,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            TAG="${TAG}"
+            TAG="${GITHUB_REF_NAME}"
           else
             TAG="$(tr -d '\r\n' < .release-tag)"
           fi
@@ -55,7 +55,10 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 60); do
-            if curl -fsSL "$SUPABASE_PUBLIC_BASE/release-metadata.json" -o release-metadata.json               && curl -fsSL "$SUPABASE_PUBLIC_BASE/app-release.apk" -o app-release.apk               && curl -fsSL "$SUPABASE_PUBLIC_BASE/app-release.aab" -o app-release.aab               && curl -fsSL "$SUPABASE_PUBLIC_BASE/SHA256SUMS" -o SHA256SUMS; then
+            if curl -fsSL "$SUPABASE_PUBLIC_BASE/release-metadata.json" -o release-metadata.json \
+              && curl -fsSL "$SUPABASE_PUBLIC_BASE/app-release.apk" -o app-release.apk \
+              && curl -fsSL "$SUPABASE_PUBLIC_BASE/app-release.aab" -o app-release.aab \
+              && curl -fsSL "$SUPABASE_PUBLIC_BASE/SHA256SUMS" -o SHA256SUMS; then
               echo "Android artifacts are available."
               exit 0
             fi
@@ -96,7 +99,7 @@ jobs:
           test -n "$APKANALYZER"
           "$APKSIGNER" verify --verbose app-release.apk
           "$APKANALYZER" manifest application-id app-release.apk | grep -Fx 'com.zikr.app'
-          "$APKANALYZER" manifest version-name app-release.apk | grep -Fx "${GITHUB_REF_NAME#v}"
+          "$APKANALYZER" manifest version-name app-release.apk | grep -Fx "${TAG#v}"
           "$APKANALYZER" manifest target-sdk app-release.apk | grep -Fx '36'
 
       - name: Verify signed AAB
@@ -123,6 +126,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh release upload "$TAG"             app-release.apk             app-release.aab             SHA256SUMS             release-metadata.json             --repo "$GITHUB_REPOSITORY"             --clobber
-          gh release edit "$TAG"             --repo "$GITHUB_REPOSITORY"             --draft=false             --prerelease=false             --latest=true
+          gh release upload "$TAG" \
+            app-release.apk \
+            app-release.aab \
+            SHA256SUMS \
+            release-metadata.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
+          gh release edit "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --prerelease=false \
+            --latest=true
           echo "Published Android release $TAG."
