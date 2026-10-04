@@ -11,9 +11,6 @@ on:
         description: "Stage or milestone being released"
         required: true
         type: string
-  workflow_run:
-    workflows: ["ZIKR Quality Gate"]
-    types: [completed]
 
 permissions:
   contents: read
@@ -26,17 +23,9 @@ jobs:
   verify:
     name: Verify Vercel Git production
     if: >-
-      (
-        github.event_name == 'workflow_dispatch' &&
-        github.ref == 'refs/heads/main' &&
-        inputs.confirmation == 'RELEASE'
-      ) ||
-      (
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_branch == 'main' &&
-        contains(github.event.workflow_run.head_commit.message, 'ZIKR_ADMIN_RELEASE_20261002')
-      )
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.confirmation == 'RELEASE'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -47,7 +36,7 @@ jobs:
       - name: Checkout exact release commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -104,8 +93,8 @@ jobs:
           {
             echo "## ZIKR Production Release"
             echo ""
-            echo "- Stage: ${{ github.event_name == 'workflow_run' && 'إصدار الإنتاج بعد بوابة الجودة' || inputs.release_reason }}"
-            echo "- Commit: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}"
+            echo "- Stage: ${{ inputs.release_reason }}"
+            echo "- Commit: ${{ github.sha }}"
             echo "- Deployment: Vercel Git integration"
             echo "- Quality gate: PASSED"
             echo "- Production smoke verification: PASSED"
