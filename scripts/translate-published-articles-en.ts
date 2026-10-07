@@ -5,49 +5,23 @@ const supabaseUrl = process.env.SUPABASE_URL?.trim();
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 const batchSize = Math.max(1, Math.min(10, Number(process.env.TRANSLATION_BATCH_SIZE ?? 5)));
 
-function getGeminiKeys(): string[] {
-  const keys: string[] = [];
-  const primary = process.env.GEMINI_API_KEY?.trim();
-  if (primary) keys.push(primary);
-  for (let i = 1; i <= 30; i++) {
-    const key = process.env[`GEMINI_API_KEY_${i}`]?.trim();
-    if (key && !keys.includes(key)) keys.push(key);
-  }
-  return keys;
-}
-
 async function generateGeminiTextForJob(prompt: string, maxOutputTokens = 6000): Promise<string | null> {
-  const keys = getGeminiKeys();
-  if (!keys.length) return null;
-
+  const key = process.env.GEMINI_API_KEY?.trim();
+  if (!key) return null;
   const configured = (process.env.GEMINI_MODEL?.replace(/^google\//, "").trim() || "gemini-3.1-flash-lite");
-  const models = [...new Set([configured, "gemini-3.5-flash-lite"])];
-
-  for (const key of keys) {
-    const client = new GoogleGenerativeAI(key);
-    for (const modelId of models) {
-      try {
-        const model = client.getGenerativeModel({
-          model: modelId,
-          generationConfig: {
-            temperature: 0.2,
-            topP: 0.9,
-            topK: 40,
-            maxOutputTokens,
-            responseMimeType: "application/json",
-          },
-        });
-        const result = await model.generateContent(prompt);
-        const text = result.response.text().trim();
-        if (text) return text;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.warn(`Gemini translation attempt failed on ${modelId}: ${message}`);
-      }
-    }
-  }
-
-  return null;
+  const client = new GoogleGenerativeAI(key);
+  const model = client.getGenerativeModel({
+    model: configured,
+    generationConfig: {
+      temperature: 0.2,
+      topP: 0.9,
+      topK: 40,
+      maxOutputTokens,
+      responseMimeType: "application/json",
+    },
+  });
+  const result = await model.generateContent(prompt);
+  return result.response.text().trim() || null;
 }
 
 if (!supabaseUrl || !serviceRoleKey) {
@@ -145,6 +119,7 @@ async function main() {
   console.log(`Found ${rows.length} published articles missing English fields.`);
 
   let generated = 0;
+  let failed = 0;
   for (const article of rows) {
     const sourceHash = hashSource(article);
     const [existing] = await supabase<Array<{ id: string; status: string }>>(
@@ -245,7 +220,9 @@ async function main() {
       generated += 1;
       console.log(`Generated English translation: ${article.id}`);
     } catch (error) {
+      failed += 1;
       console.error(`Translation failed for ${article.id}:`, error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const [queueRow] = await supabase<Array<{ id: string }>>(
         `/rest/v1/content_translation_queue?select=id&content_type=eq.article&content_id=eq.${encodeURIComponent(article.id)}&target_locale=eq.en&source_hash=eq.${sourceHash}&limit=1`,
       );
@@ -256,16 +233,23 @@ async function main() {
             method: "PATCH",
             body: JSON.stringify({
               status: "failed",
-              error_message: error instanceof Error ? error.message : String(error),
+              error_message: errorMessage,
               processed_at: new Date().toISOString(),
             }),
           },
         );
       }
+      if (/\b429\b|resource_exhausted|quota|rate.?limit/i.test(errorMessage)) {
+        console.error("Gemini quota or rate limit reached; stopping this batch to avoid further calls.");
+        break;
+      }
     }
   }
 
   console.log(`English article translation batch complete: ${generated}/${rows.length} generated.`);
+  if (failed > 0) {
+    throw new Error(`${failed} article translation(s) failed; inspect the logged item errors before retrying.`);
+  }
 }
 
 void main().catch((error) => {

@@ -1,7 +1,7 @@
 version: 2.1
 
-# ZIKR execution is intentionally outside GitHub Actions.
-# - ci-check runs on source changes.
+# ZIKR source verification is owned by GitHub Actions.
+# - CircleCI is reserved for Android release builds and explicit recovery runs.
 # - android-rebuild runs only for release branches/tags.
 # - background processing in CircleCI is opt-in and is a manual recovery path.
 # - automatic video/social scheduling remains owned by GitHub Actions.
@@ -533,14 +533,6 @@ jobs:
             rm -f "$CIRCLE_WORKING_DIRECTORY/.circleci-signing/zikr-release.keystore"
 
 workflows:
-  main-source-verification:
-    jobs:
-      - ci-check:
-          filters:
-            branches:
-              only:
-                - main
-
   build-and-release:
     when: << pipeline.parameters.run_circleci_ci >>
     jobs:
@@ -620,3 +612,4 @@ workflows:
     when: << pipeline.parameters.run_security_audit >>
     jobs:
       - security-audit
+

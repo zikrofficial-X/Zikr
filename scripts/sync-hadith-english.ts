@@ -63,6 +63,7 @@ async function main() {
 
   console.log(`Found ${rows.length} published Hadith records missing English.`);
   let synced = 0;
+  let failed = 0;
   for (const row of rows) {
     const book = bookById.get(row.book_id);
     if (!book?.slug) continue;
@@ -86,11 +87,15 @@ async function main() {
       synced += 1;
       console.log(`Synced ${book.slug}/${row.hadith_number}`);
     } catch (error) {
+      failed += 1;
       console.error(`Hadith sync failed for ${book.slug}/${row.hadith_number}:`, error);
     }
   }
 
   console.log(`Hadith English sync complete: ${synced}/${rows.length} synced.`);
+  if (failed > 0) {
+    throw new Error(`${failed} Hadith record(s) failed to sync; inspect the logged item errors before retrying.`);
+  }
 }
 
 void main().catch((error) => {

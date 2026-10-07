@@ -1,15 +1,6 @@
 name: ZIKR English Content Sync
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/english-content-sync.yml"
-      - "scripts/translate-published-articles-en.ts"
-      - "scripts/sync-hadith-english.ts"
-      - "src/features/articles/**"
-      - "src/features/hadith/**"
   workflow_dispatch:
     inputs:
       article_batch_size:
@@ -19,9 +10,9 @@ on:
       hadith_batch_size:
         description: "Number of Hadith records to synchronize in this run"
         required: false
-        default: "50"
+        default: "25"
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "17 4 * * *"
 
 concurrency:
   group: zikr-english-content-sync
@@ -31,47 +22,28 @@ permissions:
   contents: read
 
 jobs:
-  articles:
-    name: "Gemini article translations"
+  sync:
+    name: Bounded English content sync
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    timeout-minutes: 40
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_URL: https://kdotmrjfecgafiommzwz.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-3.1-flash-lite' }}
       TRANSLATION_BATCH_SIZE: ${{ github.event.inputs.article_batch_size || '5' }}
+      HADITH_API_BASE_URL: https://ummahapi.com/api/hadith
+      HADITH_TRANSLATION_BATCH_SIZE: ${{ github.event.inputs.hadith_batch_size || '25' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.0
-          run_install: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
-      - name: Translate published articles in batches
+      - name: Validate Supabase credentials before installing dependencies
         shell: bash
         run: |
           set -euo pipefail
-          for batch in $(seq 1 10); do
-            echo "English article translation batch ${batch}/10"
-            pnpm translate:articles:en
-          done
-
-  hadith:
-    name: "Canonical Hadith English sync"
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      HADITH_API_BASE_URL: https://ummahapi.com/api/hadith
-      HADITH_TRANSLATION_BATCH_SIZE: ${{ github.event.inputs.hadith_batch_size || '50' }}
-    steps:
-      - uses: actions/checkout@v4
+          test -n "${SUPABASE_URL:-}" || { echo "Missing canonical Supabase URL configuration." >&2; exit 1; }
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "Missing production environment secret: SUPABASE_SERVICE_ROLE_KEY" >&2; exit 1; }
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.0
@@ -80,5 +52,27 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
-      - run: pnpm sync:hadith:en
+      - name: Run one bounded article batch and one bounded Hadith batch
+        shell: bash
+        run: |
+          set -u
+          article_status=0
+          hadith_status=0
+
+          if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+            echo "Translating at most ${TRANSLATION_BATCH_SIZE} published articles."
+            pnpm translate:articles:en || article_status=$?
+          else
+            echo "Missing production environment secret: GEMINI_API_KEY; article translation cannot run." >&2
+            article_status=1
+          fi
+
+          echo "Synchronizing at most ${HADITH_TRANSLATION_BATCH_SIZE} Hadith records."
+          pnpm sync:hadith:en || hadith_status=$?
+
+          if (( article_status != 0 || hadith_status != 0 )); then
+            echo "English sync incomplete (articles=${article_status}, hadith=${hadith_status})." >&2
+            exit 1
+          fi

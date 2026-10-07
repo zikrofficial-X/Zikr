@@ -169,6 +169,9 @@ Current production roles:
 - `release-finalization.yml`: controlled production deployment through the Vercel CLI (needs a valid `VERCEL_TOKEN` for team `zikrcontact-7943`)
 - `generate-ai-video.yml`: scheduled video generation + social publishing
 - `supabase-production-health.yml`: active Supabase health probe pinned to the canonical production project; it checks the selected Vercel target
+- `urgent-video-dispatcher.yml`: lightweight Admin Run Now poller, every 15 minutes
+- `english-content-sync.yml`: daily, bounded English article/Hadith synchronization
+- `global-localization-verify.yml`: retired; its checks are already included in `quality-gate.yml` via `pnpm verify:pr`
 
 GitHub Actions secrets are referenced by canonical names in workflow files. Secret values are not stored in Git.
 

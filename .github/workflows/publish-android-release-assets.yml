@@ -17,6 +17,12 @@ concurrency:
 jobs:
   publish:
     name: Verify and publish Android release
+    if: >-
+      github.ref_type == 'tag' ||
+      contains(github.event.head_commit.modified, '.release-tag') ||
+      contains(github.event.head_commit.added, '.release-tag') ||
+      contains(github.event.head_commit.modified, 'docs/finalization/RELEASE_RETRY.flag') ||
+      contains(github.event.head_commit.added, 'docs/finalization/RELEASE_RETRY.flag')
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}

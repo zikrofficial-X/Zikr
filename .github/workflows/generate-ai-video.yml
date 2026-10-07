@@ -1,24 +1,9 @@
-# Queue recovery trigger: post-merge execution uses the backlog-first worker path.
 name: ZIKR Autonomous AI Video Worker
-# Validation trigger: rerun dedicated LTX-fast provider after accepting Gradio video result objects.
 
 on:
   schedule:
-    # Generate and publish content automatically without manual intervention.
-    # Hourly cadence keeps the queue moving while preserving a bounded free-runner workload.
-    - cron: "0 * * * *"
-  push:
-    # A workflow change on main is a deliberate production smoke/deploy trigger.
-    # Feature-branch edits do not consume runner time.
-    # This also gives us a safe, one-shot queue recovery path when an item is
-    # already due but the scheduled event has not arrived yet.
-    branches:
-      - main
-    paths:
-      - ".github/workflows/generate-ai-video.yml"
-      - "scripts/jobs/template-video-automation.ts"
-      - "scripts/run-background-jobs.ts"
-      - "src/features/videos/providers/**"
+    # Four runs/day preserve the existing eight-item daily pacing with fewer idle starts.
+    - cron: "17 3,9,15,21 * * *"
   workflow_dispatch:
     inputs:
       batch_size:
@@ -41,14 +26,15 @@ concurrency:
 
 jobs:
   generate:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 25
     env:
       # The canonical Supabase URL is public configuration; only the service-role key remains secret.
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_URL: https://kdotmrjfecgafiommzwz.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://kdotmrjfecgafiommzwz.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_MODEL: gemini-3.1-flash-lite
@@ -68,7 +54,9 @@ jobs:
       HF_WAN_SPACE: "zerogpu-aoti/wan2-2-fp8da-aoti-faster"
       HF_LTX_FAST_SPACE: "Lightricks/ltx-video-distilled"
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      HF_VIDEO_PYTHON: ${{ github.workspace }}/.video-venv/bin/python
+      ARABIC_TTS_VENV: ${{ github.workspace }}/.automation-venv
+      ARABIC_TTS_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
+      HF_VIDEO_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
       AUTO_VIDEO_SECONDS: "16"
@@ -77,7 +65,7 @@ jobs:
       VERIFY_VIDEO_RUNTIME_TOOLS: "true"
       # Generated videos are automatically handed to the configured social publishers.
       SOCIAL_PUBLISH_ENABLED: "true"
-      # Facebook publishing is enabled only when the repository has both required secrets.
+      # Facebook publishing is enabled only when the production environment has both required secrets.
       # The Admin setting can still disable it at runtime.
       SOCIAL_PUBLISH_FACEBOOK_ENABLED: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN != '' && secrets.FACEBOOK_PAGE_ID != '' }}
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
@@ -91,51 +79,43 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure Node and pnpm
+      - name: Validate production automation credentials before dependency installation
+        shell: bash
         run: |
-          corepack enable
-          corepack prepare pnpm@9.15.0 --activate
-          node --version
-          pnpm --version
+          set -euo pipefail
+          test -n "${SUPABASE_URL:-}" || { echo "Missing canonical SUPABASE_URL configuration." >&2; exit 1; }
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "Missing production environment secret: SUPABASE_SERVICE_ROLE_KEY" >&2; exit 1; }
+          if [[ -z "${YOUTUBE_CLIENT_ID:-}" && -z "${FACEBOOK_PAGE_ID:-}" ]]; then
+            echo "Warning: no social provider credentials are configured; videos can still be generated but cannot be published." >&2
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node 22 with pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install production dependencies
         run: pnpm install --frozen-lockfile --prod=false
 
-      - name: Verify and install rendering dependencies only when missing
+      - name: Install and verify video and Arabic TTS runtime
         shell: bash
         run: |
           set -euo pipefail
-
-          missing=""
-          need_install=0
-
-          if ! command -v ffmpeg >/dev/null 2>&1; then
-            missing="$missing ffmpeg"
-            need_install=1
-          fi
-
-          if ! command -v rsvg-convert >/dev/null 2>&1; then
-            missing="$missing librsvg2-bin"
-            need_install=1
-          fi
-
-          # The renderer explicitly uses these two Arabic font families.
-          # fonts-noto-core contains both; avoid the much larger extra/CJK
-          # packages unless a future renderer actually needs them.
-          if [[ ! -f /usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf ||
-                ! -f /usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf ]]; then
-            missing="$missing fonts-noto-core"
-            need_install=1
-          fi
-
-          if [ "$need_install" -eq 1 ]; then
-            echo "Installing missing rendering dependencies:$missing"
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends $missing
-          else
-            echo "All rendering dependencies are already available on the runner."
-          fi
-
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg librsvg2-bin fonts-noto-core python3-venv
+          python3 -m venv "$GITHUB_WORKSPACE/.automation-venv"
+          "$GITHUB_WORKSPACE/.automation-venv/bin/python" -m pip install --quiet --disable-pip-version-check --no-cache-dir "edge-tts==7.2.8" "gradio_client==2.7.1"
+          "$GITHUB_WORKSPACE/.automation-venv/bin/python" -c 'import edge_tts, gradio_client; print("edge-tts + gradio_client imports: OK")'
+          "$GITHUB_WORKSPACE/.automation-venv/bin/edge-tts" --version
+          "$GITHUB_WORKSPACE/.automation-venv/bin/python" -c 'import gradio_client; print("gradio_client:", gradio_client.__version__)'
           command -v ffmpeg >/dev/null
           command -v rsvg-convert >/dev/null
           test -f /usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf
@@ -152,29 +132,6 @@ jobs:
           echo "rsvg-convert: $(rsvg-convert --version 2>&1 | head -n 1)"
           echo "Arabic fonts: Noto Naskh Arabic + Noto Sans Arabic available"
 
-      - name: Install and verify Arabic TTS runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends python3-venv
-          python3 -m venv "$GITHUB_WORKSPACE/.tts-venv"
-          "$GITHUB_WORKSPACE/.tts-venv/bin/python" -m pip install --quiet --disable-pip-version-check --no-cache-dir "edge-tts==7.2.8"
-          echo "$GITHUB_WORKSPACE/.tts-venv/bin" >> "$GITHUB_PATH"
-          "$GITHUB_WORKSPACE/.tts-venv/bin/python" -c 'import edge_tts; print("edge-tts import: OK")'
-          "$GITHUB_WORKSPACE/.tts-venv/bin/edge-tts" --version
-
-      - name: Install Hugging Face Gradio client runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends python3-venv
-          python3 -m venv "$GITHUB_WORKSPACE/.video-venv"
-          "$GITHUB_WORKSPACE/.video-venv/bin/python" -m pip install --quiet --disable-pip-version-check --no-cache-dir "gradio_client==2.7.1"
-          echo "$GITHUB_WORKSPACE/.video-venv/bin" >> "$GITHUB_PATH"
-          "$GITHUB_WORKSPACE/.video-venv/bin/python" -c 'import gradio_client; print("gradio_client:", gradio_client.__version__)'
-          echo "HF_TOKEN configured: $([[ -n "${HF_TOKEN:-}" ]] && echo yes || echo no)"
       - name: Smoke-test video worker imports
         run: |
           set -euo pipefail
@@ -186,15 +143,6 @@ jobs:
       - name: Gemini audio evaluation smoke test
         if: env.GEMINI_AUDIO_SMOKE_TEST == 'true'
         run: pnpm exec tsx scripts/verify-gemini-audio.ts
-
-      - name: Validate automation secrets
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "Missing GitHub Actions secret: SUPABASE_SERVICE_ROLE_KEY" >&2; exit 1; }
-          if [[ -z "${YOUTUBE_CLIENT_ID:-}" && -z "${FACEBOOK_PAGE_ID:-}" ]]; then
-            echo "Warning: no social provider credentials are configured; videos can still be generated but cannot be published." >&2
-          fi
 
       - name: Verify Supabase data-plane access
         shell: bash

@@ -6,19 +6,20 @@ ZIKR has one authoritative execution owner per production workload. Quran audio 
 |---|---|---:|---|
 | Prayer Web Push planning and delivery | Supabase `pg_cron` → `prayer-notification-worker` | Every minute | Private scheduler token, per-device uniqueness, atomic claims, bounded retries, invalid-subscription deactivation. |
 | Client-local azan and reminder sounds | Browser / native client | While active | Local/offline fallback; it does not create server delivery rows. |
-| Video generation queue | GitHub Actions `ZIKR Autonomous AI Video Worker` → `pnpm background:jobs` → template/FFmpeg worker | Every hour + manual dispatch | Persisted queue, deterministic renderer, protected GitHub secrets, bounded work. |
-| Social publishing queue | CircleCI `background-jobs` → `pnpm background:jobs` → social publisher | Manual pipeline parameter | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
+| Video generation queue | GitHub Actions `ZIKR Autonomous AI Video Worker` → `pnpm background:jobs` → template/FFmpeg worker | Four times daily + manual dispatch | Persisted queue, deterministic renderer, protected GitHub secrets, bounded work. |
+| Admin Run Now dispatcher | GitHub Actions `ZIKR Urgent Video Dispatcher` → Supabase setting → worker dispatch | Every 15 minutes + manual dispatch | Lightweight poller; claims requests before dispatch and retries safely after dispatch failure. |
+| Social publishing queue | GitHub Actions video worker → `pnpm background:jobs` → social publisher | Alongside scheduled/manual video worker | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
 | Quran text/catalog | Local canonical corpus → Supabase fallback | Request time | 114 surahs / 6,236 ayahs are verified; Supabase remains compatibility data. |
 | Quran audio playback | External HTTPS audio URLs via `quran_audio.audio_url` | On demand | No Supabase Storage dependency; no bulk MP3 import job is permitted. |
-| Repository verification | CircleCI `ci-check` + Vercel build gate | Source changes / every deployment | `pnpm verify` is the canonical validation command. |
-| Production smoke | CircleCI `production-smoke` | Manual pipeline parameter | Public HTTP checks only. |
+| Repository verification | GitHub Actions `ZIKR Quality Gate` | Pull requests and `main` | `pnpm verify:pr` on PRs and `pnpm verify` on `main`; one automatic source gate. |
+| Production smoke | GitHub Actions `ZIKR Production Release` | Manual post-deploy verification | Public HTTP checks for home, robots, and sitemap. |
 | Security audit | CircleCI `security-audit` | Manual pipeline parameter | No production publishing credentials required. |
 
 ## Scheduler ownership
 
 The Supabase migration `20260915004110_retire_vercel_video_processing_cron.sql` retires the legacy `zikr-video-processing` cron job. The old Vercel route must not become an alternate scheduler.
 
-Supabase owns minute-level prayer scheduling. GitHub Actions is the authoritative automatic video/social worker, with an hourly scheduled trigger plus manual dispatch and concurrency protection. CircleCI remains a manual CI/recovery environment and must not become a second automatic video scheduler.
+Supabase owns minute-level prayer scheduling. GitHub Actions is the authoritative automatic video/social worker, with four scheduled runs per day plus manual dispatch and concurrency protection. The separate Admin Run Now poller checks every 15 minutes. CircleCI no longer runs routine source verification on `main`; it remains reserved for tagged Android releases and opt-in recovery/release work.
 
 ## Quran audio architecture
 
@@ -67,7 +68,7 @@ Pipeline parameters:
 
 There is intentionally **no `run_quran_audio_import` parameter**. Quran audio is externalized and must not be bulk-uploaded to Supabase Storage.
 
-These parameters are submitted through the CircleCI pipeline trigger/API. The ordinary source-change workflow runs only `ci-check`; Android release work remains restricted to release branches/tags.
+These parameters are submitted through the CircleCI pipeline trigger/API. Routine source-change verification belongs to GitHub Actions; CircleCI is not started for every `main` push. Android release work remains restricted to release tags/branches.
 
 ## Safety
 

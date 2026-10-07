@@ -18,6 +18,7 @@ if (!worker.includes("aiVisualPolicyVersion: AI_VISUAL_POLICY_VERSION")) failure
 if (!worker.includes('["quran", "hadith", "dua", "adhkar", "story"].includes(request.category)')) failures.push("verified source categories must all be marked sourceLocked");
 if (!worker.includes("engineConfig().aiEnabled")) failures.push("AI visual provider gate must remain configuration-controlled");
 if (!worker.includes("AI_ATTEMPTS_PER_RUN")) failures.push("AI visual attempts must remain bounded per worker run");
+if (worker.includes("gemini-3.5-flash-lite") || worker.includes("trying free fallback model")) failures.push("Gemini visual planning must not retry a second model after a quota or service error");
 if (!worker.includes("source text")) failures.push("AI planner must operate from source text");
 if (!worker.includes("sourceLocked")) failures.push("AI planner must preserve source-lock semantics");
 

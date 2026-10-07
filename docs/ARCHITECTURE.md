@@ -113,11 +113,11 @@ All changes must leave the repository buildable and must not introduce a second 
 
 ### Scheduled video and social worker
 
-`.github/workflows/generate-ai-video.yml` is the normal production worker. It runs every two hours, creates idempotent source-locked Quran/Hadith/Dua video requests, renders them with free FFmpeg, stores the generated MP4 in Supabase Storage, and processes the social publishing queue when provider credentials are configured.
+`.github/workflows/generate-ai-video.yml` is the normal production worker. It runs four times per day (and on deliberate manual dispatch), creates idempotent source-locked Quran/Hadith/Dua video requests, renders them with FFmpeg, stores the generated MP4 in Supabase Storage, and processes the social publishing queue when provider credentials are configured. The schedule is paced against the existing daily target to reduce idle runner starts.
 
 ### CircleCI
 
-CircleCI runs the canonical verification suite and release workflows. Its background worker is a manual recovery path, not a second automatic scheduler.
+GitHub Actions owns pull-request and `main` source verification. CircleCI is reserved for Android release builds, explicitly enabled release checks, and manual recovery; it is not a second automatic source-verification or background-job scheduler.
 
 ### Supabase
 

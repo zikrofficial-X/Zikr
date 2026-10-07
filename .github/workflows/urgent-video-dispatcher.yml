@@ -2,8 +2,8 @@ name: ZIKR Urgent Video Dispatcher
 
 on:
   schedule:
-    # Keep the admin Run Now control responsive without running the heavy worker while idle.
-    - cron: "*/5 * * * *"
+    # Poll less often to reduce idle runner usage while retaining a 15-minute response window.
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -16,10 +16,12 @@ concurrency:
 
 jobs:
   dispatch:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 3
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_URL: https://kdotmrjfecgafiommzwz.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       GITHUB_TOKEN: ${{ github.token }}
 
