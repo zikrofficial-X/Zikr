@@ -1,6 +1,6 @@
 # ZIKR Environment Variables
 
-Last reconciled: **2026-10-02**
+Last reconciled: **2026-10-08**
 
 This document describes the current environment contract for the web application, GitHub Actions/background workers, CircleCI recovery jobs, and Supabase Edge Functions.
 
@@ -12,7 +12,7 @@ These are the variables required by the Next.js application.
 
 | Variable | Scope | Required | Notes |
 |---|---|---:|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | Canonical project: `https://kdotmrjfecgafiommzwz.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | Canonical project: `https://nmdeazfmtncelykzxkhs.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Yes | Public/publishable Supabase client credential |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only | Yes | Never expose to browser/client code |
 | `NEXT_PUBLIC_SITE_URL` | Public | Yes | Locked canonical origin: `https://zikrmediaofficial.vercel.app` |
@@ -168,7 +168,7 @@ Current production roles:
 - `release-vercel.yml`: manual post-deploy verification of the live production site (home, robots.txt, sitemap.xml); it does not deploy
 - `release-finalization.yml`: controlled production deployment through the Vercel CLI (needs a valid `VERCEL_TOKEN` for team `zikr1`)
 - `generate-ai-video.yml`: scheduled video generation + social publishing
-- `supabase-production-health.yml`: public Supabase health probe
+- `supabase-production-health.yml`: legacy probe still bound to the former project; it does not certify the selected Vercel target
 
 GitHub Actions secrets are referenced by canonical names in workflow files. Secret values are not stored in Git.
 
@@ -232,20 +232,15 @@ The deployment environment validator checks:
 
 The repository does **not** contain or print production secret values.
 
-## 10. Phase 5 reconciliation result
+## 10. Supabase/Vercel binding status
 
-The current repository contract is internally aligned around:
+The linked Vercel project already contains the required Supabase runtime variable names, and its configured URLs point to `https://nmdeazfmtncelykzxkhs.supabase.co`. Secret values were not printed or changed.
 
-- Supabase project `kdotmrjfecgafiommzwz`;
-- canonical site `https://zikrmediaofficial.vercel.app`;
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` as the browser-facing key;
-- `SUPABASE_SERVICE_ROLE_KEY` as the server-only key;
-- GitHub Actions as the owner of autonomous video scheduling;
-- CircleCI as manual recovery/release infrastructure.
+A read-only check against that target passed for Auth settings, `quran_surahs`, `kids_games`, and `kids_content`. It found two schema gaps: `content_library.summary_en` is missing, and `public.content_translation_queue` is absent. Treat schema reconciliation as incomplete until these are reviewed and migrated.
 
-A previous production deployment emitted `Missing NEXT_PUBLIC_SUPABASE_ANON_KEY` errors, but those occurrences ended on 2026-09-28 and belong to an older deployment. No `Missing` or `SUPABASE` runtime logs were observed in the latest 24-hour production window during this reconciliation.
+The deployment environment validator also flags the existing `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` application variables because Google login is handled by Supabase Auth. Those values were not changed; review them separately.
 
-Exact secret values were not inspected or modified.
+The GitHub Supabase health workflow and Android release-assets workflow still point to `kdotmrjfecgafiommzwz`; the health workflow also carries that project's public key. Existing SQL migrations also contain project-specific scheduler/storage URLs for that former target. These settings and migration files were left unchanged until the new target's key, schema, and stored artifacts are verified; any correction should use a reviewed forward migration rather than rewriting applied history. No database scripts, migrations, integrations, or Vercel environment values were applied or changed in this reconciliation.
 
 ## Security rules
 

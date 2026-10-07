@@ -12,13 +12,15 @@ The application runtime does not use Drizzle ORM, `drizzle-kit`, `drizzle.config
 
 ## Current project
 
-- Supabase project ref: `kdotmrjfecgafiommzwz`
+- Supabase project ref: `nmdeazfmtncelykzxkhs` (selected to match Vercel on 2026-10-08)
 - Canonical migration directory: `supabase/migrations/`
 - Historical migrations/archive: `supabase/migrations_archive/`
 - Generated TypeScript database types: `src/lib/types/supabase.ts`
 - Supabase Edge Functions: `supabase/functions/`
-- Row-Level Security: enabled on the audited public tables.
+- Row-Level Security: not re-audited on the selected target.
 - Application data access: Supabase client / REST / server-side Supabase helpers.
+- Read-only schema verification passed for Auth, Quran, and kids APIs, but `content_library.summary_en` is missing and `public.content_translation_queue` is absent.
+- Previously recorded schema counts and migration history refer to `kdotmrjfecgafiommzwz`; they are not proof that the selected target has the same schema. No database scripts or migrations were applied during this reconciliation.
 
 ## Migration rules
 
@@ -39,9 +41,9 @@ They are **not** an active Drizzle deployment mechanism.
 
 Do not recreate `drizzle/`, add `drizzle-orm`, add `drizzle-kit`, or introduce a second ORM schema-push path.
 
-## Core domains
+## Required application domains
 
-The current schema supports the platform's active domains, including:
+The application migration chain declares the following domains. Their full presence on the selected target is not yet verified:
 
 - Quran: `quran_surahs`, `quran_ayahs`, `quran_tafsir`, `quran_reciters`, `quran_audio`
 - Authentication/profile: `profiles` and related account tables
@@ -50,9 +52,9 @@ The current schema supports the platform's active domains, including:
 - Automation: video generation queues, social publishing queues, scheduler state
 - Audit/security: administrative audit records, role/RLS controls, internal scheduler tables
 
-## Quran invariants
+## Historical Quran audit
 
-The recorded current production audit established:
+The recorded audit of the previous `kdotmrjfecgafiommzwz` project established:
 
 - 114 Quran surahs
 - 6236 Quran ayahs

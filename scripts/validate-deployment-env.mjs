@@ -42,7 +42,7 @@ const OPTIONAL = [
 ];
 
 const CANONICAL_SITE = "https://zikrmediaofficial.vercel.app";
-const EXPECTED_SUPABASE = "https://kdotmrjfecgafiommzwz.supabase.co";
+const EXPECTED_SUPABASE = "https://nmdeazfmtncelykzxkhs.supabase.co";
 const results = [];
 
 const add = (status, name, detail) => results.push({ status, name, detail });
