@@ -21,7 +21,7 @@ A repository-wide and live-environment audit was performed across application so
 
 ### Supabase live state
 
-- Connected target project: `kdotmrjfecgafiommzwz` and currently `ACTIVE_HEALTHY`.
+- Connected target project: `nmdeazfmtncelykzxkhs` and currently `ACTIVE_HEALTHY`.
 - The previously missing remote migration `20260929025052` is reconciled locally.
 - The security/performance hardening migrations were applied to the connected target and their repository filenames were corrected to the exact versions Supabase assigned (`20260929035722`, `20260929035746`, `20260929035802`, `20260929035817`, `20260929035845`).
 - Verified redundant indexes were removed and missing foreign-key covering indexes were added.
@@ -53,7 +53,7 @@ A repository-wide and live-environment audit was performed across application so
 
 ## Release blockers
 
-1. Reconnect the GitHub Supabase integration/Preview check from the retired restricted project to the current `kdotmrjfecgafiommzwz` project. This cannot be corrected by repository SQL alone because it is an external GitHub/Supabase integration setting.
+1. Reconnect the GitHub Supabase integration/Preview check from the retired restricted project to the current `nmdeazfmtncelykzxkhs` project. This cannot be corrected by repository SQL alone because it is an external GitHub/Supabase integration setting.
 2. Vercel must complete a fresh successful production build for the latest `main` commit.
 3. CircleCI `ci-check` must complete successfully.
 4. Native Android/iOS release builds require validation in their real release environments.

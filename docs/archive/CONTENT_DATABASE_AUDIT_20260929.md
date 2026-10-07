@@ -1,7 +1,7 @@
 # ZIKR — Content Database Record Audit
 Date: 29 September 2026
 Repository: zikr-org/Zikr
-Production Supabase: kdotmrjfecgafiommzwz
+Production Supabase: nmdeazfmtncelykzxkhs
 
 ## Scope
 

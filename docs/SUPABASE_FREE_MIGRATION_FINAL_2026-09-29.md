@@ -8,7 +8,7 @@
 - Organization plan: Free
 - Organization ID: `vercel_icfg_OSj2EHD4iDH5UdnZfWzOegIl`
 - Project: `Zikrmediaofficial`
-- Project ref: `kdotmrjfecgafiommzwz`
+- Project ref: `nmdeazfmtncelykzxkhs`
 - Region: `us-east-1`
 - Postgres: 17.6.1.166
 - Status at verification: ACTIVE_HEALTHY
@@ -62,7 +62,7 @@ The repository's current `src/features/quran/services/quran-server.ts` is compat
 The repository `.env.example` already points to:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://kdotmrjfecgafiommzwz.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://nmdeazfmtncelykzxkhs.supabase.co
 ```
 
 ## 5. GitHub changes
@@ -85,13 +85,13 @@ Changes completed on this branch:
 
 Current verified Vercel project:
 
-- Project ID: `prj_JAsYThJCoUT3DzPxOU2EdmuwxiV5`
-- Team ID: `team_hjit6v49jMgWo0GImI1tqCUj`
+- Project ID: `prj_hRhHT6FUMXshDfzCnIh0aG0wpS1g`
+- Team ID: `team_z2nBDHi0ppVAXj1cWzs7Qt5c`
 - Repository: `zikr-org/Zikr`
 
 Latest verified production deployment before this branch change:
 
-`https://zikr-nnf7mj3oi-zikr1.vercel.app`
+`https://zikr-nnf7mj3oi-zikrcontact-7943.vercel.app`
 
 The production homepage and Quran routes returned HTTP 200 through the Vercel access tool.
 
@@ -104,7 +104,7 @@ The Vercel Dashboard must point Production to the new Supabase project.
 Required production values:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://kdotmrjfecgafiommzwz.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://nmdeazfmtncelykzxkhs.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<new project publishable/anon key>
 ```
 

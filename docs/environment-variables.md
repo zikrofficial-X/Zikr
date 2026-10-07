@@ -12,7 +12,7 @@ These are the variables required by the Next.js application.
 
 | Variable | Scope | Required | Notes |
 |---|---|---:|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | Canonical project: `https://kdotmrjfecgafiommzwz.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | Canonical project: `https://nmdeazfmtncelykzxkhs.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Yes | Public/publishable Supabase client credential |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only | Yes | Never expose to browser/client code |
 | `NEXT_PUBLIC_SITE_URL` | Public | Yes | Locked canonical origin: `https://zikrmediaofficial.vercel.app` |
@@ -166,7 +166,7 @@ Current production roles:
 
 - `quality-gate.yml`: verification only
 - `release-vercel.yml`: manual post-deploy verification of the live production site (home, robots.txt, sitemap.xml); it does not deploy
-- `release-finalization.yml`: controlled production deployment through the Vercel CLI (needs a valid `VERCEL_TOKEN` for team `zikr1`)
+- `release-finalization.yml`: controlled production deployment through the Vercel CLI (needs a valid `VERCEL_TOKEN` for team `zikrcontact-7943`)
 - `generate-ai-video.yml`: scheduled video generation + social publishing
 - `supabase-production-health.yml`: public Supabase health probe
 
@@ -236,7 +236,7 @@ The repository does **not** contain or print production secret values.
 
 The current repository contract is internally aligned around:
 
-- Supabase project `kdotmrjfecgafiommzwz`;
+- Supabase project `nmdeazfmtncelykzxkhs`;
 - canonical site `https://zikrmediaofficial.vercel.app`;
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` as the browser-facing key;
 - `SUPABASE_SERVICE_ROLE_KEY` as the server-only key;

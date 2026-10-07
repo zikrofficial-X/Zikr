@@ -68,7 +68,7 @@ The canonical database schema lives only under:
 
 The current Google provider callback is:
 
-`https://kdotmrjfecgafiommzwz.supabase.co/auth/v1/callback`
+`https://nmdeazfmtncelykzxkhs.supabase.co/auth/v1/callback`
 
 ## 4. Database migrations
 

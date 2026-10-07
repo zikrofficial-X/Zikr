@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}
-      SUPABASE_PUBLIC_ROOT: https://kdotmrjfecgafiommzwz.supabase.co/storage/v1/object/public/android-releases/android
+      SUPABASE_PUBLIC_ROOT: https://nmdeazfmtncelykzxkhs.supabase.co/storage/v1/object/public/android-releases/android
     steps:
       - name: Checkout tagged/source release
         uses: actions/checkout@v4

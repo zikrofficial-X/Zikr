@@ -18,7 +18,7 @@ BEGIN
             '0 3 * * *',
             $job$
               SELECT net.http_post(
-                url := 'https://kdotmrjfecgafiommzwz.supabase.co/functions/v1/source-verified-content-agent',
+                url := 'https://nmdeazfmtncelykzxkhs.supabase.co/functions/v1/source-verified-content-agent',
                 headers := jsonb_build_object(
                   'Content-Type', 'application/json',
                   'Authorization', 'Bearer ' || public.get_push_scheduler_secret()

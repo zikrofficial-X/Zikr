@@ -4,7 +4,7 @@ Date: 2026-10-02
 Repository: zikr-org/Zikr
 Baseline main commit: e1b84fac78d1ddb1fb971f7ec456b5ae37936edf
 Working branch: audit/phase-0-1-finalization
-Supabase project: kdotmrjfecgafiommzwz
+Supabase project: nmdeazfmtncelykzxkhs
 Database: PostgreSQL 17.6.1
 
 ## 1. Phase objective

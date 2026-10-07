@@ -8,7 +8,7 @@ This audit records the evidence available through the connected Supabase integra
 | Role | Project ref | Organization | Region | Status | Database |
 |---|---|---|---|---|---|
 | Old production source | `eydxvcamhjhajxjrsgym` | `Alone` | `eu-west-1` | `INACTIVE` | PostgreSQL 17.6.1.104 |
-| Connected target | `kdotmrjfecgafiommzwz` | `zikr` / `Zikrmediaofficial` | `us-east-1` | `ACTIVE_HEALTHY` | PostgreSQL 17.6.1.166 |
+| Connected target | `nmdeazfmtncelykzxkhs` | `zikr` / `Zikrmediaofficial` | `us-east-1` | `ACTIVE_HEALTHY` | PostgreSQL 17.6.1.166 |
 
 The target organization and target project already exist. No organization or project creation was performed during this run.
 

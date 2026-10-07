@@ -10,7 +10,7 @@ begin
       job_id := 1,
       command := $job$
         select net.http_post(
-          url := 'https://kdotmrjfecgafiommzwz.supabase.co/functions/v1/prayer-notification-worker',
+          url := 'https://nmdeazfmtncelykzxkhs.supabase.co/functions/v1/prayer-notification-worker',
           headers := jsonb_build_object(
             'Content-Type', 'application/json',
             'Authorization', 'Bearer ' || public.get_push_scheduler_secret()
@@ -24,7 +24,7 @@ begin
       job_id := 3,
       command := $job$
         select net.http_post(
-          url := 'https://kdotmrjfecgafiommzwz.supabase.co/functions/v1/source-verified-content-agent',
+          url := 'https://nmdeazfmtncelykzxkhs.supabase.co/functions/v1/source-verified-content-agent',
           headers := jsonb_build_object(
             'Content-Type', 'application/json',
             'Authorization', 'Bearer ' || public.get_push_scheduler_secret()
@@ -38,7 +38,7 @@ begin
       job_id := 4,
       command := $job$
         select net.http_post(
-          url := 'https://kdotmrjfecgafiommzwz.supabase.co/functions/v1/cleanup-youtube-facebook-media',
+          url := 'https://nmdeazfmtncelykzxkhs.supabase.co/functions/v1/cleanup-youtube-facebook-media',
           headers := jsonb_build_object(
             'Content-Type', 'application/json',
             'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'social_sync_publishable_key'),

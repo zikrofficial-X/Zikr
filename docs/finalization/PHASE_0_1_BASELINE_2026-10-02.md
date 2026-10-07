@@ -5,7 +5,7 @@ Repository: zikr-org/Zikr
 Base commit: e1b84fac78d1ddb1fb971f7ec456b5ae37936edf
 Working branch: audit/phase-0-1-finalization
 Production Vercel project: zikr
-Supabase project: kdotmrjfecgafiommzwz
+Supabase project: nmdeazfmtncelykzxkhs
 
 ## Phase 0 — Freeze / Reference Point
 

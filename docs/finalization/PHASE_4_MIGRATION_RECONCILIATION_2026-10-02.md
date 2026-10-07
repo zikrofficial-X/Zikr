@@ -2,7 +2,7 @@
 ## ZIKR Finalization — 2026-10-02
 
 ### Scope
-This phase reconciles the repository migration set against the live Supabase migration history for project `kdotmrjfecgafiommzwz`.
+This phase reconciles the repository migration set against the live Supabase migration history for project `nmdeazfmtncelykzxkhs`.
 
 This phase intentionally does **not** change production schema, migration history, data, policies, functions, triggers, or settings. The objective is to establish an exact, auditable migration ledger before any later schema cleanup.
 
