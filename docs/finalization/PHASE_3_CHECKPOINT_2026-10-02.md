@@ -3,7 +3,7 @@
 Date: 2026-10-02
 Working branch: audit/phase-0-1-finalization
 Main baseline: e1b84fac78d1ddb1fb971f7ec456b5ae37936edf
-Supabase production: kdotmrjfecgafiommzwz
+Supabase production: nmdeazfmtncelykzxkhs
 
 ## Completed
 

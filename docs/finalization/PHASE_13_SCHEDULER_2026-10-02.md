@@ -18,7 +18,7 @@ Production `pg_cron` initially contained three active jobs:
 ### Fixes executed
 
 1. Repointed prayer scheduler and source-verified agent to:
-   `https://kdotmrjfecgafiommzwz.supabase.co`.
+   `https://nmdeazfmtncelykzxkhs.supabase.co`.
 2. Verified job 1 execution history continues to succeed.
 3. Verified the daily source-verified agent job succeeded at 03:00 UTC on 2026-10-02 and on the preceding three days.
 4. Retired the dead media-cleanup cron job rather than keeping a permanently failing scheduler.

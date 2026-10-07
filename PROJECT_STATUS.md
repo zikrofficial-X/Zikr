@@ -25,7 +25,7 @@ A repository-wide and live-environment audit was performed across application so
 
 ### Supabase live state in the 2026-09-29 audit (historical)
 
-- Audited project: `kdotmrjfecgafiommzwz` was `ACTIVE_HEALTHY` at the time; it is not the current Vercel-selected target.
+- Audited project: `kdotmrjfecgafiommzwz` was `ACTIVE_HEALTHY` at the time. That historical result does not certify the currently selected Vercel project `nmdeazfmtncelykzxkhs`; the October 8 read-only verification found schema gaps documented above.
 - The previously missing remote migration `20260929025052` is reconciled locally.
 - The security/performance hardening migrations were applied to the connected target and their repository filenames were corrected to the exact versions Supabase assigned (`20260929035722`, `20260929035746`, `20260929035802`, `20260929035817`, `20260929035845`).
 - Verified redundant indexes were removed and missing foreign-key covering indexes were added.
@@ -57,7 +57,7 @@ A repository-wide and live-environment audit was performed across application so
 
 ## Release blockers recorded in the 2026-09-29 audit (historical)
 
-1. Historical finding from 2026-09-29: reconnect the GitHub Supabase integration/Preview check from the retired restricted project to `kdotmrjfecgafiommzwz`. This described the former setup and does not identify the current Vercel-selected target.
+1. The 2026-09-29 audit's remediation target was `kdotmrjfecgafiommzwz`; that was specific to the setup at the time. On 2026-10-08, the GitHub Supabase Preview check was still associated with the retired restricted project `eydxvcamhjhajxjrsgym`; the current follow-up is to connect it to the selected `nmdeazfmtncelykzxkhs` project. This is an external GitHub/Supabase integration setting, not a repository SQL fix.
 2. Vercel must complete a fresh successful production build for the latest `main` commit.
 3. CircleCI `ci-check` must complete successfully.
 4. Native Android/iOS release builds require validation in their real release environments.

@@ -166,7 +166,7 @@ Current production roles:
 
 - `quality-gate.yml`: verification only
 - `release-vercel.yml`: manual post-deploy verification of the live production site (home, robots.txt, sitemap.xml); it does not deploy
-- `release-finalization.yml`: controlled production deployment through the Vercel CLI (needs a valid `VERCEL_TOKEN` for team `zikr1`)
+- `release-finalization.yml`: controlled production deployment through the Vercel CLI (needs a valid `VERCEL_TOKEN` for team `zikrcontact-7943`)
 - `generate-ai-video.yml`: scheduled video generation + social publishing
 - `supabase-production-health.yml`: legacy probe still bound to the former project; it does not certify the selected Vercel target
 
@@ -235,6 +235,15 @@ The repository does **not** contain or print production secret values.
 ## 10. Supabase/Vercel binding status
 
 The linked Vercel project already contains the required Supabase runtime variable names, and its configured URLs point to `https://nmdeazfmtncelykzxkhs.supabase.co`. Secret values were not printed or changed.
+
+The current production contract is aligned around:
+
+- Supabase project `nmdeazfmtncelykzxkhs`;
+- canonical site `https://zikrmediaofficial.vercel.app`;
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` as the browser-facing key;
+- `SUPABASE_SERVICE_ROLE_KEY` as the server-only key;
+- GitHub Actions as the owner of autonomous video scheduling;
+- CircleCI as manual recovery/release infrastructure.
 
 A read-only check against that target passed for Auth settings, `quran_surahs`, `kids_games`, and `kids_content`. It found two schema gaps: `content_library.summary_en` is missing, and `public.content_translation_queue` is absent. Treat schema reconciliation as incomplete until these are reviewed and migrated.
 

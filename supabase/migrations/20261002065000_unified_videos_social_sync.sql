@@ -185,7 +185,7 @@ begin
       '*/10 * * * *',
       $cron$
       select net.http_post(
-        url := 'https://kdotmrjfecgafiommzwz.supabase.co/functions/v1/sync-youtube-facebook',
+        url := 'https://nmdeazfmtncelykzxkhs.supabase.co/functions/v1/sync-youtube-facebook',
         headers := jsonb_build_object(
           'Content-Type', 'application/json',
           'Authorization', 'Bearer ' || public.get_push_scheduler_secret()

@@ -36,8 +36,8 @@ jobs:
       name: production
     env:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      VERCEL_ORG_ID: team_hjit6v49jMgWo0GImI1tqCUj
-      VERCEL_PROJECT_ID: prj_JAsYThJCoUT3DzPxOU2EdmuwxiV5
+      VERCEL_ORG_ID: team_z2nBDHi0ppVAXj1cWzs7Qt5c
+      VERCEL_PROJECT_ID: prj_hRhHT6FUMXshDfzCnIh0aG0wpS1g
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - name: Checkout exact release commit

@@ -42,8 +42,8 @@ The current GitHub connector does not expose branch-protection or ruleset write 
 
 ## Current release mechanics (verified 2026-10-04)
 
-- `vercel.json` sets `git.deploymentEnabled=false`, so a push never deploys by itself.
-- `release-finalization.yml` deploys with the Vercel CLI (`VERCEL_TOKEN`, team `team_hjit6v49jMgWo0GImI1tqCUj`, project `prj_JAsYThJCoUT3DzPxOU2EdmuwxiV5`). Runs on 2026-10-02/03 failed at the "Link exact Vercel project" step; if that happens again, check that `VERCEL_TOKEN` belongs to a member of the `zikr1` team.
+- `vercel.json` sets `git.deploymentEnabled=true`, so pushes to the linked production branch can deploy through the GitHub integration.
+- `release-finalization.yml` remains available as an explicit CLI fallback using the current Vercel team `team_z2nBDHi0ppVAXj1cWzs7Qt5c` and project `prj_hRhHT6FUMXshDfzCnIh0aG0wpS1g`; its GitHub Actions `VERCEL_TOKEN` secret must be configured before manually dispatching that fallback.
 - Fallback that has worked: create a production deployment from the exact `main` commit through the Vercel API/dashboard (`gitSource`: org `zikr-org`, repo `Zikr`, ref `main`, sha = release commit).
 - `release-vercel.yml` (manual, input `RELEASE`) only verifies the live site after a deployment. It has no automatic trigger.
 - Quality Gate and Supabase Production Health must be green on the release commit before deploying.

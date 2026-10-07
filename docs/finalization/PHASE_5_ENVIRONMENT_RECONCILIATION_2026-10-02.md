@@ -20,8 +20,8 @@ Production secret **values** were not read, copied, printed, rotated, or changed
 | Resource | Current value |
 |---|---|
 | Production site | `https://zikrmediaofficial.vercel.app` |
-| Supabase project | `kdotmrjfecgafiommzwz` |
-| Supabase URL | `https://kdotmrjfecgafiommzwz.supabase.co` |
+| Supabase project | `nmdeazfmtncelykzxkhs` |
+| Supabase URL | `https://nmdeazfmtncelykzxkhs.supabase.co` |
 | Vercel project | `zikr` |
 | Vercel team | `zikr` |
 | Latest observed production deployment | `dpl_73RViL1k4S6bqLf6aQrTLHoeP7Tq` |
@@ -86,7 +86,7 @@ The document now separates:
 
 It now points to the canonical current project:
 
-`https://kdotmrjfecgafiommzwz.supabase.co`
+`https://nmdeazfmtncelykzxkhs.supabase.co`
 
 #### 4. Hygiene guard strengthened
 
