@@ -5,6 +5,10 @@
 **Repository:** `zikr-org/Zikr`
 **Production origin:** `https://zikrmediaofficial.vercel.app`
 
+## Current Vercel/Supabase binding — 2026-10-08
+
+The linked Vercel environment points to Supabase project `nmdeazfmtncelykzxkhs`. Read-only checks passed for Auth settings, Quran, and kids APIs, but found `content_library.summary_en` missing and `public.content_translation_queue` absent. No database scripts or migrations were applied. The GitHub Supabase health and Android release-assets workflows, plus several project-specific scheduler/storage migrations, still reference the former `kdotmrjfecgafiommzwz` target and need separate review. The audit below is a historical snapshot of that former target; it does not certify the selected project's schema.
+
 ## Audit scope completed
 
 A repository-wide and live-environment audit was performed across application source/configuration, migrations, Supabase schema/RLS, CI/deployment configuration, native mobile configuration, offline assets, and repository hygiene.
@@ -19,9 +23,9 @@ A repository-wide and live-environment audit was performed across application so
 - Platform route inventory passed: 76 required assets, 100 pages, 64 API routes.
 - Mobile readiness, offline content, placeholder-media, auth, canonical URL, hygiene, AdSense, and Search Console checks passed on the supplied repository snapshot.
 
-### Supabase live state
+### Supabase live state in the 2026-09-29 audit (historical)
 
-- Connected target project: `nmdeazfmtncelykzxkhs` and currently `ACTIVE_HEALTHY`.
+- Audited project: `kdotmrjfecgafiommzwz` was `ACTIVE_HEALTHY` at the time. That historical result does not certify the currently selected Vercel project `nmdeazfmtncelykzxkhs`; the October 8 read-only verification found schema gaps documented above.
 - The previously missing remote migration `20260929025052` is reconciled locally.
 - The security/performance hardening migrations were applied to the connected target and their repository filenames were corrected to the exact versions Supabase assigned (`20260929035722`, `20260929035746`, `20260929035802`, `20260929035817`, `20260929035845`).
 - Verified redundant indexes were removed and missing foreign-key covering indexes were added.
@@ -51,9 +55,9 @@ A repository-wide and live-environment audit was performed across application so
 - The connected production Supabase project is healthy, but the GitHub Supabase Preview check is still linked to the old restricted Supabase organization/project (`eydxvcamhjhajxjrsgym`). The check now fails because that old organization is under service restrictions, not because of the current target database schema.
 - Vercel and CircleCI checks are pending for the latest `main` commit and therefore production release certification is not claimed yet.
 
-## Release blockers
+## Release blockers recorded in the 2026-09-29 audit (historical)
 
-1. Reconnect the GitHub Supabase integration/Preview check from the retired restricted project to the current `nmdeazfmtncelykzxkhs` project. This cannot be corrected by repository SQL alone because it is an external GitHub/Supabase integration setting.
+1. The 2026-09-29 audit's remediation target was `kdotmrjfecgafiommzwz`; that was specific to the setup at the time. On 2026-10-08, the GitHub Supabase Preview check was still associated with the retired restricted project `eydxvcamhjhajxjrsgym`; the current follow-up is to connect it to the selected `nmdeazfmtncelykzxkhs` project. This is an external GitHub/Supabase integration setting, not a repository SQL fix.
 2. Vercel must complete a fresh successful production build for the latest `main` commit.
 3. CircleCI `ci-check` must complete successfully.
 4. Native Android/iOS release builds require validation in their real release environments.
