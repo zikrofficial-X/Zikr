@@ -168,7 +168,7 @@ Current production roles:
 - `release-vercel.yml`: manual post-deploy verification of the live production site (home, robots.txt, sitemap.xml); it does not deploy
 - `release-finalization.yml`: controlled production deployment through the Vercel CLI (needs a valid `VERCEL_TOKEN` for team `zikrcontact-7943`)
 - `generate-ai-video.yml`: scheduled video generation + social publishing
-- `supabase-production-health.yml`: legacy probe still bound to the former project; it does not certify the selected Vercel target
+- `supabase-production-health.yml`: active Supabase health probe pinned to the canonical production project; it checks the selected Vercel target
 
 GitHub Actions secrets are referenced by canonical names in workflow files. Secret values are not stored in Git.
 
@@ -249,7 +249,7 @@ A read-only check against that target passed for Auth settings, `quran_surahs`, 
 
 The deployment environment validator also flags the existing `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` application variables because Google login is handled by Supabase Auth. Those values were not changed; review them separately.
 
-The GitHub Supabase health workflow and Android release-assets workflow still point to `kdotmrjfecgafiommzwz`; the health workflow also carries that project's public key. Existing SQL migrations also contain project-specific scheduler/storage URLs for that former target. These settings and migration files were left unchanged until the new target's key, schema, and stored artifacts are verified; any correction should use a reviewed forward migration rather than rewriting applied history. No database scripts, migrations, integrations, or Vercel environment values were applied or changed in this reconciliation.
+The active Supabase health workflow is pinned to the canonical production target. Historical documentation may still mention retired project refs, but active runtime and workflow configuration must remain on `nmdeazfmtncelykzxkhs`. Any future database-target change must use a reviewed forward migration or configuration change rather than rewriting applied migration history.
 
 ## Security rules
 

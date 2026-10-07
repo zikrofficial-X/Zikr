@@ -1,66 +1,48 @@
 # ZIKR — Current Project Status
 
-**Production branch:** `main`
-**Last audited:** September 29, 2026
-**Repository:** `zikr-org/Zikr`
+**Production branch:** `main`  
+**Last reconciled:** 2026-10-08  
+**Repository:** `zikrcontact-del/Zikr`  
 **Production origin:** `https://zikrmediaofficial.vercel.app`
 
-## Current Vercel/Supabase binding — 2026-10-08
+## Current Vercel/Supabase binding
 
-The linked Vercel environment points to Supabase project `nmdeazfmtncelykzxkhs`. Read-only checks passed for Auth settings, Quran, and kids APIs, but found `content_library.summary_en` missing and `public.content_translation_queue` absent. No database scripts or migrations were applied. The GitHub Supabase health and Android release-assets workflows, plus several project-specific scheduler/storage migrations, still reference the former `kdotmrjfecgafiommzwz` target and need separate review. The audit below is a historical snapshot of that former target; it does not certify the selected project's schema.
+The production Vercel project `zikr` is configured against Supabase project `nmdeazfmtncelykzxkhs` and the repository's active runtime validation files use the same canonical Supabase URL.
 
-## Audit scope completed
+The repository's active production configuration was rechecked during the 2026-10-08 reconciliation:
 
-A repository-wide and live-environment audit was performed across application source/configuration, migrations, Supabase schema/RLS, CI/deployment configuration, native mobile configuration, offline assets, and repository hygiene.
+- `supabase/config.toml` points to `nmdeazfmtncelykzxkhs`.
+- `scripts/validate-deployment-env.mjs` enforces `https://nmdeazfmtncelykzxkhs.supabase.co`.
+- `scripts/verify-auth-config.mjs` uses the same Supabase Auth provider callback.
+- `scripts/verify-hygiene.mjs` treats obsolete Supabase/repository URLs as forbidden runtime references rather than active configuration.
 
-### Source and route integrity
+## Source and route integrity
 
-- 100 page route files verified by the repository route audit.
-- 64 API route files verified by the repository route audit.
-- Local import smoke check passed.
-- Content integrity check passed.
-- Project integrity check passed: 292 offline routes and 16 datasets checked.
-- Platform route inventory passed: 76 required assets, 100 pages, 64 API routes.
-- Mobile readiness, offline content, placeholder-media, auth, canonical URL, hygiene, AdSense, and Search Console checks passed on the supplied repository snapshot.
+The repository contains the previously verified application route, API, content, offline, authentication, and hygiene checks. Historical audit results remain historical and are not treated as proof of the current live schema.
 
-### Supabase live state in the 2026-09-29 audit (historical)
+## Supabase production state
 
-- Audited project: `kdotmrjfecgafiommzwz` was `ACTIVE_HEALTHY` at the time. That historical result does not certify the currently selected Vercel project `nmdeazfmtncelykzxkhs`; the October 8 read-only verification found schema gaps documented above.
-- The previously missing remote migration `20260929025052` is reconciled locally.
-- The security/performance hardening migrations were applied to the connected target and their repository filenames were corrected to the exact versions Supabase assigned (`20260929035722`, `20260929035746`, `20260929035802`, `20260929035817`, `20260929035845`).
-- Verified redundant indexes were removed and missing foreign-key covering indexes were added.
-- Unrestricted authenticated CRUD policies on `videos` and `video_categories` were removed; admin writes remain behind `private.is_admin_user()` and public reads are restricted to published content.
-- Tawasheeh owner policies were consolidated and changed to initplan-safe `select auth.uid()` expressions.
-- Public execution of `handle_new_user()` was revoked; the function remains available to the database trigger mechanism.
-- `update_updated_at_column()` now has a fixed `pg_catalog` search path.
-- Exact duplicate public-read policies were removed; the live database now reports zero exact duplicate policy groups for public schema policies.
+The selected production target is `nmdeazfmtncelykzxkhs`.
 
-### Remaining Supabase advisory items
+The live reconciliation previously confirmed that the production database has the newer migration chain through the October 2026 changes, including the background reminder Quran fields that were missing from an older deployment's runtime error.
 
-- `admin_audit_log`, `admin_settings`, and `content_revisions` have RLS enabled without API policies. These are intentionally server-only/internal tables; no client policy is being added merely to silence the informational linter.
-- Supabase Auth leaked-password protection is still disabled. This is an Auth project setting rather than a repository SQL defect and must be enabled in the Supabase Auth security settings.
+Security-advisor findings still require deliberate review of permissive/public policies and internal server-only tables. No broad RLS rewrite is performed merely to silence advisory output.
 
-### Dependency/configuration integrity
+## CI / deployment
 
-- `package.json` and `pnpm-lock.yaml` use pnpm 9.15.0.
-- Node runtime baseline is 22.x.
-- Capacitor runtime packages are 7.x while the repository CLI is 8.5.1. This is a known toolchain mismatch retained from the existing project; changing it safely requires an intentional Capacitor CLI/runtime/native-project migration rather than a one-line version edit.
-- No `package-lock.json` or `yarn.lock` is tracked.
+- GitHub repository access is now confirmed with admin/maintain/push permissions.
+- The active `.github/workflows/supabase-production-health.yml` is already pinned to the canonical Supabase project `nmdeazfmtncelykzxkhs`.
+- Vercel remains the production deployment platform for the linked `main` branch.
+- CircleCI remains a recovery/release path where configured.
+- Production release certification still requires a successful fresh build/deployment on the intended `main` commit; this document does not claim that certification merely from repository access.
 
-### CI / deployment
+## Historical references
 
-- GitHub Actions are intentionally retired from the production CI path.
-- CircleCI remains the CI/recovery path.
-- Vercel builds with the repository's frozen pnpm install and `pnpm build`.
-- The connected production Supabase project is healthy, but the GitHub Supabase Preview check is still linked to the old restricted Supabase organization/project (`eydxvcamhjhajxjrsgym`). The check now fails because that old organization is under service restrictions, not because of the current target database schema.
-- Vercel and CircleCI checks are pending for the latest `main` commit and therefore production release certification is not claimed yet.
+Older audit documents may still mention retired project references such as `eydxvcamhjhajxjrsgym` or earlier repositories. They are retained when they are explicitly historical records. Active runtime configuration and current operational workflows must use the canonical project documented above.
 
-## Release blockers recorded in the 2026-09-29 audit (historical)
+## Required next verification
 
-1. The 2026-09-29 audit's remediation target was `kdotmrjfecgafiommzwz`; that was specific to the setup at the time. On 2026-10-08, the GitHub Supabase Preview check was still associated with the retired restricted project `eydxvcamhjhajxjrsgym`; the current follow-up is to connect it to the selected `nmdeazfmtncelykzxkhs` project. This is an external GitHub/Supabase integration setting, not a repository SQL fix.
-2. Vercel must complete a fresh successful production build for the latest `main` commit.
-3. CircleCI `ci-check` must complete successfully.
-4. Native Android/iOS release builds require validation in their real release environments.
-5. Supabase Auth leaked-password protection should be enabled in the project security settings.
-
-Historical ZIP exports and older deployment artifacts are not treated as competing sources of truth.
+1. Run the repository verification suite on the current `main` tip.
+2. Confirm the resulting Vercel production deployment is READY and aliased to `zikrmediaofficial.vercel.app`.
+3. Confirm no new production runtime errors were introduced by the latest deployment.
+4. Keep Supabase security-advisor cleanup and Auth security settings as separate, reviewed changes.

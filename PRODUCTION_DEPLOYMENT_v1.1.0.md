@@ -141,7 +141,7 @@ curl -X GET https://zikrmediaofficial.vercel.app/api/kids/games/submit-result
 
 ### Real-time Monitoring
 - **Vercel Dashboard**: https://vercel.com/zikrmediaofficial/zikr
-- **Supabase Console**: https://supabase.com/dashboard/project/eydxvcamhjhajxjrsgym
+- **Supabase Console**: https://supabase.com/dashboard/project/nmdeazfmtncelykzxkhs
 - **Error Tracking**: Check Vercel Function logs for API errors
 
 ### Key Metrics to Watch
