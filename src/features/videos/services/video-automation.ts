@@ -441,21 +441,4 @@ export async function publishToFacebook(
   }
 }
 
-export async function getVideoPublishingConfig() {
-  const youtubeEnabled = Boolean(
-    getEnv('YOUTUBE_CLIENT_ID') &&
-      getEnv('YOUTUBE_CLIENT_SECRET') &&
-      getEnv('YOUTUBE_REFRESH_TOKEN'),
-  );
-  const facebookEnabled = Boolean(
-    getEnv('FACEBOOK_PAGE_ACCESS_TOKEN') && getEnv('FACEBOOK_PAGE_ID'),
-  );
-  return {
-    youtubeEnabled,
-    youtubeChannelId: getEnv('YOUTUBE_CHANNEL_ID'),
-    facebookEnabled,
-    facebookPageId: getEnv('FACEBOOK_PAGE_ID'),
-    autoPublish: getEnv('VIDEO_AUTO_PUBLISH')?.toLowerCase() !== 'false',
-    publishSchedule: getEnv('VIDEO_PUBLISH_SCHEDULE'),
-  };
-}
+
