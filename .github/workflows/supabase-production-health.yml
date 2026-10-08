@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      SUPABASE_URL: https://nmdeazfmtncelykzxkhs.supabase.co
+      SUPABASE_URL: https://wvetcauyerlkqvmntajq.supabase.co
       # Public anon key for read-only checks; never use the service-role key here.
       SUPABASE_PUBLIC_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tZGVhemZtdG5jZWx5a3p4a2hzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0MDE4MTIsImV4cCI6MjEwNjk3NzgxMn0.4Ka127lPTIVkhoRwk_5WhkwE3Tn1PsRYFwECmX0v3Is
     steps:
