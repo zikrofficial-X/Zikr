@@ -76,7 +76,11 @@ public/               Public static assets and offline/PWA files
 .circleci/            Secondary/recovery CI configuration
 ```
 
-## Information architecture\n\nThe canonical public section map lives in `src/lib/navigation/catalog.ts`. The `/sections` route is the single navigation index for public sections; `/audio` is the unified visitor audio library. New public sections must be added to the catalog and pass `pnpm information-architecture:check`.\n\n## Security
+## Information architecture
+
+The canonical public section map lives in `src/lib/navigation/catalog.ts`. The `/sections` route is the single navigation index for public sections; `/audio` is the unified visitor audio library. New public sections must be added to the catalog and pass `pnpm information-architecture:check`.
+
+## Security
 
 The project uses Supabase RLS, server-side service-role boundaries, protected OAuth credentials, HTTPS, security headers, and external verification gates. Never expose service-role keys, refresh tokens, page access tokens, or scheduler secrets to client code.
 
