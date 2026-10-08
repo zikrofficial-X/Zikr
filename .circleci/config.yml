@@ -25,7 +25,7 @@ parameters:
     default: false
 
 jobs:
-  ci-check:
+  source-verify:
     docker:
       - image: cimg/node:22.11.0
     resource_class: medium
@@ -537,7 +537,7 @@ workflows:
   build-and-release:
     when: << pipeline.parameters.run_circleci_ci >>
     jobs:
-      - ci-check:
+      - source-verify:
           filters:
             branches:
               only: /.*/
@@ -545,7 +545,7 @@ workflows:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
       - supabase-production-gate:
           requires:
-            - ci-check
+            - source-verify
           filters:
             branches:
               only: /.*/
@@ -553,7 +553,7 @@ workflows:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
       - android-rebuild:
           requires:
-            - ci-check
+            - source-verify
           filters:
             branches:
               only:
@@ -563,7 +563,7 @@ workflows:
 
   android-release-on-build-tag:
     jobs:
-      - ci-check:
+      - source-verify:
           filters:
             branches:
               ignore: /.*/
@@ -571,7 +571,7 @@ workflows:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+-build$/
       - supabase-production-gate:
           requires:
-            - ci-check
+            - source-verify
           filters:
             branches:
               ignore: /.*/
@@ -579,7 +579,7 @@ workflows:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+-build$/
       - android-rebuild:
           requires:
-            - ci-check
+            - source-verify
           filters:
             branches:
               ignore: /.*/
