@@ -32,8 +32,8 @@ jobs:
     timeout-minutes: 25
     env:
       # The canonical Supabase URL is public configuration; only the service-role key remains secret.
-      SUPABASE_URL: https://kdotmrjfecgafiommzwz.supabase.co
-      NEXT_PUBLIC_SUPABASE_URL: https://kdotmrjfecgafiommzwz.supabase.co
+      SUPABASE_URL: https://wvetcauyerlkqvmntajq.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://wvetcauyerlkqvmntajq.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
