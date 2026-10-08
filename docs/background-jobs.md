@@ -38,7 +38,7 @@ If a provider credential is missing or expired, that platform is recorded as fai
 
 ```text
 Video/social worker: 4 runs/day; retains the existing daily target of 8 requests
-Admin Run Now dispatcher: every 15 minutes (manual dispatch also available)
+Admin Run Now dispatcher: every 30 minutes (manual dispatch also available)
 English content sync: daily, at most 5 article translations and 25 Hadith records by default
 Video length: 16 seconds by default; deterministic FFmpeg renderer
 ```
@@ -59,4 +59,4 @@ Queue claiming is conditional on `status=pending`, and automation keys prevent d
 
 A generated video is only considered published when the provider returns its publication identifier and the queue records the provider result.
 
-**Last updated:** October 7, 2026
+**Last updated:** October 8, 2026
