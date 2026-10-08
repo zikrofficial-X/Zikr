@@ -35,9 +35,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <p className="text-sm font-bold text-brand-gold">مركز إدارة منصة ذِكرٌ</p>
               <p className="text-[11px] text-brand-cream/40">صلاحيات حسب الدور · بيانات مباشرة · سجل تدقيق مركزي</p>
             </div>
-            <Link href="/" className="hidden rounded-lg border border-brand-gold/25 px-3 py-1.5 text-xs text-brand-gold/80 transition hover:bg-brand-gold/10 sm:inline-flex">
-              عرض الموقع
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/admin/automation" className="hidden rounded-lg border border-brand-gold/15 px-3 py-1.5 text-xs text-brand-cream/55 transition hover:border-brand-gold/30 hover:text-brand-gold md:inline-flex">
+                التشغيل
+              </Link>
+              <Link href="/admin/health" className="hidden rounded-lg border border-brand-gold/15 px-3 py-1.5 text-xs text-brand-cream/55 transition hover:border-brand-gold/30 hover:text-brand-gold md:inline-flex">
+                الصحة
+              </Link>
+              <div className="hidden rounded-lg border border-brand-gold/10 bg-black/10 px-3 py-1.5 text-right sm:block">
+                <p className="text-[10px] text-brand-cream/30">{currentProfile?.email ?? "حساب الإدارة"}</p>
+                <p className="mt-0.5 text-[11px] font-semibold text-brand-gold">{String(role).replaceAll("_", " ")}</p>
+              </div>
+              <Link href="/admin/settings" className="rounded-lg border border-brand-gold/25 px-3 py-1.5 text-xs text-brand-gold/80 transition hover:bg-brand-gold/10">
+                الإعدادات
+              </Link>
+              <Link href="/" className="hidden rounded-lg border border-brand-gold/25 px-3 py-1.5 text-xs text-brand-gold/80 transition hover:bg-brand-gold/10 sm:inline-flex">
+                عرض الموقع
+              </Link>
+            </div>
           </div>
         </div>
         <AdminMobileNav groups={visibleGroups} />
