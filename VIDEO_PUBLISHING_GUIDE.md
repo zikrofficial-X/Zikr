@@ -260,7 +260,7 @@ curl -X POST https://zikrmediaofficial.vercel.app/api/admin/social \
 ### Background Job Processing
 
 **Automated Jobs:**
-- ⚙️ CircleCI scheduled `background-jobs` runs the recurring production worker four times per day and processes the deterministic FFmpeg queue plus social publishing.
+- ⚙️ GitHub Actions owns the recurring production video worker (`generate-ai-video.yml`) at 03:17, 09:17, 15:17, and 21:17 UTC, and only that worker may render production videos.
 - ⚙️ GitHub Actions `generate-ai-video.yml` is manual-only for diagnostics and recovery.
 - ⚙️ Admin Run Now dispatches the canonical GitHub worker directly; there is no recurring GitHub poller.
 - ⏱️ Vercel has no video-processing cron, and GitHub Actions has no recurring video schedule.
