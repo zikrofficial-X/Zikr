@@ -1,26 +1,51 @@
 -- Remote migration: 20261002042816
-drop policy if exists "Admins only can view usage stats" on public.free_tier_usage;
-create policy "Admins only can view usage stats" on public.free_tier_usage for select to public
-using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
+-- Compatibility hardening: these legacy tables may already have been retired
+-- before a clean Supabase Preview database replays this migration family.
 
-drop policy if exists "Admins only can modify game graphics" on public.game_graphics;
-create policy "Admins only can modify game graphics" on public.game_graphics for all to public
-using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role))
-with check (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
+DO $migration$
+BEGIN
+  IF to_regclass('public.free_tier_usage') IS NOT NULL THEN
+    EXECUTE 'drop policy if exists "Admins only can view usage stats" on public.free_tier_usage';
+    EXECUTE $policy$
+      create policy "Admins only can view usage stats" on public.free_tier_usage for select to public
+      using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role))
+    $policy$;
+  END IF;
 
-drop policy if exists "Admins only can modify game scenarios" on public.game_scenarios;
-create policy "Admins only can modify game scenarios" on public.game_scenarios for all to public
-using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role))
-with check (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
+  IF to_regclass('public.game_graphics') IS NOT NULL THEN
+    EXECUTE 'drop policy if exists "Admins only can modify game graphics" on public.game_graphics';
+    EXECUTE $policy$
+      create policy "Admins only can modify game graphics" on public.game_graphics for all to public
+      using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role))
+      with check (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role))
+    $policy$;
+  END IF;
 
-drop policy if exists "Users can insert their own achievements" on public.kids_achievements_legacy_20261002;
-create policy "Users can insert their own achievements" on public.kids_achievements_legacy_20261002 for insert to public
-with check ((select auth.uid()) = user_id);
+  IF to_regclass('public.game_scenarios') IS NOT NULL THEN
+    EXECUTE 'drop policy if exists "Admins only can modify game scenarios" on public.game_scenarios';
+    EXECUTE $policy$
+      create policy "Admins only can modify game scenarios" on public.game_scenarios for all to public
+      using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role))
+      with check (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role))
+    $policy$;
+  END IF;
 
-drop policy if exists "Users can view their own achievements" on public.kids_achievements_legacy_20261002;
-create policy "Users can view their own achievements" on public.kids_achievements_legacy_20261002 for select to public
-using ((select auth.uid()) = user_id);
+  IF to_regclass('public.kids_achievements_legacy_20261002') IS NOT NULL THEN
+    EXECUTE 'drop policy if exists "Users can insert their own achievements" on public.kids_achievements_legacy_20261002';
+    EXECUTE $policy$
+      create policy "Users can insert their own achievements" on public.kids_achievements_legacy_20261002 for insert to public
+      with check ((select auth.uid()) = user_id)
+    $policy$;
+    EXECUTE 'drop policy if exists "Users can view their own achievements" on public.kids_achievements_legacy_20261002';
+    EXECUTE $policy$
+      create policy "Users can view their own achievements" on public.kids_achievements_legacy_20261002 for select to public
+      using ((select auth.uid()) = user_id)
+    $policy$;
+  END IF;
+END
+$migration$;
 
+-- Canonical kids tables remain part of the active schema and are expected to exist.
 drop policy if exists "Users can insert their own character selection" on public.kids_character_selection;
 create policy "Users can insert their own character selection" on public.kids_character_selection for insert to public
 with check ((select auth.uid()) = user_id);
