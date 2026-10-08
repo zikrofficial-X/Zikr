@@ -252,6 +252,8 @@ export async function searchAdminContent(query: string) {
     ["مقال", "/rest/v1/articles?select=id,title,slug,published,updated_at&or=(title.ilike." + pattern + ",content.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
     ["قصة", "/rest/v1/stories?select=id,title,slug,published,updated_at&or=(title.ilike." + pattern + ",content.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
     ["فيديو", "/rest/v1/videos?select=id,title,slug,published,updated_at&or=(title.ilike." + pattern + ",description.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
+    ["حديث", "/rest/v1/hadiths?select=id,text_ar,grade_ar,updated_at&or=(text_ar.ilike." + pattern + ",grade_ar.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
+    ["دعاء", "/rest/v1/duas?select=id,title_ar,text_ar,published,updated_at&or=(title_ar.ilike." + pattern + ",text_ar.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
     ["مكتبة", "/rest/v1/content_library?select=id,title_ar,title_en,slug,published,updated_at&or=(title_ar.ilike." + pattern + ",title_en.ilike." + pattern + ",body_ar.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
   ] as const;
 
