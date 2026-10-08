@@ -30,6 +30,7 @@ assert.ok(english.includes("environment: production"), "English sync must use pr
 assert.ok(english.includes("github.ref == 'refs/heads/main'"), "English sync must be main-only");
 assert.ok(release.includes("github.ref == 'refs/heads/main'"), "Controlled Vercel release must be main-only");
 assert.ok(release.includes("Production smoke test on deployed artifact"), "Controlled release must verify the deployment it just created");
+assert.ok(release.includes("environment:\n      name: production"), "Controlled release must use the protected production environment");
 assert.ok(smoke.includes("name: ZIKR Production Smoke Verification"), "Manual production smoke workflow name is incorrect");
 assert.ok(androidPublish.includes("github.ref_type == 'tag'"), "Android publishing must support release tags");
 assert.ok(androidPublish.includes("docs/finalization/RELEASE_RETRY.flag"), "Android publishing must require explicit release state for non-tag recovery");
@@ -44,7 +45,7 @@ for (const file of [
   ".github/workflows/release-finalization.yml",
 ]) {
   const content = read(file);
-  assert.ok(content.includes("environment: production"), file + " must bind the production environment");
+  assert.ok(content.includes("environment: production") || content.includes("environment:\n      name: production"), file + " must bind the production environment");
 }
 
 console.log("✅ CI/CD architecture checks passed");
