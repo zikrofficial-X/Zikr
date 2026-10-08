@@ -56,7 +56,6 @@ Facebook / Meta:
 
 Native social:
 
-- `NATIVE_SOCIAL_SYNC_ENABLED`
 
 The canonical Meta variable name is `FACEBOOK_GRAPH_API_VERSION`. `META_GRAPH_API_VERSION` is retired.
 
@@ -90,12 +89,9 @@ Worker/runtime configuration includes:
 - `VIDEO_TEMPLATE_VERSION`
 - `VERIFY_VIDEO_RUNTIME_TOOLS`
 - `BACKGROUND_JOB_TARGET`
-- `VIDEO_AUTO_PUBLISH`
 - `AUTO_VIDEO_PUBLISH_ENABLED`
 - `AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL`
 - `SOCIAL_PUBLISH_ENABLED`
-- `VIDEO_PUBLISH_SCHEDULE`
-- `VIDEO_GENERATOR`
 - `COMFYUI_ENABLED`
 - `COMFYUI_BASE_URL`
 - `COMFYUI_TIMEOUT_MS`
@@ -110,7 +106,6 @@ Worker/runtime configuration includes:
 - `VIDEO_DEFAULT_FORMAT`
 - `VIDEO_DEFAULT_DURATION`
 - `VIDEO_TIMEZONE`
-- `VIDEO_BACKGROUND_BATCH_SIZE`
 - `SOCIAL_BACKGROUND_BATCH_SIZE`
 - `INTERNAL_JOB_SECRET`
 
@@ -120,7 +115,7 @@ Optional Arabic TTS worker overrides:
 - `ARABIC_TTS_RATE`
 - `ARABIC_TTS_PITCH`
 
-Legacy YouTube sync endpoint: retired. `YOUTUBE_SYNC_SECRET` is no longer part of the active production worker contract.
+YouTube feed synchronization is read-cache based; the retired internal sync endpoint and its secret are no longer part of the production contract.
 
 ## 5. Supabase Edge Function contract
 
