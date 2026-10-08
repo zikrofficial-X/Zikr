@@ -18,7 +18,7 @@ type GitHubRelease = {
 
 type GitHubRef = { object?: { sha?: string } };
 
-const REPO = "zikr-org/Zikr";
+const REPO = process.env.GITHUB_REPOSITORY?.trim() || "zikrcontact-del/Zikr";
 const API = "https://api.github.com";
 
 function token() {
@@ -88,13 +88,11 @@ async function upsertTextFile(path: string, content: string, sha: string | undef
 
 function parseAndroidVersion(
   buildGradle: string,
-  packageVersionText = "",
   packageJsonText = "",
 ) {
   const normalizedGradle = buildGradle.replace(/\r/g, "");
   const versionName =
     normalizedGradle.match(/\bversionName\s*(?:=\s*)?["']([^"']+)["']/)?.[1]?.trim() ??
-    packageVersionText.match(/^ZIKR\s+v([^\r\n]+)\s*$/mi)?.[1]?.trim() ??
     packageJsonText.match(/"version"\s*:\s*"([^"]+)"/)?.[1]?.trim();
 
   const versionCodeRaw =
@@ -103,7 +101,7 @@ function parseAndroidVersion(
   const versionCode = Number.parseInt(versionCodeRaw ?? "", 10);
 
   if (!versionName || !Number.isFinite(versionCode)) {
-    throw new Error("تعذر قراءة بيانات إصدار Android من build.gradle أو PACKAGE_VERSION.txt.");
+    throw new Error("تعذر قراءة بيانات إصدار Android من android/app/build.gradle.");
   }
   return { versionName, versionCode };
 }
@@ -171,13 +169,8 @@ export async function prepareAndroidRelease() {
 
   const buildFile = await getTextFile("android/app/build.gradle");
   const packageFile = await getTextFile("package.json");
-  const packageVersionFile = await getTextFile("PACKAGE_VERSION.txt");
   const packageJson = JSON.parse(packageFile.content) as { version?: string };
-  const current = parseAndroidVersion(
-    buildFile.content,
-    packageVersionFile.content,
-    packageFile.content,
-  );
+  const current = parseAndroidVersion(buildFile.content, packageFile.content);
   const nextVersion = bumpPatch(current.versionName || packageJson.version || "1.0.0");
   const nextVersionCode = current.versionCode + 1;
   const tag = "v" + nextVersion;
@@ -239,14 +232,6 @@ export async function prepareAndroidRelease() {
     nextPackage,
     packageFile.sha,
     "release: bump package version to " + nextVersion,
-  );
-
-  const packageVersion = await getTextFile("PACKAGE_VERSION.txt");
-  await upsertTextFile(
-    "PACKAGE_VERSION.txt",
-    "ZIKR v" + nextVersion + "\nversionCode=" + nextVersionCode + "\napplicationId=com.zikr.app\ntargetSdk=36\n",
-    packageVersion.sha,
-    "release: update Android metadata " + tag,
   );
 
   const footerFile = await getTextFile("src/components/layout/footer.tsx");
