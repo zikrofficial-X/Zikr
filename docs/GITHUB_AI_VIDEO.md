@@ -1,6 +1,6 @@
 # ZIKR Multi Provider Free Video Engine
 
-The production automation runs from `.github/workflows/generate-ai-video.yml` and the protected endpoint `/api/internal/video-generation/daily`. The existing template renderer remains the default and is not replaced.
+The production automation runs directly from `.github/workflows/generate-ai-video.yml`, which executes `pnpm background:jobs` on the protected production runner. There is no Vercel/internal daily video endpoint in the active architecture.
 
 ## Provider order and cost controls
 
