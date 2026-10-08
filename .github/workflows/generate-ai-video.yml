@@ -1,9 +1,7 @@
 name: ZIKR Autonomous AI Video Worker
 
 on:
-  schedule:
-    # Four runs/day preserve the existing eight-item daily pacing with fewer idle starts.
-    - cron: "17 3,9,15,21 * * *"
+  # Scheduled production execution is owned by CircleCI to keep GitHub Actions usage inside the Free allowance.
   workflow_dispatch:
     inputs:
       batch_size:
@@ -161,7 +159,7 @@ jobs:
           fi
 
 
-      # Manual queue recovery verified 2026-09-29: process due pending videos before social publishing.
+      # Manual queue recovery: scheduled execution is handled by CircleCI; this workflow remains the canonical GitHub manual dispatcher.
       # Free-tier AI path: Gemini plans the source-locked presentation; FFmpeg performs the render locally.
       # Validation pass 2026-09-29: Flash-Lite defaults and structured memorization evaluation are enabled.
       # Isolated Gemini/FFmpeg E2E queue test is prepared in Supabase; social publishing is skipped for the test request.
