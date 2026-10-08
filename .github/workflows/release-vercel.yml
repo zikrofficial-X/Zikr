@@ -1,4 +1,4 @@
-name: ZIKR Production Release
+name: ZIKR Production Smoke Verification (Manual)
 
 on:
   workflow_dispatch:
@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Verify Vercel Git production
+    name: Verify live production
     if: >-
       github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' &&
@@ -88,7 +88,7 @@ jobs:
           check_url "$SITE_URL/" "ذِكر"
           check_url "$SITE_URL/robots.txt" "Sitemap:"
           check_url "$SITE_URL/sitemap.xml" "<urlset"
-      - name: Release evidence
+      - name: Smoke evidence
         run: |
           {
             echo "## ZIKR Production Release"
