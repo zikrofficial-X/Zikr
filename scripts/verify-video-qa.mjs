@@ -33,6 +33,19 @@ if (!detail.includes("video.youtubeId")) failures.push("video detail must retain
 const site = read("src/lib/site.ts");
 if (!site.includes('defaultOgImage = "/branding/og-image.png"')) failures.push("QA placeholder must use the canonical local OG image");
 
+const worker = read("scripts/jobs/template-video-automation.ts");
+for (const token of [
+  "assertNarrationQuality",
+  "evaluateArabicNarrationText",
+  "VIDEO_TEMPLATE_VERSION = \"2026-10-08-quality-v3\"",
+  "category === \"quran\" && !audioUrl",
+  "QURAN_AYAH_AUDIO_BASE_URL",
+]) {
+  if (!worker.includes(token)) failures.push(`worker missing narration/video QA contract: ${token}`);
+}
+const voiceProfiles = read("src/features/videos/services/voice-profiles.ts");
+if (!voiceProfiles.includes("hadith_male_msa")) failures.push("hadith voice profile missing from canonical voice service");
+
 const pkg = JSON.parse(read("package.json"));
 if (!pkg.scripts["video:qa:check"]) failures.push("video:qa:check must be registered");
 if (!pkg.scripts["verify:pr"]?.includes("pnpm video:qa:check")) failures.push("verify:pr must include Video QA verification");
