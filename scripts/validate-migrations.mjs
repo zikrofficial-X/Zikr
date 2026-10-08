@@ -151,6 +151,35 @@ BEGIN
 END;
 $cron_stub$;
 
+CREATE OR REPLACE FUNCTION cron.alter_job(
+  job_id bigint,
+  schedule text DEFAULT NULL,
+  command text DEFAULT NULL,
+  database text DEFAULT NULL,
+  username text DEFAULT NULL,
+  active boolean DEFAULT NULL
+)
+RETURNS bigint
+LANGUAGE plpgsql
+AS $cron_stub$
+BEGIN
+  IF EXISTS (SELECT 1 FROM cron.job WHERE cron.job.jobid = $1) THEN
+    RETURN job_id;
+  END IF;
+  RETURN job_id;
+END;
+$cron_stub$;
+
+CREATE OR REPLACE FUNCTION cron.unschedule(job_id bigint)
+RETURNS boolean
+LANGUAGE plpgsql
+AS $cron_stub$
+BEGIN
+  DELETE FROM cron.job WHERE cron.job.jobid = $1;
+  RETURN FOUND;
+END;
+$cron_stub$;
+
 CREATE OR REPLACE FUNCTION public.track_free_tier_usage()
 RETURNS void LANGUAGE plpgsql AS $stub$ BEGIN NULL; END $stub$;
 CREATE OR REPLACE VIEW public.free_tier_statistics AS

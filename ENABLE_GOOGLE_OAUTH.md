@@ -8,7 +8,7 @@ ZIKR uses Supabase Auth with PKCE.
 1. ZIKR calls `supabase.auth.signInWithOAuth({ provider: "google", redirectTo: "https://zikrmediaofficial.vercel.app/auth/callback" })`.
 2. Supabase sends the user to Google.
 3. Google sends the authorization response to the **Supabase provider callback**:
-   `https://nmdeazfmtncelykzxkhs.supabase.co/auth/v1/callback`.
+   `https://wvetcauyerlkqvmntajq.supabase.co/auth/v1/callback`.
 4. Supabase validates the provider response and redirects to ZIKR's app callback.
 5. `src/app/auth/callback/route.ts` exchanges the PKCE code for the user session and redirects to the safe `next` path.
 
@@ -50,7 +50,7 @@ For local development only:
 
 Authorized redirect URI:
 
-`https://nmdeazfmtncelykzxkhs.supabase.co/auth/v1/callback`
+`https://wvetcauyerlkqvmntajq.supabase.co/auth/v1/callback`
 
 Do **not** use `https://zikrmediaofficial.vercel.app/auth/callback` as Google's provider callback for the Supabase-managed social-login flow.
 

@@ -59,7 +59,7 @@ Set these in Vercel Project Settings → Environment Variables:
 
 ```
 # Supabase (already configured)
-NEXT_PUBLIC_SUPABASE_URL=https://nmdeazfmtncelykzxkhs.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://wvetcauyerlkqvmntajq.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=[from Vercel secrets]
 SUPABASE_SERVICE_ROLE_KEY=[from Vercel secrets]
 
@@ -141,7 +141,7 @@ curl -X GET https://zikrmediaofficial.vercel.app/api/kids/games/submit-result
 
 ### Real-time Monitoring
 - **Vercel Dashboard**: https://vercel.com/zikrmediaofficial/zikr
-- **Supabase Console**: https://supabase.com/dashboard/project/nmdeazfmtncelykzxkhs
+- **Supabase Console**: https://supabase.com/dashboard/project/wvetcauyerlkqvmntajq
 - **Error Tracking**: Check Vercel Function logs for API errors
 
 ### Key Metrics to Watch

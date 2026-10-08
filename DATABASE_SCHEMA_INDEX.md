@@ -12,7 +12,7 @@ The application runtime does not use Drizzle ORM, `drizzle-kit`, `drizzle.config
 
 ## Current project
 
-- Supabase project ref: `nmdeazfmtncelykzxkhs` (selected to match Vercel on 2026-10-08)
+- Supabase project ref: `wvetcauyerlkqvmntajq` (selected to match Vercel on 2026-10-08)
 - Canonical migration directory: `supabase/migrations/`
 - Historical migrations/archive: `supabase/migrations_archive/`
 - Generated TypeScript database types: `src/lib/types/supabase.ts`

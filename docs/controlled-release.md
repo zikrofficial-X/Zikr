@@ -2,14 +2,14 @@
 
 ## Development policy
 
-ZIKR does not use Vercel Git integration as the development deployment loop.
+ZIKR does not use Vercel Git integration as the production deployment loop.
 
 - Pull requests and main run the GitHub quality gate.
 - GitHub Actions also runs the read-only Supabase Production Health gate against the live production project.
-- The canonical command is pnpm verify.
+- The canonical command is `pnpm verify`.
 - Routine CircleCI source verification and background runs are disabled to avoid duplicate plan usage; CircleCI remains for Android release tags and explicitly enabled recovery/release pipelines.
-- vercel.json disables automatic Git deployments.
-- No feature-branch push is expected to create a Vercel deployment.
+- `vercel.json` disables automatic Git deployments.
+- No feature-branch or ordinary main push is expected to create a Vercel production deployment.
 - Production deployment is performed only by the manual Vercel release workflow.
 
 ## Phase release policy
@@ -23,8 +23,9 @@ A phase is release-ready only when its branch is complete and the pull request q
 5. Merge to main.
 6. Manually run ZIKR Production Release from main.
 7. Enter RELEASE as confirmation and provide the phase or milestone name.
-8. The release workflow re-runs pnpm verify on the exact release commit before Vercel deployment.
+8. The release workflow re-runs `pnpm verify:pr` on the exact release commit before Vercel deployment.
 9. Vercel deploys the prebuilt artifact once.
+10. Verify the resulting production deployment is READY and points to the exact release commit.
 
 ## Required GitHub Actions secrets
 
@@ -36,14 +37,17 @@ The release workflow requires:
 
 These are CI secrets and must never be committed to the repository.
 
+## Current production identity (verified 2026-10-08)
+
+- GitHub repository: `zikrcontact-del/Zikr`
+- Vercel project: `zikr`
+- Vercel project ID: `prj_1y2W5TZdugysh25Fgu4VRMDQwPcA`
+- Vercel team ID: `team_zifbzhks5C1PW9GXQnQnBU2y`
+- Supabase project: `wvetcauyerlkqvmntajq`
+- Production domain: `https://zikrmediaofficial.vercel.app`
+
+The repository and workflow must use these identities. Obsolete IDs from previous Vercel/Supabase projects are not valid production configuration.
+
 ## Important
 
 The current GitHub connector does not expose branch-protection or ruleset write operations for this private repository. The quality workflow is implemented, but making its checks formally required for merging must be completed in GitHub Repository Settings once those controls are available.
-
-## Current release mechanics (verified 2026-10-04)
-
-- `vercel.json` sets `git.deploymentEnabled=true`, so pushes to the linked production branch can deploy through the GitHub integration.
-- `release-finalization.yml` remains available as an explicit CLI fallback using the current Vercel team `team_z2nBDHi0ppVAXj1cWzs7Qt5c` and project `prj_hRhHT6FUMXshDfzCnIh0aG0wpS1g`; its GitHub Actions `VERCEL_TOKEN` secret must be configured before manually dispatching that fallback.
-- Fallback that has worked: create a production deployment from the exact `main` commit through the Vercel API/dashboard (`gitSource`: org `zikr-org`, repo `Zikr`, ref `main`, sha = release commit).
-- `release-vercel.yml` (manual, input `RELEASE`) only verifies the live site after a deployment. It has no automatic trigger.
-- Quality Gate and Supabase Production Health must be green on the release commit before deploying.

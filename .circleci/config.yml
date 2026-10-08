@@ -265,7 +265,7 @@ jobs:
                 exit 1
               fi
             done
-            if [[ "$NEXT_PUBLIC_SUPABASE_URL" != "https://nmdeazfmtncelykzxkhs.supabase.co" ]]; then
+            if [[ "$NEXT_PUBLIC_SUPABASE_URL" != "https://wvetcauyerlkqvmntajq.supabase.co" ]]; then
               echo "NEXT_PUBLIC_SUPABASE_URL does not match the canonical ZIKR Supabase project." >&2
               exit 1
             fi

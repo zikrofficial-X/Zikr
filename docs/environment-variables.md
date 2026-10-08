@@ -12,7 +12,7 @@ These are the variables required by the Next.js application.
 
 | Variable | Scope | Required | Notes |
 |---|---|---:|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | Canonical project: `https://nmdeazfmtncelykzxkhs.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | Canonical project: `https://wvetcauyerlkqvmntajq.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Yes | Public/publishable Supabase client credential |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only | Yes | Never expose to browser/client code |
 | `NEXT_PUBLIC_SITE_URL` | Public | Yes | Locked canonical origin: `https://zikrmediaofficial.vercel.app` |
@@ -237,11 +237,11 @@ The repository does **not** contain or print production secret values.
 
 ## 10. Supabase/Vercel binding status
 
-The linked Vercel project already contains the required Supabase runtime variable names, and its configured URLs point to `https://nmdeazfmtncelykzxkhs.supabase.co`. Secret values were not printed or changed.
+The linked Vercel project already contains the required Supabase runtime variable names, and its configured URLs point to `https://wvetcauyerlkqvmntajq.supabase.co`. Secret values were not printed or changed.
 
 The current production contract is aligned around:
 
-- Supabase project `nmdeazfmtncelykzxkhs`;
+- Supabase project `wvetcauyerlkqvmntajq`;
 - canonical site `https://zikrmediaofficial.vercel.app`;
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` as the browser-facing key;
 - `SUPABASE_SERVICE_ROLE_KEY` as the server-only key;
@@ -252,7 +252,7 @@ A read-only check against that target passed for Auth settings, `quran_surahs`, 
 
 The deployment environment validator also flags the existing `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` application variables because Google login is handled by Supabase Auth. Those values were not changed; review them separately.
 
-The active Supabase health workflow is pinned to the canonical production target. Historical documentation may still mention retired project refs, but active runtime and workflow configuration must remain on `nmdeazfmtncelykzxkhs`. Any future database-target change must use a reviewed forward migration or configuration change rather than rewriting applied migration history.
+The active Supabase health workflow is pinned to the canonical production target. Historical documentation may still mention retired project refs, but active runtime and workflow configuration must remain on `wvetcauyerlkqvmntajq`. Any future database-target change must use a reviewed forward migration or configuration change rather than rewriting applied migration history.
 
 ## Security rules
 
