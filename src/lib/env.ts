@@ -79,6 +79,7 @@ const rawEnv: Record<string, string | undefined> = {
   // ── Site / Auth ───────────────────────────────────────────────────────────
   NEXT_PUBLIC_SITE_URL: siteUrl,
   AUTH_CALLBACK_URL: resolveAppCallbackUrl(pick("AUTH_CALLBACK_URL"), siteUrl),
+  PRIMARY_ADMIN_EMAIL: (pick("PRIMARY_ADMIN_EMAIL") || "mohamed.alaa7785@gmail.com").trim().toLowerCase(),
 
   NEXT_PUBLIC_GA_MEASUREMENT_ID:
     NEXT_PUBLIC_GA_MEASUREMENT_ID_RAW || pick("NEXT_PUBLIC_GA_MEASUREMENT_ID"),
@@ -175,6 +176,7 @@ export function getServerEnv() {
     CLOUDINARY_API_KEY: validatedEnv.CLOUDINARY_API_KEY || "",
     CLOUDINARY_API_SECRET: validatedEnv.CLOUDINARY_API_SECRET || "",
     AUTH_CALLBACK_URL: validatedEnv.AUTH_CALLBACK_URL || "",
+    PRIMARY_ADMIN_EMAIL: validatedEnv.PRIMARY_ADMIN_EMAIL || "mohamed.alaa7785@gmail.com",
     GEMINI_API_KEY: validatedEnv.GEMINI_API_KEY || "",
     GEMINI_MODEL: validatedEnv.GEMINI_MODEL || "gemini-3.1-flash-lite",
     HADITH_API_BASE_URL:
