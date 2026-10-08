@@ -2,8 +2,6 @@
 .git
 .gitignore
 README.md
-DEPLOYMENT.md
-todo.md
 .env.local
 .env.*.local
 node_modules
@@ -18,6 +16,4 @@ coverage
 
 # Web deployment does not execute native projects, database migrations, or test tooling.
 /.github/
-/drizzle/
 /docs/
-/v0_memories/
