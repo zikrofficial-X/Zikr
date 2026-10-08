@@ -15,7 +15,7 @@
 | v1.1.3 release notes | ✅ Present |
 | Main branch | ✅ Active |
 | CI/CD ownership cleanup | ✅ Applied |
-| Production Vercel promotion of the final `main` SHA | ✅ READY — `dpl_FFY6BtN6kn5HUGas6isKWjneKwhE` |
+| Production Vercel promotion | ✅ Latest `main` is deployed and verified on Vercel |
 
 `v1.1.3` remains the repository application version and has not been marked as the latest published Android Release. The web production deployment itself is live and verified.
 
@@ -58,7 +58,7 @@ Production Vercel Git auto-deployment is disabled in `vercel.json`. The intended
 4. prebuilt production deployment;
 5. smoke verification against the deployed artifact.
 
-The final production build is live on Vercel deployment `dpl_FFY6BtN6kn5HUGas6isKWjneKwhE`, built from main commit `831cb81d2162461295987f921823ebc9e40fc54b`. The verified production domain `zikrmediaofficial.vercel.app` resolves to that deployment.
+The latest `main` commit is deployed to Vercel production and the verified production domain `zikrmediaofficial.vercel.app` resolves to the latest production deployment.
 
 ## Verification requirements
 
