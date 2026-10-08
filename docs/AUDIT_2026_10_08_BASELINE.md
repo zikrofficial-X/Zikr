@@ -1,3 +1,7 @@
+# Historical baseline — 2026-10-08
+
+> This document records the pre-cleanup automation state. It is not the active architecture source of truth. Use `docs/AUTOMATION_OWNERSHIP_2026-10-08.md` for current ownership and `docs/production-scheduling.md` for active schedules.
+
 # ZIKR Repository Audit Baseline — 2026-10-08
 
 ## Current State Summary
