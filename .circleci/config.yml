@@ -167,7 +167,7 @@ jobs:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       VIDEO_BACKGROUND_BATCH_SIZE: "3"
       SOCIAL_BACKGROUND_BATCH_SIZE: "10"
-      SOCIAL_PUBLISH_ENABLED: "false"
+      SOCIAL_PUBLISH_ENABLED: "true"
       VIDEO_GENERATOR: template
       AUTO_VIDEO_ENABLED: "true"
       AUTO_VIDEO_BATCH_SIZE: "1"
