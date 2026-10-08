@@ -52,3 +52,8 @@ Production health checks validate the canonical Supabase endpoint and, when a se
 ## Rotation
 
 When a secret is suspected to have been exposed, rotate the credential at its source, update the owning environment, and re-run the production health and smoke gates before release.
+
+
+## Repository integrity
+
+The corrupted overlong Git tree path that previously broke GitHub Actions checkout was removed from `main` in cleanup PR #282 on 2026-10-08.
