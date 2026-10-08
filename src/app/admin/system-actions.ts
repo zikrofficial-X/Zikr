@@ -12,17 +12,11 @@ function formValue(formData: FormData, key: string) {
 export async function saveAdminSettingAction(formData: FormData) {
   const profile = await requireAdminPermission("settings.manage");
   const key = formValue(formData, "key");
-  const rawValue = formValue(formData, "value");
+  const rawValues = formData.getAll("value").map((value) => String(value).trim());
+  const rawValue = rawValues.at(-1) ?? "";
   if (!key) throw new Error("مفتاح الإعداد مطلوب.");
 
-  let value: unknown = rawValue;
-  try {
-    value = JSON.parse(rawValue);
-  } catch {
-    value = rawValue;
-  }
-
-  await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
+  const allowedSettings = new Set([\n    "require_mfa_for_destructive",\n    "maintenance_mode",\n    "admin_alerts_enabled",\n    "search_result_limit",\n  ]);\n  if (!allowedSettings.has(key)) throw new Error("إعداد إدارة غير مدعوم.");\n\n  let value: unknown;\n  if (["require_mfa_for_destructive", "maintenance_mode", "admin_alerts_enabled"].includes(key)) {\n    if (rawValue !== "true" && rawValue !== "false") throw new Error("قيمة منطقية غير صالحة.");\n    value = rawValue === "true";\n  } else {\n    const numeric = Number(rawValue);\n    if (!Number.isInteger(numeric) || numeric < 10 || numeric > 100) {\n      throw new Error("حد نتائج البحث يجب أن يكون بين 10 و100.");\n    }\n    value = numeric;\n  }\n  await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
     body: JSON.stringify({ key, value, updated_by: profile.id, updated_at: new Date().toISOString() }),
@@ -59,6 +53,24 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
     const numeric = Number(rawValue);
     if (!Number.isInteger(numeric) || numeric < 1 || numeric > 10) {
       throw new Error("حجم الدفعة يجب أن يكون بين 1 و10.");
+    }
+    value = numeric;
+  } else if (key === "video_automation_daily_target") {
+    const numeric = Number(rawValue);
+    if (!Number.isInteger(numeric) || numeric < 1 || numeric > 24) {
+      throw new Error("الهدف اليومي يجب أن يكون بين 1 و24.");
+    }
+    value = numeric;
+  } else if (key === "video_automation_ai_attempts_per_run") {
+    const numeric = Number(rawValue);
+    if (!Number.isInteger(numeric) || numeric < 0 || numeric > 4) {
+      throw new Error("محاولات مزودات الفيديو الذكية يجب أن تكون بين 0 و4.");
+    }
+    value = numeric;
+  } else if (key === "video_automation_video_seconds") {
+    const numeric = Number(rawValue);
+    if (!Number.isInteger(numeric) || numeric < 10 || numeric > 45) {
+      throw new Error("مدة الفيديو يجب أن تكون بين 10 و45 ثانية.");
     }
     value = numeric;
   } else {
