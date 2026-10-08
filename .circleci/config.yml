@@ -367,8 +367,6 @@ jobs:
             fi
             if [[ "${CIRCLE_TAG:-}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
               RELEASE_TAG="$CIRCLE_TAG"
-            elif [[ "${CIRCLE_TAG:-}" == "v1.1.2-build" ]]; then
-              RELEASE_TAG="v1.1.2"
             elif [[ "${CIRCLE_BRANCH:-}" =~ ^android-release-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
               RELEASE_TAG="v${BASH_REMATCH[1]}"
             else
