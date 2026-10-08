@@ -60,6 +60,8 @@ for (const adminPage of [
 const client = read("src/app/admin/ai-video/ai-video-client.tsx");
 if (client.includes("SUPABASE_SERVICE_ROLE_KEY") || client.includes("createAdminClient")) failures.push("AI video client must not contain service-role access");
 
+const worker = read("scripts/jobs/template-video-automation.ts");
+
 const pkg = JSON.parse(read("package.json"));
 if (!pkg.scripts["admin:video:check"]) failures.push("admin:video:check must be registered");
 if (!pkg.scripts["verify:pr"]?.includes("pnpm admin:video:check")) failures.push("verify:pr must include Admin Video Factory verification");
