@@ -96,8 +96,7 @@ function parseAndroidVersion(
     packageJsonText.match(/"version"\s*:\s*"([^"]+)"/)?.[1]?.trim();
 
   const versionCodeRaw =
-    normalizedGradle.match(/\bversionCode\s*(?:=\s*)?(\d+)\b/)?.[1] ??
-    packageVersionText.match(/^versionCode\s*=\s*(\d+)\s*$/mi)?.[1];
+    normalizedGradle.match(/\bversionCode\s*(?:=\s*)?(\d+)\b/)?.[1];
   const versionCode = Number.parseInt(versionCodeRaw ?? "", 10);
 
   if (!versionName || !Number.isFinite(versionCode)) {
