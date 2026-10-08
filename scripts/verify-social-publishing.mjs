@@ -11,6 +11,9 @@ const read = (path) => {
 };
 
 const publisher = read("src/features/social/services/social-publishing.ts");
+const adminSocial = read("src/app/api/admin/social/route.ts");
+if (adminSocial.includes("/api/internal/video-processing")) failures.push("admin social retry references a retired noop endpoint");
+if (!adminSocial.includes('dispatchGitHubWorkflow("publish-social.yml")')) failures.push("admin social retry must use the canonical GitHub social workflow");
 if (!publisher.includes("updated_at=eq.")) failures.push("social queue claims must use optimistic updated_at concurrency");
 if (!publisher.includes('env.SOCIAL_PUBLISH_FACEBOOK_ENABLED !== "true"')) failures.push("Facebook publisher must require explicit feature enablement");
 if (!publisher.includes("isFacebookAuthFailure")) failures.push("Facebook auth failures must be classified separately");
