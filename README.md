@@ -15,11 +15,11 @@ ZIKR is an Arabic-first Islamic content and spiritual platform covering Quran, H
 - **Media:** Supabase Storage and Cloudinary where required
 - **Web deployment:** Vercel
 - **Mobile:** Capacitor Android/iOS
-- **Automation:** Supabase `pg_cron` owns production prayer Web Push scheduling; GitHub Actions handles repository quality gates, releases and the authoritative video worker
+- **Automation:** Supabase `pg_cron` owns prayer/source-agent scheduling; GitHub Actions owns quality gates, video generation, social publishing, and controlled releases; CircleCI owns the application build/documentation, Android, Supabase-gate, and English-sync lanes
 
 ## Video and social automation
 
-Production video generation uses the free deterministic FFmpeg template renderer. The authoritative automatic worker is GitHub Actions; CircleCI is retained for deliberate manual recovery.
+Production video generation uses the deterministic FFmpeg template renderer. GitHub Actions is the sole production video worker. Social publishing is a separate GitHub Actions worker consuming `social_publish_queue`; CircleCI does not execute either production worker.
 
 ## Required runtime configuration
 
@@ -82,19 +82,21 @@ The project uses Supabase RLS, server-side service-role boundaries, protected OA
 
 ## Release process
 
-The current release metadata baseline is `1.1.0` / versionCode `54` / `com.zikr.app` / target SDK 36.
+Current application version: `1.1.3`; canonical Android tag: `v1.1.3`; application ID: `com.zikr.app`; target SDK: `36`.
 
 Before releasing:
 
 ```bash
-pnpm verify
+pnpm verify:pr
 pnpm mobile:check
 ```
+
+Production web deployment is controlled through `.github/workflows/release-finalization.yml`. Android release uses one semantic tag (`vX.Y.Z`) with CircleCI for the signed build and GitHub Actions for release-asset verification/publication.
 
 ## Support
 
 - Website: https://zikrmediaofficial.vercel.app
-- Repository: `zikr-org/Zikr`
+- Repository: `zikrcontact-del/Zikr`
 - Issues: use GitHub Issues for reproducible bugs and feature requests
 
 ## License
