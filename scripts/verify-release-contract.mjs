@@ -16,11 +16,15 @@ assert.equal(tag, `v${version}`, "package.json version and .release-tag must mat
 assert.ok(existsSync(`docs/releases/${version}.md`), "release notes must exist for package version");
 assert.ok(read(`docs/releases/${version}.md`).includes(`Release tag: \`v${version}\``), "release notes must reference the canonical release tag");
 
-const createTag = read(".github/workflows/create-android-release-tag.yml");
-assert.ok(createTag.includes("startsWith(github.event.head_commit.message, '[PRODUCTION RELEASE]')"), "Android release tag creation must require the controlled release marker");
-assert.ok(createTag.includes('test "$TAG" = "v$VERSION"'), "release tag workflow must revalidate version/tag parity");
-assert.ok(createTag.includes("createRelease"), "release tag workflow must create a draft GitHub release");
-assert.ok(!createTag.includes("buildTag"), "release tag workflow must not create a redundant -build tag");
+const releaseManager = read("src/features/releases/services/github-release-manager.ts");
+const releaseAction = read("src/app/admin/release/actions.ts");
+assert.ok(releaseManager.includes("/git/tags"), "Admin release manager must create the annotated Android Git tag object");
+assert.ok(releaseManager.includes("/git/refs"), "Admin release manager must publish the canonical Android tag ref");
+assert.ok(releaseManager.includes("/releases"), "Admin release manager must create the draft GitHub Release");
+assert.ok(releaseManager.includes("draft: true"), "Admin release manager must create Android releases as drafts until artifacts are verified");
+assert.ok(releaseManager.includes('const REPO = process.env.GITHUB_REPOSITORY?.trim() || "zikrcontact-del/Zikr";'), "Admin release manager must use the canonical repository");
+assert.ok(releaseAction.includes("prepareAndroidRelease"), "Admin release action must use the canonical Android release manager");
+assert.ok(!releaseManager.includes("buildTag"), "Android release manager must not create a redundant -build tag");
 
 const publish = read(".github/workflows/publish-android-release-assets.yml");
 assert.ok(publish.includes("github.ref_type == 'tag'"), "Android publisher must support semantic release tags");
