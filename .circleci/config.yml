@@ -577,31 +577,6 @@ workflows:
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
 
-  android-release-on-build-tag:
-    jobs:
-      - source-verify:
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v[0-9]+\.[0-9]+\.[0-9]+-build$/
-      - supabase-production-gate:
-          requires:
-            - source-verify
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v[0-9]+\.[0-9]+\.[0-9]+-build$/
-      - android-rebuild:
-          requires:
-            - source-verify
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v[0-9]+\.[0-9]+\.[0-9]+-build$/
-
   manual-security-audit:
     when: << pipeline.parameters.run_security_audit >>
     jobs:
