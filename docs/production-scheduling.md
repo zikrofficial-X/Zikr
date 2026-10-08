@@ -6,9 +6,9 @@ ZIKR has one authoritative execution owner per production workload. Quran audio 
 |---|---|---:|---|
 | Prayer Web Push planning and delivery | Supabase `pg_cron` → `prayer-notification-worker` | Every minute | Private scheduler token, per-device uniqueness, atomic claims, bounded retries, invalid-subscription deactivation. |
 | Client-local azan and reminder sounds | Browser / native client | While active | Local/offline fallback; it does not create server delivery rows. |
-| Video generation queue | GitHub Actions `ZIKR Autonomous AI Video Worker` → `pnpm background:jobs` → template/FFmpeg worker | Four times daily + manual dispatch | Persisted queue, deterministic renderer, protected GitHub secrets, bounded work. |
-| Admin Run Now dispatcher | GitHub Actions `ZIKR Urgent Video Dispatcher` → Supabase setting → worker dispatch | Every 30 minutes + manual dispatch | Lightweight poller; claims requests before dispatch and retries safely after dispatch failure. |
-| Social publishing queue | GitHub Actions video worker → `pnpm background:jobs` → social publisher | Alongside scheduled/manual video worker | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
+| Video generation queue | CircleCI scheduled `background-jobs` → `pnpm background:jobs` → template/FFmpeg worker | Four times daily + manual/manual GitHub dispatch | Persisted queue, deterministic renderer, protected CI secrets, bounded work. |
+| Admin Run Now dispatcher | Admin server action → GitHub Actions `generate-ai-video.yml` dispatch | On demand | Direct dispatch with protected token; request is marked dispatched only after GitHub returns 204. |
+| Social publishing queue | CircleCI scheduled worker → `pnpm background:jobs` → social publisher | Alongside recurring/manual video worker | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
 | Quran text/catalog | Local canonical corpus → Supabase fallback | Request time | 114 surahs / 6,236 ayahs are verified; Supabase remains compatibility data. |
 | Quran audio playback | External HTTPS audio URLs via `quran_audio.audio_url` | On demand | No Supabase Storage dependency; no bulk MP3 import job is permitted. |
 | Repository verification | GitHub Actions `ZIKR Quality Gate` | Pull requests and `main` | `pnpm verify:pr` on PRs and `pnpm verify` on `main`; one automatic source gate. |
@@ -19,7 +19,7 @@ ZIKR has one authoritative execution owner per production workload. Quran audio 
 
 The Supabase migration `20260915004110_retire_vercel_video_processing_cron.sql` retires the legacy `zikr-video-processing` cron job. The old Vercel route must not become an alternate scheduler.
 
-Supabase owns minute-level prayer scheduling. CircleCI is the authoritative automatic video/social worker, with four scheduled runs per day plus manual dispatch and concurrency protection. The separate Admin Run Now poller checks every 30 minutes. CircleCI no longer runs routine source verification on `main`; it remains reserved for tagged Android releases and opt-in recovery/release work.
+Supabase owns minute-level prayer scheduling. CircleCI is the authoritative automatic video/social worker, with four scheduled runs per day plus the deliberate GitHub manual dispatch path. Admin Run Now dispatches the canonical GitHub worker directly; there is no recurring poller. GitHub Actions owns source verification, controlled releases, production smoke verification, and manual video dispatch. CircleCI also provides Android release and recovery operations.
 
 ## Quran audio architecture
 
