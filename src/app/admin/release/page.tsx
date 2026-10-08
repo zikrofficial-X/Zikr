@@ -94,7 +94,7 @@ export default async function AdminReleasePage({
             سيظل الإصدار غير عام حتى تنجح فحوص APK/AAB.
           </p>
           <a
-            href="https://app.circleci.com/pipelines/github/zikr-org/Zikr"
+            href="https://app.circleci.com/pipelines/github/zikrcontact-del/Zikr"
             target="_blank"
             rel="noreferrer noopener"
             className="mt-3 inline-flex text-sm text-brand-gold underline"
