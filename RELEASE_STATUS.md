@@ -15,7 +15,7 @@
 | v1.1.3 release notes | ✅ Present |
 | Main branch | ✅ Active |
 | CI/CD ownership cleanup | ✅ Applied |
-| Production Vercel promotion of the latest cleanup commit | ⏳ Controlled release required |
+| Production Vercel promotion of the latest cleanup commit | ✅ READY — `dpl_FkavSSvEDy4vom7p6zvoFLN28aq9` |
 
 `v1.1.3` is prepared in the repository but must not be described as published until the controlled Android/web release pipelines have completed successfully.
 
@@ -58,7 +58,7 @@ Production Vercel Git auto-deployment is disabled in `vercel.json`. The intended
 4. prebuilt production deployment;
 5. smoke verification against the deployed artifact.
 
-The latest live Vercel production deployment observed during the 2026-10-08 cleanup still points to an earlier commit, so the cleanup work must not be described as live production until the controlled release completes.
+The cleaned production build is live on Vercel deployment `dpl_FkavSSvEDy4vom7p6zvoFLN28aq9`, built from commit `96b85222dfd18309688e4b5e09d35e55c0b44210`, and the canonical alias `zikrmediaofficial.vercel.app` resolves to that deployment.
 
 ## Verification requirements
 
