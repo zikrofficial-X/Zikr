@@ -120,9 +120,7 @@ Optional Arabic TTS worker overrides:
 - `ARABIC_TTS_RATE`
 - `ARABIC_TTS_PITCH`
 
-Internal YouTube sync endpoint:
-
-- `YOUTUBE_SYNC_SECRET`
+Legacy YouTube sync endpoint: retired. `YOUTUBE_SYNC_SECRET` is no longer part of the active production worker contract.
 
 ## 5. Supabase Edge Function contract
 
@@ -156,7 +154,7 @@ The current Edge Function does not require a separate external API secret; it is
 
 No project secret is required.
 
-The repository contains a `sync-youtube-facebook` function source, but it is not part of the active production `supabase/config.toml` function set. Do not re-enable it accidentally.
+The legacy `sync-youtube-facebook` Edge Function has been retired from the runtime tree. It is not part of the active production `supabase/config.toml` function set, and social publishing is now owned by GitHub Actions `publish-social.yml` through `social_publish_queue`.
 
 ## 6. CI/CD ownership
 
@@ -168,7 +166,7 @@ Current production roles:
 - `release-finalization.yml`: controlled production deployment through the Vercel CLI
 - `release-vercel.yml`: manual post-deploy production smoke verification
 - `generate-ai-video.yml`: recurring + manual production video generation
-- `publish-social.yml`: recurring + manual YouTube/Facebook publishing
+- `publish-social.yml`: recurring + manual YouTube/Facebook publishing through `social_publish_queue`
 - `supabase-production-health.yml`: production Supabase health probe
 - `urgent-video-dispatcher.yml`: deliberate video dispatch recovery only
 - `english-content-sync.yml`: manual bounded synchronization; recurring execution remains in CircleCI
