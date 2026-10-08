@@ -124,7 +124,7 @@ export async function requestVideoAutomationRunAction() {
   const token = process.env.GITHUB_PAT || process.env.GITHUB_DISPATCH_TOKEN || process.env.GH_DISPATCH_TOKEN;
   const repository = process.env.GITHUB_REPOSITORY || "zikrcontact-del/Zikr";
   if (!token) {
-    throw new Error("GitHub dispatch token is not configured; Run Now cannot be queued without a scheduled poller.");
+    throw new Error("GitHub dispatch token is not configured; Run Now requires a GitHub workflow dispatch token.");
   }
 
   const batchRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
