@@ -37,18 +37,18 @@ jobs:
       HADITH_API_BASE_URL: https://ummahapi.com/api/hadith
       HADITH_TRANSLATION_BATCH_SIZE: ${{ github.event.inputs.hadith_batch_size || '25' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate Supabase credentials before installing dependencies
         shell: bash
         run: |
           set -euo pipefail
           test -n "${SUPABASE_URL:-}" || { echo "Missing canonical Supabase URL configuration." >&2; exit 1; }
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "Missing production environment secret: SUPABASE_SERVICE_ROLE_KEY" >&2; exit 1; }
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 9.15.0
           run_install: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
