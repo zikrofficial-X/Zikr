@@ -52,12 +52,12 @@ ios/              - Capacitor iOS
 - `src/lib/` - Infrastructure (may contain misplaced domain) ⚠️
 - `src/components/` - Shared UI and layout ✓
 
-## Verification Scripts (40 total)
+## Verification Scripts (65 total)
 
 ### Categories
 
 **Architecture & Structure:**
-- verify-platform-routes.mjs - Route completeness ✓
+- verify-platform-routes.mjs - Route completeness ✓ (228 page/route files + 66 API route files baseline)
 - verify-information-architecture.mjs - Navigation consistency ✓
 - verify-admin-architecture.mjs - Admin pages ✓
 - verify-ci-architecture.mjs - CI/CD setup ✓
@@ -213,16 +213,20 @@ pnpm verify:pr       (PR verification subset)
 ## CI/CD Architecture
 
 ### GitHub Actions
-- **Location:** `.github/workflows/` (to audit) ⚠️
-- **Known Workflows:**
-  - `generate-ai-video.yml` - scheduled video worker ✓
-  - Quality gates on PR + main ⚠️ (verify no duplication)
-  - Release workflow (to verify) ⚠️
+- **Location:** `.github/workflows/`
+- **Role:** PR/main source verification, controlled release, manual video dispatch.
+- **Recurring production schedules:** none.
 
 ### CircleCI
-- **Location:** `.circleci/` (to audit) ⚠️
-- **Role:** Manual recovery + release operations (confirmed in docs)
-- **Verify:** No recurring duplicate jobs with GitHub Actions ⚠️
+- **Location:** `.circleci/config.yml`
+- **Role:** recurring video/social processing, English content sync, Android release, explicit recovery.
+- **Recurring production schedules:** video/social and English sync.
+
+### Supabase pg_cron
+- Prayer notifications remain minute-level scheduler-owned.
+
+### Vercel
+- Deployment target only; Git auto-deploy remains disabled by project policy.
 
 ## Mobile (Capacitor)
 
@@ -231,7 +235,7 @@ pnpm verify:pr       (PR verification subset)
 - iOS project: `ios/` ✓
 - Mobile config: `mobile/capacitor.config.ts` ✓
 - App ID: `com.zikr.app` ✓
-- Version: 1.1.0 / code 54 ✓
+- Version: 1.1.3 / code 57 ✓
 
 ### Capabilities
 - Splash screen ✓
@@ -255,40 +259,24 @@ pnpm verify:pr       (PR verification subset)
 - `docs/archive/KIDS_GAMES_IMPLEMENTATION_v1.1.0.md` - Historical
 - `docs/finalization/PHASE_2_ARCHITECTURE_MAP_2026-10-02.md` - Phase 2 notes
 
-## Next Steps for Cleanup
+## Finalization Status
 
-### Phase 1: Dependency Audit
-- [ ] Verify all versions in package.json
-- [ ] Check for unused dependencies
-- [ ] Verify tailwind-merge compatibility with tailwindcss 4.3.3
+### Completed repairs
+- [x] Database admin rate-limit table/function restored and privilege-checked.
+- [x] Duplicate public-read RLS policies consolidated for hadiths, scholars and stories.
+- [x] Migration filenames reconciled exactly with applied Supabase versions/names.
+- [x] Broken unused enhanced video worker removed.
+- [x] `/admin/video-factory/queue` made canonical; `/admin/videos` retained as a compatibility redirect.
+- [x] Duplicate Vercel `*_2` environment variables removed from Production/Preview scope (Development-only retained because the connector does not expose deletion).
+- [x] Current route verification baselines reconciled to 228 page/route files and 66 API route files.
+- [x] Current package/mobile release metadata reconciled to ZIKR 1.1.3 / Android versionCode 57.
 
-### Phase 2: Workflow Audit
-- [ ] List all GitHub Actions workflows
-- [ ] List all CircleCI jobs
-- [ ] Verify no duplication between GitHub + CircleCI
-- [ ] Verify video worker scheduling
-- [ ] Verify Admin Run Now uses direct dispatch
-
-### Phase 3: Code Cleanup
-- [ ] Remove dead routes/components
-- [ ] Remove unused scripts
-- [ ] Fix any stale imports
-- [ ] Verify no duplicate implementations
-
-### Phase 4: Database Verification
-- [ ] Audit latest 10 migrations
-- [ ] Verify no orphaned migration references
-- [ ] Check RLS policies
-- [ ] Verify cron jobs (Supabase)
-
-### Phase 5: Final Verification
-- [ ] Run full verification suite
-- [ ] Build successfully
-- [ ] No TypeScript errors
-- [ ] No ESLint warnings
-- [ ] All routes resolve correctly
+### Final gates still required
+- [ ] Repair branch CI/quality checks must report success.
+- [ ] Preview deployment must become READY and pass public smoke tests.
+- [ ] PR #281 must be merged only after verification.
+- [ ] Production release must use the exact merged main SHA and be independently smoke-tested.
 
 ---
 
-**Generated:** 2026-10-08T00:00:00Z  
-**Next:** Proceed to Phase 1 cleanup
+**Generated:** 2026-10-08
