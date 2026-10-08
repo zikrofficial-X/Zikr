@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
-import { supabaseServerAdminRequest, createAdminClient } from '@/lib/supabase/server';
+import { supabaseServerAdminRequest } from '@/lib/supabase/server';
 import { getServerEnv } from '@/lib/env';
 import { dispatchGitHubWorkflow } from '@/lib/github/dispatch-workflow';
 
