@@ -631,7 +631,7 @@ function validateAiEditorialPlan(plan: AiVideoPlan, request: GeneratedRequest) {
   const caption = comparableSourceText(plan.socialCaption).replace(/\s+/g, " ").trim();
   if (reflection.length > 110) throw new Error("AI reflection exceeds the Arabic editorial length limit.");
   if (caption.length > 220) throw new Error("AI social caption exceeds the Arabic editorial length limit.");
-  if (/https?:\\/\\//i.test(reflection) || /https?:\\/\\//i.test(caption)) throw new Error("AI editorial text contains a URL.");
+  if (/https?:\/\//i.test(reflection) || /https?:\/\//i.test(caption)) throw new Error("AI editorial text contains a URL.");
   if (hasSuspiciousReligiousAttribution(reflection) || hasSuspiciousReligiousAttribution(caption)) throw new Error("AI editorial text contains an unapproved religious attribution.");
   if (["quran", "hadith", "adhkar", "dua", "story"].includes(request.category) && source.length >= 40) {
     for (const candidate of [reflection, caption]) {
@@ -642,8 +642,8 @@ function validateAiEditorialPlan(plan: AiVideoPlan, request: GeneratedRequest) {
     }
   }
   const combined = reflection + " " + caption;
-  const arabicChars = [...combined].filter((char) => /[\\u0600-\\u06FF\\u0750-\\u077F\\u08A0-\\u08FF]/u.test(char)).length;
-  const letterChars = [...combined].filter((char) => /\\p{L}/u.test(char)).length;
+  const arabicChars = [...combined].filter((char) => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/u.test(char)).length;
+  const letterChars = [...combined].filter((char) => /\p{L}/u.test(char)).length;
   if (letterChars > 0 && arabicChars / letterChars < 0.6) throw new Error("AI editorial layer is not sufficiently Arabic.");
   return plan;
 }
