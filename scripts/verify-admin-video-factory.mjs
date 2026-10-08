@@ -65,7 +65,8 @@ if (!pkg.scripts["admin:video:check"]) failures.push("admin:video:check must be 
 if (!pkg.scripts["verify:pr"]?.includes("pnpm admin:video:check")) failures.push("verify:pr must include Admin Video Factory verification");
 if (!pkg.scripts["verify"]?.includes("pnpm admin:video:check")) failures.push("verify must include Admin Video Factory verification");
 if (!read("src/features/videos/services/voice-profiles.ts").includes("hadith_male_msa")) failures.push("canonical hadith male voice profile missing");
-if (!read("src/features/videos/services/narration-quality.ts").includes("wordsPerSecond")) failures.push("Arabic narration quality validator missing speaking-rate checks");
+if (!read("src/features/videos/services/narration-quality.ts").includes("evaluateArabicNarrationText")) failures.push("Arabic narration quality validator missing");
+if (!worker.includes("wordsPerSecond")) failures.push("Video worker missing speaking-rate checks");
 
 if (failures.length) {
   console.error("ADMIN_VIDEO_FACTORY_CHECK_FAILED");
