@@ -13,7 +13,7 @@ const checks = [
   { path: "/sitemap.xml", expected: /<urlset/i, label: "sitemap.xml" },
 ];
 
-async function check({ path, expected, label }) {
+async function checkEndpoint({ path, expected, label }) {
   const url = `${baseUrl}${path}`;
   let last = "no response";
   for (let attempt = 1; attempt <= 12; attempt += 1) {
@@ -34,5 +34,5 @@ async function check({ path, expected, label }) {
   throw new Error(`Production smoke failed for ${label}: ${last}`);
 }
 
-for (const check of checks) await check(check);
+for (const endpoint of checks) await checkEndpoint(endpoint);
 console.log(`✅ Production smoke passed for ${checks.length} endpoints on ${baseUrl}`);
