@@ -52,7 +52,7 @@ assert.ok(release.includes("pnpm release:contract:check"), "Controlled release m
 assert.ok(release.includes("pnpm production:smoke"), "Controlled release must use the canonical production smoke script");
 assert.ok(release.includes("environment:\n      name: production"), "Controlled release must use the protected production environment");
 assert.ok(smoke.includes("name: ZIKR Production Smoke Verification"), "Manual production smoke workflow name is incorrect");
-assert.ok(smoke.includes("pnpm production:smoke"), "Manual smoke workflow must use the canonical production smoke script");
+assert.ok(smoke.includes("node scripts/verify-production-smoke.mjs"), "Manual smoke workflow must use the canonical production smoke script");
 assert.ok(androidPublish.includes("github.ref_type == 'tag'"), "Android publishing must support release tags");
 assert.ok(androidPublish.includes("docs/finalization/RELEASE_RETRY.flag"), "Android publishing must require explicit release state for non-tag recovery");
 assert.ok(!circle.includes("main-source-verification:"), "CircleCI must not duplicate main source verification");
