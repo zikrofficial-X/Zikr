@@ -117,7 +117,7 @@ export default async function AdminAutomationPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold text-brand-gold">تحكم تشغيل الفيديو</h2>
-            <p className="mt-1 text-sm leading-6 text-brand-cream/45">الإعدادات محفوظة في قاعدة البيانات ويقرأها عامل CircleCI المتكرر. الحدود مضبوطة لمنع الاندفاع غير المنضبط.</p>
+            <p className="mt-1 text-sm leading-6 text-brand-cream/45">الإعدادات محفوظة في قاعدة البيانات ويقرأها عامل GitHub Actions الإنتاجي. الحدود مضبوطة لمنع الاندفاع غير المنضبط.</p>
           </div>
           <form action={requestVideoAutomationRunAction}>
             <button type="submit" disabled={!settingsRes.ok} className="rounded-xl border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20 disabled:cursor-not-allowed disabled:opacity-40">
@@ -171,7 +171,7 @@ export default async function AdminAutomationPage() {
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded-xl border border-sky-500/15 bg-sky-500/5 p-4 text-sm leading-7 text-sky-100/75">
-            التشغيل المتكرر للفيديو والنشر الاجتماعي ملك لـCircleCI. زر «تشغيل التوليد الآن» يستخدم dispatch يدويًا مباشرًا ولا يضيف Cron جديدًا.
+            التشغيل المتكرر للفيديو والنشر الاجتماعي ملك لـGitHub Actions. زر «تشغيل التوليد الآن» يستخدم dispatch يدويًا مباشرًا ولا يضيف Cron جديدًا.
           </div>
           <div className="rounded-xl border border-brand-gold/10 bg-black/10 p-4 text-sm leading-7 text-brand-cream/55">
             جودة الصوت: <Link href="/admin/video-factory/voices" className="text-brand-gold hover:underline">ملفات الأصوات</Link> · ضبط النص: <Link href="/admin/video-factory/scripts" className="text-brand-gold hover:underline">النصوص</Link> · فحوصات ما قبل النشر: <Link href="/admin/video-factory/qa" className="text-brand-gold hover:underline">QA</Link>
