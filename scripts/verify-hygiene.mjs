@@ -40,7 +40,6 @@ try {
 const envAndRuntimeFiles = [
   '.env.example',
   'src/lib/env.ts',
-  'PRODUCTION_DEPLOYMENT_v1.1.0.md',
 ];
 const envAndRuntimeDirs = [
   'src/app',
