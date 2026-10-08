@@ -40,6 +40,8 @@ assert.ok(circle.includes('cron: "17 4 * * *"'), "CircleCI must retain the recur
 assert.ok(!circle.includes('cron: "17 3,9,15,21 * * *"'), "CircleCI must not own the video generation schedule");
 
 assert.ok(quality.includes('name: "ZIKR / Quality Gate"'), "Canonical GitHub quality check name is incorrect");
+assert.ok(quality.includes("run: pnpm verify:pr"), "GitHub Quality Gate must remain verification-only and not own the application build");
+assert.ok(!quality.includes("run: pnpm verify\\n"), "GitHub Quality Gate must not run the full build-bearing verification chain");
 assert.ok(!quality.includes("ci/circleci: ci-check"), "GitHub quality gate must not impersonate CircleCI");
 
 assert.ok(video.includes("workflow_dispatch:"), "Video worker must retain manual recovery");
