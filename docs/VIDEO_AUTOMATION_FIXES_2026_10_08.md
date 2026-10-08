@@ -26,7 +26,7 @@ The canonical queue implements:
 - per-run automation audit records;
 - social queue reconciliation;
 - protected production credentials;
-- manual GitHub dispatch plus recurring CircleCI ownership.
+- recurring GitHub Actions ownership plus deliberate manual dispatch.
 
 ## Current production execution model
 
