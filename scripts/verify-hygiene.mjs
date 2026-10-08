@@ -60,6 +60,15 @@ function scanEnvironmentKeyDrift(relativePath, source) {
 }
 
 const staleRuntimeTokens = [
+  'NATIVE_SOCIAL_SYNC_ENABLED',
+  'VIDEO_AUTO_PUBLISH',
+  'VIDEO_BACKGROUND_BATCH_SIZE',
+  'VIDEO_GENERATOR',
+  'VIDEO_PUBLISH_SCHEDULE',
+  'YOUTUBE_SYNC_SECRET',
+  '/api/internal/video-processing',
+  '/api/internal/video-generation/daily',
+  '/api/internal/youtube-sync',
   'mohamedalaa7785-cpu/Zikr',
   'zikr-zikrmediaofficial.vercel.app',
   'qjcrvgbgmumwhzxdbgad',
