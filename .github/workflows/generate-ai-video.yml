@@ -137,7 +137,7 @@ jobs:
           set -euo pipefail
           pnpm video:engine:check
           pnpm exec tsx -e 'Promise.all([import("./scripts/jobs/template-video-automation.ts"), import("./src/features/social/services/social-publishing.ts")]).then(() => console.log("Video worker module smoke test: OK")).catch((error) => { console.error(error); process.exitCode = 1 })'
-          "$GITHUB_WORKSPACE/.video-venv/bin/python" -m py_compile scripts/jobs/hf-space-video.py
+          "$GITHUB_WORKSPACE/.automation-venv/bin/python" -m py_compile scripts/jobs/hf-space-video.py
           ffmpeg -version | head -n 1
 
       - name: Gemini audio evaluation smoke test
