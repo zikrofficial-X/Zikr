@@ -102,77 +102,80 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
 
 export async function requestVideoAutomationRunAction() {
   const profile = await requireAdminPermission("system.manage");
-  const key = "video_automation_run_now";
-  const value = new Date().toISOString();
-  const request = {
-    requestedAt: value,
-    requestedBy: profile.id,
-    dispatchedAt: null as string | null,
-  };
-
-  await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
-    method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify({
-      key,
-      value: request,
-      updated_by: profile.id,
-      updated_at: value,
-    }),
-  });
-
-  // Direct dispatch is the only automatic Run Now path. The scheduled GitHub poller was
-  // intentionally retired to keep Actions usage inside the GitHub Free allowance.
   const token = process.env.GITHUB_PAT || process.env.GITHUB_DISPATCH_TOKEN || process.env.GH_DISPATCH_TOKEN;
   const repository = process.env.GITHUB_REPOSITORY || "zikrcontact-del/Zikr";
   if (!token) {
     throw new Error("GitHub dispatch token is not configured; Run Now cannot be queued without a scheduled poller.");
   }
 
-  let dispatched = false;
-  {
-    const batchRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
-      "/rest/v1/admin_settings?key=eq.video_automation_batch_size&select=value&limit=1",
-    ).catch(() => []);
-    const rawBatch = Number(batchRows?.[0]?.value ?? 1);
-    const batchSize = Number.isInteger(rawBatch) ? Math.min(10, Math.max(1, rawBatch)) : 1;
-    try {
-      const response = await fetch(
-        `https://api.github.com/repos/${repository}/actions/workflows/generate-ai-video.yml/dispatches`,
-        {
-          method: "POST",
-          headers: {
-            Accept: "application/vnd.github+json",
-            Authorization: `Bearer ${token}`,
-            "X-GitHub-Api-Version": "2022-11-28",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ ref: "main", inputs: { batch_size: String(batchSize), urgent: "true" } }),
-          signal: AbortSignal.timeout(15_000),
+  const batchRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+    "/rest/v1/admin_settings?key=eq.video_automation_batch_size&select=value&limit=1",
+  ).catch(() => []);
+  const rawBatch = Number(batchRows?.[0]?.value ?? 3);
+  const batchSize = Number.isInteger(rawBatch) ? Math.min(10, Math.max(1, rawBatch)) : 3;
+  const key = "video_automation_run_now";
+  const requestedAt = new Date().toISOString();
+  const request = { requestedAt, requestedBy: profile.id, dispatchedAt: null as string | null, failedAt: null as string | null, error: null as string | null };
+
+  try {
+    await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ key, value: request, updated_by: profile.id, updated_at: requestedAt }),
+    });
+
+    const response = await fetch(
+      "https://api.github.com/repos/" + repository + "/actions/workflows/generate-ai-video.yml/dispatches",
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: "Bearer " + token,
+          "X-GitHub-Api-Version": "2022-11-28",
+          "Content-Type": "application/json",
         },
-      );
-      dispatched = response.status === 204;
-    } catch {
-      dispatched = false;
-    }
-    if (!dispatched) {
-      throw new Error("GitHub refused the video workflow dispatch; the Run Now request was not marked as dispatched.");
+        body: JSON.stringify({ ref: "main", inputs: { batch_size: String(batchSize), urgent: "true" } }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    if (response.status !== 204) {
+      const detail = (await response.text().catch(() => "")).slice(0, 500);
+      throw new Error("GitHub workflow dispatch failed (" + response.status + "): " + detail);
     }
 
-    await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq.video_automation_run_now", {
+    const dispatchedAt = new Date().toISOString();
+    await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ value: { ...request, dispatchedAt: new Date().toISOString() }, updated_at: new Date().toISOString() }),
+      body: JSON.stringify({ value: { ...request, dispatchedAt }, updated_at: dispatchedAt }),
     });
-  }
 
-  await recordAdminAuditEvent({
-    action: "admin.video_automation.run_requested",
-    permission: "system.manage",
-    resourceType: "admin_settings",
-    resourceId: key,
-    metadata: { requestedAt: value, priority: "urgent", dispatchedDirectly: dispatched },
-  });
+    await recordAdminAuditEvent({
+      action: "admin.video_automation.run_requested",
+      permission: "system.manage",
+      resourceType: "admin_settings",
+      resourceId: key,
+      metadata: { requestedAt, batchSize, priority: "urgent", dispatchedDirectly: true },
+    });
+  } catch (error) {
+    const failedAt = new Date().toISOString();
+    const message = error instanceof Error ? error.message : String(error);
+    await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ value: { ...request, failedAt, error: message.slice(0, 500) }, updated_at: failedAt }),
+    }).catch(() => {});
+    await recordAdminAuditEvent({
+      action: "admin.video_automation.run_requested_failed",
+      permission: "system.manage",
+      resourceType: "admin_settings",
+      resourceId: key,
+      outcome: "failed",
+      metadata: { requestedAt, batchSize, error: message.slice(0, 500) },
+    }).catch(() => {});
+    throw error;
+  }
 
   revalidatePath("/admin/automation");
 }
