@@ -2,10 +2,15 @@ name: Publish Android Release Assets
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      retry:
+        description: "Retry the current release after CircleCI/Supabase artifacts are ready"
+        required: true
+        default: "false"
+        type: boolean
 
 permissions:
   contents: write
@@ -19,16 +24,16 @@ jobs:
     name: Verify and publish Android release
     if: >-
       github.ref_type == 'tag' ||
-      contains(github.event.head_commit.modified, '.release-tag') ||
-      contains(github.event.head_commit.added, '.release-tag') ||
-      contains(github.event.head_commit.modified, 'docs/finalization/RELEASE_RETRY.flag') ||
-      contains(github.event.head_commit.added, 'docs/finalization/RELEASE_RETRY.flag')
+      (github.event_name == 'workflow_dispatch' &&
+       inputs.retry == true &&
+       github.ref == 'refs/heads/main' &&
+       hashFiles('docs/finalization/RELEASE_RETRY.flag') != '')
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}
       SUPABASE_PUBLIC_ROOT: https://wvetcauyerlkqvmntajq.supabase.co/storage/v1/object/public/android-releases/android
     steps:
-      - name: Checkout tagged/source release
+      - name: Checkout exact release ref
         uses: actions/checkout@v7
 
       - name: Decide whether this is a release publish run
@@ -39,7 +44,7 @@ jobs:
           PUBLISH=false
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             PUBLISH=true
-          elif [[ -f docs/finalization/RELEASE_RETRY.flag ]]; then
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${{ inputs.retry }}" == "true" && -f docs/finalization/RELEASE_RETRY.flag ]]; then
             PUBLISH=true
           fi
           echo "publish=${PUBLISH}" >> "$GITHUB_OUTPUT"
