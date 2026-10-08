@@ -5,7 +5,7 @@ This document describes the current integration between the canonical GitHub rep
 ## Architecture
 
 ```
-GitHub: zikr-org/Zikr
+GitHub: zikrcontact-del/Zikr
         |
         +--> Vercel project: zikr
         |      |
@@ -14,12 +14,14 @@ GitHub: zikr-org/Zikr
         |      +--> Canonical public origin: https://zikrmediaofficial.vercel.app
         |
         +--> GitHub Actions
-        |      +--> every 2 hours: autonomous video/social worker
-        |      +--> manual dispatch: diagnostics/recovery
+        |      +--> PR/main quality gate
+        |      +--> controlled Vercel release + smoke verification
+        |      +--> manual video dispatch
         |
         +--> CircleCI
-        |      +--> ci-check and release validation
-        |      +--> manual recovery operations
+        |      +--> recurring video/social processing
+        |      +--> daily English content sync
+        |      +--> Android release + recovery operations
         |
         +--> Supabase
                +--> PostgreSQL / RLS
@@ -36,7 +38,7 @@ Mobile:
 
 The canonical repository is:
 
-`zikr-org/Zikr`
+`zikrcontact-del/Zikr`
 
 The canonical production branch is:
 
@@ -66,9 +68,9 @@ The canonical database schema lives only under:
 
 `supabase/migrations/`
 
-The current Google provider callback is:
+The current application callback is:
 
-`https://nmdeazfmtncelykzxkhs.supabase.co/auth/v1/callback`
+`https://zikrmediaofficial.vercel.app/auth/callback`
 
 ## 4. Database migrations
 
@@ -95,7 +97,7 @@ pnpm verify
 
 ## 6. Deployment flow
 
-Push verified changes through the intended GitHub branch/PR process. The linked Vercel project can automatically create a preview deployment for source branches and a production deployment for `main`.
+Push verified changes through the intended GitHub branch/PR process. Production deployment is controlled by `.github/workflows/release-finalization.yml`; preview/production evidence must follow the explicit release policy.
 
 When an environment variable is changed in Vercel, a new deployment is required before the running application receives the updated value.
 
