@@ -91,7 +91,6 @@ jspm_packages/
 .nuxt
 
 # Gatsby files
-.cache/
 
 # Storybook build outputs
 .out
@@ -113,7 +112,7 @@ temp/
 client/public/__manus__/version.json
 .vercel
 
-turbo
+
 
 # Android/Gradle local state
 android/.gradle/
