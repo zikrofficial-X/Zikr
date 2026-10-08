@@ -19,9 +19,9 @@ GitHub: zikrcontact-del/Zikr
         |      +--> manual video dispatch
         |
         +--> CircleCI
-        |      +--> recurring video/social processing
+        |      +--> application build/documentation
         |      +--> daily English content sync
-        |      +--> Android release + recovery operations
+        |      +--> Android release + Supabase/recovery operations
         |
         +--> Supabase
                +--> PostgreSQL / RLS
