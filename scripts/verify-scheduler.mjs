@@ -77,6 +77,16 @@ if (!mig1.includes("job_id => 4") || !mig1.includes("active => false")) failures
 const mig2 = read("supabase/migrations/20261002114000_retire_dead_media_cleanup_cron_20261002.sql");
 if (!mig2.includes("cron.unschedule(4)")) failures.push("dead media cleanup cron retirement migration is missing");
 
+const socialSyncMigration = read("supabase/migrations/20261008074605_reconcile_social_sync_cron_and_child_rls.sql");
+if (!socialSyncMigration.includes("wvetcauyerlkqvmntajq.supabase.co/functions/v1/sync-youtube-facebook")) failures.push("social sync cron must target the current Supabase project");
+if (!socialSyncMigration.includes("active := false")) failures.push("social publishing cron must stay paused until its function and publishing authorization are verified");
+if (socialSyncMigration.includes("nmdeazfmtncelykzxkhs")) failures.push("social sync cron must not target the retired Supabase project");
+for (const table of ["companion_stories", "battle_events", "conquest_events"]) {
+  if (!socialSyncMigration.includes(`DROP POLICY IF EXISTS allow_public_read ON public.${table}`)) {
+    failures.push(`unscoped public read policy must be removed from ${table}`);
+  }
+}
+
 const pkg = JSON.parse(read("package.json"));
 if (!pkg.scripts["scheduler:check"]) failures.push("scheduler:check must be registered");
 if (!pkg.scripts["verify:pr"]?.includes("pnpm scheduler:check")) failures.push("verify:pr must include scheduler verification");
