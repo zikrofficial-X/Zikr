@@ -504,7 +504,7 @@ jobs:
                 "applicationId": "com.zikr.app",
                 "targetSdk": 36,
                 "sourceCommit": "${CIRCLE_SHA1}",
-                "releaseUrl": "https://github.com/zikr-org/Zikr/releases/tag/${RELEASE_TAG}",
+                "releaseUrl": "https://github.com/zikrcontact-del/Zikr/releases/tag/${RELEASE_TAG}",
                 "apkUrl": "${PUBLIC_BASE}/app-release.apk",
                 "aabUrl": "${PUBLIC_BASE}/app-release.aab",
                 "sha256Url": "${PUBLIC_BASE}/SHA256SUMS",
