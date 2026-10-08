@@ -50,7 +50,7 @@ jobs:
             echo ""
             echo "- Stage: ${{ inputs.release_reason }}"
             echo "- Commit: ${{ github.sha }}"
-            echo "- Deployment: Vercel Git integration"
+            echo "- Deployment: GitHub Actions controlled Vercel release"
             echo "- Quality gate: PASSED"
             echo "- Production smoke verification: PASSED"
             echo "- Vercel CLI token workflow: retired"
