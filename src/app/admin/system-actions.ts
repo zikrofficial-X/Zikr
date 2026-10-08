@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
 
 function formValue(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -121,12 +122,6 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
 
 export async function requestVideoAutomationRunAction() {
   const profile = await requireAdminPermission("system.manage");
-  const token = process.env.GITHUB_PAT || process.env.GITHUB_DISPATCH_TOKEN || process.env.GH_DISPATCH_TOKEN;
-  const repository = process.env.GITHUB_REPOSITORY || "zikrcontact-del/Zikr";
-  if (!token) {
-    throw new Error("GitHub dispatch token is not configured; Run Now requires a GitHub workflow dispatch token.");
-  }
-
   const batchRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
     "/rest/v1/admin_settings?key=eq.video_automation_batch_size&select=value&limit=1",
   ).catch(() => []);
@@ -143,25 +138,10 @@ export async function requestVideoAutomationRunAction() {
       body: JSON.stringify({ key, value: request, updated_by: profile.id, updated_at: requestedAt }),
     });
 
-    const response = await fetch(
-      "https://api.github.com/repos/" + repository + "/actions/workflows/generate-ai-video.yml/dispatches",
-      {
-        method: "POST",
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: "Bearer " + token,
-          "X-GitHub-Api-Version": "2022-11-28",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ref: "main", inputs: { batch_size: String(batchSize), urgent: "true" } }),
-        cache: "no-store",
-        signal: AbortSignal.timeout(15_000),
-      },
-    );
-    if (response.status !== 204) {
-      const detail = (await response.text().catch(() => "")).slice(0, 500);
-      throw new Error("GitHub workflow dispatch failed (" + response.status + "): " + detail);
-    }
+    await dispatchGitHubWorkflow("generate-ai-video.yml", {
+      batch_size: String(batchSize),
+      urgent: "true",
+    });
 
     const dispatchedAt = new Date().toISOString();
     await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
