@@ -52,7 +52,7 @@ export default async function VideoFactoryQaPage() {
       </section>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/admin/videos" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/15">فتح طابور الفيديو</Link>
+        <Link href="/admin/video-factory/queue" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/15">فتح طابور الفيديو</Link>
         <Link href="/admin/video-factory/voices" className="rounded-xl border border-brand-gold/15 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/30 hover:text-brand-gold">فتح الأصوات</Link>
       </div>
     </Container>
