@@ -190,13 +190,44 @@ async function processVideos(settings: VideoAutomationSettings) {
   applyVideoAutomationSettings(settings);
   ensureArabicTtsRuntime();
 
-  // Drain the existing backlog before adding new jobs. Seeding and processing the
-  // same batch size on every run can otherwise keep a persistent queue permanently
-  // non-empty. Only use remaining capacity for fresh scheduled items.
-  const backlog = await processTemplateVideoQueue(settings.batchSize);
-  let processed = backlog.processed || 0;
-  let succeeded = backlog.succeeded || 0;
-  let failed = backlog.failed || 0;
+  const configuredConcurrency = Number(process.env.VIDEO_WORKER_CONCURRENCY ?? 2);
+  const concurrency = Math.max(1, Math.min(3, Number.isFinite(configuredConcurrency) ? Math.floor(configuredConcurrency) : 2));
+  console.log(`[background-jobs] Video worker concurrency: ${concurrency}`);
+
+  const drainQueue = async (capacity: number) => {
+    let processed = 0;
+    let succeeded = 0;
+    let failed = 0;
+    let remaining = Math.max(0, capacity);
+
+    while (remaining > 0) {
+      const waveSize = Math.min(concurrency, remaining);
+      const wave = await Promise.all(
+        Array.from({ length: waveSize }, () => processTemplateVideoQueue(1)),
+      );
+
+      const waveProcessed = wave.reduce((sum, result) => sum + (result.processed || 0), 0);
+      const waveSucceeded = wave.reduce((sum, result) => sum + (result.succeeded || 0), 0);
+      const waveFailed = wave.reduce((sum, result) => sum + (result.failed || 0), 0);
+
+      processed += waveProcessed;
+      succeeded += waveSucceeded;
+      failed += waveFailed;
+
+      if (waveProcessed === 0) break;
+      remaining = Math.max(0, capacity - processed);
+    }
+
+    return { processed, succeeded, failed };
+  };
+
+  // Drain the existing backlog before adding new jobs. Multiple bounded workers
+  // process different queue rows concurrently because each worker claims one row
+  // atomically inside processTemplateVideoQueue().
+  const backlog = await drainQueue(settings.batchSize);
+  let processed = backlog.processed;
+  let succeeded = backlog.succeeded;
+  let failed = backlog.failed;
   let seeded = 0;
 
   const remainingCapacity = Math.max(0, settings.batchSize - processed);
@@ -204,10 +235,10 @@ async function processVideos(settings: VideoAutomationSettings) {
     seeded = await seedAutomatedVideoRequests(remainingCapacity);
     console.log(`[background-jobs] Seeded ${seeded} new video request(s) after backlog processing.`);
     if (seeded > 0) {
-      const fresh = await processTemplateVideoQueue(remainingCapacity);
-      processed += fresh.processed || 0;
-      succeeded += fresh.succeeded || 0;
-      failed += fresh.failed || 0;
+      const fresh = await drainQueue(Math.min(remainingCapacity, seeded));
+      processed += fresh.processed;
+      succeeded += fresh.succeeded;
+      failed += fresh.failed;
     }
   } else {
     console.log(`[background-jobs] Backlog consumed the full batch capacity (${processed}/${settings.batchSize}); seeding deferred to the next run.`);
