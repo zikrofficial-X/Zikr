@@ -1,11 +1,6 @@
 name: ZIKR Finalization Controlled Release
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "docs/finalization/PRODUCTION_RELEASE.flag"
   workflow_dispatch:
     inputs:
       confirmation:
@@ -27,19 +22,15 @@ concurrency:
 jobs:
   release:
     name: Controlled production release
-    if: |
-      github.ref == 'refs/heads/main' && (
-        (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE') ||
-        (github.event_name == 'push' && contains(github.event.head_commit.message, '[PRODUCTION RELEASE]'))
-      )
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     environment:
       name: production
     env:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      VERCEL_ORG_ID: team_z2nBDHi0ppVAXj1cWzs7Qt5c
-      VERCEL_PROJECT_ID: prj_hRhHT6FUMXshDfzCnIh0aG0wpS1g
+      VERCEL_ORG_ID: team_zifbzhks5C1PW9GXQnQnBU2y
+      VERCEL_PROJECT_ID: prj_1y2W5TZdugysh25Fgu4VRMDQwPcA
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - name: Checkout exact release commit
