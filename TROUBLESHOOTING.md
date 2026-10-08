@@ -13,7 +13,7 @@ Application callback URLs:
 
 Google's OAuth client uses the Supabase provider callback:
 
-`https://nmdeazfmtncelykzxkhs.supabase.co/auth/v1/callback`
+`https://wvetcauyerlkqvmntajq.supabase.co/auth/v1/callback`
 
 Do not replace the Supabase provider callback with the application callback in Google's OAuth client.
 
