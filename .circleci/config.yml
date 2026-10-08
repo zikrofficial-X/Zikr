@@ -99,7 +99,7 @@ jobs:
   security-audit:
     docker:
       - image: cimg/node:22.11.0
-    resource_class: small
+    resource_class: medium
     environment:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
     steps:
@@ -120,6 +120,7 @@ jobs:
             pnpm config set fetch-timeout 120000
             pnpm config set fetch-retry-mintimeout 20000
             pnpm config set fetch-retry-maxtimeout 120000
+            pnpm config set network-concurrency 8
             pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
           no_output_timeout: 20m
       - run:
