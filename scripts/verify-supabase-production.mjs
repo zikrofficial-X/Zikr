@@ -4,7 +4,9 @@ const required = ["SUPABASE_URL", "SUPABASE_PUBLIC_KEY"];
 
 for (const name of required) {
   if (!process.env[name]) {
-    console.error("Missing required production Supabase environment variable: " + name);
+    console.error(
+      "Missing required production Supabase environment variable: " + name
+    );
     process.exit(1);
   }
 }
@@ -14,7 +16,6 @@ const publicKey = process.env.SUPABASE_PUBLIC_KEY;
 
 const headers = {
   apikey: publicKey,
-  Authorization: "Bearer " + publicKey,
   Accept: "application/json",
 };
 
@@ -50,7 +51,10 @@ async function runCheck({ name, path }) {
     if (!response.ok) {
       const preview = body.replace(/\s+/g, " ").slice(0, 300);
       throw new Error(
-        name + " returned HTTP " + response.status + (preview ? ": " + preview : ""),
+        name +
+          " returned HTTP " +
+          response.status +
+          (preview ? ": " + preview : "")
       );
     }
 
@@ -70,7 +74,10 @@ for (const check of checks) {
   } catch (error) {
     failed = true;
     console.error(
-      "FAIL: " + check.name + ": " + (error instanceof Error ? error.message : String(error)),
+      "FAIL: " +
+        check.name +
+        ": " +
+        (error instanceof Error ? error.message : String(error))
     );
   }
 }
