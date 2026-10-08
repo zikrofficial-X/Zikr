@@ -93,9 +93,7 @@ No external API secret is required by the current implementation; the function i
 No project secret is required by the current implementation.
 
 ### `sync-youtube-facebook`
-This function exists in the repository but is not part of the current `supabase/config.toml` production function configuration. Do not make it part of the active runtime or CircleCI pipeline unless it is intentionally re-enabled. When intentionally enabled, its code expects:
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+Retired. The legacy function source has been removed because GitHub Actions `publish-social.yml` is now the sole production social publisher. The historical `social_sync_jobs` / `social_sync_state` objects remain only for manual/backfill compatibility and have no active production scheduler.
 - `YOUTUBE_API_KEY`
 - `YOUTUBE_CHANNEL_ID`
 - `FACEBOOK_PAGE_ID`
