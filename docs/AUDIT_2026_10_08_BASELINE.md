@@ -47,7 +47,7 @@ ios/              - Capacitor iOS
 ```
 
 ### src/ Structure Audit
-- `src/app/` - 296 files; 228 page/route entries + 66 API routes ✓
+- `src/app/` - 296 files; 125 page routes + 73 API routes ✓
 - `src/features/` - 186 domain files across the current domain modules ✓
 - `src/lib/` - Infrastructure (may contain misplaced domain) ⚠️
 - `src/components/` - Shared UI and layout ✓
@@ -57,7 +57,7 @@ ios/              - Capacitor iOS
 ### Categories
 
 **Architecture & Structure:**
-- verify-platform-routes.mjs - Route completeness ✓ (228 page/route files + 66 API route files baseline)
+- verify-platform-routes.mjs - Route completeness ✓ (125 page routes + 73 API route files baseline)
 - verify-information-architecture.mjs - Navigation consistency ✓
 - verify-admin-architecture.mjs - Admin pages ✓
 - verify-ci-architecture.mjs - CI/CD setup ✓
@@ -268,7 +268,7 @@ pnpm verify:pr       (PR verification subset)
 - [x] Broken unused enhanced video worker removed.
 - [x] `/admin/video-factory/queue` made canonical; `/admin/videos` retained as a compatibility redirect.
 - [x] Duplicate Vercel `*_2` environment variables removed from Production/Preview scope (Development-only retained because the connector does not expose deletion).
-- [x] Current route verification baselines reconciled to 228 page/route files and 66 API route files.
+- [x] Current route verification baselines reconciled to 125 page routes and 73 API route files.
 - [x] Current package/mobile release metadata reconciled to ZIKR 1.1.3 / Android versionCode 57.
 
 ### Final gates still required
