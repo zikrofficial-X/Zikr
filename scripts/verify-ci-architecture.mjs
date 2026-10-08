@@ -36,14 +36,14 @@ assert.ok(circle.includes('cron: "17 4 * * *"'), "CircleCI must own the recurrin
 
 assert.ok(quality.includes('name: "ZIKR / Quality Gate"'), "Canonical GitHub quality check name is incorrect");
 assert.ok(!quality.includes("ci/circleci: ci-check"), "GitHub quality gate must not impersonate CircleCI");
-assert.ok(video.includes('cron: "17 3,9,15,21 * * *"'), "Video worker cadence drifted");
+assert.ok(!video.includes("\n  schedule:"), "GitHub video worker must not own an automatic schedule");
 assert.ok(!video.includes("\n  push:"), "Production video worker must not run on source pushes");
 assert.ok(video.includes("environment: production"), "Video worker must use protected production environment");
 assert.ok(video.includes("github.ref == 'refs/heads/main'"), "Video worker must be main-only");
-assert.ok(urgent.includes('cron: "*/30 * * * *"'), "Urgent dispatcher cadence drifted");
+assert.ok(!urgent.includes("\n  schedule:"), "Urgent video recovery workflow must not own an automatic schedule");
 assert.ok(urgent.includes("environment: production"), "Urgent dispatcher must use protected production environment");
 assert.ok(urgent.includes("github.ref == 'refs/heads/main'"), "Urgent dispatcher must be main-only");
-assert.ok(english.includes('cron: "17 4 * * *"'), "English sync cadence drifted");
+assert.ok(!english.includes("\n  schedule:"), "GitHub English sync must not own an automatic schedule");
 assert.ok(english.includes("environment: production"), "English sync must use protected production environment");
 assert.ok(english.includes("github.ref == 'refs/heads/main'"), "English sync must be main-only");
 assert.ok(release.includes("github.ref == 'refs/heads/main'"), "Controlled Vercel release must be main-only");
