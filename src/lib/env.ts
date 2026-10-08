@@ -79,7 +79,6 @@ const rawEnv: Record<string, string | undefined> = {
   // ── Site / Auth ───────────────────────────────────────────────────────────
   NEXT_PUBLIC_SITE_URL: siteUrl,
   AUTH_CALLBACK_URL: resolveAppCallbackUrl(pick("AUTH_CALLBACK_URL"), siteUrl),
-  PRIMARY_ADMIN_EMAIL: (pick("PRIMARY_ADMIN_EMAIL") || "mohamed.alaa7785@gmail.com").trim().toLowerCase(),
 
   NEXT_PUBLIC_GA_MEASUREMENT_ID:
     NEXT_PUBLIC_GA_MEASUREMENT_ID_RAW || pick("NEXT_PUBLIC_GA_MEASUREMENT_ID"),
