@@ -4,7 +4,7 @@
 
 **Repository:** zikrcontact-del/Zikr  
 **Branch:** main  
-**Audit Date:** 2026-10-08  
+**Audit Date:** 2026-10-08 (reconciled 2026-10-08)  
 **Purpose:** Comprehensive audit and cleanup for production readiness
 
 ## Dependency Versions
@@ -35,8 +35,8 @@
 
 ### Root Directories
 ```
-src/              - 527 files (source code)
-scripts/          - 40 verification scripts
+src/              - 573 files (source code)
+scripts/          - 65 scripts/verification utilities
 supabase/         - Migrations + functions
 public/           - Static + PWA assets
 mobile/           - Mobile config + assets
@@ -47,8 +47,8 @@ ios/              - Capacitor iOS
 ```
 
 ### src/ Structure Audit
-- `src/app/` - 173 routes/pages/API entries ✓
-- `src/features/` - 174 domain modules ✓
+- `src/app/` - 296 files; 228 page/route entries + 66 API routes ✓
+- `src/features/` - 186 domain files across the current domain modules ✓
 - `src/lib/` - Infrastructure (may contain misplaced domain) ⚠️
 - `src/components/` - Shared UI and layout ✓
 
@@ -198,7 +198,7 @@ pnpm verify:pr       (PR verification subset)
 ### Migrations
 - **Canon:** `supabase/migrations/` only (✓ enforced)
 - **Archive:** `supabase/migrations_archive/` (historical only)
-- **Count:** 291 active migration files
+- **Count:** 332 active migration files after the 2026-10-08 repair migrations
 - **Policy:** Additive + idempotent replay ✓
 - **Remote Ledger:** REMOTE_MIGRATION_LEDGER.md documents production state ✓
 
@@ -207,7 +207,7 @@ pnpm verify:pr       (PR verification subset)
 - **Status:** Edge Functions for server-side logic ✓
 
 ### RLS Policy
-- **Status:** All public tables RLS-protected ✓
+- **Status:** All public tables RLS-protected ✓; accidental duplicate public-read policies on hadiths/scholars/stories consolidated
 - **Enforcement:** Server-side boundaries enforced ✓
 
 ## CI/CD Architecture
