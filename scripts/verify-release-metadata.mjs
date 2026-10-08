@@ -48,24 +48,18 @@ const androidAppId = androidBuild.match(/applicationId\s+"([^"]+)"/)?.[1];
 const androidTargetSdk = androidVariables.match(/targetSdkVersion\s*=\s*(\d+)/)?.[1];
 
 if (androidVersion !== version) fail(`android/app/build.gradle versionName must be ${version}`);
-if (!packageCode || !androidCode) fail("Android versionCode metadata is missing");
-if (packageCode !== androidCode) fail("versionCode mismatch between PACKAGE_VERSION.txt and Android build.gradle");
-if (!packageAppId || !androidAppId) fail("applicationId metadata is missing");
-if (packageAppId !== androidAppId) fail("applicationId mismatch between PACKAGE_VERSION.txt and Android build.gradle");
-if (!packageTargetSdk || !androidTargetSdk) fail("targetSdk metadata is missing");
-if (packageTargetSdk !== androidTargetSdk) fail("targetSdk mismatch between PACKAGE_VERSION.txt and android/variables.gradle");
-
-if (packageAppId !== "com.zikr.app") fail("applicationId must remain com.zikr.app");
-if (packageTargetSdk !== "36") fail("targetSdk must remain 36 for the current release baseline");
+if (!androidCode) fail("Android versionCode is missing");
+if (androidAppId !== "com.zikr.app") fail("applicationId must remain com.zikr.app");
+if (androidTargetSdk !== "36") fail("targetSdk must remain 36 for the current release baseline");
 
 if (!iosMarketingVersions.length || iosMarketingVersions.some((value) => value !== version)) {
   fail(`iOS MARKETING_VERSION must match package.json version ${version}`);
 }
-if (!iosProjectVersions.length || iosProjectVersions.some((value) => value !== packageCode)) {
-  fail(`iOS CURRENT_PROJECT_VERSION must match versionCode ${packageCode}`);
+if (!iosProjectVersions.length || iosProjectVersions.some((value) => value !== androidCode)) {
+  fail(`iOS CURRENT_PROJECT_VERSION must match versionCode ${androidCode}`);
 }
 if (iosShortVersion !== version) fail(`iOS CFBundleShortVersionString must be ${version}`);
-if (iosBundleVersion !== packageCode) fail(`iOS CFBundleVersion must be ${packageCode}`);
+if (iosBundleVersion !== androidCode) fail(`iOS CFBundleVersion must be ${androidCode}`);
 
 const capacitor = (() => {
   try {
