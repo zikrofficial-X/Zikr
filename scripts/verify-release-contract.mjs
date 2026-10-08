@@ -20,9 +20,11 @@ const createTag = read(".github/workflows/create-android-release-tag.yml");
 assert.ok(createTag.includes("startsWith(github.event.head_commit.message, '[PRODUCTION RELEASE]')"), "Android release tag creation must require the controlled release marker");
 assert.ok(createTag.includes('test "$TAG" = "v$VERSION"'), "release tag workflow must revalidate version/tag parity");
 assert.ok(createTag.includes("createRelease"), "release tag workflow must create a draft GitHub release");
+assert.ok(!createTag.includes("buildTag"), "release tag workflow must not create a redundant -build tag");
 
 const publish = read(".github/workflows/publish-android-release-assets.yml");
 assert.ok(publish.includes("github.ref_type == 'tag'"), "Android publisher must support semantic release tags");
+assert.ok(!publish.includes("branches:\n      - main"), "Android publisher must not trigger directly from main");
 assert.ok(publish.includes("EXPECTED_TAG=\"v$(jq -r '.version' package.json)\""), "Android publisher must revalidate tag/version parity");
 assert.ok(publish.includes("com.zikr.app"), "Android publisher must verify the canonical application id");
 assert.ok(publish.includes("SHA256SUMS"), "Android publisher must verify and publish checksums");
