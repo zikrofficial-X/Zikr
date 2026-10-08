@@ -3,11 +3,10 @@
 @config "../../tailwind.config.ts";
 
 :root {
-  --font-noto-arabic: var(--font-noto-arabic-loaded), "Noto Naskh Arabic";
-  --font-amiri: var(--font-noto-arabic), "Amiri", "Times New Roman", serif;
-  --font-arabic:
-    var(--font-noto-arabic), var(--font-amiri), "Scheherazade New", "Segoe UI",
-    Tahoma, Arial, sans-serif;
+  /* Keep the stack valid even when the optional web font is not available. */
+  --font-noto-arabic: "Noto Naskh Arabic", "Noto Sans Arabic", Arial, sans-serif;
+  --font-amiri: "Amiri", "Noto Naskh Arabic", Arial, serif;
+  --font-arabic: "Noto Naskh Arabic", "Noto Sans Arabic", Arial, Tahoma, sans-serif;
   color-scheme: dark;
 }
 
@@ -23,7 +22,7 @@ body {
   min-height: 100%;
   background: #000000;
   color: #f5f5f0;
-  font-family: var(--font-arabic), system-ui, sans-serif;
+  font-family: "Noto Naskh Arabic", "Noto Sans Arabic", Arial, Tahoma, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -63,7 +62,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-arabic), system-ui, sans-serif;
+  font-family: "Noto Naskh Arabic", "Noto Sans Arabic", Arial, Tahoma, sans-serif;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -124,7 +123,7 @@ p {
 }
 
 .font-arabic {
-  font-family: var(--font-arabic), system-ui, sans-serif;
+  font-family: "Noto Naskh Arabic", "Noto Sans Arabic", Arial, Tahoma, sans-serif;
 }
 
 /* Animations */
