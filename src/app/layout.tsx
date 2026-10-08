@@ -10,10 +10,13 @@ import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
 import { NativeCapacitorBridgeLoader } from "@/components/layout/native-capacitor-bridge-loader";
 import { getRequestLocaleContext } from "@/lib/i18n/server";
+import { Noto_Naskh_Arabic } from "next/font/google";
 
-// Use system fallback fonts for Arabic text
-// Google Fonts will be loaded via CSS fallback in globals.css
-const notoNaskhArabic = { variable: "--font-noto-arabic-loaded" };
+const notoNaskhArabic = Noto_Naskh_Arabic({
+  subsets: ["arabic"],
+  display: "swap",
+  variable: "--font-noto-arabic-loaded",
+});
 
 // These are public identifiers, not secrets. Environment variables remain the
 // canonical deployment configuration; the verified production IDs are safe
