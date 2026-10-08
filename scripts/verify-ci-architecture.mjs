@@ -84,6 +84,7 @@ const androidTagWorkflow = read(".github/workflows/create-android-release-tag.ym
 assert.ok(!androidTagWorkflow.includes("buildTag"), "Android release tagging must not create a redundant -build tag");
 assert.ok(circle.includes("  source-verify:"), "CircleCI source verification job name must be explicit");
 assert.ok(circle.includes("  application-build-docs:"), "CircleCI must own the application build/documentation artifact job");
+assert.ok(circle.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY:"), "CircleCI application builds must receive the canonical public Supabase key");
 assert.ok(circle.includes("pnpm ci:build:report"), "CircleCI must use the canonical application build report command");
 const pkg = JSON.parse(read("package.json"));
 assert.ok(pkg.scripts["ci:build:report"], "package.json must register the canonical application build report command");
