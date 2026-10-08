@@ -36,3 +36,8 @@ select cron.alter_job(
   username => 'postgres',
   active => true
 );
+
+select cron.alter_job(
+  job_id => 4,
+  active => false
+);
