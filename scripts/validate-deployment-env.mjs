@@ -5,9 +5,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const envFile = path.join(root, ".env.local");
+const envFiles = [".env.local", ".env.development.local"];
 
-if (fs.existsSync(envFile)) {
+for (const fileName of envFiles) {
+  const envFile = path.join(root, fileName);
+  if (!fs.existsSync(envFile)) continue;
   for (const line of fs.readFileSync(envFile, "utf8").split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
