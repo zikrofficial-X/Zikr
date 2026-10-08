@@ -36,6 +36,12 @@ if (articleTranslator.includes("GEMINI_API_KEY_")) failures.push("article transl
 if (articleTranslator.includes("gemini-3.5-flash-lite")) failures.push("article translation must not make a second model call after a failed primary call");
 
 const publisher = read(".github/workflows/publish-social.yml");
+const adminSocial = read("src/app/api/admin/social/route.ts");
+if (existsSync("src/app/api/internal/video-processing/route.ts")) failures.push("retired /api/internal/video-processing endpoint must remain deleted");
+if (existsSync("src/app/api/internal/video-generation/daily/route.ts")) failures.push("retired /api/internal/video-generation/daily endpoint must remain deleted");
+if (existsSync("src/app/api/internal/youtube-sync/route.ts")) failures.push("retired /api/internal/youtube-sync endpoint must remain deleted");
+if (adminSocial.includes("/api/internal/video-processing")) failures.push("admin social must not call the retired video-processing compatibility endpoint");
+if (!adminSocial.includes('dispatchGitHubWorkflow("publish-social.yml")')) failures.push("admin social retry must dispatch the canonical publish-social workflow");
 if (!publisher.includes('cron: "*/15 * * * *"')) failures.push("GitHub social publisher must own the recurring publishing schedule");
 if (!publisher.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("GitHub social publisher must execute only the social target");
 
