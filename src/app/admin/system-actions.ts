@@ -39,7 +39,8 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
   const key = formValue(formData, "key");
   if (!key.startsWith("video_automation_")) throw new Error("إعداد أتمتة الفيديو غير صالح.");
 
-  const rawValue = formValue(formData, "value");
+  const rawValues = formData.getAll("value").map((value) => String(value).trim());
+  const rawValue = rawValues.at(-1) ?? "";
   let value: unknown = rawValue;
 
   if (
