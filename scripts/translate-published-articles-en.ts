@@ -20,8 +20,22 @@ async function generateGeminiTextForJob(prompt: string, maxOutputTokens = 6000):
       responseMimeType: "application/json",
     },
   });
-  const result = await model.generateContent(prompt);
-  return result.response.text().trim() || null;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const result = await model.generateContent(prompt);
+      return result.response.text().trim() || null;
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      const retryable = /\b429\b|\b500\b|\b502\b|\b503\b|\b504\b|unavailable|high demand|overloaded/i.test(message);
+      if (!retryable || attempt === 2) throw error;
+      const delayMs = 3000 * 2 ** attempt;
+      console.warn(`Gemini request temporarily unavailable; retrying in ${delayMs}ms (attempt ${attempt + 2}/3).`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
 if (!supabaseUrl || !serviceRoleKey) {
