@@ -1,4 +1,6 @@
-# ZIKR GitHub Automation Audit — 2026-10-07
+# Historical snapshot — 2026-10-07
+
+> This document records the automation state observed on 2026-10-07. It is retained for audit history only. The active CI/CD architecture for 2026-10-08 and later is documented in `docs/CI_CD_ARCHITECTURE_2026_10_08.md`. In particular, the current Admin Run Now dispatcher cadence is 30 minutes, and the canonical GitHub source check is `ZIKR / Quality Gate`.
 
 - **Repository:** [zikr-org/Zikr](https://github.com/zikr-org/Zikr)
 - **Branch:** `maintenance/consolidate-github-actions-2026-10`

@@ -11,7 +11,7 @@ const read = (path) => {
 };
 
 const workflow = read(".github/workflows/generate-ai-video.yml");
-if (!workflow.includes('cron: "17 3,9,15,21 * * *"')) failures.push("video worker must retain the four-times-daily free-tier cadence");
+if (workflow.includes("\n  schedule:")) failures.push("GitHub video worker must not own an automatic schedule");
 if (workflow.includes("\n  push:")) failures.push("production video generation must not start automatically on source pushes");
 if (!workflow.includes("if: github.ref == 'refs/heads/main'")) failures.push("video worker must restrict production secrets to main");
 if (!workflow.includes("environment: production")) failures.push("video worker must use the existing production-secret environment");
@@ -25,7 +25,7 @@ const vercel = existsSync("vercel.json") ? readFileSync("vercel.json", "utf8") :
 if (vercel.includes('"crons"') || vercel.includes("crons:")) failures.push("Vercel must not own production video scheduling");
 
 const urgentDispatcher = read(".github/workflows/urgent-video-dispatcher.yml");
-if (!urgentDispatcher.includes('cron: "*/30 * * * *"')) failures.push("urgent dispatcher must poll every 30 minutes");
+if (urgentDispatcher.includes("\n  schedule:")) failures.push("urgent video recovery workflow must not poll on a schedule");
 if (!urgentDispatcher.includes("if: github.ref == 'refs/heads/main'")) failures.push("urgent dispatcher must restrict production secrets to main");
 if (!urgentDispatcher.includes("environment: production")) failures.push("urgent dispatcher must use the existing production-secret environment");
 if (!urgentDispatcher.includes("actions: write")) failures.push("urgent dispatcher must be allowed to dispatch GitHub workflows");
@@ -33,7 +33,7 @@ if (!urgentDispatcher.includes("video_automation_run_now")) failures.push("urgen
 if (!urgentDispatcher.includes("generate-ai-video.yml/dispatches")) failures.push("urgent dispatcher must dispatch the canonical video worker");
 
 const contentSync = read(".github/workflows/english-content-sync.yml");
-if (!contentSync.includes('cron: "17 4 * * *"')) failures.push("English content sync must use the bounded daily cadence");
+if (contentSync.includes("\n  schedule:")) failures.push("GitHub English content sync must not own an automatic schedule");
 if (!contentSync.includes("pnpm translate:articles:en") || !contentSync.includes("pnpm sync:hadith:en")) failures.push("English article/Hadith sync commands are incomplete");
 if (contentSync.includes("seq 1 10")) failures.push("article translation must not rerun the same bounded batch ten times");
 if (!contentSync.includes("environment: production") || !contentSync.includes("if: github.ref == 'refs/heads/main'")) failures.push("English content sync must use production secrets on main only");
@@ -45,6 +45,8 @@ if (articleTranslator.includes("gemini-3.5-flash-lite")) failures.push("article 
 
 const circleci = read(".circleci/config.yml");
 if (circleci.includes("main-source-verification:")) failures.push("CircleCI must not duplicate GitHub source verification on main");
+if (!circleci.includes('cron: "17 3,9,15,21 * * *"')) failures.push("CircleCI must own the four-times-daily video schedule");
+if (!circleci.includes('cron: "17 4 * * *"')) failures.push("CircleCI must own the daily English content schedule");
 if (existsSync(".github/workflows/global-localization-verify.yml")) failures.push("standalone localization verification duplicates the canonical PR gate");
 const releaseWorkflow = read(".github/workflows/release-finalization.yml");
 if (!releaseWorkflow.includes("github.ref == 'refs/heads/main'")) failures.push("production release secrets must be restricted to main");
@@ -71,7 +73,8 @@ if (!env.includes("VIDEO_MAX_RETRIES=3")) failures.push("video retry default is 
 if (!env.includes("VIDEO_STALE_AFTER_MINUTES=30")) failures.push("video stale timeout default is not documented");
 
 const scheduling = read("docs/production-scheduling.md");
-if (!scheduling.includes("GitHub Actions is the authoritative automatic video/social worker")) failures.push("production scheduler ownership documentation is stale");
+if (!scheduling.includes("CircleCI is the authoritative automatic video/social worker")) failures.push("production scheduler ownership documentation is stale");
+if (scheduling.includes("GitHub Actions is the authoritative automatic video/social worker")) failures.push("stale GitHub-owned scheduler documentation remains");
 if (scheduling.includes("GitHub Actions are not the active scheduler in the current repository.")) failures.push("stale contradictory scheduler documentation remains");
 
 const mig1 = read("supabase/migrations/20261008050000_repoint_production_cron_to_current_project.sql");

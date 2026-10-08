@@ -1,6 +1,7 @@
 name: ZIKR English Content Sync
 
 on:
+  # Daily automatic execution is owned by CircleCI; keep GitHub Actions for deliberate/manual runs.
   workflow_dispatch:
     inputs:
       article_batch_size:
@@ -11,8 +12,6 @@ on:
         description: "Number of Hadith records to synchronize in this run"
         required: false
         default: "25"
-  schedule:
-    - cron: "17 4 * * *"
 
 concurrency:
   group: zikr-english-content-sync

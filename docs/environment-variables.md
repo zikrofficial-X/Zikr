@@ -62,7 +62,7 @@ The canonical Meta variable name is `FACEBOOK_GRAPH_API_VERSION`. `META_GRAPH_AP
 
 ## 4. Video worker contract
 
-Production video rendering and publishing are owned by the GitHub Actions worker. CircleCI remains a manual recovery path.
+Production recurring video rendering and publishing are owned by the scheduled CircleCI worker. GitHub Actions remains the manual dispatch and verification layer.
 
 Worker/runtime configuration includes:
 
@@ -167,17 +167,17 @@ Current production roles:
 - `quality-gate.yml`: verification only
 - `release-vercel.yml`: manual post-deploy verification of the live production site (home, robots.txt, sitemap.xml); it does not deploy
 - `release-finalization.yml`: controlled production deployment through the Vercel CLI (needs a valid `VERCEL_TOKEN` for team `zikrcontact-7943`)
-- `generate-ai-video.yml`: scheduled video generation + social publishing
+- `generate-ai-video.yml`: manual video generation + social publishing dispatch; recurring execution is in CircleCI
 - `supabase-production-health.yml`: active Supabase health probe pinned to the canonical production project; it checks the selected Vercel target
-- `urgent-video-dispatcher.yml`: lightweight Admin Run Now poller, every 15 minutes
-- `english-content-sync.yml`: daily, bounded English article/Hadith synchronization
+- `urgent-video-dispatcher.yml`: manual video dispatch recovery only
+- `english-content-sync.yml`: manual, bounded English article/Hadith synchronization; daily execution is in CircleCI
 - `global-localization-verify.yml`: retired; its checks are already included in `quality-gate.yml` via `pnpm verify:pr`
 
 GitHub Actions secrets are referenced by canonical names in workflow files. Secret values are not stored in Git.
 
 ### CircleCI
 
-CircleCI is a manual recovery/release path and requires its own protected project/context variables.
+CircleCI owns recurring background processing, Android release builds, and explicit recovery/release operations. Its project/context variables are protected independently from GitHub Actions.
 
 Android release additionally requires:
 
@@ -245,8 +245,8 @@ The current production contract is aligned around:
 - canonical site `https://zikrmediaofficial.vercel.app`;
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` as the browser-facing key;
 - `SUPABASE_SERVICE_ROLE_KEY` as the server-only key;
-- GitHub Actions as the owner of autonomous video scheduling;
-- CircleCI as manual recovery/release infrastructure.
+- CircleCI as the owner of autonomous video/content scheduling;
+- GitHub Actions as the PR/release/manual-dispatch layer; CircleCI as recurring job and recovery/release infrastructure.
 
 A read-only check against that target passed for Auth settings, `quran_surahs`, `kids_games`, and `kids_content`. It found two schema gaps: `content_library.summary_en` is missing, and `public.content_translation_queue` is absent. Treat schema reconciliation as incomplete until these are reviewed and migrated.
 

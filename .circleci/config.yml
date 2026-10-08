@@ -1,10 +1,9 @@
 version: 2.1
 
-# ZIKR source verification is owned by GitHub Actions.
-# - CircleCI is reserved for Android release builds and explicit recovery runs.
+# ZIKR CI ownership:
+# - GitHub Actions owns PR/main source verification, controlled releases, and manual video dispatch.
+# - CircleCI owns recurring video/social and English-content processing, Android release builds, and explicit recovery.
 # - android-rebuild runs only for release branches/tags.
-# - background processing in CircleCI is opt-in and is a manual recovery path.
-# - automatic video/social scheduling remains owned by GitHub Actions.
 #
 # IMPORTANT:
 # CircleCI receives runtime values from CircleCI Project/Context environment
@@ -25,7 +24,7 @@ parameters:
     default: false
 
 jobs:
-  ci-check:
+  source-verify:
     docker:
       - image: cimg/node:22.11.0
     resource_class: medium
@@ -167,11 +166,25 @@ jobs:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       VIDEO_BACKGROUND_BATCH_SIZE: "3"
       SOCIAL_BACKGROUND_BATCH_SIZE: "10"
-      SOCIAL_PUBLISH_ENABLED: "false"
+      SOCIAL_PUBLISH_ENABLED: "true"
       VIDEO_GENERATOR: template
       AUTO_VIDEO_ENABLED: "true"
       AUTO_VIDEO_BATCH_SIZE: "1"
-      AUTO_VIDEO_SECONDS: "14"
+      AUTO_VIDEO_SECONDS: "16"
+      DAILY_VIDEO_TARGET: "8"
+      VIDEO_DAILY_LIMIT: "24"
+      VIDEO_AUTOMATION_DRY_RUN: "false"
+      VIDEO_AI_ENABLED: "true"
+      VIDEO_AI_ATTEMPTS_PER_RUN: "2"
+      VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,comfyui,free_api"
+      HF_WAN_VIDEO_ENABLED: "true"
+      HF_LTX_FAST_VIDEO_ENABLED: "true"
+      HF_WAN_SPACE: "zerogpu-aoti/wan2-2-fp8da-aoti-faster"
+      HF_LTX_FAST_SPACE: "Lightricks/ltx-video-distilled"
+      AUTO_VIDEO_PUBLISH_ENABLED: "true"
+      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
+      VIDEO_TEMPLATE_VERSION: "2026-10-02-quality-v2"
+      VERIFY_VIDEO_RUNTIME_TOOLS: "true"
     steps:
       - checkout
       - run:
@@ -200,7 +213,7 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-core fonts-noto-extra librsvg2-bin python3-venv
             python3 -m venv .tts-venv
-            .tts-venv/bin/pip install --quiet --no-cache-dir edge-tts==7.2.8
+            .tts-venv/bin/pip install --quiet --no-cache-dir edge-tts==7.2.8 gradio_client==2.7.1
             echo 'export PATH="$CIRCLE_WORKING_DIRECTORY/.tts-venv/bin:$PATH"' >> "$BASH_ENV"
             ffmpeg -version | head -n 1
             fc-match "Noto Naskh Arabic"
@@ -229,6 +242,47 @@ jobs:
             pnpm background:jobs
           no_output_timeout: 30m
 
+
+  english-content-sync:
+    docker:
+      - image: cimg/node:22.11.0
+    resource_class: small
+    environment:
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+      TRANSLATION_BATCH_SIZE: "5"
+      HADITH_TRANSLATION_BATCH_SIZE: "25"
+    steps:
+      - checkout
+      - run:
+          name: Enable pnpm
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            sudo corepack enable
+            corepack prepare pnpm@9.15.0 --activate
+      - run:
+          name: Install dependencies
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+          no_output_timeout: 20m
+      - run:
+          name: Validate production content-sync credentials
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            test -n "${SUPABASE_URL:-}" || { echo "Missing SUPABASE_URL."; exit 1; }
+            test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "Missing SUPABASE_SERVICE_ROLE_KEY."; exit 1; }
+            test -n "${GEMINI_API_KEY:-}" || { echo "Missing GEMINI_API_KEY."; exit 1; }
+      - run:
+          name: Run bounded English content sync
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm translate:articles:en
+            pnpm sync:hadith:en
+          no_output_timeout: 20m
 
   android-rebuild:
     docker:
@@ -504,7 +558,7 @@ jobs:
                 "applicationId": "com.zikr.app",
                 "targetSdk": 36,
                 "sourceCommit": "${CIRCLE_SHA1}",
-                "releaseUrl": "https://github.com/zikr-org/Zikr/releases/tag/${RELEASE_TAG}",
+                "releaseUrl": "https://github.com/zikrcontact-del/Zikr/releases/tag/${RELEASE_TAG}",
                 "apkUrl": "${PUBLIC_BASE}/app-release.apk",
                 "aabUrl": "${PUBLIC_BASE}/app-release.aab",
                 "sha256Url": "${PUBLIC_BASE}/SHA256SUMS",
@@ -537,7 +591,7 @@ workflows:
   build-and-release:
     when: << pipeline.parameters.run_circleci_ci >>
     jobs:
-      - ci-check:
+      - source-verify:
           filters:
             branches:
               only: /.*/
@@ -545,7 +599,7 @@ workflows:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
       - supabase-production-gate:
           requires:
-            - ci-check
+            - source-verify
           filters:
             branches:
               only: /.*/
@@ -553,7 +607,7 @@ workflows:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
       - android-rebuild:
           requires:
-            - ci-check
+            - source-verify
           filters:
             branches:
               only:
@@ -563,7 +617,7 @@ workflows:
 
   android-release-on-build-tag:
     jobs:
-      - ci-check:
+      - source-verify:
           filters:
             branches:
               ignore: /.*/
@@ -571,7 +625,7 @@ workflows:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+-build$/
       - supabase-production-gate:
           requires:
-            - ci-check
+            - source-verify
           filters:
             branches:
               ignore: /.*/
@@ -579,7 +633,7 @@ workflows:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+-build$/
       - android-rebuild:
           requires:
-            - ci-check
+            - source-verify
           filters:
             branches:
               ignore: /.*/
@@ -596,4 +650,28 @@ workflows:
     when: << pipeline.parameters.run_security_audit >>
     jobs:
       - security-audit
+
+  scheduled-video-processing:
+    triggers:
+      - schedule:
+          cron: "17 3,9,15,21 * * *"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      - background-jobs:
+          target: all
+
+  scheduled-english-content-sync:
+    triggers:
+      - schedule:
+          cron: "17 4 * * *"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      - english-content-sync
+
 

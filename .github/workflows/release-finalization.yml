@@ -62,6 +62,9 @@ jobs:
           test "$(tr -d '\r\n' < docs/finalization/PRODUCTION_RELEASE.flag)" = "RELEASE"
           test "${{ github.ref }}" = "refs/heads/main"
 
+      - name: Verify release contract
+        run: pnpm release:contract:check
+
       - name: Re-run release integrity gate
         run: pnpm verify:pr
         timeout-minutes: 15
@@ -112,6 +115,11 @@ jobs:
           url="$(vercel deploy --prebuilt --prod --yes --token="${VERCEL_TOKEN}")"
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Production deployment: $url"
+
+      - name: Production smoke test on deployed artifact
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: pnpm production:smoke
 
       - name: Release evidence
         env:
