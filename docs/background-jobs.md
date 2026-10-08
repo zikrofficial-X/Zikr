@@ -52,7 +52,7 @@ Use GitHub Actions workflow dispatch for deliberate video generation or social p
 
 The prayer notification path remains separate: Supabase `pg_cron` invokes `prayer-notification-worker` every minute.
 
-The legacy Supabase `zikr-video-processing` job and the Vercel `/api/internal/video-processing` compatibility endpoint are not production schedulers.
+The legacy Supabase `zikr-video-processing` job is retired, and the old Vercel compatibility endpoint has been deleted. No replacement Vercel scheduler exists.
 
 ## Safety
 
