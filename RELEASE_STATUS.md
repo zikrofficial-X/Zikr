@@ -15,7 +15,7 @@
 | v1.1.3 release notes | ✅ Present |
 | Main branch | ✅ Active |
 | CI/CD ownership cleanup | ✅ Applied |
-| Production Vercel promotion of the audited `main` SHA | ✅ READY — `dpl_FfN5eETGygZVej5VedRTMBR81wvk` |
+| Production Vercel promotion of the final `main` SHA | ✅ READY — `dpl_FFY6BtN6kn5HUGas6isKWjneKwhE` |
 
 `v1.1.3` remains the repository application version and has not been marked as the latest published Android Release. The web production deployment itself is live and verified.
 
@@ -58,7 +58,7 @@ Production Vercel Git auto-deployment is disabled in `vercel.json`. The intended
 4. prebuilt production deployment;
 5. smoke verification against the deployed artifact.
 
-The audited production build is live on Vercel deployment `dpl_FfN5eETGygZVej5VedRTMBR81wvk`, built from commit `02d80a5f50b6f877cbec11da39873ec11ee14254`. The verified production domain `zikrmediaofficial.vercel.app` is attached to the project and the new production deployment exposes the production aliases.
+The final production build is live on Vercel deployment `dpl_FFY6BtN6kn5HUGas6isKWjneKwhE`, built from main commit `831cb81d2162461295987f921823ebc9e40fc54b`. The verified production domain `zikrmediaofficial.vercel.app` resolves to that deployment.
 
 ## Verification requirements
 
@@ -66,7 +66,7 @@ Before treating a release as complete:
 
 `pnpm verify:pr`
 
-CircleCI must complete the production application build/documentation lane, and release-specific Android/Supabase gates must pass when applicable.
+The final web release has passed the canonical Quality Gate, CircleCI application-build/documentation certification, and Vercel production build/deployment. Android `v1.1.3` remains a repository-prepared release and is not claimed as the latest published Android release.
 
 Production evidence must include:
 
