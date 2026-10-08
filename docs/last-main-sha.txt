@@ -1,1 +1,0 @@
-The current main branch contains the native OAuth callback hardening required for Android release.
