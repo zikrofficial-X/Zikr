@@ -9,7 +9,6 @@ const read = (file) => {
 
 const quality = read(".github/workflows/quality-gate.yml");
 const video = read(".github/workflows/generate-ai-video.yml");
-const urgent = read(".github/workflows/urgent-video-dispatcher.yml");
 const english = read(".github/workflows/english-content-sync.yml");
 const release = read(".github/workflows/release-finalization.yml");
 const smoke = read(".github/workflows/release-vercel.yml");
@@ -33,16 +32,12 @@ for (const item of workflowNames) {
 assert.ok(circle.includes('cron: "17 3,9,15,21 * * *"'), "CircleCI must own the recurring video schedule");
 assert.ok(circle.includes('cron: "17 4 * * *"'), "CircleCI must own the recurring English content schedule");
 
-
 assert.ok(quality.includes('name: "ZIKR / Quality Gate"'), "Canonical GitHub quality check name is incorrect");
 assert.ok(!quality.includes("ci/circleci: ci-check"), "GitHub quality gate must not impersonate CircleCI");
 assert.ok(!video.includes("\n  schedule:"), "GitHub video worker must not own an automatic schedule");
 assert.ok(!video.includes("\n  push:"), "Production video worker must not run on source pushes");
 assert.ok(video.includes("environment: production"), "Video worker must use protected production environment");
 assert.ok(video.includes("github.ref == 'refs/heads/main'"), "Video worker must be main-only");
-assert.ok(!urgent.includes("\n  schedule:"), "Urgent video recovery workflow must not own an automatic schedule");
-assert.ok(urgent.includes("environment: production"), "Urgent dispatcher must use protected production environment");
-assert.ok(urgent.includes("github.ref == 'refs/heads/main'"), "Urgent dispatcher must be main-only");
 assert.ok(!english.includes("\n  schedule:"), "GitHub English sync must not own an automatic schedule");
 assert.ok(english.includes("environment: production"), "English sync must use protected production environment");
 assert.ok(english.includes("github.ref == 'refs/heads/main'"), "English sync must be main-only");
@@ -61,7 +56,6 @@ assert.ok(!existsSync(".github/workflows/global-localization-verify.yml"), "Dupl
 
 for (const file of [
   ".github/workflows/generate-ai-video.yml",
-  ".github/workflows/urgent-video-dispatcher.yml",
   ".github/workflows/english-content-sync.yml",
   ".github/workflows/release-finalization.yml",
 ]) {
