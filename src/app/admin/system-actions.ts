@@ -16,7 +16,26 @@ export async function saveAdminSettingAction(formData: FormData) {
   const rawValue = rawValues.at(-1) ?? "";
   if (!key) throw new Error("مفتاح الإعداد مطلوب.");
 
-  const allowedSettings = new Set([\n    "require_mfa_for_destructive",\n    "maintenance_mode",\n    "admin_alerts_enabled",\n    "search_result_limit",\n  ]);\n  if (!allowedSettings.has(key)) throw new Error("إعداد إدارة غير مدعوم.");\n\n  let value: unknown;\n  if (["require_mfa_for_destructive", "maintenance_mode", "admin_alerts_enabled"].includes(key)) {\n    if (rawValue !== "true" && rawValue !== "false") throw new Error("قيمة منطقية غير صالحة.");\n    value = rawValue === "true";\n  } else {\n    const numeric = Number(rawValue);\n    if (!Number.isInteger(numeric) || numeric < 10 || numeric > 100) {\n      throw new Error("حد نتائج البحث يجب أن يكون بين 10 و100.");\n    }\n    value = numeric;\n  }\n  await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
+  const allowedSettings = new Set([
+    "require_mfa_for_destructive",
+    "maintenance_mode",
+    "admin_alerts_enabled",
+    "search_result_limit",
+  ]);
+  if (!allowedSettings.has(key)) throw new Error("إعداد إدارة غير مدعوم.");
+
+  let value: unknown;
+  if (["require_mfa_for_destructive", "maintenance_mode", "admin_alerts_enabled"].includes(key)) {
+    if (rawValue !== "true" && rawValue !== "false") throw new Error("قيمة منطقية غير صالحة.");
+    value = rawValue === "true";
+  } else {
+    const numeric = Number(rawValue);
+    if (!Number.isInteger(numeric) || numeric < 10 || numeric > 100) {
+      throw new Error("حد نتائج البحث يجب أن يكون بين 10 و100.");
+    }
+    value = numeric;
+  }
+  await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
     body: JSON.stringify({ key, value, updated_by: profile.id, updated_at: new Date().toISOString() }),
