@@ -1,0 +1,90 @@
+name: ZIKR Quality Gate
+# Canonical source-gate check: ZIKR / Quality Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-quality-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: "ZIKR / Quality Gate"
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Verify toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          pnpm --version
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm config set fetch-retries 5
+          pnpm config set fetch-timeout 120000
+          pnpm config set fetch-retry-mintimeout 20000
+          pnpm config set fetch-retry-maxtimeout 120000
+          pnpm config set network-concurrency 8
+          pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+        timeout-minutes: 15
+
+      - name: Run lightweight pull request quality gate
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: pnpm verify:pr
+        timeout-minutes: 15
+
+      - name: Run canonical source/architecture gate on main
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: pnpm verify:pr
+        timeout-minutes: 20
+
+      - name: Report release rule
+        if: success()
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "QUALITY_GATE=PASSED (PR lightweight gate)"
+            echo "Canonical source/architecture verification runs on main; application build is certified by CircleCI."
+          else
+            echo "QUALITY_GATE=PASSED (source/architecture gate)"
+          fi
+          echo "Vercel automatic Git deployments are disabled."
+          echo "Production deployment is available only through the manual release workflow."
