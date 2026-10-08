@@ -1,4 +1,0 @@
-ZIKR v1.1.3
-versionCode=57
-applicationId=com.zikr.app
-targetSdk=36
