@@ -127,7 +127,7 @@ export default async function AdminAutomationPage() {
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
-          {VIDEO_SETTINGS.map(([key, label, kind]) => {
+          {VIDEO_SETTINGS.map(([key, _label, kind]) => {
             const value = settings[key];
             const checked = value === true || value === "true";
             return (
