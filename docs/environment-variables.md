@@ -177,7 +177,7 @@ GitHub Actions secrets are referenced by canonical names in workflow files. Secr
 
 ### CircleCI
 
-CircleCI is a manual recovery/release path and requires its own protected project/context variables.
+CircleCI owns recurring background processing, Android release builds, and explicit recovery/release operations. Its project/context variables are protected independently from GitHub Actions.
 
 Android release additionally requires:
 
