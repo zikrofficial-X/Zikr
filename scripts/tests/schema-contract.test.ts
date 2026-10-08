@@ -1,0 +1,33 @@
+import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
+
+const migrationsDir = path.resolve("supabase/migrations");
+const migrationFiles = readdirSync(migrationsDir).filter((file) => file.endsWith(".sql")).sort();
+const migrations = migrationFiles.map((file) => readFileSync(path.join(migrationsDir, file), "utf8")).join("\n\n");
+const types = readFileSync("src/lib/types/supabase.ts", "utf8");
+
+function requireText(haystack, needle, label) {
+  assert.ok(haystack.includes(needle), label + " is missing: " + needle);
+}
+
+function requireRegex(haystack, pattern, label) {
+  assert.ok(pattern.test(haystack), label + " does not match " + pattern);
+}
+
+requireText(migrations, "media_assets", "media_assets migration contract");
+requireText(migrations, "source_id", "media_assets.source_id migration contract");
+requireText(types, '"media_assets"', "media_assets generated type contract");
+requireText(types, "media_assets_source_id_fkey", "media_assets.source_id relationship type contract");
+
+requireRegex(migrations, /quran_reciters[\s\S]{0,800}code\s+text\s+unique\s+not\s+null/i, "quran_reciters.code migration contract");
+requireRegex(types, /quran_reciters:[\s\S]{0,2500}code:\s*string \| null/i, "quran_reciters.code generated type contract");
+requireRegex(migrations, /quran_audio[\s\S]{0,1200}reciter_id/i, "quran_audio.reciter_id migration contract");
+requireRegex(migrations, /quran_audio[\s\S]{0,1200}audio_url/i, "quran_audio.audio_url migration contract");
+requireRegex(types, /quran_audio:[\s\S]{0,3000}reciter_id:\s*string \| null/i, "quran_audio.reciter_id generated type contract");
+requireRegex(types, /quran_audio:[\s\S]{0,3000}audio_url:\s*string \| null/i, "quran_audio.audio_url generated type contract");
+
+const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+assert.equal(pkg.scripts["video:contract:check"], "tsx scripts/tests/video-contract.test.ts", "video contract check must remain wired to the canonical test");
+
+console.log("✅ Schema contract checks passed");
