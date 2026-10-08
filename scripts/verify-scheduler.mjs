@@ -83,9 +83,8 @@ const mig2 = read("supabase/migrations/20261002114000_retire_dead_media_cleanup_
 if (!mig2.includes("cron.unschedule(4)")) failures.push("dead media cleanup cron retirement migration is missing");
 
 const socialSyncMigration = read("supabase/migrations/20261008074605_reconcile_social_sync_cron_and_child_rls.sql");
-if (!socialSyncMigration.includes("wvetcauyerlkqvmntajq.supabase.co/functions/v1/sync-youtube-facebook")) failures.push("social sync cron must target the current Supabase project");
-if (!socialSyncMigration.includes("active := false")) failures.push("social publishing cron must stay paused until its function and publishing authorization are verified");
-if (socialSyncMigration.includes("nmdeazfmtncelykzxkhs")) failures.push("social sync cron must not target the retired Supabase project");
+if (!socialSyncMigration.includes("active := false")) failures.push("legacy social sync cron must remain disabled");
+if (existsSync("supabase/functions/sync-youtube-facebook/index.ts")) failures.push("retired sync-youtube-facebook Edge Function source must not remain in the runtime tree");
 for (const table of ["companion_stories", "battle_events", "conquest_events"]) {
   if (!socialSyncMigration.includes(`DROP POLICY IF EXISTS allow_public_read ON public.${table}`)) {
     failures.push(`unscoped public read policy must be removed from ${table}`);
