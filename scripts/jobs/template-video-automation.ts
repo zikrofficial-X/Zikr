@@ -1006,8 +1006,8 @@ async function renderVideo(request: GeneratedRequest) {
             "--text", narrationText,
             "--output", audioPath,
             "--voice", process.env.ARABIC_TTS_VOICE?.trim() || narrationProfile.voice,
-            "--rate", process.env.ARABIC_TTS_RATE?.trim() || narrationProfile.rate,
-            "--pitch", process.env.ARABIC_TTS_PITCH?.trim() || narrationProfile.pitch,
+            `--rate=${process.env.ARABIC_TTS_RATE?.trim() || narrationProfile.rate}`,
+            `--pitch=${process.env.ARABIC_TTS_PITCH?.trim() || narrationProfile.pitch}`,
           ],
           { maxBuffer: 4 * 1024 * 1024 },
         );

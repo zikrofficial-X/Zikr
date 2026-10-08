@@ -25,4 +25,15 @@ assert.ok(categories.includes("other"), "category 'other' must be allowed by the
 const voice = readFileSync("scripts/generate-arabic-voice.py", "utf8");
 assert.ok(!voice.includes("ZariyahNeural"), "default Arabic TTS voice must be male (Zariyah is female)");
 assert.ok(voice.includes("ar-SA-HamedNeural"), "male MSA profile required");
+
+const worker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+assert.ok(
+  worker.includes('`--rate=${process.env.ARABIC_TTS_RATE?.trim() || narrationProfile.rate}`'),
+  "Arabic TTS rate must use --rate=<value> because negative rates are parsed as CLI options by argparse",
+);
+assert.ok(
+  worker.includes('`--pitch=${process.env.ARABIC_TTS_PITCH?.trim() || narrationProfile.pitch}`'),
+  "Arabic TTS pitch must use --pitch=<value> because negative pitches are parsed as CLI options by argparse",
+);
+
 console.log("video contract tests passed");
