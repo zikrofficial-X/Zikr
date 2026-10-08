@@ -38,14 +38,14 @@ jobs:
       GEMINI_MODEL: gemini-3.1-flash-lite
       GEMINI_AUDIO_SMOKE_TEST: "false"
       AUTO_VIDEO_ENABLED: "true"
-      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '10' }}
-      VIDEO_BACKGROUND_BATCH_SIZE: "1"
-      DAILY_VIDEO_TARGET: "8"
+      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '3' }}
+      VIDEO_BACKGROUND_BATCH_SIZE: "3"
+      DAILY_VIDEO_TARGET: "12"
       AUTO_VIDEO_URGENT: ${{ inputs.urgent || 'false' }}
       VIDEO_DAILY_LIMIT: "24"
       VIDEO_AUTOMATION_DRY_RUN: "false"
       VIDEO_AI_ENABLED: "true"
-      VIDEO_AI_ATTEMPTS_PER_RUN: "2"
+      VIDEO_AI_ATTEMPTS_PER_RUN: "3"
       VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,comfyui,free_api"
       HF_WAN_VIDEO_ENABLED: "true"
       HF_LTX_FAST_VIDEO_ENABLED: "true"
@@ -53,13 +53,14 @@ jobs:
       HF_LTX_FAST_SPACE: "Lightricks/ltx-video-distilled"
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       ARABIC_TTS_VENV: ${{ github.workspace }}/.automation-venv
+      ARABIC_TTS_PROFILE: "hadith_male_msa"
       ARABIC_TTS_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
       HF_VIDEO_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
-      AUTO_VIDEO_SECONDS: "16"
+      AUTO_VIDEO_SECONDS: "18"
       BACKGROUND_JOB_TARGET: "all"
-      VIDEO_TEMPLATE_VERSION: "2026-10-02-quality-v2"
+      VIDEO_TEMPLATE_VERSION: "2026-10-08-quality-v3"
       VERIFY_VIDEO_RUNTIME_TOOLS: "true"
       # Generated videos are automatically handed to the configured social publishers.
       SOCIAL_PUBLISH_ENABLED: "true"
