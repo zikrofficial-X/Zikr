@@ -2,9 +2,9 @@
 
 ## Ownership model
 
-GitHub Actions is the single automatic owner for pull-request/main source verification and production video/content scheduling.
+GitHub Actions owns pull-request/main source verification, controlled releases, and deliberate manual video dispatch. CircleCI owns recurring video/social and English-content schedules so periodic production work does not consume the GitHub Free Actions allowance.
 
-CircleCI is retained for Android release execution, explicit recovery, and manual security audit work. It must not become a second automatic source-verification owner.
+CircleCI is retained for recurring background processing, Android release execution, explicit recovery, and manual security audit work. It must not become a second automatic source-verification owner.
 
 Supabase pg_cron remains the owner of minute-level prayer notification scheduling.
 
@@ -19,7 +19,7 @@ Vercel is the deployment target. The controlled release workflow performs the pr
 | Production smoke | `ZIKR Production Smoke Verification` | Blocking on controlled release |
 | Android | Android build/signature/publish verification | Blocking for Android release only |
 | Security | CircleCI `security-audit` | Advisory/manual outside PR source gate |
-| Scheduled automation | Video/English sync | Operational; never a PR merge gate |
+| Scheduled automation | CircleCI Video/English schedules | Operational; never a PR merge gate |
 
 The canonical PR source check must be named `ZIKR / Quality Gate`; it must never use a CircleCI-looking name.
 
@@ -40,6 +40,11 @@ main
        ├── migration replay
        ├── mobile readiness
        └── production build
+
+scheduled production jobs
+ └── CircleCI
+       ├── video/social: 03:17, 09:17, 15:17, 21:17 UTC
+       └── English content: 04:17 UTC
 
 manual production release
  └── release-finalization
@@ -63,8 +68,8 @@ Android release
 
 `video:contract:check` protects the video status/category/TTS contracts against database constraint drift.
 
-`ci:architecture:check` protects the automation topology itself from schedule drift, duplicated owners, confusing check names, and missing production environment guards.
+`ci:architecture:check` protects the automation topology itself from schedule drift, duplicated owners, confusing check names, and missing production environment guards. It also enforces that GitHub Actions has no recurring `schedule` triggers; recurring production jobs belong to CircleCI.
 
 ## Non-goals
 
-No secret values are stored in the repository. No Vercel Cron is reintroduced. No production deployment is triggered merely because this branch or PR exists. No production Supabase migration is executed as part of the CI architecture refactor.
+No secret values are stored in the repository. No Vercel Cron is reintroduced. No recurring GitHub Actions `schedule` trigger is reintroduced. No production deployment is triggered merely because this branch or PR exists. No production Supabase migration is executed as part of the CI architecture refactor.
