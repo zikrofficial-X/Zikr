@@ -42,7 +42,6 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/video-factory", "مصنع الفيديو", "video.manage"],
     ["/admin/ai-video", "استوديو إنشاء الفيديو", "video.manage"],
     ["/admin/ai-video/curated", "المحتوى الموثق للفيديو", "video.manage"],
-    ["/admin/videos", "طابور توليد الفيديو", "video.manage"],
     ["/admin/video-factory/sources", "مصادر الفيديو", "video.manage"],
     ["/admin/video-factory/scripts", "نصوص السرد", "video.manage"],
     ["/admin/video-factory/voices", "الأصوات", "video.manage"],
@@ -134,9 +133,9 @@ for (const label of visibleLabels) {
 }
 
 const legacyRedirects = {
+  "src/app/admin/videos/page.tsx": "/admin/video-factory/queue",
   "src/app/admin/alerts/page.tsx": "/admin/notifications",
   "src/app/admin/audio/site-audio/page.tsx": "/admin/site-audio",
-  "src/app/admin/video-factory/queue/page.tsx": "/admin/videos",
   "src/app/admin/video-factory/publishing/page.tsx": "/admin/social",
   "src/app/admin/video-factory/scheduler/page.tsx": "/admin/automation",
 };
