@@ -80,8 +80,12 @@ assert.ok(androidPublish.includes("docs/finalization/RELEASE_RETRY.flag"), "Andr
 
 assert.ok(!circle.includes("main-source-verification:"), "CircleCI must not duplicate main source verification");
 assert.ok(!circle.includes("android-release-on-build-tag:"), "CircleCI must not retain the redundant Android build-tag workflow");
-const androidTagWorkflow = read(".github/workflows/create-android-release-tag.yml");
-assert.ok(!androidTagWorkflow.includes("buildTag"), "Android release tagging must not create a redundant -build tag");
+const androidReleaseManager = read("src/features/releases/services/github-release-manager.ts");
+assert.ok(androidReleaseManager.includes("/git/tags"), "Admin Android release manager must create the tag object");
+assert.ok(androidReleaseManager.includes("/git/refs"), "Admin Android release manager must create the tag ref");
+assert.ok(androidReleaseManager.includes("/releases"), "Admin Android release manager must create the draft GitHub release");
+assert.ok(androidReleaseManager.includes("draft: true"), "Admin Android release manager must create a draft release before artifact verification");
+assert.ok(!androidReleaseManager.includes("buildTag"), "Admin Android release manager must not create a redundant -build tag");
 assert.ok(circle.includes("  source-verify:"), "CircleCI source verification job name must be explicit");
 assert.ok(circle.includes("  application-build-docs:"), "CircleCI must own the application build/documentation artifact job");
 assert.ok(circle.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY:"), "CircleCI application builds must receive the canonical public Supabase key");
