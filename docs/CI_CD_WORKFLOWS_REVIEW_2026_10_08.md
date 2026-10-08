@@ -22,8 +22,8 @@ GitHub Actions owns the recurring production video and social schedules. CircleC
 ### `quality-gate.yml`
 Canonical source gate.
 
-- PRs run `pnpm verify:pr`.
-- `main` runs the full `pnpm verify` gate.
+- PRs and `main` run the source/architecture verification chain `pnpm verify:pr`.
+- The Quality Gate does not own the application build; CircleCI `application-build-docs` is the build certification lane.
 - Production deployment is not triggered by a push.
 - Timeout and concurrency protection are configured.
 
@@ -50,12 +50,13 @@ Canonical production release workflow.
 
 1. Checkout exact `main` SHA.
 2. Validate `PRODUCTION_RELEASE.flag`.
-3. Run release contract.
-4. Run verification gate.
-5. Build with pinned Vercel CLI.
-6. Deploy the prebuilt artifact to the canonical Vercel project.
-7. Run production smoke verification.
-8. Record release evidence.
+3. Run release contract and source/architecture verification.
+4. Build the deployment-specific Vercel artifact with the pinned CLI.
+5. Deploy the prebuilt artifact to the canonical Vercel project.
+6. Run production smoke verification.
+7. Record release evidence.
+
+CircleCI separately certifies the repository's application build and publishes the build/release documentation artifact; it is not a second production deployer.
 
 ### `release-vercel.yml`
 This file is no longer a deployment owner. It is the production smoke-verification workflow and must remain manual-only.
