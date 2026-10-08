@@ -7,7 +7,7 @@ ZIKR does not use Vercel Git integration as the production deployment loop.
 - Pull requests and main run the GitHub quality gate.
 - GitHub Actions also runs the read-only Supabase Production Health gate against the live production project.
 - The canonical command is `pnpm verify`.
-- Routine CircleCI source verification and background runs are disabled to avoid duplicate plan usage; CircleCI remains for Android release tags and explicitly enabled recovery/release pipelines.
+- Routine CircleCI source verification and background runs are disabled to avoid duplicate plan usage; CircleCI remains for Android build/signing after the Admin Release service creates the semantic release tag, plus explicitly enabled recovery/release pipelines.
 - `vercel.json` disables automatic Git deployments.
 - No feature-branch or ordinary main push is expected to create a Vercel production deployment.
 - Production deployment is performed only by the manual Vercel release workflow.
