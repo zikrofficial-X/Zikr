@@ -13,14 +13,22 @@ const config: Config = {
           gold: '#C7A86B',
           goldSoft: '#E6D7B3',
           cream: '#F6F0E5',
-          mist: '#8FA49F'
-        }
+          mist: '#8FA49F',
+        },
       },
       fontFamily: {
-      arabic: ['"Noto Naskh Arabic"', '"Noto Sans Arabic"', 'Arial', 'Tahoma', 'sans-serif'],
+        arabic: [
+          '"Noto Naskh Arabic"',
+          '"Noto Sans Arabic"',
+          'Arial',
+          'Tahoma',
+          'sans-serif',
+        ],
+      },
+      boxShadow: {
+        glow: '0 10px 30px rgba(199,168,107,0.2)',
+      },
     },
-      boxShadow: { glow: '0 10px 30px rgba(199,168,107,0.2)' }
-    }
   },
   plugins: [typography, animate],
 };
