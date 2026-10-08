@@ -42,6 +42,9 @@ if (!publisher.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("GitHu
 const circleci = read(".circleci/config.yml");
 if (circleci.includes('cron: "17 3,9,15,21 * * *"')) failures.push("CircleCI must not own video generation scheduling");
 if (circleci.includes("background-jobs:")) failures.push("CircleCI must not contain the production video/social worker job");
+if (circleci.includes("android-release-on-build-tag:")) failures.push("CircleCI must not retain the redundant Android build-tag workflow");
+const androidTagWorkflow = read(".github/workflows/create-android-release-tag.yml");
+if (androidTagWorkflow.includes("buildTag")) failures.push("Android release tagging must not create a redundant -build tag");
 if (!circleci.includes('cron: "17 4 * * *"')) failures.push("CircleCI must own the daily English content schedule");
 if (existsSync(".github/workflows/global-localization-verify.yml")) failures.push("standalone localization verification duplicates the canonical PR gate");
 const releaseWorkflow = read(".github/workflows/release-finalization.yml");
