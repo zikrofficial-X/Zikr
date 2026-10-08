@@ -18,7 +18,7 @@ The future publishing worker must publish only a real media file to Facebook's v
 
 ## Current state
 
-The implementation has progressed beyond this original Phase 1 note. The active integration is now represented by the current `supabase/functions/sync-youtube-facebook/` worker, the `social_sync_jobs` queue, and feature-first services under `src/features/`. Treat this document as historical architecture context, not as a current implementation map.
+This document is historical architecture context only. The legacy `sync-youtube-facebook` Edge Function has been retired. Current production social publishing is handled by GitHub Actions `publish-social.yml` through `social_publish_queue`; `social_sync_jobs` remains only for historical/manual backfill compatibility.
 
 ## Phase 2
 
