@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getServerEnv } from '@/lib/env';
 import {
   hasAdminPermission,
   type AdminPermission,
@@ -38,16 +37,12 @@ export async function getCurrentProfile(): Promise<AdminProfile | null> {
       .maybeSingle();
 
     const assignedRole = assignment?.role as AdminRole | null;
-    const isPrimaryAdmin =
-      user.email?.trim().toLowerCase() === getServerEnv().PRIMARY_ADMIN_EMAIL;
     const role: AdminRole =
-      isPrimaryAdmin
-        ? 'admin'
-        : assignedRole && assignedRole in ADMIN_ROLE_PERMISSIONS
-          ? assignedRole
-          : profile.role === 'admin'
-            ? 'admin'
-            : 'user';
+      assignedRole && assignedRole in ADMIN_ROLE_PERMISSIONS
+        ? assignedRole
+        : profile.role === 'admin'
+          ? 'admin'
+          : 'user';
 
     return { ...profile, email: user.email, role };
   } catch {
