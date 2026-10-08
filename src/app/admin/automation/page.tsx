@@ -187,7 +187,7 @@ export default async function AdminAutomationPage() {
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-semibold text-brand-gold">طابور توليد الفيديو</h2>
-            <Link href="/admin/videos" className="text-xs text-brand-gold/70 hover:text-brand-gold">فتح الطابور</Link>
+            <Link href="/admin/video-factory/queue" className="text-xs text-brand-gold/70 hover:text-brand-gold">فتح الطابور</Link>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             {[[ "pending", "قيد الانتظار" ], [ "processing", "قيد التنفيذ" ], [ "completed", "مكتمل" ], [ "failed", "فشل" ]].map(([status, label]) => (

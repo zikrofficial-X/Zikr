@@ -57,7 +57,6 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
       { href: "/admin/video-factory", label: "مصنع الفيديو", permission: "video.manage" },
       { href: "/admin/ai-video", label: "استوديو إنشاء الفيديو", permission: "video.manage" },
       { href: "/admin/ai-video/curated", label: "المحتوى الموثق للفيديو", permission: "video.manage" },
-      { href: "/admin/videos", label: "طابور توليد الفيديو", permission: "video.manage" },
       { href: "/admin/video-factory/sources", label: "مصادر الفيديو", permission: "video.manage" },
       { href: "/admin/video-factory/scripts", label: "نصوص السرد", permission: "video.manage" },
       { href: "/admin/video-factory/voices", label: "الأصوات", permission: "video.manage" },

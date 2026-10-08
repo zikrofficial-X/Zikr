@@ -163,9 +163,11 @@ if (duplicateRequired.length) {
 if (pages.length < 1) failures.push('No page routes discovered under src/app');
 if (apis.length < 1) failures.push('No API routes discovered under src/app');
 
-if (pages.length !== 125 || apis.length !== 73) {
+const EXPECTED_PAGE_ROUTES = 228;
+const EXPECTED_API_ROUTES = 66;
+if (pages.length !== EXPECTED_PAGE_ROUTES || apis.length !== EXPECTED_API_ROUTES) {
   warnings.push(
-    `Route inventory drift: discovered ${pages.length} pages and ${apis.length} API routes.`,
+    `Route inventory drift: expected ${EXPECTED_PAGE_ROUTES} pages and ${EXPECTED_API_ROUTES} API routes; discovered ${pages.length} pages and ${apis.length} API routes.`,
   );
 }
 

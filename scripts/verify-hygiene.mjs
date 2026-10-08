@@ -49,6 +49,17 @@ const envAndRuntimeDirs = [
   'supabase/functions',
 ];
 
+const forbiddenEnvironmentKeyPattern = /\b(?:SUPABASE|POSTGRES|JWT)_[A-Z0-9]+_2\b/g;
+
+function scanEnvironmentKeyDrift(relativePath, source) {
+  const matches = source.match(forbiddenEnvironmentKeyPattern);
+  if (matches?.length) {
+    for (const key of [...new Set(matches)]) {
+      fail(`Legacy duplicate environment key '${key}' must not be referenced by repository runtime/configuration code.`);
+    }
+  }
+}
+
 const staleRuntimeTokens = [
   'mohamedalaa7785-cpu/Zikr',
   'zikr-zikrmediaofficial.vercel.app',
@@ -69,6 +80,7 @@ function scanFile(relativePath) {
   for (const token of staleRuntimeTokens) {
     if (source.includes(token)) fail(`Stale runtime reference '${token}' found in ${relativePath}`);
   }
+  scanEnvironmentKeyDrift(relativePath, source);
 }
 
 function walkRuntime(relativeDir) {
@@ -86,6 +98,7 @@ function walkRuntime(relativeDir) {
       for (const token of staleRuntimeTokens) {
         if (source.includes(token)) fail(`Stale runtime reference '${token}' found in ${rel}`);
       }
+      scanEnvironmentKeyDrift(rel, source);
     }
   }
 }

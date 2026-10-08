@@ -1,9 +1,14 @@
-import { redirect } from "next/navigation";
+import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import AdminVideosClient from "@/app/admin/videos/videos-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function VideoFactoryQueueRedirectPage() {
+export default async function VideoFactoryQueuePage() {
   await requireAdminPermission("video.manage");
-  redirect("/admin/videos");
+  return (
+    <Container className="py-8">
+      <AdminVideosClient />
+    </Container>
+  );
 }
