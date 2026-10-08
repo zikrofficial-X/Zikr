@@ -12,6 +12,7 @@
 - [`OFFLINE_SUPPORT.md`](./docs/OFFLINE_SUPPORT.md) — offline/PWA behavior.
 - [`docs/production-scheduling.md`](./docs/production-scheduling.md) — scheduler ownership and recovery jobs.
 - [`docs/background-jobs.md`](./docs/background-jobs.md) — shared worker and production automation runbook.
+- [`docs/VIDEO_PUBLISHING_GUIDE.md`](./docs/VIDEO_PUBLISHING_GUIDE.md) — canonical video generation and social publishing runbook.
 
 ## Authentication and data
 
