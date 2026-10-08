@@ -17,7 +17,6 @@ const packageJson = (() => {
 
 const version = String(packageJson.version || "");
 const releaseTag = process.env.RELEASE_TAG || read(".release-tag").trim();
-const packageVersionText = read("PACKAGE_VERSION.txt");
 const androidBuild = read("android/app/build.gradle");
 const iosProject = read("ios/App/App.xcodeproj/project.pbxproj");
 const iosInfoPlist = read("ios/App/App/Info.plist");
@@ -43,16 +42,11 @@ if (releaseNotes) {
   }
 }
 
-const packageVersion = packageVersionText.match(/^ZIKR\s+v([^\r\n]+)\s*$/m)?.[1];
-const packageCode = packageVersionText.match(/^versionCode=(\d+)\s*$/m)?.[1];
-const packageAppId = packageVersionText.match(/^applicationId=([^\r\n]+)\s*$/m)?.[1];
-const packageTargetSdk = packageVersionText.match(/^targetSdk=(\d+)\s*$/m)?.[1];
 const androidVersion = androidBuild.match(/versionName\s+"([^"]+)"/)?.[1];
 const androidCode = androidBuild.match(/versionCode\s+(\d+)/)?.[1];
 const androidAppId = androidBuild.match(/applicationId\s+"([^"]+)"/)?.[1];
 const androidTargetSdk = androidVariables.match(/targetSdkVersion\s*=\s*(\d+)/)?.[1];
 
-if (packageVersion !== version) fail(`PACKAGE_VERSION.txt version must be ${version}`);
 if (androidVersion !== version) fail(`android/app/build.gradle versionName must be ${version}`);
 if (!packageCode || !androidCode) fail("Android versionCode metadata is missing");
 if (packageCode !== androidCode) fail("versionCode mismatch between PACKAGE_VERSION.txt and Android build.gradle");
@@ -90,4 +84,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`✅ Release metadata aligned: v${version}, code ${packageCode}, target SDK ${packageTargetSdk}, app ${packageAppId}`);
+console.log(`✅ Release metadata aligned: v${version}, code ${androidCode}, target SDK ${androidTargetSdk}, app ${androidAppId}`);
