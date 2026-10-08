@@ -69,6 +69,7 @@ assert.ok(release.includes("github.ref == 'refs/heads/main'"), "Controlled Verce
 assert.ok(release.includes("Production smoke test on deployed artifact"), "Controlled release must verify the deployment it just created");
 assert.ok(release.includes("pnpm release:contract:check"), "Controlled release must use the canonical release contract check");
 assert.ok(release.includes("pnpm production:smoke"), "Controlled release must use the canonical production smoke script");
+assert.ok(!release.includes("--token"), "Controlled Vercel release must not pass credentials through CLI arguments");
 assert.ok(release.includes("environment:\n      name: production"), "Controlled release must use the protected production environment");
 
 assert.ok(smoke.includes("name: ZIKR Production Smoke Verification"), "Manual production smoke workflow name is incorrect");
