@@ -1,4 +1,4 @@
-name: ZIKR Production Smoke Verification (Manual)
+name: ZIKR Production Smoke Verification
 
 on:
   workflow_dispatch:
