@@ -2,7 +2,7 @@
 
 **Canonical production URL:** `https://zikrmediaofficial.vercel.app`
 
-This checklist reflects the current production architecture. GitHub Actions owns repository quality checks and the automatic video/social worker, CircleCI remains a secondary verification/recovery path, Vercel is production-only release infrastructure, and Supabase owns prayer scheduling.
+This checklist reflects the current production architecture. GitHub Actions owns repository quality checks, controlled releases, production smoke verification, and manual video dispatch; CircleCI owns recurring video/social and English-content schedules plus Android/recovery operations; Vercel is release infrastructure; Supabase owns prayer scheduling.
 
 ## Before deployment
 
@@ -15,18 +15,12 @@ This checklist reflects the current production architecture. GitHub Actions owns
 | Supabase | Production project is `ACTIVE_HEALTHY`; local and remote migration versions match |
 | Authentication | Supabase redirect URLs and Google OAuth credentials use the canonical production callback `/auth/callback` |
 | Secrets | Service-role, OAuth refresh, provider, VAPID, and scheduler secrets exist only in server-side stores |
-| GitHub Actions | Workflow secrets are configured for the autonomous worker; no secret is hardcoded in the workflow |
+| GitHub Actions | Verification/release/manual-dispatch secrets are configured; no recurring production scheduler lives in GitHub Actions |
 | CircleCI Android | Android release variables are protected; release branches/tags are used only for release builds |
 
 ## Production automation
 
-The active video workflow is:
-
-`.github/workflows/generate-ai-video.yml`
-
-It runs every two hours, seeds source-locked video requests, renders with free FFmpeg, stores generated files in Supabase Storage, and processes the social publishing queue when provider credentials are configured.
-
-The workflow also supports manual dispatch for diagnostics. Do not add a Vercel Cron, Supabase video cron, or a second GitHub/CircleCI schedule for the same queue.
+The recurring video workflow is the scheduled CircleCI `background-jobs` job. It runs four times daily, seeds source-locked requests, renders with FFmpeg, stores files in Supabase Storage, and processes the social publishing queue. The GitHub `generate-ai-video.yml` workflow is manual-only for diagnostics/recovery. Do not add a Vercel Cron, Supabase video cron, or a second scheduler for the same queue.
 
 ## Vercel deployment
 
@@ -38,10 +32,10 @@ The custom production domain must remain reachable for OAuth callbacks. Non-cust
 
 The committed `.circleci/config.yml` owns the external CI/recovery path.
 
-- Source changes run `ci-check`.
+- Source verification is owned by GitHub Actions `ZIKR / Quality Gate`; CircleCI `source-verify` remains for tagged/recovery workflows.
 - Android release runs only for release branches/tags and validates signing material.
-- Background processing is available through `run_background_jobs` for deliberate recovery.
-- Quran audio import is opt-in through `run_quran_audio_import`.
+- Recurring video/social and English-content processing are scheduled in CircleCI; `run_background_jobs` remains available for explicit recovery.
+- Quran audio import is intentionally absent; Quran audio remains externalized.
 - Security audit is opt-in through `run_security_audit`.
 
 Protect all production credentials in CircleCI Project or Context environment variables. Do not put secrets in `.circleci/config.yml`.
@@ -85,4 +79,4 @@ Record the deployed commit SHA, Vercel deployment URL and state, CI/worker run i
 
 A deployment is not considered fully validated solely because the Vercel state is `READY`; the smoke checks and scheduler evidence are required as well.
 
-**Last updated:** September 29, 2026
+**Last updated:** October 8, 2026
