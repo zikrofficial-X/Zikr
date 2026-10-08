@@ -35,7 +35,7 @@ Security-advisor findings still require deliberate review of permissive/public p
 - Vercel remains the production deployment platform for the linked `main` branch.
 - GitHub Actions is the production owner for recurring video generation and social publishing.
 - CircleCI is the application build/documentation, Android release, Supabase gate, and English-content lane; it does not run the production video/social worker.
-- Production release certification for the current cleanup was completed on 2026-10-08: Vercel deployment `dpl_FkavSSvEDy4vom7p6zvoFLN28aq9` is READY and the canonical alias `zikrmediaofficial.vercel.app` is attached to that deployment.
+- Production release certification for the audited `main` SHA was completed on 2026-10-08: Vercel deployment `dpl_AuXEeKHd738SxdyfpaqNBCioYVzC` is READY and exposes the production aliases; the project domain `zikrmediaofficial.vercel.app` is verified and attached to the project.
 
 ## Historical references
 
