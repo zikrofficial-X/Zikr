@@ -16,15 +16,35 @@ drop policy if exists admin_all_pinned_messages_update on public.pinned_messages
 drop policy if exists admin_write_quran_ayahs on public.quran_ayahs;
 drop policy if exists admin_write_quran_surahs on public.quran_surahs;
 
-drop policy if exists "Admins only can modify game graphics" on public.game_graphics;
-create policy "Admins can insert game graphics" on public.game_graphics for insert to authenticated with check (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
-create policy "Admins can update game graphics" on public.game_graphics for update to authenticated using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role)) with check (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
-create policy "Admins can delete game graphics" on public.game_graphics for delete to authenticated using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
+DO $migration$
+BEGIN
+  IF to_regclass('public.game_graphics') IS NOT NULL THEN
+    EXECUTE 'drop policy if exists "Admins only can modify game graphics" on public.game_graphics';
+    EXECUTE $policy$
+      create policy "Admins can insert game graphics" on public.game_graphics for insert to authenticated
+      with check (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
+      create policy "Admins can update game graphics" on public.game_graphics for update to authenticated
+      using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role))
+      with check (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
+      create policy "Admins can delete game graphics" on public.game_graphics for delete to authenticated
+      using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
+    $policy$;
+  END IF;
 
-drop policy if exists "Admins only can modify game scenarios" on public.game_scenarios;
-create policy "Admins can insert game scenarios" on public.game_scenarios for insert to authenticated with check (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
-create policy "Admins can update game scenarios" on public.game_scenarios for update to authenticated using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role)) with check (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
-create policy "Admins can delete game scenarios" on public.game_scenarios for delete to authenticated using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
+  IF to_regclass('public.game_scenarios') IS NOT NULL THEN
+    EXECUTE 'drop policy if exists "Admins only can modify game scenarios" on public.game_scenarios';
+    EXECUTE $policy$
+      create policy "Admins can insert game scenarios" on public.game_scenarios for insert to authenticated
+      with check (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
+      create policy "Admins can update game scenarios" on public.game_scenarios for update to authenticated
+      using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role))
+      with check (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
+      create policy "Admins can delete game scenarios" on public.game_scenarios for delete to authenticated
+      using (exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin'::role));
+    $policy$;
+  END IF;
+END
+$migration$;
 
 drop policy if exists prayer_locations_owner_all on public.prayer_locations;
 drop policy if exists prayer_preferences_owner_all on public.prayer_preferences;
