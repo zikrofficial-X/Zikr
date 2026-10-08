@@ -74,9 +74,10 @@ const scheduling = read("docs/production-scheduling.md");
 if (!scheduling.includes("GitHub Actions is the authoritative automatic video/social worker")) failures.push("production scheduler ownership documentation is stale");
 if (scheduling.includes("GitHub Actions are not the active scheduler in the current repository.")) failures.push("stale contradictory scheduler documentation remains");
 
-const mig1 = read("supabase/migrations/20261002113000_scheduler_hardening_20261002.sql");
-if (!mig1.includes("nmdeazfmtncelykzxkhs.supabase.co/functions/v1/prayer-notification-worker")) failures.push("scheduler hardening migration must pin prayer worker to canonical Supabase");
-if (!mig1.includes("nmdeazfmtncelykzxkhs.supabase.co/functions/v1/source-verified-content-agent")) failures.push("scheduler hardening migration must pin source agent to canonical Supabase");
+const mig1 = read("supabase/migrations/20261008050000_repoint_production_cron_to_current_project.sql");
+if (!mig1.includes("wvetcauyerlkqvmntajq.supabase.co/functions/v1/prayer-notification-worker")) failures.push("cron migration must pin prayer worker to current Supabase project");
+if (!mig1.includes("wvetcauyerlkqvmntajq.supabase.co/functions/v1/source-verified-content-agent")) failures.push("cron migration must pin source agent to current Supabase project");
+if (!mig1.includes("job_id => 4") || !mig1.includes("active => false")) failures.push("cron migration must retire the obsolete cleanup job");
 
 const mig2 = read("supabase/migrations/20261002114000_retire_dead_media_cleanup_cron_20261002.sql");
 if (!mig2.includes("cron.unschedule(4)")) failures.push("dead media cleanup cron retirement migration is missing");
