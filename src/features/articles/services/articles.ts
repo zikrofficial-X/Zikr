@@ -28,6 +28,10 @@ function hasSupabaseConfig(): boolean {
   return Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
+function isUnavailableArticlesTable(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("PGRST205") && error.message.includes("public.articles");
+}
+
 function mapRow(row: Record<string, unknown>, locale: Locale): Article {
   const titleAr = typeof row.title_ar === "string" ? row.title_ar : typeof row.title === "string" ? row.title : "";
   const titleEn = typeof row.title_en === "string" ? row.title_en : null;
@@ -184,7 +188,9 @@ export async function getArticles(categoryId?: string, limit = 100, locale?: Loc
           .slice(0, safeLimit);
       }
     } catch (error) {
-      console.error("[articles] Failed to fetch published articles:", error);
+      if (!isUnavailableArticlesTable(error)) {
+        console.error("[articles] Failed to fetch published articles:", error);
+      }
     }
   }
 
@@ -219,7 +225,9 @@ export async function getArticleBySlug(slug: string, locale?: Locale): Promise<A
         return article;
       }
     } catch (error) {
-      console.error("[articles] Failed to fetch article:", error);
+      if (!isUnavailableArticlesTable(error)) {
+        console.error("[articles] Failed to fetch article:", error);
+      }
     }
   }
 
