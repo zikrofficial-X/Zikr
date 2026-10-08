@@ -1,8 +1,8 @@
 {
   "dependencies": {
-    "@capacitor/core": "7.4.3",
-    "@capacitor/android": "7.4.3",
-    "@capacitor/ios": "7.4.5",
+    "@capacitor/core": "7.6.9",
+    "@capacitor/android": "7.6.9",
+    "@capacitor/ios": "7.6.9",
     "@capacitor/app": "7.0.2",
     "@capacitor/browser": "7.0.5",
     "@capacitor/camera": "7.0.2",
