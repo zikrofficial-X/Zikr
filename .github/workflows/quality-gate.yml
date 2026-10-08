@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   verify:
-    name: "ci/circleci: ci-check"
+    name: "ZIKR / Quality Gate"
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
