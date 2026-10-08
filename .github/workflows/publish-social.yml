@@ -68,8 +68,10 @@ jobs:
           fi
           echo "Social publisher runtime configuration: OK"
 
-      - name: Verify social publishing contract
-        run: pnpm social:publish:check
+      - name: Verify scheduler and social publishing contracts
+        run: |
+          pnpm scheduler:check
+          pnpm social:publish:check
 
       - name: Verify Supabase data-plane access
         shell: bash
