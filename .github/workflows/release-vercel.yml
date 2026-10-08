@@ -55,39 +55,8 @@ jobs:
           pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
           pnpm verify:pr
         timeout-minutes: 15
-      - name: Verify Vercel Git production deployment
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          check_url() {
-            local url="$1"
-            local expected="$2"
-            local body=""
-            local status=""
-
-            for attempt in $(seq 1 30); do
-              status="$(curl -L -sS -o /tmp/zikr-response.txt -w "%{http_code}" --max-time 30 "$url" || true)"
-              body="$(cat /tmp/zikr-response.txt 2>/dev/null || true)"
-
-              if [ "$status" = "200" ] && printf "%s" "$body" | grep -qi "$expected"; then
-                echo "PASS $url"
-                return 0
-              fi
-
-
-              echo "WAIT $attempt/30 $url -> HTTP ${status:-0}"
-              sleep 20
-            done
-
-
-            echo "FAILED $url"
-            return 1
-          }
-
-          check_url "$SITE_URL/" "ذِكر"
-          check_url "$SITE_URL/robots.txt" "Sitemap:"
-          check_url "$SITE_URL/sitemap.xml" "<urlset"
+      - name: Verify live production
+        run: pnpm production:smoke
       - name: Smoke evidence
         run: |
           {
