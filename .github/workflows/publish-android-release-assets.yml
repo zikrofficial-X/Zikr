@@ -26,8 +26,7 @@ jobs:
       github.ref_type == 'tag' ||
       (github.event_name == 'workflow_dispatch' &&
        inputs.retry == true &&
-       github.ref == 'refs/heads/main' &&
-       hashFiles('docs/finalization/RELEASE_RETRY.flag') != '')
+       github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}
