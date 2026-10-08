@@ -43,6 +43,13 @@ if (!permissions.includes("'video.manage', 'video.delete'")) failures.push("vide
 const page = read("src/app/admin/ai-video/page.tsx");
 if (!page.includes('requireAdminPermission("video.manage")')) failures.push("AI video admin page must require video.manage");
 
+const canonicalQueue = read("src/app/admin/video-factory/queue/page.tsx");
+if (!canonicalQueue.includes("AdminVideosClient")) failures.push("Video Factory queue must render the canonical queue client");
+if (!canonicalQueue.includes('requireAdminPermission("video.manage")')) failures.push("Video Factory queue must require video.manage");
+
+const legacyQueue = read("src/app/admin/videos/page.tsx");
+if (!legacyQueue.includes('redirect("/admin/video-factory/queue")')) failures.push("Legacy /admin/videos route must redirect to /admin/video-factory/queue");
+
 for (const adminPage of [
   "src/app/admin/video-factory/page.tsx",
   "src/app/admin/video-factory/scripts/page.tsx",
