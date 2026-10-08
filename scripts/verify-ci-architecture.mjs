@@ -78,6 +78,9 @@ assert.ok(androidPublish.includes("github.ref_type == 'tag'"), "Android publishi
 assert.ok(androidPublish.includes("docs/finalization/RELEASE_RETRY.flag"), "Android publishing must require explicit release state for non-tag recovery");
 
 assert.ok(!circle.includes("main-source-verification:"), "CircleCI must not duplicate main source verification");
+assert.ok(!circle.includes("android-release-on-build-tag:"), "CircleCI must not retain the redundant Android build-tag workflow");
+const androidTagWorkflow = read(".github/workflows/create-android-release-tag.yml");
+assert.ok(!androidTagWorkflow.includes("buildTag"), "Android release tagging must not create a redundant -build tag");
 assert.ok(circle.includes("  source-verify:"), "CircleCI source verification job name must be explicit");
 assert.ok(circle.includes("  application-build-docs:"), "CircleCI must own the application build/documentation artifact job");
 assert.ok(circle.includes("pnpm ci:build:report"), "CircleCI must use the canonical application build report command");
