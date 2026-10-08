@@ -1,10 +1,10 @@
 # Background jobs runbook
 
-ZIKR's production video and social queues are executed by `.github/workflows/generate-ai-video.yml`. The lightweight Admin Run Now poller is `.github/workflows/urgent-video-dispatcher.yml`.
+ZIKR's recurring production video and social queues are executed by the scheduled CircleCI `background-jobs` workflow. GitHub Actions `generate-ai-video.yml` remains the canonical manual dispatch path. `urgent-video-dispatcher.yml` is manual recovery only.
 
 ## Production video generation
 
-The autonomous worker runs four times per day at 03:17, 09:17, 15:17, and 21:17 UTC, and supports manual dispatch for deliberate diagnostics or queue recovery. Its existing daily pacing target remains eight source-locked requests; the four scheduled runs reduce idle runner starts without exceeding that pacing target. Commits and merges no longer start a production video run automatically.
+The autonomous CircleCI worker runs four times per day at 03:17, 09:17, 15:17, and 21:17 UTC. GitHub Actions retains manual dispatch for deliberate diagnostics or queue recovery without a recurring Actions schedule. Its existing daily pacing target remains eight source-locked requests; the four scheduled runs reduce idle runner starts without exceeding that pacing target. Commits and merges no longer start a production video run automatically.
 
 The worker invokes `pnpm background:jobs` with the deterministic FFmpeg template renderer. Production generation uses trusted Quran/Hadith/Dua content, FFmpeg, Arabic fonts, optional HTTPS recitation audio, and Supabase Storage. Gemini remains optional for the short reflection/caption layer and must not replace or rewrite source religious text.
 
@@ -38,7 +38,7 @@ If a provider credential is missing or expired, that platform is recorded as fai
 
 ```text
 Video/social worker: 4 runs/day; retains the existing daily target of 8 requests
-Admin Run Now dispatcher: every 30 minutes (manual dispatch also available)
+Admin Run Now dispatcher: direct GitHub workflow dispatch from the admin action; manual recovery workflow remains available
 English content sync: daily, at most 5 article translations and 25 Hadith records by default
 Video length: 16 seconds by default; deterministic FFmpeg renderer
 ```
@@ -47,7 +47,7 @@ The daily English content sync uses one shared runner for one article batch and 
 
 ## Recovery
 
-CircleCI remains available for Android release builds and deliberate recovery. It is not part of the normal video publishing schedule or automatic source-verification loop.
+CircleCI owns the normal recurring video/social and English-content schedules, plus Android release builds and deliberate recovery. It is not part of the automatic source-verification loop.
 
 The prayer notification path remains separate: Supabase `pg_cron` invokes `prayer-notification-worker` every minute.
 
