@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 
 const read = (file) => {
   assert.ok(existsSync(file), "Missing CI/CD source file: " + file);
@@ -15,6 +15,24 @@ const release = read(".github/workflows/release-finalization.yml");
 const smoke = read(".github/workflows/release-vercel.yml");
 const androidPublish = read(".github/workflows/publish-android-release-assets.yml");
 const circle = read(".circleci/config.yml");
+
+const workflowDir = ".github/workflows";
+const workflowFiles = readdirSync(workflowDir).filter((name) => name.endsWith(".yml") || name.endsWith(".yaml")).sort();
+const workflowNames = workflowFiles.map((file) => {
+  const content = read(`${workflowDir}/${file}`);
+  const match = content.match(/^name:\s*(.+)$/m);
+  assert.ok(match, `Workflow name missing: ${file}`);
+  return { file, name: match[1].trim().replace(/^['"]|['"]$/g, ""), content };
+});
+const seenWorkflowNames = new Set();
+for (const item of workflowNames) {
+  assert.ok(!seenWorkflowNames.has(item.name), `Duplicate GitHub workflow name: ${item.name}`);
+  seenWorkflowNames.add(item.name);
+  assert.ok(!item.content.includes("\n  schedule:"), `GitHub workflow must not own automatic scheduling: ${item.file}`);
+}
+assert.ok(circle.includes('cron: "17 3,9,15,21 * * *"'), "CircleCI must own the recurring video schedule");
+assert.ok(circle.includes('cron: "17 4 * * *"'), "CircleCI must own the recurring English content schedule");
+
 
 assert.ok(quality.includes('name: "ZIKR / Quality Gate"'), "Canonical GitHub quality check name is incorrect");
 assert.ok(!quality.includes("ci/circleci: ci-check"), "GitHub quality gate must not impersonate CircleCI");
