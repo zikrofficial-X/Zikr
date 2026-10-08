@@ -16,10 +16,16 @@ function outcomeClass(outcome: AdminAuditRow["outcome"]) {
 
 export default async function AdminAuditPage() {
   await requireAdminPermission("audit.read");
-  const rows = await supabaseServerAdminRequest<AdminAuditRow[]>(
-    "/rest/v1/admin_audit_events?select=id,action,permission,resource_type,resource_id,outcome,request_id,metadata,created_at,actor_user_id&order=created_at.desc&limit=200",
-    { method: "GET" },
-  ).catch(() => []);
+  let rows: AdminAuditRow[] = [];
+  let loadFailed = false;
+  try {
+    rows = await supabaseServerAdminRequest<AdminAuditRow[]>(
+      "/rest/v1/admin_audit_events?select=id,action,permission,resource_type,resource_id,outcome,request_id,metadata,created_at,actor_user_id&order=created_at.desc&limit=200",
+      { method: "GET" },
+    );
+  } catch {
+    loadFailed = true;
+  }
 
   return (
     <Container className="py-10 space-y-6" dir="rtl">
@@ -51,7 +57,11 @@ export default async function AdminAuditPage() {
             </tbody>
           </table>
         </div>
-        {rows.length === 0 && <p className="p-8 text-center text-sm text-brand-cream/40">لا توجد أحداث إدارية مسجلة.</p>}
+        {loadFailed ? (
+          <p role="alert" className="p-8 text-center text-sm text-red-200/85">تعذر قراءة سجل التدقيق من قاعدة البيانات. لا يعني ذلك أن السجل فارغ؛ أعد المحاولة أو راجع صحة النظام.</p>
+        ) : rows.length === 0 ? (
+          <p className="p-8 text-center text-sm text-brand-cream/40">لا توجد أحداث إدارية مسجلة.</p>
+        ) : null}
       </div>
     </Container>
   );

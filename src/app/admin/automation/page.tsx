@@ -42,6 +42,15 @@ async function readCount(table: string) {
   }
 }
 
+async function readRows<T>(path: string): Promise<{ rows: T[]; ok: boolean }> {
+  try {
+    const rows = await supabaseServerAdminRequest<T[]>(path, { method: "GET" });
+    return { rows: rows ?? [], ok: true };
+  } catch {
+    return { rows: [], ok: false };
+  }
+}
+
 export default async function AdminAutomationPage() {
   await requireAdminPermission("system.manage");
 
@@ -53,26 +62,27 @@ export default async function AdminAutomationPage() {
     })),
   );
 
-  const settingsRows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
+  const settingsRes = await readRows<{ key: string; value: unknown }>(
     "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled,video_automation_run_now)&select=key,value",
-    { method: "GET" },
-  ).catch(() => []);
-  const settings = Object.fromEntries((settingsRows ?? []).map((row) => [row.key, row.value]));
-  const latestRuns = await supabaseServerAdminRequest<VideoAutomationRun[]>(
+  );
+  const settings = Object.fromEntries(settingsRes.rows.map((row) => [row.key, row.value]));
+  const latestRes = await readRows<VideoAutomationRun>(
     "/rest/v1/video_automation_runs?select=finished_at,created_count,processed_count,completed_count,failed_count,error_summary&order=finished_at.desc&limit=1",
-    { method: "GET" },
-  ).catch(() => []);
+  );
+  const latestRuns = latestRes.rows;
 
-  const [videoQueue, socialQueue] = await Promise.all([
-    supabaseServerAdminRequest<QueueStatus[]>(
-      "/rest/v1/video_generation_requests?select=status&order=created_at.desc&limit=500",
-      { method: "GET" },
-    ).catch(() => []),
-    supabaseServerAdminRequest<QueueStatus[]>(
-      "/rest/v1/social_publish_queue?select=status&order=created_at.desc&limit=500",
-      { method: "GET" },
-    ).catch(() => []),
+  const [videoRes, socialRes] = await Promise.all([
+    readRows<QueueStatus>("/rest/v1/video_generation_requests?select=status&order=created_at.desc&limit=500"),
+    readRows<QueueStatus>("/rest/v1/social_publish_queue?select=status&order=created_at.desc&limit=500"),
   ]);
+  const videoQueue = videoRes.rows;
+  const socialQueue = socialRes.rows;
+  const unavailable = [
+    !settingsRes.ok && "إعدادات التشغيل",
+    !latestRes.ok && "آخر تشغيل للعامل",
+    !videoRes.ok && "طابور الفيديو",
+    !socialRes.ok && "طابور النشر الاجتماعي",
+  ].filter(Boolean) as string[];
 
   const countStatus = (rows: QueueStatus[], status: string) => rows.filter((row) => row.status === status).length;
 
@@ -85,6 +95,12 @@ export default async function AdminAutomationPage() {
           هذه الصفحة تعرض فقط الطوابير الموجودة فعليًا في الإنتاج. لا تُظهر جداول أو وظائف غير موجودة كأنها صفر.
         </p>
       </header>
+
+      {unavailable.length > 0 ? (
+        <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-7 text-red-100/85">
+          تعذر قراءة: {unavailable.join("، ")}. القيم غير المتاحة معروضة كـ«غير متاح» وليست أصفارًا، وتم تعطيل حفظ الإعدادات حتى تعود القراءة.
+        </div>
+      ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {jobs.map((job) => (
@@ -137,7 +153,7 @@ export default async function AdminAutomationPage() {
                     className="w-full rounded-xl border border-brand-gold/15 bg-black/20 px-3 py-2 text-sm text-brand-cream"
                   />
                 )}
-                <button type="submit" className="rounded-lg border border-brand-gold/20 px-3 py-2 text-xs text-brand-gold hover:bg-brand-gold/10">حفظ</button>
+                <button type="submit" disabled={!settingsRes.ok} className="rounded-lg border border-brand-gold/20 px-3 py-2 text-xs text-brand-gold hover:bg-brand-gold/10 disabled:cursor-not-allowed disabled:opacity-40">حفظ</button>
               </form>
             );
           })}
@@ -147,7 +163,7 @@ export default async function AdminAutomationPage() {
           العامل يعمل خارج Vercel عبر GitHub Actions. زر «تشغيل التوليد الآن» يضع طلبًا عاجلًا، ويقوم موزّع خفيف بفحصه كل 5 دقائق ثم يشغّل عامل الفيديو، بدون انتظار الدورة الساعةية.
         </div>
         <div className="rounded-xl border border-brand-gold/10 bg-black/10 p-4 text-sm text-brand-cream/55">
-          حالة الطلب العاجل: {settings.video_automation_run_now ? "مطلوب التنفيذ / في طريقه للتشغيل" : "لا يوجد طلب عاجل"}
+          حالة الطلب العاجل: {!settingsRes.ok ? "غير متاح" : settings.video_automation_run_now ? "مطلوب التنفيذ / في طريقه للتشغيل" : "لا يوجد طلب عاجل"}
         </div>
       </section>
 
@@ -166,7 +182,7 @@ export default async function AdminAutomationPage() {
             ].map(([status, label]) => (
               <div key={status} className="rounded-xl border border-brand-gold/8 bg-black/10 p-3">
                 <p className="text-xs text-brand-cream/35">{label}</p>
-                <p className="mt-1 text-xl font-bold text-brand-cream">{countStatus(videoQueue, status)}</p>
+                <p className="mt-1 text-xl font-bold text-brand-cream">{videoRes.ok ? countStatus(videoQueue, status) : "غير متاح"}</p>
               </div>
             ))}
           </div>
@@ -186,7 +202,7 @@ export default async function AdminAutomationPage() {
             ].map(([status, label]) => (
               <div key={status} className="rounded-xl border border-brand-gold/8 bg-black/10 p-3">
                 <p className="text-xs text-brand-cream/35">{label}</p>
-                <p className="mt-1 text-xl font-bold text-brand-cream">{countStatus(socialQueue, status)}</p>
+                <p className="mt-1 text-xl font-bold text-brand-cream">{socialRes.ok ? countStatus(socialQueue, status) : "غير متاح"}</p>
               </div>
             ))}
           </div>
@@ -204,7 +220,7 @@ export default async function AdminAutomationPage() {
             <div><span className="text-brand-cream/35">فشل</span><p className="mt-1 font-bold text-red-300">{latestRuns[0].failed_count ?? 0}</p></div>
             <div><span className="text-brand-cream/35">الحالة</span><p className="mt-1 text-brand-cream/75">{latestRuns[0].error_summary ? "توجد أخطاء" : "سليم"}</p></div>
           </div>
-        ) : <p className="mt-3 text-sm text-brand-cream/40">لا يوجد سجل تشغيل للعامل حتى الآن.</p>}
+        ) : <p className="mt-3 text-sm text-brand-cream/40">{latestRes.ok ? "لا يوجد سجل تشغيل للعامل حتى الآن." : "غير متاح: تعذر قراءة سجل التشغيل."}</p>}
       </section>
 
       <section className="rounded-2xl border border-brand-gold/10 bg-black/10 p-5 text-sm leading-7 text-brand-cream/50">

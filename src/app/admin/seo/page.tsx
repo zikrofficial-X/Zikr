@@ -12,22 +12,34 @@ type Setting = { key: string; value: Record<string, unknown> };
 
 export default async function AdminSeoPage() {
   await requireAdminPermission("settings.manage");
-  const settings = await supabaseServerAdminRequest<Setting[]>(
-    "/rest/v1/site_settings?select=key,value&key=in.(homepage,seo,branding,social)&limit=20",
-    { method: "GET" },
-  ).catch(() => []);
-  const articles = await supabaseServerAdminRequest<Array<{ id: string }>>("/rest/v1/articles?select=id&published=eq.true&limit=1000", { method: "GET" }).catch(() => []);
-  const stories = await supabaseServerAdminRequest<Array<{ id: string }>>("/rest/v1/stories?select=id&published=eq.true&limit=1000", { method: "GET" }).catch(() => []);
-  const library = await supabaseServerAdminRequest<Array<{ id: string }>>("/rest/v1/content_library?select=id&published=eq.true&limit=1000", { method: "GET" }).catch(() => []);
+  const read = async <T,>(path: string): Promise<{ rows: T[]; ok: boolean }> => {
+    try {
+      return { rows: await supabaseServerAdminRequest<T[]>(path, { method: "GET" }), ok: true };
+    } catch {
+      return { rows: [], ok: false };
+    }
+  };
+  const [settingsRes, articlesRes, storiesRes, libraryRes] = await Promise.all([
+    read<Setting>("/rest/v1/site_settings?select=key,value&key=in.(homepage,seo,branding,social)&limit=20"),
+    read<{ id: string }>("/rest/v1/articles?select=id&published=eq.true&limit=1000"),
+    read<{ id: string }>("/rest/v1/stories?select=id&published=eq.true&limit=1000"),
+    read<{ id: string }>("/rest/v1/content_library?select=id&published=eq.true&limit=1000"),
+  ]);
+  const settings = settingsRes.rows;
+  const articles = articlesRes.rows;
+  const stories = storiesRes.rows;
+  const library = libraryRes.rows;
+  const countDetail = (res: { rows: { id: string }[]; ok: boolean }) =>
+    !res.ok ? "تعذر قراءة البيانات" : res.rows.length >= 1000 ? "1000+ منشور" : `${res.rows.length} منشور`;
 
   const hasSetting = (key: string) => settings.some((item) => item.key === key);
   const checks = [
-    ["Homepage metadata", hasSetting("homepage"), "site_settings/homepage"],
-    ["SEO settings", hasSetting("seo"), "site_settings/seo"],
-    ["Social metadata", hasSetting("social"), "site_settings/social"],
-    ["Published articles", articles.length > 0, `${articles.length} منشور`],
-    ["Published stories", stories.length > 0, `${stories.length} منشور`],
-    ["Published library content", library.length > 0, `${library.length} منشور`],
+    ["Homepage metadata", settingsRes.ok && hasSetting("homepage"), settingsRes.ok ? "site_settings/homepage" : "تعذر قراءة الإعدادات"],
+    ["SEO settings", settingsRes.ok && hasSetting("seo"), settingsRes.ok ? "site_settings/seo" : "تعذر قراءة الإعدادات"],
+    ["Social metadata", settingsRes.ok && hasSetting("social"), settingsRes.ok ? "site_settings/social" : "تعذر قراءة الإعدادات"],
+    ["Published articles", articlesRes.ok && articles.length > 0, countDetail(articlesRes)],
+    ["Published stories", storiesRes.ok && stories.length > 0, countDetail(storiesRes)],
+    ["Published library content", libraryRes.ok && library.length > 0, countDetail(libraryRes)],
   ] as const;
 
   return (
