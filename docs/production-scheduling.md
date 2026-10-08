@@ -19,7 +19,7 @@ ZIKR has one authoritative execution owner per production workload. Quran audio 
 
 The Supabase migration `20260915004110_retire_vercel_video_processing_cron.sql` retires the legacy `zikr-video-processing` cron job. The old Vercel route must not become an alternate scheduler.
 
-Supabase owns minute-level prayer scheduling. GitHub Actions is the authoritative automatic video/social worker, with four scheduled runs per day plus manual dispatch and concurrency protection. The separate Admin Run Now poller checks every 30 minutes. CircleCI no longer runs routine source verification on `main`; it remains reserved for tagged Android releases and opt-in recovery/release work.
+Supabase owns minute-level prayer scheduling. CircleCI is the authoritative automatic video/social worker, with four scheduled runs per day plus manual dispatch and concurrency protection. The separate Admin Run Now poller checks every 30 minutes. CircleCI no longer runs routine source verification on `main`; it remains reserved for tagged Android releases and opt-in recovery/release work.
 
 ## Quran audio architecture
 
@@ -41,7 +41,7 @@ Each delivery uses a unique subscription/prayer/time key and is claimed before s
 video_generation_requests
         │
         ▼
-GitHub Actions scheduled worker
+CircleCI scheduled worker
         │
         ├── seed queue items
         ├── FFmpeg template renderer
@@ -67,7 +67,7 @@ Pipeline parameters:
 
 There is intentionally **no `run_quran_audio_import` parameter**. Quran audio is externalized and must not be bulk-uploaded to Supabase Storage.
 
-These parameters are submitted through the CircleCI pipeline trigger/API. Routine source-change verification belongs to GitHub Actions; CircleCI is not started for every `main` push. Android release work remains restricted to release tags/branches.
+Recurring schedules are declared in `.circleci/config.yml`: video/social at 03:17, 09:17, 15:17, and 21:17 UTC; English content at 04:17 UTC. Routine source-change verification belongs to GitHub Actions. Android release work remains restricted to release tags/branches.
 
 ## Safety
 
