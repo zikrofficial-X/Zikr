@@ -1,9 +1,7 @@
-name: ZIKR Urgent Video Dispatcher
+name: ZIKR Manual Video Dispatch Recovery
 
 on:
-  schedule:
-    # Fallback poller only: the admin Run Now button dispatches the worker directly when a token is set.
-    - cron: "*/30 * * * *"
+  # Manual recovery only. The Admin Run Now action dispatches generate-ai-video directly.
   workflow_dispatch:
 
 permissions:
