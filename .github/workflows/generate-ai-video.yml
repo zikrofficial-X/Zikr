@@ -135,6 +135,15 @@ jobs:
           echo "rsvg-convert: $(rsvg-convert --version 2>&1 | head -n 1)"
           echo "Arabic fonts: Noto Naskh Arabic + Noto Sans Arabic available"
 
+      - name: Verify production video contracts
+        run: |
+          set -euo pipefail
+          pnpm scheduler:check
+          pnpm video:contract:check
+          pnpm voice:factory:check
+          pnpm video:factory:check
+          pnpm video:qa:check
+
       - name: Smoke-test video worker imports
         run: |
           set -euo pipefail
