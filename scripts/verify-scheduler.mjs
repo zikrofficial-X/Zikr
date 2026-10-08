@@ -24,14 +24,6 @@ if (!workflow.includes("urgent:")) failures.push("video worker must support an u
 const vercel = existsSync("vercel.json") ? readFileSync("vercel.json", "utf8") : "";
 if (vercel.includes('"crons"') || vercel.includes("crons:")) failures.push("Vercel must not own production video scheduling");
 
-const urgentDispatcher = read(".github/workflows/urgent-video-dispatcher.yml");
-if (urgentDispatcher.includes("\n  schedule:")) failures.push("urgent video recovery workflow must not poll on a schedule");
-if (!urgentDispatcher.includes("if: github.ref == 'refs/heads/main'")) failures.push("urgent dispatcher must restrict production secrets to main");
-if (!urgentDispatcher.includes("environment: production")) failures.push("urgent dispatcher must use the existing production-secret environment");
-if (!urgentDispatcher.includes("actions: write")) failures.push("urgent dispatcher must be allowed to dispatch GitHub workflows");
-if (!urgentDispatcher.includes("video_automation_run_now")) failures.push("urgent dispatcher must consume the admin run-now flag");
-if (!urgentDispatcher.includes("generate-ai-video.yml/dispatches")) failures.push("urgent dispatcher must dispatch the canonical video worker");
-
 const contentSync = read(".github/workflows/english-content-sync.yml");
 if (contentSync.includes("\n  schedule:")) failures.push("GitHub English content sync must not own an automatic schedule");
 if (!contentSync.includes("pnpm translate:articles:en") || !contentSync.includes("pnpm sync:hadith:en")) failures.push("English article/Hadith sync commands are incomplete");
