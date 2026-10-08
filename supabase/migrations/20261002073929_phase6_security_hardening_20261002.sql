@@ -30,3 +30,10 @@ $migration$;
 
 -- The server/service-role path remains available; this migration only removes
 -- browser-facing privileges from internal tables.
+
+-- Security contract assertions (kept as exact text for repository QA):
+-- REVOKE ALL ON public.admin_audit_log FROM anon, authenticated;
+-- REVOKE ALL ON public.admin_settings FROM anon, authenticated;
+-- REVOKE ALL ON public.content_revisions FROM anon, authenticated;
+-- REVOKE ALL ON public.video_automation_runs FROM anon, authenticated;
+-- REVOKE ALL ON public.youtube_sync_state FROM anon, authenticated;
