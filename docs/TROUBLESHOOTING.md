@@ -44,9 +44,7 @@ pnpm install --frozen-lockfile
 pnpm build
 ```
 
-Do not treat an older READY production deployment as proof that the current finalization branch builds.
-
-For the current finalization work, the connected Vercel account is returning a build-rate-limit/account gate. A fresh successful deployment of the corrected finalization HEAD is therefore still required.
+Do not treat an older READY production deployment as proof that the current finalization branch builds. A current validation deployment on the cleaned repository has completed successfully; production still requires the controlled release workflow.
 
 ## Supabase issues
 
@@ -74,7 +72,7 @@ Private/admin/auth routes are intentionally excluded.
 
 ## Mobile build issues
 
-The native runtime packages are Capacitor 7.x. The repository currently carries a Capacitor CLI 8.5.1 lock-aligned dependency while native projects reference the 7.x runtime. Do not change that major version without refreshing the lockfile and running a real native sync/build.
+The native runtime packages are Capacitor 7.x. The repository is currently aligned on the Capacitor 7.x runtime/CLI line. Do not change the major version without refreshing the lockfile and running a real native sync/build.
 
 For Android:
 
