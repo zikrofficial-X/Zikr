@@ -163,7 +163,7 @@ RETURNS bigint
 LANGUAGE plpgsql
 AS $cron_stub$
 BEGIN
-  IF EXISTS (SELECT 1 FROM cron.job WHERE cron.job.jobid = cron.alter_job.job_id) THEN
+  IF EXISTS (SELECT 1 FROM cron.job WHERE cron.job.jobid = $1) THEN
     RETURN job_id;
   END IF;
   RETURN job_id;
@@ -175,7 +175,7 @@ RETURNS boolean
 LANGUAGE plpgsql
 AS $cron_stub$
 BEGIN
-  DELETE FROM cron.job WHERE cron.job.jobid = cron.unschedule.job_id;
+  DELETE FROM cron.job WHERE cron.job.jobid = $1;
   RETURN FOUND;
 END;
 $cron_stub$;
