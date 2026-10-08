@@ -40,12 +40,17 @@ try {
 const envAndRuntimeFiles = [
   '.env.example',
   'src/lib/env.ts',
+  'capacitor.config.json',
+  'vercel.json',
 ];
 const envAndRuntimeDirs = [
   'src/app',
   'src/features',
   'src/components',
   'supabase/functions',
+  '.github',
+  '.circleci',
+  'scripts',
 ];
 
 const forbiddenEnvironmentKeyPattern = /\b(?:SUPABASE|POSTGRES|JWT)_[A-Z0-9]+_2\b/g;
@@ -81,6 +86,7 @@ const staleRuntimeTokens = [
 ];
 
 function scanFile(relativePath) {
+  if (relativePath === 'scripts/verify-hygiene.mjs') return;
   const full = path.join(root, relativePath);
   if (!existsSync(full)) return;
   let source = '';
@@ -100,6 +106,8 @@ function walkRuntime(relativeDir) {
     const full = path.join(root, rel);
     if (entry.isDirectory()) {
       walkRuntime(rel);
+    } else if (rel === 'scripts/verify-hygiene.mjs') {
+      continue;
     } else if (/\.(?:ts|tsx|js|mjs|json|yml|yaml|toml|env)$/i.test(entry.name)) {
       let source = '';
       try { source = readFileSync(full, 'utf8'); } catch { continue; }
