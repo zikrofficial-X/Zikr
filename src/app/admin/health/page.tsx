@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { getAdminHealth } from "@/features/admin/services/platform";
+import { getVideoEngineConfig } from "@/features/videos/providers/types";
+import { supabaseServerAdminCount } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "صحة النظام | لوحة الإدارة" };
 
@@ -25,7 +27,11 @@ const STATE_LABELS: Record<string, string> = {
 
 export default async function AdminHealthPage() {
   await requireAdminPermission("system.manage");
-  const health = await getAdminHealth();
+  const [health, quranAudioCount] = await Promise.all([
+    getAdminHealth(),
+    supabaseServerAdminCount("quran_audio").catch(() => null),
+  ]);
+  const engine = getVideoEngineConfig();
   const queueAttention =
     health.queues.socialPartial +
     health.queues.socialFailed +
@@ -40,7 +46,15 @@ export default async function AdminHealthPage() {
         <p className="mt-2 text-sm leading-7 text-brand-cream/50">فحص قاعدة البيانات، الجداول التشغيلية، وطوابير الفيديو والنشر بدون كشف أسرار البيئة.</p>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
+          <p className="text-xs text-brand-cream/35">محركات الفيديو</p>
+          <p className="mt-1 text-sm font-bold text-brand-gold" dir="ltr">{engine.order.join(" → ")}</p>
+        </div>
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
+          <p className="text-xs text-brand-cream/35">النشر الآلي</p>
+          <p className="mt-1 text-sm font-bold text-brand-cream/75">{engine.autoPublishEnabled ? "مفعل" : "متوقف"}</p>
+        </div>
         <div className={`rounded-2xl border p-5 ${health.database === 'healthy' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/25 bg-red-500/10'}`}>
           <p className="text-xs text-brand-cream/40">قاعدة البيانات</p>
           <p className="mt-2 text-xl font-bold">{health.database === 'healthy' ? 'سليمة' : 'متدهورة'}</p>
@@ -52,6 +66,11 @@ export default async function AdminHealthPage() {
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <p className="text-xs text-brand-cream/40">آخر فحص</p>
           <p className="mt-2 text-sm text-brand-cream/70">{new Date(health.generatedAt).toLocaleString('ar-EG-u-nu-latn')}</p>
+        </div>
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
+          <p className="text-xs text-brand-cream/40">صوت القرآن</p>
+          <p className="mt-2 text-xl font-bold text-brand-gold">{quranAudioCount === null ? "غير متاح" : quranAudioCount.toLocaleString("ar-EG-u-nu-latn")}</p>
+          <p className="mt-1 text-xs text-brand-cream/30">quran_audio</p>
         </div>
       </section>
 

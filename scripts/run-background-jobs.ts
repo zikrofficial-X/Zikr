@@ -20,6 +20,9 @@ type VideoAutomationSettings = {
   aiEnabled: boolean;
   autoPublish: boolean;
   facebookEnabled: boolean;
+  dailyTarget: number;
+  aiAttemptsPerRun: number;
+  videoSeconds: number;
   runNowRequest: VideoAutomationRunNow | null;
 };
 
@@ -33,9 +36,9 @@ function parseBoolSetting(value: unknown, fallback: boolean) {
   return fallback;
 }
 
-function parseNumberSetting(value: unknown, fallback: number) {
+function parseBoundedNumberSetting(value: unknown, fallback: number, min: number, max: number) {
   const numeric = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(numeric) ? Math.max(1, Math.min(10, Math.floor(numeric))) : fallback;
+  return Number.isFinite(numeric) ? Math.max(min, Math.min(max, Math.floor(numeric))) : fallback;
 }
 
 function parseRunNowRequest(value: unknown): VideoAutomationRunNow | null {
@@ -56,17 +59,37 @@ function parseRunNowRequest(value: unknown): VideoAutomationRunNow | null {
 
 async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
   const rows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
-    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled,video_automation_run_now)&select=key,value",
+    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled,video_automation_daily_target,video_automation_ai_attempts_per_run,video_automation_video_seconds,video_automation_run_now)&select=key,value",
   ).catch(() => []);
 
   const values = Object.fromEntries((rows ?? []).map((row) => [row.key, row.value]));
   return {
     enabled: parseBoolSetting(values.video_automation_enabled, true),
-    batchSize: parseNumberSetting(
+    batchSize: parseBoundedNumberSetting(
       values.video_automation_batch_size,
-      Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 10) || 10),
+      Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 3) || 3),
+      1,
+      10,
     ),
     aiEnabled: parseBoolSetting(values.video_automation_ai_enabled, true),
+    dailyTarget: parseBoundedNumberSetting(
+      values.video_automation_daily_target,
+      Math.max(1, Number(process.env.DAILY_VIDEO_TARGET ?? 12) || 12),
+      1,
+      24,
+    ),
+    aiAttemptsPerRun: parseBoundedNumberSetting(
+      values.video_automation_ai_attempts_per_run,
+      Math.max(1, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 3) || 3),
+      0,
+      4,
+    ),
+    videoSeconds: parseBoundedNumberSetting(
+      values.video_automation_video_seconds,
+      Math.max(10, Number(process.env.AUTO_VIDEO_SECONDS ?? 18) || 18),
+      10,
+      45,
+    ),
     autoPublish: parseBoolSetting(
       values.video_automation_auto_publish,
       process.env.AUTO_VIDEO_PUBLISH_ENABLED !== "false",
@@ -98,6 +121,9 @@ async function clearRunNowRequest(requestedAt: string) {
 
 function applyVideoAutomationSettings(settings: VideoAutomationSettings) {
   process.env.VIDEO_AI_ENABLED = String(settings.aiEnabled);
+  process.env.DAILY_VIDEO_TARGET = String(settings.dailyTarget);
+  process.env.VIDEO_AI_ATTEMPTS_PER_RUN = String(settings.aiAttemptsPerRun);
+  process.env.AUTO_VIDEO_SECONDS = String(settings.videoSeconds);
   process.env.AUTO_VIDEO_PUBLISH_ENABLED = String(settings.autoPublish);
   process.env.AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL = String(!settings.autoPublish);
   process.env.SOCIAL_PUBLISH_FACEBOOK_ENABLED = String(settings.facebookEnabled);

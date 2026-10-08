@@ -14,21 +14,34 @@ import { getVideoEngineConfig } from "../../src/features/videos/providers/types"
 import { getServerEnv } from "../../src/lib/env";
 import { AI_VISUAL_POLICY_VERSION, aiVisualPolicyPromptLine } from "../../src/features/videos/providers/ai-visual-policy";
 import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
+import { getDefaultVideoVoiceProfile, getVideoVoiceProfile } from "../../src/features/videos/services/voice-profiles";
+import { evaluateArabicNarrationText } from "../../src/features/videos/services/narration-quality";
 
 const execFileAsync = promisify(execFile);
 const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? process.env.DAILY_VIDEO_TARGET ?? 10));
-const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_VIDEO_SECONDS ?? 16)));
+const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_VIDEO_SECONDS ?? 18)));
 const MIN_VIDEO_SECONDS = Math.min(TARGET_VIDEO_SECONDS, 10);
 const MAX_VIDEO_SECONDS = Math.max(TARGET_VIDEO_SECONDS, 45);
-const ARABIC_TTS_VOICE = process.env.ARABIC_TTS_VOICE ?? "ar-SA-HamedNeural";
+const VIDEO_DEFAULT_TTS_PROFILE = process.env.ARABIC_TTS_PROFILE?.trim() || "hadith_male_msa";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
-const VIDEO_TEMPLATE_VERSION = "2026-10-02-quality-v2";
+const VIDEO_TEMPLATE_VERSION = "2026-10-08-quality-v3";
 const engineConfig = () => getVideoEngineConfig();
-const AI_ATTEMPTS_PER_RUN = Math.max(0, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 2) || 2);
+const AI_ATTEMPTS_PER_RUN = Math.max(0, Math.min(4, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 3) || 3));
 let aiAttemptsUsed = 0;
 function getArabicTtsPython() {
   return process.env.ARABIC_TTS_PYTHON?.trim() || "python3";
+}
+
+function narrationProfileForRequest(request: GeneratedRequest) {
+  const configured =
+    typeof request.content?.voiceProfile === "string"
+      ? request.content.voiceProfile
+      : VIDEO_DEFAULT_TTS_PROFILE;
+  const profile = getVideoVoiceProfile(configured);
+  if (request.category === "quran") return getDefaultVideoVoiceProfile("quran");
+  if (request.category === "kids") return getDefaultVideoVoiceProfile("kids");
+  return profile;
 }
 
 type QuranRow = {
@@ -330,7 +343,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
     `/rest/v1/video_generation_requests?automation_key=like.*:${day}:*&select=id&limit=1000`,
   );
   const alreadySeededToday = todaysRows?.length ?? 0;
-  const dailyTarget = Math.max(1, Number(process.env.DAILY_VIDEO_TARGET ?? 8) || 8);
+  const dailyTarget = Math.max(1, Math.min(24, Number(process.env.DAILY_VIDEO_TARGET ?? 12) || 12));
   const dueByNow = Math.ceil((dailyTarget * (now.getUTCHours() + 1)) / 24);
   const urgent = process.env.AUTO_VIDEO_URGENT?.toLowerCase() === "true";
   const allowed = urgent ? Math.min(10, batchSize) : Math.min(10, batchSize, Math.max(0, dueByNow - alreadySeededToday));
@@ -370,6 +383,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
           automationKey: key,
           aiMode: "source_locked",
           aiProviderHint,
+          voiceProfile: "quran_reciter",
         },
         duration: TARGET_VIDEO_SECONDS,
         status: "pending",
@@ -397,6 +411,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
           automationKey: key,
           aiMode: "source_locked",
           aiProviderHint,
+          voiceProfile: "hadith_male_msa",
         },
         duration: TARGET_VIDEO_SECONDS,
         status: "pending",
@@ -424,6 +439,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
           automationKey: key,
           aiMode: "source_locked",
           aiProviderHint,
+          voiceProfile: "documentary_male_msa",
         },
         duration: TARGET_VIDEO_SECONDS,
         status: "pending",
@@ -456,6 +472,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
           automationKey: key,
           aiMode: "source_locked",
           aiProviderHint,
+          voiceProfile: "hadith_male_msa",
         },
         duration: TARGET_VIDEO_SECONDS,
         status: "pending",
@@ -487,6 +504,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
           automationKey: key,
           aiMode: "source_locked",
           aiProviderHint,
+          voiceProfile: "documentary_male_msa",
         },
         duration: TARGET_VIDEO_SECONDS,
         status: "pending",
@@ -518,6 +536,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
           automationKey: key,
           aiMode: "general_reminder",
           aiProviderHint,
+          voiceProfile: "documentary_male_msa",
         },
         duration: TARGET_VIDEO_SECONDS,
         status: "pending",
@@ -602,6 +621,33 @@ function normalizeAiVideoPlan(value: unknown): AiVideoPlan {
   };
 }
 
+function hasSuspiciousReligiousAttribution(value: string) {
+  return /(قال الله|قال رسول الله|رسول الله|قال النبي|عن النبي|حديث قدسي|حديث نبوي|رضي الله عنه)\b/u.test(value);
+}
+
+function validateAiEditorialPlan(plan: AiVideoPlan, request: GeneratedRequest) {
+  const source = comparableSourceText(contentText(request)).replace(/\s+/g, " ").trim();
+  const reflection = comparableSourceText(plan.reflection).replace(/\s+/g, " ").trim();
+  const caption = comparableSourceText(plan.socialCaption).replace(/\s+/g, " ").trim();
+  if (reflection.length > 110) throw new Error("AI reflection exceeds the Arabic editorial length limit.");
+  if (caption.length > 220) throw new Error("AI social caption exceeds the Arabic editorial length limit.");
+  if (/https?:\/\//i.test(reflection) || /https?:\/\//i.test(caption)) throw new Error("AI editorial text contains a URL.");
+  if (hasSuspiciousReligiousAttribution(reflection) || hasSuspiciousReligiousAttribution(caption)) throw new Error("AI editorial text contains an unapproved religious attribution.");
+  if (["quran", "hadith", "adhkar", "dua", "story"].includes(request.category) && source.length >= 40) {
+    for (const candidate of [reflection, caption]) {
+      if (!candidate || candidate.length < 24) continue;
+      for (let index = 0; index <= candidate.length - 24; index += 4) {
+        if (source.includes(candidate.slice(index, index + 24))) throw new Error("AI editorial layer repeated source-locked religious text.");
+      }
+    }
+  }
+  const combined = reflection + " " + caption;
+  const arabicChars = [...combined].filter((char) => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/u.test(char)).length;
+  const letterChars = [...combined].filter((char) => /\p{L}/u.test(char)).length;
+  if (letterChars > 0 && arabicChars / letterChars < 0.6) throw new Error("AI editorial layer is not sufficiently Arabic.");
+  return plan;
+}
+
 function parseGeminiJson(raw: string): unknown {
   const cleaned = raw
     .replace(/^\s*```(?:json)?/i, "")
@@ -632,13 +678,16 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
   const model = (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim();
   const prompt = [
     "أنت مخطط محتوى بصري لمنصة ذِكر الإسلامية.",
-    "المصدر أدناه موثق بالفعل. ممنوع تغيير نص المصدر أو اختراع نص ديني أو حكم شرعي جديد.",
+    "المصدر أدناه موثق بالفعل. النص الديني source-locked ولا يجوز تغييره أو إعادة صياغته أو تكرار أجزاء واضحة منه داخل التأمل أو الكابشن.",
+    "ممنوع اختراع حكم شرعي أو درجة حديث أو نسبة قول إلى الله أو النبي أو الصحابي أو العالم.",
+    "اكتب التأمل والكابشن كتعليق تحريري أصلي فقط، دون علامات اقتباس ودون ألفاظ الإسناد.",
     aiVisualPolicyPromptLine(),
     "صمّم خطة قصيرة لفيديو عمودي يُرندر محليًا بواسطة FFmpeg.",
     "أعد JSON فقط بالمفاتيح الإنجليزية التالية:",
     '{"reflection":"...","socialCaption":"...","scene":"calm|dawn|night|gold","motion":"fade|slow"}',
-    "reflection: تأمل عربي قصير جدًا لا يتجاوز 110 أحرف، ولا ينسب قولًا جديدًا للمصدر.",
-    "socialCaption: وصف/كابشن عربي قصير للنشر لا يتجاوز 220 حرفًا، بدون معلومات غير موجودة في المصدر.",
+    "reflection: تأمل عربي أصلي <= 110 أحرف، عام وغير منسوب لمصدر ديني.",
+    "socialCaption: كابشن عربي أصلي <= 220 حرفًا، يصف الفيديو دون إضافة معلومة غير موجودة في المصدر.",
+    "لا تكرر الجملة الأصلية ولا أي جزء واضح منها.",
     "scene: اختر مشهدًا هادئًا من القائمة فقط.",
     "motion: fade أو slow فقط.",
     `العنوان: ${request.title}`,
@@ -652,7 +701,7 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 260 },
+      generationConfig: { temperature: 0.12, maxOutputTokens: 260 },
     }),
     signal: AbortSignal.timeout(30_000),
   });
@@ -661,7 +710,12 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
   const payload = await response.json();
   const raw = payload.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("").trim() || "";
   console.log(`[template-video] Gemini plan generated with ${model}`);
-  return normalizeAiVideoPlan(parseGeminiJson(raw));
+  const plan = normalizeAiVideoPlan(parseGeminiJson(raw));
+  try { return validateAiEditorialPlan(plan, request); } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn("[template-video] Gemini editorial plan rejected; using deterministic fallback: " + message);
+    return { ...DEFAULT_AI_VIDEO_PLAN };
+  }
 }
 
 function comparableSourceText(value: string) {
@@ -756,6 +810,50 @@ async function assertAudibleAudio(pathname: string) {
   }
 }
 
+async function assertNarrationQuality(pathname: string, text: string, category: string) {
+  const probe = await probeMedia(pathname);
+  const duration = Number(probe.format?.duration ?? 0);
+  if (!Number.isFinite(duration) || duration < 0.8) {
+    throw new Error("Narration audio duration is invalid.");
+  }
+
+  const quality = evaluateArabicNarrationText(text, category);
+  if (!quality.ok) {
+    throw new Error("Arabic narration text QA failed: " + quality.errors.join(" | "));
+  }
+  if (quality.warnings.length) {
+    console.warn("[template-video] Narration text warnings:", quality.warnings.join(" | "));
+  }
+
+  if (category === "quran") return;
+  const wordsPerSecond = quality.wordCount / Math.max(duration, 0.1);
+  const minWps = category === "kids" ? 0.65 : 0.75;
+  const maxWps = category === "hadith" || category === "adhkar" ? 4.1 : 4.5;
+  if (!Number.isFinite(wordsPerSecond) || wordsPerSecond < minWps || wordsPerSecond > maxWps) {
+    throw new Error(
+      "Arabic narration pace is outside the natural range: " +
+        wordsPerSecond.toFixed(2) +
+        " words/sec for " +
+        category +
+        ".",
+    );
+  }
+
+  const { stderr } = await execFileAsync("ffmpeg", [
+    "-hide_banner",
+    "-i", pathname,
+    "-af", "silencedetect=noise=-42dB:d=2.5",
+    "-f", "null",
+    "-",
+  ], { maxBuffer: 4 * 1024 * 1024 });
+  const longSilences = [...stderr.matchAll(/silence_duration:\s*([0-9.]+)/g)]
+    .map((match) => Number(match[1]))
+    .filter((value) => Number.isFinite(value) && value >= 2.5);
+  if (longSilences.length > 0) {
+    throw new Error("Arabic narration contains an unexpectedly long silent gap.");
+  }
+}
+
 function requestedVideoShape(request: GeneratedRequest) {
   const resolution = request.content?.resolution;
   if (typeof resolution === "string" && /^\d+x\d+$/.test(resolution)) return resolution;
@@ -803,13 +901,26 @@ async function renderVideo(request: GeneratedRequest) {
     const motion = persistedAi?.motion === "fade" ? "fade" : "slow";
     const isVertical = height >= width;
 
+    const narrationProfile = narrationProfileForRequest(request);
+    const narrationText = contentText(request);
+    const narrationTextQuality = evaluateArabicNarrationText(narrationText, request.category);
+    if (!narrationTextQuality.ok) {
+      throw new Error("Narration content QA failed: " + narrationTextQuality.errors.join(" | "));
+    }
+
     let audioUrl = contentAudioUrl(request);
     if (request.category === "quran" && !audioUrl) {
-      const verifiedAyahAudio = await getVerifiedQuranAyahAudioUrl(Number(request.content?.surahId), Number(request.content?.ayahNumber));
+      const verifiedAyahAudio = await getVerifiedQuranAyahAudioUrl(
+        Number(request.content?.surahId),
+        Number(request.content?.ayahNumber),
+      );
       if (verifiedAyahAudio) {
         audioUrl = verifiedAyahAudio;
         request.content = { ...request.content, audioUrl: verifiedAyahAudio, audioSource: "quran-ayah-cdn" };
       }
+    }
+    if (request.category === "quran" && !audioUrl) {
+      throw new Error("Quran video rejected: verified human recitation audio is unavailable; TTS is never used for Quran.");
     }
 
     const preferredProvider =
@@ -884,15 +995,32 @@ async function renderVideo(request: GeneratedRequest) {
       if (bytes.length < 1024) throw new Error("Audio download was empty or invalid.");
       await writeFile(audioPath, bytes);
     } else {
+      if (narrationProfile.mode !== "tts" || !narrationProfile.voice) {
+        throw new Error("A recorded audio source is required for this video category.");
+      }
       try {
-        await execFileAsync(getArabicTtsPython(), ["scripts/generate-arabic-voice.py", "--text", text, "--output", audioPath, "--voice", ARABIC_TTS_VOICE], { maxBuffer: 4 * 1024 * 1024 });
+        await execFileAsync(
+          getArabicTtsPython(),
+          [
+            "scripts/generate-arabic-voice.py",
+            "--text", narrationText,
+            "--output", audioPath,
+            "--voice", process.env.ARABIC_TTS_VOICE?.trim() || narrationProfile.voice,
+            "--rate", process.env.ARABIC_TTS_RATE?.trim() || narrationProfile.rate,
+            "--pitch", process.env.ARABIC_TTS_PITCH?.trim() || narrationProfile.pitch,
+          ],
+          { maxBuffer: 4 * 1024 * 1024 },
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        throw new Error("Arabic TTS failed (python=" + getArabicTtsPython() + ", voice=" + ARABIC_TTS_VOICE + "): " + message);
+        throw new Error(
+          "Arabic TTS failed (profile=" + narrationProfile.id + ", python=" + getArabicTtsPython() + "): " + message,
+        );
       }
       audioKind = "arabic_tts_narration";
     }
 
+    await assertNarrationQuality(audioPath, narrationText, request.category);
     const audioProbe = await probeMedia(audioPath);
     const audioDuration = Number(audioProbe.format?.duration ?? 0);
     const duration = resolveRenderDuration(audioDuration);
@@ -957,7 +1085,12 @@ async function renderVideo(request: GeneratedRequest) {
       ...request.content,
       audio: {
         kind: audioKind,
-        voice: audioKind === "arabic_tts_narration" ? ARABIC_TTS_VOICE : null,
+        voice: audioKind === "arabic_tts_narration"
+          ? process.env.ARABIC_TTS_VOICE?.trim() || narrationProfile.voice || null
+          : null,
+        voiceProfile: narrationProfile.id,
+        rate: narrationProfile.rate,
+        pitch: narrationProfile.pitch,
         sourceUrl: audioUrl || null,
         generatedAt: new Date().toISOString(),
       },

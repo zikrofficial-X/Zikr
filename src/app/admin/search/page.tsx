@@ -31,7 +31,16 @@ export default async function AdminSearchPage({ searchParams }: { searchParams: 
 
       <section className="space-y-3">
         {results.map((item) => {
-          const href = item.type === "مقال" && item.slug ? `/articles/${item.slug}` : item.type === "قصة" && item.slug ? `/stories/${item.slug}` : item.type === "فيديو" && item.slug ? `/videos/${item.slug}` : "/admin/content";
+          const href =
+            item.type === "مقال" && item.slug
+              ? `/articles/${item.slug}`
+              : item.type === "قصة" && item.slug
+                ? `/stories/${item.slug}`
+                : item.type === "فيديو" && item.slug
+                  ? `/videos/${item.slug}`
+                  : item.type === "حديث" || item.type === "دعاء"
+                    ? "/admin/knowledge"
+                    : "/admin/content";
           return (
             <div key={`${item.type}-${item.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-gold/10 bg-black/15 p-4">
               <div><div className="text-xs text-brand-gold/60">{item.type}</div><h2 className="mt-1 font-semibold text-brand-cream">{item.title}</h2><p className="mt-1 text-xs text-brand-cream/35">{item.published ? "منشور" : "مسودة"} · {item.updated_at ? new Date(item.updated_at).toLocaleString('ar-EG-u-nu-latn') : '—'}</p></div>

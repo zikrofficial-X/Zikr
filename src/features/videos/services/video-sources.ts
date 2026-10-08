@@ -24,6 +24,19 @@ type QuranRow = {
   text_uthmani: string | null;
 };
 
+type QuranReciterRow = {
+  id: string;
+  code: string | null;
+  name_ar: string | null;
+  base_url_template: string | null;
+};
+
+type QuranAudioRow = {
+  audio_url: string | null;
+  source_url: string | null;
+  storage_status: string | null;
+};
+
 type HadithRow = {
   id: string;
   hadith_number: string | null;
@@ -55,6 +68,9 @@ type StoryRow = {
 const QURAN_BASE = "https://quran.com";
 const HADITH_BASE = "https://sunnah.com";
 const SITE_BASE = getServerEnv().NEXT_PUBLIC_SITE_URL;
+const QURAN_VIDEO_RECITER_CODE = process.env.QURAN_VIDEO_RECITER_CODE?.trim() || "alafasy";
+const QURAN_AYAH_AUDIO_BASE_URL =
+  process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
 
 function clean(value: string | null | undefined) {
   return value?.replace(/\s+/g, " ").trim() ?? "";
@@ -70,29 +86,49 @@ async function quranSource(
     surahId > 114 ||
     !Number.isInteger(ayahNumber) ||
     ayahNumber < 1
-  )
-    return null;
+  ) return null;
+
   const rows = await supabaseServerAdminRequest<QuranRow[]>(
     `/rest/v1/quran_ayahs?surah_id=eq.${surahId}&ayah_number=eq.${ayahNumber}&select=surah_id,ayah_number,text_ar,text_uthmani&limit=1`
   );
   const row = rows?.[0];
   const text = row?.text_uthmani || row?.text_ar;
   if (!row || !clean(text)) return null;
-  const nameRows = await supabaseServerAdminRequest<Array<{ name_ar: string }>>(
-    `/rest/v1/quran_surahs?id=eq.${surahId}&select=name_ar&limit=1`
-  );
+
+  const [nameRows, reciterRows] = await Promise.all([
+    supabaseServerAdminRequest<Array<{ name_ar: string }>>(
+      `/rest/v1/quran_surahs?id=eq.${surahId}&select=name_ar&limit=1`
+    ),
+    supabaseServerAdminRequest<QuranReciterRow[]>(
+      `/rest/v1/quran_reciters?code=eq.${encodeURIComponent(QURAN_VIDEO_RECITER_CODE)}&select=id,code,name_ar,base_url_template&limit=1`
+    ),
+  ]);
   const surahName = nameRows?.[0]?.name_ar || `السورة ${surahId}`;
+  const reciter = reciterRows?.[0] ?? null;
+  if (!reciter?.id) return null;
+
+  const audioRows = await supabaseServerAdminRequest<QuranAudioRow[]>(
+    `/rest/v1/quran_audio?surah_id=eq.${surahId}&reciter_id=eq.${encodeURIComponent(reciter.id)}&select=audio_url,source_url,storage_status&limit=1`
+  );
+  const audioRow = audioRows?.[0] ?? null;
+  const hasCanonicalAudio =
+    (typeof audioRow?.audio_url === "string" && /^https?:\/\//i.test(audioRow.audio_url) && !audioRow.audio_url.includes(".supabase.co/storage/v1/object/")) ||
+    audioRow?.storage_status === "ready";
+  if (!hasCanonicalAudio) return null;
+
+  const exactAyahAudioUrl =
+    `${QURAN_AYAH_AUDIO_BASE_URL.replace(/\/$/, "")}/${String(surahId).padStart(3, "0")}${String(ayahNumber).padStart(3, "0")}.mp3`;
+
   return {
     id: `quran:${surahId}:${ayahNumber}`,
     category: "quran",
     title: `آية من سورة ${surahName}`,
     text,
-    sourceLabel: `القرآن الكريم — سورة ${surahName}، الآية ${ayahNumber}`,
+    sourceLabel: `القرآن الكريم — سورة ${surahName}، الآية ${ayahNumber} — تلاوة ${reciter.name_ar || QURAN_VIDEO_RECITER_CODE}`,
     sourceUrl: `${QURAN_BASE}/${surahId}/${ayahNumber}`,
-    audioUrl: null,
+    audioUrl: exactAyahAudioUrl,
   };
 }
-
 async function hadithSource(
   id: string,
   category: "hadith" | "adhkar" = "hadith"

@@ -43,13 +43,32 @@ if (!permissions.includes("'video.manage', 'video.delete'")) failures.push("vide
 const page = read("src/app/admin/ai-video/page.tsx");
 if (!page.includes('requireAdminPermission("video.manage")')) failures.push("AI video admin page must require video.manage");
 
+for (const adminPage of [
+  "src/app/admin/video-factory/page.tsx",
+  "src/app/admin/video-factory/scripts/page.tsx",
+  "src/app/admin/video-factory/voices/page.tsx",
+  "src/app/admin/video-factory/qa/page.tsx",
+  "src/app/admin/audio/tts/page.tsx",
+  "src/app/admin/audio/quran/page.tsx",
+]) {
+  const source = read(adminPage);
+  if (!source.includes('requireAdminPermission("video.manage")') && !source.includes('requireAdminPermission("audio.manage")')) {
+    failures.push(`${adminPage} must be protected by its canonical admin permission`);
+  }
+}
+
 const client = read("src/app/admin/ai-video/ai-video-client.tsx");
 if (client.includes("SUPABASE_SERVICE_ROLE_KEY") || client.includes("createAdminClient")) failures.push("AI video client must not contain service-role access");
+
+const worker = read("scripts/jobs/template-video-automation.ts");
 
 const pkg = JSON.parse(read("package.json"));
 if (!pkg.scripts["admin:video:check"]) failures.push("admin:video:check must be registered");
 if (!pkg.scripts["verify:pr"]?.includes("pnpm admin:video:check")) failures.push("verify:pr must include Admin Video Factory verification");
 if (!pkg.scripts["verify"]?.includes("pnpm admin:video:check")) failures.push("verify must include Admin Video Factory verification");
+if (!read("src/features/videos/services/voice-profiles.ts").includes("hadith_male_msa")) failures.push("canonical hadith male voice profile missing");
+if (!read("src/features/videos/services/narration-quality.ts").includes("evaluateArabicNarrationText")) failures.push("Arabic narration quality validator missing");
+if (!worker.includes("wordsPerSecond")) failures.push("Video worker missing speaking-rate checks");
 
 if (failures.length) {
   console.error("ADMIN_VIDEO_FACTORY_CHECK_FAILED");

@@ -11,8 +11,8 @@ import { createAndroidReleaseAction } from "./actions";
 export const metadata: Metadata = { title: "مركز الإصدار | الأدمن" };
 
 const checks = [
-  ["التحقق الآلي", "CircleCI → ci-check"],
-  ["بناء الإنتاج", "Vercel / production release"],
+  ["التحقق الآلي", "GitHub Actions → ZIKR / Quality Gate"],
+  ["بناء الإنتاج", "Vercel / controlled production release"],
   ["سلامة الترحيلات", "pnpm supabase:migrations:check"],
   ["سلامة المسارات", "pnpm routes:check"],
   ["جاهزية الهاتف", "pnpm mobile:check"],

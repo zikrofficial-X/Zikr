@@ -12,16 +12,29 @@ function formValue(formData: FormData, key: string) {
 export async function saveAdminSettingAction(formData: FormData) {
   const profile = await requireAdminPermission("settings.manage");
   const key = formValue(formData, "key");
-  const rawValue = formValue(formData, "value");
+  const rawValues = formData.getAll("value").map((value) => String(value).trim());
+  const rawValue = rawValues.at(-1) ?? "";
   if (!key) throw new Error("مفتاح الإعداد مطلوب.");
 
-  let value: unknown = rawValue;
-  try {
-    value = JSON.parse(rawValue);
-  } catch {
-    value = rawValue;
-  }
+  const allowedSettings = new Set([
+    "require_mfa_for_destructive",
+    "maintenance_mode",
+    "admin_alerts_enabled",
+    "search_result_limit",
+  ]);
+  if (!allowedSettings.has(key)) throw new Error("إعداد إدارة غير مدعوم.");
 
+  let value: unknown;
+  if (["require_mfa_for_destructive", "maintenance_mode", "admin_alerts_enabled"].includes(key)) {
+    if (rawValue !== "true" && rawValue !== "false") throw new Error("قيمة منطقية غير صالحة.");
+    value = rawValue === "true";
+  } else {
+    const numeric = Number(rawValue);
+    if (!Number.isInteger(numeric) || numeric < 10 || numeric > 100) {
+      throw new Error("حد نتائج البحث يجب أن يكون بين 10 و100.");
+    }
+    value = numeric;
+  }
   await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
@@ -45,7 +58,8 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
   const key = formValue(formData, "key");
   if (!key.startsWith("video_automation_")) throw new Error("إعداد أتمتة الفيديو غير صالح.");
 
-  const rawValue = formValue(formData, "value");
+  const rawValues = formData.getAll("value").map((value) => String(value).trim());
+  const rawValue = rawValues.at(-1) ?? "";
   let value: unknown = rawValue;
 
   if (
@@ -59,6 +73,24 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
     const numeric = Number(rawValue);
     if (!Number.isInteger(numeric) || numeric < 1 || numeric > 10) {
       throw new Error("حجم الدفعة يجب أن يكون بين 1 و10.");
+    }
+    value = numeric;
+  } else if (key === "video_automation_daily_target") {
+    const numeric = Number(rawValue);
+    if (!Number.isInteger(numeric) || numeric < 1 || numeric > 24) {
+      throw new Error("الهدف اليومي يجب أن يكون بين 1 و24.");
+    }
+    value = numeric;
+  } else if (key === "video_automation_ai_attempts_per_run") {
+    const numeric = Number(rawValue);
+    if (!Number.isInteger(numeric) || numeric < 0 || numeric > 4) {
+      throw new Error("محاولات مزودات الفيديو الذكية يجب أن تكون بين 0 و4.");
+    }
+    value = numeric;
+  } else if (key === "video_automation_video_seconds") {
+    const numeric = Number(rawValue);
+    if (!Number.isInteger(numeric) || numeric < 10 || numeric > 45) {
+      throw new Error("مدة الفيديو يجب أن تكون بين 10 و45 ثانية.");
     }
     value = numeric;
   } else {
@@ -89,77 +121,80 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
 
 export async function requestVideoAutomationRunAction() {
   const profile = await requireAdminPermission("system.manage");
-  const key = "video_automation_run_now";
-  const value = new Date().toISOString();
-  const request = {
-    requestedAt: value,
-    requestedBy: profile.id,
-    dispatchedAt: null as string | null,
-  };
-
-  await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
-    method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify({
-      key,
-      value: request,
-      updated_by: profile.id,
-      updated_at: value,
-    }),
-  });
-
-  // Direct dispatch is the only automatic Run Now path. The scheduled GitHub poller was
-  // intentionally retired to keep Actions usage inside the GitHub Free allowance.
   const token = process.env.GITHUB_PAT || process.env.GITHUB_DISPATCH_TOKEN || process.env.GH_DISPATCH_TOKEN;
   const repository = process.env.GITHUB_REPOSITORY || "zikrcontact-del/Zikr";
   if (!token) {
     throw new Error("GitHub dispatch token is not configured; Run Now cannot be queued without a scheduled poller.");
   }
 
-  let dispatched = false;
-  {
-    const batchRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
-      "/rest/v1/admin_settings?key=eq.video_automation_batch_size&select=value&limit=1",
-    ).catch(() => []);
-    const rawBatch = Number(batchRows?.[0]?.value ?? 1);
-    const batchSize = Number.isInteger(rawBatch) ? Math.min(10, Math.max(1, rawBatch)) : 1;
-    try {
-      const response = await fetch(
-        `https://api.github.com/repos/${repository}/actions/workflows/generate-ai-video.yml/dispatches`,
-        {
-          method: "POST",
-          headers: {
-            Accept: "application/vnd.github+json",
-            Authorization: `Bearer ${token}`,
-            "X-GitHub-Api-Version": "2022-11-28",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ ref: "main", inputs: { batch_size: String(batchSize), urgent: "true" } }),
-          signal: AbortSignal.timeout(15_000),
+  const batchRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+    "/rest/v1/admin_settings?key=eq.video_automation_batch_size&select=value&limit=1",
+  ).catch(() => []);
+  const rawBatch = Number(batchRows?.[0]?.value ?? 3);
+  const batchSize = Number.isInteger(rawBatch) ? Math.min(10, Math.max(1, rawBatch)) : 3;
+  const key = "video_automation_run_now";
+  const requestedAt = new Date().toISOString();
+  const request = { requestedAt, requestedBy: profile.id, dispatchedAt: null as string | null, failedAt: null as string | null, error: null as string | null };
+
+  try {
+    await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ key, value: request, updated_by: profile.id, updated_at: requestedAt }),
+    });
+
+    const response = await fetch(
+      "https://api.github.com/repos/" + repository + "/actions/workflows/generate-ai-video.yml/dispatches",
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: "Bearer " + token,
+          "X-GitHub-Api-Version": "2022-11-28",
+          "Content-Type": "application/json",
         },
-      );
-      dispatched = response.status === 204;
-    } catch {
-      dispatched = false;
-    }
-    if (!dispatched) {
-      throw new Error("GitHub refused the video workflow dispatch; the Run Now request was not marked as dispatched.");
+        body: JSON.stringify({ ref: "main", inputs: { batch_size: String(batchSize), urgent: "true" } }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    if (response.status !== 204) {
+      const detail = (await response.text().catch(() => "")).slice(0, 500);
+      throw new Error("GitHub workflow dispatch failed (" + response.status + "): " + detail);
     }
 
-    await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq.video_automation_run_now", {
+    const dispatchedAt = new Date().toISOString();
+    await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ value: { ...request, dispatchedAt: new Date().toISOString() }, updated_at: new Date().toISOString() }),
+      body: JSON.stringify({ value: { ...request, dispatchedAt }, updated_at: dispatchedAt }),
     });
-  }
 
-  await recordAdminAuditEvent({
-    action: "admin.video_automation.run_requested",
-    permission: "system.manage",
-    resourceType: "admin_settings",
-    resourceId: key,
-    metadata: { requestedAt: value, priority: "urgent", dispatchedDirectly: dispatched },
-  });
+    await recordAdminAuditEvent({
+      action: "admin.video_automation.run_requested",
+      permission: "system.manage",
+      resourceType: "admin_settings",
+      resourceId: key,
+      metadata: { requestedAt, batchSize, priority: "urgent", dispatchedDirectly: true },
+    });
+  } catch (error) {
+    const failedAt = new Date().toISOString();
+    const message = error instanceof Error ? error.message : String(error);
+    await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ value: { ...request, failedAt, error: message.slice(0, 500) }, updated_at: failedAt }),
+    }).catch(() => {});
+    await recordAdminAuditEvent({
+      action: "admin.video_automation.run_requested_failed",
+      permission: "system.manage",
+      resourceType: "admin_settings",
+      resourceId: key,
+      outcome: "failed",
+      metadata: { requestedAt, batchSize, error: message.slice(0, 500) },
+    }).catch(() => {});
+    throw error;
+  }
 
   revalidatePath("/admin/automation");
 }

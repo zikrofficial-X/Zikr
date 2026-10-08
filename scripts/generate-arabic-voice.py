@@ -12,11 +12,24 @@ from pathlib import Path
 
 def clean_text(value: str) -> str:
     text = re.sub(r"<[^>]+>", " ", value or "")
+    text = text.replace("—", "، ").replace("–", "، ").replace("•", "، ")
+    text = re.sub(r"https?://\S+", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
         raise ValueError("Arabic narration text is empty")
-    # Avoid accidentally requesting an unbounded cloud synthesis job.
-    return text[:8000]
+    # Keep the canonical words intact while removing formatting that sounds awkward when spoken.
+    return text[:5000]
+
+
+VOICE_PROFILES = {
+    "msa": {"voice": "ar-SA-HamedNeural", "rate": "-10%", "pitch": "-1Hz"},
+    "hadith": {"voice": "ar-SA-HamedNeural", "rate": "-10%", "pitch": "-1Hz"},
+    "documentary": {"voice": "ar-SA-HamedNeural", "rate": "-8%", "pitch": "-1Hz"},
+    "egyptian": {"voice": "ar-EG-ShakirNeural", "rate": "-6%", "pitch": "0Hz"},
+    "kids": {"voice": "ar-EG-ShakirNeural", "rate": "-6%", "pitch": "0Hz"},
+}
+DEFAULT_PROFILE = "msa"
+
 
 
 async def synthesize(text: str, output: Path, voice: str, rate: str, pitch: str) -> None:
@@ -32,19 +45,22 @@ async def synthesize(text: str, output: Path, voice: str, rate: str, pitch: str)
         raise RuntimeError("Arabic TTS returned an empty audio file")
 
 
-# Male Arabic Edge TTS voice profiles (ARABIC_TTS_PROFILE). ARABIC_TTS_VOICE overrides the profile.
-VOICE_PROFILES = {
-    "msa": "ar-SA-HamedNeural",
-    "egyptian": "ar-EG-ShakirNeural",
-}
-DEFAULT_PROFILE = "msa"
+def resolve_profile() -> dict[str, str]:
+    profile_name = os.getenv("ARABIC_TTS_PROFILE", DEFAULT_PROFILE).strip().lower()
+    return VOICE_PROFILES.get(profile_name, VOICE_PROFILES[DEFAULT_PROFILE])
 
 
 def default_voice() -> str:
     explicit = os.getenv("ARABIC_TTS_VOICE", "").strip()
-    if explicit:
-        return explicit
-    return VOICE_PROFILES.get(os.getenv("ARABIC_TTS_PROFILE", DEFAULT_PROFILE).strip().lower(), VOICE_PROFILES[DEFAULT_PROFILE])
+    return explicit or resolve_profile()["voice"]
+
+
+def default_rate() -> str:
+    return os.getenv("ARABIC_TTS_RATE", resolve_profile()["rate"])
+
+
+def default_pitch() -> str:
+    return os.getenv("ARABIC_TTS_PITCH", resolve_profile()["pitch"])
 
 
 def main() -> int:
@@ -52,15 +68,15 @@ def main() -> int:
     parser.add_argument("--text", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--voice", default=default_voice())
-    parser.add_argument("--rate", default=os.getenv("ARABIC_TTS_RATE", "-12%"))
-    parser.add_argument("--pitch", default=os.getenv("ARABIC_TTS_PITCH", "-2Hz"))
+    parser.add_argument("--rate", default=default_rate())
+    parser.add_argument("--pitch", default=default_pitch())
     args = parser.parse_args()
     try:
         asyncio.run(synthesize(args.text, Path(args.output), args.voice, args.rate, args.pitch))
     except Exception as exc:  # pragma: no cover - CLI error path
         print(f"[arabic-tts] {exc}", file=sys.stderr)
         return 1
-    print(f"[arabic-tts] Generated {args.output} with {args.voice}")
+    print(f"[arabic-tts] Generated {args.output} with {args.voice} rate={args.rate} pitch={args.pitch}")
     return 0
 
 
