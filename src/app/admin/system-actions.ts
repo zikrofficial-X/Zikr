@@ -108,12 +108,51 @@ export async function requestVideoAutomationRunAction() {
     }),
   });
 
+  // Direct dispatch removes the up-to-15-minute wait for the polling dispatcher. Without a token the
+  // queued request is still picked up by the scheduled dispatcher.
+  const token = process.env.GITHUB_PAT || process.env.GITHUB_DISPATCH_TOKEN || process.env.GH_DISPATCH_TOKEN;
+  const repository = process.env.GITHUB_REPOSITORY || "zikrcontact-del/Zikr";
+  let dispatched = false;
+  if (token) {
+    const batchRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+      "/rest/v1/admin_settings?key=eq.video_automation_batch_size&select=value&limit=1",
+    ).catch(() => []);
+    const rawBatch = Number(batchRows?.[0]?.value ?? 1);
+    const batchSize = Number.isInteger(rawBatch) ? Math.min(10, Math.max(1, rawBatch)) : 1;
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${repository}/actions/workflows/generate-ai-video.yml/dispatches`,
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${token}`,
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ref: "main", inputs: { batch_size: String(batchSize), urgent: "true" } }),
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+      dispatched = response.status === 204;
+    } catch {
+      dispatched = false;
+    }
+    if (dispatched) {
+      await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq.video_automation_run_now", {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ value: { ...request, dispatchedAt: new Date().toISOString() }, updated_at: new Date().toISOString() }),
+      });
+    }
+  }
+
   await recordAdminAuditEvent({
     action: "admin.video_automation.run_requested",
     permission: "system.manage",
     resourceType: "admin_settings",
     resourceId: key,
-    metadata: { requestedAt: value, priority: "urgent" },
+    metadata: { requestedAt: value, priority: "urgent", dispatchedDirectly: dispatched },
   });
 
   revalidatePath("/admin/automation");

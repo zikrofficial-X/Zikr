@@ -45,18 +45,18 @@ export default async function AdminSourcesPage() {
       <section className="grid gap-3 md:grid-cols-3">
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <p className="text-xs text-brand-cream/35">إجمالي المصادر</p>
-          <p className="mt-2 text-3xl font-bold text-brand-gold">{sources.length.toLocaleString("ar-EG")}</p>
+          <p className="mt-2 text-3xl font-bold text-brand-gold">{sources.length.toLocaleString("ar-EG-u-nu-latn")}</p>
         </div>
         <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-5">
           <p className="text-xs text-brand-cream/35">مصادر موثقة</p>
           <p className="mt-2 text-3xl font-bold text-emerald-300">
-            {sources.filter((source) => source.verified).length.toLocaleString("ar-EG")}
+            {sources.filter((source) => source.verified).length.toLocaleString("ar-EG-u-nu-latn")}
           </p>
         </div>
         <div className="rounded-2xl border border-amber-500/15 bg-amber-500/5 p-5">
           <p className="text-xs text-brand-cream/35">تحتاج مراجعة</p>
           <p className="mt-2 text-3xl font-bold text-amber-300">
-            {sources.filter((source) => !source.verified).length.toLocaleString("ar-EG")}
+            {sources.filter((source) => !source.verified).length.toLocaleString("ar-EG-u-nu-latn")}
           </p>
         </div>
       </section>
@@ -96,7 +96,7 @@ export default async function AdminSourcesPage() {
                     {source.verified ? <span className="text-emerald-300">موثّق</span> : <span className="text-amber-300">غير موثّق</span>}
                   </td>
                   <td className="px-4 py-3 text-xs text-brand-cream/40">
-                    {source.updated_at ? new Date(source.updated_at).toLocaleString("ar-EG") : "—"}
+                    {source.updated_at ? new Date(source.updated_at).toLocaleString("ar-EG-u-nu-latn") : "—"}
                   </td>
                 </tr>
               ))}

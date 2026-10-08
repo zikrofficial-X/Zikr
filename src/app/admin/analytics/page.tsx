@@ -42,7 +42,7 @@ export default async function AnalyticsPage() {
           {contentCards.map((card) => (
             <Card key={card.label} className="text-center space-y-2 py-6">
               <p className="text-4xl font-bold text-brand-gold tabular-nums">
-                {card.value.toLocaleString('ar-EG')}
+                {card.value.toLocaleString('ar-EG-u-nu-latn')}
               </p>
               <p className="text-sm font-semibold text-brand-cream/80">{card.label}</p>
               <p className="text-xs text-brand-cream/40">{card.note}</p>
@@ -74,7 +74,7 @@ export default async function AnalyticsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant="secondary">
-                        {article.views.toLocaleString('ar-EG')}
+                        {article.views.toLocaleString('ar-EG-u-nu-latn')}
                       </Badge>
                     </td>
                   </tr>

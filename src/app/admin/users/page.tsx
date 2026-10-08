@@ -164,7 +164,7 @@ export default async function AdminUsersPage() {
                   className="text-xs text-brand-cream/50"
                   dateTime={action.created_at}
                 >
-                  {new Date(action.created_at).toLocaleString("ar-SA")}
+                  {new Date(action.created_at).toLocaleString("ar-EG-u-nu-latn")}
                 </time>
               </div>
             ))}

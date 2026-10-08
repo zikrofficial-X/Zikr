@@ -40,7 +40,7 @@ export default async function AdminNotificationsPage() {
         {rows.map((row) => {
           const link = typeof row.metadata?.link === "string" ? row.metadata.link : null;
           return <article key={row.id} className={`rounded-2xl border p-4 ${row.read ? 'border-brand-gold/8 bg-black/10' : 'border-brand-gold/20 bg-brand-gold/5'}`}>
-            <div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-brand-cream">{row.title}</h2><time className="text-[11px] text-brand-cream/30">{new Date(row.created_at).toLocaleString('ar-EG')}</time></div>
+            <div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-brand-cream">{row.title}</h2><time className="text-[11px] text-brand-cream/30">{new Date(row.created_at).toLocaleString('ar-EG-u-nu-latn')}</time></div>
             <p className="mt-2 text-sm leading-7 text-brand-cream/55">{row.body}</p>
             {link && <a className="mt-2 inline-block text-xs text-brand-gold" href={link}>فتح الرابط</a>}
           </article>;

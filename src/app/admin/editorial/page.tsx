@@ -102,7 +102,7 @@ export default async function AdminEditorialPage({
                       <span className="text-amber-300">مطلوب قبل النشر</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-brand-cream/40">{new Date(row.updated_at).toLocaleString("ar-EG")}</td>
+                  <td className="px-4 py-3 text-xs text-brand-cream/40">{new Date(row.updated_at).toLocaleString("ar-EG-u-nu-latn")}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2">
                       {STATUS.map((next) => (

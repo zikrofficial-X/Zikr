@@ -51,7 +51,7 @@ export default async function AdminHealthPage() {
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <p className="text-xs text-brand-cream/40">آخر فحص</p>
-          <p className="mt-2 text-sm text-brand-cream/70">{new Date(health.generatedAt).toLocaleString('ar-EG')}</p>
+          <p className="mt-2 text-sm text-brand-cream/70">{new Date(health.generatedAt).toLocaleString('ar-EG-u-nu-latn')}</p>
         </div>
       </section>
 
@@ -62,7 +62,7 @@ export default async function AdminHealthPage() {
         {health.tables.map((table) => (
           <div key={table.table} className="grid grid-cols-[1fr_auto_auto] gap-3 border-b border-brand-gold/8 px-5 py-3 text-sm last:border-0">
             <span className="font-mono text-brand-cream/70">{table.table}</span>
-            <span className="tabular-nums text-brand-cream/50">{table.count === null ? 'غير متاح' : table.count.toLocaleString('ar-EG')}</span>
+            <span className="tabular-nums text-brand-cream/50">{table.count === null ? 'غير متاح' : table.count.toLocaleString('ar-EG-u-nu-latn')}</span>
             <span className={table.state === "unavailable" ? "text-red-300" : table.state === "empty" ? "text-amber-300" : "text-emerald-300"}>{STATE_LABELS[table.state] ?? table.state}</span>
           </div>
         ))}

@@ -136,8 +136,35 @@ function resolveRenderDuration(audioDuration: number) {
 function dayIndex(date = new Date()) {
   return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 86400000);
 }
+const RLM = "\u200F";
+
+/** Cleans spacing/punctuation so on-screen Arabic is tidy and shapes correctly in libass. */
+function normalizeArabicText(value: string) {
+  return value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[\u200B-\u200E\u202A-\u202E\u2066-\u2069\uFEFF]/g, "")
+    .replace(/\u0640+/g, "")
+    .replace(/\s*([،؛؟!:.])\s*/g, "$1 ")
+    .replace(/\s*\(\s*/g, " (")
+    .replace(/\s*\)\s*/g, ") ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function displaySource(label: string) {
+  const trimmed = label.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      return "\u200E" + new URL(trimmed).hostname.replace(/^www\./, "") + "\u200E";
+    } catch {
+      return trimmed;
+    }
+  }
+  return trimmed;
+}
+
 function wrapArabic(value: string, max = 30) {
-  const words = value.trim().split(/\s+/).filter(Boolean);
+  const words = normalizeArabicText(value).split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let line = "";
   for (const word of words) {
@@ -172,7 +199,7 @@ function paginateArabic(value: string, lineChars: number, linesPerPage: number) 
   const lines = wrapArabic(value, lineChars);
   const pages: string[] = [];
   for (let index = 0; index < lines.length; index += linesPerPage) {
-    pages.push(lines.slice(index, index + linesPerPage).join("\\N"));
+    pages.push(lines.slice(index, index + linesPerPage).map((line) => RLM + line).join("\\N"));
   }
   return pages.length ? pages : [value.trim()];
 }
@@ -204,13 +231,14 @@ function makeAss(
     const remaining = textPages.length - index - 1;
     const slice = remaining === 0 ? end - cursor : Math.max(2.2, weight * (end - start));
     const pageEnd = index === textPages.length - 1 ? end : Math.min(end, cursor + slice);
-    const event = "Dialogue: 1,0:00:" + cursor.toFixed(2).padStart(5, "0") + ",0:00:" + pageEnd.toFixed(2).padStart(5, "0") + ",Verse,,0,0,0,," + assEscape(page);
+    const event = "Dialogue: 1,0:00:" + cursor.toFixed(2).padStart(5, "0") + ",0:00:" + pageEnd.toFixed(2).padStart(5, "0") + ",Verse,,0,0,0,,{\\fad(350,350)}" + assEscape(page);
     cursor = pageEnd;
     return event;
   });
   const badge = assEscape(categoryLabel(category));
-  const source = assEscape("المصدر: " + sourceUrl);
-  const reflectionText = reflection ? assEscape(reflection) : "";
+  const source = assEscape(RLM + "المصدر: " + displaySource(sourceUrl));
+  const reflectionText = reflection ? assEscape(RLM + normalizeArabicText(reflection)) : "";
+  title = normalizeArabicText(title);
   const events = [
     "Dialogue: 5,0:00:00.00,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Badge,,0,0,0,," + badge,
     "Dialogue: 0,0:00:00.20,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Title,,0,0,0,," + assEscape(title),
@@ -868,7 +896,7 @@ async function renderVideo(request: GeneratedRequest) {
     const audioProbe = await probeMedia(audioPath);
     const audioDuration = Number(audioProbe.format?.duration ?? 0);
     const duration = resolveRenderDuration(audioDuration);
-    await writeFile(assPath, makeAss(text, request.title, sourceUrl, aiPlan.reflection || null, duration, request.category, isVertical), "utf8");
+    await writeFile(assPath, makeAss(text, request.title, typeof request.content?.sourceLabel === "string" && request.content.sourceLabel.trim() ? request.content.sourceLabel : sourceUrl, aiPlan.reflection || null, duration, request.category, isVertical), "utf8");
 
     const fadeOutStart = Math.max(0, duration - 0.8);
     const motionFilters = motion === "fade"

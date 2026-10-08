@@ -34,7 +34,7 @@ export default async function AdminSearchPage({ searchParams }: { searchParams: 
           const href = item.type === "مقال" && item.slug ? `/articles/${item.slug}` : item.type === "قصة" && item.slug ? `/stories/${item.slug}` : item.type === "فيديو" && item.slug ? `/videos/${item.slug}` : "/admin/content";
           return (
             <div key={`${item.type}-${item.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-gold/10 bg-black/15 p-4">
-              <div><div className="text-xs text-brand-gold/60">{item.type}</div><h2 className="mt-1 font-semibold text-brand-cream">{item.title}</h2><p className="mt-1 text-xs text-brand-cream/35">{item.published ? "منشور" : "مسودة"} · {item.updated_at ? new Date(item.updated_at).toLocaleString('ar-EG') : '—'}</p></div>
+              <div><div className="text-xs text-brand-gold/60">{item.type}</div><h2 className="mt-1 font-semibold text-brand-cream">{item.title}</h2><p className="mt-1 text-xs text-brand-cream/35">{item.published ? "منشور" : "مسودة"} · {item.updated_at ? new Date(item.updated_at).toLocaleString('ar-EG-u-nu-latn') : '—'}</p></div>
               <Link href={href} className="rounded-lg border border-brand-gold/15 px-3 py-2 text-xs text-brand-gold hover:bg-brand-gold/10">فتح</Link>
             </div>
           );

@@ -2,8 +2,8 @@ name: ZIKR Urgent Video Dispatcher
 
 on:
   schedule:
-    # Poll less often to reduce idle runner usage while retaining a 15-minute response window.
-    - cron: "*/15 * * * *"
+    # Fallback poller only: the admin Run Now button dispatches the worker directly when a token is set.
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -23,7 +23,7 @@ jobs:
     env:
       SUPABASE_URL: https://wvetcauyerlkqvmntajq.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      GITHUB_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN || github.token }}
 
     steps:
       - name: Check and dispatch urgent video generation

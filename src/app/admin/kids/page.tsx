@@ -177,7 +177,7 @@ export default async function AdminKidsPage() {
                   <td className="py-2"><span className="px-2 py-0.5 rounded-full bg-brand-gold/10 text-brand-gold text-xs">{typeLabels[item.type] ?? item.type}</span></td>
                   <td className="py-2 text-brand-cream/60">{ageGroupLabels[item.age_group ?? ""] ?? item.age_group ?? "—"}</td>
                   <td className="py-2">{item.published && item.is_active ? <span className="text-emerald-300">منشور</span> : <span className="text-amber-300">مخفي/مسودة</span>}</td>
-                  <td className="py-2 text-xs text-brand-cream/40">{item.updated_at ? new Date(item.updated_at).toLocaleString("ar-EG") : "—"}</td>
+                  <td className="py-2 text-xs text-brand-cream/40">{item.updated_at ? new Date(item.updated_at).toLocaleString("ar-EG-u-nu-latn") : "—"}</td>
                 </tr>
               ))}
             </tbody>

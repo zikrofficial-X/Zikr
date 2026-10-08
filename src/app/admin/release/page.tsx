@@ -205,7 +205,7 @@ export default async function AdminReleasePage({
             <p className="text-xs text-brand-cream/35">التاريخ</p>
             <p className="mt-2 text-sm text-brand-cream/70">
               {latestAndroidRelease?.published_at
-                ? new Date(latestAndroidRelease.published_at).toLocaleString("ar-EG")
+                ? new Date(latestAndroidRelease.published_at).toLocaleString("ar-EG-u-nu-latn")
                 : "لا يوجد"}
             </p>
           </div>

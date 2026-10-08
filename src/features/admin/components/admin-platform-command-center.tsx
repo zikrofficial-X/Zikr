@@ -42,7 +42,7 @@ export async function AdminPlatformCommandCenter() {
             className={`rounded-2xl border p-5 ${metric.tone === "danger" ? "border-red-500/25 bg-red-500/10 text-red-200" : metric.tone === "warning" ? "border-amber-500/20 bg-amber-500/5 text-amber-200" : metric.tone === "success" ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-200" : "border-brand-gold/10 bg-black/15 text-brand-cream"}`}
           >
             <p className="text-xs opacity-60">{metric.label}</p>
-            <p className="mt-2 text-3xl font-bold tabular-nums">{metric.value.toLocaleString("ar-EG")}</p>
+            <p className="mt-2 text-3xl font-bold tabular-nums">{metric.value.toLocaleString("ar-EG-u-nu-latn")}</p>
           </div>
         ))}
       </section>
@@ -57,7 +57,7 @@ export async function AdminPlatformCommandCenter() {
             {Object.entries(snapshot.queues).map(([key, value]) => (
               <div key={key} className="rounded-xl border border-brand-gold/8 bg-black/10 p-3">
                 <p className="text-[11px] text-brand-cream/35">{queueLabels[key] ?? key}</p>
-                <p className="mt-1 text-xl font-bold text-brand-cream">{value.toLocaleString("ar-EG")}</p>
+                <p className="mt-1 text-xl font-bold text-brand-cream">{value.toLocaleString("ar-EG-u-nu-latn")}</p>
               </div>
             ))}
           </div>
@@ -124,14 +124,14 @@ export async function AdminPlatformCommandCenter() {
             <div key={value.table} className={`rounded-2xl border p-4 ${value.count === null ? "border-red-500/15 bg-red-500/5" : "border-brand-gold/8 bg-black/10"}`}>
               <p className="text-xs text-brand-cream/35">{value.label}</p>
               <p className="mt-1 text-xl font-bold text-brand-cream">
-                {value.count === null ? "غير متاح" : value.count.toLocaleString("ar-EG")}
+                {value.count === null ? "غير متاح" : value.count.toLocaleString("ar-EG-u-nu-latn")}
               </p>
             </div>
           ))}
         </div>
       </section>
 
-      <p className="text-center text-xs text-brand-cream/20">آخر تحديث للبيانات: {new Date(snapshot.generatedAt).toLocaleString("ar-EG")}</p>
+      <p className="text-center text-xs text-brand-cream/20">آخر تحديث للبيانات: {new Date(snapshot.generatedAt).toLocaleString("ar-EG-u-nu-latn")}</p>
     </div>
   );
 }

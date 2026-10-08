@@ -195,7 +195,7 @@ export function UsersTable({ users, currentAdminId }: { users: UserProfile[]; cu
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-brand-cream/70">
-                    {user.created_at ? new Date(user.created_at).toLocaleDateString("ar-SA") : "—"}
+                    {user.created_at ? new Date(user.created_at).toLocaleDateString("ar-EG-u-nu-latn") : "—"}
                   </td>
                   <td className="px-4 py-3">
                     {isSelf ? (

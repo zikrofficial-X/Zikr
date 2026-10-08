@@ -40,7 +40,7 @@ export default async function AdminAuditPage() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="border-t border-brand-gold/8">
-                  <td className="px-4 py-3 text-brand-cream/50 text-xs">{new Date(row.created_at).toLocaleString('ar-EG')}</td>
+                  <td className="px-4 py-3 text-brand-cream/50 text-xs">{new Date(row.created_at).toLocaleString('ar-EG-u-nu-latn')}</td>
                   <td className="px-4 py-3 text-brand-cream/85 font-medium">{row.action}</td>
                   <td className="px-4 py-3 text-brand-cream/50">{row.permission ?? '—'}</td>
                   <td className="px-4 py-3 text-brand-cream/45">{row.resource_type ?? '—'}{row.resource_id ? ` / ${row.resource_id}` : ''}</td>

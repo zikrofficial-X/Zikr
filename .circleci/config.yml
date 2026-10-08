@@ -561,23 +561,6 @@ workflows:
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
 
-  android-release-on-tag:
-    jobs:
-      - ci-check:
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
-      - android-rebuild:
-          requires:
-            - ci-check
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
-
   android-release-on-build-tag:
     jobs:
       - ci-check:
@@ -585,7 +568,7 @@ workflows:
             branches:
               ignore: /.*/
             tags:
-              only: /^v1\.1\.2-build$/
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+-build$/
       - supabase-production-gate:
           requires:
             - ci-check
@@ -593,7 +576,7 @@ workflows:
             branches:
               ignore: /.*/
             tags:
-              only: /^v1\.1\.2-build$/
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+-build$/
       - android-rebuild:
           requires:
             - ci-check
@@ -601,7 +584,7 @@ workflows:
             branches:
               ignore: /.*/
             tags:
-              only: /^v1\.1\.2-build$/
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+-build$/
 
   manual-background-processing:
     when: << pipeline.parameters.run_background_jobs >>

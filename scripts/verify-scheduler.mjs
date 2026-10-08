@@ -25,7 +25,7 @@ const vercel = existsSync("vercel.json") ? readFileSync("vercel.json", "utf8") :
 if (vercel.includes('"crons"') || vercel.includes("crons:")) failures.push("Vercel must not own production video scheduling");
 
 const urgentDispatcher = read(".github/workflows/urgent-video-dispatcher.yml");
-if (!urgentDispatcher.includes('cron: "*/15 * * * *"')) failures.push("urgent dispatcher must poll every 15 minutes");
+if (!urgentDispatcher.includes('cron: "*/30 * * * *"')) failures.push("urgent dispatcher must poll every 30 minutes");
 if (!urgentDispatcher.includes("if: github.ref == 'refs/heads/main'")) failures.push("urgent dispatcher must restrict production secrets to main");
 if (!urgentDispatcher.includes("environment: production")) failures.push("urgent dispatcher must use the existing production-secret environment");
 if (!urgentDispatcher.includes("actions: write")) failures.push("urgent dispatcher must be allowed to dispatch GitHub workflows");

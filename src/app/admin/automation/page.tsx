@@ -92,7 +92,7 @@ export default async function AdminAutomationPage() {
             <p className="text-xs text-brand-cream/40">{job.label}</p>
             <p className="mt-2 font-mono text-xs text-brand-cream/30" dir="ltr">{job.table}</p>
             <p className="mt-3 text-3xl font-bold text-brand-gold">
-              {job.count === null ? "غير متاح" : job.count.toLocaleString("ar-EG")}
+              {job.count === null ? "غير متاح" : job.count.toLocaleString("ar-EG-u-nu-latn")}
             </p>
             <p className="mt-1 text-xs text-brand-cream/30">{job.state === "available" ? "متاح" : "تعذر الاستعلام"}</p>
           </div>
@@ -197,7 +197,7 @@ export default async function AdminAutomationPage() {
         <h2 className="font-semibold text-brand-gold">آخر تشغيل للعامل</h2>
         {latestRuns[0] ? (
           <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-6">
-            <div><span className="text-brand-cream/35">وقت الانتهاء</span><p className="mt-1 text-brand-cream/75">{latestRuns[0].finished_at ? new Date(latestRuns[0].finished_at).toLocaleString("ar-EG") : "غير معروف"}</p></div>
+            <div><span className="text-brand-cream/35">وقت الانتهاء</span><p className="mt-1 text-brand-cream/75">{latestRuns[0].finished_at ? new Date(latestRuns[0].finished_at).toLocaleString("ar-EG-u-nu-latn") : "غير معروف"}</p></div>
             <div><span className="text-brand-cream/35">أُنشئ</span><p className="mt-1 font-bold text-brand-gold">{latestRuns[0].created_count ?? 0}</p></div>
             <div><span className="text-brand-cream/35">عولج</span><p className="mt-1 font-bold text-brand-gold">{latestRuns[0].processed_count ?? 0}</p></div>
             <div><span className="text-brand-cream/35">اكتمل</span><p className="mt-1 font-bold text-emerald-300">{latestRuns[0].completed_count ?? 0}</p></div>

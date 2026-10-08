@@ -170,7 +170,7 @@ export default function AdminVideosClient() {
                   <p className="mt-2 text-sm text-brand-cream/55">{request.description || "بدون وصف"}</p>
                   <div className="mt-2 flex flex-wrap gap-3 text-xs text-brand-cream/35">
                     <span>الفئة: {request.category}</span>
-                    <span>{new Date(request.created_at).toLocaleString("ar-EG")}</span>
+                    <span>{new Date(request.created_at).toLocaleString("ar-EG-u-nu-latn")}</span>
                     {request.video_url && <a href={request.video_url} target="_blank" rel="noopener noreferrer" className="text-brand-gold hover:underline">فتح الفيديو</a>}
                   </div>
                 </div>
@@ -247,8 +247,8 @@ export default function AdminVideosClient() {
               <div><dt className="text-brand-cream/35">الحالة</dt><dd className="mt-1 text-brand-cream/75">{details.status}</dd></div>
               <div><dt className="text-brand-cream/35">العنوان</dt><dd className="mt-1 text-brand-cream/75">{details.title}</dd></div>
               <div><dt className="text-brand-cream/35">التصنيف</dt><dd className="mt-1 text-brand-cream/75">{details.category}</dd></div>
-              <div><dt className="text-brand-cream/35">تاريخ الإنشاء</dt><dd className="mt-1 text-brand-cream/75">{new Date(details.created_at).toLocaleString("ar-EG")}</dd></div>
-              <div><dt className="text-brand-cream/35">آخر تحديث</dt><dd className="mt-1 text-brand-cream/75">{new Date(details.updated_at).toLocaleString("ar-EG")}</dd></div>
+              <div><dt className="text-brand-cream/35">تاريخ الإنشاء</dt><dd className="mt-1 text-brand-cream/75">{new Date(details.created_at).toLocaleString("ar-EG-u-nu-latn")}</dd></div>
+              <div><dt className="text-brand-cream/35">آخر تحديث</dt><dd className="mt-1 text-brand-cream/75">{new Date(details.updated_at).toLocaleString("ar-EG-u-nu-latn")}</dd></div>
             </dl>
             {details.video_url && <a href={details.video_url} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex rounded-xl border border-emerald-500/20 px-4 py-2 text-sm text-emerald-300">فتح الفيديو الناتج</a>}
             {details.content !== null && details.content !== undefined ? <pre className="mt-5 overflow-auto rounded-xl border border-brand-gold/10 bg-black/30 p-4 text-xs text-brand-cream/55">{JSON.stringify(details.content, null, 2)}</pre> : null}

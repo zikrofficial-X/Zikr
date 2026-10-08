@@ -199,7 +199,7 @@ export function SiteAudioManager() {
                         {curated && <span className="rounded-full bg-emerald-400/10 px-2 py-0.5 text-xs font-bold text-emerald-200">مصدر مفتوح</span>}
                       </div>
                       <p className="mt-1 text-xs leading-5 text-brand-cream/40">
-                        {curated ? curated.sourceName + " · " + curated.license : ((asset.size_bytes / 1024 / 1024).toFixed(1) + " MB · " + new Date(asset.created_at).toLocaleDateString("ar-EG"))}
+                        {curated ? curated.sourceName + " · " + curated.license : ((asset.size_bytes / 1024 / 1024).toFixed(1) + " MB · " + new Date(asset.created_at).toLocaleDateString("ar-EG-u-nu-latn"))}
                       </p>
                     </div>
                     <div className="flex gap-2">

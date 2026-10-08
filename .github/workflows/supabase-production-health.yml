@@ -1,11 +1,13 @@
 name: ZIKR Supabase Production Health
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
+    paths:
+      - "scripts/verify-supabase-production.mjs"
+      - "supabase/**"
+      - ".github/workflows/supabase-production-health.yml"
   workflow_dispatch:
 
 permissions:
