@@ -1,6 +1,8 @@
 -- Repoint production pg_cron jobs to the current ZIKR Supabase project.
 -- This migration is idempotent and safe for Preview environments where an old
--- cleanup worker row may already have been retired.
+-- cleanup worker row may already have been retired. Only mutable schedule,
+-- command, and active state are reconciled; existing database/username ownership
+-- is left untouched because Supabase Preview does not grant superuser ALTER rights.
 
 DO $migration$
 BEGIN
@@ -20,8 +22,6 @@ BEGIN
             body := jsonb_build_object('source', 'pg_cron')
           );
         $job$,
-        database => 'postgres',
-        username => 'postgres',
         active => true
       );
     END IF;
@@ -40,8 +40,6 @@ BEGIN
             body := jsonb_build_object('source', 'pg_cron')
           );
         $job$,
-        database => 'postgres',
-        username => 'postgres',
         active => true
       );
     END IF;
