@@ -42,7 +42,6 @@ jobs:
       GEMINI_AUDIO_SMOKE_TEST: "false"
       AUTO_VIDEO_ENABLED: "true"
       AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '3' }}
-      VIDEO_BACKGROUND_BATCH_SIZE: "3"
       DAILY_VIDEO_TARGET: "12"
       AUTO_VIDEO_URGENT: ${{ inputs.urgent || 'false' }}
       VIDEO_DAILY_LIMIT: "24"
