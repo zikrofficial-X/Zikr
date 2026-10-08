@@ -73,7 +73,8 @@
     "sync:hadith:en": "tsx scripts/sync-hadith-english.ts",
     "video:contract:check": "tsx scripts/tests/video-contract.test.ts",
     "schema:contract:check": "tsx scripts/tests/schema-contract.test.ts",
-    "ci:architecture:check": "node scripts/verify-ci-architecture.mjs"
+    "ci:architecture:check": "node scripts/verify-ci-architecture.mjs",
+    "production:smoke": "node scripts/verify-production-smoke.mjs"
   },
   "dependencies": {
     "@capacitor/android": "7.6.9",
