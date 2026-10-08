@@ -1,6 +1,6 @@
 # Background jobs runbook
 
-ZIKR's recurring production video and social queues are executed by the scheduled CircleCI `background-jobs` workflow. GitHub Actions `generate-ai-video.yml` remains the canonical manual dispatch path. `urgent-video-dispatcher.yml` is manual recovery only.
+ZIKR's recurring production video and social queues are executed by the scheduled CircleCI `background-jobs` workflow. GitHub Actions `generate-ai-video.yml` remains the canonical manual dispatch path.
 
 ## Production video generation
 
@@ -38,7 +38,7 @@ If a provider credential is missing or expired, that platform is recorded as fai
 
 ```text
 Video/social worker: 4 runs/day; retains the existing daily target of 8 requests
-Admin Run Now dispatcher: direct GitHub workflow dispatch from the admin action; manual recovery workflow remains available
+Admin Run Now: direct GitHub workflow dispatch from the admin action
 English content sync: daily, at most 5 article translations and 25 Hadith records by default
 Video length: 16 seconds by default; deterministic FFmpeg renderer
 ```
