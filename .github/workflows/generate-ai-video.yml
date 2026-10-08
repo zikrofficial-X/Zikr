@@ -7,7 +7,7 @@ on:
       batch_size:
         description: "Number of new video jobs to seed in this run"
         required: false
-        default: "10"
+        default: "3"
         type: string
       urgent:
         description: "Whether this dispatch originated from the admin Run Now control"
