@@ -2,9 +2,9 @@
 
 ## Ownership model
 
-GitHub Actions owns pull-request/main source verification, controlled releases, and deliberate manual video dispatch. CircleCI owns recurring video/social and English-content schedules so periodic production work does not consume the GitHub Free Actions allowance.
+GitHub Actions owns pull-request/main source verification, recurring video generation, recurring social publishing, controlled releases, and deliberate manual recovery dispatches.
 
-CircleCI is retained for recurring background processing, Android release execution, explicit recovery, and manual security audit work. It must not become a second automatic source-verification owner.
+CircleCI is retained for the application build/documentation artifact, Android release execution, recurring English-content sync, Supabase release gates, explicit recovery, and manual security audit work. It must not execute the production video/social worker.
 
 Supabase pg_cron remains the owner of minute-level prayer notification scheduling.
 
@@ -19,7 +19,7 @@ Vercel is the deployment target. The controlled release workflow performs the pr
 | Production smoke | `ZIKR Production Smoke Verification` | Blocking on controlled release |
 | Android | Android build/signature/publish verification | Blocking for Android release only |
 | Security | CircleCI `security-audit` | Advisory/manual outside PR source gate |
-| Scheduled automation | CircleCI Video/English schedules | Operational; never a PR merge gate |
+| Scheduled automation | GitHub video/social + CircleCI English + Supabase prayer/source agent | Operational; never a PR merge gate |
 
 The canonical PR source check must be named `ZIKR / Quality Gate`; it must never use a CircleCI-looking name.
 
@@ -36,15 +36,18 @@ PR
        └── TypeScript
 
 main
- └── full canonical verify
-       ├── migration replay
-       ├── mobile readiness
-       └── production build
+ ├── ZIKR / Quality Gate (verification)
+ └── CircleCI application-build-docs (production build + evidence)
 
 scheduled production jobs
- └── CircleCI
-       ├── video/social: 03:17, 09:17, 15:17, 21:17 UTC
-       └── English content: 04:17 UTC
+ ├── GitHub Actions
+ │    ├── video: 03:17, 09:17, 15:17, 21:17 UTC
+ │    └── social: every 15 minutes
+ ├── CircleCI
+ │    └── English content: 04:17 UTC
+ └── Supabase pg_cron
+      ├── prayer: every minute
+      └── source agent: 03:00 UTC
 
 manual production release
  └── release-finalization
@@ -68,7 +71,7 @@ Android release
 
 `video:contract:check` protects the video status/category/TTS contracts against database constraint drift.
 
-`ci:architecture:check` protects the automation topology itself from schedule drift, duplicated owners, confusing check names, and missing production environment guards. It also enforces that GitHub Actions has no recurring `schedule` triggers; recurring production jobs belong to CircleCI.
+`ci:architecture:check` protects the automation topology itself from schedule drift, duplicated owners, confusing check names, and missing production environment guards. It enforces the single-owner rules documented in the canonical automation ownership map.
 
 ## Non-goals
 
