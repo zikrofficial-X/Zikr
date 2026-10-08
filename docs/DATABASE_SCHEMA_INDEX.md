@@ -17,9 +17,9 @@ The application runtime does not use Drizzle ORM, `drizzle-kit`, `drizzle.config
 - Historical migrations/archive: `supabase/migrations_archive/`
 - Generated TypeScript database types: `src/lib/types/supabase.ts`
 - Supabase Edge Functions: `supabase/functions/`
-- Row-Level Security: not re-audited on the selected target.
+- Row-Level Security: rechecked on 2026-10-08; all 82 public tables had RLS enabled.
 - Application data access: Supabase client / REST / server-side Supabase helpers.
-- Read-only schema verification passed for Auth, Quran, and kids APIs, but `content_library.summary_en` is missing and `public.content_translation_queue` is absent.
+- Read-only production schema verification confirms `content_library.summary_en` and `public.content_translation_queue` are present on the selected target.
 - Previously recorded schema counts and migration history refer to `kdotmrjfecgafiommzwz`; they are not proof that the selected target has the same schema. No database scripts or migrations were applied during this reconciliation.
 
 ## Migration rules
@@ -43,7 +43,7 @@ Do not recreate `drizzle/`, add `drizzle-orm`, add `drizzle-kit`, or introduce a
 
 ## Required application domains
 
-The application migration chain declares the following domains. Their full presence on the selected target is not yet verified:
+The application migration chain declares the following domains; the scheduler, authentication, Quran, kids, content-library, translation-queue, and RLS contracts are actively verified in production:
 
 - Quran: `quran_surahs`, `quran_ayahs`, `quran_tafsir`, `quran_reciters`, `quran_audio`
 - Authentication/profile: `profiles` and related account tables
