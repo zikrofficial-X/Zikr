@@ -1,4 +1,5 @@
 name: ZIKR Quality Gate
+# Canonical source-gate check: ZIKR / Quality Gate
 
 on:
   pull_request:
