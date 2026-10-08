@@ -213,6 +213,11 @@ export function getEnvAudit() {
       "CLOUDINARY_API_KEY",
       "CLOUDINARY_API_SECRET",
       "FACEBOOK_PAGE_ACCESS_TOKEN",
+      "FACEBOOK_APP_SECRET",
+      "INTERNAL_JOB_SECRET",
+      "YOUTUBE_SYNC_SECRET",
+      "WEBHOOK_SECRET",
+      "GITHUB_TOKEN",
     ],
     runtimeServer: [
       "NEXT_PUBLIC_SUPABASE_URL",
