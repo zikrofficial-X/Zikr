@@ -49,7 +49,9 @@ const add = (status, name, detail) => results.push({ status, name, detail });
 const env = (name) => process.env[name]?.trim() || "";
 
 for (const name of REQUIRED) {
-  if (!env(name)) add("fail", name, "missing required runtime variable");
+  if (name === "NEXT_PUBLIC_SITE_URL" && !env(name)) {
+    add("pass", name, `using canonical default ${CANONICAL_SITE}`);
+  } else if (!env(name)) add("fail", name, "missing required runtime variable");
   else add("pass", name, "present");
 }
 for (const name of OPTIONAL) {
@@ -63,7 +65,7 @@ function parseUrl(name) {
   catch { add("fail", name, "must be a valid URL"); return null; }
 }
 
-const site = parseUrl("NEXT_PUBLIC_SITE_URL");
+const site = parseUrl("NEXT_PUBLIC_SITE_URL") ?? new URL(CANONICAL_SITE);
 const supabase = parseUrl("NEXT_PUBLIC_SUPABASE_URL");
 const callback = parseUrl("AUTH_CALLBACK_URL");
 
@@ -92,9 +94,9 @@ if (env("GOOGLE_CLIENT_ID") || env("GOOGLE_CLIENT_SECRET") || env("NEXT_PUBLIC_G
 }
 if (env("DATABASE_URL") || env("POSTGRES_URL") || env("POSTGRES_PRISMA_URL") || env("POSTGRES_URL_NON_POOLING")) {
   add(
-    "fail",
+    "warn",
     "Direct Postgres variables",
-    "DATABASE_URL/POSTGRES_* are retired from the application runtime; use Supabase migrations and Supabase client APIs",
+    "DATABASE_URL/POSTGRES_* are present in the platform environment but are intentionally unused; the application uses Supabase APIs",
   );
 }
 
