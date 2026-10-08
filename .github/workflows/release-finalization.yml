@@ -85,7 +85,7 @@ jobs:
         run: |
           set -uo pipefail
           # Fail with a readable annotation instead of a bare "exit code 1".
-          if ! who="$(vercel whoami --token "${VERCEL_TOKEN}" 2>&1)"; then
+          if ! who="$(vercel whoami 2>&1)"; then
             echo "::error title=Vercel token rejected::$(printf '%s' "$who" | tail -n 3 | tr '\n' ' ' | cut -c1-300)"
             exit 1
           fi
@@ -98,21 +98,21 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
-          if ! out="$(vercel pull --yes --environment=production --token="${VERCEL_TOKEN}" 2>&1)"; then
+          if ! out="$(vercel pull --yes --environment=production 2>&1)"; then
             echo "::error title=vercel pull failed::$(printf '%s' "$out" | tail -n 4 | tr '\n' ' ' | cut -c1-350)"
             exit 1
           fi
           printf '%s\n' "$out" | tail -n 3
 
       - name: Build production artifact
-        run: vercel build --prod --token="${VERCEL_TOKEN}"
+        run: vercel build --prod
 
       - name: Deploy prebuilt artifact to production
         id: deploy
         shell: bash
         run: |
           set -euo pipefail
-          url="$(vercel deploy --prebuilt --prod --yes --token="${VERCEL_TOKEN}")"
+          url="$(vercel deploy --prebuilt --prod --yes)"
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Production deployment: $url"
 
