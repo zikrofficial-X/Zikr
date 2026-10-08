@@ -261,7 +261,7 @@ curl -X POST https://zikrmediaofficial.vercel.app/api/admin/social \
 
 **Automated Jobs:**
 - ⚙️ GitHub Actions owns the recurring production video worker (`generate-ai-video.yml`) at 03:17, 09:17, 15:17, and 21:17 UTC, and only that worker may render production videos.
-- ⚙️ GitHub Actions `generate-ai-video.yml` is manual-only for diagnostics and recovery.
+- ⚙️ GitHub Actions also provides a deliberate manual dispatch for recovery; manual dispatch does not replace the recurring schedule.
 - ⚙️ Admin Run Now dispatches the canonical GitHub worker directly; there is no recurring GitHub poller.
 - ⏱️ Vercel has no video-processing cron, and GitHub Actions has no recurring video schedule.
 
