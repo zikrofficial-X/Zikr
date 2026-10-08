@@ -108,12 +108,16 @@ export async function requestVideoAutomationRunAction() {
     }),
   });
 
-  // Direct dispatch removes the up-to-15-minute wait for the polling dispatcher. Without a token the
-  // queued request is still picked up by the scheduled dispatcher.
+  // Direct dispatch is the only automatic Run Now path. The scheduled GitHub poller was
+  // intentionally retired to keep Actions usage inside the GitHub Free allowance.
   const token = process.env.GITHUB_PAT || process.env.GITHUB_DISPATCH_TOKEN || process.env.GH_DISPATCH_TOKEN;
   const repository = process.env.GITHUB_REPOSITORY || "zikrcontact-del/Zikr";
+  if (!token) {
+    throw new Error("GitHub dispatch token is not configured; Run Now cannot be queued without a scheduled poller.");
+  }
+
   let dispatched = false;
-  if (token) {
+  {
     const batchRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
       "/rest/v1/admin_settings?key=eq.video_automation_batch_size&select=value&limit=1",
     ).catch(() => []);
@@ -138,13 +142,15 @@ export async function requestVideoAutomationRunAction() {
     } catch {
       dispatched = false;
     }
-    if (dispatched) {
-      await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq.video_automation_run_now", {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ value: { ...request, dispatchedAt: new Date().toISOString() }, updated_at: new Date().toISOString() }),
-      });
+    if (!dispatched) {
+      throw new Error("GitHub refused the video workflow dispatch; the Run Now request was not marked as dispatched.");
     }
+
+    await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq.video_automation_run_now", {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ value: { ...request, dispatchedAt: new Date().toISOString() }, updated_at: new Date().toISOString() }),
+    });
   }
 
   await recordAdminAuditEvent({
