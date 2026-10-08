@@ -7,11 +7,11 @@ const migrationFiles = readdirSync(migrationsDir).filter((file) => file.endsWith
 const migrations = migrationFiles.map((file) => readFileSync(path.join(migrationsDir, file), "utf8")).join("\n\n");
 const types = readFileSync("src/lib/types/supabase.ts", "utf8");
 
-function requireText(haystack, needle, label) {
+function requireText(haystack: string, needle: string, label: string) {
   assert.ok(haystack.includes(needle), label + " is missing: " + needle);
 }
 
-function requireRegex(haystack, pattern, label) {
+function requireRegex(haystack: string, pattern: RegExp, label: string) {
   assert.ok(pattern.test(haystack), label + " does not match " + pattern);
 }
 
