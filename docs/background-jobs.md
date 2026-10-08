@@ -12,7 +12,7 @@ The queue is idempotent through `video_generation_requests.automation_key` and c
 
 ## Automatic social publishing
 
-The scheduled worker runs with `SOCIAL_PUBLISH_ENABLED=true`. YouTube publishing can remain active independently; Facebook requires the explicit `SOCIAL_PUBLISH_FACEBOOK_ENABLED=true` gate and valid Meta credentials. Successfully rendered videos are queued and processed automatically for enabled providers, as before.
+The dedicated GitHub Actions publisher runs every 15 minutes with `SOCIAL_PUBLISH_ENABLED=true`. YouTube publishing can remain active independently; Facebook requires the explicit `SOCIAL_PUBLISH_FACEBOOK_ENABLED=true` gate and valid Meta credentials. It consumes `social_publish_queue` entries produced by the video worker and does not render videos itself.
 
 YouTube requires:
 
@@ -37,7 +37,8 @@ If a provider credential is missing or expired, that platform is recorded as fai
 ## Current schedules and bounded work
 
 ```text
-Video/social worker: 4 runs/day; retains the existing daily target of 8 requests
+Video generation: 4 runs/day
+Social publishing: every 15 minutes
 Admin Run Now: direct GitHub workflow dispatch from the admin action
 English content sync: daily, at most 5 article translations and 25 Hadith records by default
 Video length: 16 seconds by default; deterministic FFmpeg renderer
