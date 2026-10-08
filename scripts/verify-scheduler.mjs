@@ -47,6 +47,9 @@ if (existsSync(".github/workflows/global-localization-verify.yml")) failures.pus
 const releaseWorkflow = read(".github/workflows/release-finalization.yml");
 if (!releaseWorkflow.includes("github.ref == 'refs/heads/main'")) failures.push("production release secrets must be restricted to main");
 const androidPublish = read(".github/workflows/publish-android-release-assets.yml");
+if (androidPublish.includes("branches:\n      - main")) failures.push("Android release publishing must not trigger directly from main");
+if (!androidPublish.includes("workflow_dispatch:")) failures.push("Android release publishing must retain explicit manual recovery");
+if (!androidPublish.includes("inputs.retry")) failures.push("Android manual recovery must require an explicit retry input");
 if (!androidPublish.includes("docs/finalization/RELEASE_RETRY.flag")) failures.push("Android asset retries must remain tied to an explicit release flag");
 if (!androidPublish.includes("github.ref_type == 'tag'")) failures.push("tagged Android release publishing must remain enabled");
 
