@@ -54,7 +54,8 @@ jobs:
           else
             TAG="$(tr -d '\r\n' < .release-tag)"
           fi
-          test "$TAG" = "v1.1.2"
+          EXPECTED_TAG="v$(jq -r '.version' package.json)"
+          test "$TAG" = "$EXPECTED_TAG"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
           echo "SUPABASE_PUBLIC_BASE=${SUPABASE_PUBLIC_ROOT}/${TAG}" >> "$GITHUB_ENV"
 
