@@ -7,13 +7,15 @@
 | Pull request / main source verification | GitHub Actions — `ZIKR / Quality Gate` | Active |
 | Controlled production deployment | GitHub Actions — `release-finalization.yml` | Active |
 | Manual video dispatch | GitHub Actions — `generate-ai-video.yml` | Active |
-| Recurring video/social processing | CircleCI | Active |
+| Recurring video generation | GitHub Actions — `generate-ai-video.yml` | Active |
+| Recurring social publishing | GitHub Actions — `publish-social.yml` | Active |
 | Recurring English content sync | CircleCI | Active |
+| Application build/documentation artifact | CircleCI — `application-build-docs` | Active |
 | Android release build/signing | CircleCI | Active |
 | Minute-level prayer notifications | Supabase pg_cron | Active |
 | Deployment target | Vercel project `zikr` | Active |
 
-GitHub Actions must not own recurring production schedules. CircleCI remains the scheduled worker for video/social and English content. Supabase pg_cron owns the minute-level prayer worker. Vercel does not own production cron scheduling.
+GitHub Actions owns the recurring production video and social schedules. CircleCI does not execute those queues. Supabase pg_cron owns the minute-level prayer worker. Vercel does not own production video/social cron scheduling.
 
 ## Current GitHub workflows
 
@@ -26,14 +28,22 @@ Canonical source gate.
 - Timeout and concurrency protection are configured.
 
 ### `generate-ai-video.yml`
-Manual-only production video worker.
+Canonical production video generation worker.
 
+- Four scheduled runs/day plus deliberate manual dispatch.
 - Main-only.
 - Protected `production` environment.
-- Explicit timeout.
-- CircleCI owns recurring execution.
-- The runtime uses the canonical `scripts/run-background-jobs.ts` → `template-video-automation.ts` path.
-- The unused/broken `scripts/jobs/video-automation-enhanced.ts` implementation was removed during the 2026-10-08 repair.
+- Explicit timeout and concurrency protection.
+- Uses the canonical `scripts/run-background-jobs.ts` → `template-video-automation.ts` path.
+- Social publishing is intentionally disabled in this worker; it queues completed video work for the dedicated publisher.
+
+### `publish-social.yml`
+Canonical production social publisher.
+
+- Runs every 15 minutes plus manual dispatch.
+- Main-only.
+- Protected `production` environment.
+- Reconciles completed videos into `social_publish_queue` and publishes pending YouTube/Facebook targets.
 
 ### `release-finalization.yml`
 Canonical production release workflow.
@@ -54,20 +64,21 @@ This file is no longer a deployment owner. It is the production smoke-verificati
 
 CircleCI configuration currently owns:
 
-- scheduled video/social worker runs;
+- `application-build-docs` web application build and release/documentation artifacts;
 - scheduled English content sync;
 - Android release execution;
-- explicit recovery;
+- Supabase production gates;
 - manual security audit.
 
-There is no recurring GitHub Actions schedule for these workloads.
+There is no production video/social worker in CircleCI.
 
 ## Production scheduling
 
 Current scheduled responsibilities:
 
-- Video/social: `03:17, 09:17, 15:17, 21:17 UTC`.
-- English content: `04:17 UTC`.
+- Video generation: `03:17, 09:17, 15:17, 21:17 UTC` via GitHub Actions.
+- Social publishing: every 15 minutes via GitHub Actions.
+- English content: `04:17 UTC` via CircleCI.
 - Prayer notification worker: Supabase pg_cron every minute.
 
 No Vercel cron is required for these workloads.

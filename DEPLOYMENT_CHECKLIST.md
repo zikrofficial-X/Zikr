@@ -2,7 +2,7 @@
 
 **Canonical production URL:** `https://zikrmediaofficial.vercel.app`
 
-This checklist reflects the current production architecture. GitHub Actions owns repository quality checks, controlled releases, production smoke verification, and manual video dispatch; CircleCI owns recurring video/social and English-content schedules plus Android/recovery operations; Vercel is release infrastructure; Supabase owns prayer scheduling.
+This checklist reflects the current production architecture. GitHub Actions owns repository quality checks, recurring video generation, social publishing, controlled releases, and production smoke verification; CircleCI owns the application build/documentation lane, Android/recovery operations, and English-content scheduling; Vercel is release infrastructure; Supabase owns prayer scheduling.
 
 ## Before deployment
 
@@ -20,7 +20,7 @@ This checklist reflects the current production architecture. GitHub Actions owns
 
 ## Production automation
 
-The recurring video workflow is the scheduled CircleCI `background-jobs` job. It runs four times daily, seeds source-locked requests, renders with FFmpeg, stores files in Supabase Storage, and processes the social publishing queue. The GitHub `generate-ai-video.yml` workflow is manual-only for diagnostics/recovery. Do not add a Vercel Cron, Supabase video cron, or a second scheduler for the same queue.
+Video production is the scheduled GitHub Actions `generate-ai-video.yml` workflow. It runs four times daily, seeds source-locked requests, renders with AI/FFmpeg, validates the output, and stores the result in Supabase Storage. Social publishing is handled separately by GitHub Actions `publish-social.yml` every 15 minutes. Do not add a Vercel Cron, Supabase video cron, or CircleCI worker for these queues.
 
 ## Vercel deployment
 
@@ -32,7 +32,7 @@ The custom production domain must remain reachable for OAuth callbacks. Non-cust
 
 The committed `.circleci/config.yml` owns the external CI/recovery path.
 
-- Source verification is owned by GitHub Actions `ZIKR / Quality Gate`; CircleCI `source-verify` remains for tagged/recovery workflows.
+- Source verification is owned by GitHub Actions `ZIKR / Quality Gate`; CircleCI `source-verify` is an application-release prerequisite, while `application-build-docs` produces the deployable web build/documentation artifact.
 - Android release runs only for release branches/tags and validates signing material.
 - Recurring video/social and English-content processing are scheduled in CircleCI; `run_background_jobs` remains available for explicit recovery.
 - Quran audio import is intentionally absent; Quran audio remains externalized.

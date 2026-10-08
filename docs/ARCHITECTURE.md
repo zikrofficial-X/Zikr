@@ -14,7 +14,7 @@ This document describes the **current canonical architecture**. Historical audit
 - **Package manager:** pnpm; `pnpm-lock.yaml` is the only lockfile
 - **Mobile:** Capacitor with Android and iOS projects
 - **Hosting:** Vercel
-- **Automation:** GitHub Actions for the scheduled free video/social worker; CircleCI for source verification, releases, and manual recovery operations
+- **Automation:** GitHub Actions for video generation, social publishing, source verification, and controlled Vercel release; CircleCI for application/Android build artifacts, release documentation, Supabase gates, and English content sync
 - **Prayer scheduling:** Supabase `pg_cron` → `prayer-notification-worker`
 
 ## Canonical Directory Map
@@ -111,13 +111,15 @@ All changes must leave the repository buildable and must not introduce a second 
 
 ## Automation Ownership
 
-### Scheduled video and social worker
+### Video generation and social publishing
 
-`.github/workflows/generate-ai-video.yml` is the normal production worker. It runs four times per day (and on deliberate manual dispatch), creates idempotent source-locked Quran/Hadith/Dua video requests, renders them with FFmpeg, stores the generated MP4 in Supabase Storage, and processes the social publishing queue when provider credentials are configured. The schedule is paced against the existing daily target to reduce idle runner starts.
+`.github/workflows/generate-ai-video.yml` is the canonical production video worker. It runs four times per day and on deliberate manual dispatch, creates idempotent source-locked Quran/Hadith/Dua/Adhkar/story requests, renders them with the configured AI providers plus deterministic FFmpeg fallback, stores generated MP4 files in Supabase Storage, and leaves publishable work in `social_publish_queue` without performing the external publish operation itself.
+
+`.github/workflows/publish-social.yml` is the canonical production social publisher. It runs every 15 minutes and on deliberate manual dispatch, reconciles completed videos into `social_publish_queue`, then publishes pending YouTube/Facebook targets with idempotency, bounded retries, and per-platform result tracking.
 
 ### CircleCI
 
-GitHub Actions owns pull-request and `main` source verification. CircleCI is reserved for Android release builds, explicitly enabled release checks, and manual recovery; it is not a second automatic source-verification or background-job scheduler.
+CircleCI is the application production/build lane. It builds the web application, generates release/build documentation artifacts, runs Supabase release gates, and builds/signs Android releases. CircleCI does not execute the production video or social worker.
 
 ### Supabase
 
@@ -128,4 +130,4 @@ Supabase `pg_cron` remains the authoritative scheduler for minute-level prayer n
 - Vercel deployment success and application-code correctness are separate checks.
 - External provider credentials (for example social publishing tokens) are runtime configuration, not source-code constants.
 - Supabase performance advisories about unused indexes are informational and require workload evidence before destructive index removal.
-- Do not add duplicate schedulers for the video or social queues.
+- Do not add duplicate schedulers for the video or social queues. GitHub Actions is the sole scheduler/worker owner for those queues; CircleCI is not a fallback execution path for production video or social work.

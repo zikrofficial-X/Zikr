@@ -1,7 +1,10 @@
 name: ZIKR Autonomous AI Video Worker
 
 on:
-  # Scheduled production execution is owned by CircleCI to keep GitHub Actions usage inside the Free allowance.
+  # GitHub Actions is the sole production owner for recurring video generation.
+  # Publishing is intentionally handled by a separate GitHub workflow.
+  schedule:
+    - cron: "17 3,9,15,21 * * *"
   workflow_dispatch:
     inputs:
       batch_size:
@@ -56,14 +59,15 @@ jobs:
       ARABIC_TTS_PROFILE: "hadith_male_msa"
       ARABIC_TTS_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
       HF_VIDEO_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
+      # Generation queues publishable video records but never executes social publishing.
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
       AUTO_VIDEO_SECONDS: "18"
       BACKGROUND_JOB_TARGET: "all"
       VIDEO_TEMPLATE_VERSION: "2026-10-08-quality-v3"
       VERIFY_VIDEO_RUNTIME_TOOLS: "true"
-      # Generated videos are automatically handed to the configured social publishers.
-      SOCIAL_PUBLISH_ENABLED: "true"
+      # Social publishing is owned by .github/workflows/publish-social.yml.
+      SOCIAL_PUBLISH_ENABLED: "false"
       # Facebook publishing is enabled only when the production environment has both required secrets.
       # The Admin setting can still disable it at runtime.
       SOCIAL_PUBLISH_FACEBOOK_ENABLED: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN != '' && secrets.FACEBOOK_PAGE_ID != '' }}
@@ -160,7 +164,7 @@ jobs:
           fi
 
 
-      # Manual queue recovery: scheduled execution is handled by CircleCI; this workflow remains the canonical GitHub manual dispatcher.
+      # Scheduled production and deliberate manual recovery are both executed by this GitHub workflow.
       # Free-tier AI path: Gemini plans the source-locked presentation; FFmpeg performs the render locally.
       # Validation pass 2026-09-29: Flash-Lite defaults and structured memorization evaluation are enabled.
       # Isolated Gemini/FFmpeg E2E queue test is prepared in Supabase; social publishing is skipped for the test request.
@@ -175,6 +179,6 @@ jobs:
         run: |
           echo "ZIKR autonomous video worker completed."
           echo "The queue seeds Quran/Hadith/Dua/Adhkar/verified-story/general-reminder videos and renders them with rotating free AI providers plus deterministic template fallback."
-          echo "Generated videos are automatically queued for configured YouTube/Facebook publishing."
+          echo "Generated videos are queued for the separate GitHub Actions social publisher."
           echo "Gemini uses the configured free-tier model for source-locked planning, reflection, social captioning, and deterministic FFmpeg rendering."
           echo "Worker validation includes Node import, FFmpeg, and Supabase data-plane smoke tests."

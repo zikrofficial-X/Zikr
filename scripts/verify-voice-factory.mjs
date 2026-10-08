@@ -29,10 +29,11 @@ if (!runner.includes("edge-tts==${EDGE_TTS_VERSION}")) failures.push("background
 if (!runner.includes("ensureArabicTtsRuntime()")) failures.push("background runner must verify/bootstrap the TTS runtime");
 
 const workflow = read(".github/workflows/generate-ai-video.yml");
+if (!workflow.includes('cron: "17 3,9,15,21 * * *"')) failures.push("GitHub video workflow must own the production schedule");
 if (!workflow.includes("edge-tts==7.2.8")) failures.push("GitHub video workflow must pin edge-tts 7.2.8");
 
 const circle = read(".circleci/config.yml");
-if (!circle.includes("edge-tts==7.2.8")) failures.push("CircleCI recovery workflow must pin edge-tts 7.2.8");
+if (circle.includes("edge-tts==7.2.8")) failures.push("CircleCI must not carry the production video TTS runtime after the ownership split");
 
 if (existsSync("scripts/jobs/free-tier-video-narration.ts")) failures.push("legacy free-tier narration script must be removed from the runtime tree");
 

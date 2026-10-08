@@ -1,12 +1,12 @@
 # Background jobs runbook
 
-ZIKR's recurring production video and social queues are executed by the scheduled CircleCI `background-jobs` workflow. GitHub Actions `generate-ai-video.yml` remains the canonical manual dispatch path.
+ZIKR's recurring production video queue is executed by GitHub Actions `generate-ai-video.yml`, and the social publishing queue is executed by GitHub Actions `publish-social.yml`. `scripts/run-background-jobs.ts` remains the shared worker entrypoint; CircleCI no longer executes it for production video/social work.
 
 ## Production video generation
 
-The autonomous CircleCI worker runs four times per day at 03:17, 09:17, 15:17, and 21:17 UTC. GitHub Actions retains manual dispatch for deliberate diagnostics or queue recovery without a recurring Actions schedule. Its existing daily pacing target remains eight source-locked requests; the four scheduled runs reduce idle runner starts without exceeding that pacing target. Commits and merges no longer start a production video run automatically.
+GitHub Actions runs video generation four times per day at 03:17, 09:17, 15:17, and 21:17 UTC, with a manual dispatch path for Run Now/recovery. Social publishing runs every 15 minutes in its own workflow. Commits and merges do not start production video generation.
 
-The worker invokes `pnpm background:jobs` with the deterministic FFmpeg template renderer. Production generation uses trusted Quran/Hadith/Dua content, FFmpeg, Arabic fonts, optional HTTPS recitation audio, and Supabase Storage. Gemini remains optional for the short reflection/caption layer and must not replace or rewrite source religious text.
+GitHub Actions invokes `pnpm background:jobs` with the deterministic FFmpeg template renderer. Production generation uses trusted Quran/Hadith/Dua content, FFmpeg, Arabic fonts, optional HTTPS recitation audio, and Supabase Storage. Gemini remains optional for the short reflection/caption layer and must not replace or rewrite source religious text.
 
 The queue is idempotent through `video_generation_requests.automation_key` and conditional pending claims, so scheduled reruns do not create duplicate automated jobs.
 
@@ -47,7 +47,7 @@ The daily English content sync uses one shared runner for one article batch and 
 
 ## Recovery
 
-CircleCI owns the normal recurring video/social and English-content schedules, plus Android release builds and deliberate recovery. It is not part of the automatic source-verification loop.
+Use GitHub Actions workflow dispatch for deliberate video generation or social publishing recovery. CircleCI is reserved for application/Android builds, documentation/release artifacts, English-content sync, Supabase gates, and explicit release operations.
 
 The prayer notification path remains separate: Supabase `pg_cron` invokes `prayer-notification-worker` every minute.
 

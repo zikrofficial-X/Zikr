@@ -38,8 +38,9 @@ Do not introduce suffixed duplicates such as `SUPABASE_URL_2` or `SUPABASE_SERVI
 
 Video/social/English workers receive secrets through their owning CI platform.
 
-- CircleCI owns recurring production workers.
-- GitHub Actions owns manual video dispatch and controlled release.
+- GitHub Actions owns recurring video generation and social publishing.
+- CircleCI owns the application/Android build lane, English content schedule, and release gates.
+- Vercel owns only the application hosting/deployment target.
 - Supabase pg_cron owns minute-level prayer scheduling.
 - Vercel is not a recurring production scheduler.
 

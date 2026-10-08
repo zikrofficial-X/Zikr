@@ -77,7 +77,8 @@
     "schema:contract:check": "tsx scripts/tests/schema-contract.test.ts",
     "ci:architecture:check": "node scripts/verify-ci-architecture.mjs",
     "production:smoke": "node scripts/verify-production-smoke.mjs",
-    "release:contract:check": "node scripts/verify-release-contract.mjs"
+    "release:contract:check": "node scripts/verify-release-contract.mjs",
+    "ci:build:report": "node scripts/generate-ci-build-report.mjs"
   },
   "dependencies": {
     "@capacitor/android": "7.6.9",

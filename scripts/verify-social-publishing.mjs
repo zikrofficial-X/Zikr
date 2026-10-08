@@ -32,8 +32,14 @@ if (!env.includes('SOCIAL_PUBLISH_FACEBOOK_ENABLED: validatedEnv.SOCIAL_PUBLISH_
 const example = read(".env.example");
 if (!example.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED=false")) failures.push(".env.example must keep Facebook publishing disabled by default");
 
-const workflow = read(".github/workflows/generate-ai-video.yml");
-if (!workflow.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN != '' && secrets.FACEBOOK_PAGE_ID != '' }}")) failures.push("autonomous GitHub worker must keep Facebook publishing configuration-controlled by repository secrets");
+const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
+if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"')) failures.push("video generation must keep social queueing enabled");
+if (!generationWorkflow.includes('SOCIAL_PUBLISH_ENABLED: "false"')) failures.push("video generation must not execute social publishing directly");
+
+const workflow = read(".github/workflows/publish-social.yml");
+if (!workflow.includes('SOCIAL_PUBLISH_ENABLED: "true"')) failures.push("dedicated GitHub social workflow must explicitly enable publishing");
+if (!workflow.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("GitHub social workflow must only process the social queue");
+if (!workflow.includes("FACEBOOK_PAGE_ACCESS_TOKEN")) failures.push("GitHub social workflow must receive the Facebook access-token secret");
 
 const adminApi = read("src/app/api/admin/social/route.ts");
 if (!adminApi.includes("authBlockedPlatforms")) failures.push("Admin retry path must understand Facebook auth-blocked platforms");

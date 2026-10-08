@@ -134,9 +134,12 @@ Then smoke-check:
 
 ## 9. CI and background jobs
 
-GitHub Actions is the normal scheduled owner of the video/social worker.
+GitHub Actions is the sole production owner of video generation and social publishing:
 
-CircleCI remains the canonical source-verification, Android-release, security-audit, and manual-recovery environment. Its background-jobs parameter can be used deliberately for recovery; it must not become a second automatic scheduler.
+- `.github/workflows/generate-ai-video.yml` — four-times-daily video generation plus manual dispatch.
+- `.github/workflows/publish-social.yml` — 15-minute social publishing plus manual dispatch.
+
+CircleCI is the application/Android build and documentation lane, plus English-content sync, Supabase gates, and release operations. CircleCI does not execute `scripts/run-background-jobs.ts` for production video/social work.
 
 Supabase `pg_cron` owns the minute-level prayer notification worker.
 

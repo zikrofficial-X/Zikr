@@ -1,0 +1,94 @@
+name: ZIKR Autonomous Social Publisher
+
+on:
+  # GitHub Actions is the sole production owner for social/video publishing.
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-social-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: https://wvetcauyerlkqvmntajq.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://wvetcauyerlkqvmntajq.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+      BACKGROUND_JOB_TARGET: "social"
+      SOCIAL_PUBLISH_ENABLED: "true"
+      AUTO_VIDEO_PUBLISH_ENABLED: "true"
+      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
+      SOCIAL_PUBLISH_FACEBOOK_ENABLED: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN != '' && secrets.FACEBOOK_PAGE_ID != '' }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+      FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+      FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+      FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install production dependencies
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Validate publishing runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_URL:-}" || { echo "::error::Missing canonical SUPABASE_URL configuration." >&2; exit 1; }
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing production Supabase service-role secret." >&2; exit 1; }
+          if [[ -z "${YOUTUBE_CLIENT_ID:-}" && -z "${FACEBOOK_PAGE_ID:-}" ]]; then
+            echo "::error::No social publisher credentials are configured." >&2
+            exit 1
+          fi
+          echo "Social publisher runtime configuration: OK"
+
+      - name: Verify social publishing contract
+        run: pnpm social:publish:check
+
+      - name: Verify Supabase data-plane access
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status="$(curl -sS -o "$response_file" -w '%{http_code}'             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY"             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"             "$SUPABASE_URL/rest/v1/social_publish_queue?select=id&limit=1")"
+          echo "Supabase social queue HTTP status: $status"
+          if [[ "$status" != "200" ]]; then
+            head -c 500 "$response_file" >&2 || true
+            exit 1
+          fi
+
+      - name: Process social publishing queue
+        run: pnpm background:jobs
+
+      - name: Publish summary
+        if: always()
+        run: |
+          echo "ZIKR GitHub Actions social publisher completed."
+          echo "It reconciles completed video records into the social queue and processes pending YouTube/Facebook targets."
+          echo "CircleCI does not execute production video generation or social publishing."

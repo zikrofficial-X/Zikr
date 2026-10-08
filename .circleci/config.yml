@@ -1,9 +1,9 @@
 version: 2.1
 
 # ZIKR CI ownership:
-# - GitHub Actions owns PR/main source verification, controlled releases, and manual video dispatch.
-# - CircleCI owns recurring video/social and English-content processing, Android release builds, and explicit recovery.
-# - android-rebuild runs only for release branches/tags.
+# - GitHub Actions owns PR/main source verification, recurring video generation, social publishing, and controlled Vercel release.
+# - CircleCI owns the application build/documentation artifact, Android release builds, Supabase release gates, and English-content sync.
+# - CircleCI does NOT execute the production video or social worker.
 #
 # IMPORTANT:
 # CircleCI receives runtime values from CircleCI Project/Context environment
@@ -12,13 +12,7 @@ version: 2.1
 parameters:
   run_circleci_ci:
     type: boolean
-    default: false
-  run_background_jobs:
-    type: boolean
-    default: false
-  background_target:
-    type: string
-    default: all
+    default: true
   run_security_audit:
     type: boolean
     default: false
@@ -52,16 +46,6 @@ jobs:
             pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
           no_output_timeout: 20m
       - run:
-          name: Install video verification tools
-          shell: /bin/bash
-          command: |
-            set -euo pipefail
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends ffmpeg librsvg2-bin fonts-noto-core
-            ffprobe -version | head -n 1
-            rsvg-convert --version 2>&1 | head -n 1
-
-      - run:
           name: Verify installed toolchain
           shell: /bin/bash
           command: |
@@ -73,8 +57,67 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            pnpm verify
-          no_output_timeout: 30m
+            pnpm verify:pr
+          no_output_timeout: 20m
+
+  application-build-docs:
+    docker:
+      - image: cimg/node:22.11.0
+    resource_class: medium
+    environment:
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+      NEXT_PUBLIC_SUPABASE_URL: https://wvetcauyerlkqvmntajq.supabase.co
+      AUTH_CALLBACK_URL: https://zikrmediaofficial.vercel.app/auth/callback
+    steps:
+      - checkout
+      - run:
+          name: Validate application build environment
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            test -n "${NEXT_PUBLIC_SUPABASE_URL:-}" || { echo "Missing NEXT_PUBLIC_SUPABASE_URL." >&2; exit 1; }
+            test -n "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" || { echo "Missing NEXT_PUBLIC_SUPABASE_ANON_KEY." >&2; exit 1; }
+            test -n "${NEXT_PUBLIC_SITE_URL:-}" || { echo "Missing NEXT_PUBLIC_SITE_URL." >&2; exit 1; }
+            test -n "${AUTH_CALLBACK_URL:-}" || { echo "Missing AUTH_CALLBACK_URL." >&2; exit 1; }
+      - run:
+          name: Enable pnpm
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            sudo corepack enable
+            corepack prepare pnpm@9.15.0 --activate
+            node --version
+            pnpm --version
+      - run:
+          name: Install application dependencies
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm config set fetch-retries 5
+            pnpm config set fetch-timeout 120000
+            pnpm config set fetch-retry-mintimeout 20000
+            pnpm config set fetch-retry-maxtimeout 120000
+            pnpm config set network-concurrency 8
+            pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+          no_output_timeout: 20m
+      - run:
+          name: Produce production web application
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm build
+          no_output_timeout: 25m
+      - run:
+          name: Generate build and release documentation
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            pnpm ci:build:report
+            tar -czf "ci-artifacts/zikr-next-build-${CIRCLE_SHA1}.tgz" .next
+            printf '%s\n' "ZIKR production web build artifact: ci-artifacts/zikr-next-build-${CIRCLE_SHA1}.tgz"
+      - store_artifacts:
+          path: ci-artifacts
+          destination: application-build
 
   supabase-production-gate:
     docker:
@@ -152,96 +195,6 @@ jobs:
           command: |
             set -euo pipefail
             pnpm supabase:migrations:check
-
-  background-jobs:
-    parameters:
-      target:
-        type: string
-        default: all
-    docker:
-      - image: cimg/node:22.11.0
-    resource_class: medium
-    environment:
-      BACKGROUND_JOB_TARGET: << parameters.target >>
-      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      VIDEO_BACKGROUND_BATCH_SIZE: "3"
-      SOCIAL_BACKGROUND_BATCH_SIZE: "10"
-      SOCIAL_PUBLISH_ENABLED: "true"
-      VIDEO_GENERATOR: template
-      AUTO_VIDEO_ENABLED: "true"
-      AUTO_VIDEO_BATCH_SIZE: "3"
-      AUTO_VIDEO_SECONDS: "18"
-      DAILY_VIDEO_TARGET: "12"
-      VIDEO_DAILY_LIMIT: "24"
-      VIDEO_AUTOMATION_DRY_RUN: "false"
-      VIDEO_AI_ENABLED: "true"
-      VIDEO_AI_ATTEMPTS_PER_RUN: "3"
-      VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,comfyui,free_api"
-      HF_WAN_VIDEO_ENABLED: "true"
-      HF_LTX_FAST_VIDEO_ENABLED: "true"
-      HF_WAN_SPACE: "zerogpu-aoti/wan2-2-fp8da-aoti-faster"
-      HF_LTX_FAST_SPACE: "Lightricks/ltx-video-distilled"
-      AUTO_VIDEO_PUBLISH_ENABLED: "true"
-      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
-      VIDEO_TEMPLATE_VERSION: "2026-10-08-quality-v3"
-      VERIFY_VIDEO_RUNTIME_TOOLS: "true"
-    steps:
-      - checkout
-      - run:
-          name: Enable pnpm
-          shell: /bin/bash
-          command: |
-            set -euo pipefail
-            sudo corepack enable
-            corepack prepare pnpm@9.15.0 --activate
-      - run:
-          name: Install dependencies
-          shell: /bin/bash
-          command: |
-            set -euo pipefail
-            pnpm config set fetch-retries 5
-            pnpm config set fetch-timeout 120000
-            pnpm config set fetch-retry-mintimeout 20000
-            pnpm config set fetch-retry-maxtimeout 120000
-            pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
-          no_output_timeout: 20m
-      - run:
-          name: Install FFmpeg and Arabic fonts
-          shell: /bin/bash
-          command: |
-            set -euo pipefail
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-core fonts-noto-extra librsvg2-bin python3-venv
-            python3 -m venv .tts-venv
-            .tts-venv/bin/pip install --quiet --no-cache-dir edge-tts==7.2.8 gradio_client==2.7.1
-            echo 'export PATH="$CIRCLE_WORKING_DIRECTORY/.tts-venv/bin:$PATH"' >> "$BASH_ENV"
-            ffmpeg -version | head -n 1
-            fc-match "Noto Naskh Arabic"
-      - run:
-          name: Validate protected runtime configuration
-          shell: /bin/bash
-          command: |
-            set -euo pipefail
-            for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_SITE_URL; do
-              if [[ -z "${!name:-}" ]]; then
-                echo "::error::Missing required CircleCI secret/variable: $name"
-                exit 1
-              fi
-            done
-            if [[ "${SOCIAL_PUBLISH_ENABLED:-false}" == "true" ]]; then
-              if [[ -z "${YOUTUBE_CLIENT_ID:-}" && -z "${FACEBOOK_PAGE_ID:-}" ]]; then
-                echo "Warning: Social publishing is enabled but neither YouTube nor Facebook credentials are configured. Disabling social publishing for this run." >&2
-                echo "export SOCIAL_PUBLISH_ENABLED=false" >> "$BASH_ENV"
-              fi
-            fi
-      - run:
-          name: Run background worker
-          shell: /bin/bash
-          command: |
-            set -euo pipefail
-            pnpm background:jobs
-          no_output_timeout: 30m
-
 
   english-content-sync:
     docker:
@@ -594,7 +547,18 @@ workflows:
       - source-verify:
           filters:
             branches:
-              only: /.*/
+              only:
+                - main
+                - /^android-release-v[0-9]+\.[0-9]+\.[0-9]+$/
+            tags:
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+      - application-build-docs:
+          requires:
+            - source-verify
+          filters:
+            branches:
+              only:
+                - main
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
       - supabase-production-gate:
@@ -640,28 +604,10 @@ workflows:
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+-build$/
 
-  manual-background-processing:
-    when: << pipeline.parameters.run_background_jobs >>
-    jobs:
-      - background-jobs:
-          target: << pipeline.parameters.background_target >>
-
   manual-security-audit:
     when: << pipeline.parameters.run_security_audit >>
     jobs:
       - security-audit
-
-  scheduled-video-processing:
-    triggers:
-      - schedule:
-          cron: "17 3,9,15,21 * * *"
-          filters:
-            branches:
-              only:
-                - main
-    jobs:
-      - background-jobs:
-          target: all
 
   scheduled-english-content-sync:
     triggers:
