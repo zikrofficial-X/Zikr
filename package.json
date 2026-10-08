@@ -73,15 +73,15 @@
     "sync:hadith:en": "tsx scripts/sync-hadith-english.ts"
   },
   "dependencies": {
-    "@capacitor/android": "7.4.3",
+    "@capacitor/android": "7.6.9",
     "@capacitor/app": "7.0.2",
     "@capacitor/browser": "7.0.5",
     "@capacitor/camera": "7.0.2",
-    "@capacitor/core": "7.4.3",
+    "@capacitor/core": "7.6.9",
     "@capacitor/filesystem": "7.1.8",
     "@capacitor/geolocation": "^7.1.0",
     "@capacitor/haptics": "7.0.5",
-    "@capacitor/ios": "7.4.5",
+    "@capacitor/ios": "7.6.9",
     "@capacitor/keyboard": "7.0.6",
     "@capacitor/local-notifications": "7.0.2",
     "@capacitor/network": "7.0.2",
@@ -99,7 +99,7 @@
     "ai": "^7.0.127",
     "clsx": "2.1.1",
     "lucide-react": "^1.52.0",
-    "next": "^16.3.5",
+    "next": "^16.4.0",
     "phaser": "^3.90.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -121,9 +121,9 @@
     "eslint-config-next": "^16.3.1",
     "postcss": "^8.5.26",
     "prettier": "^3.9.6",
-    "tsx": "^4.23.13",
     "tailwindcss": "^4.3.3",
     "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.23.13",
     "typescript": "^6.0.3"
   },
   "engines": {
