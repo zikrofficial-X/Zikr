@@ -77,3 +77,22 @@ Last reconciled: 2026-10-02.
 - **20261002114000** — `retire_dead_media_cleanup_cron_20261002`
   - Applied to production in Phase 13 to retire the cron job targeting an undeployed media-cleanup Edge Function.
 
+
+
+## Phase 5 migration-history reconciliation — 2026-10-08
+
+The live Supabase project exposed five remote migration versions that were not present in the repository migration directory. These entries were already applied to production through the previous control-plane repair pass, so the correct fix is history reconciliation markers, not replaying the DDL.
+
+| Remote version | Remote name | Local canonical implementation |
+|---|---|---|
+| 20261008014118 | repoint_production_cron_to_current_project_v2 | 20261008050000_repoint_production_cron_to_current_project.sql |
+| 20261008015328 | retire_obsolete_cleanup_cron | 20261008060000_retire_obsolete_cleanup_cron.sql |
+| 20261008015449 | content_translation_queue | 20261003090000_content_translation_queue.sql |
+| 20261008015452 | content_library_summary_en | 20261004190000_content_library_summary_en.sql |
+| 20261008015534 | harden_translation_queue_and_kids_timestamp_helpers | 20261008070000_harden_translation_queue_and_kids_timestamp_helpers.sql |
+
+The five new files under supabase/migrations/ are schema-neutral SELECT 1 markers keyed to the remote version IDs. They exist solely so the managed Supabase migration workflow can resolve the remote-history check without replaying already-applied production changes.
+
+The remaining repository-only migrations are intentionally preserved as forward migrations and are not deleted or renamed in this reconciliation.
+
+Last reconciled: 2026-10-08.
