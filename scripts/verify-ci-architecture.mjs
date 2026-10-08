@@ -15,6 +15,7 @@ const release = read(".github/workflows/release-finalization.yml");
 const smoke = read(".github/workflows/release-vercel.yml");
 const androidPublish = read(".github/workflows/publish-android-release-assets.yml");
 const circle = read(".circleci/config.yml");
+const ownership = read("docs/AUTOMATION_OWNERSHIP_2026-10-08.md");
 
 const workflowDir = ".github/workflows";
 const workflowFiles = readdirSync(workflowDir)
@@ -77,6 +78,8 @@ assert.ok(circle.includes("pnpm ci:build:report"), "CircleCI must use the canoni
 const pkg = JSON.parse(read("package.json"));
 assert.ok(pkg.scripts["ci:build:report"], "package.json must register the canonical application build report command");
 assert.ok(!circle.includes("  background-jobs:"), "CircleCI must not own the production video/social worker");
+assert.ok(ownership.includes("GitHub Actions is the only production scheduler"), "automation ownership map must declare single video/social scheduler ownership");
+assert.ok(ownership.includes("CircleCI must never execute `scripts/run-background-jobs.ts`"), "automation ownership map must prohibit CircleCI video/social execution");
 
 for (const file of [
   ".github/workflows/generate-ai-video.yml",
