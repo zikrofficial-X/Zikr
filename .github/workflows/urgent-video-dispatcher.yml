@@ -21,7 +21,7 @@ jobs:
     environment: production
     timeout-minutes: 3
     env:
-      SUPABASE_URL: https://kdotmrjfecgafiommzwz.supabase.co
+      SUPABASE_URL: https://wvetcauyerlkqvmntajq.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       GITHUB_TOKEN: ${{ github.token }}
 
