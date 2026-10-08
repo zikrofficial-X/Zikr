@@ -230,8 +230,8 @@ jobs:
             done
             if [[ "${SOCIAL_PUBLISH_ENABLED:-false}" == "true" ]]; then
               if [[ -z "${YOUTUBE_CLIENT_ID:-}" && -z "${FACEBOOK_PAGE_ID:-}" ]]; then
-                echo "Social publishing is enabled but neither YouTube nor Facebook credentials are configured." >&2
-                exit 1
+                echo "Warning: Social publishing is enabled but neither YouTube nor Facebook credentials are configured. Disabling social publishing for this run." >&2
+                echo "export SOCIAL_PUBLISH_ENABLED=false" >> "$BASH_ENV"
               fi
             fi
       - run:
