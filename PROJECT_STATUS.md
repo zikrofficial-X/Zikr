@@ -35,7 +35,7 @@ Security-advisor findings still require deliberate review of permissive/public p
 - Vercel remains the production deployment platform for the linked `main` branch.
 - GitHub Actions is the production owner for recurring video generation and social publishing.
 - CircleCI is the application build/documentation, Android release, Supabase gate, and English-content lane; it does not run the production video/social worker.
-- Production release certification still requires a successful fresh build/deployment on the intended `main` commit; this document does not claim that certification merely from repository access.
+- Production release certification for the current cleanup was completed on 2026-10-08: Vercel deployment `dpl_FkavSSvEDy4vom7p6zvoFLN28aq9` is READY and the canonical alias `zikrmediaofficial.vercel.app` is attached to that deployment.
 
 ## Historical references
 
@@ -43,7 +43,6 @@ Older audit documents may still mention retired project references such as `eydx
 
 ## Required next verification
 
-1. Run the repository verification suite on the current `main` tip.
-2. Confirm the resulting Vercel production deployment is READY and aliased to `zikrmediaofficial.vercel.app`.
-3. Confirm no new production runtime errors were introduced by the latest deployment.
-4. Keep Supabase security-advisor cleanup and Auth security settings as separate, reviewed changes.
+1. Keep the production deployment and canonical alias under controlled-release ownership.
+2. Monitor post-release runtime errors and worker queues.
+3. Keep Supabase security-advisor cleanup and Auth security settings as separate, reviewed changes.
