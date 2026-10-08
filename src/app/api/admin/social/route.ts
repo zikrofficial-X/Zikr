@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
 import { supabaseServerAdminRequest, createAdminClient } from '@/lib/supabase/server';
 import { getServerEnv } from '@/lib/env';
+import { dispatchGitHubWorkflow } from '@/lib/github/dispatch-workflow';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,19 +75,7 @@ function retryPlatforms(item: QueueItem): string[] {
 }
 
 async function triggerSocialWorker() {
-  const admin = createAdminClient();
-  const { data: schedulerSecret, error } = await admin.rpc('get_push_scheduler_secret');
-  if (error || typeof schedulerSecret !== 'string' || schedulerSecret.length === 0) throw new Error('تعذر تشغيل عامل النشر تلقائيًا.');
-
-  const siteUrl = getServerEnv().NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
-  const response = await fetch(`${siteUrl}/api/internal/video-processing`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${schedulerSecret}`, 'Content-Type': 'application/json' },
-    cache: 'no-store',
-  });
-  const payload = (await response.json().catch(() => ({}))) as { socialProcessed?: number; socialSucceeded?: number; socialFailed?: number; error?: string };
-  if (!response.ok) throw new Error(payload.error || 'تعذر تشغيل عامل النشر.');
-  return payload;
+  return dispatchGitHubWorkflow("publish-social.yml");
 }
 
 export async function GET() {
