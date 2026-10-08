@@ -1,10 +1,9 @@
 version: 2.1
 
-# ZIKR source verification is owned by GitHub Actions.
-# - CircleCI is reserved for Android release builds and explicit recovery runs.
+# ZIKR CI ownership:
+# - GitHub Actions owns PR/main source verification, controlled releases, and manual video dispatch.
+# - CircleCI owns recurring video/social and English-content processing, Android release builds, and explicit recovery.
 # - android-rebuild runs only for release branches/tags.
-# - background processing in CircleCI owns the recurring video/social and English-content schedules.
-# - GitHub Actions remains the source-verification, release, and manual-dispatch layer.
 #
 # IMPORTANT:
 # CircleCI receives runtime values from CircleCI Project/Context environment
