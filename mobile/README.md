@@ -28,7 +28,7 @@ Prayer notifications use the bundled `adhan.wav` asset and the `zikr-prayer-adha
 
 ## Dependency installation
 
-The root `package.json` includes the Capacitor 7 runtime/platform/plugin packages and the CLI pinned in `mobile/capacitor-dependencies.json`. The CLI is currently 8.5.1 while the native runtime is 7.x; do not change that major version without refreshing the lockfile and validating the native toolchain. Run `pnpm install --frozen-lockfile` before syncing native projects.
+The root `package.json` includes the Capacitor 7 runtime/platform/plugin packages and the CLI pinned in `mobile/capacitor-dependencies.json`. The current CLI is `7.4.3`, aligned with the Capacitor 7 native runtime; keep all Capacitor versions on the supported 7.x line and change them only as a controlled migration. Run `pnpm install --frozen-lockfile` before syncing native projects.
 
 ## Build sequence
 
