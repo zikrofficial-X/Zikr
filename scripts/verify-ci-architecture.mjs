@@ -16,6 +16,7 @@ const smoke = read(".github/workflows/release-vercel.yml");
 const androidPublish = read(".github/workflows/publish-android-release-assets.yml");
 const circle = read(".circleci/config.yml");
 const ownership = read("docs/AUTOMATION_OWNERSHIP_2026-10-08.md");
+const supabaseConfig = read("supabase/config.toml");
 
 const workflowDir = ".github/workflows";
 const workflowFiles = readdirSync(workflowDir)
@@ -80,6 +81,10 @@ assert.ok(pkg.scripts["ci:build:report"], "package.json must register the canoni
 assert.ok(!circle.includes("  background-jobs:"), "CircleCI must not own the production video/social worker");
 assert.ok(ownership.includes("GitHub Actions is the only production scheduler"), "automation ownership map must declare single video/social scheduler ownership");
 assert.ok(ownership.includes("CircleCI must never execute `scripts/run-background-jobs.ts`"), "automation ownership map must prohibit CircleCI video/social execution");
+for (const fn of ["health", "spiritual-ai", "prayer-notification-worker", "source-verified-content-agent"]) {
+  assert.ok(supabaseConfig.includes(`[functions.${fn}]`), `Supabase config must declare active Edge Function: ${fn}`);
+}
+assert.ok(!supabaseConfig.includes("[functions.sync-youtube-facebook]"), "retired social sync Edge Function must not be reintroduced");
 
 for (const file of [
   ".github/workflows/generate-ai-video.yml",
