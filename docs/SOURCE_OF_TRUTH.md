@@ -4,14 +4,19 @@
 
 The canonical application source for ZIKR is:
 
-- GitHub repository: `zikr-org/Zikr`
+- GitHub repository: `zikrcontact-del/Zikr`
 - Production branch: `main`
 - Vercel project: `zikr`
+- Production project ID: `prj_1y2W5TZdugysh25Fgu4VRMDQwPcA`
+- Production Vercel team: `team_zifbzhks5C1PW9GXQnQnBU2y`
+- Supabase production project: `wvetcauyerlkqvmntajq`
 - Production domain: `https://zikrmediaofficial.vercel.app`
 
 ## Deployment rule
 
-Vercel production must build from the GitHub `main` branch. The repository is the authoritative source; local ZIP exports, downloaded copies, and old deployment artifacts are archives only and must never be treated as a competing source of truth.
+Vercel Git auto-deployment is disabled. Production releases are performed through the controlled release workflow from the exact `main` commit after the repository verification gate passes.
+
+The repository is the authoritative source; local ZIP exports, downloaded copies, and old deployment artifacts are archives only and must never be treated as a competing source of truth.
 
 ## Current verified state
 
@@ -19,7 +24,7 @@ The current repository `main` commit is the authoritative release source. A fres
 
 ## Runtime baseline
 
-The repository declares Node.js `22.x`. Vercel is also configured for Node.js `22.x`.
+The repository declares Node.js `22.x`. Vercel uses Node.js `22.x` through the repository engine constraint.
 
 ## Important distinction
 
@@ -28,10 +33,11 @@ An uploaded or exported ZIP may contain an older snapshot of the project. It mus
 ## Change workflow
 
 1. Make application changes in the GitHub repository.
-2. Commit to `main` directly only for verified production-safe changes; otherwise use a feature branch and PR.
-3. Let the linked Vercel project deploy from GitHub.
-4. Verify the resulting production deployment commit SHA matches the intended GitHub commit.
-5. Treat old Vercel deployments and ZIP exports as historical artifacts, not sources.
+2. Commit to a feature branch and PR for non-trivial changes.
+3. Merge only after the quality/verification gate passes.
+4. Run the controlled production release workflow from `main` with explicit RELEASE confirmation.
+5. Verify the resulting production deployment commit SHA matches the intended GitHub commit.
+6. Treat old Vercel deployments and ZIP exports as historical artifacts, not sources.
 
 ## Do not do
 
@@ -39,3 +45,4 @@ An uploaded or exported ZIP may contain an older snapshot of the project. It mus
 - Do not deploy the stale ZIP over the current `main` branch.
 - Do not use an old Vercel deployment as the new source.
 - Do not maintain separate production codebases for GitHub and Vercel.
+- Do not hard-code obsolete Vercel or Supabase project IDs in release/configuration files.
