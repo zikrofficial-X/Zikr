@@ -49,7 +49,7 @@ begin
     ) as v(table_name, policy_name)
   loop
     execute format(
-      'alter policy %I on public.%I to authenticated, dashboard_user, supabase_privileged_role',
+      'alter policy %I on public.%I to authenticated',
       r.policy_name,
       r.table_name
     );
