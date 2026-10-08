@@ -33,7 +33,8 @@ Security-advisor findings still require deliberate review of permissive/public p
 - GitHub repository access is now confirmed with admin/maintain/push permissions.
 - The active `.github/workflows/supabase-production-health.yml` is already pinned to the canonical Supabase project `wvetcauyerlkqvmntajq`.
 - Vercel remains the production deployment platform for the linked `main` branch.
-- CircleCI remains a recovery/release path where configured.
+- GitHub Actions is the production owner for recurring video generation and social publishing.
+- CircleCI is the application build/documentation, Android release, Supabase gate, and English-content lane; it does not run the production video/social worker.
 - Production release certification still requires a successful fresh build/deployment on the intended `main` commit; this document does not claim that certification merely from repository access.
 
 ## Historical references
