@@ -14,6 +14,11 @@ const english = read(".github/workflows/english-content-sync.yml");
 const release = read(".github/workflows/release-finalization.yml");
 const smoke = read(".github/workflows/release-vercel.yml");
 const androidPublish = read(".github/workflows/publish-android-release-assets.yml");
+assert.ok(!androidPublish.includes("branches:\n      - main"), "Android asset publishing must not trigger directly from main");
+assert.ok(androidPublish.includes("workflow_dispatch:"), "Android asset publishing must retain explicit manual recovery");
+assert.ok(androidPublish.includes("inputs.retry"), "Android manual recovery must require an explicit retry input");
+assert.ok(androidPublish.includes("github.ref_type == 'tag'"), "Android publishing must support release tags");
+
 const circle = read(".circleci/config.yml");
 const ownership = read("docs/AUTOMATION_OWNERSHIP_2026-10-08.md");
 const supabaseConfig = read("supabase/config.toml");
