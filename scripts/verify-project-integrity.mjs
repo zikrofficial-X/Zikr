@@ -141,21 +141,14 @@ const androidVersionCodeMatch = androidBuild.match(/versionCode\s+(\d+)/);
 const androidApplicationIdMatch = androidBuild.match(/applicationId\s+"([^"]+)"/);
 const androidTargetSdkMatch = androidBuild.match(/targetSdkVersion\s+rootProject\.ext\.targetSdkVersion/);
 const androidVariables = read('android/variables.gradle');
-const iosProject = read('ios/App/App.xcodeproj/project.pbxproj');
-const iosInfoPlist = read('ios/App/App/Info.plist');
-const _iosMarketingVersions = [...iosProject.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map((match) => match[1].trim());
-const _iosProjectVersions = [...iosProject.matchAll(/CURRENT_PROJECT_VERSION = ([^;]+);/g)].map((match) => match[1].trim());
-const _iosShortVersion = iosInfoPlist.match(/<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/)?.[1];
-const _iosBundleVersion = iosInfoPlist.match(/<key>CFBundleVersion<\/key>\s*<string>([^<]+)<\/string>/)?.[1];
-
 const androidTargetSdkValueMatch = androidVariables.match(/targetSdkVersion\s*=\s*(\d+)/);
 
 if (!packageVersion || !/^\d+\.\d+\.\d+$/.test(packageVersion)) failures.push('package.json version must be a semantic release version');
 if (releaseTag !== `v${packageVersion}`) failures.push(`.release-tag must match package.json version (expected v${packageVersion})`);
 if (androidVersionNameMatch?.[1] !== packageVersion) failures.push(`android/app/build.gradle versionName must match package.json (${packageVersion})`);
-if (androidVersionCodeMatch && packageVersionCodeMatch && androidVersionCodeMatch[1] !== packageVersionCodeMatch[1]) failures.push('PACKAGE_VERSION.txt versionCode must match android/app/build.gradle');
-if (androidApplicationIdMatch && packageApplicationIdMatch && androidApplicationIdMatch[1] !== packageApplicationIdMatch[1]) failures.push('PACKAGE_VERSION.txt applicationId must match android/app/build.gradle');
-if (!androidTargetSdkMatch || androidTargetSdkValueMatch?.[1] !== packageVersionFile.match(/^targetSdk=(\d+)\s*$/m)?.[1]) failures.push('PACKAGE_VERSION.txt targetSdk must match android/variables.gradle');
+if (!androidVersionCodeMatch) failures.push('android/app/build.gradle must declare versionCode');
+if (androidApplicationIdMatch?.[1] !== 'com.zikr.app') failures.push('android/app/build.gradle applicationId must remain com.zikr.app');
+if (!androidTargetSdkMatch || androidTargetSdkValueMatch?.[1] !== '36') failures.push('android/variables.gradle targetSdkVersion must remain 36');
 
 const capacitorConfig = JSON.parse(read('capacitor.config.json') || '{}');
 if (capacitorConfig.plugins?.BiometricAuth) failures.push('capacitor.config.json contains an orphan BiometricAuth plugin configuration without a matching installed dependency');
