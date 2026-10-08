@@ -9,7 +9,7 @@
 | GitHub Actions | Recurring YouTube/Facebook publishing | `publish-social.yml` |
 | GitHub Actions | Controlled Vercel production deployment | `release-finalization.yml` |
 | GitHub Actions | Post-deploy production smoke verification | `release-vercel.yml` |
-| GitHub Actions | Android release tag/draft orchestration | `create-android-release-tag.yml` |
+| Admin Release service | Android release tag/draft orchestration | `src/features/releases/services/github-release-manager.ts` + `/admin/release` |
 | GitHub Actions | Android asset verification/publishing | `publish-android-release-assets.yml` |
 | GitHub Actions | CircleCI configuration validation | `circleci-config-validation.yml` |
 | GitHub Actions | Supabase production health probe | `supabase-production-health.yml` |
