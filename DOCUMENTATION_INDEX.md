@@ -8,16 +8,16 @@
 ## Operations
 
 - [`DEPLOYMENT_CHECKLIST.md`](./DEPLOYMENT_CHECKLIST.md) — production deployment checklist.
-- [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) — common runtime and deployment issues.
-- [`OFFLINE_SUPPORT.md`](./OFFLINE_SUPPORT.md) — offline/PWA behavior.
+- [`TROUBLESHOOTING.md`](./docs/TROUBLESHOOTING.md) — common runtime and deployment issues.
+- [`OFFLINE_SUPPORT.md`](./docs/OFFLINE_SUPPORT.md) — offline/PWA behavior.
 - [`docs/production-scheduling.md`](./docs/production-scheduling.md) — scheduler ownership and recovery jobs.
-- [`docs/background-jobs.md`](./docs/background-jobs.md) — CircleCI background processing runbook.
+- [`docs/background-jobs.md`](./docs/background-jobs.md) — shared worker and production automation runbook.
 
 ## Authentication and data
 
-- [`AUTH_SYSTEM_GUIDE.md`](./AUTH_SYSTEM_GUIDE.md) — Supabase authentication architecture.
-- [`ENABLE_GOOGLE_OAUTH.md`](./ENABLE_GOOGLE_OAUTH.md) — optional Google OAuth setup.
-- [`DATABASE_SCHEMA_INDEX.md`](./DATABASE_SCHEMA_INDEX.md) — schema reference.
+- [`AUTH_SYSTEM_GUIDE.md`](./docs/AUTH_SYSTEM_GUIDE.md) — Supabase authentication architecture.
+- [`ENABLE_GOOGLE_OAUTH.md`](./docs/ENABLE_GOOGLE_OAUTH.md) — optional Google OAuth setup.
+- [`DATABASE_SCHEMA_INDEX.md`](./docs/DATABASE_SCHEMA_INDEX.md) — schema reference.
 - [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — application architecture.
 - [`docs/environment-variables.md`](./docs/environment-variables.md) — environment variable reference.
 
@@ -28,4 +28,4 @@
 - Historical Drizzle migration records may remain inside `supabase/migrations/` because they are part of database history; there is no active Drizzle runtime or schema-migration path.
 - Use `pnpm verify` and `pnpm build` before release.
 
-This index contains only current operational documentation; superseded audit and release records remain in Git history.
+This index contains only current operational documentation; obsolete root audit/deployment snapshots were removed after their findings were incorporated into the active architecture.
