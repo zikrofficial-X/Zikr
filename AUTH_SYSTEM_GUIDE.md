@@ -25,7 +25,7 @@ The browser callback is:
 
 The Google OAuth provider callback is:
 
-`https://nmdeazfmtncelykzxkhs.supabase.co/auth/v1/callback`
+`https://wvetcauyerlkqvmntajq.supabase.co/auth/v1/callback`
 
 These are intentionally different.
 
