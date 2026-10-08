@@ -19,7 +19,9 @@ ZIKR has one authoritative execution owner per production workload. Quran audio 
 
 The Supabase migration `20260915004110_retire_vercel_video_processing_cron.sql` retires the legacy `zikr-video-processing` cron job. The old Vercel route has been deleted and must not be recreated as an alternate scheduler.
 
-Supabase owns minute-level prayer scheduling. GitHub Actions is the authoritative automatic video generation worker and the authoritative social publisher. Video generation runs four times per day; the social publisher polls every 15 minutes. Admin Run Now dispatches the canonical GitHub video workflow directly. CircleCI is reserved for the application build/documentation artifact, Android release builds, Supabase release gates, English content sync, and explicit recovery/release operations.
+Supabase owns minute-level prayer scheduling.
+GitHub Actions is the authoritative automatic video generation worker.
+GitHub Actions is the authoritative automatic social publisher. GitHub Actions is the authoritative automatic video generation worker and the authoritative social publisher. Video generation runs four times per day; the social publisher polls every 15 minutes. Admin Run Now dispatches the canonical GitHub video workflow directly. CircleCI is reserved for the application build/documentation artifact, Android release builds, Supabase release gates, English content sync, and explicit recovery/release operations.
 
 ## Quran audio architecture
 

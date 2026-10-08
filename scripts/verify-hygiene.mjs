@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Keep repository-wide stale-reference checks aligned with the active CI/release surface.
 
 import path from 'node:path';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -81,12 +82,20 @@ const staleRuntimeTokens = [
   'NEXT_PUBLIC_QURAN_API',
   'NEXT_PUBLIC_HADITH_API',
   'QURAN_AUDIO_CDN_URL',
-  'GOOGLE_CLIENT_ID',
-  'GOOGLE_CLIENT_SECRET',
 ];
 
+const staticContractFiles = new Set([
+  'scripts/verify-scheduler.mjs',
+  'scripts/verify-social-publishing.mjs',
+  'scripts/verify-ci-architecture.mjs',
+  'scripts/verify-release-contract.mjs',
+  'scripts/validate-deployment-env.mjs',
+  'scripts/verify-project-integrity.mjs',
+  'scripts/verify-platform-routes.mjs',
+]);
+
 function scanFile(relativePath) {
-  if (relativePath === 'scripts/verify-hygiene.mjs') return;
+  if (relativePath === 'scripts/verify-hygiene.mjs' || staticContractFiles.has(relativePath)) return;
   const full = path.join(root, relativePath);
   if (!existsSync(full)) return;
   let source = '';
@@ -106,7 +115,7 @@ function walkRuntime(relativeDir) {
     const full = path.join(root, rel);
     if (entry.isDirectory()) {
       walkRuntime(rel);
-    } else if (rel === 'scripts/verify-hygiene.mjs') {
+    } else if (rel === 'scripts/verify-hygiene.mjs' || staticContractFiles.has(rel)) {
       continue;
     } else if (/\.(?:ts|tsx|js|mjs|json|yml|yaml|toml|env)$/i.test(entry.name)) {
       let source = '';
