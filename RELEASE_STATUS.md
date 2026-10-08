@@ -28,7 +28,7 @@
 | Social publishing | GitHub Actions — `publish-social.yml` |
 | Production web deploy | GitHub Actions — `release-finalization.yml` |
 | Production smoke verification | GitHub Actions — `release-vercel.yml` |
-| Android release tag/draft | GitHub Actions — `create-android-release-tag.yml` |
+| Android release tag/draft | Admin Release service — `prepareAndroidRelease()` |
 | Android asset verification/publishing | GitHub Actions — `publish-android-release-assets.yml` |
 | Application build/documentation | CircleCI — `application-build-docs` |
 | Android build/signing | CircleCI — `android-rebuild` |
@@ -44,7 +44,7 @@ There is no active CircleCI video/social worker, no Vercel Cron scheduler, and n
 
 The Android release pipeline uses one canonical semantic release tag: `vX.Y.Z`.
 
-`Create Android Release Tag` creates the release tag and a draft GitHub Release after a controlled `[PRODUCTION RELEASE]` commit. CircleCI performs the Android build/signing lane for the release tag. `Publish Android Release Assets` verifies the uploaded artifacts, checksums, signature, manifest, and publishes the GitHub Release.
+The Admin Release page calls `prepareAndroidRelease()`, which updates the canonical release metadata, creates the single semantic Git tag, and opens a draft GitHub Release. CircleCI performs the Android build/signing lane for that tag. `Publish Android Release Assets` verifies the uploaded artifacts, checksums, signature, manifest, and publishes the GitHub Release.
 
 The obsolete `vX.Y.Z-build` parallel lane has been removed to prevent duplicate Android builds.
 
