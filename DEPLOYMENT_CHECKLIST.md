@@ -15,7 +15,7 @@ This checklist reflects the current production architecture. GitHub Actions owns
 | Supabase | Production project is `ACTIVE_HEALTHY`; local and remote migration versions match |
 | Authentication | Supabase redirect URLs and Google OAuth credentials use the canonical production callback `/auth/callback` |
 | Secrets | Service-role, OAuth refresh, provider, VAPID, and scheduler secrets exist only in server-side stores |
-| GitHub Actions | Verification/release/manual-dispatch secrets are configured; no recurring production scheduler lives in GitHub Actions |
+| GitHub Actions | Verification, recurring video generation, social publishing, and release secrets are configured in the protected production environment |
 | CircleCI Android | Android release variables are protected; release branches/tags are used only for release builds |
 
 ## Production automation
@@ -30,11 +30,13 @@ The custom production domain must remain reachable for OAuth callbacks. Non-cust
 
 ## CircleCI
 
-The committed `.circleci/config.yml` owns the external CI/recovery path.
+The committed `.circleci/config.yml` owns the application build/documentation lane and release-specific recovery operations.
 
-- Source verification is owned by GitHub Actions `ZIKR / Quality Gate`; CircleCI `source-verify` is an application-release prerequisite, while `application-build-docs` produces the deployable web build/documentation artifact.
+- Source/architecture verification is owned by GitHub Actions `ZIKR / Quality Gate` on PRs and `main`.
+- CircleCI `source-verify` runs only as a release/Android prerequisite; it does not duplicate the main quality gate.
+- `application-build-docs` produces the certified web build/documentation artifact.
 - Android release runs only for release branches/tags and validates signing material.
-- Recurring video/social and English-content processing are scheduled in CircleCI; `run_background_jobs` remains available for explicit recovery.
+- Video/social production is not executed by CircleCI.
 - Quran audio import is intentionally absent; Quran audio remains externalized.
 - Security audit is opt-in through `run_security_audit`.
 
@@ -75,7 +77,7 @@ For video/social failures, inspect the GitHub Actions worker, queue row state, F
 
 ## Release evidence
 
-Record the deployed commit SHA, Vercel deployment URL and state, CI/worker run identifier, `pnpm verify` output, migration counts, active cron jobs, recent cron results, and any unresolved advisor warnings.
+Record the deployed commit SHA, Vercel deployment URL and state, GitHub worker/release run identifier, CircleCI build artifact identifier, source verification output, migration counts, active cron jobs, recent cron results, and any unresolved advisor warnings.
 
 A deployment is not considered fully validated solely because the Vercel state is `READY`; the smoke checks and scheduler evidence are required as well.
 
