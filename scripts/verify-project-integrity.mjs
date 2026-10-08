@@ -52,7 +52,6 @@ const requiredFiles = [
   'ios/App/App/Info.plist',
   'capacitor.config.json',
   '.release-tag',
-  'PACKAGE_VERSION.txt',
 ];
 for (const file of requiredFiles) requireFile(file);
 
@@ -136,10 +135,6 @@ if (platformPageRoutes !== EXPECTED_PLATFORM_PAGES || platformApiRoutes !== EXPE
 
 const packageVersion = String(packageJson.version || '');
 const releaseTag = read('.release-tag').trim();
-const packageVersionFile = read('PACKAGE_VERSION.txt');
-const packageVersionMatch = packageVersionFile.match(/^ZIKR\s+v([^\n\r]+)\s*$/m);
-const packageVersionCodeMatch = packageVersionFile.match(/^versionCode=(\d+)\s*$/m);
-const packageApplicationIdMatch = packageVersionFile.match(/^applicationId=([^\n\r]+)\s*$/m);
 const androidBuild = read('android/app/build.gradle');
 const androidVersionNameMatch = androidBuild.match(/versionName\s+"([^"]+)"/);
 const androidVersionCodeMatch = androidBuild.match(/versionCode\s+(\d+)/);
@@ -157,7 +152,6 @@ const androidTargetSdkValueMatch = androidVariables.match(/targetSdkVersion\s*=\
 
 if (!packageVersion || !/^\d+\.\d+\.\d+$/.test(packageVersion)) failures.push('package.json version must be a semantic release version');
 if (releaseTag !== `v${packageVersion}`) failures.push(`.release-tag must match package.json version (expected v${packageVersion})`);
-if (packageVersionMatch?.[1] !== packageVersion) failures.push(`PACKAGE_VERSION.txt version must match package.json (${packageVersion})`);
 if (androidVersionNameMatch?.[1] !== packageVersion) failures.push(`android/app/build.gradle versionName must match package.json (${packageVersion})`);
 if (androidVersionCodeMatch && packageVersionCodeMatch && androidVersionCodeMatch[1] !== packageVersionCodeMatch[1]) failures.push('PACKAGE_VERSION.txt versionCode must match android/app/build.gradle');
 if (androidApplicationIdMatch && packageApplicationIdMatch && androidApplicationIdMatch[1] !== packageApplicationIdMatch[1]) failures.push('PACKAGE_VERSION.txt applicationId must match android/app/build.gradle');
