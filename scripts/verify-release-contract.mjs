@@ -35,6 +35,10 @@ assert.ok(androidStorageMigration.includes("ON CONFLICT (id) DO UPDATE"), "Andro
 
 const publish = read(".github/workflows/publish-android-release-assets.yml");
 assert.ok(publish.includes("github.ref_type == 'tag'"), "Android publisher must support semantic release tags");
+assert.ok(publish.includes("'android-release-v*.*.*'"), "Android publisher must recover assets from canonical Android release branches");
+assert.ok(publish.includes("GITHUB_REF_NAME#android-release-"), "Android publisher must map recovery branch names to the exact semantic release tag");
+assert.ok(publish.includes("seq 1 120") && publish.includes("sleep 30"), "Android publisher must wait long enough for CircleCI's signed build to finish");
+assert.ok(publish.includes("--clobber"), "Android publisher must replace stale assets after checksum verification");
 assert.ok(!publish.includes("branches:\n      - main"), "Android publisher must not trigger directly from main");
 assert.ok(publish.includes("EXPECTED_TAG=\"v$(jq -r '.version' package.json)\""), "Android publisher must revalidate tag/version parity");
 assert.ok(publish.includes("com.zikr.app"), "Android publisher must verify the canonical application id");

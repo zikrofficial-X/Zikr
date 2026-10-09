@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - 'v*.*.*'
+    # Also publish verified artifacts for the canonical CircleCI release branch.
+    # This recovers releases whose tag exists but whose Android build previously failed.
+    branches:
+      - 'android-release-v*.*.*'
   workflow_dispatch:
     inputs:
       retry:
@@ -24,6 +28,7 @@ jobs:
     name: Verify and publish Android release
     if: >-
       github.ref_type == 'tag' ||
+      (github.ref_type == 'branch' && startsWith(github.ref_name, 'android-release-v')) ||
       (github.event_name == 'workflow_dispatch' &&
        inputs.retry == true &&
        github.ref == 'refs/heads/main')
@@ -43,6 +48,8 @@ jobs:
           PUBLISH=false
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             PUBLISH=true
+          elif [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" =~ ^android-release-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            PUBLISH=true
           elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${{ inputs.retry }}" == "true" && -f docs/finalization/RELEASE_RETRY.flag ]]; then
             PUBLISH=true
           fi
@@ -55,8 +62,14 @@ jobs:
           set -euo pipefail
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             TAG="${GITHUB_REF_NAME}"
+          elif [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" =~ ^android-release-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            TAG="${GITHUB_REF_NAME#android-release-}"
           else
             TAG="$(tr -d '\r\n' < .release-tag)"
+          fi
+          # The release branch and canonical package/tag metadata must agree.
+          if [[ "${GITHUB_REF_TYPE}" == "branch" ]]; then
+            test "${TAG}" = "$(tr -d '\r\n' < .release-tag)"
           fi
           EXPECTED_TAG="v$(jq -r '.version' package.json)"
           test "$TAG" = "$EXPECTED_TAG"
@@ -81,7 +94,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in $(seq 1 60); do
+          for attempt in $(seq 1 120); do
             if curl -fsSL "$SUPABASE_PUBLIC_BASE/release-metadata.json" -o release-metadata.json \
               && curl -fsSL "$SUPABASE_PUBLIC_BASE/app-release.apk" -o app-release.apk \
               && curl -fsSL "$SUPABASE_PUBLIC_BASE/app-release.aab" -o app-release.aab \
@@ -89,11 +102,11 @@ jobs:
               echo "Android artifacts are available."
               exit 0
             fi
-            echo "Waiting for CircleCI/Supabase artifacts (attempt $attempt/60)..."
+            echo "Waiting for CircleCI/Supabase artifacts (attempt $attempt/120; up to 60 minutes)..."
             rm -f release-metadata.json app-release.apk app-release.aab SHA256SUMS
-            sleep 10
+            sleep 30
           done
-          echo "Timed out waiting for Supabase Android artifacts." >&2
+          echo "Timed out waiting for Supabase Android artifacts after 60 minutes." >&2
           exit 1
 
       - name: Verify release metadata
@@ -159,14 +172,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          existing_assets="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' 2>/dev/null || true)"
-
+          # Replace assets atomically from the checksum-verified build so reruns
+          # cannot silently retain binaries from an older build of the same tag.
           for asset in app-release.apk app-release.aab SHA256SUMS release-metadata.json; do
-            if printf '%s\n' "$existing_assets" | grep -Fxq "$asset"; then
-              echo "Asset already exists in release $TAG: $asset"
-              continue
-            fi
-            gh release upload "$TAG" "$asset" --repo "$GITHUB_REPOSITORY"
+            gh release upload "$TAG" "$asset" --repo "$GITHUB_REPOSITORY" --clobber
           done
 
           gh release edit "$TAG" \
