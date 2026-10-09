@@ -28,6 +28,10 @@ const STARS = [
   [11, 51, 0], [28, 63, 1], [48, 55, 2], [69, 66, 0], [88, 58, 1],
 ] as const;
 
+const ORBS = [
+  [14, 42, 7], [38, 70, 5], [60, 36, 6], [82, 62, 8], [92, 18, 5],
+] as const;
+
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
@@ -59,16 +63,40 @@ export function KidsGameStage({
           <span
             key={String(index)}
             className={
-              type === 2
+              "zk-twinkle " +
+              (type === 2
                 ? "absolute text-lg text-brand-gold/65"
                 : type === 1
                   ? "absolute text-sm text-white/45"
-                  : "absolute text-xs text-white/35"
+                  : "absolute text-xs text-white/35")
             }
-            style={{ left: left + "%", top: top + "%" }}
+            style={
+              {
+                left: left + "%",
+                top: top + "%",
+                "--zk-delay": ((index * 0.37) % 3).toFixed(2) + "s",
+                "--zk-dur": (2.6 + (index % 4) * 0.7).toFixed(1) + "s",
+              } as CSSProperties
+            }
           >
             {type === 2 ? "✦" : type === 1 ? "·" : "•"}
           </span>
+        ))}
+        {ORBS.map(([left, top, size], index) => (
+          <span
+            key={"orb-" + index}
+            className="zk-float absolute rounded-full bg-brand-gold/25 blur-[2px]"
+            style={
+              {
+                left: left + "%",
+                top: top + "%",
+                width: size,
+                height: size,
+                "--zk-delay": (index * 0.9).toFixed(1) + "s",
+                "--zk-dur": (5 + index).toFixed(0) + "s",
+              } as CSSProperties
+            }
+          />
         ))}
         <div className="absolute -left-20 top-10 h-64 w-64 rounded-full bg-brand-gold/8 blur-3xl" />
         <div className="absolute -right-20 bottom-5 h-72 w-72 rounded-full bg-brand-emerald/10 blur-3xl" />
@@ -233,7 +261,7 @@ export function KidCharacter({
             ? "scale-95 rotate-[-8deg] opacity-70"
             : state === "celebrate"
               ? "animate-bounce scale-105"
-              : "";
+              : "zk-breathe";
 
   return (
     <div
@@ -248,9 +276,33 @@ export function KidCharacter({
         <circle cx="48" cy="35" r="23" fill="#f5cfad" />
         <path d="M28 33c1-17 11-27 27-27 11 0 20 6 24 19-8-5-15-7-23-7-9 0-17 5-28 15z" fill={scarf} />
         <path d="M65 17c7 6 11 13 11 23-3 4-7 7-11 8 4-8 4-18 0-31z" fill={scarf} opacity=".92" />
-        <circle cx="41" cy="36" r="2.6" fill="#18303a" />
-        <circle cx="55" cy="36" r="2.6" fill="#18303a" />
-        <path d="M42 48c4 4 8 4 12 0" fill="none" stroke="#8f5f53" strokeWidth="2.5" strokeLinecap="round" />
+        <circle cx="34" cy="43" r="4.2" fill="#ff8f8f" opacity=".28" />
+        <circle cx="62" cy="43" r="4.2" fill="#ff8f8f" opacity=".28" />
+        {state === "celebrate" ? (
+          <>
+            <path d="M37 37q4-6 8 0M51 37q4-6 8 0" fill="none" stroke="#18303a" strokeWidth="2.6" strokeLinecap="round" />
+            <path d="M40 46q8 11 16 0z" fill="#8f3f46" stroke="#8f5f53" strokeWidth="1.6" strokeLinejoin="round" />
+          </>
+        ) : (
+          <>
+            <g className="zk-blink">
+              <circle cx="41" cy="36" r="2.9" fill="#18303a" />
+              <circle cx="55" cy="36" r="2.9" fill="#18303a" />
+              <circle cx="42" cy="35" r="1" fill="#fff" />
+              <circle cx="56" cy="35" r="1" fill="#fff" />
+            </g>
+            {state === "think" && (
+              <path d="M36 30q5-3 9 0M51 30q4-3 9 0" fill="none" stroke="#18303a" strokeWidth="1.8" strokeLinecap="round" />
+            )}
+            {state === "hit" || state === "fall" ? (
+              <ellipse cx="48" cy="50" rx="3.2" ry="3.8" fill="#8f3f46" />
+            ) : state === "think" ? (
+              <path d="M44 49h8" fill="none" stroke="#8f5f53" strokeWidth="2.5" strokeLinecap="round" />
+            ) : (
+              <path d="M42 48c4 4 8 4 12 0" fill="none" stroke="#8f5f53" strokeWidth="2.5" strokeLinecap="round" />
+            )}
+          </>
+        )}
         <path d="M22 72c-10 5-14 13-9 19 5 6 13-1 21-10" fill="none" stroke={body} strokeWidth="10" strokeLinecap="round" />
         <path d="M74 72c10 5 14 13 9 19-5 6-13-1-21-10" fill="none" stroke={body} strokeWidth="10" strokeLinecap="round" />
         <path d="M34 91c-2 8-7 12-12 12M62 91c2 8 7 12 12 12" fill="none" stroke="#21353d" strokeWidth="7" strokeLinecap="round" />
@@ -260,6 +312,7 @@ export function KidCharacter({
           <>
             <path d="M12 26l10-5M84 26l-10-5M14 48l-9 0M82 48l9 0" stroke="#f3c969" strokeWidth="3" strokeLinecap="round" />
             <path d="M18 8l5 8M78 8l-5 8" stroke="#5fd1a6" strokeWidth="3" strokeLinecap="round" />
+            <path d="M8 40l2 4 4 2-4 2-2 4-2-4-4-2 4-2zM88 40l2 4 4 2-4 2-2 4-2-4-4-2 4-2z" fill="#fff4cb" className="zk-twinkle" />
           </>
         )}
       </svg>
@@ -279,6 +332,21 @@ export function MosqueBackdrop({ compact = false }: { compact?: boolean }) {
         <div className="absolute bottom-16 right-[8%] h-40 w-10 rounded-t-full bg-[#0b202a] border border-brand-gold/10" />
         <div className="absolute bottom-40 left-1/2 h-32 w-56 -translate-x-1/2 rounded-t-full bg-[#0b202a] border border-brand-gold/10" />
         <div className="absolute bottom-[8.75rem] left-1/2 h-5 w-5 -translate-x-1/2 rounded-full border-2 border-brand-gold/55" />
+        <span className="absolute bottom-[14.4rem] left-[17.6%] text-sm leading-none text-brand-gold/70">☪&#xFE0E;</span>
+        <span className="absolute bottom-[14.4rem] right-[9.6%] text-sm leading-none text-brand-gold/70">☪&#xFE0E;</span>
+        {[[19, 9.2], [19, 11.4], [10, 13.6], [88, 9.2], [88, 11.4], [47, 17.4], [53, 17.4]].map(([left, bottom], index) => (
+          <span
+            key={"window-" + index}
+            className="zk-glow absolute h-3 w-2 rounded-t-full bg-brand-gold/70"
+            style={
+              {
+                left: left + "%",
+                bottom: bottom + "rem",
+                "--zk-delay": (index * 0.6).toFixed(1) + "s",
+              } as CSSProperties
+            }
+          />
+        ))}
       </div>
     </div>
   );

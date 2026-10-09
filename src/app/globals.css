@@ -319,6 +319,39 @@ html.capacitor-native .animate-slideUp {
   animation: none;
 }
 
+/* Kids games: gentle ambient motion. Everything below is disabled for users
+   who prefer reduced motion and on the native shell. */
+@keyframes zkTwinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+@keyframes zkFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes zkBlink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+@keyframes zkBreathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+@keyframes zkGlow {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+.zk-twinkle { animation: zkTwinkle var(--zk-dur, 3.2s) ease-in-out infinite; animation-delay: var(--zk-delay, 0s); }
+.zk-float { animation: zkFloat var(--zk-dur, 5s) ease-in-out infinite; animation-delay: var(--zk-delay, 0s); }
+.zk-blink { transform-box: fill-box; transform-origin: center; animation: zkBlink 4.4s ease-in-out infinite; }
+.zk-breathe { transform-origin: 50% 100%; animation: zkBreathe 3.6s ease-in-out infinite; }
+.zk-glow { animation: zkGlow var(--zk-dur, 3.8s) ease-in-out infinite; animation-delay: var(--zk-delay, 0s); }
+@media (prefers-reduced-motion: reduce) {
+  .zk-twinkle, .zk-float, .zk-blink, .zk-breathe, .zk-glow { animation: none; }
+}
+html.capacitor-native .zk-float,
+html.capacitor-native .zk-breathe { animation: none; }
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
