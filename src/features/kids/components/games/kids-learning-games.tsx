@@ -69,7 +69,19 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
 
   const meta = getKidsLevelMeta("zikr-memory", difficulty, levelIndex);
   const pairTarget = Math.max(2, Math.min(pairs.length, (difficulty === "easy" ? 3 : difficulty === "normal" ? 4 : 5) + (levelIndex % 2)));
-  const chosenPairs = useMemo(() => seededShuffle(pairs, String(meta.seed)).slice(0, pairTarget), [meta.seed, pairTarget, pairs]);
+  const chosenPairs = useMemo(() => {
+    // Two different situations can share the same dhikr text (e.g. after food / after sneezing).
+    // Keep only one of them per board so identical-looking cards never need different partners.
+    const seenDhikr = new Set<string>();
+    return seededShuffle(pairs, String(meta.seed))
+      .filter(pair => {
+        const key = pair.dhikr.trim();
+        if (seenDhikr.has(key)) return false;
+        seenDhikr.add(key);
+        return true;
+      })
+      .slice(0, pairTarget);
+  }, [meta.seed, pairTarget, pairs]);
   const cards = useMemo<MemoryCard[]>(() => {
     const base = chosenPairs.flatMap(pair => [
       { id: pair.id + ":s", pairId: pair.id, side: "situation" as const, text: pair.situation },

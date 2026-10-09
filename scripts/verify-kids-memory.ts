@@ -33,4 +33,10 @@ for (const level of REQUIRED_DIFFICULTIES) {
   }
 }
 
+// Boards never show two pairs with identical dhikr text, so the unique-text pool must cover the largest board.
+const uniqueDhikr = new Set(pairs.map(pair => pair.dhikr.trim())).size;
+if (uniqueDhikr < 6) {
+  throw new Error(`ZIKR Memory needs at least 6 unique dhikr texts for the largest board; found ${uniqueDhikr}.`);
+}
+
 console.log(`ZIKR Memory content check passed: ${pairs.length} verified pairs.`);
