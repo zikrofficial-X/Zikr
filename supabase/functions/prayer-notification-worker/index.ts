@@ -646,6 +646,16 @@ async function deliverDue(
   return { sent, failed, deactivated };
 }
 
+function constantTimeEqual(left: string, right: string) {
+  const encoder = new TextEncoder();
+  const a = encoder.encode(left);
+  const b = encoder.encode(right);
+  let diff = a.length ^ b.length;
+  const length = Math.max(a.length, b.length);
+  for (let i = 0; i < length; i += 1) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
+  return diff === 0;
+}
+
 Deno.serve(async request => {
   if (request.method !== "POST")
     return json({ error: "Method not allowed" }, 405);
@@ -657,7 +667,7 @@ Deno.serve(async request => {
     }
     const supplied =
       request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
-    if (!supplied || supplied !== expected.data)
+    if (!supplied || !constantTimeEqual(supplied, expected.data))
       return json({ error: "Unauthorized" }, 401);
 
     const now = new Date();
