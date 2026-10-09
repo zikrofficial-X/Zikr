@@ -84,7 +84,7 @@ jobs:
           set -euo pipefail
           # CircleCI is the signing authority. Do not wait for artifacts when its
           # matching android-rebuild status has already failed.
-          for attempt in $(seq 1 80); do
+          for attempt in $(seq 1 240); do
             status="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status" \
               --jq '.statuses | map(select(.context == "ci/circleci: android-rebuild")) | sort_by(.updated_at) | (last // {}) | .state // ""' 2>/dev/null || true)"
             case "${status}" in
@@ -97,7 +97,7 @@ jobs:
                 exit 1
                 ;;
               pending|"")
-                echo "Waiting for CircleCI Android build status (attempt ${attempt}/80)..."
+                echo "Waiting for CircleCI Android build status (attempt ${attempt}/240)..."
                 ;;
               *)
                 echo "Unknown CircleCI status '${status}' (attempt ${attempt}/80); refusing to publish without success."
@@ -105,14 +105,14 @@ jobs:
             esac
             sleep 15
           done
-          echo "::error title=CircleCI Android build status unavailable::No successful CircleCI android-rebuild status was observed for ${GITHUB_SHA} within 20 minutes."
+          echo "::error title=CircleCI Android build status unavailable::No successful CircleCI android-rebuild status was observed for ${GITHUB_SHA} within 60 minutes."
           exit 1
 
       - name: Install Android SDK
         if: steps.gate.outputs.publish == 'true'
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
       - name: Install Java 21
         if: steps.gate.outputs.publish == 'true'
@@ -153,6 +153,23 @@ jobs:
           test "$(jq -r .applicationId release-metadata.json)" = "com.zikr.app"
           test "$(jq -r .targetSdk release-metadata.json)" = "36"
           grep -F "${TAG}" .release-tag
+          SOURCE_COMMIT="$(jq -r '.sourceCommit // empty' release-metadata.json)"
+          if [[ ! "${SOURCE_COMMIT}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error title=Invalid Android artifact provenance::Release metadata is missing a valid source commit." >&2
+            exit 1
+          fi
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            source_status="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${SOURCE_COMMIT}/status" --jq '.statuses | map(select(.context == "ci/circleci: android-rebuild")) | sort_by(.updated_at) | (last // {}) | .state // ""' 2>/dev/null || true)"
+            if [[ "${source_status}" != "success" ]]; then
+              echo "::error title=Unverified Android artifact source::The metadata source commit has no successful CircleCI android-rebuild status." >&2
+              exit 1
+            fi
+          else
+            test "${SOURCE_COMMIT}" = "${GITHUB_SHA}" || {
+              echo "::error title=Stale Android release artifacts::Artifact source commit does not match the exact release ref commit." >&2
+              exit 1
+            }
+          fi
 
       - name: Verify checksums
         if: steps.gate.outputs.publish == 'true'
@@ -169,13 +186,15 @@ jobs:
         run: |
           set -euo pipefail
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
-          APKANALYZER="$(find "$ANDROID_HOME" -type f -name apkanalyzer | sort -V | tail -1)"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
           test -n "$APKSIGNER"
-          test -n "$APKANALYZER"
+          test -x "$AAPT"
           "$APKSIGNER" verify --verbose app-release.apk
-          "$APKANALYZER" manifest application-id app-release.apk | grep -Fx 'com.zikr.app'
-          "$APKANALYZER" manifest version-name app-release.apk | grep -Fx "${TAG#v}"
-          "$APKANALYZER" manifest target-sdk app-release.apk | grep -Fx '36'
+          BADGING="$("$AAPT" dump badging app-release.apk)"
+          PACKAGE_LINE="$(printf '%s\n' "$BADGING" | grep -m1 '^package:')"
+          printf '%s\n' "$PACKAGE_LINE" | grep -F "name='com.zikr.app'"
+          printf '%s\n' "$PACKAGE_LINE" | grep -F "versionName='${TAG#v}'"
+          printf '%s\n' "$BADGING" | grep -Fx "targetSdkVersion:'36'"
 
       - name: Verify signed AAB
         if: steps.gate.outputs.publish == 'true'

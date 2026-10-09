@@ -42,10 +42,15 @@ assert.ok(publish.includes("--clobber"), "Android publisher must replace stale a
 assert.ok(publish.includes("statuses: read"), "Android publisher must be able to inspect CircleCI status");
 assert.ok(publish.includes('select(.context == "ci/circleci: android-rebuild")'), "Android publisher must inspect the canonical Android build status");
 assert.ok(publish.includes("failure|error"), "Android publisher must stop promptly when the signed build fails");
-assert.ok(publish.includes("within 20 minutes"), "Android publisher must bound CircleCI status preflight");
+assert.ok(publish.includes("seq 1 240") && publish.includes("sleep 15") && publish.includes("within 60 minutes"), "Android publisher must allow up to 60 minutes for CircleCI status preflight");
+assert.ok(publish.includes('AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"'), "Android publisher must verify the APK manifest with JAXB-independent aapt");
+assert.ok(!publish.includes("apkanalyzer"), "Android publisher must not use JAXB-dependent APK Analyzer with Java 21");
 assert.ok(!publish.includes("branches:\n      - main"), "Android publisher must not trigger directly from main");
 assert.ok(publish.includes("EXPECTED_TAG=\"v$(jq -r '.version' package.json)\""), "Android publisher must revalidate tag/version parity");
 assert.ok(publish.includes("com.zikr.app"), "Android publisher must verify the canonical application id");
+assert.ok(publish.includes(".sourceCommit"), "Android publisher must validate the artifact source commit");
+assert.ok(publish.includes('test "${SOURCE_COMMIT}" = "${GITHUB_SHA}"'), "Tag and branch publication must use artifacts from the exact release commit");
+assert.ok(publish.includes("source_status") && publish.includes("ci/circleci: android-rebuild"), "Manual retry must validate CircleCI success for the artifact source commit");
 assert.ok(publish.includes("SHA256SUMS"), "Android publisher must verify and publish checksums");
 assert.ok(publish.includes("release-metadata.json"), "Android publisher must verify and publish release metadata");
 assert.ok(publish.includes('gh release edit "$TAG"'), "Android publisher must finalize the GitHub release");
@@ -57,6 +62,8 @@ assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_URL: https://wvetcauyerlkqvm
 assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY:"), "Android job must declare the public Supabase anon key required by preflight");
 assert.ok(androidJob.includes("SUPABASE_URL: https://wvetcauyerlkqvmntajq.supabase.co"), "Android job must pin the canonical Supabase project URL");
 assert.ok(androidJob.includes("SUPABASE_SERVICE_ROLE_KEY"), "Android job must validate the protected Supabase service-role key");
+const releaseWorkflow = circle.split("workflows:\n")[1] ?? "";
+assert.ok(releaseWorkflow.includes("- android-rebuild:\n          requires:\n            - source-verify\n            - supabase-production-gate"), "Signed Android build must wait for both source validation and Supabase production preflight");
 assert.ok(circle.includes("ANDROID_KEYSTORE_BASE64"), "Android release must require protected signing material");
 assert.ok(circle.includes("Detected Android versionName"), "Android release must validate the generated version");
 assert.ok(circle.includes('"$AAPT" dump badging "$APK"'), "Android release must inspect APK metadata with JAXB-independent aapt");
