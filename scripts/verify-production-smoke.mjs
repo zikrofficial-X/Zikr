@@ -49,7 +49,7 @@ const CORE_CHECKS = [
   { path: "/", label: "homepage", expectedMain: /ذِكر/i },
   { path: "/quran", label: "Quran page", expectedMain: /القرآن/i },
   { path: "/prayer-times", label: "prayer times page", expectedMain: /مواقيت/i },
-  { path: "/kids", label: "kids page", expectedMain: /الأطفال/i },
+  { path: "/kids", label: "kids page", expectedMain: /نتعلم|الأطفال|الاطفال/i },
 ];
 
 const ROUTE_CHECKS = PUBLIC_ROUTES
@@ -80,10 +80,19 @@ function mainTextFrom(html) {
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
     .replace(/<!--[\s\S]*?-->/g, " ");
-  const match = withoutNonContent.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
-  return extractText(match?.[1] ?? withoutNonContent);
+  // Next.js can stream Suspense fallbacks as the first <main>, then emit the
+  // actual route content in hidden stream segments outside that main block.
+  const mainTexts = [...withoutNonContent.matchAll(/<main\b[^>]*>([\s\S]*?)<\/main>/gi)]
+    .map((match) => extractText(match[1]))
+    .sort((left, right) => right.length - left.length);
+  const bestMain = mainTexts[0] ?? "";
+  if (bestMain.length >= 35 && !/^(?:جاري التحميل(?:\.\.\.)?|loading(?:\.\.\.)?)$/i.test(bestMain.trim())) {
+    return bestMain;
+  }
+  // When all main blocks are temporary loading shells, fall back to the HTML
+  // outside scripts/styles so completed streamed segments still count as route content.
+  return extractText(withoutNonContent);
 }
-
 async function checkEndpoint(check) {
   const url = `${baseUrl}${check.path}`;
   let last = "no response";

@@ -171,4 +171,8 @@ const duaPage = read("src/app/dua/page.tsx");
 assert.ok(duaPage.includes('{isEnglish ? "Islamic Duas" : "الأدعية الإسلامية"}'), "Dua hero heading must respect the selected language");
 const articlesPage = read("src/app/articles/page.tsx");
 assert.ok(articlesPage.includes('{isEnglish ? "Islamic Articles" : "المقالات الإسلامية"}'), "Articles hero heading must respect the selected language");
+assert.ok(productionSmoke.includes("sort((left, right) => right.length - left.length)"), "Production smoke must select substantive content over a streamed loading fallback");
+assert.ok(productionSmoke.includes("return extractText(withoutNonContent);"), "Production smoke must account for streamed content emitted outside the first main block");
+assert.ok(productionSmoke.includes("bestMain.length >= 35"), "Production smoke must use full document text when the main element is only a streaming fallback");
+assert.ok(productionSmoke.includes("expectedMain: /نتعلم|الأطفال|الاطفال/i"), "Kids smoke check must accept the actual localized page title");
 console.log("✅ CI/CD architecture checks passed");
