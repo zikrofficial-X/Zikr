@@ -28,7 +28,7 @@ requireRegex(types, /quran_audio\s*:\s*\{[\s\S]{0,6000}?reciter_id:\s*string \| 
 requireRegex(types, /quran_audio\s*:\s*\{[\s\S]{0,6000}?audio_url:\s*string \| null/i, "quran_audio.audio_url generated type contract");
 
 const kidsGameHardening = readFileSync(
-  path.join(migrationsDir, "20261009090000_kids_games_client_write_hardening.sql"),
+  path.join(migrationsDir, "20261009054919_kids_games_client_write_hardening_20261009.sql"),
   "utf8",
 );
 requireRegex(kidsGameHardening, /REVOKE ALL PRIVILEGES[\s\S]*FROM PUBLIC, anon, authenticated/i, "kids game client write revocation");
