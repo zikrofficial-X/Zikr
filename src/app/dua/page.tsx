@@ -38,7 +38,7 @@ export default async function DuaPage() {
     <Container className="py-12 space-y-10" dir={isEnglish ? "ltr" : "rtl"}>
       {/* Hero */}
       <section className="text-center space-y-4">
-        <h1 className="text-4xl font-bold text-brand-gold text-balance">الأدعية الإسلامية</h1>
+        <h1 className="text-4xl font-bold text-brand-gold text-balance">{isEnglish ? "Islamic Duas" : "الأدعية الإسلامية"}</h1>
         <p className="max-w-2xl mx-auto text-lg leading-8 arabic-muted text-pretty">
           {isEnglish ? "A broad collection of Quranic, Prophetic, and authentic supplications for different occasions." : "مجموعة شاملة من الأدعية القرآنية والنبوية والمأثورة لمختلف المناسبات"}
         </p>

@@ -4,15 +4,9 @@ name: ZIKR Quality Gate
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
   push:
     branches:
       - main
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
   workflow_dispatch:
 
 permissions:

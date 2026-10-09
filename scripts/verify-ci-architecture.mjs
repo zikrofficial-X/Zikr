@@ -113,4 +113,62 @@ for (const file of [
   );
 }
 
+
+assert.ok(!quality.includes("paths-ignore:"), "Markdown/content-only changes must not bypass the canonical quality gate");
+
+const productionSmoke = read("scripts/verify-production-smoke.mjs");
+for (const route of [
+  "/",
+  "/about",
+  "/contact",
+  "/editorial-policy",
+  "/faq",
+  "/privacy",
+  "/terms",
+  "/quran",
+  "/hadith",
+  "/adhkar",
+  "/dua",
+  "/duas",
+  "/stories",
+  "/prophets",
+  "/companions",
+  "/scholars",
+  "/battles",
+  "/conquests",
+  "/articles",
+  "/videos",
+  "/audio",
+  "/radio",
+  "/reciters",
+  "/poetry",
+  "/memorization",
+  "/kids",
+  "/prayer-times",
+  "/qibla",
+  "/spiritual-ai",
+  "/tafsir",
+  "/tasbeeh",
+  "/tawasheeh",
+  "/wird",
+  "/zakat",
+  "/youtube",
+  "/search",
+  "/sections",
+  "/knowledge",
+  "/library",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/sitemap-index.xml",
+]) {
+  assert.ok(
+    productionSmoke.includes(`"${route}"`),
+    `Production smoke must cover ${route}`,
+  );
+}
+
+const duaPage = read("src/app/dua/page.tsx");
+assert.ok(duaPage.includes('{isEnglish ? "Islamic Duas" : "الأدعية الإسلامية"}'), "Dua hero heading must respect the selected language");
+const articlesPage = read("src/app/articles/page.tsx");
+assert.ok(articlesPage.includes('{isEnglish ? "Islamic Articles" : "المقالات الإسلامية"}'), "Articles hero heading must respect the selected language");
 console.log("✅ CI/CD architecture checks passed");

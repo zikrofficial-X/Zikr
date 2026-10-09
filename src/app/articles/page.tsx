@@ -41,7 +41,7 @@ export default async function ArticlesPage() {
   return (
     <Container className="py-12 space-y-10" dir={isEnglish ? "ltr" : "rtl"}>
       <section className="text-center space-y-4">
-        <h1 className="text-4xl font-bold text-brand-gold text-balance">المقالات الإسلامية</h1>
+        <h1 className="text-4xl font-bold text-brand-gold text-balance">{isEnglish ? "Islamic Articles" : "المقالات الإسلامية"}</h1>
         <p className="max-w-2xl mx-auto text-lg leading-8 arabic-muted text-pretty">
           {isEnglish ? "An editorially reviewed article library with one data source shared between the admin area and public site." : "مكتبة مقالات تحريرية قابلة للمراجعة والتحقق، مع مصدر واحد للبيانات بين لوحة الإدارة والواجهة العامة."}
         </p>
