@@ -11,6 +11,7 @@ import { getGoodDeedsRules } from "../../src/lib/games/good-deeds";
 import { getMosqueCleanupRules } from "../../src/lib/games/mosque-cleanup";
 import { getZikrColoringRules } from "../../src/lib/games/zikr-coloring";
 import { normalizeKidsGameSearch } from "../../src/lib/games/search";
+import { gameKeyAction } from "../../src/lib/games/gameplay-helpers";
 
 const gameIds = Object.keys(GAME_REGISTRY) as GameId[];
 assert.equal(gameIds.length, 12, "canonical Kids registry must contain exactly 12 games");
@@ -71,5 +72,14 @@ for (const path of [
 ]) {
   assert.equal(existsSync(path), true, "required Kids runtime contract missing: " + path);
 }
+
+// Controls must work on Arabic keyboard layouts, where event.key is not the Latin letter.
+assert.equal(gameKeyAction({ code: "KeyA", key: "ش" }), "left", "A must move left on an Arabic layout");
+assert.equal(gameKeyAction({ code: "KeyD", key: "ي" }), "right", "D must move right on an Arabic layout");
+assert.equal(gameKeyAction({ code: "KeyW", key: "ص" }), "up", "W must move up on an Arabic layout");
+assert.equal(gameKeyAction({ code: "KeyS", key: "س" }), "down", "S must move down on an Arabic layout");
+assert.equal(gameKeyAction({ code: "Space", key: " " }), "jump", "Space must jump");
+assert.equal(gameKeyAction({ key: "ArrowLeft" }), "left", "arrow keys work without a code");
+assert.equal(gameKeyAction({ code: "KeyQ", key: "q" }), null, "unmapped keys do nothing");
 
 console.log("✅ Phase 21 test suite passed: registry, difficulty matrix, deterministic levels, runtime rules, XP bounds and production gate wiring.");

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
+import { gameKeyAction } from "@/lib/games/gameplay-helpers";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
 import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
 import { KidsGameWorld } from "@/features/kids/components/games/kids-game-visuals";
@@ -154,24 +155,24 @@ export function ZikrJumpGame({
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      if (key === "arrowleft" || key === "a") {
+      const action = gameKeyAction(event);
+      if (action === "left") {
         inputRef.current.left = true;
         event.preventDefault();
       }
-      if (key === "arrowright" || key === "d") {
+      if (action === "right") {
         inputRef.current.right = true;
         event.preventDefault();
       }
-      if (key === " " || key === "arrowup" || key === "w") {
+      if (action === "jump" || action === "up") {
         inputRef.current.jump = true;
         event.preventDefault();
       }
     };
     const up = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      if (key === "arrowleft" || key === "a") inputRef.current.left = false;
-      if (key === "arrowright" || key === "d") inputRef.current.right = false;
+      const action = gameKeyAction(event);
+      if (action === "left") inputRef.current.left = false;
+      if (action === "right") inputRef.current.right = false;
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -563,20 +564,20 @@ export function HilalFlyGame({
 
   useEffect(() => {
     const keyDown = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      if (key === "arrowup" || key === "w") {
+      const action = gameKeyAction(event);
+      if (action === "up") {
         inputRef.current.up = true;
         event.preventDefault();
       }
-      if (key === "arrowdown" || key === "s") {
+      if (action === "down") {
         inputRef.current.down = true;
         event.preventDefault();
       }
     };
     const keyUp = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      if (key === "arrowup" || key === "w") inputRef.current.up = false;
-      if (key === "arrowdown" || key === "s") inputRef.current.down = false;
+      const action = gameKeyAction(event);
+      if (action === "up") inputRef.current.up = false;
+      if (action === "down") inputRef.current.down = false;
     };
     window.addEventListener("keydown", keyDown);
     window.addEventListener("keyup", keyUp);

@@ -24,6 +24,7 @@ import {
   type VerifiedQuizQuestion,
 } from "@/lib/games/verified-content";
 import { getZikrRoadRules } from "@/lib/games/zikr-road";
+import { gameKeyAction } from "@/lib/games/gameplay-helpers";
 
 export type ActionGameProps = {
   difficulty: GameDifficulty;
@@ -177,7 +178,8 @@ export function ZikrRunnerGame({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === " " || event.key === "ArrowUp" || event.key.toLowerCase() === "w") {
+      const action = gameKeyAction(event);
+      if (action === "jump" || action === "up") {
         event.preventDefault();
         requestJump();
       }
@@ -664,11 +666,12 @@ export function ZikrRoadGame({
 
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") {
+      const action = gameKeyAction(event);
+      if (action === "left") {
         event.preventDefault();
         move(-1);
       }
-      if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") {
+      if (action === "right") {
         event.preventDefault();
         move(1);
       }
