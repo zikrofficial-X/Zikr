@@ -437,6 +437,14 @@ jobs:
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
             test -s "$APK"
             test -s "$AAB"
+            MAX_STORAGE_OBJECT_BYTES=52428800
+            for artifact in "$APK" "$AAB"; do
+              size_bytes="$(stat -c '%s' "$artifact")"
+              if (( size_bytes > MAX_STORAGE_OBJECT_BYTES )); then
+                echo "Artifact exceeds the 50 MiB Supabase Free-tier upload limit: $artifact ($size_bytes bytes)." >&2
+                exit 1
+              fi
+            done
             APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
             # aapt reads APK manifest metadata without relying on APK Analyzer/JAXB.
             AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"

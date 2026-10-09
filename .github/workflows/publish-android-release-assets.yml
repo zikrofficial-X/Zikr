@@ -176,6 +176,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          MAX_STORAGE_OBJECT_BYTES=52428800
+          for artifact in app-release.apk app-release.aab; do
+            size_bytes="$(stat -c '%s' "$artifact")"
+            if (( size_bytes > MAX_STORAGE_OBJECT_BYTES )); then
+              echo "::error title=Artifact exceeds Supabase Free-tier limit::$artifact is larger than 50 MiB ($size_bytes bytes)." >&2
+              exit 1
+            fi
+          done
           sha256sum -c SHA256SUMS
           test "$(jq -r .apkSha256 release-metadata.json)" = "$(sha256sum app-release.apk | awk '{print $1}')"
           test "$(jq -r .aabSha256 release-metadata.json)" = "$(sha256sum app-release.aab | awk '{print $1}')"

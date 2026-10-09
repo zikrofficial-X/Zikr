@@ -70,5 +70,5 @@ verify_jwt = false
 # Public downloads for verified Android releases; uploads remain service-role only.
 [storage.buckets.android-releases]
 public = true
-file_size_limit = "512MiB"
+file_size_limit = "50MiB"
 allowed_mime_types = ["application/vnd.android.package-archive", "application/octet-stream", "text/plain", "application/json"]

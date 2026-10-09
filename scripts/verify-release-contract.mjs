@@ -28,10 +28,14 @@ assert.ok(!releaseManager.includes("buildTag"), "Android release manager must no
 
 const supabaseConfig = read("supabase/config.toml");
 const androidStorageMigration = read("supabase/migrations/20261009145051_android_releases_storage_bucket.sql");
-assert.ok(supabaseConfig.includes("[storage.buckets.android-releases]"), "Supabase config must declare the canonical Android release bucket");
-assert.ok(supabaseConfig.includes('file_size_limit = "512MiB"'), "Android release bucket must allow expected APK/AAB artifacts");
+const androidStorageLimitMigration = read("supabase/migrations/20261009180000_android_release_bucket_free_tier_limit.sql");
+assert.ok(supabaseConfig.includes("[storage]\nenabled = true\nfile_size_limit = \"50MiB\""), "The project-wide Supabase Free-tier upload limit must remain 50 MiB");
+const androidBucketConfig = supabaseConfig.split("[storage.buckets.android-releases]")[1] ?? "";
+assert.ok(androidBucketConfig.includes('file_size_limit = "50MiB"'), "Android release bucket must not exceed the project-wide Free-tier upload limit");
 assert.ok(androidStorageMigration.includes("'android-releases'"), "A production migration must provision the Android release bucket");
 assert.ok(androidStorageMigration.includes("ON CONFLICT (id) DO UPDATE"), "Android release bucket migration must be safe to re-apply");
+assert.ok(androidStorageLimitMigration.includes("SET file_size_limit = 52428800"), "A forward migration must align the already-applied Android bucket limit with Supabase Free tier");
+assert.ok(androidStorageLimitMigration.includes("WHERE id = 'android-releases'"), "The bucket limit repair must target only the Android release bucket");
 
 const publish = read(".github/workflows/publish-android-release-assets.yml");
 assert.ok(publish.includes("github.ref_type == 'tag'"), "Android publisher must support semantic release tags");

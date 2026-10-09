@@ -33,3 +33,10 @@
 - The CircleCI configuration parses and always selects the lightweight fallback workflow.
 - A fresh Supabase Preview successfully applies the migration chain.
 - Production remains unchanged until an explicitly reviewed release migration is run.
+
+## Follow-up diagnosis — Android release bucket 413 (2026-10-09)
+
+- The later `Supabase Preview` 413 was not the already-fixed oversized Quran migration. The Supabase workflow log showed `All migrations are up to date`, then `Updating Storage bucket... bucket_id=android-releases`, immediately followed by HTTP 413 `EntityTooLarge`.
+- The connected Supabase organization is on the Free plan. The project-wide `storage.file_size_limit` is 50 MiB, but the `android-releases` bucket was declared at 512 MiB. The current verified APK/AAB objects are 36,939,736 bytes and 31,872,484 bytes, both below 50 MiB.
+- The fix is to align the bucket configuration to 50 MiB and add a new forward-only migration to reduce the already-applied bucket limit. Historical migration `20261009145051` is intentionally unchanged.
+- CircleCI and GitHub Actions now have explicit size checks so future signed APK/AAB uploads fail with a clear message before the Supabase upload request.
