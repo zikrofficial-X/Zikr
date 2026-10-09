@@ -24,13 +24,15 @@ pnpm ci:build:report
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the public anon key; it is not a service-role secret)
 - `SUPABASE_URL=https://wvetcauyerlkqvmntajq.supabase.co`
 
-The following values must exist in CircleCI before the Android job starts. The current `android-rebuild` job does not attach a CircleCI `context:`; therefore, keep these as project environment variables unless you deliberately add the exact existing context name to the job configuration:
+The following values must be available before the Android job starts:
 
-- `SUPABASE_SERVICE_ROLE_KEY` (required only for the server-side asset upload and `android_release` site-setting update)
-- `ANDROID_KEYSTORE_BASE64`
-- `ANDROID_KEYSTORE_PASSWORD`
-- `ANDROID_KEY_ALIAS`
-- `ANDROID_KEY_PASSWORD`
+- `SUPABASE_SERVICE_ROLE_KEY` — CircleCI project environment variable (required for the server-side asset upload and `android_release` site-setting update)
+- `ANDROID_KEYSTORE_BASE64` — CircleCI context `android-signing`
+- `ANDROID_KEYSTORE_PASSWORD` — CircleCI context `android-signing`
+- `ANDROID_KEY_ALIAS` — CircleCI context `android-signing`
+- `ANDROID_KEY_PASSWORD` — CircleCI context `android-signing`
+
+The `android-rebuild` workflow attaches the `android-signing` context so CircleCI can inject the four protected signing variables. The context must exist in the CircleCI organization and be authorized for this project before the release workflow is run. Keep signing material and service-role credentials out of the repository.
 
 The job fails early and lists the missing variable names without printing their values. Do not move the signing material or service-role key into the repository or a public workflow file.
 
