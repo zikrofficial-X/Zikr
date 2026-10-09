@@ -27,6 +27,16 @@ requireRegex(migrations, /quran_audio[\s\S]{0,1200}audio_url/i, "quran_audio.aud
 requireRegex(types, /quran_audio\s*:\s*\{[\s\S]{0,6000}?reciter_id:\s*string \| null/i, "quran_audio.reciter_id generated type contract");
 requireRegex(types, /quran_audio\s*:\s*\{[\s\S]{0,6000}?audio_url:\s*string \| null/i, "quran_audio.audio_url generated type contract");
 
+const kidsGameHardening = readFileSync(
+  path.join(migrationsDir, "20261009090000_kids_games_client_write_hardening.sql"),
+  "utf8",
+);
+requireRegex(kidsGameHardening, /REVOKE ALL PRIVILEGES[\s\S]*FROM PUBLIC, anon, authenticated/i, "kids game client write revocation");
+requireRegex(kidsGameHardening, /GRANT SELECT[\s\S]*TO authenticated/i, "kids game authenticated read access");
+requireRegex(kidsGameHardening, /DROP POLICY IF EXISTS "Users can insert their own game results"/i, "legacy kids result insert policy removal");
+requireRegex(kidsGameHardening, /DROP POLICY IF EXISTS "Users can update their own game progress"/i, "legacy kids progress update policy removal");
+requireRegex(kidsGameHardening, /CREATE POLICY kids_game_results_select_own[\s\S]*TO authenticated[\s\S]*auth\.uid\(\).*user_id/i, "kids game result self-read policy");
+
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 assert.equal(pkg.scripts["video:contract:check"], "tsx scripts/tests/video-contract.test.ts", "video contract check must remain wired to the canonical test");
 

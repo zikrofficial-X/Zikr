@@ -10,9 +10,13 @@ import { getHilalFlyRules } from "../../src/lib/games/hilal-fly";
 import { getGoodDeedsRules } from "../../src/lib/games/good-deeds";
 import { getMosqueCleanupRules } from "../../src/lib/games/mosque-cleanup";
 import { getZikrColoringRules } from "../../src/lib/games/zikr-coloring";
+import { normalizeKidsGameSearch } from "../../src/lib/games/search";
 
 const gameIds = Object.keys(GAME_REGISTRY) as GameId[];
 assert.equal(gameIds.length, 12, "canonical Kids registry must contain exactly 12 games");
+assert.equal(normalizeKidsGameSearch("ذِكْر"), "ذكر", "Arabic search must ignore diacritics");
+assert.equal(normalizeKidsGameSearch("إِقْرَأْ القرآن"), "اقرا القران", "Arabic search must normalize common alef forms");
+assert.equal(normalizeKidsGameSearch("  زِكْر   "), "زكر", "search normalization must trim and collapse whitespace");
 
 for (const id of gameIds) {
   assert.equal(isRegisteredGameId(id), true, "registry id must be recognized: " + id);

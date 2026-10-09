@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { KidsGameArt } from "@/features/kids/components/games/kids-game-art";
 import { useLanguage } from "@/components/layout/language-provider";
+import { normalizeKidsGameSearch } from "@/lib/games/search";
 
 const ageLabels: Record<GameAgeGroup, string> = { "3-5": "3–5", "6-8": "6–8", "9-12": "9–12", "13-15": "13–15" };
 const difficultyLabels = { ar: { easy: "سهل", normal: "متوسط", hard: "متقدم" }, en: { easy: "Easy", normal: "Normal", hard: "Advanced" } } as const;
@@ -74,8 +75,13 @@ export default function KidsGamesIndex() {
   }, []);
 
   const filtered = useMemo(() => definitions.filter(game => {
-    const text = (isEnglish ? `${game.titleEn} ${game.descriptionEn} ${game.goalEn} ${game.skillEn}` : `${isEnglish ? game.titleEn : game.titleAr} ${isEnglish ? game.descriptionEn : game.descriptionAr} ${isEnglish ? game.goalEn : game.goalAr} ${isEnglish ? game.skillEn : game.skillAr}`).toLowerCase();
-    const matchesQuery = !query.trim() || text.includes(query.trim().toLowerCase());
+    const text = normalizeKidsGameSearch(
+      isEnglish
+        ? `${game.titleEn} ${game.descriptionEn} ${game.goalEn} ${game.skillEn}`
+        : `${game.titleAr} ${game.descriptionAr} ${game.goalAr} ${game.skillAr}`,
+    );
+    const normalizedQuery = normalizeKidsGameSearch(query);
+    const matchesQuery = !normalizedQuery || text.includes(normalizedQuery);
     const matchesAge = age === "all" || (game.supportedAgeGroups as readonly string[]).includes(age);
     const matchesDifficulty = difficulty === "all" || (game.difficulties as readonly string[]).includes(difficulty);
     const matchesCategory = category === "all" || (isEnglish ? game.categoryEn : game.category) === category;
@@ -117,7 +123,8 @@ function GameCardArt({ game }: { game: GameDefinition }) {
 function RecommendedCard({ game, bestScore }: { game: GameDefinition; bestScore: number }) {
   const { isEnglish } = useLanguage();
   const labels = isEnglish ? { suggested: "Recommended", minutes: "minutes", years: "years", bestScore: "Best score", notStarted: "Not started", startNow: "Start now" } : { suggested: "مقترحة", minutes: "دقائق", years: "سنة", bestScore: "أفضل نتيجة", notStarted: "لم تبدأ بعد", startNow: "ابدأ الآن" };
-  return <Link href={`/kids/${game.id}`} className="group block"><Card className={`relative h-full overflow-hidden border-brand-gold/20 bg-gradient-to-br ${themeClasses[game.theme]} from-10% p-5 transition duration-200 hover:-translate-y-1 hover:border-brand-gold/60`}><div className="relative"><GameCardArt game={game} /></div><div className="relative mt-4 flex items-start justify-between gap-3"><div><h3 className="text-xl font-bold text-brand-cream">{isEnglish ? game.titleEn : game.titleAr}</h3>{!isEnglish && <p className="mt-1 text-xs text-brand-cream/50">{game.titleEn}</p>}</div><span className="rounded-full bg-brand-gold px-3 py-1 text-xs font-bold text-black">{labels.suggested}</span></div><div className="relative mt-3 space-y-2"><p className="text-sm leading-7 text-brand-cream/70">{isEnglish ? game.storyEn : game.storyAr}</p><p className="text-sm font-semibold text-brand-gold">{isEnglish ? game.goalEn : game.goalAr}</p></div><div className="relative mt-5 flex items-center justify-between gap-3 text-xs text-brand-cream/60"><span>{game.durationMinutes} {labels.minutes} · {ageLabels[game.supportedAgeGroups[0]]} {labels.years}</span><span>{bestScore > 0 ? `${labels.bestScore}: ${bestScore.toLocaleString(isEnglish ? "en-US" : "ar-SA")}` : labels.notStarted}</span></div><div className="relative mt-4 rounded-xl bg-brand-gold px-4 py-3 text-center text-sm font-bold text-black transition group-hover:bg-brand-gold/90">{labels.startNow}</div></Card></Link>;
+  const ages = game.supportedAgeGroups.map((age) => ageLabels[age]).join(isEnglish ? ", " : "، ");
+  return <Link href={`/kids/${game.id}`} className="group block"><Card className={`relative h-full overflow-hidden border-brand-gold/20 bg-gradient-to-br ${themeClasses[game.theme]} from-10% p-5 transition duration-200 hover:-translate-y-1 hover:border-brand-gold/60`}><div className="relative"><GameCardArt game={game} /></div><div className="relative mt-4 flex items-start justify-between gap-3"><div><h3 className="text-xl font-bold text-brand-cream">{isEnglish ? game.titleEn : game.titleAr}</h3>{!isEnglish && <p className="mt-1 text-xs text-brand-cream/50">{game.titleEn}</p>}</div><span className="rounded-full bg-brand-gold px-3 py-1 text-xs font-bold text-black">{labels.suggested}</span></div><div className="relative mt-3 space-y-2"><p className="text-sm leading-7 text-brand-cream/70">{isEnglish ? game.storyEn : game.storyAr}</p><p className="text-sm font-semibold text-brand-gold">{isEnglish ? game.goalEn : game.goalAr}</p></div><div className="relative mt-5 flex items-center justify-between gap-3 text-xs text-brand-cream/60"><span>{game.durationMinutes} {labels.minutes} · {ages} {labels.years}</span><span>{bestScore > 0 ? `${labels.bestScore}: ${bestScore.toLocaleString(isEnglish ? "en-US" : "ar-SA")}` : labels.notStarted}</span></div><div className="relative mt-4 rounded-xl bg-brand-gold px-4 py-3 text-center text-sm font-bold text-black transition group-hover:bg-brand-gold/90">{labels.startNow}</div></Card></Link>;
 }
 
 function GameCard({ game, bestScore }: { game: GameDefinition; bestScore: number }) {
