@@ -59,14 +59,7 @@ jobs:
           pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
         timeout-minutes: 15
 
-      - name: Run lightweight pull request quality gate
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: pnpm verify:pr
-        timeout-minutes: 15
-
-      - name: Run canonical source/architecture gate on main
-        if: github.event_name != 'pull_request'
+      - name: Run canonical source and architecture gate
         shell: bash
         run: pnpm verify:pr
         timeout-minutes: 20
@@ -74,11 +67,6 @@ jobs:
       - name: Report release rule
         if: success()
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "QUALITY_GATE=PASSED (PR lightweight gate)"
-            echo "Canonical source/architecture verification runs on main; application build is certified by CircleCI."
-          else
-            echo "QUALITY_GATE=PASSED (source/architecture gate)"
-          fi
+          echo "QUALITY_GATE=PASSED (source/architecture gate)"
           echo "Vercel automatic Git deployments are disabled."
           echo "Production deployment is available only through the manual release workflow."
