@@ -7,13 +7,28 @@
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MIG_DIR = join(ROOT, 'supabase', 'migrations');
 const files = readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql')).sort();
+
+// Supabase Preview uploads/replays every migration. Keep individual migration
+// files small enough to avoid payload-size failures in the integration.
+const MAX_MIGRATION_BYTES = 1024 * 1024;
+const oversizedMigrations = files
+  .map((file) => ({ file, bytes: statSync(join(MIG_DIR, file)).size }))
+  .filter(({ bytes }) => bytes > MAX_MIGRATION_BYTES);
+if (oversizedMigrations.length > 0) {
+  for (const { file, bytes } of oversizedMigrations) {
+    console.error(`Migration exceeds the 1 MiB payload budget: ${file} (${bytes} bytes)`);
+  }
+  console.error(`MIGRATION_SIZE_GUARD_FAILED: ${oversizedMigrations.length} file(s) exceed 1 MiB.`);
+  process.exit(1);
+}
+console.log(`MIGRATION_SIZE_GUARD_PASSED: ${files.length} SQL files are at or below 1 MiB.`);
 const LEGACY_REPLAY_START = '20260705000019_0019_safe_guards.sql';
 
 const db = new PGlite({ extensions: { pg_trgm, uuid_ossp } });

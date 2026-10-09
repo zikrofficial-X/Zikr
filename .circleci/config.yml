@@ -18,6 +18,21 @@ parameters:
     default: false
 
 jobs:
+  config-guard:
+    docker:
+      - image: cimg/base:stable
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Verify unconditional fallback workflow
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            test -s .circleci/config.yml
+            grep -Eq '^workflows:[[:space:]]*$' .circleci/config.yml
+            grep -Eq '^  configuration-guard:[[:space:]]*$' .circleci/config.yml
+            echo "CircleCI configuration contains an unconditional fallback workflow."
   source-verify:
     docker:
       - image: cimg/node:22.11.0
@@ -606,5 +621,11 @@ workflows:
                 - main
     jobs:
       - english-content-sync
+
+  # Always runs regardless of pipeline parameters or branch filters. This prevents
+  # CircleCI from reporting a pipeline with no selected workflows.
+  configuration-guard:
+    jobs:
+      - config-guard
 
 
