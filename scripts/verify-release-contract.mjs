@@ -59,7 +59,8 @@ assert.ok(androidJob.includes("SUPABASE_URL: https://wvetcauyerlkqvmntajq.supaba
 assert.ok(androidJob.includes("SUPABASE_SERVICE_ROLE_KEY"), "Android job must validate the protected Supabase service-role key");
 assert.ok(circle.includes("ANDROID_KEYSTORE_BASE64"), "Android release must require protected signing material");
 assert.ok(circle.includes("Detected Android versionName"), "Android release must validate the generated version");
-assert.ok(circle.includes("Android SDK apkanalyzer is required"), "Android release must fail closed if APK metadata tooling is missing");
+assert.ok(circle.includes('"$AAPT" dump badging "$APK"'), "Android release must inspect APK metadata with JAXB-independent aapt");
+assert.ok(circle.includes('test -x "$AAPT"'), "Android release must fail closed if APK metadata tooling is missing");
 assert.ok(circle.includes("APK versionCode ($VERSION_CODE) does not match Gradle ($EXPECTED_VERSION_CODE)."), "Android release must validate the APK versionCode");
 assert.ok(!circle.includes('VERSION_CODE="56"'), "Android release must not silently substitute an obsolete versionCode");
 
