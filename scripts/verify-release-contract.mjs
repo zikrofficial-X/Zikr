@@ -26,6 +26,13 @@ assert.ok(releaseManager.includes('const REPO = process.env.GITHUB_REPOSITORY?.t
 assert.ok(releaseAction.includes("prepareAndroidRelease"), "Admin release action must use the canonical Android release manager");
 assert.ok(!releaseManager.includes("buildTag"), "Android release manager must not create a redundant -build tag");
 
+const supabaseConfig = read("supabase/config.toml");
+const androidStorageMigration = read("supabase/migrations/20261009145051_android_releases_storage_bucket.sql");
+assert.ok(supabaseConfig.includes("[storage.buckets.android-releases]"), "Supabase config must declare the canonical Android release bucket");
+assert.ok(supabaseConfig.includes('file_size_limit = "512MiB"'), "Android release bucket must allow expected APK/AAB artifacts");
+assert.ok(androidStorageMigration.includes("'android-releases'"), "A production migration must provision the Android release bucket");
+assert.ok(androidStorageMigration.includes("ON CONFLICT (id) DO UPDATE"), "Android release bucket migration must be safe to re-apply");
+
 const publish = read(".github/workflows/publish-android-release-assets.yml");
 assert.ok(publish.includes("github.ref_type == 'tag'"), "Android publisher must support semantic release tags");
 assert.ok(!publish.includes("branches:\n      - main"), "Android publisher must not trigger directly from main");
@@ -39,6 +46,9 @@ const circle = read(".circleci/config.yml");
 assert.ok(circle.includes(`releaseUrl": "https://github.com/${repo}/releases/tag/`), "CircleCI Android release metadata must use the canonical repository");
 assert.ok(circle.includes("ANDROID_KEYSTORE_BASE64"), "Android release must require protected signing material");
 assert.ok(circle.includes("Detected Android versionName"), "Android release must validate the generated version");
+assert.ok(circle.includes("Android SDK apkanalyzer is required"), "Android release must fail closed if APK metadata tooling is missing");
+assert.ok(circle.includes("APK versionCode ($VERSION_CODE) does not match Gradle ($EXPECTED_VERSION_CODE)."), "Android release must validate the APK versionCode");
+assert.ok(!circle.includes('VERSION_CODE="56"'), "Android release must not silently substitute an obsolete versionCode");
 
 const finalization = read(".github/workflows/release-finalization.yml");
 assert.ok(finalization.includes("github.ref == 'refs/heads/main'"), "web production release must be main-only");

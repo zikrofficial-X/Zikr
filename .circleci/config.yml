@@ -465,11 +465,17 @@ jobs:
             AAB_SHA="$(sha256sum "$AAB" | awk '{print $1}')"
             VERSION_NAME="$(sed -n 's/.*versionName \"\([^\"]*\)\".*/\1/p' android/app/build.gradle | head -1)"
             APKANALYZER="$(find "$ANDROID_HOME" -type f -name apkanalyzer 2>/dev/null | sort -V | tail -1)"
-            if [[ -n "$APKANALYZER" ]]; then
-              VERSION_CODE="$("$APKANALYZER" manifest version-code "$APK")"
-            else
-              VERSION_CODE="56"
+            if [[ -z "$APKANALYZER" ]]; then
+              echo "Android SDK apkanalyzer is required to publish verifiable release metadata." >&2
+              exit 1
             fi
+            VERSION_CODE="$("$APKANALYZER" manifest version-code "$APK")"
+            EXPECTED_VERSION_CODE="$(awk '/^[[:space:]]*versionCode[[:space:]]+/ {print $2; exit}' android/app/build.gradle)"
+            test -n "$EXPECTED_VERSION_CODE" || { echo "Unable to read Gradle versionCode." >&2; exit 1; }
+            test "$VERSION_CODE" = "$EXPECTED_VERSION_CODE" || {
+              echo "APK versionCode ($VERSION_CODE) does not match Gradle ($EXPECTED_VERSION_CODE)." >&2
+              exit 1
+            }
 
             upload_object "$APK" "${BASE_PATH}/app-release.apk" "application/vnd.android.package-archive"
             upload_object "$AAB" "${BASE_PATH}/app-release.aab" "application/octet-stream"
