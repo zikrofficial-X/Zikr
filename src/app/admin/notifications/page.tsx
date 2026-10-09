@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
-import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { readAdminRows } from "@/features/admin/services/safe-read";
 import { createAdminNotificationAction, markAdminNotificationsReadAction } from "@/app/admin/system-actions";
 
 export const metadata: Metadata = { title: "تنبيهات الإدارة | الأدمن" };
@@ -12,10 +12,9 @@ type NotificationRow = { id: string; title: string; body: string; type: string |
 
 export default async function AdminNotificationsPage() {
   await requireAdminPermission("notifications.manage");
-  const rows = await supabaseServerAdminRequest<NotificationRow[]>(
+  const { rows, ok: loaded } = await readAdminRows<NotificationRow>(
     "/rest/v1/notifications?select=id,title,body,type,read,metadata,created_at&user_id=is.null&order=created_at.desc&limit=100",
-    { method: "GET" },
-  ).catch(() => []);
+  );
 
   return (
     <Container className="py-10 space-y-6" dir="rtl">
@@ -45,7 +44,11 @@ export default async function AdminNotificationsPage() {
             {link && <a className="mt-2 inline-block text-xs text-brand-gold" href={link}>فتح الرابط</a>}
           </article>;
         })}
-        {rows.length === 0 && <p className="rounded-2xl border border-brand-gold/10 p-8 text-center text-sm text-brand-cream/40">لا توجد تنبيهات.</p>}
+        {!loaded ? (
+          <p role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 p-8 text-center text-sm text-red-100/85">تعذر قراءة التنبيهات من قاعدة البيانات. لا يعني ذلك عدم وجود تنبيهات.</p>
+        ) : rows.length === 0 ? (
+          <p className="rounded-2xl border border-brand-gold/10 p-8 text-center text-sm text-brand-cream/40">لا توجد تنبيهات.</p>
+        ) : null}
       </section>
     </Container>
   );

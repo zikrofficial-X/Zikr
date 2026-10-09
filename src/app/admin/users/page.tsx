@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
+import { readAdminRows } from "@/features/admin/services/safe-read";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import {
   supabaseServerAdminRequest,
@@ -27,19 +28,20 @@ interface AdminActionAudit {
   created_at: string;
 }
 
-async function getRecentAdminActions(): Promise<AdminActionAudit[]> {
+async function getRecentAdminActions(): Promise<{ rows: AdminActionAudit[]; ok: boolean }> {
   try {
-    return await supabaseServerAdminRequest<AdminActionAudit[]>(
+    const rows = await supabaseServerAdminRequest<AdminActionAudit[]>(
       "/rest/v1/admin_audit_events?select=id,actor_user_id,action,metadata,created_at&order=created_at.desc&limit=12",
       { cache: "no-store" }
     );
+    return { rows: rows ?? [], ok: true };
   } catch (error) {
     console.error("Failed to fetch admin activity:", error);
-    return [];
+    return { rows: [], ok: false };
   }
 }
 
-async function getUsers(): Promise<UserProfile[]> {
+async function getUsers(): Promise<{ rows: UserProfile[]; ok: boolean }> {
   try {
     const users = await supabaseServerAdminRequest<UserProfile[]>(
       "/rest/v1/profiles?select=id,display_name,email,role,avatar_url,created_at,updated_at&order=created_at.desc&limit=200",
@@ -50,13 +52,16 @@ async function getUsers(): Promise<UserProfile[]> {
       { cache: "no-store" },
     );
     const roleByUser = new Map(assignments.map((row) => [row.user_id, row.role]));
-    return (users || []).map((user) => ({
-      ...user,
-      effective_role: roleByUser.get(user.id) ?? user.role ?? "user",
-    }));
+    return {
+      rows: (users || []).map((user) => ({
+        ...user,
+        effective_role: roleByUser.get(user.id) ?? user.role ?? "user",
+      })),
+      ok: true,
+    };
   } catch (error) {
     console.error("Failed to fetch users:", error);
-    return [];
+    return { rows: [], ok: false };
   }
 }
 
@@ -69,26 +74,27 @@ export default async function AdminUsersPage() {
     getUsers(),
     supabaseServerAdminCount("profiles"),
     getRecentAdminActions(),
-    supabaseServerAdminRequest<Array<{ user_id: string }>>(
+    readAdminRows<{ user_id: string }>(
       "/rest/v1/admin_role_assignments?select=user_id&role=neq.user&limit=5000",
       { cache: "no-store" },
-    ).catch(() => []),
-    supabaseServerAdminRequest<Array<{ id: string }>>(
+    ),
+    readAdminRows<{ id: string }>(
       "/rest/v1/profiles?select=id&role=eq.admin&limit=5000",
       { cache: "no-store" },
-    ).catch(() => []),
-    supabaseServerAdminRequest<Array<{ id: string }>>(
+    ),
+    readAdminRows<{ id: string }>(
       `/rest/v1/profiles?select=id&created_at=gte.${encodeURIComponent(thirtyDaysAgo)}&limit=5000`,
       { cache: "no-store" },
-    ).catch(() => []),
+    ),
   ]);
+  const adminCountAvailable = adminAssignments.ok && legacyAdmins.ok;
 
   const adminIds = new Set([
-    ...adminAssignments.map((row) => row.user_id),
-    ...legacyAdmins.map((row) => row.id),
+    ...adminAssignments.rows.map((row) => row.user_id),
+    ...legacyAdmins.rows.map((row) => row.id),
   ]);
   const adminCount = adminIds.size;
-  const recentCount = recentProfiles.length;
+  const recentCount = recentProfiles.rows.length;
 
   return (
     <Container className="space-y-8 py-10 text-right">
@@ -106,11 +112,11 @@ export default async function AdminUsersPage() {
         </Card>
         <Card>
           <p className="text-sm arabic-muted">مسجلون خلال 30 يومًا</p>
-          <strong className="text-3xl text-brand-gold">{recentCount}</strong>
+          <strong className="text-3xl text-brand-gold">{recentProfiles.ok ? recentCount : "غير متاح"}</strong>
         </Card>
         <Card>
           <p className="text-sm arabic-muted">عدد الأدمن</p>
-          <strong className="text-3xl text-brand-gold">{adminCount}</strong>
+          <strong className="text-3xl text-brand-gold">{adminCountAvailable ? adminCount : "غير متاح"}</strong>
         </Card>
       </section>
 
@@ -126,7 +132,13 @@ export default async function AdminUsersPage() {
             حتى 200 مستخدم في الصفحة
           </span>
         </div>
-        <UsersTable users={users} currentAdminId={currentAdmin.id} />
+        {!users.ok ? (
+          <p role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            تعذر تحميل قائمة المستخدمين. لا يعني ذلك أنه لا يوجد مستخدمون؛ أعد المحاولة أو راجع صحة النظام.
+          </p>
+        ) : (
+          <UsersTable users={users.rows} currentAdminId={currentAdmin.id} />
+        )}
       </Card>
 
       <Card className="space-y-4">
@@ -138,16 +150,20 @@ export default async function AdminUsersPage() {
             </p>
           </div>
           <span className="text-xs arabic-muted">
-            {recentActions.length} إجراء
+            {recentActions.ok ? `${recentActions.rows.length} إجراء` : "غير متاح"}
           </span>
         </div>
-        {recentActions.length === 0 ? (
+        {!recentActions.ok ? (
+          <p role="alert" className="py-6 text-center text-red-200/85">
+            تعذر قراءة سجل الإجراءات.
+          </p>
+        ) : recentActions.rows.length === 0 ? (
           <p className="py-6 text-center arabic-muted">
             لا توجد إجراءات مسجلة حتى الآن.
           </p>
         ) : (
           <div className="space-y-2">
-            {recentActions.map(action => (
+            {recentActions.rows.map(action => (
               <div
                 key={action.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-gold/10 bg-black/15 px-4 py-3"

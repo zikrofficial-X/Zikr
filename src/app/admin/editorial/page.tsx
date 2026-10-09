@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
-import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { readAdminRows } from "@/features/admin/services/safe-read";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { changeEditorialReviewStatusAction, publishApprovedContentAction } from "../editorial-actions";
 
@@ -36,10 +36,9 @@ export default async function AdminEditorialPage({
 }) {
   await requireAdminPermission("knowledge.manage");
   const params = searchParams ? await searchParams : {};
-  const rows = await supabaseServerAdminRequest<Row[]>(
+  const { rows, ok: loaded } = await readAdminRows<Row>(
     "/rest/v1/content_library?select=id,title_ar,title_en,review_status,published,source_id,updated_at,author_name,reviewer_name&order=updated_at.desc&limit=200",
-    { method: "GET" },
-  ).catch(() => []);
+  );
   const pending = rows.filter((row) => row.review_status !== "approved" && !row.published).length;
   const approved = rows.filter((row) => row.review_status === "approved" && !row.published).length;
   const published = rows.filter((row) => row.published).length;
@@ -52,6 +51,12 @@ export default async function AdminEditorialPage({
         <p className="mt-2 text-sm leading-7 text-brand-cream/50">مسودة ← مراجعة تحريرية ← مراجعة شرعية ← اعتماد ← نشر. النشر لا يتم إلا بعد الاعتماد وربط مصدر.</p>
       </header>
 
+      {!loaded && (
+        <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+          تعذر قراءة محتوى المراجعة من قاعدة البيانات. الأرقام أدناه غير متاحة وليست أصفارًا.
+        </div>
+      )}
+
       {params.error && (
         <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
           {params.error}
@@ -61,15 +66,15 @@ export default async function AdminEditorialPage({
       <section className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <p className="text-xs text-brand-cream/35">بانتظار المراجعة</p>
-          <p className="mt-2 text-3xl font-bold text-amber-200">{pending}</p>
+          <p className="mt-2 text-3xl font-bold text-amber-200">{loaded ? pending : "غير متاح"}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <p className="text-xs text-brand-cream/35">معتمد وبانتظار النشر</p>
-          <p className="mt-2 text-3xl font-bold text-emerald-200">{approved}</p>
+          <p className="mt-2 text-3xl font-bold text-emerald-200">{loaded ? approved : "غير متاح"}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <p className="text-xs text-brand-cream/35">منشور</p>
-          <p className="mt-2 text-3xl font-bold text-brand-cream">{published}</p>
+          <p className="mt-2 text-3xl font-bold text-brand-cream">{loaded ? published : "غير متاح"}</p>
         </div>
       </section>
 
