@@ -51,7 +51,7 @@ Facebook / Meta:
 - `FACEBOOK_APP_SECRET`
 - `FACEBOOK_PAGE_ID`
 - `FACEBOOK_PAGE_ACCESS_TOKEN`
-- `SOCIAL_PUBLISH_FACEBOOK_ENABLED` (explicit opt-in; currently `false` until the Page access token is renewed)
+- `SOCIAL_PUBLISH_FACEBOOK_ENABLED` (runtime gate; the production publisher enables it only when both Page ID and Page access token secrets are present, and the Admin setting can still disable it)
 - `FACEBOOK_GRAPH_API_VERSION` (current default: `v26.0`)
 
 Native social:
@@ -245,6 +245,8 @@ The current production contract is aligned around:
 A read-only check against that target passed for Auth settings, `quran_surahs`, `kids_games`, and `kids_content`. It found two schema gaps: `content_library.summary_en` is missing, and `public.content_translation_queue` is absent. Treat schema reconciliation as incomplete until these are reviewed and migrated.
 
 The deployment environment validator also flags the existing `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` application variables because Google login is handled by Supabase Auth. Those values were not changed; review them separately.
+
+As of October 9, 2026, a fresh production schema query confirmed that `public.content_library.summary_en` and `public.content_translation_queue` both exist. The earlier schema-gap note has been reconciled; it is no longer a current production gap. The current Supabase Security Advisor still warns that leaked-password protection is disabled, and the Performance Advisor reports 79 unused indexes (informational; review query workload before removal).
 
 The active Supabase health workflow is pinned to the canonical production target. Historical documentation may still mention retired project refs, but active runtime and workflow configuration must remain on `wvetcauyerlkqvmntajq`. Any future database-target change must use a reviewed forward migration or configuration change rather than rewriting applied migration history.
 

@@ -24,7 +24,7 @@ pnpm ci:build:report
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the public anon key; it is not a service-role secret)
 - `SUPABASE_URL=https://wvetcauyerlkqvmntajq.supabase.co`
 
-The following values must exist as protected CircleCI project environment variables before the Android job starts:
+The following values must exist in CircleCI before the Android job starts. The current `android-rebuild` job does not attach a CircleCI `context:`; therefore, keep these as project environment variables unless you deliberately add the exact existing context name to the job configuration:
 
 - `SUPABASE_SERVICE_ROLE_KEY` (required only for the server-side asset upload and `android_release` site-setting update)
 - `ANDROID_KEYSTORE_BASE64`
