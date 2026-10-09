@@ -8,13 +8,15 @@ on:
       - "scripts/verify-supabase-production.mjs"
       - "supabase/**"
       - ".github/workflows/supabase-production-health.yml"
+  schedule:
+    - cron: "23 5 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: zikr-supabase-production-health-${{ github.event.pull_request.number || github.ref }}
+  group: zikr-supabase-production-health-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
