@@ -66,7 +66,7 @@ export async function getSiteSetting(key: string): Promise<SiteSettingValue | nu
       .select('value')
       .eq('key', key)
       .limit(1)
-      .single();
+      .maybeSingle();
     return (data?.value as SiteSettingValue) ?? null;
   } catch {
     return null;

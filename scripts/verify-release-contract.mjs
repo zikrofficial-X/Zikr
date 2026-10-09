@@ -37,6 +37,10 @@ assert.ok(androidStorageMigration.includes("ON CONFLICT (id) DO UPDATE"), "Andro
 assert.ok(androidStorageLimitMigration.includes("SET file_size_limit = 52428800"), "A forward migration must align the already-applied Android bucket limit with Supabase Free tier");
 assert.ok(androidStorageLimitMigration.includes("WHERE id = 'android-releases'"), "The bucket limit repair must target only the Android release bucket");
 
+const siteContentService = read("src/features/site-content/services/site-content.ts");
+assert.ok(siteContentService.includes(".limit(1)\n      .maybeSingle()"), "Optional homepage settings must return null for missing keys without raising PostgREST 406 errors");
+assert.ok(!siteContentService.includes(".limit(1)\n      .single()"), "Optional homepage settings must not require a row to exist");
+
 const publish = read(".github/workflows/publish-android-release-assets.yml");
 assert.ok(publish.includes("github.ref_type == 'tag'"), "Android publisher must support semantic release tags");
 assert.ok(publish.includes("'android-release-v*.*.*'"), "Android publisher must recover assets from canonical Android release branches");
