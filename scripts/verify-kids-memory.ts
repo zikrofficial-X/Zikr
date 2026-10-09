@@ -1,6 +1,6 @@
 import { getVerifiedMemoryPairs } from "@/lib/games/verified-content";
 
-const REQUIRED_PAIRS = 5;
+const REQUIRED_PAIRS = 11;
 const REQUIRED_DIFFICULTIES = [
   { name: "easy", pairs: 3 },
   { name: "normal", pairs: 4 },

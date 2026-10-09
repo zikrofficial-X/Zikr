@@ -80,7 +80,7 @@ export function getApprovedScenarioQuestions(): VerifiedQuizQuestion[] {
 
 
 export function getApprovedRoadQuestions(): VerifiedQuizQuestion[] {
-  const sourceSlugs = ["game-scenario-smart-choice", "quiz-akhlaq-adventure"] as const;
+  const sourceSlugs = ["game-scenario-smart-choice", "quiz-akhlaq-adventure", "quiz-akhlaq-daily-life"] as const;
   return sourceSlugs.flatMap(sourceSlug => {
     const source = kidsContent.find(item => item.slug === sourceSlug);
     const questions = source?.quiz_data?.questions?.filter(isQuestion) ?? [];
