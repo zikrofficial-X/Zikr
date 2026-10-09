@@ -62,7 +62,8 @@ jobs:
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
       AUTO_VIDEO_SECONDS: "18"
-      BACKGROUND_JOB_TARGET: "all"
+      # Generation only. Queue reconciliation and publishing belong to publish-social.yml (every 15 minutes).
+      BACKGROUND_JOB_TARGET: "videos"
       VIDEO_TEMPLATE_VERSION: "2026-10-08-quality-v3"
       VERIFY_VIDEO_RUNTIME_TOOLS: "true"
       # Social publishing is owned by .github/workflows/publish-social.yml.
@@ -171,13 +172,6 @@ jobs:
             exit 1
           fi
 
-
-      # Scheduled production and deliberate manual recovery are both executed by this GitHub workflow.
-      # Free-tier AI path: Gemini plans the source-locked presentation; FFmpeg performs the render locally.
-      # Validation pass 2026-09-29: Flash-Lite defaults and structured memorization evaluation are enabled.
-      # Isolated Gemini/FFmpeg E2E queue test is prepared in Supabase; social publishing is skipped for the test request.
-      # Validation rerun: exercise the free-model fallback path after 3.1 Flash-Lite service availability errors.
-      # Audio smoke fix: invoke the Gemini SDK directly in a standalone Node smoke test.
 
       - name: Run autonomous queue
         run: pnpm background:jobs
