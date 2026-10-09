@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: write
+  statuses: read
 
 concurrency:
   group: android-release-publish-${{ github.ref_name }}
@@ -75,6 +76,37 @@ jobs:
           test "$TAG" = "$EXPECTED_TAG"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
           echo "SUPABASE_PUBLIC_BASE=${SUPABASE_PUBLIC_ROOT}/${TAG}" >> "$GITHUB_ENV"
+
+      - name: Verify CircleCI Android build status before waiting for artifacts
+        if: steps.gate.outputs.publish == 'true' && github.event_name != 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # CircleCI is the signing authority. Do not wait for artifacts when its
+          # matching android-rebuild status has already failed.
+          for attempt in $(seq 1 80); do
+            status="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status" \
+              --jq '.statuses | map(select(.context == "ci/circleci: android-rebuild")) | sort_by(.updated_at) | (last // {}) | .state // ""' 2>/dev/null || true)"
+            case "${status}" in
+              success)
+                echo "CircleCI Android build succeeded for ${GITHUB_SHA}."
+                exit 0
+                ;;
+              failure|error)
+                echo "::error title=CircleCI Android build failed::The protected APK/AAB build failed for commit ${GITHUB_SHA}. Check the CircleCI android-rebuild job before retrying publication."
+                exit 1
+                ;;
+              pending|"")
+                echo "Waiting for CircleCI Android build status (attempt ${attempt}/80)..."
+                ;;
+              *)
+                echo "Unknown CircleCI status '${status}' (attempt ${attempt}/80); refusing to publish without success."
+                ;;
+            esac
+            sleep 15
+          done
+          echo "::error title=CircleCI Android build status unavailable::No successful CircleCI android-rebuild status was observed for ${GITHUB_SHA} within 20 minutes."
+          exit 1
 
       - name: Install Android SDK
         if: steps.gate.outputs.publish == 'true'

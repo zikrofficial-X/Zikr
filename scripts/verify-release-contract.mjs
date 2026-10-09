@@ -39,6 +39,10 @@ assert.ok(publish.includes("'android-release-v*.*.*'"), "Android publisher must 
 assert.ok(publish.includes("GITHUB_REF_NAME#android-release-"), "Android publisher must map recovery branch names to the exact semantic release tag");
 assert.ok(publish.includes("seq 1 120") && publish.includes("sleep 30"), "Android publisher must wait long enough for CircleCI's signed build to finish");
 assert.ok(publish.includes("--clobber"), "Android publisher must replace stale assets after checksum verification");
+assert.ok(publish.includes("statuses: read"), "Android publisher must be able to inspect CircleCI status");
+assert.ok(publish.includes('select(.context == "ci/circleci: android-rebuild")'), "Android publisher must inspect the canonical Android build status");
+assert.ok(publish.includes("failure|error"), "Android publisher must stop promptly when the signed build fails");
+assert.ok(publish.includes("within 20 minutes"), "Android publisher must bound CircleCI status preflight");
 assert.ok(!publish.includes("branches:\n      - main"), "Android publisher must not trigger directly from main");
 assert.ok(publish.includes("EXPECTED_TAG=\"v$(jq -r '.version' package.json)\""), "Android publisher must revalidate tag/version parity");
 assert.ok(publish.includes("com.zikr.app"), "Android publisher must verify the canonical application id");
@@ -48,6 +52,11 @@ assert.ok(publish.includes('gh release edit "$TAG"'), "Android publisher must fi
 
 const circle = read(".circleci/config.yml");
 assert.ok(circle.includes(`releaseUrl": "https://github.com/${repo}/releases/tag/`), "CircleCI Android release metadata must use the canonical repository");
+const androidJob = circle.split("  android-rebuild:")[1]?.split("\n  security-audit:")[0] ?? "";
+assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_URL: https://wvetcauyerlkqvmntajq.supabase.co"), "Android job must use the canonical public Supabase URL");
+assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY:"), "Android job must declare the public Supabase anon key required by preflight");
+assert.ok(androidJob.includes("SUPABASE_URL: https://wvetcauyerlkqvmntajq.supabase.co"), "Android job must pin the canonical Supabase project URL");
+assert.ok(androidJob.includes("SUPABASE_SERVICE_ROLE_KEY"), "Android job must validate the protected Supabase service-role key");
 assert.ok(circle.includes("ANDROID_KEYSTORE_BASE64"), "Android release must require protected signing material");
 assert.ok(circle.includes("Detected Android versionName"), "Android release must validate the generated version");
 assert.ok(circle.includes("Android SDK apkanalyzer is required"), "Android release must fail closed if APK metadata tooling is missing");
