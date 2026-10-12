@@ -12,8 +12,8 @@ importers:
         specifier: 7.6.9
         version: 7.6.9(@capacitor/core@7.6.9)
       '@capacitor/app':
-        specifier: 7.0.2
-        version: 7.0.2(@capacitor/core@7.6.9)
+        specifier: 7.1.2
+        version: 7.1.2(@capacitor/core@7.6.9)
       '@capacitor/browser':
         specifier: 7.0.5
         version: 7.0.5(@capacitor/core@7.6.9)
@@ -251,8 +251,8 @@ packages:
     peerDependencies:
       '@capacitor/core': ^7.6.0
 
-  '@capacitor/app@7.0.2':
-    resolution: {integrity: sha512-kRWBF6Wc6OQxhL+N6rsegyfJY37Lj9/VJhtrmgmH+y+rdxQLQwUOpMyxXStym7cF+QzGeVpItyVxyUT9fE5ByQ==}
+  '@capacitor/app@7.1.2':
+    resolution: {integrity: sha512-d4I/oF/PRu4megL7/IGKYfe5j7yzSON1FRFgq6kH+m5kH6g7V+wyjHRLauCzGNjdRx4S+nWOumINds0qcRBtKg==}
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
@@ -2981,7 +2981,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 7.6.9
 
-  '@capacitor/app@7.0.2(@capacitor/core@7.6.9)':
+  '@capacitor/app@7.1.2(@capacitor/core@7.6.9)':
     dependencies:
       '@capacitor/core': 7.6.9
 
