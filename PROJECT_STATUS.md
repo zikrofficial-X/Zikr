@@ -7,12 +7,12 @@
 
 ## Current Vercel/Supabase binding
 
-The production Vercel project `zikr` is configured against Supabase project `wvetcauyerlkqvmntajq` and the repository's active runtime validation files use the same canonical Supabase URL.
+The production Vercel project `zikr` is configured against Supabase project `bbdpitxvfxgephaaqtqj` and the repository's active runtime validation files use the same canonical Supabase URL.
 
 The repository's active production configuration was rechecked during the 2026-10-08 reconciliation:
 
-- `supabase/config.toml` points to `wvetcauyerlkqvmntajq`.
-- `scripts/validate-deployment-env.mjs` enforces `https://wvetcauyerlkqvmntajq.supabase.co`.
+- `supabase/config.toml` points to `bbdpitxvfxgephaaqtqj`.
+- `scripts/validate-deployment-env.mjs` enforces `https://bbdpitxvfxgephaaqtqj.supabase.co`.
 - `scripts/verify-auth-config.mjs` uses the same Supabase Auth provider callback.
 - `scripts/verify-hygiene.mjs` treats obsolete Supabase/repository URLs as forbidden runtime references rather than active configuration.
 
@@ -22,7 +22,7 @@ The repository contains the previously verified application route, API, content,
 
 ## Supabase production state
 
-The selected production target is `wvetcauyerlkqvmntajq`.
+The selected production target is `bbdpitxvfxgephaaqtqj`.
 
 The live reconciliation previously confirmed that the production database has the newer migration chain through the October 2026 changes, including the background reminder Quran fields that were missing from an older deployment's runtime error.
 
@@ -31,7 +31,7 @@ Security-advisor findings still require deliberate review of permissive/public p
 ## CI / deployment
 
 - GitHub repository access is now confirmed with admin/maintain/push permissions.
-- The active `.github/workflows/supabase-production-health.yml` is already pinned to the canonical Supabase project `wvetcauyerlkqvmntajq`.
+- The active `.github/workflows/supabase-production-health.yml` is already pinned to the canonical Supabase project `bbdpitxvfxgephaaqtqj`.
 - Vercel remains the production deployment platform for the linked `main` branch.
 - GitHub Actions is the production owner for recurring video generation and social publishing.
 - CircleCI is the application build/documentation, Android release, Supabase gate, and English-content lane; it does not run the production video/social worker.

@@ -15,7 +15,7 @@ const button = read("src/features/auth/components/google-oauth-button.tsx");
 const native = read("src/components/layout/native-google-oauth-handler.tsx");
 
 const production = "https://zikrmediaofficial.vercel.app";
-const supabaseProvider = "https://wvetcauyerlkqvmntajq.supabase.co/auth/v1/callback";
+const supabaseProvider = "https://bbdpitxvfxgephaaqtqj.supabase.co/auth/v1/callback";
 const nativeCallback = "com.zikr.app://auth/callback";
 
 function requireText(label, source, token) {
