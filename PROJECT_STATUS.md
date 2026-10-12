@@ -2,7 +2,7 @@
 
 **Production branch:** `main`  
 **Last reconciled:** 2026-10-08  
-**Repository:** `zikrcontact-del/Zikr`  
+**Repository:** `zikrofficial-X/Zikr`  
 **Production origin:** `https://zikrmediaofficial.vercel.app`
 
 ## Current Vercel/Supabase binding

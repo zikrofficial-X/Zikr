@@ -1,7 +1,7 @@
 import "server-only";
 
 const GITHUB_API = "https://api.github.com";
-const DEFAULT_REPOSITORY = "zikrcontact-del/Zikr";
+const DEFAULT_REPOSITORY = "zikrofficial-X/Zikr";
 
 type WorkflowInputs = Record<string, string>;
 

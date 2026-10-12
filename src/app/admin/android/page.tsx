@@ -5,7 +5,7 @@ import { getSiteSetting, type SiteSettingValue } from "@/features/site-content/s
 import { saveAndroidReleaseAction } from "./actions";
 
 const RELEASES_API_BASE =
-  "https://api.github.com/repos/zikrcontact-del/Zikr/releases";
+  "https://api.github.com/repos/zikrofficial-X/Zikr/releases";
 const MAX_RELEASE_PAGES = 5;
 const githubToken = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
 const githubHeaders: HeadersInit = {

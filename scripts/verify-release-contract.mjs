@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 
-const repo = "zikrcontact-del/Zikr";
+const repo = "zikrofficial-X/Zikr";
 const read = (file) => {
   assert.ok(existsSync(file), `Missing release contract file: ${file}`);
   return readFileSync(file, "utf8");
@@ -22,7 +22,7 @@ assert.ok(releaseManager.includes("/git/tags"), "Admin release manager must crea
 assert.ok(releaseManager.includes("/git/refs"), "Admin release manager must publish the canonical Android tag ref");
 assert.ok(releaseManager.includes("/releases"), "Admin release manager must create the draft GitHub Release");
 assert.ok(releaseManager.includes("draft: true"), "Admin release manager must create Android releases as drafts until artifacts are verified");
-assert.ok(releaseManager.includes('const REPO = process.env.GITHUB_REPOSITORY?.trim() || "zikrcontact-del/Zikr";'), "Admin release manager must use the canonical repository");
+assert.ok(releaseManager.includes('const REPO = process.env.GITHUB_REPOSITORY?.trim() || "zikrofficial-X/Zikr";'), "Admin release manager must use the canonical repository");
 assert.ok(releaseAction.includes("prepareAndroidRelease"), "Admin release action must use the canonical Android release manager");
 assert.ok(!releaseManager.includes("buildTag"), "Android release manager must not create a redundant -build tag");
 

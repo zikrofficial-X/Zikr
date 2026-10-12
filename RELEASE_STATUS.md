@@ -1,7 +1,7 @@
 # ZIKR Project Release & Build Status
 
 **Last Updated:** 2026-10-08  
-**Repository:** https://github.com/zikrcontact-del/Zikr  
+**Repository:** https://github.com/zikrofficial-X/Zikr  
 **Production URL:** https://zikrmediaofficial.vercel.app
 
 ## Current release state

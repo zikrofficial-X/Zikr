@@ -18,7 +18,7 @@ type GitHubRelease = {
 
 type GitHubRef = { object?: { sha?: string } };
 
-const REPO = process.env.GITHUB_REPOSITORY?.trim() || "zikrcontact-del/Zikr";
+const REPO = process.env.GITHUB_REPOSITORY?.trim() || "zikrofficial-X/Zikr";
 const API = "https://api.github.com";
 
 function token() {

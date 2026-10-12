@@ -100,7 +100,7 @@ Production web deployment is controlled through `.github/workflows/release-final
 ## Support
 
 - Website: https://zikrmediaofficial.vercel.app
-- Repository: `zikrcontact-del/Zikr`
+- Repository: `zikrofficial-X/Zikr`
 - Issues: use GitHub Issues for reproducible bugs and feature requests
 
 ## License
