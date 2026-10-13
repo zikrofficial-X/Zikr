@@ -6,11 +6,13 @@ import {
   supabaseServerAdminRequest,
 } from "@/lib/supabase/server";
 import type { AdminPermission } from "@/features/admin/services/permissions";
+import { readAdminRows } from "@/features/admin/services/safe-read";
 
 export type AdminMetric = {
   key: string;
   label: string;
-  value: number;
+  /** null means the source could not be read; never render it as zero. */
+  value: number | null;
   tone?: "neutral" | "success" | "warning" | "danger";
 };
 
@@ -47,6 +49,8 @@ export type AdminHealth = {
     videoRetryWait: number;
     videoFailed: number;
   };
+  /** false means the queue could not be read and its counts are not real zeros. */
+  queuesAvailable: { social: boolean; video: boolean };
   generatedAt: string;
 };
 
@@ -81,44 +85,56 @@ export async function getAdminSnapshot() {
     }),
   );
 
-  const [audit, socialQueue, videoQueue, contentDrafts] = await Promise.all([
-    supabaseServerAdminRequest<AdminAuditRow[]>(
+  const [auditRes, socialRes, videoRes, draftsRes] = await Promise.all([
+    readAdminRows<AdminAuditRow>(
       "/rest/v1/admin_audit_events?select=id,action,permission,resource_type,resource_id,outcome,request_id,metadata,created_at,actor_user_id&order=created_at.desc&limit=12",
-      { method: "GET" },
-    ).catch(() => []),
-    supabaseServerAdminRequest<Array<{ status: string }>>(
+    ),
+    readAdminRows<{ status: string }>(
       "/rest/v1/social_publish_queue?select=status&order=created_at.desc&limit=500",
-      { method: "GET" },
-    ).catch(() => []),
-    supabaseServerAdminRequest<Array<{ status: string }>>(
+    ),
+    readAdminRows<{ status: string }>(
       "/rest/v1/video_generation_requests?select=status&order=created_at.desc&limit=500",
-      { method: "GET" },
-    ).catch(() => []),
-    supabaseServerAdminRequest<Array<{ review_status: string; published: boolean }>>(
+    ),
+    readAdminRows<{ review_status: string; published: boolean }>(
       "/rest/v1/content_library?select=review_status,published&order=updated_at.desc&limit=500",
-      { method: "GET" },
-    ).catch(() => []),
+    ),
   ]);
 
-  const socialStatus = (status: string) => socialQueue.filter((item) => item.status === status).length;
-  const videoStatus = (status: string) => videoQueue.filter((item) => item.status === status).length;
-  const drafts = contentDrafts.filter((item) => !item.published || item.review_status !== "approved").length;
+  const audit = auditRes.rows;
+  const socialQueue = socialRes.rows;
+  const videoQueue = videoRes.rows;
+  const contentDrafts = draftsRes.rows;
+  const unavailable = [
+    !auditRes.ok && "سجل التدقيق",
+    !socialRes.ok && "طابور النشر الاجتماعي",
+    !videoRes.ok && "طابور توليد الفيديو",
+    !draftsRes.ok && "مكتبة المحتوى",
+  ].filter(Boolean) as string[];
+
+  const socialStatus = (status: string) => (socialRes.ok ? socialQueue.filter((item) => item.status === status).length : null);
+  const videoStatus = (status: string) => (videoRes.ok ? videoQueue.filter((item) => item.status === status).length : null);
+  const sum = (a: number | null, b: number | null) => (a === null || b === null ? null : a + b);
+  const drafts = draftsRes.ok ? contentDrafts.filter((item) => !item.published || item.review_status !== "approved").length : null;
+  const socialFailed = socialStatus("failed");
+  const videoFailed = videoStatus("failed");
+  const auditFailures = auditRes.ok ? audit.filter((row) => row.outcome === "failed").length : null;
 
   return {
     counts,
+    unavailable,
     metrics: [
-      { key: "drafts", label: "مسودات/مراجعة", value: drafts, tone: drafts > 0 ? "warning" : "success" },
-      { key: "social", label: "طابور النشر", value: socialStatus("queued") + socialStatus("processing"), tone: socialStatus("failed") > 0 ? "danger" : "neutral" },
-      { key: "video", label: "توليد الفيديو", value: videoStatus("pending") + videoStatus("processing"), tone: videoStatus("failed") > 0 ? "danger" : "neutral" },
-      { key: "auditFailures", label: "عمليات إدارية فاشلة", value: audit.filter((row) => row.outcome === "failed").length, tone: audit.some((row) => row.outcome === "failed") ? "danger" : "success" },
+      { key: "drafts", label: "مسودات/مراجعة", value: drafts, tone: drafts === null ? "neutral" : drafts > 0 ? "warning" : "success" },
+      { key: "social", label: "طابور النشر", value: sum(socialStatus("queued"), socialStatus("processing")), tone: socialFailed ? "danger" : "neutral" },
+      { key: "video", label: "توليد الفيديو", value: sum(videoStatus("pending"), videoStatus("processing")), tone: videoFailed ? "danger" : "neutral" },
+      { key: "auditFailures", label: "عمليات إدارية فاشلة", value: auditFailures, tone: auditFailures === null ? "neutral" : auditFailures > 0 ? "danger" : "success" },
     ] satisfies AdminMetric[],
     queues: {
       socialQueued: socialStatus("queued"),
       socialProcessing: socialStatus("processing"),
-      socialFailed: socialStatus("failed"),
+      socialFailed,
       videoPending: videoStatus("pending"),
       videoProcessing: videoStatus("processing"),
-      videoFailed: videoStatus("failed"),
+      videoFailed,
     },
     audit,
     generatedAt: new Date().toISOString(),
@@ -208,16 +224,12 @@ export async function getAdminHealth(): Promise<AdminHealth> {
     }),
   );
 
-  const [social, video] = await Promise.all([
-    supabaseServerAdminRequest<Array<{ status: string }>>(
-      "/rest/v1/social_publish_queue?select=status&limit=500",
-      { method: "GET" },
-    ).catch(() => []),
-    supabaseServerAdminRequest<Array<{ status: string }>>(
-      "/rest/v1/video_generation_requests?select=status&limit=500",
-      { method: "GET" },
-    ).catch(() => []),
+  const [socialRes, videoRes] = await Promise.all([
+    readAdminRows<{ status: string }>("/rest/v1/social_publish_queue?select=status&limit=500"),
+    readAdminRows<{ status: string }>("/rest/v1/video_generation_requests?select=status&limit=500"),
   ]);
+  const social = socialRes.rows;
+  const video = videoRes.rows;
 
   return {
     database: databaseHealthy ? "healthy" : "degraded",
@@ -232,6 +244,7 @@ export async function getAdminHealth(): Promise<AdminHealth> {
       videoRetryWait: video.filter((row) => row.status === "retry_wait").length,
       videoFailed: video.filter((row) => row.status === "failed").length,
     },
+    queuesAvailable: { social: socialRes.ok, video: videoRes.ok },
     generatedAt: new Date().toISOString(),
   };
 }

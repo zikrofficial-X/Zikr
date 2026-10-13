@@ -21,8 +21,12 @@ export default async function VideoFactoryDashboardPage() {
   await requireAdminPermission("video.manage");
   const snapshot = await getAdminSnapshot();
 
-  const videoPending = snapshot.queues.videoPending + snapshot.queues.videoProcessing;
+  const videoPending =
+    snapshot.queues.videoPending === null || snapshot.queues.videoProcessing === null
+      ? null
+      : snapshot.queues.videoPending + snapshot.queues.videoProcessing;
   const videoFailures = snapshot.queues.videoFailed;
+  const metricValue = (key: string) => snapshot.metrics.find((metric) => metric.key === key)?.value ?? null;
   const socialPending = snapshot.queues.socialQueued;
   const socialFailures = snapshot.queues.socialFailed;
 
@@ -38,10 +42,10 @@ export default async function VideoFactoryDashboardPage() {
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          ["طلبات الفيديو النشطة", videoPending, videoFailures ? "يوجد فشل يحتاج مراجعة" : "لا يوجد فشل مرئي", videoFailures ? "danger" : "success"],
-          ["النشر الاجتماعي", socialPending, socialFailures ? "يوجد فشل نشر" : "الطابور منضبط", socialFailures ? "danger" : "neutral"],
-          ["المسودات والمراجعة", snapshot.metrics.find((metric) => metric.key === "drafts")?.value ?? 0, "محتوى يحتاج قرارًا تحريريًا", "warning"],
-          ["تدقيق الإدارة", snapshot.metrics.find((metric) => metric.key === "auditFailures")?.value ?? 0, "آخر 12 عملية مدققة", "neutral"],
+          ["طلبات الفيديو النشطة", videoPending, videoFailures === null ? "تعذر قراءة الطابور" : videoFailures ? "يوجد فشل يحتاج مراجعة" : "لا يوجد فشل مرئي", videoFailures ? "danger" : videoFailures === null ? "neutral" : "success"],
+          ["النشر الاجتماعي", socialPending, socialFailures === null ? "تعذر قراءة الطابور" : socialFailures ? "يوجد فشل نشر" : "الطابور منضبط", socialFailures ? "danger" : "neutral"],
+          ["المسودات والمراجعة", metricValue("drafts"), "محتوى يحتاج قرارًا تحريريًا", "warning"],
+          ["تدقيق الإدارة", metricValue("auditFailures"), "آخر 12 عملية مدققة", "neutral"],
         ].map(([label, value, note, tone]) => (
           <div key={String(label)} className={`rounded-2xl border p-5 ${
             tone === "danger"
@@ -51,7 +55,7 @@ export default async function VideoFactoryDashboardPage() {
                 : "border-brand-gold/10 bg-black/15"
           }`}>
             <p className="text-xs text-brand-cream/40">{label}</p>
-            <p className="mt-2 text-3xl font-bold text-brand-gold">{Number(value).toLocaleString("ar-EG-u-nu-latn")}</p>
+            <p className="mt-2 text-3xl font-bold text-brand-gold">{typeof value === "number" ? value.toLocaleString("ar-EG-u-nu-latn") : "غير متاح"}</p>
             <p className="mt-1 text-xs text-brand-cream/35">{note}</p>
           </div>
         ))}

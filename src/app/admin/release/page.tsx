@@ -234,7 +234,7 @@ export default async function AdminReleasePage({
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <h2 className="font-semibold text-brand-gold">الطوابير</h2>
           <p className="mt-2 text-sm text-brand-cream/55">
-            فشل النشر الاجتماعي: {health.queues.socialFailed} · فشل الفيديو: {health.queues.videoFailed}
+            فشل النشر الاجتماعي: {health.queuesAvailable.social ? health.queues.socialFailed : "غير متاح"} · فشل الفيديو: {health.queuesAvailable.video ? health.queues.videoFailed : "غير متاح"}
           </p>
         </div>
       </section>

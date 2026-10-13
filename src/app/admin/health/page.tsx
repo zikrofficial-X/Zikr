@@ -96,10 +96,19 @@ export default async function AdminHealthPage() {
         </section>
       )}
 
+      {(!health.queuesAvailable.social || !health.queuesAvailable.video) && (
+        <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-7 text-red-100/85">
+          تعذر قراءة {[!health.queuesAvailable.social && "طابور النشر الاجتماعي", !health.queuesAvailable.video && "طابور توليد الفيديو"].filter(Boolean).join(" و")}. الأرقام غير المتاحة ليست أصفارًا حقيقية.
+        </div>
+      )}
+
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Object.entries(health.queues).map(([key, value]) => (
-          <div key={key} className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4"><p className="text-xs text-brand-cream/35">{STATE_LABELS[key] ?? key}</p><p className="mt-1 text-2xl font-bold text-brand-cream">{value}</p></div>
-        ))}
+        {Object.entries(health.queues).map(([key, value]) => {
+          const readable = key.startsWith("social") ? health.queuesAvailable.social : health.queuesAvailable.video;
+          return (
+            <div key={key} className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4"><p className="text-xs text-brand-cream/35">{STATE_LABELS[key] ?? key}</p><p className="mt-1 text-2xl font-bold text-brand-cream">{readable ? value : "غير متاح"}</p></div>
+          );
+        })}
       </section>
     </Container>
   );

@@ -5,7 +5,7 @@ import { deleteFailedVideoGenerationAction } from "@/features/admin/actions/vide
 
 export async function AdminPlatformCommandCenter() {
   const snapshot = await getAdminSnapshot();
-  const failedVideoJobs = snapshot.queues.videoFailed;
+  const failedVideoJobs = snapshot.queues.videoFailed ?? 0;
 
   const groups = ADMIN_NAVIGATION.filter((group) => group.key !== "operations");
   const queueLabels: Record<string, string> = {
@@ -35,6 +35,12 @@ export async function AdminPlatformCommandCenter() {
         </div>
       </header>
 
+      {snapshot.unavailable.length > 0 ? (
+        <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-7 text-red-100/85">
+          تعذر قراءة: {snapshot.unavailable.join("، ")}. القيم غير المتاحة معروضة كـ«غير متاح» وليست أصفارًا.
+        </div>
+      ) : null}
+
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {snapshot.metrics.map((metric) => (
           <div
@@ -42,7 +48,7 @@ export async function AdminPlatformCommandCenter() {
             className={`rounded-2xl border p-5 ${metric.tone === "danger" ? "border-red-500/25 bg-red-500/10 text-red-200" : metric.tone === "warning" ? "border-amber-500/20 bg-amber-500/5 text-amber-200" : metric.tone === "success" ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-200" : "border-brand-gold/10 bg-black/15 text-brand-cream"}`}
           >
             <p className="text-xs opacity-60">{metric.label}</p>
-            <p className="mt-2 text-3xl font-bold tabular-nums">{metric.value.toLocaleString("ar-EG-u-nu-latn")}</p>
+            <p className="mt-2 text-3xl font-bold tabular-nums">{metric.value === null ? "غير متاح" : metric.value.toLocaleString("ar-EG-u-nu-latn")}</p>
           </div>
         ))}
       </section>
@@ -57,7 +63,7 @@ export async function AdminPlatformCommandCenter() {
             {Object.entries(snapshot.queues).map(([key, value]) => (
               <div key={key} className="rounded-xl border border-brand-gold/8 bg-black/10 p-3">
                 <p className="text-[11px] text-brand-cream/35">{queueLabels[key] ?? key}</p>
-                <p className="mt-1 text-xl font-bold text-brand-cream">{value.toLocaleString("ar-EG-u-nu-latn")}</p>
+                <p className="mt-1 text-xl font-bold text-brand-cream">{value === null ? "غير متاح" : value.toLocaleString("ar-EG-u-nu-latn")}</p>
               </div>
             ))}
           </div>
