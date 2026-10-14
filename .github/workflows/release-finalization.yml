@@ -54,20 +54,26 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
-          test -n "${VERCEL_TOKEN:-}" || {
+          blocked=0
+          if [[ -z "${VERCEL_TOKEN:-}" ]]; then
             echo "::error title=Missing Vercel deployment credential::Add VERCEL_TOKEN to the production environment/repository secrets; deployment cannot be authenticated."
-            exit 1
-          }
-          test -n "${SUPABASE_DB_URL:-}" || {
-            echo "::error title=Missing Supabase admin connection::Add SUPABASE_DB_URL using POSTGRES_URL_NON_POOLING or a direct administrative connection for the canonical Supabase project."
-            exit 1
-          }
-          if [[ "${SUPABASE_DB_URL}" =~ ^postgres(ql)?://zikr_seed_loader(:|@) ]]; then
-            echo "::error title=Unsafe Supabase connection role::SUPABASE_DB_URL still uses the retired least-privilege zikr_seed_loader account. Replace it with a dedicated administrative migration connection; do not reactivate the seed-loader role."
-            exit 1
+            blocked=1
           fi
-          if [[ "${SUPABASE_DB_URL}" != *"ymxdswkaxafakugktsim"* ]]; then
-            echo "::error title=Wrong Supabase project::SUPABASE_DB_URL must target project ymxdswkaxafakugktsim."
+          if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
+            echo "::error title=Missing Supabase admin connection::Add SUPABASE_DB_URL using POSTGRES_URL_NON_POOLING or a direct administrative connection for the canonical Supabase project."
+            blocked=1
+          else
+            if [[ "${SUPABASE_DB_URL}" =~ ^postgres(ql)?://zikr_seed_loader(:|@) ]]; then
+              echo "::error title=Unsafe Supabase connection role::SUPABASE_DB_URL still uses the retired least-privilege zikr_seed_loader account. Replace it with a dedicated administrative migration connection; do not reactivate the seed-loader role."
+              blocked=1
+            fi
+            if [[ "${SUPABASE_DB_URL}" != *"ymxdswkaxafakugktsim"* ]]; then
+              echo "::error title=Wrong Supabase project::SUPABASE_DB_URL must target project ymxdswkaxafakugktsim."
+              blocked=1
+            fi
+          fi
+          if (( blocked != 0 )); then
+            echo "::error title=Production release blocked::Fix every credential error above, then dispatch the controlled release with confirmation RELEASE."
             exit 1
           fi
           echo "Production release credentials passed presence and project guards."
