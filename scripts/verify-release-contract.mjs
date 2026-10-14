@@ -66,9 +66,9 @@ assert.ok(publish.includes('gh release edit "$TAG"'), "Android publisher must fi
 const circle = read(".circleci/config.yml");
 assert.ok(circle.includes(`releaseUrl": "https://github.com/${repo}/releases/tag/`), "CircleCI Android release metadata must use the canonical repository");
 const androidJob = circle.split("  android-rebuild:")[1]?.split("\n  security-audit:")[0] ?? "";
-assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_URL: https://bbdpitxvfxgephaaqtqj.supabase.co"), "Android job must use the canonical public Supabase URL");
+assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co"), "Android job must use the canonical public Supabase URL");
 assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY:"), "Android job must declare the public Supabase anon key required by preflight");
-assert.ok(androidJob.includes("SUPABASE_URL: https://bbdpitxvfxgephaaqtqj.supabase.co"), "Android job must pin the canonical Supabase project URL");
+assert.ok(androidJob.includes("SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co"), "Android job must pin the canonical Supabase project URL");
 assert.ok(androidJob.includes("SUPABASE_SERVICE_ROLE_KEY"), "Android job must validate the protected Supabase service-role key");
 const releaseWorkflow = circle.split("workflows:\n")[1] ?? "";
 const androidWorkflowJob = releaseWorkflow.split("- android-rebuild:")[1]?.split("\n      - ")[0] ?? "";

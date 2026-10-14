@@ -81,8 +81,8 @@ jobs:
     resource_class: medium
     environment:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      NEXT_PUBLIC_SUPABASE_URL: https://bbdpitxvfxgephaaqtqj.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJiZHBpdHh2ZnhnZXBoYWFxdHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MzMwMjQsImV4cCI6MjEwNzQwOTAyNH0.00-X9BGi3QElmF8VXjasJRc4B-fgH6TUX8SZaOw20ds
+      NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlteGRzd2theGFmYWt1Z2t0c2ltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MzM5OTIsImV4cCI6MjEwNzQwOTk5Mn0.H1mKDKeajvE4k7NfPz5jVcy_-nohpDO1lL-eh6RXfGA
       AUTH_CALLBACK_URL: https://zikrmediaofficial.vercel.app/auth/callback
     steps:
       - checkout
@@ -259,9 +259,9 @@ jobs:
     resource_class: medium
     environment:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      NEXT_PUBLIC_SUPABASE_URL: https://bbdpitxvfxgephaaqtqj.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJiZHBpdHh2ZnhnZXBoYWFxdHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MzMwMjQsImV4cCI6MjEwNzQwOTAyNH0.00-X9BGi3QElmF8VXjasJRc4B-fgH6TUX8SZaOw20ds
-      SUPABASE_URL: https://bbdpitxvfxgephaaqtqj.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlteGRzd2theGFmYWt1Z2t0c2ltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MzM5OTIsImV4cCI6MjEwNzQwOTk5Mn0.H1mKDKeajvE4k7NfPz5jVcy_-nohpDO1lL-eh6RXfGA
+      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
       GRADLE_OPTS: >-
         -Dorg.gradle.daemon=false
         -Dorg.gradle.workers.max=1
@@ -291,7 +291,7 @@ jobs:
                 exit 1
               fi
             done
-            if [[ "$NEXT_PUBLIC_SUPABASE_URL" != "https://bbdpitxvfxgephaaqtqj.supabase.co" ]]; then
+            if [[ "$NEXT_PUBLIC_SUPABASE_URL" != "https://ymxdswkaxafakugktsim.supabase.co" ]]; then
               echo "NEXT_PUBLIC_SUPABASE_URL does not match the canonical ZIKR Supabase project." >&2
               exit 1
             fi

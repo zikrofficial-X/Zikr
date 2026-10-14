@@ -25,9 +25,9 @@ jobs:
     runs-on: ubuntu-slim
     timeout-minutes: 5
     env:
-      SUPABASE_URL: https://bbdpitxvfxgephaaqtqj.supabase.co
+      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
       # Public anon key for read-only checks; never use the service-role key here.
-      SUPABASE_PUBLIC_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJiZHBpdHh2ZnhnZXBoYWFxdHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MzMwMjQsImV4cCI6MjEwNzQwOTAyNH0.00-X9BGi3QElmF8VXjasJRc4B-fgH6TUX8SZaOw20ds
+      SUPABASE_PUBLIC_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlteGRzd2theGFmYWt1Z2t0c2ltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MzM5OTIsImV4cCI6MjEwNzQwOTk5Mn0.H1mKDKeajvE4k7NfPz5jVcy_-nohpDO1lL-eh6RXfGA
     steps:
       - name: Checkout
         uses: actions/checkout@v7

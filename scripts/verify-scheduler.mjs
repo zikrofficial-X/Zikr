@@ -87,9 +87,9 @@ if (scheduling.includes("GitHub Actions is the authoritative automatic video/soc
 if (scheduling.includes("GitHub Actions are not the active scheduler in the current repository.")) failures.push("stale contradictory scheduler documentation remains");
 
 const mig1 = read("supabase/migrations/20261008050000_repoint_production_cron_to_current_project.sql");
-const migCurrent = read("supabase/migrations/20261012200000_repoint_cron_to_zikrofficial_project.sql");
-if (!migCurrent.includes("bbdpitxvfxgephaaqtqj.supabase.co/functions/v1/prayer-notification-worker")) failures.push("cron migration must pin prayer worker to current Supabase project");
-if (!migCurrent.includes("bbdpitxvfxgephaaqtqj.supabase.co/functions/v1/source-verified-content-agent")) failures.push("cron migration must pin source agent to current Supabase project");
+const migCurrent = read("supabase/migrations/20261012210000_repoint_cron_to_connected_project.sql");
+if (!migCurrent.includes("ymxdswkaxafakugktsim.supabase.co/functions/v1/prayer-notification-worker")) failures.push("cron migration must pin prayer worker to current Supabase project");
+if (!migCurrent.includes("ymxdswkaxafakugktsim.supabase.co/functions/v1/source-verified-content-agent")) failures.push("cron migration must pin source agent to current Supabase project");
 if (!mig1.includes("job_id => 4") || !mig1.includes("active => false")) failures.push("cron migration must retire the obsolete cleanup job");
 
 const mig2 = read("supabase/migrations/20261002114000_retire_dead_media_cleanup_cron_20261002.sql");

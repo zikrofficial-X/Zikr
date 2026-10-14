@@ -20,8 +20,8 @@ jobs:
     environment: production
     timeout-minutes: 15
     env:
-      SUPABASE_URL: https://bbdpitxvfxgephaaqtqj.supabase.co
-      NEXT_PUBLIC_SUPABASE_URL: https://bbdpitxvfxgephaaqtqj.supabase.co
+      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       BACKGROUND_JOB_TARGET: "social"
