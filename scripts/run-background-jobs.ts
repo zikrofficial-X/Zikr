@@ -221,28 +221,15 @@ async function processVideos(settings: VideoAutomationSettings) {
     return { processed, succeeded, failed };
   };
 
-  // Drain the existing backlog before adding new jobs. Multiple bounded workers
-  // process different queue rows concurrently because each worker claims one row
-  // atomically inside processTemplateVideoQueue().
-  const backlog = await drainQueue(settings.batchSize);
-  let processed = backlog.processed;
-  let succeeded = backlog.succeeded;
-  let failed = backlog.failed;
-  let seeded = 0;
+  // Seed first so an old backlog cannot indefinitely starve today's scheduled requests.
+  // Queue claiming remains atomic inside processTemplateVideoQueue().
+  const seeded = await seedAutomatedVideoRequests(settings.batchSize);
+  console.log(`[background-jobs] Seeded ${seeded} new video request(s) before queue processing.`);
 
-  const remainingCapacity = Math.max(0, settings.batchSize - processed);
-  if (remainingCapacity > 0) {
-    seeded = await seedAutomatedVideoRequests(remainingCapacity);
-    console.log(`[background-jobs] Seeded ${seeded} new video request(s) after backlog processing.`);
-    if (seeded > 0) {
-      const fresh = await drainQueue(Math.min(remainingCapacity, seeded));
-      processed += fresh.processed;
-      succeeded += fresh.succeeded;
-      failed += fresh.failed;
-    }
-  } else {
-    console.log(`[background-jobs] Backlog consumed the full batch capacity (${processed}/${settings.batchSize}); seeding deferred to the next run.`);
-  }
+  const result = await drainQueue(settings.batchSize);
+  const processed = result.processed;
+  const succeeded = result.succeeded;
+  const failed = result.failed;
 
   return {
     processed,
