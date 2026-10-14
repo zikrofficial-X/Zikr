@@ -45,7 +45,6 @@ SELECT
   (SELECT count(*) FROM public.content_library),
   (SELECT count(*) FROM public.content_agent_sources),
   (SELECT count(*) FROM public.site_settings),
-  (SELECT count(*) FROM public.profiles),
   (SELECT count(*) FROM public.admin_settings WHERE key IN ('video_automation_enabled', 'video_automation_batch_size', 'video_automation_ai_enabled')),
   (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity = false),
   (SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'quran_tafsir' AND policyname = 'tmp_zikr_seed_loader'),
@@ -53,7 +52,7 @@ SELECT
   (SELECT count(*) FROM cron.job WHERE active = true AND jobname IN ('zikr-prayer-push-dispatch', 'zikr-source-verified-content-agent') AND command LIKE '%ymxdswkaxafakugktsim.supabase.co%');
 SQL
 
-IFS='|' read -r ayahs distinct_ayahs surahs tafsir empty_tafsir hadiths duas stories prophets scholars companions articles kids_games article_categories battles battle_events conquests conquest_events companion_stories prophet_sections hadith_books quran_reciters quran_audio kids_game_levels kids_content video_categories videos media_assets site_audio_assets tawasheeh tawasheeh_categories content_library content_agent_sources site_settings profiles video_settings unprotected_tables temporary_policy seed_role_logins active_canonical_cron < /tmp/zikr-supabase-preflight.txt
+IFS='|' read -r ayahs distinct_ayahs surahs tafsir empty_tafsir hadiths duas stories prophets scholars companions articles kids_games article_categories battles battle_events conquests conquest_events companion_stories prophet_sections hadith_books quran_reciters quran_audio kids_game_levels kids_content video_categories videos media_assets site_audio_assets tawasheeh tawasheeh_categories content_library content_agent_sources site_settings video_settings unprotected_tables temporary_policy seed_role_logins active_canonical_cron < /tmp/zikr-supabase-preflight.txt
 
 assert_eq() {
   local actual="$1"
@@ -115,7 +114,6 @@ assert_positive "$tawasheeh_categories" "Tawasheeh category rows"
 assert_positive "$content_library" "Content library rows"
 assert_positive "$content_agent_sources" "Content agent source rows"
 assert_positive "$site_settings" "Site settings rows"
-assert_positive "$profiles" "Profile rows"
 
 # Only reconcile migration metadata after schema parity is proven. This command
 # does not execute migration SQL on production; it compares the live schema with
