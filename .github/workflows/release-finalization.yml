@@ -79,6 +79,22 @@ jobs:
         run: pnpm verify:pr
         timeout-minutes: 15
 
+      - name: Install PostgreSQL client for production schema verification
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Verify production data and reconcile migration history safely
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
+        run: bash scripts/reconcile-supabase-migration-history.sh
+
       - name: Install pinned Vercel CLI
         run: npm install --global vercel@59.23.1
 
