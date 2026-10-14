@@ -1,0 +1,78 @@
+name: "ZIKR / Restore Supabase Seed Data"
+
+# Manual, idempotent restore of the Quran tafsir seed data into the connected
+# Supabase project. The 9 tafsir migrations are too large to apply through the
+# Supabase connector, so they are applied here with psql. Every statement uses
+# ON CONFLICT DO UPDATE, so running this workflow more than once is safe.
+#
+# Required repository/environment secret: SUPABASE_DB_URL (use POSTGRES_URL_NON_POOLING
+# from the Vercel Supabase integration, or the direct connection string).
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type restore to apply the tafsir seed data"
+        required: true
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-supabase-seed-restore
+  cancel-in-progress: false
+
+jobs:
+  restore-tafsir:
+    name: Restore Quran tafsir
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'restore'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Verify the target database
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
+            echo "SUPABASE_DB_URL is not configured." >&2
+            exit 1
+          fi
+          if [[ "$SUPABASE_DB_URL" != *"$EXPECTED_PROJECT_REF"* ]]; then
+            echo "SUPABASE_DB_URL does not point to project $EXPECTED_PROJECT_REF; refusing to continue." >&2
+            exit 1
+          fi
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Apply tafsir seed migrations in order
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(grep -l "INSERT INTO public.quran_tafsir" supabase/migrations/*.sql | sort)
+          echo "Applying ${#files[@]} tafsir seed files"
+          for file in "${files[@]}"; do
+            echo "-> $file"
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction -q -f "$file"
+          done
+
+      - name: Verify restored row count
+        shell: bash
+        run: |
+          set -euo pipefail
+          count="$(psql "$SUPABASE_DB_URL" -At -c "select count(*) from public.quran_tafsir")"
+          echo "quran_tafsir rows: $count"
+          if [[ "$count" -le 0 ]]; then
+            echo "Tafsir restore produced no rows." >&2
+            exit 1
+          fi
