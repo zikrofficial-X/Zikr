@@ -1,6 +1,10 @@
 name: ZIKR Production Smoke Verification
 
 on:
+  # Read-only live smoke test. The explicit one-shot marker never deploys.
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       confirmation:
@@ -23,9 +27,11 @@ jobs:
   verify:
     name: Verify live production
     if: >-
-      github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' &&
-      inputs.confirmation == 'RELEASE'
+      (
+        (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE') ||
+        (github.event_name == 'push' && contains(github.event.head_commit.message, '[production-smoke]'))
+      )
     runs-on: ubuntu-slim
     timeout-minutes: 20
     environment:
@@ -48,9 +54,9 @@ jobs:
           {
             echo "## ZIKR Production Release"
             echo ""
-            echo "- Stage: ${{ inputs.release_reason }}"
+            echo "- Stage: ${{ inputs.release_reason || 'One-shot production smoke check' }}"
             echo "- Commit: ${{ github.sha }}"
-            echo "- Deployment: GitHub Actions controlled Vercel release"
+            echo "- Deployment: Existing production alias (smoke verification only; this workflow does not deploy)"
             echo "- Quality gate: PASSED"
             echo "- Production smoke verification: PASSED"
             echo "- Vercel CLI token workflow: retired"
