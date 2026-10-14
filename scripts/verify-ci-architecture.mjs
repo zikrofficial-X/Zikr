@@ -87,6 +87,9 @@ assert.ok(reconciliation.includes("SUPABASE_MIGRATION_HISTORY_RECONCILED"), "Mig
 
 assert.ok(smoke.includes("name: ZIKR Production Smoke Verification"), "Manual production smoke workflow name is incorrect");
 assert.ok(smoke.includes("node scripts/verify-production-smoke.mjs"), "Manual smoke workflow must use the canonical production smoke script");
+assert.ok(smoke.includes("contains(github.event.head_commit.message, '[production-smoke]')"), "Live production smoke must require an explicit one-shot commit marker");
+assert.ok(smoke.includes("github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'"), "Manual live production smoke must retain explicit confirmation");
+assert.ok(!smoke.includes("vercel deploy"), "The read-only smoke workflow must never deploy");
 
 assert.ok(androidPublish.includes("github.ref_type == 'tag'"), "Android publishing must support release tags");
 assert.ok(androidPublish.includes("docs/finalization/RELEASE_RETRY.flag"), "Android publishing must require explicit release state for non-tag recovery");
