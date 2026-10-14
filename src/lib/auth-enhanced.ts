@@ -6,7 +6,7 @@
  */
 
 import { getServerEnv } from "@/lib/env";
-import { PRODUCTION_URL } from "@/lib/site";
+import { PRODUCTION_URL, isV0PreviewHost } from "@/lib/site";
 
 /**
  * Build OAuth redirect URI
@@ -39,10 +39,14 @@ export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
     const url = new URL(baseUrl);
     const host = url.hostname.toLowerCase();
 
-    if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
-      return url.origin;
-    }
+  if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+  return url.origin;
+  }
 
+  if (isV0PreviewHost(host)) {
+  return url.origin;
+  }
+  
     // OAuth redirect URIs must always point to this app, not to Supabase's
     // provider callback URL (https://<project>.supabase.co/auth/v1/callback).
     // If a Supabase/Auth URL or a Vercel deployment/branch URL is supplied,
