@@ -78,6 +78,7 @@ assert.ok(release.includes("bash scripts/reconcile-supabase-migration-history.sh
 const reconciliation = read("scripts/reconcile-supabase-migration-history.sh");
 assert.ok(reconciliation.includes("SUPABASE_DB_URL") && reconciliation.includes("EXPECTED_PROJECT_REF"), "Migration reconciliation must require and verify an explicit production project target");
 assert.ok(reconciliation.indexOf("supabase db diff") >= 0 && reconciliation.indexOf("supabase db diff") < reconciliation.indexOf("supabase migration repair"), "Migration history must not be repaired before schema-diff verification");
+assert.ok(reconciliation.includes("--use-pg-delta") && reconciliation.includes("--strict-coverage"), "Migration reconciliation must use strict schema diff coverage rather than the legacy diff engine");
 assert.ok(reconciliation.includes("SCHEMA DRIFT DETECTED") && reconciliation.includes("public.quran_ayahs"), "Migration repair must fail closed on schema drift and check canonical Quran data");
 assert.ok(reconciliation.includes("SUPABASE_MIGRATION_HISTORY_RECONCILED"), "Migration reconciliation must verify the final local/remote version count");
 
