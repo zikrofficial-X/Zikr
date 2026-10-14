@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
-import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { readAdminRows } from "@/features/admin/services/safe-read";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +17,9 @@ type AdhanRow = {
 
 export default async function AudioAdhanPage() {
   await requireAdminPermission("audio.manage");
-  const rows = await supabaseServerAdminRequest<AdhanRow[]>(
+  const { rows, ok: loaded } = await readAdminRows<AdhanRow>(
     "/rest/v1/site_audio_assets?kind=eq.adhan&select=id,title,storage_path,mime_type,size_bytes,is_primary,updated_at&order=is_primary.desc,created_at.desc&limit=100",
-    { method: "GET" },
-  ).catch(() => []);
+  );
 
   return (
     <Container className="space-y-8 py-10 text-right" dir="rtl">
@@ -38,6 +37,12 @@ export default async function AudioAdhanPage() {
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">الأساسي</p><p className="mt-2 text-3xl font-bold text-emerald-300">{rows.filter((row) => row.is_primary).length}</p></div>
         <div className="rounded-2xl border border-sky-400/15 bg-sky-400/5 p-5"><p className="text-xs text-brand-cream/35">المصدر</p><p className="mt-2 text-sm font-semibold text-sky-200" dir="ltr">site_audio_assets</p></div>
       </section>
+
+      {!loaded && (
+        <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm text-red-100/85">
+          تعذر قراءة مكتبة الأذان من قاعدة البيانات. الأرقام أعلاه ليست أصفارًا حقيقية.
+        </div>
+      )}
 
       <section className="space-y-3">
         {rows.map((row) => (

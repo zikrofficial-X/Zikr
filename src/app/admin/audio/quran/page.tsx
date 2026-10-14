@@ -1,19 +1,21 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
-import { supabaseServerAdminCount, supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { readAdminRows } from "@/features/admin/services/safe-read";
+import { supabaseServerAdminCount } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function AudioQuranPage() {
   await requireAdminPermission("audio.manage");
 
-  const [reciters, audioRows] = await Promise.all([
-    supabaseServerAdminRequest<Array<{ id: string; code: string | null; name_ar: string | null }>>(
+  const [recitersRes, audioRows] = await Promise.all([
+    readAdminRows<{ id: string; code: string | null; name_ar: string | null }>(
       "/rest/v1/quran_reciters?select=id,code,name_ar&order=name_en.asc&limit=200",
-    ).catch(() => []),
+    ),
     supabaseServerAdminCount("quran_audio").catch(() => null),
   ]);
+  const reciters = recitersRes.rows;
   const defaultReciterCode = process.env.QURAN_VIDEO_RECITER_CODE || "alafasy";
   const defaultReciter = reciters.find((row) => row.code === defaultReciterCode) ?? null;
 
@@ -31,7 +33,7 @@ export default async function AudioQuranPage() {
       <section className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <p className="text-xs text-brand-cream/35">عدد القراء</p>
-          <p className="mt-2 text-3xl font-bold text-brand-gold">{reciters.length}</p>
+          <p className="mt-2 text-3xl font-bold text-brand-gold">{recitersRes.ok ? reciters.length : "غير متاح"}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <p className="text-xs text-brand-cream/35">سجلات quran_audio</p>

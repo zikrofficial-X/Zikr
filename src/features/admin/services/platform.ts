@@ -168,20 +168,19 @@ export async function getAdminOverview() {
     ] as const),
   );
 
-  const [videoRequests, socialQueue, sections] = await Promise.all([
-    supabaseServerAdminRequest<Array<{ status: string }>>(
-      "/rest/v1/video_generation_requests?select=status&limit=500",
-      { method: "GET" },
-    ).catch(() => []),
-    supabaseServerAdminRequest<Array<{ status: string }>>(
-      "/rest/v1/social_publish_queue?select=status&limit=500",
-      { method: "GET" },
-    ).catch(() => []),
-    supabaseServerAdminRequest<Array<{ value?: unknown }>>(
-      "/rest/v1/site_settings?key=eq.section_visibility&select=value&limit=1",
-      { method: "GET" },
-    ).catch(() => []),
+  const [videoRes, socialRes, sectionsRes] = await Promise.all([
+    readAdminRows<{ status: string }>("/rest/v1/video_generation_requests?select=status&limit=500"),
+    readAdminRows<{ status: string }>("/rest/v1/social_publish_queue?select=status&limit=500"),
+    readAdminRows<{ value?: unknown }>("/rest/v1/site_settings?key=eq.section_visibility&select=value&limit=1"),
   ]);
+  const videoRequests = videoRes.rows;
+  const socialQueue = socialRes.rows;
+  const sections = sectionsRes.rows;
+  const unavailable = [
+    !videoRes.ok && "video_generation_requests",
+    !socialRes.ok && "social_publish_queue",
+    !sectionsRes.ok && "site_settings",
+  ].filter(Boolean) as string[];
 
   const countStatuses = (items: Array<{ status: string }>) =>
     items.reduce<Record<string, number>>((acc, item) => {
@@ -196,6 +195,7 @@ export async function getAdminOverview() {
 
   return {
     counts: Object.fromEntries(counts),
+    unavailable,
     videoGeneration: countStatuses(videoRequests),
     socialQueue: countStatuses(socialQueue),
     sections: {
@@ -250,10 +250,12 @@ export async function getAdminHealth(): Promise<AdminHealth> {
 }
 
 export async function getAdminSettings(): Promise<Record<string, unknown>> {
+  // Settings drive editable forms and security toggles, so an unreadable table must surface as an
+  // error instead of silently rendering default values that an admin could then save over real ones.
   const rows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
     "/rest/v1/admin_settings?select=key,value&order=key.asc",
     { method: "GET" },
-  ).catch(() => []);
+  );
   return Object.fromEntries(rows.map((row) => [row.key, row.value]));
 }
 
