@@ -81,7 +81,8 @@ trap 'rm -f "$diff_file" /tmp/zikr-supabase-preflight.txt' EXIT
 supabase db diff \
   --db-url "$SUPABASE_DB_URL" \
   --schema public,private,storage,extensions \
-  --use-migra \
+  --use-pg-delta \
+  --strict-coverage \
   --output "$diff_file"
 
 non_comment_diff="$(grep -vE '^[[:space:]]*(--|$)' "$diff_file" || true)"
