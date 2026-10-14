@@ -5,7 +5,9 @@ DO $migration$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'zikr_seed_loader') THEN
     EXECUTE 'ALTER ROLE zikr_seed_loader NOLOGIN';
-    EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public.quran_tafsir FROM zikr_seed_loader';
+    IF to_regclass('public.quran_tafsir') IS NOT NULL THEN
+      EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public.quran_tafsir FROM zikr_seed_loader';
+    END IF;
   END IF;
 
   IF to_regclass('public.quran_tafsir') IS NOT NULL THEN
