@@ -6,11 +6,17 @@ import { requireAdminPermission } from "@/features/admin/services/admin";
 import type { AdminPermission } from "@/features/admin/services/permissions";
 
 async function destructiveMfaRequired() {
-  const rows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
-    "/rest/v1/admin_settings?select=value&key=eq.require_mfa_for_destructive&limit=1",
-    { method: "GET" },
-  ).catch(() => []);
-  return rows[0]?.value === true;
+  try {
+    const rows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+      "/rest/v1/admin_settings?select=value&key=eq.require_mfa_for_destructive&limit=1",
+      { method: "GET" },
+    );
+    return rows[0]?.value === true;
+  } catch (error) {
+    // Fail closed: if the policy cannot be read, destructive actions must still pass step-up MFA.
+    console.error("[admin] could not read require_mfa_for_destructive; requiring step-up:", error);
+    return true;
+  }
 }
 
 export async function requireAdminStepUp(permission: AdminPermission, nextPath = "/admin") {

@@ -178,6 +178,18 @@ if (!packageJson.scripts?.["verify:pr"]?.includes("pnpm admin:architecture:check
   failures.push("verify:pr must include pnpm admin:architecture:check");
 }
 
+// Security invariants: the MFA policy and admin status reads must never fail open or look like real zeros.
+const stepUp = read("src/features/admin/services/security.ts");
+if (!/catch \(error\) \{[\s\S]*return true;[\s\S]*\}/.test(stepUp)) {
+  failures.push("destructive-action MFA policy must fail closed (return true when the setting cannot be read)");
+}
+if (/destructiveMfaRequired[\s\S]{0,400}\.catch\(\(\) => \[\]\)/.test(stepUp)) {
+  failures.push("destructive-action MFA policy must not swallow read errors as an empty result");
+}
+if (!existsSync(join(ROOT, "src/features/admin/services/safe-read.ts"))) {
+  failures.push("missing shared safe-read helper used to report unavailable admin data");
+}
+
 if (failures.length) {
   console.error("ADMIN_ARCHITECTURE_CHECK_FAILED");
   for (const failure of failures) console.error("❌ " + failure);
