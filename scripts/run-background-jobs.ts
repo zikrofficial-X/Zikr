@@ -190,9 +190,14 @@ async function processVideos(settings: VideoAutomationSettings) {
   applyVideoAutomationSettings(settings);
   ensureArabicTtsRuntime();
 
-  const configuredConcurrency = Number(process.env.VIDEO_WORKER_CONCURRENCY ?? 2);
-  const concurrency = Math.max(1, Math.min(3, Number.isFinite(configuredConcurrency) ? Math.floor(configuredConcurrency) : 2));
-  console.log(`[background-jobs] Video worker concurrency: ${concurrency}`);
+  const configuredBatchSize = Number(
+    process.env.VIDEO_WORKER_BATCH_SIZE ?? process.env.VIDEO_WORKER_CONCURRENCY ?? 2,
+  );
+  const processingBatchSize = Math.max(
+    1,
+    Math.min(10, Number.isFinite(configuredBatchSize) ? Math.floor(configuredBatchSize) : 2),
+  );
+  console.log(`[background-jobs] Video processing batch size: ${processingBatchSize}`);
   // Keep this in sync with the UTC day index used by seedAutomatedVideoRequests.
   const priorityDay = Math.floor(Date.now() / 86_400_000);
 
@@ -203,7 +208,7 @@ async function processVideos(settings: VideoAutomationSettings) {
     let remaining = Math.max(0, capacity);
 
     while (remaining > 0) {
-      const waveSize = Math.min(concurrency, remaining);
+      const waveSize = Math.min(processingBatchSize, remaining);
       // Process a bounded candidate batch in one worker invocation. Independent
       // concurrent reads selected the same oldest row and wasted capacity.
       const wave = [await processTemplateVideoQueue(waveSize, priorityDay)];
