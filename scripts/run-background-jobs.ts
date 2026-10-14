@@ -193,6 +193,8 @@ async function processVideos(settings: VideoAutomationSettings) {
   const configuredConcurrency = Number(process.env.VIDEO_WORKER_CONCURRENCY ?? 2);
   const concurrency = Math.max(1, Math.min(3, Number.isFinite(configuredConcurrency) ? Math.floor(configuredConcurrency) : 2));
   console.log(`[background-jobs] Video worker concurrency: ${concurrency}`);
+  // Keep this in sync with the UTC day index used by seedAutomatedVideoRequests.
+  const priorityDay = Math.floor(Date.now() / 86_400_000);
 
   const drainQueue = async (capacity: number) => {
     let processed = 0;
@@ -202,9 +204,9 @@ async function processVideos(settings: VideoAutomationSettings) {
 
     while (remaining > 0) {
       const waveSize = Math.min(concurrency, remaining);
-      const wave = await Promise.all(
-        Array.from({ length: waveSize }, () => processTemplateVideoQueue(1)),
-      );
+      // Process a bounded candidate batch in one worker invocation. Independent
+      // concurrent reads selected the same oldest row and wasted capacity.
+      const wave = [await processTemplateVideoQueue(waveSize, priorityDay)];
 
       const waveProcessed = wave.reduce((sum, result) => sum + (result.processed || 0), 0);
       const waveSucceeded = wave.reduce((sum, result) => sum + (result.succeeded || 0), 0);
