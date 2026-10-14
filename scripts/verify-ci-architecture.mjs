@@ -71,6 +71,9 @@ assert.ok(release.includes("pnpm release:contract:check"), "Controlled release m
 assert.ok(release.includes("pnpm production:smoke"), "Controlled release must use the canonical production smoke script");
 assert.ok(!release.includes("--token"), "Controlled Vercel release must not pass credentials through CLI arguments");
 assert.ok(release.includes("environment:\n      name: production"), "Controlled release must use the protected production environment");
+assert.ok(release.includes("contains(github.event.head_commit.message, '[release-production]')"), "A push-triggered production deployment must require the explicit one-shot release marker");
+assert.ok(release.includes("github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'"), "Manual production deployment must retain explicit RELEASE confirmation");
+assert.ok(release.includes("push:\n    branches:\n      - main"), "The release workflow must only listen for push events on main");
 
 assert.ok(smoke.includes("name: ZIKR Production Smoke Verification"), "Manual production smoke workflow name is incorrect");
 assert.ok(smoke.includes("node scripts/verify-production-smoke.mjs"), "Manual smoke workflow must use the canonical production smoke script");
