@@ -73,6 +73,9 @@ assert.ok(!release.includes("--token"), "Controlled Vercel release must not pass
 assert.ok(release.includes("environment:\n      name: production"), "Controlled release must use the protected production environment");
 assert.ok(release.includes("contains(github.event.head_commit.message, '[release-production]')"), "A push-triggered production deployment must require the explicit one-shot release marker");
 assert.ok(release.includes("github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'"), "Manual production deployment must retain explicit RELEASE confirmation");
+assert.ok(release.includes("Missing Vercel deployment credential"), "Controlled release must fail before build when VERCEL_TOKEN is missing");
+assert.ok(release.includes("Unsafe Supabase connection role"), "Controlled release must reject the retired seed-loader connection rather than re-enable it");
+assert.ok(release.indexOf("Fail fast on missing or unsafe production credentials") < release.indexOf("Install dependencies"), "Production credential checks must run before dependency installation");
 assert.ok(release.includes("push:\n    branches:\n      - main"), "The release workflow must only listen for push events on main");
 assert.ok(release.includes("bash scripts/reconcile-supabase-migration-history.sh"), "Production release must audit and safely reconcile Supabase migration history before deploy");
 const reconciliation = read("scripts/reconcile-supabase-migration-history.sh");
