@@ -190,9 +190,16 @@ async function processVideos(settings: VideoAutomationSettings) {
   applyVideoAutomationSettings(settings);
   ensureArabicTtsRuntime();
 
-  const configuredConcurrency = Number(process.env.VIDEO_WORKER_CONCURRENCY ?? 2);
-  const concurrency = Math.max(1, Math.min(3, Number.isFinite(configuredConcurrency) ? Math.floor(configuredConcurrency) : 2));
-  console.log(`[background-jobs] Video worker concurrency: ${concurrency}`);
+  const configuredBatchSize = Number(
+    process.env.VIDEO_WORKER_BATCH_SIZE ?? process.env.VIDEO_WORKER_CONCURRENCY ?? 2,
+  );
+  const processingBatchSize = Math.max(
+    1,
+    Math.min(10, Number.isFinite(configuredBatchSize) ? Math.floor(configuredBatchSize) : 2),
+  );
+  console.log(`[background-jobs] Video processing batch size: ${processingBatchSize}`);
+  // Keep this in sync with the UTC day index used by seedAutomatedVideoRequests.
+  const priorityDay = Math.floor(Date.now() / 86_400_000);
 
   const drainQueue = async (capacity: number) => {
     let processed = 0;
@@ -201,10 +208,10 @@ async function processVideos(settings: VideoAutomationSettings) {
     let remaining = Math.max(0, capacity);
 
     while (remaining > 0) {
-      const waveSize = Math.min(concurrency, remaining);
-      const wave = await Promise.all(
-        Array.from({ length: waveSize }, () => processTemplateVideoQueue(1)),
-      );
+      const waveSize = Math.min(processingBatchSize, remaining);
+      // Process a bounded candidate batch in one worker invocation. Independent
+      // concurrent reads selected the same oldest row and wasted capacity.
+      const wave = [await processTemplateVideoQueue(waveSize, priorityDay)];
 
       const waveProcessed = wave.reduce((sum, result) => sum + (result.processed || 0), 0);
       const waveSucceeded = wave.reduce((sum, result) => sum + (result.succeeded || 0), 0);
@@ -221,28 +228,15 @@ async function processVideos(settings: VideoAutomationSettings) {
     return { processed, succeeded, failed };
   };
 
-  // Drain the existing backlog before adding new jobs. Multiple bounded workers
-  // process different queue rows concurrently because each worker claims one row
-  // atomically inside processTemplateVideoQueue().
-  const backlog = await drainQueue(settings.batchSize);
-  let processed = backlog.processed;
-  let succeeded = backlog.succeeded;
-  let failed = backlog.failed;
-  let seeded = 0;
+  // Seed first so an old backlog cannot indefinitely starve today's scheduled requests.
+  // Queue claiming remains atomic inside processTemplateVideoQueue().
+  const seeded = await seedAutomatedVideoRequests(settings.batchSize);
+  console.log(`[background-jobs] Seeded ${seeded} new video request(s) before queue processing.`);
 
-  const remainingCapacity = Math.max(0, settings.batchSize - processed);
-  if (remainingCapacity > 0) {
-    seeded = await seedAutomatedVideoRequests(remainingCapacity);
-    console.log(`[background-jobs] Seeded ${seeded} new video request(s) after backlog processing.`);
-    if (seeded > 0) {
-      const fresh = await drainQueue(Math.min(remainingCapacity, seeded));
-      processed += fresh.processed;
-      succeeded += fresh.succeeded;
-      failed += fresh.failed;
-    }
-  } else {
-    console.log(`[background-jobs] Backlog consumed the full batch capacity (${processed}/${settings.batchSize}); seeding deferred to the next run.`);
-  }
+  const result = await drainQueue(settings.batchSize);
+  const processed = result.processed;
+  const succeeded = result.succeeded;
+  const failed = result.failed;
 
   return {
     processed,

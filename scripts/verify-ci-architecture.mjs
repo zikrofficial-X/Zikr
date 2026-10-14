@@ -71,6 +71,16 @@ assert.ok(release.includes("pnpm release:contract:check"), "Controlled release m
 assert.ok(release.includes("pnpm production:smoke"), "Controlled release must use the canonical production smoke script");
 assert.ok(!release.includes("--token"), "Controlled Vercel release must not pass credentials through CLI arguments");
 assert.ok(release.includes("environment:\n      name: production"), "Controlled release must use the protected production environment");
+assert.ok(release.includes("contains(github.event.head_commit.message, '[release-production]')"), "A push-triggered production deployment must require the explicit one-shot release marker");
+assert.ok(release.includes("github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'"), "Manual production deployment must retain explicit RELEASE confirmation");
+assert.ok(release.includes("push:\n    branches:\n      - main"), "The release workflow must only listen for push events on main");
+assert.ok(release.includes("bash scripts/reconcile-supabase-migration-history.sh"), "Production release must audit and safely reconcile Supabase migration history before deploy");
+const reconciliation = read("scripts/reconcile-supabase-migration-history.sh");
+assert.ok(reconciliation.includes("SUPABASE_DB_URL") && reconciliation.includes("EXPECTED_PROJECT_REF"), "Migration reconciliation must require and verify an explicit production project target");
+assert.ok(reconciliation.indexOf("supabase db diff") >= 0 && reconciliation.indexOf("supabase db diff") < reconciliation.indexOf("supabase migration repair"), "Migration history must not be repaired before schema-diff verification");
+assert.ok(reconciliation.includes("--use-pg-delta") && reconciliation.includes("--strict-coverage"), "Migration reconciliation must use strict schema diff coverage rather than the legacy diff engine");
+assert.ok(reconciliation.includes("SCHEMA DRIFT DETECTED") && reconciliation.includes("public.quran_ayahs"), "Migration repair must fail closed on schema drift and check canonical Quran data");
+assert.ok(reconciliation.includes("SUPABASE_MIGRATION_HISTORY_RECONCILED"), "Migration reconciliation must verify the final local/remote version count");
 
 assert.ok(smoke.includes("name: ZIKR Production Smoke Verification"), "Manual production smoke workflow name is incorrect");
 assert.ok(smoke.includes("node scripts/verify-production-smoke.mjs"), "Manual smoke workflow must use the canonical production smoke script");
