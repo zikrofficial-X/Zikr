@@ -1,6 +1,11 @@
 name: ZIKR Finalization Controlled Release
 
 on:
+  # A push to main releases only when its commit message carries the explicit
+  # one-shot production authorization marker. Ordinary merges do not deploy.
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       confirmation:
@@ -22,7 +27,12 @@ concurrency:
 jobs:
   release:
     name: Controlled production release
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (
+        (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE') ||
+        (github.event_name == 'push' && contains(github.event.head_commit.message, '[release-production]'))
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 35
     environment:
