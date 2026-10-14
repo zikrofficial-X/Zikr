@@ -1254,7 +1254,7 @@ export async function reconcileCompletedVideoSocialQueue(limit = 100) {
   return reconciled;
 }
 
-export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
+export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?: number) {
   if (engineConfig().dryRun) {
     console.log(`[template-video] dry-run enabled; no video generation, upload, or publishing will occur (limit=${limit}).`);
     return { processed: 0, succeeded: 0, failed: 0 };
@@ -1278,9 +1278,35 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
       },
     );
   }
-  const rows = await supabaseServerAdminRequest<GeneratedRequest[]>(
-    `/rest/v1/video_generation_requests?status=in.(pending,retry_wait)&or=(status.eq.pending,next_retry_at.lte.${encodeURIComponent(new Date().toISOString())})&select=id,title,description,category,content,status,automation_key,generation_attempts,next_retry_at&order=created_at.asc&limit=${Math.max(1, Math.min(10, limit))}`,
-  );
+  const candidateLimit = Math.max(1, Math.min(10, limit));
+  const eligibleFilter = `status=in.(pending,retry_wait)&or=(status.eq.pending,next_retry_at.lte.${encodeURIComponent(new Date().toISOString())})&select=id,title,description,category,content,status,automation_key,generation_attempts,next_retry_at&order=created_at.asc&limit=${candidateLimit}`;
+  let rows: GeneratedRequest[] = [];
+
+  if (Number.isInteger(priorityDay)) {
+    // Today's scheduled jobs get first claim even when an older backlog exists.
+    const prioritized = await supabaseServerAdminRequest<GeneratedRequest[]>(
+      `/rest/v1/video_generation_requests?automation_key=like.*:${priorityDay}:*&${eligibleFilter}`,
+    );
+    rows = [...new Map((prioritized ?? []).map((request) => [request.id, request])).values()]
+      .slice(0, candidateLimit);
+
+    if (rows.length < candidateLimit) {
+      const backlog = await supabaseServerAdminRequest<GeneratedRequest[]>(
+        `/rest/v1/video_generation_requests?${eligibleFilter}`,
+      );
+      const seen = new Set(rows.map((request) => request.id));
+      rows = [
+        ...rows,
+        ...(backlog ?? []).filter((request) => !seen.has(request.id)),
+      ].slice(0, candidateLimit);
+    }
+  } else {
+    rows = (await supabaseServerAdminRequest<GeneratedRequest[]>(
+      `/rest/v1/video_generation_requests?${eligibleFilter}`,
+    )) ?? [];
+  }
+
+  let processed = 0;
   let succeeded = 0;
   let failed = 0;
   for (const request of rows || []) {
@@ -1289,6 +1315,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
       { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ status: "processing", error_message: null, error_details: null, updated_at: new Date().toISOString() }) },
     );
     if (!claimed?.[0]) continue;
+    processed += 1;
     try {
       const videoUrl = await renderVideo(request);
       await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
@@ -1327,5 +1354,5 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE) {
       console.error(`[template-video] Failed ${request.id}: ${message}`);
     }
   }
-  return { processed: (rows || []).length, succeeded, failed };
+  return { processed, succeeded, failed };
 }
