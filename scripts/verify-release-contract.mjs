@@ -46,6 +46,9 @@ const publish = read(".github/workflows/publish-android-release-assets.yml");
 const recoveryDispatch = read(".github/workflows/dispatch-android-release-recovery.yml");
 assert.ok(recoveryDispatch.includes("ci/circleci: android-rebuild"), "Android recovery publisher must wait for signed CircleCI build success");
 assert.ok(recoveryDispatch.includes("listReleases"), "Android recovery dispatch must find a draft release through the releases list API");
+assert.ok(recoveryDispatch.includes("release.draft !== true"), "Android recovery dispatch must only target an unpublished draft");
+assert.ok(recoveryDispatch.includes("branchData.commit.sha"), "Android recovery dispatch must bind publication to the release branch commit");
+
 assert.ok(recoveryDispatch.includes("RELEASE_RETRY.flag"), "Android recovery dispatch must require the repository release retry guard");
 assert.ok(recoveryDispatch.includes("createWorkflowDispatch"), "Android recovery dispatch must start the guarded publisher workflow");
 assert.ok(recoveryDispatch.includes("github.event_name == 'push'"), "Android recovery must retry after the guarded workflow is merged to main");
@@ -83,6 +86,9 @@ assert.ok(publish.includes('gh api --method PATCH "repos/${GITHUB_REPOSITORY}/re
 assert.ok(publish.includes('repos/${GITHUB_REPOSITORY}/releases?per_page=100'), "Android publisher must resolve draft releases from the releases list API");
 assert.ok(publish.includes('https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${asset}'), "Android publisher must upload verified binaries to the resolved release ID");
 assert.ok(publish.includes('repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}'), "Android publisher must read the release by immutable ID");
+assert.ok(!publish.includes('gh release view "$TAG"'), "Android publisher must not rely on tag lookup to resolve a draft release");
+assert.ok(!publish.includes('gh release download "$TAG"'), "Android publisher must verify binaries by direct asset URLs rather than draft tag lookup");
+
 assert.ok(publish.includes("Published immutable release is missing Android assets"), "Android publisher must refuse to mutate a published immutable release that lacks APK/AAB assets");
 assert.ok(publish.includes('steps.release_state.outputs.upload_allowed == \'true\''), "Android asset upload must be restricted to draft releases");
 assert.ok(publish.includes("Verify published GitHub Release contains the exact signed assets"), "Android publisher must verify assets after publication");
