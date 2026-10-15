@@ -381,7 +381,7 @@ export function ZikrJumpGame({
         />
       </div>
 
-      <div className="relative mx-4 mt-4 h-[500px] overflow-hidden rounded-[2rem] border border-white/10 sm:mx-6">
+      <div className="relative mx-4 mt-4 h-[500px] touch-none overflow-hidden rounded-[2rem] border border-white/10 sm:mx-6">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,#f3c96920,transparent_25%),linear-gradient(180deg,#0e2a3a,#07151e)]" />
         <Cloud left={8} top={19} scale={0.9} />
         <Cloud left={57} top={12} scale={1.15} />
@@ -456,10 +456,10 @@ export function ZikrJumpGame({
           <KidCharacter state={snapshot.gameOver ? "hit" : snapshot.completed ? "celebrate" : snapshot.player.vy < -40 ? "jump" : "run"} variant="runner" size={70} />
         </div>
 
-        <div className="absolute bottom-0 inset-x-0 z-40 grid grid-cols-3 gap-3 border-t border-white/10 bg-black/25 p-4 backdrop-blur-md">
-          <button type="button" onPointerDown={() => (inputRef.current.left = true)} onPointerUp={() => (inputRef.current.left = false)} onPointerCancel={() => (inputRef.current.left = false)} className="min-h-14 rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream">←</button>
-          <button type="button" onPointerDown={() => (inputRef.current.jump = true)} className="min-h-14 rounded-2xl border-2 border-brand-gold/40 bg-brand-gold/10 text-sm font-black text-brand-gold">قفز</button>
-          <button type="button" onPointerDown={() => (inputRef.current.right = true)} onPointerUp={() => (inputRef.current.right = false)} onPointerCancel={() => (inputRef.current.right = false)} className="min-h-14 rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream">→</button>
+        <div className="absolute bottom-0 inset-x-0 z-40 grid grid-cols-3 gap-2 border-t border-white/10 bg-black/25 p-3 backdrop-blur-md sm:gap-3 sm:p-4">
+          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.left = true; }} onPointerUp={() => (inputRef.current.left = false)} onPointerCancel={() => (inputRef.current.left = false)} onLostPointerCapture={() => (inputRef.current.left = false)} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream">←</button>
+          <button type="button" onPointerDown={() => (inputRef.current.jump = true)} className="min-h-14 touch-manipulation select-none rounded-2xl border-2 border-brand-gold/40 bg-brand-gold/10 text-sm font-black text-brand-gold">قفز</button>
+          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.right = true; }} onPointerUp={() => (inputRef.current.right = false)} onPointerCancel={() => (inputRef.current.right = false)} onLostPointerCapture={() => (inputRef.current.right = false)} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream">→</button>
         </div>
       </div>
       <GameToast tone={snapshot.gameOver ? "rose" : snapshot.completed ? "emerald" : "gold"}>{feedback}</GameToast>
@@ -747,7 +747,7 @@ export function HilalFlyGame({
       </div>
 
       <div
-        className="relative mx-4 mt-4 h-[500px] overflow-hidden rounded-[2rem] border border-white/10 sm:mx-6"
+        className="relative mx-4 mt-4 h-[500px] touch-none overflow-hidden rounded-[2rem] border border-white/10 sm:mx-6"
         onPointerDown={event => setSwipe({ x: event.clientX, y: event.clientY })}
         onPointerUp={event => {
           if (!swipe) return;
@@ -806,9 +806,9 @@ export function HilalFlyGame({
           <div className="absolute inset-0 grid place-items-center text-3xl text-brand-gold" aria-hidden="true">☾</div>
         </div>
 
-        <div className="absolute bottom-0 inset-x-0 z-40 grid grid-cols-2 gap-3 border-t border-white/10 bg-black/25 p-4 backdrop-blur-md">
-          <button type="button" onPointerDown={() => (inputRef.current.up = true)} onPointerUp={() => (inputRef.current.up = false)} onPointerCancel={() => (inputRef.current.up = false)} className="min-h-14 rounded-2xl border border-brand-gold/30 bg-brand-gold/10 text-2xl text-brand-gold">↑</button>
-          <button type="button" onPointerDown={() => (inputRef.current.down = true)} onPointerUp={() => (inputRef.current.down = false)} onPointerCancel={() => (inputRef.current.down = false)} className="min-h-14 rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream">↓</button>
+        <div className="absolute bottom-0 inset-x-0 z-40 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/25 p-3 backdrop-blur-md sm:gap-3 sm:p-4">
+          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.up = true; }} onPointerUp={() => (inputRef.current.up = false)} onPointerCancel={() => (inputRef.current.up = false)} onLostPointerCapture={() => (inputRef.current.up = false)} className="min-h-14 touch-none select-none rounded-2xl border border-brand-gold/30 bg-brand-gold/10 text-2xl text-brand-gold">↑</button>
+          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.down = true; }} onPointerUp={() => (inputRef.current.down = false)} onPointerCancel={() => (inputRef.current.down = false)} onLostPointerCapture={() => (inputRef.current.down = false)} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream">↓</button>
         </div>
       </div>
       <GameToast>{feedback}</GameToast>

@@ -442,7 +442,7 @@ export function ZikrRunnerGame({
       </div>
 
       <div
-        className="relative mx-4 mt-4 h-[430px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b2430]/80 sm:mx-6"
+        className="relative mx-4 mt-4 h-[430px] touch-none overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b2430]/80 sm:mx-6"
         onPointerDown={(event: PointerEvent<HTMLDivElement>) => setSwipeStart({ x: event.clientX, y: event.clientY })}
         onPointerUp={(event: PointerEvent<HTMLDivElement>) => {
           if (!swipeStart) return;
@@ -450,6 +450,8 @@ export function ZikrRunnerGame({
           setSwipeStart(null);
           if (dy < -18) requestJump();
         }}
+        onPointerCancel={() => setSwipeStart(null)}
+        onPointerLeave={() => setSwipeStart(null)}
       >
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#07131b] to-transparent" />
         <GardenBackdrop />

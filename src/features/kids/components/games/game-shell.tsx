@@ -175,7 +175,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
         <span className="text-sm text-brand-cream/60">{isEnglish ? definition.categoryEn : definition.category}</span>
       </div>
 
-      <div className="grid grid-cols-5 gap-2 rounded-xl border border-brand-gold/20 bg-black/20 p-3 text-center" aria-live="polite">
+      <div className="grid grid-cols-2 gap-2 rounded-xl border border-brand-gold/20 bg-black/20 p-3 text-center min-[420px]:grid-cols-5" aria-live="polite">
         {[
           { label: isEnglish ? "Score" : "النقاط", value: hud.score },
           { label: isEnglish ? "Stars" : "النجوم", value: hud.collectibles },
@@ -217,7 +217,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
         </p>
       </div>
 
-      <div id="kids-world-game-frame" className="relative">
+      <div id="kids-world-game-frame" className="relative min-w-0">
         {englishSourceMissing ? (
           <div className="grid min-h-[320px] place-items-center rounded-2xl border border-brand-gold/20 bg-black/20 p-6 text-center">
             <p className="max-w-xl text-sm leading-7 text-brand-cream/70">
