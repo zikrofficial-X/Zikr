@@ -80,6 +80,16 @@ if (!nextConfig.includes("media-src") || !nextConfig.includes("https://res.cloud
   failures.push("Content Security Policy must allow the official Cloudinary host for curated audio/media");
 }
 
+const shell = readFileSync("src/components/layout/site-shell.tsx", "utf8");
+if (!shell.includes("getSiteSetting('social')") || !shell.includes("<Footer socialLinks")) {
+  failures.push("Site shell must pass saved social settings into the public footer");
+}
+const footer = readFileSync("src/components/layout/footer.tsx", "utf8");
+for (const token of ["safeExternalUrl", "facebookUrl", "youtubeUrl", 'href="/quran"', 'href="/adhkar"']) {
+  if (!footer.includes(token)) failures.push(`Footer is missing a real or validated navigation/social link: ${token}`);
+}
+if (footer.includes("cursor-pointer")) failures.push("Footer must not render decorative, non-functional icon controls");
+
 const videoPage = readFileSync("src/app/videos/page.tsx", "utf8");
 if (!videoPage.includes("ResilientProfileImage")) failures.push("Videos page must provide fallback imagery for remote channel avatars");
 
