@@ -42,6 +42,14 @@ assert.ok(siteContentService.includes(".limit(1)\n      .maybeSingle()"), "Optio
 assert.ok(!siteContentService.includes(".limit(1)\n      .single()"), "Optional homepage settings must not require a row to exist");
 
 const publish = read(".github/workflows/publish-android-release-assets.yml");
+const recoveryDispatch = read(".github/workflows/dispatch-android-release-recovery.yml");
+assert.ok(recoveryDispatch.includes("ci/circleci: android-rebuild"), "Android recovery publisher must wait for the signed CircleCI build success status");
+assert.ok(recoveryDispatch.includes("RELEASE_RETRY.flag"), "Android recovery dispatch must require the repository release retry guard");
+assert.ok(recoveryDispatch.includes("getReleaseByTag"), "Android recovery dispatch must verify the matching GitHub Release exists");
+assert.ok(recoveryDispatch.includes("release.draft !== true"), "Android recovery dispatch must only target an unpublished draft release");
+assert.ok(recoveryDispatch.includes("createWorkflowDispatch"), "Android recovery dispatch must start the guarded publisher workflow");
+assert.ok(recoveryDispatch.includes("branchData.commit.sha !== sha"), "Android recovery dispatch must use the exact commit that passed CircleCI");
+
 assert.ok(publish.includes("github.ref_type == 'tag'"), "Android publisher must support semantic release tags");
 assert.ok(publish.includes("inputs.retry == true"), "Android publisher must support an explicit guarded recovery retry");
 assert.ok(publish.includes("docs/finalization/RELEASE_RETRY.flag"), "Android publisher retry must require the repository release guard");
