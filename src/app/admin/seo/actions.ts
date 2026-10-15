@@ -40,10 +40,10 @@ function optionalHttpsUrl(raw: string, label: string): string | null {
 
 function safeImagePath(raw: string): string {
   const defaultImage = "/branding/og-image.jpg";
-  const legacyOgImagePath = /(?:^|\\/)branding\\/og-image\\.png(?:[?#].*)?$/i;
+  const legacyOgImagePath = /(?:^|\/)branding\/og-image\.png(?:[?#].*)?$/i;
   if (!raw) return defaultImage;
 
-  if (raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("\\\\")) {
+  if (raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("\\")) {
     return legacyOgImagePath.test(raw) ? defaultImage : raw;
   }
 
