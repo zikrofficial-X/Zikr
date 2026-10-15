@@ -99,9 +99,21 @@ jobs:
             const { data: releases } = await github.rest.repos.listReleases({
               owner, repo, per_page: 100,
             });
-            const release = releases.find(item => item.tag_name === tag);
-            if (!release) {
-              core.info("Skipping: no GitHub Release exists for " + tag + ".");
+            let release = releases.find(
+              item => item.tag_name === tag || item.name === "ZIKR Android " + tag
+            );
+
+            // GitHub can expose this legacy recovery draft only by its numeric ID;
+            // the list and get-by-tag endpoints do not consistently return it.
+            if (!release && tag === "v1.1.4") {
+              const fallback = await github.rest.repos.getRelease({
+                owner, repo, release_id: 413815658,
+              });
+              release = fallback.data;
+            }
+
+            if (!release || release.tag_name !== tag) {
+              core.info("Skipping: no matching GitHub Release exists for " + tag + ".");
               return;
             }
             if (release.draft !== true || release.prerelease === true) {
