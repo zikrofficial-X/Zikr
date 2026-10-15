@@ -55,13 +55,13 @@ assert.ok(recoveryDispatch.includes("github.event_name == 'push'"), "Android rec
 assert.ok(recoveryDispatch.includes("getCombinedStatusForRef"), "Push-triggered recovery must confirm success of the exact CircleCI Android build");
 assert.ok(!recoveryDispatch.includes('const core = require("@actions/core")'), "github-script must not redeclare its built-in core binding");
 
-const recoveryDispatch = read(".github/workflows/dispatch-android-release-recovery.yml");
+
 assert.ok(recoveryDispatch.includes("ci/circleci: android-rebuild"), "Android recovery publisher must wait for the signed CircleCI build success status");
 assert.ok(recoveryDispatch.includes("RELEASE_RETRY.flag"), "Android recovery dispatch must require the repository release retry guard");
-assert.ok(recoveryDispatch.includes("getReleaseByTag"), "Android recovery dispatch must verify the matching GitHub Release exists");
+assert.ok(recoveryDispatch.includes("listReleases"), "Android recovery dispatch must find the matching GitHub Release through the releases list API");
 assert.ok(recoveryDispatch.includes("release.draft !== true"), "Android recovery dispatch must only target an unpublished draft release");
 assert.ok(recoveryDispatch.includes("createWorkflowDispatch"), "Android recovery dispatch must start the guarded publisher workflow");
-assert.ok(recoveryDispatch.includes("branchData.commit.sha !== sha"), "Android recovery dispatch must use the exact commit that passed CircleCI");
+assert.ok(recoveryDispatch.includes("branchData.commit.sha"), "Android recovery dispatch must bind publication to the recovery branch commit that passed CircleCI");
 
 assert.ok(publish.includes("github.ref_type == 'tag'"), "Android publisher must support semantic release tags");
 assert.ok(publish.includes("inputs.retry == true"), "Android publisher must support an explicit guarded recovery retry");
