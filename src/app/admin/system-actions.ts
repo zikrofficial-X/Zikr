@@ -127,6 +127,13 @@ export async function requestVideoAutomationRunAction() {
   ).catch(() => []);
   const rawBatch = Number(batchRows?.[0]?.value ?? 3);
   const batchSize = Number.isInteger(rawBatch) ? Math.min(10, Math.max(1, rawBatch)) : 3;
+  const enabledRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+    "/rest/v1/admin_settings?key=eq.video_automation_enabled&select=value&limit=1",
+  );
+  const configuredEnabled = enabledRows?.[0]?.value;
+  if (configuredEnabled === false || configuredEnabled === "false") {
+    throw new Error("أتمتة الفيديو متوقفة. فعّل «التشغيل التلقائي» أولاً ثم أعد طلب التشغيل.");
+  }
   const key = "video_automation_run_now";
   const requestedAt = new Date().toISOString();
   const request = { requestedAt, requestedBy: profile.id, dispatchedAt: null as string | null, failedAt: null as string | null, error: null as string | null };
