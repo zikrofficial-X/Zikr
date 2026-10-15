@@ -98,6 +98,32 @@ for (const file of publicEditorial) {
   if (read(file).trim().length < 600) warn(`Public trust/legal page is unusually short: ${file}`);
 }
 
+// Content depth gate: AdSense rejects sites whose editorial pages are thin, repetitive, or about the product itself.
+const MIN_LONGFORM_WORDS = 500;
+const MIN_LONGFORM_ARTICLES = 8;
+const longform = read('src/features/articles/data/longform-editorial.ts');
+const longformBlocks = longform.split(/longformArticle\(\{/).slice(1);
+if (longformBlocks.length < MIN_LONGFORM_ARTICLES) {
+  fail(`Expected at least ${MIN_LONGFORM_ARTICLES} long-form editorial articles, found ${longformBlocks.length}.`);
+}
+const seenLongformSlugs = new Set();
+for (const block of longformBlocks) {
+  const slug = block.match(/slug:\s*"([^"]+)"/)?.[1] ?? 'unknown';
+  const body = block.match(/content_ar:\s*`([\s\S]*?)`/)?.[1] ?? '';
+  const words = body.trim().split(/\s+/).filter(Boolean).length;
+  const references = (block.match(/url:\s*"https:\/\//g) ?? []).length;
+  if (seenLongformSlugs.has(slug)) fail(`Duplicate long-form article slug: ${slug}`);
+  seenLongformSlugs.add(slug);
+  if (words < MIN_LONGFORM_WORDS) fail(`Long-form article "${slug}" has ${words} words; minimum is ${MIN_LONGFORM_WORDS}.`);
+  if (references < 2) fail(`Long-form article "${slug}" needs at least 2 source references.`);
+  if (/(الواجهة|هذا التطبيق|تعرض المنصة|يعرض الموقع|فريق التطوير)/.test(body)) {
+    fail(`Long-form article "${slug}" talks about the product instead of serving the reader.`);
+  }
+}
+if (!/article:\s*1800/.test(read('src/lib/content-quality.ts'))) {
+  fail('Article indexing threshold in src/lib/content-quality.ts must not be lowered below 1800 characters.');
+}
+
 if (failures.length) {
   console.error('ADSENSE_READINESS_FAILED');
   for (const item of failures) console.error(`❌ ${item}`);
