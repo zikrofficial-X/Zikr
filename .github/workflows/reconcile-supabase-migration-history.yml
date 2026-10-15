@@ -36,6 +36,7 @@ jobs:
     env:
       EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PGSSLMODE: require
     steps:
       - name: Checkout the exact main commit
         uses: actions/checkout@v7
@@ -56,16 +57,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${SUPABASE_DB_URL:-}"
           test "${EXPECTED_PROJECT_REF}" = "ymxdswkaxafakugktsim"
-          if [[ "${SUPABASE_DB_URL}" != *"${EXPECTED_PROJECT_REF}"* ]]; then
-            echo "::error title=Wrong Supabase project::SUPABASE_DB_URL must target ${EXPECTED_PROJECT_REF}."
-            exit 1
-          fi
-          if [[ "${SUPABASE_DB_URL}" =~ ^postgres(ql)?://zikr_seed_loader(:|@) ]]; then
-            echo "::error title=Unsafe Supabase role::The retired seed-loader role cannot reconcile migration history."
-            exit 1
-          fi
+          python3 scripts/verify-supabase-db-url.py
 
       - name: Prove schema/data parity and reconcile history only
         shell: bash
