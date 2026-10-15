@@ -74,7 +74,12 @@ assert.ok(release.includes("environment:\n      name: production"), "Controlled 
 assert.ok(release.includes("contains(github.event.head_commit.message, '[release-production]')"), "A push-triggered production deployment must require the explicit one-shot release marker");
 assert.ok(release.includes("github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'"), "Manual production deployment must retain explicit RELEASE confirmation");
 assert.ok(release.includes("Missing Vercel deployment credential"), "Controlled release must fail before build when VERCEL_TOKEN is missing");
-assert.ok(release.includes("Unsafe Supabase connection role"), "Controlled release must reject the retired seed-loader connection rather than re-enable it");
+assert.ok(release.includes("python3 scripts/verify-supabase-db-url.py"), "Controlled release must validate the effective Supabase URL user before connecting");
+const reconciliationWorkflow = read(".github/workflows/reconcile-supabase-migration-history.yml");
+assert.ok(reconciliationWorkflow.includes("python3 scripts/verify-supabase-db-url.py"), "Migration-history reconciliation must validate the effective Supabase URL user before connecting");
+assert.ok(reconciliationWorkflow.includes("PGSSLMODE: require"), "Migration-history reconciliation must require TLS for PostgreSQL connections");
+const dbUrlValidator = read("scripts/verify-supabase-db-url.py");
+assert.ok(dbUrlValidator.includes("zikr_seed_loader") && dbUrlValidator.includes("sslmode"), "Supabase connection validation must block the retired role and weak TLS settings");
 assert.ok(release.indexOf("Fail fast on missing or unsafe production credentials") < release.indexOf("Install dependencies"), "Production credential checks must run before dependency installation");
 assert.ok(release.includes("push:\n    branches:\n      - main"), "The release workflow must only listen for push events on main");
 assert.ok(release.includes("bash scripts/reconcile-supabase-migration-history.sh"), "Production release must audit and safely reconcile Supabase migration history before deploy");
