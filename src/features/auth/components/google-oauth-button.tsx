@@ -72,7 +72,10 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
       // while the verifier remains stranded on the alias.
       const previewRedirect = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL;
       const usePreviewRedirect =
-        !isNative && !!previewRedirect && isV0PreviewHost(window.location.hostname);
+        !isNative &&
+        typeof window !== "undefined" &&
+        !!previewRedirect &&
+        isV0PreviewHost(window.location.hostname);
 
       if (!isNative && !usePreviewRedirect && typeof window !== "undefined") {
         const canonicalOrigin = new URL(PRODUCTION_URL).origin;
