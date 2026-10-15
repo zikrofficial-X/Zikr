@@ -55,24 +55,36 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   }, []);
 
   useEffect(() => {
-    if (paused || result || document.visibilityState === "hidden") {
+    const stopClock = () => {
       if (runningSinceRef.current !== null) {
         elapsedRef.current += Math.max(0, (Date.now() - runningSinceRef.current) / 1000);
         runningSinceRef.current = null;
       }
       setElapsedSeconds(Math.max(0, Math.floor(elapsedRef.current)));
-      return;
-    }
+    };
 
-    runningSinceRef.current = Date.now();
-    setElapsedSeconds(getElapsedSeconds());
+    const startClock = () => {
+      if (paused || result || document.visibilityState === "hidden") {
+        stopClock();
+        return;
+      }
+      if (runningSinceRef.current === null) runningSinceRef.current = Date.now();
+      setElapsedSeconds(getElapsedSeconds());
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") stopClock();
+      else startClock();
+    };
+
+    startClock();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     const timer = window.setInterval(() => setElapsedSeconds(getElapsedSeconds()), 1000);
+
     return () => {
       window.clearInterval(timer);
-      if (runningSinceRef.current !== null) {
-        elapsedRef.current += Math.max(0, (Date.now() - runningSinceRef.current) / 1000);
-        runningSinceRef.current = null;
-      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      stopClock();
     };
   }, [getElapsedSeconds, paused, result, restartToken]);
 
