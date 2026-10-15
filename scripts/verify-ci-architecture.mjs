@@ -71,7 +71,8 @@ assert.ok(release.includes("pnpm release:contract:check"), "Controlled release m
 assert.ok(release.includes("pnpm production:smoke"), "Controlled release must use the canonical production smoke script");
 assert.ok(!release.includes("--token"), "Controlled Vercel release must not pass credentials through CLI arguments");
 assert.ok(release.includes("environment:\n      name: production"), "Controlled release must use the protected production environment");
-assert.ok(release.includes("contains(github.event.head_commit.message, '[release-production]')"), "A push-triggered production deployment must require the explicit one-shot release marker");
+assert.ok(release.includes("workflow_dispatch:"), "Production release must remain manually triggerable");
+assert.ok(!release.includes("\n  push:"), "Production release must not be enqueued on ordinary source pushes");
 assert.ok(release.includes("github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'"), "Manual production deployment must retain explicit RELEASE confirmation");
 assert.ok(release.includes("Missing Vercel deployment credential"), "Controlled release must fail before build when VERCEL_TOKEN is missing");
 assert.ok(release.includes("python3 scripts/verify-supabase-db-url.py"), "Controlled release must validate the effective Supabase URL user before connecting");
@@ -81,19 +82,21 @@ assert.ok(reconciliationWorkflow.includes("PGSSLMODE: require"), "Migration-hist
 const dbUrlValidator = read("scripts/verify-supabase-db-url.py");
 assert.ok(dbUrlValidator.includes("zikr_seed_loader") && dbUrlValidator.includes("sslmode"), "Supabase connection validation must block the retired role and weak TLS settings");
 assert.ok(release.indexOf("Fail fast on missing or unsafe production credentials") < release.indexOf("Install dependencies"), "Production credential checks must run before dependency installation");
-assert.ok(release.includes("push:\n    branches:\n      - main"), "The release workflow must only listen for push events on main");
+assert.ok(!release.includes("\n  push:"), "The release workflow must not enqueue guarded skipped jobs on ordinary pushes");
 assert.ok(release.includes("bash scripts/reconcile-supabase-migration-history.sh"), "Production release must audit and safely reconcile Supabase migration history before deploy");
 const reconciliation = read("scripts/reconcile-supabase-migration-history.sh");
 assert.ok(reconciliation.includes("SUPABASE_DB_URL") && reconciliation.includes("EXPECTED_PROJECT_REF"), "Migration reconciliation must require and verify an explicit production project target");
 assert.ok(reconciliation.indexOf("supabase db diff") >= 0 && reconciliation.indexOf("supabase db diff") < reconciliation.indexOf("supabase migration repair"), "Migration history must not be repaired before schema-diff verification");
 assert.ok(reconciliation.includes("--use-pg-delta") && reconciliation.includes("--strict-coverage"), "Migration reconciliation must use strict schema diff coverage rather than the legacy diff engine");
+assert.ok(reconciliation.includes("consumes role:zikr_seed_loader") && reconciliation.includes("--use-migra") && reconciliation.includes("role_exists"), "Legacy migra fallback must be limited to the retired-role dependency and require the role to be absent on the live target");
 assert.ok(reconciliation.includes("env -u PGSSLMODE supabase db diff"), "Schema diff must not leak the remote TLS requirement into the local shadow database");
 assert.ok(reconciliation.includes("SCHEMA DRIFT DETECTED") && reconciliation.includes("public.quran_ayahs"), "Migration repair must fail closed on schema drift and check canonical Quran data");
 assert.ok(reconciliation.includes("SUPABASE_MIGRATION_HISTORY_RECONCILED"), "Migration reconciliation must verify the final local/remote version count");
 
 assert.ok(smoke.includes("name: ZIKR Production Smoke Verification"), "Manual production smoke workflow name is incorrect");
 assert.ok(smoke.includes("node scripts/verify-production-smoke.mjs"), "Manual smoke workflow must use the canonical production smoke script");
-assert.ok(smoke.includes("contains(github.event.head_commit.message, '[production-smoke]')"), "Live production smoke must require an explicit one-shot commit marker");
+assert.ok(smoke.includes("workflow_dispatch:"), "Live production smoke must remain manually available");
+assert.ok(!smoke.includes("\n  push:"), "Live production smoke must not be enqueued on ordinary source pushes");
 assert.ok(smoke.includes("github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'"), "Manual live production smoke must retain explicit confirmation");
 assert.ok(!smoke.includes("vercel deploy"), "The read-only smoke workflow must never deploy");
 

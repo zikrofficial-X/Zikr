@@ -12,19 +12,37 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function verifiedSupabaseUrl(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname.endsWith(".supabase.co")
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET() {
   try {
+    const setting = await getAndroidReleaseSetting();
+    const supabaseAabUrl = verifiedSupabaseUrl(setting.aabUrl);
+    if (supabaseAabUrl) {
+      return NextResponse.redirect(supabaseAabUrl, {
+        status: 302,
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+      });
+    }
+
     if (!hasGitHubReleaseAccess()) {
       return NextResponse.json(
         { error: "إعداد الوصول إلى إصدارات Android غير مكتمل." },
-        { status: 503, headers: { "Cache-Control": "no-store" } },
+        { status: 503, headers: { "Cache-Control": "no-store" } }
       );
     }
 
-    const [setting, latestStable] = await Promise.all([
-      getAndroidReleaseSetting(),
-      getLatestStableAndroidRelease(),
-    ]);
+    const latestStable = await getLatestStableAndroidRelease();
 
     const pinnedRelease =
       setting.mode === "pinned" && setting.releaseTag
@@ -38,7 +56,7 @@ export async function GET() {
     if (!tag || !aab?.name || !aab.id) {
       return NextResponse.json(
         { error: "تعذر العثور على AAB صالح للإصدار المحدد حاليًا." },
-        { status: 503, headers: { "Cache-Control": "no-store" } },
+        { status: 503, headers: { "Cache-Control": "no-store" } }
       );
     }
 
@@ -46,7 +64,7 @@ export async function GET() {
     if (!signedUrl) {
       return NextResponse.json(
         { error: "تعذر إنشاء رابط تنزيل آمن للـAAB حاليًا." },
-        { status: 503, headers: { "Cache-Control": "no-store" } },
+        { status: 503, headers: { "Cache-Control": "no-store" } }
       );
     }
 
@@ -58,7 +76,7 @@ export async function GET() {
     console.error("[android-aab-download] release lookup failed:", error);
     return NextResponse.json(
       { error: "تعذر الوصول إلى حزمة Android AAB حاليًا." },
-      { status: 503, headers: { "Cache-Control": "no-store" } },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
     );
   }
 }

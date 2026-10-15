@@ -4,10 +4,9 @@ on:
   push:
     tags:
       - 'v*.*.*'
-    # Also publish verified artifacts for the canonical CircleCI release branch.
-    # This recovers releases whose tag exists but whose Android build previously failed.
-    branches:
-      - 'android-release-v*.*.*'
+    # Recovery branches are published through the explicit workflow_dispatch
+    # retry path below. GitHub Actions combines simultaneous tag/branch filters,
+    # which silently prevents the branch recovery event from starting.
   workflow_dispatch:
     inputs:
       retry:
@@ -184,9 +183,14 @@ jobs:
               exit 1
             fi
           done
-          sha256sum -c SHA256SUMS
-          test "$(jq -r .apkSha256 release-metadata.json)" = "$(sha256sum app-release.apk | awk '{print $1}')"
-          test "$(jq -r .aabSha256 release-metadata.json)" = "$(sha256sum app-release.aab | awk '{print $1}')"
+          APK_SHA="$(awk 'NR == 1 {print $1}' SHA256SUMS)"
+          AAB_SHA="$(awk 'NR == 2 {print $1}' SHA256SUMS)"
+          test -n "$APK_SHA"
+          test -n "$AAB_SHA"
+          test "$APK_SHA" = "$(sha256sum app-release.apk | awk '{print $1}')"
+          test "$AAB_SHA" = "$(sha256sum app-release.aab | awk '{print $1}')"
+          test "$(jq -r .apkSha256 release-metadata.json)" = "$APK_SHA"
+          test "$(jq -r .aabSha256 release-metadata.json)" = "$AAB_SHA"
 
       - name: Verify APK signature and manifest
         if: steps.gate.outputs.publish == 'true'

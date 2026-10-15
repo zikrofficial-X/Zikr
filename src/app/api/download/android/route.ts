@@ -12,8 +12,32 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function verifiedSupabaseUrl(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname.endsWith(".supabase.co")
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET() {
   try {
+    const setting = await getAndroidReleaseSetting();
+    const supabaseApkUrl = verifiedSupabaseUrl(setting.apkUrl);
+    if (supabaseApkUrl) {
+      return NextResponse.redirect(supabaseApkUrl, {
+        status: 302,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          Pragma: "no-cache",
+        },
+      });
+    }
+
     if (!hasGitHubReleaseAccess()) {
       return NextResponse.json(
         { error: "إعداد الوصول إلى إصدارات Android غير مكتمل." },
@@ -23,14 +47,11 @@ export async function GET() {
             "Cache-Control": "no-store, no-cache, must-revalidate",
             Pragma: "no-cache",
           },
-        },
+        }
       );
     }
 
-    const [setting, latestStable] = await Promise.all([
-      getAndroidReleaseSetting(),
-      getLatestStableAndroidRelease(),
-    ]);
+    const latestStable = await getLatestStableAndroidRelease();
 
     const pinnedRelease =
       setting.mode === "pinned" && setting.releaseTag
@@ -50,7 +71,7 @@ export async function GET() {
             "Cache-Control": "no-store, no-cache, must-revalidate",
             Pragma: "no-cache",
           },
-        },
+        }
       );
     }
 
@@ -64,7 +85,7 @@ export async function GET() {
             "Cache-Control": "no-store, no-cache, must-revalidate",
             Pragma: "no-cache",
           },
-        },
+        }
       );
     }
 
@@ -85,7 +106,7 @@ export async function GET() {
           "Cache-Control": "no-store, no-cache, must-revalidate",
           Pragma: "no-cache",
         },
-      },
+      }
     );
   }
 }

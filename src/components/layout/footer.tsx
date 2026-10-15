@@ -7,10 +7,33 @@ import { BookOpen, Scroll, Star } from "lucide-react";
 import { useLanguage } from "./language-provider";
 
 const FACEBOOK_PAGE_URL = "https://www.facebook.com/zikrmediaofficial1";
+const YOUTUBE_CHANNEL_URL = "https://www.youtube.com/@zikrmediaofficial";
 const APP_VERSION = "1.1.3";
 
-export function Footer() {
+type FooterSocialLinks = {
+  facebookPageUrl?: string | null;
+  youtubeChannelUrl?: string | null;
+  instagramUrl?: string | null;
+  twitterUrl?: string | null;
+  xUrl?: string | null;
+};
+
+function safeExternalUrl(value?: string | null): string | null {
+  if (!value?.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+export function Footer({ socialLinks }: { socialLinks?: FooterSocialLinks }) {
   const { isEnglish } = useLanguage();
+  const facebookUrl = safeExternalUrl(socialLinks?.facebookPageUrl) ?? FACEBOOK_PAGE_URL;
+  const youtubeUrl = safeExternalUrl(socialLinks?.youtubeChannelUrl) ?? YOUTUBE_CHANNEL_URL;
+  const instagramUrl = safeExternalUrl(socialLinks?.instagramUrl);
+  const xUrl = safeExternalUrl(socialLinks?.xUrl ?? socialLinks?.twitterUrl);
 
   const copy = isEnglish
     ? {
@@ -74,12 +97,18 @@ export function Footer() {
           <p className="max-w-sm text-sm leading-7 text-brand-cream/75">
             {copy.description}
           </p>
-          <div className="flex gap-4 pt-2 items-center">
-            <BookOpen className="h-5 w-5 text-brand-gold/65 hover:text-brand-gold cursor-pointer transition-colors" />
-            <Scroll className="h-5 w-5 text-brand-gold/65 hover:text-brand-gold cursor-pointer transition-colors" />
-            <Star className="h-5 w-5 text-brand-gold/65 hover:text-brand-gold cursor-pointer transition-colors" />
+          <div className="flex flex-wrap gap-4 pt-2 items-center">
+            <Link href="/quran" aria-label={isEnglish ? "Holy Quran" : "القرآن الكريم"} className="text-brand-gold/65 transition-colors hover:text-brand-gold">
+              <BookOpen className="h-5 w-5" />
+            </Link>
+            <Link href="/hadith" aria-label={isEnglish ? "Prophetic Hadith" : "الأحاديث النبوية"} className="text-brand-gold/65 transition-colors hover:text-brand-gold">
+              <Scroll className="h-5 w-5" />
+            </Link>
+            <Link href="/adhkar" aria-label={isEnglish ? "Adhkar" : "الأذكار"} className="text-brand-gold/65 transition-colors hover:text-brand-gold">
+              <Star className="h-5 w-5" />
+            </Link>
             <a
-              href={FACEBOOK_PAGE_URL}
+              href={facebookUrl}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={isEnglish ? "Facebook page" : "صفحة الفيسبوك"}
@@ -151,7 +180,7 @@ export function Footer() {
             ))}
             <li>
               <a
-                href={FACEBOOK_PAGE_URL}
+                href={facebookUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-cream/75 underline-offset-4 transition-colors hover:text-brand-gold hover:underline"
@@ -159,6 +188,25 @@ export function Footer() {
                 {isEnglish ? "Facebook Page" : "صفحة الفيسبوك"}
               </a>
             </li>
+            <li>
+              <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="text-brand-cream/75 underline-offset-4 transition-colors hover:text-brand-gold hover:underline">
+                {isEnglish ? "YouTube Channel" : "قناة يوتيوب الرسمية"}
+              </a>
+            </li>
+            {instagramUrl ? (
+              <li>
+                <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="text-brand-cream/75 underline-offset-4 transition-colors hover:text-brand-gold hover:underline">
+                  Instagram
+                </a>
+              </li>
+            ) : null}
+            {xUrl ? (
+              <li>
+                <a href={xUrl} target="_blank" rel="noopener noreferrer" className="text-brand-cream/75 underline-offset-4 transition-colors hover:text-brand-gold hover:underline">
+                  X / Twitter
+                </a>
+              </li>
+            ) : null}
             <li className="pt-4">
               <Badge
                 variant="outline"

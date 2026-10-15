@@ -3,8 +3,44 @@ import { getAdminSnapshot } from "@/features/admin/services/platform";
 import { ADMIN_NAVIGATION } from "@/features/admin/config/navigation";
 import { deleteFailedVideoGenerationAction } from "@/features/admin/actions/video";
 
+type AdminSnapshot = Awaited<ReturnType<typeof getAdminSnapshot>>;
+
+async function loadAdminSnapshotSafely(): Promise<AdminSnapshot> {
+  try {
+    return await getAdminSnapshot();
+  } catch (error) {
+    console.error("[admin] failed to load platform command center snapshot", error);
+    const unavailableTables = [
+      ["profiles", "المستخدمون"], ["articles", "المقالات"], ["stories", "القصص"],
+      ["content_library", "مكتبة المحتوى"], ["videos", "الفيديوهات"], ["hadiths", "الأحاديث"],
+      ["duas", "الأدعية"], ["prophets", "الأنبياء"], ["companions", "الصحابة"],
+      ["scholars", "العلماء"], ["kids_content", "محتوى الأطفال"], ["media_assets", "الوسائط"],
+    ] as const;
+    return {
+      counts: unavailableTables.map(([table, label]) => ({ table, label, count: null, state: "unavailable" as const })),
+      unavailable: ["ملخص لوحة الإدارة", "طوابير التشغيل وسجل التدقيق"],
+      metrics: [
+        { key: "drafts", label: "مسودات/مراجعة", value: null, tone: "neutral" as const },
+        { key: "social", label: "طابور النشر", value: null, tone: "neutral" as const },
+        { key: "video", label: "توليد الفيديو", value: null, tone: "neutral" as const },
+        { key: "auditFailures", label: "عمليات إدارية فاشلة", value: null, tone: "neutral" as const },
+      ],
+      queues: {
+        socialQueued: null,
+        socialProcessing: null,
+        socialFailed: null,
+        videoPending: null,
+        videoProcessing: null,
+        videoFailed: null,
+      },
+      audit: [],
+      generatedAt: new Date().toISOString(),
+    } as AdminSnapshot;
+  }
+}
+
 export async function AdminPlatformCommandCenter() {
-  const snapshot = await getAdminSnapshot();
+  const snapshot = await loadAdminSnapshotSafely();
   const failedVideoJobs = snapshot.queues.videoFailed ?? 0;
 
   const groups = ADMIN_NAVIGATION.filter((group) => group.key !== "operations");
@@ -84,7 +120,7 @@ export async function AdminPlatformCommandCenter() {
                 <span className={event.outcome === "success" ? "text-emerald-300" : event.outcome === "denied" ? "text-amber-300" : "text-red-300"}>{outcomeLabels[event.outcome] ?? event.outcome}</span>
               </div>
             ))}
-            {snapshot.audit.length === 0 && <p className="text-sm text-brand-cream/35">لا توجد عمليات حديثة.</p>}
+            {snapshot.audit.length === 0 && <p className="text-sm text-brand-cream/35">{snapshot.unavailable.includes("سجل التدقيق") || snapshot.unavailable.includes("طوابير التشغيل وسجل التدقيق") ? "تعذر قراءة سجل التدقيق؛ لا يمكن تأكيد وجود عمليات حديثة أو عدمها." : "لا توجد عمليات حديثة مسجلة."}</p>}
           </div>
         </div>
       </section>

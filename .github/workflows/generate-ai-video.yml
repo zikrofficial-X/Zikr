@@ -115,8 +115,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ffmpeg librsvg2-bin fonts-noto-core python3-venv
           python3 -m venv "$GITHUB_WORKSPACE/.automation-venv"
-          "$GITHUB_WORKSPACE/.automation-venv/bin/python" -m pip install --quiet --disable-pip-version-check --no-cache-dir "edge-tts==7.2.8" "gradio_client==2.7.1"
-          "$GITHUB_WORKSPACE/.automation-venv/bin/python" -c 'import edge_tts, gradio_client; print("edge-tts + gradio_client imports: OK")'
+          "$GITHUB_WORKSPACE/.automation-venv/bin/python" -m pip install --quiet --disable-pip-version-check --no-cache-dir "edge-tts==7.3.1" "gradio_client==2.7.1" "gTTS==2.5.4"
+          "$GITHUB_WORKSPACE/.automation-venv/bin/python" -c 'import edge_tts, gradio_client, gtts; print("edge-tts + gradio_client + gTTS imports: OK")'
           "$GITHUB_WORKSPACE/.automation-venv/bin/edge-tts" --version
           "$GITHUB_WORKSPACE/.automation-venv/bin/python" -c 'import gradio_client; print("gradio_client:", gradio_client.__version__)'
           command -v ffmpeg >/dev/null
@@ -150,6 +150,13 @@ jobs:
           pnpm video:engine:check
           pnpm exec tsx -e 'Promise.all([import("./scripts/jobs/template-video-automation.ts"), import("./src/features/social/services/social-publishing.ts")]).then(() => console.log("Video worker module smoke test: OK")).catch((error) => { console.error(error); process.exitCode = 1 })'
           "$GITHUB_WORKSPACE/.automation-venv/bin/python" -m py_compile scripts/jobs/hf-space-video.py
+          "$GITHUB_WORKSPACE/.automation-venv/bin/python" -m py_compile scripts/generate-arabic-voice.py
+          # Fail before touching the production queue if neither Arabic TTS provider can synthesize audio.
+          "$GITHUB_WORKSPACE/.automation-venv/bin/python" scripts/generate-arabic-voice.py \
+            --text "اختبار صوت عربي لمنصة ذكر." \
+            --output "$RUNNER_TEMP/zikr-arabic-tts-smoke.mp3"
+          test -s "$RUNNER_TEMP/zikr-arabic-tts-smoke.mp3"
+          test "$(stat -c '%s' "$RUNNER_TEMP/zikr-arabic-tts-smoke.mp3")" -ge 1024
           ffmpeg -version | head -n 1
 
       - name: Gemini audio evaluation smoke test

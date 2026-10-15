@@ -32,6 +32,9 @@ export type WorldHud = {
   combo: number;
   level: number;
   completed: boolean;
+  timeSeconds?: number;
+  mistakes?: number;
+  accuracy?: number;
 };
 
 type WorldGameStageProps = {
@@ -63,6 +66,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
     muted,
     paused,
     restartToken,
+    onPausedChange,
     onReady,
     onHud,
     onResult,
@@ -115,6 +119,14 @@ export function WorldGameStage(props: WorldGameStageProps) {
   useEffect(() => {
     onError("");
   }, [gameId, onError]);
+
+  useEffect(() => {
+    const pauseWhenHidden = () => {
+      if (document.visibilityState === "hidden") onPausedChange(true);
+    };
+    document.addEventListener("visibilitychange", pauseWhenHidden);
+    return () => document.removeEventListener("visibilitychange", pauseWhenHidden);
+  }, [onPausedChange]);
 
   const common = {
     difficulty,

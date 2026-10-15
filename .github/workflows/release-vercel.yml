@@ -1,10 +1,8 @@
 name: ZIKR Production Smoke Verification
 
 on:
-  # Read-only live smoke test. The explicit one-shot marker never deploys.
-  push:
-    branches:
-      - main
+  # Read-only live smoke test; run manually after a production deployment.
+  # Ordinary source pushes do not enqueue this operational check.
   workflow_dispatch:
     inputs:
       confirmation:
@@ -26,12 +24,7 @@ concurrency:
 jobs:
   verify:
     name: Verify live production
-    if: >-
-      github.ref == 'refs/heads/main' &&
-      (
-        (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE') ||
-        (github.event_name == 'push' && contains(github.event.head_commit.message, '[production-smoke]'))
-      )
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'
     runs-on: ubuntu-slim
     timeout-minutes: 20
     environment:

@@ -15,6 +15,10 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
+function dependencyError(error: unknown): boolean {
+  return error instanceof Error && /Missing (?:NEXT_PUBLIC_)?SUPABASE_|SUPABASE_SERVICE_ROLE_KEY/.test(error.message);
+}
+
 async function requireUser() {
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -45,7 +49,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(upload);
   } catch (error) {
     console.error('[api/storage/presign] POST error:', error);
-    return jsonError(error instanceof Error ? error.message : 'Failed to create upload URL.', 500);
+    return jsonError(dependencyError(error) ? 'Storage service is not configured.' : 'Failed to create upload URL.', dependencyError(error) ? 503 : 500);
   }
 }
 
@@ -70,6 +74,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ url, expiresIn: 300 });
   } catch (error) {
     console.error('[api/storage/presign] GET error:', error);
-    return jsonError(error instanceof Error ? error.message : 'Failed to create download URL.', 500);
+    return jsonError(dependencyError(error) ? 'Storage service is not configured.' : 'Failed to create download URL.', dependencyError(error) ? 503 : 500);
   }
 }

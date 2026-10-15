@@ -139,6 +139,9 @@ jobs:
     docker:
       - image: cimg/node:22.11.0
     resource_class: small
+    environment:
+      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
+      SUPABASE_PUBLIC_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlteGRzd2theGFmYWt1Z2t0c2ltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MzM5OTIsImV4cCI6MjEwNzQwOTk5Mn0.H1mKDKeajvE4k7NfPz5jVcy_-nohpDO1lL-eh6RXfGA
     steps:
       - checkout
       - run:
@@ -596,6 +599,8 @@ workflows:
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
       - supabase-production-gate:
+          context:
+            - android-signing
           requires:
             - source-verify
           filters:
@@ -638,5 +643,3 @@ workflows:
   configuration-guard:
     jobs:
       - config-guard
-
-

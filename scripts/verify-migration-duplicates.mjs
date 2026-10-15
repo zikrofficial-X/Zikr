@@ -18,6 +18,13 @@ const ALLOWED_LEGACY_DUPLICATES = [
     '20261002125440_remote_history_marker_video_automation.sql',
     '20261002125451_remote_history_marker_video_automation.sql',
   ],
+  // The same safe DROP INDEX IF EXISTS migration was applied once directly
+  // and once reconciled into the production migration ledger. Both versions
+  // now exist in Supabase history, so preserve both immutable source files.
+  [
+    '20261015020000_remove_duplicate_nonunique_indexes.sql',
+    '20261015023317_remove_duplicate_nonunique_indexes.sql',
+  ],
 ];
 
 const files = readdirSync(MIGRATIONS_DIR)

@@ -26,8 +26,19 @@ export type GitHubRelease = {
 };
 
 export type AndroidReleaseSetting = {
-  mode?: "auto" | "pinned";
+  mode?: "auto" | "pinned" | "github-supabase";
   releaseTag?: string | null;
+  version?: string | null;
+  versionCode?: number | null;
+  applicationId?: string | null;
+  targetSdk?: number | null;
+  releaseUrl?: string | null;
+  apkUrl?: string | null;
+  aabUrl?: string | null;
+  sha256Url?: string | null;
+  metadataUrl?: string | null;
+  apkSha256?: string | null;
+  aabSha256?: string | null;
 };
 
 function getGitHubToken() {
@@ -48,14 +59,14 @@ export function compareVersions(a: string, b: string): number {
     .trim()
     .replace(/^v/i, "")
     .split(/[.-]/)
-    .map((part) => Number.parseInt(part, 10))
-    .map((part) => (Number.isFinite(part) ? part : 0));
+    .map(part => Number.parseInt(part, 10))
+    .map(part => (Number.isFinite(part) ? part : 0));
   const right = b
     .trim()
     .replace(/^v/i, "")
     .split(/[.-]/)
-    .map((part) => Number.parseInt(part, 10))
-    .map((part) => (Number.isFinite(part) ? part : 0));
+    .map(part => Number.parseInt(part, 10))
+    .map(part => (Number.isFinite(part) ? part : 0));
 
   const length = Math.max(left.length, right.length, 3);
   for (let index = 0; index < length; index += 1) {
@@ -66,8 +77,8 @@ export function compareVersions(a: string, b: string): number {
 }
 
 function hasApk(release: GitHubRelease) {
-  return release.assets?.some((asset) =>
-    asset.name?.toLowerCase().endsWith(".apk"),
+  return release.assets?.some(asset =>
+    asset.name?.toLowerCase().endsWith(".apk")
   );
 }
 
@@ -82,7 +93,7 @@ async function fetchReleases(): Promise<GitHubRelease[] | null> {
       {
         headers: githubHeaders(),
         cache: "no-store",
-      },
+      }
     );
     if (!response.ok) return null;
 
@@ -102,17 +113,14 @@ export async function getLatestStableAndroidRelease(): Promise<GitHubRelease | n
 
   const candidates = releases
     .filter(
-      (release) =>
+      release =>
         !release.draft &&
         !release.prerelease &&
         Boolean(release.tag_name?.trim()) &&
-        hasApk(release),
+        hasApk(release)
     )
     .sort((a, b) => {
-      const versionDiff = compareVersions(
-        b.tag_name ?? "",
-        a.tag_name ?? "",
-      );
+      const versionDiff = compareVersions(b.tag_name ?? "", a.tag_name ?? "");
       if (versionDiff !== 0) return versionDiff;
 
       const aDate = a.published_at ? Date.parse(a.published_at) : 0;
@@ -124,7 +132,7 @@ export async function getLatestStableAndroidRelease(): Promise<GitHubRelease | n
 }
 
 export async function getStableReleaseByTag(
-  tag: string,
+  tag: string
 ): Promise<GitHubRelease | null> {
   const token = getGitHubToken();
   if (!token || !/^[A-Za-z0-9._-]+$/.test(tag)) return null;
@@ -134,7 +142,7 @@ export async function getStableReleaseByTag(
     {
       headers: githubHeaders(),
       cache: "no-store",
-    },
+    }
   );
   if (!response.ok) return null;
 
@@ -152,8 +160,11 @@ export async function getAndroidReleaseSetting(): Promise<AndroidReleaseSetting>
       .eq("key", "android_release")
       .maybeSingle();
     const value = data?.value as AndroidReleaseSetting | null;
-    if (value?.mode === "pinned" && value.releaseTag) {
-      return { mode: "pinned", releaseTag: value.releaseTag };
+    if (
+      value &&
+      (value.mode === "pinned" || value.mode === "github-supabase")
+    ) {
+      return value;
     }
   } catch {
     // Optional admin setting unavailable: use latest stable release.
@@ -163,15 +174,12 @@ export async function getAndroidReleaseSetting(): Promise<AndroidReleaseSetting>
 }
 export function selectAndroidRelease(
   latestStable: GitHubRelease | null,
-  pinned: GitHubRelease | null,
+  pinned: GitHubRelease | null
 ): GitHubRelease | null {
   if (
     pinned &&
     latestStable &&
-    compareVersions(
-      pinned.tag_name ?? "",
-      latestStable.tag_name ?? "",
-    ) >= 0
+    compareVersions(pinned.tag_name ?? "", latestStable.tag_name ?? "") >= 0
   ) {
     return pinned;
   }
@@ -179,27 +187,27 @@ export function selectAndroidRelease(
 }
 
 export function findApkAsset(
-  release: GitHubRelease | null,
+  release: GitHubRelease | null
 ): GitHubReleaseAsset | null {
   return (
-    release?.assets?.find((asset) =>
-      asset.name?.toLowerCase().endsWith(".apk"),
+    release?.assets?.find(asset =>
+      asset.name?.toLowerCase().endsWith(".apk")
     ) ?? null
   );
 }
 
 export function findAabAsset(
-  release: GitHubRelease | null,
+  release: GitHubRelease | null
 ): GitHubReleaseAsset | null {
   return (
-    release?.assets?.find((asset) =>
-      asset.name?.toLowerCase().endsWith(".aab"),
+    release?.assets?.find(asset =>
+      asset.name?.toLowerCase().endsWith(".aab")
     ) ?? null
   );
 }
 
 export async function getSignedGitHubAssetUrl(
-  assetId: number,
+  assetId: number
 ): Promise<string | null> {
   const token = getGitHubToken();
   if (!token) return null;
