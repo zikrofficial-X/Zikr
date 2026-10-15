@@ -4,10 +4,9 @@ on:
   push:
     tags:
       - 'v*.*.*'
-    # Also publish verified artifacts for the canonical CircleCI release branch.
-    # This recovers releases whose tag exists but whose Android build previously failed.
-    branches:
-      - 'android-release-v*.*.*'
+    # Recovery branches are published through the explicit workflow_dispatch
+    # retry path below. GitHub Actions combines simultaneous tag/branch filters,
+    # which silently prevents the branch recovery event from starting.
   workflow_dispatch:
     inputs:
       retry:
