@@ -6,6 +6,7 @@ import { LanguageProvider } from './language-provider';
 import { DEFAULT_LOCALE, isLocale, type Locale } from '@/lib/i18n';
 import { EditorialDepth } from '@/components/content/editorial-depth';
 import { EditorialUtilityDepth } from '@/components/content/editorial-utility-depth';
+import { getSiteSetting } from '@/features/site-content/services/site-content';
 
 const InstallPrompt = dynamic(
   () => import('./install-prompt').then((module) => module.InstallPrompt),
@@ -26,6 +27,7 @@ export async function SiteShell({ children }: { children: React.ReactNode }) {
   const cookieLocale = cookieStore.get('zikr-locale')?.value ?? null;
   const initialLocale: Locale = isLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
   const pathname = requestHeaders.get('x-zikr-pathname') ?? '';
+  const socialSettings = await getSiteSetting('social');
 
   return (
     <LanguageProvider initialLocale={initialLocale}>
@@ -36,7 +38,13 @@ export async function SiteShell({ children }: { children: React.ReactNode }) {
           <EditorialDepth pathname={pathname} />
           <EditorialUtilityDepth pathname={pathname} />
         </main>
-        <Footer />
+        <Footer socialLinks={{
+          facebookPageUrl: socialSettings?.facebookPageUrl,
+          youtubeChannelUrl: socialSettings?.youtubeChannelUrl,
+          instagramUrl: socialSettings?.instagramUrl,
+          twitterUrl: socialSettings?.twitterUrl,
+          xUrl: socialSettings?.xUrl,
+        }} />
         {/* Non-critical client integrations stay code-split from the shell. */}
         <NotificationPermissionBanner />
         <InstallPrompt />
