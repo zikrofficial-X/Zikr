@@ -272,15 +272,17 @@ jobs:
         run: |
           set -euo pipefail
           RELEASE_JSON=""
+          RELEASE_BODY=""
           for attempt in $(seq 1 30); do
-            if RELEASE_JSON="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets 2>/dev/null)"; then
+            if RELEASE_BODY="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" 2>/dev/null)"; then
+              RELEASE_JSON="$(jq -c '{id: .id, isDraft: .draft, assets: .assets}' <<< "$RELEASE_BODY")"
               break
             fi
-            echo "Waiting for GitHub release (attempt $attempt/30)..."
+            echo "Waiting for GitHub release ID $RELEASE_ID (attempt $attempt/30)..."
             sleep 5
           done
           if [[ -z "$RELEASE_JSON" ]]; then
-            echo "GitHub release not found for $TAG. Create its draft before publishing signed APK/AAB assets." >&2
+            echo "::error title=GitHub release not found::Could not retrieve draft release ID $RELEASE_ID for $TAG." >&2
             exit 1
           fi
 
@@ -290,9 +292,8 @@ jobs:
             exit 0
           fi
 
-          # Published releases are immutable. Never try to clobber an immutable
-          # release: only accept a repeat run when the existing public files are
-          # exactly the same as the verified build downloaded in this job.
+          # Published releases are immutable. Never mutate them: accept a repeat run
+          # only when the existing public files exactly match the verified build.
           REQUIRED_ASSETS=(app-release.apk app-release.aab SHA256SUMS release-metadata.json)
           ASSET_NAMES="$(jq -r '.assets[].name' <<< "$RELEASE_JSON")"
           MISSING=()
@@ -320,6 +321,7 @@ jobs:
           done
           echo "Published release $TAG already contains the exact verified assets."
           echo "upload_allowed=false" >> "$GITHUB_OUTPUT"
+
 
       - name: Upload release assets and publish
         if: steps.gate.outputs.publish == 'true' && steps.release_state.outputs.upload_allowed == 'true'
