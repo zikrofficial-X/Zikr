@@ -46,7 +46,7 @@ for (const difficulty of ["easy", "normal", "hard"] as const) {
       throw new Error(`Verified Quran text is unavailable for ${difficulty} level reference ${key}.`);
     }
 
-    const words = text.split(/\\s+/).filter(Boolean);
+    const words = text.split(/\s+/).filter(Boolean);
     if (words.length < 2) {
       throw new Error(`Verse Puzzle source is too short for ${difficulty} at ${key}.`);
     }
