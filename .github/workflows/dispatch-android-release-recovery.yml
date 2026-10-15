@@ -1,0 +1,92 @@
+name: Dispatch guarded Android release recovery
+
+on:
+  status:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    if: >-
+      github.event.context == 'ci/circleci: android-rebuild' &&
+      github.event.state == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch publisher only for the exact guarded recovery release
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const core = require("@actions/core");
+            const { owner, repo } = context.repo;
+            const sha = String(context.payload.sha ?? "");
+
+            if (!/^[0-9a-f]{40}$/i.test(sha)) {
+              core.info("Skipping: CircleCI status has no valid source commit.");
+              return;
+            }
+
+            const readText = async (path) => {
+              const { data } = await github.rest.repos.getContent({
+                owner, repo, path, ref: sha,
+              });
+              if (Array.isArray(data) || data.type !== "file" || !data.content) {
+                throw new Error("Expected a text file in the release source commit: " + path);
+              }
+              return Buffer.from(data.content.replace(/\\n/g, ""), "base64").toString("utf8");
+            };
+
+            const [tagText, packageText, retryText] = await Promise.all([
+              readText(".release-tag"),
+              readText("package.json"),
+              readText("docs/finalization/RELEASE_RETRY.flag"),
+            ]);
+
+            const tag = tagText.trim();
+            const version = String(JSON.parse(packageText).version ?? "");
+            if (!/^v[0-9]+\\.[0-9]+\\.[0-9]+$/.test(tag) || tag !== "v" + version) {
+              core.info("Skipping: source version and canonical release tag do not match.");
+              return;
+            }
+            if (retryText.trim() !== "RETRY") {
+              core.info("Skipping: the repository recovery guard is not enabled.");
+              return;
+            }
+
+            const notes = await readText("docs/releases/" + version + ".md");
+            if (!notes.includes("Release tag: \`" + tag + "\`")) {
+              core.setFailed("Release notes do not declare the canonical release tag.");
+              return;
+            }
+
+            const branch = "android-release-" + tag;
+            const { data: branchData } = await github.rest.repos.getBranch({ owner, repo, branch });
+            if (branchData.commit.sha !== sha) {
+              core.info("Skipping: the recovery branch does not point to the successful CircleCI source commit.");
+              return;
+            }
+
+            let release;
+            try {
+              const result = await github.rest.repos.getReleaseByTag({ owner, repo, tag });
+              release = result.data;
+            } catch (error) {
+              core.info("Skipping: no GitHub Release exists for " + tag + ".");
+              return;
+            }
+
+            if (release.tag_name !== tag || release.draft !== true || release.prerelease === true) {
+              core.info("Skipping: the matching GitHub Release is not an eligible draft.");
+              return;
+            }
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner,
+              repo,
+              workflow_id: ".github/workflows/publish-android-release-assets.yml",
+              ref: branch,
+              inputs: { retry: "true" },
+            });
+            core.info("Dispatched guarded Android asset verification/publication for " + tag + " from " + sha + ".");
