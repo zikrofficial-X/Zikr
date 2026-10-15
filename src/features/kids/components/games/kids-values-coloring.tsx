@@ -296,16 +296,22 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
       lastRestartRef.current = restartToken;
       setCustomColors([]);
     }
-    const galleryForLevel = Object.prototype.hasOwnProperty.call(saved, storageKey)
-      ? saved[storageKey]
-      : savedRef.current[storageKey];
-    setFills(galleryForLevel ?? []);
+    setFills(savedRef.current[storageKey] ?? []);
     setHistory([]);
     setRoundPaintedRegions([]);
     levelResetPendingRef.current = true;
     advancingRef.current = false;
     setFeedback(meta.subtitleAr);
   }, [meta.subtitleAr, restartToken, storageKey]);
+
+  const savedSyncInitializedRef = useRef(false);
+  useEffect(() => {
+    if (!savedSyncInitializedRef.current) {
+      savedSyncInitializedRef.current = true;
+      return;
+    }
+    savedRef.current = saved;
+  }, [saved]);
 
   const paint = (index: number) => {
     if (paused || complete) return;
