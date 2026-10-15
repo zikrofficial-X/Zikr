@@ -7,6 +7,12 @@ import { FALLBACK_COMPETITIONS } from '@/features/competitions/data/fallback';
 export type SiteSettingValue = {
   title?: string | null;
   body?: string | null;
+  description?: string | null;
+  keywords?: string | string[] | null;
+  ogTitle?: string | null;
+  ogDescription?: string | null;
+  ogImageUrl?: string | null;
+  xUrl?: string | null;
   imageUrl?: string | null;
   logoUrl?: string | null;
   youtubeChannelUrl?: string | null;
