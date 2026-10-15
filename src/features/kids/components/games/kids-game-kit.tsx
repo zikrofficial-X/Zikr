@@ -53,7 +53,7 @@ export function KidsGameStage({
       role="application"
       aria-label={ariaLabel}
       className={
-        "relative mx-auto aspect-[16/9] min-h-[460px] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-brand-gold/20 shadow-2xl sm:min-h-[520px] " +
+        "relative mx-auto min-h-[460px] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-brand-gold/20 shadow-2xl " +
         className
       }
       style={{ ...THEME_STYLES[theme], backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }}
