@@ -45,16 +45,51 @@ const PUBLIC_ROUTES = [
   "/library",
 ];
 
+const KIDS_GAME_SLUGS = [
+  "zikr-runner",
+  "zikr-memory",
+  "wudu-challenge",
+  "verse-puzzle",
+  "zikr-quiz",
+  "mosque-adventure",
+  "zikr-road",
+  "zikr-jump",
+  "good-deeds",
+  "hilal-fly",
+  "mosque-cleanup",
+  "zikr-coloring",
+];
+
 const CORE_CHECKS = [
   { path: "/", label: "homepage", expectedMain: /ذِكر/i },
   { path: "/quran", label: "Quran page", expectedMain: /القرآن/i },
   { path: "/prayer-times", label: "prayer times page", expectedMain: /مواقيت/i },
   { path: "/kids", label: "kids page", expectedMain: /نتعلم|الأطفال|الاطفال/i },
+  { path: "/kids/games", label: "kids games catalogue", expectedMain: /الألعاب|ألعاب|All games|Choose your next adventure/i },
 ];
 
 const ROUTE_CHECKS = PUBLIC_ROUTES
   .filter((path) => !CORE_CHECKS.some((core) => core.path === path))
   .map((path) => ({ path, label: `public section ${path}`, minMainText: 35 }));
+
+// Test all individual game pages and their live content endpoints rather than
+// only checking the general kids landing page. This catches missing game slugs,
+// incomplete database seeds, and broken game metadata before release.
+const KIDS_GAME_PAGE_CHECKS = KIDS_GAME_SLUGS.map((slug) => ({
+  path: `/kids/${slug}`,
+  label: `kids game page ${slug}`,
+  minMainText: 35,
+}));
+
+const KIDS_GAME_API_CHECKS = KIDS_GAME_SLUGS.map((slug) => ({
+  path: `/api/kids/content/${slug}`,
+  label: `kids game content API ${slug}`,
+  expectedJson: (payload) =>
+    Boolean(payload) &&
+    payload.slug === slug &&
+    payload.type === "game" &&
+    payload.metadata?.gameId === slug,
+}));
 
 const ASSET_CHECKS = [
   { path: "/robots.txt", label: "robots.txt", expected: /Sitemap:/i },
@@ -62,7 +97,13 @@ const ASSET_CHECKS = [
   { path: "/sitemap-index.xml", label: "sitemap index", expected: /<sitemapindex/i },
 ];
 
-const checks = [...CORE_CHECKS, ...ROUTE_CHECKS, ...ASSET_CHECKS];
+const checks = [
+  ...CORE_CHECKS,
+  ...ROUTE_CHECKS,
+  ...KIDS_GAME_PAGE_CHECKS,
+  ...KIDS_GAME_API_CHECKS,
+  ...ASSET_CHECKS,
+];
 
 function extractText(html) {
   return html
@@ -106,8 +147,19 @@ async function checkEndpoint(check) {
       const body = await response.text();
       last = `HTTP ${response.status}`;
       if (response.status === 200) {
+        let jsonPayload;
+        if (check.expectedJson) {
+          try {
+            jsonPayload = JSON.parse(body);
+          } catch {
+            jsonPayload = undefined;
+          }
+        }
+
         if (check.expectedMain && !check.expectedMain.test(mainTextFrom(body))) {
           last = "HTTP 200 but expected visible main-content pattern was missing";
+        } else if (check.expectedJson && (!jsonPayload || !check.expectedJson(jsonPayload))) {
+          last = "HTTP 200 but JSON payload did not satisfy the expected route/content contract";
         } else if (check.expected && !check.expected.test(body)) {
           last = "HTTP 200 but expected document pattern was missing";
         } else if (check.minMainText && mainTextFrom(body).length < check.minMainText) {
