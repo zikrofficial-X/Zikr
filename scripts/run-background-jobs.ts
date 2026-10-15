@@ -133,7 +133,7 @@ function applyVideoAutomationSettings(settings: VideoAutomationSettings) {
 const SOCIAL_PUBLISH_ENABLED = process.env.SOCIAL_PUBLISH_ENABLED !== "false";
 const VIDEO_DRY_RUN = (process.env.VIDEO_AUTOMATION_DRY_RUN ?? "true").toLowerCase() === "true";
 
-const EDGE_TTS_VERSION = "7.2.8";
+const EDGE_TTS_VERSION = "7.3.1";
 const TTS_VENV_DIR = process.env.ARABIC_TTS_VENV?.trim() || join(process.cwd(), ".tts-venv");
 
 function hasEdgeTts(python: string) {
