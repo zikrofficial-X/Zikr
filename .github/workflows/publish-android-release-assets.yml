@@ -359,7 +359,7 @@ jobs:
           gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
             --field draft=false \
             --field prerelease=false \
-            --field make_latest=true >/tmp/published-release.json
+            --raw-field make_latest=true >/tmp/published-release.json
           test "$(jq -r '.draft' /tmp/published-release.json)" = "false"
           echo "Published Android release $TAG."
 
