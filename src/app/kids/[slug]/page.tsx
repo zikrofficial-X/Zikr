@@ -259,6 +259,35 @@ export default function KidsDetailPage() {
             {!isEnglish && content.metadata?.safetyNote && (
               <p className="text-sm leading-7 text-amber-200/80">تنبيه السلامة: {content.metadata.safetyNote}</p>
             )}
+            {!isEnglish && content.metadata?.memorizationTarget && (
+              <p className="text-sm leading-7 text-brand-cream/85">
+                <strong className="text-brand-gold">هدف الحفظ: </strong>
+                {content.metadata.memorizationTarget}
+              </p>
+            )}
+            {!isEnglish && content.metadata?.durationDays && (
+              <p className="text-sm text-brand-cream/70">المدة المقترحة: {content.metadata.durationDays} يومًا</p>
+            )}
+            {!isEnglish && Array.isArray(content.metadata?.dailyPlan) && content.metadata.dailyPlan.length > 0 && (
+              <div>
+                <h3 className="mb-2 font-bold text-brand-gold">خطة النشاط اليومية</h3>
+                <ol className="list-decimal list-inside space-y-2 text-sm leading-7 text-brand-cream/85">
+                  {content.metadata.dailyPlan.map((step, index) => (
+                    <li key={String(index)}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+            {!isEnglish && Array.isArray(content.metadata?.reviewPlan) && content.metadata.reviewPlan.length > 0 && (
+              <div>
+                <h3 className="mb-2 font-bold text-brand-gold">خطة المراجعة</h3>
+                <ol className="list-decimal list-inside space-y-2 text-sm leading-7 text-brand-cream/85">
+                  {content.metadata.reviewPlan.map((step, index) => (
+                    <li key={String(index)}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
             {!isEnglish && Array.isArray(content.metadata?.activitySteps) && content.metadata.activitySteps.length > 0 && (
               <ol className="list-decimal list-inside space-y-2 text-sm leading-7 text-brand-cream/85">
                 {content.metadata.activitySteps.map((step, index) => (
