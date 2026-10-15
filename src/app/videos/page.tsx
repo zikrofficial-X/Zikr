@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import { ResilientProfileImage } from '@/components/media/resilient-profile-image';
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';
 import { Container } from '@/components/ui/container';
@@ -56,17 +56,9 @@ export default async function VideosPage() {
       <section className="grid gap-6 lg:grid-cols-2">
         {channel && (
           <Card className="overflow-hidden border-brand-gold/20 bg-brand-gold/5">
-            {channel.avatarUrl ? (
-              <div className="relative h-44 bg-black/20">
-                <Image
-                  src={channel.avatarUrl}
-                  alt={channel.name}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-contain p-8"
-                />
-              </div>
-            ) : null}
+            <div className="relative h-44 bg-black/20">
+              <ResilientProfileImage src={channel.avatarUrl} alt={channel.name} />
+            </div>
             <div className="space-y-4 p-6">
               <div>
                 <p className="text-sm text-brand-cream/45">قناة يوتيوب الرسمية</p>
@@ -88,17 +80,9 @@ export default async function VideosPage() {
 
         {facebook && (
           <Card className="overflow-hidden border-blue-500/20 bg-blue-500/5">
-            {facebook.avatarUrl ? (
-              <div className="relative h-44 bg-black/20">
-                <Image
-                  src={facebook.avatarUrl}
-                  alt={facebook.name}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-contain p-8"
-                />
-              </div>
-            ) : null}
+            <div className="relative h-44 bg-black/20">
+              <ResilientProfileImage src={facebook.avatarUrl} alt={facebook.name} />
+            </div>
             <div className="space-y-4 p-6">
               <div>
                 <p className="text-sm text-brand-cream/45">صفحة فيسبوك الرسمية</p>
