@@ -35,6 +35,8 @@ const workflow = read(".github/workflows/generate-ai-video.yml");
 if (!workflow.includes('cron: "17 3,9,15,21 * * *"')) failures.push("GitHub video workflow must own the production schedule");
 if (!workflow.includes("edge-tts==7.3.1")) failures.push("GitHub video workflow must pin edge-tts 7.3.1");
 if (!workflow.includes("gTTS==2.5.4")) failures.push("GitHub video workflow must install the no-key Arabic TTS fallback");
+if (!workflow.includes("scripts/generate-arabic-voice.py")) failures.push("Video worker must execute the Arabic TTS provider smoke test before processing the production queue");
+if (!workflow.includes("zikr-arabic-tts-smoke.mp3")) failures.push("Video worker must assert that Arabic TTS produces a non-empty MP3 before touching the production queue");
 
 const circle = read(".circleci/config.yml");
 if (circle.includes("edge-tts==7.3.1")) failures.push("CircleCI must not carry the production video TTS runtime after the ownership split");
