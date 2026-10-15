@@ -43,8 +43,8 @@ assert.ok(!siteContentService.includes(".limit(1)\n      .single()"), "Optional 
 
 const publish = read(".github/workflows/publish-android-release-assets.yml");
 assert.ok(publish.includes("github.ref_type == 'tag'"), "Android publisher must support semantic release tags");
-assert.ok(publish.includes("'android-release-v*.*.*'"), "Android publisher must recover assets from canonical Android release branches");
-assert.ok(publish.includes("GITHUB_REF_NAME#android-release-"), "Android publisher must map recovery branch names to the exact semantic release tag");
+assert.ok(publish.includes("inputs.retry == true"), "Android publisher must support an explicit guarded recovery retry");
+assert.ok(publish.includes("docs/finalization/RELEASE_RETRY.flag"), "Android publisher retry must require the repository release guard");
 assert.ok(publish.includes("seq 1 120") && publish.includes("sleep 30"), "Android publisher must wait long enough for CircleCI's signed build to finish");
 assert.ok(publish.includes("--clobber"), "Android publisher must replace stale assets after checksum verification");
 assert.ok(publish.includes("statuses: read"), "Android publisher must be able to inspect CircleCI status");
