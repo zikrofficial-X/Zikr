@@ -66,7 +66,13 @@ assert.ok(english.includes("environment: production"), "English sync must use pr
 assert.ok(english.includes("github.ref == 'refs/heads/main'"), "English sync must be main-only");
 
 assert.ok(release.includes("github.ref == 'refs/heads/main'"), "Controlled Vercel release must be main-only");
-assert.ok(release.includes("Production smoke test on deployed artifact"), "Controlled release must verify the deployment it just created");
+assert.ok(
+  release.includes("Smoke test deployed app before schema migration") &&
+    release.includes("Post-migration production smoke test"),
+  "Controlled release must smoke-test the deployed app before and after applying database migrations",
+);
+assert.ok(release.includes("Apply pending production migrations after deployment"), "Controlled release must apply access-restricting migrations only after compatible code is live");
+assert.ok(release.includes("Verify production schema after migration"), "Controlled release must verify schema parity after applying migrations");
 assert.ok(release.includes("pnpm release:contract:check"), "Controlled release must use the canonical release contract check");
 assert.ok(release.includes("pnpm production:smoke"), "Controlled release must use the canonical production smoke script");
 assert.ok(!release.includes("--token"), "Controlled Vercel release must not pass credentials through CLI arguments");
@@ -83,7 +89,7 @@ const dbUrlValidator = read("scripts/verify-supabase-db-url.py");
 assert.ok(dbUrlValidator.includes("zikr_seed_loader") && dbUrlValidator.includes("sslmode"), "Supabase connection validation must block the retired role and weak TLS settings");
 assert.ok(release.indexOf("Fail fast on missing or unsafe production credentials") < release.indexOf("Install dependencies"), "Production credential checks must run before dependency installation");
 assert.ok(!release.includes("\n  push:"), "The release workflow must not enqueue guarded skipped jobs on ordinary pushes");
-assert.ok(release.includes("bash scripts/reconcile-supabase-migration-history.sh"), "Production release must audit and safely reconcile Supabase migration history before deploy");
+assert.ok(release.includes("bash scripts/reconcile-supabase-migration-history.sh"), "Production release must audit and reconcile Supabase migration history against the checked schema baseline and again after applying pending SQL");
 const reconciliation = read("scripts/reconcile-supabase-migration-history.sh");
 assert.ok(reconciliation.includes("SUPABASE_DB_URL") && reconciliation.includes("EXPECTED_PROJECT_REF"), "Migration reconciliation must require and verify an explicit production project target");
 assert.ok(reconciliation.indexOf("supabase db diff") >= 0 && reconciliation.indexOf("supabase db diff") < reconciliation.indexOf("supabase migration repair"), "Migration history must not be repaired before schema-diff verification");
