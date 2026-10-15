@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - 'android-release-v*'
 
 permissions:
   actions: write
@@ -16,7 +17,7 @@ jobs:
       (github.event_name == 'status' &&
        github.event.context == 'ci/circleci: android-rebuild' &&
        github.event.state == 'success') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/android-release-v')))
     runs-on: ubuntu-24.04
     steps:
       - name: Dispatch publisher only for the exact guarded release with a successful signed build
@@ -70,10 +71,22 @@ jobs:
             }
 
             const recoveryBranch = "android-release-" + tag;
-            const { data: branchData } = await github.rest.repos.getBranch({
-              owner, repo, branch: recoveryBranch,
-            });
-            const sourceSha = branchData.commit.sha;
+            let sourceSha = eventSha;
+            try {
+              const { data: branchData } = await github.rest.repos.getBranch({
+                owner, repo, branch: recoveryBranch,
+              });
+              sourceSha = branchData.commit.sha;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              if (eventName !== "push" || context.ref !== "refs/heads/" + recoveryBranch) {
+                core.info("Skipping: recovery branch is missing and this event cannot safely restore it.");
+                return;
+              }
+              // Branch-creation push may be the recovery signal; only continue
+              // after the exact source commit is verified as successfully signed below.
+              core.info("Recovery branch push detected; validating the exact commit's signed-build status.");
+            }
 
             if (eventName === "status") {
               if (sourceSha !== eventSha) {
@@ -81,6 +94,10 @@ jobs:
                 return;
               }
             } else if (eventName === "push") {
+              if (sourceSha !== eventSha) {
+                core.info("Skipping: push event does not match the release source commit.");
+                return;
+              }
               const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
                 owner, repo, ref: sourceSha,
               });
