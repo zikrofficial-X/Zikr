@@ -52,6 +52,7 @@ const GROUPS = [
 export function AudioLibrary() {
   const [library, setLibrary] = useState<AudioAsset[]>([]);
   const [selected, setSelected] = useState<Record<AudioSlot, string>>(() => getAudioSettingsFromStorage());
+  const [failedAssets, setFailedAssets] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let active = true;
@@ -115,13 +116,32 @@ export function AudioLibrary() {
                       {asset.isPrimary && <span className="rounded-full bg-brand-gold/15 px-2 py-0.5 text-[10px] font-bold text-brand-gold">الافتراضي</span>}
                     </div>
 
-                    <audio controls preload="none" src={asset.url} className="mt-4 h-10 w-full rounded-lg" aria-label={"تشغيل " + (asset.title ?? "المقطع")} />
+                    <audio
+                      controls
+                      preload="metadata"
+                      src={asset.url}
+                      className="mt-4 h-10 w-full rounded-lg"
+                      aria-label={"تشغيل " + (asset.title ?? "المقطع")}
+                      onError={() => setFailedAssets(current => ({ ...current, [asset.id]: true }))}
+                      onCanPlay={() => setFailedAssets(current => {
+                        if (!current[asset.id]) return current;
+                        const next = { ...current };
+                        delete next[asset.id];
+                        return next;
+                      })}
+                    />
+                    {failedAssets[asset.id] ? (
+                      <p role="alert" className="mt-2 text-xs leading-6 text-red-300">
+                        تعذر تحميل هذا التسجيل من مصدره الحالي. جرّب مصدرًا آخر أو أبلغ الإدارة عن الرابط.
+                      </p>
+                    ) : null}
 
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                       <button
                         type="button"
                         onClick={() => choose(asset)}
-                        className={"rounded-xl px-4 py-2 text-sm font-bold " + (activeChoice ? "bg-brand-gold text-brand-emeraldDeep" : "border border-brand-gold/30 text-brand-gold")}
+                        disabled={Boolean(failedAssets[asset.id])}
+                        className={"rounded-xl px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40 " + (activeChoice ? "bg-brand-gold text-brand-emeraldDeep" : "border border-brand-gold/30 text-brand-gold")}
                       >
                         {activeChoice ? "مفعّل لهذا النوع" : "استخدام هذا الصوت"}
                       </button>
