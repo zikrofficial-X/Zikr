@@ -150,6 +150,13 @@ jobs:
           pnpm video:engine:check
           pnpm exec tsx -e 'Promise.all([import("./scripts/jobs/template-video-automation.ts"), import("./src/features/social/services/social-publishing.ts")]).then(() => console.log("Video worker module smoke test: OK")).catch((error) => { console.error(error); process.exitCode = 1 })'
           "$GITHUB_WORKSPACE/.automation-venv/bin/python" -m py_compile scripts/jobs/hf-space-video.py
+          "$GITHUB_WORKSPACE/.automation-venv/bin/python" -m py_compile scripts/generate-arabic-voice.py
+          # Fail before touching the production queue if neither Arabic TTS provider can synthesize audio.
+          "$GITHUB_WORKSPACE/.automation-venv/bin/python" scripts/generate-arabic-voice.py \
+            --text "اختبار صوت عربي لمنصة ذكر." \
+            --output "$RUNNER_TEMP/zikr-arabic-tts-smoke.mp3"
+          test -s "$RUNNER_TEMP/zikr-arabic-tts-smoke.mp3"
+          test "$(stat -c '%s' "$RUNNER_TEMP/zikr-arabic-tts-smoke.mp3")" -ge 1024
           ffmpeg -version | head -n 1
 
       - name: Gemini audio evaluation smoke test
