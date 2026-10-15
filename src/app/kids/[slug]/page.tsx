@@ -243,20 +243,20 @@ export default function KidsDetailPage() {
                 ? "This activity uses the original learning instructions. Follow the steps below with a parent or trusted adult when needed."
                 : "هذا النشاط من المحتوى التعليمي الأصلي. اتبع الخطوات التالية، واستعن بولي الأمر عند الحاجة."}
             </p>
-            {content.metadata?.objective && (
+            {!isEnglish && content.metadata?.objective && (
               <p className="leading-7 text-brand-cream/85">
                 <strong className="text-brand-gold">{isEnglish ? "Goal: " : "الهدف: "}</strong>
                 {content.metadata.objective}
               </p>
             )}
-            {Array.isArray(content.metadata?.activitySteps) && content.metadata.activitySteps.length > 0 && (
+            {!isEnglish && Array.isArray(content.metadata?.activitySteps) && content.metadata.activitySteps.length > 0 && (
               <ol className="list-decimal list-inside space-y-2 text-sm leading-7 text-brand-cream/85">
                 {content.metadata.activitySteps.map((step, index) => (
                   <li key={String(index)}>{step}</li>
                 ))}
               </ol>
             )}
-            {content.metadata?.familyPrompt && (
+            {!isEnglish && content.metadata?.familyPrompt && (
               <p className="rounded-xl border border-brand-emerald/25 bg-brand-emerald/5 p-3 text-sm leading-7 text-brand-cream/80">
                 <strong className="text-brand-emerald">{isEnglish ? "Family prompt: " : "سؤال للأسرة: "}</strong>
                 {content.metadata.familyPrompt}

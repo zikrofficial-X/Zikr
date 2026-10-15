@@ -158,6 +158,9 @@ if (!kidsDetailPage.includes('isLegacyGameActivity && quizQuestions.length > 0')
 if (!kidsDetailPage.includes("content.metadata.activitySteps.map")) {
   throw new Error("Legacy kids game activities must render their authored activity steps.");
 }
+if (!kidsDetailPage.includes("!isEnglish && Array.isArray(content.metadata?.activitySteps)")) {
+  throw new Error("Arabic-only legacy activity steps must not be injected into the English interface.");
+}
 if (kidsDetailPage.includes('isEnglish ? "Game unavailable"')) {
   throw new Error("Published legacy activities must not be discarded solely because they lack a registry gameId.");
 }
