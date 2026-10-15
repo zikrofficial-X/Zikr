@@ -154,7 +154,7 @@ function buildReleaseNotes(version: string, versionCode: number, mainSha: string
     "- Android versionCode: `" + versionCode + "`",
     "- Application ID: `com.zikr.app`",
     "- Target SDK: `36`",
-    "- Source commit: `" + mainSha + "`",
+    "- Preparation base commit: `" + mainSha + "`",
     "- Previous stable tag: `" + (previousTag ?? "none") + "`",
     "- Assets expected: signed APK + signed AAB + SHA256SUMS",
     "",

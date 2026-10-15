@@ -55,6 +55,11 @@ assert.ok(recoveryDispatch.includes("createWorkflowDispatch"), "Android recovery
 assert.ok(recoveryDispatch.includes("github.event_name == 'push'"), "Android recovery must retry after the guarded workflow is merged to main");
 assert.ok(recoveryDispatch.includes("getCombinedStatusForRef"), "Push-triggered recovery must confirm success of the exact CircleCI Android build");
 assert.ok(!recoveryDispatch.includes('const core = require("@actions/core")'), "github-script must not redeclare its built-in core binding");
+assert.ok(recoveryDispatch.includes("getRef") && recoveryDispatch.includes("getTag"), "Android recovery must resolve annotated tags to their target commits");
+assert.ok(recoveryDispatch.includes("tagTargetSha !== sourceSha"), "Android recovery must refuse publication when the recovery branch differs from the tag target");
+assert.ok(publish.includes("TAG_TARGET_SHA") && publish.includes("Android artifact/tag provenance mismatch"), "Android publisher must verify that the artifact source SHA equals the canonical tag target");
+assert.ok(publish.includes("Android release tag/source mismatch"), "Android publisher must reject recovery-branch commits that differ from the canonical tag target");
+assert.ok(releaseManager.includes("Preparation base commit"), "New release notes must not label the pre-release baseline SHA as the binary source SHA");
 
 
 assert.ok(recoveryDispatch.includes("ci/circleci: android-rebuild"), "Android recovery publisher must wait for the signed CircleCI build success status");

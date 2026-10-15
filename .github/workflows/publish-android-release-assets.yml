@@ -73,6 +73,28 @@ jobs:
           fi
           EXPECTED_TAG="v$(jq -r '.version' package.json)"
           test "$TAG" = "$EXPECTED_TAG"
+
+          # A recovery branch is publishable only when it is exactly the commit
+          # referenced by the canonical semantic tag. Never publish newer branch
+          # binaries under an older immutable tag.
+          if [[ "${GITHUB_REF_TYPE}" == "tag" || "${GITHUB_REF_NAME}" =~ ^android-release-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            TAG_REF_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")"
+            TAG_REF_TYPE="$(jq -r '.object.type' <<< "$TAG_REF_JSON")"
+            TAG_REF_SHA="$(jq -r '.object.sha' <<< "$TAG_REF_JSON")"
+            if [[ "$TAG_REF_TYPE" == "tag" ]]; then
+              TAG_OBJECT_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${TAG_REF_SHA}")"
+              TAG_TARGET_TYPE="$(jq -r '.object.type' <<< "$TAG_OBJECT_JSON")"
+              TAG_TARGET_SHA="$(jq -r '.object.sha' <<< "$TAG_OBJECT_JSON")"
+            else
+              TAG_TARGET_TYPE="$TAG_REF_TYPE"
+              TAG_TARGET_SHA="$TAG_REF_SHA"
+            fi
+            if [[ "$TAG_TARGET_TYPE" != "commit" || "$TAG_TARGET_SHA" != "$GITHUB_SHA" ]]; then
+              echo "::error title=Android release tag/source mismatch::Tag ${TAG} points to ${TAG_TARGET_SHA}, but this run is checking out ${GITHUB_SHA}. Rebuild from the exact tag commit; do not publish recovery-branch binaries under a different source tag." >&2
+              exit 1
+            fi
+          fi
+
           echo "TAG=$TAG" >> "$GITHUB_ENV"
           echo "SUPABASE_PUBLIC_BASE=${SUPABASE_PUBLIC_ROOT}/${TAG}" >> "$GITHUB_ENV"
 
@@ -217,6 +239,23 @@ jobs:
             echo "::error title=Invalid Android artifact provenance::Release metadata is missing a valid source commit." >&2
             exit 1
           fi
+
+          TAG_REF_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")"
+          TAG_REF_TYPE="$(jq -r '.object.type' <<< "$TAG_REF_JSON")"
+          TAG_REF_SHA="$(jq -r '.object.sha' <<< "$TAG_REF_JSON")"
+          if [[ "$TAG_REF_TYPE" == "tag" ]]; then
+            TAG_OBJECT_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${TAG_REF_SHA}")"
+            TAG_TARGET_TYPE="$(jq -r '.object.type' <<< "$TAG_OBJECT_JSON")"
+            TAG_TARGET_SHA="$(jq -r '.object.sha' <<< "$TAG_OBJECT_JSON")"
+          else
+            TAG_TARGET_TYPE="$TAG_REF_TYPE"
+            TAG_TARGET_SHA="$TAG_REF_SHA"
+          fi
+          if [[ "$TAG_TARGET_TYPE" != "commit" || "$TAG_TARGET_SHA" != "$SOURCE_COMMIT" ]]; then
+            echo "::error title=Android artifact/tag provenance mismatch::Tag ${TAG} resolves to ${TAG_TARGET_SHA}, but signed artifact metadata names source commit ${SOURCE_COMMIT}. Refusing to publish a binary built from a different commit." >&2
+            exit 1
+          fi
+
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${GITHUB_REF}" == "refs/heads/main" ]]; then
             source_status="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${SOURCE_COMMIT}/status" --jq '.statuses | map(select(.context == "ci/circleci: android-rebuild")) | sort_by(.updated_at) | (last // {}) | .state // ""' 2>/dev/null || true)"
             if [[ "${source_status}" != "success" ]]; then
