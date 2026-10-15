@@ -23,6 +23,13 @@ function textValue(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
+function normalizeOgImageSetting(value: unknown): string {
+  const current = textValue(value, "/branding/og-image.jpg");
+  return /(?:^|\/)branding\/og-image\.png(?:[?#].*)?$/i.test(current)
+    ? "/branding/og-image.jpg"
+    : current;
+}
+
 function booleanValue(value: unknown, fallback = true): boolean {
   return typeof value === "boolean" ? value : fallback;
 }
@@ -170,8 +177,8 @@ export default async function AdminSeoPage({
             <textarea name="ogDescription" maxLength={320} rows={3} defaultValue={textValue(social.ogDescription, seoDescription)} className={inputClass} />
           </label>
           <label className={labelClass}>مسار صورة المشاركة أو رابط HTTPS
-            <input name="ogImageUrl" maxLength={500} defaultValue={textValue(social.ogImageUrl, "/branding/og-image.png")} className={inputClass} />
-            <span className="mt-1 block text-xs font-normal text-brand-cream/35">المسار المحلي الافتراضي: /branding/og-image.png</span>
+            <input name="ogImageUrl" maxLength={500} defaultValue={normalizeOgImageSetting(social.ogImageUrl)} className={inputClass} />
+            <span className="mt-1 block text-xs font-normal text-brand-cream/35">المسار المحلي الافتراضي: /branding/og-image.jpg</span>
           </label>
           <div className="grid gap-4 md:grid-cols-2">
             <label className={labelClass}>Facebook Page URL
