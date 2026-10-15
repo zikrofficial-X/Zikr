@@ -8,16 +8,21 @@
 
 | Item | Status |
 |---|---|
-| Application version | **1.1.3** |
-| Android versionCode | **57** |
-| Canonical release tag | **v1.1.3** |
-| Latest published stable release | **v1.1.2** |
-| v1.1.3 release notes | ✅ Present |
-| Main branch | ✅ Active |
-| CI/CD ownership cleanup | ✅ Applied |
-| Production Vercel promotion | ✅ Latest `main` is deployed and verified on Vercel |
+| Application version | **1.1.4** |
+| Android versionCode | **58** |
+| Application ID | `com.zikr.app` |
+| Compile / Target SDK | **36** |
+| Canonical release tag | **[`v1.1.4`](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.4)** |
+| Latest published stable Android release | **v1.1.4 — published** |
+| APK + AAB + checksums + metadata | **Uploaded and verified** |
+| Android asset publisher | **[GitHub Actions run #5: success](https://github.com/zikrofficial-X/Zikr/actions/runs/38749157361)** |
+| Main branch | Active |
+| CI/CD ownership cleanup | Applied |
+| Production Vercel promotion | Latest `main` deployment process remains controlled |
 
-`v1.1.3` remains the repository application version and has not been marked as the latest published Android Release. The web production deployment itself is live and verified.
+Release assets are public on the [v1.1.4 Release page](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.4). The workflow verified the signed APK and AAB, their checksums, and the exact bytes published on GitHub. Detailed asset sizes, SHA-256 values and tag provenance are recorded in [`docs/releases/1.1.4.md`](./docs/releases/1.1.4.md).
+
+**Provenance issue to carry into the next release:** the annotated `v1.1.4` tag targets `a2fbc9f6bafdf9a91202d11270cdae984173e1f1`, while the successful asset publication run validated Android artifacts from `c3186f774d4a1889153c3ab7375f8fa2a0190dc1`. The binaries and uploaded assets passed the publisher's validation, but the tag target and artifact source are not the same commit. Do not rewrite the already-published tag; enforce exact tag/source-SHA equality when preparing the next release.
 
 ## Current automation topology
 
