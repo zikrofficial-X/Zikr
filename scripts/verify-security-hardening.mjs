@@ -34,9 +34,9 @@ for (const token of [
 const contactRateLimit = read("src/features/contact/services/rate-limit.ts");
 for (const token of [
   "consume_admin_rate_limit",
-  "public_contact_submission",
-  "p_limit: 5",
-  "p_window_seconds: 600",
+  'const RATE_LIMIT_BUCKET = "public_contact_submission";',
+  "const RATE_LIMIT_MAX_REQUESTS = 5;",
+  "const RATE_LIMIT_WINDOW_SECONDS = 600;",
 ]) {
   if (!contactRateLimit.includes(token)) failures.push(`contact rate limiter is missing shared enforcement: ${token}`);
 }
