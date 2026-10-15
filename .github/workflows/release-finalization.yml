@@ -51,7 +51,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "${VERCEL_TOKEN:-}" ]]; then
-            echo "::error title=Missing Vercel deployment credential::Add VERCEL_TOKEN to the production environment/repository secrets; deployment cannot be authenticated."
+            echo "::error title=Missing Vercel deployment credential::Add ZIKR_VERCEL_TOKEN to the protected production environment/repository secrets; deployment cannot be authenticated."
             exit 1
           fi
           echo "Vercel deployment credential is present."

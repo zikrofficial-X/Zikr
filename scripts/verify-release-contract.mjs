@@ -84,6 +84,9 @@ assert.ok(!circle.includes('VERSION_CODE="56"'), "Android release must not silen
 const finalization = read(".github/workflows/release-finalization.yml");
 assert.ok(finalization.includes("github.ref == 'refs/heads/main'"), "web production release must be main-only");
 assert.ok(finalization.includes("environment:\n      name: production"), "web production release must use the protected production environment");
+assert.ok(finalization.includes("secrets.ZIKR_VERCEL_TOKEN"), "web production release must read the dedicated Vercel credential secret");
+assert.ok(finalization.includes("Add ZIKR_VERCEL_TOKEN to the protected production environment/repository secrets"), "missing-token diagnostics must name the secret the workflow actually reads");
+assert.ok(!finalization.includes("Add VERCEL_TOKEN to the production environment/repository secrets"), "missing-token diagnostics must not recommend the legacy shadowing secret name");
 assert.ok(finalization.includes("pnpm production:smoke"), "web production release must verify its deployment");
 assert.ok(finalization.includes("fetch-depth: 0"), "schema-baseline verification must have the parent commit available");
 assert.ok(finalization.includes('git worktree add --detach "${baseline}" "${GITHUB_SHA}^"'), "schema baseline must be checked against the commit before this release");
