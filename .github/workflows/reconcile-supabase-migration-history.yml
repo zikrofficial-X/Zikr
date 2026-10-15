@@ -35,7 +35,7 @@ jobs:
       name: production
     env:
       EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
       PGSSLMODE: require
     steps:
       - name: Checkout the exact main commit
