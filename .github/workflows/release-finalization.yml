@@ -18,7 +18,9 @@ permissions:
 
 concurrency:
   group: zikr-finalization-production-release
-  cancel-in-progress: false
+  # A queued release from an obsolete commit must never block the newest
+  # explicitly approved production deployment.
+  cancel-in-progress: true
 
 jobs:
   release:
