@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Container } from "@/components/ui/container";
+import Link from "next/link";
 
 export default function AdminError({
   error,
@@ -30,6 +31,19 @@ export default function AdminError({
         >
           إعادة المحاولة
         </button>
+        <nav aria-label="روابط استرداد مركز الإدارة" className="mt-5 flex flex-wrap justify-center gap-2">
+          {[
+            ["/admin/health", "صحة النظام"],
+            ["/admin/automation", "التشغيل والفيديو"],
+            ["/admin/seo", "SEO والبيانات الاجتماعية"],
+            ["/admin/audio/adhan", "مكتبة الصوت"],
+            ["/", "الصفحة الرئيسية"],
+          ].map(([href, label]) => (
+            <Link key={href} href={href} className="rounded-lg border border-brand-gold/15 px-3 py-2 text-xs text-brand-gold/80 hover:border-brand-gold/30 hover:text-brand-gold">
+              {label}
+            </Link>
+          ))}
+        </nav>
       </section>
     </Container>
   );
