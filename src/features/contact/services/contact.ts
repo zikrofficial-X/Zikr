@@ -1,6 +1,7 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
+import { isValidContactEmail } from "@/features/contact/validation";
 
 export type ContactMessageInput = {
   name?: unknown;
@@ -12,8 +13,6 @@ export type ContactMessageInput = {
 export type ContactResult =
   | { ok: true }
   | { ok: false; error: string };
-
-const EMAIL_REGEX = /^[^s@]+@[^s@]+.[^s@]+$/;
 
 export async function submitContactMessage(
   input: unknown,
@@ -35,7 +34,7 @@ export async function submitContactMessage(
     return { ok: false, error: "الاسم والبريد والرسالة مطلوبة." };
   }
 
-  if (!EMAIL_REGEX.test(email) || email.length > 254) {
+  if (!isValidContactEmail(email)) {
     return { ok: false, error: "البريد الإلكتروني غير صالح." };
   }
 
@@ -43,7 +42,7 @@ export async function submitContactMessage(
     return { ok: false, error: "البيانات المدخلة طويلة جداً." };
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { error } = await supabase.from("contacts").insert({
     name,
     email,

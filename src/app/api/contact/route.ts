@@ -1,33 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { submitContactMessage } from "@/features/contact/services/contact";
+import { consumePublicContactRateLimit } from "@/features/contact/services/rate-limit";
 
-const requestCounts = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
-const RATE_LIMIT_MAX_REQUESTS = 5;
-
-function getClientKey(request: NextRequest) {
+function getClientIdentifier(request: NextRequest) {
   return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
+    request.headers.get("x-real-ip")?.trim() ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown"
   );
 }
 
 export async function POST(req: NextRequest) {
-  const now = Date.now();
-  const key = getClientKey(req);
-  const current = requestCounts.get(key);
-
-  if (!current || current.resetAt <= now) {
-    requestCounts.set(key, {
-      count: 1,
-      resetAt: now + RATE_LIMIT_WINDOW_MS,
-    });
-  } else if (current.count >= RATE_LIMIT_MAX_REQUESTS) {
-    return NextResponse.json(
-      { error: "تم تجاوز الحد المسموح. حاول مرة أخرى لاحقاً." },
-      { status: 429, headers: { "Retry-After": "600" } },
+  try {
+    const allowed = await consumePublicContactRateLimit(getClientIdentifier(req));
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "تم تجاوز الحد المسموح. حاول مرة أخرى لاحقاً." },
+        { status: 429, headers: { "Retry-After": "600" } },
+      );
+    }
+  } catch (error) {
+    console.error(
+      "[contact rate limit] unavailable",
+      error instanceof Error ? error.message : "unknown",
     );
-  } else {
-    current.count += 1;
+    return NextResponse.json(
+      { error: "الخدمة غير متاحة مؤقتًا. حاول مرة أخرى لاحقًا." },
+      { status: 503, headers: { "Retry-After": "60" } },
+    );
   }
 
   try {

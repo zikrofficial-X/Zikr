@@ -85,5 +85,16 @@ const finalization = read(".github/workflows/release-finalization.yml");
 assert.ok(finalization.includes("github.ref == 'refs/heads/main'"), "web production release must be main-only");
 assert.ok(finalization.includes("environment:\n      name: production"), "web production release must use the protected production environment");
 assert.ok(finalization.includes("pnpm production:smoke"), "web production release must verify its deployment");
+assert.ok(finalization.includes("fetch-depth: 0"), "schema-baseline verification must have the parent commit available");
+assert.ok(finalization.includes('git worktree add --detach "${baseline}" "${GITHUB_SHA}^"'), "schema baseline must be checked against the commit before this release");
+assert.ok(finalization.includes('supabase db push --db-url "${SUPABASE_DB_URL}" --yes'), "pending SQL migrations must be applied through the controlled production release");
+const baselineStep = finalization.indexOf("Verify production data and baseline schema against parent commit");
+const buildStep = finalization.indexOf("Build production artifact");
+const deployStep = finalization.indexOf("Deploy prebuilt artifact to production");
+const migrationStep = finalization.indexOf("Apply pending production migrations after deployment");
+const schemaStep = finalization.indexOf("Verify production schema after migration");
+const finalSmokeStep = finalization.indexOf("Post-migration production smoke test");
+assert.ok(baselineStep >= 0 && baselineStep < buildStep, "pre-release schema/data preflight must occur before building");
+assert.ok(buildStep < deployStep && deployStep < migrationStep && migrationStep < schemaStep && schemaStep < finalSmokeStep, "deploy compatible code before applying breaking access-policy changes, then verify schema and smoke-test");
 
 console.log("✅ Release contract checks passed");

@@ -20,6 +20,43 @@ for (const token of [
   if (!migration.includes(token)) failures.push(`${migrationPath} missing security contract: ${token}`);
 }
 
+const contactMigrationPath = "supabase/migrations/20261015050000_secure_contact_submission.sql";
+const contactMigration = read(contactMigrationPath);
+for (const token of [
+  "REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER",
+  "ON TABLE public.contacts",
+  "FROM PUBLIC, anon, authenticated;",
+  "DROP POLICY IF EXISTS contacts_public_insert ON public.contacts;",
+]) {
+  if (!contactMigration.includes(token)) failures.push(`${contactMigrationPath} missing security contract: ${token}`);
+}
+
+const contactRateLimit = read("src/features/contact/services/rate-limit.ts");
+for (const token of [
+  "consume_admin_rate_limit",
+  "process.env.SUPABASE_SERVICE_ROLE_KEY",
+  'const RATE_LIMIT_BUCKET = "public_contact_submission";',
+  "const RATE_LIMIT_MAX_REQUESTS = 5;",
+  "const RATE_LIMIT_WINDOW_SECONDS = 600;",
+]) {
+  if (!contactRateLimit.includes(token)) failures.push(`contact rate limiter is missing shared enforcement: ${token}`);
+}
+const contactRateLimitIdentity = read("src/features/contact/rate-limit-identity.ts");
+if (!contactRateLimitIdentity.includes("createHmac")) {
+  failures.push("contact rate-limit identity must use keyed hashing rather than a public, reversible IP hash");
+}
+const contactRoute = read("src/app/api/contact/route.ts");
+if (!contactRoute.includes("consumePublicContactRateLimit(")) failures.push("contact route must use the shared rate limiter");
+if (contactRoute.includes("new Map(")) failures.push("contact route must not rely on a per-instance in-memory rate limiter");
+
+const contactService = read("src/features/contact/services/contact.ts");
+if (!contactService.includes("createAdminClient()")) {
+  failures.push("contact submission must use server-only privileged database access after public writes are revoked");
+}
+if (contactService.includes("createClient()")) {
+  failures.push("contact submission must not use the public/session database client to write contacts");
+}
+
 const legacy = read("src/app/api/kids/games/submit-result/route.ts");
 for (const token of [
   "recordKidsGameResultForUser",
