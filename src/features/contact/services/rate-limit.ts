@@ -14,7 +14,7 @@ const RATE_LIMIT_WINDOW_SECONDS = 600;
 export async function consumePublicContactRateLimit(clientIdentifier: string): Promise<boolean> {
   const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("consume_admin_rate_limit", {
-    p_actor: getContactRateLimitActorId(clientIdentifier),
+    p_actor: getContactRateLimitActorId(clientIdentifier, process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""),
     p_bucket: RATE_LIMIT_BUCKET,
     p_limit: RATE_LIMIT_MAX_REQUESTS,
     p_window_seconds: RATE_LIMIT_WINDOW_SECONDS,

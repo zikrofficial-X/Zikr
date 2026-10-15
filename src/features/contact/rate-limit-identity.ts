@@ -1,11 +1,14 @@
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 
 /**
- * Derives a stable opaque UUID from a caller identifier. The raw IP address is
- * never stored in the database rate-limit table.
+ * Derives a stable opaque UUID from a caller identifier using a server-only
+ * secret. The raw IP address is never stored, and the identifier cannot be
+ * recomputed from public information alone.
  */
-export function getContactRateLimitActorId(clientIdentifier: string): string {
-  const hex = createHash("sha256")
+export function getContactRateLimitActorId(clientIdentifier: string, secret: string): string {
+  if (!secret.trim()) throw new Error("Rate-limit HMAC secret is not configured");
+
+  const hex = createHmac("sha256", secret)
     .update(clientIdentifier.trim() || "unknown")
     .digest("hex")
     .slice(0, 32)

@@ -35,10 +35,12 @@ for (const email of invalidAddresses) {
   assert.equal(isValidContactEmail(email), false, `expected invalid email: ${JSON.stringify(email)}`);
 }
 
-const actorA = getContactRateLimitActorId("203.0.113.10");
-const actorB = getContactRateLimitActorId("203.0.113.11");
+const actorA = getContactRateLimitActorId("203.0.113.10", "test-secret");
+const actorB = getContactRateLimitActorId("203.0.113.11", "test-secret");
 assert.match(actorA, /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
-assert.equal(getContactRateLimitActorId("203.0.113.10"), actorA, "rate-limit actor must be stable for a caller");
+assert.equal(getContactRateLimitActorId("203.0.113.10", "test-secret"), actorA, "rate-limit actor must be stable for a caller");
+assert.notEqual(getContactRateLimitActorId("203.0.113.10", "other-secret"), actorA, "the database actor must depend on a server-only secret");
 assert.notEqual(actorA, actorB, "different client identifiers must use different rate-limit buckets");
 
+assert.throws(() => getContactRateLimitActorId("203.0.113.10", ""), /secret is not configured/);
 console.log("Contact validation and shared rate-limit identity checks passed.");

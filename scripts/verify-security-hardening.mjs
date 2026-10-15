@@ -34,6 +34,8 @@ for (const token of [
 const contactRateLimit = read("src/features/contact/services/rate-limit.ts");
 for (const token of [
   "consume_admin_rate_limit",
+  "createHmac",
+  "process.env.SUPABASE_SERVICE_ROLE_KEY",
   'const RATE_LIMIT_BUCKET = "public_contact_submission";',
   "const RATE_LIMIT_MAX_REQUESTS = 5;",
   "const RATE_LIMIT_WINDOW_SECONDS = 600;",
