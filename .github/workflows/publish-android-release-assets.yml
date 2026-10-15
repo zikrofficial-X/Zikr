@@ -76,6 +76,43 @@ jobs:
           echo "TAG=$TAG" >> "$GITHUB_ENV"
           echo "SUPABASE_PUBLIC_BASE=${SUPABASE_PUBLIC_ROOT}/${TAG}" >> "$GITHUB_ENV"
 
+      - name: Fail fast if a published immutable release is missing APK/AAB
+        if: steps.gate.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_JSON=""
+          for attempt in $(seq 1 30); do
+            if RELEASE_JSON="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets 2>/dev/null)"; then
+              break
+            fi
+            echo "Waiting for the release draft to be created (attempt $attempt/30)..."
+            sleep 5
+          done
+          if [[ -z "$RELEASE_JSON" ]]; then
+            echo "::error title=Android release draft not found::No GitHub Release exists for $TAG. The release manager must create a draft before publishing assets." >&2
+            exit 1
+          fi
+
+          if [[ "$(jq -r '.isDraft' <<< "$RELEASE_JSON")" == "true" ]]; then
+            echo "Release $TAG is still a draft; artifact build and checksum verification may continue."
+            exit 0
+          fi
+
+          ASSET_NAMES="$(jq -r '.assets[].name' <<< "$RELEASE_JSON")"
+          REQUIRED_ASSETS=(app-release.apk app-release.aab SHA256SUMS release-metadata.json)
+          MISSING=()
+          for asset in "${REQUIRED_ASSETS[@]}"; do
+            if ! grep -Fxq "$asset" <<< "$ASSET_NAMES"; then
+              MISSING+=("$asset")
+            fi
+          done
+          if (("${#MISSING[@]}" > 0)); then
+            echo "::error title=Published immutable release missing APK/AAB::Release $TAG is already public and immutable, but lacks: ${MISSING[*]}. GitHub will not allow these assets to be attached afterward. Create the next semantic Android release and keep it in draft until the signed artifacts pass verification." >&2
+            exit 1
+          fi
+          echo "Published release already lists the required assets; the full byte-for-byte verification will run after artifact checks."
+
       - name: Verify CircleCI Android build status before waiting for artifacts
         if: steps.gate.outputs.publish == 'true' && github.event_name != 'workflow_dispatch'
         shell: bash
