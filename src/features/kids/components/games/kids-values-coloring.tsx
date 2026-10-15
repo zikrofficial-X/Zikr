@@ -256,6 +256,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   const [history, setHistory] = useState<Array<{ fills: string[]; paintedRegions: number[] }>>([]);
   const [roundPaintedRegions, setRoundPaintedRegions] = useState<number[]>([]);
   const [feedback, setFeedback] = useState("اختر لونًا ثم اضغط على أجزاء اللوحة.");
+  const [saved, setSaved] = useState<Record<string, string[]>>({});
   const savedRef = useRef<Record<string, string[]>>({});
   const advancingRef = useRef(false);
   const runTotalsRef = useRef(createGameRunTotals());
@@ -274,9 +275,11 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
           if (Array.isArray(value) && value.every(color => typeof color === "string")) gallery[key] = value;
         }
         savedRef.current = gallery;
+        setSaved(gallery);
       }
     } catch {
       savedRef.current = {};
+      setSaved({});
     }
   }, []);
 
@@ -293,7 +296,10 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
       lastRestartRef.current = restartToken;
       setCustomColors([]);
     }
-    setFills(savedRef.current[storageKey] ?? []);
+    const galleryForLevel = Object.prototype.hasOwnProperty.call(saved, storageKey)
+      ? saved[storageKey]
+      : savedRef.current[storageKey];
+    setFills(galleryForLevel ?? []);
     setHistory([]);
     setRoundPaintedRegions([]);
     levelResetPendingRef.current = true;
@@ -305,8 +311,8 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
     if (paused || complete) return;
     setHistory(previous => [...previous.slice(-19), { fills, paintedRegions: roundPaintedRegions }]);
     const next = [...fills]; next[index] = selectedColor; setFills(next);
-    const nextGallery = { ...savedRef.current, [storageKey]: next };
-    savedRef.current = nextGallery;
+    const nextGallery = { ...saved, [storageKey]: next };
+    setSaved(nextGallery);
     try { localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(nextGallery)); } catch {}
     setRoundPaintedRegions(previous => previous.includes(index) ? previous : [...previous, index]);
     onSound("collect");
@@ -331,8 +337,8 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
     setFills(last.fills);
     setRoundPaintedRegions(last.paintedRegions);
     setHistory(previous => previous.slice(0, -1));
-    const nextGallery = { ...savedRef.current, [storageKey]: last.fills };
-    savedRef.current = nextGallery;
+    const nextGallery = { ...saved, [storageKey]: last.fills };
+    setSaved(nextGallery);
     try { localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(nextGallery)); } catch {}
     onSound("move");
   };
