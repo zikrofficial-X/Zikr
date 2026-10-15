@@ -20,6 +20,25 @@ for (const token of [
   if (!migration.includes(token)) failures.push(`${migrationPath} missing security contract: ${token}`);
 }
 
+const contactMigrationPath = "supabase/migrations/20261015050000_secure_contact_submission.sql";
+const contactMigration = read(contactMigrationPath);
+for (const token of [
+  "REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER",
+  "ON TABLE public.contacts",
+  "FROM PUBLIC, anon, authenticated;",
+  "DROP POLICY IF EXISTS contacts_public_insert ON public.contacts;",
+]) {
+  if (!contactMigration.includes(token)) failures.push(`${contactMigrationPath} missing security contract: ${token}`);
+}
+
+const contactService = read("src/features/contact/services/contact.ts");
+if (!contactService.includes("createAdminClient()")) {
+  failures.push("contact submission must use server-only privileged database access after public writes are revoked");
+}
+if (contactService.includes("createClient()")) {
+  failures.push("contact submission must not use the public/session database client to write contacts");
+}
+
 const legacy = read("src/app/api/kids/games/submit-result/route.ts");
 for (const token of [
   "recordKidsGameResultForUser",
