@@ -97,4 +97,15 @@ const finalSmokeStep = finalization.indexOf("Post-migration production smoke tes
 assert.ok(baselineStep >= 0 && baselineStep < buildStep, "pre-release schema/data preflight must occur before building");
 assert.ok(buildStep < deployStep && deployStep < migrationStep && migrationStep < schemaStep && schemaStep < finalSmokeStep, "deploy compatible code before applying breaking access-policy changes, then verify schema and smoke-test");
 
+const gameRegistry = read("src/lib/games/registry.ts");
+const productionSmoke = read("scripts/verify-production-smoke.mjs");
+const canonicalGameIds = [...gameRegistry.matchAll(/^  "([^"]+)": \{\n    id:/gm)].map((match) => match[1]);
+assert.equal(canonicalGameIds.length, 12, "the current canonical kids game registry should expose twelve games");
+for (const id of canonicalGameIds) {
+  assert.ok(productionSmoke.includes(`"${id}"`), `production smoke must cover kids game slug ${id}`);
+}
+assert.ok(productionSmoke.includes("/kids/${slug}"), "production smoke must test the detail page for each kids game");
+assert.ok(productionSmoke.includes("/api/kids/content/${slug}"), "production smoke must test the API backing each kids game page");
+assert.ok(productionSmoke.includes("payload.metadata?.gameId === slug"), "production smoke must verify game metadata, not just HTTP status");
+
 console.log("✅ Release contract checks passed");
