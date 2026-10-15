@@ -337,7 +337,7 @@ async function main() {
     `[background-jobs] Reconciled ${reconciledSocialQueue} completed video(s) with the current social publishing targets.`
   );
 
-  if (runNowRequestedAt && (target === "all" || target === "videos") && videos.failed === 0) {
+  if (runNowRequestedAt && (target === "all" || target === "videos") && videoSettings.enabled && videos.failed === 0) {
     await clearRunNowRequest(runNowRequestedAt);
     console.log(`[background-jobs] Cleared completed urgent video run request ${runNowRequestedAt}.`);
   }
