@@ -1,11 +1,14 @@
 # ZIKR Kids Game Assets
 
-## Visual assets
+## Optimized visual scenes
 
-تم استبعاد خلفيات الألعاب النقطية القديمة من الأصول المنشورة؛ مشاهد الألعاب الحالية مرسومة برسومات SVG داخل المكونات التالية، لذا حذف ملفات الخلفية المنفصلة لا يغير تصميم اللعبة أو ألوانها أو ترتيبها:
+الألعاب تستخدم خلفيات محلية محسّنة بصيغة WebP، وتضع فوقها تدرجات الألوان الحالية للمحافظة على الهوية البصرية. تم استبدال ملفات PNG الثقيلة بنسخ أخف دون تغيير ألوان الثيمات أو ترتيب عناصر اللعبة:
 
-- `src/features/kids/components/games/kids-game-art.tsx`
-- `src/features/kids/components/games/kids-game-visuals.tsx`
+- `public/kids/games/scene-night-garden.webp`
+- `public/kids/games/scene-moon-sky.webp`
+- `public/kids/games/scene-mosque-courtyard.webp`
+
+يربط `src/features/kids/components/games/kids-game-kit.tsx` الخلفيات بالثيمات المحلية، وتضيف مكونات SVG بقية عناصر المشاهد.
 
 ## Audio
 
