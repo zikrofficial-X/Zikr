@@ -245,9 +245,19 @@ export default function KidsDetailPage() {
             </p>
             {!isEnglish && content.metadata?.objective && (
               <p className="leading-7 text-brand-cream/85">
-                <strong className="text-brand-gold">{isEnglish ? "Goal: " : "الهدف: "}</strong>
+                <strong className="text-brand-gold">الهدف: </strong>
                 {content.metadata.objective}
               </p>
+            )}
+            {!isEnglish && (content.metadata?.category || content.metadata?.value || content.metadata?.reward) && (
+              <div className="flex flex-wrap gap-2 text-xs text-brand-cream/75">
+                {content.metadata.category && <span className="rounded-full border border-brand-gold/20 px-3 py-1">{content.metadata.category}</span>}
+                {content.metadata.value && <span className="rounded-full border border-brand-emerald/20 px-3 py-1">{content.metadata.value}</span>}
+                {content.metadata.reward && <span className="rounded-full border border-brand-gold/20 px-3 py-1">المكافأة: {content.metadata.reward}</span>}
+              </div>
+            )}
+            {!isEnglish && content.metadata?.safetyNote && (
+              <p className="text-sm leading-7 text-amber-200/80">تنبيه السلامة: {content.metadata.safetyNote}</p>
             )}
             {!isEnglish && Array.isArray(content.metadata?.activitySteps) && content.metadata.activitySteps.length > 0 && (
               <ol className="list-decimal list-inside space-y-2 text-sm leading-7 text-brand-cream/85">
@@ -303,7 +313,7 @@ export default function KidsDetailPage() {
         </Card>
       )}
 
-      {!isEnglish && (content.type !== "game" || isLegacyGameActivity) && content.metadata && (
+      {!isEnglish && content.type !== "game" && content.metadata && (
           <Card className="p-6 space-y-5 bg-brand-gold/10 border-brand-gold/30">
             <h2 className="text-2xl font-bold text-brand-gold text-center">
               بطاقة التعلم والتشجيع
