@@ -312,6 +312,7 @@ export default function KidsDetailPage() {
             alt={isEnglish ? content.title_en : content.title_ar}
             width={800}
             height={600}
+            sizes="(max-width: 768px) 100vw, 768px"
             className="w-full h-full object-cover"
           />
         </div>

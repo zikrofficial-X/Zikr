@@ -16,7 +16,9 @@ Examples:
 - `public/assets/`: general shared assets or temporary imports before sorting.
 - `public/branding/logos/`: primary and variant logos (`zikr-logo.png`, `zikr-gold.png`).
 - `public/branding/icons/`: brand iconography and app symbols.
-- `public/branding/favicons/`: favicon/SEO files (`favicon.ico`, `apple-touch-icon.png`, `og-image.png`).
+- `public/branding/favicons/`: `favicon.ico` and `apple-touch-icon.png`.
+- `public/branding/logo-gold.webp`: optimized transparent site logo.
+- `public/branding/og-image.jpg`: optimized 1200×630 Open Graph/Twitter preview.
 - `public/branding/typography/`: font previews and brand type assets.
 - `public/banners/homepage/`: homepage hero and section banners.
 - `public/banners/ramadan/`: Ramadan seasonal campaign banners.

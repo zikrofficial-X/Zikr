@@ -150,6 +150,7 @@ export default async function ArticleDetailPage({
             src={article.featuredImageUrl}
             width={800}
             height={384}
+            sizes="(max-width: 768px) 100vw, 768px"
             alt={article.title}
             className="w-full h-full object-cover"
           />

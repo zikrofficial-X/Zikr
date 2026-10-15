@@ -44,7 +44,7 @@ export const siteConfig = {
   dir: "rtl" as const,
 };
 
-export const defaultOgImage = "/branding/og-image.png";
+export const defaultOgImage = "/branding/og-image.jpg";
 
 import type { Metadata } from "next";
 
@@ -122,7 +122,7 @@ export function pageMetadata(opts: {
       type: "website",
       locale: siteConfig.locale,
       siteName: siteConfig.shortName,
-      images: (opts.images?.length ? opts.images.map(url => ({ url })) : [{ url: defaultOgImage, width: 1200, height: 630 }]),
+      images: (opts.images?.length ? opts.images.map(url => ({ url })) : [{ url: defaultOgImage, width: 1200, height: 630, alt: siteConfig.name }]),
     },
     twitter: {
       card: "summary_large_image",

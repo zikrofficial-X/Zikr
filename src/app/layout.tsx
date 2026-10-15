@@ -88,7 +88,7 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: htmlLocale.replace("-", "_"),
       url: siteConfig.url,
       siteName: siteConfig.shortName,
-      images: [{ url: ogImage, width: 1200, height: 630 }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: ogTitle }],
     },
     twitter: {
       card: "summary_large_image",
@@ -125,7 +125,7 @@ function buildJsonLd(locale: "ar" | "en") {
         "@id": siteConfig.url + "/#organization",
         name: siteConfig.shortName,
         url: siteConfig.url,
-        logo: siteConfig.url + "/branding/logo-gold.png",
+        logo: siteConfig.url + "/branding/logo-gold.webp",
       },
     ],
   };
