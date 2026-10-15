@@ -368,7 +368,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          RELEASE_JSON="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets)"
+          RELEASE_BODY="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
+          RELEASE_JSON="$(jq -c '{isDraft: .draft, assets: .assets}' <<< "$RELEASE_BODY")"
           if [[ "$(jq -r '.isDraft' <<< "$RELEASE_JSON")" != "false" ]]; then
             echo "::error title=GitHub Release is still a draft::The Android release was not published after asset verification." >&2
             exit 1
