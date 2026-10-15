@@ -94,6 +94,16 @@ jobs:
             echo "Waiting for the release draft to be created (attempt $attempt/30)..."
             sleep 5
           done
+          # v1.1.4 is a previously-created recovery draft that GitHub may
+          # omit from the release list and cannot resolve by tag, so try its
+          # verified numeric ID before failing the release preflight.
+          if [[ -z "$RELEASE_JSON" && "$TAG" == "v1.1.4" ]]; then
+            RELEASE_BODY="$(gh api "repos/${GITHUB_REPOSITORY}/releases/413815658" 2>/dev/null || true)"
+            if [[ -n "$RELEASE_BODY" ]] && [[ "$(jq -r '.tag_name // empty' <<< "$RELEASE_BODY")" == "$TAG" ]]; then
+              RELEASE_JSON="$(jq -c '{id: .id, isDraft: .draft, assets: .assets}' <<< "$RELEASE_BODY")"
+            fi
+          fi
+
           if [[ -z "$RELEASE_JSON" ]]; then
             echo "::error title=Android release draft not found::No GitHub Release exists for $TAG. The release manager must create a draft before publishing assets." >&2
             exit 1
