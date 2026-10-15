@@ -82,6 +82,12 @@ function hasApk(release: GitHubRelease) {
   );
 }
 
+function hasAab(release: GitHubRelease) {
+  return release.assets?.some(asset =>
+    asset.name?.toLowerCase().endsWith(".aab")
+  );
+}
+
 async function fetchReleases(): Promise<GitHubRelease[] | null> {
   const token = getGitHubToken();
   if (!token) return null;
@@ -117,7 +123,8 @@ export async function getLatestStableAndroidRelease(): Promise<GitHubRelease | n
         !release.draft &&
         !release.prerelease &&
         Boolean(release.tag_name?.trim()) &&
-        hasApk(release)
+        hasApk(release) &&
+        hasAab(release)
     )
     .sort((a, b) => {
       const versionDiff = compareVersions(b.tag_name ?? "", a.tag_name ?? "");
@@ -147,7 +154,7 @@ export async function getStableReleaseByTag(
   if (!response.ok) return null;
 
   const release = (await response.json()) as GitHubRelease;
-  if (release.draft || release.prerelease) return null;
+  if (release.draft || release.prerelease || !hasApk(release) || !hasAab(release)) return null;
   return release;
 }
 
