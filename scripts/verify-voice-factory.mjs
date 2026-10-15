@@ -9,6 +9,8 @@ const read = (path) => {
 
 const tts = read("scripts/generate-arabic-voice.py");
 if (!tts.includes("edge_tts.Communicate")) failures.push("Arabic voice generator must use real Edge TTS synthesis");
+if (!tts.includes("from gtts import gTTS")) failures.push("Arabic voice generator must retain the gTTS fallback for blocked datacenter connections");
+if (!tts.includes("Both Arabic TTS providers failed")) failures.push("Arabic TTS must report when both the primary and fallback providers fail");
 if (!tts.includes("clean_text(text)")) failures.push("Arabic TTS must pass text through the canonical sanitizer");
 if (!tts.includes("text[:5000]")) failures.push("Arabic TTS must enforce the 5000-character input cap");
 if (!tts.includes('"hadith": {"voice": "ar-SA-HamedNeural"')) failures.push("Hadith Arabic TTS profile must use a male MSA voice");
@@ -27,10 +29,12 @@ const runner = read("scripts/run-background-jobs.ts");
 if (!runner.includes('EDGE_TTS_VERSION = "7.3.1"')) failures.push("background runner must pin edge-tts 7.3.1");
 if (!runner.includes("edge-tts==${EDGE_TTS_VERSION}")) failures.push("background runner must install the pinned Edge TTS version");
 if (!runner.includes("ensureArabicTtsRuntime()")) failures.push("background runner must verify/bootstrap the TTS runtime");
+if (!runner.includes("gTTS==2.5.4")) failures.push("background runner must bootstrap the gTTS Arabic fallback runtime");
 
 const workflow = read(".github/workflows/generate-ai-video.yml");
 if (!workflow.includes('cron: "17 3,9,15,21 * * *"')) failures.push("GitHub video workflow must own the production schedule");
 if (!workflow.includes("edge-tts==7.3.1")) failures.push("GitHub video workflow must pin edge-tts 7.3.1");
+if (!workflow.includes("gTTS==2.5.4")) failures.push("GitHub video workflow must install the no-key Arabic TTS fallback");
 
 const circle = read(".circleci/config.yml");
 if (circle.includes("edge-tts==7.3.1")) failures.push("CircleCI must not carry the production video TTS runtime after the ownership split");
