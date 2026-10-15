@@ -2,6 +2,9 @@ name: Dispatch guarded Android release recovery
 
 on:
   status:
+  push:
+    branches:
+      - main
 
 permissions:
   actions: write
@@ -10,27 +13,31 @@ permissions:
 jobs:
   dispatch:
     if: >-
-      github.event.context == 'ci/circleci: android-rebuild' &&
-      github.event.state == 'success'
+      (github.event_name == 'status' &&
+       github.event.context == 'ci/circleci: android-rebuild' &&
+       github.event.state == 'success') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     steps:
-      - name: Dispatch publisher only for the exact guarded recovery release
+      - name: Dispatch publisher only for the exact guarded release with a successful signed build
         uses: actions/github-script@v7
         with:
           github-token: ${{ github.token }}
           script: |
-            const core = require("@actions/core");
             const { owner, repo } = context.repo;
-            const sha = String(context.payload.sha ?? "");
+            const eventName = context.eventName;
+            const eventSha = String(
+              eventName === "status" ? context.payload.sha ?? "" : context.sha ?? ""
+            );
 
-            if (!/^[0-9a-f]{40}$/i.test(sha)) {
-              core.info("Skipping: CircleCI status has no valid source commit.");
+            if (!/^[0-9a-f]{40}$/i.test(eventSha)) {
+              core.info("Skipping: event has no valid source commit.");
               return;
             }
 
-            const readText = async (path) => {
+            const readText = async (path, ref) => {
               const { data } = await github.rest.repos.getContent({
-                owner, repo, path, ref: sha,
+                owner, repo, path, ref,
               });
               if (Array.isArray(data) || data.type !== "file" || !data.content) {
                 throw new Error("Expected a text file in the release source commit: " + path);
@@ -39,9 +46,9 @@ jobs:
             };
 
             const [tagText, packageText, retryText] = await Promise.all([
-              readText(".release-tag"),
-              readText("package.json"),
-              readText("docs/finalization/RELEASE_RETRY.flag"),
+              readText(".release-tag", eventSha),
+              readText("package.json", eventSha),
+              readText("docs/finalization/RELEASE_RETRY.flag", eventSha),
             ]);
 
             const tag = tagText.trim();
@@ -51,34 +58,53 @@ jobs:
               return;
             }
             if (retryText.trim() !== "RETRY") {
-              core.info("Skipping: the repository recovery guard is not enabled.");
+              core.info("Skipping: the repository release retry guard is not enabled.");
               return;
             }
 
-            const notes = await readText("docs/releases/" + version + ".md");
+            const notes = await readText("docs/releases/" + version + ".md", eventSha);
             const backtick = String.fromCharCode(96);
             if (!notes.includes("Release tag: " + backtick + tag + backtick)) {
               core.setFailed("Release notes do not declare the canonical release tag.");
               return;
             }
 
-            const branch = "android-release-" + tag;
-            const { data: branchData } = await github.rest.repos.getBranch({ owner, repo, branch });
-            if (branchData.commit.sha !== sha) {
-              core.info("Skipping: the recovery branch does not point to the successful CircleCI source commit.");
+            const recoveryBranch = "android-release-" + tag;
+            const { data: branchData } = await github.rest.repos.getBranch({
+              owner, repo, branch: recoveryBranch,
+            });
+            const sourceSha = branchData.commit.sha;
+
+            if (eventName === "status") {
+              if (sourceSha !== eventSha) {
+                core.info("Skipping: successful CircleCI status is not for the current recovery branch commit.");
+                return;
+              }
+            } else if (eventName === "push") {
+              const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
+                owner, repo, ref: sourceSha,
+              });
+              const androidBuild = (combined.statuses ?? []).find(
+                item => item.context === "ci/circleci: android-rebuild"
+              );
+              if (!androidBuild || androidBuild.state !== "success") {
+                core.info("Skipping: CircleCI has not successfully signed the current recovery branch commit.");
+                return;
+              }
+            } else {
+              core.info("Skipping: unsupported event type.");
               return;
             }
 
-            let release;
-            try {
-              const result = await github.rest.repos.getReleaseByTag({ owner, repo, tag });
-              release = result.data;
-            } catch (error) {
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner, repo, per_page: 100,
+            });
+            const release = releases.find(item => item.tag_name === tag);
+            if (!release) {
               core.info("Skipping: no GitHub Release exists for " + tag + ".");
               return;
             }
-
-            if (release.tag_name !== tag || release.draft !== true || release.prerelease === true) {
+            if (release.draft !== true || release.prerelease === true) {
               core.info("Skipping: the matching GitHub Release is not an eligible draft.");
               return;
             }
@@ -87,7 +113,7 @@ jobs:
               owner,
               repo,
               workflow_id: "publish-android-release-assets.yml",
-              ref: branch,
+              ref: recoveryBranch,
               inputs: { retry: "true" },
             });
-            core.info("Dispatched guarded Android asset verification/publication for " + tag + " from " + sha + ".");
+            core.info("Dispatched guarded Android asset verification/publication for " + tag + " from " + sourceSha + ".");

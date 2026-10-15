@@ -82,9 +82,14 @@ jobs:
         run: |
           set -euo pipefail
           RELEASE_JSON=""
+          RELEASES_JSON=""
           for attempt in $(seq 1 30); do
-            if RELEASE_JSON="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets 2>/dev/null)"; then
-              break
+            RELEASES_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" 2>/dev/null || true)"
+            if [[ -n "$RELEASES_JSON" ]]; then
+              RELEASE_JSON="$(jq -c --arg tag "$TAG" '[.[] | select(.tag_name == $tag)] | .[0] | if . == null then empty else {id: .id, isDraft: .draft, assets: .assets} end' <<< "$RELEASES_JSON" 2>/dev/null || true)"
+              if [[ -n "$RELEASE_JSON" ]]; then
+                break
+              fi
             fi
             echo "Waiting for the release draft to be created (attempt $attempt/30)..."
             sleep 5
@@ -93,6 +98,13 @@ jobs:
             echo "::error title=Android release draft not found::No GitHub Release exists for $TAG. The release manager must create a draft before publishing assets." >&2
             exit 1
           fi
+
+          RELEASE_ID="$(jq -r '.id // empty' <<< "$RELEASE_JSON")"
+          if [[ ! "$RELEASE_ID" =~ ^[0-9]+$ ]]; then
+            echo "::error title=Invalid GitHub release identity::Could not resolve the GitHub release ID for $TAG." >&2
+            exit 1
+          fi
+          echo "RELEASE_ID=$RELEASE_ID" >> "$GITHUB_ENV"
 
           if [[ "$(jq -r '.isDraft' <<< "$RELEASE_JSON")" == "true" ]]; then
             echo "Release $TAG is still a draft; artifact build and checksum verification may continue."
@@ -112,6 +124,7 @@ jobs:
             exit 1
           fi
           echo "Published release already lists the required assets; the full byte-for-byte verification will run after artifact checks."
+
 
       - name: Verify CircleCI Android build status before waiting for artifacts
         if: steps.gate.outputs.publish == 'true' && github.event_name != 'workflow_dispatch'
@@ -259,15 +272,17 @@ jobs:
         run: |
           set -euo pipefail
           RELEASE_JSON=""
+          RELEASE_BODY=""
           for attempt in $(seq 1 30); do
-            if RELEASE_JSON="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets 2>/dev/null)"; then
+            if RELEASE_BODY="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" 2>/dev/null)"; then
+              RELEASE_JSON="$(jq -c '{id: .id, isDraft: .draft, assets: .assets}' <<< "$RELEASE_BODY")"
               break
             fi
-            echo "Waiting for GitHub release (attempt $attempt/30)..."
+            echo "Waiting for GitHub release ID $RELEASE_ID (attempt $attempt/30)..."
             sleep 5
           done
           if [[ -z "$RELEASE_JSON" ]]; then
-            echo "GitHub release not found for $TAG. Create its draft before publishing signed APK/AAB assets." >&2
+            echo "::error title=GitHub release not found::Could not retrieve draft release ID $RELEASE_ID for $TAG." >&2
             exit 1
           fi
 
@@ -277,9 +292,8 @@ jobs:
             exit 0
           fi
 
-          # Published releases are immutable. Never try to clobber an immutable
-          # release: only accept a repeat run when the existing public files are
-          # exactly the same as the verified build downloaded in this job.
+          # Published releases are immutable. Never mutate them: accept a repeat run
+          # only when the existing public files exactly match the verified build.
           REQUIRED_ASSETS=(app-release.apk app-release.aab SHA256SUMS release-metadata.json)
           ASSET_NAMES="$(jq -r '.assets[].name' <<< "$RELEASE_JSON")"
           MISSING=()
@@ -295,11 +309,12 @@ jobs:
 
           EXISTING_DIR="$RUNNER_TEMP/existing-release-assets"
           mkdir -p "$EXISTING_DIR"
-          if ! gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "$EXISTING_DIR"; then
-            echo "::error title=Cannot verify immutable release assets::Unable to download the existing public assets for $TAG." >&2
-            exit 1
-          fi
           for asset in "${REQUIRED_ASSETS[@]}"; do
+            download_url="$(jq -r --arg name "$asset" '.assets[] | select(.name == $name) | .browser_download_url' <<< "$RELEASE_JSON" | head -n 1)"
+            if [[ -z "$download_url" ]] || ! curl --fail --silent --show-error --location --retry 3 "$download_url" --output "$EXISTING_DIR/$asset"; then
+              echo "::error title=Cannot verify immutable release assets::Unable to download existing asset $asset for $TAG." >&2
+              exit 1
+            fi
             if [[ ! -s "$EXISTING_DIR/$asset" ]] || ! cmp -s "$asset" "$EXISTING_DIR/$asset"; then
               echo "::error title=Immutable release asset mismatch::$asset in published release $TAG does not match the verified build. Create the next semantic Android release; do not overwrite a published release." >&2
               exit 1
@@ -308,30 +323,54 @@ jobs:
           echo "Published release $TAG already contains the exact verified assets."
           echo "upload_allowed=false" >> "$GITHUB_OUTPUT"
 
+
       - name: Upload release assets and publish
         if: steps.gate.outputs.publish == 'true' && steps.release_state.outputs.upload_allowed == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          # Replace assets atomically from the checksum-verified build so reruns
-          # cannot silently retain binaries from an older build of the same tag.
+          # Publish against the resolved release ID. A draft can be returned by
+          # the releases list while the get-by-tag endpoint still returns 404.
           for asset in app-release.apk app-release.aab SHA256SUMS release-metadata.json; do
-            gh release upload "$TAG" "$asset" --repo "$GITHUB_REPOSITORY" --clobber
+            release_body="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
+            existing_ids="$(jq -r --arg name "$asset" '.assets[] | select(.name == $name) | .id' <<< "$release_body")"
+            while IFS= read -r asset_id; do
+              if [[ -n "$asset_id" ]]; then
+                gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" >/dev/null
+              fi
+            done <<< "$existing_ids"
+
+            uploaded="$(curl --fail-with-body --silent --show-error \
+              --request POST \
+              --header "Authorization: Bearer ${GH_TOKEN}" \
+              --header "Accept: application/vnd.github+json" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              --header "Content-Type: application/octet-stream" \
+              --data-binary "@${asset}" \
+              "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${asset}")"
+            uploaded_name="$(jq -r '.name // empty' <<< "$uploaded")"
+            if [[ "$uploaded_name" != "$asset" ]]; then
+              echo "::error title=Android asset upload mismatch::GitHub did not confirm upload of $asset." >&2
+              exit 1
+            fi
+            echo "Uploaded and confirmed $asset."
           done
 
-          gh release edit "$TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --draft=false \
-            --prerelease=false \
-            --latest=true
+          gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
+            --field draft=false \
+            --field prerelease=false \
+            --raw-field make_latest=true >/tmp/published-release.json
+          test "$(jq -r '.draft' /tmp/published-release.json)" = "false"
           echo "Published Android release $TAG."
+
 
       - name: Verify published GitHub Release contains the exact signed assets
         if: steps.gate.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          RELEASE_JSON="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets)"
+          RELEASE_BODY="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
+          RELEASE_JSON="$(jq -c '{isDraft: .draft, assets: .assets}' <<< "$RELEASE_BODY")"
           if [[ "$(jq -r '.isDraft' <<< "$RELEASE_JSON")" != "false" ]]; then
             echo "::error title=GitHub Release is still a draft::The Android release was not published after asset verification." >&2
             exit 1
@@ -348,8 +387,13 @@ jobs:
 
           VERIFY_DIR="$RUNNER_TEMP/published-release-assets"
           mkdir -p "$VERIFY_DIR"
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "$VERIFY_DIR"
           for asset in "${REQUIRED_ASSETS[@]}"; do
+            download_url="$(jq -r --arg name "$asset" '.assets[] | select(.name == $name) | .browser_download_url' <<< "$RELEASE_JSON" | head -n 1)"
+            if [[ -z "$download_url" ]]; then
+              echo "::error title=GitHub Release is missing an asset download URL::$asset has no download URL." >&2
+              exit 1
+            fi
+            curl --fail --silent --show-error --location --retry 3 "$download_url" --output "$VERIFY_DIR/$asset"
             if [[ ! -s "$VERIFY_DIR/$asset" ]] || ! cmp -s "$asset" "$VERIFY_DIR/$asset"; then
               echo "::error title=GitHub Release asset verification failed::$asset on GitHub does not match the verified build file." >&2
               exit 1
