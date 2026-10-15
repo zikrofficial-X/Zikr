@@ -40,19 +40,20 @@ function optionalHttpsUrl(raw: string, label: string): string | null {
 
 function safeImagePath(raw: string): string {
   const defaultImage = "/branding/og-image.jpg";
+  const legacyOgImagePath = /(?:^|\\/)branding\\/og-image\\.png(?:[?#].*)?$/i;
   if (!raw) return defaultImage;
-  if (raw === "/branding/og-image.png") return defaultImage;
-  if (raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("\\")) return raw;
+
+  if (raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("\\\\")) {
+    return legacyOgImagePath.test(raw) ? defaultImage : raw;
+  }
+
   const url = optionalHttpsUrl(raw, "صورة المشاركة");
   if (!url) return defaultImage;
-
   try {
     const parsed = new URL(url);
-    if (parsed.origin === siteConfig.url && parsed.pathname === "/branding/og-image.png") {
-      return defaultImage;
-    }
+    if (parsed.origin === siteConfig.url && legacyOgImagePath.test(parsed.pathname)) return defaultImage;
   } catch {
-    // optionalHttpsUrl already validates remote URLs; retain the safe default if parsing fails.
+    // optionalHttpsUrl already validates remote URLs; keep the safe local fallback.
     return defaultImage;
   }
   return url;
