@@ -25,6 +25,12 @@ export type SiteSettingValue = {
   showPoetry?: boolean;
   showPrayerTimes?: boolean;
   showMemorization?: boolean;
+  showQuickStart?: boolean;
+  showJourneys?: boolean;
+  showGuidedPaths?: boolean;
+  showEditorialLibrary?: boolean;
+  showDailyTools?: boolean;
+  showDailyVerse?: boolean;
   facebookPageUrl?: string | null;
   twitterUrl?: string | null;
   instagramUrl?: string | null;

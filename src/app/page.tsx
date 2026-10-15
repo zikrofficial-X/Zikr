@@ -63,6 +63,12 @@ export default async function HomePage() {
   const dir = isEnglish ? 'ltr' : 'rtl';
   const homepageSetting = await getSiteSetting('homepage');
   const showPrayerTimes = homepageSetting?.showPrayerTimes !== false;
+  const showQuickStart = homepageSetting?.showQuickStart !== false;
+  const showJourneys = homepageSetting?.showJourneys !== false;
+  const showGuidedPaths = homepageSetting?.showGuidedPaths !== false;
+  const showEditorialLibrary = homepageSetting?.showEditorialLibrary !== false;
+  const showDailyTools = homepageSetting?.showDailyTools !== false;
+  const showDailyVerse = homepageSetting?.showDailyVerse !== false;
   const homeTitle =
     !isEnglish && homepageSetting?.title?.trim()
       ? homepageSetting.title.trim()
@@ -143,6 +149,7 @@ export default async function HomePage() {
         <section
           className="border-b border-brand-gold/10 px-3 py-8 sm:px-4 sm:py-10"
           aria-labelledby="quick-start-heading"
+          hidden={!showQuickStart}
         >
           <Container>
             <div className="mb-5 flex items-end justify-between gap-4" dir={dir}>
@@ -185,6 +192,7 @@ export default async function HomePage() {
         <section
           className="border-b border-brand-gold/10 px-3 py-9 sm:px-4 sm:py-12"
           aria-labelledby="journeys-heading"
+          hidden={!showJourneys}
         >
           <Container>
             <div dir={dir}>
@@ -249,6 +257,7 @@ export default async function HomePage() {
         <section
           className="border-b border-brand-gold/10 bg-brand-emerald/6 px-3 py-9 sm:px-4 sm:py-12"
           aria-labelledby="guided-heading"
+          hidden={!showGuidedPaths}
         >
           <Container>
             <div className="flex items-end justify-between gap-4" dir={dir}>
@@ -292,6 +301,7 @@ export default async function HomePage() {
         <section
           className="border-b border-brand-gold/10 bg-[#0a332b]/45 px-3 py-9 sm:px-4 sm:py-12"
           aria-labelledby="editorial-heading"
+          hidden={!showEditorialLibrary}
           style={{ contentVisibility: 'auto', containIntrinsicSize: '0 560px' }}
         >
           <Container>
@@ -338,6 +348,7 @@ export default async function HomePage() {
         <section
           className="border-b border-brand-gold/10 bg-brand-emerald/10 px-3 py-9 sm:px-4 sm:py-12"
           aria-labelledby="tools-heading"
+          hidden={!showDailyTools}
           style={{ contentVisibility: 'auto', containIntrinsicSize: '0 420px' }}
         >
           <Container>
@@ -373,7 +384,7 @@ export default async function HomePage() {
           </Container>
         </section>
 
-        <section className="bg-[radial-gradient(circle_at_50%_10%,rgba(199,168,107,0.08),transparent_44%)] px-3 py-10 sm:px-4 sm:py-14" aria-labelledby="verse-heading">
+        <section hidden={!showDailyVerse} className="bg-[radial-gradient(circle_at_50%_10%,rgba(199,168,107,0.08),transparent_44%)] px-3 py-10 sm:px-4 sm:py-14" aria-labelledby="verse-heading">
           <Container className="mx-auto max-w-4xl text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-gold/45">
               {isEnglish ? 'Daily reflection' : 'تدبر اليوم'}

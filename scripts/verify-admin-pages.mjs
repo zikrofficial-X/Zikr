@@ -71,6 +71,23 @@ for (const token of ['getSiteSetting("seo")', 'getSiteSetting("social")', "openG
   if (!rootLayout.includes(token)) failures.push(`Root SEO/social metadata contract missing: ${token}`);
 }
 
+const homepage = readFileSync("src/app/page.tsx", "utf8");
+for (const token of [
+  "showQuickStart", "showJourneys", "showGuidedPaths",
+  "showEditorialLibrary", "showDailyTools", "showDailyVerse",
+]) {
+  if (!homepage.includes(token)) failures.push(`Homepage must honor editable section visibility: ${token}`);
+}
+for (const field of [
+  "showQuickStart", "showJourneys", "showGuidedPaths",
+  "showEditorialLibrary", "showDailyTools", "showDailyVerse",
+]) {
+  // The form renders checkboxes from a typed array, so the field name is the
+  // array's first item rather than a literal name="..." JSX attribute.
+  if (!seoPage.includes(`["${field}",`)) failures.push(`Homepage admin form is missing lower-section toggle: ${field}`);
+  if (!seoActions.includes(`readBoolean(formData, "${field}")`)) failures.push(`Homepage admin save action does not persist lower-section toggle: ${field}`);
+}
+
 const audioLibrary = readFileSync("src/components/audio/audio-library.tsx", "utf8");
 if (!audioLibrary.includes('preload="metadata"')) failures.push("audio library must load metadata so duration can be discovered");
 if (!audioLibrary.includes("failedAssets[asset.id]")) failures.push("audio library must visibly report failed media sources");

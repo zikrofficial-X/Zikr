@@ -108,7 +108,7 @@ export default async function AdminSeoPage({
 
       <section className="rounded-3xl border border-brand-gold/15 bg-black/15 p-5 sm:p-7">
         <h2 className="text-xl font-bold text-brand-gold">الصفحة الرئيسية</h2>
-        <p className="mt-1 text-sm leading-6 text-brand-cream/45">هذه الحقول تقابل العنوان والوصف ومفاتيح الإظهار التي تقرؤها الصفحة الرئيسية بالفعل.</p>
+        <p className="mt-1 text-sm leading-6 text-brand-cream/45">هذه الحقول تتحكم في العنوان والوصف ومداخل الصفحة الرئيسية والأقسام السفلية، وتُحفظ في site_settings/homepage.</p>
         <form action={savePublicSiteSettingAction} className="mt-5 space-y-5">
           <input type="hidden" name="section" value="homepage" />
           <label className={labelClass}>العنوان الرئيسي
@@ -117,11 +117,17 @@ export default async function AdminSeoPage({
           <label className={labelClass}>الوصف الظاهر أسفل العنوان
             <textarea name="body" maxLength={600} rows={3} required defaultValue={homepageBody} className={inputClass} />
           </label>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {([
               ["showQuran", "إظهار القرآن في المداخل السريعة", booleanValue(homepage.showQuran)],
               ["showHadith", "إظهار الحديث في المداخل السريعة", booleanValue(homepage.showHadith)],
               ["showPrayerTimes", "إظهار مواقيت الصلاة", booleanValue(homepage.showPrayerTimes)],
+              ["showQuickStart", "إظهار قسم ابدأ بسرعة", booleanValue(homepage.showQuickStart)],
+              ["showJourneys", "إظهار مسارات الأقسام", booleanValue(homepage.showJourneys)],
+              ["showGuidedPaths", "إظهار البدايات المقترحة", booleanValue(homepage.showGuidedPaths)],
+              ["showEditorialLibrary", "إظهار المكتبة التحريرية والمقالات", booleanValue(homepage.showEditorialLibrary)],
+              ["showDailyTools", "إظهار الأدوات اليومية", booleanValue(homepage.showDailyTools)],
+              ["showDailyVerse", "إظهار آية التدبر في نهاية الصفحة", booleanValue(homepage.showDailyVerse)],
             ] as const).map(([name, label, checked]) => (
               <label key={name} className="flex items-center gap-3 rounded-xl border border-brand-gold/10 bg-black/15 p-4 text-sm text-brand-cream/80">
                 <input type="hidden" name={name} value="false" />
