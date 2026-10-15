@@ -88,6 +88,19 @@ export async function savePublicSiteSettingAction(formData: FormData) {
     };
   }
 
+  // Merge instead of replacing the JSON document so other homepage/site metadata
+  // fields managed by the wider admin surface are not silently discarded.
+  const existingRows = await supabaseServerAdminRequest<Array<{ value?: unknown }>>(
+    "/rest/v1/site_settings?key=eq." + encodeURIComponent(section) + "&select=value&limit=1",
+    { method: "GET" },
+  );
+  const existingValue = existingRows?.[0]?.value;
+  const existingSetting =
+    existingValue && typeof existingValue === "object" && !Array.isArray(existingValue)
+      ? existingValue as Record<string, unknown>
+      : {};
+  const mergedSetting = { ...existingSetting, ...setting };
+
   const updatedAt = new Date().toISOString();
   await supabaseServerAdminRequest("/rest/v1/site_settings?on_conflict=key", {
     method: "POST",
@@ -97,7 +110,7 @@ export async function savePublicSiteSettingAction(formData: FormData) {
     },
     body: JSON.stringify({
       key: section,
-      value: setting,
+      value: mergedSetting,
       updated_at: updatedAt,
     }),
   });
