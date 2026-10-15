@@ -117,17 +117,51 @@ assert_positive "$site_settings" "Site settings rows"
 # does not execute migration SQL on production; it compares the live schema with
 # a shadow database rebuilt from the repository migration chain.
 diff_file="$(mktemp)"
-trap 'rm -f "$diff_file" /tmp/zikr-supabase-preflight.txt' EXIT
+diff_log="$(mktemp)"
+trap 'rm -f "$diff_file" "$diff_log" /tmp/zikr-supabase-preflight.txt' EXIT
 # PGSSLMODE=require is intentionally scoped away from the Supabase CLI here:
 # the CLI also starts a local shadow database that does not support TLS. The
 # production endpoint requires TLS, and verify-supabase-db-url.py rejects any
 # explicitly weakened sslmode in the supplied remote connection URL.
-env -u PGSSLMODE supabase db diff \
+if env -u PGSSLMODE supabase db diff \
   --db-url "$SUPABASE_DB_URL" \
   --schema public,private,storage,extensions \
   --use-pg-delta \
   --strict-coverage \
-  --output "$diff_file"
+  --output "$diff_file" >"$diff_log" 2>&1; then
+  cat "$diff_log"
+else
+  pgdelta_status=$?
+  cat "$diff_log" >&2
+
+  # pg-delta can fail to plan a schema-ACL REVOKE for this retired seed role
+  # when the role is absent from the live project. Fall back only for that
+  # exact dependency error, and only after proving the role is absent on the
+  # actual PostgreSQL target. Migra must still produce an empty schema diff.
+  if grep -Fq 'consumes role:zikr_seed_loader' "$diff_log"; then
+    role_exists="$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -At -c \
+      "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'zikr_seed_loader')")"
+    if [[ "$role_exists" != "f" ]]; then
+      echo "REFUSING MIGRATION HISTORY REPAIR: pg-delta hit the retired-role dependency, but zikr_seed_loader still exists on the target." >&2
+      exit "$pgdelta_status"
+    fi
+
+    echo "NOTICE: pg-delta hit the known absent zikr_seed_loader ACL dependency; retrying the schema-only diff with migra."
+    if ! env -u PGSSLMODE supabase db diff \
+      --use-migra \
+      --db-url "$SUPABASE_DB_URL" \
+      --schema public,private,storage,extensions \
+      --output "$diff_file" >"$diff_log" 2>&1; then
+      cat "$diff_log" >&2
+      echo "MIGRA_SCHEMA_DIFF_FAILED: refusing migration history repair." >&2
+      exit 1
+    fi
+    cat "$diff_log"
+  else
+    echo "PG_DELTA_SCHEMA_DIFF_FAILED: no approved compatibility fallback matches this error." >&2
+    exit "$pgdelta_status"
+  fi
+fi
 
 non_comment_diff="$(grep -vE '^[[:space:]]*(--|$)' "$diff_file" || true)"
 if [[ -n "${non_comment_diff//[[:space:]]/}" ]]; then
