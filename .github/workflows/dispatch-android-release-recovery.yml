@@ -138,6 +138,32 @@ jobs:
               return;
             }
 
+            // Recovery may never rebuild from a later branch and publish those
+            // binaries under an earlier semantic tag. Resolve annotated tags
+            // to their target commit and require an exact source-SHA match.
+            const { data: tagRef } = await github.rest.git.getRef({
+              owner, repo, ref: "tags/" + tag,
+            });
+            let tagTargetSha = tagRef.object.sha;
+            if (tagRef.object.type === "tag") {
+              const { data: tagObject } = await github.rest.git.getTag({
+                owner, repo, tag_sha: tagRef.object.sha,
+              });
+              if (tagObject.object.type !== "commit") {
+                core.setFailed("Android release tag does not resolve directly to a commit: " + tag);
+                return;
+              }
+              tagTargetSha = tagObject.object.sha;
+            }
+            if (tagTargetSha !== sourceSha) {
+              core.setFailed(
+                "Android release provenance mismatch: tag " + tag +
+                " targets " + tagTargetSha + " but recovery source is " + sourceSha +
+                ". Refusing to publish. Prepare a new semantic release or build from the exact tag commit."
+              );
+              return;
+            }
+
             await github.rest.actions.createWorkflowDispatch({
               owner,
               repo,
