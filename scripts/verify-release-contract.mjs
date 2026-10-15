@@ -62,6 +62,17 @@ assert.ok(publish.includes("source_status") && publish.includes("ci/circleci: an
 assert.ok(publish.includes("SHA256SUMS"), "Android publisher must verify and publish checksums");
 assert.ok(publish.includes("release-metadata.json"), "Android publisher must verify and publish release metadata");
 assert.ok(publish.includes('gh release edit "$TAG"'), "Android publisher must finalize the GitHub release");
+assert.ok(publish.includes('--json isDraft,assets'), "Android publisher must inspect the draft state and the actual GitHub release assets");
+assert.ok(publish.includes("Published immutable release is missing Android assets"), "Android publisher must refuse to mutate a published immutable release that lacks APK/AAB assets");
+assert.ok(publish.includes('steps.release_state.outputs.upload_allowed == \'true\''), "Android asset upload must be restricted to draft releases");
+assert.ok(publish.includes("Verify published GitHub Release contains the exact signed assets"), "Android publisher must verify assets after publication");
+assert.ok(publish.includes("cmp -s"), "Android publisher must compare the downloaded GitHub assets with the checksum-verified build files");
+assert.ok(publish.includes("Fail fast if a published immutable release is missing APK/AAB"), "Android publisher must not waste an hour waiting for artifacts when the release is already immutable and incomplete");
+assert.ok(publish.includes("keep it in draft until the signed artifacts pass verification"), "Android release must stay in draft until assets are ready");
+const androidReleaseService = read("src/features/releases/services/github-android-release.ts");
+assert.ok(androidReleaseService.includes("function hasAab("), "Android release discovery must explicitly detect AAB assets");
+assert.ok(androidReleaseService.includes("hasApk(release) &&\n        hasAab(release)"), "Latest stable Android release must have both APK and AAB assets");
+assert.ok(androidReleaseService.includes("!hasApk(release) || !hasAab(release)"), "Pinned Android releases missing either APK or AAB must be rejected");
 
 const circle = read(".circleci/config.yml");
 assert.ok(circle.includes(`releaseUrl": "https://github.com/${repo}/releases/tag/`), "CircleCI Android release metadata must use the canonical repository");
