@@ -1,0 +1,379 @@
+{
+  "routes": [
+    {
+      "path": "/about"
+    },
+    {
+      "path": "/adhkar"
+    },
+    {
+      "path": "/admin/ai-video/curated"
+    },
+    {
+      "path": "/admin/ai-video"
+    },
+    {
+      "path": "/admin/alerts"
+    },
+    {
+      "path": "/admin/analytics"
+    },
+    {
+      "path": "/admin/android"
+    },
+    {
+      "path": "/admin/audio/adhan"
+    },
+    {
+      "path": "/admin/audio"
+    },
+    {
+      "path": "/admin/audio/quran"
+    },
+    {
+      "path": "/admin/audio/site-audio"
+    },
+    {
+      "path": "/admin/audio/tts"
+    },
+    {
+      "path": "/admin/audit"
+    },
+    {
+      "path": "/admin/automation"
+    },
+    {
+      "path": "/admin/battles"
+    },
+    {
+      "path": "/admin/categories"
+    },
+    {
+      "path": "/admin/content"
+    },
+    {
+      "path": "/admin/control"
+    },
+    {
+      "path": "/admin/editorial"
+    },
+    {
+      "path": "/admin/health"
+    },
+    {
+      "path": "/admin/kids/analytics"
+    },
+    {
+      "path": "/admin/kids/assets"
+    },
+    {
+      "path": "/admin/kids/content"
+    },
+    {
+      "path": "/admin/kids/games"
+    },
+    {
+      "path": "/admin/kids/levels"
+    },
+    {
+      "path": "/admin/kids"
+    },
+    {
+      "path": "/admin/knowledge"
+    },
+    {
+      "path": "/admin/library"
+    },
+    {
+      "path": "/admin/media"
+    },
+    {
+      "path": "/admin/notifications"
+    },
+    {
+      "path": "/admin"
+    },
+    {
+      "path": "/admin/prophets"
+    },
+    {
+      "path": "/admin/release"
+    },
+    {
+      "path": "/admin/search"
+    },
+    {
+      "path": "/admin/sections"
+    },
+    {
+      "path": "/admin/security"
+    },
+    {
+      "path": "/admin/security/step-up"
+    },
+    {
+      "path": "/admin/seo"
+    },
+    {
+      "path": "/admin/settings"
+    },
+    {
+      "path": "/admin/site-audio"
+    },
+    {
+      "path": "/admin/social"
+    },
+    {
+      "path": "/admin/social/youtube-import"
+    },
+    {
+      "path": "/admin/sources"
+    },
+    {
+      "path": "/admin/users"
+    },
+    {
+      "path": "/admin/video-factory"
+    },
+    {
+      "path": "/admin/video-factory/publishing"
+    },
+    {
+      "path": "/admin/video-factory/qa"
+    },
+    {
+      "path": "/admin/video-factory/queue"
+    },
+    {
+      "path": "/admin/video-factory/scheduler"
+    },
+    {
+      "path": "/admin/video-factory/scripts"
+    },
+    {
+      "path": "/admin/video-factory/sources"
+    },
+    {
+      "path": "/admin/video-factory/templates"
+    },
+    {
+      "path": "/admin/video-factory/visuals"
+    },
+    {
+      "path": "/admin/video-factory/voices"
+    },
+    {
+      "path": "/admin/videos"
+    },
+    {
+      "path": "/articles/:slug"
+    },
+    {
+      "path": "/articles"
+    },
+    {
+      "path": "/audio"
+    },
+    {
+      "path": "/auth/forgot"
+    },
+    {
+      "path": "/auth/login"
+    },
+    {
+      "path": "/auth/register"
+    },
+    {
+      "path": "/auth/reset"
+    },
+    {
+      "path": "/battles/:slug"
+    },
+    {
+      "path": "/battles"
+    },
+    {
+      "path": "/companions/:slug"
+    },
+    {
+      "path": "/companions"
+    },
+    {
+      "path": "/competitions"
+    },
+    {
+      "path": "/conquests/:slug"
+    },
+    {
+      "path": "/conquests"
+    },
+    {
+      "path": "/contact"
+    },
+    {
+      "path": "/content/:slug"
+    },
+    {
+      "path": "/dua/:slug"
+    },
+    {
+      "path": "/dua"
+    },
+    {
+      "path": "/duas"
+    },
+    {
+      "path": "/editorial-policy"
+    },
+    {
+      "path": "/faq"
+    },
+    {
+      "path": "/favorites"
+    },
+    {
+      "path": "/hadith/:book/:id"
+    },
+    {
+      "path": "/hadith/:book"
+    },
+    {
+      "path": "/hadith"
+    },
+    {
+      "path": "/kids/:slug"
+    },
+    {
+      "path": "/kids/achievements"
+    },
+    {
+      "path": "/kids/adventures"
+    },
+    {
+      "path": "/kids/audio"
+    },
+    {
+      "path": "/kids/games"
+    },
+    {
+      "path": "/kids"
+    },
+    {
+      "path": "/kids/progress"
+    },
+    {
+      "path": "/kids/puzzle"
+    },
+    {
+      "path": "/knowledge"
+    },
+    {
+      "path": "/library"
+    },
+    {
+      "path": "/memorization"
+    },
+    {
+      "path": "/mushaf"
+    },
+    {
+      "path": "/offline-library"
+    },
+    {
+      "path": "/"
+    },
+    {
+      "path": "/platform"
+    },
+    {
+      "path": "/poetry"
+    },
+    {
+      "path": "/prayer-times"
+    },
+    {
+      "path": "/privacy"
+    },
+    {
+      "path": "/profile"
+    },
+    {
+      "path": "/prophets/:slug"
+    },
+    {
+      "path": "/prophets"
+    },
+    {
+      "path": "/qibla"
+    },
+    {
+      "path": "/quran/:surah/:ayah"
+    },
+    {
+      "path": "/quran/:surah"
+    },
+    {
+      "path": "/quran"
+    },
+    {
+      "path": "/radio"
+    },
+    {
+      "path": "/reciters/:slug"
+    },
+    {
+      "path": "/reciters"
+    },
+    {
+      "path": "/scholars/:slug"
+    },
+    {
+      "path": "/scholars"
+    },
+    {
+      "path": "/search"
+    },
+    {
+      "path": "/sections"
+    },
+    {
+      "path": "/settings"
+    },
+    {
+      "path": "/spiritual-ai"
+    },
+    {
+      "path": "/stories/:slug"
+    },
+    {
+      "path": "/stories"
+    },
+    {
+      "path": "/tafsir"
+    },
+    {
+      "path": "/tasbeeh"
+    },
+    {
+      "path": "/tawasheeh"
+    },
+    {
+      "path": "/terms"
+    },
+    {
+      "path": "/videos/:slug"
+    },
+    {
+      "path": "/videos"
+    },
+    {
+      "path": "/wird"
+    },
+    {
+      "path": "/youtube"
+    },
+    {
+      "path": "/zakat"
+    }
+  ]
+}
