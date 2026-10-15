@@ -596,6 +596,8 @@ workflows:
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
       - supabase-production-gate:
+          context:
+            - android-signing
           requires:
             - source-verify
           filters:
@@ -638,5 +640,4 @@ workflows:
   configuration-guard:
     jobs:
       - config-guard
-
 
