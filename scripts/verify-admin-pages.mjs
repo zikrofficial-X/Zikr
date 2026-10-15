@@ -78,17 +78,12 @@ for (const token of [
 ]) {
   if (!homepage.includes(token)) failures.push(`Homepage must honor editable section visibility: ${token}`);
 }
-for (const token of [
-  'name="showQuickStart"', 'name="showJourneys"', 'name="showGuidedPaths"',
-  'name="showEditorialLibrary"', 'name="showDailyTools"', 'name="showDailyVerse"',
+for (const field of [
+  "showQuickStart", "showJourneys", "showGuidedPaths",
+  "showEditorialLibrary", "showDailyTools", "showDailyVerse",
 ]) {
-  if (!seoPage.includes(token)) failures.push(`Homepage admin form is missing lower-section toggle: ${token}`);
-  if (!seoActions.includes(token.replace('name="', 'readBoolean(formData, "').replace('"', '")'))) {
-    const field = token.match(/name="([^"]+)"/)?.[1];
-    if (field && !seoActions.includes(`readBoolean(formData, "${field}")`)) {
-      failures.push(`Homepage admin save action does not persist lower-section toggle: ${field}`);
-    }
-  }
+  if (!seoPage.includes(`name="${field}"`)) failures.push(`Homepage admin form is missing lower-section toggle: ${field}`);
+  if (!seoActions.includes(`readBoolean(formData, "${field}")`)) failures.push(`Homepage admin save action does not persist lower-section toggle: ${field}`);
 }
 
 const audioLibrary = readFileSync("src/components/audio/audio-library.tsx", "utf8");
