@@ -71,7 +71,7 @@ Before treating a release as complete:
 
 `pnpm verify:pr`
 
-The final web release has passed the canonical Quality Gate, CircleCI application-build/documentation certification, and Vercel production build/deployment. Android `v1.1.3` remains a repository-prepared release and is not claimed as the latest published Android release.
+Android `v1.1.4` is now the latest published release. Its public APK/AAB and verification files passed the publisher's checksum, signature, manifest, and byte-for-byte asset checks. The separate tag/source commit mismatch listed above remains a provenance issue to enforce against in the next controlled release; it must not be hidden by marking source-to-tag correspondence as fully reconciled.
 
 Production evidence must include:
 
