@@ -42,6 +42,8 @@ jobs:
       VERCEL_ORG_ID: team_RxPjmgZoSFmKGjScefYmwIVv
       VERCEL_PROJECT_ID: prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
+      PGSSLMODE: require
     steps:
       - name: Checkout exact release commit
         uses: actions/checkout@v7
@@ -63,14 +65,7 @@ jobs:
             echo "::error title=Missing Supabase admin connection::Add SUPABASE_DB_URL using POSTGRES_URL_NON_POOLING or a direct administrative connection for the canonical Supabase project."
             blocked=1
           else
-            if [[ "${SUPABASE_DB_URL}" =~ ^postgres(ql)?://zikr_seed_loader(:|@) ]]; then
-              echo "::error title=Unsafe Supabase connection role::SUPABASE_DB_URL still uses the retired least-privilege zikr_seed_loader account. Replace it with a dedicated administrative migration connection; do not reactivate the seed-loader role."
-              blocked=1
-            fi
-            if [[ "${SUPABASE_DB_URL}" != *"ymxdswkaxafakugktsim"* ]]; then
-              echo "::error title=Wrong Supabase project::SUPABASE_DB_URL must target project ymxdswkaxafakugktsim."
-              blocked=1
-            fi
+            python3 scripts/verify-supabase-db-url.py
           fi
           if (( blocked != 0 )); then
             echo "::error title=Production release blocked::Fix every credential error above, then dispatch the controlled release with confirmation RELEASE."
