@@ -82,9 +82,14 @@ jobs:
         run: |
           set -euo pipefail
           RELEASE_JSON=""
+          RELEASES_JSON=""
           for attempt in $(seq 1 30); do
-            if RELEASE_JSON="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets 2>/dev/null)"; then
-              break
+            RELEASES_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" 2>/dev/null || true)"
+            if [[ -n "$RELEASES_JSON" ]]; then
+              RELEASE_JSON="$(jq -c --arg tag "$TAG" '[.[] | select(.tag_name == $tag)] | .[0] | if . == null then empty else {id: .id, isDraft: .draft, assets: .assets} end' <<< "$RELEASES_JSON" 2>/dev/null || true)"
+              if [[ -n "$RELEASE_JSON" ]]; then
+                break
+              fi
             fi
             echo "Waiting for the release draft to be created (attempt $attempt/30)..."
             sleep 5
@@ -93,6 +98,13 @@ jobs:
             echo "::error title=Android release draft not found::No GitHub Release exists for $TAG. The release manager must create a draft before publishing assets." >&2
             exit 1
           fi
+
+          RELEASE_ID="$(jq -r '.id // empty' <<< "$RELEASE_JSON")"
+          if [[ ! "$RELEASE_ID" =~ ^[0-9]+$ ]]; then
+            echo "::error title=Invalid GitHub release identity::Could not resolve the GitHub release ID for $TAG." >&2
+            exit 1
+          fi
+          echo "RELEASE_ID=$RELEASE_ID" >> "$GITHUB_ENV"
 
           if [[ "$(jq -r '.isDraft' <<< "$RELEASE_JSON")" == "true" ]]; then
             echo "Release $TAG is still a draft; artifact build and checksum verification may continue."
@@ -112,6 +124,7 @@ jobs:
             exit 1
           fi
           echo "Published release already lists the required assets; the full byte-for-byte verification will run after artifact checks."
+
 
       - name: Verify CircleCI Android build status before waiting for artifacts
         if: steps.gate.outputs.publish == 'true' && github.event_name != 'workflow_dispatch'
