@@ -86,7 +86,7 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner,
               repo,
-              workflow_id: ".github/workflows/publish-android-release-assets.yml",
+              workflow_id: "publish-android-release-assets.yml",
               ref: branch,
               inputs: { retry: "true" },
             });
