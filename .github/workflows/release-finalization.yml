@@ -53,7 +53,7 @@ jobs:
       - name: Fail fast on missing or unsafe production credentials
         shell: bash
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
           blocked=0
@@ -116,7 +116,7 @@ jobs:
 
       - name: Verify production data and reconcile migration history safely
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
           EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
         run: bash scripts/reconcile-supabase-migration-history.sh
 
