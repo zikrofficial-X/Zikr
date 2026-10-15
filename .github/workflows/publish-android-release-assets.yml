@@ -309,11 +309,12 @@ jobs:
 
           EXISTING_DIR="$RUNNER_TEMP/existing-release-assets"
           mkdir -p "$EXISTING_DIR"
-          if ! gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "$EXISTING_DIR"; then
-            echo "::error title=Cannot verify immutable release assets::Unable to download the existing public assets for $TAG." >&2
-            exit 1
-          fi
           for asset in "${REQUIRED_ASSETS[@]}"; do
+            download_url="$(jq -r --arg name "$asset" '.assets[] | select(.name == $name) | .browser_download_url' <<< "$RELEASE_JSON" | head -n 1)"
+            if [[ -z "$download_url" ]] || ! curl --fail --silent --show-error --location --retry 3 "$download_url" --output "$EXISTING_DIR/$asset"; then
+              echo "::error title=Cannot verify immutable release assets::Unable to download existing asset $asset for $TAG." >&2
+              exit 1
+            fi
             if [[ ! -s "$EXISTING_DIR/$asset" ]] || ! cmp -s "$asset" "$EXISTING_DIR/$asset"; then
               echo "::error title=Immutable release asset mismatch::$asset in published release $TAG does not match the verified build. Create the next semantic Android release; do not overwrite a published release." >&2
               exit 1
@@ -386,8 +387,13 @@ jobs:
 
           VERIFY_DIR="$RUNNER_TEMP/published-release-assets"
           mkdir -p "$VERIFY_DIR"
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "$VERIFY_DIR"
           for asset in "${REQUIRED_ASSETS[@]}"; do
+            download_url="$(jq -r --arg name "$asset" '.assets[] | select(.name == $name) | .browser_download_url' <<< "$RELEASE_JSON" | head -n 1)"
+            if [[ -z "$download_url" ]]; then
+              echo "::error title=GitHub Release is missing an asset download URL::$asset has no download URL." >&2
+              exit 1
+            fi
+            curl --fail --silent --show-error --location --retry 3 "$download_url" --output "$VERIFY_DIR/$asset"
             if [[ ! -s "$VERIFY_DIR/$asset" ]] || ! cmp -s "$asset" "$VERIFY_DIR/$asset"; then
               echo "::error title=GitHub Release asset verification failed::$asset on GitHub does not match the verified build file." >&2
               exit 1
