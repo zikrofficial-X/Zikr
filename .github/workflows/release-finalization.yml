@@ -42,10 +42,11 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
+# Use a dedicated secret name to avoid an older environment-level VERCEL_TOKEN shadowing a newly rotated repository secret.
       - name: Verify Vercel deployment credential is available
         shell: bash
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.ZIKR_VERCEL_TOKEN }}
         run: |
           set -euo pipefail
           if [[ -z "${VERCEL_TOKEN:-}" ]]; then
@@ -103,7 +104,7 @@ jobs:
       - name: Validate Vercel release configuration
         shell: bash
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.ZIKR_VERCEL_TOKEN }}
         run: |
           set -euo pipefail
           test -n "${VERCEL_TOKEN:-}"
@@ -113,7 +114,7 @@ jobs:
       - name: Authenticate and link exact Vercel project
         shell: bash
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.ZIKR_VERCEL_TOKEN }}
         run: |
           set -uo pipefail
           # Fail with a readable annotation instead of a bare "exit code 1".
@@ -156,7 +157,7 @@ jobs:
       - name: Pull production Vercel configuration
         shell: bash
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.ZIKR_VERCEL_TOKEN }}
         run: |
           set -uo pipefail
           if ! out="$(vercel pull --yes --environment=production --scope "${VERCEL_ORG_ID}" 2>&1)"; then
@@ -167,14 +168,14 @@ jobs:
 
       - name: Build production artifact
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.ZIKR_VERCEL_TOKEN }}
         run: vercel build --prod --scope "${VERCEL_ORG_ID}"
 
       - name: Deploy prebuilt artifact to production
         id: deploy
         shell: bash
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.ZIKR_VERCEL_TOKEN }}
         run: |
           set -euo pipefail
           url="$(vercel deploy --prebuilt --prod --yes --scope "${VERCEL_ORG_ID}")"
