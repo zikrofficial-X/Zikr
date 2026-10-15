@@ -41,6 +41,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   const [feedback, setFeedback] = useState("اختر مشهدًا وأكمله.");
   const advancingRef = useRef(false);
   const runTotalsRef = useRef(createGameRunTotals());
+  const levelResetPendingRef = useRef(false);
 
   useEffect(() => {
     runTotalsRef.current = createGameRunTotals();
@@ -52,11 +53,15 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   const complete = done.length === deeds.length;
   const score = done.length * rules.rewardPerScene;
 
-  useEffect(() => { setDone([]); setActive(null); setActionSteps({}); setFeedback(meta.subtitleAr); advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
+  useEffect(() => { setDone([]); setActive(null); setActionSteps({}); setFeedback(meta.subtitleAr); levelResetPendingRef.current = true; advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
 
   useEffect(() => {
     const levelHud: WorldHud = { score: complete ? score + rules.completionBonus : score, collectibles: done.length, distance: 0, combo: done.length, level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
     onHud(levelHud);
+    if (levelResetPendingRef.current) {
+      levelResetPendingRef.current = false;
+      return;
+    }
     if (!complete || advancingRef.current) return;
     advancingRef.current = true;
     const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
@@ -154,6 +159,7 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
   const [feedback, setFeedback] = useState("اختر غرضًا ثم اضغط منطقة الترتيب المناسبة.");
   const advancingRef = useRef(false);
   const runTotalsRef = useRef(createGameRunTotals());
+  const levelResetPendingRef = useRef(false);
 
   useEffect(() => {
     runTotalsRef.current = createGameRunTotals();
@@ -165,11 +171,15 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
   const complete = Object.keys(placed).length === items.length;
   const score = Math.max(0, Object.keys(placed).length * 170 - mistakes * rules.mistakePenalty);
 
-  useEffect(() => { setSelected(null); setPlaced({}); setMistakes(0); setFeedback(meta.subtitleAr); advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
+  useEffect(() => { setSelected(null); setPlaced({}); setMistakes(0); setFeedback(meta.subtitleAr); levelResetPendingRef.current = true; advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
 
   useEffect(() => {
     const levelHud: WorldHud = { score: complete ? score + rules.completionBonus : score, collectibles: Object.keys(placed).length, distance: 0, combo: Math.max(0, Object.keys(placed).length - mistakes), level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
     onHud(levelHud);
+    if (levelResetPendingRef.current) {
+      levelResetPendingRef.current = false;
+      return;
+    }
     if (!complete || advancingRef.current) return;
     advancingRef.current = true;
     onSound("success");
@@ -249,6 +259,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   const savedRef = useRef<Record<string, string[]>>({});
   const advancingRef = useRef(false);
   const runTotalsRef = useRef(createGameRunTotals());
+  const levelResetPendingRef = useRef(false);
   const rules = getZikrColoringRules(difficulty, levelIndex);
   const meta = getKidsLevelMeta("zikr-coloring", difficulty, levelIndex);
   const sheetIndex = meta.pattern % COLORING_SHEETS.length;
@@ -285,6 +296,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
     setFills(savedRef.current[storageKey] ?? []);
     setHistory([]);
     setRoundPaintedRegions([]);
+    levelResetPendingRef.current = true;
     advancingRef.current = false;
     setFeedback(meta.subtitleAr);
   }, [meta.subtitleAr, restartToken, storageKey]);
@@ -331,6 +343,10 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   useEffect(() => {
     const levelHud: WorldHud = { score: paintedThisLevel * 115 + (complete ? rules.completionBonus : 0), collectibles: paintedThisLevel, distance: 0, combo: paintedThisLevel, level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
     onHud(levelHud);
+    if (levelResetPendingRef.current) {
+      levelResetPendingRef.current = false;
+      return;
+    }
     if (!complete || advancingRef.current) return;
     advancingRef.current = true;
     onSound("success");

@@ -68,6 +68,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   const completionRef = useRef(false);
   const advancingRef = useRef(false);
   const runTotalsRef = useRef(createGameRunTotals());
+  const levelResetPendingRef = useRef(false);
 
   useEffect(() => {
     runTotalsRef.current = createGameRunTotals();
@@ -106,6 +107,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
     setLocked(false);
     setHintId(null);
     setFeedback(meta.subtitleAr);
+    levelResetPendingRef.current = true;
     completionRef.current = false;
     advancingRef.current = false;
     onHud(learningHud(0, 0, 0, levelIndex));
@@ -125,6 +127,10 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   };
 
   useEffect(() => {
+    if (levelResetPendingRef.current) {
+      levelResetPendingRef.current = false;
+      return;
+    }
     if (!complete || completionRef.current || advancingRef.current) return;
     completionRef.current = true;
     const finalScore = score + 500;
@@ -342,6 +348,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   const [hintVisible, setHintVisible] = useState(false);
   const completionRef = useRef(false);
   const runTotalsRef = useRef(createGameRunTotals());
+  const levelResetPendingRef = useRef(false);
 
   useEffect(() => {
     setLevelIndex(0);
@@ -350,6 +357,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
 
   useEffect(() => {
     let active = true;
+    levelResetPendingRef.current = true;
     setLoading(true);
     setAvailable(true);
     setSource(null);
@@ -394,6 +402,10 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   useEffect(() => {
     const levelHud = learningHud(score, answer.length, Math.max(0, answer.length - mistakes), levelIndex, complete && levelIndex === KIDS_LEVEL_COUNT - 1);
     onHud(levelHud);
+    if (levelResetPendingRef.current) {
+      levelResetPendingRef.current = false;
+      return;
+    }
     if (!complete || completionRef.current) return;
     completionRef.current = true;
     const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
@@ -480,6 +492,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   const advancingRef = useRef(false);
   const runTotalsRef = useRef(createGameRunTotals());
+  const levelResetPendingRef = useRef(false);
 
   useEffect(() => {
     runTotalsRef.current = createGameRunTotals();
@@ -499,6 +512,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
     setSeconds(0);
     setFeedback(meta.subtitleAr);
     setHiddenOptions([]);
+    levelResetPendingRef.current = true;
     advancingRef.current = false;
   }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
 
@@ -515,6 +529,10 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
   useEffect(() => {
     const levelHud = learningHud(score, correct, streak, levelIndex, complete && levelIndex === KIDS_LEVEL_COUNT - 1);
     onHud(levelHud);
+    if (levelResetPendingRef.current) {
+      levelResetPendingRef.current = false;
+      return;
+    }
     if (!complete || advancingRef.current) return;
     advancingRef.current = true;
     const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
