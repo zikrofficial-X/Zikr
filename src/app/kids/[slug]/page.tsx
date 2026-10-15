@@ -128,6 +128,7 @@ export default function KidsDetailPage() {
     [content?.quiz_data, isEnglish]
   );
   const gameConfig = content?.type === "game" ? parseGameContentMetadata(content.metadata) : null;
+  const isLegacyGameActivity = content?.type === "game" && !gameConfig;
 
   useEffect(() => {
     if (!slug) {
@@ -233,14 +234,39 @@ export default function KidsDetailPage() {
         gameConfig ? (
           <KidsWorldGameShell gameId={gameConfig.gameId} initialDifficulty={gameConfig.difficulty} />
         ) : (
-          <Card className="border-red-400/30 bg-red-950/20 p-6 text-center" role="alert">
-            <h2 className="text-xl font-bold text-brand-gold">{isEnglish ? "Game unavailable" : "اللعبة غير متاحة حاليًا"}</h2>
-            <p className="mt-2 text-brand-cream/70">{isEnglish ? "A valid configuration for this game was not found. Try another kids activity." : "لم يتم العثور على إعداد صالح لهذه اللعبة. جرّب نشاطًا آخر من قسم الأطفال."}</p>
+          <Card className="space-y-4 border-brand-gold/25 bg-brand-gold/5 p-6">
+            <h2 className="text-xl font-bold text-brand-gold">
+              {isEnglish ? "Learning activity" : "نشاط تعليمي"}
+            </h2>
+            <p className="text-sm leading-7 text-brand-cream/75">
+              {isEnglish
+                ? "This activity uses the original learning instructions. Follow the steps below with a parent or trusted adult when needed."
+                : "هذا النشاط من المحتوى التعليمي الأصلي. اتبع الخطوات التالية، واستعن بولي الأمر عند الحاجة."}
+            </p>
+            {content.metadata?.objective && (
+              <p className="leading-7 text-brand-cream/85">
+                <strong className="text-brand-gold">{isEnglish ? "Goal: " : "الهدف: "}</strong>
+                {content.metadata.objective}
+              </p>
+            )}
+            {Array.isArray(content.metadata?.activitySteps) && content.metadata.activitySteps.length > 0 && (
+              <ol className="list-decimal list-inside space-y-2 text-sm leading-7 text-brand-cream/85">
+                {content.metadata.activitySteps.map((step, index) => (
+                  <li key={String(index)}>{step}</li>
+                ))}
+              </ol>
+            )}
+            {content.metadata?.familyPrompt && (
+              <p className="rounded-xl border border-brand-emerald/25 bg-brand-emerald/5 p-3 text-sm leading-7 text-brand-cream/80">
+                <strong className="text-brand-emerald">{isEnglish ? "Family prompt: " : "سؤال للأسرة: "}</strong>
+                {content.metadata.familyPrompt}
+              </p>
+            )}
           </Card>
         )
       )}
 
-      {content.type !== "game" && content.featured_image_url && (
+      {(content.type !== "game" || isLegacyGameActivity) && content.featured_image_url && (
         <div className="w-full h-96 rounded-lg overflow-hidden">
           <Image
             src={content.featured_image_url}
@@ -266,7 +292,7 @@ export default function KidsDetailPage() {
         </div>
       )}
 
-      {content.type !== "game" && (isEnglish ? content.content_en : content.content_ar) && (
+      {(content.type !== "game" || isLegacyGameActivity) && (isEnglish ? content.content_en : content.content_ar) && (
         <Card className="p-8 bg-black/30 border-brand-gold/30">
           <p
             dir={isEnglish ? "ltr" : "rtl"}
@@ -277,7 +303,7 @@ export default function KidsDetailPage() {
         </Card>
       )}
 
-      {!isEnglish && content.type !== "game" && content.metadata && (
+      {!isEnglish && (content.type !== "game" || isLegacyGameActivity) && content.metadata && (
           <Card className="p-6 space-y-5 bg-brand-gold/10 border-brand-gold/30">
             <h2 className="text-2xl font-bold text-brand-gold text-center">
               بطاقة التعلم والتشجيع
@@ -362,7 +388,7 @@ export default function KidsDetailPage() {
           </Card>
         )}
 
-      {content.type === "quiz" && (
+      {(content.type === "quiz" || (isLegacyGameActivity && quizQuestions.length > 0)) && (
         <Card className="p-8 space-y-6 bg-black/30 border-brand-gold/30">
           <h2 className="text-2xl font-bold text-brand-gold text-center">{isEnglish ? "Test your knowledge" : "اختبر معلوماتك"}</h2>
           {quizQuestions.length === 0 ? (
