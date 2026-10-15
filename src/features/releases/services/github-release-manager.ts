@@ -139,6 +139,7 @@ function buildReleaseNotes(version: string, versionCode: number, mainSha: string
 
   return [
     "# ZIKR Android v" + version,
+    "Release tag: `v" + version + "`",
     "",
     "إصدار رسمي جديد مبني من أحدث commit على الفرع `main` بعد اجتياز مسار الإصدار.",
     "",
