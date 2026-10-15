@@ -42,29 +42,29 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
-      - name: Fail fast on missing or unsafe production credentials
+      - name: Verify Vercel deployment credential is available
         shell: bash
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${VERCEL_TOKEN:-}" ]]; then
+            echo "::error title=Missing Vercel deployment credential::Add VERCEL_TOKEN to the production environment/repository secrets; deployment cannot be authenticated."
+            exit 1
+          fi
+          echo "Vercel deployment credential is present."
+
+      - name: Verify Supabase admin connection
+        shell: bash
+        env:
           SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
-          blocked=0
-          if [[ -z "${VERCEL_TOKEN:-}" ]]; then
-            echo "::error title=Missing Vercel deployment credential::Add VERCEL_TOKEN to the production environment/repository secrets; deployment cannot be authenticated."
-            blocked=1
-          fi
           if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
             echo "::error title=Missing Supabase admin connection::Add SUPABASE_DB_URL using POSTGRES_URL_NON_POOLING or a direct administrative connection for the canonical Supabase project."
-            blocked=1
-          else
-            python3 scripts/verify-supabase-db-url.py
-          fi
-          if (( blocked != 0 )); then
-            echo "::error title=Production release blocked::Fix every credential error above, then dispatch the controlled release with confirmation RELEASE."
             exit 1
           fi
-          echo "Production release credentials passed presence and project guards."
+          python3 scripts/verify-supabase-db-url.py
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
