@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { siteConfig } from "@/lib/site";
 
 function value(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();
@@ -38,10 +39,23 @@ function optionalHttpsUrl(raw: string, label: string): string | null {
 }
 
 function safeImagePath(raw: string): string {
-  if (!raw) return "/branding/og-image.png";
-  if (raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("\\")) return raw;
+  const defaultImage = "/branding/og-image.jpg";
+  const legacyOgImagePath = /(?:^|\/)branding\/og-image\.png(?:[?#].*)?$/i;
+  if (!raw) return defaultImage;
+
+  if (raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("\\")) {
+    return legacyOgImagePath.test(raw) ? defaultImage : raw;
+  }
+
   const url = optionalHttpsUrl(raw, "صورة المشاركة");
-  if (!url) return "/branding/og-image.png";
+  if (!url) return defaultImage;
+  try {
+    const parsed = new URL(url);
+    if (parsed.origin === siteConfig.url && legacyOgImagePath.test(parsed.pathname)) return defaultImage;
+  } catch {
+    // optionalHttpsUrl already validates remote URLs; keep the safe local fallback.
+    return defaultImage;
+  }
   return url;
 }
 

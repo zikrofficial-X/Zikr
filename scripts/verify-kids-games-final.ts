@@ -119,7 +119,7 @@ for (const id of gameIds) if (!migrationSource.includes("('" + id + "'")) throw 
 const visuals = readFileSync(join(root, "src/features/kids/components/games/kids-game-visuals.tsx"), "utf8");
 for (const id of gameIds) if (!visuals.includes('case "' + id + '"')) throw new Error("Dedicated visual world missing for " + id);
 const kit = readFileSync(join(root, "src/features/kids/components/games/kids-game-kit.tsx"), "utf8");
-for (const scene of ["scene-moon-sky.png", "scene-mosque-courtyard.png", "scene-night-garden.png"]) {
+for (const scene of ["scene-moon-sky.webp", "scene-mosque-courtyard.webp", "scene-night-garden.webp"]) {
   if (!kit.includes(scene)) throw new Error("High-resolution game background is not connected: " + scene);
 }
 if (kit.includes("aspect-[16/9]") || !kit.includes("min-h-[460px]") || !kit.includes("max-w-5xl") || !kit.includes("overflow-hidden") || !kit.includes("backgroundSize: \"cover\"")) throw new Error("Responsive content-driven game stage contract is incomplete.");

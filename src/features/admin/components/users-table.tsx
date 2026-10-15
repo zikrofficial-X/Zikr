@@ -169,6 +169,7 @@ export function UsersTable({ users, currentAdminId }: { users: UserProfile[]; cu
                           alt=""
                           width={32}
                           height={32}
+                          sizes="32px"
                           className="h-8 w-8 rounded-full object-cover ring-1 ring-brand-gold/20"
                         />
                       ) : (

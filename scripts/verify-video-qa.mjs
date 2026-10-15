@@ -31,7 +31,7 @@ if (!detail.includes("poster={video.thumbnailUrl || undefined}")) failures.push(
 if (!detail.includes("video.youtubeId")) failures.push("video detail must retain YouTube playback path");
 
 const site = read("src/lib/site.ts");
-if (!site.includes('defaultOgImage = "/branding/og-image.png"')) failures.push("QA placeholder must use the canonical local OG image");
+if (!site.includes('defaultOgImage = "/branding/og-image.jpg"')) failures.push("QA placeholder must use the canonical optimized local OG image");
 
 const worker = read("scripts/jobs/template-video-automation.ts");
 for (const token of [

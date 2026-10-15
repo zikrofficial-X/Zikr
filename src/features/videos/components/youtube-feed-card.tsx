@@ -40,7 +40,7 @@ export function YoutubeFeedCard({ videoId, title, thumbnailUrl, publishedLabel }
                 src={resolvedThumbnail}
                 alt={title}
                 fill
-                sizes="(max-width: 768px) 100vw, 33vw"
+                sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 33vw"
                 className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                 onError={() => {
                   if (resolvedThumbnail !== fallbackThumbnail) setResolvedThumbnail(fallbackThumbnail);

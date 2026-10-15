@@ -27,7 +27,7 @@ export default async function CompetitionsPage() {
 
     <section className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
       {competitions.map((competition) => <Card key={competition.id} className='space-y-3'>
-        {competition.metadata?.imageUrl ? <Image src={competition.metadata.imageUrl} alt={competition.title} width={640} height={360} className='aspect-video w-full rounded-xl object-cover' /> : null}
+        {competition.metadata?.imageUrl ? <Image src={competition.metadata.imageUrl} alt={competition.title} width={640} height={360} sizes='(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 33vw' className='aspect-video w-full rounded-xl object-cover' /> : null}
         <h2 className='text-xl text-brand-gold'>{competition.title}</h2>
         <p className='leading-7 arabic-muted'>{competition.description}</p>
         {competition.prize ? <p className='text-sm text-emerald-200'>الجائزة: {competition.prize}</p> : null}
