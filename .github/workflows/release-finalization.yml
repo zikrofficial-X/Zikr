@@ -1,6 +1,11 @@
 name: ZIKR Finalization Controlled Release
 
 on:
+  # A push to main releases only when its commit message carries the explicit
+  # one-shot production authorization marker. Ordinary merges do not deploy.
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       confirmation:
@@ -22,21 +27,51 @@ concurrency:
 jobs:
   release:
     name: Controlled production release
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (
+        (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE') ||
+        (github.event_name == 'push' && contains(github.event.head_commit.message, '[release-production]'))
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 35
     environment:
       name: production
     env:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      VERCEL_ORG_ID: team_zifbzhks5C1PW9GXQnQnBU2y
-      VERCEL_PROJECT_ID: prj_1y2W5TZdugysh25Fgu4VRMDQwPcA
+      VERCEL_ORG_ID: team_RxPjmgZoSFmKGjScefYmwIVv
+      VERCEL_PROJECT_ID: prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
+      PGSSLMODE: require
     steps:
       - name: Checkout exact release commit
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+
+      - name: Fail fast on missing or unsafe production credentials
+        shell: bash
+        env:
+          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          blocked=0
+          if [[ -z "${VERCEL_TOKEN:-}" ]]; then
+            echo "::error title=Missing Vercel deployment credential::Add VERCEL_TOKEN to the production environment/repository secrets; deployment cannot be authenticated."
+            blocked=1
+          fi
+          if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
+            echo "::error title=Missing Supabase admin connection::Add SUPABASE_DB_URL using POSTGRES_URL_NON_POOLING or a direct administrative connection for the canonical Supabase project."
+            blocked=1
+          else
+            python3 scripts/verify-supabase-db-url.py
+          fi
+          if (( blocked != 0 )); then
+            echo "::error title=Production release blocked::Fix every credential error above, then dispatch the controlled release with confirmation RELEASE."
+            exit 1
+          fi
+          echo "Production release credentials passed presence and project guards."
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -68,6 +103,22 @@ jobs:
       - name: Re-run release integrity gate
         run: pnpm verify:pr
         timeout-minutes: 15
+
+      - name: Install PostgreSQL client for production schema verification
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Verify production data and reconcile migration history safely
+        env:
+          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
+          EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
+        run: bash scripts/reconcile-supabase-migration-history.sh
 
       - name: Install pinned Vercel CLI
         run: npm install --global vercel@59.23.1

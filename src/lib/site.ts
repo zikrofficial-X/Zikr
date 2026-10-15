@@ -11,6 +11,29 @@ export function enforceCanonicalProductionUrl(_value?: string): string {
   return PRODUCTION_URL;
 }
 
+/**
+ * True when the request comes from the v0 sandbox preview. Auth there must stay
+ * on the preview origin and go through the v0 Supabase redirect proxy, because
+ * the production origin has no access to the preview's PKCE verifier cookie.
+ */
+export function isV0PreviewHost(host?: string | null): boolean {
+  if (!process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || !host) return false;
+  if (
+    process.env.VERCEL_ENV === "production" ||
+    process.env.NEXT_PUBLIC_VERCEL_ENV === "production"
+  ) {
+    return false;
+  }
+
+  const hostname = host.toLowerCase().split(":")[0];
+  if (hostname === "localhost" || hostname === "127.0.0.1") return false;
+  if (hostname === new URL(PRODUCTION_URL).hostname) return false;
+  if (hostname.endsWith(".vercel.app") || hostname.endsWith(".supabase.co")) {
+    return false;
+  }
+  return true;
+}
+
 export const siteConfig = {
   name: "ZIKR | ذِكرٌ",
   shortName: "ZIKR",

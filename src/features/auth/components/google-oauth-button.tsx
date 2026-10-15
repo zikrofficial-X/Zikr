@@ -5,7 +5,7 @@ import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { Button } from "@/components/ui/button";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { PRODUCTION_URL } from "@/lib/site";
+import { PRODUCTION_URL, isV0PreviewHost } from "@/lib/site";
 
 type GoogleOAuthButtonProps = {
   next?: string;
@@ -70,7 +70,14 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
       // user opened a Vercel alias, move them to the canonical origin before
       // creating the verifier; otherwise Google returns to the canonical host
       // while the verifier remains stranded on the alias.
-      if (!isNative && typeof window !== "undefined") {
+      const previewRedirect = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL;
+      const usePreviewRedirect =
+        !isNative &&
+        typeof window !== "undefined" &&
+        !!previewRedirect &&
+        isV0PreviewHost(window.location.hostname);
+
+      if (!isNative && !usePreviewRedirect && typeof window !== "undefined") {
         const canonicalOrigin = new URL(PRODUCTION_URL).origin;
         const currentOrigin = new URL(window.location.origin).origin;
         if (currentOrigin !== canonicalOrigin) {
@@ -88,10 +95,12 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
       // while the PKCE verifier remains in this WebView's Supabase client.
       const redirectTo = isNative
         ? buildNativeOAuthRedirect(safeNext)
-        : new URL(
-            `/auth/callback?next=${encodeURIComponent(safeNext)}`,
-            getCanonicalBrowserOrigin(),
-          ).toString();
+        : usePreviewRedirect && previewRedirect
+          ? previewRedirect
+          : new URL(
+              `/auth/callback?next=${encodeURIComponent(safeNext)}`,
+              getCanonicalBrowserOrigin(),
+            ).toString();
 
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",

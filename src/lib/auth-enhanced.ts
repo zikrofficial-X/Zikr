@@ -6,7 +6,7 @@
  */
 
 import { getServerEnv } from "@/lib/env";
-import { PRODUCTION_URL } from "@/lib/site";
+import { PRODUCTION_URL, isV0PreviewHost } from "@/lib/site";
 
 /**
  * Build OAuth redirect URI
@@ -40,6 +40,10 @@ export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
     const host = url.hostname.toLowerCase();
 
     if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+      return url.origin;
+    }
+
+    if (isV0PreviewHost(host)) {
       return url.origin;
     }
 
