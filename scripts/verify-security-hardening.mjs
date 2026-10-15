@@ -34,13 +34,16 @@ for (const token of [
 const contactRateLimit = read("src/features/contact/services/rate-limit.ts");
 for (const token of [
   "consume_admin_rate_limit",
-  "createHmac",
   "process.env.SUPABASE_SERVICE_ROLE_KEY",
   'const RATE_LIMIT_BUCKET = "public_contact_submission";',
   "const RATE_LIMIT_MAX_REQUESTS = 5;",
   "const RATE_LIMIT_WINDOW_SECONDS = 600;",
 ]) {
   if (!contactRateLimit.includes(token)) failures.push(`contact rate limiter is missing shared enforcement: ${token}`);
+}
+const contactRateLimitIdentity = read("src/features/contact/rate-limit-identity.ts");
+if (!contactRateLimitIdentity.includes("createHmac")) {
+  failures.push("contact rate-limit identity must use keyed hashing rather than a public, reversible IP hash");
 }
 const contactRoute = read("src/app/api/contact/route.ts");
 if (!contactRoute.includes("consumePublicContactRateLimit(")) failures.push("contact route must use the shared rate limiter");
