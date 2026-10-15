@@ -47,8 +47,8 @@ export async function generateMetadata(): Promise<Metadata> {
     : siteConfig.description;
   const configuredTitle = typeof seo?.title === "string" ? seo.title.trim() : "";
   const configuredDescription = typeof seo?.description === "string" ? seo.description.trim() : "";
-  const name = configuredTitle || defaultTitle;
-  const description = configuredDescription || defaultDescription;
+  const name = !isEnglish && configuredTitle ? configuredTitle : defaultTitle;
+  const description = !isEnglish && configuredDescription ? configuredDescription : defaultDescription;
   const ogTitle = typeof social?.ogTitle === "string" && social.ogTitle.trim()
     ? social.ogTitle.trim()
     : name;
@@ -56,7 +56,7 @@ export async function generateMetadata(): Promise<Metadata> {
     ? social.ogDescription.trim()
     : description;
   const configuredImage = typeof social?.ogImageUrl === "string" ? social.ogImageUrl.trim() : "";
-  const ogImage = configuredImage.startsWith("/") || /^https:\/\//i.test(configuredImage)
+  const ogImage = (configuredImage.startsWith("/") && !configuredImage.startsWith("//")) || /^https:\/\//i.test(configuredImage)
     ? configuredImage
     : defaultOgImage;
   const rawKeywords = seo?.keywords;
