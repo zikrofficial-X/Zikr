@@ -325,11 +325,23 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   const completionRef = useRef(false);
 
   useEffect(() => {
+    setLevelIndex(0);
+  }, [difficulty, restartToken]);
+
+  useEffect(() => {
     let active = true;
     setLoading(true);
     setAvailable(true);
-    setLevelIndex(0);
-    fetch("/api/kids/games/verse?difficulty=" + difficulty, { credentials: "include" })
+    setSource(null);
+    setBaseWords([]);
+    setTokens([]);
+    setAnswer([]);
+    setMistakes(0);
+    setHintVisible(false);
+    setFeedback("جاري تجهيز النص القرآني...");
+    completionRef.current = false;
+
+    fetch("/api/kids/games/verse?difficulty=" + difficulty + "&level=" + levelIndex, { credentials: "include" })
       .then(response => { if (!response.ok) throw new Error("unavailable"); return response.json() as Promise<{ surah?: number; ayah?: number; sourceText?: string; words?: string[] }>; })
       .then(data => {
         if (!active) return;
@@ -342,7 +354,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
       .catch(() => active && setAvailable(false))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [difficulty, restartToken]);
+  }, [difficulty, levelIndex, restartToken]);
 
   const meta = getKidsLevelMeta("verse-puzzle", difficulty, levelIndex);
 

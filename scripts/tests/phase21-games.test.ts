@@ -7,6 +7,7 @@ import { getZikrRunnerRules } from "../../src/lib/games/zikr-runner";
 import { getZikrRoadRules } from "../../src/lib/games/zikr-road";
 import { getZikrJumpRules } from "../../src/lib/games/zikr-jump";
 import { getHilalFlyRules } from "../../src/lib/games/hilal-fly";
+import { getVersePuzzleReference } from "../../src/lib/games/verse-puzzle";
 import { getGoodDeedsRules } from "../../src/lib/games/good-deeds";
 import { getMosqueCleanupRules } from "../../src/lib/games/mosque-cleanup";
 import { getZikrColoringRules } from "../../src/lib/games/zikr-coloring";
@@ -36,6 +37,17 @@ for (const id of gameIds) {
     );
     assert.equal(ids.size, KIDS_LEVEL_COUNT, "level ids must be unique for " + id + "/" + difficulty);
   }
+}
+
+for (const difficulty of ["easy", "normal", "hard"] as const) {
+  const verseReferences = Array.from({ length: KIDS_LEVEL_COUNT }, (_, level) =>
+    getVersePuzzleReference(difficulty, level),
+  );
+  assert.equal(
+    new Set(verseReferences.map(reference => `${reference.surah}:${reference.ayah}`)).size,
+    KIDS_LEVEL_COUNT,
+    "each Verse Puzzle level must use a distinct verified ayah for " + difficulty,
+  );
 }
 
 for (const difficulty of ["easy", "normal", "hard"] as const) {
