@@ -35,7 +35,7 @@ jobs:
               if (Array.isArray(data) || data.type !== "file" || !data.content) {
                 throw new Error("Expected a text file in the release source commit: " + path);
               }
-              return Buffer.from(data.content.replace(/\\n/g, ""), "base64").toString("utf8");
+              return Buffer.from(data.content.replace(/\n/g, ""), "base64").toString("utf8");
             };
 
             const [tagText, packageText, retryText] = await Promise.all([
@@ -46,7 +46,7 @@ jobs:
 
             const tag = tagText.trim();
             const version = String(JSON.parse(packageText).version ?? "");
-            if (!/^v[0-9]+\\.[0-9]+\\.[0-9]+$/.test(tag) || tag !== "v" + version) {
+            if (!/^v[0-9]+\.[0-9]+\.[0-9]+$/.test(tag) || tag !== "v" + version) {
               core.info("Skipping: source version and canonical release tag do not match.");
               return;
             }
@@ -56,7 +56,8 @@ jobs:
             }
 
             const notes = await readText("docs/releases/" + version + ".md");
-            if (!notes.includes("Release tag: \`" + tag + "\`")) {
+            const backtick = String.fromCharCode(96);
+            if (!notes.includes("Release tag: " + backtick + tag + backtick)) {
               core.setFailed("Release notes do not declare the canonical release tag.");
               return;
             }
