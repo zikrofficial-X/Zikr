@@ -33,6 +33,9 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   const [queuedCount, setQueuedCount] = useState(0);
   const [restartToken, setRestartToken] = useState(0);
   const [initializing, setInitializing] = useState(true);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const elapsedRef = useRef(0);
+  const roundStartedAtRef = useRef(Date.now());
   const lastHudUpdate = useRef(0);
   const dailyMission = useMemo(() => getDailyMission(gameId), [gameId]);
   const missionProgress = useMemo(() => getMissionProgress(dailyMission, hud), [dailyMission, hud]);
@@ -45,12 +48,21 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     return () => window.removeEventListener("online", sync);
   }, [refreshQueue]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const seconds = Math.max(0, Math.floor((Date.now() - roundStartedAtRef.current) / 1000));
+      elapsedRef.current = seconds;
+      setElapsedSeconds(seconds);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
 
   const handleHud = useCallback((next: WorldHud) => {
     const now = Date.now();
     if (now - lastHudUpdate.current < 120) return;
     lastHudUpdate.current = now;
-    setHud(next);
+    setHud({ ...next, timeSeconds: elapsedRef.current });
   }, []);
 
   const submitResult = useCallback(async (next: WorldHud) => {
@@ -63,11 +75,15 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
       level: Math.max(0, Math.floor(next.level)),
       combo: Math.max(0, Math.floor(next.combo)),
       completed: next.completed,
+      timeSeconds: Math.max(0, Math.floor(next.timeSeconds ?? elapsedRef.current)),
       metadata: {
         source: "kids-world",
         runtime: definition.runtimeKind,
         dailyMissionId: dailyMission.id,
         dailyMissionCompleted: getMissionProgress(dailyMission, next).completed,
+        roundTimeSeconds: Math.max(0, Math.floor(next.timeSeconds ?? elapsedRef.current)),
+        mistakes: Math.max(0, Math.floor(next.mistakes ?? 0)),
+        accuracy: typeof next.accuracy === "number" ? Math.max(0, Math.min(100, next.accuracy)) : undefined,
       },
     };
     const clientSubmissionId = createSubmissionId();
@@ -98,10 +114,16 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   }, [dailyMission, definition.runtimeKind, difficulty, gameId, isEnglish, refreshQueue]);
 
   const handleResult = useCallback((next: WorldHud) => {
-    setHud(next); setResult(next); setPaused(false); void submitResult(next);
+    const completedRound = { ...next, timeSeconds: Math.max(0, Math.floor(next.timeSeconds ?? elapsedRef.current)) };
+    setHud(completedRound); setResult(completedRound); setPaused(false); void submitResult(completedRound);
   }, [submitResult]);
 
-  const restart = useCallback(() => { setResult(null); setMessage(""); setPaused(false); setRestartToken(value => value + 1); }, []);
+  const restart = useCallback(() => {
+    roundStartedAtRef.current = Date.now();
+    elapsedRef.current = 0;
+    setElapsedSeconds(0);
+    setResult(null); setMessage(""); setPaused(false); setRestartToken(value => value + 1);
+  }, []);
   const togglePause = useCallback(() => {
     if (!controller || result) return;
     if (paused) { controller.resume(); setPaused(false); } else { controller.pause(); setPaused(true); }
@@ -166,6 +188,12 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
             <strong className="text-lg text-brand-gold">{formatNumber(item.value, isEnglish)}{item.label === (isEnglish ? "Distance" : "المسافة") ? (isEnglish ? "m" : "م") : ""}</strong>
           </div>
         ))}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 text-center text-xs text-brand-cream/55" aria-label={isEnglish ? "Round statistics" : "إحصائيات الجولة"}>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-2 py-2"><span className="block">{isEnglish ? "Time" : "الوقت"}</span><strong className="mt-1 block text-brand-cream">{formatNumber(elapsedSeconds, isEnglish)} {isEnglish ? "s" : "ث"}</strong></div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-2 py-2"><span className="block">{isEnglish ? "Combo" : "السلسلة"}</span><strong className="mt-1 block text-brand-gold">{formatNumber(hud.combo, isEnglish)}</strong></div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-2 py-2"><span className="block">{isEnglish ? "Progress" : "التقدم"}</span><strong className="mt-1 block text-brand-emerald">{formatNumber(hud.collectibles, isEnglish)}</strong></div>
       </div>
 
       <div className="rounded-2xl border border-brand-gold/20 bg-brand-gold/5 p-4" aria-live="polite">
@@ -236,15 +264,16 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
                       </span>
                     ))}
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {[
                       { label: isEnglish ? "Score" : "النقاط", value: result.score },
                       { label: isEnglish ? "Stars" : "النجوم", value: result.collectibles },
                       { label: isEnglish ? "Level" : "المستوى", value: result.level },
+                      { label: isEnglish ? "Time" : "الوقت", value: result.timeSeconds ?? elapsedSeconds, suffix: isEnglish ? "s" : "ث" },
                     ].map((item) => (
                       <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
                         <span className="block text-xs text-brand-cream/55">{item.label}</span>
-                        <strong className="mt-1 block text-lg text-brand-gold">{formatNumber(item.value, isEnglish)}</strong>
+                        <strong className="mt-1 block text-lg text-brand-gold">{formatNumber(item.value, isEnglish)}{item.suffix ?? ""}</strong>
                       </div>
                     ))}
                   </div>

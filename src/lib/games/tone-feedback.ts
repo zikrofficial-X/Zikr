@@ -48,7 +48,13 @@ export class ToneFeedback {
 
   setMuted(value: boolean) {
     this.muted = value;
-    if (value) this.context?.suspend().catch(() => undefined);
+    if (value) {
+      this.context?.suspend().catch(() => undefined);
+      this.music?.pause();
+      return;
+    }
+    this.context?.resume().catch(() => undefined);
+    if (this.music && this.music.paused) this.music.play().catch(() => undefined);
   }
 
   play(frequency: number, duration = 0.08) {
@@ -65,7 +71,7 @@ export class ToneFeedback {
     if (!this.music) {
       this.music = new Audio(this.musicUrl);
       this.music.loop = true;
-      this.music.volume = 0.16;
+      this.music.volume = 0.12;
       this.music.preload = "auto";
     }
     if (this.music.paused) this.music.play().catch(() => undefined);

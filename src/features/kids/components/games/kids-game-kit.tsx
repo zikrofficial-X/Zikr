@@ -13,13 +13,13 @@ export type KidsWorldTheme =
   | "sea";
 
 const THEME_STYLES: Record<KidsWorldTheme, CSSProperties> = {
-  garden: { background: "linear-gradient(160deg,#103c3a 0%,#071c26 58%,#06121a 100%)" },
-  mosque: { background: "linear-gradient(160deg,#153948 0%,#0b202b 52%,#06131a 100%)" },
-  night: { background: "linear-gradient(160deg,#17224d 0%,#090f2a 54%,#050916 100%)" },
-  dawn: { background: "linear-gradient(160deg,#5f4933 0%,#263049 48%,#091421 100%)" },
-  oasis: { background: "linear-gradient(160deg,#174f4a 0%,#0c2d38 48%,#07131e 100%)" },
-  library: { background: "linear-gradient(160deg,#3b2b48 0%,#17172c 54%,#080912 100%)" },
-  sea: { background: "linear-gradient(160deg,#15516a 0%,#0a3046 50%,#06131d 100%)" },
+  garden: { background: "linear-gradient(160deg,rgba(16,60,58,.74),rgba(7,28,38,.9)),url('/kids/games/scene-night-garden.png')" },
+  mosque: { background: "linear-gradient(160deg,rgba(21,57,72,.72),rgba(6,19,26,.9)),url('/kids/games/scene-mosque-courtyard.png')" },
+  night: { background: "linear-gradient(160deg,rgba(23,34,77,.7),rgba(5,9,22,.92)),url('/kids/games/scene-moon-sky.png')" },
+  dawn: { background: "linear-gradient(160deg,rgba(95,73,51,.72),rgba(9,20,33,.9)),url('/kids/games/scene-moon-sky.png')" },
+  oasis: { background: "linear-gradient(160deg,rgba(23,79,74,.72),rgba(7,19,30,.9)),url('/kids/games/scene-mosque-courtyard.png')" },
+  library: { background: "linear-gradient(160deg,rgba(59,43,72,.76),rgba(8,9,18,.92)),url('/kids/games/scene-night-garden.png')" },
+  sea: { background: "linear-gradient(160deg,rgba(21,81,106,.72),rgba(6,19,29,.9)),url('/kids/games/scene-moon-sky.png')" },
 };
 
 const STARS = [
@@ -53,10 +53,10 @@ export function KidsGameStage({
       role="application"
       aria-label={ariaLabel}
       className={
-        "relative mx-auto min-h-[520px] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-brand-gold/20 shadow-2xl " +
+        "relative mx-auto aspect-[16/9] min-h-[520px] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-brand-gold/20 shadow-2xl " +
         className
       }
-      style={THEME_STYLES[theme]}
+      style={{ ...THEME_STYLES[theme], backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }}
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         {STARS.map(([left, top, type], index) => (

@@ -105,6 +105,7 @@ if (!readFileSync(join(root, "src/features/kids/components/games/game-shell.tsx"
 
 const shellSource = readFileSync(join(root, "src/features/kids/components/games/game-shell.tsx"), "utf8");
 if (!shellSource.includes("getDailyMission") || !shellSource.includes("dailyMissionCompleted")) throw new Error("Daily mission integration is missing.");
+if (!shellSource.includes("elapsedSeconds") || !shellSource.includes("roundTimeSeconds")) throw new Error("Round timing statistics are missing.");
 const artIndexSource = readFileSync(join(root, "src/features/kids/components/games/games-index.tsx"), "utf8");
 if (!artIndexSource.includes("KidsGameArt")) throw new Error("Unique game art is not connected.");
 const missionSource = readFileSync(join(root, "src/lib/games/game-missions.ts"), "utf8");
@@ -117,6 +118,13 @@ for (const id of gameIds) if (!migrationSource.includes("('" + id + "'")) throw 
 
 const visuals = readFileSync(join(root, "src/features/kids/components/games/kids-game-visuals.tsx"), "utf8");
 for (const id of gameIds) if (!visuals.includes('case "' + id + '"')) throw new Error("Dedicated visual world missing for " + id);
+const kit = readFileSync(join(root, "src/features/kids/components/games/kids-game-kit.tsx"), "utf8");
+for (const scene of ["scene-moon-sky.png", "scene-mosque-courtyard.png", "scene-night-garden.png"]) {
+  if (!kit.includes(scene)) throw new Error("High-resolution game background is not connected: " + scene);
+}
+if (!kit.includes("aspect-[16/9]") || !kit.includes("backgroundSize: \"cover\"")) throw new Error("Responsive high-resolution stage contract is incomplete.");
+const tone = readFileSync(join(root, "src/lib/games/tone-feedback.ts"), "utf8");
+if (!tone.includes("this.music?.pause()") || !tone.includes("this.music.play()")) throw new Error("Mute/unmute audio recovery is incomplete.");
 const runtimeFiles: Record<string, string> = {
   "src/features/kids/components/games/kids-action-runner-road.tsx": "zikr-runner,zikr-road",
   "src/features/kids/components/games/kids-action-adventure.tsx": "zikr-jump,hilal-fly,mosque-adventure",
