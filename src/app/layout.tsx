@@ -10,6 +10,7 @@ import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
 import { NativeCapacitorBridgeLoader } from "@/components/layout/native-capacitor-bridge-loader";
 import { getRequestLocaleContext } from "@/lib/i18n/server";
+import { getSiteSetting } from "@/features/site-content/services/site-content";
 import { Noto_Naskh_Arabic } from "next/font/google";
 
 const notoNaskhArabic = Noto_Naskh_Arabic({
@@ -35,10 +36,35 @@ export const viewport: Viewport = {
 export async function generateMetadata(): Promise<Metadata> {
   const { locale, htmlLocale } = await getRequestLocaleContext();
   const isEnglish = locale === "en";
-  const name = isEnglish ? "ZIKR | Islamic Platform" : siteConfig.name;
-  const description = isEnglish
+  const [seo, social] = await Promise.all([
+    getSiteSetting("seo"),
+    getSiteSetting("social"),
+  ]);
+
+  const defaultTitle = isEnglish ? "ZIKR | Islamic Platform" : siteConfig.name;
+  const defaultDescription = isEnglish
     ? "ZIKR is a comprehensive Islamic platform for Quran, Hadith, Prophets, prayer times, remembrance, learning, and family-friendly content."
     : siteConfig.description;
+  const configuredTitle = typeof seo?.title === "string" ? seo.title.trim() : "";
+  const configuredDescription = typeof seo?.description === "string" ? seo.description.trim() : "";
+  const name = configuredTitle || defaultTitle;
+  const description = configuredDescription || defaultDescription;
+  const ogTitle = typeof social?.ogTitle === "string" && social.ogTitle.trim()
+    ? social.ogTitle.trim()
+    : name;
+  const ogDescription = typeof social?.ogDescription === "string" && social.ogDescription.trim()
+    ? social.ogDescription.trim()
+    : description;
+  const configuredImage = typeof social?.ogImageUrl === "string" ? social.ogImageUrl.trim() : "";
+  const ogImage = configuredImage.startsWith("/") || /^https:\/\//i.test(configuredImage)
+    ? configuredImage
+    : defaultOgImage;
+  const rawKeywords = seo?.keywords;
+  const keywords = Array.isArray(rawKeywords)
+    ? rawKeywords.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    : typeof rawKeywords === "string"
+      ? rawKeywords.split(",").map(item => item.trim()).filter(Boolean)
+      : undefined;
 
   return {
     metadataBase: new URL(siteConfig.url),
@@ -53,21 +79,22 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s | ${siteConfig.shortName}`,
     },
     description,
+    ...(keywords?.length ? { keywords } : {}),
     alternates: { canonical: "/" },
     openGraph: {
-      title: name,
-      description,
+      title: ogTitle,
+      description: ogDescription,
       type: "website",
       locale: htmlLocale.replace("-", "_"),
       url: siteConfig.url,
       siteName: siteConfig.shortName,
-      images: [{ url: defaultOgImage }],
+      images: [{ url: ogImage, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
-      title: name,
-      description,
-      images: [defaultOgImage],
+      title: ogTitle,
+      description: ogDescription,
+      images: [ogImage],
     },
   };
 }
