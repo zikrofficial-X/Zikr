@@ -122,7 +122,7 @@ const kit = readFileSync(join(root, "src/features/kids/components/games/kids-gam
 for (const scene of ["scene-moon-sky.png", "scene-mosque-courtyard.png", "scene-night-garden.png"]) {
   if (!kit.includes(scene)) throw new Error("High-resolution game background is not connected: " + scene);
 }
-if (!kit.includes("aspect-[16/9]") || !kit.includes("backgroundSize: \"cover\"")) throw new Error("Responsive high-resolution stage contract is incomplete.");
+if (kit.includes("aspect-[16/9]") || !kit.includes("min-h-[460px]") || !kit.includes("max-w-5xl") || !kit.includes("overflow-hidden") || !kit.includes("backgroundSize: \"cover\"")) throw new Error("Responsive content-driven game stage contract is incomplete.");
 const tone = readFileSync(join(root, "src/lib/games/tone-feedback.ts"), "utf8");
 if (!tone.includes("this.music?.pause()") || !tone.includes("this.music.play()")) throw new Error("Mute/unmute audio recovery is incomplete.");
 const runtimeFiles: Record<string, string> = {
