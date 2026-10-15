@@ -1,0 +1,179 @@
+name: ZIKR Finalization Controlled Release
+
+on:
+  # Production deployment is manual-only; ordinary source pushes never enqueue a skipped release job.
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type RELEASE to authorize a production deployment from main"
+        required: true
+        type: string
+      release_reason:
+        description: "Release reason"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-finalization-production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Controlled production release
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment:
+      name: production
+    env:
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+      VERCEL_ORG_ID: team_RxPjmgZoSFmKGjScefYmwIVv
+      VERCEL_PROJECT_ID: prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
+      PGSSLMODE: require
+    steps:
+      - name: Checkout exact release commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Fail fast on missing or unsafe production credentials
+        shell: bash
+        env:
+          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          blocked=0
+          if [[ -z "${VERCEL_TOKEN:-}" ]]; then
+            echo "::error title=Missing Vercel deployment credential::Add VERCEL_TOKEN to the production environment/repository secrets; deployment cannot be authenticated."
+            blocked=1
+          fi
+          if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
+            echo "::error title=Missing Supabase admin connection::Add SUPABASE_DB_URL using POSTGRES_URL_NON_POOLING or a direct administrative connection for the canonical Supabase project."
+            blocked=1
+          else
+            python3 scripts/verify-supabase-db-url.py
+          fi
+          if (( blocked != 0 )); then
+            echo "::error title=Production release blocked::Fix every credential error above, then dispatch the controlled release with confirmation RELEASE."
+            exit 1
+          fi
+          echo "Production release credentials passed presence and project guards."
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+        timeout-minutes: 15
+
+      - name: Verify exact release flag
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(tr -d '\r\n' < docs/finalization/PRODUCTION_RELEASE.flag)" = "RELEASE"
+          test "${{ github.ref }}" = "refs/heads/main"
+
+      - name: Verify release contract
+        run: pnpm release:contract:check
+
+      - name: Re-run release integrity gate
+        run: pnpm verify:pr
+        timeout-minutes: 15
+
+      - name: Install PostgreSQL client for production schema verification
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Verify production data and reconcile migration history safely
+        env:
+          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
+          EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
+        run: bash scripts/reconcile-supabase-migration-history.sh
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@59.23.1
+
+      - name: Validate Vercel release configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}"
+          test -n "${VERCEL_ORG_ID:-}"
+          test -n "${VERCEL_PROJECT_ID:-}"
+
+      - name: Authenticate and link exact Vercel project
+        shell: bash
+        run: |
+          set -uo pipefail
+          # Fail with a readable annotation instead of a bare "exit code 1".
+          if ! who="$(vercel whoami 2>&1)"; then
+            echo "::error title=Vercel token rejected::$(printf '%s' "$who" | tail -n 3 | tr '\n' ' ' | cut -c1-300)"
+            exit 1
+          fi
+          echo "Authenticated to Vercel as: ${who}"
+          # Pin the project through project.json (orgId = team id) so no slug/scope lookup is needed.
+          rm -rf .vercel && mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "${VERCEL_ORG_ID}" "${VERCEL_PROJECT_ID}" > .vercel/project.json
+
+      - name: Pull production Vercel configuration
+        shell: bash
+        run: |
+          set -uo pipefail
+          if ! out="$(vercel pull --yes --environment=production 2>&1)"; then
+            echo "::error title=vercel pull failed::$(printf '%s' "$out" | tail -n 4 | tr '\n' ' ' | cut -c1-350)"
+            exit 1
+          fi
+          printf '%s\n' "$out" | tail -n 3
+
+      - name: Build production artifact
+        run: vercel build --prod
+
+      - name: Deploy prebuilt artifact to production
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="$(vercel deploy --prebuilt --prod --yes)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Production deployment: $url"
+
+      - name: Production smoke test on deployed artifact
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: pnpm production:smoke
+
+      - name: Release evidence
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          RELEASE_REASON: ${{ inputs.release_reason || 'Finalization release' }}
+        run: |
+          {
+            echo "## ZIKR Finalization Production Release"
+            echo ""
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Reason: ${RELEASE_REASON}"
+            echo "- Deployment: ${DEPLOYMENT_URL}"
+            echo "- Vercel Git auto-deploy: DISABLED"
+            echo "- Controlled release trigger: ${{ github.event_name }}"
+          } >> "$GITHUB_STEP_SUMMARY"
