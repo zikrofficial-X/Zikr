@@ -11,6 +11,7 @@ import { staticArticles, type StaticArticle } from "@/features/articles/data/art
 import { adsenseEditorialArticles } from "@/features/articles/data/adsense-editorial";
 import { resolveCanonicalPublished } from "@/lib/data/content-merge";
 import { extendedEditorialArticles } from "@/features/articles/data/extended-editorial";
+import { longformEditorialArticles } from "@/features/articles/data/longform-editorial";
 import type { Locale } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n/server";
 
@@ -77,6 +78,26 @@ function mapStaticArticle(item: StaticArticle, locale: Locale): Article {
   };
 }
 
+/**
+ * Long-form editorial articles ship with the application so the public catalogue always contains
+ * in-depth, referenced reading even when the database is empty or a content export is outdated.
+ * They are listed first and never duplicate a database article with the same slug.
+ */
+function withLongformArticles(articles: Article[], locale: Locale, categoryId?: string): Article[] {
+  const known = new Set(articles.map((article) => article.slug));
+  const extras = longformEditorialArticles
+    .map((article) => mapStaticArticle(article, locale))
+    .filter(
+      (article) =>
+        article.slug &&
+        article.title &&
+        !known.has(article.slug) &&
+        normalizedText(article.content).length >= MIN_PUBLIC_ARTICLE_CHARS &&
+        (!categoryId || categoryId === "all" || article.categoryId === categoryId),
+    );
+  return [...extras, ...articles];
+}
+
 const offlineArticlesPromise = new Map<Locale, Promise<Article[]>>();
 
 async function loadOfflineArticles(locale: Locale): Promise<Article[]> {
@@ -110,7 +131,7 @@ async function loadOfflineArticles(locale: Locale): Promise<Article[]> {
 function getFallbackArticles(locale: Locale): Article[] {
   return Array.from(
     new Map(
-      [...staticArticles, ...adsenseEditorialArticles, ...extendedEditorialArticles]
+      [...staticArticles, ...adsenseEditorialArticles, ...extendedEditorialArticles, ...longformEditorialArticles]
         .map((article) => mapStaticArticle(article, locale))
         .filter(
           (article) =>
@@ -178,14 +199,17 @@ export async function getArticles(categoryId?: string, limit = 100, locale?: Loc
           console.error("[articles] Offline catalogue unavailable:", error);
         }
 
-        return resolveCanonicalPublished(publicArticles, [...offlineArticles, ...getFallbackArticles(activeLocale)])
-          .filter(
-            (article) =>
-              !categoryId ||
-              categoryId === "all" ||
-              article.categoryId === categoryId,
-          )
-          .slice(0, safeLimit);
+        return withLongformArticles(
+          resolveCanonicalPublished(publicArticles, [...offlineArticles, ...getFallbackArticles(activeLocale)])
+            .filter(
+              (article) =>
+                !categoryId ||
+                categoryId === "all" ||
+                article.categoryId === categoryId,
+            ),
+          activeLocale,
+          categoryId,
+        ).slice(0, safeLimit);
       }
     } catch (error) {
       if (!isUnavailableArticlesTable(error)) {
@@ -206,7 +230,7 @@ export async function getArticles(categoryId?: string, limit = 100, locale?: Loc
     ? offline.filter(article => article.categoryId === categoryId)
     : offline;
 
-  return fallback.slice(0, safeLimit);
+  return withLongformArticles(fallback, activeLocale, categoryId).slice(0, safeLimit);
 }
 
 export async function getArticleBySlug(slug: string, locale?: Locale): Promise<Article | null> {
