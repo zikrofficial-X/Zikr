@@ -127,6 +127,13 @@ export async function requestVideoAutomationRunAction() {
   ).catch(() => []);
   const rawBatch = Number(batchRows?.[0]?.value ?? 3);
   const batchSize = Number.isInteger(rawBatch) ? Math.min(10, Math.max(1, rawBatch)) : 3;
+  const enabledRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+    "/rest/v1/admin_settings?key=eq.video_automation_enabled&select=value&limit=1",
+  );
+  const configuredEnabled = enabledRows?.[0]?.value;
+  if (configuredEnabled === false || configuredEnabled === "false") {
+    throw new Error("أتمتة الفيديو متوقفة. فعّل «التشغيل التلقائي» أولاً ثم أعد طلب التشغيل.");
+  }
   const key = "video_automation_run_now";
   const requestedAt = new Date().toISOString();
   const request = { requestedAt, requestedBy: profile.id, dispatchedAt: null as string | null, failedAt: null as string | null, error: null as string | null };
@@ -158,8 +165,34 @@ export async function requestVideoAutomationRunAction() {
       metadata: { requestedAt, batchSize, priority: "urgent", dispatchedDirectly: true },
     });
   } catch (error) {
-    const failedAt = new Date().toISOString();
     const message = error instanceof Error ? error.message : String(error);
+    if (message === "GitHub workflow dispatch token is not configured.") {
+      // Keep the request in the same database queue consumed by the scheduled
+      // worker instead of falsely marking it failed when Vercel has no dispatch PAT.
+      const queuedAt = new Date().toISOString();
+      const queuedRequest = {
+        ...request,
+        dispatchPending: true,
+        queuedForScheduledWorker: true,
+        fallbackMessage: "تم حفظ الطلب. سيعالجه عامل الفيديو عند دورة GitHub Actions المجدولة التالية؛ التشغيل الفوري يحتاج ضبط GITHUB_DISPATCH_TOKEN في Vercel.",
+      };
+      await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ value: queuedRequest, updated_at: queuedAt }),
+      });
+      await recordAdminAuditEvent({
+        action: "admin.video_automation.run_requested_queued",
+        permission: "system.manage",
+        resourceType: "admin_settings",
+        resourceId: key,
+        metadata: { requestedAt, batchSize, directDispatch: false, fallback: "scheduled-worker" },
+      });
+      revalidatePath("/admin/automation");
+      return;
+    }
+
+    const failedAt = new Date().toISOString();
     await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },

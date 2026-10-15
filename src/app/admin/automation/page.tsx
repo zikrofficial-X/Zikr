@@ -85,6 +85,20 @@ export default async function AdminAutomationPage() {
   ].filter(Boolean) as string[];
 
   const countStatus = (rows: QueueStatus[], status: string) => rows.filter((row) => row.status === status).length;
+  const urgentRun = settings.video_automation_run_now && typeof settings.video_automation_run_now === "object"
+    ? settings.video_automation_run_now as { requestedAt?: string; dispatchedAt?: string | null; failedAt?: string | null; error?: string | null; dispatchPending?: boolean; fallbackMessage?: string | null }
+    : null;
+  const urgentRunStatus = !settingsRes.ok
+    ? "غير متاح"
+    : !urgentRun
+      ? "لا يوجد طلب عاجل"
+      : urgentRun.dispatchPending
+        ? urgentRun.fallbackMessage ?? "تم حفظ الطلب لدورة العامل المجدولة التالية؛ لم يُرسل تشغيل فوري."
+        : urgentRun.failedAt
+          ? `تعذر إرسال الطلب: ${urgentRun.error ?? "سبب غير متاح"}`
+          : urgentRun.dispatchedAt
+            ? "أُرسل الطلب إلى GitHub Actions؛ راجع سجل التشغيل للتأكد من نتيجة التنفيذ."
+            : "الطلب محفوظ وينتظر التنفيذ.";
 
   return (
     <Container className="space-y-8 py-10" dir="rtl">
@@ -179,7 +193,8 @@ export default async function AdminAutomationPage() {
         </div>
 
         <div className="rounded-xl border border-brand-gold/10 bg-black/10 p-4 text-sm text-brand-cream/55">
-          حالة الطلب العاجل: {!settingsRes.ok ? "غير متاح" : settings.video_automation_run_now ? "مطلوب التنفيذ / في طريقه للتشغيل" : "لا يوجد طلب عاجل"}
+          <p className="font-semibold text-brand-cream/70">حالة الطلب العاجل</p>
+          <p className="mt-1">{urgentRunStatus}</p>
         </div>
       </section>
 

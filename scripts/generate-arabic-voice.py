@@ -33,17 +33,50 @@ DEFAULT_PROFILE = "msa"
 
 
 async def synthesize(text: str, output: Path, voice: str, rate: str, pitch: str) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    normalized_text = clean_text(text)
+
+    # Prefer Microsoft's neural voices when the endpoint accepts the runner's
+    # connection. GitHub-hosted datacenter IPs can still receive WebSocket 403s,
+    # even on edge-tts versions with Sec-MS-GEC v2 support.
     try:
         import edge_tts  # type: ignore
+
+        communicate = edge_tts.Communicate(normalized_text, voice=voice, rate=rate, pitch=pitch)
+        await communicate.save(str(output))
+        if output.exists() and output.stat().st_size >= 1024:
+            print(f"[arabic-tts] Primary provider succeeded: edge-tts voice={voice}")
+            return
+        raise RuntimeError("Edge TTS returned an empty or tiny audio file")
+    except Exception as edge_error:
+        output.unlink(missing_ok=True)
+        print(
+            "[arabic-tts] Edge TTS failed; trying the no-key Google Translate Arabic fallback: "
+            + str(edge_error)[:300],
+            file=sys.stderr,
+        )
+
+    try:
+        from gtts import gTTS  # type: ignore
     except ImportError as exc:
-        raise RuntimeError("edge-tts is required; install it with python -m pip install edge-tts") from exc
+        raise RuntimeError(
+            "Edge TTS failed and the gTTS fallback is not installed. "
+            "Install gTTS==2.5.4 in the worker environment."
+        ) from exc
 
-    output.parent.mkdir(parents=True, exist_ok=True)
-    communicate = edge_tts.Communicate(clean_text(text), voice=voice, rate=rate, pitch=pitch)
-    await communicate.save(str(output))
-    if not output.exists() or output.stat().st_size < 1024:
-        raise RuntimeError("Arabic TTS returned an empty audio file")
-
+    try:
+        fallback_tld = os.getenv("ARABIC_TTS_FALLBACK_TLD", "com").strip() or "com"
+        gTTS(normalized_text, lang="ar", tld=fallback_tld, slow=False).save(str(output))
+        if not output.exists() or output.stat().st_size < 1024:
+            output.unlink(missing_ok=True)
+            raise RuntimeError("gTTS returned an empty or tiny audio file")
+        print(f"[arabic-tts] Fallback provider succeeded: gTTS Arabic (tld={fallback_tld})")
+    except Exception as fallback_error:
+        output.unlink(missing_ok=True)
+        raise RuntimeError(
+            f"Both Arabic TTS providers failed. Edge TTS failed; gTTS fallback failed: "
+            f"{str(fallback_error)[:400]}"
+        ) from fallback_error
 
 def resolve_profile() -> dict[str, str]:
     profile_name = os.getenv("ARABIC_TTS_PROFILE", DEFAULT_PROFILE).strip().lower()
