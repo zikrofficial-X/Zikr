@@ -118,7 +118,11 @@ assert_positive "$site_settings" "Site settings rows"
 # a shadow database rebuilt from the repository migration chain.
 diff_file="$(mktemp)"
 trap 'rm -f "$diff_file" /tmp/zikr-supabase-preflight.txt' EXIT
-supabase db diff \
+# PGSSLMODE=require is intentionally scoped away from the Supabase CLI here:
+# the CLI also starts a local shadow database that does not support TLS. The
+# production endpoint requires TLS, and verify-supabase-db-url.py rejects any
+# explicitly weakened sslmode in the supplied remote connection URL.
+env -u PGSSLMODE supabase db diff \
   --db-url "$SUPABASE_DB_URL" \
   --schema public,private,storage,extensions \
   --use-pg-delta \
