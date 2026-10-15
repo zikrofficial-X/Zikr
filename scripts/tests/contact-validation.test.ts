@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { isValidContactEmail } from "../../src/features/contact/validation";
+import { getContactRateLimitActorId } from "../../src/features/contact/rate-limit-identity";
 
 const validAddresses = [
   "test@example.com",
@@ -34,4 +35,10 @@ for (const email of invalidAddresses) {
   assert.equal(isValidContactEmail(email), false, `expected invalid email: ${JSON.stringify(email)}`);
 }
 
-console.log("Contact validation checks passed: valid email addresses (including 's') and malformed inputs.");
+const actorA = getContactRateLimitActorId("203.0.113.10");
+const actorB = getContactRateLimitActorId("203.0.113.11");
+assert.match(actorA, /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+assert.equal(getContactRateLimitActorId("203.0.113.10"), actorA, "rate-limit actor must be stable for a caller");
+assert.notEqual(actorA, actorB, "different client identifiers must use different rate-limit buckets");
+
+console.log("Contact validation and shared rate-limit identity checks passed.");

@@ -4005,6 +4005,15 @@ export type Database = {
           xp_awarded: number
         }[]
       }
+      consume_admin_rate_limit: {
+        Args: {
+          p_actor: string
+          p_bucket: string
+          p_limit: number
+          p_window_seconds: number
+        }
+        Returns: boolean
+      }
       plan_background_reminder_deliveries: {
         Args: { now_at?: string }
         Returns: number

@@ -31,6 +31,19 @@ for (const token of [
   if (!contactMigration.includes(token)) failures.push(`${contactMigrationPath} missing security contract: ${token}`);
 }
 
+const contactRateLimit = read("src/features/contact/services/rate-limit.ts");
+for (const token of [
+  "consume_admin_rate_limit",
+  "public_contact_submission",
+  "p_limit: 5",
+  "p_window_seconds: 600",
+]) {
+  if (!contactRateLimit.includes(token)) failures.push(`contact rate limiter is missing shared enforcement: ${token}`);
+}
+const contactRoute = read("src/app/api/contact/route.ts");
+if (!contactRoute.includes("consumePublicContactRateLimit(")) failures.push("contact route must use the shared rate limiter");
+if (contactRoute.includes("new Map(")) failures.push("contact route must not rely on a per-instance in-memory rate limiter");
+
 const contactService = read("src/features/contact/services/contact.ts");
 if (!contactService.includes("createAdminClient()")) {
   failures.push("contact submission must use server-only privileged database access after public writes are revoked");
