@@ -328,18 +328,40 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Replace assets atomically from the checksum-verified build so reruns
-          # cannot silently retain binaries from an older build of the same tag.
+          # Publish against the resolved release ID. A draft can be returned by
+          # the releases list while the get-by-tag endpoint still returns 404.
           for asset in app-release.apk app-release.aab SHA256SUMS release-metadata.json; do
-            gh release upload "$TAG" "$asset" --repo "$GITHUB_REPOSITORY" --clobber
+            release_body="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
+            existing_ids="$(jq -r --arg name "$asset" '.assets[] | select(.name == $name) | .id' <<< "$release_body")"
+            while IFS= read -r asset_id; do
+              if [[ -n "$asset_id" ]]; then
+                gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" >/dev/null
+              fi
+            done <<< "$existing_ids"
+
+            uploaded="$(curl --fail-with-body --silent --show-error \
+              --request POST \
+              --header "Authorization: Bearer ${GH_TOKEN}" \
+              --header "Accept: application/vnd.github+json" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              --header "Content-Type: application/octet-stream" \
+              --data-binary "@${asset}" \
+              "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${asset}")"
+            uploaded_name="$(jq -r '.name // empty' <<< "$uploaded")"
+            if [[ "$uploaded_name" != "$asset" ]]; then
+              echo "::error title=Android asset upload mismatch::GitHub did not confirm upload of $asset." >&2
+              exit 1
+            fi
+            echo "Uploaded and confirmed $asset."
           done
 
-          gh release edit "$TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --draft=false \
-            --prerelease=false \
-            --latest=true
+          gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
+            --field draft=false \
+            --field prerelease=false \
+            --field make_latest=true >/tmp/published-release.json
+          test "$(jq -r '.draft' /tmp/published-release.json)" = "false"
           echo "Published Android release $TAG."
+
 
       - name: Verify published GitHub Release contains the exact signed assets
         if: steps.gate.outputs.publish == 'true'
