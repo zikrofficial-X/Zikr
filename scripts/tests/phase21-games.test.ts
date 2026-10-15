@@ -7,11 +7,22 @@ import { getZikrRunnerRules } from "../../src/lib/games/zikr-runner";
 import { getZikrRoadRules } from "../../src/lib/games/zikr-road";
 import { getZikrJumpRules } from "../../src/lib/games/zikr-jump";
 import { getHilalFlyRules } from "../../src/lib/games/hilal-fly";
+import { getVersePuzzleReference } from "../../src/lib/games/verse-puzzle";
 import { getGoodDeedsRules } from "../../src/lib/games/good-deeds";
 import { getMosqueCleanupRules } from "../../src/lib/games/mosque-cleanup";
 import { getZikrColoringRules } from "../../src/lib/games/zikr-coloring";
 import { normalizeKidsGameSearch } from "../../src/lib/games/search";
 import { gameKeyAction } from "../../src/lib/games/gameplay-helpers";
+import { accumulateGameLevel, createGameRunTotals } from "../../src/lib/games/run-stats";
+
+const totals1 = accumulateGameLevel(createGameRunTotals(), { score: 120, collectibles: 3, combo: 2 });
+const totals2 = accumulateGameLevel(totals1, { score: 80, collectibles: 2, combo: 5 });
+assert.deepEqual(totals2, { score: 200, collectibles: 5, bestCombo: 5 });
+assert.deepEqual(
+  accumulateGameLevel(totals2, { score: -10, collectibles: Number.NaN, combo: 1 }),
+  { score: 200, collectibles: 5, bestCombo: 5 },
+  "invalid level totals must not decrease or poison a run",
+);
 
 const gameIds = Object.keys(GAME_REGISTRY) as GameId[];
 assert.equal(gameIds.length, 12, "canonical Kids registry must contain exactly 12 games");
@@ -36,6 +47,17 @@ for (const id of gameIds) {
     );
     assert.equal(ids.size, KIDS_LEVEL_COUNT, "level ids must be unique for " + id + "/" + difficulty);
   }
+}
+
+for (const difficulty of ["easy", "normal", "hard"] as const) {
+  const verseReferences = Array.from({ length: KIDS_LEVEL_COUNT }, (_, level) =>
+    getVersePuzzleReference(difficulty, level),
+  );
+  assert.equal(
+    new Set(verseReferences.map(reference => `${reference.surah}:${reference.ayah}`)).size,
+    KIDS_LEVEL_COUNT,
+    "each Verse Puzzle level must use a distinct verified ayah for " + difficulty,
+  );
 }
 
 for (const difficulty of ["easy", "normal", "hard"] as const) {

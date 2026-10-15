@@ -35,7 +35,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   const [initializing, setInitializing] = useState(true);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const elapsedRef = useRef(0);
-  const roundStartedAtRef = useRef(Date.now());
+  const runningSinceRef = useRef<number | null>(null);
   const lastHudUpdate = useRef(0);
   const dailyMission = useMemo(() => getDailyMission(gameId), [gameId]);
   const missionProgress = useMemo(() => getMissionProgress(dailyMission, hud), [dailyMission, hud]);
@@ -48,22 +48,53 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     return () => window.removeEventListener("online", sync);
   }, [refreshQueue]);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      const seconds = Math.max(0, Math.floor((Date.now() - roundStartedAtRef.current) / 1000));
-      elapsedRef.current = seconds;
-      setElapsedSeconds(seconds);
-    }, 1000);
-    return () => window.clearInterval(timer);
+  const getElapsedSeconds = useCallback(() => {
+    const runningSince = runningSinceRef.current;
+    const activeSeconds = runningSince === null ? 0 : (Date.now() - runningSince) / 1000;
+    return Math.max(0, Math.floor(elapsedRef.current + activeSeconds));
   }, []);
+
+  useEffect(() => {
+    const stopClock = () => {
+      if (runningSinceRef.current !== null) {
+        elapsedRef.current += Math.max(0, (Date.now() - runningSinceRef.current) / 1000);
+        runningSinceRef.current = null;
+      }
+      setElapsedSeconds(Math.max(0, Math.floor(elapsedRef.current)));
+    };
+
+    const startClock = () => {
+      if (paused || result || document.visibilityState === "hidden") {
+        stopClock();
+        return;
+      }
+      if (runningSinceRef.current === null) runningSinceRef.current = Date.now();
+      setElapsedSeconds(getElapsedSeconds());
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") stopClock();
+      else startClock();
+    };
+
+    startClock();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    const timer = window.setInterval(() => setElapsedSeconds(getElapsedSeconds()), 1000);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      stopClock();
+    };
+  }, [getElapsedSeconds, paused, result, restartToken]);
 
 
   const handleHud = useCallback((next: WorldHud) => {
     const now = Date.now();
     if (now - lastHudUpdate.current < 120) return;
     lastHudUpdate.current = now;
-    setHud({ ...next, timeSeconds: elapsedRef.current });
-  }, []);
+    setHud({ ...next, timeSeconds: getElapsedSeconds() });
+  }, [getElapsedSeconds]);
 
   const submitResult = useCallback(async (next: WorldHud) => {
     const payload: Omit<GameResultPayload, "clientSubmissionId"> = {
@@ -75,13 +106,13 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
       level: Math.max(0, Math.floor(next.level)),
       combo: Math.max(0, Math.floor(next.combo)),
       completed: next.completed,
-      timeSeconds: Math.max(0, Math.floor(next.timeSeconds ?? elapsedRef.current)),
+      timeSeconds: Math.max(0, Math.floor(next.timeSeconds ?? getElapsedSeconds())),
       metadata: {
         source: "kids-world",
         runtime: definition.runtimeKind,
         dailyMissionId: dailyMission.id,
         dailyMissionCompleted: getMissionProgress(dailyMission, next).completed,
-        roundTimeSeconds: Math.max(0, Math.floor(next.timeSeconds ?? elapsedRef.current)),
+        roundTimeSeconds: Math.max(0, Math.floor(next.timeSeconds ?? getElapsedSeconds())),
         mistakes: Math.max(0, Math.floor(next.mistakes ?? 0)),
         accuracy: typeof next.accuracy === "number" ? Math.max(0, Math.min(100, next.accuracy)) : undefined,
       },
@@ -111,16 +142,16 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
       setMessage(isEnglish ? "Sync is unavailable right now, so the result was saved locally for another attempt." : "تعذر المزامنة الآن، فتم حفظ النتيجة محليًا للمحاولة لاحقًا.");
       await refreshQueue();
     }
-  }, [dailyMission, definition.runtimeKind, difficulty, gameId, isEnglish, refreshQueue]);
+  }, [dailyMission, definition.runtimeKind, difficulty, gameId, getElapsedSeconds, isEnglish, refreshQueue]);
 
   const handleResult = useCallback((next: WorldHud) => {
-    const completedRound = { ...next, timeSeconds: Math.max(0, Math.floor(next.timeSeconds ?? elapsedRef.current)) };
+    const completedRound = { ...next, timeSeconds: Math.max(0, Math.floor(next.timeSeconds ?? getElapsedSeconds())) };
     setHud(completedRound); setResult(completedRound); setPaused(false); void submitResult(completedRound);
-  }, [submitResult]);
+  }, [getElapsedSeconds, submitResult]);
 
   const restart = useCallback(() => {
-    roundStartedAtRef.current = Date.now();
     elapsedRef.current = 0;
+    runningSinceRef.current = null;
     setElapsedSeconds(0);
     setResult(null); setMessage(""); setPaused(false); setRestartToken(value => value + 1);
   }, []);
