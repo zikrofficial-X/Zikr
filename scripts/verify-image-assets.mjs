@@ -5,9 +5,6 @@ const root = process.cwd();
 const requiredAssets = [
   { path: "public/branding/logo-gold.webp", maxBytes: 100 * 1024 },
   { path: "public/branding/og-image.jpg", maxBytes: 200 * 1024 },
-  { path: "public/kids/games/scene-night-garden.webp", maxBytes: 256 * 1024 },
-  { path: "public/kids/games/scene-moon-sky.webp", maxBytes: 256 * 1024 },
-  { path: "public/kids/games/scene-mosque-courtyard.webp", maxBytes: 512 * 1024 },
 ];
 const staleReferences = [
   /logo-gold\.png\b/i,
@@ -22,7 +19,7 @@ function scanFile(filePath) {
   const content = fs.readFileSync(path.join(root, filePath), "utf8");
   content.split(/\r?\n/).forEach((line, index) => {
     for (const pattern of staleReferences) {
-      if (pattern.test(line)) errors.push(`${filePath}:${index + 1}: legacy PNG reference remains`);
+      if (pattern.test(line)) errors.push(`${filePath}:${index + 1}: legacy image path remains`);
     }
   });
 }
@@ -56,4 +53,4 @@ if (errors.length) {
   process.exit(1);
 }
 const total = requiredAssets.reduce((sum, asset) => sum + fs.statSync(path.join(root, asset.path)).size, 0);
-console.log(`Image asset verification passed (${requiredAssets.length} assets; ${(total / 1024).toFixed(1)} KiB combined; legacy PNG references absent).`);
+console.log(`Image asset verification passed (${requiredAssets.length} assets; ${(total / 1024).toFixed(1)} KiB combined; legacy image paths absent).`);
