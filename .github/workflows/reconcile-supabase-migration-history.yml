@@ -1,11 +1,8 @@
 name: ZIKR Guarded Supabase Migration History Reconciliation
 
 on:
-  # This does not deploy the application. A one-shot marker authorizes only the
-  # schema/data preflight and migration-ledger reconciliation on the production DB.
-  push:
-    branches:
-      - main
+  # Manual-only recovery utility. Ordinary source pushes must not create skipped production jobs.
+  # This workflow reconciles migration history only; it never deploys the application.
   workflow_dispatch:
     inputs:
       confirmation:
@@ -23,12 +20,7 @@ concurrency:
 jobs:
   reconcile:
     name: Guarded migration-history reconciliation (no deploy)
-    if: >-
-      github.ref == 'refs/heads/main' &&
-      (
-        (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RECONCILE') ||
-        (github.event_name == 'push' && contains(github.event.head_commit.message, '[reconcile-supabase-history]'))
-      )
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RECONCILE'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     environment:
