@@ -82,7 +82,9 @@ for (const field of [
   "showQuickStart", "showJourneys", "showGuidedPaths",
   "showEditorialLibrary", "showDailyTools", "showDailyVerse",
 ]) {
-  if (!seoPage.includes(`name="${field}"`)) failures.push(`Homepage admin form is missing lower-section toggle: ${field}`);
+  // The form renders checkboxes from a typed array, so the field name is the
+  // array's first item rather than a literal name="..." JSX attribute.
+  if (!seoPage.includes(`["${field}",`)) failures.push(`Homepage admin form is missing lower-section toggle: ${field}`);
   if (!seoActions.includes(`readBoolean(formData, "${field}")`)) failures.push(`Homepage admin save action does not persist lower-section toggle: ${field}`);
 }
 
