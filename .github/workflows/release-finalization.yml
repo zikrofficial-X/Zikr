@@ -97,22 +97,6 @@ jobs:
         run: pnpm verify:pr
         timeout-minutes: 15
 
-      - name: Install PostgreSQL client for production schema verification
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y postgresql-client
-
-      - name: Install Supabase CLI
-        uses: supabase/setup-cli@v3
-        with:
-          version: latest
-
-      - name: Verify production data and reconcile migration history safely
-        env:
-          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
-          EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
-        run: bash scripts/reconcile-supabase-migration-history.sh
-
       - name: Install pinned Vercel CLI
         run: npm install --global vercel@63.1.2
 
@@ -146,6 +130,28 @@ jobs:
           # Pin the project through project.json (orgId = team id) so no slug/scope lookup is needed.
           rm -rf .vercel && mkdir -p .vercel
           printf '{"orgId":"%s","projectId":"%s"}\n' "${VERCEL_ORG_ID}" "${VERCEL_PROJECT_ID}" > .vercel/project.json
+          if ! project_info="$(vercel project inspect "${VERCEL_PROJECT_ID}" --scope "${VERCEL_ORG_ID}" 2>&1)"; then
+            details="$(printf '%s' "${project_info}" | tail -n 4 | tr '\n' ' ' | cut -c1-350)"
+            echo "::error title=Vercel project access failed::The token authenticated, but project ${VERCEL_PROJECT_ID} could not be accessed in team ${VERCEL_ORG_ID}: ${details}"
+            exit 1
+          fi
+          echo "Configured Vercel project access verified before production database changes."
+
+      - name: Install PostgreSQL client for production schema verification
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Verify production data and reconcile migration history safely
+        env:
+          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
+          EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
+        run: bash scripts/reconcile-supabase-migration-history.sh
 
       - name: Pull production Vercel configuration
         shell: bash
