@@ -60,6 +60,12 @@ export async function savePublicSiteSettingAction(formData: FormData) {
       showQuran: readBoolean(formData, "showQuran"),
       showHadith: readBoolean(formData, "showHadith"),
       showPrayerTimes: readBoolean(formData, "showPrayerTimes"),
+      showQuickStart: readBoolean(formData, "showQuickStart"),
+      showJourneys: readBoolean(formData, "showJourneys"),
+      showGuidedPaths: readBoolean(formData, "showGuidedPaths"),
+      showEditorialLibrary: readBoolean(formData, "showEditorialLibrary"),
+      showDailyTools: readBoolean(formData, "showDailyTools"),
+      showDailyVerse: readBoolean(formData, "showDailyVerse"),
     };
   } else if (section === "seo") {
     setting = {
