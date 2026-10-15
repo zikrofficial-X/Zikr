@@ -13,6 +13,16 @@ import { getMosqueCleanupRules } from "../../src/lib/games/mosque-cleanup";
 import { getZikrColoringRules } from "../../src/lib/games/zikr-coloring";
 import { normalizeKidsGameSearch } from "../../src/lib/games/search";
 import { gameKeyAction } from "../../src/lib/games/gameplay-helpers";
+import { accumulateGameLevel, createGameRunTotals } from "../../src/lib/games/run-stats";
+
+const totals1 = accumulateGameLevel(createGameRunTotals(), { score: 120, collectibles: 3, combo: 2 });
+const totals2 = accumulateGameLevel(totals1, { score: 80, collectibles: 2, combo: 5 });
+assert.deepEqual(totals2, { score: 200, collectibles: 5, bestCombo: 5 });
+assert.deepEqual(
+  accumulateGameLevel(totals2, { score: -10, collectibles: Number.NaN, combo: 1 }),
+  { score: 200, collectibles: 5, bestCombo: 5 },
+  "invalid level totals must not decrease or poison a run",
+);
 
 const gameIds = Object.keys(GAME_REGISTRY) as GameId[];
 assert.equal(gameIds.length, 12, "canonical Kids registry must contain exactly 12 games");

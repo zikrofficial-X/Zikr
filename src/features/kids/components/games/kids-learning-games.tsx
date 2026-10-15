@@ -22,6 +22,7 @@ import {
 import { getVersePuzzleRules, getVersePuzzleLevelSeed } from "@/lib/games/verse-puzzle";
 import { isVerseOrderComplete, seededShuffle, shuffleVerseTokens, type IndexedVerseToken } from "@/lib/games/gameplay-helpers";
 import { getKidsLevelMeta, KIDS_LEVEL_COUNT } from "@/lib/games/kids-level-system";
+import { accumulateGameLevel, createGameRunTotals } from "@/lib/games/run-stats";
 import { KidsGameWorld } from "@/features/kids/components/games/kids-game-visuals";
 
 export type LearningGameProps = {
@@ -66,6 +67,12 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   const [feedback, setFeedback] = useState("افتح بطاقتين وابحث عن الموقف والذكر المناسبين.");
   const completionRef = useRef(false);
   const advancingRef = useRef(false);
+  const runTotalsRef = useRef(createGameRunTotals());
+
+  useEffect(() => {
+    runTotalsRef.current = createGameRunTotals();
+    setLevelIndex(0);
+  }, [difficulty, restartToken]);
 
   const meta = getKidsLevelMeta("zikr-memory", difficulty, levelIndex);
   const pairTarget = Math.max(2, Math.min(pairs.length, (difficulty === "easy" ? 3 : difficulty === "normal" ? 4 : 5) + (levelIndex % 2)));
@@ -121,6 +128,8 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
     if (!complete || completionRef.current || advancingRef.current) return;
     completionRef.current = true;
     const finalScore = score + 500;
+    const totals = accumulateGameLevel(runTotalsRef.current, { score: finalScore, collectibles: pairTarget, combo });
+    runTotalsRef.current = totals;
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
       advancingRef.current = true;
       setFeedback("اكتمل " + levelLabel(levelIndex) + ". جهّزنا لك لوحة مختلفة...");
@@ -129,7 +138,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
         setLevelIndex(value => value + 1);
       }, 650);
     } else {
-      const hud = learningHud(finalScore, pairTarget, combo, levelIndex, true);
+      const hud = learningHud(totals.score, totals.collectibles, totals.bestCombo, levelIndex, true);
       onHud(hud);
       onSound("success");
       setFeedback("أكملت جميع مستويات ذاكرة ذِكر.");
@@ -221,6 +230,12 @@ export function WuduChallengeGame({ difficulty, restartToken, paused, onHud, onR
   const [feedback, setFeedback] = useState("اختر الخطوة الصحيحة التالية في الوضوء.");
   const completionRef = useRef(false);
   const advancingRef = useRef(false);
+  const runTotalsRef = useRef(createGameRunTotals());
+
+  useEffect(() => {
+    runTotalsRef.current = createGameRunTotals();
+    setLevelIndex(0);
+  }, [difficulty, restartToken]);
   const meta = getKidsLevelMeta("wudu-challenge", difficulty, levelIndex);
   const stepCount = Math.max(3, Math.min(content.steps.length, baseCount + (levelIndex % 2)));
   const steps = useMemo(() => content.steps.slice(0, stepCount), [content.steps, stepCount]);
@@ -258,12 +273,15 @@ export function WuduChallengeGame({ difficulty, restartToken, paused, onHud, onR
       const finalScore = nextScore + 500;
       setState(prev => ({ ...prev, order: [...prev.order, order], score: finalScore, streak: nextStreak, stepIndex: nextIndex, completed: true }));
       if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
+        runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, { score: finalScore, collectibles: steps.length, combo: nextStreak });
         advancingRef.current = true;
         setFeedback("اكتملت " + levelLabel(levelIndex) + ". محطة ماء جديدة في الطريق...");
         onSound("success");
         window.setTimeout(() => setLevelIndex(value => value + 1), 650);
       } else {
-        const hud = learningHud(finalScore, steps.length, nextStreak, levelIndex, true);
+        const totals = accumulateGameLevel(runTotalsRef.current, { score: finalScore, collectibles: steps.length, combo: nextStreak });
+        runTotalsRef.current = totals;
+        const hud = learningHud(totals.score, totals.collectibles, totals.bestCombo, levelIndex, true);
         onHud(hud);
         onSound("success");
         setFeedback(content.afterDhikr ? "اكتملت الرحلة. " + content.afterDhikr : "أكملت جميع مستويات تحدي الوضوء.");
@@ -323,9 +341,11 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   const [available, setAvailable] = useState(true);
   const [hintVisible, setHintVisible] = useState(false);
   const completionRef = useRef(false);
+  const runTotalsRef = useRef(createGameRunTotals());
 
   useEffect(() => {
     setLevelIndex(0);
+    runTotalsRef.current = createGameRunTotals();
   }, [difficulty, restartToken]);
 
   useEffect(() => {
@@ -372,18 +392,24 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   const score = Math.max(0, answer.length * 220 + (complete ? 500 : 0) - mistakes * rules.mistakePenalty);
 
   useEffect(() => {
-    const hud = learningHud(score, answer.length, Math.max(0, answer.length - mistakes), levelIndex, complete && levelIndex === KIDS_LEVEL_COUNT - 1);
-    onHud(hud);
+    const levelHud = learningHud(score, answer.length, Math.max(0, answer.length - mistakes), levelIndex, complete && levelIndex === KIDS_LEVEL_COUNT - 1);
+    onHud(levelHud);
     if (!complete || completionRef.current) return;
     completionRef.current = true;
+    const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
+      runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
       onSound("success");
       setFeedback("أكملت " + levelLabel(levelIndex) + ". ترتيب جديد للكلمات جاهز...");
       window.setTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
+      const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
+      runTotalsRef.current = totals;
+      const finalHud = learningHud(totals.score, totals.collectibles, totals.bestCombo, levelIndex, true);
+      onHud(finalHud);
       onSound("success");
       setFeedback("أكملت جميع مستويات لغز الآية.");
-      onResult(hud);
+      onResult(finalHud);
     }
   }, [answer.length, complete, levelIndex, mistakes, onHud, onResult, onSound, rules.mistakePenalty, score]);
 
@@ -453,6 +479,12 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
   const [feedback, setFeedback] = useState("اقرأ السؤال ثم اختر الإجابة.");
   const [hiddenOptions, setHiddenOptions] = useState<number[]>([]);
   const advancingRef = useRef(false);
+  const runTotalsRef = useRef(createGameRunTotals());
+
+  useEffect(() => {
+    runTotalsRef.current = createGameRunTotals();
+    setLevelIndex(0);
+  }, [difficulty, restartToken]);
   const meta = getKidsLevelMeta("zikr-quiz", difficulty, levelIndex);
   const count = Math.max(4, Math.min(allQuestions.length, (difficulty === "hard" ? 10 : difficulty === "normal" ? 7 : 5) + (levelIndex % 2)));
   const questions = useMemo(() => {
@@ -481,18 +513,24 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
   const score = correct * 280 + streak * 60 + Math.max(0, correct * 5 - Math.floor(seconds / 20));
 
   useEffect(() => {
-    const hud = learningHud(score, correct, streak, levelIndex, complete && levelIndex === KIDS_LEVEL_COUNT - 1);
-    onHud(hud);
+    const levelHud = learningHud(score, correct, streak, levelIndex, complete && levelIndex === KIDS_LEVEL_COUNT - 1);
+    onHud(levelHud);
     if (!complete || advancingRef.current) return;
+    advancingRef.current = true;
+    const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
-      advancingRef.current = true;
+      runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
       onSound("success");
       setFeedback("أكملت " + levelLabel(levelIndex) + ". أسئلة مختلفة في الطريق...");
       window.setTimeout(() => setLevelIndex(value => value + 1), 700);
     } else {
+      const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
+      runTotalsRef.current = totals;
+      const finalHud = learningHud(totals.score, totals.collectibles, totals.bestCombo, levelIndex, true);
+      onHud(finalHud);
       onSound("success");
       setFeedback("أكملت جميع مستويات اختبار ذِكر.");
-      onResult(hud);
+      onResult(finalHud);
     }
   }, [complete, correct, levelIndex, onHud, onResult, onSound, score, streak]);
 
