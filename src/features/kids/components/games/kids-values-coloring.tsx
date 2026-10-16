@@ -9,6 +9,7 @@ import { getGoodDeedsRules } from "@/lib/games/good-deeds";
 import { getMosqueCleanupRules } from "@/lib/games/mosque-cleanup";
 import { getZikrColoringRules } from "@/lib/games/zikr-coloring";
 import { getKidsLevelMeta, KIDS_LEVEL_COUNT } from "@/lib/games/kids-level-system";
+import { accumulateGameLevel, createGameRunTotals } from "@/lib/games/run-stats";
 import { seededShuffle } from "@/lib/games/gameplay-helpers";
 import { KidsGameWorld } from "@/features/kids/components/games/kids-game-visuals";
 
@@ -39,27 +40,44 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   const [actionSteps, setActionSteps] = useState<Record<string, number>>({});
   const [feedback, setFeedback] = useState("اختر مشهدًا وأكمله.");
   const advancingRef = useRef(false);
+  const runTotalsRef = useRef(createGameRunTotals());
+  const levelResetPendingRef = useRef(false);
+
+  useEffect(() => {
+    runTotalsRef.current = createGameRunTotals();
+    setLevelIndex(0);
+  }, [difficulty, restartToken]);
   const rules = getGoodDeedsRules(difficulty, levelIndex);
   const meta = getKidsLevelMeta("good-deeds", difficulty, levelIndex);
   const deeds = useMemo(() => seededShuffle(DEEDS, "deeds:" + meta.seed).slice(0, Math.min(DEEDS.length, rules.sceneCount)), [meta.seed, rules.sceneCount]);
   const complete = done.length === deeds.length;
   const score = done.length * rules.rewardPerScene;
 
-  useEffect(() => { setDone([]); setActive(null); setActionSteps({}); setFeedback(meta.subtitleAr); advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
+  useEffect(() => { setDone([]); setActive(null); setActionSteps({}); setFeedback(meta.subtitleAr); levelResetPendingRef.current = true; advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
 
   useEffect(() => {
-    const hud: WorldHud = { score: complete ? score + rules.completionBonus : score, collectibles: done.length, distance: 0, combo: done.length, level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
-    onHud(hud);
+    const levelHud: WorldHud = { score: complete ? score + rules.completionBonus : score, collectibles: done.length, distance: 0, combo: done.length, level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
+    onHud(levelHud);
+    if (levelResetPendingRef.current) {
+      levelResetPendingRef.current = false;
+      return;
+    }
     if (!complete || advancingRef.current) return;
     advancingRef.current = true;
+    const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
+      runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
       setFeedback("اكتمل " + levelLabel(levelIndex) + ". مشاهد جديدة في الطريق.");
       onSound("success");
       window.setTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
+      const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
+      runTotalsRef.current = totals;
+      const finalHud: WorldHud = { ...levelHud, score: totals.score, collectibles: totals.collectibles, combo: totals.bestCombo, completed: true };
+      onHud(finalHud);
       setFeedback("أكملت جميع مستويات أعمال الخير.");
       onSound("success");
-      onResult(hud);
+      onResult(finalHud);
     }
   }, [complete, done.length, levelIndex, onHud, onResult, onSound, rules.completionBonus, score]);
 
@@ -140,26 +158,43 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
   const [mistakes, setMistakes] = useState(0);
   const [feedback, setFeedback] = useState("اختر غرضًا ثم اضغط منطقة الترتيب المناسبة.");
   const advancingRef = useRef(false);
+  const runTotalsRef = useRef(createGameRunTotals());
+  const levelResetPendingRef = useRef(false);
+
+  useEffect(() => {
+    runTotalsRef.current = createGameRunTotals();
+    setLevelIndex(0);
+  }, [difficulty, restartToken]);
   const rules = getMosqueCleanupRules(difficulty, levelIndex);
   const meta = getKidsLevelMeta("mosque-cleanup", difficulty, levelIndex);
   const items = useMemo(() => seededShuffle(CLEANUP_ITEMS, "cleanup:" + meta.seed).slice(0, rules.itemCount), [meta.seed, rules.itemCount]);
   const complete = Object.keys(placed).length === items.length;
   const score = Math.max(0, Object.keys(placed).length * 170 - mistakes * rules.mistakePenalty);
 
-  useEffect(() => { setSelected(null); setPlaced({}); setMistakes(0); setFeedback(meta.subtitleAr); advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
+  useEffect(() => { setSelected(null); setPlaced({}); setMistakes(0); setFeedback(meta.subtitleAr); levelResetPendingRef.current = true; advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
 
   useEffect(() => {
-    const hud: WorldHud = { score: complete ? score + rules.completionBonus : score, collectibles: Object.keys(placed).length, distance: 0, combo: Math.max(0, Object.keys(placed).length - mistakes), level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
-    onHud(hud);
+    const levelHud: WorldHud = { score: complete ? score + rules.completionBonus : score, collectibles: Object.keys(placed).length, distance: 0, combo: Math.max(0, Object.keys(placed).length - mistakes), level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
+    onHud(levelHud);
+    if (levelResetPendingRef.current) {
+      levelResetPendingRef.current = false;
+      return;
+    }
     if (!complete || advancingRef.current) return;
     advancingRef.current = true;
     onSound("success");
+    const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
+      runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
       setFeedback("اكتمل " + levelLabel(levelIndex) + ". توزيع جديد للعناصر جاهز.");
       window.setTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
+      const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
+      runTotalsRef.current = totals;
+      const finalHud: WorldHud = { ...levelHud, score: totals.score, collectibles: totals.collectibles, combo: totals.bestCombo, completed: true };
+      onHud(finalHud);
       setFeedback("أكملت جميع مستويات ترتيب المكان.");
-      onResult(hud);
+      onResult(finalHud);
     }
   }, [complete, levelIndex, mistakes, onHud, onResult, onSound, placed, rules.completionBonus, score]);
 
@@ -218,18 +253,40 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   const [selectedColor, setSelectedColor] = useState(COLOR_PALETTE[0]);
   const [customColors, setCustomColors] = useState<string[]>([]);
   const [fills, setFills] = useState<string[]>([]);
-  const [history, setHistory] = useState<string[][]>([]);
+  const [history, setHistory] = useState<Array<{ fills: string[]; paintedRegions: number[] }>>([]);
+  const [roundPaintedRegions, setRoundPaintedRegions] = useState<number[]>([]);
   const [feedback, setFeedback] = useState("اختر لونًا ثم اضغط على أجزاء اللوحة.");
   const [saved, setSaved] = useState<Record<string, string[]>>({});
+  const savedRef = useRef<Record<string, string[]>>({});
   const advancingRef = useRef(false);
+  const runTotalsRef = useRef(createGameRunTotals());
+  const levelResetPendingRef = useRef(false);
   const rules = getZikrColoringRules(difficulty, levelIndex);
   const meta = getKidsLevelMeta("zikr-coloring", difficulty, levelIndex);
   const sheetIndex = meta.pattern % COLORING_SHEETS.length;
   const current = COLORING_SHEETS[sheetIndex];
 
   useEffect(() => {
-    try { const stored = JSON.parse(localStorage.getItem("zikr-coloring-gallery-v3") || "{}"); if (stored && typeof stored === "object") setSaved(stored); } catch {}
+    try {
+      const stored = JSON.parse(localStorage.getItem("zikr-coloring-gallery-v3") || "{}");
+      if (stored && typeof stored === "object" && !Array.isArray(stored)) {
+        const gallery: Record<string, string[]> = {};
+        for (const [key, value] of Object.entries(stored)) {
+          if (Array.isArray(value) && value.every(color => typeof color === "string")) gallery[key] = value;
+        }
+        savedRef.current = gallery;
+        setSaved(gallery);
+      }
+    } catch {
+      savedRef.current = {};
+      setSaved({});
+    }
   }, []);
+
+  useEffect(() => {
+    runTotalsRef.current = createGameRunTotals();
+    setLevelIndex(0);
+  }, [difficulty, restartToken]);
 
   const storageKey = current.id + ":" + difficulty + ":" + levelIndex;
   const lastRestartRef = useRef(restartToken);
@@ -237,27 +294,33 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
     const restarting = lastRestartRef.current !== restartToken && restartToken > 0;
     if (restarting) {
       lastRestartRef.current = restartToken;
-      setFills([]);
-      setHistory([]);
       setCustomColors([]);
-      setSaved(value => {
-        const next = { ...value, [storageKey]: [] };
-        try { localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(next)); } catch {}
-        return next;
-      });
-      setFeedback(meta.subtitleAr);
+    }
+    setFills(savedRef.current[storageKey] ?? []);
+    setHistory([]);
+    setRoundPaintedRegions([]);
+    levelResetPendingRef.current = true;
+    advancingRef.current = false;
+    setFeedback(meta.subtitleAr);
+  }, [meta.subtitleAr, restartToken, storageKey]);
+
+  const savedSyncInitializedRef = useRef(false);
+  useEffect(() => {
+    if (!savedSyncInitializedRef.current) {
+      savedSyncInitializedRef.current = true;
       return;
     }
-    setFills(saved[storageKey] ?? []);
-    setHistory([]);
-    setFeedback(meta.subtitleAr);
-  }, [meta.subtitleAr, restartToken, saved, storageKey]);
+    savedRef.current = saved;
+  }, [saved]);
 
   const paint = (index: number) => {
-    if (paused) return;
-    setHistory(previous => [...previous.slice(-19), fills]);
+    if (paused || complete) return;
+    setHistory(previous => [...previous.slice(-19), { fills, paintedRegions: roundPaintedRegions }]);
     const next = [...fills]; next[index] = selectedColor; setFills(next);
-    setSaved(value => { const nextSaved = { ...value, [storageKey]: next }; localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(nextSaved)); return nextSaved; });
+    const nextGallery = { ...saved, [storageKey]: next };
+    setSaved(nextGallery);
+    try { localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(nextGallery)); } catch {}
+    setRoundPaintedRegions(previous => previous.includes(index) ? previous : [...previous, index]);
     onSound("collect");
     setFeedback("تم تلوين جزء جديد.");
   };
@@ -274,42 +337,56 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
     setFeedback("صنعت لونًا جديدًا. جرّبه في اللوحة.");
   };
 
-  const undo = () => setHistory(previous => {
-    const last = previous.at(-1); if (!last) return previous;
-    setFills(last);
-    setSaved(value => { const next = { ...value, [storageKey]: last }; localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(next)); return next; });
+  const undo = () => {
+    const last = history[history.length - 1];
+    if (!last) return;
+    setFills(last.fills);
+    setRoundPaintedRegions(last.paintedRegions);
+    setHistory(previous => previous.slice(0, -1));
+    const nextGallery = { ...saved, [storageKey]: last.fills };
+    setSaved(nextGallery);
+    try { localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(nextGallery)); } catch {}
     onSound("move");
-    return previous.slice(0, -1);
-  });
+  };
 
-  const filled = fills.filter(Boolean).length;
-  const complete = filled >= rules.regionTarget;
+  const paintedThisLevel = roundPaintedRegions.length;
+  const complete = paintedThisLevel >= rules.regionTarget;
 
   useEffect(() => {
-    const hud: WorldHud = { score: filled * 115 + (complete ? rules.completionBonus : 0), collectibles: filled, distance: 0, combo: filled, level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
-    onHud(hud);
+    const levelHud: WorldHud = { score: paintedThisLevel * 115 + (complete ? rules.completionBonus : 0), collectibles: paintedThisLevel, distance: 0, combo: paintedThisLevel, level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
+    onHud(levelHud);
+    if (levelResetPendingRef.current) {
+      levelResetPendingRef.current = false;
+      return;
+    }
     if (!complete || advancingRef.current) return;
     advancingRef.current = true;
     onSound("success");
+    const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
+      runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
       setFeedback("اكتملت " + levelLabel(levelIndex) + ". لوحة مختلفة جاهزة.");
       window.setTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
+      const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
+      runTotalsRef.current = totals;
+      const finalHud: WorldHud = { ...levelHud, score: totals.score, collectibles: totals.collectibles, combo: totals.bestCombo, completed: true };
+      onHud(finalHud);
       setFeedback("أكملت جميع مستويات تلوين ذِكر.");
-      onResult(hud);
+      onResult(finalHud);
     }
-  }, [complete, filled, levelIndex, onHud, onResult, onSound, rules.completionBonus]);
+  }, [complete, levelIndex, onHud, onResult, onSound, paintedThisLevel, rules.completionBonus]);
 
   return (
     <KidsGameStage theme="garden" ariaLabel="تلوين ذِكر"><KidsGameWorld gameId="zikr-coloring" />
-      <KidsGameHeader eyebrow="ZIKR COLORING" title="استوديو تلوين ذِكر" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(filled / rules.regionTarget) * 100} label={levelLabel(levelIndex)} /></div>} />
+      <KidsGameHeader eyebrow="ZIKR COLORING" title="استوديو تلوين ذِكر" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(paintedThisLevel / rules.regionTarget) * 100} label={levelLabel(levelIndex)} /></div>} />
       <div className="mx-4 mt-4 grid gap-4 sm:mx-6 lg:grid-cols-[1fr_.72fr]">
         <div className="rounded-[2rem] border border-white/10 bg-black/20 p-4 sm:p-6">
           <div className="rounded-[1.7rem] border border-brand-gold/15 bg-[#071923] p-3 sm:p-5">{coloringSvg(current.id, index => fills[index] || "#14303a", paint)}</div>
           <div className="mt-4 flex flex-wrap gap-2">{[...COLOR_PALETTE, ...customColors].map((color, index) => <button key={color} type="button" onClick={() => setSelectedColor(color)} disabled={paused} aria-label={"اختيار اللون " + (index + 1)} className={"h-10 w-10 rounded-full border-2 transition " + (selectedColor === color ? "scale-110 border-white shadow-lg" : "border-white/15")} style={{ background: color }} />)}<button type="button" onClick={mixColor} disabled={paused} className="rounded-xl border border-brand-gold/30 px-4 py-2 text-xs font-black text-brand-gold">🎨 مزج</button><button type="button" onClick={undo} disabled={!history.length || paused} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-brand-cream/70">تراجع</button></div>
         </div>
         <div className="space-y-3">
-          <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5"><div className="flex items-center justify-between"><div><p className="text-xs font-black tracking-[0.18em] text-brand-gold">المرحلة</p><h4 className="mt-1 text-xl font-black text-brand-cream">{current.title}</h4><p className="mt-1 text-xs text-brand-cream/45">{filled}/{rules.regionTarget} مناطق</p></div><KidCharacter variant="reader" state={complete ? "celebrate" : "idle"} size={70} /></div><div className="mt-4 grid grid-cols-2 gap-2">{Array.from({ length: 10 }, (_, i) => <StarToken key={i} size={27} active={i < filled} />)}</div></div>
+          <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5"><div className="flex items-center justify-between"><div><p className="text-xs font-black tracking-[0.18em] text-brand-gold">المرحلة</p><h4 className="mt-1 text-xl font-black text-brand-cream">{current.title}</h4><p className="mt-1 text-xs text-brand-cream/45">{paintedThisLevel}/{rules.regionTarget} مناطق</p></div><KidCharacter variant="reader" state={complete ? "celebrate" : "idle"} size={70} /></div><div className="mt-4 grid grid-cols-2 gap-2">{Array.from({ length: 10 }, (_, i) => <StarToken key={i} size={27} active={i < paintedThisLevel} />)}</div></div>
           <div className="rounded-[2rem] border border-brand-emerald/15 bg-brand-emerald/[0.04] p-5"><p className="text-sm leading-7 text-brand-cream/65">كل مستوى يستخدم لوحة ونمط ألوان مختلفين. الأعمال محفوظة محليًا.</p></div>
         </div>
       </div>

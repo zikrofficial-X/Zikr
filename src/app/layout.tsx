@@ -56,8 +56,11 @@ export async function generateMetadata(): Promise<Metadata> {
     ? social.ogDescription.trim()
     : description;
   const configuredImage = typeof social?.ogImageUrl === "string" ? social.ogImageUrl.trim() : "";
-  const ogImage = (configuredImage.startsWith("/") && !configuredImage.startsWith("//")) || /^https:\/\//i.test(configuredImage)
-    ? configuredImage
+  // Older site settings can still point to the removed, oversized default preview.
+  const isLegacyDefaultOgImage = /(?:^|\/)branding\/og-image\.png(?:[?#].*)?$/i.test(configuredImage);
+  const normalizedConfiguredImage = isLegacyDefaultOgImage ? defaultOgImage : configuredImage;
+  const ogImage = (normalizedConfiguredImage.startsWith("/") && !normalizedConfiguredImage.startsWith("//")) || /^https:\/\//i.test(normalizedConfiguredImage)
+    ? normalizedConfiguredImage
     : defaultOgImage;
   const rawKeywords = seo?.keywords;
   const keywords = Array.isArray(rawKeywords)
@@ -88,7 +91,7 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: htmlLocale.replace("-", "_"),
       url: siteConfig.url,
       siteName: siteConfig.shortName,
-      images: [{ url: ogImage, width: 1200, height: 630 }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: ogTitle }],
     },
     twitter: {
       card: "summary_large_image",
@@ -125,7 +128,7 @@ function buildJsonLd(locale: "ar" | "en") {
         "@id": siteConfig.url + "/#organization",
         name: siteConfig.shortName,
         url: siteConfig.url,
-        logo: siteConfig.url + "/branding/logo-gold.png",
+        logo: siteConfig.url + "/branding/logo-gold.webp",
       },
     ],
   };

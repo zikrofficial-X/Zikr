@@ -119,10 +119,10 @@ for (const id of gameIds) if (!migrationSource.includes("('" + id + "'")) throw 
 const visuals = readFileSync(join(root, "src/features/kids/components/games/kids-game-visuals.tsx"), "utf8");
 for (const id of gameIds) if (!visuals.includes('case "' + id + '"')) throw new Error("Dedicated visual world missing for " + id);
 const kit = readFileSync(join(root, "src/features/kids/components/games/kids-game-kit.tsx"), "utf8");
-for (const scene of ["scene-moon-sky.png", "scene-mosque-courtyard.png", "scene-night-garden.png"]) {
+for (const scene of ["scene-moon-sky.webp", "scene-mosque-courtyard.webp", "scene-night-garden.webp"]) {
   if (!kit.includes(scene)) throw new Error("High-resolution game background is not connected: " + scene);
 }
-if (!kit.includes("aspect-[16/9]") || !kit.includes("backgroundSize: \"cover\"")) throw new Error("Responsive high-resolution stage contract is incomplete.");
+if (kit.includes("aspect-[16/9]") || !kit.includes("min-h-[460px]") || !kit.includes("max-w-5xl") || !kit.includes("overflow-hidden") || !kit.includes("backgroundSize: \"cover\"")) throw new Error("Responsive content-driven game stage contract is incomplete.");
 const tone = readFileSync(join(root, "src/lib/games/tone-feedback.ts"), "utf8");
 if (!tone.includes("this.music?.pause()") || !tone.includes("this.music.play()")) throw new Error("Mute/unmute audio recovery is incomplete.");
 const runtimeFiles: Record<string, string> = {
@@ -148,5 +148,21 @@ if (!gameplayMigration.includes("gameplayVersion", 0) || !gameplayMigration.incl
 
 const registry = readFileSync(join(root, "src/lib/games/registry.ts"), "utf8");
 if (!registry.includes('difficulties: ["easy", "normal", "hard"] as const')) throw new Error("Registry does not expose all 3 difficulties.");
+const kidsDetailPage = readFileSync(join(root, "src/app/kids/[slug]/page.tsx"), "utf8");
+if (!kidsDetailPage.includes("const isLegacyGameActivity = content?.type === \"game\" && !gameConfig;")) {
+  throw new Error("Legacy kids activities must be distinguished from registry-configured games.");
+}
+if (!kidsDetailPage.includes('isLegacyGameActivity && quizQuestions.length > 0')) {
+  throw new Error("Published legacy game activities with questions must retain their quiz interaction.");
+}
+if (!kidsDetailPage.includes("content.metadata.activitySteps.map")) {
+  throw new Error("Legacy kids game activities must render their authored activity steps.");
+}
+if (!kidsDetailPage.includes("!isEnglish && Array.isArray(content.metadata?.activitySteps)")) {
+  throw new Error("Arabic-only legacy activity steps must not be injected into the English interface.");
+}
+if (kidsDetailPage.includes('isEnglish ? "Game unavailable"')) {
+  throw new Error("Published legacy activities must not be discarded solely because they lack a registry gameId.");
+}
 
 console.log("Kids Games final check passed: 12 rebuilt runtimes, 20 deterministic levels per game/difficulty, no legacy game runtimes, stabilized runtime rules, and preserved progress/offline shell.");

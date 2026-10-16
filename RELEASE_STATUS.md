@@ -1,6 +1,6 @@
 # ZIKR Project Release & Build Status
 
-**Last Updated:** 2026-10-08  
+**Last Updated:** 2026-10-15  
 **Repository:** https://github.com/zikrofficial-X/Zikr  
 **Production URL:** https://zikrmediaofficial.vercel.app
 
@@ -8,16 +8,21 @@
 
 | Item | Status |
 |---|---|
-| Application version | **1.1.3** |
-| Android versionCode | **57** |
-| Canonical release tag | **v1.1.3** |
-| Latest published stable release | **v1.1.2** |
-| v1.1.3 release notes | ✅ Present |
-| Main branch | ✅ Active |
-| CI/CD ownership cleanup | ✅ Applied |
-| Production Vercel promotion | ✅ Latest `main` is deployed and verified on Vercel |
+| Application version | **1.1.4** |
+| Android versionCode | **58** |
+| Application ID | `com.zikr.app` |
+| Compile / Target SDK | **36** |
+| Canonical release tag | **[`v1.1.4`](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.4)** |
+| Latest published stable Android release | **v1.1.4 — published** |
+| APK + AAB + checksums + metadata | **Uploaded and verified** |
+| Android asset publisher | **[GitHub Actions run #38749157361: success](https://github.com/zikrofficial-X/Zikr/actions/runs/38749157361)** |
+| Main branch | Active |
+| CI/CD ownership cleanup | Applied |
+| Production Vercel promotion | Latest `main` deployment process remains controlled |
 
-`v1.1.3` remains the repository application version and has not been marked as the latest published Android Release. The web production deployment itself is live and verified.
+Release assets are public on the [v1.1.4 Release page](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.4). The workflow verified the signed APK and AAB, their checksums, and the exact bytes published on GitHub. Detailed asset sizes, SHA-256 values and tag provenance are recorded in [`docs/releases/1.1.4.md`](./docs/releases/1.1.4.md).
+
+**Known v1.1.4 provenance defect:** the annotated tag targets `a2fbc9f6bafdf9a91202d11270cdae984173e1f1`; the published Release notes name `a1eec652a7d20ac22dafb6bf72e560260e5f568b`; the successful asset publication run verified artifacts from `c3186f774d4a1889153c3ab7375f8fa2a0190dc1`. The APK/AAB signature, checksums, and published bytes passed validation, but the three commit identities differ. GitHub reports the annotated tag is unsigned. **Safeguard merged:** [PR #36](https://github.com/zikrofficial-X/Zikr/pull/36) now blocks tag/recovery publication unless the tag target and signed artifact source SHA match exactly. Do not retarget the immutable `v1.1.4` tag; resolve lineage through the next controlled semantic release.
 
 ## Current automation topology
 
@@ -66,7 +71,7 @@ Before treating a release as complete:
 
 `pnpm verify:pr`
 
-The final web release has passed the canonical Quality Gate, CircleCI application-build/documentation certification, and Vercel production build/deployment. Android `v1.1.3` remains a repository-prepared release and is not claimed as the latest published Android release.
+Android `v1.1.4` is now the latest published release. Its public APK/AAB and verification files passed the publisher's checksum, signature, manifest, and byte-for-byte asset checks. The separate tag/source commit mismatch listed above remains a provenance issue to enforce against in the next controlled release; it must not be hidden by marking source-to-tag correspondence as fully reconciled.
 
 Production evidence must include:
 

@@ -14,6 +14,10 @@
 - [`docs/background-jobs.md`](./docs/background-jobs.md) — shared worker and production automation runbook.
 - [`docs/VIDEO_PUBLISHING_GUIDE.md`](./docs/VIDEO_PUBLISHING_GUIDE.md) — canonical video generation and social publishing runbook.
 
+## Android releases
+
+- [`docs/releases/1.1.4.md`](./docs/releases/1.1.4.md) — published v1.1.4 release record, APK/AAB downloads, SHA-256 evidence, application identity, tag target, artifact source commit, and provenance finding.
+
 ## Authentication and data
 
 - [`docs/AUTH_SYSTEM_GUIDE.md`](./docs/AUTH_SYSTEM_GUIDE.md) — Supabase authentication architecture.

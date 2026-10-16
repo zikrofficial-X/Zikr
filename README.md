@@ -86,16 +86,26 @@ The project uses Supabase RLS, server-side service-role boundaries, protected OA
 
 ## Release process
 
-Current application version: `1.1.3`; canonical Android tag: `v1.1.3`; application ID: `com.zikr.app`; target SDK: `36`.
+Current published Android release: [`v1.1.4`](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.4).
 
-Before releasing:
+- Application version: `1.1.4`
+- Android versionCode: `58`
+- Application ID: `com.zikr.app`
+- Compile / target SDK: `36`
+- Canonical tag: `v1.1.4`
+- Download: [APK](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.4/app-release.apk) · [AAB](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.4/app-release.aab) · [Checksums](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.4/SHA256SUMS)
+- Release evidence and provenance: [`docs/releases/1.1.4.md`](./docs/releases/1.1.4.md)
+
+Before preparing the next Android release:
 
 ```bash
 pnpm verify:pr
 pnpm mobile:check
 ```
 
-Production web deployment is controlled through `.github/workflows/release-finalization.yml`. Android release uses one semantic tag (`vX.Y.Z`) with CircleCI for the signed build and GitHub Actions for release-asset verification/publication.
+Production web deployment is controlled through `.github/workflows/release-finalization.yml`. Android release uses one semantic tag (`vX.Y.Z`), CircleCI for the signed build, and GitHub Actions for release-asset verification/publication.
+
+Release v1.1.4 is public and its APK/AAB/checksums/metadata passed the publisher's signature, hash and byte-for-byte checks. The current tag target and artifact source SHA differ; this is recorded in the release evidence and must be prevented for the next release by requiring the tag to resolve to the exact artifact source commit before publication.
 
 ## Support
 

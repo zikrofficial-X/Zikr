@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAyahFromDb } from "@/features/quran/services/quran-server";
 import { normalizeDifficulty } from "@/lib/games/registry";
-import { getVersePuzzleAyah } from "@/lib/games/verse-puzzle";
+import { getVersePuzzleReference } from "@/lib/games/verse-puzzle";
 
 export async function GET(request: NextRequest) {
   const difficulty = normalizeDifficulty(
     request.nextUrl.searchParams.get("difficulty"),
   );
-  const ayahNumber = getVersePuzzleAyah(difficulty);
-  const ayah = await getAyahFromDb(1, ayahNumber, "ar");
+  const requestedLevel = Number(request.nextUrl.searchParams.get("level") ?? "0");
+  const levelIndex = Number.isInteger(requestedLevel) ? requestedLevel : 0;
+  const reference = getVersePuzzleReference(difficulty, levelIndex);
+  const ayah = await getAyahFromDb(reference.surah, reference.ayah, "ar");
 
   if (!ayah?.text?.trim()) {
     return NextResponse.json(
@@ -22,8 +24,8 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     difficulty,
-    surah: 1,
-    ayah: ayahNumber,
+    surah: reference.surah,
+    ayah: reference.ayah,
     sourceText,
     words,
   });

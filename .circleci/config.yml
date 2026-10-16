@@ -149,7 +149,7 @@ jobs:
           shell: /bin/bash
           command: |
             set -euo pipefail
-            for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+            for name in SUPABASE_URL SUPABASE_PUBLIC_KEY SUPABASE_SERVICE_ROLE_KEY; do
               if [[ -z "${!name:-}" ]]; then
                 echo "::error::Missing required CircleCI production Supabase variable: $name"
                 exit 1
@@ -643,3 +643,4 @@ workflows:
   configuration-guard:
     jobs:
       - config-guard
+

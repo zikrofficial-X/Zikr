@@ -131,6 +131,7 @@ export default async function StoriesPage() {
                       alt={video.title}
                       width={640}
                       height={360}
+                      sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
                       className="aspect-video w-full rounded-xl object-cover hover:opacity-90 transition-opacity"
                     />
                   ) : (
@@ -187,6 +188,7 @@ export default async function StoriesPage() {
                       alt={playlist.title}
                       width={640}
                       height={360}
+                      sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
                       className="aspect-video w-full rounded-xl object-cover hover:opacity-90 transition-opacity"
                     />
                   ) : (

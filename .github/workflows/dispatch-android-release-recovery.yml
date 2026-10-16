@@ -1,0 +1,174 @@
+name: Dispatch guarded Android release recovery
+
+on:
+  status:
+  push:
+    branches:
+      - main
+      - 'android-release-v*'
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  dispatch:
+    if: >-
+      (github.event_name == 'status' &&
+       github.event.context == 'ci/circleci: android-rebuild' &&
+       github.event.state == 'success') ||
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/android-release-v')))
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch publisher only for the exact guarded release with a successful signed build
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            const eventName = context.eventName;
+            const eventSha = String(
+              eventName === "status" ? context.payload.sha ?? "" : context.sha ?? ""
+            );
+
+            if (!/^[0-9a-f]{40}$/i.test(eventSha)) {
+              core.info("Skipping: event has no valid source commit.");
+              return;
+            }
+
+            const readText = async (path, ref) => {
+              const { data } = await github.rest.repos.getContent({
+                owner, repo, path, ref,
+              });
+              if (Array.isArray(data) || data.type !== "file" || !data.content) {
+                throw new Error("Expected a text file in the release source commit: " + path);
+              }
+              return Buffer.from(data.content.replace(/\n/g, ""), "base64").toString("utf8");
+            };
+
+            const [tagText, packageText, retryText] = await Promise.all([
+              readText(".release-tag", eventSha),
+              readText("package.json", eventSha),
+              readText("docs/finalization/RELEASE_RETRY.flag", eventSha),
+            ]);
+
+            const tag = tagText.trim();
+            const version = String(JSON.parse(packageText).version ?? "");
+            if (!/^v[0-9]+\.[0-9]+\.[0-9]+$/.test(tag) || tag !== "v" + version) {
+              core.info("Skipping: source version and canonical release tag do not match.");
+              return;
+            }
+            if (retryText.trim() !== "RETRY") {
+              core.info("Skipping: the repository release retry guard is not enabled.");
+              return;
+            }
+
+            const notes = await readText("docs/releases/" + version + ".md", eventSha);
+            const backtick = String.fromCharCode(96);
+            if (!notes.includes("Release tag: " + backtick + tag + backtick)) {
+              core.setFailed("Release notes do not declare the canonical release tag.");
+              return;
+            }
+
+            const recoveryBranch = "android-release-" + tag;
+            let sourceSha = eventSha;
+            try {
+              const { data: branchData } = await github.rest.repos.getBranch({
+                owner, repo, branch: recoveryBranch,
+              });
+              sourceSha = branchData.commit.sha;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              if (eventName !== "push" || context.ref !== "refs/heads/" + recoveryBranch) {
+                core.info("Skipping: recovery branch is missing and this event cannot safely restore it.");
+                return;
+              }
+              // Branch-creation push may be the recovery signal; only continue
+              // after the exact source commit is verified as successfully signed below.
+              core.info("Recovery branch push detected; validating the exact commit's signed-build status.");
+            }
+
+            if (eventName === "status") {
+              if (sourceSha !== eventSha) {
+                core.info("Skipping: successful CircleCI status is not for the current recovery branch commit.");
+                return;
+              }
+            } else if (eventName === "push") {
+              if (sourceSha !== eventSha) {
+                core.info("Skipping: push event does not match the release source commit.");
+                return;
+              }
+              const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
+                owner, repo, ref: sourceSha,
+              });
+              const androidBuild = (combined.statuses ?? []).find(
+                item => item.context === "ci/circleci: android-rebuild"
+              );
+              if (!androidBuild || androidBuild.state !== "success") {
+                core.info("Skipping: CircleCI has not successfully signed the current recovery branch commit.");
+                return;
+              }
+            } else {
+              core.info("Skipping: unsupported event type.");
+              return;
+            }
+
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner, repo, per_page: 100,
+            });
+            let release = releases.find(
+              item => item.tag_name === tag || item.name === "ZIKR Android " + tag
+            );
+
+            // GitHub can expose this legacy recovery draft only by its numeric ID;
+            // the list and get-by-tag endpoints do not consistently return it.
+            if (!release && tag === "v1.1.4") {
+              const fallback = await github.rest.repos.getRelease({
+                owner, repo, release_id: 413815658,
+              });
+              release = fallback.data;
+            }
+
+            if (!release || release.tag_name !== tag) {
+              core.info("Skipping: no matching GitHub Release exists for " + tag + ".");
+              return;
+            }
+            if (release.draft !== true || release.prerelease === true) {
+              core.info("Skipping: the matching GitHub Release is not an eligible draft.");
+              return;
+            }
+
+            // Recovery may never rebuild from a later branch and publish those
+            // binaries under an earlier semantic tag. Resolve annotated tags
+            // to their target commit and require an exact source-SHA match.
+            const { data: tagRef } = await github.rest.git.getRef({
+              owner, repo, ref: "tags/" + tag,
+            });
+            let tagTargetSha = tagRef.object.sha;
+            if (tagRef.object.type === "tag") {
+              const { data: tagObject } = await github.rest.git.getTag({
+                owner, repo, tag_sha: tagRef.object.sha,
+              });
+              if (tagObject.object.type !== "commit") {
+                core.setFailed("Android release tag does not resolve directly to a commit: " + tag);
+                return;
+              }
+              tagTargetSha = tagObject.object.sha;
+            }
+            if (tagTargetSha !== sourceSha) {
+              core.setFailed(
+                "Android release provenance mismatch: tag " + tag +
+                " targets " + tagTargetSha + " but recovery source is " + sourceSha +
+                ". Refusing to publish. Prepare a new semantic release or build from the exact tag commit."
+              );
+              return;
+            }
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner,
+              repo,
+              workflow_id: "publish-android-release-assets.yml",
+              ref: recoveryBranch,
+              inputs: { retry: "true" },
+            });
+            core.info("Dispatched guarded Android asset verification/publication for " + tag + " from " + sourceSha + ".");

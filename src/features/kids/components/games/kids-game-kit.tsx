@@ -13,13 +13,13 @@ export type KidsWorldTheme =
   | "sea";
 
 const THEME_STYLES: Record<KidsWorldTheme, CSSProperties> = {
-  garden: { background: "linear-gradient(160deg,rgba(16,60,58,.74),rgba(7,28,38,.9)),url('/kids/games/scene-night-garden.png')" },
-  mosque: { background: "linear-gradient(160deg,rgba(21,57,72,.72),rgba(6,19,26,.9)),url('/kids/games/scene-mosque-courtyard.png')" },
-  night: { background: "linear-gradient(160deg,rgba(23,34,77,.7),rgba(5,9,22,.92)),url('/kids/games/scene-moon-sky.png')" },
-  dawn: { background: "linear-gradient(160deg,rgba(95,73,51,.72),rgba(9,20,33,.9)),url('/kids/games/scene-moon-sky.png')" },
-  oasis: { background: "linear-gradient(160deg,rgba(23,79,74,.72),rgba(7,19,30,.9)),url('/kids/games/scene-mosque-courtyard.png')" },
-  library: { background: "linear-gradient(160deg,rgba(59,43,72,.76),rgba(8,9,18,.92)),url('/kids/games/scene-night-garden.png')" },
-  sea: { background: "linear-gradient(160deg,rgba(21,81,106,.72),rgba(6,19,29,.9)),url('/kids/games/scene-moon-sky.png')" },
+  garden: { background: "linear-gradient(160deg,rgba(16,60,58,.74),rgba(7,28,38,.9)),url('/kids/games/scene-night-garden.webp')" },
+  mosque: { background: "linear-gradient(160deg,rgba(21,57,72,.72),rgba(6,19,26,.9)),url('/kids/games/scene-mosque-courtyard.webp')" },
+  night: { background: "linear-gradient(160deg,rgba(23,34,77,.7),rgba(5,9,22,.92)),url('/kids/games/scene-moon-sky.webp')" },
+  dawn: { background: "linear-gradient(160deg,rgba(95,73,51,.72),rgba(9,20,33,.9)),url('/kids/games/scene-moon-sky.webp')" },
+  oasis: { background: "linear-gradient(160deg,rgba(23,79,74,.72),rgba(7,19,30,.9)),url('/kids/games/scene-mosque-courtyard.webp')" },
+  library: { background: "linear-gradient(160deg,rgba(59,43,72,.76),rgba(8,9,18,.92)),url('/kids/games/scene-night-garden.webp')" },
+  sea: { background: "linear-gradient(160deg,rgba(21,81,106,.72),rgba(6,19,29,.9)),url('/kids/games/scene-moon-sky.webp')" },
 };
 
 const STARS = [
@@ -53,7 +53,7 @@ export function KidsGameStage({
       role="application"
       aria-label={ariaLabel}
       className={
-        "relative mx-auto aspect-[16/9] min-h-[520px] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-brand-gold/20 shadow-2xl " +
+        "relative mx-auto min-h-[460px] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-brand-gold/20 shadow-2xl " +
         className
       }
       style={{ ...THEME_STYLES[theme], backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }}
@@ -143,14 +143,14 @@ export function KidsGameHud({
   items: Array<{ label: string; value: ReactNode; tone?: string }>;
 }) {
   return (
-    <div className="relative z-20 grid grid-cols-2 gap-2 px-4 sm:grid-cols-5 sm:px-6" aria-live="polite">
+    <div className="relative z-20 grid grid-cols-2 gap-2 px-4 min-[420px]:grid-cols-5 sm:px-6" aria-live="polite">
       {items.map(item => (
         <div
           key={item.label}
-          className="rounded-2xl border border-white/10 bg-black/20 p-3 backdrop-blur-sm"
+          className="min-w-0 rounded-2xl border border-white/10 bg-black/20 p-3 backdrop-blur-sm"
         >
-          <span className="block text-[11px] text-brand-cream/45">{item.label}</span>
-          <strong className={"mt-1 block text-lg font-black " + (item.tone ?? "text-brand-cream")}>
+          <span className="block truncate text-[11px] text-brand-cream/45">{item.label}</span>
+          <strong className={"mt-1 block truncate text-lg font-black " + (item.tone ?? "text-brand-cream")}>
             {item.value}
           </strong>
         </div>
@@ -479,14 +479,14 @@ export function TouchArrows({
   actionLabel?: string;
 }) {
   return (
-    <div className="flex items-center justify-center gap-3">
-      <button type="button" onPointerDown={onRight} className="min-h-14 min-w-20 rounded-2xl border border-brand-cream/15 bg-black/25 px-5 text-2xl text-brand-cream active:scale-95">
+    <div className="flex items-center justify-center gap-2 sm:gap-3">
+      <button type="button" onPointerDown={onRight} className="min-h-14 min-w-16 touch-manipulation select-none rounded-2xl border border-brand-cream/15 bg-black/25 px-4 text-2xl text-brand-cream active:scale-95 sm:min-w-20 sm:px-5">
         →
       </button>
-      <button type="button" onPointerDown={onAction} className="min-h-14 min-w-24 rounded-2xl border-2 border-brand-gold/50 bg-brand-gold/10 px-5 text-sm font-black text-brand-gold active:scale-95">
+      <button type="button" onPointerDown={onAction} className="min-h-14 min-w-24 touch-manipulation select-none rounded-2xl border-2 border-brand-gold/50 bg-brand-gold/10 px-4 text-sm font-black text-brand-gold active:scale-95 sm:px-5">
         {actionLabel}
       </button>
-      <button type="button" onPointerDown={onLeft} className="min-h-14 min-w-20 rounded-2xl border border-brand-cream/15 bg-black/25 px-5 text-2xl text-brand-cream active:scale-95">
+      <button type="button" onPointerDown={onLeft} className="min-h-14 min-w-16 touch-manipulation select-none rounded-2xl border border-brand-cream/15 bg-black/25 px-4 text-2xl text-brand-cream active:scale-95 sm:min-w-20 sm:px-5">
         ←
       </button>
     </div>

@@ -128,6 +128,7 @@ export default function KidsDetailPage() {
     [content?.quiz_data, isEnglish]
   );
   const gameConfig = content?.type === "game" ? parseGameContentMetadata(content.metadata) : null;
+  const isLegacyGameActivity = content?.type === "game" && !gameConfig;
 
   useEffect(() => {
     if (!slug) {
@@ -233,20 +234,85 @@ export default function KidsDetailPage() {
         gameConfig ? (
           <KidsWorldGameShell gameId={gameConfig.gameId} initialDifficulty={gameConfig.difficulty} />
         ) : (
-          <Card className="border-red-400/30 bg-red-950/20 p-6 text-center" role="alert">
-            <h2 className="text-xl font-bold text-brand-gold">{isEnglish ? "Game unavailable" : "اللعبة غير متاحة حاليًا"}</h2>
-            <p className="mt-2 text-brand-cream/70">{isEnglish ? "A valid configuration for this game was not found. Try another kids activity." : "لم يتم العثور على إعداد صالح لهذه اللعبة. جرّب نشاطًا آخر من قسم الأطفال."}</p>
+          <Card className="space-y-4 border-brand-gold/25 bg-brand-gold/5 p-6">
+            <h2 className="text-xl font-bold text-brand-gold">
+              {isEnglish ? "Learning activity" : "نشاط تعليمي"}
+            </h2>
+            <p className="text-sm leading-7 text-brand-cream/75">
+              {isEnglish
+                ? "This activity uses the original learning instructions. Follow the steps below with a parent or trusted adult when needed."
+                : "هذا النشاط من المحتوى التعليمي الأصلي. اتبع الخطوات التالية، واستعن بولي الأمر عند الحاجة."}
+            </p>
+            {!isEnglish && content.metadata?.objective && (
+              <p className="leading-7 text-brand-cream/85">
+                <strong className="text-brand-gold">الهدف: </strong>
+                {content.metadata.objective}
+              </p>
+            )}
+            {!isEnglish && (content.metadata?.category || content.metadata?.value || content.metadata?.reward) && (
+              <div className="flex flex-wrap gap-2 text-xs text-brand-cream/75">
+                {content.metadata.category && <span className="rounded-full border border-brand-gold/20 px-3 py-1">{content.metadata.category}</span>}
+                {content.metadata.value && <span className="rounded-full border border-brand-emerald/20 px-3 py-1">{content.metadata.value}</span>}
+                {content.metadata.reward && <span className="rounded-full border border-brand-gold/20 px-3 py-1">المكافأة: {content.metadata.reward}</span>}
+              </div>
+            )}
+            {!isEnglish && content.metadata?.safetyNote && (
+              <p className="text-sm leading-7 text-amber-200/80">تنبيه السلامة: {content.metadata.safetyNote}</p>
+            )}
+            {!isEnglish && content.metadata?.memorizationTarget && (
+              <p className="text-sm leading-7 text-brand-cream/85">
+                <strong className="text-brand-gold">هدف الحفظ: </strong>
+                {content.metadata.memorizationTarget}
+              </p>
+            )}
+            {!isEnglish && content.metadata?.durationDays && (
+              <p className="text-sm text-brand-cream/70">المدة المقترحة: {content.metadata.durationDays} يومًا</p>
+            )}
+            {!isEnglish && Array.isArray(content.metadata?.dailyPlan) && content.metadata.dailyPlan.length > 0 && (
+              <div>
+                <h3 className="mb-2 font-bold text-brand-gold">خطة النشاط اليومية</h3>
+                <ol className="list-decimal list-inside space-y-2 text-sm leading-7 text-brand-cream/85">
+                  {content.metadata.dailyPlan.map((step, index) => (
+                    <li key={String(index)}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+            {!isEnglish && Array.isArray(content.metadata?.reviewPlan) && content.metadata.reviewPlan.length > 0 && (
+              <div>
+                <h3 className="mb-2 font-bold text-brand-gold">خطة المراجعة</h3>
+                <ol className="list-decimal list-inside space-y-2 text-sm leading-7 text-brand-cream/85">
+                  {content.metadata.reviewPlan.map((step, index) => (
+                    <li key={String(index)}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+            {!isEnglish && Array.isArray(content.metadata?.activitySteps) && content.metadata.activitySteps.length > 0 && (
+              <ol className="list-decimal list-inside space-y-2 text-sm leading-7 text-brand-cream/85">
+                {content.metadata.activitySteps.map((step, index) => (
+                  <li key={String(index)}>{step}</li>
+                ))}
+              </ol>
+            )}
+            {!isEnglish && content.metadata?.familyPrompt && (
+              <p className="rounded-xl border border-brand-emerald/25 bg-brand-emerald/5 p-3 text-sm leading-7 text-brand-cream/80">
+                <strong className="text-brand-emerald">{isEnglish ? "Family prompt: " : "سؤال للأسرة: "}</strong>
+                {content.metadata.familyPrompt}
+              </p>
+            )}
           </Card>
         )
       )}
 
-      {content.type !== "game" && content.featured_image_url && (
+      {(content.type !== "game" || isLegacyGameActivity) && content.featured_image_url && (
         <div className="w-full h-96 rounded-lg overflow-hidden">
           <Image
             src={content.featured_image_url}
             alt={isEnglish ? content.title_en : content.title_ar}
             width={800}
             height={600}
+            sizes="(max-width: 768px) 100vw, 768px"
             className="w-full h-full object-cover"
           />
         </div>
@@ -266,7 +332,7 @@ export default function KidsDetailPage() {
         </div>
       )}
 
-      {content.type !== "game" && (isEnglish ? content.content_en : content.content_ar) && (
+      {(content.type !== "game" || isLegacyGameActivity) && (isEnglish ? content.content_en : content.content_ar) && (
         <Card className="p-8 bg-black/30 border-brand-gold/30">
           <p
             dir={isEnglish ? "ltr" : "rtl"}
@@ -362,7 +428,7 @@ export default function KidsDetailPage() {
           </Card>
         )}
 
-      {content.type === "quiz" && (
+      {(content.type === "quiz" || (isLegacyGameActivity && quizQuestions.length > 0)) && (
         <Card className="p-8 space-y-6 bg-black/30 border-brand-gold/30">
           <h2 className="text-2xl font-bold text-brand-gold text-center">{isEnglish ? "Test your knowledge" : "اختبر معلوماتك"}</h2>
           {quizQuestions.length === 0 ? (
