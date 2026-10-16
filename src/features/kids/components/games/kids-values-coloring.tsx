@@ -260,7 +260,7 @@ const COLORING_SHEETS: ColoringSheet[] = [
 ];
 const COLOR_PALETTE = ["#f3c969","#5fd1a6","#8ab6e2","#d7a7e8","#e28a5a","#f7f1df","#7ed6c1","#9c86e8","#ffb4a2","#c6e377"];
 
-function coloringSvg(sheetId: string, fill: (index: number) => string, paint: (index: number) => void) {
+function coloringSvg(sheetId: string, fill: (index: number) => string, paint: (index: number) => void, isEnglish: boolean) {
   const paintable = (index: number) => ({
     onClick: () => paint(index),
     onKeyDown: (event: ReactKeyboardEvent<SVGElement>) => {
@@ -271,13 +271,13 @@ function coloringSvg(sheetId: string, fill: (index: number) => string, paint: (i
     },
     tabIndex: 0,
     role: "button" as const,
-    "aria-label": "تلوين المنطقة " + (index + 1),
+    "aria-label": (isEnglish ? "Color region " : "تلوين المنطقة ") + (index + 1),
     className: "cursor-pointer focus-visible:stroke-white focus-visible:stroke-2",
   });
-  if (sheetId === "geometry") return <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label="لوحة هندسية"><rect x="25" y="25" width="310" height="210" rx="28" fill="#0a202a" stroke="#f3c969" strokeWidth="4" />{Array.from({ length: 8 }, (_, i) => <path key={i} d={"M180 44 L" + (205 + Math.cos(i * Math.PI / 4) * 85) + " " + (130 + Math.sin(i * Math.PI / 4) * 85) + " L180 216 L" + (155 - Math.cos(i * Math.PI / 4) * 85) + " " + (130 - Math.sin(i * Math.PI / 4) * 85) + " Z"} fill={fill(i)} stroke="#f3c969" strokeWidth="2" {...paintable(i)} />)}<circle cx="180" cy="130" r="30" fill={fill(8)} stroke="#5fd1a6" strokeWidth="3" {...paintable(8)} /><circle cx="180" cy="130" r="14" fill={fill(9)} stroke="#8ab6e2" strokeWidth="2" {...paintable(9)} /></svg>;
-  if (sheetId === "crescent-night") return <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label="لوحة الهلال"><rect x="25" y="25" width="310" height="210" rx="28" fill="#0b1b33" stroke="#f3c969" strokeWidth="4" /><path d="M215 53c-38 8-62 39-62 71 0 35 24 61 57 61 27 0 49-17 59-41-10 8-21 11-32 11-29 0-49-18-49-45 0-21 12-42 27-57z" fill={fill(0)} stroke="#f3c969" strokeWidth="3" {...paintable(0)} />{Array.from({ length: 7 }, (_, i) => <circle key={i} cx={72 + (i * 39) % 220} cy={60 + ((i * 31) % 120)} r={7 + (i % 2) * 3} fill={fill(i + 1)} stroke="#f7f1df" strokeWidth="1.5" {...paintable(i + 1)} />)}<path d="M75 188c22-34 45-34 67 0M82 188c12-18 28-18 40 0" fill={fill(8)} stroke="#5fd1a6" strokeWidth="4" {...paintable(8)} /><circle cx="305" cy="55" r="8" fill={fill(9)} {...paintable(9)} /></svg>;
+  if (sheetId === "geometry") return <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label={isEnglish ? "Geometric coloring board" : "لوحة هندسية"}><rect x="25" y="25" width="310" height="210" rx="28" fill="#0a202a" stroke="#f3c969" strokeWidth="4" />{Array.from({ length: 8 }, (_, i) => <path key={i} d={"M180 44 L" + (205 + Math.cos(i * Math.PI / 4) * 85) + " " + (130 + Math.sin(i * Math.PI / 4) * 85) + " L180 216 L" + (155 - Math.cos(i * Math.PI / 4) * 85) + " " + (130 - Math.sin(i * Math.PI / 4) * 85) + " Z"} fill={fill(i)} stroke="#f3c969" strokeWidth="2" {...paintable(i)} />)}<circle cx="180" cy="130" r="30" fill={fill(8)} stroke="#5fd1a6" strokeWidth="3" {...paintable(8)} /><circle cx="180" cy="130" r="14" fill={fill(9)} stroke="#8ab6e2" strokeWidth="2" {...paintable(9)} /></svg>;
+  if (sheetId === "crescent-night") return <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label={isEnglish ? "Crescent night coloring board" : "لوحة الهلال"}><rect x="25" y="25" width="310" height="210" rx="28" fill="#0b1b33" stroke="#f3c969" strokeWidth="4" /><path d="M215 53c-38 8-62 39-62 71 0 35 24 61 57 61 27 0 49-17 59-41-10 8-21 11-32 11-29 0-49-18-49-45 0-21 12-42 27-57z" fill={fill(0)} stroke="#f3c969" strokeWidth="3" {...paintable(0)} />{Array.from({ length: 7 }, (_, i) => <circle key={i} cx={72 + (i * 39) % 220} cy={60 + ((i * 31) % 120)} r={7 + (i % 2) * 3} fill={fill(i + 1)} stroke="#f7f1df" strokeWidth="1.5" {...paintable(i + 1)} />)}<path d="M75 188c22-34 45-34 67 0M82 188c12-18 28-18 40 0" fill={fill(8)} stroke="#5fd1a6" strokeWidth="4" {...paintable(8)} /><circle cx="305" cy="55" r="8" fill={fill(9)} {...paintable(9)} /></svg>;
   if (sheetId === "lantern-street") return (
-    <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label="لوحة شارع الفوانيس">
+    <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label={isEnglish ? "Lantern street coloring board" : "لوحة شارع الفوانيس"}>
       <rect x="25" y="25" width="310" height="210" rx="28" fill="#0b1e2c" stroke="#f3c969" strokeWidth="4" />
       <circle cx="287" cy="56" r="18" fill={fill(9)} stroke="#f7f1df" strokeWidth="2" {...paintable(9)} />
       <path d="M90 214V112A90 90 0 0 1 270 112V214Z" fill={fill(0)} stroke="#d7a7e8" strokeWidth="3" {...paintable(0)} />
@@ -294,7 +294,7 @@ function coloringSvg(sheetId: string, fill: (index: number) => string, paint: (i
     </svg>
   );
   if (sheetId === "kite-meadow") return (
-    <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label="لوحة مرج الطائرات الورقية">
+    <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label={isEnglish ? "Kite meadow coloring board" : "لوحة مرج الطائرات الورقية"}>
       <rect x="25" y="25" width="310" height="210" rx="28" fill="#102b43" stroke="#8ab6e2" strokeWidth="4" />
       <path d="M49 76Q61 54 80 69Q93 44 113 66Q137 63 134 84H49Z" fill={fill(0)} stroke="#f7f1df" strokeWidth="2" {...paintable(0)} />
       <path d="M225 68Q238 47 256 62Q276 42 290 66Q315 64 312 86H225Z" fill={fill(1)} stroke="#f7f1df" strokeWidth="2" {...paintable(1)} />
@@ -309,7 +309,7 @@ function coloringSvg(sheetId: string, fill: (index: number) => string, paint: (i
     </svg>
   );
   if (sheetId === "starry-village") return (
-    <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label="لوحة قرية النجوم">
+    <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label={isEnglish ? "Starry village coloring board" : "لوحة قرية النجوم"}>
       <rect x="25" y="25" width="310" height="210" rx="28" fill="#171e3c" stroke="#f3c969" strokeWidth="4" />
       <path d="M45 158L88 111L131 158Z" fill={fill(0)} stroke="#f3c969" strokeWidth="2" {...paintable(0)} />
       <rect x="53" y="158" width="70" height="48" rx="4" fill={fill(1)} stroke="#8ab6e2" strokeWidth="2" {...paintable(1)} />
@@ -323,17 +323,20 @@ function coloringSvg(sheetId: string, fill: (index: number) => string, paint: (i
       <path d="M245 46A19 19 0 1 0 263 76A15 15 0 0 1 245 46Z" fill={fill(9)} stroke="#f3c969" strokeWidth="2" {...paintable(9)} />
     </svg>
   );
-  return <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label="لوحة حديقة المسجد"><rect x="25" y="25" width="310" height="210" rx="28" fill="#0a222a" stroke="#f3c969" strokeWidth="4" /><path d="M180 56c-22 0-40 18-40 40v45h80V96c0-22-18-40-40-40z" fill={fill(0)} stroke="#f3c969" strokeWidth="3" {...paintable(0)} /><rect x="119" y="141" width="122" height="45" rx="8" fill={fill(1)} stroke="#5fd1a6" strokeWidth="3" {...paintable(1)} />{Array.from({ length: 6 }, (_, i) => <circle key={i} cx={76 + i * 41} cy="174" r="15" fill={fill(i + 2)} stroke="#5fd1a6" strokeWidth="2" {...paintable(i + 2)} />)}<path d="M70 210h220" stroke="#8ab6e2" strokeWidth="8" /><circle cx="53" cy="62" r="9" fill={fill(8)} stroke="#f3c969" strokeWidth="2" {...paintable(8)} /><circle cx="310" cy="75" r="9" fill={fill(9)} stroke="#d7a7e8" strokeWidth="2" {...paintable(9)} /></svg>;
+  return <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label={isEnglish ? "Mosque garden coloring board" : "لوحة حديقة المسجد"}><rect x="25" y="25" width="310" height="210" rx="28" fill="#0a222a" stroke="#f3c969" strokeWidth="4" /><path d="M180 56c-22 0-40 18-40 40v45h80V96c0-22-18-40-40-40z" fill={fill(0)} stroke="#f3c969" strokeWidth="3" {...paintable(0)} /><rect x="119" y="141" width="122" height="45" rx="8" fill={fill(1)} stroke="#5fd1a6" strokeWidth="3" {...paintable(1)} />{Array.from({ length: 6 }, (_, i) => <circle key={i} cx={76 + i * 41} cy="174" r="15" fill={fill(i + 2)} stroke="#5fd1a6" strokeWidth="2" {...paintable(i + 2)} />)}<path d="M70 210h220" stroke="#8ab6e2" strokeWidth="8" /><circle cx="53" cy="62" r="9" fill={fill(8)} stroke="#f3c969" strokeWidth="2" {...paintable(8)} /><circle cx="310" cy="75" r="9" fill={fill(9)} stroke="#d7a7e8" strokeWidth="2" {...paintable(9)} /></svg>;
 }
 
 export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onResult, onSound }: Props) {
+  const { isEnglish } = useLanguage();
+  const isEnglishRef = useRef(isEnglish);
+  useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const [levelIndex, setLevelIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState(COLOR_PALETTE[0]);
   const [customColors, setCustomColors] = useState<string[]>([]);
   const [fills, setFills] = useState<string[]>([]);
   const [history, setHistory] = useState<Array<{ fills: string[]; paintedRegions: number[] }>>([]);
   const [roundPaintedRegions, setRoundPaintedRegions] = useState<number[]>([]);
-  const [feedback, setFeedback] = useState("اختر لونًا ثم اضغط على أجزاء اللوحة.");
+  const [feedback, setFeedback] = useState(isEnglish ? "Choose a color, then tap a part of the picture." : "اختر لونًا ثم اضغط على أجزاء اللوحة.");
   const [saved, setSaved] = useState<Record<string, string[]>>({});
   const savedRef = useRef<Record<string, string[]>>({});
   const advancingRef = useRef(false);
@@ -379,8 +382,10 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
     setRoundPaintedRegions([]);
     levelResetPendingRef.current = true;
     advancingRef.current = false;
-    setFeedback(meta.subtitleAr);
-  }, [meta.subtitleAr, restartToken, storageKey]);
+    setFeedback(isEnglishRef.current ? meta.subtitleEn : meta.subtitleAr);
+  }, [meta.subtitleAr, meta.subtitleEn, restartToken, storageKey]);
+
+  useEffect(() => { setFeedback(isEnglish ? "Choose a color, then tap a part of the picture." : "اختر لونًا ثم اضغط على أجزاء اللوحة."); }, [isEnglish]);
 
   const savedSyncInitializedRef = useRef(false);
   useEffect(() => {
@@ -400,7 +405,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
     try { localStorage.setItem("zikr-coloring-gallery-v3", JSON.stringify(nextGallery)); } catch {}
     setRoundPaintedRegions(previous => previous.includes(index) ? previous : [...previous, index]);
     onSound("collect");
-    setFeedback("تم تلوين جزء جديد.");
+    setFeedback(isEnglish ? "A new part is colored." : "تم تلوين جزء جديد.");
   };
 
   const mixColor = () => {
@@ -412,7 +417,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
     setCustomColors(colors => colors.includes(mixed) ? colors : [...colors.slice(-3), mixed]);
     setSelectedColor(mixed);
     onSound("collect");
-    setFeedback("صنعت لونًا جديدًا. جرّبه في اللوحة.");
+    setFeedback(isEnglish ? "You mixed a new color. Try it on the picture." : "صنعت لونًا جديدًا. جرّبه في اللوحة.");
   };
 
   const undo = () => {
@@ -443,29 +448,29 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
     const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
       runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
-      setFeedback("اكتملت " + levelLabel(levelIndex) + ". لوحة مختلفة جاهزة.");
+      setFeedback(isEnglishRef.current ? "Level " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + " complete. A new picture is ready." : "اكتمل المستوى " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + ". لوحة مختلفة جاهزة.");
       window.setTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
       const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
       runTotalsRef.current = totals;
       const finalHud: WorldHud = { ...levelHud, score: totals.score, collectibles: totals.collectibles, combo: totals.bestCombo, completed: true };
       onHud(finalHud);
-      setFeedback("أكملت جميع مستويات تلوين ذِكر.");
+      setFeedback(isEnglishRef.current ? "You completed every Coloring level." : "أكملت جميع مستويات تلوين ذِكر.");
       onResult(finalHud);
     }
   }, [complete, levelIndex, onHud, onResult, onSound, paintedThisLevel, rules.completionBonus]);
 
   return (
-    <KidsGameStage theme="garden" ariaLabel="تلوين ذِكر"><KidsGameWorld gameId="zikr-coloring" />
-      <KidsGameHeader eyebrow="ZIKR COLORING" title="استوديو تلوين ذِكر" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(paintedThisLevel / rules.regionTarget) * 100} label={levelLabel(levelIndex)} /></div>} />
+    <KidsGameStage theme="garden" ariaLabel={isEnglish ? "ZIKR Coloring" : "تلوين ذِكر"}><KidsGameWorld gameId="zikr-coloring" />
+      <KidsGameHeader eyebrow="ZIKR COLORING" title={isEnglish ? "ZIKR Coloring Studio" : "استوديو تلوين ذِكر"} description={isEnglish ? current.subtitleEn : current.subtitle} right={<div className="hidden w-52 sm:block"><KidsProgress value={(paintedThisLevel / rules.regionTarget) * 100} label={levelLabel(levelIndex, isEnglish)} /></div>} />
       <div className="mx-4 mt-4 grid gap-4 sm:mx-6 lg:grid-cols-[1fr_.72fr]">
         <div className="rounded-[2rem] border border-white/10 bg-black/20 p-4 sm:p-6">
-          <div className="rounded-[1.7rem] border border-brand-gold/15 bg-[#071923] p-3 sm:p-5">{coloringSvg(current.id, index => fills[index] || "#14303a", paint)}</div>
-          <div className="mt-4 flex flex-wrap gap-2">{[...COLOR_PALETTE, ...customColors].map((color, index) => <button key={color} type="button" onClick={() => setSelectedColor(color)} disabled={paused} aria-label={"اختيار اللون " + (index + 1)} className={"h-10 w-10 rounded-full border-2 transition " + (selectedColor === color ? "scale-110 border-white shadow-lg" : "border-white/15")} style={{ background: color }} />)}<button type="button" onClick={mixColor} disabled={paused} className="rounded-xl border border-brand-gold/30 px-4 py-2 text-xs font-black text-brand-gold">🎨 مزج</button><button type="button" onClick={undo} disabled={!history.length || paused} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-brand-cream/70">تراجع</button></div>
+          <div className="rounded-[1.7rem] border border-brand-gold/15 bg-[#071923] p-3 sm:p-5">{coloringSvg(current.id, index => fills[index] || "#14303a", paint, isEnglish)}</div>
+          <div className="mt-4 flex flex-wrap gap-2">{[...COLOR_PALETTE, ...customColors].map((color, index) => <button key={color} type="button" onClick={() => setSelectedColor(color)} disabled={paused} aria-label={(isEnglish ? "Choose color " : "اختيار اللون ") + (index + 1)} className={"h-10 w-10 rounded-full border-2 transition " + (selectedColor === color ? "scale-110 border-white shadow-lg" : "border-white/15")} style={{ background: color }} />)}<button type="button" onClick={mixColor} disabled={paused} className="rounded-xl border border-brand-gold/30 px-4 py-2 text-xs font-black text-brand-gold">{isEnglish ? "🎨 Mix" : "🎨 مزج"}</button><button type="button" onClick={undo} disabled={!history.length || paused} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-brand-cream/70">{isEnglish ? "Undo" : "تراجع"}</button></div>
         </div>
         <div className="space-y-3">
-          <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5"><div className="flex items-center justify-between"><div><p className="text-xs font-black tracking-[0.18em] text-brand-gold">المرحلة</p><h4 className="mt-1 text-xl font-black text-brand-cream">{current.title}</h4><p className="mt-1 text-xs text-brand-cream/45">{paintedThisLevel}/{rules.regionTarget} مناطق</p></div><KidCharacter variant="reader" state={complete ? "celebrate" : "idle"} size={70} /></div><div className="mt-4 grid grid-cols-2 gap-2">{Array.from({ length: 10 }, (_, i) => <StarToken key={i} size={27} active={i < paintedThisLevel} />)}</div></div>
-          <div className="rounded-[2rem] border border-brand-emerald/15 bg-brand-emerald/[0.04] p-5"><p className="text-sm leading-7 text-brand-cream/65">كل مستوى يستخدم لوحة ونمط ألوان مختلفين. الأعمال محفوظة محليًا.</p></div>
+          <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5"><div className="flex items-center justify-between"><div><p className="text-xs font-black tracking-[0.18em] text-brand-gold">{isEnglish ? "LEVEL" : "المرحلة"}</p><h4 className="mt-1 text-xl font-black text-brand-cream">{isEnglish ? current.titleEn : current.title}</h4><p className="mt-1 text-xs text-brand-cream/45">{paintedThisLevel}/{rules.regionTarget} {isEnglish ? "regions" : "مناطق"}</p></div><KidCharacter variant="reader" state={complete ? "celebrate" : "idle"} size={70} /></div><div className="mt-4 grid grid-cols-2 gap-2">{Array.from({ length: 10 }, (_, i) => <StarToken key={i} size={27} active={i < paintedThisLevel} />)}</div></div>
+          <div className="rounded-[2rem] border border-brand-emerald/15 bg-brand-emerald/[0.04] p-5"><p className="text-sm leading-7 text-brand-cream/65">{isEnglish ? "Each level uses a different picture and color pattern. Your artwork is saved on this device." : "كل مستوى يستخدم لوحة ونمط ألوان مختلفين. الأعمال محفوظة محليًا."}</p></div>
         </div>
       </div>
       <GameToast tone={complete && levelIndex === KIDS_LEVEL_COUNT - 1 ? "emerald" : "gold"}>{feedback}</GameToast>
