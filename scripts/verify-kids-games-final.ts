@@ -139,6 +139,16 @@ const learning = readFileSync(join(root, "src/features/kids/components/games/kid
 if (!learning.includes("useHint") && !learning.includes("useVerseHint")) throw new Error("Hint mechanics missing from learning games.");
 if (!learning.includes("useFiftyFifty")) throw new Error("Quiz 50/50 mechanic missing.");
 if (!learning.includes("getVerifiedWuduContent")) throw new Error("Verified Wudu content path missing.");
+const memoryGlossary = learning.split("const MEMORY_SITUATIONS_EN: Record<string, string> = {")[1]?.split("};")[0] ?? "";
+if ((memoryGlossary.match(/: "/g) ?? []).length !== 11) {
+  throw new Error("Every verified Memory situation needs a matching English label.");
+}
+if (!learning.includes("aria-label={cardAccessibleLabel}") || !learning.includes("aria-pressed={visible}")) {
+  throw new Error("Memory cards must expose their flipped state and accessible name.");
+}
+if (!learning.includes('label={isEnglish ? "Pairs " + matched.length / 2 + "/" + pairTarget : "الأزواج " + matched.length / 2 + "/" + pairTarget}')) {
+  throw new Error("Memory progress must identify matched-pair progress, not label it as the overall level.");
+}
 if (learning.split("const { isEnglish } = useLanguage();").length - 1 !== 4) {
   throw new Error("All four learning games must use the selected interface language.");
 }
