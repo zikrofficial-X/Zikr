@@ -29,7 +29,7 @@ const gameIds = Object.keys(GAME_REGISTRY) as GameId[];
 assert.equal(gameIds.length, 12, "canonical Kids registry must contain exactly 12 games");
 
 const coloringSource = readFileSync("src/features/kids/components/games/kids-values-coloring.tsx", "utf8");
-const coloringCatalog = coloringSource.split("const COLORING_SHEETS: ColoringSheet[] = [")[1]?.split("\\n];")[0] ?? "";
+const coloringCatalog = coloringSource.split("const COLORING_SHEETS: ColoringSheet[] = [")[1]?.split("];")[0] ?? "";
 const coloringSheetIds = [...coloringCatalog.matchAll(/id: "([^"]+)"/g)].map(match => match[1]);
 assert.ok(coloringSheetIds.length >= 6, "Coloring must offer at least six original scenes");
 assert.equal(new Set(coloringSheetIds).size, coloringSheetIds.length, "Coloring scene IDs must be unique");
