@@ -9,6 +9,7 @@ import { enqueueGameResult, getQueuedGameResultCount, syncQueuedGameResults } fr
 import { WorldGameStage, type StageController, type WorldHud } from "@/features/kids/components/games/world-game-stage";
 import { KidsGameArt } from "@/features/kids/components/games/kids-game-art";
 import { getDailyMission, getMissionProgress } from "@/lib/games/game-missions";
+import { getGameInstructions } from "@/lib/games/game-instructions";
 
 function formatNumber(value: number, isEnglish: boolean) { return new Intl.NumberFormat(isEnglish ? "en-US" : "ar-SA").format(value); }
 function createSubmissionId() { return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `game-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
@@ -34,6 +35,8 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   const [queuedCount, setQueuedCount] = useState(0);
   const [restartToken, setRestartToken] = useState(0);
   const [initializing, setInitializing] = useState(true);
+  const [hasStarted, setHasStarted] = useState(false);
+  const instructions = useMemo(() => getGameInstructions(gameId, isEnglish ? "en" : "ar"), [gameId, isEnglish]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const elapsedRef = useRef(0);
   const runningSinceRef = useRef<number | null>(null);
@@ -65,7 +68,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     };
 
     const startClock = () => {
-      if (paused || result || document.visibilityState === "hidden") {
+      if (!hasStarted || paused || result || document.visibilityState === "hidden") {
         stopClock();
         return;
       }
@@ -80,14 +83,14 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
 
     startClock();
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    const timer = window.setInterval(() => setElapsedSeconds(getElapsedSeconds()), 1000);
+    const timer = window.setInterval(() => { if (hasStarted) setElapsedSeconds(getElapsedSeconds()); }, 1000);
 
     return () => {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       stopClock();
     };
-  }, [getElapsedSeconds, paused, result, restartToken]);
+  }, [getElapsedSeconds, hasStarted, paused, result, restartToken]);
 
 
   const handleHud = useCallback((next: WorldHud) => {
@@ -223,6 +226,43 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
         <span className="text-sm text-brand-cream/60">{isEnglish ? definition.categoryEn : definition.category}</span>
       </div>
 
+      {!hasStarted && !englishSourceMissing && (
+        <section aria-labelledby="game-briefing-heading" className="overflow-hidden rounded-2xl border border-brand-gold/25 bg-gradient-to-br from-brand-gold/[0.08] via-black/20 to-brand-emerald/[0.06] p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-black tracking-[0.18em] text-brand-emerald">{isEnglish ? "HOW TO PLAY" : "طريقة اللعب"}</p>
+              <h3 id="game-briefing-heading" className="mt-2 text-xl font-black text-brand-gold">{instructions.title}</h3>
+              <p className="mt-2 max-w-3xl text-sm leading-7 text-brand-cream/75">{instructions.intro}</p>
+            </div>
+            <span className="rounded-xl border border-brand-gold/20 bg-black/20 px-3 py-2 text-xs font-bold text-brand-gold">{isEnglish ? "Goal" : "الهدف"}: {isEnglish ? definition.goalEn : definition.goalAr}</span>
+          </div>
+          <ol className="mt-5 grid gap-3 md:grid-cols-3">
+            {instructions.steps.map((step, index) => (
+              <li key={step} className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-gold/15 text-sm font-black text-brand-gold">{index + 1}</span>
+                <span className="text-sm leading-6 text-brand-cream/80">{step}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-brand-emerald/15 bg-brand-emerald/[0.04] p-3">
+              <p className="text-xs font-black text-brand-emerald">{isEnglish ? "Touch controls" : "التحكم باللمس"}</p>
+              <p className="mt-1 text-sm leading-6 text-brand-cream/70">{instructions.touchControls}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
+              <p className="text-xs font-black text-brand-cream/75">{isEnglish ? "Keyboard" : "لوحة المفاتيح"}</p>
+              <p className="mt-1 text-sm leading-6 text-brand-cream/60">{instructions.keyboardControls}</p>
+            </div>
+          </div>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+            <p className="text-xs leading-6 text-brand-cream/50">{isEnglish ? "There is no rush. You can pause whenever you need." : "مش محتاج تستعجل؛ تقدر توقف اللعبة مؤقتًا وقت ما تحتاج."}</p>
+            <Button type="button" onClick={() => setHasStarted(true)}>{isEnglish ? "Start playing" : "ابدأ اللعب"}</Button>
+          </div>
+        </section>
+      )}
+
+      {hasStarted && (
+        <>
       <div className="grid grid-cols-2 gap-2 rounded-xl border border-brand-gold/20 bg-black/20 p-3 text-center min-[420px]:grid-cols-5" aria-live="polite">
         {[
           { label: isEnglish ? "Score" : "النقاط", value: hud.score },
@@ -265,6 +305,9 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
         </p>
       </div>
 
+        </>
+      )}
+
       <div id="kids-world-game-frame" className="relative min-w-0">
         {englishSourceMissing ? (
           <div className="grid min-h-[320px] place-items-center rounded-2xl border border-brand-gold/20 bg-black/20 p-6 text-center">
@@ -272,7 +315,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
               English educational content for this game is not published yet. The verified Arabic source is intentionally not shown in English mode.
             </p>
           </div>
-        ) : (
+        ) : !hasStarted ? null : (
           <>
             <WorldGameStage
               gameId={gameId}
@@ -338,7 +381,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
         )}
       </div>
 
-      {!englishSourceMissing && (
+      {!englishSourceMissing && hasStarted && (
         <div className="flex flex-wrap justify-center gap-3">
           <Button
             type="button"

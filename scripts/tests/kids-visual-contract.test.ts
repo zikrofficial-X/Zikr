@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { GAME_REGISTRY } from "../../src/lib/games/registry";
+import { getGameInstructions } from "../../src/lib/games/game-instructions";
 
 const gameIds = Object.keys(GAME_REGISTRY) as Array<keyof typeof GAME_REGISTRY>;
 const artSource = readFileSync("src/features/kids/components/games/kids-game-art.tsx", "utf8");
@@ -13,6 +14,9 @@ assert.match(artSource, /useId\(\)/, "SVG artwork IDs must be unique when cards 
 assert.match(artSource, /aria-label": label/, "game illustrations need a localized accessible name");
 assert.match(homeSource, /KidsGameArt/, "the Kids landing page must show game-specific artwork");
 assert.match(shellSource, /KidsGameArt/, "active gameplay must show game-specific artwork");
+assert.match(shellSource, /setHasStarted\(true\)/, "gameplay must start from an explicit start action");
+assert.match(shellSource, /!hasStarted \|\| paused/, "timer must remain stopped before play and while paused");
+assert.match(shellSource, /\{!hasStarted && !englishSourceMissing/, "a briefing must appear before gameplay runtime mounting");
 
 const artCases = artSource.match(/case "[a-z-]+":/g) ?? [];
 assert.equal(artCases.length, gameIds.length, "every game needs one explicit art scene");
@@ -26,6 +30,14 @@ for (const id of gameIds) {
   assert.ok(game.titleAr.trim().length > 0 && game.titleEn.trim().length > 0, "game names must be localized: " + id);
   assert.ok(game.descriptionAr.trim().length > 0 && game.goalAr.trim().length > 0, "game content and goal must be defined: " + id);
   assert.ok(game.runtimeKind, "each game must have a distinct registered runtime kind: " + id);
+  const arabicGuide = getGameInstructions(id, "ar");
+  const englishGuide = getGameInstructions(id, "en");
+  assert.equal(arabicGuide.steps.length, 3, "Arabic guide must have three actionable steps: " + id);
+  assert.equal(englishGuide.steps.length, 3, "English guide must have three actionable steps: " + id);
+  assert.ok(arabicGuide.title.trim() && arabicGuide.intro.trim(), "Arabic guide needs a title and introduction: " + id);
+  assert.ok(englishGuide.title.trim() && englishGuide.intro.trim(), "English guide needs a title and introduction: " + id);
+  assert.ok(arabicGuide.touchControls.trim() && arabicGuide.keyboardControls.trim(), "Arabic controls must be documented: " + id);
+  assert.ok(englishGuide.touchControls.trim() && englishGuide.keyboardControls.trim(), "English controls must be documented: " + id);
 }
 
 assert.equal(
