@@ -36,6 +36,15 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function safeGameNumber(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.floor(value));
+}
+
+export function formatGameNumber(value: number) {
+  return new Intl.NumberFormat("ar-EG", { maximumFractionDigits: 0 }).format(safeGameNumber(value));
+}
+
 export function KidsGameStage({
   theme,
   children,
@@ -150,8 +159,11 @@ export function KidsGameHud({
           className="min-w-0 rounded-2xl border border-white/10 bg-black/20 p-3 backdrop-blur-sm"
         >
           <span className="block truncate text-[11px] text-brand-cream/45">{item.label}</span>
-          <strong className={"mt-1 block truncate text-lg font-black " + (item.tone ?? "text-brand-cream")}>
-            {item.value}
+          <strong
+            className={"mt-1 block truncate text-lg font-black tabular-nums " + (item.tone ?? "text-brand-cream")}
+            title={typeof item.value === "number" ? String(safeGameNumber(item.value)) : undefined}
+          >
+            {typeof item.value === "number" ? formatGameNumber(item.value) : item.value}
           </strong>
         </div>
       ))}
@@ -166,7 +178,7 @@ export function KidsProgress({
   value: number;
   label?: string;
 }) {
-  const percent = clamp(Math.round(value), 0, 100);
+  const percent = Number.isFinite(value) ? clamp(Math.round(value), 0, 100) : 0;
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
       <div className="flex items-center justify-between text-[11px] text-brand-cream/50">
