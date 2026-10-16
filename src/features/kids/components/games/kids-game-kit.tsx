@@ -36,6 +36,15 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function safeGameNumber(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.floor(value)));
+}
+
+export function formatGameNumber(value: number) {
+  return new Intl.NumberFormat("ar-EG", { maximumFractionDigits: 0 }).format(safeGameNumber(value));
+}
+
 export function KidsGameStage({
   theme,
   children,
@@ -150,8 +159,11 @@ export function KidsGameHud({
           className="min-w-0 rounded-2xl border border-white/10 bg-black/20 p-3 backdrop-blur-sm"
         >
           <span className="block truncate text-[11px] text-brand-cream/45">{item.label}</span>
-          <strong className={"mt-1 block truncate text-lg font-black " + (item.tone ?? "text-brand-cream")}>
-            {item.value}
+          <strong
+            className={"mt-1 block truncate text-lg font-black tabular-nums " + (item.tone ?? "text-brand-cream")}
+            title={typeof item.value === "number" ? String(safeGameNumber(item.value)) : undefined}
+          >
+            {typeof item.value === "number" ? formatGameNumber(item.value) : item.value}
           </strong>
         </div>
       ))}
@@ -166,7 +178,7 @@ export function KidsProgress({
   value: number;
   label?: string;
 }) {
-  const percent = clamp(Math.round(value), 0, 100);
+  const percent = Number.isFinite(value) ? clamp(Math.round(value), 0, 100) : 0;
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
       <div className="flex items-center justify-between text-[11px] text-brand-cream/50">
@@ -478,17 +490,39 @@ export function TouchArrows({
   onAction: () => void;
   actionLabel?: string;
 }) {
+  const controls = [
+    { label: "يمين", icon: "→", onPress: onRight },
+    { label: actionLabel, icon: actionLabel, onPress: onAction, action: true },
+    { label: "يسار", icon: "←", onPress: onLeft },
+  ];
+
   return (
-    <div className="flex items-center justify-center gap-2 sm:gap-3">
-      <button type="button" onPointerDown={onRight} className="min-h-14 min-w-16 touch-manipulation select-none rounded-2xl border border-brand-cream/15 bg-black/25 px-4 text-2xl text-brand-cream active:scale-95 sm:min-w-20 sm:px-5">
-        →
-      </button>
-      <button type="button" onPointerDown={onAction} className="min-h-14 min-w-24 touch-manipulation select-none rounded-2xl border-2 border-brand-gold/50 bg-brand-gold/10 px-4 text-sm font-black text-brand-gold active:scale-95 sm:px-5">
-        {actionLabel}
-      </button>
-      <button type="button" onPointerDown={onLeft} className="min-h-14 min-w-16 touch-manipulation select-none rounded-2xl border border-brand-cream/15 bg-black/25 px-4 text-2xl text-brand-cream active:scale-95 sm:min-w-20 sm:px-5">
-        ←
-      </button>
+    <div className="grid grid-cols-3 items-center justify-center gap-2 sm:flex sm:gap-3" aria-label="أزرار التحكم باللعبة">
+      {controls.map((control) => (
+        <button
+          key={control.label}
+          type="button"
+          aria-label={control.label}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            control.onPress();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              control.onPress();
+            }
+          }}
+          className={
+            "min-h-14 touch-manipulation select-none rounded-2xl px-3 transition active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold sm:px-5 " +
+            (control.action
+              ? "min-w-0 border-2 border-brand-gold/50 bg-brand-gold/10 text-sm font-black text-brand-gold sm:min-w-24"
+              : "min-w-0 border border-brand-cream/15 bg-black/25 text-2xl text-brand-cream sm:min-w-20")
+          }
+        >
+          {control.icon}
+        </button>
+      ))}
     </div>
   );
 }

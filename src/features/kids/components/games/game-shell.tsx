@@ -93,7 +93,20 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     const now = Date.now();
     if (now - lastHudUpdate.current < 120) return;
     lastHudUpdate.current = now;
-    setHud({ ...next, timeSeconds: getElapsedSeconds() });
+    const whole = (value: number) => Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+    setHud({
+      ...next,
+      score: whole(next.score),
+      collectibles: whole(next.collectibles),
+      distance: whole(next.distance),
+      combo: whole(next.combo),
+      level: whole(next.level),
+      timeSeconds: whole(getElapsedSeconds()),
+      mistakes: whole(next.mistakes ?? 0),
+      accuracy: typeof next.accuracy === "number" && Number.isFinite(next.accuracy)
+        ? Math.max(0, Math.min(100, next.accuracy))
+        : undefined,
+    });
   }, [getElapsedSeconds]);
 
   const submitResult = useCallback(async (next: WorldHud) => {

@@ -432,7 +432,7 @@ export function ZikrRunnerGame({
       <div className="px-4 sm:px-6">
         <KidsGameHud
           items={[
-            { label: "النقاط", value: model.score, tone: "text-brand-gold" },
+            { label: "النقاط", value: Math.max(0, Math.floor(model.score)), tone: "text-brand-gold" },
             { label: "النجوم", value: model.collectibles, tone: "text-brand-emerald" },
             { label: "السلسلة", value: model.combo, tone: "text-violet-200" },
             { label: "المحاولات", value: model.lives, tone: "text-sky-200" },
