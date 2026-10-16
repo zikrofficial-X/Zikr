@@ -42,6 +42,12 @@ for (const note of [
   assert.ok(learningGamesSource.includes(note), "English mode must explain preserved source-language content: " + note);
 }
 assert.ok(learningGamesSource.includes("getVerifiedMemoryPairs") && learningGamesSource.includes("getVerifiedWuduContent") && learningGamesSource.includes("getVerifiedKidsQuizQuestions"), "localization must preserve verified content adapters");
+const memoryGlossary = learningGamesSource.split("const MEMORY_SITUATIONS_EN: Record<string, string> = {")[1]?.split("};")[0] ?? "";
+assert.equal((memoryGlossary.match(/: "/g) ?? []).length, 11, "every verified Memory situation needs an English label");
+assert.ok(learningGamesSource.includes("const cardAccessibleLabel = visible"), "Memory cards need state-aware accessible names");
+assert.ok(learningGamesSource.includes("const pairs = useMemo(() => getVerifiedMemoryPairs(), []);"), "Memory must keep the verified card pool stable across renders");
+assert.ok(learningGamesSource.includes("aria-label={cardAccessibleLabel}") && learningGamesSource.includes("aria-pressed={visible}"), "Memory cards must expose visible/flipped state to assistive technology");
+assert.ok(learningGamesSource.includes('label={isEnglish ? "Pairs " + matched.length / 2 + "/" + pairTarget : "الأزواج " + matched.length / 2 + "/" + pairTarget}'), "Memory progress text must describe matched pairs rather than overall level count");
 assert.ok(learningGamesSource.includes('label: isEnglish ? "Score"'), "learning-game HUD labels must follow the selected language");
 
 const coloringSource = readFileSync("src/features/kids/components/games/kids-values-coloring.tsx", "utf8");

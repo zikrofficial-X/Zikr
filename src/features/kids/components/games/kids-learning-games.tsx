@@ -73,7 +73,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   const { isEnglish } = useLanguage();
   const isEnglishRef = useRef(isEnglish);
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
-  const pairs = getVerifiedMemoryPairs();
+  const pairs = useMemo(() => getVerifiedMemoryPairs(), []);
   const [levelIndex, setLevelIndex] = useState(0);
   const [flipped, setFlipped] = useState<string[]>([]);
   const [matched, setMatched] = useState<string[]>([]);
@@ -209,7 +209,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
 
   return (
     <KidsGameStage theme="night" ariaLabel={isEnglish ? "ZIKR Memory" : "ذاكرة ذِكر"}><KidsGameWorld gameId="zikr-memory" />
-      <KidsGameHeader eyebrow="ZIKR MEMORY" title={isEnglish ? "ZIKR Memory" : "ذاكرة ذِكر"} description={isEnglish ? "Match everyday situations to verified Arabic dhikr." : meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(matched.length / Math.max(1, cards.length)) * 100} label={levelLabel(levelIndex, isEnglish)} /></div>} />
+      <KidsGameHeader eyebrow="ZIKR MEMORY" title={isEnglish ? "ZIKR Memory" : "ذاكرة ذِكر"} description={isEnglish ? "Match everyday situations to verified Arabic dhikr." : meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(matched.length / Math.max(1, cards.length)) * 100} label={isEnglish ? "Pairs " + matched.length / 2 + "/" + pairTarget : "الأزواج " + matched.length / 2 + "/" + pairTarget} /></div>} />
       <div className="px-4 sm:px-6">
         {isEnglish && <p className="mb-3 text-xs text-brand-cream/45">Dhikr phrases remain in their verified Arabic wording.</p>}
         <KidsGameHud items={[
@@ -225,10 +225,20 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
         </div>
       </div>
       <div className="relative mx-4 mt-4 grid grid-cols-2 gap-3 p-1 sm:mx-6 sm:grid-cols-3 sm:gap-4">
-        {cards.map(card => {
+        {cards.map((card, index) => {
           const visible = flipped.includes(card.id) || matched.includes(card.id);
+          const cardText = isEnglish && card.side === "situation"
+            ? (MEMORY_SITUATIONS_EN[card.pairId] ?? card.text)
+            : card.text;
+          const cardAccessibleLabel = visible
+            ? card.side === "situation"
+              ? (isEnglish ? "Situation: " + cardText : "موقف: " + cardText)
+              : (isEnglish ? "Dhikr: " + cardText : "ذكر: " + cardText)
+            : hintId === card.pairId
+              ? (isEnglish ? "Card " + (index + 1) + ", hint: matching pair" : "البطاقة " + (index + 1) + "، تلميح: ضمن الزوج")
+              : (isEnglish ? "Card " + (index + 1) + ", hidden" : "البطاقة " + (index + 1) + "، مخفية");
           return (
-            <button key={card.id} type="button" disabled={paused || locked || matched.includes(card.id)} onClick={() => choose(card.id)}
+            <button key={card.id} type="button" aria-label={cardAccessibleLabel} aria-pressed={visible} disabled={paused || locked || matched.includes(card.id)} onClick={() => choose(card.id)}
               className={[
                 "group min-h-36 rounded-[1.5rem] border p-4 " + (isEnglish && card.side === "situation" ? "text-left" : "text-right") + " transition duration-200",
                 visible ? "border-brand-gold/45 bg-brand-gold/10 shadow-[0_12px_30px_rgba(243,201,105,.08)]" : hintId === card.pairId ? "border-brand-gold/80 bg-brand-gold/5 ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-[#081823]/90 hover:-translate-y-1 hover:border-brand-emerald/40",
@@ -236,7 +246,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
               ].join(" ")}>
               {visible ? <>
                 <div className="flex items-center justify-between"><span className="text-xs font-black text-brand-emerald">{card.side === "situation" ? (isEnglish ? "Situation" : "موقف") : (isEnglish ? "Dhikr" : "ذكر")}</span><StarToken size={26} /></div>
-                <p className="mt-4 text-sm leading-7 text-brand-cream">{isEnglish && card.side === "situation" ? (MEMORY_SITUATIONS_EN[card.pairId] ?? card.text) : card.text}</p>
+                <p className="mt-4 text-sm leading-7 text-brand-cream">{cardText}</p>
               </> : <div className="grid h-full min-h-28 place-items-center text-center"><div><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-brand-gold/20 bg-brand-gold/10 text-2xl text-brand-gold">✦</div><p className="mt-3 text-xs text-brand-cream/45">{isEnglish ? "Hidden card" : "بطاقة مخفية"}</p></div></div>}
             </button>
           );
