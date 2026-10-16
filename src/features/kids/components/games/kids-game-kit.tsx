@@ -478,17 +478,39 @@ export function TouchArrows({
   onAction: () => void;
   actionLabel?: string;
 }) {
+  const controls = [
+    { label: "يمين", icon: "→", onPress: onRight },
+    { label: actionLabel, icon: actionLabel, onPress: onAction, action: true },
+    { label: "يسار", icon: "←", onPress: onLeft },
+  ];
+
   return (
-    <div className="flex items-center justify-center gap-2 sm:gap-3">
-      <button type="button" onPointerDown={onRight} className="min-h-14 min-w-16 touch-manipulation select-none rounded-2xl border border-brand-cream/15 bg-black/25 px-4 text-2xl text-brand-cream active:scale-95 sm:min-w-20 sm:px-5">
-        →
-      </button>
-      <button type="button" onPointerDown={onAction} className="min-h-14 min-w-24 touch-manipulation select-none rounded-2xl border-2 border-brand-gold/50 bg-brand-gold/10 px-4 text-sm font-black text-brand-gold active:scale-95 sm:px-5">
-        {actionLabel}
-      </button>
-      <button type="button" onPointerDown={onLeft} className="min-h-14 min-w-16 touch-manipulation select-none rounded-2xl border border-brand-cream/15 bg-black/25 px-4 text-2xl text-brand-cream active:scale-95 sm:min-w-20 sm:px-5">
-        ←
-      </button>
+    <div className="grid grid-cols-3 items-center justify-center gap-2 sm:flex sm:gap-3" aria-label="أزرار التحكم باللعبة">
+      {controls.map((control) => (
+        <button
+          key={control.label}
+          type="button"
+          aria-label={control.label}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            control.onPress();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              control.onPress();
+            }
+          }}
+          className={
+            "min-h-14 touch-manipulation select-none rounded-2xl px-3 transition active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold sm:px-5 " +
+            (control.action
+              ? "min-w-0 border-2 border-brand-gold/50 bg-brand-gold/10 text-sm font-black text-brand-gold sm:min-w-24"
+              : "min-w-0 border border-brand-cream/15 bg-black/25 text-2xl text-brand-cream sm:min-w-20")
+          }
+        >
+          {control.icon}
+        </button>
+      ))}
     </div>
   );
 }
