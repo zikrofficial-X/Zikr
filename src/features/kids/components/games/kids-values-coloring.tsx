@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
 import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
 import { GameToast, GardenBackdrop, KidsGameHeader, KidsGameHud, KidsGameStage, KidsProgress, KidCharacter, MosqueBackdrop, StarToken } from "@/features/kids/components/games/kids-game-kit";
 import { getGoodDeedsRules } from "@/lib/games/good-deeds";
 import { getMosqueCleanupRules } from "@/lib/games/mosque-cleanup";
-import { getZikrColoringRules } from "@/lib/games/zikr-coloring";
+import { getZikrColoringRules, getZikrColoringSheetIndex } from "@/lib/games/zikr-coloring";
 import { getKidsLevelMeta, KIDS_LEVEL_COUNT } from "@/lib/games/kids-level-system";
 import { accumulateGameLevel, createGameRunTotals } from "@/lib/games/run-stats";
 import { seededShuffle } from "@/lib/games/gameplay-helpers";
@@ -239,13 +240,76 @@ const COLORING_SHEETS: ColoringSheet[] = [
   { id: "mosque-garden", title: "حديقة المسجد", subtitle: "قبة ونباتات وسماء هادئة" },
   { id: "crescent-night", title: "ليلة الهلال", subtitle: "هلال ونجوم وبيوت صغيرة" },
   { id: "geometry", title: "نجمة ذِكر", subtitle: "نقش هندسي مفتوح للتلوين" },
+  { id: "lantern-street", title: "شارع الفوانيس", subtitle: "بوابة وفوانيس تضيء طريقًا هادئًا" },
+  { id: "kite-meadow", title: "مرج الطائرات الورقية", subtitle: "سماء واسعة وطائرات ملونة وزهور" },
+  { id: "starry-village", title: "قرية النجوم", subtitle: "بيوت صغيرة ونجوم وهلال لطيف" },
 ];
 const COLOR_PALETTE = ["#f3c969","#5fd1a6","#8ab6e2","#d7a7e8","#e28a5a","#f7f1df","#7ed6c1","#9c86e8","#ffb4a2","#c6e377"];
 
 function coloringSvg(sheetId: string, fill: (index: number) => string, paint: (index: number) => void) {
-  if (sheetId === "geometry") return <svg viewBox="0 0 360 260" className="w-full" role="img" aria-label="لوحة هندسية"><rect x="25" y="25" width="310" height="210" rx="28" fill="#0a202a" stroke="#f3c969" strokeWidth="4" />{Array.from({ length: 8 }, (_, i) => <path key={i} d={"M180 44 L" + (205 + Math.cos(i * Math.PI / 4) * 85) + " " + (130 + Math.sin(i * Math.PI / 4) * 85) + " L180 216 L" + (155 - Math.cos(i * Math.PI / 4) * 85) + " " + (130 - Math.sin(i * Math.PI / 4) * 85) + " Z"} fill={fill(i)} stroke="#f3c969" strokeWidth="2" onClick={() => paint(i)} className="cursor-pointer" />)}<circle cx="180" cy="130" r="30" fill={fill(8)} stroke="#5fd1a6" strokeWidth="3" onClick={() => paint(8)} className="cursor-pointer" /><circle cx="180" cy="130" r="14" fill={fill(9)} stroke="#8ab6e2" strokeWidth="2" onClick={() => paint(9)} className="cursor-pointer" /></svg>;
-  if (sheetId === "crescent-night") return <svg viewBox="0 0 360 260" className="w-full" role="img" aria-label="لوحة الهلال"><rect x="25" y="25" width="310" height="210" rx="28" fill="#0b1b33" stroke="#f3c969" strokeWidth="4" /><path d="M215 53c-38 8-62 39-62 71 0 35 24 61 57 61 27 0 49-17 59-41-10 8-21 11-32 11-29 0-49-18-49-45 0-21 12-42 27-57z" fill={fill(0)} stroke="#f3c969" strokeWidth="3" onClick={() => paint(0)} className="cursor-pointer" />{Array.from({ length: 7 }, (_, i) => <circle key={i} cx={72 + (i * 39) % 220} cy={60 + ((i * 31) % 120)} r={7 + (i % 2) * 3} fill={fill(i + 1)} stroke="#f7f1df" strokeWidth="1.5" onClick={() => paint(i + 1)} className="cursor-pointer" />)}<path d="M75 188c22-34 45-34 67 0M82 188c12-18 28-18 40 0" fill={fill(8)} stroke="#5fd1a6" strokeWidth="4" onClick={() => paint(8)} className="cursor-pointer" /><circle cx="305" cy="55" r="8" fill={fill(9)} onClick={() => paint(9)} className="cursor-pointer" /></svg>;
-  return <svg viewBox="0 0 360 260" className="w-full" role="img" aria-label="لوحة حديقة المسجد"><rect x="25" y="25" width="310" height="210" rx="28" fill="#0a222a" stroke="#f3c969" strokeWidth="4" /><path d="M180 56c-22 0-40 18-40 40v45h80V96c0-22-18-40-40-40z" fill={fill(0)} stroke="#f3c969" strokeWidth="3" onClick={() => paint(0)} className="cursor-pointer" /><rect x="119" y="141" width="122" height="45" rx="8" fill={fill(1)} stroke="#5fd1a6" strokeWidth="3" onClick={() => paint(1)} className="cursor-pointer" />{Array.from({ length: 6 }, (_, i) => <circle key={i} cx={76 + i * 41} cy="174" r="15" fill={fill(i + 2)} stroke="#5fd1a6" strokeWidth="2" onClick={() => paint(i + 2)} className="cursor-pointer" />)}<path d="M70 210h220" stroke="#8ab6e2" strokeWidth="8" /><circle cx="53" cy="62" r="9" fill={fill(8)} stroke="#f3c969" strokeWidth="2" onClick={() => paint(8)} className="cursor-pointer" /><circle cx="310" cy="75" r="9" fill={fill(9)} stroke="#d7a7e8" strokeWidth="2" onClick={() => paint(9)} className="cursor-pointer" /></svg>;
+  const paintable = (index: number) => ({
+    onClick: () => paint(index),
+    onKeyDown: (event: ReactKeyboardEvent<SVGElement>) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        paint(index);
+      }
+    },
+    tabIndex: 0,
+    role: "button" as const,
+    "aria-label": "تلوين المنطقة " + (index + 1),
+    className: "cursor-pointer focus-visible:stroke-white focus-visible:stroke-2",
+  });
+  if (sheetId === "geometry") return <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label="لوحة هندسية"><rect x="25" y="25" width="310" height="210" rx="28" fill="#0a202a" stroke="#f3c969" strokeWidth="4" />{Array.from({ length: 8 }, (_, i) => <path key={i} d={"M180 44 L" + (205 + Math.cos(i * Math.PI / 4) * 85) + " " + (130 + Math.sin(i * Math.PI / 4) * 85) + " L180 216 L" + (155 - Math.cos(i * Math.PI / 4) * 85) + " " + (130 - Math.sin(i * Math.PI / 4) * 85) + " Z"} fill={fill(i)} stroke="#f3c969" strokeWidth="2" {...paintable(i)} />)}<circle cx="180" cy="130" r="30" fill={fill(8)} stroke="#5fd1a6" strokeWidth="3" {...paintable(8)} /><circle cx="180" cy="130" r="14" fill={fill(9)} stroke="#8ab6e2" strokeWidth="2" {...paintable(9)} /></svg>;
+  if (sheetId === "crescent-night") return <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label="لوحة الهلال"><rect x="25" y="25" width="310" height="210" rx="28" fill="#0b1b33" stroke="#f3c969" strokeWidth="4" /><path d="M215 53c-38 8-62 39-62 71 0 35 24 61 57 61 27 0 49-17 59-41-10 8-21 11-32 11-29 0-49-18-49-45 0-21 12-42 27-57z" fill={fill(0)} stroke="#f3c969" strokeWidth="3" {...paintable(0)} />{Array.from({ length: 7 }, (_, i) => <circle key={i} cx={72 + (i * 39) % 220} cy={60 + ((i * 31) % 120)} r={7 + (i % 2) * 3} fill={fill(i + 1)} stroke="#f7f1df" strokeWidth="1.5" {...paintable(i + 1)} />)}<path d="M75 188c22-34 45-34 67 0M82 188c12-18 28-18 40 0" fill={fill(8)} stroke="#5fd1a6" strokeWidth="4" {...paintable(8)} /><circle cx="305" cy="55" r="8" fill={fill(9)} {...paintable(9)} /></svg>;
+  if (sheetId === "lantern-street") return (
+    <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label="لوحة شارع الفوانيس">
+      <rect x="25" y="25" width="310" height="210" rx="28" fill="#0b1e2c" stroke="#f3c969" strokeWidth="4" />
+      <circle cx="287" cy="56" r="18" fill={fill(9)} stroke="#f7f1df" strokeWidth="2" {...paintable(9)} />
+      <path d="M90 214V112A90 90 0 0 1 270 112V214Z" fill={fill(0)} stroke="#d7a7e8" strokeWidth="3" {...paintable(0)} />
+      <path d="M130 214V139A50 50 0 0 1 230 139V214Z" fill={fill(1)} stroke="#f3c969" strokeWidth="3" {...paintable(1)} />
+      <path d="M70 75H91V93H70Z" fill={fill(2)} stroke="#f3c969" strokeWidth="2" {...paintable(2)} />
+      <path d="M62 93H99L94 121H67Z" fill={fill(3)} stroke="#f3c969" strokeWidth="2" {...paintable(3)} />
+      <path d="M168 54H192V72H168Z" fill={fill(4)} stroke="#f3c969" strokeWidth="2" {...paintable(4)} />
+      <path d="M158 72H202L196 103H164Z" fill={fill(5)} stroke="#f3c969" strokeWidth="2" {...paintable(5)} />
+      <path d="M269 75H290V93H269Z" fill={fill(6)} stroke="#f3c969" strokeWidth="2" {...paintable(6)} />
+      <path d="M261 93H298L293 121H266Z" fill={fill(7)} stroke="#f3c969" strokeWidth="2" {...paintable(7)} />
+      <path d="M45 214Q61 190 77 214Q92 181 108 214Z" fill={fill(8)} stroke="#5fd1a6" strokeWidth="2" {...paintable(8)} />
+      <path d="M252 214Q268 190 284 214Q299 181 315 214Z" fill={fill(8)} stroke="#5fd1a6" strokeWidth="2" {...paintable(8)} />
+      <path d="M43 235H317" stroke="#8ab6e2" strokeWidth="5" />
+    </svg>
+  );
+  if (sheetId === "kite-meadow") return (
+    <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label="لوحة مرج الطائرات الورقية">
+      <rect x="25" y="25" width="310" height="210" rx="28" fill="#102b43" stroke="#8ab6e2" strokeWidth="4" />
+      <path d="M49 76Q61 54 80 69Q93 44 113 66Q137 63 134 84H49Z" fill={fill(0)} stroke="#f7f1df" strokeWidth="2" {...paintable(0)} />
+      <path d="M225 68Q238 47 256 62Q276 42 290 66Q315 64 312 86H225Z" fill={fill(1)} stroke="#f7f1df" strokeWidth="2" {...paintable(1)} />
+      <path d="M110 91L140 119L110 147L80 119Z" fill={fill(2)} stroke="#f3c969" strokeWidth="3" {...paintable(2)} />
+      <path d="M110 147Q125 159 110 169Q96 178 115 188" fill="none" stroke={fill(3)} strokeWidth="4" strokeLinecap="round" {...paintable(3)} />
+      <path d="M242 104L269 130L242 156L215 130Z" fill={fill(4)} stroke="#d7a7e8" strokeWidth="3" {...paintable(4)} />
+      <path d="M242 156Q255 167 242 178Q230 188 249 198" fill="none" stroke={fill(5)} strokeWidth="4" strokeLinecap="round" {...paintable(5)} />
+      <path d="M27 197Q101 165 177 201T333 196V232H27Z" fill={fill(6)} stroke="#5fd1a6" strokeWidth="2" {...paintable(6)} />
+      <path d="M61 216Q78 197 95 216Q111 198 128 216Z" fill={fill(7)} stroke="#5fd1a6" strokeWidth="2" {...paintable(7)} />
+      <circle cx="166" cy="210" r="9" fill={fill(8)} stroke="#f3c969" strokeWidth="2" {...paintable(8)} />
+      <circle cx="198" cy="212" r="9" fill={fill(9)} stroke="#f3c969" strokeWidth="2" {...paintable(9)} />
+    </svg>
+  );
+  if (sheetId === "starry-village") return (
+    <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label="لوحة قرية النجوم">
+      <rect x="25" y="25" width="310" height="210" rx="28" fill="#171e3c" stroke="#f3c969" strokeWidth="4" />
+      <path d="M45 158L88 111L131 158Z" fill={fill(0)} stroke="#f3c969" strokeWidth="2" {...paintable(0)} />
+      <rect x="53" y="158" width="70" height="48" rx="4" fill={fill(1)} stroke="#8ab6e2" strokeWidth="2" {...paintable(1)} />
+      <path d="M139 170L180 124L221 170Z" fill={fill(2)} stroke="#d7a7e8" strokeWidth="2" {...paintable(2)} />
+      <rect x="149" y="170" width="62" height="36" rx="4" fill={fill(3)} stroke="#8ab6e2" strokeWidth="2" {...paintable(3)} />
+      <path d="M226 160L267 116L308 160Z" fill={fill(4)} stroke="#5fd1a6" strokeWidth="2" {...paintable(4)} />
+      <rect x="236" y="160" width="62" height="46" rx="4" fill={fill(5)} stroke="#8ab6e2" strokeWidth="2" {...paintable(5)} />
+      <path d="M78 55L84 68L98 70L88 80L90 94L78 87L66 94L68 80L58 70L72 68Z" fill={fill(6)} stroke="#f7f1df" strokeWidth="1.5" {...paintable(6)} />
+      <path d="M180 48L185 59L198 61L188 70L190 83L180 77L169 83L171 70L161 61L174 59Z" fill={fill(7)} stroke="#f7f1df" strokeWidth="1.5" {...paintable(7)} />
+      <path d="M279 63L284 74L296 76L287 85L289 97L279 91L269 97L271 85L262 76L274 74Z" fill={fill(8)} stroke="#f7f1df" strokeWidth="1.5" {...paintable(8)} />
+      <path d="M245 46A19 19 0 1 0 263 76A15 15 0 0 1 245 46Z" fill={fill(9)} stroke="#f3c969" strokeWidth="2" {...paintable(9)} />
+    </svg>
+  );
+  return <svg viewBox="0 0 360 260" className="w-full" role="group" aria-label="لوحة حديقة المسجد"><rect x="25" y="25" width="310" height="210" rx="28" fill="#0a222a" stroke="#f3c969" strokeWidth="4" /><path d="M180 56c-22 0-40 18-40 40v45h80V96c0-22-18-40-40-40z" fill={fill(0)} stroke="#f3c969" strokeWidth="3" {...paintable(0)} /><rect x="119" y="141" width="122" height="45" rx="8" fill={fill(1)} stroke="#5fd1a6" strokeWidth="3" {...paintable(1)} />{Array.from({ length: 6 }, (_, i) => <circle key={i} cx={76 + i * 41} cy="174" r="15" fill={fill(i + 2)} stroke="#5fd1a6" strokeWidth="2" {...paintable(i + 2)} />)}<path d="M70 210h220" stroke="#8ab6e2" strokeWidth="8" /><circle cx="53" cy="62" r="9" fill={fill(8)} stroke="#f3c969" strokeWidth="2" {...paintable(8)} /><circle cx="310" cy="75" r="9" fill={fill(9)} stroke="#d7a7e8" strokeWidth="2" {...paintable(9)} /></svg>;
 }
 
 export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onResult, onSound }: Props) {
@@ -263,7 +327,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   const levelResetPendingRef = useRef(false);
   const rules = getZikrColoringRules(difficulty, levelIndex);
   const meta = getKidsLevelMeta("zikr-coloring", difficulty, levelIndex);
-  const sheetIndex = meta.pattern % COLORING_SHEETS.length;
+  const sheetIndex = getZikrColoringSheetIndex(difficulty, levelIndex, COLORING_SHEETS.length);
   const current = COLORING_SHEETS[sheetIndex];
 
   useEffect(() => {

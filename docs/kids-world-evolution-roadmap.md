@@ -46,6 +46,7 @@ Status: implemented in the companion GitHub change.
 - Define an asset manifest per game for characters, backgrounds, props, animations, and sound events.
 - Prefer compressed SVG/vector assets for interface art; use sprite sheets only where actual animation materially improves play.
 - Provide reduced-motion and sound-off experiences and avoid loading large art packs before a game is opened.
+- Coloring now offers six original vector scenes, keyboard-operable paint regions, and a rotation that guarantees each difficulty visits all six scenes across the 20 levels.
 - Track asset dimensions, format, source/rights, and game ownership.
 - Acceptance gate: no game card depends on a remote image for its core identity and no missing asset breaks gameplay.
 
