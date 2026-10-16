@@ -38,7 +38,7 @@ function clamp(value: number, min: number, max: number) {
 
 function safeGameNumber(value: number) {
   if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.floor(value));
+  return Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.floor(value)));
 }
 
 export function formatGameNumber(value: number) {
