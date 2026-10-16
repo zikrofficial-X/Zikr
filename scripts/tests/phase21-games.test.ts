@@ -44,7 +44,7 @@ assert.equal((cleanupItemsCatalog.match(/nameEn:/g) ?? []).length, 16, "all Clea
 assert.equal((cleanupZonesCatalog.match(/titleEn:/g) ?? []).length, 4, "all Cleanup zones need English titles");
 assert.equal((coloringCatalog.match(/, titleEn:/g) ?? []).length, 6, "all Coloring scenes need English titles");
 assert.equal((coloringCatalog.match(/subtitleEn:/g) ?? []).length, 6, "all Coloring scenes need English descriptions");
-assert.equal((coloringSource.match(/const \\{ isEnglish \\} = useLanguage\\(\\);/g) ?? []).length, 3, "all three games must read the selected language");
+assert.equal(coloringSource.split("const { isEnglish } = useLanguage();").length - 1, 3, "all three games must read the selected language");
 assert.ok(coloringSource.includes('title={isEnglish ? "Good Deeds Adventure"') && coloringSource.includes('title={isEnglish ? "Organize the Place"') && coloringSource.includes('title={isEnglish ? "ZIKR Coloring Studio"'), "all three values games need localized titles");
 for (const difficulty of ["easy", "normal", "hard"] as const) {
   const sceneIndexes = Array.from({ length: KIDS_LEVEL_COUNT }, (_, level) =>
