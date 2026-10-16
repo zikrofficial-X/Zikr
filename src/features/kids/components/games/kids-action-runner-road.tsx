@@ -905,7 +905,7 @@ export function ZikrRoadGame({
         </div>
 
         <div className="absolute bottom-0 inset-x-0 z-40 border-t border-white/10 bg-black/30 px-4 py-4 backdrop-blur-md">
-          <TouchArrows onLeft={() => move(-1)} onRight={() => move(1)} onAction={() => undefined} actionLabel={isEnglish ? "Continue" : "استمر"} />
+          <TouchArrows onLeft={() => move(-1)} onRight={() => move(1)} onAction={() => undefined} hideAction />
         </div>
 
         {state.questionOpen && question && (
