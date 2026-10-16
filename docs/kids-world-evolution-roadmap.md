@@ -49,6 +49,7 @@ Status: implemented in the companion GitHub change.
 - Coloring now offers six original vector scenes, keyboard-operable paint regions, and a rotation that guarantees each difficulty visits all six scenes across the 20 levels.
 - Track asset dimensions, format, source/rights, and game ownership.
 - Good Deeds, Cleanup, and Coloring localize child-facing titles, instructions, activity content, feedback, HUD labels, and artwork descriptions in Arabic and English.
+- Memory, Wudu, Verse Puzzle, and Quiz localize their controls, feedback, progress labels, and headers; verified dhikr, wudu steps, Quran text, quiz questions, and choices remain explicitly identified in their original Arabic wording.
 - Acceptance gate: no game card depends on a remote image for its core identity and no missing asset breaks gameplay.
 
 ## Phase F — Progress, privacy, and family controls
