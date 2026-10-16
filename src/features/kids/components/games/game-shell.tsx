@@ -446,7 +446,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
           <Button
             type="button"
             variant="outline"
-            onClick={togglePause
+            onClick={togglePause}
             disabled={!controller || Boolean(result)}
             aria-label={paused ? (isEnglish ? "Resume game" : "متابعة اللعبة") : (isEnglish ? "Pause game" : "إيقاف اللعبة مؤقتًا")}
           >
