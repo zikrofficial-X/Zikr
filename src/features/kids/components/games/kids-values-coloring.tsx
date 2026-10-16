@@ -8,7 +8,7 @@ import type { WorldHud } from "@/features/kids/components/games/world-game-stage
 import { GameToast, GardenBackdrop, KidsGameHeader, KidsGameHud, KidsGameStage, KidsProgress, KidCharacter, MosqueBackdrop, StarToken } from "@/features/kids/components/games/kids-game-kit";
 import { getGoodDeedsRules } from "@/lib/games/good-deeds";
 import { getMosqueCleanupRules } from "@/lib/games/mosque-cleanup";
-import { getZikrColoringRules } from "@/lib/games/zikr-coloring";
+import { getZikrColoringRules, getZikrColoringSheetIndex } from "@/lib/games/zikr-coloring";
 import { getKidsLevelMeta, KIDS_LEVEL_COUNT } from "@/lib/games/kids-level-system";
 import { accumulateGameLevel, createGameRunTotals } from "@/lib/games/run-stats";
 import { seededShuffle } from "@/lib/games/gameplay-helpers";
@@ -327,7 +327,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   const levelResetPendingRef = useRef(false);
   const rules = getZikrColoringRules(difficulty, levelIndex);
   const meta = getKidsLevelMeta("zikr-coloring", difficulty, levelIndex);
-  const sheetIndex = meta.pattern % COLORING_SHEETS.length;
+  const sheetIndex = getZikrColoringSheetIndex(difficulty, levelIndex, COLORING_SHEETS.length);
   const current = COLORING_SHEETS[sheetIndex];
 
   useEffect(() => {
