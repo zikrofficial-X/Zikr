@@ -1,0 +1,57 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const runnerRoad = readFileSync("src/features/kids/components/games/kids-action-runner-road.tsx", "utf8");
+const adventure = readFileSync("src/features/kids/components/games/kids-action-adventure.tsx", "utf8");
+
+assert.equal(
+  (runnerRoad.match(/const \{ isEnglish \} = useLanguage\(\);/g) ?? []).length,
+  2,
+  "ZIKR Runner and ZIKR Road must both read the selected language",
+);
+assert.equal(
+  (adventure.match(/const \{ isEnglish \} = useLanguage\(\);/g) ?? []).length,
+  3,
+  "Jump, Crescent Flight, and Mosque Adventure must read the selected language",
+);
+
+for (const title of ['title={isEnglish ? "ZIKR Runner"', 'title={isEnglish ? "ZIKR Road"']) {
+  assert.ok(runnerRoad.includes(title), "missing localized action-game title: " + title);
+}
+for (const title of [
+  'title={isEnglish ? "ZIKR Jump"',
+  'title={isEnglish ? "Crescent Flight"',
+  'title={isEnglish ? "Mosque Adventure"',
+]) {
+  assert.ok(adventure.includes(title), "missing localized adventure-game title: " + title);
+}
+
+for (const label of ['"Score" : "النقاط"', '"Stars" : "النجوم"', '"Lives" : "المحاولات"', '"Distance" : "المسافة"']) {
+  assert.ok(runnerRoad.includes(label), "runner/road HUD label is not bilingual: " + label);
+}
+for (const label of ['"Score" : "النقاط"', '"Stars" : "النجوم"', '"Stations" : "المحطات"', '"Mistakes" : "الأخطاء"']) {
+  assert.ok(adventure.includes(label), "adventure HUD label is not bilingual: " + label);
+}
+
+assert.ok(runnerRoad.includes('getKidsLevelMeta("zikr-runner", difficulty, model.levelIndex)'), "Runner must use localized level metadata");
+assert.ok(runnerRoad.includes('getKidsLevelMeta("zikr-road", difficulty, state.levelIndex)'), "Road must use localized level metadata");
+assert.ok(adventure.includes('getKidsLevelMeta("zikr-jump", difficulty, snapshot.levelIndex)'), "Jump must use localized level metadata");
+assert.ok(adventure.includes('getKidsLevelMeta("hilal-fly", difficulty, state.levelIndex)'), "Crescent Flight must use localized level metadata");
+
+const nodeCatalog = adventure.split("const NODE_TEMPLATES = [")[1]?.split("] as const;")[0] ?? "";
+assert.equal((nodeCatalog.match(/titleEn:/g) ?? []).length, 7, "all Mosque Adventure map nodes need English titles");
+assert.equal((nodeCatalog.match(/labelEn:/g) ?? []).length, 7, "all Mosque Adventure map nodes need English labels");
+assert.ok(adventure.includes("title: (isEnglish ? template.titleEn : template.title)"), "Mosque map-node names must follow the selected language");
+assert.ok(adventure.includes("label: isEnglish ? template.labelEn : template.label"), "Mosque map-node labels must follow the selected language");
+
+assert.equal(
+  (runnerRoad.match(/The question and choices use the approved Arabic source content\./g) ?? []).length,
+  2,
+  "Runner and Road must clarify that checkpoint questions stay in approved Arabic source wording",
+);
+assert.ok(
+  adventure.includes("This checkpoint uses the approved Arabic scenario content."),
+  "Mosque Adventure must clarify that scenario text stays in approved Arabic source wording",
+);
+
+console.log("Kids action-game localization contract passed: 5 games, bilingual HUD/feedback, level metadata, map labels, and verified Arabic checkpoint content.");
