@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { getGameDefinition, type GameDifficulty, type GameId, type GameResultPayload } from "@/lib/games/registry";
 import { enqueueGameResult, getQueuedGameResultCount, syncQueuedGameResults } from "@/lib/games/offline-queue";
 import { WorldGameStage, type StageController, type WorldHud } from "@/features/kids/components/games/world-game-stage";
+import { KidsGameArt } from "@/features/kids/components/games/kids-game-art";
 import { getDailyMission, getMissionProgress } from "@/lib/games/game-missions";
 
 function formatNumber(value: number, isEnglish: boolean) { return new Intl.NumberFormat(isEnglish ? "en-US" : "ar-SA").format(value); }
@@ -191,15 +192,18 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
 
   return (
     <section className="space-y-4" dir={isEnglish ? "ltr" : "rtl"} aria-labelledby="game-heading">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_260px] md:items-center">
+        <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.2em] text-brand-emerald/80">{isEnglish ? "ZIKR Kids" : "عالم ذِكر للأطفال"}</p>
           <h2 id="game-heading" className="text-2xl font-bold text-brand-gold">{isEnglish ? definition.titleEn : definition.titleAr}</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-7 text-brand-cream/65">{isEnglish ? definition.storyEn : definition.storyAr}</p>
+          <p className="max-w-2xl text-sm leading-7 text-brand-cream/65">{isEnglish ? definition.storyEn : definition.storyAr}</p>
+          <Link href="/kids/games" className="inline-flex pt-2 text-sm text-brand-cream/70 underline underline-offset-4 hover:text-brand-gold">
+            {isEnglish ? "Back to games" : "العودة إلى الألعاب"}
+          </Link>
         </div>
-        <Link href="/kids/games" className="text-sm text-brand-cream/70 underline underline-offset-4 hover:text-brand-gold">
-          {isEnglish ? "Back to games" : "العودة إلى الألعاب"}
-        </Link>
+        <div className="aspect-[2/1] overflow-hidden rounded-2xl border border-brand-gold/20 bg-black/20 md:aspect-[5/4]">
+          <KidsGameArt gameId={gameId} />
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-cream/10 bg-black/20 p-3">

@@ -6,11 +6,13 @@ const gameIds = Object.keys(GAME_REGISTRY) as Array<keyof typeof GAME_REGISTRY>;
 const artSource = readFileSync("src/features/kids/components/games/kids-game-art.tsx", "utf8");
 const stageSource = readFileSync("src/features/kids/components/games/world-game-stage.tsx", "utf8");
 const homeSource = readFileSync("src/app/kids/page.tsx", "utf8");
+const shellSource = readFileSync("src/features/kids/components/games/game-shell.tsx", "utf8");
 
 assert.equal(gameIds.length, 12, "the canonical Kids catalog must continue to expose 12 games");
 assert.match(artSource, /useId\(\)/, "SVG artwork IDs must be unique when cards repeat on the same page");
 assert.match(artSource, /aria-label": label/, "game illustrations need a localized accessible name");
 assert.match(homeSource, /KidsGameArt/, "the Kids landing page must show game-specific artwork");
+assert.match(shellSource, /KidsGameArt/, "active gameplay must show game-specific artwork");
 
 const artCases = artSource.match(/case "[a-z-]+":/g) ?? [];
 assert.equal(artCases.length, gameIds.length, "every game needs one explicit art scene");
