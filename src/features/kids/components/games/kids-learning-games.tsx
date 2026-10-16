@@ -73,7 +73,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   const { isEnglish } = useLanguage();
   const isEnglishRef = useRef(isEnglish);
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
-  const pairs = getVerifiedMemoryPairs();
+  const pairs = useMemo(() => getVerifiedMemoryPairs(), []);
   const [levelIndex, setLevelIndex] = useState(0);
   const [flipped, setFlipped] = useState<string[]>([]);
   const [matched, setMatched] = useState<string[]>([]);
