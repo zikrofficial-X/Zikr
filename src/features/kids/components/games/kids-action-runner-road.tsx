@@ -623,7 +623,7 @@ export function ZikrRoadGame({
   const [state, setState] = useState<RoadModel>(createRoadState);
   const [question, setQuestion] = useState<VerifiedQuizQuestion | null>(null);
   const [answer, setAnswer] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState("غيّر المسار واجمع النجوم وتوقف عند محطات التعلم.");
+  const [feedback, setFeedback] = useState(isEnglish ? "Change lanes, collect stars, and stop at learning checkpoints." : "غيّر المسار واجمع النجوم وتوقف عند محطات التعلم.");
   const completionRef = useRef(false);
 
   const reset = () => {
