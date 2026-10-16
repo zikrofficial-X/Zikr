@@ -14,6 +14,7 @@ import { getZikrColoringRules } from "../../src/lib/games/zikr-coloring";
 import { normalizeKidsGameSearch } from "../../src/lib/games/search";
 import { gameKeyAction } from "../../src/lib/games/gameplay-helpers";
 import { accumulateGameLevel, createGameRunTotals } from "../../src/lib/games/run-stats";
+import { getApprovedRoadQuestions, getApprovedScenarioQuestions } from "../../src/lib/games/verified-content";
 
 const totals1 = accumulateGameLevel(createGameRunTotals(), { score: 120, collectibles: 3, combo: 2 });
 const totals2 = accumulateGameLevel(totals1, { score: 80, collectibles: 2, combo: 5 });
@@ -26,6 +27,24 @@ assert.deepEqual(
 
 const gameIds = Object.keys(GAME_REGISTRY) as GameId[];
 assert.equal(gameIds.length, 12, "canonical Kids registry must contain exactly 12 games");
+
+const adventureQuestions = getApprovedScenarioQuestions();
+const roadQuestions = getApprovedRoadQuestions();
+assert.ok(adventureQuestions.length >= 15, "Mosque Adventure must draw from the complete approved scenario pool");
+assert.equal(
+  new Set(adventureQuestions.map(question => question.text.trim().replace(/\\s+/g, " ").toLocaleLowerCase())).size,
+  adventureQuestions.length,
+  "Mosque Adventure scenario prompts must not repeat after whitespace/case normalization",
+);
+assert.equal(roadQuestions.length, adventureQuestions.length, "Road and Mosque Adventure must share the same canonical scenario pool");
+for (const sourceSlug of ["game-scenario-smart-choice", "quiz-akhlaq-adventure", "quiz-akhlaq-daily-life"]) {
+  assert.ok(adventureQuestions.some(question => question.sourceSlug === sourceSlug), "scenario pool missing approved source " + sourceSlug);
+}
+for (const question of adventureQuestions) {
+  assert.ok(question.text.trim().length > 0, "scenario prompt must not be empty");
+  assert.ok(question.options.length >= 2, "scenario must have at least two choices: " + question.text);
+  assert.ok(Number.isInteger(question.correctAnswer) && question.correctAnswer >= 0 && question.correctAnswer < question.options.length, "scenario answer index must be valid: " + question.text);
+}
 assert.equal(normalizeKidsGameSearch("ذِكْر"), "ذكر", "Arabic search must ignore diacritics");
 assert.equal(normalizeKidsGameSearch("إِقْرَأْ القرآن"), "اقرا القران", "Arabic search must normalize common alef forms");
 assert.equal(normalizeKidsGameSearch("  زِكْر   "), "زكر", "search normalization must trim and collapse whitespace");

@@ -68,28 +68,41 @@ export function getVerifiedWuduSteps(): VerifiedWuduStep[] {
   return getVerifiedWuduContent().steps;
 }
 
-export function getApprovedScenarioQuestions(): VerifiedQuizQuestion[] {
-  const source = kidsContent.find(item => item.slug === "quiz-akhlaq-adventure" || item.slug === "game-scenario-smart-choice");
-  const questions = source?.quiz_data?.questions?.filter(isQuestion) ?? [];
-  return questions.map(question => ({
-    ...question,
-    category: source?.metadata?.category ?? "الأخلاق والمهارات",
-    sourceSlug: source?.slug ?? "quiz-akhlaq-adventure",
-  }));
-}
+const APPROVED_SCENARIO_SOURCE_SLUGS = [
+  "game-scenario-smart-choice",
+  "quiz-akhlaq-adventure",
+  "quiz-akhlaq-daily-life",
+] as const;
 
+function getApprovedScenarioQuestionsFromSources(): VerifiedQuizQuestion[] {
+  const seenQuestionTexts = new Set<string>();
 
-export function getApprovedRoadQuestions(): VerifiedQuizQuestion[] {
-  const sourceSlugs = ["game-scenario-smart-choice", "quiz-akhlaq-adventure", "quiz-akhlaq-daily-life"] as const;
-  return sourceSlugs.flatMap(sourceSlug => {
+  return APPROVED_SCENARIO_SOURCE_SLUGS.flatMap(sourceSlug => {
     const source = kidsContent.find(item => item.slug === sourceSlug);
     const questions = source?.quiz_data?.questions?.filter(isQuestion) ?? [];
-    return questions.map(question => ({
-      ...question,
-      category: source?.metadata?.category ?? "الأخلاق والمهارات",
-      sourceSlug,
-    }));
+
+    return questions.flatMap(question => {
+      // Repeated prompt text makes later levels feel recycled. Preserve the
+      // first approved source while treating whitespace/case-only changes as duplicates.
+      const key = question.text.trim().replace(/\\s+/g, " ").toLocaleLowerCase();
+      if (seenQuestionTexts.has(key)) return [];
+      seenQuestionTexts.add(key);
+
+      return [{
+        ...question,
+        category: source?.metadata?.category ?? "الأخلاق والمهارات",
+        sourceSlug,
+      }];
+    });
   });
+}
+
+export function getApprovedScenarioQuestions(): VerifiedQuizQuestion[] {
+  return getApprovedScenarioQuestionsFromSources();
+}
+
+export function getApprovedRoadQuestions(): VerifiedQuizQuestion[] {
+  return getApprovedScenarioQuestionsFromSources();
 }
 
 
