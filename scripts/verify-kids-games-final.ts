@@ -145,6 +145,7 @@ if (!values.includes("actionSteps")) throw new Error("Good Deeds multi-step inte
 const deedCatalog = values.split("const DEEDS: Deed[] = [")[1]?.split("];")[0] ?? "";
 const cleanupItemsCatalog = values.split("const CLEANUP_ITEMS: CleanupItem[] = [")[1]?.split("];")[0] ?? "";
 const cleanupZonesCatalog = values.split("const CLEANUP_ZONES: CleanupZone[] = [")[1]?.split("];")[0] ?? "";
+const coloringCatalog = values.split("const COLORING_SHEETS: ColoringSheet[] = [")[1]?.split("];")[0] ?? "";
 if ((deedCatalog.match(/, titleEn:/g) ?? []).length !== 12 || (deedCatalog.match(/descriptionEn:/g) ?? []).length !== 12) {
   throw new Error("All Good Deeds scenes need English titles and descriptions.");
 }
@@ -157,7 +158,6 @@ if (!values.includes("useLanguage") || !values.includes('title={isEnglish ? "Goo
 if ((coloringCatalog.match(/, titleEn:/g) ?? []).length !== 6 || (coloringCatalog.match(/subtitleEn:/g) ?? []).length !== 6) {
   throw new Error("All six Coloring scenes need English titles and descriptions.");
 }
-const coloringCatalog = values.split("const COLORING_SHEETS: ColoringSheet[] = [")[1]?.split("];")[0] ?? "";
 const coloringSheetIds = [...coloringCatalog.matchAll(/id: "([^"]+)"/g)].map(match => match[1]);
 if (coloringSheetIds.length < 6 || new Set(coloringSheetIds).size !== coloringSheetIds.length) {
   throw new Error("Coloring requires at least six unique artwork scenes.");
