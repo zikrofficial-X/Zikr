@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useLanguage } from "@/components/layout/language-provider";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
 import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
@@ -137,6 +138,9 @@ export function ZikrRunnerGame({
   onResult,
   onSound,
 }: ActionGameProps) {
+  const { isEnglish } = useLanguage();
+  const isEnglishRef = useRef(isEnglish);
+  useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const rules = useMemo(() => getZikrRunnerRules(difficulty), [difficulty]);
   const levels = useMemo(() => getZikrRunnerLevels(difficulty), [difficulty]);
   const renderClockRef = useRef(0);
@@ -148,7 +152,7 @@ export function ZikrRunnerGame({
   const [model, setModel] = useState(() => newRunnerModel(rules, levels));
   const [question, setQuestion] = useState<VerifiedQuizQuestion | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState("اقفز فوق العوائق واجمع نجوم الطريق.");
+  const [feedback, setFeedback] = useState(isEnglish ? "Jump over obstacles and collect road stars." : "اقفز فوق العوائق واجمع نجوم الطريق.");
   const [swipeStart, setSwipeStart] = useState<{ x: number; y: number } | null>(null);
 
   const reset = () => {
@@ -157,7 +161,7 @@ export function ZikrRunnerGame({
     setModel(next);
     setQuestion(null);
     setSelectedAnswer(null);
-    setFeedback("اقفز فوق العوائق واجمع نجوم الطريق.");
+    setFeedback(isEnglishRef.current ? "Jump over obstacles and collect road stars." : "اقفز فوق العوائق واجمع نجوم الطريق.");
     completionRef.current = false;
     inputRef.current.jump = false;
     lastFrameRef.current = null;
@@ -245,7 +249,7 @@ export function ZikrRunnerGame({
         state.nextStar = state.distance + Math.max(160, rules.starInterval);
         state.combo = Math.max(0, state.combo);
         onSound("success");
-        setFeedback("دخلت " + levels[nextLevelIndex].titleAr + ".");
+        setFeedback(isEnglishRef.current ? "Entered " + getKidsLevelMeta("zikr-runner", difficulty, nextLevelIndex).titleEn + "." : "دخلت " + levels[nextLevelIndex].titleAr + ".");
       }
 
       const hazardGap = Math.max(240, rules.obstacleInterval / Math.max(0.65, activeLevel.hazardMultiplier));
@@ -300,11 +304,9 @@ export function ZikrRunnerGame({
           state.playerY = RUNNER_GROUND - RUNNER_PLAYER_SIZE / 2;
           state.velocityY = 0;
           onSound("miss");
-          setFeedback(
-            state.lives > 0
-              ? "عائق! خذ نفسًا وحاول القفزة التالية بهدوء."
-              : "انتهت المحاولات. جرّب الجولة مرة أخرى."
-          );
+          setFeedback(isEnglishRef.current
+            ? (state.lives > 0 ? "Obstacle! Take a breath and try the next jump." : "No attempts left. Try the round again.")
+            : (state.lives > 0 ? "عائق! خذ نفسًا وحاول القفزة التالية بهدوء." : "انتهت المحاولات. جرّب الجولة مرة أخرى."));
           if (state.lives <= 0) {
             state.gameOver = true;
             const finalHud = runnerHud(state, levels.length);
@@ -340,7 +342,7 @@ export function ZikrRunnerGame({
           state.combo += 1;
           state.score += rules.starReward + Math.min(90, state.combo * 10);
           onSound("collect");
-          setFeedback("نجمة! السلسلة مستمرة.");
+          setFeedback(isEnglishRef.current ? "Star collected! Keep your streak going." : "نجمة! السلسلة مستمرة.");
         }
       }
 
@@ -355,7 +357,7 @@ export function ZikrRunnerGame({
         state.questionOpen = true;
         setQuestion(questions[state.checkpointIndex]);
         setSelectedAnswer(null);
-        setFeedback("محطة معرفة: أجب عن السؤال ثم واصل الرحلة.");
+        setFeedback(isEnglishRef.current ? "Knowledge checkpoint: answer the question to continue." : "محطة معرفة: أجب عن السؤال ثم واصل الرحلة.");
       }
 
       if (state.distance >= rules.goalDistance) {
@@ -368,7 +370,7 @@ export function ZikrRunnerGame({
         if (!completionRef.current) {
           completionRef.current = true;
           onSound("success");
-          setFeedback("أكملت رحلة ذِكر رانر. أحسنت!");
+          setFeedback(isEnglishRef.current ? "You completed the ZIKR Runner journey. Well done!" : "أكملت رحلة ذِكر رانر. أحسنت!");
           onResult(finalHud);
         }
         return;
@@ -395,12 +397,12 @@ export function ZikrRunnerGame({
       state.score += 180;
       state.combo += 1;
       onSound("success");
-      setFeedback("إجابة صحيحة. افتح الطريق!");
+      setFeedback(isEnglish ? "Correct answer. The road is open!" : "إجابة صحيحة. افتح الطريق!");
     } else {
       state.score = Math.max(0, state.score - rules.obstaclePenalty);
       state.combo = 0;
       onSound("miss");
-      setFeedback("الإجابة غير صحيحة، راجع المعلومة ثم تابع.");
+      setFeedback(isEnglish ? "Not quite. Review the information and continue." : "الإجابة غير صحيحة، راجع المعلومة ثم تابع.");
     }
 
     window.setTimeout(() => {
@@ -414,6 +416,7 @@ export function ZikrRunnerGame({
   };
 
   const theme = levels[model.levelIndex]?.theme ?? "garden";
+  const levelMeta = getKidsLevelMeta("zikr-runner", difficulty, model.levelIndex);
   const progress = (model.distance / rules.goalDistance) * 100;
   const characterState =
     model.gameOver ? "hit" : model.completed ? "celebrate" : model.playerY < RUNNER_GROUND - 15 ? "jump" : "run";
@@ -424,19 +427,19 @@ export function ZikrRunnerGame({
       ariaLabel="ZIKR Runner"
     ><KidsGameWorld gameId="zikr-runner" />
       <KidsGameHeader
-        eyebrow="ZIKR RUNNER • المرجع البصري"
-        title="ذِكر رانر"
-        description={levels[model.levelIndex]?.subtitleAr ?? ""}
-        right={<div className="hidden w-52 sm:block"><KidsProgress value={progress} label="رحلة اللعبة" /></div>}
+        eyebrow="ZIKR RUNNER"
+        title={isEnglish ? "ZIKR Runner" : "ذِكر رانر"}
+        description={isEnglish ? levelMeta.subtitleEn : levelMeta.subtitleAr}
+        right={<div className="hidden w-52 sm:block"><KidsProgress value={progress} label={isEnglish ? "Journey" : "رحلة اللعبة"} /></div>}
       />
       <div className="px-4 sm:px-6">
         <KidsGameHud
           items={[
-            { label: "النقاط", value: Math.max(0, Math.floor(model.score)), tone: "text-brand-gold" },
-            { label: "النجوم", value: model.collectibles, tone: "text-brand-emerald" },
-            { label: "السلسلة", value: model.combo, tone: "text-violet-200" },
-            { label: "المحاولات", value: model.lives, tone: "text-sky-200" },
-            { label: "المستوى", value: (model.levelIndex + 1) + "/" + levels.length, tone: "text-amber-200" },
+            { label: isEnglish ? "Score" : "النقاط", value: Math.max(0, Math.floor(model.score)), tone: "text-brand-gold" },
+            { label: isEnglish ? "Stars" : "النجوم", value: model.collectibles, tone: "text-brand-emerald" },
+            { label: isEnglish ? "Streak" : "السلسلة", value: model.combo, tone: "text-violet-200" },
+            { label: isEnglish ? "Lives" : "المحاولات", value: model.lives, tone: "text-sky-200" },
+            { label: isEnglish ? "Level" : "المستوى", value: (model.levelIndex + 1) + "/" + levels.length, tone: "text-amber-200" },
           ]}
         />
       </div>
@@ -458,7 +461,7 @@ export function ZikrRunnerGame({
         {theme === "mosque" && <MosqueBackdrop compact />}
 
         <div className="absolute left-7 top-6 rounded-full border border-brand-gold/15 bg-black/20 px-4 py-2 text-xs text-brand-cream/60">
-          {Math.min(100, Math.round(progress))}% — ارفع تركيزك
+          {Math.min(100, Math.round(progress))}% — {isEnglish ? "Stay focused" : "ارفع تركيزك"}
         </div>
 
         {model.objects.map(item =>
@@ -503,14 +506,15 @@ export function ZikrRunnerGame({
             onLeft={() => undefined}
             onRight={() => undefined}
             onAction={requestJump}
-            actionLabel="اقفز"
+            actionLabel={isEnglish ? "Jump" : "اقفز"}
           />
         </div>
 
         {model.questionOpen && question && (
           <div className="absolute inset-0 z-40 grid place-items-center bg-[#041018]/80 p-4 backdrop-blur-md">
             <div className="w-full max-w-2xl rounded-[2rem] border border-brand-gold/25 bg-[#091b27] p-5 shadow-2xl sm:p-7">
-              <p className="text-xs font-black tracking-[0.18em] text-brand-emerald">محطة معرفة</p>
+              <p className="text-xs font-black tracking-[0.18em] text-brand-emerald">{isEnglish ? "KNOWLEDGE CHECKPOINT" : "محطة معرفة"}</p>
+              {isEnglish && <p className="mt-2 text-xs leading-6 text-brand-cream/55">The question and choices use the approved Arabic source content.</p>}
               <h4 className="mt-3 text-2xl font-black text-brand-cream">{question.text}</h4>
               <div className="mt-5 grid gap-3">
                 {question.options.map((option, index) => (
@@ -543,10 +547,10 @@ export function ZikrRunnerGame({
             <div className="w-full max-w-xl rounded-[2rem] border border-brand-gold/20 bg-[#091722]/95 p-6 text-center">
               <KidCharacter state={model.completed ? "celebrate" : "hit"} size={82} />
               <h4 className="mt-2 text-3xl font-black text-brand-cream">
-                {model.completed ? "أتممت الرحلة!" : "جولة جديدة؟"}
+                {isEnglish ? (model.completed ? "Journey complete!" : "Try another round?") : (model.completed ? "أتممت الرحلة!" : "جولة جديدة؟")}
               </h4>
               <p className="mt-2 text-sm leading-7 text-brand-cream/60">
-                {model.completed ? "وصلت للبوابة الذهبية وجمعت نجومًا في الطريق." : "ارجع من البداية وحاول توقيت القفزات بهدوء."}
+                {isEnglish ? (model.completed ? "You reached the golden gate and collected stars along the way." : "Start again and time your jumps carefully.") : (model.completed ? "وصلت للبوابة الذهبية وجمعت نجومًا في الطريق." : "ارجع من البداية وحاول توقيت القفزات بهدوء.")}
               </p>
             </div>
           </div>
@@ -596,6 +600,9 @@ export function ZikrRoadGame({
   onResult,
   onSound,
 }: ActionGameProps) {
+  const { isEnglish } = useLanguage();
+  const isEnglishRef = useRef(isEnglish);
+  useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const rules = useMemo(() => getZikrRoadRules(difficulty), [difficulty]);
   const questions = useMemo(() => getApprovedRoadQuestions(), []);
   const createRoadState = (): RoadModel => ({
@@ -616,7 +623,7 @@ export function ZikrRoadGame({
   const [state, setState] = useState<RoadModel>(createRoadState);
   const [question, setQuestion] = useState<VerifiedQuizQuestion | null>(null);
   const [answer, setAnswer] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState("غيّر المسار واجمع النجوم وتوقف عند محطات التعلم.");
+  const [feedback, setFeedback] = useState(isEnglish ? "Change lanes, collect stars, and stop at learning checkpoints." : "غيّر المسار واجمع النجوم وتوقف عند محطات التعلم.");
   const completionRef = useRef(false);
 
   const reset = () => {
@@ -638,7 +645,7 @@ export function ZikrRoadGame({
     setState({ ...next });
     setQuestion(null);
     setAnswer(null);
-    setFeedback("غيّر المسار واجمع النجوم وتوقف عند محطات التعلم.");
+    setFeedback(isEnglishRef.current ? "Change lanes, collect stars, and stop at learning checkpoints." : "غيّر المسار واجمع النجوم وتوقف عند محطات التعلم.");
     completionRef.current = false;
     onHud({
       score: 0,
@@ -701,7 +708,7 @@ export function ZikrRoadGame({
         current.levelIndex = nextLevelIndex;
         current.objects = [];
         current.combo = 0;
-        setFeedback("دخلت " + levelMeta.titleAr + ".");
+        setFeedback(isEnglishRef.current ? "Entered " + levelMeta.titleEn + "." : "دخلت " + levelMeta.titleAr + ".");
         onSound("success");
       }
 
@@ -750,13 +757,13 @@ export function ZikrRoadGame({
           current.combo += 1;
           current.score += 100 + Math.min(100, current.combo * 10);
           onSound("collect");
-          setFeedback("نجمة! استمر في المسار.");
+          setFeedback(isEnglishRef.current ? "Star collected! Stay on course." : "نجمة! استمر في المسار.");
         } else {
           current.mistakes += 1;
           current.combo = 0;
           current.score = Math.max(0, current.score - rules.mistakePenalty);
           onSound("miss");
-          setFeedback("عائق! غيّر المسار قبل الإشارة التالية.");
+          setFeedback(isEnglishRef.current ? "Obstacle! Change lanes before the next marker." : "عائق! غيّر المسار قبل الإشارة التالية.");
         }
       }
 
@@ -768,7 +775,7 @@ export function ZikrRoadGame({
         current.questionOpen = true;
         setQuestion(questions[current.checkpointIndex]);
         setAnswer(null);
-        setFeedback("محطة تعلم: اختر إجابة ثم أكمل القيادة.");
+        setFeedback(isEnglishRef.current ? "Learning checkpoint: choose an answer, then keep driving." : "محطة تعلم: اختر إجابة ثم أكمل القيادة.");
       }
 
       if (current.distance >= rules.goalDistance) {
@@ -814,12 +821,12 @@ export function ZikrRoadGame({
       current.combo += 1;
       current.score += 160;
       onSound("success");
-      setFeedback("إجابة صحيحة! افتح الطريق.");
+      setFeedback(isEnglish ? "Correct answer! The road is open." : "إجابة صحيحة! افتح الطريق.");
     } else {
       current.combo = 0;
       current.score = Math.max(0, current.score - rules.mistakePenalty);
       onSound("miss");
-      setFeedback("راجع السؤال ثم أكمل الرحلة.");
+      setFeedback(isEnglish ? "Review the question, then continue the journey." : "راجع السؤال ثم أكمل الرحلة.");
     }
     window.setTimeout(() => {
       current.questionOpen = false;
@@ -830,22 +837,24 @@ export function ZikrRoadGame({
     }, 650);
   };
 
+  const currentLevelMeta = getKidsLevelMeta("zikr-road", difficulty, state.levelIndex);
+
   return (
-    <KidsGameStage theme="oasis" ariaLabel="طريق ذِكر"><KidsGameWorld gameId="zikr-road" />
+    <KidsGameStage theme="oasis" ariaLabel={isEnglish ? "ZIKR Road" : "طريق ذِكر"}><KidsGameWorld gameId="zikr-road" />
       <KidsGameHeader
         eyebrow="ZIKR ROAD"
-        title="طريق ذِكر"
-        description="قيادة خيالية بثلاثة مسارات. القرار في اللحظة المناسبة يغير النتيجة."
-        right={<div className="hidden w-52 sm:block"><KidsProgress value={(state.distance / rules.goalDistance) * 100} /></div>}
+        title={isEnglish ? "ZIKR Road" : "طريق ذِكر"}
+        description={isEnglish ? "A three-lane driving adventure. Timing your decisions changes the outcome." : "قيادة خيالية بثلاثة مسارات. القرار في اللحظة المناسبة يغير النتيجة."}
+        right={<div className="hidden w-52 sm:block"><KidsProgress value={(state.distance / rules.goalDistance) * 100} label={isEnglish ? currentLevelMeta.titleEn : currentLevelMeta.titleAr} /></div>}
       />
       <div className="px-4 sm:px-6">
         <KidsGameHud
           items={[
-            { label: "النقاط", value: state.score, tone: "text-brand-gold" },
-            { label: "النجوم", value: state.collectibles, tone: "text-brand-emerald" },
-            { label: "الأخطاء", value: state.mistakes, tone: "text-rose-100" },
-            { label: "المسافة", value: state.distance, tone: "text-sky-200" },
-            { label: "المستوى", value: state.levelIndex + 1 + "/" + rules.levelCount, tone: "text-violet-200" },
+            { label: isEnglish ? "Score" : "النقاط", value: state.score, tone: "text-brand-gold" },
+            { label: isEnglish ? "Stars" : "النجوم", value: state.collectibles, tone: "text-brand-emerald" },
+            { label: isEnglish ? "Mistakes" : "الأخطاء", value: state.mistakes, tone: "text-rose-100" },
+            { label: isEnglish ? "Distance" : "المسافة", value: state.distance, tone: "text-sky-200" },
+            { label: isEnglish ? "Level" : "المستوى", value: state.levelIndex + 1 + "/" + rules.levelCount, tone: "text-violet-200" },
           ]}
         />
       </div>
@@ -859,7 +868,7 @@ export function ZikrRoadGame({
         <div className="absolute inset-y-0 left-[66.666%] w-px bg-white/5" />
 
         <div className="absolute left-5 top-5 rounded-full border border-brand-emerald/20 bg-brand-emerald/10 px-4 py-2 text-xs text-brand-emerald">
-          المسار {state.lane + 1} / 3
+          {isEnglish ? "Lane " : "المسار "}{state.lane + 1} / 3
         </div>
 
         {state.objects.map(item => (
@@ -896,13 +905,14 @@ export function ZikrRoadGame({
         </div>
 
         <div className="absolute bottom-0 inset-x-0 z-40 border-t border-white/10 bg-black/30 px-4 py-4 backdrop-blur-md">
-          <TouchArrows onLeft={() => move(-1)} onRight={() => move(1)} onAction={() => undefined} actionLabel="استمر" />
+          <TouchArrows onLeft={() => move(-1)} onRight={() => move(1)} onAction={() => undefined} hideAction />
         </div>
 
         {state.questionOpen && question && (
           <div className="absolute inset-0 z-50 grid place-items-center bg-[#041017]/85 p-4 backdrop-blur-md">
             <div className="w-full max-w-2xl rounded-[2rem] border border-brand-gold/25 bg-[#0a1b26] p-5 sm:p-7">
-              <p className="text-xs font-black tracking-[0.18em] text-brand-emerald">محطة الطريق</p>
+              <p className="text-xs font-black tracking-[0.18em] text-brand-emerald">{isEnglish ? "ROAD CHECKPOINT" : "محطة الطريق"}</p>
+              {isEnglish && <p className="mt-2 text-xs leading-6 text-brand-cream/55">The question and choices use the approved Arabic source content.</p>}
               <h4 className="mt-3 text-2xl font-black text-brand-cream">{question.text}</h4>
               <div className="mt-5 grid gap-3">
                 {question.options.map((option, index) => (

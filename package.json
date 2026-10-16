@@ -9,7 +9,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "check": "tsc --noEmit",
-    "test": "tsx scripts/tests/schema-contract.test.ts && tsx scripts/tests/video-contract.test.ts && tsx scripts/tests/kids-visual-contract.test.ts && tsx scripts/tests/phase21-games.test.ts && tsx scripts/tests/contact-validation.test.ts",
+    "test": "tsx scripts/tests/schema-contract.test.ts && tsx scripts/tests/video-contract.test.ts && tsx scripts/tests/kids-visual-contract.test.ts && tsx scripts/tests/phase21-games.test.ts && tsx scripts/tests/kids-action-games-localization.test.ts && tsx scripts/tests/contact-validation.test.ts",
     "format": "prettier --write .",
     "db:migrate-supabase": "pnpm dlx supabase db push",
     "lint": "eslint .",

@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { useLanguage } from "@/components/layout/language-provider";
 
 export type KidsWorldTheme =
   | "garden"
@@ -483,21 +484,28 @@ export function TouchArrows({
   onLeft,
   onRight,
   onAction,
-  actionLabel = "قفز",
+  actionLabel,
+  hideAction = false,
 }: {
   onLeft: () => void;
   onRight: () => void;
   onAction: () => void;
   actionLabel?: string;
+  hideAction?: boolean;
 }) {
+  const { isEnglish } = useLanguage();
+  const resolvedActionLabel = actionLabel ?? (isEnglish ? "Jump" : "قفز");
   const controls = [
-    { label: "يمين", icon: "→", onPress: onRight },
-    { label: actionLabel, icon: actionLabel, onPress: onAction, action: true },
-    { label: "يسار", icon: "←", onPress: onLeft },
+    { label: isEnglish ? "Right" : "يمين", icon: "→", onPress: onRight, action: false },
+    ...(!hideAction ? [{ label: resolvedActionLabel, icon: resolvedActionLabel, onPress: onAction, action: true }] : []),
+    { label: isEnglish ? "Left" : "يسار", icon: "←", onPress: onLeft, action: false },
   ];
 
   return (
-    <div className="grid grid-cols-3 items-center justify-center gap-2 sm:flex sm:gap-3" aria-label="أزرار التحكم باللعبة">
+    <div
+      className={"grid items-center justify-center gap-2 " + (hideAction ? "grid-cols-2" : "grid-cols-3") + " sm:flex sm:gap-3"}
+      aria-label={isEnglish ? "Game controls" : "أزرار التحكم باللعبة"}
+    >
       {controls.map((control) => (
         <button
           key={control.label}
