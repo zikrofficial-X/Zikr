@@ -43,7 +43,7 @@ function deedTitle(id: string, en: boolean) {
 export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResult, onSound }: Props) {
   const { isEnglish } = useLanguage();
   const isEnglishRef = useRef(isEnglish);
-  isEnglishRef.current = isEnglish;
+  useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const [levelIndex, setLevelIndex] = useState(0);
   const [done, setDone] = useState<string[]>([]);
   const [active, setActive] = useState<string | null>(null);
@@ -78,7 +78,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
     const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
       runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
-      setFeedback(isEnglish ? levelLabel(levelIndex, true) + " complete. New scenes are ready." : "اكتمل " + levelLabel(levelIndex, false) + ". مشاهد جديدة في الطريق.");
+      setFeedback(isEnglishRef.current ? "Level " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + " complete. New scenes are ready." : "اكتمل المستوى " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + ". مشاهد جديدة في الطريق.");
       onSound("success");
       window.setTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
@@ -86,7 +86,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
       runTotalsRef.current = totals;
       const finalHud: WorldHud = { ...levelHud, score: totals.score, collectibles: totals.collectibles, combo: totals.bestCombo, completed: true };
       onHud(finalHud);
-      setFeedback(isEnglish ? "You completed every Good Deeds level." : "أكملت جميع مستويات أعمال الخير.");
+      setFeedback(isEnglishRef.current ? "You completed every Good Deeds level." : "أكملت جميع مستويات أعمال الخير.");
       onSound("success");
       onResult(finalHud);
     }
@@ -165,7 +165,7 @@ const CLEANUP_ZONES: CleanupZone[] = [
 export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onResult, onSound }: Props) {
   const { isEnglish } = useLanguage();
   const isEnglishRef = useRef(isEnglish);
-  isEnglishRef.current = isEnglish;
+  useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const [levelIndex, setLevelIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [placed, setPlaced] = useState<Record<string, string>>({});
@@ -201,14 +201,14 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
     const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
       runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
-      setFeedback(isEnglish ? levelLabel(levelIndex, true) + " complete. A new item layout is ready." : "اكتمل " + levelLabel(levelIndex, false) + ". توزيع جديد للعناصر جاهز.");
+      setFeedback(isEnglishRef.current ? "Level " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + " complete. A new item layout is ready." : "اكتمل المستوى " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + ". توزيع جديد للعناصر جاهز.");
       window.setTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
       const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
       runTotalsRef.current = totals;
       const finalHud: WorldHud = { ...levelHud, score: totals.score, collectibles: totals.collectibles, combo: totals.bestCombo, completed: true };
       onHud(finalHud);
-      setFeedback(isEnglish ? "You completed every organizing level." : "أكملت جميع مستويات ترتيب المكان.");
+      setFeedback(isEnglishRef.current ? "You completed every organizing level." : "أكملت جميع مستويات ترتيب المكان.");
       onResult(finalHud);
     }
   }, [complete, levelIndex, mistakes, onHud, onResult, onSound, placed, rules.completionBonus, score]);
