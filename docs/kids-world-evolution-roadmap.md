@@ -17,6 +17,7 @@ Status: implemented in the companion GitHub change.
 ## Phase B — Game-by-game gameplay acceptance
 
 - Implement localized, game-specific three-step briefings and control guides before runtime mount; the timer and game engine wait for an explicit start action.
+- Let players reopen the same guide from inside a running game; opening help pauses the round and closing it restores the prior pause state.
 - Play-test each of the 12 games on a touch phone, keyboard, and desktop.
 - Verify each title has its own control scheme, win condition, feedback, and replay flow; shared UI must not make the actual gameplay interchangeable.
 - Verify easy, normal, and hard change gameplay behaviour, not only the label.

@@ -17,6 +17,11 @@ assert.match(shellSource, /KidsGameArt/, "active gameplay must show game-specifi
 assert.match(shellSource, /setHasStarted\(true\)/, "gameplay must start from an explicit start action");
 assert.match(shellSource, /!hasStarted \|\| paused/, "timer must remain stopped before play and while paused");
 assert.match(shellSource, /\{!hasStarted && !englishSourceMissing/, "a briefing must appear before gameplay runtime mounting");
+assert.match(shellSource, /const openHelp = useCallback/, "active games must provide a reusable help action");
+assert.match(shellSource, /wasPausedBeforeHelpRef\.current = paused/, "help must remember whether the game was already paused");
+assert.match(shellSource, /setPaused\(wasPausedBeforeHelpRef\.current\)/, "closing help must restore the previous pause state");
+assert.match(shellSource, /instructions\.success/, "the personalized success reminder must be shown to the player");
+assert.match(shellSource, /aria-modal="true"/, "in-game help must be announced as a modal dialog");
 
 const artCases = artSource.match(/case "[a-z-]+":/g) ?? [];
 assert.equal(artCases.length, gameIds.length, "every game needs one explicit art scene");
