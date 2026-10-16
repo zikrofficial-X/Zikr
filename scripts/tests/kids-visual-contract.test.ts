@@ -56,4 +56,12 @@ assert.equal(
   "each game must retain its own gameplay runtime",
 );
 
+assert.match(shellSource, /if \(!hasStarted \|\| paused \|\| result \|\| document\.visibilityState === "hidden"\)/, "the elapsed clock must stop before play, while paused, after results, and in hidden tabs");
+assert.match(shellSource, /document\.addEventListener\("visibilitychange", handleVisibilityChange\)/, "the game shell must react to tab visibility changes");
+assert.match(shellSource, /document\.removeEventListener\("visibilitychange", handleVisibilityChange\)/, "the game shell must remove the visibility listener on cleanup");
+assert.match(shellSource, /if \(document\.visibilityState === "hidden"\) stopClock\(\); else startClock\(\);/, "returning to the visible tab must restart only the eligible clock");
+assert.match(shellSource, /elapsedRef\.current = 0;\s+runningSinceRef\.current = null;\s+setElapsedSeconds\(0\);/, "restart must reset both elapsed-time sources");
+assert.match(shellSource, /setResult\(null\); setMessage\(""\);/, "restart must clear the previous result and status message");
+assert.match(shellSource, /setResult\(null\); setMessage\(""\);/, "restart must clear the previous result and status message");
+
 console.log("✅ Kids visual contract passed: localized art, unique SVG ids, 12 art scenes, 12 runtime dispatches and game-specific learning goals.");
