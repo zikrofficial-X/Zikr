@@ -486,7 +486,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   return (
     <KidsGameStage theme="library" ariaLabel={isEnglish ? "Verse Puzzle" : "لغز الآية"}><KidsGameWorld gameId="verse-puzzle" />
       <KidsGameHeader eyebrow="VERSE PUZZLE" title={isEnglish ? "Verse Puzzle" : "لغز الآية"} description={isEnglish ? "Rebuild the verified Quran text in its original Arabic wording." : meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(answer.length / tokens.length) * 100} label={levelLabel(levelIndex, isEnglish)} /></div>} />
-      <div className="px-4 sm:px-6">{isEnglish && <p className="mb-3 text-xs text-brand-cream/45">Question text and answer choices remain in their verified original Arabic wording.</p>}<KidsGameHud items={[
+      <div className="px-4 sm:px-6"><KidsGameHud items={[
         { label: isEnglish ? "Score" : "النقاط", value: score, tone: "text-brand-gold" },
         { label: isEnglish ? "Words" : "الكلمات", value: answer.length + "/" + tokens.length, tone: "text-violet-200" },
         { label: isEnglish ? "Mistakes" : "الأخطاء", value: mistakes, tone: "text-rose-100" },
@@ -641,7 +641,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
     <KidsGameStage theme="library" ariaLabel={isEnglish ? "ZIKR Quiz" : "اختبار ذِكر"}>
       <KidsGameWorld gameId="zikr-quiz" />
       <KidsGameHeader eyebrow="ZIKR QUIZ" title={isEnglish ? "ZIKR Quiz" : "اختبار ذِكر"} description={isEnglish ? "Verified Arabic questions • " + meta.subtitleEn : question.category + " • " + meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(index / questions.length) * 100} label={levelLabel(levelIndex, isEnglish)} /></div>} />
-      <div className="px-4 sm:px-6"><KidsGameHud items={[
+      <div className="px-4 sm:px-6">{isEnglish && <p className="mb-3 text-xs text-brand-cream/45">Question text and answer choices remain in their verified original Arabic wording.</p>}<KidsGameHud items={[
         { label: isEnglish ? "Score" : "النقاط", value: score, tone: "text-brand-gold" },
         { label: isEnglish ? "Correct" : "الصحيح", value: correct, tone: "text-brand-emerald" },
         { label: isEnglish ? "Streak" : "السلسلة", value: streak, tone: "text-violet-200" },
