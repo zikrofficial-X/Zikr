@@ -2,7 +2,7 @@ import { getApprovedScenarioQuestions } from "@/lib/games/verified-content";
 import { getMosqueAdventureRules } from "@/lib/games/mosque-adventure";
 
 const questions = getApprovedScenarioQuestions();
-const normalizedQuestionTexts = questions.map(question => question.text.trim().replace(/\\s+/g, " ").toLocaleLowerCase());
+const normalizedQuestionTexts = questions.map(question => question.text.trim().replace(/\s+/g, " ").toLocaleLowerCase());
 const requiredSources = ["game-scenario-smart-choice", "quiz-akhlaq-adventure", "quiz-akhlaq-daily-life"];
 
 if (questions.length < 15) {
