@@ -140,22 +140,22 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   );
 }
 
-type CleanupItem = { id: string; name: string; icon: string; target: "books" | "lights" | "soft" | "green" };
-type CleanupZone = { id: CleanupItem["target"]; title: string; icon: string };
+type CleanupItem = { id: string; name: string; nameEn: string; icon: string; target: "books" | "lights" | "soft" | "green" };
+type CleanupZone = { id: CleanupItem["target"]; title: string; titleEn: string; icon: string };
 
 const CLEANUP_ITEMS: CleanupItem[] = [
-  { id: "book1", name: "كتاب", icon: "📘", target: "books" }, { id: "book2", name: "دفتر", icon: "📓", target: "books" },
-  { id: "book3", name: "قصة", icon: "📗", target: "books" }, { id: "book4", name: "مصحف تعليمي", icon: "📕", target: "books" },
-  { id: "lamp1", name: "مصباح", icon: "🪔", target: "lights" }, { id: "lamp2", name: "فانوس", icon: "🏮", target: "lights" },
-  { id: "lamp3", name: "ضوء", icon: "💡", target: "lights" }, { id: "lamp4", name: "مصباح صغير", icon: "🔆", target: "lights" },
-  { id: "pillow", name: "وسادة", icon: "🟣", target: "soft" }, { id: "ball", name: "كرة", icon: "⚽", target: "soft" },
-  { id: "toy", name: "لعبة", icon: "🧸", target: "soft" }, { id: "mat", name: "حصيرة", icon: "🟩", target: "soft" },
-  { id: "plant", name: "نبتة", icon: "🌿", target: "green" }, { id: "plant2", name: "شتلة", icon: "🌱", target: "green" },
-  { id: "flower", name: "زهرة", icon: "🌷", target: "green" }, { id: "tree", name: "غصن", icon: "🌳", target: "green" },
+  { id: "book1", name: "كتاب", nameEn: "Book", icon: "📘", target: "books" }, { id: "book2", name: "دفتر", nameEn: "Notebook", icon: "📓", target: "books" },
+  { id: "book3", name: "قصة", nameEn: "Storybook", icon: "📗", target: "books" }, { id: "book4", name: "مصحف تعليمي", nameEn: "Quran learning book", icon: "📕", target: "books" },
+  { id: "lamp1", name: "مصباح", nameEn: "Lamp", icon: "🪔", target: "lights" }, { id: "lamp2", name: "فانوس", nameEn: "Lantern", icon: "🏮", target: "lights" },
+  { id: "lamp3", name: "ضوء", nameEn: "Light", icon: "💡", target: "lights" }, { id: "lamp4", name: "مصباح صغير", nameEn: "Small lamp", icon: "🔆", target: "lights" },
+  { id: "pillow", name: "وسادة", nameEn: "Pillow", icon: "🟣", target: "soft" }, { id: "ball", name: "كرة", nameEn: "Ball", icon: "⚽", target: "soft" },
+  { id: "toy", name: "لعبة", nameEn: "Toy", icon: "🧸", target: "soft" }, { id: "mat", name: "حصيرة", nameEn: "Mat", icon: "🟩", target: "soft" },
+  { id: "plant", name: "نبتة", nameEn: "Plant", icon: "🌿", target: "green" }, { id: "plant2", name: "شتلة", nameEn: "Seedling", icon: "🌱", target: "green" },
+  { id: "flower", name: "زهرة", nameEn: "Flower", icon: "🌷", target: "green" }, { id: "tree", name: "غصن", nameEn: "Branch", icon: "🌳", target: "green" },
 ];
 const CLEANUP_ZONES: CleanupZone[] = [
-  { id: "books", title: "رف الكتب", icon: "📚" }, { id: "lights", title: "ركن الإضاءة", icon: "💡" },
-  { id: "soft", title: "سلة اللعب الهادئ", icon: "🧺" }, { id: "green", title: "ركن النباتات", icon: "🌿" },
+  { id: "books", title: "رف الكتب", titleEn: "Book shelf", icon: "📚" }, { id: "lights", title: "ركن الإضاءة", titleEn: "Lighting corner", icon: "💡" },
+  { id: "soft", title: "سلة اللعب الهادئ", titleEn: "Quiet play basket", icon: "🧺" }, { id: "green", title: "ركن النباتات", titleEn: "Plant corner", icon: "🌿" },
 ];
 
 export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onResult, onSound }: Props) {
@@ -241,14 +241,14 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
   );
 }
 
-type ColoringSheet = { id: string; title: string; subtitle: string };
+type ColoringSheet = { id: string; title: string; titleEn: string; subtitle: string; subtitleEn: string };
 const COLORING_SHEETS: ColoringSheet[] = [
-  { id: "mosque-garden", title: "حديقة المسجد", subtitle: "قبة ونباتات وسماء هادئة" },
-  { id: "crescent-night", title: "ليلة الهلال", subtitle: "هلال ونجوم وبيوت صغيرة" },
-  { id: "geometry", title: "نجمة ذِكر", subtitle: "نقش هندسي مفتوح للتلوين" },
-  { id: "lantern-street", title: "شارع الفوانيس", subtitle: "بوابة وفوانيس تضيء طريقًا هادئًا" },
-  { id: "kite-meadow", title: "مرج الطائرات الورقية", subtitle: "سماء واسعة وطائرات ملونة وزهور" },
-  { id: "starry-village", title: "قرية النجوم", subtitle: "بيوت صغيرة ونجوم وهلال لطيف" },
+  { id: "mosque-garden", title: "حديقة المسجد", titleEn: "Mosque Garden", subtitle: "قبة ونباتات وسماء هادئة", subtitleEn: "A peaceful dome, plants, and sky." },
+  { id: "crescent-night", title: "ليلة الهلال", titleEn: "Crescent Night", subtitle: "هلال ونجوم وبيوت صغيرة", subtitleEn: "A crescent moon, stars, and little houses." },
+  { id: "geometry", title: "نجمة ذِكر", titleEn: "ZIKR Star", subtitle: "نقش هندسي مفتوح للتلوين", subtitleEn: "A geometric pattern ready for your colors." },
+  { id: "lantern-street", title: "شارع الفوانيس", titleEn: "Lantern Street", subtitle: "بوابة وفوانيس تضيء طريقًا هادئًا", subtitleEn: "A gateway and lanterns along a quiet path." },
+  { id: "kite-meadow", title: "مرج الطائرات الورقية", titleEn: "Kite Meadow", subtitle: "سماء واسعة وطائرات ملونة وزهور", subtitleEn: "An open sky with kites and flowers." },
+  { id: "starry-village", title: "قرية النجوم", titleEn: "Starry Village", subtitle: "بيوت صغيرة ونجوم وهلال لطيف", subtitleEn: "Little houses, stars, and a friendly crescent." },
 ];
 const COLOR_PALETTE = ["#f3c969","#5fd1a6","#8ab6e2","#d7a7e8","#e28a5a","#f7f1df","#7ed6c1","#9c86e8","#ffb4a2","#c6e377"];
 
