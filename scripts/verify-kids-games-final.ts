@@ -143,6 +143,9 @@ const memoryGlossary = learning.split("const MEMORY_SITUATIONS_EN: Record<string
 if ((memoryGlossary.match(/: "/g) ?? []).length !== 11) {
   throw new Error("Every verified Memory situation needs a matching English label.");
 }
+if (!learning.includes("const pairs = useMemo(() => getVerifiedMemoryPairs(), []);")) {
+  throw new Error("Memory must memoize the verified pair pool so rerenders do not rebuild its board selection inputs.");
+}
 if (!learning.includes("aria-label={cardAccessibleLabel}") || !learning.includes("aria-pressed={visible}")) {
   throw new Error("Memory cards must expose their flipped state and accessible name.");
 }
