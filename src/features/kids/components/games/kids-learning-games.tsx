@@ -230,7 +230,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
           return (
             <button key={card.id} type="button" disabled={paused || locked || matched.includes(card.id)} onClick={() => choose(card.id)}
               className={[
-                "group min-h-36 rounded-[1.5rem] border p-4 " + (isEnglish ? "text-left" : "text-right") + " transition duration-200",
+                "group min-h-36 rounded-[1.5rem] border p-4 " + (isEnglish && card.side === "situation" ? "text-left" : "text-right") + " transition duration-200",
                 visible ? "border-brand-gold/45 bg-brand-gold/10 shadow-[0_12px_30px_rgba(243,201,105,.08)]" : hintId === card.pairId ? "border-brand-gold/80 bg-brand-gold/5 ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-[#081823]/90 hover:-translate-y-1 hover:border-brand-emerald/40",
                 matched.includes(card.id) ? "opacity-55" : "",
               ].join(" ")}>
