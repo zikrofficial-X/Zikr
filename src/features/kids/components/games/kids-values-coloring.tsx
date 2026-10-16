@@ -41,11 +41,14 @@ function deedTitle(id: string, en: boolean) {
 }
 
 export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResult, onSound }: Props) {
+  const { isEnglish } = useLanguage();
+  const isEnglishRef = useRef(isEnglish);
+  isEnglishRef.current = isEnglish;
   const [levelIndex, setLevelIndex] = useState(0);
   const [done, setDone] = useState<string[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [actionSteps, setActionSteps] = useState<Record<string, number>>({});
-  const [feedback, setFeedback] = useState("اختر مشهدًا وأكمله.");
+  const [feedback, setFeedback] = useState(isEnglish ? "Choose a scene and complete it." : "اختر مشهدًا وأكمله.");
   const advancingRef = useRef(false);
   const runTotalsRef = useRef(createGameRunTotals());
   const levelResetPendingRef = useRef(false);
@@ -60,7 +63,8 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   const complete = done.length === deeds.length;
   const score = done.length * rules.rewardPerScene;
 
-  useEffect(() => { setDone([]); setActive(null); setActionSteps({}); setFeedback(meta.subtitleAr); levelResetPendingRef.current = true; advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
+  useEffect(() => { setDone([]); setActive(null); setActionSteps({}); setFeedback(isEnglishRef.current ? meta.subtitleEn : meta.subtitleAr); levelResetPendingRef.current = true; advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, meta.subtitleEn, restartToken]);
+  useEffect(() => { setFeedback(isEnglish ? "Choose a scene and complete it." : "اختر مشهدًا وأكمله."); }, [isEnglish]);
 
   useEffect(() => {
     const levelHud: WorldHud = { score: complete ? score + rules.completionBonus : score, collectibles: done.length, distance: 0, combo: done.length, level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
@@ -74,7 +78,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
     const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
       runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
-      setFeedback("اكتمل " + levelLabel(levelIndex) + ". مشاهد جديدة في الطريق.");
+      setFeedback(isEnglish ? levelLabel(levelIndex, true) + " complete. New scenes are ready." : "اكتمل " + levelLabel(levelIndex, false) + ". مشاهد جديدة في الطريق.");
       onSound("success");
       window.setTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
@@ -82,7 +86,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
       runTotalsRef.current = totals;
       const finalHud: WorldHud = { ...levelHud, score: totals.score, collectibles: totals.collectibles, combo: totals.bestCombo, completed: true };
       onHud(finalHud);
-      setFeedback("أكملت جميع مستويات أعمال الخير.");
+      setFeedback(isEnglish ? "You completed every Good Deeds level." : "أكملت جميع مستويات أعمال الخير.");
       onSound("success");
       onResult(finalHud);
     }
@@ -94,25 +98,25 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
     if (currentStep < 2) {
       setActionSteps(value => ({ ...value, [id]: currentStep + 1 }));
       onSound("move");
-      setFeedback("خطوة " + (currentStep + 2) + " من 3 في " + (deeds.find(d => d.id === id)?.title ?? "المشهد") + ".");
+      setFeedback(isEnglish ? "Step " + (currentStep + 2) + " of 3 in " + deedTitle(id, true) + "." : "خطوة " + (currentStep + 2) + " من 3 في " + deedTitle(id, false) + ".");
       return;
     }
     setDone(value => [...value, id]);
     setActive(null);
     setActionSteps(value => ({ ...value, [id]: 0 }));
     onSound("collect");
-    setFeedback("اكتملت " + deeds.find(d => d.id === id)?.title + ".");
+    setFeedback(isEnglish ? deedTitle(id, true) + " completed." : "اكتملت " + deedTitle(id, false) + ".");
   };
 
   return (
-    <KidsGameStage theme="garden" ariaLabel="أعمال الخير"><KidsGameWorld gameId="good-deeds" />
-      <KidsGameHeader eyebrow="GOOD DEEDS" title="مغامرة أعمال الخير" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(done.length / Math.max(1, deeds.length)) * 100} label={levelLabel(levelIndex)} /></div>} />
+    <KidsGameStage theme="garden" ariaLabel={isEnglish ? "Good Deeds" : "أعمال الخير"}><KidsGameWorld gameId="good-deeds" />
+      <KidsGameHeader eyebrow="GOOD DEEDS" title={isEnglish ? "Good Deeds Adventure" : "مغامرة أعمال الخير"} description={isEnglish ? meta.subtitleEn : meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(done.length / Math.max(1, deeds.length)) * 100} label={levelLabel(levelIndex, isEnglish)} /></div>} />
       <div className="px-4 sm:px-6"><KidsGameHud items={[
-        { label: "النقاط", value: complete ? score + rules.completionBonus : score, tone: "text-brand-gold" },
-        { label: "المشاهد", value: done.length + "/" + deeds.length, tone: "text-brand-emerald" },
-        { label: "السلسلة", value: done.length, tone: "text-violet-200" },
-        { label: "المستوى", value: levelIndex + 1, tone: "text-amber-200" },
-        { label: "الصعوبة", value: difficulty, tone: "text-sky-200" },
+        { label: isEnglish ? "Score" : "النقاط", value: complete ? score + rules.completionBonus : score, tone: "text-brand-gold" },
+        { label: isEnglish ? "Scenes" : "المشاهد", value: done.length + "/" + deeds.length, tone: "text-brand-emerald" },
+        { label: isEnglish ? "Streak" : "السلسلة", value: done.length, tone: "text-violet-200" },
+        { label: isEnglish ? "Level" : "المستوى", value: levelIndex + 1, tone: "text-amber-200" },
+        { label: isEnglish ? "Difficulty" : "الصعوبة", value: difficultyLabel(difficulty, isEnglish), tone: "text-sky-200" },
       ]} /></div>
       <div className="relative mx-4 mt-4 min-h-[500px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#09272b] sm:mx-6">
         <GardenBackdrop /><MosqueBackdrop compact />
@@ -120,16 +124,16 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
           {deeds.map((deed, index) => {
             const doneAlready = done.includes(deed.id), isActive = active === deed.id;
             return <div key={deed.id} className={["rounded-[1.7rem] border p-4 transition", doneAlready ? "border-brand-emerald/30 bg-brand-emerald/10 opacity-65" : isActive ? "border-brand-gold/60 bg-brand-gold/10 -translate-y-1" : "border-white/10 bg-black/20 hover:border-brand-cream/20"].join(" ")}>
-              <button type="button" disabled={paused || doneAlready} onClick={() => setActive(isActive ? null : deed.id)} className="w-full text-right">
-                <div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl border text-2xl" style={{ borderColor: deed.color + "55", background: deed.color + "15" }}>{doneAlready ? "✓" : deed.icon}</span><span className="text-xs text-brand-cream/35">مشهد {index + 1}</span></div>
-                <h4 className="mt-4 text-lg font-black text-brand-cream">{deed.title}</h4><p className="mt-2 text-sm leading-7 text-brand-cream/60">{deed.description}</p>
+              <button type="button" disabled={paused || doneAlready} onClick={() => setActive(isActive ? null : deed.id)} className={"w-full " + (isEnglish ? "text-left" : "text-right")}>
+                <div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl border text-2xl" style={{ borderColor: deed.color + "55", background: deed.color + "15" }}>{doneAlready ? "✓" : deed.icon}</span><span className="text-xs text-brand-cream/35">{isEnglish ? "Scene " + (index + 1) : "مشهد " + (index + 1)}</span></div>
+                <h4 className="mt-4 text-lg font-black text-brand-cream">{isEnglish ? deed.titleEn : deed.title}</h4><p className="mt-2 text-sm leading-7 text-brand-cream/60">{isEnglish ? deed.descriptionEn : deed.description}</p>
               </button>
               {isActive && !doneAlready && <div className="mt-4 rounded-2xl border border-brand-gold/15 bg-brand-gold/[0.05] p-3">
-  <div className="flex items-center gap-3"><KidCharacter variant="helper" state="help" size={58} /><p className="text-xs leading-6 text-brand-cream/55">نفّذ 3 خطوات صغيرة لبناء العادة ثم أغلق المشهد.</p></div>
+  <div className="flex items-center gap-3"><KidCharacter variant="helper" state="help" size={58} /><p className="text-xs leading-6 text-brand-cream/55">{isEnglish ? "Complete three small steps to build the habit, then finish the scene." : "نفّذ 3 خطوات صغيرة لبناء العادة ثم أغلق المشهد."}</p></div>
   <div className="mt-3 grid grid-cols-3 gap-2">
     {[1,2,3].map(step => <div key={step} className={"h-2 rounded-full " + (step <= (actionSteps[deed.id] ?? 0) ? "bg-brand-emerald" : "bg-white/10")} />)}
   </div>
-  <button type="button" onClick={() => finish(deed.id)} className="mt-3 w-full rounded-xl bg-brand-gold px-4 py-3 text-sm font-black text-[#241c08]">{(actionSteps[deed.id] ?? 0) < 2 ? "تنفيذ الخطوة " + ((actionSteps[deed.id] ?? 0) + 1) : "إتمام المشهد"}</button>
+  <button type="button" onClick={() => finish(deed.id)} className="mt-3 w-full rounded-xl bg-brand-gold px-4 py-3 text-sm font-black text-[#241c08]">{(actionSteps[deed.id] ?? 0) < 2 ? (isEnglish ? "Complete step " + ((actionSteps[deed.id] ?? 0) + 1) : "تنفيذ الخطوة " + ((actionSteps[deed.id] ?? 0) + 1)) : (isEnglish ? "Complete scene" : "إتمام المشهد")}</button>
 </div>}
             </div>;
           })}
