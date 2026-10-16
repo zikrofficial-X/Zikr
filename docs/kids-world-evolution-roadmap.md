@@ -50,7 +50,7 @@ Status: implemented in the companion GitHub change.
 - Track asset dimensions, format, source/rights, and game ownership.
 - Good Deeds, Cleanup, and Coloring localize child-facing titles, instructions, activity content, feedback, HUD labels, and artwork descriptions in Arabic and English.
 - Memory, Wudu, Verse Puzzle, and Quiz localize their controls, feedback, progress labels, and headers; verified dhikr, wudu steps, Quran text, quiz questions, and choices remain explicitly identified in their original Arabic wording.
-- Use ZIKR Memory as the reference gameplay experience: pair-progress text must match the metric shown, and cards must expose their flipped state and content through accessible labels; localize all 11 existing situation labels without changing the verified Arabic dhikr.
+- Use ZIKR Memory as the reference gameplay experience: pair-progress text must match the metric shown, and cards must expose their flipped state and content through accessible labels; localize all 11 existing situation labels without changing the verified Arabic dhikr. Memoize the verified pair pool so routine HUD/feedback renders do not recompute the seeded board.
 - Acceptance gate: no game card depends on a remote image for its core identity and no missing asset breaks gameplay.
 
 ## Phase F — Progress, privacy, and family controls
