@@ -163,11 +163,14 @@ const CLEANUP_ZONES: CleanupZone[] = [
 ];
 
 export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onResult, onSound }: Props) {
+  const { isEnglish } = useLanguage();
+  const isEnglishRef = useRef(isEnglish);
+  isEnglishRef.current = isEnglish;
   const [levelIndex, setLevelIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [placed, setPlaced] = useState<Record<string, string>>({});
   const [mistakes, setMistakes] = useState(0);
-  const [feedback, setFeedback] = useState("اختر غرضًا ثم اضغط منطقة الترتيب المناسبة.");
+  const [feedback, setFeedback] = useState(isEnglish ? "Choose an item, then select its matching zone." : "اختر غرضًا ثم اضغط منطقة الترتيب المناسبة.");
   const advancingRef = useRef(false);
   const runTotalsRef = useRef(createGameRunTotals());
   const levelResetPendingRef = useRef(false);
@@ -182,7 +185,8 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
   const complete = Object.keys(placed).length === items.length;
   const score = Math.max(0, Object.keys(placed).length * 170 - mistakes * rules.mistakePenalty);
 
-  useEffect(() => { setSelected(null); setPlaced({}); setMistakes(0); setFeedback(meta.subtitleAr); levelResetPendingRef.current = true; advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, restartToken]);
+  useEffect(() => { setSelected(null); setPlaced({}); setMistakes(0); setFeedback(isEnglishRef.current ? meta.subtitleEn : meta.subtitleAr); levelResetPendingRef.current = true; advancingRef.current = false; }, [difficulty, levelIndex, meta.subtitleAr, meta.subtitleEn, restartToken]);
+  useEffect(() => { setFeedback(isEnglish ? "Choose an item, then select its matching zone." : "اختر غرضًا ثم اضغط منطقة الترتيب المناسبة."); }, [isEnglish]);
 
   useEffect(() => {
     const levelHud: WorldHud = { score: complete ? score + rules.completionBonus : score, collectibles: Object.keys(placed).length, distance: 0, combo: Math.max(0, Object.keys(placed).length - mistakes), level: levelIndex + 1, completed: complete && levelIndex === KIDS_LEVEL_COUNT - 1 };
@@ -197,14 +201,14 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
     const levelTotals = { score: levelHud.score, collectibles: levelHud.collectibles, combo: levelHud.combo };
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
       runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
-      setFeedback("اكتمل " + levelLabel(levelIndex) + ". توزيع جديد للعناصر جاهز.");
+      setFeedback(isEnglish ? levelLabel(levelIndex, true) + " complete. A new item layout is ready." : "اكتمل " + levelLabel(levelIndex, false) + ". توزيع جديد للعناصر جاهز.");
       window.setTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
       const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
       runTotalsRef.current = totals;
       const finalHud: WorldHud = { ...levelHud, score: totals.score, collectibles: totals.collectibles, combo: totals.bestCombo, completed: true };
       onHud(finalHud);
-      setFeedback("أكملت جميع مستويات ترتيب المكان.");
+      setFeedback(isEnglish ? "You completed every organizing level." : "أكملت جميع مستويات ترتيب المكان.");
       onResult(finalHud);
     }
   }, [complete, levelIndex, mistakes, onHud, onResult, onSound, placed, rules.completionBonus, score]);
@@ -213,31 +217,31 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
     if (paused || !selected || placed[selected]) return;
     const item = items.find(value => value.id === selected);
     if (!item) return;
-    if (item.target !== zone.id) { setMistakes(value => value + 1); onSound("miss"); setFeedback("هذا الغرض له ركن آخر."); return; }
+    if (item.target !== zone.id) { setMistakes(value => value + 1); onSound("miss"); setFeedback(isEnglish ? "This item belongs in a different area." : "هذا الغرض له ركن آخر."); return; }
     setPlaced(value => ({ ...value, [selected]: zone.id }));
     setSelected(null);
     onSound("collect");
-    setFeedback(item.name + " وصل إلى مكانه الصحيح.");
+    setFeedback((isEnglish ? item.nameEn : item.name) + (isEnglish ? " is in the right place." : " وصل إلى مكانه الصحيح."));
   };
 
   const remaining = items.filter(item => !placed[item.id]);
 
   return (
-    <KidsGameStage theme="mosque" ariaLabel="ترتيب المكان"><KidsGameWorld gameId="mosque-cleanup" />
-      <KidsGameHeader eyebrow="MOSQUE CLEANUP" title="ترتيب المكان" description={meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(Object.keys(placed).length / Math.max(1, items.length)) * 100} label={levelLabel(levelIndex)} /></div>} />
+    <KidsGameStage theme="mosque" ariaLabel={isEnglish ? "Organize the place" : "ترتيب المكان"}><KidsGameWorld gameId="mosque-cleanup" />
+      <KidsGameHeader eyebrow="MOSQUE CLEANUP" title={isEnglish ? "Organize the Place" : "ترتيب المكان"} description={isEnglish ? meta.subtitleEn : meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(Object.keys(placed).length / Math.max(1, items.length)) * 100} label={levelLabel(levelIndex, isEnglish)} /></div>} />
       <div className="px-4 sm:px-6"><KidsGameHud items={[
-        { label: "النقاط", value: score, tone: "text-brand-gold" },
-        { label: "مرتبة", value: Object.keys(placed).length + "/" + items.length, tone: "text-brand-emerald" },
-        { label: "الأخطاء", value: mistakes, tone: "text-rose-100" },
-        { label: "السلسلة", value: Math.max(0, Object.keys(placed).length - mistakes), tone: "text-violet-200" },
-        { label: "المستوى", value: levelIndex + 1, tone: "text-sky-200" },
+        { label: isEnglish ? "Score" : "النقاط", value: score, tone: "text-brand-gold" },
+        { label: isEnglish ? "Sorted" : "مرتبة", value: Object.keys(placed).length + "/" + items.length, tone: "text-brand-emerald" },
+        { label: isEnglish ? "Mistakes" : "الأخطاء", value: mistakes, tone: "text-rose-100" },
+        { label: isEnglish ? "Streak" : "السلسلة", value: Math.max(0, Object.keys(placed).length - mistakes), tone: "text-violet-200" },
+        { label: isEnglish ? "Level" : "المستوى", value: levelIndex + 1, tone: "text-sky-200" },
       ]} /></div>
       <div className="mx-4 mt-4 grid gap-4 sm:mx-6 lg:grid-cols-[1fr_.9fr]">
-        <div className="relative min-h-[420px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#092027] p-4 sm:p-5"><MosqueBackdrop compact /><div className="relative z-10"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-black tracking-[0.18em] text-brand-gold">العناصر</p><p className="mt-1 text-sm text-brand-cream/45">اختر عنصرًا ثم اختر ركنه.</p></div><KidCharacter variant="helper" state="help" size={66} /></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {remaining.map(item => <button key={item.id} type="button" draggable={!paused} onDragStart={() => setSelected(item.id)} onClick={() => setSelected(item.id)} disabled={paused} className={["min-h-28 rounded-2xl border p-3 text-center transition", selected === item.id ? "border-brand-gold/70 bg-brand-gold/10 -translate-y-1" : "border-white/10 bg-black/20 hover:border-brand-gold/30"].join(" ")}><div className="text-3xl">{item.icon}</div><p className="mt-2 text-xs text-brand-cream/70">{item.name}</p></button>)}
+        <div className="relative min-h-[420px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#092027] p-4 sm:p-5"><MosqueBackdrop compact /><div className="relative z-10"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-black tracking-[0.18em] text-brand-gold">{isEnglish ? "ITEMS" : "العناصر"}</p><p className="mt-1 text-sm text-brand-cream/45">{isEnglish ? "Choose an item, then choose its area." : "اختر عنصرًا ثم اختر ركنه."}</p></div><KidCharacter variant="helper" state="help" size={66} /></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {remaining.map(item => <button key={item.id} type="button" draggable={!paused} onDragStart={() => setSelected(item.id)} onClick={() => setSelected(item.id)} disabled={paused} className={["min-h-28 rounded-2xl border p-3 text-center transition", selected === item.id ? "border-brand-gold/70 bg-brand-gold/10 -translate-y-1" : "border-white/10 bg-black/20 hover:border-brand-gold/30"].join(" ")}><div className="text-3xl">{item.icon}</div><p className="mt-2 text-xs text-brand-cream/70">{isEnglish ? item.nameEn : item.name}</p></button>)}
         </div></div></div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-          {CLEANUP_ZONES.map(zone => <button key={zone.id} type="button" onDrop={(event) => { event.preventDefault(); place(zone); }} onDragOver={(event) => event.preventDefault()} onClick={() => place(zone)} disabled={paused || !selected} className="group min-h-28 rounded-[1.7rem] border border-white/10 bg-black/20 p-4 text-right transition hover:border-brand-gold/40 disabled:opacity-50"><div className="flex items-center justify-between"><div className="grid h-12 w-12 place-items-center rounded-2xl border border-brand-gold/15 bg-brand-gold/5 text-2xl">{zone.icon}</div><span className="text-xs text-brand-cream/40">{items.filter(item => placed[item.id] === zone.id).length} عناصر</span></div><h4 className="mt-3 font-black text-brand-cream">{zone.title}</h4><p className="mt-1 text-xs text-brand-cream/45">اضغط أو اسحب العنصر إلى هذا الركن</p></button>)}
+          {CLEANUP_ZONES.map(zone => <button key={zone.id} type="button" onDrop={(event) => { event.preventDefault(); place(zone); }} onDragOver={(event) => event.preventDefault()} onClick={() => place(zone)} disabled={paused || !selected} className={"group min-h-28 rounded-[1.7rem] border border-white/10 bg-black/20 p-4 " + (isEnglish ? "text-left" : "text-right") + " transition hover:border-brand-gold/40 disabled:opacity-50"}><div className="flex items-center justify-between"><div className="grid h-12 w-12 place-items-center rounded-2xl border border-brand-gold/15 bg-brand-gold/5 text-2xl">{zone.icon}</div><span className="text-xs text-brand-cream/40">{items.filter(item => placed[item.id] === zone.id).length} {isEnglish ? "items" : "عناصر"}</span></div><h4 className="mt-3 font-black text-brand-cream">{isEnglish ? zone.titleEn : zone.title}</h4><p className="mt-1 text-xs text-brand-cream/45">{isEnglish ? "Tap or drag an item to this area." : "اضغط أو اسحب العنصر إلى هذا الركن"}</p></button>)}
         </div>
       </div>
       <GameToast tone={complete && levelIndex === KIDS_LEVEL_COUNT - 1 ? "emerald" : "gold"}>{feedback}</GameToast>
