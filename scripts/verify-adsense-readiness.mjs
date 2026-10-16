@@ -100,7 +100,7 @@ for (const file of publicEditorial) {
 
 // Content depth gate: AdSense rejects sites whose editorial pages are thin, repetitive, or about the product itself.
 const MIN_LONGFORM_WORDS = 500;
-const MIN_LONGFORM_ARTICLES = 8;
+const MIN_LONGFORM_ARTICLES = 16;
 const longform = read('src/features/articles/data/longform-editorial.ts');
 const longformBlocks = longform.split(/longformArticle\(\{/).slice(1);
 if (longformBlocks.length < MIN_LONGFORM_ARTICLES) {
