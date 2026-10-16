@@ -84,7 +84,7 @@ function getApprovedScenarioQuestionsFromSources(): VerifiedQuizQuestion[] {
     return questions.flatMap(question => {
       // Repeated prompt text makes later levels feel recycled. Preserve the
       // first approved source while treating whitespace/case-only changes as duplicates.
-      const key = question.text.trim().replace(/\\s+/g, " ").toLocaleLowerCase();
+      const key = question.text.trim().replace(/\s+/g, " ").toLocaleLowerCase();
       if (seenQuestionTexts.has(key)) return [];
       seenQuestionTexts.add(key);
 
