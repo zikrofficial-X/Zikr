@@ -28,6 +28,22 @@ assert.deepEqual(
 const gameIds = Object.keys(GAME_REGISTRY) as GameId[];
 assert.equal(gameIds.length, 12, "canonical Kids registry must contain exactly 12 games");
 
+const learningGamesSource = readFileSync("src/features/kids/components/games/kids-learning-games.tsx", "utf8");
+assert.equal(learningGamesSource.split("const { isEnglish } = useLanguage();").length - 1, 4, "all four learning games must read the selected language");
+for (const label of ["ZIKR Memory", "Wudu Challenge", "Verse Puzzle", "ZIKR Quiz", "MEMORY_SITUATIONS_EN", "Before sleeping"]) {
+  assert.ok(learningGamesSource.includes(label), "learning games localization/content contract is missing: " + label);
+}
+for (const note of [
+  "Dhikr phrases remain in their verified Arabic wording.",
+  "Step wording remains in the verified Arabic source.",
+  "Quran text is kept in its verified original Arabic wording.",
+  "Question text and answer choices remain in their verified original Arabic wording."
+]) {
+  assert.ok(learningGamesSource.includes(note), "English mode must explain preserved source-language content: " + note);
+}
+assert.ok(learningGamesSource.includes("getVerifiedMemoryPairs") && learningGamesSource.includes("getVerifiedWuduContent") && learningGamesSource.includes("getVerifiedKidsQuizQuestions"), "localization must preserve verified content adapters");
+assert.ok(learningGamesSource.includes('label: isEnglish ? "Score"'), "learning-game HUD labels must follow the selected language");
+
 const coloringSource = readFileSync("src/features/kids/components/games/kids-values-coloring.tsx", "utf8");
 const coloringCatalog = coloringSource.split("const COLORING_SHEETS: ColoringSheet[] = [")[1]?.split("];")[0] ?? "";
 const coloringSheetIds = [...coloringCatalog.matchAll(/id: "([^"]+)"/g)].map(match => match[1]);

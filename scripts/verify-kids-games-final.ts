@@ -139,6 +139,22 @@ const learning = readFileSync(join(root, "src/features/kids/components/games/kid
 if (!learning.includes("useHint") && !learning.includes("useVerseHint")) throw new Error("Hint mechanics missing from learning games.");
 if (!learning.includes("useFiftyFifty")) throw new Error("Quiz 50/50 mechanic missing.");
 if (!learning.includes("getVerifiedWuduContent")) throw new Error("Verified Wudu content path missing.");
+if (learning.split("const { isEnglish } = useLanguage();").length - 1 !== 4) {
+  throw new Error("All four learning games must use the selected interface language.");
+}
+for (const marker of [
+  "ZIKR Memory",
+  "Wudu Challenge",
+  "Verse Puzzle",
+  "ZIKR Quiz",
+  "MEMORY_SITUATIONS_EN",
+  "Dhikr phrases remain in their verified Arabic wording.",
+  "Step wording remains in the verified Arabic source.",
+  "Quran text is kept in its verified original Arabic wording.",
+  "Question text and answer choices remain in their verified original Arabic wording."
+]) {
+  if (!learning.includes(marker)) throw new Error("Learning game localization/source-preservation contract missing: " + marker);
+}
 const values = readFileSync(join(root, "src/features/kids/components/games/kids-values-coloring.tsx"), "utf8");
 const coloringRulesSource = readFileSync(join(root, "src/lib/games/zikr-coloring.ts"), "utf8");
 if (!values.includes("actionSteps")) throw new Error("Good Deeds multi-step interaction missing.");
