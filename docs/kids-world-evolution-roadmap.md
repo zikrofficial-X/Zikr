@@ -29,6 +29,7 @@ Status: implemented in the companion GitHub change.
 - Maintain a per-game content manifest with source, age range, learning objective, review status, and revision.
 - Keep Quran text sourced from the canonical Quran data; do not manually paraphrase or manufacture Quran content for puzzles.
 - Keep wudu and knowledge questions tied to approved educational records.
+- Build Mosque Adventure and ZIKR Road from one shared, source-backed pool of approved child-friendly scenarios; deduplicate prompts and require a minimum scenario count in CI.
 - Review values-based scenarios for age suitability, clarity, and practical actions a child can understand.
 - Acceptance gate: every question or religious-text puzzle has a traceable source, and unavailable source data fails safely.
 
