@@ -48,6 +48,7 @@ Status: implemented in the companion GitHub change.
 - Provide reduced-motion and sound-off experiences and avoid loading large art packs before a game is opened.
 - Coloring now offers six original vector scenes, keyboard-operable paint regions, and a rotation that guarantees each difficulty visits all six scenes across the 20 levels.
 - Track asset dimensions, format, source/rights, and game ownership.
+- Good Deeds, Cleanup, and Coloring localize child-facing titles, instructions, activity content, feedback, HUD labels, and artwork descriptions in Arabic and English.
 - Acceptance gate: no game card depends on a remote image for its core identity and no missing asset breaks gameplay.
 
 ## Phase F — Progress, privacy, and family controls
