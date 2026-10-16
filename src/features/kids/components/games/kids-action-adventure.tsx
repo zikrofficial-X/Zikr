@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLanguage } from "@/components/layout/language-provider";
 import type { GameDifficulty } from "@/lib/games/registry";
 import { gameKeyAction } from "@/lib/games/gameplay-helpers";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
@@ -90,6 +91,9 @@ export function ZikrJumpGame({
   onResult,
   onSound,
 }: AdventureGameProps) {
+  const { isEnglish } = useLanguage();
+  const isEnglishRef = useRef(isEnglish);
+  useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const rules = useMemo(() => getZikrJumpRules(difficulty), [difficulty]);
   const levels = useMemo(() => getZikrJumpLevels(difficulty), [difficulty]);
   const renderClockRef = useRef(0);
@@ -115,7 +119,7 @@ export function ZikrJumpGame({
   const stateRef = useRef<JumpSnapshot>(createInitialJumpState());
   const inputRef = useRef({ left: false, right: false, jump: false });
   const [snapshot, setSnapshot] = useState<JumpSnapshot>(createInitialJumpState);
-  const [feedback, setFeedback] = useState("تحرك يمينًا ويسارًا، اقفز، واجمع النجوم.");
+  const [feedback, setFeedback] = useState(isEnglish ? "Move left and right, jump, and collect stars." : "تحرك يمينًا ويسارًا، اقفز، واجمع النجوم.");
   const completeRef = useRef(false);
 
   const restart = () => {
@@ -141,7 +145,7 @@ export function ZikrJumpGame({
     };
     stateRef.current = next;
     setSnapshot({ ...next, player: { ...next.player }, collected: [] });
-    setFeedback("تحرك يمينًا ويسارًا، اقفز، واجمع النجوم.");
+    setFeedback(isEnglishRef.current ? "Move left and right, jump, and collect stars." : "تحرك يمينًا ويسارًا، اقفز، واجمع النجوم.");
     completeRef.current = false;
     inputRef.current = { left: false, right: false, jump: false };
     onHud(jumpHud(next, levels.length, false));
@@ -254,7 +258,7 @@ export function ZikrJumpGame({
             player.vx = 0;
             player.vy = 0;
             onSound("miss");
-            setFeedback(state.lives > 0 ? "انتبه للعائق وعد للمنصة بأمان." : "انتهت المحاولات. خذ استراحة وحاول مجددًا.");
+            setFeedback(isEnglishRef.current ? (state.lives > 0 ? "Watch the obstacle and return to the platform safely." : "No attempts left. Take a break and try again.") : (state.lives > 0 ? "انتبه للعائق وعد للمنصة بأمان." : "انتهت المحاولات. خذ استراحة وحاول مجددًا."));
             if (state.lives <= 0) {
               state.gameOver = true;
               const finalHud = jumpHud(state, levels.length, false);
@@ -280,7 +284,7 @@ export function ZikrJumpGame({
           state.combo += 1;
           state.score += rules.starReward + Math.min(80, state.combo * 8);
           onSound("collect");
-          setFeedback("نجمة! الهبوط التالي أصبح أقرب.");
+          setFeedback(isEnglishRef.current ? "Star collected! The next landing is closer." : "نجمة! الهبوط التالي أصبح أقرب.");
         }
       }
 
@@ -301,7 +305,7 @@ export function ZikrJumpGame({
           if (!completeRef.current) {
             completeRef.current = true;
             onSound("success");
-            setFeedback("أكملت جميع مستويات قفزة ذِكر.");
+            setFeedback(isEnglishRef.current ? "You completed every ZIKR Jump level." : "أكملت جميع مستويات قفزة ذِكر.");
             onResult(finalHud);
           }
           return;
@@ -317,7 +321,7 @@ export function ZikrJumpGame({
         player.vy = 0;
         state.cameraY = 0;
         onSound("success");
-        setFeedback("وصلت إلى " + levels[state.levelIndex].titleAr + ".");
+        setFeedback(isEnglishRef.current ? "Reached " + getKidsLevelMeta("zikr-jump", difficulty, state.levelIndex).titleEn + "." : "وصلت إلى " + levels[state.levelIndex].titleAr + ".");
       }
 
       state.cameraY = Math.max(0, player.y - 230);
@@ -329,7 +333,7 @@ export function ZikrJumpGame({
         player.vx = 0;
         player.vy = 0;
         onSound("miss");
-        setFeedback(state.lives > 0 ? "سقطت من الطريق. عد للمحاولة بهدوء." : "انتهت المحاولات في هذه الجولة.");
+        setFeedback(isEnglishRef.current ? (state.lives > 0 ? "You fell off the path. Try again calmly." : "No attempts left in this round.") : (state.lives > 0 ? "سقطت من الطريق. عد للمحاولة بهدوء." : "انتهت المحاولات في هذه الجولة."));
         if (state.lives <= 0) {
           state.gameOver = true;
           const finalHud = jumpHud(state, levels.length, false);
@@ -359,24 +363,25 @@ export function ZikrJumpGame({
   }, [difficulty, levels, onHud, onResult, onSound, paused, rules]);
 
   const level = levels[snapshot.levelIndex];
+  const levelMeta = getKidsLevelMeta("zikr-jump", difficulty, snapshot.levelIndex);
   const percent = level ? Math.min(100, Math.round((1 - (snapshot.player.y - (level.platforms[level.goalPlatformIndex]?.y ?? 0)) / 1700) * 100)) : 0;
 
   return (
-    <KidsGameStage theme={level.theme === "garden" ? "garden" : level.theme === "courtyard" ? "mosque" : level.theme === "dawn" ? "dawn" : "night"} ariaLabel="قفزة ذِكر"><KidsGameWorld gameId="zikr-jump" />
+    <KidsGameStage theme={level.theme === "garden" ? "garden" : level.theme === "courtyard" ? "mosque" : level.theme === "dawn" ? "dawn" : "night"} ariaLabel={isEnglish ? "ZIKR Jump" : "قفزة ذِكر"}><KidsGameWorld gameId="zikr-jump" />
       <KidsGameHeader
         eyebrow="ZIKR JUMP"
-        title="قفزة ذِكر"
-        description={level.subtitleAr}
-        right={<div className="hidden w-52 sm:block"><KidsProgress value={percent} label="ارتفاع المرحلة" /></div>}
+        title={isEnglish ? "ZIKR Jump" : "قفزة ذِكر"}
+        description={isEnglish ? levelMeta.subtitleEn : level.subtitleAr}
+        right={<div className="hidden w-52 sm:block"><KidsProgress value={percent} label={isEnglish ? "Jump height" : "ارتفاع المرحلة"} /></div>}
       />
       <div className="px-4 sm:px-6">
         <KidsGameHud
           items={[
-            { label: "المرحلة", value: (snapshot.levelIndex + 1) + "/" + levels.length, tone: "text-violet-200" },
-            { label: "النقاط", value: snapshot.score, tone: "text-brand-gold" },
-            { label: "النجوم", value: snapshot.stars, tone: "text-brand-emerald" },
-            { label: "السلسلة", value: snapshot.combo, tone: "text-brand-cream" },
-            { label: "المحاولات", value: snapshot.lives, tone: "text-sky-200" },
+            { label: isEnglish ? "Stage" : "المرحلة", value: (snapshot.levelIndex + 1) + "/" + levels.length, tone: "text-violet-200" },
+            { label: isEnglish ? "Score" : "النقاط", value: snapshot.score, tone: "text-brand-gold" },
+            { label: isEnglish ? "Stars" : "النجوم", value: snapshot.stars, tone: "text-brand-emerald" },
+            { label: isEnglish ? "Streak" : "السلسلة", value: snapshot.combo, tone: "text-brand-cream" },
+            { label: isEnglish ? "Lives" : "المحاولات", value: snapshot.lives, tone: "text-sky-200" },
           ]}
         />
       </div>
@@ -458,7 +463,7 @@ export function ZikrJumpGame({
 
         <div className="absolute bottom-0 inset-x-0 z-40 grid grid-cols-3 gap-2 border-t border-white/10 bg-black/25 p-3 backdrop-blur-md sm:gap-3 sm:p-4">
           <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.left = true; }} onPointerUp={() => (inputRef.current.left = false)} onPointerCancel={() => (inputRef.current.left = false)} onLostPointerCapture={() => (inputRef.current.left = false)} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream">←</button>
-          <button type="button" onPointerDown={() => (inputRef.current.jump = true)} className="min-h-14 touch-manipulation select-none rounded-2xl border-2 border-brand-gold/40 bg-brand-gold/10 text-sm font-black text-brand-gold">قفز</button>
+          <button type="button" onPointerDown={() => (inputRef.current.jump = true)} className="min-h-14 touch-manipulation select-none rounded-2xl border-2 border-brand-gold/40 bg-brand-gold/10 text-sm font-black text-brand-gold">{isEnglish ? "Jump" : "قفز"}</button>
           <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.right = true; }} onPointerUp={() => (inputRef.current.right = false)} onPointerCancel={() => (inputRef.current.right = false)} onLostPointerCapture={() => (inputRef.current.right = false)} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream">→</button>
         </div>
       </div>
@@ -519,6 +524,9 @@ export function HilalFlyGame({
   onResult,
   onSound,
 }: AdventureGameProps) {
+  const { isEnglish } = useLanguage();
+  const isEnglishRef = useRef(isEnglish);
+  useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const rules = useMemo(() => getHilalFlyRules(difficulty), [difficulty]);
   const levels = useMemo(() => getHilalFlyLevels(difficulty), [difficulty]);
   const renderClockRef = useRef(0);
@@ -543,7 +551,7 @@ export function HilalFlyGame({
   const [state, setState] = useState<FlyState>(() => create());
   const inputRef = useRef({ up: false, down: false });
   const completionRef = useRef(false);
-  const [feedback, setFeedback] = useState("حرّك الهلال لأعلى ولأسفل في السماء.");
+  const [feedback, setFeedback] = useState(isEnglish ? "Guide the crescent up and down through the sky." : "حرّك الهلال لأعلى ولأسفل في السماء.");
   const [swipe, setSwipe] = useState<{ x: number; y: number } | null>(null);
 
   const reset = () => {
@@ -552,7 +560,7 @@ export function HilalFlyGame({
     setState(next);
     inputRef.current = { up: false, down: false };
     completionRef.current = false;
-    setFeedback("حرّك الهلال لأعلى ولأسفل في السماء.");
+    setFeedback(isEnglishRef.current ? "Guide the crescent up and down through the sky." : "حرّك الهلال لأعلى ولأسفل في السماء.");
     onHud(flyHud(next, levels.length));
   };
 
@@ -620,7 +628,7 @@ export function HilalFlyGame({
         state.nextStar = state.distance + Math.max(150, rules.speed * (rules.starInterval / 1000));
         state.combo = 0;
         onSound("success");
-        setFeedback("دخلت " + level.titleAr + ".");
+        setFeedback(isEnglishRef.current ? "Entered " + getKidsLevelMeta("hilal-fly", difficulty, nextLevel).titleEn + "." : "دخلت " + level.titleAr + ".");
       }
 
       const gap = Math.max(110, rules.gapHeight * level.gapScale);
@@ -663,7 +671,7 @@ export function HilalFlyGame({
           state.y = FLY_HEIGHT / 2;
           state.vy = 0;
           onSound("miss");
-          setFeedback(state.lives > 0 ? "حافظ على ارتفاع الهلال وواصل." : "انتهت محاولات الطيران.");
+          setFeedback(isEnglishRef.current ? (state.lives > 0 ? "Keep the crescent at a safe height and continue." : "No flight attempts remain.") : (state.lives > 0 ? "حافظ على ارتفاع الهلال وواصل." : "انتهت محاولات الطيران."));
           if (state.lives <= 0) {
             state.gameOver = true;
             const finalHud = flyHud(state, levels.length);
@@ -687,7 +695,7 @@ export function HilalFlyGame({
           state.combo += 1;
           state.score += rules.starReward + Math.min(100, state.combo * 10);
           onSound("collect");
-          setFeedback("نجمة من السماء!.");
+          setFeedback(isEnglishRef.current ? "A star from the sky!" : "نجمة من السماء!.");
         }
       }
 
@@ -702,7 +710,7 @@ export function HilalFlyGame({
         if (!completionRef.current) {
           completionRef.current = true;
           onSound("success");
-          setFeedback("وصل الهلال إلى الفجر الذهبي.");
+          setFeedback(isEnglishRef.current ? "The crescent reached the golden dawn." : "وصل الهلال إلى الفجر الذهبي.");
           onResult(finalHud);
         }
         return;
@@ -724,24 +732,25 @@ export function HilalFlyGame({
   }, [difficulty, levels, onHud, onResult, onSound, paused, rules]);
 
   const level = levels[state.levelIndex];
+  const levelMeta = getKidsLevelMeta("hilal-fly", difficulty, state.levelIndex);
   const progress = (state.distance / rules.goalDistance) * 100;
 
   return (
-    <KidsGameStage theme="night" ariaLabel="طيران الهلال"><KidsGameWorld gameId="hilal-fly" />
+    <KidsGameStage theme="night" ariaLabel={isEnglish ? "Crescent Flight" : "طيران الهلال"}><KidsGameWorld gameId="hilal-fly" />
       <KidsGameHeader
         eyebrow="HILAL FLY"
-        title="طيران الهلال"
-        description={level.subtitleAr}
-        right={<div className="hidden w-52 sm:block"><KidsProgress value={progress} label="رحلة السماء" /></div>}
+        title={isEnglish ? "Crescent Flight" : "طيران الهلال"}
+        description={isEnglish ? levelMeta.subtitleEn : level.subtitleAr}
+        right={<div className="hidden w-52 sm:block"><KidsProgress value={progress} label={isEnglish ? "Sky journey" : "رحلة السماء"} /></div>}
       />
       <div className="px-4 sm:px-6">
         <KidsGameHud
           items={[
-            { label: "النقاط", value: state.score, tone: "text-brand-gold" },
-            { label: "النجوم", value: state.stars, tone: "text-brand-emerald" },
-            { label: "السلسلة", value: state.combo, tone: "text-violet-200" },
-            { label: "المحاولات", value: state.lives, tone: "text-sky-200" },
-            { label: "المرحلة", value: (state.levelIndex + 1) + "/" + levels.length, tone: "text-amber-200" },
+            { label: isEnglish ? "Score" : "النقاط", value: state.score, tone: "text-brand-gold" },
+            { label: isEnglish ? "Stars" : "النجوم", value: state.stars, tone: "text-brand-emerald" },
+            { label: isEnglish ? "Streak" : "السلسلة", value: state.combo, tone: "text-violet-200" },
+            { label: isEnglish ? "Lives" : "المحاولات", value: state.lives, tone: "text-sky-200" },
+            { label: isEnglish ? "Stage" : "المرحلة", value: (state.levelIndex + 1) + "/" + levels.length, tone: "text-amber-200" },
           ]}
         />
       </div>
@@ -807,8 +816,8 @@ export function HilalFlyGame({
         </div>
 
         <div className="absolute bottom-0 inset-x-0 z-40 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/25 p-3 backdrop-blur-md sm:gap-3 sm:p-4">
-          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.up = true; }} onPointerUp={() => (inputRef.current.up = false)} onPointerCancel={() => (inputRef.current.up = false)} onLostPointerCapture={() => (inputRef.current.up = false)} className="min-h-14 touch-none select-none rounded-2xl border border-brand-gold/30 bg-brand-gold/10 text-2xl text-brand-gold">↑</button>
-          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.down = true; }} onPointerUp={() => (inputRef.current.down = false)} onPointerCancel={() => (inputRef.current.down = false)} onLostPointerCapture={() => (inputRef.current.down = false)} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream">↓</button>
+          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.up = true; }} onPointerUp={() => (inputRef.current.up = false)} onPointerCancel={() => (inputRef.current.up = false)} onLostPointerCapture={() => (inputRef.current.up = false)} className="min-h-14 touch-none select-none rounded-2xl border border-brand-gold/30 bg-brand-gold/10 text-2xl text-brand-gold" aria-label={isEnglish ? "Move up" : "تحرك لأعلى"}>↑</button>
+          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.down = true; }} onPointerUp={() => (inputRef.current.down = false)} onPointerCancel={() => (inputRef.current.down = false)} onLostPointerCapture={() => (inputRef.current.down = false)} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream" aria-label={isEnglish ? "Move down" : "تحرك لأسفل"}>↓</button>
         </div>
       </div>
       <GameToast>{feedback}</GameToast>
@@ -819,20 +828,22 @@ export function HilalFlyGame({
 type AdventureNode = {
   id: string;
   title: string;
+  titleEn: string;
   label: string;
+  labelEn: string;
   x: number;
   y: number;
   icon: string;
 };
 
 const NODE_TEMPLATES = [
-  { title: "البوابة", label: "البداية", icon: "⌂" },
-  { title: "الساحة", label: "استكشف", icon: "✦" },
-  { title: "المكتبة", label: "تعلم", icon: "▤" },
-  { title: "الحديقة", label: "تأمل", icon: "✿" },
-  { title: "المئذنة", label: "اكتشف", icon: "☾" },
-  { title: "ممر النجوم", label: "اجمع", icon: "★" },
-  { title: "بوابة النور", label: "النهاية", icon: "✧" },
+  { title: "البوابة", titleEn: "The Gate", label: "البداية", labelEn: "Start", icon: "⌂" },
+  { title: "الساحة", titleEn: "The Courtyard", label: "استكشف", labelEn: "Explore", icon: "✦" },
+  { title: "المكتبة", titleEn: "The Library", label: "تعلم", labelEn: "Learn", icon: "▤" },
+  { title: "الحديقة", titleEn: "The Garden", label: "تأمل", labelEn: "Reflect", icon: "✿" },
+  { title: "المئذنة", titleEn: "The Minaret", label: "اكتشف", labelEn: "Discover", icon: "☾" },
+  { title: "ممر النجوم", titleEn: "Star Path", label: "اجمع", labelEn: "Collect", icon: "★" },
+  { title: "بوابة النور", titleEn: "Gate of Light", label: "النهاية", labelEn: "Finish", icon: "✧" },
 ] as const;
 
 export function MosqueAdventureGame({
@@ -843,6 +854,9 @@ export function MosqueAdventureGame({
   onResult,
   onSound,
 }: AdventureGameProps) {
+  const { isEnglish } = useLanguage();
+  const isEnglishRef = useRef(isEnglish);
+  useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const rules = useMemo(() => getMosqueAdventureRules(difficulty), [difficulty]);
   const questions = useMemo(() => getApprovedScenarioQuestions(), []);
   const [levelIndex, setLevelIndex] = useState(0);
@@ -853,7 +867,7 @@ export function MosqueAdventureGame({
   const [mistakes, setMistakes] = useState(0);
   const [question, setQuestion] = useState<VerifiedQuizQuestion | null>(null);
   const [answer, setAnswer] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState("اضغط على المحطة التالية لاستكشاف الخريطة.");
+  const [feedback, setFeedback] = useState(isEnglish ? "Select the next station to explore the map." : "اضغط على المحطة التالية لاستكشاف الخريطة.");
   const [completed, setCompleted] = useState(false);
   const completionRef = useRef(false);
   const advancingRef = useRef(false);
@@ -868,14 +882,16 @@ export function MosqueAdventureGame({
       const sway = ((levelMeta.seed + index * 37) % 13) - 6;
       return {
         id: levelMeta.id + "-" + index,
-        title: template.title + " " + (index + 1),
-        label: template.label,
+        title: (isEnglish ? template.titleEn : template.title) + " " + (index + 1),
+        titleEn: template.titleEn + " " + (index + 1),
+        label: isEnglish ? template.labelEn : template.label,
+        labelEn: template.labelEn,
         icon: template.icon,
         x: Math.max(8, Math.min(92, 10 + progress * 80)),
         y: Math.max(22, Math.min(78, 72 - progress * 48 + sway)),
       };
     });
-  }, [levelMeta.id, levelMeta.pattern, levelMeta.seed, stationCount]);
+  }, [isEnglish, levelMeta.id, levelMeta.pattern, levelMeta.seed, stationCount]);
 
   const reset = useCallback(() => {
     setLevelIndex(0);
@@ -886,7 +902,7 @@ export function MosqueAdventureGame({
     setMistakes(0);
     setQuestion(null);
     setAnswer(null);
-    setFeedback("اضغط على المحطة التالية لاستكشاف الخريطة.");
+    setFeedback(isEnglishRef.current ? "Select the next station to explore the map." : "اضغط على المحطة التالية لاستكشاف الخريطة.");
     setCompleted(false);
     completionRef.current = false;
     advancingRef.current = false;
@@ -911,13 +927,13 @@ export function MosqueAdventureGame({
     setScore(nextScore);
     setCombo(nextCombo);
     onSound("collect");
-    setFeedback("وصلت إلى " + nodes[index].title + ".");
+    setFeedback(isEnglish ? "Reached " + nodes[index].titleEn + "." : "وصلت إلى " + nodes[index].title + ".");
 
     if (rules.questionStationIndexes.includes(index) && questions.length > 0) {
       const questionIndex = (levelIndex * 2 + index) % questions.length;
       setQuestion(questions[questionIndex]);
       setAnswer(null);
-      setFeedback("محطة تعلم: اختر الإجابة ثم واصل الاستكشاف.");
+      setFeedback(isEnglish ? "Learning checkpoint: choose an answer, then continue exploring." : "محطة تعلم: اختر الإجابة ثم واصل الاستكشاف.");
       return;
     }
 
@@ -925,7 +941,7 @@ export function MosqueAdventureGame({
       if (levelIndex + 1 < rules.levelCount) {
         advancingRef.current = true;
         setScore(value => value + 500);
-        setFeedback("اكتملت " + levelMeta.titleAr + ". خريطة مختلفة في الطريق...");
+        setFeedback(isEnglish ? levelMeta.titleEn + " complete. A new map is ahead..." : "اكتملت " + levelMeta.titleAr + ". خريطة مختلفة في الطريق...");
         onSound("success");
         window.setTimeout(() => {
           setLevelIndex(value => value + 1);
@@ -949,7 +965,7 @@ export function MosqueAdventureGame({
         if (!completionRef.current) {
           completionRef.current = true;
           onSound("success");
-          setFeedback("أكملت جميع مستويات مغامرة المسجد.");
+          setFeedback(isEnglish ? "You completed every Mosque Adventure level." : "أكملت جميع مستويات مغامرة المسجد.");
           onResult(finalHud);
         }
       }
@@ -964,13 +980,13 @@ export function MosqueAdventureGame({
       setScore(value => value + 180);
       setCombo(value => value + 1);
       onSound("success");
-      setFeedback("إجابة صحيحة. المحطة التالية مفتوحة.");
+      setFeedback(isEnglish ? "Correct answer. The next station is open." : "إجابة صحيحة. المحطة التالية مفتوحة.");
     } else {
       setMistakes(value => value + 1);
       setCombo(0);
       setScore(value => Math.max(0, value - rules.mistakePenalty));
       onSound("miss");
-      setFeedback(rules.mistakePenalty > 0 ? "إجابة غير صحيحة، لكن الرحلة مستمرة." : "إجابة غير صحيحة. لا يوجد خصم في السهل.");
+      setFeedback(isEnglish ? (rules.mistakePenalty > 0 ? "Not quite, but the journey continues." : "Not quite. There is no penalty on Easy.") : (rules.mistakePenalty > 0 ? "إجابة غير صحيحة، لكن الرحلة مستمرة." : "إجابة غير صحيحة. لا يوجد خصم في السهل."));
     }
     window.setTimeout(() => {
       setQuestion(null);
@@ -990,15 +1006,15 @@ export function MosqueAdventureGame({
   }, [combo, completed, levelIndex, onHud, position, score, stars]);
 
   return (
-    <KidsGameStage theme="mosque" ariaLabel="مغامرة المسجد"><KidsGameWorld gameId="mosque-adventure" />
-      <KidsGameHeader eyebrow="MOSQUE ADVENTURE" title="مغامرة المسجد" description={levelMeta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={progress} label={"المستوى " + (levelIndex + 1) + "/" + rules.levelCount} /></div>} />
+    <KidsGameStage theme="mosque" ariaLabel={isEnglish ? "Mosque Adventure" : "مغامرة المسجد"}><KidsGameWorld gameId="mosque-adventure" />
+      <KidsGameHeader eyebrow="MOSQUE ADVENTURE" title={isEnglish ? "Mosque Adventure" : "مغامرة المسجد"} description={isEnglish ? levelMeta.subtitleEn : levelMeta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={progress} label={(isEnglish ? "Level " : "المستوى ") + (levelIndex + 1) + "/" + rules.levelCount} /></div>} />
       <div className="px-4 sm:px-6">
         <KidsGameHud items={[
-          { label: "النقاط", value: score, tone: "text-brand-gold" },
-          { label: "المحطات", value: position + "/" + Math.max(1, nodes.length - 1), tone: "text-brand-emerald" },
-          { label: "السلسلة", value: combo, tone: "text-violet-200" },
-          { label: "الأخطاء", value: mistakes, tone: "text-rose-100" },
-          { label: "المستوى", value: (levelIndex + 1) + "/" + rules.levelCount, tone: "text-amber-200" },
+          { label: isEnglish ? "Score" : "النقاط", value: score, tone: "text-brand-gold" },
+          { label: isEnglish ? "Stations" : "المحطات", value: position + "/" + Math.max(1, nodes.length - 1), tone: "text-brand-emerald" },
+          { label: isEnglish ? "Streak" : "السلسلة", value: combo, tone: "text-violet-200" },
+          { label: isEnglish ? "Mistakes" : "الأخطاء", value: mistakes, tone: "text-rose-100" },
+          { label: isEnglish ? "Level" : "المستوى", value: (levelIndex + 1) + "/" + rules.levelCount, tone: "text-amber-200" },
         ]} />
       </div>
 
@@ -1032,14 +1048,15 @@ export function MosqueAdventureGame({
         </div>
 
         <div className="absolute bottom-0 inset-x-0 z-30 border-t border-white/10 bg-black/25 p-4 text-center backdrop-blur-md">
-          <p className="text-xs text-brand-cream/50">المحطة الحالية</p>
+          <p className="text-xs text-brand-cream/50">{isEnglish ? "CURRENT STATION" : "المحطة الحالية"}</p>
           <p className="mt-1 text-sm font-bold text-brand-gold">{nodes[position]?.label}</p>
         </div>
 
         {question && (
           <div className="absolute inset-0 z-50 grid place-items-center bg-[#031017]/85 p-4 backdrop-blur-md">
             <div className="w-full max-w-2xl rounded-[2rem] border border-brand-gold/20 bg-[#0a1b25] p-6">
-              <p className="text-xs font-black tracking-[0.18em] text-brand-emerald">محطة تعلم</p>
+              <p className="text-xs font-black tracking-[0.18em] text-brand-emerald">{isEnglish ? "LEARNING CHECKPOINT" : "محطة تعلم"}</p>
+              {isEnglish && <p className="mt-2 text-xs leading-6 text-brand-cream/55">This checkpoint uses the approved Arabic scenario content.</p>}
               <h4 className="mt-3 text-2xl font-black text-brand-cream">{question.text}</h4>
               <div className="mt-5 grid gap-3">
                 {question.options.map((option, index) => (
