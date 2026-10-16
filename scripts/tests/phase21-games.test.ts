@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { GAME_REGISTRY, calculateBoundedXp, getGameDefinition, isRegisteredGameId } from "../../src/lib/games/registry";
 import type { GameId } from "../../src/lib/games/registry";
 import { KIDS_LEVEL_COUNT, getKidsLevelMeta } from "../../src/lib/games/kids-level-system";
@@ -27,6 +27,14 @@ assert.deepEqual(
 
 const gameIds = Object.keys(GAME_REGISTRY) as GameId[];
 assert.equal(gameIds.length, 12, "canonical Kids registry must contain exactly 12 games");
+
+const coloringSource = readFileSync("src/features/kids/components/games/kids-values-coloring.tsx", "utf8");
+const coloringCatalog = coloringSource.split("const COLORING_SHEETS: ColoringSheet[] = [")[1]?.split("\\n];")[0] ?? "";
+const coloringSheetIds = [...coloringCatalog.matchAll(/id: "([^"]+)"/g)].map(match => match[1]);
+assert.ok(coloringSheetIds.length >= 6, "Coloring must offer at least six original scenes");
+assert.equal(new Set(coloringSheetIds).size, coloringSheetIds.length, "Coloring scene IDs must be unique");
+assert.ok(coloringSource.includes("lantern-street") && coloringSource.includes("kite-meadow") && coloringSource.includes("starry-village"), "all additional coloring scenes must have runtime artwork");
+assert.ok(coloringSource.includes('role: "button" as const') && coloringSource.includes("tabIndex: 0") && coloringSource.includes("onKeyDown: (event: ReactKeyboardEvent<SVGElement>)"), "coloring regions must support keyboard use");
 
 const adventureQuestions = getApprovedScenarioQuestions();
 const roadQuestions = getApprovedRoadQuestions();
