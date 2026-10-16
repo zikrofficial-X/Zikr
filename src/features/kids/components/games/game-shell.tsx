@@ -9,12 +9,60 @@ import { enqueueGameResult, getQueuedGameResultCount, syncQueuedGameResults } fr
 import { WorldGameStage, type StageController, type WorldHud } from "@/features/kids/components/games/world-game-stage";
 import { KidsGameArt } from "@/features/kids/components/games/kids-game-art";
 import { getDailyMission, getMissionProgress } from "@/lib/games/game-missions";
-import { getGameInstructions } from "@/lib/games/game-instructions";
+import { getGameInstructions, type KidsGameGuide } from "@/lib/games/game-instructions";
 
 function formatNumber(value: number, isEnglish: boolean) { return new Intl.NumberFormat(isEnglish ? "en-US" : "ar-SA").format(value); }
 function createSubmissionId() { return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `game-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 
 export type KidsWorldGameShellProps = { gameId: GameId; initialDifficulty?: GameDifficulty };
+
+type GameGuidePanelProps = {
+  instructions: KidsGameGuide;
+  goal: string;
+  isEnglish: boolean;
+  onAction: () => void;
+  actionLabel: string;
+};
+
+function GameGuidePanel({ instructions, goal, isEnglish, onAction, actionLabel }: GameGuidePanelProps) {
+  return (
+    <section aria-labelledby="game-briefing-heading" className="w-full overflow-hidden rounded-2xl border border-brand-gold/25 bg-gradient-to-br from-[#102631] via-[#071b24] to-[#0b302f] p-5 shadow-2xl sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-black tracking-[0.18em] text-brand-emerald">{isEnglish ? "HOW TO PLAY" : "طريقة اللعب"}</p>
+          <h3 id="game-briefing-heading" className="mt-2 text-xl font-black text-brand-gold">{instructions.title}</h3>
+          <p className="mt-2 max-w-3xl text-sm leading-7 text-brand-cream/75">{instructions.intro}</p>
+        </div>
+        <span className="rounded-xl border border-brand-gold/20 bg-black/20 px-3 py-2 text-xs font-bold text-brand-gold">{isEnglish ? "Goal" : "الهدف"}: {goal}</span>
+      </div>
+      <ol className="mt-5 grid gap-3 md:grid-cols-3">
+        {instructions.steps.map((step, index) => (
+          <li key={step} className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-gold/15 text-sm font-black text-brand-gold">{index + 1}</span>
+            <span className="text-sm leading-6 text-brand-cream/80">{step}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-brand-emerald/15 bg-brand-emerald/[0.04] p-3">
+          <p className="text-xs font-black text-brand-emerald">{isEnglish ? "Touch controls" : "التحكم باللمس"}</p>
+          <p className="mt-1 text-sm leading-6 text-brand-cream/70">{instructions.touchControls}</p>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
+          <p className="text-xs font-black text-brand-cream/75">{isEnglish ? "Keyboard" : "لوحة المفاتيح"}</p>
+          <p className="mt-1 text-sm leading-6 text-brand-cream/60">{instructions.keyboardControls}</p>
+        </div>
+      </div>
+      <p className="mt-4 rounded-xl border border-brand-gold/10 bg-brand-gold/[0.04] p-3 text-sm leading-6 text-brand-cream/70">
+        <strong className="text-brand-gold">{isEnglish ? "Keep in mind: " : "تذكّر: "}</strong>{instructions.success}
+      </p>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+        <p className="text-xs leading-6 text-brand-cream/50">{isEnglish ? "There is no rush. You can pause whenever you need." : "مش محتاج تستعجل؛ تقدر توقف اللعبة مؤقتًا وقت ما تحتاج."}</p>
+        <Button type="button" onClick={onAction}>{actionLabel}</Button>
+      </div>
+    </section>
+  );
+}
 
 export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameShellProps) {
   const { isEnglish } = useLanguage();
@@ -36,6 +84,8 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   const [restartToken, setRestartToken] = useState(0);
   const [initializing, setInitializing] = useState(true);
   const [hasStarted, setHasStarted] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const wasPausedBeforeHelpRef = useRef(false);
   const instructions = useMemo(() => getGameInstructions(gameId, isEnglish ? "en" : "ar"), [gameId, isEnglish]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const elapsedRef = useRef(0);
@@ -176,6 +226,18 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     if (!controller || result) return;
     if (paused) { controller.resume(); setPaused(false); } else { controller.pause(); setPaused(true); }
   }, [controller, paused, result]);
+
+  const openHelp = useCallback(() => {
+    if (result || helpOpen) return;
+    wasPausedBeforeHelpRef.current = paused;
+    setPaused(true);
+    setHelpOpen(true);
+  }, [helpOpen, paused, result]);
+
+  const closeHelp = useCallback(() => {
+    setHelpOpen(false);
+    setPaused(wasPausedBeforeHelpRef.current);
+  }, []);
   const toggleFullscreen = useCallback(async () => {
     const element = document.getElementById("kids-world-game-frame");
     if (!element) return;
@@ -216,6 +278,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
               key={item}
               type="button"
               onClick={() => { if (!result) { setDifficulty(item); restart(); } }}
+              disabled={helpOpen}
               aria-pressed={difficulty === item}
               className={"rounded-lg px-3 py-2 text-sm " + (difficulty === item ? "bg-brand-gold text-black" : "border border-brand-cream/15 text-brand-cream/70")}
             >
@@ -227,38 +290,13 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
       </div>
 
       {!hasStarted && !englishSourceMissing && (
-        <section aria-labelledby="game-briefing-heading" className="overflow-hidden rounded-2xl border border-brand-gold/25 bg-gradient-to-br from-brand-gold/[0.08] via-black/20 to-brand-emerald/[0.06] p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-black tracking-[0.18em] text-brand-emerald">{isEnglish ? "HOW TO PLAY" : "طريقة اللعب"}</p>
-              <h3 id="game-briefing-heading" className="mt-2 text-xl font-black text-brand-gold">{instructions.title}</h3>
-              <p className="mt-2 max-w-3xl text-sm leading-7 text-brand-cream/75">{instructions.intro}</p>
-            </div>
-            <span className="rounded-xl border border-brand-gold/20 bg-black/20 px-3 py-2 text-xs font-bold text-brand-gold">{isEnglish ? "Goal" : "الهدف"}: {isEnglish ? definition.goalEn : definition.goalAr}</span>
-          </div>
-          <ol className="mt-5 grid gap-3 md:grid-cols-3">
-            {instructions.steps.map((step, index) => (
-              <li key={step} className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-gold/15 text-sm font-black text-brand-gold">{index + 1}</span>
-                <span className="text-sm leading-6 text-brand-cream/80">{step}</span>
-              </li>
-            ))}
-          </ol>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-brand-emerald/15 bg-brand-emerald/[0.04] p-3">
-              <p className="text-xs font-black text-brand-emerald">{isEnglish ? "Touch controls" : "التحكم باللمس"}</p>
-              <p className="mt-1 text-sm leading-6 text-brand-cream/70">{instructions.touchControls}</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
-              <p className="text-xs font-black text-brand-cream/75">{isEnglish ? "Keyboard" : "لوحة المفاتيح"}</p>
-              <p className="mt-1 text-sm leading-6 text-brand-cream/60">{instructions.keyboardControls}</p>
-            </div>
-          </div>
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
-            <p className="text-xs leading-6 text-brand-cream/50">{isEnglish ? "There is no rush. You can pause whenever you need." : "مش محتاج تستعجل؛ تقدر توقف اللعبة مؤقتًا وقت ما تحتاج."}</p>
-            <Button type="button" onClick={() => setHasStarted(true)}>{isEnglish ? "Start playing" : "ابدأ اللعب"}</Button>
-          </div>
-        </section>
+        <GameGuidePanel
+          instructions={instructions}
+          goal={isEnglish ? definition.goalEn : definition.goalAr}
+          isEnglish={isEnglish}
+          onAction={() => setHasStarted(true)}
+          actionLabel={isEnglish ? "Start playing" : "ابدأ اللعب"}
+        />
       )}
 
       {hasStarted && (
@@ -377,6 +415,19 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
                 </div>
               </div>
             )}
+            {helpOpen && (
+              <div className="absolute inset-0 z-30 grid place-items-center overflow-y-auto rounded-2xl bg-[#061820]/95 p-3 backdrop-blur-sm sm:p-5" role="dialog" aria-modal="true" aria-label={isEnglish ? "Game instructions" : "تعليمات اللعبة"}>
+                <div className="my-auto w-full max-w-3xl">
+                  <GameGuidePanel
+                    instructions={instructions}
+                    goal={isEnglish ? definition.goalEn : definition.goalAr}
+                    isEnglish={isEnglish}
+                    onAction={closeHelp}
+                    actionLabel={isEnglish ? "Resume game" : "العودة إلى اللعب"}
+                  />
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -386,7 +437,16 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
           <Button
             type="button"
             variant="outline"
-            onClick={togglePause}
+            onClick={openHelp}
+            disabled={!controller || Boolean(result) || helpOpen}
+            aria-label={isEnglish ? "Open game instructions" : "فتح تعليمات اللعبة"}
+          >
+            {isEnglish ? "How to play" : "طريقة اللعب"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={togglePause
             disabled={!controller || Boolean(result)}
             aria-label={paused ? (isEnglish ? "Resume game" : "متابعة اللعبة") : (isEnglish ? "Pause game" : "إيقاف اللعبة مؤقتًا")}
           >
