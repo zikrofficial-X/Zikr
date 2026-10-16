@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLanguage } from "@/components/layout/language-provider";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
@@ -16,23 +17,28 @@ import { KidsGameWorld } from "@/features/kids/components/games/kids-game-visual
 
 type Props = { difficulty: GameDifficulty; restartToken: number; paused: boolean; onHud: (hud: WorldHud) => void; onResult: (result: WorldHud) => void; onSound: (event: GameSoundEvent) => void };
 
-const levelLabel = (n: number) => "المستوى " + (n + 1) + "/" + KIDS_LEVEL_COUNT;
+const levelLabel = (n: number, en = false) => en ? "Level " + (n + 1) + "/" + KIDS_LEVEL_COUNT : "المستوى " + (n + 1) + "/" + KIDS_LEVEL_COUNT;
+const difficultyLabel = (d: GameDifficulty, en: boolean) => en ? (d === "easy" ? "Easy" : d === "normal" ? "Normal" : "Advanced") : (d === "easy" ? "سهل" : d === "normal" ? "متوسط" : "متقدم");
 
-type Deed = { id: string; title: string; description: string; icon: string; color: string };
+type Deed = { id: string; title: string; titleEn: string; description: string; descriptionEn: string; icon: string; color: string };
 const DEEDS: Deed[] = [
-  { id: "share", title: "صندوق المشاركة", description: "اختر شيئًا داخل العالم وشاركه مع الشخصية الأخرى.", icon: "🎁", color: "#f3c969" },
-  { id: "welcome", title: "بوابة الترحيب", description: "رحّب بالضيف الافتراضي ثم افتح الباب.", icon: "🤝", color: "#5fd1a6" },
-  { id: "plant", title: "حديقة صغيرة", description: "اسقِ نبتة العالم الخيالي لتزهر.", icon: "🌱", color: "#8ab6e2" },
-  { id: "book", title: "رف المعرفة", description: "ضع الكتاب في الرف المناسب.", icon: "📘", color: "#d7a7e8" },
-  { id: "lantern", title: "فانوس الطريق", description: "أشعل الفانوس ليضيء الطريق الهادئ.", icon: "🏮", color: "#f3c969" },
-  { id: "help", title: "المساعدة", description: "ساعد الشخصية على حمل الصندوق داخل المشهد.", icon: "🧺", color: "#5fd1a6" },
-  { id: "listen", title: "أذن الإصغاء", description: "استمع للشخصية واختر لحظة المساعدة المناسبة.", icon: "👂", color: "#9c86e8" },
-  { id: "queue", title: "دورك الجميل", description: "انتظر دورك داخل المشهد ثم اختر التصرف الهادئ.", icon: "🧍", color: "#e28a5a" },
-  { id: "clean", title: "مكان مرتب", description: "اجمع الأدوات المتناثرة داخل الصندوق الصحيح.", icon: "🧹", color: "#7ed6c1" },
-  { id: "smile", title: "ابتسامة", description: "اختر تحية لطيفة قبل بدء المهمة.", icon: "🙂", color: "#f3c969" },
-  { id: "water", title: "مساعدة بالماء", description: "قدّم كوب الماء إلى الشخصية الافتراضية.", icon: "🥤", color: "#8ab6e2" },
-  { id: "guide", title: "الدليل الصغير", description: "أرشد الشخصية إلى المكان الصحيح عبر المسار.", icon: "🧭", color: "#5fd1a6" },
+  { id: "share", title: "صندوق المشاركة", titleEn: "Sharing Chest", description: "اختر شيئًا داخل العالم وشاركه مع الشخصية الأخرى.", descriptionEn: "Choose an item in the world and share it with the other character.", icon: "🎁", color: "#f3c969" },
+  { id: "welcome", title: "بوابة الترحيب", titleEn: "Welcome Gate", description: "رحّب بالضيف الافتراضي ثم افتح الباب.", descriptionEn: "Welcome the virtual guest, then open the door.", icon: "🤝", color: "#5fd1a6" },
+  { id: "plant", title: "حديقة صغيرة", titleEn: "Little Garden", description: "اسقِ نبتة العالم الخيالي لتزهر.", descriptionEn: "Water the imaginary plant to help it bloom.", icon: "🌱", color: "#8ab6e2" },
+  { id: "book", title: "رف المعرفة", titleEn: "Knowledge Shelf", description: "ضع الكتاب في الرف المناسب.", descriptionEn: "Place the book on the matching shelf.", icon: "📘", color: "#d7a7e8" },
+  { id: "lantern", title: "فانوس الطريق", titleEn: "Path Lantern", description: "أشعل الفانوس ليضيء الطريق الهادئ.", descriptionEn: "Light the lantern to brighten the quiet path.", icon: "🏮", color: "#f3c969" },
+  { id: "help", title: "المساعدة", titleEn: "Helping Hands", description: "ساعد الشخصية على حمل الصندوق داخل المشهد.", descriptionEn: "Help the character carry the box through the scene.", icon: "🧺", color: "#5fd1a6" },
+  { id: "listen", title: "أذن الإصغاء", titleEn: "Listening Ears", description: "استمع للشخصية واختر لحظة المساعدة المناسبة.", descriptionEn: "Listen to the character and choose a good moment to help.", icon: "👂", color: "#9c86e8" },
+  { id: "queue", title: "دورك الجميل", titleEn: "Taking Turns", description: "انتظر دورك داخل المشهد ثم اختر التصرف الهادئ.", descriptionEn: "Wait for your turn, then choose a calm action.", icon: "🧍", color: "#e28a5a" },
+  { id: "clean", title: "مكان مرتب", titleEn: "Tidy Place", description: "اجمع الأدوات المتناثرة داخل الصندوق الصحيح.", descriptionEn: "Gather the scattered tools into the right box.", icon: "🧹", color: "#7ed6c1" },
+  { id: "smile", title: "ابتسامة", titleEn: "A Friendly Smile", description: "اختر تحية لطيفة قبل بدء المهمة.", descriptionEn: "Choose a kind greeting before starting the task.", icon: "🙂", color: "#f3c969" },
+  { id: "water", title: "مساعدة بالماء", titleEn: "A Cup of Water", description: "قدّم كوب الماء إلى الشخصية الافتراضية.", descriptionEn: "Offer a cup of water to the virtual character.", icon: "🥤", color: "#8ab6e2" },
+  { id: "guide", title: "الدليل الصغير", titleEn: "Little Guide", description: "أرشد الشخصية إلى المكان الصحيح عبر المسار.", descriptionEn: "Guide the character to the correct place along the path.", icon: "🧭", color: "#5fd1a6" },
 ];
+function deedTitle(id: string, en: boolean) {
+  const deed = DEEDS.find(item => item.id === id);
+  return deed ? (en ? deed.titleEn : deed.title) : (en ? "the scene" : "المشهد");
+}
 
 export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResult, onSound }: Props) {
   const [levelIndex, setLevelIndex] = useState(0);
