@@ -35,6 +35,17 @@ assert.ok(coloringSheetIds.length >= 6, "Coloring must offer at least six origin
 assert.equal(new Set(coloringSheetIds).size, coloringSheetIds.length, "Coloring scene IDs must be unique");
 assert.ok(coloringSource.includes("lantern-street") && coloringSource.includes("kite-meadow") && coloringSource.includes("starry-village"), "all additional coloring scenes must have runtime artwork");
 assert.ok(coloringSource.includes('role: "button" as const') && coloringSource.includes("tabIndex: 0") && coloringSource.includes("onKeyDown: (event: ReactKeyboardEvent<SVGElement>)"), "coloring regions must support keyboard use");
+const deedCatalog = coloringSource.split("const DEEDS: Deed[] = [")[1]?.split("];")[0] ?? "";
+const cleanupItemsCatalog = coloringSource.split("const CLEANUP_ITEMS: CleanupItem[] = [")[1]?.split("];")[0] ?? "";
+const cleanupZonesCatalog = coloringSource.split("const CLEANUP_ZONES: CleanupZone[] = [")[1]?.split("];")[0] ?? "";
+assert.equal((deedCatalog.match(/, titleEn:/g) ?? []).length, 12, "all Good Deeds scenes need English titles");
+assert.equal((deedCatalog.match(/descriptionEn:/g) ?? []).length, 12, "all Good Deeds scenes need English descriptions");
+assert.equal((cleanupItemsCatalog.match(/nameEn:/g) ?? []).length, 16, "all Cleanup items need English names");
+assert.equal((cleanupZonesCatalog.match(/titleEn:/g) ?? []).length, 4, "all Cleanup zones need English titles");
+assert.equal((coloringCatalog.match(/, titleEn:/g) ?? []).length, 6, "all Coloring scenes need English titles");
+assert.equal((coloringCatalog.match(/subtitleEn:/g) ?? []).length, 6, "all Coloring scenes need English descriptions");
+assert.equal((coloringSource.match(/const \\{ isEnglish \\} = useLanguage\\(\\);/g) ?? []).length, 3, "all three games must read the selected language");
+assert.ok(coloringSource.includes('title={isEnglish ? "Good Deeds Adventure"') && coloringSource.includes('title={isEnglish ? "Organize the Place"') && coloringSource.includes('title={isEnglish ? "ZIKR Coloring Studio"'), "all three values games need localized titles");
 for (const difficulty of ["easy", "normal", "hard"] as const) {
   const sceneIndexes = Array.from({ length: KIDS_LEVEL_COUNT }, (_, level) =>
     getZikrColoringSheetIndex(difficulty, level, coloringSheetIds.length),
