@@ -32,7 +32,7 @@ const adventureQuestions = getApprovedScenarioQuestions();
 const roadQuestions = getApprovedRoadQuestions();
 assert.ok(adventureQuestions.length >= 15, "Mosque Adventure must draw from the complete approved scenario pool");
 assert.equal(
-  new Set(adventureQuestions.map(question => question.text.trim().replace(/\\s+/g, " ").toLocaleLowerCase())).size,
+  new Set(adventureQuestions.map(question => question.text.trim().replace(/\s+/g, " ").toLocaleLowerCase())).size,
   adventureQuestions.length,
   "Mosque Adventure scenario prompts must not repeat after whitespace/case normalization",
 );
