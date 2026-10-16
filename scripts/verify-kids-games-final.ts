@@ -141,7 +141,7 @@ if (!learning.includes("useFiftyFifty")) throw new Error("Quiz 50/50 mechanic mi
 if (!learning.includes("getVerifiedWuduContent")) throw new Error("Verified Wudu content path missing.");
 const values = readFileSync(join(root, "src/features/kids/components/games/kids-values-coloring.tsx"), "utf8");
 if (!values.includes("actionSteps")) throw new Error("Good Deeds multi-step interaction missing.");
-const coloringCatalog = values.split("const COLORING_SHEETS: ColoringSheet[] = [")[1]?.split("\\n];")[0] ?? "";
+const coloringCatalog = values.split("const COLORING_SHEETS: ColoringSheet[] = [")[1]?.split("];")[0] ?? "";
 const coloringSheetIds = [...coloringCatalog.matchAll(/id: "([^"]+)"/g)].map(match => match[1]);
 if (coloringSheetIds.length < 6 || new Set(coloringSheetIds).size !== coloringSheetIds.length) {
   throw new Error("Coloring requires at least six unique artwork scenes.");
