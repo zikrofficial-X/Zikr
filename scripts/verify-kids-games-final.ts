@@ -142,6 +142,21 @@ if (!learning.includes("getVerifiedWuduContent")) throw new Error("Verified Wudu
 const values = readFileSync(join(root, "src/features/kids/components/games/kids-values-coloring.tsx"), "utf8");
 const coloringRulesSource = readFileSync(join(root, "src/lib/games/zikr-coloring.ts"), "utf8");
 if (!values.includes("actionSteps")) throw new Error("Good Deeds multi-step interaction missing.");
+const deedCatalog = values.split("const DEEDS: Deed[] = [")[1]?.split("];")[0] ?? "";
+const cleanupItemsCatalog = values.split("const CLEANUP_ITEMS: CleanupItem[] = [")[1]?.split("];")[0] ?? "";
+const cleanupZonesCatalog = values.split("const CLEANUP_ZONES: CleanupZone[] = [")[1]?.split("];")[0] ?? "";
+if ((deedCatalog.match(/, titleEn:/g) ?? []).length !== 12 || (deedCatalog.match(/descriptionEn:/g) ?? []).length !== 12) {
+  throw new Error("All Good Deeds scenes need English titles and descriptions.");
+}
+if ((cleanupItemsCatalog.match(/nameEn:/g) ?? []).length !== 16 || (cleanupZonesCatalog.match(/titleEn:/g) ?? []).length !== 4) {
+  throw new Error("All Cleanup items and zones need English labels.");
+}
+if (!values.includes("useLanguage") || !values.includes('title={isEnglish ? "Good Deeds Adventure"') || !values.includes('title={isEnglish ? "Organize the Place"') || !values.includes('title={isEnglish ? "ZIKR Coloring Studio"')) {
+  throw new Error("All three values games must localize their active gameplay interface.");
+}
+if ((coloringCatalog.match(/, titleEn:/g) ?? []).length !== 6 || (coloringCatalog.match(/subtitleEn:/g) ?? []).length !== 6) {
+  throw new Error("All six Coloring scenes need English titles and descriptions.");
+}
 const coloringCatalog = values.split("const COLORING_SHEETS: ColoringSheet[] = [")[1]?.split("];")[0] ?? "";
 const coloringSheetIds = [...coloringCatalog.matchAll(/id: "([^"]+)"/g)].map(match => match[1]);
 if (coloringSheetIds.length < 6 || new Set(coloringSheetIds).size !== coloringSheetIds.length) {
