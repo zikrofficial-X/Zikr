@@ -141,6 +141,7 @@ const learning = readFileSync(join(root, "src/features/kids/components/games/kid
 const managedTimeouts = readFileSync(join(root, "src/features/kids/components/games/use-managed-timeouts.ts"), "utf8");
 const runnerRoadSource = readFileSync(join(root, "src/features/kids/components/games/kids-action-runner-road.tsx"), "utf8");
 const adventureSource = readFileSync(join(root, "src/features/kids/components/games/kids-action-adventure.tsx"), "utf8");
+const valuesTimerSource = readFileSync(join(root, "src/features/kids/components/games/kids-values-coloring.tsx"), "utf8");
 if (!managedTimeouts.includes("useEffect(() => () => clearPendingTimeouts(), [clearPendingTimeouts, resetKey]);")) {
   throw new Error("Shared game timeout manager must cancel callbacks when a round changes or unmounts.");
 }
@@ -151,6 +152,9 @@ const timerContracts = [
   ["Runner", runnerRoadSource.split("export function ZikrRunnerGame")[1]?.split("export function ZikrRoadGame")[0] ?? "", 1],
   ["Road", runnerRoadSource.split("export function ZikrRoadGame")[1] ?? "", 1],
   ["Mosque Adventure", adventureSource.split("export function MosqueAdventureGame")[1] ?? "", 2],
+  ["Good Deeds", valuesTimerSource.split("export function GoodDeedsGame")[1]?.split("export function MosqueCleanupGame")[0] ?? "", 1],
+  ["Cleanup", valuesTimerSource.split("export function MosqueCleanupGame")[1]?.split("export function ZikrColoringGame")[0] ?? "", 1],
+  ["Coloring", valuesTimerSource.split("export function ZikrColoringGame")[1] ?? "", 1],
 ] as const;
 for (const [name, source, timerCount] of timerContracts) {
   if (!source.includes("useManagedTimeouts(") || source.includes("window.setTimeout(")
