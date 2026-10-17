@@ -567,7 +567,7 @@ export function HilalFlyGame({
   });
   const stateRef = useRef<FlyState>(create());
   const [state, setState] = useState<FlyState>(() => create());
-  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + state.levelIndex);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + state.levelIndex, paused);
   const inputRef = useRef({ up: false, down: false });
   const completionRef = useRef(false);
   const [feedback, setFeedback] = useState(isEnglish ? "Guide the crescent up and down through the sky." : "حرّك الهلال لأعلى ولأسفل في السماء.");
@@ -896,7 +896,7 @@ export function MosqueAdventureGame({
   const rules = useMemo(() => getMosqueAdventureRules(difficulty), [difficulty]);
   const questions = useMemo(() => getApprovedScenarioQuestions(), []);
   const [levelIndex, setLevelIndex] = useState(0);
-  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex, paused);
   const [position, setPosition] = useState(0);
   const [score, setScore] = useState(0);
   const [stars, setStars] = useState(0);
