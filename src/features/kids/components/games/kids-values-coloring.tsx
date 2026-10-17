@@ -46,7 +46,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   const isEnglishRef = useRef(isEnglish);
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const [levelIndex, setLevelIndex] = useState(0);
-  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex, paused);
   const [done, setDone] = useState<string[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [actionSteps, setActionSteps] = useState<Record<string, number>>({});
@@ -169,7 +169,7 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
   const isEnglishRef = useRef(isEnglish);
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const [levelIndex, setLevelIndex] = useState(0);
-  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex, paused);
   const [selected, setSelected] = useState<string | null>(null);
   const [placed, setPlaced] = useState<Record<string, string>>({});
   const [mistakes, setMistakes] = useState(0);
@@ -334,7 +334,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   const isEnglishRef = useRef(isEnglish);
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const [levelIndex, setLevelIndex] = useState(0);
-  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex, paused);
   const [selectedColor, setSelectedColor] = useState(COLOR_PALETTE[0]);
   const [customColors, setCustomColors] = useState<string[]>([]);
   const [fills, setFills] = useState<string[]>([]);
