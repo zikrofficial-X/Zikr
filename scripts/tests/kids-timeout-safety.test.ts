@@ -48,7 +48,7 @@ const cleanup = section(values, "export function MosqueCleanupGame", "export fun
 const coloring = section(values, "export function ZikrColoringGame");
 for (const [name, source] of [["Good Deeds", deeds], ["Cleanup", cleanup], ["Coloring", coloring]] as const) {
   assert.ok(source.includes('useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex)'), name + " must scope callbacks to difficulty, restart, and level");
-  assert.equal((source.match(/scheduleTimeout\\(/g) ?? []).length, 1, name + " level advancement must use the managed scheduler");
+  assert.equal((source.split("scheduleTimeout(").length - 1), 1, name + " level advancement must use the managed scheduler");
   assert.ok(!source.includes("window.setTimeout("), name + " must not keep unmanaged level-advance timers");
 }
 
