@@ -135,7 +135,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   <div className="mt-3 grid grid-cols-3 gap-2">
     {[1,2,3].map(step => <div key={step} className={"h-2 rounded-full " + (step <= (actionSteps[deed.id] ?? 0) ? "bg-brand-emerald" : "bg-white/10")} />)}
   </div>
-  <button type="button" onClick={() => finish(deed.id)} className="mt-3 w-full rounded-xl bg-brand-gold px-4 py-3 text-sm font-black text-[#241c08]">{(actionSteps[deed.id] ?? 0) < 2 ? (isEnglish ? "Complete step " + ((actionSteps[deed.id] ?? 0) + 1) : "تنفيذ الخطوة " + ((actionSteps[deed.id] ?? 0) + 1)) : (isEnglish ? "Complete scene" : "إتمام المشهد")}</button>
+  <button type="button" onClick={() => finish(deed.id)} disabled={paused} className="mt-3 w-full rounded-xl bg-brand-gold px-4 py-3 text-sm font-black text-[#241c08] disabled:opacity-40">{(actionSteps[deed.id] ?? 0) < 2 ? (isEnglish ? "Complete step " + ((actionSteps[deed.id] ?? 0) + 1) : "تنفيذ الخطوة " + ((actionSteps[deed.id] ?? 0) + 1)) : (isEnglish ? "Complete scene" : "إتمام المشهد")}</button>
 </div>}
             </div>;
           })}
