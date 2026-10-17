@@ -15,6 +15,7 @@ const required = [
   "src/features/kids/components/games/kids-action-runner-road.tsx",
   "src/features/kids/components/games/kids-action-adventure.tsx",
   "src/features/kids/components/games/kids-learning-games.tsx",
+  "src/features/kids/components/games/use-managed-timeouts.ts",
   "src/features/kids/components/games/kids-values-coloring.tsx",
   "src/features/kids/components/games/world-game-stage.tsx",
   "src/features/kids/components/games/game-shell.tsx",
@@ -136,6 +137,28 @@ for (const [path, ids] of Object.entries(runtimeFiles)) {
   for (const id of ids.split(",")) if (!source.includes('<KidsGameWorld gameId="' + id + '" />')) throw new Error("World scene is not mounted for " + id);
 }
 const learning = readFileSync(join(root, "src/features/kids/components/games/kids-learning-games.tsx"), "utf8");
+
+const managedTimeouts = readFileSync(join(root, "src/features/kids/components/games/use-managed-timeouts.ts"), "utf8");
+const runnerRoadSource = readFileSync(join(root, "src/features/kids/components/games/kids-action-runner-road.tsx"), "utf8");
+const adventureSource = readFileSync(join(root, "src/features/kids/components/games/kids-action-adventure.tsx"), "utf8");
+if (!managedTimeouts.includes("useEffect(() => () => clearPendingTimeouts(), [clearPendingTimeouts, resetKey]);")) {
+  throw new Error("Shared game timeout manager must cancel callbacks when a round changes or unmounts.");
+}
+const timerContracts = [
+  ["Wudu", learning.split("export function WuduChallengeGame")[1]?.split("export function VersePuzzleGame")[0] ?? "", 1],
+  ["Verse Puzzle", learning.split("export function VersePuzzleGame")[1]?.split("export function ZikrQuizGame")[0] ?? "", 2],
+  ["Quiz", learning.split("export function ZikrQuizGame")[1] ?? "", 2],
+  ["Runner", runnerRoadSource.split("export function ZikrRunnerGame")[1]?.split("export function ZikrRoadGame")[0] ?? "", 1],
+  ["Road", runnerRoadSource.split("export function ZikrRoadGame")[1] ?? "", 1],
+  ["Mosque Adventure", adventureSource.split("export function MosqueAdventureGame")[1] ?? "", 2],
+] as const;
+for (const [name, source, timerCount] of timerContracts) {
+  if (!source.includes("useManagedTimeouts(") || source.includes("window.setTimeout(")
+    || (source.match(/scheduleTimeout\\(/g) ?? []).length !== timerCount) {
+    throw new Error(name + " must cancel stale delayed callbacks across restart, difficulty/level changes, and unmount.");
+  }
+}
+
 if (!learning.includes("useHint") && !learning.includes("useVerseHint")) throw new Error("Hint mechanics missing from learning games.");
 if (!learning.includes("useFiftyFifty")) throw new Error("Quiz 50/50 mechanic missing.");
 if (!learning.includes("getVerifiedWuduContent")) throw new Error("Verified Wudu content path missing.");
