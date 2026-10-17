@@ -52,6 +52,11 @@ for (const [name, source] of [["Good Deeds", deeds], ["Cleanup", cleanup], ["Col
   assert.ok(!source.includes("window.setTimeout("), name + " must not keep unmanaged level-advance timers");
 }
 
+const hilal = section(adventure, "export function HilalFlyGame", "export function MosqueAdventureGame");
+assert.ok(hilal.includes('useManagedTimeouts(difficulty + ":" + restartToken + ":" + state.levelIndex)'), "Hilal Fly must scope gesture cleanup to the active level");
+assert.equal((hilal.match(/scheduleTimeout\(/g) ?? []).length, 1, "Hilal Fly swipe cleanup must use the managed timeout scheduler");
+assert.ok(!hilal.includes("window.setTimeout("), "Hilal Fly must not retain unmanaged gesture timers");
+
 const mosque = section(adventure, "export function MosqueAdventureGame");
 assert.ok(mosque.includes('useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex)'), "Mosque Adventure must scope timers to the current level");
 assert.equal((mosque.match(/scheduleTimeout\(/g) ?? []).length, 2, "Mosque Adventure level and question callbacks must use the managed scheduler");
