@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
+import { useManagedTimeouts } from "@/features/kids/components/games/use-managed-timeouts";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
@@ -45,6 +46,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
   const isEnglishRef = useRef(isEnglish);
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const [levelIndex, setLevelIndex] = useState(0);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
   const [done, setDone] = useState<string[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [actionSteps, setActionSteps] = useState<Record<string, number>>({});
@@ -80,7 +82,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
       runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
       setFeedback(isEnglishRef.current ? "Level " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + " complete. New scenes are ready." : "اكتمل المستوى " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + ". مشاهد جديدة في الطريق.");
       onSound("success");
-      window.setTimeout(() => setLevelIndex(value => value + 1), 650);
+      scheduleTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
       const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
       runTotalsRef.current = totals;
@@ -90,7 +92,7 @@ export function GoodDeedsGame({ difficulty, restartToken, paused, onHud, onResul
       onSound("success");
       onResult(finalHud);
     }
-  }, [complete, done.length, levelIndex, onHud, onResult, onSound, rules.completionBonus, score]);
+  }, [complete, done.length, levelIndex, onHud, onResult, onSound, rules.completionBonus, scheduleTimeout, score]);
 
   const finish = (id: string) => {
     if (paused || !active || done.includes(id)) return;
@@ -167,6 +169,7 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
   const isEnglishRef = useRef(isEnglish);
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const [levelIndex, setLevelIndex] = useState(0);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
   const [selected, setSelected] = useState<string | null>(null);
   const [placed, setPlaced] = useState<Record<string, string>>({});
   const [mistakes, setMistakes] = useState(0);
@@ -202,7 +205,7 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
       runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
       setFeedback(isEnglishRef.current ? "Level " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + " complete. A new item layout is ready." : "اكتمل المستوى " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + ". توزيع جديد للعناصر جاهز.");
-      window.setTimeout(() => setLevelIndex(value => value + 1), 650);
+      scheduleTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
       const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
       runTotalsRef.current = totals;
@@ -211,7 +214,7 @@ export function MosqueCleanupGame({ difficulty, restartToken, paused, onHud, onR
       setFeedback(isEnglishRef.current ? "You completed every organizing level." : "أكملت جميع مستويات ترتيب المكان.");
       onResult(finalHud);
     }
-  }, [complete, levelIndex, mistakes, onHud, onResult, onSound, placed, rules.completionBonus, score]);
+  }, [complete, levelIndex, mistakes, onHud, onResult, onSound, placed, rules.completionBonus, scheduleTimeout, score]);
 
   const place = (zone: CleanupZone) => {
     if (paused || !selected || placed[selected]) return;
@@ -331,6 +334,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
   const isEnglishRef = useRef(isEnglish);
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const [levelIndex, setLevelIndex] = useState(0);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
   const [selectedColor, setSelectedColor] = useState(COLOR_PALETTE[0]);
   const [customColors, setCustomColors] = useState<string[]>([]);
   const [fills, setFills] = useState<string[]>([]);
@@ -449,7 +453,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
     if (levelIndex + 1 < KIDS_LEVEL_COUNT) {
       runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
       setFeedback(isEnglishRef.current ? "Level " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + " complete. A new picture is ready." : "اكتمل المستوى " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + ". لوحة مختلفة جاهزة.");
-      window.setTimeout(() => setLevelIndex(value => value + 1), 650);
+      scheduleTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
       const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
       runTotalsRef.current = totals;
@@ -458,7 +462,7 @@ export function ZikrColoringGame({ difficulty, restartToken, paused, onHud, onRe
       setFeedback(isEnglishRef.current ? "You completed every Coloring level." : "أكملت جميع مستويات تلوين ذِكر.");
       onResult(finalHud);
     }
-  }, [complete, levelIndex, onHud, onResult, onSound, paintedThisLevel, rules.completionBonus]);
+  }, [complete, levelIndex, onHud, onResult, onSound, paintedThisLevel, rules.completionBonus, scheduleTimeout]);
 
   return (
     <KidsGameStage theme="garden" ariaLabel={isEnglish ? "ZIKR Coloring" : "تلوين ذِكر"}><KidsGameWorld gameId="zikr-coloring" />
