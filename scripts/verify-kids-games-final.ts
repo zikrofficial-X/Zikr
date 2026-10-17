@@ -154,7 +154,7 @@ const timerContracts = [
 ] as const;
 for (const [name, source, timerCount] of timerContracts) {
   if (!source.includes("useManagedTimeouts(") || source.includes("window.setTimeout(")
-    || (source.match(/scheduleTimeout\\(/g) ?? []).length !== timerCount) {
+    || (source.split("scheduleTimeout(").length - 1) !== timerCount) {
     throw new Error(name + " must cancel stale delayed callbacks across restart, difficulty/level changes, and unmount.");
   }
 }
