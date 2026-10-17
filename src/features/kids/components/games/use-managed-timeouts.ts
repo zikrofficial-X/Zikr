@@ -38,9 +38,11 @@ export function useManagedTimeouts(resetKey: string | number, paused = false) {
 
     if (paused) {
       pendingTimeoutsRef.current.forEach(timer => {
-        if (timer.timeoutId === null || timer.startedAt === null) return;
-        window.clearTimeout(timer.timeoutId);
-        const elapsed = Date.now() - timer.startedAt;
+        const timeoutId = timer.timeoutId;
+        const startedAt = timer.startedAt;
+        if (timeoutId === null || startedAt === null) return;
+        window.clearTimeout(timeoutId);
+        const elapsed = Date.now() - startedAt;
         timer.remainingMs = Math.max(0, timer.remainingMs - elapsed);
         timer.timeoutId = null;
         timer.startedAt = null;
