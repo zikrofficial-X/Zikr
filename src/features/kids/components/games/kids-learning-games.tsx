@@ -102,12 +102,11 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
     return timeoutId;
   }, []);
 
-  useEffect(() => () => clearPendingTimeouts(), [clearPendingTimeouts]);
-
   useEffect(() => {
     clearPendingTimeouts();
     runTotalsRef.current = createGameRunTotals();
     setLevelIndex(0);
+    return () => clearPendingTimeouts();
   }, [clearPendingTimeouts, difficulty, restartToken]);
 
   const meta = getKidsLevelMeta("zikr-memory", difficulty, levelIndex);
