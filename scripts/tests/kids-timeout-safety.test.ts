@@ -11,7 +11,7 @@ assert.ok(hook.includes("window.clearTimeout(timer.timeoutId)"), "managed timers
 assert.ok(hook.includes("useEffect(() => () => clearPendingTimeouts(), [clearPendingTimeouts, resetKey]);"), "managed timers must clear on reset-key changes and unmount");
 assert.ok(hook.includes("pendingTimeoutsRef.current.delete(id)"), "completed timers must be removed from the pending registry");
 assert.ok(hook.includes("paused = false"), "managed timeouts must accept the gameplay pause state");
-assert.ok(hook.includes("const elapsed = Date.now() - timer.startedAt;"), "pausing must calculate elapsed timer time");
+assert.ok(hook.includes("const elapsed = Date.now() - startedAt;"), "pausing must calculate elapsed timer time");
 assert.ok(hook.includes("timer.remainingMs = Math.max(0, timer.remainingMs - elapsed);"), "pausing must preserve the remaining timeout delay");
 assert.ok(hook.includes("if (timer.timeoutId === null) startTimeout(id, timer);"), "resuming must restart each paused timeout");
 assert.ok(hook.includes("if (!pausedRef.current) startTimeout(id, timer);"), "new timeouts must not run while gameplay is already paused");
