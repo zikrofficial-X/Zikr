@@ -793,8 +793,19 @@ export function HilalFlyGame({
 
       <div
         className="relative mx-4 mt-4 h-[500px] touch-none overflow-hidden rounded-[2rem] border border-white/10 sm:mx-6"
-        onPointerDown={event => setSwipe({ x: event.clientX, y: event.clientY })}
+        onPointerDown={event => {
+          if (paused || state.completed || state.gameOver) {
+            setSwipe(null);
+            return;
+          }
+          setSwipe({ x: event.clientX, y: event.clientY });
+        }}
         onPointerUp={event => {
+          if (paused || state.completed || state.gameOver) {
+            setSwipe(null);
+            inputRef.current = { up: false, down: false };
+            return;
+          }
           if (!swipe) return;
           const dy = event.clientY - swipe.y;
           setSwipe(null);
