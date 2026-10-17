@@ -9,6 +9,11 @@ const stageSource = readFileSync("src/features/kids/components/games/world-game-
 const adventureSource = readFileSync("src/features/kids/components/games/kids-action-adventure.tsx", "utf8");
 const jumpRuntime = adventureSource.split("export function ZikrJumpGame")[1]?.split("export function HilalFlyGame")[0] ?? "";
 const hilalRuntime = adventureSource.split("export function HilalFlyGame")[1]?.split("export function MosqueAdventureGame")[0] ?? "";
+const runnerRoadSource = readFileSync("src/features/kids/components/games/kids-action-runner-road.tsx", "utf8");
+const learningGamesSource = readFileSync("src/features/kids/components/games/kids-learning-games.tsx", "utf8");
+const runnerRuntime = runnerRoadSource.split("export function ZikrRunnerGame")[1]?.split("export function ZikrRoadGame")[0] ?? "";
+const roadRuntime = runnerRoadSource.split("export function ZikrRoadGame")[1] ?? "";
+const quizRuntime = learningGamesSource.split("export function ZikrQuizGame")[1] ?? "";
 const homeSource = readFileSync("src/app/kids/page.tsx", "utf8");
 const shellSource = readFileSync("src/features/kids/components/games/game-shell.tsx", "utf8");
 
@@ -84,5 +89,11 @@ assert.match(hilalRuntime, /if \(paused \|\| stateRef\.current\.completed \|\| s
 assert.match(hilalRuntime, /inputRef\.current = \{ up: false, down: false \}/, "Hilal Fly must clear held controls when paused or finished");
 assert.match(hilalRuntime, /window\.addEventListener\("blur", clearInputs\)/, "Hilal Fly must clear held controls when the window loses focus");
 assert.match(hilalRuntime, /document\.addEventListener\("visibilitychange", clearInputsOnVisibilityChange\)/, "Hilal Fly must clear held controls when the document becomes hidden");
+
+assert.match(runnerRuntime, /if \(paused \|\| selectedAnswer !== null \|\| !question\) return;/, "ZIKR Runner must reject checkpoint answers while paused");
+assert.match(runnerRuntime, /disabled=\{paused \|\| selectedAnswer !== null\}/, "ZIKR Runner checkpoint options must appear disabled while paused");
+assert.match(roadRuntime, /if \(paused \|\| !question \|\| answer !== null\) return;/, "ZIKR Road must reject checkpoint answers while paused");
+assert.match(roadRuntime, /disabled=\{paused \|\| answer !== null\}/, "ZIKR Road checkpoint options must appear disabled while paused");
+assert.match(quizRuntime, /disabled=\{paused \|\| selected !== null \|\| hidden\}/, "ZIKR Quiz options must appear disabled while paused");
 
 console.log("✅ Kids visual contract passed: localized art, unique SVG ids, accessible controls, 12 art scenes and 12 runtime dispatches.");

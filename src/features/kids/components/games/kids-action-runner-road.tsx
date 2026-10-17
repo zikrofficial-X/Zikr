@@ -391,7 +391,7 @@ export function ZikrRunnerGame({
   }, [levels, onHud, onResult, onSound, paused, questions, rules]);
 
   const answerQuestion = (answer: number) => {
-    if (selectedAnswer !== null || !question) return;
+    if (paused || selectedAnswer !== null || !question) return;
     const state = modelRef.current;
     const correct = answer === question.correctAnswer;
     setSelectedAnswer(answer);
@@ -524,7 +524,7 @@ export function ZikrRunnerGame({
                     key={option}
                     type="button"
                     onClick={() => answerQuestion(index)}
-                    disabled={selectedAnswer !== null}
+                    disabled={paused || selectedAnswer !== null}
                     className={[
                       "rounded-2xl border p-4 text-right transition",
                       selectedAnswer === index
@@ -817,7 +817,7 @@ export function ZikrRoadGame({
   }, [difficulty, onHud, onResult, onSound, paused, questions, rules]);
 
   const answerCheckpoint = (index: number) => {
-    if (!question || answer !== null) return;
+    if (paused || !question || answer !== null) return;
     const current = stateRef.current;
     setAnswer(index);
     if (index === question.correctAnswer) {
@@ -923,7 +923,7 @@ export function ZikrRoadGame({
                     key={option}
                     type="button"
                     onClick={() => answerCheckpoint(index)}
-                    disabled={answer !== null}
+                    disabled={paused || answer !== null}
                     className={[
                       "rounded-2xl border p-4 text-right transition",
                       answer === index
