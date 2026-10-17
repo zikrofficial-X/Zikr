@@ -75,11 +75,11 @@ const memorySceneArt = learningGamesSource.split("const MEMORY_SCENE_ART: Record
 for (const pair of legacyMemoryActivity?.memory_pairs ?? []) {
   assert.ok(memorySceneArt.includes('"' + pair.id + '":'), "ZIKR Memory needs a situation visual for pair " + pair.id);
 }
-assert.equal((memorySceneArt.match(/icon: "/g) ?? []).length, 11, "ZIKR Memory must retain one distinct scene marker for every verified pair");
+assert.equal((memorySceneArt.match(/icon: [A-Z][A-Za-z]+/g) ?? []).length, 11, "ZIKR Memory must retain one vector scene icon for every verified pair");
 
 const memoryRuntime = learningGamesSource.split("export function ZikrMemoryGame")[1]?.split("export function WuduChallengeGame")[0] ?? "";
 assert.ok(memoryRuntime.includes("const sceneArt = MEMORY_SCENE_ART[card.pairId]"), "revealed Memory cards must use pair-specific scene art");
-assert.ok(memoryRuntime.includes('card.side === "situation" ? sceneArt.icon : "۞"'), "only situation cards should reveal the scenario illustration, keeping hidden pairs fair");
+assert.ok(memoryRuntime.includes("const SceneIcon = sceneArt.icon") && memoryRuntime.includes("<SceneIcon aria-hidden=\"true\"") && memoryRuntime.includes("<Sparkles aria-hidden=\"true\""), "revealed situation cards need their vector scene icon while dhikr cards use a shared decorative symbol");
 assert.ok(memoryRuntime.includes('useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex, paused)'), "Memory must use the shared pause-aware timeout scheduler");
 assert.match(memoryRuntime, /useEffect\(\(\) => \{\s*runTotalsRef\.current = createGameRunTotals\(\);\s*setLevelIndex\(0\);\s*\}, \[difficulty, restartToken\]\);/, "Memory must reset progression for each restart and difficulty selection");
 assert.equal((memoryRuntime.match(/scheduleTimeout\(/g) ?? []).length, 3, "hint, mismatch reveal, and level advance must use managed timers");

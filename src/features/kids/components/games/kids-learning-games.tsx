@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Building2, CloudRain, DoorOpen, Footprints, Heart, House, Moon, Sparkles, Sun, Soup, Utensils, Wind, type LucideIcon } from "lucide-react";
 import { useLanguage } from "@/components/layout/language-provider";
 import { useManagedTimeouts } from "@/features/kids/components/games/use-managed-timeouts";
 import type { GameDifficulty } from "@/lib/games/registry";
@@ -70,20 +71,20 @@ const MEMORY_SITUATIONS_EN: Record<string, string> = {
   "rain-falls": "When it rains",
 };
 
-type MemorySceneArt = { icon: string; tone: string };
+type MemorySceneArt = { icon: LucideIcon; tone: string };
 
 const MEMORY_SCENE_ART: Record<string, MemorySceneArt> = {
-  "before-sleep": { icon: "🌙", tone: "border-violet-200/30 bg-violet-200/10 text-violet-100" },
-  "before-food": { icon: "🍽️", tone: "border-amber-200/30 bg-amber-200/10 text-amber-100" },
-  "after-food": { icon: "🥣", tone: "border-emerald-200/30 bg-emerald-200/10 text-emerald-100" },
-  "after-sneeze": { icon: "🤧", tone: "border-sky-200/30 bg-sky-200/10 text-sky-100" },
-  "enter-home": { icon: "🏡", tone: "border-rose-200/30 bg-rose-200/10 text-rose-100" },
-  "wake-up": { icon: "🌞", tone: "border-yellow-200/30 bg-yellow-200/10 text-yellow-100" },
-  "leave-home": { icon: "🚪", tone: "border-teal-200/30 bg-teal-200/10 text-teal-100" },
-  "enter-mosque": { icon: "🕌", tone: "border-brand-gold/30 bg-brand-gold/10 text-brand-gold" },
-  "leave-mosque": { icon: "🧭", tone: "border-cyan-200/30 bg-cyan-200/10 text-cyan-100" },
-  "feel-angry": { icon: "💗", tone: "border-pink-200/30 bg-pink-200/10 text-pink-100" },
-  "rain-falls": { icon: "🌧️", tone: "border-blue-200/30 bg-blue-200/10 text-blue-100" },
+  "before-sleep": { icon: Moon, tone: "border-violet-200/30 bg-violet-200/10 text-violet-100" },
+  "before-food": { icon: Utensils, tone: "border-amber-200/30 bg-amber-200/10 text-amber-100" },
+  "after-food": { icon: Soup, tone: "border-emerald-200/30 bg-emerald-200/10 text-emerald-100" },
+  "after-sneeze": { icon: Wind, tone: "border-sky-200/30 bg-sky-200/10 text-sky-100" },
+  "enter-home": { icon: House, tone: "border-rose-200/30 bg-rose-200/10 text-rose-100" },
+  "wake-up": { icon: Sun, tone: "border-yellow-200/30 bg-yellow-200/10 text-yellow-100" },
+  "leave-home": { icon: DoorOpen, tone: "border-teal-200/30 bg-teal-200/10 text-teal-100" },
+  "enter-mosque": { icon: Building2, tone: "border-brand-gold/30 bg-brand-gold/10 text-brand-gold" },
+  "leave-mosque": { icon: Footprints, tone: "border-cyan-200/30 bg-cyan-200/10 text-cyan-100" },
+  "feel-angry": { icon: Heart, tone: "border-pink-200/30 bg-pink-200/10 text-pink-100" },
+  "rain-falls": { icon: CloudRain, tone: "border-blue-200/30 bg-blue-200/10 text-blue-100" },
 };
 
 export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResult, onSound }: LearningGameProps) {
@@ -256,6 +257,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
               ? (isEnglish ? "Card " + (index + 1) + ", hint: matching pair" : "البطاقة " + (index + 1) + "، تلميح: ضمن الزوج")
               : (isEnglish ? "Card " + (index + 1) + ", hidden" : "البطاقة " + (index + 1) + "، مخفية");
           const sceneArt = MEMORY_SCENE_ART[card.pairId] ?? MEMORY_SCENE_ART["before-sleep"];
+          const SceneIcon = sceneArt.icon;
           return (
             <button key={card.id} type="button" aria-label={cardAccessibleLabel} aria-pressed={visible} disabled={paused || locked || matched.includes(card.id)} onClick={() => choose(card.id)}
               className={[
@@ -270,7 +272,11 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
                     aria-hidden="true"
                     className={"grid h-16 w-16 place-items-center rounded-2xl border text-4xl shadow-inner " + (card.side === "situation" ? sceneArt.tone : "border-brand-gold/25 bg-brand-gold/5 text-brand-gold")}
                   >
-                    {card.side === "situation" ? sceneArt.icon : "۞"}
+                    {card.side === "situation" ? (
+                      <SceneIcon aria-hidden="true" size={34} strokeWidth={1.8} />
+                    ) : (
+                      <Sparkles aria-hidden="true" size={30} strokeWidth={1.7} />
+                    )}
                   </div>
                 </div>
                 <p className="mt-3 text-sm leading-7 text-brand-cream">{cardText}</p>
