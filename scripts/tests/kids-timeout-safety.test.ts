@@ -24,6 +24,11 @@ function section(source: string, start: string, end?: string) {
   return source.slice(startIndex, endIndex >= 0 ? endIndex : undefined);
 }
 
+const memory = section(learning, "export function ZikrMemoryGame", "export function WuduChallengeGame");
+assert.ok(memory.includes('useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex, paused)'), "Memory must use the pause-aware managed timeout scheduler");
+assert.equal((memory.match(/scheduleTimeout\(/g) ?? []).length, 3, "Memory hint, mismatch, and level callbacks must all use managed timers");
+assert.ok(!memory.includes("window.setTimeout("), "Memory must not retain unmanaged native timeouts");
+
 const wudu = section(learning, "export function WuduChallengeGame", "export function VersePuzzleGame");
 const verse = section(learning, "export function VersePuzzleGame", "export function ZikrQuizGame");
 const quiz = section(learning, "export function ZikrQuizGame");
