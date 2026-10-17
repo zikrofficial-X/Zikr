@@ -159,7 +159,20 @@ export function ZikrJumpGame({
   }, [difficulty, restartToken, rules, levels]);
 
   useEffect(() => {
+    if (paused || snapshot.completed || snapshot.gameOver) {
+      inputRef.current = { left: false, right: false, jump: false };
+    }
+  }, [paused, snapshot.completed, snapshot.gameOver]);
+
+  useEffect(() => {
+    const clearInputs = () => {
+      inputRef.current = { left: false, right: false, jump: false };
+    };
+    const clearInputsOnVisibilityChange = () => {
+      if (document.visibilityState === "hidden") clearInputs();
+    };
     const down = (event: KeyboardEvent) => {
+      if (paused || stateRef.current.completed || stateRef.current.gameOver) return;
       const action = gameKeyAction(event);
       if (action === "left") {
         inputRef.current.left = true;
@@ -181,11 +194,15 @@ export function ZikrJumpGame({
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
+    window.addEventListener("blur", clearInputs);
+    document.addEventListener("visibilitychange", clearInputsOnVisibilityChange);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", clearInputs);
+      document.removeEventListener("visibilitychange", clearInputsOnVisibilityChange);
     };
-  }, []);
+  }, [paused]);
 
   useEffect(() => {
     let frame = 0;
@@ -463,9 +480,9 @@ export function ZikrJumpGame({
         </div>
 
         <div className="absolute bottom-0 inset-x-0 z-40 grid grid-cols-3 gap-2 border-t border-white/10 bg-black/25 p-3 backdrop-blur-md sm:gap-3 sm:p-4">
-          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.left = true; }} onPointerUp={() => (inputRef.current.left = false)} onPointerCancel={() => (inputRef.current.left = false)} onLostPointerCapture={() => (inputRef.current.left = false)} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream">←</button>
-          <button type="button" onPointerDown={() => (inputRef.current.jump = true)} className="min-h-14 touch-manipulation select-none rounded-2xl border-2 border-brand-gold/40 bg-brand-gold/10 text-sm font-black text-brand-gold">{isEnglish ? "Jump" : "قفز"}</button>
-          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.right = true; }} onPointerUp={() => (inputRef.current.right = false)} onPointerCancel={() => (inputRef.current.right = false)} onLostPointerCapture={() => (inputRef.current.right = false)} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream">→</button>
+          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.left = true; }} onPointerUp={() => (inputRef.current.left = false)} onPointerCancel={() => (inputRef.current.left = false)} onLostPointerCapture={() => (inputRef.current.left = false)} disabled={paused || snapshot.completed || snapshot.gameOver} aria-label={isEnglish ? "Move left" : "تحرك لليسار"} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream disabled:opacity-40">←</button>
+          <button type="button" onPointerDown={() => { if (!paused && !snapshot.completed && !snapshot.gameOver) inputRef.current.jump = true; }} disabled={paused || snapshot.completed || snapshot.gameOver} aria-label={isEnglish ? "Jump" : "قفز"} className="min-h-14 touch-manipulation select-none rounded-2xl border-2 border-brand-gold/40 bg-brand-gold/10 text-sm font-black text-brand-gold disabled:opacity-40">{isEnglish ? "Jump" : "قفز"}</button>
+          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.right = true; }} onPointerUp={() => (inputRef.current.right = false)} onPointerCancel={() => (inputRef.current.right = false)} onLostPointerCapture={() => (inputRef.current.right = false)} disabled={paused || snapshot.completed || snapshot.gameOver} aria-label={isEnglish ? "Move right" : "تحرك لليمين"} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream disabled:opacity-40">→</button>
         </div>
       </div>
       <GameToast tone={snapshot.gameOver ? "rose" : snapshot.completed ? "emerald" : "gold"}>{feedback}</GameToast>

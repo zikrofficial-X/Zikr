@@ -6,6 +6,8 @@ import { getGameInstructions } from "../../src/lib/games/game-instructions";
 const gameIds = Object.keys(GAME_REGISTRY) as Array<keyof typeof GAME_REGISTRY>;
 const artSource = readFileSync("src/features/kids/components/games/kids-game-art.tsx", "utf8");
 const stageSource = readFileSync("src/features/kids/components/games/world-game-stage.tsx", "utf8");
+const adventureSource = readFileSync("src/features/kids/components/games/kids-action-adventure.tsx", "utf8");
+const jumpRuntime = adventureSource.split("export function ZikrJumpGame")[1]?.split("export function HilalFlyGame")[0] ?? "";
 const homeSource = readFileSync("src/app/kids/page.tsx", "utf8");
 const shellSource = readFileSync("src/features/kids/components/games/game-shell.tsx", "utf8");
 
@@ -68,4 +70,12 @@ assert.match(shellSource, /if \(paused\) \{ controller\.resume\(\); setPaused\(f
 assert.match(shellSource, /const completedRound = \{ \.\.\.next, timeSeconds: Math\.max\(0, Math\.floor\(next\.timeSeconds \?\? getElapsedSeconds\(\)\)\) \};/, "result submission must capture a non-negative final elapsed time");
 assert.match(shellSource, /setHud\(completedRound\); setResult\(completedRound\); setPaused\(false\); void submitResult\(completedRound\)/, "completed result must update the result screen and submit through the existing pipeline");
 
-console.log("✅ Kids visual contract passed: localized art, unique SVG ids, 12 art scenes, 12 runtime dispatches and game-specific learning goals.");
+assert.match(jumpRuntime, /aria-label=\{isEnglish \? "Move left" : "تحرك لليسار"\}/, "ZIKR Jump left control needs a localized accessible name");
+assert.match(jumpRuntime, /aria-label=\{isEnglish \? "Jump" : "قفز"\}/, "ZIKR Jump action control needs an explicit accessible name");
+assert.match(jumpRuntime, /aria-label=\{isEnglish \? "Move right" : "تحرك لليمين"\}/, "ZIKR Jump right control needs a localized accessible name");
+assert.equal((jumpRuntime.match(/disabled=\{paused \|\| snapshot\.completed \|\| snapshot\.gameOver\}/g) ?? []).length, 3, "ZIKR Jump touch controls must be disabled while paused or after the round ends");
+assert.match(jumpRuntime, /if \(paused \|\| stateRef\.current\.completed \|\| stateRef\.current\.gameOver\) return;/, "ZIKR Jump must ignore keyboard input while paused or after the round ends");
+assert.match(jumpRuntime, /window\.addEventListener\("blur", clearInputs\)/, "ZIKR Jump must clear held controls when the window loses focus");
+assert.match(jumpRuntime, /document\.addEventListener\("visibilitychange", clearInputsOnVisibilityChange\)/, "ZIKR Jump must clear held controls when the document becomes hidden");
+
+console.log("✅ Kids visual contract passed: localized art, unique SVG ids, accessible controls, 12 art scenes and 12 runtime dispatches.");
