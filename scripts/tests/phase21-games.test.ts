@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { kidsContent } from "../../src/features/kids/data/content";
 import { GAME_REGISTRY, calculateBoundedXp, getGameDefinition, isRegisteredGameId } from "../../src/lib/games/registry";
 import type { GameId } from "../../src/lib/games/registry";
 import { KIDS_LEVEL_COUNT, getKidsLevelMeta } from "../../src/lib/games/kids-level-system";
@@ -27,6 +28,14 @@ assert.deepEqual(
 
 const gameIds = Object.keys(GAME_REGISTRY) as GameId[];
 assert.equal(gameIds.length, 12, "canonical Kids registry must contain exactly 12 games");
+
+const legacyMemoryActivity = kidsContent.find(item => item.slug === "game-memory-dhikr-cards");
+assert.equal(legacyMemoryActivity?.metadata?.gameId, "zikr-memory", "the legacy Memory content page must launch the canonical ZIKR Memory runtime");
+assert.equal(legacyMemoryActivity?.metadata?.version, 2, "the legacy Memory route must stay aligned with the current runtime contract");
+assert.equal(legacyMemoryActivity?.metadata?.difficulty, "easy", "the legacy Memory route must use a registered default difficulty");
+assert.equal(legacyMemoryActivity?.memory_pairs?.length, 11, "linking the legacy page must preserve its 11 verified content pairs");
+const memoryRouteMigration = readFileSync("supabase/migrations/20261017100000_link_legacy_memory_content_to_runtime.sql", "utf8");
+assert.ok(memoryRouteMigration.includes("'gameId', 'zikr-memory'") && memoryRouteMigration.includes("WHERE slug = 'game-memory-dhikr-cards'"), "the database content row must link to ZIKR Memory without replacing its existing metadata");
 
 const learningGamesSource = readFileSync("src/features/kids/components/games/kids-learning-games.tsx", "utf8");
 assert.equal(learningGamesSource.split("const { isEnglish } = useLanguage();").length - 1, 4, "all four learning games must read the selected language");
