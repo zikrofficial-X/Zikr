@@ -151,7 +151,7 @@ export function ZikrRunnerGame({
   const completionRef = useRef(false);
   const lastFrameRef = useRef<number | null>(null);
   const [model, setModel] = useState(() => newRunnerModel(rules, levels));
-  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + model.levelIndex);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + model.levelIndex, paused);
   const [question, setQuestion] = useState<VerifiedQuizQuestion | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [feedback, setFeedback] = useState(isEnglish ? "Jump over obstacles and collect road stars." : "اقفز فوق العوائق واجمع نجوم الطريق.");
@@ -623,7 +623,7 @@ export function ZikrRoadGame({
   });
   const stateRef = useRef<RoadModel>(createRoadState());
   const [state, setState] = useState<RoadModel>(createRoadState);
-  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + state.levelIndex);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + state.levelIndex, paused);
   const [question, setQuestion] = useState<VerifiedQuizQuestion | null>(null);
   const [answer, setAnswer] = useState<number | null>(null);
   const [feedback, setFeedback] = useState(isEnglish ? "Change lanes, collect stars, and stop at learning checkpoints." : "غيّر المسار واجمع النجوم وتوقف عند محطات التعلم.");
