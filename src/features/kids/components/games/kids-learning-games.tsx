@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
 import { useManagedTimeouts } from "@/features/kids/components/games/use-managed-timeouts";
 import type { GameDifficulty } from "@/lib/games/registry";
