@@ -37,7 +37,7 @@ assert.ok(quiz.includes("onSound, scheduleTimeout, score, streak]"), "Quiz compl
 const runner = section(runnerRoad, "export function ZikrRunnerGame", "export function ZikrRoadGame");
 const road = section(runnerRoad, "export function ZikrRoadGame");
 for (const [name, source] of [["Runner", runner], ["Road", road]] as const) {
-  assert.ok(source.includes("useManagedTimeouts(difficulty + ":" + restartToken + ":"), name + " must scope checkpoint callbacks to the current run");
+  assert.ok(source.includes('useManagedTimeouts(difficulty + ":" + restartToken + ":"'), name + " must scope checkpoint callbacks to the current run");
   assert.equal((source.match(/scheduleTimeout\(/g) ?? []).length, 1, name + " checkpoint callbacks must use the managed scheduler");
   assert.ok(!source.includes("window.setTimeout("), name + " must not keep an unmanaged checkpoint timeout");
 }
