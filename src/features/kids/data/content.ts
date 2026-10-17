@@ -999,6 +999,9 @@ export const kidsContent: KidsItem[] = [
     metadata: {
       category: "ألعاب الذاكرة",
       gameType: "memory",
+      gameId: "zikr-memory",
+      version: 2,
+      difficulty: "easy",
       value: "ربط الذكر بالموقف",
       reward: "وسام الذاكرة",
       activitySteps: ["اصنع البطاقات مع كبير", "اقلب بطاقتين", "اذكر المناسبة", "احتفل بالتعلم"],
