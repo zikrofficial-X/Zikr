@@ -958,7 +958,7 @@ export const kidsContent: KidsItem[] = [
     metadata: {
       category: "ألعاب الحركة الآمنة",
       gameId: "zikr-runner",
-      version: 1,
+      version: 2,
       difficulty: "easy",
       value: "التركيز والمثابرة",
       reward: "نجوم التعلم",
@@ -1128,7 +1128,7 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "طابق البطاقات ذات الرموز الأصلية وتعلم بهدوء.",
-    metadata: { category: "ذاكرة وتركيز", gameId: "zikr-memory", version: 1, difficulty: "easy" },
+    metadata: { category: "ذاكرة وتركيز", gameId: "zikr-memory", version: 2, difficulty: "easy" },
   },
   {
     id: "game-wudu-challenge",
@@ -1138,7 +1138,7 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "رتب خطوات الوضوء من المحتوى التعليمي المعتمد.",
-    metadata: { category: "تعلم إسلامي", gameId: "wudu-challenge", version: 1, difficulty: "easy" },
+    metadata: { category: "تعلم إسلامي", gameId: "wudu-challenge", version: 2, difficulty: "easy" },
   },
   {
     id: "game-verse-puzzle",
@@ -1148,7 +1148,7 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "9-12",
     content_ar: "رتب كلمات النص القرآني الموثق دون تعديل.",
-    metadata: { category: "القرآن", gameId: "verse-puzzle", version: 1, difficulty: "easy" },
+    metadata: { category: "القرآن", gameId: "verse-puzzle", version: 2, difficulty: "easy" },
   },
   {
     id: "game-zikr-quiz",
@@ -1158,7 +1158,7 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "أجب عن أسئلة قصيرة من المحتوى التعليمي الموثق.",
-    metadata: { category: "أسئلة وتعلم", gameId: "zikr-quiz", version: 1, difficulty: "easy" },
+    metadata: { category: "أسئلة وتعلم", gameId: "zikr-quiz", version: 2, difficulty: "easy" },
   },
   {
     id: "game-mosque-adventure",
@@ -1168,7 +1168,7 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "استكشف خريطة خيالية وأكمل أهدافًا تعليمية صغيرة.",
-    metadata: { category: "حركة ومغامرة", gameId: "mosque-adventure", version: 1, difficulty: "easy" },
+    metadata: { category: "حركة ومغامرة", gameId: "mosque-adventure", version: 2, difficulty: "easy" },
   },
   {
     id: "game-zikr-road",
@@ -1178,7 +1178,7 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "تجاوز العوائق واجمع النجوم في طريق آمن.",
-    metadata: { category: "حركة ومغامرة", gameId: "zikr-road", version: 1, difficulty: "easy" },
+    metadata: { category: "حركة ومغامرة", gameId: "zikr-road", version: 2, difficulty: "easy" },
   },
   {
     id: "game-zikr-jump",
@@ -1188,7 +1188,7 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "اقفز بين المنصات واجمع نجوم التعلم.",
-    metadata: { category: "حركة ومغامرة", gameId: "zikr-jump", version: 1, difficulty: "easy" },
+    metadata: { category: "حركة ومغامرة", gameId: "zikr-jump", version: 2, difficulty: "easy" },
   },
   {
     id: "game-good-deeds",
@@ -1198,7 +1198,7 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "3-5",
     content_ar: "اختر مهامًا تعليمية اختيارية داخل عالم اللعبة.",
-    metadata: { category: "قيم وتعاون", gameId: "good-deeds", version: 1, difficulty: "easy" },
+    metadata: { category: "قيم وتعاون", gameId: "good-deeds", version: 2, difficulty: "easy" },
   },
   {
     id: "game-hilal-fly",
@@ -1208,7 +1208,7 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "حرك الهلال اللطيف واجمع النجوم.",
-    metadata: { category: "أركيد هادئ", gameId: "hilal-fly", version: 1, difficulty: "easy" },
+    metadata: { category: "أركيد هادئ", gameId: "hilal-fly", version: 2, difficulty: "easy" },
   },
   {
     id: "game-mosque-cleanup",
@@ -1218,7 +1218,7 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "رتب بيئة خيالية نظيفة ومحترمة.",
-    metadata: { category: "قيم وتعاون", gameId: "mosque-cleanup", version: 1, difficulty: "easy" },
+    metadata: { category: "قيم وتعاون", gameId: "mosque-cleanup", version: 2, difficulty: "easy" },
   },
   {
     id: "game-zikr-coloring",
@@ -1228,7 +1228,7 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "3-5",
     content_ar: "لون رسومات أصلية واحفظها محليًا على جهازك.",
-    metadata: { category: "إبداع", gameId: "zikr-coloring", version: 1, difficulty: "easy" },
+    metadata: { category: "إبداع", gameId: "zikr-coloring", version: 2, difficulty: "easy" },
   },
   {
     id: "quiz-islamic-basics-plus",
