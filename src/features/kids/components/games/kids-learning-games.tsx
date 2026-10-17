@@ -284,7 +284,7 @@ export function WuduChallengeGame({ difficulty, restartToken, paused, onHud, onR
   const content = getVerifiedWuduContent();
   const baseCount = difficulty === "easy" ? Math.min(5, content.steps.length) : difficulty === "normal" ? Math.min(7, content.steps.length) : content.steps.length;
   const [levelIndex, setLevelIndex] = useState(0);
-  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex, paused);
   const [state, setState] = useState<WuduState>({ order: [], score: 0, mistakes: 0, streak: 0, stepIndex: 0, completed: false });
   const [feedback, setFeedback] = useState(isEnglish ? "Choose the next correct wudu step." : "اختر الخطوة الصحيحة التالية في الوضوء.");
   const completionRef = useRef(false);
@@ -395,7 +395,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const rules = getVersePuzzleRules(difficulty);
   const [levelIndex, setLevelIndex] = useState(0);
-  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex, paused);
   const [tokens, setTokens] = useState<IndexedVerseToken[]>([]);
   const [source, setSource] = useState<{ surah: number; ayah: number } | null>(null);
   const [baseWords, setBaseWords] = useState<string[]>([]);
@@ -548,7 +548,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const allQuestions = getVerifiedKidsQuizQuestions();
   const [levelIndex, setLevelIndex] = useState(0);
-  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex, paused);
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [streak, setStreak] = useState(0);
