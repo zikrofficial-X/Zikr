@@ -567,6 +567,7 @@ export function HilalFlyGame({
   });
   const stateRef = useRef<FlyState>(create());
   const [state, setState] = useState<FlyState>(() => create());
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + state.levelIndex);
   const inputRef = useRef({ up: false, down: false });
   const completionRef = useRef(false);
   const [feedback, setFeedback] = useState(isEnglish ? "Guide the crescent up and down through the sky." : "حرّك الهلال لأعلى ولأسفل في السماء.");
@@ -799,7 +800,7 @@ export function HilalFlyGame({
           setSwipe(null);
           inputRef.current.up = dy < -18;
           inputRef.current.down = dy > 18;
-          window.setTimeout(() => {
+          scheduleTimeout(() => {
             inputRef.current.up = false;
             inputRef.current.down = false;
           }, 150);
