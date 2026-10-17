@@ -8,6 +8,7 @@ const artSource = readFileSync("src/features/kids/components/games/kids-game-art
 const stageSource = readFileSync("src/features/kids/components/games/world-game-stage.tsx", "utf8");
 const adventureSource = readFileSync("src/features/kids/components/games/kids-action-adventure.tsx", "utf8");
 const jumpRuntime = adventureSource.split("export function ZikrJumpGame")[1]?.split("export function HilalFlyGame")[0] ?? "";
+const hilalRuntime = adventureSource.split("export function HilalFlyGame")[1]?.split("export function MosqueAdventureGame")[0] ?? "";
 const homeSource = readFileSync("src/app/kids/page.tsx", "utf8");
 const shellSource = readFileSync("src/features/kids/components/games/game-shell.tsx", "utf8");
 
@@ -77,5 +78,11 @@ assert.equal((jumpRuntime.match(/disabled=\{paused \|\| snapshot\.completed \|\|
 assert.match(jumpRuntime, /if \(paused \|\| stateRef\.current\.completed \|\| stateRef\.current\.gameOver\) return;/, "ZIKR Jump must ignore keyboard input while paused or after the round ends");
 assert.match(jumpRuntime, /window\.addEventListener\("blur", clearInputs\)/, "ZIKR Jump must clear held controls when the window loses focus");
 assert.match(jumpRuntime, /document\.addEventListener\("visibilitychange", clearInputsOnVisibilityChange\)/, "ZIKR Jump must clear held controls when the document becomes hidden");
+
+assert.equal((hilalRuntime.match(/disabled=\{paused \|\| state\.completed \|\| state\.gameOver\}/g) ?? []).length, 2, "Hilal Fly touch controls must be disabled while paused or after the round ends");
+assert.match(hilalRuntime, /if \(paused \|\| stateRef\.current\.completed \|\| stateRef\.current\.gameOver\) return;/, "Hilal Fly must ignore keyboard input while paused or after the round ends");
+assert.match(hilalRuntime, /inputRef\.current = \{ up: false, down: false \}/, "Hilal Fly must clear held controls when paused or finished");
+assert.match(hilalRuntime, /window\.addEventListener\("blur", clearInputs\)/, "Hilal Fly must clear held controls when the window loses focus");
+assert.match(hilalRuntime, /document\.addEventListener\("visibilitychange", clearInputsOnVisibilityChange\)/, "Hilal Fly must clear held controls when the document becomes hidden");
 
 console.log("✅ Kids visual contract passed: localized art, unique SVG ids, accessible controls, 12 art scenes and 12 runtime dispatches.");

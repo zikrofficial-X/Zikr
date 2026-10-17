@@ -589,7 +589,20 @@ export function HilalFlyGame({
   }, [difficulty, restartToken, rules, levels]);
 
   useEffect(() => {
+    if (paused || state.completed || state.gameOver) {
+      inputRef.current = { up: false, down: false };
+    }
+  }, [paused, state.completed, state.gameOver]);
+
+  useEffect(() => {
+    const clearInputs = () => {
+      inputRef.current = { up: false, down: false };
+    };
+    const clearInputsOnVisibilityChange = () => {
+      if (document.visibilityState === "hidden") clearInputs();
+    };
     const keyDown = (event: KeyboardEvent) => {
+      if (paused || stateRef.current.completed || stateRef.current.gameOver) return;
       const action = gameKeyAction(event);
       if (action === "up") {
         inputRef.current.up = true;
@@ -607,11 +620,15 @@ export function HilalFlyGame({
     };
     window.addEventListener("keydown", keyDown);
     window.addEventListener("keyup", keyUp);
+    window.addEventListener("blur", clearInputs);
+    document.addEventListener("visibilitychange", clearInputsOnVisibilityChange);
     return () => {
       window.removeEventListener("keydown", keyDown);
       window.removeEventListener("keyup", keyUp);
+      window.removeEventListener("blur", clearInputs);
+      document.removeEventListener("visibilitychange", clearInputsOnVisibilityChange);
     };
-  }, []);
+  }, [paused]);
 
   useEffect(() => {
     let frame = 0;
@@ -834,8 +851,8 @@ export function HilalFlyGame({
         </div>
 
         <div className="absolute bottom-0 inset-x-0 z-40 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/25 p-3 backdrop-blur-md sm:gap-3 sm:p-4">
-          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.up = true; }} onPointerUp={() => (inputRef.current.up = false)} onPointerCancel={() => (inputRef.current.up = false)} onLostPointerCapture={() => (inputRef.current.up = false)} className="min-h-14 touch-none select-none rounded-2xl border border-brand-gold/30 bg-brand-gold/10 text-2xl text-brand-gold" aria-label={isEnglish ? "Move up" : "تحرك لأعلى"}>↑</button>
-          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.down = true; }} onPointerUp={() => (inputRef.current.down = false)} onPointerCancel={() => (inputRef.current.down = false)} onLostPointerCapture={() => (inputRef.current.down = false)} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream" aria-label={isEnglish ? "Move down" : "تحرك لأسفل"}>↓</button>
+          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.up = true; }} onPointerUp={() => (inputRef.current.up = false)} onPointerCancel={() => (inputRef.current.up = false)} onLostPointerCapture={() => (inputRef.current.up = false)} disabled={paused || state.completed || state.gameOver} className="min-h-14 touch-none select-none rounded-2xl border border-brand-gold/30 bg-brand-gold/10 text-2xl text-brand-gold disabled:opacity-40" aria-label={isEnglish ? "Move up" : "تحرك لأعلى"}>↑</button>
+          <button type="button" onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); inputRef.current.down = true; }} onPointerUp={() => (inputRef.current.down = false)} onPointerCancel={() => (inputRef.current.down = false)} onLostPointerCapture={() => (inputRef.current.down = false)} disabled={paused || state.completed || state.gameOver} className="min-h-14 touch-none select-none rounded-2xl border border-white/10 bg-black/20 text-2xl text-brand-cream disabled:opacity-40" aria-label={isEnglish ? "Move down" : "تحرك لأسفل"}>↓</button>
         </div>
       </div>
       <GameToast>{feedback}</GameToast>
