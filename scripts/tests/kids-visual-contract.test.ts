@@ -56,4 +56,16 @@ assert.equal(
   "each game must retain its own gameplay runtime",
 );
 
+assert.match(shellSource, /if \(!hasStarted \|\| paused \|\| result \|\| document\.visibilityState === "hidden"\)/, "the elapsed clock must stop before play, while paused, after results, and in hidden tabs");
+assert.match(shellSource, /document\.addEventListener\("visibilitychange", handleVisibilityChange\)/, "the game shell must react to tab visibility changes");
+assert.match(shellSource, /document\.removeEventListener\("visibilitychange", handleVisibilityChange\)/, "the game shell must remove the visibility listener on cleanup");
+assert.match(shellSource, /if \(document\.visibilityState === "hidden"\)\s*stopClock\(\);\s*else startClock\(\);/, "returning to the visible tab must restart only the eligible clock");
+assert.match(shellSource, /elapsedRef\.current = 0;\s+runningSinceRef\.current = null;\s+setElapsedSeconds\(0\);/, "restart must reset both elapsed-time sources");
+assert.match(shellSource, /setResult\(null\); setMessage\(""\);/, "restart must clear the previous result and status message");
+assert.match(shellSource, /setResult\(null\); setMessage\(""\); setPaused\(false\); setRestartToken\(value => value \+ 1\);/, "restart must clear results, unpause, and produce a fresh runtime token");
+assert.match(shellSource, /if \(!controller \|\| result\) return;/, "pause/resume must be blocked when the controller is unavailable or the round has ended");
+assert.match(shellSource, /if \(paused\) \{ controller\.resume\(\); setPaused\(false\); \} else \{ controller\.pause\(\); setPaused\(true\); \}/, "pause/resume must call the runtime controller as well as update UI state");
+assert.match(shellSource, /const completedRound = \{ \.\.\.next, timeSeconds: Math\.max\(0, Math\.floor\(next\.timeSeconds \?\? getElapsedSeconds\(\)\)\) \};/, "result submission must capture a non-negative final elapsed time");
+assert.match(shellSource, /setHud\(completedRound\); setResult\(completedRound\); setPaused\(false\); void submitResult\(completedRound\)/, "completed result must update the result screen and submit through the existing pipeline");
+
 console.log("✅ Kids visual contract passed: localized art, unique SVG ids, 12 art scenes, 12 runtime dispatches and game-specific learning goals.");
