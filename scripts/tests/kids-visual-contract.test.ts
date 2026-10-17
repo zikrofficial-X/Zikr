@@ -14,6 +14,9 @@ const learningGamesSource = readFileSync("src/features/kids/components/games/kid
 const runnerRuntime = runnerRoadSource.split("export function ZikrRunnerGame")[1]?.split("export function ZikrRoadGame")[0] ?? "";
 const roadRuntime = runnerRoadSource.split("export function ZikrRoadGame")[1] ?? "";
 const quizRuntime = learningGamesSource.split("export function ZikrQuizGame")[1] ?? "";
+const valuesGamesSource = readFileSync("src/features/kids/components/games/kids-values-coloring.tsx", "utf8");
+const goodDeedsRuntime = valuesGamesSource.split("export function GoodDeedsGame")[1]?.split("export function MosqueCleanupGame")[0] ?? "";
+const mosqueRuntime = adventureSource.split("export function MosqueAdventureGame")[1] ?? "";
 const homeSource = readFileSync("src/app/kids/page.tsx", "utf8");
 const shellSource = readFileSync("src/features/kids/components/games/game-shell.tsx", "utf8");
 
@@ -95,5 +98,8 @@ assert.match(runnerRuntime, /disabled=\{paused \|\| selectedAnswer !== null\}/, 
 assert.match(roadRuntime, /if \(paused \|\| !question \|\| answer !== null\) return;/, "ZIKR Road must reject checkpoint answers while paused");
 assert.match(roadRuntime, /disabled=\{paused \|\| answer !== null\}/, "ZIKR Road checkpoint options must appear disabled while paused");
 assert.match(quizRuntime, /disabled=\{paused \|\| selected !== null \|\| hidden\}/, "ZIKR Quiz options must appear disabled while paused");
+assert.match(goodDeedsRuntime, /onClick=\{\(\) => finish\(deed\.id\)\} disabled=\{paused\}/, "Good Deeds scene actions must appear disabled while paused");
+assert.match(mosqueRuntime, /if \(paused \|\| !question \|\| answer !== null\) return;/, "Mosque Adventure must reject learning answers while paused");
+assert.match(mosqueRuntime, /disabled=\{paused \|\| answer !== null\} onClick=\{\(\) => answerStation\(index\)\}/, "Mosque Adventure answer choices must appear disabled while paused");
 
 console.log("✅ Kids visual contract passed: localized art, unique SVG ids, accessible controls, 12 art scenes and 12 runtime dispatches.");

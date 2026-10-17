@@ -1009,7 +1009,7 @@ export function MosqueAdventureGame({
   };
 
   const answerStation = (index: number) => {
-    if (!question || answer !== null) return;
+    if (paused || !question || answer !== null) return;
     setAnswer(index);
     const correct = index === question.correctAnswer;
     if (correct) {
@@ -1096,7 +1096,7 @@ export function MosqueAdventureGame({
               <h4 className="mt-3 text-2xl font-black text-brand-cream">{question.text}</h4>
               <div className="mt-5 grid gap-3">
                 {question.options.map((option, index) => (
-                  <button key={option} type="button" disabled={answer !== null} onClick={() => answerStation(index)}
+                  <button key={option} type="button" disabled={paused || answer !== null} onClick={() => answerStation(index)}
                     className={["rounded-2xl border p-4 text-right", answer === index ? (index === question.correctAnswer ? "border-brand-emerald bg-brand-emerald/15" : "border-rose-300/30 bg-rose-300/10") : answer !== null && index === question.correctAnswer ? "border-brand-emerald/60 bg-brand-emerald/10" : "border-white/10 bg-white/[0.03] hover:border-brand-gold/35"].join(" ")}>
                     {option}
                   </button>
