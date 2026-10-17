@@ -171,11 +171,11 @@ if ((memoryGlossary.match(/: "/g) ?? []).length !== 11) {
   throw new Error("Every verified Memory situation needs a matching English label.");
 }
 const memoryRuntime = learning.split("export function ZikrMemoryGame")[1]?.split("export function WuduChallengeGame")[0] ?? "";
-if (!memoryRuntime.includes("const pendingTimeoutsRef = useRef<Set<number>>(new Set());")
-  || !memoryRuntime.includes("return () => clearPendingTimeouts();")
+if (!memoryRuntime.includes('useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex, paused)')
+  || !memoryRuntime.includes("const { scheduleTimeout, clearPendingTimeouts } = useManagedTimeouts(")
   || (memoryRuntime.match(/scheduleTimeout\(/g) ?? []).length !== 3
-  || (memoryRuntime.match(/window\.setTimeout\(/g) ?? []).length !== 1) {
-  throw new Error("Memory hint, mismatch, and level timers must be cancellable and cleaned up on unmount.");
+  || memoryRuntime.includes("window.setTimeout(")) {
+  throw new Error("Memory hint, mismatch, and level timers must use pause-aware managed scheduling and cleanup.");
 }
 if (!learning.includes("const pairs = useMemo(() => getVerifiedMemoryPairs(), []);")) {
   throw new Error("Memory must memoize the verified pair pool so rerenders do not rebuild its board selection inputs.");

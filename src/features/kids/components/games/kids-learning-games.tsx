@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
 import { useManagedTimeouts } from "@/features/kids/components/games/use-managed-timeouts";
 import type { GameDifficulty } from "@/lib/games/registry";
@@ -76,6 +76,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const pairs = useMemo(() => getVerifiedMemoryPairs(), []);
   const [levelIndex, setLevelIndex] = useState(0);
+  const { scheduleTimeout, clearPendingTimeouts } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex, paused);
   const [flipped, setFlipped] = useState<string[]>([]);
   const [matched, setMatched] = useState<string[]>([]);
   const [moves, setMoves] = useState(0);
@@ -88,27 +89,10 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   const advancingRef = useRef(false);
   const runTotalsRef = useRef(createGameRunTotals());
   const levelResetPendingRef = useRef(false);
-  const pendingTimeoutsRef = useRef<Set<number>>(new Set());
-  const clearPendingTimeouts = useCallback(() => {
-    pendingTimeoutsRef.current.forEach(timeoutId => window.clearTimeout(timeoutId));
-    pendingTimeoutsRef.current.clear();
-  }, []);
-  const scheduleTimeout = useCallback((callback: () => void, delay: number) => {
-    let timeoutId = 0;
-    timeoutId = window.setTimeout(() => {
-      pendingTimeoutsRef.current.delete(timeoutId);
-      callback();
-    }, delay);
-    pendingTimeoutsRef.current.add(timeoutId);
-    return timeoutId;
-  }, []);
-
   useEffect(() => {
-    clearPendingTimeouts();
     runTotalsRef.current = createGameRunTotals();
     setLevelIndex(0);
-    return () => clearPendingTimeouts();
-  }, [clearPendingTimeouts, difficulty, restartToken]);
+  }, [difficulty, restartToken]);
 
   const meta = getKidsLevelMeta("zikr-memory", difficulty, levelIndex);
   const pairTarget = Math.max(2, Math.min(pairs.length, (difficulty === "easy" ? 3 : difficulty === "normal" ? 4 : 5) + (levelIndex % 2)));
