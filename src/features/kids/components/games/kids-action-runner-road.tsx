@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
+import { useManagedTimeouts } from "@/features/kids/components/games/use-managed-timeouts";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
 import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
@@ -150,6 +151,7 @@ export function ZikrRunnerGame({
   const completionRef = useRef(false);
   const lastFrameRef = useRef<number | null>(null);
   const [model, setModel] = useState(() => newRunnerModel(rules, levels));
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + model.levelIndex);
   const [question, setQuestion] = useState<VerifiedQuizQuestion | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [feedback, setFeedback] = useState(isEnglish ? "Jump over obstacles and collect road stars." : "اقفز فوق العوائق واجمع نجوم الطريق.");
@@ -405,7 +407,7 @@ export function ZikrRunnerGame({
       setFeedback(isEnglish ? "Not quite. Review the information and continue." : "الإجابة غير صحيحة، راجع المعلومة ثم تابع.");
     }
 
-    window.setTimeout(() => {
+    scheduleTimeout(() => {
       state.questionOpen = false;
       state.checkpointIndex += 1;
       setQuestion(null);
@@ -621,6 +623,7 @@ export function ZikrRoadGame({
   });
   const stateRef = useRef<RoadModel>(createRoadState());
   const [state, setState] = useState<RoadModel>(createRoadState);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + state.levelIndex);
   const [question, setQuestion] = useState<VerifiedQuizQuestion | null>(null);
   const [answer, setAnswer] = useState<number | null>(null);
   const [feedback, setFeedback] = useState(isEnglish ? "Change lanes, collect stars, and stop at learning checkpoints." : "غيّر المسار واجمع النجوم وتوقف عند محطات التعلم.");
@@ -828,7 +831,7 @@ export function ZikrRoadGame({
       onSound("miss");
       setFeedback(isEnglish ? "Review the question, then continue the journey." : "راجع السؤال ثم أكمل الرحلة.");
     }
-    window.setTimeout(() => {
+    scheduleTimeout(() => {
       current.questionOpen = false;
       current.checkpointIndex += 1;
       setQuestion(null);

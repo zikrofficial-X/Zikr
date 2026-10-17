@@ -22,6 +22,7 @@ Status: implemented in the companion GitHub change.
 - Verify each title has its own control scheme, win condition, feedback, and replay flow; shared UI must not make the actual gameplay interchangeable.
 - Verify easy, normal, and hard change gameplay behaviour, not only the label.
 - Test pause, resume, mute, visibility-change pause, restart, completion, and result submission.
+- Cancel delayed gameplay callbacks when a round is restarted, its difficulty/level changes, or its component unmounts; delayed callbacks must not mutate a later round.
 - Acceptance gate: all game runtime tests and the mobile smoke checklist pass before expanding the catalogue.
 
 ## Phase C — Verified educational content

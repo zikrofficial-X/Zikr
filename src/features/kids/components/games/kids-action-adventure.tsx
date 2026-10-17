@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
+import { useManagedTimeouts } from "@/features/kids/components/games/use-managed-timeouts";
 import type { GameDifficulty } from "@/lib/games/registry";
 import { gameKeyAction } from "@/lib/games/gameplay-helpers";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
@@ -860,6 +861,7 @@ export function MosqueAdventureGame({
   const rules = useMemo(() => getMosqueAdventureRules(difficulty), [difficulty]);
   const questions = useMemo(() => getApprovedScenarioQuestions(), []);
   const [levelIndex, setLevelIndex] = useState(0);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
   const [position, setPosition] = useState(0);
   const [score, setScore] = useState(0);
   const [stars, setStars] = useState(0);
@@ -943,7 +945,7 @@ export function MosqueAdventureGame({
         setScore(value => value + 500);
         setFeedback(isEnglish ? levelMeta.titleEn + " complete. A new map is ahead..." : "اكتملت " + levelMeta.titleAr + ". خريطة مختلفة في الطريق...");
         onSound("success");
-        window.setTimeout(() => {
+        scheduleTimeout(() => {
           setLevelIndex(value => value + 1);
           setPosition(0);
           setQuestion(null);
@@ -988,7 +990,7 @@ export function MosqueAdventureGame({
       onSound("miss");
       setFeedback(isEnglish ? (rules.mistakePenalty > 0 ? "Not quite, but the journey continues." : "Not quite. There is no penalty on Easy.") : (rules.mistakePenalty > 0 ? "إجابة غير صحيحة، لكن الرحلة مستمرة." : "إجابة غير صحيحة. لا يوجد خصم في السهل."));
     }
-    window.setTimeout(() => {
+    scheduleTimeout(() => {
       setQuestion(null);
       setAnswer(null);
     }, 500);

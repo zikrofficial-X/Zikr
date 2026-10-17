@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
+import { useManagedTimeouts } from "@/features/kids/components/games/use-managed-timeouts";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
 import type { WorldHud } from "@/features/kids/components/games/world-game-stage";
@@ -283,6 +284,7 @@ export function WuduChallengeGame({ difficulty, restartToken, paused, onHud, onR
   const content = getVerifiedWuduContent();
   const baseCount = difficulty === "easy" ? Math.min(5, content.steps.length) : difficulty === "normal" ? Math.min(7, content.steps.length) : content.steps.length;
   const [levelIndex, setLevelIndex] = useState(0);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
   const [state, setState] = useState<WuduState>({ order: [], score: 0, mistakes: 0, streak: 0, stepIndex: 0, completed: false });
   const [feedback, setFeedback] = useState(isEnglish ? "Choose the next correct wudu step." : "اختر الخطوة الصحيحة التالية في الوضوء.");
   const completionRef = useRef(false);
@@ -336,7 +338,7 @@ export function WuduChallengeGame({ difficulty, restartToken, paused, onHud, onR
         advancingRef.current = true;
         setFeedback(isEnglish ? "Level " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + " complete. A new water station is ahead..." : "اكتمل المستوى " + (levelIndex + 1) + ". محطة ماء جديدة في الطريق...");
         onSound("success");
-        window.setTimeout(() => setLevelIndex(value => value + 1), 650);
+        scheduleTimeout(() => setLevelIndex(value => value + 1), 650);
       } else {
         const totals = accumulateGameLevel(runTotalsRef.current, { score: finalScore, collectibles: steps.length, combo: nextStreak });
         runTotalsRef.current = totals;
@@ -393,6 +395,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const rules = getVersePuzzleRules(difficulty);
   const [levelIndex, setLevelIndex] = useState(0);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
   const [tokens, setTokens] = useState<IndexedVerseToken[]>([]);
   const [source, setSource] = useState<{ surah: number; ayah: number } | null>(null);
   const [baseWords, setBaseWords] = useState<string[]>([]);
@@ -471,7 +474,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
       runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
       onSound("success");
       setFeedback(isEnglishRef.current ? "Level " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + " complete. A new word order is ready..." : "أكملت المستوى " + (levelIndex + 1) + ". ترتيب جديد للكلمات جاهز...");
-      window.setTimeout(() => setLevelIndex(value => value + 1), 650);
+      scheduleTimeout(() => setLevelIndex(value => value + 1), 650);
     } else {
       const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
       runTotalsRef.current = totals;
@@ -481,7 +484,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
       setFeedback(isEnglishRef.current ? "You completed every Verse Puzzle level." : "أكملت جميع مستويات لغز الآية.");
       onResult(finalHud);
     }
-  }, [answer.length, complete, levelIndex, mistakes, onHud, onResult, onSound, rules.mistakePenalty, score]);
+  }, [answer.length, complete, levelIndex, mistakes, onHud, onResult, onSound, rules.mistakePenalty, scheduleTimeout, score]);
 
   const useVerseHint = () => {
     if (paused || complete || hintVisible || answer.length >= tokens.length) return;
@@ -489,7 +492,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
     setMistakes(value => value + 1);
     setFeedback(isEnglish ? "Hint: focus on the next word in the text." : "التلميح: ركّز على الكلمة التالية في ترتيب النص.");
     onSound("move");
-    window.setTimeout(() => setHintVisible(false), 1400);
+    scheduleTimeout(() => setHintVisible(false), 1400);
   };
 
   const choose = (tokenIndex: number) => {
@@ -545,6 +548,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
   useEffect(() => { isEnglishRef.current = isEnglish; }, [isEnglish]);
   const allQuestions = getVerifiedKidsQuizQuestions();
   const [levelIndex, setLevelIndex] = useState(0);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex);
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -604,7 +608,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
       runTotalsRef.current = accumulateGameLevel(runTotalsRef.current, levelTotals);
       onSound("success");
       setFeedback(isEnglishRef.current ? "Level " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + " complete. More questions are ahead..." : "أكملت المستوى " + (levelIndex + 1) + ". أسئلة مختلفة في الطريق...");
-      window.setTimeout(() => setLevelIndex(value => value + 1), 700);
+      scheduleTimeout(() => setLevelIndex(value => value + 1), 700);
     } else {
       const totals = accumulateGameLevel(runTotalsRef.current, levelTotals);
       runTotalsRef.current = totals;
@@ -614,7 +618,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
       setFeedback(isEnglishRef.current ? "You completed every ZIKR Quiz level." : "أكملت جميع مستويات اختبار ذِكر.");
       onResult(finalHud);
     }
-  }, [complete, correct, levelIndex, onHud, onResult, onSound, score, streak]);
+  }, [complete, correct, levelIndex, onHud, onResult, onSound, scheduleTimeout, score, streak]);
 
   const useFiftyFifty = () => {
     if (paused || selected !== null || !question || hiddenOptions.length > 0) return;
@@ -643,7 +647,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
       onSound("miss");
       setFeedback(isEnglish ? "That is not correct. Review the answer and continue." : "ليست الإجابة الصحيحة. راجعها ثم تابع.");
     }
-    window.setTimeout(() => {
+    scheduleTimeout(() => {
       setSelected(null);
       setHiddenOptions([]);
       setIndex(value => value + 1);
