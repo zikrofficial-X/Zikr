@@ -48,7 +48,7 @@ assert.ok(learningGamesSource.includes("const cardAccessibleLabel = visible"), "
 assert.ok(learningGamesSource.includes("const pairs = useMemo(() => getVerifiedMemoryPairs(), []);"), "Memory must keep the verified card pool stable across renders");
 const memoryRuntime = learningGamesSource.split("export function ZikrMemoryGame")[1]?.split("export function WuduChallengeGame")[0] ?? "";
 assert.ok(memoryRuntime.includes("const pendingTimeoutsRef = useRef<Set<number>>(new Set());"), "Memory must track every pending board timeout");
-assert.ok(memoryRuntime.includes("useEffect(() => () => clearPendingTimeouts(), [clearPendingTimeouts]);"), "Memory must cancel pending timers when the game unmounts");
+assert.match(memoryRuntime, /useEffect\(\(\) => \{\s*clearPendingTimeouts\(\);\s*runTotalsRef\.current = createGameRunTotals\(\);\s*setLevelIndex\(0\);\s*return \(\) => clearPendingTimeouts\(\);\s*\}, \[clearPendingTimeouts, difficulty, restartToken\]\);/, "Memory must cancel stale callbacks on restart, difficulty change, and unmount");
 assert.equal((memoryRuntime.match(/scheduleTimeout\(/g) ?? []).length, 3, "hint, mismatch reveal, and level advance must use cancellable timers");
 assert.equal((memoryRuntime.match(/window\.setTimeout\(/g) ?? []).length, 1, "only the shared timeout scheduler may call window.setTimeout");
 assert.ok(memoryRuntime.includes("[clearPendingTimeouts, difficulty, restartToken]"), "Memory must cancel stale callbacks on restart or difficulty change");
