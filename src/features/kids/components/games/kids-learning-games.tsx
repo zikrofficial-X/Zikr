@@ -690,7 +690,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
             const isCorrect = optionIndex === question.correctAnswer;
             const isSelected = optionIndex === selected;
             const hidden = hiddenOptions.includes(optionIndex);
-            return <button key={option + ":" + optionIndex} type="button" onClick={() => choose(optionIndex)} disabled={selected !== null || hidden} className={[
+            return <button key={option + ":" + optionIndex} type="button" onClick={() => choose(optionIndex)} disabled={paused || selected !== null || hidden} className={[
               "min-h-24 rounded-2xl border p-4 text-right transition " + (hidden ? "opacity-20 blur-[1px]" : ""),
               isSelected ? (isCorrect ? "border-brand-emerald bg-brand-emerald/15 text-brand-emerald" : "border-rose-300/35 bg-rose-300/10 text-rose-100")
                 : selected !== null && isCorrect ? "border-brand-emerald/60 bg-brand-emerald/10 text-brand-emerald"
