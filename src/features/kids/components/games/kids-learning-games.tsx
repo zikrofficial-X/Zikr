@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
@@ -87,11 +87,27 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   const advancingRef = useRef(false);
   const runTotalsRef = useRef(createGameRunTotals());
   const levelResetPendingRef = useRef(false);
+  const pendingTimeoutsRef = useRef<Set<number>>(new Set());
+  const clearPendingTimeouts = useCallback(() => {
+    pendingTimeoutsRef.current.forEach(timeoutId => window.clearTimeout(timeoutId));
+    pendingTimeoutsRef.current.clear();
+  }, []);
+  const scheduleTimeout = useCallback((callback: () => void, delay: number) => {
+    let timeoutId = 0;
+    timeoutId = window.setTimeout(() => {
+      pendingTimeoutsRef.current.delete(timeoutId);
+      callback();
+    }, delay);
+    pendingTimeoutsRef.current.add(timeoutId);
+    return timeoutId;
+  }, []);
 
   useEffect(() => {
+    clearPendingTimeouts();
     runTotalsRef.current = createGameRunTotals();
     setLevelIndex(0);
-  }, [difficulty, restartToken]);
+    return () => clearPendingTimeouts();
+  }, [clearPendingTimeouts, difficulty, restartToken]);
 
   const meta = getKidsLevelMeta("zikr-memory", difficulty, levelIndex);
   const pairTarget = Math.max(2, Math.min(pairs.length, (difficulty === "easy" ? 3 : difficulty === "normal" ? 4 : 5) + (levelIndex % 2)));
@@ -117,6 +133,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
   }, [chosenPairs, meta.seed]);
 
   useEffect(() => {
+    clearPendingTimeouts();
     setFlipped([]);
     setMatched([]);
     setMoves(0);
@@ -129,7 +146,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
     completionRef.current = false;
     advancingRef.current = false;
     onHud(learningHud(0, 0, 0, levelIndex));
-  }, [difficulty, levelIndex, meta.subtitleAr, meta.subtitleEn, onHud, restartToken]);
+  }, [clearPendingTimeouts, difficulty, levelIndex, meta.subtitleAr, meta.subtitleEn, onHud, restartToken]);
 
   useEffect(() => { setFeedback(isEnglish ? "Turn over two cards and match each situation to its dhikr." : "افتح بطاقتين وابحث عن الموقف والذكر المناسبين."); }, [isEnglish]);
 
@@ -143,7 +160,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
     setScore(value => Math.max(0, value - 35));
     setFeedback(isEnglish ? "Hint: the highlighted cards belong to the same pair." : "تلميح صغير: البطاقتان المظللتان تنتميان إلى نفس الزوج.");
     onSound("move");
-    window.setTimeout(() => setHintId(null), difficulty === "hard" ? 900 : 1300);
+    scheduleTimeout(() => setHintId(null), difficulty === "hard" ? 900 : 1300);
   };
 
   useEffect(() => {
@@ -160,7 +177,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
       advancingRef.current = true;
       setFeedback(isEnglishRef.current ? "Level " + (levelIndex + 1) + "/" + KIDS_LEVEL_COUNT + " complete. A new board is ready..." : "اكتمل المستوى " + (levelIndex + 1) + ". جهّزنا لك لوحة مختلفة...");
       onSound("success");
-      window.setTimeout(() => {
+      scheduleTimeout(() => {
         setLevelIndex(value => value + 1);
       }, 650);
     } else {
@@ -170,7 +187,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
       setFeedback(isEnglishRef.current ? "You completed every Memory level." : "أكملت جميع مستويات ذاكرة ذِكر.");
       onResult(hud);
     }
-  }, [complete, combo, levelIndex, onHud, onResult, onSound, pairTarget, score]);
+  }, [complete, combo, levelIndex, onHud, onResult, onSound, pairTarget, scheduleTimeout, score]);
 
   const choose = (id: string) => {
     if (paused || locked || flipped.includes(id) || matched.includes(id) || complete) return;
@@ -197,7 +214,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
     setCombo(0);
     onSound("miss");
     setFeedback(isEnglish ? "Try to remember where each card is." : "جرّب تذكر مكان البطاقة.");
-    window.setTimeout(() => {
+    scheduleTimeout(() => {
       setFlipped([]);
       setLocked(false);
     }, difficulty === "hard" ? 700 : 520);

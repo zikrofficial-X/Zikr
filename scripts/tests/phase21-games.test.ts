@@ -46,6 +46,12 @@ const memoryGlossary = learningGamesSource.split("const MEMORY_SITUATIONS_EN: Re
 assert.equal((memoryGlossary.match(/: "/g) ?? []).length, 11, "every verified Memory situation needs an English label");
 assert.ok(learningGamesSource.includes("const cardAccessibleLabel = visible"), "Memory cards need state-aware accessible names");
 assert.ok(learningGamesSource.includes("const pairs = useMemo(() => getVerifiedMemoryPairs(), []);"), "Memory must keep the verified card pool stable across renders");
+const memoryRuntime = learningGamesSource.split("export function ZikrMemoryGame")[1]?.split("export function WuduChallengeGame")[0] ?? "";
+assert.ok(memoryRuntime.includes("const pendingTimeoutsRef = useRef<Set<number>>(new Set());"), "Memory must track every pending board timeout");
+assert.match(memoryRuntime, /useEffect\(\(\) => \{\s*clearPendingTimeouts\(\);\s*runTotalsRef\.current = createGameRunTotals\(\);\s*setLevelIndex\(0\);\s*return \(\) => clearPendingTimeouts\(\);\s*\}, \[clearPendingTimeouts, difficulty, restartToken\]\);/, "Memory must cancel stale callbacks on restart, difficulty change, and unmount");
+assert.equal((memoryRuntime.match(/scheduleTimeout\(/g) ?? []).length, 3, "hint, mismatch reveal, and level advance must use cancellable timers");
+assert.equal((memoryRuntime.match(/window\.setTimeout\(/g) ?? []).length, 1, "only the shared timeout scheduler may call window.setTimeout");
+assert.ok(memoryRuntime.includes("[clearPendingTimeouts, difficulty, restartToken]"), "Memory must cancel stale callbacks on restart or difficulty change");
 assert.ok(learningGamesSource.includes("aria-label={cardAccessibleLabel}") && learningGamesSource.includes("aria-pressed={visible}"), "Memory cards must expose visible/flipped state to assistive technology");
 assert.ok(learningGamesSource.includes('label={isEnglish ? "Pairs " + matched.length / 2 + "/" + pairTarget : "الأزواج " + matched.length / 2 + "/" + pairTarget}'), "Memory progress text must describe matched pairs rather than overall level count");
 assert.ok(learningGamesSource.includes('label: isEnglish ? "Score"'), "learning-game HUD labels must follow the selected language");
