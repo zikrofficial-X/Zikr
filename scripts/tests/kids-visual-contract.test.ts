@@ -59,7 +59,7 @@ assert.equal(
 assert.match(shellSource, /if \(!hasStarted \|\| paused \|\| result \|\| document\.visibilityState === "hidden"\)/, "the elapsed clock must stop before play, while paused, after results, and in hidden tabs");
 assert.match(shellSource, /document\.addEventListener\("visibilitychange", handleVisibilityChange\)/, "the game shell must react to tab visibility changes");
 assert.match(shellSource, /document\.removeEventListener\("visibilitychange", handleVisibilityChange\)/, "the game shell must remove the visibility listener on cleanup");
-assert.match(shellSource, /if \(document\.visibilityState === "hidden"\) stopClock\(\); else startClock\(\);/, "returning to the visible tab must restart only the eligible clock");
+assert.match(shellSource, /if \(document\.visibilityState === "hidden"\)\s*stopClock\(\);\s*else startClock\(\);/, "returning to the visible tab must restart only the eligible clock");
 assert.match(shellSource, /elapsedRef\.current = 0;\s+runningSinceRef\.current = null;\s+setElapsedSeconds\(0\);/, "restart must reset both elapsed-time sources");
 assert.match(shellSource, /setResult\(null\); setMessage\(""\);/, "restart must clear the previous result and status message");
 assert.match(shellSource, /setResult\(null\); setMessage\(""\); setPaused\(false\); setRestartToken\(value => value \+ 1\);/, "restart must clear results, unpause, and produce a fresh runtime token");
