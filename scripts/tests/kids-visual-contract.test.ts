@@ -92,6 +92,8 @@ assert.match(hilalRuntime, /if \(paused \|\| stateRef\.current\.completed \|\| s
 assert.match(hilalRuntime, /inputRef\.current = \{ up: false, down: false \}/, "Hilal Fly must clear held controls when paused or finished");
 assert.match(hilalRuntime, /window\.addEventListener\("blur", clearInputs\)/, "Hilal Fly must clear held controls when the window loses focus");
 assert.match(hilalRuntime, /document\.addEventListener\("visibilitychange", clearInputsOnVisibilityChange\)/, "Hilal Fly must clear held controls when the document becomes hidden");
+assert.match(hilalRuntime, /onPointerDown=\{event => \{\s*if \(paused \|\| state\.completed \|\| state\.gameOver\) \{\s*setSwipe\(null\);\s*return;\s*\}/, "Hilal Fly must ignore swipe starts while paused or finished");
+assert.match(hilalRuntime, /onPointerUp=\{event => \{\s*if \(paused \|\| state\.completed \|\| state\.gameOver\) \{\s*setSwipe\(null\);\s*inputRef\.current = \{ up: false, down: false \};\s*return;\s*\}/, "Hilal Fly must clear swipe input if pause begins mid-gesture");
 
 assert.match(runnerRuntime, /if \(paused \|\| selectedAnswer !== null \|\| !question\) return;/, "ZIKR Runner must reject checkpoint answers while paused");
 assert.match(runnerRuntime, /disabled=\{paused \|\| selectedAnswer !== null\}/, "ZIKR Runner checkpoint options must appear disabled while paused");
