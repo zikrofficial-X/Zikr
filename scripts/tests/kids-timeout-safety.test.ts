@@ -42,6 +42,16 @@ for (const [name, source] of [["Runner", runner], ["Road", road]] as const) {
   assert.ok(!source.includes("window.setTimeout("), name + " must not keep an unmanaged checkpoint timeout");
 }
 
+const values = read("src/features/kids/components/games/kids-values-coloring.tsx");
+const deeds = section(values, "export function GoodDeedsGame", "export function MosqueCleanupGame");
+const cleanup = section(values, "export function MosqueCleanupGame", "export function ZikrColoringGame");
+const coloring = section(values, "export function ZikrColoringGame");
+for (const [name, source] of [["Good Deeds", deeds], ["Cleanup", cleanup], ["Coloring", coloring]] as const) {
+  assert.ok(source.includes('useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex)'), name + " must scope callbacks to difficulty, restart, and level");
+  assert.equal((source.match(/scheduleTimeout\\(/g) ?? []).length, 1, name + " level advancement must use the managed scheduler");
+  assert.ok(!source.includes("window.setTimeout("), name + " must not keep unmanaged level-advance timers");
+}
+
 const mosque = section(adventure, "export function MosqueAdventureGame");
 assert.ok(mosque.includes('useManagedTimeouts(difficulty + ":" + restartToken + ":" + levelIndex)'), "Mosque Adventure must scope timers to the current level");
 assert.equal((mosque.match(/scheduleTimeout\(/g) ?? []).length, 2, "Mosque Adventure level and question callbacks must use the managed scheduler");
