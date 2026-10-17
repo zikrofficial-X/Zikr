@@ -145,7 +145,7 @@ if ((memoryGlossary.match(/: "/g) ?? []).length !== 11) {
 }
 const memoryRuntime = learning.split("export function ZikrMemoryGame")[1]?.split("export function WuduChallengeGame")[0] ?? "";
 if (!memoryRuntime.includes("const pendingTimeoutsRef = useRef<Set<number>>(new Set());")
-  || !memoryRuntime.includes("useEffect(() => () => clearPendingTimeouts(), [clearPendingTimeouts]);")
+  || !memoryRuntime.includes("return () => clearPendingTimeouts();")
   || (memoryRuntime.match(/scheduleTimeout\(/g) ?? []).length !== 3
   || (memoryRuntime.match(/window\.setTimeout\(/g) ?? []).length !== 1) {
   throw new Error("Memory hint, mismatch, and level timers must be cancellable and cleaned up on unmount.");
