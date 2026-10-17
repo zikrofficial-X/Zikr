@@ -37,6 +37,22 @@ assert.equal(legacyMemoryActivity?.memory_pairs?.length, 11, "linking the legacy
 const memoryRouteMigration = readFileSync("supabase/migrations/20261017100000_link_legacy_memory_content_to_runtime.sql", "utf8");
 assert.ok(memoryRouteMigration.includes("'gameId', 'zikr-memory'") && memoryRouteMigration.includes("WHERE slug = 'game-memory-dhikr-cards'"), "the database content row must link to ZIKR Memory without replacing its existing metadata");
 
+for (const gameId of gameIds) {
+  const item = kidsContent.find(entry => entry.slug === gameId && entry.type === "game");
+  assert.ok(item, "static Kids content must provide a canonical route for " + gameId);
+  assert.equal(item.metadata?.gameId, gameId, "static Kids content must route to its matching runtime: " + gameId);
+  assert.equal(item.metadata?.version, GAME_REGISTRY[gameId].version, "static metadata version must match the registry: " + gameId);
+  assert.equal(item.metadata?.difficulty, GAME_REGISTRY[gameId].defaultDifficulty, "static metadata difficulty must match the registry: " + gameId);
+}
+const canonicalMetadataMigration = readFileSync("supabase/migrations/20261017110000_sync_kids_game_metadata_versions.sql", "utf8");
+for (const gameId of gameIds) {
+  const definition = GAME_REGISTRY[gameId];
+  assert.ok(
+    canonicalMetadataMigration.includes("('" + gameId + "', " + definition.version + ", '" + definition.defaultDifficulty + "')"),
+    "database metadata migration must cover the canonical registry entry: " + gameId
+  );
+}
+
 const learningGamesSource = readFileSync("src/features/kids/components/games/kids-learning-games.tsx", "utf8");
 assert.equal(learningGamesSource.split("const { isEnglish } = useLanguage();").length - 1, 4, "all four learning games must read the selected language");
 for (const label of ["ZIKR Memory", "Wudu Challenge", "Verse Puzzle", "ZIKR Quiz", "MEMORY_SITUATIONS_EN", "Before sleeping"]) {
