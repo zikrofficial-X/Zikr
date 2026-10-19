@@ -109,7 +109,7 @@
     "@vercel/speed-insights": "^2.0.0",
     "ai": "^7.0.137",
     "clsx": "2.1.1",
-    "lucide-react": "^1.52.0",
+    "lucide-react": "^1.58.0",
     "next": "^16.4.0",
     "phaser": "^3.90.0",
     "react": "^19.2.7",
