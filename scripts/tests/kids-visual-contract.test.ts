@@ -28,7 +28,7 @@ assert.equal(gameIds.length, 12, "the canonical Kids catalog must continue to ex
 assert.match(artSource, /useId\(\)/, "SVG artwork IDs must be unique when cards repeat on the same page");
 assert.match(artSource, /aria-label": label/, "game illustrations need a localized accessible name");
 assert.match(homeSource, /KidsGameArt/, "the Kids landing page must show game-specific artwork");
-assert.match(gameKitSource, /\[&>\*:\not\(\.kids-game-world-layer\)\]:relative/, "interactive game-stage content must sit above decorative scenes");
+assert.ok(gameKitSource.includes("[&>*:not(.kids-game-world-layer)]:relative"), "interactive game-stage content must sit above decorative scenes");
 assert.match(gameKitSource, /min-h-\[360px\]/, "game stages must use a compact mobile minimum height");
 assert.equal((worldVisualsSource.match(/kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden/g) ?? []).length, gameIds.length, "all game scenes must use the non-interactive background layer");
 assert.match(learningGamesSource, /group min-h-28 sm:min-h-36 min-w-0 rounded-2xl sm:rounded-\[1\.5rem\] border p-3 sm:p-4/, "memory cards must use mobile-friendly dimensions");
