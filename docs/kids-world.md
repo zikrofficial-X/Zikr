@@ -20,6 +20,8 @@ Audio feedback is generated locally with `ToneFeedback`. It is optional, non-aut
 
 Wudu steps and Kids quiz questions must come from `lib/games/verified-content.ts`, which adapts existing approved Kids content without inventing material. Wudu choices may be shuffled for play, but their exact approved wording must remain unchanged. Verse Puzzle receives exact Quran text from `/api/kids/games/verse`; it uses indexed tokens so repeated words remain distinct and completion is checked against original token indexes.
 
+When English UI is selected, verified dhikr, wudu, Quran, and quiz source text remains in its approved Arabic wording. Show a clear English-language note explaining this, but do not disable the game or hide its briefing solely because a reviewed English source translation is unavailable; controls, status labels, and instructions should remain localized.
+
 ## Persistence and RLS
 
 Anonymous play is local. When an authenticated result is submitted, `app/api/kids/games/score/route.ts` authenticates with the cookie-bound Supabase client, derives `authData.user.id` on the server, validates the payload, and invokes `kids_record_game_result_internal` through `createAdminClient()`. The internal RPC derives XP in SQL and performs the result, per-game progress, player progress, and achievement updates atomically. It accepts no client XP parameter and is executable only by `service_role`. The legacy `kids_record_game_result` signature remains only for migration-history compatibility and is not executable by application roles.
