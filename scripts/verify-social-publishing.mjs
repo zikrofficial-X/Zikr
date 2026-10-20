@@ -49,12 +49,17 @@ if (!adminApi.includes("authBlockedPlatforms")) failures.push("Admin retry path 
 if (!adminApi.includes("youtubeConfigured")) failures.push("Admin social health must expose YouTube configuration");
 if (!adminApi.includes("facebookAuthBlocked")) failures.push("Admin social health must expose Facebook auth-block count");
 if (!adminApi.includes("target_platforms: platforms")) failures.push("Admin retry must narrow targets to actually retryable platforms");
+if (!adminApi.includes("platformStats")) failures.push("Admin social API must expose platform-level queue statistics");
+if (!adminApi.includes("oldestQueuedAt")) failures.push("Admin social API must expose the oldest queued timestamp");
+if (!adminApi.includes('action === "run_worker"')) failures.push("Admin social API must support manual worker dispatch");
 
 const adminUi = read("src/app/admin/social/social-client.tsx");
 if (!adminUi.includes("Facebook Auth Blocks")) failures.push("Admin social UI must show Facebook auth-block count");
 if (!adminUi.includes("سجلات فشل اعتماد Facebook السابقة")) failures.push("Admin social UI must label Facebook auth-blocks as historical queue records");
 if (adminUi.includes("Facebook متوقف حاليًا بسبب اعتماد منتهي")) failures.push("Admin social UI must not claim current Facebook credentials are expired based only on historical queue failures");
 if (!adminUi.includes("هذا العداد تاريخي")) failures.push("Admin social UI must explicitly distinguish historical auth-blocks from current Facebook health");
+if (!adminUi.includes("تشغيل العامل الآن")) failures.push("Admin social UI must expose the manual worker control");
+if (!adminUi.includes("successRate")) failures.push("Admin social UI must show platform success rates");
 
 const migration = read("supabase/migrations/20260929045633_create_social_publish_queue_20260929.sql");
 if (!migration.includes("idx_social_publish_queue_automation_key")) failures.push("social queue must retain unique automation-key idempotency");
