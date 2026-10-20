@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
     if (!longToken.access_token) throw new MetaOAuthError(null, "Meta did not return a long-lived user token.");
 
     const pagesParams = new URLSearchParams({
-      fields: "id,name,access_token,expires_at,expires_in,tasks",
+      fields: "id,name,access_token,tasks",
       limit: "100",
       access_token: longToken.access_token,
     });
