@@ -40,7 +40,7 @@ function GameGuidePanel({ instructions, goal, isEnglish, sourceNotice, onAction,
         </div>
         <span className="rounded-xl border border-brand-gold/20 bg-black/20 px-3 py-2 text-xs font-bold text-brand-gold">{isEnglish ? "Goal" : "الهدف"}: {goal}</span>
       </div>
-      <ol className="mt-5 grid gap-3 md:grid-cols-3">
+      <ol className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {instructions.steps.map((step, index) => (
           <li key={step} className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-gold/15 text-sm font-black text-brand-gold">{index + 1}</span>
@@ -386,7 +386,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
       </div>
 
       {hasStarted && (
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center sm:gap-3">
+        <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center sm:gap-3">
           <Button
             type="button"
             variant="outline"
@@ -428,7 +428,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
       )}
 
       {hasStarted && (
-        <details className="rounded-2xl border border-brand-gold/20 bg-brand-gold/[0.04] p-3 sm:p-4">
+        <details className="min-w-0 rounded-2xl border border-brand-gold/20 bg-brand-gold/[0.04] p-3 sm:p-4">
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold">
             <span className="min-w-0"><span className="block text-[11px] font-black tracking-[0.15em] text-brand-gold/75">{isEnglish ? "DAILY MISSION" : "مهمة اليوم"}</span><span className="mt-1 block break-words text-sm font-bold text-brand-cream">{isEnglish ? dailyMission.titleEn : dailyMission.titleAr}</span></span>
             <span className="shrink-0 rounded-full border border-brand-gold/25 px-3 py-1 text-xs font-bold text-brand-gold">{missionProgress.completed ? (isEnglish ? "Completed" : "مكتملة") : missionProgress.percent + "%"}</span>
