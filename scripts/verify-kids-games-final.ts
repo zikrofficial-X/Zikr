@@ -22,7 +22,7 @@ const required = [
   "src/lib/games/game-missions.ts",
   "src/features/kids/components/games/kids-game-art.tsx",
   "supabase/migrations/20261002211738_20261003010000_kids_games_level_catalog.sql",
-  "supabase/migrations/20261021010000_kids_games_level_catalog_extend_to_30.sql",
+  "supabase/migrations/20261020224251_kids_games_level_catalog_extend_to_30.sql",
   "src/features/kids/components/games/kids-game-visuals.tsx",
   "supabase/migrations/20261002212922_20261003030000_kids_games_gameplay_visual_catalog.sql",
   "src/lib/games/zikr-runner.ts",
@@ -116,7 +116,7 @@ const artSource = readFileSync(join(root, "src/features/kids/components/games/ki
 for (const id of gameIds) if (!artSource.includes('case "' + id + '"')) throw new Error("Visual identity missing for " + id);
 const migrationSource = readFileSync(join(root, "supabase/migrations/20261002211738_20261003010000_kids_games_level_catalog.sql"), "utf8");
 if (!migrationSource.includes("generate_series(1, 20)") || !migrationSource.includes("array['easy','normal','hard']")) throw new Error("Level catalog migration incomplete.");
-const levelExtensionSource = readFileSync(join(root, "supabase/migrations/20261021010000_kids_games_level_catalog_extend_to_30.sql"), "utf8");
+const levelExtensionSource = readFileSync(join(root, "supabase/migrations/20261020224251_kids_games_level_catalog_extend_to_30.sql"), "utf8");
 if (!levelExtensionSource.includes("generate_series(21, 30)") || !levelExtensionSource.includes("'levelCount', 30")) throw new Error("Additive 30-level migration is incomplete.");
 for (const id of gameIds) if (!migrationSource.includes("('" + id + "'")) throw new Error("Migration catalog missing " + id);
 
