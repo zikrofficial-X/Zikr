@@ -1,13 +1,15 @@
 import type { VideoSource, VideoSourceCategory } from "@/features/videos/services/video-sources";
+import { getServerEnv } from "@/lib/env";
+import { buildKidsSeriesEpisode, KIDS_SERIES_EPISODES_PER_SEASON } from "./kids-story-factory";
 
-type CuratedVideoSource = Omit<VideoSource, "category"> & {
+export type CuratedVideoSource = Omit<VideoSource, "category"> & {
   category: VideoSourceCategory | "other";
   editorialNote?: string;
 };
 
 const QURAN = "https://quran.com";
 const SUNNAH = "https://sunnah.com";
-const ZIKR = "https://zikrmediaofficial.vercel.app";
+const ZIKR = getServerEnv().NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
 
 export const CURATED_STORY_SOURCES: CuratedVideoSource[] = [
   { id: "curated-story-musa", category: "story", title: "موسى عليه السلام: من الخوف إلى الرسالة", text: "قصة موسى عليه السلام تمتد في القرآن عبر مشاهد متتابعة: حماية الطفل، الخروج إلى مدين، النداء عند الطور، مواجهة فرعون، ثم النجاة ببني إسرائيل. يصلح النص لفيديو وثائقي يفرق بين ما ورد في القرآن وما يروى في القصص الشعبية، ويجعل الآيات هي المرجع الأول.", sourceLabel: "القرآن الكريم — القصص وطه والشعراء", sourceUrl: `${QURAN}/28`, additionalSources: [{ label: "سورة طه", url: `${QURAN}/20` }, { label: "سورة الشعراء", url: `${QURAN}/26` }] },
@@ -23,6 +25,33 @@ export const CURATED_STORY_SOURCES: CuratedVideoSource[] = [
   { id: "curated-story-umar", category: "story", title: "عمر بن الخطاب رضي الله عنه: مواقف من السيرة", text: "تجمع المادة بين مواقف ثابتة من فضائل عمر رضي الله عنه وما ورد في صحيح البخاري، مع التنبيه إلى أن السيرة الشعبية قد تتضمن تفاصيل تحتاج إلى تخريج. الهدف هو إنتاج قصة قصيرة موثقة لا سيرة كاملة بلا مراجع.", sourceLabel: "صحيح البخاري — فضائل عمر بن الخطاب", sourceUrl: `${SUNNAH}/bukhari:3683` },
   { id: "curated-story-khalid", category: "story", title: "خالد بن الوليد رضي الله عنه: من خبر مؤتة إلى سيف الله", text: "وردت أخبار صحيحة عن خالد بن الوليد رضي الله عنه في صحيح البخاري، ومنها الحديث الذي يذكر حمله الراية في مؤتة بعد استشهاد زيد وجعفر وابن رواحة رضي الله عنهم. يركز الفيديو على الرواية الثابتة ولا يضيف أرقاماً عسكرية غير موثقة.", sourceLabel: "صحيح البخاري — حديث 3757", sourceUrl: `${SUNNAH}/bukhari:3757` },
 ];
+
+/** Season one is editor-visible; the worker can continue future seasons from the same factory. */
+export const CURATED_KIDS_STORY_SOURCES: CuratedVideoSource[] = Array.from(
+  { length: KIDS_SERIES_EPISODES_PER_SEASON },
+  (_, index) => {
+    const episode = buildKidsSeriesEpisode(index + 1);
+    return {
+      id: episode.sourceId,
+      category: "story",
+      title: episode.title,
+      text: episode.text,
+      sourceLabel: "قصة تربوية خيالية أصلية من ذِكر — ليست آية أو حديثًا أو واقعة تاريخية.",
+      sourceUrl: `${ZIKR}/kids`,
+      audience: "kids",
+      seriesId: episode.seriesId,
+      seriesTitle: episode.seriesTitle,
+      seasonNumber: episode.seasonNumber,
+      episodeNumber: episode.episodeNumber,
+      episodeTitle: episode.episodeTitle,
+      ageGroup: episode.ageGroup,
+      learningObjective: episode.learningObjective,
+      visualTheme: episode.visualTheme,
+      generationMode: episode.generationMode,
+      editorialNote: `موسم ${episode.seasonNumber} — الحلقة ${episode.episodeNumber}. ${episode.learningObjective}. قصة خيالية تعليمية لا تنسب نصًا دينيًا أو حدثًا تاريخيًا إلى مصدر.`,
+    };
+  },
+);
 
 export const CURATED_ADHKAR_SOURCES: CuratedVideoSource[] = [
   { id: "curated-adhkar-subhanallah-100", category: "adhkar", title: "سبحان الله وبحمده — مائة مرة", text: "ذكر مأثور يمكن تقديمه في فيديو هادئ للصباح والمساء: سبحان الله وبحمده. ثبت في رياض الصالحين نقلاً عن صحيح مسلم فضل قوله مائة مرة في الصباح والمساء، ويجب عرض العدد والمرجع كما هما دون إضافة وعود غير ثابتة.", sourceLabel: "رياض الصالحين 1451 — رواه مسلم", sourceUrl: `${SUNNAH}/riyadussalihin:1451` },
@@ -53,7 +82,7 @@ export const CURATED_GENERAL_MESSAGES: CuratedVideoSource[] = [
   { id: "curated-message-balanced-learning", category: "other", title: "تعلم بتدرج", text: "اجمع بين القراءة والاستماع والتطبيق. اقرأ النص الأصلي عندما يكون متاحاً، ثم استخدم الشرح لفهم السياق، واكتب سؤالاً واضحاً عند وجود مسألة تحتاج إلى عالم أو مختص بدلاً من تحويل مقطع قصير إلى فتوى.", sourceLabel: "مادة تحريرية من ذِكر — ليست آية ولا حديثاً", sourceUrl: `${ZIKR}/about`, editorialNote: "رسالة عامة غير منسوبة إلى نص ديني." },
 ];
 
-export const CURATED_VIDEO_SOURCES: CuratedVideoSource[] = [...CURATED_STORY_SOURCES, ...CURATED_ADHKAR_SOURCES, ...CURATED_GENERAL_MESSAGES];
+export const CURATED_VIDEO_SOURCES: CuratedVideoSource[] = [...CURATED_STORY_SOURCES, ...CURATED_KIDS_STORY_SOURCES, ...CURATED_ADHKAR_SOURCES, ...CURATED_GENERAL_MESSAGES];
 
 export function listCuratedVideoSources(category: VideoSourceCategory | "other") {
   return CURATED_VIDEO_SOURCES.filter(item => item.category === category);
