@@ -37,7 +37,7 @@ function SceneShell({
   topGlow?: string;
 }) {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden="true">
+    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]" aria-hidden="true">
       <svg viewBox="0 0 1200 480" className="h-full w-full" preserveAspectRatio="none">
         <defs>
           <linearGradient id="kids-world-glow" x1="0" y1="0" x2="0" y2="1">
@@ -62,7 +62,7 @@ function SceneShell({
 
 function WorldLabel({ children }: { children: ReactNode }) {
   return (
-    <div className="absolute left-4 top-4 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-black tracking-[.18em] text-brand-cream/55 backdrop-blur-sm">
+    <div className="absolute left-4 top-4 z-10 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-black tracking-[.18em] text-brand-cream/55 backdrop-blur-sm">
       {children}
     </div>
   );
