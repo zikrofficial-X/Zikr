@@ -542,10 +542,10 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
       
       <div className="mx-3 mt-3 min-w-0 rounded-[1.5rem] border border-violet-200/10 bg-black/20 p-3 sm:mx-6 sm:mt-4 sm:rounded-[2rem] sm:p-5">
         <div className="flex min-h-24 min-w-0 items-center justify-center break-words rounded-[1.5rem] border border-violet-200/15 bg-violet-200/[0.04] p-3 text-center text-base leading-8 text-brand-gold [overflow-wrap:anywhere] sm:min-h-28 sm:p-5 sm:text-xl sm:leading-[2.5]">{answer.length ? answer.map(index => tokens.find(token => token.index === index)?.text ?? "").join(" ") : <span className="text-sm text-brand-cream/30">{isEnglish ? "Start with the first word" : "ابدأ من الكلمة الأولى"}</span>}</div>
-        <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 min-[420px]:grid-cols-3 sm:mt-5 sm:gap-3 lg:grid-cols-4">
+        <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 sm:mt-5 sm:gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {tokens.map(token => {
             const hinted = hintVisible && token.index === answer.length;
-            return <button key={token.id} type="button" onClick={() => choose(token.index)} disabled={paused || answer.includes(token.index) || complete} className={"min-h-14 min-w-0 break-words rounded-xl border p-3 text-center text-sm font-semibold transition sm:min-h-16 sm:rounded-2xl sm:p-4 sm:text-base [overflow-wrap:anywhere] " + (answer.includes(token.index) ? "border-brand-emerald/20 bg-brand-emerald/5 text-brand-cream/20" : hinted ? "border-brand-gold/80 bg-brand-gold/10 text-brand-gold ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-violet-200/50")}>{hinted ? "✨ " + token.text : token.text}</button>;
+            return <button key={token.id} type="button" onClick={() => choose(token.index)} disabled={paused || answer.includes(token.index) || complete} className={"min-h-14 min-w-0 break-words rounded-xl border p-2 text-center text-sm font-semibold leading-6 transition sm:min-h-16 sm:rounded-2xl sm:p-4 sm:text-base [overflow-wrap:anywhere] " + (answer.includes(token.index) ? "border-brand-emerald/20 bg-brand-emerald/5 text-brand-cream/20" : hinted ? "border-brand-gold/80 bg-brand-gold/10 text-brand-gold ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-violet-200/50")}>{hinted ? "✨ " + token.text : token.text}</button>;
           })}
         </div>
       </div>
