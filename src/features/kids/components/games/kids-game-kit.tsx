@@ -14,13 +14,13 @@ export type KidsWorldTheme =
   | "sea";
 
 const THEME_STYLES: Record<KidsWorldTheme, CSSProperties> = {
-  garden: { background: "linear-gradient(160deg,rgba(16,60,58,.74),rgba(7,28,38,.9)),url('/kids/games/scene-night-garden.webp')" },
-  mosque: { background: "linear-gradient(160deg,rgba(21,57,72,.72),rgba(6,19,26,.9)),url('/kids/games/scene-mosque-courtyard.webp')" },
-  night: { background: "linear-gradient(160deg,rgba(23,34,77,.7),rgba(5,9,22,.92)),url('/kids/games/scene-moon-sky.webp')" },
-  dawn: { background: "linear-gradient(160deg,rgba(95,73,51,.72),rgba(9,20,33,.9)),url('/kids/games/scene-moon-sky.webp')" },
-  oasis: { background: "linear-gradient(160deg,rgba(23,79,74,.72),rgba(7,19,30,.9)),url('/kids/games/scene-mosque-courtyard.webp')" },
-  library: { background: "linear-gradient(160deg,rgba(59,43,72,.76),rgba(8,9,18,.92)),url('/kids/games/scene-night-garden.webp')" },
-  sea: { background: "linear-gradient(160deg,rgba(21,81,106,.72),rgba(6,19,29,.9)),url('/kids/games/scene-moon-sky.webp')" },
+  garden: { backgroundImage: "linear-gradient(160deg,rgba(16,60,58,.74),rgba(7,28,38,.9)),url('/kids/games/scene-night-garden.webp')" },
+  mosque: { backgroundImage: "linear-gradient(160deg,rgba(21,57,72,.72),rgba(6,19,26,.9)),url('/kids/games/scene-mosque-courtyard.webp')" },
+  night: { backgroundImage: "linear-gradient(160deg,rgba(23,34,77,.7),rgba(5,9,22,.92)),url('/kids/games/scene-moon-sky.webp')" },
+  dawn: { backgroundImage: "linear-gradient(160deg,rgba(95,73,51,.72),rgba(9,20,33,.9)),url('/kids/games/scene-moon-sky.webp')" },
+  oasis: { backgroundImage: "linear-gradient(160deg,rgba(23,79,74,.72),rgba(7,19,30,.9)),url('/kids/games/scene-mosque-courtyard.webp')" },
+  library: { backgroundImage: "linear-gradient(160deg,rgba(59,43,72,.76),rgba(8,9,18,.92)),url('/kids/games/scene-night-garden.webp')" },
+  sea: { backgroundImage: "linear-gradient(160deg,rgba(21,81,106,.72),rgba(6,19,29,.9)),url('/kids/games/scene-moon-sky.webp')" },
 };
 
 const STARS = [
