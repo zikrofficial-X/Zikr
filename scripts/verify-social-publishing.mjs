@@ -105,7 +105,7 @@ for (const token of [
 }
 if (callbackRoute.includes("console.log(pageAccessToken") || callbackRoute.includes("console.log(longToken")) failures.push("Facebook OAuth must never log access tokens");
 
-const credentialsMigration = read("supabase/migrations/20261021020000_social_facebook_oauth_credentials.sql");
+const credentialsMigration = read("supabase/migrations/20261020234239_social_facebook_oauth_credentials.sql");
 for (const token of ["enable row level security", "revoke all", "authenticated", "service_role", "page_access_token"]) {
   if (!credentialsMigration.toLowerCase().includes(token.toLowerCase())) failures.push("Facebook credential table missing security control: " + token);
 }
