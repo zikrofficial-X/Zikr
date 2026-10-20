@@ -81,6 +81,9 @@ export async function getFacebookPageCredentials(): Promise<FacebookPageCredenti
     if (stored.connection_status === "reauthorization_required") {
       throw new Error("Facebook access token requires reauthorization. Reconnect the Page from the admin publishing center.");
     }
+    if (stored.connection_status === "permission_error") {
+      throw new Error("Facebook access token is missing required Page permissions. Reconnect the Page from the admin publishing center.");
+    }
     return {
       pageId: stored.page_id,
       pageName: stored.page_name,
@@ -286,11 +289,11 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
     const targets = item.target_platforms ?? [];
     if (metadata.authBlocked !== true || !targets.some(p => p === "facebook" || p === "facebook_reels")) continue;
     const now = new Date().toISOString();
-    await supabaseServerAdminRequest(
+    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
       `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}`,
       {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify({
           status: "queued",
           scheduled_at: now,
@@ -307,7 +310,7 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
         }),
       },
     );
-    released += 1;
+    if (Array.isArray(updated) && updated[0]?.id) released += 1;
   }
   return released;
 }
