@@ -37,7 +37,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      # Free-only production path: no Gemini/custom endpoint billing; public free Spaces may fall back to FFmpeg.
+      VIDEO_FREE_ONLY: "true"
       GEMINI_MODEL: gemini-3.1-flash-lite
       GEMINI_AUDIO_SMOKE_TEST: "false"
       AUTO_VIDEO_ENABLED: "true"
@@ -48,7 +49,9 @@ jobs:
       VIDEO_AUTOMATION_DRY_RUN: "false"
       VIDEO_AI_ENABLED: "true"
       VIDEO_AI_ATTEMPTS_PER_RUN: "3"
-      VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,comfyui,free_api"
+      VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,template"
+      FREE_VIDEO_PROVIDER_ENABLED: "false"
+      COMFYUI_ENABLED: "false"
       HF_WAN_VIDEO_ENABLED: "true"
       HF_LTX_FAST_VIDEO_ENABLED: "true"
       HF_WAN_SPACE: "zerogpu-aoti/wan2-2-fp8da-aoti-faster"
@@ -124,7 +127,7 @@ jobs:
           test -f /usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf
           test -f /usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf
 
-          for asset in public/video/templates/calm.svg public/video/templates/dawn.svg public/video/templates/night.svg public/video/templates/gold.svg; do
+          for asset in public/video/templates/calm.svg public/video/templates/dawn.svg public/video/templates/night.svg public/video/templates/gold.svg public/video/templates/kids-garden.svg public/video/templates/kids-neighborhood.svg public/video/templates/kids-workshop.svg public/video/templates/kids-nature.svg; do
             test -s "$asset"
             out="/tmp/$(basename "$asset" .svg).png"
             rsvg-convert -w 1080 -h 1920 "$asset" -o "$out"
@@ -143,6 +146,7 @@ jobs:
           pnpm voice:factory:check
           pnpm video:factory:check
           pnpm video:qa:check
+          pnpm kids:video:check
 
       - name: Smoke-test video worker imports
         run: |
@@ -187,7 +191,7 @@ jobs:
         if: always()
         run: |
           echo "ZIKR autonomous video worker completed."
-          echo "The queue seeds Quran/Hadith/Dua/Adhkar/verified-story/general-reminder videos and renders them with rotating free AI providers plus deterministic template fallback."
-          echo "Generated videos are queued for the separate GitHub Actions social publisher."
-          echo "Gemini uses the configured free-tier model for source-locked planning, reflection, social captioning, and deterministic FFmpeg rendering."
+          echo "The queue seeds Quran/Hadith/Dua/Adhkar, verified stories, serialized child-safe story episodes, and general reminders."
+          echo "Free-only mode skips Gemini and custom endpoints; public free Hugging Face Spaces are optional and FFmpeg templates are the fallback."
+          echo "No paid AI API is required for script generation, Arabic narration, rendering, storage, or queue creation."
           echo "Worker validation includes Node import, FFmpeg, and Supabase data-plane smoke tests."

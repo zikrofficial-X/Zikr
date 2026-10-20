@@ -9,6 +9,7 @@ import {
 } from "../../src/lib/supabase/admin-rest";
 import { listVideoSources, resolveVideoSource } from "../../src/features/videos/services/video-sources";
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
+import { buildKidsSeriesEpisode, validateGeneratedKidsEpisode } from "../../src/features/videos/data/kids-story-factory";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
@@ -40,7 +41,7 @@ function narrationProfileForRequest(request: GeneratedRequest) {
       : VIDEO_DEFAULT_TTS_PROFILE;
   const profile = getVideoVoiceProfile(configured);
   if (request.category === "quran") return getDefaultVideoVoiceProfile("quran");
-  if (request.category === "kids") return getDefaultVideoVoiceProfile("kids");
+  if (request.content?.audience === "kids" || request.category === "kids") return getDefaultVideoVoiceProfile("kids");
   return profile;
 }
 
@@ -106,7 +107,17 @@ function siteUrl() {
   return getServerEnv().NEXT_PUBLIC_SITE_URL;
 }
 
-function backgroundAsset(scene: AiVideoPlan["scene"]) {
+function backgroundAsset(scene: AiVideoPlan["scene"], content?: Record<string, unknown>) {
+  if (content?.audience === "kids") {
+    const kidThemes: Record<string, string> = {
+      "kids-garden": "public/video/templates/kids-garden.svg",
+      "kids-neighborhood": "public/video/templates/kids-neighborhood.svg",
+      "kids-workshop": "public/video/templates/kids-workshop.svg",
+      "kids-nature": "public/video/templates/kids-nature.svg",
+    };
+    const theme = typeof content.visualTheme === "string" ? content.visualTheme : "";
+    if (kidThemes[theme]) return kidThemes[theme];
+  }
   const map: Record<AiVideoPlan["scene"], string> = {
     calm: "public/video/templates/calm.svg",
     dawn: "public/video/templates/dawn.svg",
@@ -116,8 +127,8 @@ function backgroundAsset(scene: AiVideoPlan["scene"]) {
   return map[scene] || map.calm;
 }
 
-async function renderBackground(temp: string, scene: AiVideoPlan["scene"], width: number, height: number) {
-  const source = path.join(process.cwd(), backgroundAsset(scene));
+async function renderBackground(temp: string, scene: AiVideoPlan["scene"], width: number, height: number, content?: Record<string, unknown>) {
+  const source = path.join(process.cwd(), backgroundAsset(scene, content));
   const output = path.join(temp, "background.png");
   await execFileAsync("rsvg-convert", ["-w", String(width), "-h", String(height), source, "-o", output], { maxBuffer: 2 * 1024 * 1024 });
   return output;
@@ -195,7 +206,8 @@ function wrapArabic(value: string, max = 30) {
 function assEscape(value: string) {
   return value.replace(/[{}]/g, "").replace(/\\/g, "\\\\");
 }
-function categoryLabel(category: string) {
+function categoryLabel(category: string, audience?: unknown) {
+  if (audience === "kids") return "قصص أطفال";
   const labels: Record<string, string> = {
     quran: "القرآن الكريم",
     hadith: "الحديث الشريف",
@@ -225,6 +237,7 @@ function makeAss(
   duration: number,
   category: string,
   isVertical: boolean,
+  audience?: unknown,
 ) {
   const playResX = isVertical ? 1080 : 1920;
   const playResY = isVertical ? 1920 : 1080;
@@ -248,7 +261,7 @@ function makeAss(
     cursor = pageEnd;
     return event;
   });
-  const badge = assEscape(categoryLabel(category));
+  const badge = assEscape(categoryLabel(category, audience));
   const source = assEscape(RLM + "المصدر: " + displaySource(sourceUrl));
   const reflectionText = reflection ? assEscape(RLM + normalizeArabicText(reflection)) : "";
   title = normalizeArabicText(title);
@@ -330,6 +343,8 @@ async function findByAutomationKey(table: string, key: string) {
   );
   return rows?.[0] ?? null;
 }
+export const KIDS_SERIES_START_DAY_INDEX = dayIndex(new Date("2026-10-21T00:00:00.000Z"));
+
 export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   if (process.env.AUTO_VIDEO_ENABLED?.toLowerCase() === "false") return 0;
   const now = new Date();
@@ -344,13 +359,15 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   );
   const alreadySeededToday = todaysRows?.length ?? 0;
   const dailyTarget = Math.max(1, Math.min(24, Number(process.env.DAILY_VIDEO_TARGET ?? 12) || 12));
-  const dueByNow = Math.ceil((dailyTarget * (now.getUTCHours() + 1)) / 24);
+  // The workflow runs in four six-hour UTC windows; release a quarter of the daily target per window.
+  const scheduleWindow = Math.min(4, Math.max(1, Math.floor(now.getUTCHours() / 6) + 1));
+  const dueByNow = Math.ceil((dailyTarget * scheduleWindow) / 4);
   const urgent = process.env.AUTO_VIDEO_URGENT?.toLowerCase() === "true";
   const allowed = urgent ? Math.min(10, batchSize) : Math.min(10, batchSize, Math.max(0, dueByNow - alreadySeededToday));
 
   for (let i = 0; i < allowed; i += 1) {
     const slot = alreadySeededToday + i;
-    const mode = slot % 6;
+    const mode = slot % 7;
 
     let payload: Record<string, unknown>;
     let key = "";
@@ -510,6 +527,54 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
         status: "pending",
         automation_key: key,
       };
+    } else if (mode === 5) {
+      key = `kids-series:${day}:${slot}`;
+      if (await findByAutomationKey("video_generation_requests", key)) continue;
+      const kidsSlotsPerDay = Math.max(1, Math.ceil(Math.max(1, dailyTarget - 5) / 7));
+      const daysSinceFactoryLaunch = Math.max(0, day - KIDS_SERIES_START_DAY_INDEX);
+      const episodeSequence = daysSinceFactoryLaunch * kidsSlotsPerDay + Math.floor(slot / 7) + 1;
+      const episode = buildKidsSeriesEpisode(episodeSequence);
+      const episodeValidation = validateGeneratedKidsEpisode(episode);
+      if (!episodeValidation.ok) {
+        throw new Error("Generated kids story failed editorial contract: " + episodeValidation.errors.join(" | "));
+      }
+      payload = {
+        title: episode.title,
+        description: episode.description,
+        category: "other",
+        content: {
+          renderer: "template",
+          type: "kids_story_episode",
+          sourceType: "original_kids_fiction",
+          sourceId: episode.sourceId,
+          factorySequence: episodeSequence,
+          sourceUrl: `${siteUrl()}/kids`,
+          sourceLabel: "قصة تربوية خيالية أصلية من ذِكر — ليست آية أو حديثًا أو واقعة تاريخية.",
+          textAr: episode.text,
+          text: episode.text,
+          script: episode.text,
+          audience: "kids",
+          contentFormat: "series_episode",
+          seriesId: episode.seriesId,
+          seriesTitle: episode.seriesTitle,
+          seasonNumber: episode.seasonNumber,
+          episodeNumber: episode.episodeNumber,
+          episodeTitle: episode.episodeTitle,
+          ageGroup: episode.ageGroup,
+          learningObjective: episode.learningObjective,
+          visualTheme: episode.visualTheme,
+          style: episode.visualTheme,
+          generationMode: episode.generationMode,
+          voiceProfile: "kids_friendly",
+          publicPath: "/kids",
+          automationKey: key,
+          aiMode: "original_kids_story",
+          aiProviderHint,
+        },
+        duration: TARGET_VIDEO_SECONDS,
+        status: "pending",
+        automation_key: key,
+      };
     } else {
       const reminders = [
         "اجعل التقنية خادمة للعبادة: اختر وقتًا هادئًا للقراءة والذكر وأغلق ما يشتت قلبك.",
@@ -597,7 +662,7 @@ function contentSourceUrl(request: GeneratedRequest) {
   return typeof value === "string" && /^https?:\/\//i.test(value) ? value : siteUrl();
 }
 function aiPlanEnabled() {
-  return Boolean(process.env.GEMINI_API_KEY?.trim());
+  return process.env.VIDEO_FREE_ONLY?.toLowerCase() === "false" && Boolean(process.env.GEMINI_API_KEY?.trim());
 }
 
 function normalizeAiVideoPlan(value: unknown): AiVideoPlan {
@@ -670,7 +735,7 @@ function parseGeminiJson(raw: string): unknown {
 }
 
 async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPlan> {
-  if (request.category === "other") return { ...DEFAULT_AI_VIDEO_PLAN };
+  if (request.category === "other" && request.content?.audience !== "kids") return { ...DEFAULT_AI_VIDEO_PLAN };
   if (!aiPlanEnabled()) return { ...DEFAULT_AI_VIDEO_PLAN };
   const sourceText = contentText(request).slice(0, 5000);
   if (!sourceText) return { ...DEFAULT_AI_VIDEO_PLAN };
@@ -722,6 +787,46 @@ function comparableSourceText(value: string) {
   return value
     .normalize("NFC")
     .replace(/[\uFEFF\u200B-\u200D\u200E\u200F\u2060\u2066-\u2069\u202A-\u202E]/g, "");
+}
+
+function assertKidsStoryContract(request: GeneratedRequest) {
+  if (request.content?.audience !== "kids") return;
+  const content = request.content;
+  const text = contentText(request);
+  const episodeNumber = Number(content.episodeNumber);
+  const seasonNumber = Number(content.seasonNumber);
+  if (!String(content.seriesId ?? "").trim() || !String(content.seriesTitle ?? "").trim()) {
+    throw new Error("Child-directed video requires canonical series metadata.");
+  }
+  if (!Number.isInteger(episodeNumber) || episodeNumber < 1 || !Number.isInteger(seasonNumber) || seasonNumber < 1) {
+    throw new Error("Child-directed video requires positive season and episode numbers.");
+  }
+  if (!String(content.learningObjective ?? "").trim()) {
+    throw new Error("Child-directed video requires a defined learning objective.");
+  }
+  const normalizedText = text.normalize("NFC").trim();
+  if (normalizedText.length < 180 || normalizedText.length > 1500 || !normalizedText.includes("؟")) {
+    throw new Error("Child-directed narration must be a short complete story ending with a question.");
+  }
+  if (/https?:\/\/|قال الله|قال رسول الله|حديث قدسي|حديث نبوي/u.test(normalizedText)) {
+    throw new Error("Child-directed fiction must not contain raw URLs or unsupported religious attributions.");
+  }
+  if (String(content.sourceType ?? "") === "original_kids_fiction" && !String(content.sourceLabel ?? "").includes("آية أو حديث")) {
+    throw new Error("Original kids fiction must carry a clear non-religious attribution label.");
+  }
+  if (content.generationMode === "free_deterministic_story_factory") {
+    const sequence = Number(content.factorySequence);
+    if (!Number.isSafeInteger(sequence) || sequence < 1) {
+      throw new Error("Deterministic kids episodes require their factory sequence.");
+    }
+    const canonical = buildKidsSeriesEpisode(sequence);
+    const validation = validateGeneratedKidsEpisode(canonical);
+    if (!validation.ok || canonical.sourceId !== content.sourceId || canonical.text !== normalizedText ||
+      canonical.seriesId !== content.seriesId || canonical.seasonNumber !== seasonNumber ||
+      canonical.episodeNumber !== episodeNumber || canonical.learningObjective !== content.learningObjective) {
+      throw new Error("Kids episode content does not match its canonical deterministic source.");
+    }
+  }
 }
 
 function contentAudioUrl(request: GeneratedRequest) {
@@ -810,7 +915,7 @@ async function assertAudibleAudio(pathname: string) {
   }
 }
 
-async function assertNarrationQuality(pathname: string, text: string, category: string) {
+async function assertNarrationQuality(pathname: string, text: string, category: string, audience?: unknown) {
   const probe = await probeMedia(pathname);
   const duration = Number(probe.format?.duration ?? 0);
   if (!Number.isFinite(duration) || duration < 0.8) {
@@ -827,8 +932,9 @@ async function assertNarrationQuality(pathname: string, text: string, category: 
 
   if (category === "quran") return;
   const wordsPerSecond = quality.wordCount / Math.max(duration, 0.1);
-  const minWps = category === "kids" ? 0.65 : 0.75;
-  const maxWps = category === "hadith" || category === "adhkar" ? 4.1 : 4.5;
+  const childDirected = category === "kids" || audience === "kids";
+  const minWps = childDirected ? 0.65 : 0.75;
+  const maxWps = childDirected ? 3.8 : category === "hadith" || category === "adhkar" ? 4.1 : 4.5;
   if (!Number.isFinite(wordsPerSecond) || wordsPerSecond < minWps || wordsPerSecond > maxWps) {
     throw new Error(
       "Arabic narration pace is outside the natural range: " +
@@ -862,6 +968,7 @@ function requestedVideoShape(request: GeneratedRequest) {
 
 async function renderVideo(request: GeneratedRequest) {
   await validateSourceContent(request);
+  assertKidsStoryContract(request);
   const text = contentText(request);
   const sourceUrl = contentSourceUrl(request);
   const [width, height] = requestedVideoShape(request).split("x").map(Number);
@@ -879,8 +986,8 @@ async function renderVideo(request: GeneratedRequest) {
       request.content = {
         ...request.content,
         ai: {
-          provider: "google-gemini",
-          model: (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim(),
+          provider: aiPlanEnabled() ? "google-gemini" : "deterministic-fallback",
+          model: aiPlanEnabled() ? (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim() : null,
           reflection: aiPlan.reflection || null,
           socialCaption: aiPlan.socialCaption || null,
           scene: aiPlan.scene,
@@ -946,6 +1053,10 @@ async function renderVideo(request: GeneratedRequest) {
         description: request.description || "",
         category: request.category,
         text,
+        audience: request.content?.audience === "kids" ? "kids" : "general",
+        seriesTitle: typeof request.content?.seriesTitle === "string" ? request.content.seriesTitle : undefined,
+        episodeNumber: Number.isInteger(Number(request.content?.episodeNumber)) ? Number(request.content?.episodeNumber) : undefined,
+        learningObjective: typeof request.content?.learningObjective === "string" ? request.content.learningObjective : undefined,
         sourceId:
           typeof request.content.sourceId === "string"
             ? request.content.sourceId
@@ -986,7 +1097,7 @@ async function renderVideo(request: GeneratedRequest) {
         aiFallbackReason: "AI per-run budget exhausted; deterministic template fallback used.",
       };
     }
-    const backgroundPath = aiVideoPath || await renderBackground(temp, scene, width, height);
+    const backgroundPath = aiVideoPath || await renderBackground(temp, scene, width, height, request.content);
     let audioKind = contentAudioKind(request, audioUrl);
     if (audioUrl) {
       const response = await fetch(audioUrl, { headers: { Accept: "audio/*" }, signal: AbortSignal.timeout(60_000) });
@@ -1020,11 +1131,11 @@ async function renderVideo(request: GeneratedRequest) {
       audioKind = "arabic_tts_narration";
     }
 
-    await assertNarrationQuality(audioPath, narrationText, request.category);
+    await assertNarrationQuality(audioPath, narrationText, request.category, request.content?.audience);
     const audioProbe = await probeMedia(audioPath);
     const audioDuration = Number(audioProbe.format?.duration ?? 0);
     const duration = resolveRenderDuration(audioDuration);
-    await writeFile(assPath, makeAss(text, request.title, typeof request.content?.sourceLabel === "string" && request.content.sourceLabel.trim() ? request.content.sourceLabel : sourceUrl, aiPlan.reflection || null, duration, request.category, isVertical), "utf8");
+    await writeFile(assPath, makeAss(text, request.title, typeof request.content?.sourceLabel === "string" && request.content.sourceLabel.trim() ? request.content.sourceLabel : sourceUrl, aiPlan.reflection || null, duration, request.category, isVertical, request.content?.audience), "utf8");
 
     const fadeOutStart = Math.max(0, duration - 0.8);
     const motionFilters = motion === "fade"
@@ -1166,6 +1277,9 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
           request.description || "",
           typeof content.ai === "object" && content.ai && typeof (content.ai as Record<string, unknown>).socialCaption === "string"
             ? String((content.ai as Record<string, unknown>).socialCaption)
+            : "",
+          content.audience === "kids" && typeof content.seriesTitle === "string"
+            ? `سلسلة أطفال: ${content.seriesTitle} — الموسم ${Number(content.seasonNumber) || 1}، الحلقة ${Number(content.episodeNumber) || 1}. الهدف: ${String(content.learningObjective || "قيمة تربوية")}`
             : "",
           `المصدر: ${contentSourceUrl(request)}`,
           `${siteUrl()}${publicPath}`,

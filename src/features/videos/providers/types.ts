@@ -11,6 +11,10 @@ export type VideoGenerationInput = {
   description: string;
   category: string;
   text: string;
+  audience?: "general" | "kids";
+  seriesTitle?: string;
+  episodeNumber?: number;
+  learningObjective?: string;
   sourceId?: string;
   sourceUrl?: string;
   format: "vertical" | "horizontal";
@@ -41,6 +45,7 @@ export interface VideoProvider {
 
 export type VideoEngineConfig = {
   order: VideoProviderName[];
+  freeOnly: boolean;
   aiEnabled: boolean;
   comfyUiEnabled: boolean;
   freeApiEnabled: boolean;
@@ -80,6 +85,8 @@ export function getVideoEngineConfig(env = process.env): VideoEngineConfig {
 
   return {
     order: order.length ? order : ["hf_ltx_fast", "hf_wan", "comfyui", "free_api"],
+    // Free-only mode is the safe default. Non-free/custom endpoints need an explicit opt-out.
+    freeOnly: bool(env.VIDEO_FREE_ONLY, true),
     aiEnabled: bool(env.VIDEO_AI_ENABLED, false),
     comfyUiEnabled: bool(env.COMFYUI_ENABLED, false),
     freeApiEnabled: bool(env.FREE_VIDEO_PROVIDER_ENABLED, false),
