@@ -74,6 +74,10 @@ const gameKit = readFileSync("src/features/kids/components/games/kids-game-kit.t
 assert.ok(gameKit.includes('label: isEnglish ? "Right" : "يمين"') && gameKit.includes('label: isEnglish ? "Left" : "يسار"'), "shared touch controls must localize direction labels");
 assert.ok(gameKit.includes('aria-label={isEnglish ? "Game controls" : "أزرار التحكم باللعبة"}'), "shared touch controls need a localized group label");
 assert.ok(gameKit.includes("hideAction = false") && gameKit.includes("hideAction ? \"grid-cols-2\" : \"grid-cols-3\""), "TouchArrows must support hiding unused action controls");
-assert.ok(runnerRoad.includes("onAction={() => undefined} hideAction"), "Road must not show an action button that does nothing");
+assert.match(
+  runnerRoad,
+  /onAction=\{\(\) => undefined\}\s+hideAction/,
+  "Road must not show an action button that does nothing",
+);
 
 console.log("Kids action-game localization contract passed: 5 games, bilingual HUD/feedback, level metadata, map labels, and verified Arabic checkpoint content.");
