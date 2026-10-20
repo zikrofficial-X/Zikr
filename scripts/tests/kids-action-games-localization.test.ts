@@ -61,7 +61,7 @@ assert.ok(adventure.includes("title: (isEnglish ? template.titleEn : template.ti
 assert.ok(adventure.includes("label: isEnglish ? template.labelEn : template.label"), "Mosque map-node labels must follow the selected language");
 
 assert.equal(
-  (runnerRoad.match(/The question and choices use the approved Arabic source content\./g) ?? []).length,
+  (runnerRoad.match(/The question and choices use the approved Arabic source\s+content\./g) ?? []).length,
   2,
   "Runner and Road must clarify that checkpoint questions stay in approved Arabic source wording",
 );
