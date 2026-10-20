@@ -25,6 +25,7 @@ export type VideoSource = {
   learningObjective?: string;
   visualTheme?: string;
   generationMode?: string;
+  factorySequence?: number;
 };
 
 type QuranRow = {
