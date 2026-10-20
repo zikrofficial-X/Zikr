@@ -64,7 +64,7 @@ export function KidsGameStage({
       role="application"
       aria-label={ariaLabel}
       className={
-        "relative isolate mx-auto min-h-[400px] w-full min-w-0 max-w-5xl overflow-hidden rounded-[1.5rem] border border-brand-gold/20 shadow-2xl sm:min-h-[460px] sm:rounded-[2rem] " +
+        "relative isolate mx-auto min-h-[320px] w-full min-w-0 max-w-5xl overflow-hidden rounded-2xl border border-brand-gold/20 shadow-2xl sm:min-h-[420px] sm:rounded-[2rem] [&>*:not([aria-hidden=true])]:relative [&>*:not([aria-hidden=true])]:z-10 " +
         className
       }
       style={{
@@ -159,7 +159,7 @@ export function KidsGameHud({
   items: Array<{ label: string; value: ReactNode; tone?: string }>;
 }) {
   return (
-    <div className="relative z-20 grid grid-cols-3 gap-2 px-3 sm:grid-cols-5 sm:px-6" aria-live="polite">
+    <div className="relative z-20 grid min-w-0 grid-cols-2 gap-2 px-3 min-[420px]:grid-cols-3 sm:grid-cols-5 sm:px-6" aria-live="polite">
       {items.map(item => (
         <div
           key={item.label}
