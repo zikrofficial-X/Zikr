@@ -259,7 +259,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
           return (
             <button key={card.id} type="button" aria-label={cardAccessibleLabel} aria-pressed={visible} disabled={paused || locked || matched.includes(card.id)} onClick={() => choose(card.id)}
               className={[
-                "group min-h-36 rounded-[1.5rem] border p-4 " + (isEnglish && card.side === "situation" ? "text-left" : "text-right") + " transition duration-200",
+                "group min-h-32 min-w-0 touch-manipulation rounded-[1.25rem] border p-3 sm:min-h-36 sm:rounded-[1.5rem] sm:p-4 " + (isEnglish && card.side === "situation" ? "text-left" : "text-right") + " transition duration-200",
                 visible ? "border-brand-gold/45 bg-brand-gold/10 shadow-[0_12px_30px_rgba(243,201,105,.08)]" : hintId === card.pairId ? "border-brand-gold/80 bg-brand-gold/5 ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-[#081823]/90 hover:-translate-y-1 hover:border-brand-emerald/40",
                 matched.includes(card.id) ? "opacity-55" : "",
               ].join(" ")}>
@@ -392,7 +392,7 @@ export function WuduChallengeGame({ difficulty, restartToken, paused, onHud, onR
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-sky-300 transition-[width] duration-300" style={{ width: waterLevel + "%" }} /></div>
         </div>
         <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 min-[440px]:grid-cols-2 sm:mt-5 sm:gap-3 lg:grid-cols-3">
-          {options.map(option => <button key={option.order} type="button" onClick={() => choose(option.order)} disabled={paused || state.completed} className={"group min-h-16 min-w-0 break-words rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-start transition hover:-translate-y-0.5 hover:border-sky-200/45 sm:min-h-24 sm:p-4 " + (isEnglish ? "text-left" : "text-right")}><span className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-sky-200/20 bg-sky-200/10 text-xs font-black text-sky-200">{option.order}</span><p className="mt-3 break-words text-sm leading-6 text-brand-cream [overflow-wrap:anywhere] sm:leading-7">{option.text}</p></button>)}
+          {options.map(option => <button key={option.order} type="button" onClick={() => choose(option.order)} disabled={paused || state.completed} className={"group min-h-16 min-w-0 touch-manipulation break-words rounded-2xl border border-white/10 bg-[#061820]/80 p-3 text-start transition hover:-translate-y-0.5 hover:border-sky-200/45 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-24 sm:p-4 " + (isEnglish ? "text-left" : "text-right")}><span className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-sky-200/20 bg-sky-200/10 text-xs font-black text-sky-200">{option.order}</span><p className="mt-3 break-words text-sm leading-6 text-brand-cream [overflow-wrap:anywhere] sm:leading-7">{option.text}</p></button>)}
         </div>
       </div>
       <GameToast tone={state.completed && levelIndex === KIDS_LEVEL_COUNT - 1 ? "emerald" : "gold"}>{feedback}</GameToast>
@@ -542,10 +542,10 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
       
       <div className="mx-3 mt-3 min-w-0 rounded-[1.5rem] border border-violet-200/10 bg-black/20 p-3 sm:mx-6 sm:mt-4 sm:rounded-[2rem] sm:p-5">
         <div className="flex min-h-24 min-w-0 items-center justify-center break-words rounded-[1.5rem] border border-violet-200/15 bg-violet-200/[0.04] p-3 text-center text-base leading-8 text-brand-gold [overflow-wrap:anywhere] sm:min-h-28 sm:p-5 sm:text-xl sm:leading-[2.5]">{answer.length ? answer.map(index => tokens.find(token => token.index === index)?.text ?? "").join(" ") : <span className="text-sm text-brand-cream/30">{isEnglish ? "Start with the first word" : "ابدأ من الكلمة الأولى"}</span>}</div>
-        <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 min-[420px]:grid-cols-3 sm:mt-5 sm:gap-3 lg:grid-cols-4">
+        <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 sm:mt-5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
           {tokens.map(token => {
             const hinted = hintVisible && token.index === answer.length;
-            return <button key={token.id} type="button" onClick={() => choose(token.index)} disabled={paused || answer.includes(token.index) || complete} className={"min-h-14 min-w-0 break-words rounded-xl border p-3 text-center text-sm font-semibold transition sm:min-h-16 sm:rounded-2xl sm:p-4 sm:text-base [overflow-wrap:anywhere] " + (answer.includes(token.index) ? "border-brand-emerald/20 bg-brand-emerald/5 text-brand-cream/20" : hinted ? "border-brand-gold/80 bg-brand-gold/10 text-brand-gold ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-violet-200/50")}>{hinted ? "✨ " + token.text : token.text}</button>;
+            return <button key={token.id} type="button" onClick={() => choose(token.index)} disabled={paused || answer.includes(token.index) || complete} className={"min-h-14 min-w-0 touch-manipulation break-words rounded-xl border p-2 text-center text-sm font-semibold leading-6 transition sm:min-h-16 sm:rounded-2xl sm:p-4 sm:text-base [overflow-wrap:anywhere] " + (answer.includes(token.index) ? "border-brand-emerald/20 bg-brand-emerald/5 text-brand-cream/20" : hinted ? "border-brand-gold/80 bg-brand-gold/10 text-brand-gold ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-violet-200/50")}>{hinted ? "✨ " + token.text : token.text}</button>;
           })}
         </div>
       </div>
@@ -705,7 +705,7 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
             const isSelected = optionIndex === selected;
             const hidden = hiddenOptions.includes(optionIndex);
             return <button key={option + ":" + optionIndex} type="button" onClick={() => choose(optionIndex)} disabled={paused || selected !== null || hidden} aria-pressed={isSelected} className={[
-              "min-h-20 min-w-0 break-words rounded-2xl border p-3 text-start transition sm:min-h-24 sm:p-4 [overflow-wrap:anywhere] " + (hidden ? "opacity-20 blur-[1px]" : ""),
+              "min-h-20 min-w-0 touch-manipulation break-words rounded-2xl border p-3 text-start leading-6 transition disabled:cursor-not-allowed sm:min-h-24 sm:p-4 [overflow-wrap:anywhere] " + (hidden ? "opacity-20 blur-[1px]" : ""),
               isSelected ? (isCorrect ? "border-brand-emerald bg-brand-emerald/15 text-brand-emerald" : "border-rose-300/35 bg-rose-300/10 text-rose-100")
                 : selected !== null && isCorrect ? "border-brand-emerald/60 bg-brand-emerald/10 text-brand-emerald"
                 : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-brand-gold/45",
