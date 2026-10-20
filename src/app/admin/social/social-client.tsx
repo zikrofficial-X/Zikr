@@ -16,6 +16,12 @@ type Health = {
   facebookEnabled: boolean;
   facebookCredentialsConfigured: boolean;
   facebookAuthBlocked: number;
+  facebookConnectionStatus?: "connected" | "disabled" | "not_connected" | "reauthorization_required" | "permission_error" | "error";
+  facebookPageName?: string | null;
+  facebookTokenSource?: "database" | "environment" | "missing";
+  facebookLastCheckedAt?: string | null;
+  facebookTokenExpiresAt?: string | null;
+  facebookConnectionMessage?: string;
 };
 type PlatformStats = Record<
   string,
@@ -92,6 +98,63 @@ export default function AdminSocialPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const status = query.get("facebook");
+    if (!status) return;
+    if (status === "connected") {
+      setMessage("تم تجديد اتصال Facebook بنجاح. سيستأنف النشر التلقائي، وأُعيدت العناصر المحجوبة إلى الطابور.");
+      return;
+    }
+    const messages: Record<string, string> = {
+      configuration_missing: "إعداد تطبيق Meta غير مكتمل. تحقق من FACEBOOK_APP_ID وFACEBOOK_APP_SECRET.",
+      redirect_uri_mismatch: "عنوان العودة غير مسجل في إعدادات تطبيق Meta. أضف /api/admin/social/facebook/callback إلى Valid OAuth Redirect URIs.",
+      permission_missing: "لم تُمنح جميع صلاحيات صفحة Facebook المطلوبة. وافق على pages_show_list وpages_read_engagement وpages_manage_posts ثم أعد الربط.",
+      authorization_denied: "تم إلغاء تفويض Facebook. لن يتم تشغيل النشر قبل ربط الصفحة.",
+      state_mismatch: "انتهت جلسة الربط لأسباب أمنية. ابدأ الربط من جديد.",
+      page_not_found: "الحساب الذي تم تفويضه لا يدير صفحة Facebook المحددة في إعدادات ZIKR.",
+      page_validation_failed: "تعذر التحقق من صفحة Facebook المختارة. لم يتم حفظ الاعتماد.",
+      reauthorization_required: "رفض Meta التوكن الحالي. اربط صفحة Facebook من جديد.",
+      admin_session_missing: "انتهت جلسة الإدارة أثناء الرجوع من Facebook. سجّل الدخول وافتح مركز النشر مرة أخرى.",
+      missing_code: "لم يُرجع Facebook رمز التفويض المطلوب. أعد الربط.",
+      oauth_failed: "فشل تفويض Facebook. تحقق من إعدادات تطبيق Meta وحاول مرة أخرى.",
+    };
+    setError(messages[status] || "تعذر استكمال ربط Facebook.");
+  }, []);
+
+  const connectFacebook = useCallback(() => {
+    window.location.assign("/api/admin/social/facebook/connect");
+  }, []);
+
+  const testFacebook = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "test_facebook" }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        health?: Health;
+      };
+      if (!response.ok) throw new Error(payload.error || "تعذر اختبار اتصال Facebook.");
+      if (payload.health) setHealth(current => ({ ...current, ...payload.health }));
+      const status = payload.health?.facebookConnectionStatus;
+      if (status === "connected") {
+        setMessage("اختبار Facebook ناجح. النشر التلقائي مفعّل.");
+      } else {
+        setError(payload.health?.facebookConnectionMessage || "لم يجتز اتصال Facebook الاختبار.");
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر اختبار اتصال Facebook.");
+    } finally {
+      setBusy(false);
+    }
+  }, []);
 
   const runWorker = useCallback(async () => {
     setBusy(true);
@@ -208,7 +271,10 @@ export default function AdminSocialPage() {
             إدارة YouTube وFacebook من مكان واحد، بأقل عدد من الخطوات.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" disabled={busy} onClick={() => void connectFacebook()}>
+            ربط/تجديد Facebook
+          </Button>
           <Button variant="outline" disabled={busy} onClick={() => void load()}>
             تحديث
           </Button>
@@ -217,6 +283,9 @@ export default function AdminSocialPage() {
           </Button>
         </div>
       </section>
+      <p className="rounded-xl border border-brand-gold/10 bg-black/10 px-4 py-3 text-sm leading-6 text-brand-cream/60">
+        النشر يعمل تلقائيًا عبر GitHub Actions كل 15 دقيقة. زر «تشغيل العامل الآن» للتشغيل الفوري فقط، وليس شرطًا لاستمرار الجدولة.
+      </p>
 
       <section className="grid gap-3 md:grid-cols-3">
         <Card>
@@ -227,14 +296,38 @@ export default function AdminSocialPage() {
               : "بيانات OAuth غير مكتملة"}
           </div>
         </Card>
-        <Card>
+        <Card className="space-y-3">
           <div className="text-xs text-brand-cream/50">Facebook</div>
           <div className="mt-1 font-semibold">
-            {!health.facebookCredentialsConfigured
-              ? "يحتاج إعداد الاعتماد"
-              : !health.facebookEnabled
-                ? "معطّل من إعدادات النشر"
-                : "مفعّل ومهيأ للنشر"}
+            {health.facebookConnectionStatus === "reauthorization_required"
+              ? "التوكن منتهي أو مرفوض — يحتاج إعادة ربط"
+              : health.facebookConnectionStatus === "permission_error"
+                ? "الاتصال موجود لكن الصلاحيات ناقصة"
+                : health.facebookConnectionStatus === "error"
+                  ? "تعذر التحقق من الاتصال"
+                  : health.facebookConnectionStatus === "connected" && health.facebookEnabled
+                    ? "متصل — النشر التلقائي مفعّل"
+                    : health.facebookConnectionStatus === "disabled"
+                      ? "تم التحقق من الصفحة، لكن النشر معطّل"
+                      : !health.facebookCredentialsConfigured
+                        ? "الصفحة غير مربوطة"
+                        : !health.facebookEnabled
+                          ? "بحاجة إلى إكمال الربط لتفعيل النشر"
+                          : "جارٍ التحقق من الاتصال"}
+          </div>
+          {health.facebookPageName && (
+            <p className="text-xs text-brand-cream/55">الصفحة: {health.facebookPageName}</p>
+          )}
+          {health.facebookConnectionMessage && (
+            <p className="text-xs leading-5 text-brand-cream/55">{health.facebookConnectionMessage}</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => void connectFacebook()}>
+              تجديد الاتصال
+            </Button>
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => void testFacebook()}>
+              اختبار الاتصال
+            </Button>
           </div>
         </Card>
         <Card>
