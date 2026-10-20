@@ -88,6 +88,8 @@ const connectRoute = read("src/app/api/admin/social/facebook/connect/route.ts");
 const callbackRoute = read("src/app/api/admin/social/facebook/callback/route.ts");
 for (const token of ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "response_type", "state"]) {
   if (!connectRoute.includes(token)) failures.push("Facebook OAuth connect route missing: " + token);
+}
+for (const token of ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "state"]) {
   if (!callbackRoute.includes(token)) failures.push("Facebook OAuth callback missing: " + token);
 }
 for (const token of [
