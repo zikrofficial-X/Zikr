@@ -1,6 +1,7 @@
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { publishToFacebook, publishToYoutube } from "@/features/videos/services/video-automation";
 import { getServerEnv } from "@/lib/env";
+import { getFacebookPageCredentials } from "@/features/social/services/facebook-credentials";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 export type SocialQueueStatus =
@@ -171,23 +172,19 @@ export async function claimPendingSocialPublishItems(
 
 async function publishFacebookPost(item: SocialPublishQueueItem): Promise<string | null> {
   const env = getServerEnv();
-  if (env.SOCIAL_PUBLISH_FACEBOOK_ENABLED !== "true") {
-    throw new Error("Facebook publishing is disabled by configuration (SOCIAL_PUBLISH_FACEBOOK_ENABLED)");
-  }
-  const pageId = env.FACEBOOK_PAGE_ID;
-  const pageAccessToken = env.FACEBOOK_PAGE_ACCESS_TOKEN;
-  if (!pageId || !pageAccessToken) {
-    throw new Error("FACEBOOK_PAGE_ID / FACEBOOK_PAGE_ACCESS_TOKEN are not configured");
+  const credentials = await getFacebookPageCredentials();
+  if (!credentials.isEnabled) {
+    throw new Error("Facebook publishing is disabled. Connect and enable the Page from the admin publishing center.");
   }
 
   const params = new URLSearchParams({
-    access_token: pageAccessToken,
+    access_token: credentials.accessToken,
     message: [item.title, item.body, publicUrl(item)].filter(Boolean).join("\n\n"),
   });
   if (item.image_url) params.set("link", item.image_url);
 
   const version = env.FACEBOOK_GRAPH_API_VERSION || "v26.0";
-  const res = await fetch(`https://graph.facebook.com/${version}/${pageId}/feed`, {
+  const res = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(credentials.pageId)}/feed`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: params,
@@ -202,19 +199,17 @@ async function publishFacebookPost(item: SocialPublishQueueItem): Promise<string
 }
 
 async function publishFacebookReelItem(item: SocialPublishQueueItem): Promise<string | null> {
-  const env = getServerEnv();
-  if (env.SOCIAL_PUBLISH_FACEBOOK_ENABLED !== "true") {
-    throw new Error("Facebook publishing is disabled until the Page access token is repaired");
+  const credentials = await getFacebookPageCredentials();
+  if (!credentials.isEnabled) {
+    throw new Error("Facebook publishing is disabled. Connect and enable the Page from the admin publishing center.");
   }
   if (!item.video_url) throw new Error("Facebook Reels publishing requires video_url");
   const mediaUrl = assertPublishableVideoUrl(item.video_url, "facebook");
-  if (!env.FACEBOOK_PAGE_ID) throw new Error("FACEBOOK_PAGE_ID is not configured");
-  if (!env.FACEBOOK_PAGE_ACCESS_TOKEN) throw new Error("FACEBOOK_PAGE_ACCESS_TOKEN is not configured");
   return publishToFacebook(
     item.id,
     { title: item.title, description: item.body ?? "" },
     mediaUrl,
-    env.FACEBOOK_PAGE_ID,
+    credentials.pageId,
     true
   );
 }

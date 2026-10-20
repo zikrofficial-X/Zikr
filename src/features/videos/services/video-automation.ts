@@ -1,5 +1,6 @@
 import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
 import { getServerEnv } from '@/lib/env';
+import { getFacebookPageCredentials } from '@/features/social/services/facebook-credentials';
 import type { VideoGenerationRequest } from '@/lib/types/video';
 
 export type { VideoGenerationRequest };
@@ -387,14 +388,21 @@ export async function publishToFacebook(
   void videoId;
   try {
     const env = getServerEnv();
-    const pageAccessToken = env.FACEBOOK_PAGE_ACCESS_TOKEN;
-    if (!pageAccessToken || !pageId) return null;
+    const credentials = await getFacebookPageCredentials();
+    if (!credentials.isEnabled) {
+      throw new Error("Facebook publishing is disabled. Connect the Page from the admin publishing center.");
+    }
+    const pageAccessToken = credentials.accessToken;
+    const actualPageId = credentials.pageId || pageId;
+    if (!pageAccessToken || !actualPageId) {
+      throw new Error("Facebook Page credentials are incomplete. Reconnect the Page from the admin publishing center.");
+    }
     const source = assertRemoteVideoUrl(videoUrl, 'Facebook');
     const version = env.FACEBOOK_GRAPH_API_VERSION || 'v26.0';
 
     if (asReel) {
       const startParams = new URLSearchParams({ upload_phase: 'start', access_token: pageAccessToken });
-      const startResponse = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(pageId)}/video_reels`, {
+      const startResponse = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(actualPageId)}/video_reels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: startParams,
@@ -411,7 +419,7 @@ export async function publishToFacebook(
       if (!uploadResponse.ok) throw new Error(`Facebook Reel upload failed (HTTP ${uploadResponse.status})`);
 
       const finishParams = new URLSearchParams({ upload_phase: 'finish', video_id: startData.video_id, video_state: 'PUBLISHED', title: metadata.title, description: metadata.description, is_ai_generated: 'true', access_token: pageAccessToken });
-      const finishResponse = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(pageId)}/video_reels`, {
+      const finishResponse = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(actualPageId)}/video_reels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: finishParams,
@@ -423,7 +431,7 @@ export async function publishToFacebook(
     }
 
     const params = new URLSearchParams({ file_url: source, title: metadata.title, description: metadata.description, access_token: pageAccessToken });
-    const response = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(pageId)}/videos`, {
+    const response = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(actualPageId)}/videos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params,

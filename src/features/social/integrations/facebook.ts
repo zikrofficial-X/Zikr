@@ -1,5 +1,6 @@
 import { getServerEnv } from '@/lib/env';
 import { createAdminClient } from '@/lib/supabase/server';
+import { readStoredFacebookCredential } from '@/features/social/services/facebook-credentials';
 
 export type FacebookPageProfile = {
   id: string;
@@ -88,8 +89,11 @@ async function fetchGraphProfile(pageId: string, accessToken: string, version: s
 }
 
 export async function getFacebookPageProfile(): Promise<FacebookPageProfile | null> {
-  const { FACEBOOK_PAGE_ID, FACEBOOK_PAGE_ACCESS_TOKEN, FACEBOOK_GRAPH_API_VERSION } = getServerEnv();
-  const pageId = FACEBOOK_PAGE_ID?.trim() ?? '';
+  const env = getServerEnv();
+  const storedCredential = await readStoredFacebookCredential();
+  const pageId = storedCredential?.page_id?.trim() || env.FACEBOOK_PAGE_ID?.trim() || '';
+  const pageAccessToken = storedCredential?.page_access_token?.trim() || env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim() || '';
+  const graphVersion = env.FACEBOOK_GRAPH_API_VERSION || 'v26.0';
   if (!pageId) return null;
 
   const fallbackAvatar = `https://graph.facebook.com/${encodeURIComponent(pageId)}/picture?type=large`;
@@ -102,9 +106,9 @@ export async function getFacebookPageProfile(): Promise<FacebookPageProfile | nu
   }
 
   const nextSyncAt = cached?.syncedAt ? new Date(cached.syncedAt).getTime() + PROFILE_TTL_MS : 0;
-  if (cached && nextSyncAt > Date.now()) return { ...cached, avatarUrl: cached.avatarUrl ?? fallbackAvatar };
+  if (cached && nextSyncAt > Date.now() && storedCredential?.connection_status !== 'reauthorization_required') return { ...cached, avatarUrl: cached.avatarUrl ?? fallbackAvatar };
 
-  if (!FACEBOOK_PAGE_ACCESS_TOKEN || !FACEBOOK_GRAPH_API_VERSION) {
+  if (!pageAccessToken || !graphVersion) {
     return cached
       ? { ...cached, stale: true, avatarUrl: cached.avatarUrl ?? fallbackAvatar, error: 'Facebook Page credentials are not configured.' }
       : {
@@ -127,7 +131,7 @@ export async function getFacebookPageProfile(): Promise<FacebookPageProfile | nu
   }
 
   try {
-    const body = await fetchGraphProfile(pageId, FACEBOOK_PAGE_ACCESS_TOKEN, FACEBOOK_GRAPH_API_VERSION);
+    const body = await fetchGraphProfile(pageId, pageAccessToken, graphVersion);
     const syncedAt = new Date().toISOString();
     const profile = {
       platform: 'facebook',

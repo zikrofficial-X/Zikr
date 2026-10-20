@@ -17,6 +17,7 @@ import { AI_VISUAL_POLICY_VERSION, aiVisualPolicyPromptLine } from "../../src/fe
 import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
 import { getDefaultVideoVoiceProfile, getVideoVoiceProfile } from "../../src/features/videos/services/voice-profiles";
 import { evaluateArabicNarrationText } from "../../src/features/videos/services/narration-quality";
+import { getFacebookPageCredentials } from "../../src/features/social/services/facebook-credentials";
 
 const execFileAsync = promisify(execFile);
 const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? process.env.DAILY_VIDEO_TARGET ?? 10));
@@ -1252,12 +1253,9 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
   ) {
     targets.push("youtube");
   }
-  const facebookPublishingEnabled = process.env.SOCIAL_PUBLISH_FACEBOOK_ENABLED === "true";
-  if (
-    facebookPublishingEnabled &&
-    process.env.FACEBOOK_PAGE_ID &&
-    process.env.FACEBOOK_PAGE_ACCESS_TOKEN
-  ) {
+  // The OAuth-managed Page credential in Supabase is canonical; the environment token is only a fallback.
+  const facebookCredentials = await getFacebookPageCredentials().catch(() => null);
+  if (facebookCredentials?.isEnabled && facebookCredentials.pageId && facebookCredentials.accessToken) {
     targets.push(content.videoFormat === "horizontal" ? "facebook" : "facebook_reels");
   }
   if (!targets.length) return;
