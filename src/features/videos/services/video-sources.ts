@@ -15,6 +15,16 @@ export type VideoSource = {
   audioUrl?: string | null;
   grade?: string | null;
   additionalSources?: Array<{ label: string; url: string }>;
+  audience?: "general" | "kids";
+  seriesId?: string;
+  seriesTitle?: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
+  episodeTitle?: string;
+  ageGroup?: string;
+  learningObjective?: string;
+  visualTheme?: string;
+  generationMode?: string;
 };
 
 type QuranRow = {
