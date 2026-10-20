@@ -24,7 +24,7 @@ const shellSource = readFileSync("src/features/kids/components/games/game-shell.
 
 assert.equal(gameIds.length, 12, "the canonical Kids catalog must continue to expose 12 games");
 assert.match(artSource, /useId\(\)/, "SVG artwork IDs must be unique when cards repeat on the same page");
-assert.match(readFileSync("src/features/kids/components/games/kids-game-kit.tsx", "utf8"), /grid-cols-2 gap-2 px-3 min-\[360px\]:grid-cols-3 sm:grid-cols-5/, "game HUD must reflow instead of squeezing five stats into narrow phone widths");
+assert.match(readFileSync("src/features/kids/components/games/kids-game-kit.tsx", "utf8"), /grid-cols-2 gap-2 px-3 min-\\[360px\\]:grid-cols-3 sm:grid-cols-5/, "game HUD must reflow instead of squeezing five stats into narrow phone widths");
 assert.match(shellSource, /min-w-0/, "game shell must prevent child content from forcing horizontal overflow");
 assert.match(artSource, /aria-label": label/, "game illustrations need a localized accessible name");
 assert.match(homeSource, /KidsGameArt/, "the Kids landing page must show game-specific artwork");
