@@ -117,7 +117,9 @@ export function KidsGameStage({
         <div className="absolute -left-20 top-10 h-64 w-64 rounded-full bg-brand-gold/8 blur-3xl" />
         <div className="absolute -right-20 bottom-5 h-72 w-72 rounded-full bg-brand-emerald/10 blur-3xl" />
       </div>
-      {children}
+      <div className="relative z-10 min-w-0">
+        {children}
+      </div>
     </div>
   );
 }
