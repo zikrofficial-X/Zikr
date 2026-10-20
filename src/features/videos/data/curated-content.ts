@@ -33,6 +33,7 @@ export const CURATED_KIDS_STORY_SOURCES: CuratedVideoSource[] = Array.from(
     const episode = buildKidsSeriesEpisode(index + 1);
     return {
       id: episode.sourceId,
+      factorySequence: index + 1,
       category: "story",
       title: episode.title,
       text: episode.text,
