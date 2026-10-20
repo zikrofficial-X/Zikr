@@ -324,29 +324,29 @@ function ColoringWorld() {
 export function KidsGameWorld({ gameId }: { gameId: GameId }) {
   switch (gameId) {
     case "zikr-runner":
-      return <RunnerWorld />;
+      return <div className="kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><RunnerWorld /></div>;
     case "zikr-memory":
-      return <MemoryWorld />;
+      return <div className="kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><MemoryWorld /></div>;
     case "wudu-challenge":
-      return <WuduWorld />;
+      return <div className="kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><WuduWorld /></div>;
     case "verse-puzzle":
-      return <VerseWorld />;
+      return <div className="kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><VerseWorld /></div>;
     case "zikr-quiz":
-      return <QuizWorld />;
+      return <div className="kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><QuizWorld /></div>;
     case "mosque-adventure":
-      return <MosqueWorld />;
+      return <div className="kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><MosqueWorld /></div>;
     case "zikr-road":
-      return <RoadWorld />;
+      return <div className="kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><RoadWorld /></div>;
     case "zikr-jump":
-      return <JumpWorld />;
+      return <div className="kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><JumpWorld /></div>;
     case "good-deeds":
-      return <GoodDeedsWorld />;
+      return <div className="kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><GoodDeedsWorld /></div>;
     case "hilal-fly":
-      return <HilalWorld />;
+      return <div className="kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><HilalWorld /></div>;
     case "mosque-cleanup":
-      return <CleanupWorld />;
+      return <div className="kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><CleanupWorld /></div>;
     case "zikr-coloring":
-      return <ColoringWorld />;
+      return <div className="kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true"><ColoringWorld /></div>;
     default:
       return null;
   }
