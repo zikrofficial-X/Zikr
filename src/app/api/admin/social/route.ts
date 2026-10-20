@@ -3,6 +3,7 @@ import { requireAdminApi } from "@/features/admin/services/admin";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
+import { getFacebookPageConnectionHealth } from "@/features/social/services/facebook-credentials";
 
 export const dynamic = "force-dynamic";
 
@@ -123,6 +124,7 @@ export async function GET() {
       return acc;
     }, {});
     const env = getServerEnv();
+    const facebookHealth = await getFacebookPageConnectionHealth();
     const facebookAuthBlocked = rows.filter(
       item =>
         retryableStatuses.has(item.status) &&
@@ -159,11 +161,14 @@ export async function GET() {
             env.YOUTUBE_CLIENT_SECRET &&
             env.YOUTUBE_REFRESH_TOKEN
           ),
-          facebookEnabled: env.SOCIAL_PUBLISH_FACEBOOK_ENABLED === "true",
-          facebookCredentialsConfigured: Boolean(
-            env.FACEBOOK_PAGE_ID && env.FACEBOOK_PAGE_ACCESS_TOKEN
-          ),
+          ...facebookHealth,
           facebookAuthBlocked,
+        },
+        automation: {
+          enabled: true,
+          provider: "GitHub Actions",
+          scheduleMinutes: 15,
+          note: "النشر يعمل تلقائيًا كل 15 دقيقة؛ تشغيل العامل يدويًا خيار للتشغيل الفوري فقط.",
         },
       },
       { headers: { "Cache-Control": "no-store" } }
@@ -197,6 +202,10 @@ export async function POST(request: NextRequest) {
           ),
         ]
       : [];
+    if (action === "test_facebook") {
+      const health = await getFacebookPageConnectionHealth();
+      return NextResponse.json({ ok: true, health }, { headers: { "Cache-Control": "no-store" } });
+    }
     if (action === "run_worker") {
       const worker = await triggerSocialWorker();
       return NextResponse.json({ ok: true, worker });
