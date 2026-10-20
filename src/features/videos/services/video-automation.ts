@@ -163,10 +163,13 @@ export async function updateVideoRequestStatus(
 
 export function generateYoutubeMetadata(request: VideoGenerationRequest) {
   const isShort = isVerticalVideo(request);
+  const content = contentObject(request);
+  const sourceLabel = typeof content.sourceLabel === 'string' ? content.sourceLabel : '';
+  const qualityNote = 'محتوى تعليمي موثق بإيقاع واضح وترجمة نصية سهلة القراءة.';
   return {
-    title: request.title,
-    description: [request.description ?? '', isShort ? '#Shorts' : ''].filter(Boolean).join('\n\n'),
-    tags: ['islamic', 'quran', 'hadith', 'dua', 'adhkar', ...(isShort ? ['shorts'] : [])],
+    title: request.title.slice(0, 100),
+    description: [request.description ?? '', qualityNote, sourceLabel, isShort ? '#Shorts' : ''].filter(Boolean).join('\n\n'),
+    tags: ['islamic', 'quran', 'hadith', 'dua', 'adhkar', 'تعلم', 'تدبر', ...(isShort ? ['shorts', 'ريلز'] : [])],
     categoryId: '27',
     isShort,
   };
@@ -218,7 +221,7 @@ export async function generateStoryVideo(storyId: string): Promise<VideoGenerati
 export async function generateDuaVideo(duaId: string): Promise<VideoGenerationRequest | null> {
   return createVideoGenerationRequest({
     title: 'دعاء مستجاب',
-    description: 'دعاء من أدعية القرآن والسنة',
+    description: 'دعاء من أدعية القرآ�� والسنة',
     category: 'dua',
     content: { renderer: 'template', type: 'dua', duaId },
   });

@@ -242,7 +242,7 @@ export default function AdminAiVideoPage() {
         humanAudioUrl
           ? "تم حفظ الطلب بالتسجيل البشري الذي رفعته. سيفحص العامل صلاحية الصوت والفيديو قبل اعتماد الناتج."
           : category === "quran"
-            ? "تم حفظ الطلب بنص الآية وتلاوتها من المصدر."
+            ? "تم حفظ الطلب بنص الآية وتلاوتها من ��لمصدر."
             : "تم حفظ الطلب. سيُستخدم صوت عربي إلكتروني طبيعي ما لم ترفع تسجيلًا بشريًا."
       );
       setTitle("");
@@ -283,7 +283,7 @@ export default function AdminAiVideoPage() {
       for (const plan of plans) {
         const response = await fetch("/api/admin/videos/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
           title: plan.title, description: plan.description, category: plan.category, sourceId: plan.sourceId, narration: plan.narration,
-          content: { renderer: "template", workflow: "verified-batch", videoFormat: "vertical", language: "ar", resolution: "1080x1920" },
+          content: { renderer: "template", workflow: "verified-batch", videoFormat: "vertical", language: "ar", resolution: "1080x1920", qualityPreset: "retention-first", hookSeconds: 3, captions: true, sourceCard: true, endCard: true }, 
         }) });
         if (response.ok) created += 1;
       }
@@ -310,6 +310,11 @@ export default function AdminAiVideoPage() {
             حديثًا من تلقاء نفسه. يمكن إرفاق تسجيل بشري حقيقي بدل الصوت
             الإلكتروني.
           </p>
+          <div className="mt-4 grid gap-2 text-xs text-brand-cream/60 sm:grid-cols-3">
+            <span className="rounded-xl border border-brand-gold/15 bg-brand-gold/5 px-3 py-2">افتتاحية قوية خلال 3 ثوانٍ</span>
+            <span className="rounded-xl border border-brand-gold/15 bg-brand-gold/5 px-3 py-2">ترجمة ومرجع واضحان</span>
+            <span className="rounded-xl border border-brand-gold/15 bg-brand-gold/5 px-3 py-2">نهاية عملية قابلة للتذكر</span>
+          </div>
         </div>
         <Link
           href="/admin/videos"
