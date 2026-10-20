@@ -154,6 +154,7 @@ export async function POST(request: NextRequest) {
         ...(source.learningObjective ? { learningObjective: source.learningObjective } : {}),
         ...(source.visualTheme ? { visualTheme: source.visualTheme } : {}),
         ...(source.generationMode ? { generationMode: source.generationMode } : {}),
+        ...(Number.isInteger(source.factorySequence) ? { factorySequence: source.factorySequence } : {}),
         ...(source.audience === "kids" ? { voiceProfile: "kids_friendly", contentFormat: "series_episode" } : {}),
         ...(source.audioUrl ? { audioUrl: source.audioUrl } : {}),
         ...(source.grade ? { gradeAr: source.grade } : {}),
