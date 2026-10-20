@@ -9,6 +9,7 @@ import {
 } from "../../src/lib/supabase/admin-rest";
 import { listVideoSources, resolveVideoSource } from "../../src/features/videos/services/video-sources";
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
+import { buildKidsSeriesEpisode, validateGeneratedKidsEpisode } from "../../src/features/videos/data/kids-story-factory";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
@@ -40,7 +41,7 @@ function narrationProfileForRequest(request: GeneratedRequest) {
       : VIDEO_DEFAULT_TTS_PROFILE;
   const profile = getVideoVoiceProfile(configured);
   if (request.category === "quran") return getDefaultVideoVoiceProfile("quran");
-  if (request.category === "kids") return getDefaultVideoVoiceProfile("kids");
+  if (request.content?.audience === "kids" || request.category === "kids") return getDefaultVideoVoiceProfile("kids");
   return profile;
 }
 
@@ -106,7 +107,17 @@ function siteUrl() {
   return getServerEnv().NEXT_PUBLIC_SITE_URL;
 }
 
-function backgroundAsset(scene: AiVideoPlan["scene"]) {
+function backgroundAsset(scene: AiVideoPlan["scene"], content?: Record<string, unknown>) {
+  if (content?.audience === "kids") {
+    const kidThemes: Record<string, string> = {
+      "kids-garden": "public/video/templates/kids-garden.svg",
+      "kids-neighborhood": "public/video/templates/kids-neighborhood.svg",
+      "kids-workshop": "public/video/templates/kids-workshop.svg",
+      "kids-nature": "public/video/templates/kids-nature.svg",
+    };
+    const theme = typeof content.visualTheme === "string" ? content.visualTheme : "";
+    if (kidThemes[theme]) return kidThemes[theme];
+  }
   const map: Record<AiVideoPlan["scene"], string> = {
     calm: "public/video/templates/calm.svg",
     dawn: "public/video/templates/dawn.svg",
@@ -116,8 +127,8 @@ function backgroundAsset(scene: AiVideoPlan["scene"]) {
   return map[scene] || map.calm;
 }
 
-async function renderBackground(temp: string, scene: AiVideoPlan["scene"], width: number, height: number) {
-  const source = path.join(process.cwd(), backgroundAsset(scene));
+async function renderBackground(temp: string, scene: AiVideoPlan["scene"], width: number, height: number, content?: Record<string, unknown>) {
+  const source = path.join(process.cwd(), backgroundAsset(scene, content));
   const output = path.join(temp, "background.png");
   await execFileAsync("rsvg-convert", ["-w", String(width), "-h", String(height), source, "-o", output], { maxBuffer: 2 * 1024 * 1024 });
   return output;
@@ -195,7 +206,8 @@ function wrapArabic(value: string, max = 30) {
 function assEscape(value: string) {
   return value.replace(/[{}]/g, "").replace(/\\/g, "\\\\");
 }
-function categoryLabel(category: string) {
+function categoryLabel(category: string, audience?: unknown) {
+  if (audience === "kids") return "قصص أطفال";
   const labels: Record<string, string> = {
     quran: "القرآن الكريم",
     hadith: "الحديث الشريف",
@@ -225,6 +237,7 @@ function makeAss(
   duration: number,
   category: string,
   isVertical: boolean,
+  audience?: unknown,
 ) {
   const playResX = isVertical ? 1080 : 1920;
   const playResY = isVertical ? 1920 : 1080;
@@ -248,7 +261,7 @@ function makeAss(
     cursor = pageEnd;
     return event;
   });
-  const badge = assEscape(categoryLabel(category));
+  const badge = assEscape(categoryLabel(category, audience));
   const source = assEscape(RLM + "المصدر: " + displaySource(sourceUrl));
   const reflectionText = reflection ? assEscape(RLM + normalizeArabicText(reflection)) : "";
   title = normalizeArabicText(title);
@@ -597,7 +610,7 @@ function contentSourceUrl(request: GeneratedRequest) {
   return typeof value === "string" && /^https?:\/\//i.test(value) ? value : siteUrl();
 }
 function aiPlanEnabled() {
-  return Boolean(process.env.GEMINI_API_KEY?.trim());
+  return process.env.VIDEO_FREE_ONLY?.toLowerCase() === "false" && Boolean(process.env.GEMINI_API_KEY?.trim());
 }
 
 function normalizeAiVideoPlan(value: unknown): AiVideoPlan {
@@ -670,7 +683,7 @@ function parseGeminiJson(raw: string): unknown {
 }
 
 async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPlan> {
-  if (request.category === "other") return { ...DEFAULT_AI_VIDEO_PLAN };
+  if (request.category === "other" && request.content?.audience !== "kids") return { ...DEFAULT_AI_VIDEO_PLAN };
   if (!aiPlanEnabled()) return { ...DEFAULT_AI_VIDEO_PLAN };
   const sourceText = contentText(request).slice(0, 5000);
   if (!sourceText) return { ...DEFAULT_AI_VIDEO_PLAN };
