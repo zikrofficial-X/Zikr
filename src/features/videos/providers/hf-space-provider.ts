@@ -54,8 +54,22 @@ async function makeWanConditioningImage(tempDir: string, style?: VideoGeneration
 }
 
 async function writePromptFile(tempDir: string, input: VideoGenerationInput) {
+  const kidsBrief = input.audience === "kids"
+    ? [
+        "Audience: children and families.",
+        "Visual style: polished, warm, playful 2D storybook animation, clear silhouettes, friendly colors, readable composition.",
+        "Show safe everyday environments and helpful behavior; no frightening scenes, injuries, weapons, dangerous imitation, or unsafe stunts.",
+        "Do not depict prophets or sacred figures; do not add religious text, subtitles, lettering, logos, or recognizable copyrighted characters to the image.",
+        input.seriesTitle ? "Series: " + input.seriesTitle + "." : "",
+        Number.isInteger(input.episodeNumber) ? "Episode: " + input.episodeNumber + "." : "",
+        input.learningObjective ? "Learning objective: " + input.learningObjective + "." : "",
+      ]
+    : [];
   const prompt = [
-    "Create a premium cinematic Arabic Islamic short video for the ZIKR platform.",
+    input.audience === "kids"
+      ? "Create a polished, child-safe animated story scene for the ZIKR family learning platform."
+      : "Create a premium cinematic Arabic Islamic short video for the ZIKR platform.",
+    ...kidsBrief,
     "Title: " + input.title + ".",
     "Section: " + input.category + ".",
     "Verified source text: " + input.text.slice(0, 1800) + ".",
