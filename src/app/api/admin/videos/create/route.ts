@@ -92,6 +92,21 @@ export async function POST(request: NextRequest) {
     let content: Record<string, unknown> = isObject(body.content)
       ? { ...body.content }
       : {};
+    const qualityProfile = {
+      version: "2026.1",
+      audience: category === "other" ? "general" : "family",
+      hookSeconds: 3,
+      structure: ["hook", "context", "source", "reflection", "action", "cta"],
+      visualBeats: 6,
+      pacing: category === "quran" || category === "adhkar" ? "calm" : "dynamic",
+      captions: true,
+      sourceCard: category !== "other",
+      endCard: true,
+      safeArea: true,
+      audioMix: "voice-first",
+      reviewRequired: true,
+    } as const;
+    content = { ...content, qualityProfile };
     let narration = "";
     let source: Awaited<ReturnType<typeof resolveVideoSource>> = null;
 
