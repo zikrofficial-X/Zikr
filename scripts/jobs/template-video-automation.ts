@@ -789,6 +789,46 @@ function comparableSourceText(value: string) {
     .replace(/[\uFEFF\u200B-\u200D\u200E\u200F\u2060\u2066-\u2069\u202A-\u202E]/g, "");
 }
 
+function assertKidsStoryContract(request: GeneratedRequest) {
+  if (request.content?.audience !== "kids") return;
+  const content = request.content;
+  const text = contentText(request);
+  const episodeNumber = Number(content.episodeNumber);
+  const seasonNumber = Number(content.seasonNumber);
+  if (!String(content.seriesId ?? "").trim() || !String(content.seriesTitle ?? "").trim()) {
+    throw new Error("Child-directed video requires canonical series metadata.");
+  }
+  if (!Number.isInteger(episodeNumber) || episodeNumber < 1 || !Number.isInteger(seasonNumber) || seasonNumber < 1) {
+    throw new Error("Child-directed video requires positive season and episode numbers.");
+  }
+  if (!String(content.learningObjective ?? "").trim()) {
+    throw new Error("Child-directed video requires a defined learning objective.");
+  }
+  const normalizedText = text.normalize("NFC").trim();
+  if (normalizedText.length < 180 || normalizedText.length > 1500 || !normalizedText.includes("؟")) {
+    throw new Error("Child-directed narration must be a short complete story ending with a question.");
+  }
+  if (/https?:\/\/|قال الله|قال رسول الله|حديث قدسي|حديث نبوي/u.test(normalizedText)) {
+    throw new Error("Child-directed fiction must not contain raw URLs or unsupported religious attributions.");
+  }
+  if (String(content.sourceType ?? "") === "original_kids_fiction" && !String(content.sourceLabel ?? "").includes("آية أو حديث")) {
+    throw new Error("Original kids fiction must carry a clear non-religious attribution label.");
+  }
+  if (content.generationMode === "free_deterministic_story_factory") {
+    const sequence = Number(content.factorySequence);
+    if (!Number.isSafeInteger(sequence) || sequence < 1) {
+      throw new Error("Deterministic kids episodes require their factory sequence.");
+    }
+    const canonical = buildKidsSeriesEpisode(sequence);
+    const validation = validateGeneratedKidsEpisode(canonical);
+    if (!validation.ok || canonical.sourceId !== content.sourceId || canonical.text !== normalizedText ||
+      canonical.seriesId !== content.seriesId || canonical.seasonNumber !== seasonNumber ||
+      canonical.episodeNumber !== episodeNumber || canonical.learningObjective !== content.learningObjective) {
+      throw new Error("Kids episode content does not match its canonical deterministic source.");
+    }
+  }
+}
+
 function contentAudioUrl(request: GeneratedRequest) {
   const value = request.content?.audioUrl;
   return typeof value === "string" && /^https:\/\//i.test(value.trim()) ? value.trim() : "";
@@ -875,7 +915,7 @@ async function assertAudibleAudio(pathname: string) {
   }
 }
 
-async function assertNarrationQuality(pathname: string, text: string, category: string) {
+async function assertNarrationQuality(pathname: string, text: string, category: string, audience?: unknown) {
   const probe = await probeMedia(pathname);
   const duration = Number(probe.format?.duration ?? 0);
   if (!Number.isFinite(duration) || duration < 0.8) {
@@ -892,8 +932,9 @@ async function assertNarrationQuality(pathname: string, text: string, category: 
 
   if (category === "quran") return;
   const wordsPerSecond = quality.wordCount / Math.max(duration, 0.1);
-  const minWps = category === "kids" ? 0.65 : 0.75;
-  const maxWps = category === "hadith" || category === "adhkar" ? 4.1 : 4.5;
+  const childDirected = category === "kids" || audience === "kids";
+  const minWps = childDirected ? 0.65 : 0.75;
+  const maxWps = childDirected ? 3.8 : category === "hadith" || category === "adhkar" ? 4.1 : 4.5;
   if (!Number.isFinite(wordsPerSecond) || wordsPerSecond < minWps || wordsPerSecond > maxWps) {
     throw new Error(
       "Arabic narration pace is outside the natural range: " +
@@ -927,6 +968,7 @@ function requestedVideoShape(request: GeneratedRequest) {
 
 async function renderVideo(request: GeneratedRequest) {
   await validateSourceContent(request);
+  assertKidsStoryContract(request);
   const text = contentText(request);
   const sourceUrl = contentSourceUrl(request);
   const [width, height] = requestedVideoShape(request).split("x").map(Number);
@@ -944,8 +986,8 @@ async function renderVideo(request: GeneratedRequest) {
       request.content = {
         ...request.content,
         ai: {
-          provider: "google-gemini",
-          model: (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim(),
+          provider: aiPlanEnabled() ? "google-gemini" : "deterministic-fallback",
+          model: aiPlanEnabled() ? (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim() : null,
           reflection: aiPlan.reflection || null,
           socialCaption: aiPlan.socialCaption || null,
           scene: aiPlan.scene,
@@ -1011,6 +1053,10 @@ async function renderVideo(request: GeneratedRequest) {
         description: request.description || "",
         category: request.category,
         text,
+        audience: request.content?.audience === "kids" ? "kids" : "general",
+        seriesTitle: typeof request.content?.seriesTitle === "string" ? request.content.seriesTitle : undefined,
+        episodeNumber: Number.isInteger(Number(request.content?.episodeNumber)) ? Number(request.content?.episodeNumber) : undefined,
+        learningObjective: typeof request.content?.learningObjective === "string" ? request.content.learningObjective : undefined,
         sourceId:
           typeof request.content.sourceId === "string"
             ? request.content.sourceId
@@ -1051,7 +1097,7 @@ async function renderVideo(request: GeneratedRequest) {
         aiFallbackReason: "AI per-run budget exhausted; deterministic template fallback used.",
       };
     }
-    const backgroundPath = aiVideoPath || await renderBackground(temp, scene, width, height);
+    const backgroundPath = aiVideoPath || await renderBackground(temp, scene, width, height, request.content);
     let audioKind = contentAudioKind(request, audioUrl);
     if (audioUrl) {
       const response = await fetch(audioUrl, { headers: { Accept: "audio/*" }, signal: AbortSignal.timeout(60_000) });
@@ -1085,11 +1131,11 @@ async function renderVideo(request: GeneratedRequest) {
       audioKind = "arabic_tts_narration";
     }
 
-    await assertNarrationQuality(audioPath, narrationText, request.category);
+    await assertNarrationQuality(audioPath, narrationText, request.category, request.content?.audience);
     const audioProbe = await probeMedia(audioPath);
     const audioDuration = Number(audioProbe.format?.duration ?? 0);
     const duration = resolveRenderDuration(audioDuration);
-    await writeFile(assPath, makeAss(text, request.title, typeof request.content?.sourceLabel === "string" && request.content.sourceLabel.trim() ? request.content.sourceLabel : sourceUrl, aiPlan.reflection || null, duration, request.category, isVertical), "utf8");
+    await writeFile(assPath, makeAss(text, request.title, typeof request.content?.sourceLabel === "string" && request.content.sourceLabel.trim() ? request.content.sourceLabel : sourceUrl, aiPlan.reflection || null, duration, request.category, isVertical, request.content?.audience), "utf8");
 
     const fadeOutStart = Math.max(0, duration - 0.8);
     const motionFilters = motion === "fade"
@@ -1231,6 +1277,9 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
           request.description || "",
           typeof content.ai === "object" && content.ai && typeof (content.ai as Record<string, unknown>).socialCaption === "string"
             ? String((content.ai as Record<string, unknown>).socialCaption)
+            : "",
+          content.audience === "kids" && typeof content.seriesTitle === "string"
+            ? `سلسلة أطفال: ${content.seriesTitle} — الموسم ${Number(content.seasonNumber) || 1}، الحلقة ${Number(content.episodeNumber) || 1}. الهدف: ${String(content.learningObjective || "قيمة تربوية")}`
             : "",
           `المصدر: ${contentSourceUrl(request)}`,
           `${siteUrl()}${publicPath}`,
