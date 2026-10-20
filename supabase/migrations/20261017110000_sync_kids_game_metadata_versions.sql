@@ -13,7 +13,8 @@ WITH canonical_games(slug, version, difficulty) AS (
     ('good-deeds', 2, 'easy'),
     ('hilal-fly', 2, 'easy'),
     ('mosque-cleanup', 2, 'easy'),
-    ('zikr-coloring', 2, 'easy')
+    ('zikr-coloring', 2, 'easy'),
+    ('letter-lab', 1, 'easy')
 )
 UPDATE public.kids_content AS item
 SET metadata = COALESCE(item.metadata, '{}'::jsonb) || jsonb_build_object(

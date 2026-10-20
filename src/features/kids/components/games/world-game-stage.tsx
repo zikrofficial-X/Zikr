@@ -18,12 +18,12 @@ import {
   VersePuzzleGame,
   ZikrQuizGame,
 } from "@/features/kids/components/games/kids-learning-games";
+import { KidsLetterLabGame } from "@/features/kids/components/games/kids-letter-lab";
 import {
   GoodDeedsGame,
   MosqueCleanupGame,
   ZikrColoringGame,
 } from "@/features/kids/components/games/kids-values-coloring";
-
 
 export type WorldHud = {
   score: number;
@@ -125,7 +125,8 @@ export function WorldGameStage(props: WorldGameStageProps) {
       if (document.visibilityState === "hidden") onPausedChange(true);
     };
     document.addEventListener("visibilitychange", pauseWhenHidden);
-    return () => document.removeEventListener("visibilitychange", pauseWhenHidden);
+    return () =>
+      document.removeEventListener("visibilitychange", pauseWhenHidden);
   }, [onPausedChange]);
 
   const common = {
@@ -162,7 +163,13 @@ export function WorldGameStage(props: WorldGameStageProps) {
       return <MosqueCleanupGame {...common} />;
     case "zikr-coloring":
       return <ZikrColoringGame {...common} />;
+    case "letter-lab":
+      return <KidsLetterLabGame {...common} />;
     default:
-      return <div className="rounded-2xl border border-rose-300/20 bg-rose-300/10 p-6 text-center text-rose-100">اللعبة غير متاحة حاليًا.</div>;
+      return (
+        <div className="rounded-2xl border border-rose-300/20 bg-rose-300/10 p-6 text-center text-rose-100">
+          اللعبة غير متاحة حاليًا.
+        </div>
+      );
   }
 }

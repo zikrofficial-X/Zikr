@@ -94,8 +94,11 @@ function ageRangeToGroup(ageMin?: number | null, ageMax?: number | null) {
 }
 
 export function getKidsItemBySlug(slug: string): KidsItem | null {
-  if (!slug || typeof slug !== 'string') return null;
-  return kidsContent.find(item => item.slug.toLowerCase() === slug.toLowerCase()) ?? null;
+  if (!slug || typeof slug !== "string") return null;
+  return (
+    kidsContent.find(item => item.slug.toLowerCase() === slug.toLowerCase()) ??
+    null
+  );
 }
 
 export function normalizeKidsContentRow(row: KidsLegacyRow): KidsItem | null {
@@ -304,17 +307,30 @@ export const kidsContent: KidsItem[] = [
     type: "wudu",
     age_group: "6-8",
     wudu_steps: [
-      { order: 1, text: "النية: انوِ في قلبك أنك تتوضأ لله، وقل: بِسْمِ اللَّهِ" },
+      {
+        order: 1,
+        text: "النية: انوِ في قلبك أنك تتوضأ لله، وقل: بِسْمِ اللَّهِ",
+      },
       { order: 2, text: "غسل اليدين: اغسل يديك ثلاث مرات حتى الرسغين" },
       { order: 3, text: "المضمضة: ضع الماء في فمك وحرّكه ثم أخرجه، ثلاث مرات" },
       { order: 4, text: "الاستنشاق: استنشق الماء بأنفك ثم أخرجه، ثلاث مرات" },
-      { order: 5, text: "غسل الوجه: اغسل وجهك كله ثلاث مرات، من أعلى الجبهة إلى الذقن" },
-      { order: 6, text: "غسل اليدين إلى المرفقين: اغسل يدك اليمنى ثم اليسرى مع المرفق، ثلاث مرات" },
+      {
+        order: 5,
+        text: "غسل الوجه: اغسل وجهك كله ثلاث مرات، من أعلى الجبهة إلى الذقن",
+      },
+      {
+        order: 6,
+        text: "غسل اليدين إلى المرفقين: اغسل يدك اليمنى ثم اليسرى مع المرفق، ثلاث مرات",
+      },
       { order: 7, text: "مسح الرأس: امسح رأسك بيديك المبللتين مرة واحدة" },
       { order: 8, text: "مسح الأذنين: امسح داخل أذنيك وخلفهما مرة واحدة" },
-      { order: 9, text: "غسل القدمين: اغسل قدمك اليمنى ثم اليسرى مع الكعبين، ثلاث مرات" },
+      {
+        order: 9,
+        text: "غسل القدمين: اغسل قدمك اليمنى ثم اليسرى مع الكعبين، ثلاث مرات",
+      },
     ],
-    wudu_after_dhikr: "أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ",
+    wudu_after_dhikr:
+      "أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ",
     content_ar: `تعال نتعلم الوضوء خطوة بخطوة:
 
 1. النية: انوِ في قلبك أنك تتوضأ لله، وقل: بِسْمِ اللَّهِ
@@ -922,8 +938,14 @@ export const kidsContent: KidsItem[] = [
       category: "البيئة والسلوك",
       value: "الأمانة والعناية بالنعم",
       reward: "وسام حارس الحديقة",
-      activitySteps: ["اختر مكانًا صغيرًا", "اجمع المخلفات بأمان مع ولي الأمر", "افرز ما يمكن تدويره", "اترك المكان أجمل"],
-      familyPrompt: "نفّذوا مهمة نظافة قصيرة في البيت أو الحديقة مع إشراف كبير.",
+      activitySteps: [
+        "اختر مكانًا صغيرًا",
+        "اجمع المخلفات بأمان مع ولي الأمر",
+        "افرز ما يمكن تدويره",
+        "اترك المكان أجمل",
+      ],
+      familyPrompt:
+        "نفّذوا مهمة نظافة قصيرة في البيت أو الحديقة مع إشراف كبير.",
     },
   },
   {
@@ -944,7 +966,8 @@ export const kidsContent: KidsItem[] = [
       category: "الرحمة والمشاركة",
       value: "الكرم والانتباه لسلامة الآخرين",
       reward: "قلب العطاء",
-      familyPrompt: "اختاروا شيئًا آمنًا يمكن مشاركته مع شخص يحتاجه، بعد سؤال ولي الأمر.",
+      familyPrompt:
+        "اختاروا شيئًا آمنًا يمكن مشاركته مع شخص يحتاجه، بعد سؤال ولي الأمر.",
     },
   },
   {
@@ -954,7 +977,8 @@ export const kidsContent: KidsItem[] = [
     slug: "zikr-runner",
     type: "game",
     age_group: "6-8",
-    content_ar: "اجمع النجوم وتجاوز العوائق في رحلة جري آمنة ولطيفة. استخدم اللعبة للتعلم والمرح، وخذ استراحة متى شئت.",
+    content_ar:
+      "اجمع النجوم وتجاوز العوائق في رحلة جري آمنة ولطيفة. استخدم اللعبة للتعلم والمرح، وخذ استراحة متى شئت.",
     metadata: {
       category: "ألعاب الحركة الآمنة",
       gameId: "zikr-runner",
@@ -962,7 +986,8 @@ export const kidsContent: KidsItem[] = [
       difficulty: "easy",
       value: "التركيز والمثابرة",
       reward: "نجوم التعلم",
-      safetyNote: "لا تطلب اللعبة أي بيانات شخصية، والنتائج اختيارية ويمكن لعبها دون تسجيل الدخول.",
+      safetyNote:
+        "لا تطلب اللعبة أي بيانات شخصية، والنتائج اختيارية ويمكن لعبها دون تسجيل الدخول.",
     },
   },
   {
@@ -973,17 +998,49 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     memory_pairs: [
-      { id: "before-sleep", situation: "قبل النوم", dhikr: "باسمك اللهم أموت وأحيا" },
+      {
+        id: "before-sleep",
+        situation: "قبل النوم",
+        dhikr: "باسمك اللهم أموت وأحيا",
+      },
       { id: "before-food", situation: "قبل الطعام", dhikr: "بسم الله" },
       { id: "after-food", situation: "بعد الطعام", dhikr: "الحمد لله" },
       { id: "after-sneeze", situation: "عند العطاس", dhikr: "الحمد لله" },
-      { id: "enter-home", situation: "عند دخول البيت", dhikr: "السلام على الأهل" },
-      { id: "wake-up", situation: "عند الاستيقاظ من النوم", dhikr: "الحمد لله الذي أحيانا بعد ما أماتنا وإليه النشور" },
-      { id: "leave-home", situation: "عند الخروج من البيت", dhikr: "بسم الله توكلت على الله ولا حول ولا قوة إلا بالله" },
-      { id: "enter-mosque", situation: "عند دخول المسجد", dhikr: "اللهم افتح لي أبواب رحمتك" },
-      { id: "leave-mosque", situation: "عند الخروج من المسجد", dhikr: "اللهم إني أسألك من فضلك" },
-      { id: "feel-angry", situation: "عند الغضب", dhikr: "أعوذ بالله من الشيطان الرجيم" },
-      { id: "rain-falls", situation: "عند نزول المطر", dhikr: "اللهم صيبًا نافعًا" },
+      {
+        id: "enter-home",
+        situation: "عند دخول البيت",
+        dhikr: "السلام على الأهل",
+      },
+      {
+        id: "wake-up",
+        situation: "عند الاستيقاظ من النوم",
+        dhikr: "الحمد لله الذي أحيانا بعد ما أماتنا وإليه النشور",
+      },
+      {
+        id: "leave-home",
+        situation: "عند الخروج من البيت",
+        dhikr: "بسم الله توكلت على الله ولا حول ولا قوة إلا بالله",
+      },
+      {
+        id: "enter-mosque",
+        situation: "عند دخول المسجد",
+        dhikr: "اللهم افتح لي أبواب رحمتك",
+      },
+      {
+        id: "leave-mosque",
+        situation: "عند الخروج من المسجد",
+        dhikr: "اللهم إني أسألك من فضلك",
+      },
+      {
+        id: "feel-angry",
+        situation: "عند الغضب",
+        dhikr: "أعوذ بالله من الشيطان الرجيم",
+      },
+      {
+        id: "rain-falls",
+        situation: "عند نزول المطر",
+        dhikr: "اللهم صيبًا نافعًا",
+      },
     ],
     content_ar: `لعبة بطاقات الذاكرة: اقلب البطاقات وابحث عن كل موقف والذكر المناسب له. استخدم بطاقات آمنة من إعداد الأسرة، ولا تجعل الفوز أهم من التعلم.
 
@@ -992,8 +1049,16 @@ export const kidsContent: KidsItem[] = [
 طريقة اللعب: ضع البطاقات مقلوبة، اقلب بطاقتين في كل دور، واذكر المناسبة بصوت لطيف. إذا لم تجد الزوج، أعد البطاقتين مكانهما وتعلم من دورك التالي.`,
     quiz_data: {
       questions: [
-        { text: "ما الذكر المناسب قبل الطعام؟", options: ["بسم الله", "تصبحون على خير", "إلى اللقاء"], correctAnswer: 0 },
-        { text: "ماذا نقول بعد العطاس؟", options: ["الحمد لله", "سبحان ربي العظيم", "أين الكرة؟"], correctAnswer: 0 },
+        {
+          text: "ما الذكر المناسب قبل الطعام؟",
+          options: ["بسم الله", "تصبحون على خير", "إلى اللقاء"],
+          correctAnswer: 0,
+        },
+        {
+          text: "ماذا نقول بعد العطاس؟",
+          options: ["الحمد لله", "سبحان ربي العظيم", "أين الكرة؟"],
+          correctAnswer: 0,
+        },
       ],
     },
     metadata: {
@@ -1004,8 +1069,14 @@ export const kidsContent: KidsItem[] = [
       difficulty: "easy",
       value: "ربط الذكر بالموقف",
       reward: "وسام الذاكرة",
-      activitySteps: ["اصنع البطاقات مع كبير", "اقلب بطاقتين", "اذكر المناسبة", "احتفل بالتعلم"],
-      safetyNote: "لعبة منزلية بإشراف ولي الأمر، ولا تستخدم بطاقات أو صورًا غير مناسبة.",
+      activitySteps: [
+        "اصنع البطاقات مع كبير",
+        "اقلب بطاقتين",
+        "اذكر المناسبة",
+        "احتفل بالتعلم",
+      ],
+      safetyNote:
+        "لعبة منزلية بإشراف ولي الأمر، ولا تستخدم بطاقات أو صورًا غير مناسبة.",
     },
   },
   {
@@ -1025,7 +1096,8 @@ export const kidsContent: KidsItem[] = [
       reward: "حديقة الخير",
       durationDays: 7,
       activitySteps: ["اختر مهمة", "نفذها بأمان", "أخبر أسرتك", "أضف نجمة"],
-      familyPrompt: "شاركوا مهمة واحدة يوميًا، وامتنعوا عن تصوير الأطفال أو نشر أسمائهم دون موافقة الأسرة.",
+      familyPrompt:
+        "شاركوا مهمة واحدة يوميًا، وامتنعوا عن تصوير الأطفال أو نشر أسمائهم دون موافقة الأسرة.",
     },
   },
   {
@@ -1045,8 +1117,16 @@ export const kidsContent: KidsItem[] = [
 الدرس: الشجاعة ليست في الصراخ، بل في اختيار الصواب وطلب المساعدة عند الحاجة.`,
     quiz_data: {
       questions: [
-        { text: "ماذا تفعل مع رسالة من مجهول يطلب صورتك؟", options: ["أرسلها بسرعة", "لا أرد وأخبر ولي الأمر", "أرسلها لصديق"], correctAnswer: 1 },
-        { text: "أفضل تصرف عند الخطأ في حق صديق؟", options: ["الاعتذار والإصلاح", "الضحك", "لوم الآخرين"], correctAnswer: 0 },
+        {
+          text: "ماذا تفعل مع رسالة من مجهول يطلب صورتك؟",
+          options: ["أرسلها بسرعة", "لا أرد وأخبر ولي الأمر", "أرسلها لصديق"],
+          correctAnswer: 1,
+        },
+        {
+          text: "أفضل تصرف عند الخطأ في حق صديق؟",
+          options: ["الاعتذار والإصلاح", "الضحك", "لوم الآخرين"],
+          correctAnswer: 0,
+        },
       ],
     },
     metadata: {
@@ -1054,8 +1134,10 @@ export const kidsContent: KidsItem[] = [
       gameType: "scenario",
       value: "الأمانة والحدود الرقمية وطلب المساعدة",
       reward: "وسام الاختيار الحكيم",
-      familyPrompt: "تحدثوا عن شخص بالغ موثوق يمكن للطفل الرجوع إليه عند القلق أو وصول رسالة غير مريحة.",
-      safetyNote: "لا تطلب اللعبة أي بيانات شخصية، ولا تشجع الطفل على التواصل مع الغرباء.",
+      familyPrompt:
+        "تحدثوا عن شخص بالغ موثوق يمكن للطفل الرجوع إليه عند القلق أو وصول رسالة غير مريحة.",
+      safetyNote:
+        "لا تطلب اللعبة أي بيانات شخصية، ولا تشجع الطفل على التواصل مع الغرباء.",
     },
   },
   {
@@ -1068,11 +1150,39 @@ export const kidsContent: KidsItem[] = [
     content_ar: `رحلة قصيرة من خمسة مواقف. لا تبحث عن أسرع إجابة؛ فكر في أثر كل اختيار على نفسك والآخرين.`,
     quiz_data: {
       questions: [
-        { text: "رأيت زميلًا وحيدًا في وقت اللعب، ماذا تفعل؟", options: ["أتجاهله", "أدعوه بلطف إن أحب اللعب", "أضحك عليه"], correctAnswer: 1 },
-        { text: "لم تفهم درسًا، ما الاختيار الأفضل؟", options: ["أستسلم", "أسأل المعلم وأتدرب", "ألوم زميلي"], correctAnswer: 1 },
-        { text: "غضبت أثناء لعبة، ماذا تفعل؟", options: ["آخذ نفسًا وأطلب استراحة", "أكسر اللعبة", "أصرخ في الجميع"], correctAnswer: 0 },
-        { text: "وجدت معلومة غير مؤكدة، ماذا تفعل؟", options: ["أنشرها فورًا", "أتثبت وأسأل كبيرًا موثوقًا", "أضيف قصة من عندي"], correctAnswer: 1 },
-        { text: "ماذا يجعل التعاون ناجحًا؟", options: ["أن يفوز شخص واحد دائمًا", "تقسيم الأدوار واحترام الجميع", "رفض المساعدة"], correctAnswer: 1 },
+        {
+          text: "رأيت زميلًا وحيدًا في وقت اللعب، ماذا تفعل؟",
+          options: ["أتجاهله", "أدعوه بلطف إن أحب اللعب", "أضحك عليه"],
+          correctAnswer: 1,
+        },
+        {
+          text: "لم تفهم درسًا، ما الاختيار الأفضل؟",
+          options: ["أستسلم", "أسأل المعلم وأتدرب", "ألوم زميلي"],
+          correctAnswer: 1,
+        },
+        {
+          text: "غضبت أثناء لعبة، ماذا تفعل؟",
+          options: ["آخذ نفسًا وأطلب استراحة", "أكسر اللعبة", "أصرخ في الجميع"],
+          correctAnswer: 0,
+        },
+        {
+          text: "وجدت معلومة غير مؤكدة، ماذا تفعل؟",
+          options: [
+            "أنشرها فورًا",
+            "أتثبت وأسأل كبيرًا موثوقًا",
+            "أضيف قصة من عندي",
+          ],
+          correctAnswer: 1,
+        },
+        {
+          text: "ماذا يجعل التعاون ناجحًا؟",
+          options: [
+            "أن يفوز شخص واحد دائمًا",
+            "تقسيم الأدوار واحترام الجميع",
+            "رفض المساعدة",
+          ],
+          correctAnswer: 1,
+        },
       ],
     },
     metadata: {
@@ -1097,8 +1207,14 @@ export const kidsContent: KidsItem[] = [
       category: "التأمل والشكر",
       value: "الشكر والتعبير عن المشاعر",
       reward: "وسام القلب الشاكر",
-      activitySteps: ["ارسم نعمة", "اكتب سبب الشكر", "حدد استخدامًا نافعًا", "شارك مع الأسرة إن أحببت"],
-      familyPrompt: "اكتبوا أنتم أيضًا نعمة واحدة في دفتر الأسرة، دون إجبار الطفل على مشاركة مشاعره.",
+      activitySteps: [
+        "ارسم نعمة",
+        "اكتب سبب الشكر",
+        "حدد استخدامًا نافعًا",
+        "شارك مع الأسرة إن أحببت",
+      ],
+      familyPrompt:
+        "اكتبوا أنتم أيضًا نعمة واحدة في دفتر الأسرة، دون إجبار الطفل على مشاركة مشاعره.",
     },
   },
   {
@@ -1115,9 +1231,16 @@ export const kidsContent: KidsItem[] = [
       category: "الوضوء والبيئة",
       value: "الطهارة والاعتدال وعدم الإسراف",
       reward: "وسام أمين الماء",
-      activitySteps: ["جهز أكوابًا آمنة", "قارن الكميات", "اكتب ملاحظة", "نظف المكان بعد النشاط"],
-      familyPrompt: "نفذوا النشاط بجانب حوض مناسب وتحت إشراف كبير لتجنب الانسكاب أو الانزلاق.",
-      safetyNote: "لا تستخدم الزجاج أو الماء الساخن، ولا تترك الطفل وحده قرب الماء.",
+      activitySteps: [
+        "جهز أكوابًا آمنة",
+        "قارن الكميات",
+        "اكتب ملاحظة",
+        "نظف المكان بعد النشاط",
+      ],
+      familyPrompt:
+        "نفذوا النشاط بجانب حوض مناسب وتحت إشراف كبير لتجنب الانسكاب أو الانزلاق.",
+      safetyNote:
+        "لا تستخدم الزجاج أو الماء الساخن، ولا تترك الطفل وحده قرب الماء.",
     },
   },
   {
@@ -1128,7 +1251,12 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "طابق البطاقات ذات الرموز الأصلية وتعلم بهدوء.",
-    metadata: { category: "ذاكرة وتركيز", gameId: "zikr-memory", version: 2, difficulty: "easy" },
+    metadata: {
+      category: "ذاكرة وتركيز",
+      gameId: "zikr-memory",
+      version: 2,
+      difficulty: "easy",
+    },
   },
   {
     id: "game-wudu-challenge",
@@ -1138,7 +1266,12 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "رتب خطوات الوضوء من المحتوى التعليمي المعتمد.",
-    metadata: { category: "تعلم إسلامي", gameId: "wudu-challenge", version: 2, difficulty: "easy" },
+    metadata: {
+      category: "تعلم إسلامي",
+      gameId: "wudu-challenge",
+      version: 2,
+      difficulty: "easy",
+    },
   },
   {
     id: "game-verse-puzzle",
@@ -1148,7 +1281,12 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "9-12",
     content_ar: "رتب كلمات النص القرآني الموثق دون تعديل.",
-    metadata: { category: "القرآن", gameId: "verse-puzzle", version: 2, difficulty: "easy" },
+    metadata: {
+      category: "القرآن",
+      gameId: "verse-puzzle",
+      version: 2,
+      difficulty: "easy",
+    },
   },
   {
     id: "game-zikr-quiz",
@@ -1158,7 +1296,12 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "أجب عن أسئلة قصيرة من المحتوى التعليمي الموثق.",
-    metadata: { category: "أسئلة وتعلم", gameId: "zikr-quiz", version: 2, difficulty: "easy" },
+    metadata: {
+      category: "أسئلة وتعلم",
+      gameId: "zikr-quiz",
+      version: 2,
+      difficulty: "easy",
+    },
   },
   {
     id: "game-mosque-adventure",
@@ -1168,7 +1311,12 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "استكشف خريطة خيالية وأكمل أهدافًا تعليمية صغيرة.",
-    metadata: { category: "حركة ومغامرة", gameId: "mosque-adventure", version: 2, difficulty: "easy" },
+    metadata: {
+      category: "حركة ومغامرة",
+      gameId: "mosque-adventure",
+      version: 2,
+      difficulty: "easy",
+    },
   },
   {
     id: "game-zikr-road",
@@ -1178,7 +1326,12 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "تجاوز العوائق واجمع النجوم في طريق آمن.",
-    metadata: { category: "حركة ومغامرة", gameId: "zikr-road", version: 2, difficulty: "easy" },
+    metadata: {
+      category: "حركة ومغامرة",
+      gameId: "zikr-road",
+      version: 2,
+      difficulty: "easy",
+    },
   },
   {
     id: "game-zikr-jump",
@@ -1188,7 +1341,12 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "اقفز بين المنصات واجمع نجوم التعلم.",
-    metadata: { category: "حركة ومغامرة", gameId: "zikr-jump", version: 2, difficulty: "easy" },
+    metadata: {
+      category: "حركة ومغامرة",
+      gameId: "zikr-jump",
+      version: 2,
+      difficulty: "easy",
+    },
   },
   {
     id: "game-good-deeds",
@@ -1198,7 +1356,12 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "3-5",
     content_ar: "اختر مهامًا تعليمية اختيارية داخل عالم اللعبة.",
-    metadata: { category: "قيم وتعاون", gameId: "good-deeds", version: 2, difficulty: "easy" },
+    metadata: {
+      category: "قيم وتعاون",
+      gameId: "good-deeds",
+      version: 2,
+      difficulty: "easy",
+    },
   },
   {
     id: "game-hilal-fly",
@@ -1208,7 +1371,12 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "حرك الهلال اللطيف واجمع النجوم.",
-    metadata: { category: "أركيد هادئ", gameId: "hilal-fly", version: 2, difficulty: "easy" },
+    metadata: {
+      category: "أركيد هادئ",
+      gameId: "hilal-fly",
+      version: 2,
+      difficulty: "easy",
+    },
   },
   {
     id: "game-mosque-cleanup",
@@ -1218,7 +1386,12 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "6-8",
     content_ar: "رتب بيئة خيالية نظيفة ومحترمة.",
-    metadata: { category: "قيم وتعاون", gameId: "mosque-cleanup", version: 2, difficulty: "easy" },
+    metadata: {
+      category: "قيم وتعاون",
+      gameId: "mosque-cleanup",
+      version: 2,
+      difficulty: "easy",
+    },
   },
   {
     id: "game-zikr-coloring",
@@ -1228,7 +1401,12 @@ export const kidsContent: KidsItem[] = [
     type: "game",
     age_group: "3-5",
     content_ar: "لون رسومات أصلية واحفظها محليًا على جهازك.",
-    metadata: { category: "إبداع", gameId: "zikr-coloring", version: 2, difficulty: "easy" },
+    metadata: {
+      category: "إبداع",
+      gameId: "zikr-coloring",
+      version: 2,
+      difficulty: "easy",
+    },
   },
   {
     id: "quiz-islamic-basics-plus",
@@ -1239,24 +1417,83 @@ export const kidsContent: KidsItem[] = [
     age_group: "9-12",
     quiz_data: {
       questions: [
-        { text: "كم عدد سور القرآن الكريم؟", options: ["112", "113", "114", "115"], correctAnswer: 2 },
-        { text: "ما أطول سورة في القرآن الكريم؟", options: ["يوسف", "البقرة", "آل عمران", "النساء"], correctAnswer: 1 },
-        { text: "ما أول سورة في ترتيب المصحف؟", options: ["الفاتحة", "الإخلاص", "الناس", "يس"], correctAnswer: 0 },
-        { text: "كم عدد ركعات صلاة الفجر؟", options: ["ثلاث", "أربع", "ركعتان", "خمس"], correctAnswer: 2 },
-        { text: "كم عدد ركعات صلاة المغرب؟", options: ["ركعتان", "ثلاث", "أربع", "ست"], correctAnswer: 1 },
-        { text: "إلى أي اتجاه يتجه المسلمون في الصلاة؟", options: ["المسجد الأقصى", "جبل عرفة", "المسجد النبوي", "الكعبة المشرفة"], correctAnswer: 3 },
-        { text: "في أي مدينة وُلد النبي محمد ﷺ؟", options: ["مكة المكرمة", "المدينة المنورة", "الطائف", "القدس"], correctAnswer: 0 },
-        { text: "ما أول كلمة نزلت من القرآن الكريم؟", options: ["قل", "اقرأ", "الحمد", "يا أيها الناس"], correctAnswer: 1 },
-        { text: "من هو أول مؤذن في الإسلام؟", options: ["عمر بن الخطاب", "أبو بكر الصديق", "عثمان بن عفان", "بلال بن رباح"], correctAnswer: 3 },
-        { text: "في أي شهر هجري يقع عيد الأضحى؟", options: ["ذو الحجة", "رمضان", "شوال", "محرم"], correctAnswer: 0 },
-        { text: "من النبي الذي بنى الكعبة المشرفة مع ابنه إسماعيل؟", options: ["نوح", "موسى", "إبراهيم", "عيسى"], correctAnswer: 2 },
-        { text: "أي نبي ابتلعه الحوت ثم نجّاه الله؟", options: ["يونس", "يوسف", "هود", "صالح"], correctAnswer: 0 },
+        {
+          text: "كم عدد سور القرآن الكريم؟",
+          options: ["112", "113", "114", "115"],
+          correctAnswer: 2,
+        },
+        {
+          text: "ما أطول سورة في القرآن الكريم؟",
+          options: ["يوسف", "البقرة", "آل عمران", "النساء"],
+          correctAnswer: 1,
+        },
+        {
+          text: "ما أول سورة في ترتيب المصحف؟",
+          options: ["الفاتحة", "الإخلاص", "الناس", "يس"],
+          correctAnswer: 0,
+        },
+        {
+          text: "كم عدد ركعات صلاة الفجر؟",
+          options: ["ثلاث", "أربع", "ركعتان", "خمس"],
+          correctAnswer: 2,
+        },
+        {
+          text: "كم عدد ركعات صلاة المغرب؟",
+          options: ["ركعتان", "ثلاث", "أربع", "ست"],
+          correctAnswer: 1,
+        },
+        {
+          text: "إلى أي اتجاه يتجه المسلمون في الصلاة؟",
+          options: [
+            "المسجد الأقصى",
+            "جبل عرفة",
+            "المسجد النبوي",
+            "الكعبة المشرفة",
+          ],
+          correctAnswer: 3,
+        },
+        {
+          text: "في أي مدينة وُلد النبي محمد ﷺ؟",
+          options: ["مكة المكرمة", "المدينة المنورة", "الطائف", "القدس"],
+          correctAnswer: 0,
+        },
+        {
+          text: "ما أول كلمة نزلت من القرآن الكريم؟",
+          options: ["قل", "اقرأ", "الحمد", "يا أيها الناس"],
+          correctAnswer: 1,
+        },
+        {
+          text: "من هو أول مؤذن في الإسلام؟",
+          options: [
+            "عمر بن الخطاب",
+            "أبو بكر الصديق",
+            "عثمان بن عفان",
+            "بلال بن رباح",
+          ],
+          correctAnswer: 3,
+        },
+        {
+          text: "في أي شهر هجري يقع عيد الأضحى؟",
+          options: ["ذو الحجة", "رمضان", "شوال", "محرم"],
+          correctAnswer: 0,
+        },
+        {
+          text: "من النبي الذي بنى الكعبة المشرفة مع ابنه إسماعيل؟",
+          options: ["نوح", "موسى", "إبراهيم", "عيسى"],
+          correctAnswer: 2,
+        },
+        {
+          text: "أي نبي ابتلعه الحوت ثم نجّاه الله؟",
+          options: ["يونس", "يوسف", "هود", "صالح"],
+          correctAnswer: 0,
+        },
       ],
     },
     metadata: {
       category: "معلومات إسلامية",
       reward: "نجمة المعرفة",
-      familyPrompt: "اختاروا سؤالًا واحدًا من الاختبار وابحثوا عن قصته أو معناه معًا في مصدر موثوق.",
+      familyPrompt:
+        "اختاروا سؤالًا واحدًا من الاختبار وابحثوا عن قصته أو معناه معًا في مصدر موثوق.",
     },
   },
   {
@@ -1268,25 +1505,123 @@ export const kidsContent: KidsItem[] = [
     age_group: "9-12",
     quiz_data: {
       questions: [
-        { text: "عندما تقابل جارك في الصباح، ماذا تقول؟", options: ["أتجاهله", "أقول: السلام عليكم", "أركض بعيدًا"], correctAnswer: 1 },
-        { text: "وجدت محفظة ليست لك في الشارع، ماذا تفعل؟", options: ["أسلّمها لشخص كبير موثوق ليعيدها لصاحبها", "آخذها لنفسي", "أتركها وأمضي"], correctAnswer: 0 },
-        { text: "طلبت منك أمك مساعدة وأنت تلعب، ما التصرف الأفضل؟", options: ["أصرخ وأرفض", "أتجاهل الطلب", "أساعدها بسرور ثم أكمل لعبي"], correctAnswer: 2 },
-        { text: "زميلك يجلس وحده ولا يجد من يلعب معه، ماذا تفعل؟", options: ["أضحك عليه", "أدعوه ليلعب معنا", "أبتعد عنه"], correctAnswer: 1 },
-        { text: "تريد لعبة يلعب بها أخوك الآن، ماذا تفعل؟", options: ["أخطفها منه", "أبكي وأصرخ", "أطلب بلطف وأنتظر دوري"], correctAnswer: 2 },
-        { text: "قبل أن تأكل، ما الأدب الصحيح؟", options: ["أغسل يدي وأقول: بسم الله", "أبدأ بسرعة بلا كلام", "ألعب بالطعام"], correctAnswer: 0 },
-        { text: "رأيت قطة جائعة في الطريق، ما التصرف اللطيف؟", options: ["أخيفها لتبتعد", "أطلب من شخص كبير أن نساعدها برفق", "أرميها بحجر"], correctAnswer: 1 },
-        { text: "طلب منك شخص غريب أن تذهب معه، ماذا تفعل؟", options: ["أذهب معه", "أعطيه عنواني", "أرفض وأبتعد وأخبر شخصًا موثوقًا"], correctAnswer: 2 },
-        { text: "رأيت صديقك حزينًا، ما الأفضل؟", options: ["أتجاهله", "أقترب منه بلطف وأسأله كيف أساعده", "أضحك على حزنه"], correctAnswer: 1 },
-        { text: "سألك المعلم هل أنهيت واجبك وأنت لم تنهه، ماذا تقول؟", options: ["أقول الصدق وأعد بإكماله", "أقول: نعم أنهيته", "أسكت وأنظر بعيدًا"], correctAnswer: 0 },
-        { text: "أين نضع بقايا الطعام والأوراق بعد اللعب؟", options: ["في الشارع", "تحت الشجرة", "في سلة المهملات"], correctAnswer: 2 },
-        { text: "اختلفت مع صديقك في اللعب، ما الحل الجميل؟", options: ["نتناوب بالدور ونتحدث بهدوء", "أرفع صوتي عليه", "أترك اللعبة غاضبًا وأقاطعه"], correctAnswer: 0 },
+        {
+          text: "عندما تقابل جارك في الصباح، ماذا تقول؟",
+          options: ["أتجاهله", "أقول: السلام عليكم", "أركض بعيدًا"],
+          correctAnswer: 1,
+        },
+        {
+          text: "وجدت محفظة ليست لك في الشارع، ماذا تفعل؟",
+          options: [
+            "أسلّمها لشخص كبير موثوق ليعيدها لصاحبها",
+            "آخذها لنفسي",
+            "أتركها وأمضي",
+          ],
+          correctAnswer: 0,
+        },
+        {
+          text: "طلبت منك أمك مساعدة وأنت تلعب، ما التصرف الأفضل؟",
+          options: ["أصرخ وأرفض", "أتجاهل الطلب", "أساعدها بسرور ثم أكمل لعبي"],
+          correctAnswer: 2,
+        },
+        {
+          text: "زميلك يجلس وحده ولا يجد من يلعب معه، ماذا تفعل؟",
+          options: ["أضحك عليه", "أدعوه ليلعب معنا", "أبتعد عنه"],
+          correctAnswer: 1,
+        },
+        {
+          text: "تريد لعبة يلعب بها أخوك الآن، ماذا تفعل؟",
+          options: ["أخطفها منه", "أبكي وأصرخ", "أطلب بلطف وأنتظر دوري"],
+          correctAnswer: 2,
+        },
+        {
+          text: "قبل أن تأكل، ما الأدب الصحيح؟",
+          options: [
+            "أغسل يدي وأقول: بسم الله",
+            "أبدأ بسرعة بلا كلام",
+            "ألعب بالطعام",
+          ],
+          correctAnswer: 0,
+        },
+        {
+          text: "رأيت قطة جائعة في الطريق، ما التصرف اللطيف؟",
+          options: [
+            "أخيفها لتبتعد",
+            "أطلب من شخص كبير أن نساعدها برفق",
+            "أرميها بحجر",
+          ],
+          correctAnswer: 1,
+        },
+        {
+          text: "طلب منك شخص غريب أن تذهب معه، ماذا تفعل؟",
+          options: [
+            "أذهب معه",
+            "أعطيه عنواني",
+            "أرفض وأبتعد وأخبر شخصًا موثوقًا",
+          ],
+          correctAnswer: 2,
+        },
+        {
+          text: "رأيت صديقك حزينًا، ما الأفضل؟",
+          options: [
+            "أتجاهله",
+            "أقترب منه بلطف وأسأله كيف أساعده",
+            "أضحك على حزنه",
+          ],
+          correctAnswer: 1,
+        },
+        {
+          text: "سألك المعلم هل أنهيت واجبك وأنت لم تنهه، ماذا تقول؟",
+          options: [
+            "أقول الصدق وأعد بإكماله",
+            "أقول: نعم أنهيته",
+            "أسكت وأنظر بعيدًا",
+          ],
+          correctAnswer: 0,
+        },
+        {
+          text: "أين نضع بقايا الطعام والأوراق بعد اللعب؟",
+          options: ["في الشارع", "تحت الشجرة", "في سلة المهملات"],
+          correctAnswer: 2,
+        },
+        {
+          text: "اختلفت مع صديقك في اللعب، ما الحل الجميل؟",
+          options: [
+            "نتناوب بالدور ونتحدث بهدوء",
+            "أرفع صوتي عليه",
+            "أترك اللعبة غاضبًا وأقاطعه",
+          ],
+          correctAnswer: 0,
+        },
       ],
     },
     metadata: {
       category: "الأخلاق اليومية",
       reward: "وسام الأدب الجميل",
-      familyPrompt: "اطلبوا من الطفل أن يحكي موقفًا حدث له هذا الأسبوع، ثم ناقشوا ماذا كان يمكن أن يفعل بأفضل صورة.",
-      safetyNote: "الأسئلة لا تطلب أي بيانات شخصية. وإذا شعر الطفل بالقلق من شخص أو موقف، فليخبر ولي أمره فورًا.",
+      familyPrompt:
+        "اطلبوا من الطفل أن يحكي موقفًا حدث له هذا الأسبوع، ثم ناقشوا ماذا كان يمكن أن يفعل بأفضل صورة.",
+      safetyNote:
+        "الأسئلة لا تطلب أي بيانات شخصية. وإذا شعر الطفل بالقلق من شخص أو موقف، فليخبر ولي أمره فورًا.",
+    },
+  },
+  {
+    id: "game-letter-lab",
+    title_ar: "مختبر الحروف",
+    title_en: "Arabic Letter Lab",
+    slug: "letter-lab",
+    type: "game",
+    age_group: "3-5",
+    content_ar: "لعبة تعليمية قصيرة للتعرف على الحروف العربية ومطابقتها.",
+    content_en:
+      "A short educational game for recognizing and matching Arabic letters.",
+    metadata: {
+      gameId: "letter-lab",
+      version: 1,
+      difficulty: "easy",
+      category: "لغة وتعلم",
+      objective: "مطابقة الحروف العربية",
+      safetyNote:
+        "اللعب مستقل عن المقارنة مع الآخرين ويُنصح بالتفاعل مع أحد الوالدين.",
     },
   },
 ];
