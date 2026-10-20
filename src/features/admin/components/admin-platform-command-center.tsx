@@ -56,7 +56,7 @@ export async function AdminPlatformCommandCenter() {
 
   return (
     <div className="space-y-8" dir="rtl">
-      <header className="rounded-3xl border border-brand-gold/15 bg-black/20 p-6 md:p-8">
+      <header className="rounded-3xl border border-brand-gold/15 bg-gradient-to-br from-brand-gold/10 via-black/20 to-black/5 p-6 shadow-2xl shadow-black/10 md:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs tracking-[0.18em] text-brand-cream/30">مركز إدارة وتشغيل ذِكر</p>
@@ -70,6 +70,20 @@ export async function AdminPlatformCommandCenter() {
           </Link>
         </div>
       </header>
+
+      <section aria-label="إجراءات سريعة" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ["إدارة المحتوى", "/admin/content", "راجع المحتوى والمسودات"],
+          ["تحليلات المنصة", "/admin/analytics", "تابع الاستخدام والنمو"],
+          ["الألعاب", "/admin/kids/games", "حدّث تجربة الأطفال"],
+          ["سجل التدقيق", "/admin/audit", "راجع آخر العمليات"],
+        ].map(([label, href, description]) => (
+          <Link key={href} href={href} className="group rounded-2xl border border-brand-gold/10 bg-black/15 p-4 transition hover:-translate-y-0.5 hover:border-brand-gold/30 hover:bg-brand-gold/5">
+            <p className="font-semibold text-brand-cream transition group-hover:text-brand-gold">{label}</p>
+            <p className="mt-1 text-xs text-brand-cream/40">{description}</p>
+          </Link>
+        ))}
+      </section>
 
       {snapshot.unavailable.length > 0 ? (
         <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-7 text-red-100/85">

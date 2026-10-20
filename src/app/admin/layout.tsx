@@ -29,7 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen bg-brand-emeraldDeep" dir="rtl">
       <AdminSidebar groups={visibleGroups} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="border-b border-brand-gold/10 bg-black/15 px-4 py-3">
+        <div className="sticky top-0 z-20 border-b border-brand-gold/10 bg-brand-emeraldDeep/95 px-4 py-3 backdrop-blur-md">
           <div className="mx-auto flex max-w-[1800px] items-center justify-between gap-3">
             <div>
               <p className="text-sm font-bold text-brand-gold">مركز إدارة منصة ذِكرٌ</p>
