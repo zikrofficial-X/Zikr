@@ -71,6 +71,24 @@ type FacebookGraphProfileResponse = {
   error?: { message?: unknown };
 };
 
+function safeFacebookProfileError(error: unknown): string {
+  const message = (error instanceof Error ? error.message : String(error ?? "")).toLowerCase();
+  if (
+    message.includes("session has expired") ||
+    message.includes("error validating access token") ||
+    message.includes("invalid oauth") ||
+    message.includes("access token has expired") ||
+    message.includes("oauthexception") ||
+    message.includes("code 190")
+  ) {
+    return "اتصال صفحة Facebook يحتاج إلى التجديد من مركز النشر.";
+  }
+  if (message.includes("permission") || message.includes("code 10") || message.includes("code 200")) {
+    return "اتصال صفحة Facebook يحتاج إلى مراجعة الصلاحيات من مركز النشر.";
+  }
+  return "تعذر تحديث بيانات صفحة Facebook حاليًا.";
+}
+
 async function fetchGraphProfile(pageId: string, accessToken: string, version: string) {
   const url = new URL(`https://graph.facebook.com/${version}/${encodeURIComponent(pageId)}`);
   url.searchParams.set('fields', 'id,name,about,description,category,website,link,picture.type(large),cover,fan_count,followers_count');
@@ -181,7 +199,7 @@ export async function getFacebookPageProfile(): Promise<FacebookPageProfile | nu
           ...cached,
           stale: true,
           avatarUrl: cached.avatarUrl ?? fallbackAvatar,
-          error: error instanceof Error ? error.message : 'تعذر تحديث بيانات صفحة فيسبوك.',
+          error: safeFacebookProfileError(error),
         }
       : {
           id: pageId,
@@ -198,7 +216,7 @@ export async function getFacebookPageProfile(): Promise<FacebookPageProfile | nu
           syncedAt: null,
           stale: true,
           configured: true,
-          error: error instanceof Error ? error.message : 'تعذر تحميل بيانات صفحة فيسبوك.',
+          error: safeFacebookProfileError(error),
         };
   }
 }
