@@ -122,7 +122,7 @@ const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
 const socialWorkflow = read(".github/workflows/publish-social.yml");
 if (!socialWorkflow.includes('cron: "*/15 * * * *"')) failures.push("automatic social publisher must remain scheduled every 15 minutes");
 if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"')) failures.push("video generation must automatically enqueue publishable assets");
-if (!queue.includes("facebookCredentials?.accessToken")) failures.push("Facebook queue target selection must verify a usable Page credential");
+if (!queue.includes("facebookCredentials.accessToken")) failures.push("Facebook queue target selection must verify a usable Page credential");
 
 if (failures.length) {
   console.error("SOCIAL_PUBLISHING_CHECK_FAILED");
