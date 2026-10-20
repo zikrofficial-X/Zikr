@@ -113,6 +113,8 @@ if (credentialsMigration.includes("to anon") && /grant\s+select[^;]+to\s+anon/i.
 
 const facebookProfile = read("src/features/social/integrations/facebook.ts");
 if (!facebookProfile.includes("readStoredFacebookCredential")) failures.push("the official Facebook page profile must use the renewed OAuth-managed token");
+if (!facebookProfile.includes("safeFacebookProfileError")) failures.push("public Facebook page must not expose raw Meta OAuth/token errors");
+if (facebookProfile.includes("error: error instanceof Error ? error.message")) failures.push("public Facebook card must not expose raw Meta provider error text");
 if (!adminApi.includes("getFacebookPageConnectionHealth")) failures.push("publishing center must report live Facebook connection health");
 if (!adminApi.includes('action === "test_facebook"')) failures.push("publishing center must expose a real Facebook token health test");
 if (!adminUi.includes("facebookConnectionStatus")) failures.push("publishing center must distinguish expired tokens from a disabled feature flag");
