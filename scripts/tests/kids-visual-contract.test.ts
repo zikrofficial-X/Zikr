@@ -26,6 +26,15 @@ assert.equal(gameIds.length, 12, "the canonical Kids catalog must continue to ex
 assert.match(artSource, /useId\(\)/, "SVG artwork IDs must be unique when cards repeat on the same page");
 assert.match(artSource, /aria-label": label/, "game illustrations need a localized accessible name");
 assert.match(homeSource, /KidsGameArt/, "the Kids landing page must show game-specific artwork");
+
+const gameKitSource = readFileSync("src/features/kids/components/games/kids-game-kit.tsx", "utf8");
+const gameVisualsSource = readFileSync("src/features/kids/components/games/kids-game-visuals.tsx", "utf8");
+assert.match(gameKitSource, /min-h-\[320px\].*max-w-5xl/, "game stages must fit narrow phone viewports without a forced tall canvas");
+assert.match(gameKitSource, /\[&>\*:\not\(\[aria-hidden=true\]\)\]:relative/, "interactive game content must be layered above decorative background art");
+assert.match(gameKitSource, /grid-cols-2.*min-\[420px\]:grid-cols-3.*sm:grid-cols-5/, "game HUD cards must adapt to narrow mobile widths");
+assert.match(gameVisualsSource, /pointer-events-none absolute inset-0 z-0/, "decorative SVG scenes must remain behind interactive game content");
+assert.match(gameVisualsSource, /absolute left-4 top-4 z-10/, "scene labels must remain readable above scene art");
+
 assert.match(homeSource, /text-3xl font-black leading-\[1\.2\].*sm:text-4xl md:text-6xl/, "the Kids hero title must scale down on phone screens");
 assert.match(homeSource, /ms-auto shrink-0/, "journey checkmarks must use direction-aware spacing");
 assert.match(homeSource, /aspect-\[16\/10\].*sm:aspect-\[2\/1\]/, "featured game art must use a phone-friendly aspect ratio");
