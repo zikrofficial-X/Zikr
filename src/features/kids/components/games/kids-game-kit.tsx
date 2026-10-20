@@ -64,7 +64,7 @@ export function KidsGameStage({
       role="application"
       aria-label={ariaLabel}
       className={
-        "relative isolate mx-auto min-h-[400px] w-full min-w-0 max-w-5xl overflow-hidden rounded-[1.5rem] border border-brand-gold/20 shadow-2xl sm:min-h-[460px] sm:rounded-[2rem] " +
+        "relative isolate mx-auto min-h-[360px] w-full min-w-0 max-w-5xl overflow-hidden rounded-[1.25rem] border border-brand-gold/20 shadow-2xl [contain:layout_paint] sm:min-h-[460px] sm:rounded-[2rem] " +
         className
       }
       style={{
@@ -159,15 +159,15 @@ export function KidsGameHud({
   items: Array<{ label: string; value: ReactNode; tone?: string }>;
 }) {
   return (
-    <div className="relative z-20 grid grid-cols-3 gap-2 px-3 sm:grid-cols-5 sm:px-6" aria-live="polite">
+    <div className="relative z-20 grid min-w-0 grid-cols-2 gap-2 px-3 min-[360px]:grid-cols-3 sm:grid-cols-5 sm:px-6" aria-live="polite">
       {items.map(item => (
         <div
           key={item.label}
-          className="min-w-0 rounded-xl border border-white/10 bg-black/20 p-2 backdrop-blur-sm sm:rounded-2xl sm:p-3"
+          className="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[#061820]/85 p-2 backdrop-blur-sm sm:rounded-2xl sm:p-3"
         >
-          <span className="block truncate text-[11px] text-brand-cream/45">{item.label}</span>
+          <span className="block break-words text-[10px] leading-4 text-brand-cream/60 sm:text-[11px]">{item.label}</span>
           <strong
-            className={"mt-1 block truncate text-lg font-black tabular-nums " + (item.tone ?? "text-brand-cream")}
+            className={"mt-1 block break-words text-base font-black leading-5 tabular-nums sm:text-lg " + (item.tone ?? "text-brand-cream")}
             title={typeof item.value === "number" ? String(safeGameNumber(item.value)) : undefined}
           >
             {typeof item.value === "number" ? formatGameNumber(item.value) : item.value}
