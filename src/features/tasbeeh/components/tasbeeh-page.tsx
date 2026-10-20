@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { ExternalLink, Headphones } from 'lucide-react';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { getAudioChoice, getAudioSettingsFromStorage, loadAudioSettings, type AudioChoice } from '@/lib/audio/config';
 import {
   DEFAULT_TASBEEH_ITEMS,
   MORNING_ADHKAR,
@@ -17,6 +19,51 @@ import {
 } from '@/features/tasbeeh/services/tasbeeh';
 
 type TabType = 'default' | 'morning' | 'evening';
+
+function DhikrAudioCard() {
+  const [choice, setChoice] = useState<AudioChoice | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      await loadAudioSettings();
+      if (active) setChoice(getAudioChoice(getAudioSettingsFromStorage().dhikr));
+    };
+    void load();
+    const handleChange = () => setChoice(getAudioChoice(getAudioSettingsFromStorage().dhikr));
+    window.addEventListener('zikr:audio-settings-changed', handleChange);
+    return () => {
+      active = false;
+      window.removeEventListener('zikr:audio-settings-changed', handleChange);
+    };
+  }, []);
+
+  if (!choice) return null;
+
+  return (
+    <Card className="border-brand-gold/25 bg-brand-gold/5 p-5" dir="rtl">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 rounded-xl border border-brand-gold/25 bg-brand-gold/10 p-2 text-brand-gold">
+            <Headphones className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-xs font-bold tracking-[0.16em] text-brand-gold/75">صوت الذكر</p>
+            <h2 className="mt-1 text-lg font-bold text-brand-gold">{choice.label}</h2>
+            <p className="mt-1 text-sm leading-6 text-brand-cream/65">استمع بهدوء أثناء العدّاد. التشغيل يبدأ بضغطك ولا يعمل تلقائيًا.</p>
+          </div>
+        </div>
+        {choice.sourceUrl && (
+          <a href={choice.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-brand-gold hover:text-brand-goldSoft">
+            المصدر <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        )}
+      </div>
+      <audio className="mt-4 h-10 w-full" controls preload="metadata" src={choice.webUrl} aria-label={`تشغيل ${choice.label}`} />
+      {choice.license && <p className="mt-2 text-[11px] text-brand-cream/45">ترخيص المصدر: {choice.license}</p>}
+    </Card>
+  );
+}
 
 export function TasbeehPage() {
   const [tab, setTab] = useState<TabType>('default');
@@ -102,6 +149,8 @@ export function TasbeehPage() {
           أذكار المساء
         </Button>
       </div>
+
+      <DhikrAudioCard />
 
       {/* Total Count */}
       <Card className="p-6 bg-brand-gold/10 border-brand-gold/30 text-center space-y-2">
