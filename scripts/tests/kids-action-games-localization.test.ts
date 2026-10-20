@@ -33,10 +33,26 @@ for (const label of ['"Score" : "النقاط"', '"Stars" : "النجوم"', '"S
   assert.ok(adventure.includes(label), "adventure HUD label is not bilingual: " + label);
 }
 
-assert.ok(runnerRoad.includes('getKidsLevelMeta("zikr-runner", difficulty, model.levelIndex)'), "Runner must use localized level metadata");
-assert.ok(runnerRoad.includes('getKidsLevelMeta("zikr-road", difficulty, state.levelIndex)'), "Road must use localized level metadata");
-assert.ok(adventure.includes('getKidsLevelMeta("zikr-jump", difficulty, snapshot.levelIndex)'), "Jump must use localized level metadata");
-assert.ok(adventure.includes('getKidsLevelMeta("hilal-fly", difficulty, state.levelIndex)'), "Crescent Flight must use localized level metadata");
+assert.match(
+  runnerRoad,
+  /getKidsLevelMeta\s*\(\s*"zikr-runner"\s*,\s*difficulty\s*,\s*model\.levelIndex\s*\)/,
+  "Runner must use localized level metadata",
+);
+assert.match(
+  runnerRoad,
+  /getKidsLevelMeta\s*\(\s*"zikr-road"\s*,\s*difficulty\s*,\s*state\.levelIndex\s*\)/,
+  "Road must use localized level metadata",
+);
+assert.match(
+  adventure,
+  /getKidsLevelMeta\s*\(\s*"zikr-jump"\s*,\s*difficulty\s*,\s*snapshot\.levelIndex\s*\)/,
+  "Jump must use localized level metadata",
+);
+assert.match(
+  adventure,
+  /getKidsLevelMeta\s*\(\s*"hilal-fly"\s*,\s*difficulty\s*,\s*state\.levelIndex\s*\)/,
+  "Crescent Flight must use localized level metadata",
+);
 
 const nodeCatalog = adventure.split("const NODE_TEMPLATES = [")[1]?.split("] as const;")[0] ?? "";
 assert.equal((nodeCatalog.match(/titleEn:/g) ?? []).length, 7, "all Mosque Adventure map nodes need English titles");
@@ -45,7 +61,7 @@ assert.ok(adventure.includes("title: (isEnglish ? template.titleEn : template.ti
 assert.ok(adventure.includes("label: isEnglish ? template.labelEn : template.label"), "Mosque map-node labels must follow the selected language");
 
 assert.equal(
-  (runnerRoad.match(/The question and choices use the approved Arabic source content\./g) ?? []).length,
+  (runnerRoad.match(/The question and choices use the approved Arabic source\s+content\./g) ?? []).length,
   2,
   "Runner and Road must clarify that checkpoint questions stay in approved Arabic source wording",
 );
@@ -58,6 +74,10 @@ const gameKit = readFileSync("src/features/kids/components/games/kids-game-kit.t
 assert.ok(gameKit.includes('label: isEnglish ? "Right" : "يمين"') && gameKit.includes('label: isEnglish ? "Left" : "يسار"'), "shared touch controls must localize direction labels");
 assert.ok(gameKit.includes('aria-label={isEnglish ? "Game controls" : "أزرار التحكم باللعبة"}'), "shared touch controls need a localized group label");
 assert.ok(gameKit.includes("hideAction = false") && gameKit.includes("hideAction ? \"grid-cols-2\" : \"grid-cols-3\""), "TouchArrows must support hiding unused action controls");
-assert.ok(runnerRoad.includes("onAction={() => undefined} hideAction"), "Road must not show an action button that does nothing");
+assert.match(
+  runnerRoad,
+  /onAction=\{\(\) => undefined\}\s+hideAction/,
+  "Road must not show an action button that does nothing",
+);
 
 console.log("Kids action-game localization contract passed: 5 games, bilingual HUD/feedback, level metadata, map labels, and verified Arabic checkpoint content.");
