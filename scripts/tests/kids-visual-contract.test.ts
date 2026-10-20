@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { GAME_REGISTRY } from "../../src/lib/games/registry";
 import { getGameInstructions } from "../../src/lib/games/game-instructions";
+import { KIDS_LEVEL_COUNT } from "../../src/lib/games/kids-level-system";
 
 const gameIds = Object.keys(GAME_REGISTRY) as Array<keyof typeof GAME_REGISTRY>;
 const artSource = readFileSync("src/features/kids/components/games/kids-game-art.tsx", "utf8");
@@ -18,18 +19,40 @@ const valuesGamesSource = readFileSync("src/features/kids/components/games/kids-
 const goodDeedsRuntime = valuesGamesSource.split("export function GoodDeedsGame")[1]?.split("export function MosqueCleanupGame")[0] ?? "";
 const mosqueRuntime = adventureSource.split("export function MosqueAdventureGame")[1] ?? "";
 const homeSource = readFileSync("src/app/kids/page.tsx", "utf8");
+const gameIndexSource = readFileSync("src/features/kids/components/games/games-index.tsx", "utf8");
 const shellSource = readFileSync("src/features/kids/components/games/game-shell.tsx", "utf8");
 
 assert.equal(gameIds.length, 12, "the canonical Kids catalog must continue to expose 12 games");
 assert.match(artSource, /useId\(\)/, "SVG artwork IDs must be unique when cards repeat on the same page");
 assert.match(artSource, /aria-label": label/, "game illustrations need a localized accessible name");
 assert.match(homeSource, /KidsGameArt/, "the Kids landing page must show game-specific artwork");
-assert.match(shellSource, /KidsGameArt/, "active gameplay must show game-specific artwork");
+assert.match(homeSource, /text-3xl font-black leading-\[1\.2\].*sm:text-4xl md:text-6xl/, "the Kids hero title must scale down on phone screens");
+assert.match(homeSource, /ms-auto shrink-0/, "journey checkmarks must use direction-aware spacing");
+assert.match(homeSource, /aspect-\[16\/10\].*sm:aspect-\[2\/1\]/, "featured game art must use a phone-friendly aspect ratio");
+assert.match(gameIndexSource, /grid min-w-0 grid-cols-1 gap-3.*sm:grid-cols-2.*lg:grid-cols-4/, "catalog filters must stack on phones and reflow on wider screens");
+assert.match(gameIndexSource, /min-h-11 w-full min-w-0 rounded-xl border/, "catalog inputs must have touch-friendly height and stay within the viewport");
+assert.match(gameIndexSource, /text-3xl font-black leading-tight.*sm:text-4xl md:text-6xl/, "catalog hero title must scale down for small devices");
+assert.doesNotMatch(shellSource, /KidsGameArt/, "the shell must not duplicate artwork already rendered inside the game stage");
+assert.equal(KIDS_LEVEL_COUNT, 30, "the Kids catalog must expose thirty levels");
+assert.doesNotMatch(shellSource, /Round statistics|إحصائيات الجولة/, "the shell must not duplicate the internal HUD");
+assert.match(shellSource, /grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center sm:gap-3/, "game controls must reflow for mobile touch");
+assert.match(shellSource, /<details className=.*border-brand-gold\/20/, "the daily mission must be collapsible");
+assert.match(readFileSync("src/features/kids/components/games/kids-game-kit.tsx", "utf8"), /grid grid-cols-3 gap-2 px-3 sm:grid-cols-5/, "the game HUD must fit narrow phones");
+assert.match(learningGamesSource, /break-words \[overflow-wrap:anywhere\]/, "approved learning text must wrap instead of truncate");
+assert.match(learningGamesSource, /grid min-w-0 grid-cols-2 gap-2 min-\[420px\]:grid-cols-3/, "Verse Puzzle tokens must reflow on phones");
+assert.match(learningGamesSource, /grid min-w-0 grid-cols-1 gap-2 min-\[440px\]:grid-cols-2/, "Quiz options must fit narrow screens");
 assert.match(shellSource, /setHasStarted\(true\)/, "gameplay must start from an explicit start action");
 assert.match(shellSource, /!hasStarted \|\| paused/, "timer must remain stopped before play and while paused");
 assert.match(shellSource, /\{!hasStarted && \(/, "every game must show its briefing before gameplay runtime mounting");
 assert.match(shellSource, /const sourceNotice =\s*isEnglish &&\s*\["zikr-memory", "wudu-challenge", "verse-puzzle", "zikr-quiz"\]\.includes\(gameId\)/, "English UI must identify games that retain verified Arabic source text");
-assert.match(shellSource, /hasStarted && sourceNotice &&/, "the verified-source notice must remain visible while these games are running");
+assert.match(shellSource, /sourceNotice=\{sourceNotice\}/, "the game briefing must explain verified source-language wording before the game starts");
+assert.doesNotMatch(shellSource, /hasStarted && sourceNotice &&/, "the shell must not duplicate the source note rendered inside the learning game");
+for (const sourceNote of [
+  "Dhikr phrases remain in their verified Arabic wording.",
+  "Step wording remains in the verified Arabic source.",
+  "Quran text is kept in its verified original Arabic wording.",
+  "Question text and answer choices remain in their verified original Arabic wording.",
+]) assert.ok(learningGamesSource.includes(sourceNote), "the active learning game must keep its source notice: " + sourceNote);
 assert.doesNotMatch(shellSource, /englishSourceMissing/, "missing English translations must not block the game runtime");
 assert.match(shellSource, /const openHelp = useCallback/, "active games must provide a reusable help action");
 assert.match(shellSource, /wasPausedBeforeHelpRef\.current = paused/, "help must remember whether the game was already paused");

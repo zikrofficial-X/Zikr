@@ -22,6 +22,7 @@ const required = [
   "src/lib/games/game-missions.ts",
   "src/features/kids/components/games/kids-game-art.tsx",
   "supabase/migrations/20261002211738_20261003010000_kids_games_level_catalog.sql",
+  "supabase/migrations/20261021010000_kids_games_level_catalog_extend_to_30.sql",
   "src/features/kids/components/games/kids-game-visuals.tsx",
   "supabase/migrations/20261002212922_20261003030000_kids_games_gameplay_visual_catalog.sql",
   "src/lib/games/zikr-runner.ts",
@@ -73,7 +74,7 @@ for (const id of gameIds) {
   }
 }
 
-if (KIDS_LEVEL_COUNT < 20) throw new Error("Kids level system must provide at least 20 levels.");
+if (KIDS_LEVEL_COUNT < 30) throw new Error("Kids level system must provide at least 30 levels.");
 
 for (const gameId of gameIds) {
   for (const difficulty of ["easy", "normal", "hard"] as const) {
@@ -91,13 +92,13 @@ for (const difficulty of ["easy", "normal", "hard"] as const) {
   const cleanup = getMosqueCleanupRules(difficulty);
   const coloring = getZikrColoringRules(difficulty);
 
-  if (!(runner.levelCount >= 20 && runner.speed > 0 && runner.goalDistance > 0 && runner.obstacleInterval > 0)) throw new Error("Invalid Runner progression rules for " + difficulty);
-  if (!(road.levelCount >= 20 && road.speed > 0 && road.goalDistance > 0 && road.checkpointDistances.length > 0)) throw new Error("Invalid Road progression rules for " + difficulty);
-  if (!(jump.levelCount >= 20 && jump.jumpVelocity > 0 && jump.gravity > 0)) throw new Error("Invalid Jump progression rules for " + difficulty);
-  if (!(hilal.levelCount >= 20 && hilal.speed > 0 && hilal.gapHeight > 0)) throw new Error("Invalid Hilal Fly progression rules for " + difficulty);
-  if (!(deeds.levelCount >= 20 && deeds.sceneCount >= 3 && deeds.rewardPerScene > 0)) throw new Error("Invalid Good Deeds progression rules for " + difficulty);
-  if (!(cleanup.levelCount >= 20 && cleanup.itemCount >= 5 && cleanup.mistakePenalty >= 0)) throw new Error("Invalid Cleanup progression rules for " + difficulty);
-  if (!(coloring.levelCount >= 20 && coloring.regionTarget >= 6 && coloring.completionBonus > 0)) throw new Error("Invalid Coloring progression rules for " + difficulty);
+  if (!(runner.levelCount >= 30 && runner.speed > 0 && runner.goalDistance > 0 && runner.obstacleInterval > 0)) throw new Error("Invalid Runner progression rules for " + difficulty);
+  if (!(road.levelCount >= 30 && road.speed > 0 && road.goalDistance > 0 && road.checkpointDistances.length > 0)) throw new Error("Invalid Road progression rules for " + difficulty);
+  if (!(jump.levelCount >= 30 && jump.jumpVelocity > 0 && jump.gravity > 0)) throw new Error("Invalid Jump progression rules for " + difficulty);
+  if (!(hilal.levelCount >= 30 && hilal.speed > 0 && hilal.gapHeight > 0)) throw new Error("Invalid Hilal Fly progression rules for " + difficulty);
+  if (!(deeds.levelCount >= 30 && deeds.sceneCount >= 3 && deeds.rewardPerScene > 0)) throw new Error("Invalid Good Deeds progression rules for " + difficulty);
+  if (!(cleanup.levelCount >= 30 && cleanup.itemCount >= 5 && cleanup.mistakePenalty >= 0)) throw new Error("Invalid Cleanup progression rules for " + difficulty);
+  if (!(coloring.levelCount >= 30 && coloring.regionTarget >= 6 && coloring.completionBonus > 0)) throw new Error("Invalid Coloring progression rules for " + difficulty);
 }
 
 if (!readFileSync(join(root, "src/features/kids/components/games/kids-game-kit.tsx"), "utf8").includes("KidCharacter")) throw new Error("Unified character system is missing.");
@@ -115,6 +116,8 @@ const artSource = readFileSync(join(root, "src/features/kids/components/games/ki
 for (const id of gameIds) if (!artSource.includes('case "' + id + '"')) throw new Error("Visual identity missing for " + id);
 const migrationSource = readFileSync(join(root, "supabase/migrations/20261002211738_20261003010000_kids_games_level_catalog.sql"), "utf8");
 if (!migrationSource.includes("generate_series(1, 20)") || !migrationSource.includes("array['easy','normal','hard']")) throw new Error("Level catalog migration incomplete.");
+const levelExtensionSource = readFileSync(join(root, "supabase/migrations/20261021010000_kids_games_level_catalog_extend_to_30.sql"), "utf8");
+if (!levelExtensionSource.includes("generate_series(21, 30)") || !levelExtensionSource.includes("'levelCount', 30")) throw new Error("Additive 30-level migration is incomplete.");
 for (const id of gameIds) if (!migrationSource.includes("('" + id + "'")) throw new Error("Migration catalog missing " + id);
 
 const visuals = readFileSync(join(root, "src/features/kids/components/games/kids-game-visuals.tsx"), "utf8");
@@ -255,4 +258,4 @@ if (kidsDetailPage.includes('isEnglish ? "Game unavailable"')) {
   throw new Error("Published legacy activities must not be discarded solely because they lack a registry gameId.");
 }
 
-console.log("Kids Games final check passed: 12 rebuilt runtimes, 20 deterministic levels per game/difficulty, no legacy game runtimes, stabilized runtime rules, and preserved progress/offline shell.");
+console.log("Kids Games final check passed: 12 rebuilt runtimes, 30 deterministic levels per game/difficulty, no legacy game runtimes, stabilized runtime rules, and preserved progress/offline shell.");

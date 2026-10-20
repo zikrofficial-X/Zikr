@@ -87,3 +87,10 @@ Mosque Adventure uses a dedicated React runtime instead of the shared lane-based
 Scenario text and answer indexes come only from `getApprovedScenarioQuestions()`; the runtime must not duplicate or invent scenario question content. Difficulty is gameplay: easy uses 3 stations and one scenario checkpoint, normal uses 4 stations and two checkpoints, and hard uses 5 stations with two checkpoints and a larger mistake penalty.
 
 The content integrity check `pnpm kids:mosque:check` is part of PR and main verification.
+
+
+## Responsive gameplay and 30-level catalog
+
+The shared game shell must not repeat the artwork or HUD already rendered inside the game stage. On phones, controls use a two-column touch grid; approved Wudu and Quran wording wraps rather than truncates; Verse Puzzle tokens and Quiz answer cards reflow for small screens; and the daily mission is collapsed below the active game. Native fullscreen respects device safe areas.
+
+The central level system now provides 30 levels per game and difficulty with expanded themed names and deterministic seeds. Verse Puzzle uses exact source text from the canonical Mushaf corpus and has 30 unique references within each difficulty. The additive migration `20261021010000_kids_games_level_catalog_extend_to_30.sql` adds levels 21–30 and catalog metadata without modifying existing player progress or result history.

@@ -1,6 +1,7 @@
 import { getHilalFlyLevels, getHilalFlyRules } from "@/lib/games/hilal-fly";
+import { KIDS_LEVEL_COUNT } from "@/lib/games/kids-level-system";
 
-const LEVEL_COUNT = 20;
+const LEVEL_COUNT = KIDS_LEVEL_COUNT;
 
 for (const difficulty of ["easy", "normal", "hard"] as const) {
   const rules = getHilalFlyRules(difficulty);
@@ -19,7 +20,7 @@ for (const difficulty of ["easy", "normal", "hard"] as const) {
   }
 
   if (levels.length !== LEVEL_COUNT) {
-    throw new Error("Hilal Fly must expose exactly 20 levels per difficulty.");
+    throw new Error("Hilal Fly must expose the full central level catalog per difficulty.");
   }
 
   if (levels.some(level => !level.titleAr || !level.subtitleAr || !level.theme)) {
@@ -69,9 +70,9 @@ if (!(easy.lives > normal.lives || easy.lives === normal.lives)) {
 }
 
 if (getHilalFlyLevels("hard").length !== LEVEL_COUNT) {
-  throw new Error("Hilal Fly hard mode must cover the complete 20-level visual route.");
+  throw new Error("Hilal Fly hard mode must cover the complete expanded visual route.");
 }
 
 console.log(
-  "Hilal Fly check passed: 20-level visual route + real difficulty progression + dedicated runtime contract."
+  "Hilal Fly check passed: expanded visual route + real difficulty progression + dedicated runtime contract."
 );

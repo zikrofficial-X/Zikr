@@ -221,7 +221,7 @@ export async function generateStoryVideo(storyId: string): Promise<VideoGenerati
 export async function generateDuaVideo(duaId: string): Promise<VideoGenerationRequest | null> {
   return createVideoGenerationRequest({
     title: 'دعاء مستجاب',
-    description: 'دعاء من أدعية القرآ�� والسنة',
+    description: 'دعاء من أدعية القرآن والسنة',
     category: 'dua',
     content: { renderer: 'template', type: 'dua', duaId },
   });

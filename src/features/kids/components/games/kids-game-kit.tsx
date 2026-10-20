@@ -57,13 +57,14 @@ export function KidsGameStage({
   className?: string;
   ariaLabel: string;
 }) {
+  const { isEnglish } = useLanguage();
   return (
     <div
-      dir="rtl"
+      dir={isEnglish ? "ltr" : "rtl"}
       role="application"
       aria-label={ariaLabel}
       className={
-        "relative mx-auto min-h-[460px] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-brand-gold/20 shadow-2xl " +
+        "relative isolate mx-auto min-h-[400px] w-full min-w-0 max-w-5xl overflow-hidden rounded-[1.5rem] border border-brand-gold/20 shadow-2xl sm:min-h-[460px] sm:rounded-[2rem] " +
         className
       }
       style={{
@@ -136,14 +137,14 @@ export function KidsGameHeader({
 }) {
   return (
     <header className="relative z-20 mb-4 flex flex-wrap items-start justify-between gap-4 p-5 pb-0 sm:p-6 sm:pb-0">
-      <div className="max-w-3xl">
+      <div className="min-w-0 max-w-3xl break-words">
         <p className={"text-[11px] font-black tracking-[0.22em] uppercase " + themeColor}>
           {eyebrow}
         </p>
-        <h3 className="mt-2 text-3xl font-black leading-tight text-brand-cream sm:text-4xl">
+        <h3 className="mt-2 break-words text-2xl font-black leading-tight text-brand-cream sm:text-3xl lg:text-4xl">
           {title}
         </h3>
-        <p className="mt-2 text-sm leading-7 text-brand-cream/65 sm:text-base">
+        <p className="mt-2 break-words text-sm leading-6 text-brand-cream/65 sm:text-base sm:leading-7">
           {description}
         </p>
       </div>
@@ -158,11 +159,11 @@ export function KidsGameHud({
   items: Array<{ label: string; value: ReactNode; tone?: string }>;
 }) {
   return (
-    <div className="relative z-20 grid grid-cols-2 gap-2 px-4 min-[420px]:grid-cols-5 sm:px-6" aria-live="polite">
+    <div className="relative z-20 grid grid-cols-3 gap-2 px-3 sm:grid-cols-5 sm:px-6" aria-live="polite">
       {items.map(item => (
         <div
           key={item.label}
-          className="min-w-0 rounded-2xl border border-white/10 bg-black/20 p-3 backdrop-blur-sm"
+          className="min-w-0 rounded-xl border border-white/10 bg-black/20 p-2 backdrop-blur-sm sm:rounded-2xl sm:p-3"
         >
           <span className="block truncate text-[11px] text-brand-cream/45">{item.label}</span>
           <strong
