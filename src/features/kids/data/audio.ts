@@ -75,6 +75,33 @@ export const KIDS_AUDIO_TRACKS: KidsAudioTrack[] = [
     ageGroup: '6-8',
     transcript: 'الحمد لله على نعمه كلها، اللهم أعني على ذكرك وشكرك وحسن عبادتك.',
   },
+  {
+    id: 'audio-story-sharing',
+    title: 'صندوق المشاركة',
+    description: 'قصة قصيرة عن مشاركة الأدوات واحترام دور الآخرين في اللعب.',
+    category: 'story',
+    duration: '2:20',
+    ageGroup: '6-8',
+    transcript: 'عندما نشارك وننتظر دورنا يصبح اللعب أجمل للجميع. ما الشيء الذي يمكنك مشاركته اليوم؟',
+  },
+  {
+    id: 'audio-story-curious-question',
+    title: 'سؤال صغير واكتشاف كبير',
+    description: 'رحلة صوتية تشجع الطفل على السؤال والملاحظة والتعلم من حوله.',
+    category: 'story',
+    duration: '2:40',
+    ageGroup: '9-12',
+    transcript: 'اسأل سؤالًا واحدًا عن العالم من حولك، ثم ابحث عن إجابة مع شخص بالغ تثق به.',
+  },
+  {
+    id: 'audio-dhikr-morning',
+    title: 'بداية يوم جميلة',
+    description: 'تذكير صباحي هادئ يبدأ بالشكر والنية الطيبة والعمل النافع.',
+    category: 'dhikr',
+    duration: '0:55',
+    ageGroup: '6-8',
+    transcript: 'الحمد لله الذي أحيانا بعدما أماتنا وإليه النشور. اللهم اجعل يومنا يوم خير ونفع.',
+  },
 ];
 
 export const KIDS_AUDIO_CATEGORY_LABELS: Record<KidsAudioCategory, string> = {
