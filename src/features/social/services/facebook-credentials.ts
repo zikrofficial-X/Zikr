@@ -10,7 +10,7 @@ export type FacebookConnectionStatus =
   | "permission_error"
   | "error";
 
-type StoredFacebookCredential = {
+export type StoredFacebookCredential = {
   platform: "facebook";
   page_id: string;
   page_name: string | null;
