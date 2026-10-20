@@ -38,6 +38,9 @@ export function createVideoProviderRouter(
       let templateAttempted = false;
 
       for (const name of candidates) {
+        // Free-only mode permits public Hugging Face Spaces and the local FFmpeg renderer only.
+        // Unknown/custom endpoints may have separate billing, so they require explicit opt-in.
+        if (config.freeOnly && !["hf_ltx_fast", "hf_wan", "template"].includes(name)) continue;
         if (name === "comfyui" && !config.comfyUiEnabled) continue;
         if (name === "free_api" && !config.freeApiEnabled) continue;
         if (name === "hf_wan" && !config.hfWanEnabled) continue;
