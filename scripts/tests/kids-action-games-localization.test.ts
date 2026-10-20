@@ -33,10 +33,26 @@ for (const label of ['"Score" : "النقاط"', '"Stars" : "النجوم"', '"S
   assert.ok(adventure.includes(label), "adventure HUD label is not bilingual: " + label);
 }
 
-assert.ok(runnerRoad.includes('getKidsLevelMeta("zikr-runner", difficulty, model.levelIndex)'), "Runner must use localized level metadata");
-assert.ok(runnerRoad.includes('getKidsLevelMeta("zikr-road", difficulty, state.levelIndex)'), "Road must use localized level metadata");
-assert.ok(adventure.includes('getKidsLevelMeta("zikr-jump", difficulty, snapshot.levelIndex)'), "Jump must use localized level metadata");
-assert.ok(adventure.includes('getKidsLevelMeta("hilal-fly", difficulty, state.levelIndex)'), "Crescent Flight must use localized level metadata");
+assert.match(
+  runnerRoad,
+  /getKidsLevelMeta\s*\(\s*"zikr-runner"\s*,\s*difficulty\s*,\s*model\.levelIndex\s*\)/,
+  "Runner must use localized level metadata",
+);
+assert.match(
+  runnerRoad,
+  /getKidsLevelMeta\s*\(\s*"zikr-road"\s*,\s*difficulty\s*,\s*state\.levelIndex\s*\)/,
+  "Road must use localized level metadata",
+);
+assert.match(
+  adventure,
+  /getKidsLevelMeta\s*\(\s*"zikr-jump"\s*,\s*difficulty\s*,\s*snapshot\.levelIndex\s*\)/,
+  "Jump must use localized level metadata",
+);
+assert.match(
+  adventure,
+  /getKidsLevelMeta\s*\(\s*"hilal-fly"\s*,\s*difficulty\s*,\s*state\.levelIndex\s*\)/,
+  "Crescent Flight must use localized level metadata",
+);
 
 const nodeCatalog = adventure.split("const NODE_TEMPLATES = [")[1]?.split("] as const;")[0] ?? "";
 assert.equal((nodeCatalog.match(/titleEn:/g) ?? []).length, 7, "all Mosque Adventure map nodes need English titles");
