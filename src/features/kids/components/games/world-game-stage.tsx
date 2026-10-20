@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useLanguage } from "@/components/layout/language-provider";
 import type { GameDifficulty, GameId } from "@/lib/games/registry";
 import { ToneFeedback, type GameSoundEvent } from "@/lib/games/tone-feedback";
 import {
@@ -59,7 +60,54 @@ export type StageController = {
   isPaused: () => boolean;
 };
 
+type RuntimeBoundaryProps = {
+  children: ReactNode;
+  isEnglish: boolean;
+  onError: (message: string) => void;
+  onRetry: () => void;
+};
+
+type RuntimeBoundaryState = { hasError: boolean };
+
+class RuntimeErrorBoundary extends Component<RuntimeBoundaryProps, RuntimeBoundaryState> {
+  state: RuntimeBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): RuntimeBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    this.props.onError(error instanceof Error ? error.message : "Unknown game runtime error");
+  }
+
+  private retry = () => {
+    this.setState({ hasError: false });
+    this.props.onRetry();
+  };
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+    return (
+      <div className="relative z-20 grid min-h-[360px] place-items-center p-6 text-center sm:min-h-[460px]">
+        <div className="max-w-md rounded-2xl border border-brand-gold/25 bg-[#071b24]/90 p-6 shadow-2xl">
+          <p className="text-3xl" aria-hidden="true">🌱</p>
+          <h3 className="mt-3 text-xl font-black text-brand-gold">
+            {this.props.isEnglish ? "This round needs a fresh start" : "تحتاج هذه الجولة إلى بداية جديدة"}
+          </h3>
+          <p className="mt-2 text-sm leading-7 text-brand-cream/70">
+            {this.props.isEnglish ? "Your progress is safe. Restart the round and keep learning." : "تقدمك آمن. أعد تشغيل الجولة وواصل التعلم."}
+          </p>
+          <button type="button" onClick={this.retry} className="mt-5 min-h-11 rounded-xl bg-brand-gold px-5 py-3 text-sm font-bold text-black">
+            {this.props.isEnglish ? "Restart round" : "إعادة تشغيل الجولة"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+}
+
 export function WorldGameStage(props: WorldGameStageProps) {
+  const { isEnglish } = useLanguage();
   const {
     gameId,
     difficulty,
@@ -74,6 +122,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
   } = props;
 
   const localTone = useRef<ToneFeedback | null>(null);
+  const [recoveryKey, setRecoveryKey] = useState(0);
 
   useEffect(() => {
     const theme =
@@ -138,7 +187,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
     onSound: playSound,
   };
 
-  switch (gameId) {
+  const runtime = (() => { switch (gameId) {
     case "zikr-runner":
       return <ZikrRunnerGame {...common} />;
     case "zikr-memory":
@@ -171,5 +220,20 @@ export function WorldGameStage(props: WorldGameStageProps) {
           اللعبة غير متاحة حاليًا.
         </div>
       );
-  }
+    }
+  })();
+
+  return (
+    <RuntimeErrorBoundary
+      key={gameId + ":" + restartToken + ":" + recoveryKey}
+      isEnglish={isEnglish}
+      onError={onError}
+      onRetry={() => {
+        setRecoveryKey(value => value + 1);
+        onError("");
+      }}
+    >
+      {runtime}
+    </RuntimeErrorBoundary>
+  );
 }
