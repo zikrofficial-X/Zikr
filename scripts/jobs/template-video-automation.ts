@@ -343,7 +343,9 @@ async function findByAutomationKey(table: string, key: string) {
   );
   return rows?.[0] ?? null;
 }
-export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
+export const KIDS_SERIES_START_DAY_INDEX = dayIndex(new Date("2026-10-21T00:00:00.000Z"));
+
+async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   if (process.env.AUTO_VIDEO_ENABLED?.toLowerCase() === "false") return 0;
   const now = new Date();
   const day = dayIndex(now);
@@ -357,13 +359,15 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   );
   const alreadySeededToday = todaysRows?.length ?? 0;
   const dailyTarget = Math.max(1, Math.min(24, Number(process.env.DAILY_VIDEO_TARGET ?? 12) || 12));
-  const dueByNow = Math.ceil((dailyTarget * (now.getUTCHours() + 1)) / 24);
+  // The workflow runs in four six-hour UTC windows; release a quarter of the daily target per window.
+  const scheduleWindow = Math.min(4, Math.max(1, Math.floor(now.getUTCHours() / 6) + 1));
+  const dueByNow = Math.ceil((dailyTarget * scheduleWindow) / 4);
   const urgent = process.env.AUTO_VIDEO_URGENT?.toLowerCase() === "true";
   const allowed = urgent ? Math.min(10, batchSize) : Math.min(10, batchSize, Math.max(0, dueByNow - alreadySeededToday));
 
   for (let i = 0; i < allowed; i += 1) {
     const slot = alreadySeededToday + i;
-    const mode = slot % 6;
+    const mode = slot % 7;
 
     let payload: Record<string, unknown>;
     let key = "";
@@ -518,6 +522,54 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
           aiMode: "source_locked",
           aiProviderHint,
           voiceProfile: "documentary_male_msa",
+        },
+        duration: TARGET_VIDEO_SECONDS,
+        status: "pending",
+        automation_key: key,
+      };
+    } else if (mode === 5) {
+      key = `kids-series:${day}:${slot}`;
+      if (await findByAutomationKey("video_generation_requests", key)) continue;
+      const kidsSlotsPerDay = Math.max(1, Math.ceil(Math.max(1, dailyTarget - 5) / 7));
+      const daysSinceFactoryLaunch = Math.max(0, day - KIDS_SERIES_START_DAY_INDEX);
+      const episodeSequence = daysSinceFactoryLaunch * kidsSlotsPerDay + Math.floor(slot / 7) + 1;
+      const episode = buildKidsSeriesEpisode(episodeSequence);
+      const episodeValidation = validateGeneratedKidsEpisode(episode);
+      if (!episodeValidation.ok) {
+        throw new Error("Generated kids story failed editorial contract: " + episodeValidation.errors.join(" | "));
+      }
+      payload = {
+        title: episode.title,
+        description: episode.description,
+        category: "other",
+        content: {
+          renderer: "template",
+          type: "kids_story_episode",
+          sourceType: "original_kids_fiction",
+          sourceId: episode.sourceId,
+          factorySequence: episodeSequence,
+          sourceUrl: `${siteUrl()}/kids`,
+          sourceLabel: "قصة تربوية خيالية أصلية من ذِكر — ليست آية أو حديثًا أو واقعة تاريخية.",
+          textAr: episode.text,
+          text: episode.text,
+          script: episode.text,
+          audience: "kids",
+          contentFormat: "series_episode",
+          seriesId: episode.seriesId,
+          seriesTitle: episode.seriesTitle,
+          seasonNumber: episode.seasonNumber,
+          episodeNumber: episode.episodeNumber,
+          episodeTitle: episode.episodeTitle,
+          ageGroup: episode.ageGroup,
+          learningObjective: episode.learningObjective,
+          visualTheme: episode.visualTheme,
+          style: episode.visualTheme,
+          generationMode: episode.generationMode,
+          voiceProfile: "kids_friendly",
+          publicPath: "/kids",
+          automationKey: key,
+          aiMode: "original_kids_story",
+          aiProviderHint,
         },
         duration: TARGET_VIDEO_SECONDS,
         status: "pending",
