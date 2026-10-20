@@ -66,7 +66,7 @@ export function KidsGameStage({
         "relative mx-auto min-h-[460px] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-brand-gold/20 shadow-2xl " +
         className
       }
-      style={{ ...THEME_STYLES[theme], backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }}
+      style={{ background: `${THEME_STYLES[theme].backgroundImage} center / cover no-repeat` }}
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         {STARS.map(([left, top, type], index) => (
