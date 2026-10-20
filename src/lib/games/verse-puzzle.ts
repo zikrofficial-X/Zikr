@@ -38,6 +38,16 @@ const VERIFIED_VERSE_REFERENCES = [
   { surah: 114, ayah: 2 },
   { surah: 114, ayah: 3 },
   { surah: 114, ayah: 4 },
+  { surah: 114, ayah: 5 },
+  { surah: 114, ayah: 6 },
+  { surah: 109, ayah: 1 },
+  { surah: 109, ayah: 2 },
+  { surah: 109, ayah: 3 },
+  { surah: 109, ayah: 4 },
+  { surah: 109, ayah: 5 },
+  { surah: 109, ayah: 6 },
+  { surah: 110, ayah: 1 },
+  { surah: 110, ayah: 2 },
 ] as const;
 
 export type VersePuzzleReference = (typeof VERIFIED_VERSE_REFERENCES)[number];

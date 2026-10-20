@@ -1,4 +1,5 @@
 import { getZikrJumpLevels, getZikrJumpRules } from "@/lib/games/zikr-jump";
+import { KIDS_LEVEL_COUNT } from "@/lib/games/kids-level-system";
 
 for (const difficulty of ["easy", "normal", "hard"] as const) {
   const rules = getZikrJumpRules(difficulty);
@@ -43,8 +44,8 @@ const easy = getZikrJumpRules("easy");
 const normal = getZikrJumpRules("normal");
 const hard = getZikrJumpRules("hard");
 
-if (!(easy.levelCount === 20 && normal.levelCount === 20 && hard.levelCount === 20)) {
-  throw new Error("ZIKR Jump level count must increase with difficulty.");
+if (!(easy.levelCount === KIDS_LEVEL_COUNT && normal.levelCount === KIDS_LEVEL_COUNT && hard.levelCount === KIDS_LEVEL_COUNT && KIDS_LEVEL_COUNT >= 30)) {
+  throw new Error("ZIKR Jump must stay aligned with the expanded central level catalog.");
 }
 
 if (!(easy.jumpVelocity < normal.jumpVelocity && normal.jumpVelocity < hard.jumpVelocity)) {

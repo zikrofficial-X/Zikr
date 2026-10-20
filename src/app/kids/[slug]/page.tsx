@@ -2,6 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Container } from "@/components/ui/container";
@@ -215,9 +216,9 @@ export default function KidsDetailPage() {
   }
 
   return (
-    <Container className="py-12 space-y-8 max-w-3xl" dir={isEnglish ? "ltr" : "rtl"}>
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold text-brand-gold">
+    <Container className={"py-6 space-y-5 sm:py-12 sm:space-y-8 " + (content.type === "game" ? "max-w-4xl" : "max-w-3xl")} dir={isEnglish ? "ltr" : "rtl"}>
+      <div className="space-y-3 text-center">
+        <h1 className="break-words text-2xl font-black leading-tight text-brand-gold sm:text-4xl">
           {isEnglish ? content.title_en : content.title_ar}
         </h1>
         <div className="flex justify-center gap-3">
@@ -506,13 +507,18 @@ export default function KidsDetailPage() {
         imageUrl={content.featured_image_url}
       />
 
-      <Card className="p-6 text-center space-y-3 bg-brand-gold/10">
-        <h3 className="text-xl font-bold text-brand-gold">تعلم بسهولة</h3>
-        <p className="text-brand-cream/90">
-          هذا المحتوى مصمم خصيصاً لمساعدتك على تعلم أساسيات الإسلام بطريقة ممتعة
-          وسهلة
-        </p>
-      </Card>
+      {content.type === "game" ? (
+        <Card className="space-y-3 border-brand-emerald/20 bg-brand-emerald/5 p-4 text-center sm:p-6">
+          <h3 className="text-lg font-black text-brand-gold sm:text-xl">{isEnglish ? "Keep exploring" : "واصل الاستكشاف"}</h3>
+          <p className="mx-auto max-w-xl break-words text-sm leading-7 text-brand-cream/75">{isEnglish ? "Choose another short, age-appropriate game and continue at your own pace." : "اختر لعبة تعليمية قصيرة أخرى مناسبة للعمر، وتابع التعلم بالسرعة التي تناسبك."}</p>
+          <Link href="/kids/games" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-brand-gold/40 px-5 py-3 text-sm font-bold text-brand-gold transition hover:bg-brand-gold hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold">{isEnglish ? "Browse all 12 games" : "تصفح الألعاب الـ12"}</Link>
+        </Card>
+      ) : (
+        <Card className="space-y-3 bg-brand-gold/10 p-4 text-center sm:p-6">
+          <h3 className="text-lg font-bold text-brand-gold sm:text-xl">{isEnglish ? "Learn at your own pace" : "تعلّم بسهولة"}</h3>
+          <p className="break-words text-sm leading-7 text-brand-cream/90">{isEnglish ? "This activity is designed to help you learn Islamic basics in a clear, enjoyable way." : "هذا المحتوى مصمم لمساعدتك على تعلم أساسيات الإسلام بطريقة ممتعة وسهلة."}</p>
+        </Card>
+      )}
     </Container>
   );
 }

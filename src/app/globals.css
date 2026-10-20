@@ -419,3 +419,17 @@ footer {
     min-height: 210px;
   }
 }
+
+
+/* Kids games: safe fullscreen viewport and phone-friendly touch controls. */
+#kids-world-game-frame:fullscreen {
+  display: block; width: 100%; height: 100dvh; min-height: 100dvh;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  padding: max(0.5rem, env(safe-area-inset-top)) max(0.5rem, env(safe-area-inset-right)) max(0.5rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
+  background: #061820;
+}
+#kids-world-game-frame:fullscreen > div:first-child {
+  width: 100%; max-width: min(100%, 1280px); min-height: calc(100dvh - 1rem); margin-inline: auto;
+}
+#kids-world-game-frame button { max-width: 100%; overflow-wrap: anywhere; -webkit-tap-highlight-color: transparent; }
+#kids-world-game-frame button:focus-visible { outline: 2px solid #c7a86b; outline-offset: 2px; }

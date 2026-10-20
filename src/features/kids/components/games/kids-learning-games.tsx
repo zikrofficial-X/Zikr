@@ -229,7 +229,7 @@ export function ZikrMemoryGame({ difficulty, restartToken, paused, onHud, onResu
     <KidsGameStage theme="night" ariaLabel={isEnglish ? "ZIKR Memory" : "ذاكرة ذِكر"}><KidsGameWorld gameId="zikr-memory" />
       <KidsGameHeader eyebrow="ZIKR MEMORY" title={isEnglish ? "ZIKR Memory" : "ذاكرة ذِكر"} description={isEnglish ? "Match everyday situations to verified Arabic dhikr." : meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(matched.length / Math.max(1, cards.length)) * 100} label={isEnglish ? "Pairs " + matched.length / 2 + "/" + pairTarget : "الأزواج " + matched.length / 2 + "/" + pairTarget} /></div>} />
       <div className="px-4 sm:px-6">
-        {isEnglish && <p className="mb-3 text-xs text-brand-cream/45">Dhikr phrases remain in their verified Arabic wording.</p>}
+        {isEnglish && <p role="note" className="mb-3 text-xs leading-6 text-brand-cream/55">Dhikr phrases remain in their verified Arabic wording.</p>}
         <KidsGameHud items={[
           { label: isEnglish ? "Score" : "النقاط", value: score, tone: "text-brand-gold" },
           { label: isEnglish ? "Pairs" : "الأزواج", value: matched.length / 2 + "/" + pairTarget, tone: "text-brand-emerald" },
@@ -372,7 +372,9 @@ export function WuduChallengeGame({ difficulty, restartToken, paused, onHud, onR
   return (
     <KidsGameStage theme="sea" ariaLabel={isEnglish ? "Wudu Challenge" : "تحدي الوضوء"}><KidsGameWorld gameId="wudu-challenge" />
       <KidsGameHeader eyebrow="WUDU CHALLENGE" title={isEnglish ? "Wudu Challenge" : "تحدي الوضوء"} description={isEnglish ? "Order the verified Arabic wudu steps from the lesson." : meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={waterLevel} label={levelLabel(levelIndex, isEnglish)} /></div>} />
-      <div className="px-4 sm:px-6">{isEnglish && <p className="mb-3 text-xs text-brand-cream/45">Step wording remains in the verified Arabic source.</p>}<KidsGameHud items={[
+      <div className="px-4 sm:px-6">
+      {isEnglish && <p role="note" className="mb-3 text-xs leading-6 text-brand-cream/55">Step wording remains in the verified Arabic source.</p>}
+      <KidsGameHud items={[
         { label: isEnglish ? "Score" : "النقاط", value: state.score, tone: "text-brand-gold" },
         { label: isEnglish ? "Step" : "الخطوة", value: Math.min(stepCount, state.stepIndex) + "/" + stepCount, tone: "text-sky-200" },
         { label: isEnglish ? "Mistakes" : "الأخطاء", value: state.mistakes, tone: "text-rose-100" },
@@ -381,16 +383,16 @@ export function WuduChallengeGame({ difficulty, restartToken, paused, onHud, onR
       ]} /></div>
       <div className="mx-4 mt-4 rounded-[2rem] border border-white/10 bg-[#072530]/70 p-5 sm:mx-6 sm:p-6">
         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label={isEnglish ? "Wudu step sequence" : "تسلسل خطوات الوضوء"}>
-          {steps.map((step, index) => <div key={step.order} className={"rounded-xl border px-3 py-2 text-xs transition " + (index < state.stepIndex ? "border-brand-emerald/30 bg-brand-emerald/10 text-brand-emerald" : index === state.stepIndex ? "border-sky-200/40 bg-sky-200/10 text-sky-100" : "border-white/10 bg-white/[0.02] text-brand-cream/35")}>
-            <span className="block font-black">{index + 1}</span><span className="mt-1 block truncate">{step.text}</span>
+          {steps.map((step, index) => <div key={step.order} className={"min-h-[4.25rem] min-w-0 break-words rounded-xl border px-2 py-2 text-[11px] leading-5 transition sm:px-3 sm:text-xs " + (index < state.stepIndex ? "border-brand-emerald/30 bg-brand-emerald/10 text-brand-emerald" : index === state.stepIndex ? "border-sky-200/40 bg-sky-200/10 text-sky-100" : "border-white/10 bg-white/[0.02] text-brand-cream/35")}>
+            <span className="block font-black">{index + 1}</span><span className="mt-1 block break-words [overflow-wrap:anywhere]">{step.text}</span>
           </div>)}
         </div>
-        <div className="relative mx-auto max-w-3xl overflow-hidden rounded-[1.8rem] border border-sky-200/15 bg-[linear-gradient(160deg,#0b4356,#09212d)] p-5">
-          <div className="relative flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-black tracking-[0.18em] text-sky-200/70">{isEnglish ? "WATER STATION" : "محطة الماء"}</p><h4 className="mt-2 text-2xl font-black text-brand-cream">{steps[state.stepIndex]?.text ?? (isEnglish ? "Level complete" : "اكتمل المستوى")}</h4><p className="mt-2 text-sm leading-7 text-brand-cream/55">{isEnglish ? "Choose the card that represents the next step." : "اختر البطاقة التي تمثل الخطوة التالية."}</p></div><div className="grid h-24 w-24 place-items-center rounded-full border-2 border-sky-200/40 bg-sky-200/10 text-4xl text-sky-200">💧</div></div>
+        <div className="relative mx-auto max-w-3xl min-w-0 overflow-hidden rounded-[1.5rem] border border-sky-200/15 bg-[linear-gradient(160deg,#0b4356,#09212d)] p-3 sm:rounded-[1.8rem] sm:p-5">
+          <div className="relative flex min-w-0 items-start justify-between gap-3 sm:items-center sm:gap-4"><div className="min-w-0 flex-1"><p className="text-xs font-black tracking-[0.18em] text-sky-200/70">{isEnglish ? "WATER STATION" : "محطة الماء"}</p><h4 className="mt-2 break-words text-lg font-black leading-7 text-brand-cream sm:text-2xl">{steps[state.stepIndex]?.text ?? (isEnglish ? "Level complete" : "اكتمل المستوى")}</h4><p className="mt-2 text-sm leading-7 text-brand-cream/55">{isEnglish ? "Choose the card that represents the next step." : "اختر البطاقة التي تمثل الخطوة التالية."}</p></div><div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-sky-200/40 bg-sky-200/10 text-2xl text-sky-200 sm:h-24 sm:w-24 sm:text-4xl">💧</div></div>
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-sky-300 transition-[width] duration-300" style={{ width: waterLevel + "%" }} /></div>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {options.map(option => <button key={option.order} type="button" onClick={() => choose(option.order)} disabled={paused || state.completed} className={"group min-h-24 rounded-2xl border border-white/10 bg-white/[0.03] p-4 " + (isEnglish ? "text-left" : "text-right") + " transition hover:-translate-y-1 hover:border-sky-200/45"}><span className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-sky-200/20 bg-sky-200/10 text-xs font-black text-sky-200">{option.order}</span><p className="mt-3 text-sm leading-7 text-brand-cream">{option.text}</p></button>)}
+        <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 min-[440px]:grid-cols-2 sm:mt-5 sm:gap-3 lg:grid-cols-3">
+          {options.map(option => <button key={option.order} type="button" onClick={() => choose(option.order)} disabled={paused || state.completed} className={"group min-h-16 min-w-0 break-words rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-start transition hover:-translate-y-0.5 hover:border-sky-200/45 sm:min-h-24 sm:p-4 " + (isEnglish ? "text-left" : "text-right")}><span className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-sky-200/20 bg-sky-200/10 text-xs font-black text-sky-200">{option.order}</span><p className="mt-3 break-words text-sm leading-6 text-brand-cream [overflow-wrap:anywhere] sm:leading-7">{option.text}</p></button>)}
         </div>
       </div>
       <GameToast tone={state.completed && levelIndex === KIDS_LEVEL_COUNT - 1 ? "emerald" : "gold"}>{feedback}</GameToast>
@@ -525,6 +527,7 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
   return (
     <KidsGameStage theme="library" ariaLabel={isEnglish ? "Verse Puzzle" : "لغز الآية"}><KidsGameWorld gameId="verse-puzzle" />
       <KidsGameHeader eyebrow="VERSE PUZZLE" title={isEnglish ? "Verse Puzzle" : "لغز الآية"} description={isEnglish ? "Rebuild the verified Quran text in its original Arabic wording." : meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(answer.length / tokens.length) * 100} label={levelLabel(levelIndex, isEnglish)} /></div>} />
+      {isEnglish && <p role="note" className="mx-4 mt-3 text-xs leading-6 text-brand-cream/55 sm:mx-6">Quran text is kept in its verified original Arabic wording.</p>}
       <div className="px-4 sm:px-6"><KidsGameHud items={[
         { label: isEnglish ? "Score" : "النقاط", value: score, tone: "text-brand-gold" },
         { label: isEnglish ? "Words" : "الكلمات", value: answer.length + "/" + tokens.length, tone: "text-violet-200" },
@@ -536,13 +539,13 @@ export function VersePuzzleGame({ difficulty, restartToken, paused, onHud, onRes
         <p className="text-xs text-brand-cream/45">{isEnglish ? "The hint adds one mistake but points toward the next word." : "التلميح يضيف خطأً واحدًا لكنه يوضح اتجاه الحل."}</p>
         <button type="button" onClick={useVerseHint} disabled={paused || complete || hintVisible} className="rounded-xl border border-brand-gold/30 bg-brand-gold/5 px-4 py-2 text-xs font-black text-brand-gold disabled:opacity-40">🔎 {isEnglish ? "Hint" : "تلميح"}</button>
       </div></div>
-      {isEnglish && <p className="mx-4 mt-3 text-xs text-brand-cream/45 sm:mx-6">Quran text is kept in its verified original Arabic wording.</p>}
-      <div className="mx-4 mt-4 rounded-[2rem] border border-violet-200/10 bg-black/20 p-5 sm:mx-6">
-        <div className="min-h-28 rounded-[1.5rem] border border-violet-200/15 bg-violet-200/[0.04] p-5 text-center text-xl leading-[2.5] text-brand-gold">{answer.length ? answer.map(index => tokens.find(token => token.index === index)?.text ?? "").join(" ") : <span className="text-sm text-brand-cream/30">{isEnglish ? "Start with the first word" : "ابدأ من الكلمة الأولى"}</span>}</div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      
+      <div className="mx-3 mt-3 min-w-0 rounded-[1.5rem] border border-violet-200/10 bg-black/20 p-3 sm:mx-6 sm:mt-4 sm:rounded-[2rem] sm:p-5">
+        <div className="flex min-h-24 min-w-0 items-center justify-center break-words rounded-[1.5rem] border border-violet-200/15 bg-violet-200/[0.04] p-3 text-center text-base leading-8 text-brand-gold [overflow-wrap:anywhere] sm:min-h-28 sm:p-5 sm:text-xl sm:leading-[2.5]">{answer.length ? answer.map(index => tokens.find(token => token.index === index)?.text ?? "").join(" ") : <span className="text-sm text-brand-cream/30">{isEnglish ? "Start with the first word" : "ابدأ من الكلمة الأولى"}</span>}</div>
+        <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 min-[420px]:grid-cols-3 sm:mt-5 sm:gap-3 lg:grid-cols-4">
           {tokens.map(token => {
             const hinted = hintVisible && token.index === answer.length;
-            return <button key={token.id} type="button" onClick={() => choose(token.index)} disabled={paused || answer.includes(token.index) || complete} className={"min-h-16 rounded-2xl border p-4 text-right text-base font-semibold transition " + (answer.includes(token.index) ? "border-brand-emerald/20 bg-brand-emerald/5 text-brand-cream/20" : hinted ? "border-brand-gold/80 bg-brand-gold/10 text-brand-gold ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-violet-200/50")}>{hinted ? "✨ " + token.text : token.text}</button>;
+            return <button key={token.id} type="button" onClick={() => choose(token.index)} disabled={paused || answer.includes(token.index) || complete} className={"min-h-14 min-w-0 break-words rounded-xl border p-3 text-center text-sm font-semibold transition sm:min-h-16 sm:rounded-2xl sm:p-4 sm:text-base [overflow-wrap:anywhere] " + (answer.includes(token.index) ? "border-brand-emerald/20 bg-brand-emerald/5 text-brand-cream/20" : hinted ? "border-brand-gold/80 bg-brand-gold/10 text-brand-gold ring-2 ring-brand-gold/20 animate-pulse" : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-violet-200/50")}>{hinted ? "✨ " + token.text : token.text}</button>;
           })}
         </div>
       </div>
@@ -681,7 +684,9 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
     <KidsGameStage theme="library" ariaLabel={isEnglish ? "ZIKR Quiz" : "اختبار ذِكر"}>
       <KidsGameWorld gameId="zikr-quiz" />
       <KidsGameHeader eyebrow="ZIKR QUIZ" title={isEnglish ? "ZIKR Quiz" : "اختبار ذِكر"} description={isEnglish ? "Verified Arabic questions • " + meta.subtitleEn : question.category + " • " + meta.subtitleAr} right={<div className="hidden w-52 sm:block"><KidsProgress value={(index / questions.length) * 100} label={levelLabel(levelIndex, isEnglish)} /></div>} />
-      <div className="px-4 sm:px-6">{isEnglish && <p className="mb-3 text-xs text-brand-cream/45">Question text and answer choices remain in their verified original Arabic wording.</p>}<KidsGameHud items={[
+      <div className="px-4 sm:px-6">
+      {isEnglish && <p role="note" className="mb-3 text-xs leading-6 text-brand-cream/55">Question text and answer choices remain in their verified original Arabic wording.</p>}
+      <KidsGameHud items={[
         { label: isEnglish ? "Score" : "النقاط", value: score, tone: "text-brand-gold" },
         { label: isEnglish ? "Correct" : "الصحيح", value: correct, tone: "text-brand-emerald" },
         { label: isEnglish ? "Streak" : "السلسلة", value: streak, tone: "text-violet-200" },
@@ -692,15 +697,15 @@ export function ZikrQuizGame({ difficulty, restartToken, paused, onHud, onResult
         <p className="text-xs text-brand-cream/45">{isEnglish ? "50/50 is available once per question and narrows the choices to two." : "ميزة 50/50 متاحة مرة واحدة لكل سؤال، وتفتح لك آخر خيارين محتملين."}</p>
         <button type="button" onClick={useFiftyFifty} disabled={paused || selected !== null || hiddenOptions.length > 0} className="rounded-xl border border-brand-gold/30 bg-brand-gold/5 px-4 py-2 text-xs font-black text-brand-gold disabled:opacity-40">✂️ 50/50</button>
       </div></div>
-      <div className="mx-4 mt-4 rounded-[2rem] border border-white/10 bg-black/20 p-5 sm:mx-6 sm:p-7">
-        <div className="rounded-[1.7rem] border border-brand-gold/15 bg-brand-gold/[0.04] p-5"><p className="text-xs font-black tracking-[0.18em] text-brand-emerald/80">{isEnglish ? "QUESTION " + (index + 1) : "السؤال " + (index + 1)}</p><h4 className="mt-3 text-2xl font-black leading-10 text-brand-cream">{question.text}</h4></div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <div className="mx-3 mt-3 min-w-0 rounded-[1.5rem] border border-white/10 bg-black/20 p-3 sm:mx-6 sm:mt-4 sm:rounded-[2rem] sm:p-7">
+        <div className="min-w-0 rounded-[1.3rem] border border-brand-gold/15 bg-brand-gold/[0.04] p-3 sm:rounded-[1.7rem] sm:p-5"><p className="text-xs font-black tracking-[0.18em] text-brand-emerald/80">{isEnglish ? "QUESTION " + (index + 1) : "السؤال " + (index + 1)}</p><h4 className="mt-3 break-words text-lg font-black leading-8 text-brand-cream [overflow-wrap:anywhere] sm:text-2xl sm:leading-10">{question.text}</h4></div>
+        <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 min-[440px]:grid-cols-2 sm:mt-5 sm:gap-3">
           {question.options.map((option, optionIndex) => {
             const isCorrect = optionIndex === question.correctAnswer;
             const isSelected = optionIndex === selected;
             const hidden = hiddenOptions.includes(optionIndex);
-            return <button key={option + ":" + optionIndex} type="button" onClick={() => choose(optionIndex)} disabled={paused || selected !== null || hidden} className={[
-              "min-h-24 rounded-2xl border p-4 text-right transition " + (hidden ? "opacity-20 blur-[1px]" : ""),
+            return <button key={option + ":" + optionIndex} type="button" onClick={() => choose(optionIndex)} disabled={paused || selected !== null || hidden} aria-pressed={isSelected} className={[
+              "min-h-20 min-w-0 break-words rounded-2xl border p-3 text-start transition sm:min-h-24 sm:p-4 [overflow-wrap:anywhere] " + (hidden ? "opacity-20 blur-[1px]" : ""),
               isSelected ? (isCorrect ? "border-brand-emerald bg-brand-emerald/15 text-brand-emerald" : "border-rose-300/35 bg-rose-300/10 text-rose-100")
                 : selected !== null && isCorrect ? "border-brand-emerald/60 bg-brand-emerald/10 text-brand-emerald"
                 : "border-white/10 bg-white/[0.03] text-brand-cream hover:-translate-y-0.5 hover:border-brand-gold/45",
