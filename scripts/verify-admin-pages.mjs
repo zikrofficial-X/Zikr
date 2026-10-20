@@ -44,6 +44,22 @@ const navigation = readFileSync("src/features/admin/config/navigation.ts", "utf8
 const hrefs = [...navigation.matchAll(/href:\s*"([^"]+)"/g)].map((match) => match[1]);
 if (new Set(hrefs).size !== hrefs.length) failures.push("admin navigation contains duplicate hrefs");
 
+// Every canonical admin page must be reachable from the role-filtered navigation.
+// Redirect-only aliases and the deliberate security step-up sub-flow are excluded.
+const redirectOnly = new Set();
+for (const page of pages) {
+  const source = readFileSync(page, "utf8");
+  if (/\bredirect\(/.test(source)) redirectOnly.add("/" + page.replace(/^src\/app\//, "").replace(/\/page\.tsx$/, ""));
+}
+redirectOnly.add("/admin/security/step-up");
+for (const page of pages) {
+  const href = "/" + page.replace(/^src\/app\//, "").replace(/\/page\.tsx$/, "");
+  if (!redirectOnly.has(href) && !hrefs.includes(href)) {
+    failures.push(`${href}: canonical admin page is missing from ADMIN_NAVIGATION`);
+  }
+}
+
+
 // Guard the high-impact controls shown in the production Admin screenshots so
 // a visually rendered form cannot silently ship without its server action/data wiring.
 const seoPage = readFileSync("src/app/admin/seo/page.tsx", "utf8");
