@@ -345,7 +345,7 @@ async function findByAutomationKey(table: string, key: string) {
 }
 export const KIDS_SERIES_START_DAY_INDEX = dayIndex(new Date("2026-10-21T00:00:00.000Z"));
 
-async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
+export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   if (process.env.AUTO_VIDEO_ENABLED?.toLowerCase() === "false") return 0;
   const now = new Date();
   const day = dayIndex(now);
