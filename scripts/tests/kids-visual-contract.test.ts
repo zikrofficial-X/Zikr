@@ -21,11 +21,17 @@ const mosqueRuntime = adventureSource.split("export function MosqueAdventureGame
 const homeSource = readFileSync("src/app/kids/page.tsx", "utf8");
 const gameIndexSource = readFileSync("src/features/kids/components/games/games-index.tsx", "utf8");
 const shellSource = readFileSync("src/features/kids/components/games/game-shell.tsx", "utf8");
+const gameKitSource = readFileSync("src/features/kids/components/games/kids-game-kit.tsx", "utf8");
+const worldVisualsSource = readFileSync("src/features/kids/components/games/kids-game-visuals.tsx", "utf8");
 
 assert.equal(gameIds.length, 12, "the canonical Kids catalog must continue to expose 12 games");
 assert.match(artSource, /useId\(\)/, "SVG artwork IDs must be unique when cards repeat on the same page");
 assert.match(artSource, /aria-label": label/, "game illustrations need a localized accessible name");
 assert.match(homeSource, /KidsGameArt/, "the Kids landing page must show game-specific artwork");
+assert.ok(gameKitSource.includes("[&>*:not(.kids-game-world-layer)]:relative"), "interactive game-stage content must sit above decorative scenes");
+assert.match(gameKitSource, /min-h-\[360px\]/, "game stages must use a compact mobile minimum height");
+assert.equal((worldVisualsSource.match(/kids-game-world-layer pointer-events-none absolute inset-0 z-0 overflow-hidden/g) ?? []).length, gameIds.length, "all game scenes must use the non-interactive background layer");
+assert.match(learningGamesSource, /group min-h-28 sm:min-h-36 min-w-0 rounded-2xl sm:rounded-\[1\.5rem\] border p-3 sm:p-4/, "memory cards must use mobile-friendly dimensions");
 assert.match(homeSource, /text-3xl font-black leading-\[1\.2\].*sm:text-4xl md:text-6xl/, "the Kids hero title must scale down on phone screens");
 assert.match(homeSource, /ms-auto shrink-0/, "journey checkmarks must use direction-aware spacing");
 assert.match(homeSource, /aspect-\[16\/10\].*sm:aspect-\[2\/1\]/, "featured game art must use a phone-friendly aspect ratio");
