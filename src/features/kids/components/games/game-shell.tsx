@@ -20,11 +20,12 @@ type GameGuidePanelProps = {
   instructions: KidsGameGuide;
   goal: string;
   isEnglish: boolean;
+  sourceNotice?: string;
   onAction: () => void;
   actionLabel: string;
 };
 
-function GameGuidePanel({ instructions, goal, isEnglish, onAction, actionLabel }: GameGuidePanelProps) {
+function GameGuidePanel({ instructions, goal, isEnglish, sourceNotice, onAction, actionLabel }: GameGuidePanelProps) {
   return (
     <section aria-labelledby="game-briefing-heading" className="w-full overflow-hidden rounded-2xl border border-brand-gold/25 bg-gradient-to-br from-[#102631] via-[#071b24] to-[#0b302f] p-5 shadow-2xl sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -32,6 +33,11 @@ function GameGuidePanel({ instructions, goal, isEnglish, onAction, actionLabel }
           <p className="text-xs font-black tracking-[0.18em] text-brand-emerald">{isEnglish ? "HOW TO PLAY" : "طريقة اللعب"}</p>
           <h3 id="game-briefing-heading" className="mt-2 text-xl font-black text-brand-gold">{instructions.title}</h3>
           <p className="mt-2 max-w-3xl text-sm leading-7 text-brand-cream/75">{instructions.intro}</p>
+          {sourceNotice && (
+            <p role="note" className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs leading-6 text-brand-cream/75">
+              {sourceNotice}
+            </p>
+          )}
         </div>
         <span className="rounded-xl border border-brand-gold/20 bg-black/20 px-3 py-2 text-xs font-bold text-brand-gold">{isEnglish ? "Goal" : "الهدف"}: {goal}</span>
       </div>
@@ -67,9 +73,11 @@ function GameGuidePanel({ instructions, goal, isEnglish, onAction, actionLabel }
 export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameShellProps) {
   const { isEnglish } = useLanguage();
   const definition = getGameDefinition(gameId)!;
-  const englishSourceMissing =
+  const sourceNotice =
     isEnglish &&
-    ["zikr-memory", "wudu-challenge", "verse-puzzle", "zikr-quiz"].includes(gameId);
+    ["zikr-memory", "wudu-challenge", "verse-puzzle", "zikr-quiz"].includes(gameId)
+      ? "Verified learning text remains in Arabic to preserve its approved wording. Instructions and controls are in English."
+      : undefined;
   const difficultyLabels = isEnglish
     ? { easy: "Easy", normal: "Normal", hard: "Advanced" }
     : { easy: "سهل", normal: "متوسط", hard: "متقدم" };
@@ -289,11 +297,12 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
         <span className="text-sm text-brand-cream/60">{isEnglish ? definition.categoryEn : definition.category}</span>
       </div>
 
-      {!hasStarted && !englishSourceMissing && (
+      {!hasStarted && (
         <GameGuidePanel
           instructions={instructions}
           goal={isEnglish ? definition.goalEn : definition.goalAr}
           isEnglish={isEnglish}
+          sourceNotice={sourceNotice}
           onAction={() => setHasStarted(true)}
           actionLabel={isEnglish ? "Start playing" : "ابدأ اللعب"}
         />
@@ -346,14 +355,14 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
         </>
       )}
 
+      {hasStarted && sourceNotice && (
+        <p role="note" className="rounded-xl border border-brand-emerald/20 bg-brand-emerald/5 px-4 py-3 text-xs leading-6 text-brand-cream/70">
+          {sourceNotice}
+        </p>
+      )}
+
       <div id="kids-world-game-frame" className="relative min-w-0">
-        {englishSourceMissing ? (
-          <div className="grid min-h-[320px] place-items-center rounded-2xl border border-brand-gold/20 bg-black/20 p-6 text-center">
-            <p className="max-w-xl text-sm leading-7 text-brand-cream/70">
-              English educational content for this game is not published yet. The verified Arabic source is intentionally not shown in English mode.
-            </p>
-          </div>
-        ) : !hasStarted ? null : (
+        {!hasStarted ? null : (
           <>
             <WorldGameStage
               gameId={gameId}
@@ -422,6 +431,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
                     instructions={instructions}
                     goal={isEnglish ? definition.goalEn : definition.goalAr}
                     isEnglish={isEnglish}
+                    sourceNotice={sourceNotice}
                     onAction={closeHelp}
                     actionLabel={isEnglish ? "Resume game" : "العودة إلى اللعب"}
                   />
@@ -432,7 +442,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
         )}
       </div>
 
-      {!englishSourceMissing && hasStarted && (
+      {hasStarted && (
         <div className="flex flex-wrap justify-center gap-3">
           <Button
             type="button"

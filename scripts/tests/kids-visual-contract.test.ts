@@ -27,7 +27,10 @@ assert.match(homeSource, /KidsGameArt/, "the Kids landing page must show game-sp
 assert.match(shellSource, /KidsGameArt/, "active gameplay must show game-specific artwork");
 assert.match(shellSource, /setHasStarted\(true\)/, "gameplay must start from an explicit start action");
 assert.match(shellSource, /!hasStarted \|\| paused/, "timer must remain stopped before play and while paused");
-assert.match(shellSource, /\{!hasStarted && !englishSourceMissing/, "a briefing must appear before gameplay runtime mounting");
+assert.match(shellSource, /\{!hasStarted && \(/, "every game must show its briefing before gameplay runtime mounting");
+assert.match(shellSource, /const sourceNotice =\s*isEnglish &&\s*\["zikr-memory", "wudu-challenge", "verse-puzzle", "zikr-quiz"\]\.includes\(gameId\)/, "English UI must identify games that retain verified Arabic source text");
+assert.match(shellSource, /hasStarted && sourceNotice &&/, "the verified-source notice must remain visible while these games are running");
+assert.doesNotMatch(shellSource, /englishSourceMissing/, "missing English translations must not block the game runtime");
 assert.match(shellSource, /const openHelp = useCallback/, "active games must provide a reusable help action");
 assert.match(shellSource, /wasPausedBeforeHelpRef\.current = paused/, "help must remember whether the game was already paused");
 assert.match(shellSource, /setPaused\(wasPausedBeforeHelpRef\.current\)/, "closing help must restore the previous pause state");
