@@ -128,9 +128,11 @@ assert.ok(!circle.includes('VERSION_CODE="56"'), "Android release must not silen
 const finalization = read(".github/workflows/release-finalization.yml");
 assert.ok(finalization.includes("github.ref == 'refs/heads/main'"), "web production release must be main-only");
 assert.ok(finalization.includes("environment:\n      name: production"), "web production release must use the protected production environment");
-assert.ok(finalization.includes("secrets.ZIKR_VERCEL_TOKEN"), "web production release must read the dedicated Vercel credential secret");
-assert.ok(finalization.includes("Add ZIKR_VERCEL_TOKEN to the protected production environment/repository secrets"), "missing-token diagnostics must name the secret the workflow actually reads");
-assert.ok(!finalization.includes("Add VERCEL_TOKEN to the production environment/repository secrets"), "missing-token diagnostics must not recommend the legacy shadowing secret name");
+assert.ok(finalization.includes("secrets.ZIKR_VERCEL_TOKEN"), "web production release must prefer the dedicated Vercel credential secret");
+assert.ok(finalization.includes("secrets.VERCEL_DEPLOY_TOKEN") && finalization.includes("secrets.VERCEL_TOKEN"), "web production release must support common alternate GitHub secret names");
+assert.ok(finalization.includes("Add the token as a GitHub Actions SECRET named ZIKR_VERCEL_TOKEN (preferred), VERCEL_DEPLOY_TOKEN, or VERCEL_TOKEN"), "missing-token diagnostics must name all supported GitHub secret names");
+assert.ok(finalization.includes("Vercel project Environment Variables are not available to this GitHub Actions workflow"), "missing-token diagnostics must distinguish GitHub Actions secrets from Vercel project variables");
+assert.ok(finalization.split("secrets.ZIKR_VERCEL_TOKEN || secrets.VERCEL_DEPLOY_TOKEN || secrets.VERCEL_TOKEN").length - 1 === 6, "every Vercel CLI step must use the same secret fallback resolution");
 assert.ok(finalization.includes("pnpm production:smoke"), "web production release must verify its deployment");
 assert.ok(finalization.includes("fetch-depth: 0"), "schema-baseline verification must have the parent commit available");
 assert.ok(finalization.includes('git worktree add --detach "${baseline}" "${GITHUB_SHA}^"'), "schema baseline must be checked against the commit before this release");
