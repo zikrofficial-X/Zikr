@@ -1,6 +1,7 @@
 import "server-only";
 
-import { createClient, supabaseServerAdminCount, supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
+import { supabaseServerAdminCount, supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 export interface TopArticle {
   id: string;
@@ -29,12 +30,27 @@ async function safeCount(table: string) {
 }
 
 export async function getAdminAnalytics(): Promise<AdminAnalytics> {
+  return getCachedAdminAnalytics();
+}
+
+// The page is still protected by requireAdminPermission before this function is
+// called. Only aggregate counts and public content rankings are cached, so the
+// cache avoids repeating the same expensive dashboard queries without caching
+// authorization decisions or user-specific data. A short TTL keeps the charts
+// fresh while making repeated dashboard visits much faster.
+const getCachedAdminAnalytics = unstable_cache(
+  loadAdminAnalytics,
+  ["admin-analytics-v1"],
+  { revalidate: 30, tags: ["admin-analytics"] },
+);
+
+async function loadAdminAnalytics(): Promise<AdminAnalytics> {
   const [counts, topArticles, userCount, viewsRes, auditRes] = await Promise.all([
     Promise.all(CONTENT_TABLES.map((table) => safeCount(table))),
     getTopArticles(),
     safeCount("profiles"),
     supabaseServerAdminRequest<Array<{ route: string; viewed_at: string }>>(
-      "/rest/v1/admin_page_views?select=route,viewed_at&order=viewed_at.desc&limit=500",
+      "/rest/v1/admin_page_views?select=route,viewed_at&viewed_at=gte." + new Date(Date.now() - 7 * 86_400_000).toISOString() + "&order=viewed_at.desc&limit=500",
     ).then((rows) => ({ ok: true, rows })).catch(() => ({ ok: false, rows: [] as Array<{ route: string; viewed_at: string }> })),
     supabaseServerAdminRequest<Array<{ actor_user_id: string | null; created_at: string; action: string }>>(
       "/rest/v1/admin_audit_events?select=actor_user_id,created_at,action&order=created_at.desc&limit=500",
@@ -78,10 +94,10 @@ export async function getAdminAnalytics(): Promise<AdminAnalytics> {
 
 async function getTopArticles(): Promise<TopArticle[]> {
   try {
-    const supabase = await createClient();
-    const { data, error } = await supabase.from("articles").select("id, title, views, slug").eq("published", true).order("views", { ascending: false }).limit(10);
-    if (error) throw error;
-    return (data ?? []).map((row) => ({ id: row.id, title: row.title, views: row.views ?? 0, slug: row.slug }));
+    const data = await supabaseServerAdminRequest<Array<{ id: string; title: string; views: number | null; slug: string }>>(
+      "/rest/v1/articles?select=id,title,views,slug&published=eq.true&order=views.desc.nullslast&limit=10",
+    );
+    return data.map((row) => ({ id: row.id, title: row.title, views: row.views ?? 0, slug: row.slug }));
   } catch (error) {
     console.error("[admin/analytics] failed to load top articles:", error);
     return [];
