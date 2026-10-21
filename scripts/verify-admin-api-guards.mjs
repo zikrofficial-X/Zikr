@@ -26,12 +26,12 @@ function walk(dir) {
 function isMethodRejectionOnly(block) {
   // Explicit 405 stubs have no data access or side effects and need no role lookup.
   const compact = block
-    .replace(/export\\s+async\\s+function\\s+[A-Z]+\\s*\\([^)]*\\)\\s*\\{?/, "")
-    .replace(/\\s+/g, " ")
+    .replace(/export\s+async\s+function\s+[A-Z]+\s*\([^)]*\)\s*\{?/, "")
+    .replace(/\s+/g, " ")
     .trim();
   return (
-    /return\\s+(?:NextResponse\\.json|(?:jsonError|errorResponse))\\(\\s*['"]Method not allowed['"]\\s*,\\s*405\\s*\\)/i.test(compact) &&
-    !/(?:createAdminClient|supabaseServerAdminRequest|dispatchGitHubWorkflow|\\.insert\\s*\\(|\\.update\\s*\\(|\\.delete\\s*\\(|\\.upsert\\s*\\(|uploadCloudinaryImage|createPresignedUploadUrl|fetch\\s*\\()/i.test(compact)
+    /return\s+(?:NextResponse\.json|(?:jsonError|errorResponse))\(\s*['"]Method not allowed['"]\s*,\s*405\s*\)/i.test(compact) &&
+    !/(?:createAdminClient|supabaseServerAdminRequest|dispatchGitHubWorkflow|\.insert\s*\(|\.update\s*\(|\.delete\s*\(|\.upsert\s*\(|uploadCloudinaryImage|createPresignedUploadUrl|fetch\s*\()/i.test(compact)
   );
 }
 
@@ -45,7 +45,7 @@ if (!routeFiles.length) failures.push("no admin API route files were discovered"
 for (const file of routeFiles) {
   const source = readFileSync(file, "utf8");
   const route = relative(root, file).replaceAll("\\\\", "/");
-  const handlers = [...source.matchAll(/export\\s+async\\s+function\\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\\s*\\(/g)]
+  const handlers = [...source.matchAll(/export\s+async\s+function\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\s*\(/g)]
     .filter((match) => methods.has(match[1]));
 
   if (!handlers.length) {
@@ -59,7 +59,7 @@ for (const file of routeFiles) {
     const end = handlers[i + 1]?.index ?? source.length;
     const block = source.slice(match.index, end);
     const label = route + " " + match[1];
-    const gatePattern = /\\brequireAdminApi\\s*\\(\\s*(['"])([a-z][a-z0-9_-]*\\.[a-z][a-z0-9_.-]*)\\1\\s*\\)|\\brequireAdminPermission\\s*\\(\\s*(['"])([a-z][a-z0-9_-]*\\.[a-z][a-z0-9_.-]*)\\3\\s*\\)|\\brequireAdmin\\s*\\(\\s*\\)/;
+    const gatePattern = /\brequireAdminApi\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\1\s*\)|\brequireAdminPermission\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\3\s*\)|\brequireAdmin\s*\(\s*\)/;
     const gate = gatePattern.exec(block);
 
     if (!gate && isMethodRejectionOnly(block)) {
@@ -75,12 +75,12 @@ for (const file of routeFiles) {
 
     // Authentication and authorization must precede request parsing and privileged work.
     const privilegedPatterns = [
-      /\\brequest\\.(?:json|formData|text|arrayBuffer)\\s*\\(/,
-      /\\bsupabaseServerAdminRequest\\s*[<(]?/,
-      /\\bcreateAdminClient\\s*\\(/,
-      /\\bdispatchGitHubWorkflow\\s*\\(/,
-      /\\b(?:uploadCloudinaryImage|createPresignedUploadUrl|createVideoGenerationRequest)\\s*\\(/,
-      /\\bsupabase\\s*\\.from\\s*\\(/,
+      /\brequest\.(?:json|formData|text|arrayBuffer)\s*\(/,
+      /\bsupabaseServerAdminRequest\s*[<(]?/,
+      /\bcreateAdminClient\s*\(/,
+      /\bdispatchGitHubWorkflow\s*\(/,
+      /\b(?:uploadCloudinaryImage|createPresignedUploadUrl|createVideoGenerationRequest)\s*\(/,
+      /\bsupabase\s*\.from\s*\(/,
     ];
     let firstPrivilegedIndex = Infinity;
     for (const pattern of privilegedPatterns) {
