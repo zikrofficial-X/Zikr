@@ -25,18 +25,16 @@ if (!videoAutomation.includes("throw error;")) failures.push("Facebook publishin
 
 const reelsCooldown = read("src/features/social/services/facebook-reels-rate-limit.ts");
 const facebookCredentials = read("src/features/social/services/facebook-credentials.ts");
-const videoAutomation = read("src/features/videos/services/video-automation.ts");
 const reelsCooldownMigration = read("supabase/migrations/20261021093000_social_facebook_reels_rate_limit_cooldown.sql");
-for (const token of ["code\\s*=\\s*368", "facebook_reels_rate_limited_until", "24 * 60 * 60 * 1000"]) {
-  if (!reelsCooldown.includes(token)) failures.push("Facebook Reels rate-limit cooldown helper missing contract: " + token);
+for (const token of ["facebook_reels_next_allowed_at", "24 * 60 * 60 * 1000", "12 * 60 * 1000"]) {
+  if (!reelsCooldown.includes(token)) failures.push("Facebook Reels cooldown helper missing contract: " + token);
 }
-if (!facebookCredentials.includes("recordFacebookReelsRateLimit")) failures.push("Facebook credentials must persist shared Reel cooldowns");
-if (!facebookCredentials.includes("clearFacebookReelsRateLimit")) failures.push("a successful Facebook Reel must clear the rate-limit cooldown");
-if (!videoAutomation.includes("credentials.reelsRateLimitedUntil")) failures.push("Facebook Reels publisher must honor the shared provider cooldown before calling Meta");
-if (!videoAutomation.includes("facebook_reels_rate_limited_until")) failures.push("Facebook Reels rate-limit errors must persist a retry timestamp");
-if (!publisher.includes("extractFacebookReelsRateLimitUntil")) failures.push("social queue must defer rate-limited Reels to the shared cooldown deadline");
-if (!publisher.includes("facebookReelsRateLimitedUntil")) failures.push("social queue must persist the Reels cooldown deadline per item");
-if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_rate_limited_until")) failures.push("Supabase must have a durable global Facebook Reels cooldown column");
+if (!facebookCredentials.includes("setFacebookReelsNextAllowedAt")) failures.push("Facebook credentials must persist shared Reels cooldown/pacing timestamps");
+if (!videoAutomation.includes("credentials.reelsNextAllowedAt")) failures.push("Facebook Reels publisher must honor the shared next-allowed time before calling Meta");
+if (!videoAutomation.includes("facebook_reels_next_allowed_at")) failures.push("Facebook Reels cooldown errors must persist a retry timestamp");
+if (!publisher.includes("extractFacebookReelsNextAllowedAt")) failures.push("social queue must defer rate-limited Reels to the shared next-allowed time");
+if (!publisher.includes("facebookReelsNextAllowedAt")) failures.push("social queue must persist the Reels cooldown deadline per item");
+if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_next_allowed_at")) failures.push("Supabase must have a durable global Facebook Reels next-allowed column");
 
 const publisher = read("src/features/social/services/social-publishing.ts");
 const adminSocial = read("src/app/api/admin/social/route.ts");
