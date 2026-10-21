@@ -164,23 +164,26 @@ export function AdminMobileNav({ groups }: { groups: AdminNavGroup[] }) {
         </label>
       </div>
 
-      <div className="flex gap-1.5 overflow-x-auto pb-1" dir="rtl">
-        {groups.map(group => (
-          <button
-            key={group.group}
-            type="button"
-            onClick={() => {
-              setMobileQuery("");
-              setOpen(current => (current === group.group ? null : group.group));
-            }}
-            className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs transition ${open === group.group ? "border-brand-gold/30 bg-brand-gold/15 text-brand-gold" : "border-transparent text-brand-cream/60 hover:text-brand-gold"}`}
-          >
-            {group.group}
-          </button>
-        ))}
+      <div className="flex items-center gap-2" dir="rtl">
+        <label className="sr-only" htmlFor="admin-mobile-group">اختيار مجموعة الإدارة</label>
+        <select
+          id="admin-mobile-group"
+          aria-label="اختيار مجموعة الإدارة"
+          value={open ?? ""}
+          onChange={(event) => {
+            setMobileQuery("");
+            setOpen(event.target.value || null);
+          }}
+          className="min-w-0 flex-1 rounded-xl border border-brand-gold/15 bg-black/30 px-3 py-3 text-sm text-brand-cream outline-none focus:border-brand-gold/40"
+        >
+          <option value="">اختر مجموعة الإدارة</option>
+          {groups.map((group) => (
+            <option key={group.group} value={group.group}>{group.group} ({group.items.length})</option>
+          ))}
+        </select>
         <Link
           href="/"
-          className="mr-auto shrink-0 whitespace-nowrap rounded-lg border border-brand-gold/25 px-3 py-1.5 text-xs text-brand-gold/80"
+          className="shrink-0 rounded-xl border border-brand-gold/25 px-3 py-3 text-xs text-brand-gold/80 transition hover:bg-brand-gold/5"
         >
           عرض الموقع
         </Link>

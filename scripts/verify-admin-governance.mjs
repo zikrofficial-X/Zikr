@@ -19,6 +19,8 @@ const permissions = read("src/features/admin/services/permissions.ts");
 const layout = read("src/app/admin/layout.tsx");
 const sidebar = read("src/features/admin/components/admin-sidebar.tsx");
 const adminService = read("src/features/admin/services/admin.ts");
+const dashboard = read("src/features/admin/components/admin-platform-command-center.tsx");
+const analytics = read("src/app/admin/analytics/page.tsx");
 const securityService = read("src/features/admin/services/security.ts");
 const auditService = read("src/features/admin/services/audit.ts");
 const docs = read("docs/admin/ADMIN_CONSOLE_GOVERNANCE.md");
@@ -80,6 +82,12 @@ for (const token of [
   if (!layout.includes(token)) failures.push("admin layout is missing token: " + token);
 }
 if (!sidebar.includes('placeholder="ابحث في الأقسام..."')) failures.push("desktop admin navigation search is missing");
+if (!sidebar.includes('aria-label="اختيار مجموعة الإدارة"') || !sidebar.includes('value={open ?? ""}')) failures.push("mobile admin navigation must use a compact accessible group selector");
+if (!dashboard.includes("hasAdminPermission") || !dashboard.includes("availableHrefs")) failures.push("dashboard quick links and section cards must be filtered by the signed-in role");
+if (!dashboard.includes("secondaryItems = group.items.slice(3)") || !dashboard.includes("<details")) failures.push("dashboard admin modules must be grouped and collapsed instead of rendering every route as a flat duplicate card grid");
+if (!analytics.includes("topArticles.filter((article) => article.views > 0)")) failures.push("analytics must not rank articles whose view counts are all zero");
+if (!analytics.includes("grid-cols-2") || !analytics.includes("overflow-x-auto")) failures.push("analytics content and rankings must remain usable on mobile screens");
+if (analytics.includes('href="/admin/videos"')) failures.push("analytics page must not link to the retired non-canonical video route");
 if (!sidebar.includes('placeholder="ابحث في صفحات الإدارة..."')) failures.push("mobile admin navigation search is missing");
 if (!sidebar.includes("filteredMobileGroups") || !sidebar.includes("لا توجد صفحة مطابقة للبحث.")) {
   failures.push("mobile search must filter results and show a no-results state");
