@@ -539,7 +539,7 @@ export async function publishToFacebook(
         console.error('[video-automation] Unable to persist the Facebook Reels rate-limit cooldown.');
       }
       const message = error instanceof Error ? error.message : String(error);
-      const rateLimitedError = new Error(`${message} [facebook_reels_rate_limited_until=${rateLimitedUntil}]`);
+      const rateLimitedError = new Error(`${message} [facebook_reels_next_allowed_at=${rateLimitedUntil}]`);
       console.error('[video-automation] Facebook Reels rate-limited:', rateLimitedError.message);
       throw rateLimitedError;
     }
