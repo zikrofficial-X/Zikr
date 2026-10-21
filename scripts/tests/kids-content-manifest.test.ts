@@ -102,7 +102,7 @@ assert.ok(
   scenarios.every(question => approvedScenarioSources.has(question.sourceSlug)),
   "scenario prompts must remain traceable to the approved source set",
 );
-const normalizedPrompts = scenarios.map(question => question.text.trim().replace(/\\s+/g, " ").toLocaleLowerCase());
+const normalizedPrompts = scenarios.map(question => question.text.trim().replace(/\s+/g, " ").toLocaleLowerCase());
 assert.equal(new Set(normalizedPrompts).size, scenarios.length, "scenario prompts must not repeat after whitespace normalization");
 
 const verseManifest = manifest.find(entry => entry.gameId === "verse-puzzle")!;
