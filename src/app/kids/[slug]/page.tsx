@@ -201,16 +201,28 @@ export default function KidsDetailPage() {
   if (loading) {
     return (
       <Container className="py-12">
-        <p className="text-center text-brand-cream/70">{isEnglish ? "Loading..." : "جاري التحميل..."}</p>
+        <p role="status" aria-live="polite" className="text-center text-brand-cream/70">{isEnglish ? "Loading activity..." : "جاري تحميل النشاط..."}</p>
       </Container>
     );
   }
   if (!slug || !content) {
     return (
-      <Container className="py-12">
-        <p className="text-center text-brand-cream/70">
-          {isEnglish ? "This content is not available in English yet." : "لم يتم العثور على المحتوى"}
-        </p>
+      <Container className="space-y-5 py-12" dir={isEnglish ? "ltr" : "rtl"}>
+        <div role="status" className="space-y-4 text-center">
+          <p className="text-brand-cream/75">
+            {isEnglish
+              ? "This activity is unavailable right now. Check your connection or return to Kids activities."
+              : "النشاط غير متاح حاليًا. تحقق من الاتصال أو ارجع إلى أنشطة الأطفال."}
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link href="/kids/adventures" className="inline-flex min-h-11 items-center rounded-xl border border-brand-emerald/40 px-4 py-2 text-sm font-bold text-brand-emerald">
+              {isEnglish ? "Browse activities" : "تصفح الأنشطة"}
+            </Link>
+            <Link href="/kids/games" className="inline-flex min-h-11 items-center rounded-xl border border-brand-gold/40 px-4 py-2 text-sm font-bold text-brand-gold">
+              {isEnglish ? "Browse games" : "تصفح الألعاب"}
+            </Link>
+          </div>
+        </div>
       </Container>
     );
   }
