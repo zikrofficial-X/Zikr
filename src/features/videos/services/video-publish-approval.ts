@@ -24,10 +24,19 @@ export function isVideoApprovalRecorded(content: unknown): boolean {
 }
 export type VideoPublishRequestSnapshot = { status: string; video_url: string | null; content: unknown };
 export function isVideoQueueItemApprovedForPublishing(input: {
-  contentType: string; contentId: string | null; queuedVideoUrl: string | null; request: VideoPublishRequestSnapshot | null;
+  contentType: string;
+  contentId: string | null;
+  queuedVideoUrl: string | null;
+  request: VideoPublishRequestSnapshot | null;
+  requireApproval?: boolean;
 }): boolean {
   if (!isVideoContentType(input.contentType)) return true;
   if (!input.contentId || !input.queuedVideoUrl || !input.request) return false;
   if (input.request.status !== "completed" || !input.request.video_url) return false;
-  return input.request.video_url.trim() === input.queuedVideoUrl.trim() && isVideoApprovalRecorded(input.request.content);
+
+  // Always preserve source/status integrity, even when the owner explicitly disables
+  // the human QA approval gate for autonomous publishing.
+  if (input.request.video_url.trim() !== input.queuedVideoUrl.trim()) return false;
+  if (input.requireApproval === false) return true;
+  return isVideoApprovalRecorded(input.request.content);
 }
