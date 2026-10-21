@@ -25,7 +25,7 @@ export type StoredFacebookCredential = {
   last_error_message: string | null;
   connected_at: string | null;
   updated_at: string | null;
-  facebook_reels_rate_limited_until: string | null;
+  facebook_reels_next_allowed_at: string | null;
 };
 
 export type FacebookPageCredentials = {
@@ -36,7 +36,7 @@ export type FacebookPageCredentials = {
   source: Exclude<FacebookCredentialSource, "missing">;
   expiresAt: string | null;
   connectionStatus: FacebookConnectionStatus;
-  reelsRateLimitedUntil: string | null;
+  reelsNextAllowedAt: string | null;
 };
 
 export type FacebookConnectionHealth = {
@@ -53,7 +53,7 @@ export type FacebookConnectionHealth = {
 
 const LEGACY_CREDENTIAL_FIELDS =
   "platform,page_id,page_name,page_access_token,is_enabled,token_type,expires_at,granted_permissions,connection_status,last_validated_at,last_error_code,last_error_message,connected_at,updated_at";
-const CREDENTIAL_FIELDS = `${LEGACY_CREDENTIAL_FIELDS},facebook_reels_rate_limited_until`;
+const CREDENTIAL_FIELDS = `${LEGACY_CREDENTIAL_FIELDS},facebook_reels_next_allowed_at`;
 
 function siteGraphVersion() {
   return getServerEnv().FACEBOOK_GRAPH_API_VERSION || "v26.0";
@@ -75,11 +75,11 @@ export async function readStoredFacebookCredential(): Promise<StoredFacebookCred
     // Preview projects can temporarily lack the additive cooldown migration. Fall
     // back to established columns so OAuth connectivity still works.
     try {
-      const rows = await supabaseServerAdminRequest<Omit<StoredFacebookCredential, "facebook_reels_rate_limited_until">[]>(
+      const rows = await supabaseServerAdminRequest<Omit<StoredFacebookCredential, "facebook_reels_next_allowed_at">[]>(
         `/rest/v1/social_platform_credentials?platform=eq.facebook&select=${LEGACY_CREDENTIAL_FIELDS}&limit=1`,
       );
       const row = Array.isArray(rows) ? rows[0] : null;
-      return row ? { ...row, facebook_reels_rate_limited_until: null } : null;
+      return row ? { ...row, facebook_reels_next_allowed_at: null } : null;
     } catch {
       // Never log exceptions because provider responses can contain sensitive context.
       return null;
@@ -89,24 +89,24 @@ export async function readStoredFacebookCredential(): Promise<StoredFacebookCred
 
 export async function getFacebookReelsRateLimitedUntil(): Promise<string | null> {
   const stored = await readStoredFacebookCredential();
-  return stored?.facebook_reels_rate_limited_until ?? null;
+  return stored?.facebook_reels_next_allowed_at ?? null;
 }
 
-export async function recordFacebookReelsRateLimit(until: string): Promise<void> {
+export async function setFacebookReelsNextAllowedAt(until: string): Promise<void> {
   await supabaseServerAdminRequest(
     "/rest/v1/social_platform_credentials?platform=eq.facebook",
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify({
-        facebook_reels_rate_limited_until: until,
+        facebook_reels_next_allowed_at: until,
         updated_at: new Date().toISOString(),
       }),
     },
   );
 }
 
-export async function clearFacebookReelsRateLimit(): Promise<void> {
+export async function clearFacebookReelsCooldown(): Promise<void> {
   try {
     await supabaseServerAdminRequest(
       "/rest/v1/social_platform_credentials?platform=eq.facebook",
@@ -114,7 +114,7 @@ export async function clearFacebookReelsRateLimit(): Promise<void> {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify({
-          facebook_reels_rate_limited_until: null,
+          facebook_reels_next_allowed_at: null,
           updated_at: new Date().toISOString(),
         }),
       },
@@ -152,7 +152,7 @@ export async function getFacebookPageCredentials(): Promise<FacebookPageCredenti
     source: "database",
     expiresAt: stored.expires_at,
     connectionStatus: stored.connection_status,
-    reelsRateLimitedUntil: stored.facebook_reels_rate_limited_until,
+    reelsNextAllowedAt: stored.facebook_reels_next_allowed_at,
   };
 }
 
