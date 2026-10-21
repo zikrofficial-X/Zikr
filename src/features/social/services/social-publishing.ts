@@ -365,7 +365,7 @@ export async function processSocialPublishItem(
   const hasNonAuthFailure = failures.some(failure => !isFacebookAuthFailure(failure.error));
   const facebookReelsNextAllowedAt = failures
     .filter(failure => failure.platform === "facebook_reels")
-    .map(failure => extractFacebookReelsRateLimitUntil(failure.error))
+    .map(failure => extractFacebookReelsNextAllowedAt(failure.error))
     .find((value): value is string => Boolean(value)) ?? null;
 
   // Meta code 368 triggers a shared cooldown. Defer the whole queue row until
