@@ -40,11 +40,17 @@ if (!example.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED=false")) failures.push(".
 const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
 if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"')) failures.push("video generation must keep social queueing enabled");
 if (!generationWorkflow.includes('SOCIAL_PUBLISH_ENABLED: "false"')) failures.push("video generation must not execute social publishing directly");
+if (!generationWorkflow.includes('SOCIAL_PUBLISH_FACEBOOK_ENABLED: "false"')) failures.push("video generation must not enable Facebook from legacy GitHub Page-token secrets");
+if (generationWorkflow.includes("secrets.FACEBOOK_PAGE_ACCESS_TOKEN") || generationWorkflow.includes("FACEBOOK_PAGE_ACCESS_TOKEN:")) failures.push("video generation must not duplicate the Facebook Page token in GitHub Actions");
 
 const workflow = read(".github/workflows/publish-social.yml");
 if (!workflow.includes('SOCIAL_PUBLISH_ENABLED: "true"')) failures.push("dedicated GitHub social workflow must explicitly enable publishing");
 if (!workflow.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("GitHub social workflow must only process the social queue");
-if (!workflow.includes("FACEBOOK_PAGE_ACCESS_TOKEN")) failures.push("GitHub social workflow must receive the Facebook access-token secret");
+if (!workflow.includes("social_platform_credentials?platform=eq.facebook&select=page_id,is_enabled,connection_status,expires_at&limit=1")) failures.push("GitHub social workflow must derive Facebook readiness from the OAuth-managed Supabase credential");
+if (!workflow.includes('echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_enabled" >> "$GITHUB_ENV"')) failures.push("GitHub social workflow must set the Facebook feature gate from validated OAuth-managed connection state");
+if (workflow.includes("secrets.FACEBOOK_PAGE_ACCESS_TOKEN") || workflow.includes("FACEBOOK_PAGE_ACCESS_TOKEN:")) failures.push("GitHub social workflow must not duplicate the Facebook Page token outside Supabase");
+if (!publisher.includes("async function publishFacebookVideoItem")) failures.push("Facebook feed videos and Reels must use the same OAuth-managed Page credential");
+if (publisher.includes('if (!env.FACEBOOK_PAGE_ACCESS_TOKEN) throw new Error("FACEBOOK_PAGE_ACCESS_TOKEN is not configured")')) failures.push("Facebook video publishing must not require a legacy environment token");
 
 const adminApi = read("src/app/api/admin/social/route.ts");
 if (!adminApi.includes("const allTargetsSucceeded") || !adminApi.includes("targets.every(platform => succeeded.has(platform))")) failures.push("Admin retry must not label mixed-success/auth-blocked queue items as published");
