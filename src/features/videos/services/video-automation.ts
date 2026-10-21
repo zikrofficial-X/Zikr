@@ -502,9 +502,14 @@ export async function publishToFacebook(
       }
       // Pace Reels to at most one per scheduled publisher run. Meta has already
       // applied a rate restriction, so do not send a burst immediately after recovery.
-      await setFacebookReelsNextAllowedAt(
-        new Date(Date.now() + FACEBOOK_REELS_MIN_POST_INTERVAL_MS).toISOString(),
-      );
+      try {
+        await setFacebookReelsNextAllowedAt(
+          new Date(Date.now() + FACEBOOK_REELS_MIN_POST_INTERVAL_MS).toISOString(),
+        );
+      } catch {
+        // Never turn a confirmed remote post into a retry just because pacing metadata failed.
+        console.error('[video-automation] Unable to persist the next Facebook Reels publish time.');
+      }
       return finishData.post_id ?? startData.video_id;
     }
 
