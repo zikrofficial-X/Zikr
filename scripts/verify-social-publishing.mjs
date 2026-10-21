@@ -23,6 +23,21 @@ for (const token of [
 }
 if (!videoAutomation.includes("throw error;")) failures.push("Facebook publishing must propagate provider failures to the social queue instead of silently returning null");
 
+const reelsCooldown = read("src/features/social/services/facebook-reels-rate-limit.ts");
+const facebookCredentials = read("src/features/social/services/facebook-credentials.ts");
+const videoAutomation = read("src/features/videos/services/video-automation.ts");
+const reelsCooldownMigration = read("supabase/migrations/20261021093000_social_facebook_reels_rate_limit_cooldown.sql");
+for (const token of ["code\\s*=\\s*368", "facebook_reels_rate_limited_until", "24 * 60 * 60 * 1000"]) {
+  if (!reelsCooldown.includes(token)) failures.push("Facebook Reels rate-limit cooldown helper missing contract: " + token);
+}
+if (!facebookCredentials.includes("recordFacebookReelsRateLimit")) failures.push("Facebook credentials must persist shared Reel cooldowns");
+if (!facebookCredentials.includes("clearFacebookReelsRateLimit")) failures.push("a successful Facebook Reel must clear the rate-limit cooldown");
+if (!videoAutomation.includes("credentials.reelsRateLimitedUntil")) failures.push("Facebook Reels publisher must honor the shared provider cooldown before calling Meta");
+if (!videoAutomation.includes("facebook_reels_rate_limited_until")) failures.push("Facebook Reels rate-limit errors must persist a retry timestamp");
+if (!publisher.includes("extractFacebookReelsRateLimitUntil")) failures.push("social queue must defer rate-limited Reels to the shared cooldown deadline");
+if (!publisher.includes("facebookReelsRateLimitedUntil")) failures.push("social queue must persist the Reels cooldown deadline per item");
+if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_rate_limited_until")) failures.push("Supabase must have a durable global Facebook Reels cooldown column");
+
 const publisher = read("src/features/social/services/social-publishing.ts");
 const adminSocial = read("src/app/api/admin/social/route.ts");
 if (adminSocial.includes("/api/internal/video-processing")) failures.push("admin social retry references a retired noop endpoint");
