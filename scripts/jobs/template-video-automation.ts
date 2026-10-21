@@ -1243,7 +1243,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
   ) {
     targets.push("youtube");
   }
-  // The OAuth-managed Page credential in Supabase is canonical; the environment token is only a fallback.
+  // Only an OAuth-managed Page credential in Supabase may create Facebook publishing targets.
   const facebookCredentials = await getFacebookPageCredentials().catch(() => null);
   if (facebookCredentials?.isEnabled && facebookCredentials.pageId && facebookCredentials.accessToken) {
     targets.push(content.videoFormat === "horizontal" ? "facebook" : "facebook_reels");

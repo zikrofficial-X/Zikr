@@ -73,42 +73,35 @@ export async function readStoredFacebookCredential(): Promise<StoredFacebookCred
 }
 
 export async function getFacebookPageCredentials(): Promise<FacebookPageCredentials> {
+  // Outbound Facebook publishing must use the token created by the verified OAuth
+  // callback and stored in Supabase. Environment tokens are legacy diagnostics only:
+  // they are not refreshed by this app and can silently expire, causing repeated
+  // publishing failures after a reconnect.
   const stored = await readStoredFacebookCredential();
-  if (stored) {
-    if (stored.expires_at && Number.isFinite(Date.parse(stored.expires_at)) && Date.parse(stored.expires_at) <= Date.now()) {
-      throw new Error("Facebook access token has expired. Reconnect the Page from the admin publishing center.");
-    }
-    if (stored.connection_status === "reauthorization_required") {
-      throw new Error("Facebook access token requires reauthorization. Reconnect the Page from the admin publishing center.");
-    }
-    if (stored.connection_status === "permission_error") {
-      throw new Error("Facebook access token is missing required Page permissions. Reconnect the Page from the admin publishing center.");
-    }
-    return {
-      pageId: stored.page_id,
-      pageName: stored.page_name,
-      accessToken: stored.page_access_token,
-      isEnabled: stored.is_enabled === true,
-      source: "database",
-      expiresAt: stored.expires_at,
-      connectionStatus: stored.connection_status,
-    };
+  if (!stored) {
+    throw new Error(
+      "Facebook Page is not connected through the OAuth-managed publishing center. Reconnect the Page from the admin publishing center.",
+    );
   }
 
-  const env = getServerEnv();
-  const pageId = env.FACEBOOK_PAGE_ID?.trim() ?? "";
-  const accessToken = env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim() ?? "";
-  if (!pageId || !accessToken) {
-    throw new Error("Facebook Page is not connected. Use the Facebook connect button in the admin publishing center.");
+  if (stored.expires_at && Number.isFinite(Date.parse(stored.expires_at)) && Date.parse(stored.expires_at) <= Date.now()) {
+    throw new Error("Facebook access token has expired. Reconnect the Page from the admin publishing center.");
   }
+  if (stored.connection_status === "reauthorization_required") {
+    throw new Error("Facebook access token requires reauthorization. Reconnect the Page from the admin publishing center.");
+  }
+  if (stored.connection_status === "permission_error") {
+    throw new Error("Facebook access token is missing required Page permissions. Reconnect the Page from the admin publishing center.");
+  }
+
   return {
-    pageId,
-    pageName: null,
-    accessToken,
-    isEnabled: env.SOCIAL_PUBLISH_FACEBOOK_ENABLED === "true",
-    source: "environment",
-    expiresAt: null,
-    connectionStatus: env.SOCIAL_PUBLISH_FACEBOOK_ENABLED === "true" ? "connected" : "disabled",
+    pageId: stored.page_id,
+    pageName: stored.page_name,
+    accessToken: stored.page_access_token,
+    isEnabled: stored.is_enabled === true,
+    source: "database",
+    expiresAt: stored.expires_at,
+    connectionStatus: stored.connection_status,
   };
 }
 
@@ -176,23 +169,24 @@ export async function getFacebookPageConnectionHealth(): Promise<FacebookConnect
   const accessToken = stored?.page_access_token ?? envToken;
   const source: FacebookCredentialSource = stored ? "database" : pageId && accessToken ? "environment" : "missing";
   const enabled = stored ? stored.is_enabled === true : env.SOCIAL_PUBLISH_FACEBOOK_ENABLED === "true";
-  const configured = Boolean(pageId && accessToken);
+  const hasProbeCredentials = Boolean(pageId && accessToken);
+  const configured = Boolean(stored?.page_id && stored.page_access_token);
 
   const base: FacebookConnectionHealth = {
-    facebookEnabled: enabled,
+    facebookEnabled: enabled && Boolean(stored),
     facebookCredentialsConfigured: configured,
     facebookConnectionStatus: !configured ? "not_connected" : enabled ? "error" : "disabled",
     facebookPageName: stored?.page_name ?? null,
     facebookTokenSource: source,
     facebookLastCheckedAt: stored?.last_validated_at ?? null,
     facebookTokenExpiresAt: stored?.expires_at ?? null,
-    facebookConnectionMessage: !configured
-      ? "اربط صفحة Facebook من هنا مرة واحدة لتشغيل النشر التلقائي."
+    facebookConnectionMessage: !stored
+      ? "اتصال Facebook لم يُعتمد عبر OAuth بعد. اضغط «ربط/تجديد Facebook» حتى تُحفظ بيانات صفحة صالحة في قاعدة البيانات."
       : enabled
         ? "يتم اختبار اتصال Facebook الآن."
-        : "بيانات Facebook موجودة، لكن النشر الآلي لم يُفعّل من خلال اتصال OAuth بعد.",
+        : "تم التحقق من الصفحة، لكن النشر معطّل حتى تفعيل اتصال OAuth من مركز النشر.",
   };
-  if (!configured) return base;
+  if (!hasProbeCredentials) return base;
 
   if (stored?.expires_at && Number.isFinite(Date.parse(stored.expires_at)) && Date.parse(stored.expires_at) <= Date.now()) {
     const safeMessage = "انتهت صلاحية رمز الصفحة. اضغط «ربط/تجديد Facebook» لإعادة التفويض.";
@@ -220,13 +214,21 @@ export async function getFacebookPageConnectionHealth(): Promise<FacebookConnect
         facebookConnectionMessage: result.safeMessage,
       };
     }
-    const status: FacebookConnectionStatus = enabled ? "connected" : "disabled";
     const checkedAt = new Date().toISOString();
-    if (stored) await persistValidation(stored, status, null, null);
+    if (!stored) {
+      return {
+        ...base,
+        facebookConnectionStatus: "not_connected",
+        facebookPageName: String(body.name ?? "صفحة Facebook"),
+        facebookConnectionMessage: "الرمز القديم يستجيب، لكنه غير معتمد للنشر. اضغط «ربط/تجديد Facebook» لحفظ اعتماد OAuth داخل قاعدة البيانات.",
+      };
+    }
+    const status: FacebookConnectionStatus = enabled ? "connected" : "disabled";
+    await persistValidation(stored, status, null, null);
     return {
       ...base,
       facebookConnectionStatus: status,
-      facebookPageName: String(body.name ?? stored?.page_name ?? "صفحة Facebook"),
+      facebookPageName: String(body.name ?? stored.page_name ?? "صفحة Facebook"),
       facebookLastCheckedAt: checkedAt,
       facebookConnectionMessage: enabled
         ? "اتصال Facebook صالح؛ سيعالج الناشر العناصر تلقائيًا كل 15 دقيقة."

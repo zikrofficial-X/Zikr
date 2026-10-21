@@ -86,7 +86,10 @@ function isFacebookAuthFailure(error: string | undefined) {
       normalized.includes("error validating access token") ||
       normalized.includes("oauthexception") ||
       normalized.includes("invalid oauth") ||
-      normalized.includes("access token")
+      normalized.includes("access token") ||
+      normalized.includes("oauth-managed publishing center") ||
+      normalized.includes("reauthorization_required") ||
+      normalized.includes("reconnect the page")
     )
   );
 }
@@ -146,8 +149,11 @@ export async function claimPendingSocialPublishItems(
   for (const item of items) {
     try {
       const claimStatus = item.status === "partial" ? "partial" : item.status === "failed" ? "failed" : "queued";
+      // Atomic claim: the status predicate is the concurrency guard. Exact updated_at
+      // equality is intentionally avoided because PostgREST/JSON timestamp normalization
+      // can make a still-eligible row match zero rows and silently strand the queue.
       const result = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-        `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${claimStatus}&updated_at=eq.${encodeURIComponent(item.updated_at)}`,
+        `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${claimStatus}`,
         {
           method: "PATCH",
           headers: {

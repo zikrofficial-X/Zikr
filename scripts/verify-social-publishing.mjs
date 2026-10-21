@@ -14,7 +14,8 @@ const publisher = read("src/features/social/services/social-publishing.ts");
 const adminSocial = read("src/app/api/admin/social/route.ts");
 if (adminSocial.includes("/api/internal/video-processing")) failures.push("admin social retry references a retired noop endpoint");
 if (!adminSocial.includes('dispatchGitHubWorkflow("publish-social.yml")')) failures.push("admin social retry must use the canonical GitHub social workflow");
-if (!publisher.includes("updated_at=eq.")) failures.push("social queue claims must use optimistic updated_at concurrency");
+if (!publisher.includes("&status=eq.${claimStatus}")) failures.push("social queue claims must atomically filter by the current queue status");
+if (publisher.includes("status=eq.${claimStatus}&updated_at=eq.")) failures.push("social queue claims must not strand eligible rows on exact timestamp serialization equality");
 if (!publisher.includes("getFacebookPageCredentials")) failures.push("Facebook publisher must consume the canonical OAuth-managed Page credential");
 if (!publisher.includes("credentials.isEnabled")) failures.push("Facebook publisher must honor the explicit OAuth connection enable switch");
 if (!publisher.includes("isFacebookAuthFailure")) failures.push("Facebook auth failures must be classified separately");
@@ -83,6 +84,23 @@ for (const token of [
   if (!facebookCredentials.includes(token)) failures.push("Facebook credential manager missing: " + token);
 }
 if (!facebookCredentials.includes("stored.is_enabled === true")) failures.push("the OAuth connection must explicitly enable publishing");
+const credentialGetter = facebookCredentials.slice(
+  facebookCredentials.indexOf("export async function getFacebookPageCredentials"),
+  facebookCredentials.indexOf("function classifyGraphFailure"),
+);
+if (credentialGetter.includes("FACEBOOK_PAGE_ACCESS_TOKEN") || credentialGetter.includes('source: "environment"')) {
+  failures.push("legacy environment tokens must not be used for outbound Facebook publishing");
+}
+if (!credentialGetter.includes("OAuth-managed publishing center")) {
+  failures.push("Facebook publishing must fail closed until a verified OAuth credential is stored in Supabase");
+}
+if (!facebookCredentials.includes('facebookConnectionStatus: "not_connected"')) {
+  failures.push("legacy environment tokens must not make the Admin UI report Facebook as OAuth-connected");
+}
+if (!publisher.includes('normalized.includes("oauth-managed publishing center")')) {
+  failures.push("missing Facebook OAuth-managed connection errors must enter the auth-blocked queue state");
+}
+
 if (!facebookCredentials.includes("last_error_message")) failures.push("Facebook health must preserve a safe, token-free diagnostic");
 
 const connectRoute = read("src/app/api/admin/social/facebook/connect/route.ts");
