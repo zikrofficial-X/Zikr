@@ -10,6 +10,17 @@ Add a complete entry to `GAME_REGISTRY` first. Choose a runtime kind that is imp
 
 If the game is publishable through the Kids admin form, the registry selector already exposes it. The server action still validates `gameId` with `isRegisteredGameId`; client options are not an authorization boundary. Add an idempotent seed row only when the game should ship in the default catalog, and use a new migration rather than editing a migration already applied to Supabase.
 
+## Per-game content provenance
+
+`src/lib/games/content-manifest.ts` is the per-game content provenance contract. It exposes each registered game's source references and fields, age groups from the canonical registry, learning objective, content revision, and review status.
+
+- `canonical-source`: the content is retrieved from the canonical source, such as Quran text from the Quran database.
+- `approved-source-linked`: the runtime points to the named approved Kids content records; CI checks that the records still exist and satisfy their structure.
+- `gameplay-only`: no religious or factual quiz text is authored by that game's runtime.
+- `editorial-review-required`: content remains usable as labelled but must not be described as editorially approved until a review is recorded.
+
+The manifest test runs as part of `pnpm test` and therefore the PR and main quality gates. A missing required record, invalid quiz answer index, incomplete wudu sequence, duplicate scenario prompt, or unavailable canonical Quran text must fail validation or return a safe unavailable response.
+
 ## Runtime and accessibility
 
 `KidsWorldGameShell` owns difficulty, HUD, pause, mute, fullscreen, restart, submission, and offline status. `WorldGameStage` delegates to either the lifecycle-safe Phaser bridge or a focused React mini-game. Phaser wrappers are browser-only, lazy-load Phaser, dispose the instance on unmount, and apply `touch-action: none` so swipe controls do not scroll the page. Canvas play is interactive but not fully screen-reader accessible; the surrounding UI must provide labels, status text, pause/mute controls, and an escape route.

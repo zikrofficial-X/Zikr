@@ -79,8 +79,8 @@ export function KidsLetterLabGame({
   const [mistakes, setMistakes] = useState(0);
   const [feedback, setFeedback] = useState(
     isEnglish
-      ? "Choose the letter you hear and see."
-      : "اختر الحرف الذي تراه وتسمعه."
+      ? "Choose the matching Arabic letter."
+      : "اختر الحرف العربي المطابق."
   );
   const [locked, setLocked] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -103,8 +103,8 @@ export function KidsLetterLabGame({
     setLocked(false);
     setFeedback(
       isEnglish
-        ? "Choose the letter you hear and see."
-        : "اختر الحرف الذي تراه وتسمعه."
+        ? "Choose the matching Arabic letter."
+        : "اختر الحرف العربي المطابق."
     );
   }, [difficulty, restartToken, isEnglish]);
 
