@@ -16,6 +16,9 @@ if (!router.includes('Provider " + name + " threw for')) failures.push("provider
 if (!router.includes("!templateAttempted")) failures.push("template provider must not be executed twice in one router pass");
 
 const template = read("scripts/jobs/template-video-automation.ts");
+const durationService = read("src/features/videos/services/render-duration.ts");
+if (!durationService.includes("MAX_AUTO_VIDEO_SECONDS = 60")) failures.push("automated video duration policy must support narrated shorts up to 60 seconds");
+if (!template.includes("resolveRenderDuration(audioDuration, TARGET_VIDEO_SECONDS)")) failures.push("video renderer must use the shared tested render-duration policy");
 if (template.includes("https://zikrmediaofficial.vercel.app")) failures.push("video worker must not hardcode the production origin");
 if (!template.includes("getServerEnv().NEXT_PUBLIC_SITE_URL")) failures.push("video worker must use the canonical site environment");
 if (!template.includes("sourceId") || !template.includes("published source is required")) failures.push("source-locked content gate is missing");
