@@ -17,4 +17,24 @@ assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, queuedVideoUr
 assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, request: { ...request, content: { ...content, approvalStatus: "awaiting_human_review" } } }), false);
 assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, request: { ...request, content: { ...content, qualityReview: { ...checks, sourceVerified: false, reviewedAt: now } } } }), false);
 assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, request: null }), false);
+
+// The configured autonomous-publishing mode can skip the human checklist, but must
+// still require a completed source record and an exact source/media URL match.
+const unreviewedRequest = { status: "completed", video_url: "https://media.example.test/approved.mp4", content: {} };
+assert.equal(isVideoQueueItemApprovedForPublishing({
+  ...queueItem,
+  request: unreviewedRequest,
+  requireApproval: false,
+}), true);
+assert.equal(isVideoQueueItemApprovedForPublishing({
+  ...queueItem,
+  request: { ...unreviewedRequest, status: "processing" },
+  requireApproval: false,
+}), false);
+assert.equal(isVideoQueueItemApprovedForPublishing({
+  ...queueItem,
+  queuedVideoUrl: "https://media.example.test/different.mp4",
+  request: unreviewedRequest,
+  requireApproval: false,
+}), false);
 console.log("Video publishing approval contract passed.");
