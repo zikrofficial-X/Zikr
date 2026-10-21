@@ -17,6 +17,7 @@ const required = [
   "src/features/kids/components/games/kids-learning-games.tsx",
   "src/features/kids/components/games/use-managed-timeouts.ts",
   "src/features/kids/components/games/kids-values-coloring.tsx",
+  "src/features/kids/components/games/kids-letter-lab.tsx",
   "src/features/kids/components/games/world-game-stage.tsx",
   "src/features/kids/components/games/game-shell.tsx",
   "src/lib/games/game-missions.ts",
@@ -66,7 +67,7 @@ const stage = readFileSync(join(root, "src/features/kids/components/games/world-
 const gameIds = [
   "zikr-runner", "zikr-memory", "wudu-challenge", "verse-puzzle",
   "zikr-quiz", "mosque-adventure", "zikr-road", "zikr-jump",
-  "hilal-fly", "good-deeds", "mosque-cleanup", "zikr-coloring",
+  "hilal-fly", "good-deeds", "mosque-cleanup", "letter-lab", "zikr-coloring",
 ] as const;
 for (const id of gameIds) {
   if (!stage.includes('"' + id + '"')) {
@@ -118,7 +119,29 @@ const migrationSource = readFileSync(join(root, "supabase/migrations/20261002211
 if (!migrationSource.includes("generate_series(1, 20)") || !migrationSource.includes("array['easy','normal','hard']")) throw new Error("Level catalog migration incomplete.");
 const levelExtensionSource = readFileSync(join(root, "supabase/migrations/20261020224251_kids_games_level_catalog_extend_to_30.sql"), "utf8");
 if (!levelExtensionSource.includes("generate_series(21, 30)") || !levelExtensionSource.includes("'levelCount', 30")) throw new Error("Additive 30-level migration is incomplete.");
-for (const id of gameIds) if (!migrationSource.includes("('" + id + "'")) throw new Error("Migration catalog missing " + id);
+for (const id of gameIds.filter(id => id !== "letter-lab")) {
+  if (!migrationSource.includes("('" + id + "'")) throw new Error("Migration catalog missing " + id);
+}
+const letterLabMigration = readFileSync(join(root, "supabase/migrations/20261022090000_add_letter_lab_to_kids_game_catalog.sql"), "utf8");
+for (const token of [
+  "'letter-lab'",
+  "INSERT INTO public.kids_games",
+  "generate_series(1, 30)",
+  "ARRAY['easy', 'normal', 'hard']",
+  "ON CONFLICT (game_id, difficulty, level_no)",
+  "configured_levels <> 90",
+]) {
+  if (!letterLabMigration.includes(token)) throw new Error("Letter Lab canonical catalog migration missing: " + token);
+}
+
+const letterLabRuntime = readFileSync(join(root, "src/features/kids/components/games/kids-letter-lab.tsx"), "utf8");
+if (!letterLabRuntime.includes('getKidsLevelMeta("letter-lab"') || !letterLabRuntime.includes("onResult({")) {
+  throw new Error("Letter Lab must use canonical level metadata and the shared result submission pipeline.");
+}
+const worldStageSource = readFileSync(join(root, "src/features/kids/components/games/world-game-stage.tsx"), "utf8");
+if (!worldStageSource.includes('case "letter-lab":') || !worldStageSource.includes("<KidsLetterLabGame")) {
+  throw new Error("Letter Lab runtime is not connected to the canonical game stage.");
+}
 
 const visuals = readFileSync(join(root, "src/features/kids/components/games/kids-game-visuals.tsx"), "utf8");
 for (const id of gameIds) if (!visuals.includes('case "' + id + '"')) throw new Error("Dedicated visual world missing for " + id);
@@ -258,4 +281,4 @@ if (kidsDetailPage.includes('isEnglish ? "Game unavailable"')) {
   throw new Error("Published legacy activities must not be discarded solely because they lack a registry gameId.");
 }
 
-console.log("Kids Games final check passed: 12 rebuilt runtimes, 30 deterministic levels per game/difficulty, no legacy game runtimes, stabilized runtime rules, and preserved progress/offline shell.");
+console.log("Kids Games final check passed: 13 registered runtimes, 30 deterministic levels per game/difficulty, verified Letter Lab catalog migration, no legacy game runtimes, stabilized runtime rules, and preserved progress/offline shell.");
