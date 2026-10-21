@@ -3,7 +3,11 @@ import { requireAdminApi } from "@/features/admin/services/admin";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
-import { getFacebookPageConnectionHealth } from "@/features/social/services/facebook-credentials";
+import {
+  adoptServerConfiguredFacebookPageToken,
+  getFacebookPageConnectionHealth,
+  unblockFacebookAuthBlockedQueue,
+} from "@/features/social/services/facebook-credentials";
 
 export const dynamic = "force-dynamic";
 
@@ -206,6 +210,40 @@ export async function POST(request: NextRequest) {
       const health = await getFacebookPageConnectionHealth();
       return NextResponse.json({ ok: true, health }, { headers: { "Cache-Control": "no-store" } });
     }
+    if (action === "adopt_server_facebook_token") {
+      // No token is accepted from the browser. The server-only Vercel value is validated,
+      // stored only after verification, and then old auth-blocked queue entries are released.
+      const adopted = await adoptServerConfiguredFacebookPageToken();
+      let released = 0;
+      let queueUpdateFailed = false;
+      try {
+        released = await unblockFacebookAuthBlockedQueue();
+      } catch {
+        queueUpdateFailed = true;
+      }
+
+      let workerDispatched = false;
+      if (released > 0) {
+        try {
+          await triggerSocialWorker();
+          workerDispatched = true;
+        } catch {
+          // The scheduled publisher remains the fallback if manual dispatch is unavailable.
+        }
+      }
+
+      const health = await getFacebookPageConnectionHealth();
+      return NextResponse.json({
+        ok: true,
+        adopted: true,
+        pageName: adopted.pageName,
+        released,
+        queueUpdateFailed,
+        workerDispatched,
+        health,
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
+
     if (action === "run_worker") {
       const worker = await triggerSocialWorker();
       return NextResponse.json({ ok: true, worker });
