@@ -94,6 +94,7 @@ const KIDS_GAME_API_CHECKS = KIDS_GAME_SLUGS.map((slug) => ({
 }));
 
 const ASSET_CHECKS = [
+  { path: "/data-deletion.html", label: "static Facebook data deletion page", expected: /حذف بيانات المستخدم[\s\S]*إرسال طلب حذف البيانات/i },
   { path: "/robots.txt", label: "robots.txt", expected: /Sitemap:/i },
   { path: "/sitemap.xml", label: "sitemap.xml", expected: /<urlset/i },
   { path: "/sitemap-index.xml", label: "sitemap index", expected: /<sitemapindex/i },
