@@ -25,6 +25,7 @@ export type StoredFacebookCredential = {
   last_error_message: string | null;
   connected_at: string | null;
   updated_at: string | null;
+  facebook_reels_next_allowed_at: string | null;
 };
 
 export type FacebookPageCredentials = {
@@ -35,6 +36,7 @@ export type FacebookPageCredentials = {
   source: Exclude<FacebookCredentialSource, "missing">;
   expiresAt: string | null;
   connectionStatus: FacebookConnectionStatus;
+  reelsNextAllowedAt: string | null;
 };
 
 export type FacebookConnectionHealth = {
@@ -49,8 +51,9 @@ export type FacebookConnectionHealth = {
   facebookConnectionMessage: string;
 };
 
-const CREDENTIAL_FIELDS =
+const LEGACY_CREDENTIAL_FIELDS =
   "platform,page_id,page_name,page_access_token,is_enabled,token_type,expires_at,granted_permissions,connection_status,last_validated_at,last_error_code,last_error_message,connected_at,updated_at";
+const CREDENTIAL_FIELDS = `${LEGACY_CREDENTIAL_FIELDS},facebook_reels_next_allowed_at`;
 
 function siteGraphVersion() {
   return getServerEnv().FACEBOOK_GRAPH_API_VERSION || "v26.0";
@@ -69,10 +72,38 @@ export async function readStoredFacebookCredential(): Promise<StoredFacebookCred
     );
     return Array.isArray(rows) ? rows[0] ?? null : null;
   } catch {
-    // During deployment, the additive migration may not yet exist in every preview.
-    // Never log the exception because provider responses can contain sensitive context.
-    return null;
+    // Preview projects can temporarily lack the additive cooldown migration. Fall
+    // back to established columns so OAuth connectivity still works.
+    try {
+      const rows = await supabaseServerAdminRequest<Omit<StoredFacebookCredential, "facebook_reels_next_allowed_at">[]>(
+        `/rest/v1/social_platform_credentials?platform=eq.facebook&select=${LEGACY_CREDENTIAL_FIELDS}&limit=1`,
+      );
+      const row = Array.isArray(rows) ? rows[0] : null;
+      return row ? { ...row, facebook_reels_next_allowed_at: null } : null;
+    } catch {
+      // Never log exceptions because provider responses can contain sensitive context.
+      return null;
+    }
   }
+}
+
+export async function getFacebookReelsNextAllowedAt(): Promise<string | null> {
+  const stored = await readStoredFacebookCredential();
+  return stored?.facebook_reels_next_allowed_at ?? null;
+}
+
+export async function setFacebookReelsNextAllowedAt(until: string): Promise<void> {
+  await supabaseServerAdminRequest(
+    "/rest/v1/social_platform_credentials?platform=eq.facebook",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({
+        facebook_reels_next_allowed_at: until,
+        updated_at: new Date().toISOString(),
+      }),
+    },
+  );
 }
 
 export async function getFacebookPageCredentials(): Promise<FacebookPageCredentials> {
@@ -104,6 +135,7 @@ export async function getFacebookPageCredentials(): Promise<FacebookPageCredenti
     source: "database",
     expiresAt: stored.expires_at,
     connectionStatus: stored.connection_status,
+    reelsNextAllowedAt: stored.facebook_reels_next_allowed_at,
   };
 }
 

@@ -23,7 +23,21 @@ for (const token of [
 }
 if (!videoAutomation.includes("throw error;")) failures.push("Facebook publishing must propagate provider failures to the social queue instead of silently returning null");
 
+const reelsCooldown = read("src/features/social/services/facebook-reels-rate-limit.ts");
+const facebookCredentials = read("src/features/social/services/facebook-credentials.ts");
+const reelsCooldownMigration = read("supabase/migrations/20261021093000_social_facebook_reels_rate_limit_cooldown.sql");
+for (const token of ["facebook_reels_next_allowed_at", "24 * 60 * 60 * 1000", "12 * 60 * 1000"]) {
+  if (!reelsCooldown.includes(token)) failures.push("Facebook Reels cooldown helper missing contract: " + token);
+}
+if (!facebookCredentials.includes("setFacebookReelsNextAllowedAt")) failures.push("Facebook credentials must persist shared Reels cooldown/pacing timestamps");
+if (!videoAutomation.includes("credentials.reelsNextAllowedAt")) failures.push("Facebook Reels publisher must honor the shared next-allowed time before calling Meta");
+if (!videoAutomation.includes("facebook_reels_next_allowed_at")) failures.push("Facebook Reels cooldown errors must persist a retry timestamp");
+
+if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_next_allowed_at")) failures.push("Supabase must have a durable global Facebook Reels next-allowed column");
+
 const publisher = read("src/features/social/services/social-publishing.ts");
+if (!publisher.includes("extractFacebookReelsNextAllowedAt")) failures.push("social queue must defer rate-limited Reels to the shared next-allowed time");
+if (!publisher.includes("facebookReelsNextAllowedAt")) failures.push("social queue must persist the Reels cooldown deadline per item");
 const adminSocial = read("src/app/api/admin/social/route.ts");
 if (adminSocial.includes("/api/internal/video-processing")) failures.push("admin social retry references a retired noop endpoint");
 if (!adminSocial.includes('dispatchGitHubWorkflow("publish-social.yml")')) failures.push("admin social retry must use the canonical GitHub social workflow");
@@ -91,7 +105,6 @@ if (!packageJson.scripts["social:publish:check"]) failures.push("social:publish:
 if (!packageJson.scripts["verify:pr"]?.includes("pnpm social:publish:check")) failures.push("verify:pr must include social publishing verification");
 if (!packageJson.scripts["verify"]?.includes("pnpm social:publish:check")) failures.push("verify must include social publishing verification");
 
-const facebookCredentials = read("src/features/social/services/facebook-credentials.ts");
 for (const token of [
   "social_platform_credentials",
   "getFacebookPageCredentials",

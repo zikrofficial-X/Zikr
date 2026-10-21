@@ -1,6 +1,16 @@
 import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
 import { getServerEnv } from '@/lib/env';
-import { getFacebookPageCredentials } from '@/features/social/services/facebook-credentials';
+import {
+  getFacebookPageCredentials,
+  setFacebookReelsNextAllowedAt,
+} from '@/features/social/services/facebook-credentials';
+import {
+  FACEBOOK_REELS_MIN_POST_INTERVAL_MS,
+  FACEBOOK_REELS_RATE_LIMIT_COOLDOWN_MS,
+  facebookReelsCooldownDeferredError,
+  isFacebookReelsRateLimitResponseError,
+  resolveFacebookReelsNextAllowedAt,
+} from '@/features/social/services/facebook-reels-rate-limit';
 import type { VideoGenerationRequest } from '@/lib/types/video';
 
 export type { VideoGenerationRequest };
@@ -432,6 +442,12 @@ export async function publishToFacebook(
     if (!pageAccessToken || !actualPageId) {
       throw new Error("Facebook Page credentials are incomplete. Reconnect the Page from the admin publishing center.");
     }
+    if (asReel && credentials.reelsNextAllowedAt) {
+      const cooldownUntil = Date.parse(credentials.reelsNextAllowedAt);
+      if (Number.isFinite(cooldownUntil) && cooldownUntil > Date.now()) {
+        throw facebookReelsCooldownDeferredError(credentials.reelsNextAllowedAt);
+      }
+    }
     const source = assertRemoteVideoUrl(videoUrl, 'Facebook');
     const version = env.FACEBOOK_GRAPH_API_VERSION || 'v26.0';
 
@@ -484,6 +500,16 @@ export async function publishToFacebook(
             : undefined),
         });
       }
+      // Pace Reels to at most one per scheduled publisher run. Meta has already
+      // applied a rate restriction, so do not send a burst immediately after recovery.
+      try {
+        await setFacebookReelsNextAllowedAt(
+          new Date(Date.now() + FACEBOOK_REELS_MIN_POST_INTERVAL_MS).toISOString(),
+        );
+      } catch {
+        // Never turn a confirmed remote post into a retry just because pacing metadata failed.
+        console.error('[video-automation] Unable to persist the next Facebook Reels publish time.');
+      }
       return finishData.post_id ?? startData.video_id;
     }
 
@@ -503,8 +529,21 @@ export async function publishToFacebook(
     }
     return data.id;
   } catch (error) {
-    // Preserve the stage-specific Meta error so the queue records the real provider
-    // failure instead of converting every Reels/API error into an opaque null result.
+    if (asReel && isFacebookReelsRateLimitResponseError(error)) {
+      const rateLimitedUntil = resolveFacebookReelsNextAllowedAt(error)
+        ?? new Date(Date.now() + FACEBOOK_REELS_RATE_LIMIT_COOLDOWN_MS).toISOString();
+      try {
+        await setFacebookReelsNextAllowedAt(rateLimitedUntil);
+      } catch {
+        // Keep the external provider failure visible even if cooldown persistence fails.
+        console.error('[video-automation] Unable to persist the Facebook Reels rate-limit cooldown.');
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      const rateLimitedError = new Error(`${message} [facebook_reels_next_allowed_at=${rateLimitedUntil}]`);
+      console.error('[video-automation] Facebook Reels rate-limited:', rateLimitedError.message);
+      throw rateLimitedError;
+    }
+    // Preserve the stage-specific Meta error instead of returning an opaque null.
     console.error(
       '[video-automation] Failed to publish to Facebook:',
       error instanceof Error ? error.message : String(error),
