@@ -373,18 +373,6 @@ export async function publishToYoutube(
   return payload.id;
 }
 
-function isFacebookAuthFailureMessage(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error ?? '');
-  const normalized = message.toLowerCase();
-  return normalized.includes('facebook') && (
-    normalized.includes('session has expired') ||
-    normalized.includes('error validating access token') ||
-    normalized.includes('oauthexception') ||
-    normalized.includes('invalid oauth') ||
-    normalized.includes('access token')
-  );
-}
-
 type FacebookVideoApiResponse = {
   id?: string;
   video_id?: string;
