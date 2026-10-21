@@ -10,6 +10,19 @@ const read = (path) => {
   return readFileSync(path, "utf8");
 };
 
+const videoAutomation = read("src/features/videos/services/video-automation.ts");
+for (const token of [
+  "readFacebookApiResponse",
+  "Facebook Reel start",
+  "Facebook Reel upload",
+  "Facebook Reel publish",
+  "uploadData.success !== true",
+  "finishData.success !== true",
+]) {
+  if (!videoAutomation.includes(token)) failures.push("Facebook Reels publishing must validate and preserve stage-specific Meta response: " + token);
+}
+if (!videoAutomation.includes("throw error;")) failures.push("Facebook publishing must propagate provider failures to the social queue instead of silently returning null");
+
 const publisher = read("src/features/social/services/social-publishing.ts");
 const adminSocial = read("src/app/api/admin/social/route.ts");
 if (adminSocial.includes("/api/internal/video-processing")) failures.push("admin social retry references a retired noop endpoint");
