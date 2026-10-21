@@ -25,7 +25,7 @@ if (!videoAutomation.includes("throw error;")) failures.push("Facebook publishin
 
 const reelsCooldown = read("src/features/social/services/facebook-reels-rate-limit.ts");
 const facebookCredentials = read("src/features/social/services/facebook-credentials.ts");
-const reelsCooldownMigration = read("supabase/migrations/20261021093000_social_facebook_reels_rate_limit_cooldown.sql");
+const reelsCooldownMigration = read("supabase/migrations/20261021094431_social_facebook_reels_rate_limit_cooldown.sql");
 for (const token of ["facebook_reels_next_allowed_at", "24 * 60 * 60 * 1000", "12 * 60 * 1000"]) {
   if (!reelsCooldown.includes(token)) failures.push("Facebook Reels cooldown helper missing contract: " + token);
 }
