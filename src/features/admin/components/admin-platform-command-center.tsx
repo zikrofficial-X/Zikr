@@ -55,12 +55,13 @@ export async function AdminPlatformCommandCenter() {
     .filter((group) => group.items.length > 0);
   const availableHrefs = new Set(availableGroups.flatMap((group) => group.items.map((item) => item.href)));
   const groups = availableGroups.filter((group) => group.key !== "operations");
-  const quickActions: Array<[string, string, string]> = [
+  const quickActionCandidates: Array<[string, string, string]> = [
     ["إدارة المحتوى", "/admin/content", "راجع المحتوى والمسودات"],
     ["تحليلات المنصة", "/admin/analytics", "تابع الاستخدام والنمو"],
     ["الألعاب", "/admin/kids/games", "حدّث تجربة الأطفال"],
     ["سجل التدقيق", "/admin/audit", "راجع آخر العمليات"],
-  ].filter(([, href]) => availableHrefs.has(href));
+  ];
+  const quickActions = quickActionCandidates.filter(([, href]) => availableHrefs.has(href));
   const queueLabels: Record<string, string> = {
     content_agent_queue: "طابور وكيل المحتوى",
     content_agent_runs: "تشغيلات وكيل المحتوى",
