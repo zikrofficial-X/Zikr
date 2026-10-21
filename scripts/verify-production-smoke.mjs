@@ -11,7 +11,6 @@ const PUBLIC_ROUTES = [
   "/faq",
   "/privacy",
   "/terms",
-  "/data-deletion",
   "/quran",
   "/hadith",
   "/adhkar",
@@ -68,6 +67,7 @@ const CORE_CHECKS = [
   { path: "/prayer-times", label: "prayer times page", expectedMain: /مواقيت/i },
   { path: "/kids", label: "kids page", expectedMain: /نتعلم|الأطفال|الاطفال/i },
   { path: "/kids/games", label: "kids games catalogue", expectedMain: /الألعاب|ألعاب|All games|Choose your next adventure/i },
+  { path: "/data-deletion", label: "Facebook data deletion instructions", expectedMain: /حذف بيانات المستخدم.*إرسال طلب حذف البيانات/i },
 ];
 
 const ROUTE_CHECKS = PUBLIC_ROUTES
