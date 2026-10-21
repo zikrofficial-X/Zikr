@@ -15,6 +15,7 @@ type Health = {
   youtubeConfigured: boolean;
   facebookEnabled: boolean;
   facebookCredentialsConfigured: boolean;
+  facebookEnvironmentTokenConfigured: boolean;
   facebookAuthBlocked: number;
   facebookConnectionStatus?: "connected" | "disabled" | "not_connected" | "reauthorization_required" | "permission_error" | "error";
   facebookPageName?: string | null;
@@ -57,6 +58,7 @@ export default function AdminSocialPage() {
     youtubeConfigured: false,
     facebookEnabled: false,
     facebookCredentialsConfigured: false,
+    facebookEnvironmentTokenConfigured: false,
     facebookAuthBlocked: 0,
   });
   const [platformStats, setPlatformStats] = useState<PlatformStats>({});
@@ -322,7 +324,7 @@ export default function AdminSocialPage() {
             <Button variant="outline" disabled={busy} onClick={() => void connectFacebook()}>
               ربط Facebook عبر OAuth
             </Button>
-            {health.facebookTokenSource === "environment" && !health.facebookCredentialsConfigured && (
+            {health.facebookEnvironmentTokenConfigured && (
               <Button disabled={busy} onClick={() => void adoptServerToken()}>
                 اعتماد توكن الخادم
               </Button>
@@ -374,6 +376,23 @@ export default function AdminSocialPage() {
         </button>
       </div>
 
+      {error && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-200"
+        >
+          {error}
+        </div>
+      )}
+      {message && (
+        <div
+          role="status"
+          className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm leading-6 text-emerald-200"
+        >
+          {message}
+        </div>
+      )}
+
       {activeView === "overview" && (
         <>
       <section className="grid gap-3 md:grid-cols-3">
@@ -414,11 +433,6 @@ export default function AdminSocialPage() {
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void connectFacebook()}>
               تجديد الاتصال
             </Button>
-            {health.facebookTokenSource === "environment" && !health.facebookCredentialsConfigured && (
-              <Button size="sm" disabled={busy} onClick={() => void adoptServerToken()}>
-                اعتماد توكن الخادم
-              </Button>
-            )}
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void testFacebook()}>
               اختبار الاتصال
             </Button>
@@ -442,23 +456,6 @@ export default function AdminSocialPage() {
           هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي. بعد اعتماد توكن صالح، سيعاد فتح العناصر تلقائيًا مع الاحتفاظ بنتائج النشر الناجحة لتجنب تكرارها.
         </div>
       )}
-      {error && (
-        <div
-          role="alert"
-          className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
-        >
-          {error}
-        </div>
-      )}
-      {message && (
-        <div
-          role="status"
-          className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
-        >
-          {message}
-        </div>
-      )}
-
         </>
       )}
 
@@ -552,8 +549,7 @@ export default function AdminSocialPage() {
               الإجراءات السريعة
             </h2>
             <p className="text-xs text-brand-cream/40">
-              العمليات المحجوبة بسبب Facebook لا تعود تلقائيًا إلى دورة إعادة
-              المحاولة.
+              لن تعود العناصر المحجوبة إلى الطابور إلا بعد اعتماد اتصال صالح؛ وتُحفظ نتائج النشر الناجحة لمنع التكرار.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

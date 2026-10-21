@@ -40,6 +40,7 @@ export type FacebookPageCredentials = {
 export type FacebookConnectionHealth = {
   facebookEnabled: boolean;
   facebookCredentialsConfigured: boolean;
+  facebookEnvironmentTokenConfigured: boolean;
   facebookConnectionStatus: FacebookConnectionStatus;
   facebookPageName: string | null;
   facebookTokenSource: FacebookCredentialSource;
@@ -56,8 +57,10 @@ function siteGraphVersion() {
 }
 
 /**
- * The DB record is the canonical credential once the administrator completes OAuth.
- * The environment credential remains a migration/backward-compatibility fallback only.
+ * The Supabase row is the only credential used by publishing workers.
+ * A Vercel environment token may be explicitly imported by an administrator after
+ * app identity, expiry, required scopes, and target Page are verified server-side.
+ * Merely changing an environment variable never silently changes the active credential.
  */
 export async function readStoredFacebookCredential(): Promise<StoredFacebookCredential | null> {
   try {
@@ -73,10 +76,9 @@ export async function readStoredFacebookCredential(): Promise<StoredFacebookCred
 }
 
 export async function getFacebookPageCredentials(): Promise<FacebookPageCredentials> {
-  // Outbound Facebook publishing must use the token created by the verified OAuth
-  // callback and stored in Supabase. Environment tokens are legacy diagnostics only:
-  // they are not refreshed by this app and can silently expire, causing repeated
-  // publishing failures after a reconnect.
+  // Outbound publishing uses only the validated Supabase credential. A server-side
+  // environment token is never used directly; the admin must explicitly validate and
+  // import it through adoptServerConfiguredFacebookPageToken first.
   const stored = await readStoredFacebookCredential();
   if (!stored) {
     throw new Error(
@@ -174,6 +176,7 @@ export async function getFacebookPageConnectionHealth(): Promise<FacebookConnect
     return {
       facebookEnabled: false,
       facebookCredentialsConfigured: false,
+      facebookEnvironmentTokenConfigured: hasEnvironmentToken,
       facebookConnectionStatus: "not_connected",
       facebookPageName: null,
       facebookTokenSource: hasEnvironmentToken ? "environment" : "missing",
@@ -189,6 +192,7 @@ export async function getFacebookPageConnectionHealth(): Promise<FacebookConnect
   const base: FacebookConnectionHealth = {
     facebookEnabled: enabled,
     facebookCredentialsConfigured: Boolean(stored.page_id && stored.page_access_token),
+    facebookEnvironmentTokenConfigured: hasEnvironmentToken,
     facebookConnectionStatus: enabled ? "error" : "disabled",
     facebookPageName: stored.page_name,
     facebookTokenSource: "database",

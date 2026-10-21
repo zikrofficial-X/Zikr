@@ -60,7 +60,7 @@ const adminUi = read("src/app/admin/social/social-client.tsx");
 if (!adminUi.includes("Facebook Auth Blocks")) failures.push("Admin social UI must show Facebook auth-block count");
 if (!adminUi.includes("سجلات فشل اعتماد Facebook السابقة")) failures.push("Admin social UI must label Facebook auth-blocks as historical queue records");
 if (adminUi.includes("Facebook متوقف حاليًا بسبب اعتماد منتهي")) failures.push("Admin social UI must not claim current Facebook credentials are expired based only on historical queue failures");
-if (!adminUi.includes("هذا العداد تاريخي")) failures.push("Admin social UI must explicitly distinguish historical auth-blocks from current Facebook health");
+if (!adminUi.includes("هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي")) failures.push("Admin social UI must explicitly distinguish historical auth-blocks from current Facebook health");
 if (!adminUi.includes("تشغيل العامل الآن")) failures.push("Admin social UI must expose the manual worker control");
 if (!adminUi.includes("successRate")) failures.push("Admin social UI must show platform success rates");
 
@@ -128,6 +128,21 @@ const credentialsMigration = read("supabase/migrations/20261020234239_social_fac
 for (const token of ["enable row level security", "revoke all", "authenticated", "service_role", "page_access_token"]) {
   if (!credentialsMigration.toLowerCase().includes(token.toLowerCase())) failures.push("Facebook credential table missing security control: " + token);
 }
+const credentialHealth = facebookCredentials.slice(
+  facebookCredentials.indexOf("export async function getFacebookPageConnectionHealth"),
+  facebookCredentials.indexOf("export async function saveFacebookPageCredential"),
+);
+if (!credentialHealth.includes("facebookEnvironmentTokenConfigured")) failures.push("health API must distinguish a server-configured token from the active DB credential");
+if (!credentialHealth.includes("Do not probe it here and misreport a stale legacy token")) failures.push("health checks must not misreport a legacy environment token as the active publish credential");
+if (!facebookCredentials.includes("adoptServerConfiguredFacebookPageToken")) failures.push("Facebook manager must support secure explicit adoption of the server-configured token");
+for (const token of ["debug_token", "is_valid", "pages_show_list", "pages_read_engagement", "pages_manage_posts", "saveFacebookPageCredential"]) {
+  if (!facebookCredentials.includes(token)) failures.push("server token adoption must validate: " + token);
+}
+if (!adminApi.includes('action === "adopt_server_facebook_token"')) failures.push("admin API must provide a protected action to adopt the current server token");
+if (!adminApi.includes("unblockFacebookAuthBlockedQueue()")) failures.push("adopting a valid token must release historical Facebook-auth-blocked items");
+if (!adminUi.includes("facebookEnvironmentTokenConfigured")) failures.push("admin UI must expose adoption only when a server token is configured");
+if (!adminUi.includes("role="tablist"") || !adminUi.includes("activeView === "queue"") || !adminUi.includes("sm:hidden")) failures.push("publishing center must have separate mobile-friendly overview and queue views");
+
 if (credentialsMigration.includes("to anon") && /grant\s+select[^;]+to\s+anon/i.test(credentialsMigration)) failures.push("Facebook credentials must not be readable by anonymous clients");
 
 const facebookProfile = read("src/features/social/integrations/facebook.ts");
