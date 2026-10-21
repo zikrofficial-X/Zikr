@@ -9,13 +9,14 @@ import { requireAdminPermission } from '@/features/admin/services/admin';
 import { getAdminAnalytics } from '@/features/admin/services/analytics';
 
 export const metadata: Metadata = {
-  title: 'تحليلات التطبيق | الأدمن',
+  title: 'تحليلات المنصة | إدارة ذِكر',
 };
 
 export default async function AnalyticsPage() {
   await requireAdminPermission("analytics.read");
 
   const { stats, topArticles, userCount } = await getAdminAnalytics();
+  const rankedArticles = topArticles.filter((article) => article.views > 0).slice(0, 10);
 
   const contentCards = [
     { label: 'المستخدمون', value: userCount, note: 'حساب مسجل' },
@@ -38,7 +39,7 @@ export default async function AnalyticsPage() {
       {/* Content Stats Grid */}
       <section className="space-y-4">
         <SectionHeader title="إحصائيات المحتوى" subtitle="عدد العناصر في قاعدة البيانات" />
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           {contentCards.map((card) => (
             <Card key={card.label} className="text-center space-y-2 py-6">
               <p className="text-4xl font-bold text-brand-gold tabular-nums">
@@ -52,11 +53,12 @@ export default async function AnalyticsPage() {
       </section>
 
       {/* Top Articles */}
-      {topArticles.length > 0 && (
+      {rankedArticles.length > 0 && (
         <section className="space-y-4">
           <SectionHeader title="المقالات الأكثر مشاهدة" subtitle="ترتيب حسب عدد المشاهدات" />
           <Card className="overflow-hidden">
-            <table className="w-full text-sm text-right">
+            <div className="overflow-x-auto">
+            <table className="min-w-[420px] w-full text-sm text-right">
               <thead>
                 <tr className="border-b border-brand-gold/15">
                   <th className="px-4 py-3 text-brand-gold/70 font-semibold">العنوان</th>
@@ -64,7 +66,7 @@ export default async function AnalyticsPage() {
                 </tr>
               </thead>
               <tbody>
-                {topArticles.map((article, idx) => (
+                {rankedArticles.map((article, idx) => (
                   <tr key={article.id} className="border-b border-brand-gold/8 hover:bg-brand-gold/5 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -81,34 +83,17 @@ export default async function AnalyticsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </Card>
         </section>
       )}
 
-      {topArticles.length === 0 && (
+      {rankedArticles.length === 0 && (
         <Card className="p-8 text-center">
-          <p className="arabic-muted">لا توجد بيانات مشاهدات بعد. سيتم تحديث البيانات تلقائياً عند زيارة المستخدمين للمقالات.</p>
+          <p className="arabic-muted">لا توجد مشاهدات مسجلة للمقالات حتى الآن؛ لن نعرض قائمة ترتيب قبل وجود بيانات مشاهدة فعلية.</p>
         </Card>
       )}
 
-      {/* Navigation */}
-      <section className="grid gap-4 md:grid-cols-3">
-        <Card className="p-5 space-y-2 hover:border-brand-gold/40 transition-colors">
-          <h3 className="text-lg font-bold text-brand-gold">إدارة المستخدمين</h3>
-          <p className="text-sm arabic-muted">عرض وإدارة جميع الحسابات والأدوار</p>
-          <a href="/admin/users" className="text-sm text-brand-gold hover:underline">الذهاب للإدارة</a>
-        </Card>
-        <Card className="p-5 space-y-2 hover:border-brand-gold/40 transition-colors">
-          <h3 className="text-lg font-bold text-brand-gold">طابور الفيديو</h3>
-          <p className="text-sm arabic-muted">مراقبة عمليات التوليد وإعادة المحاولة</p>
-          <a href="/admin/videos" className="text-sm text-brand-gold hover:underline">الذهاب للإدارة</a>
-        </Card>
-        <Card className="p-5 space-y-2 hover:border-brand-gold/40 transition-colors">
-          <h3 className="text-lg font-bold text-brand-gold">إدارة المحتوى</h3>
-          <p className="text-sm arabic-muted">نشر وتعديل جميع أنواع المحتوى</p>
-          <a href="/admin/content" className="text-sm text-brand-gold hover:underline">الذهاب للإدارة</a>
-        </Card>
-      </section>
     </Container>
   );
 }

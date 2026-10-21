@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getAdminSnapshot } from "@/features/admin/services/platform";
 import { ADMIN_NAVIGATION } from "@/features/admin/config/navigation";
+import { getCurrentProfile } from "@/features/admin/services/admin";
+import { hasAdminPermission } from "@/features/admin/services/permissions";
 import { deleteFailedVideoGenerationAction } from "@/features/admin/actions/video";
 
 type AdminSnapshot = Awaited<ReturnType<typeof getAdminSnapshot>>;
@@ -43,7 +45,23 @@ export async function AdminPlatformCommandCenter() {
   const snapshot = await loadAdminSnapshotSafely();
   const failedVideoJobs = snapshot.queues.videoFailed ?? 0;
 
-  const groups = ADMIN_NAVIGATION.filter((group) => group.key !== "operations");
+  const currentProfile = await getCurrentProfile();
+  const role = currentProfile?.role ?? "user";
+  const availableGroups = ADMIN_NAVIGATION
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => hasAdminPermission(role, item.permission)),
+    }))
+    .filter((group) => group.items.length > 0);
+  const availableHrefs = new Set(availableGroups.flatMap((group) => group.items.map((item) => item.href)));
+  const groups = availableGroups.filter((group) => group.key !== "operations");
+  const quickActionCandidates: Array<[string, string, string]> = [
+    ["إدارة المحتوى", "/admin/content", "راجع المحتوى والمسودات"],
+    ["تحليلات المنصة", "/admin/analytics", "تابع الاستخدام والنمو"],
+    ["الألعاب", "/admin/kids/games", "حدّث تجربة الأطفال"],
+    ["سجل التدقيق", "/admin/audit", "راجع آخر العمليات"],
+  ];
+  const quickActions = quickActionCandidates.filter(([, href]) => availableHrefs.has(href));
   const queueLabels: Record<string, string> = {
     content_agent_queue: "طابور وكيل المحتوى",
     content_agent_runs: "تشغيلات وكيل المحتوى",
@@ -71,16 +89,11 @@ export async function AdminPlatformCommandCenter() {
         </div>
       </header>
 
-      <section aria-label="إجراءات سريعة" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          ["إدارة المحتوى", "/admin/content", "راجع المحتوى والمسودات"],
-          ["تحليلات المنصة", "/admin/analytics", "تابع الاستخدام والنمو"],
-          ["الألعاب", "/admin/kids/games", "حدّث تجربة الأطفال"],
-          ["سجل التدقيق", "/admin/audit", "راجع آخر العمليات"],
-        ].map(([label, href, description]) => (
-          <Link key={href} href={href} className="group rounded-2xl border border-brand-gold/10 bg-black/15 p-4 transition hover:-translate-y-0.5 hover:border-brand-gold/30 hover:bg-brand-gold/5">
-            <p className="font-semibold text-brand-cream transition group-hover:text-brand-gold">{label}</p>
-            <p className="mt-1 text-xs text-brand-cream/40">{description}</p>
+      <section aria-label="إجراءات سريعة" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {quickActions.map(([label, href, description]) => (
+          <Link key={href} href={href} className="group min-w-0 rounded-2xl border border-brand-gold/10 bg-black/15 p-3 transition hover:border-brand-gold/30 hover:bg-brand-gold/5 sm:p-4">
+            <p className="break-words text-sm font-semibold text-brand-cream transition group-hover:text-brand-gold">{label}</p>
+            <p className="mt-1 text-xs leading-5 text-brand-cream/40">{description}</p>
           </Link>
         ))}
       </section>
@@ -160,18 +173,48 @@ export async function AdminPlatformCommandCenter() {
           <h2 className="text-xl font-bold text-brand-gold">مراكز الإدارة</h2>
           <p className="mt-1 text-sm text-brand-cream/40">الصفحات هنا تشير إلى الوحدات الفعلية المسجلة في نظام الصلاحيات.</p>
         </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {groups.flatMap((group) =>
-            group.items.map((item) => (
-              <Link key={item.href} href={item.href} className="rounded-2xl border border-brand-gold/10 bg-black/10 p-5 transition hover:-translate-y-0.5 hover:border-brand-gold/25 hover:bg-black/20">
-                <p className="text-xs text-brand-gold/45">{group.label}</p>
-                <h3 className="mt-1 font-semibold text-brand-cream hover:text-brand-gold">{item.label}</h3>
-                <p className="mt-2 text-xs text-brand-cream/35" dir="ltr">{item.href}</p>
-              </Link>
-            )),
-          )}
-        </div>
-      </section>
+        <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+          {groups.map((group) => {
+            const primaryItems = group.items.slice(0, 3);
+            const secondaryItems = group.items.slice(3);
+            return (
+              <article key={group.key} className="min-w-0 rounded-2xl border border-brand-gold/10 bg-black/10 p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="break-words font-bold text-brand-gold">{group.label}</h3>
+                    <p className="mt-1 text-xs text-brand-cream/35">روابط القسم حسب صلاحيات حسابك</p>
+                  </div>
+                  <span className="shrink-0 rounded-full border border-brand-gold/10 px-2 py-1 text-[10px] text-brand-cream/45">
+                    {group.items.length} صفحة
+                  </span>
+                </div>
+                <div className="mt-4 space-y-1.5">
+                  {primaryItems.map((item) => (
+                    <Link key={item.href} href={item.href} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm text-brand-cream/70 transition hover:border-brand-gold/15 hover:bg-brand-gold/5 hover:text-brand-gold">
+                      <span className="min-w-0 break-words">{item.label}</span>
+                      <span className="shrink-0 text-[10px] text-brand-cream/25" dir="ltr">{item.href}</span>
+                    </Link>
+                  ))}
+                </div>
+                {secondaryItems.length > 0 && (
+                  <details className="mt-3 border-t border-brand-gold/10 pt-3">
+                    <summary className="cursor-pointer list-none rounded-lg px-3 py-2 text-xs font-semibold text-brand-gold/70 transition hover:bg-brand-gold/5 hover:text-brand-gold">
+                      عرض باقي الصفحات ({secondaryItems.length})
+                    </summary>
+                    <div className="mt-1 space-y-1">
+                      {secondaryItems.map((item) => (
+                        <Link key={item.href} href={item.href} className="flex min-w-0 items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs text-brand-cream/60 transition hover:bg-brand-gold/5 hover:text-brand-gold">
+                          <span className="min-w-0 break-words">{item.label}</span>
+                          <span className="shrink-0 text-[10px] text-brand-cream/25" dir="ltr">{item.href}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </article>
+            );
+          })}
+        </div>      </section>
 
       <section>
         <h2 className="mb-4 text-xl font-bold text-brand-gold">جرد البيانات</h2>
