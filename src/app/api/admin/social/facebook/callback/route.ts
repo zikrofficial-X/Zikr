@@ -181,11 +181,14 @@ export async function GET(request: NextRequest) {
     });
     const pages = await graphGet<ManagedPagesResponse>("me/accounts", pagesParams);
     const managedPages = Array.isArray(pages.data) ? pages.data : [];
-    const selectedPage = pageIdConfigured
+    // Prefer the configured Page ID. If that setting is stale, fall back only when
+    // Meta returned exactly one managed Page; never guess between multiple Pages.
+    const configuredPage = pageIdConfigured
       ? managedPages.find(page => String(page.id ?? "") === pageIdConfigured)
-      : managedPages.length === 1 ? managedPages[0] : undefined;
+      : undefined;
+    const selectedPage = configuredPage ?? (managedPages.length === 1 ? managedPages[0] : undefined);
     if (!selectedPage?.id || !selectedPage.access_token) {
-      return redirectResult("page_not_found");
+      return redirectResult(managedPages.length > 1 ? "page_selection_required" : "page_not_found");
     }
 
     const permissionParams = new URLSearchParams({ access_token: longToken.access_token });

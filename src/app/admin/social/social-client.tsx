@@ -114,6 +114,7 @@ export default function AdminSocialPage() {
       authorization_denied: "تم إلغاء تفويض Facebook. لن يتم تشغيل النشر قبل ربط الصفحة.",
       state_mismatch: "انتهت جلسة الربط لأسباب أمنية. ابدأ الربط من جديد.",
       page_not_found: "الحساب الذي تم تفويضه لا يدير صفحة Facebook المحددة في إعدادات ZIKR.",
+      page_selection_required: "Meta أعادت أكثر من صفحة ولا تطابق أيٌّ منها رقم الصفحة المضبوط في ZIKR. يلزم ضبط FACEBOOK_PAGE_ID على معرّف صفحة Zikr الصحيح ثم إعادة الربط.",
       page_validation_failed: "تعذر التحقق من صفحة Facebook المختارة. لم يتم حفظ الاعتماد.",
       reauthorization_required: "رفض Meta التوكن الحالي. اربط صفحة Facebook من جديد.",
       admin_session_missing: "انتهت جلسة الإدارة أثناء الرجوع من Facebook. سجّل الدخول وافتح مركز النشر مرة أخرى.",
