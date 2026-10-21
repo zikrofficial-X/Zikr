@@ -24,9 +24,10 @@ export default function DataDeletionPage() {
   const mailto = `mailto:${contactEmail}?subject=${subject}&body=${body}`;
 
   return (
-    <Container className="max-w-4xl space-y-8 py-12" dir="rtl">
+    <Container className="max-w-4xl py-12" dir="rtl">
+      <article aria-labelledby="data-deletion-title" className="space-y-8">
       <header className="space-y-3 text-center">
-        <h1 className="text-4xl font-bold text-brand-gold">حذف بيانات المستخدم</h1>
+        <h1 id="data-deletion-title" className="text-4xl font-bold text-brand-gold">حذف بيانات المستخدم</h1>
         <p className="arabic-muted">آخر تحديث: 21 أكتوبر 2026</p>
         <p className="mx-auto max-w-2xl leading-8 arabic-muted">
           يمكنك طلب حذف البيانات المرتبطة باستخدام Facebook مع منصة ZIKR من خلال
@@ -77,6 +78,7 @@ export default function DataDeletionPage() {
         </a>
         .
       </p>
+      </article>
     </Container>
   );
 }
