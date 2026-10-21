@@ -110,13 +110,14 @@ for (const file of routeFiles) {
   }
 }
 
-const actionFiles = walk(actionRoot)
-  .filter((file) => /\.(?:ts|tsx)$/.test(file))
-  .filter((file) => {
-    const source = readFileSync(file, "utf8").trimStart();
-    return source.startsWith('"use server"') || source.startsWith("'use server'");
-  })
-  .sort();
+const actionFiles = [...new Set(
+  actionRoots.flatMap((actionRoot) => walk(actionRoot))
+    .filter((file) => /\.(?:ts|tsx)$/.test(file))
+    .filter((file) => {
+      const source = readFileSync(file, "utf8").trimStart();
+      return source.startsWith('"use server"') || source.startsWith("'use server'");
+    }),
+)].sort();
 
 let actionCount = 0;
 let actionGuardedCount = 0;
