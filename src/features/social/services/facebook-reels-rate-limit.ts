@@ -7,9 +7,10 @@ export const FACEBOOK_REELS_RATE_LIMIT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 export function extractFacebookReelsRateLimitUntil(value: unknown): string | null {
   const message = value instanceof Error ? value.message : String(value ?? "");
-  const match = /facebook_reels_rate_limited_until=([^\\]\\s,;]+)/i.exec(message);
+  const match = /facebook_reels_rate_limited_until=([^\s,;]+)/i.exec(message);
   if (!match) return null;
-  const timestamp = Date.parse(match[1]);
+  const rawTimestamp = match[1].replace(/\]+$/, "");
+  const timestamp = Date.parse(rawTimestamp);
   return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
 }
 
@@ -18,7 +19,7 @@ export function isFacebookReelsRateLimitResponseError(value: unknown): boolean {
   // A local cooldown message is not a new response from Meta and must never
   // extend the shared cooldown each time a queue item is deferred.
   if (extractFacebookReelsRateLimitUntil(message)) return false;
-  return /\\bcode\\s*=\\s*368\\b|\\bsubcode\\s*=\\s*1390008\\b/i.test(message);
+  return /\bcode\s*=\s*368\b|\bsubcode\s*=\s*1390008\b/i.test(message);
 }
 
 export function resolveFacebookReelsRateLimitUntil(
@@ -33,6 +34,6 @@ export function resolveFacebookReelsRateLimitUntil(
 
 export function facebookReelsRateLimitDeferredError(until: string): Error {
   return new Error(
-    `Facebook Reels publishing paused by Meta rate-limit protection until ${until} (code=368). [facebook_reels_rate_limited_until=${until}]`,
+    \`Facebook Reels publishing paused by Meta rate-limit protection until \${until} (code=368). [facebook_reels_rate_limited_until=\${until}]\`,
   );
 }
