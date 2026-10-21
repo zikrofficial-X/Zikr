@@ -11,6 +11,7 @@ const PUBLIC_ROUTES = [
   "/faq",
   "/privacy",
   "/terms",
+  "/data-deletion",
   "/quran",
   "/hadith",
   "/adhkar",
@@ -57,6 +58,7 @@ const KIDS_GAME_SLUGS = [
   "good-deeds",
   "hilal-fly",
   "mosque-cleanup",
+  "letter-lab",
   "zikr-coloring",
 ];
 
