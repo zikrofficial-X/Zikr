@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminMobileNav, AdminSidebar, type AdminNavGroup } from "@/features/admin/components/admin-sidebar";
-import { getCurrentProfile, requireAdmin } from "@/features/admin/services/admin";
+import { requireAdmin } from "@/features/admin/services/admin";
 import { hasAdminPermission, type AdminPermission } from "@/features/admin/services/permissions";
 import { ADMIN_NAVIGATION } from "@/features/admin/config/navigation";
 
@@ -13,8 +13,7 @@ export const metadata: Metadata = {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireAdmin();
-  const currentProfile = await getCurrentProfile();
-  const role = currentProfile?.role ?? profile.role;
+  const role = profile.role;
 
   const visibleGroups: AdminNavGroup[] = ADMIN_NAVIGATION
     .map((group) => ({
@@ -37,7 +36,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
             <div className="flex items-center gap-2">
               <div className="hidden rounded-lg border border-brand-gold/10 bg-black/10 px-3 py-1.5 text-right sm:block">
-                <p className="text-[10px] text-brand-cream/30">{currentProfile?.email ?? "حساب الإدارة"}</p>
+                <p className="text-[10px] text-brand-cream/30">{profile.email ?? "حساب الإدارة"}</p>
                 <p className="mt-0.5 text-[11px] font-semibold text-brand-gold">{String(role).replaceAll("_", " ")}</p>
               </div>
               <Link href="/" className="hidden rounded-lg border border-brand-gold/25 px-3 py-1.5 text-xs text-brand-gold/80 transition hover:bg-brand-gold/10 sm:inline-flex">
