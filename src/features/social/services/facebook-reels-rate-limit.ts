@@ -11,9 +11,9 @@ export const FACEBOOK_REELS_MIN_POST_INTERVAL_MS = 12 * 60 * 1000;
 
 export function extractFacebookReelsNextAllowedAt(value: unknown): string | null {
   const message = value instanceof Error ? value.message : String(value ?? "");
-  const match = /facebook_reels_next_allowed_at=([^\\s,;]+)/i.exec(message);
+  const match = /facebook_reels_next_allowed_at=([^\s,;]+)/i.exec(message);
   if (!match) return null;
-  const rawTimestamp = match[1].replace(/\\]+$/, "");
+  const rawTimestamp = match[1].replace(/\]+$/, "");
   const timestamp = Date.parse(rawTimestamp);
   return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
 }
@@ -23,7 +23,7 @@ export function isFacebookReelsRateLimitResponseError(value: unknown): boolean {
   // A local cooldown message is not a new response from Meta and must never
   // extend the shared cooldown each time a queue item is deferred.
   if (extractFacebookReelsNextAllowedAt(message)) return false;
-  return /\\bcode\\s*=\\s*368\\b|\\bsubcode\\s*=\\s*1390008\\b/i.test(message);
+  return /\bcode\s*=\s*368\b|\bsubcode\s*=\s*1390008\b/i.test(message);
 }
 
 export function resolveFacebookReelsNextAllowedAt(value: unknown, nowMs: number = Date.now()): string | null {
