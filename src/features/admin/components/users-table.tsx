@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { updateUserRoleAuditedAction } from "@/features/admin/actions/users";
-import type { AdminRole } from "@/features/admin/services/permissions";
+import { ADMIN_ROLE_PERMISSIONS, type AdminRole } from "@/features/admin/services/permissions";
 
 type UserProfile = {
   id: string;
@@ -193,6 +193,9 @@ export function UsersTable({ users, currentAdminId }: { users: UserProfile[]; cu
                       }
                     >
                       {ROLE_LABELS[effectiveRole] ?? effectiveRole}
+                    </span>
+                    <span className="mt-1 block text-[10px] text-brand-cream/35">
+                      {ADMIN_ROLE_PERMISSIONS[effectiveRole]?.length ?? 0} صلاحية فعالة
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-brand-cream/70">

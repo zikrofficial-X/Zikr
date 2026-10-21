@@ -8,6 +8,7 @@ import {
   supabaseServerAdminCount,
 } from "@/lib/supabase/server";
 import { UsersTable } from "@/features/admin/components/users-table";
+import { RolePermissionsMatrix } from "@/features/admin/components/role-permissions-matrix";
 
 interface UserProfile {
   id: string;
@@ -140,6 +141,8 @@ export default async function AdminUsersPage() {
           <UsersTable users={users.rows} currentAdminId={currentAdmin.id} />
         )}
       </Card>
+
+      <RolePermissionsMatrix />
 
       <Card className="space-y-4">
         <div className="flex items-center justify-between gap-3">
