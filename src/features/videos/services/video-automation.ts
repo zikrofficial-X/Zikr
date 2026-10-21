@@ -443,9 +443,9 @@ export async function publishToFacebook(
       throw new Error("Facebook Page credentials are incomplete. Reconnect the Page from the admin publishing center.");
     }
     if (asReel && credentials.reelsNextAllowedAt) {
-      const cooldownUntil = Date.parse(credentials.reelsRateLimitedUntil);
+      const cooldownUntil = Date.parse(credentials.reelsNextAllowedAt);
       if (Number.isFinite(cooldownUntil) && cooldownUntil > Date.now()) {
-        throw facebookReelsCooldownDeferredError(credentials.reelsRateLimitedUntil);
+        throw facebookReelsCooldownDeferredError(credentials.reelsNextAllowedAt);
       }
     }
     const source = assertRemoteVideoUrl(videoUrl, 'Facebook');
