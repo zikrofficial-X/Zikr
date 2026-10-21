@@ -106,7 +106,15 @@ export async function POST(request: NextRequest) {
       audioMix: "voice-first",
       reviewRequired: true,
     } as const;
-    content = { ...content, qualityProfile };
+    content = {
+      ...content, qualityProfile, approvalStatus: "awaiting_human_review",
+      approvalReviewedAt: null, qualityReview: null,
+      aiDisclosure: {
+        version: "2026-01",
+        statementAr: "قد تُستخدم أدوات الذكاء الاصطناعي في العناصر المرئية والتعليقات المصاحبة؛ النص المرجعي الديني يظل مقفلاً من المصدر الموثوق.",
+        sourceTextLocked: SOURCE_LOCKED_CATEGORIES.has(category),
+      },
+    };
     let narration = "";
     let source: Awaited<ReturnType<typeof resolveVideoSource>> = null;
 

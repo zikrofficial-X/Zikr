@@ -141,6 +141,13 @@ export async function updateVideoRequestStatus(
     if (metadata?.facebookId) body.facebook_id = metadata.facebookId;
     if (metadata?.videoUrl) body.video_url = metadata.videoUrl;
     if (status === 'pending') {
+      const existingContentRows = await supabaseServerAdminRequest<Array<{ content: unknown }>>(
+        '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(videoId) + '&select=content&limit=1',
+      );
+      const existing = existingContentRows?.[0]?.content;
+      const content = existing && typeof existing === 'object' && !Array.isArray(existing)
+        ? existing as Record<string, unknown> : {};
+      body.content = { ...content, approvalStatus: 'awaiting_human_review', approvalReviewedAt: null, qualityReview: null };
       body.error_message = null;
       body.error_details = null;
       body.youtube_id = null;

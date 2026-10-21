@@ -40,6 +40,14 @@ Queue safety is enforced through:
 
 Video generation may enqueue a row in `social_publish_queue`, but it must not publish directly.
 
+## Per-video approval gate
+
+Every new video starts as awaiting human review. The admin queue includes a playable preview and requires five explicit checks: source/text, audio, visuals, captions, and usage rights. Approval applies only to a completed request whose current updated_at value has not changed. Regeneration invalidates previous approval.
+
+The social publisher checks the linked request again before provider calls. Existing video posts stay queued if the request is missing, incomplete, points to a different media URL, or lacks the full checklist. Non-video social posts keep their existing behavior. Do not enable the global approval flag for this per-video rule because it can suppress unrelated posts.
+
+Approval does not publish immediately and does not add a scheduler. The existing GitHub Actions social worker reconciles completed videos and processes the queue on its current schedule.
+
 ## Social publishing
 
 Social publishing runs every 15 minutes through `publish-social.yml`.

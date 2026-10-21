@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
+import { hasCompleteVideoApprovalChecklist, REQUIRED_VIDEO_APPROVAL_CHECKS } from '@/features/videos/services/video-publish-approval';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,6 +93,7 @@ export async function PATCH(request: NextRequest) {
       status?: unknown;
       errorMessage?: unknown;
       action?: unknown;
+      qaChecklist?: unknown;
     };
     const id = typeof body.id === 'string' ? body.id : '';
     const status = typeof body.status === 'string' ? body.status : '';
@@ -100,6 +102,44 @@ export async function PATCH(request: NextRequest) {
 
     // Publish retry preserves the generated provider job and any successful
     // platform IDs so only missing publication work is attempted again.
+    if (action === 'approve_publish') {
+      if (!hasCompleteVideoApprovalChecklist(body.qaChecklist)) {
+        return NextResponse.json({ error: 'لا يمكن الاعتماد قبل إتمام فحوص المصدر والصوت والصورة والترجمة والحقوق.' }, { status: 400 });
+      }
+      const rows = await supabaseServerAdminRequest<Array<{
+        id: string; status: string; category: string; video_url: string | null; content: unknown; updated_at: string;
+      }>>('/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(id) + '&select=id,status,category,video_url,content,updated_at&limit=1');
+      const current = rows?.[0];
+      if (!current) return NextResponse.json({ error: 'عملية الفيديو غير موجودة.' }, { status: 404 });
+      if (current.status !== 'completed' || !current.video_url) {
+        return NextResponse.json({ error: 'يجب أن يكتمل توليد ملف الفيديو قبل اعتماده للنشر.' }, { status: 409 });
+      }
+      const currentContent = current.content && typeof current.content === 'object' && !Array.isArray(current.content)
+        ? current.content as Record<string, unknown> : {};
+      if (new Set(['quran', 'hadith', 'story', 'dua', 'adhkar']).has(current.category)) {
+        const sourceUrl = typeof currentContent.sourceUrl === 'string' ? currentContent.sourceUrl : '';
+        const sourceLabel = typeof currentContent.sourceLabel === 'string' ? currentContent.sourceLabel.trim() : '';
+        const sourceText = typeof currentContent.textAr === 'string' ? currentContent.textAr.trim()
+          : typeof currentContent.text === 'string' ? currentContent.text.trim() : '';
+        let validSourceUrl = false;
+        try { validSourceUrl = new URL(sourceUrl).protocol === 'https:'; } catch { validSourceUrl = false; }
+        if (!validSourceUrl || !sourceLabel || !sourceText) {
+          return NextResponse.json({ error: 'المصدر أو نصه أو مرجعه غير مكتمل؛ لا يمكن اعتماد فيديو ديني بلا مصدر موثق.' }, { status: 422 });
+        }
+      }
+      const reviewedAt = new Date().toISOString();
+      const updatedContent = { ...currentContent, approvalStatus: 'approved', approvalReviewedAt: reviewedAt,
+        qualityReview: { ...Object.fromEntries(REQUIRED_VIDEO_APPROVAL_CHECKS.map((key) => [key, true])), reviewedAt } };
+      const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+        '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(id) + '&status=eq.completed&updated_at=eq.' + encodeURIComponent(current.updated_at),
+        { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
+          body: JSON.stringify({ content: updatedContent, updated_at: reviewedAt }) },
+      );
+      if (!updated?.length) return NextResponse.json({ error: 'تغيرت حالة العملية أثناء المراجعة؛ حدّث التفاصيل ثم أعد الفحص.' }, { status: 409 });
+      return NextResponse.json({ ok: true, approvalStatus: 'approved',
+        note: 'سيتولى عامل GitHub Actions المجدول مزامنة طابور النشر؛ لم تتم إضافة مجدول جديد.' });
+    }
+
     if (action === 'retry_publish') {
       const rows = await supabaseServerAdminRequest<Array<{
         id: string;
