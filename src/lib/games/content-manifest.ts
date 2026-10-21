@@ -168,11 +168,11 @@ const CONTENT_SOURCES: Record<GameId, SourceDeclaration> = {
   "letter-lab": {
     kind: "local-runtime",
     references: ["src/features/kids/components/games/kids-letter-lab.tsx#LETTERS"],
-    fields: ["Arabic letter inventory", "visual matching choices", "feedback"],
-    reviewStatus: "editorial-review-required",
-    revision: 1,
+    fields: ["28 isolated Arabic base letters", "visual matching choices", "visual-only feedback", "localized learning objective"],
+    reviewStatus: "repository-copy-review-complete",
+    revision: 2,
     reviewNote:
-      "The runtime teaches visual letter recognition; it does not provide audio prompts. Review the letter inventory and pedagogy before marking content reviewed.",
+      "Repository copy and the 28-letter isolated-form inventory were reviewed against the conventional introductory inventory described by Open University OpenLearn (https://www.open.edu/openlearn/mod/oucontent/view.php?id=171153&section=3). The game deliberately teaches visual matching only: it has no audio prompt and does not teach pronunciation, letter names, or joined forms. Formal age-specific curriculum/pedagogy sign-off remains pending; see docs/kids-content-editorial-audit-2026-10-21.md.",
   },
 };
 
