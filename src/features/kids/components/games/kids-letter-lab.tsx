@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useManagedTimeouts } from "@/features/kids/components/games/use-managed-timeouts";
 import { useLanguage } from "@/components/layout/language-provider";
 import type { GameDifficulty } from "@/lib/games/registry";
 import type { GameSoundEvent } from "@/lib/games/tone-feedback";
@@ -73,6 +74,7 @@ export function KidsLetterLabGame({
 }: LetterLabProps) {
   const { isEnglish } = useLanguage();
   const [round, setRound] = useState(0);
+  const { scheduleTimeout } = useManagedTimeouts(difficulty + ":" + restartToken + ":" + round, paused);
   const [score, setScore] = useState(0);
   const [mistakes, setMistakes] = useState(0);
   const [feedback, setFeedback] = useState(
@@ -169,7 +171,7 @@ export function KidsLetterLabGame({
         ? "Great choice! Next letter is ready."
         : "اختيار رائع! الحرف التالي جاهز."
     );
-    window.setTimeout(() => {
+    scheduleTimeout(() => {
       setRound(nextRound);
       setLocked(false);
     }, 420);

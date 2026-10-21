@@ -8,6 +8,7 @@ import { getGoodDeedsRules } from "../../src/lib/games/good-deeds";
 import { getMosqueCleanupRules } from "../../src/lib/games/mosque-cleanup";
 import { getZikrColoringRules, getZikrColoringSheetIndex } from "../../src/lib/games/zikr-coloring";
 import { getVersePuzzleRules } from "../../src/lib/games/verse-puzzle";
+import { getMosqueAdventureRules } from "../../src/lib/games/mosque-adventure";
 import { getVerifiedMemoryPairs } from "../../src/lib/games/verified-content";
 import { KIDS_LEVEL_COUNT } from "../../src/lib/games/kids-level-system";
 
@@ -71,4 +72,36 @@ assert.match(learningSource, /const pairTarget = Math\.max\(2, Math\.min\(pairs\
 assert.match(learningSource, /const baseCount = difficulty === "easy" \? Math\.min\(5, content\.steps\.length\) : difficulty === "normal" \? Math\.min\(7, content\.steps\.length\) : content\.steps\.length;/, "Wudu step count must change by difficulty");
 assert.match(learningSource, /const count = Math\.max\(4, Math\.min\(allQuestions\.length, \(difficulty === "hard" \? 10 : difficulty === "normal" \? 7 : 5\) \+ \(levelIndex % 2\)\)\)/, "Quiz question count must change by difficulty");
 
-console.log("Kids gameplay difficulty contract passed for Runner, Road, Jump, Crescent Flight, Memory, Wudu, Verse Puzzle, Quiz, Good Deeds, Cleanup, and Coloring.");
+const mosqueAdventure = difficulties.map(getMosqueAdventureRules);
+assert.deepEqual(
+  mosqueAdventure.map(rule => rule.nodeCount),
+  [5, 6, 7],
+  "Mosque Adventure must add stations at higher difficulty",
+);
+assert.deepEqual(
+  mosqueAdventure.map(rule => rule.questionStationIndexes),
+  [[1, 3], [1, 3, 5], [1, 3, 5]],
+  "Mosque Adventure checkpoints must follow the configured route",
+);
+assert.deepEqual(
+  mosqueAdventure.map(rule => rule.mistakePenalty),
+  [0, 35, 70],
+  "Mosque Adventure mistake penalties must increase by difficulty",
+);
+
+const letterLabSource = readFileSync(
+  "src/features/kids/components/games/kids-letter-lab.tsx",
+  "utf8",
+);
+assert.match(
+  letterLabSource,
+  /const choiceCount: Record<GameDifficulty, number> = \{\s*easy: 3,\s*normal: 4,\s*hard: 5,\s*\}/,
+  "Letter Lab must present more choices at each difficulty",
+);
+assert.match(
+  letterLabSource,
+  /pool\.size < choiceCount\[difficulty\]/,
+  "Letter Lab runtime must use the selected difficulty to build its choices",
+);
+
+console.log("Kids gameplay difficulty contract passed for all 13 games, including Mosque Adventure and Letter Lab.");

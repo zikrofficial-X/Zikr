@@ -6,6 +6,7 @@ const hook = read("src/features/kids/components/games/use-managed-timeouts.ts");
 const learning = read("src/features/kids/components/games/kids-learning-games.tsx");
 const runnerRoad = read("src/features/kids/components/games/kids-action-runner-road.tsx");
 const adventure = read("src/features/kids/components/games/kids-action-adventure.tsx");
+const letterLab = read("src/features/kids/components/games/kids-letter-lab.tsx");
 
 assert.ok(hook.includes("window.clearTimeout(timer.timeoutId)"), "managed timers must be cancellable");
 assert.ok(hook.includes("useEffect(() => () => clearPendingTimeouts(), [clearPendingTimeouts, resetKey]);"), "managed timers must clear on reset-key changes and unmount");
@@ -76,4 +77,18 @@ assert.ok(mosque.includes('useManagedTimeouts(difficulty + ":" + restartToken + 
 assert.equal((mosque.match(/scheduleTimeout\(/g) ?? []).length, 2, "Mosque Adventure level and question callbacks must use the managed scheduler");
 assert.ok(!mosque.includes("window.setTimeout("), "Mosque Adventure must not keep unmanaged progression timeouts");
 
-console.log("Kids timer safety contract passed: all managed game callbacks pause/resume and cancel on reset or unmount.");
+assert.ok(
+  letterLab.includes('useManagedTimeouts(difficulty + ":" + restartToken + ":" + round, paused)'),
+  "Letter Lab must scope its delayed round advance to difficulty, restart, and current round",
+);
+assert.equal(
+  (letterLab.match(/scheduleTimeout\(/g) ?? []).length,
+  1,
+  "Letter Lab must use one managed timeout for round advancement",
+);
+assert.ok(
+  !letterLab.includes("window.setTimeout("),
+  "Letter Lab must not retain an unmanaged native timeout",
+);
+
+console.log("Kids timer safety contract passed: delayed callbacks in all active game runtimes are pause-aware and cleared on reset/unmount.");
