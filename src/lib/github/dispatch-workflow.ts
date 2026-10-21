@@ -1,4 +1,5 @@
 import "server-only";
+import { getServerEnv } from "@/lib/env";
 
 const GITHUB_API = "https://api.github.com";
 const DEFAULT_REPOSITORY = "zikrofficial-X/Zikr";
@@ -6,7 +7,9 @@ const DEFAULT_REPOSITORY = "zikrofficial-X/Zikr";
 type WorkflowInputs = Record<string, string>;
 
 function githubToken() {
+  const env = getServerEnv();
   return (
+    env.GITHUB_DISPATCH_TOKEN?.trim() ||
     process.env.GITHUB_PAT?.trim() ||
     process.env.GITHUB_DISPATCH_TOKEN?.trim() ||
     process.env.GH_DISPATCH_TOKEN?.trim() ||

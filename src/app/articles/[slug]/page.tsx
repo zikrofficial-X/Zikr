@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { getArticleBySlug } from "@/features/articles/services/articles";
@@ -70,9 +71,9 @@ function dedupeReferences(references: ArticleReference[]) {
   return Array.from(new Map(references.map(item => [item.url, item])).values());
 }
 
-async function loadArticle(slug: string, locale?: "ar" | "en"): Promise<Article | null> {
-  return getArticleBySlug(slug, locale);
-}
+const loadArticle = cache(
+  (slug: string, locale: "ar" | "en") => getArticleBySlug(slug, locale),
+);
 
 function hasSubstantialContent(
   article: Article | null,

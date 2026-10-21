@@ -132,6 +132,7 @@ const rawEnv: Record<string, string | undefined> = {
   COMFYUI_MODEL: pick("COMFYUI_MODEL"),
   COMFYUI_LTX_WORKFLOW_JSON: pick("COMFYUI_LTX_WORKFLOW_JSON"),
   COMFYUI_WAN_WORKFLOW_JSON: pick("COMFYUI_WAN_WORKFLOW_JSON"),
+  GITHUB_DISPATCH_TOKEN: pick("GITHUB_DISPATCH_TOKEN") || pick("GITHUB_PAT") || pick("GH_DISPATCH_TOKEN"),
   GITHUB_TOKEN: pick("GITHUB_TOKEN") || pick("GH_TOKEN"),
 
   // ── Feature flags / operations ───────────────────────────────────────────
@@ -185,6 +186,7 @@ export function getServerEnv() {
     SOCIAL_PUBLISH_FACEBOOK_ENABLED: validatedEnv.SOCIAL_PUBLISH_FACEBOOK_ENABLED || "false",
     FACEBOOK_GRAPH_API_VERSION:
       validatedEnv.FACEBOOK_GRAPH_API_VERSION || "v26.0",
+    GITHUB_DISPATCH_TOKEN: validatedEnv.GITHUB_DISPATCH_TOKEN || "",
   };
 }
 
@@ -211,6 +213,7 @@ export function getEnvAudit() {
       "INTERNAL_JOB_SECRET",
       "WEBHOOK_SECRET",
       "GITHUB_TOKEN",
+      "GITHUB_DISPATCH_TOKEN",
     ],
     runtimeServer: [
       "NEXT_PUBLIC_SUPABASE_URL",

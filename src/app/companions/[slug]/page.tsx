@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,8 @@ import { pageMetadata } from "@/lib/site";
 
 export const revalidate = 3600;
 
+const loadCompanion = cache((slug: string) => getCompanionBySlug(slug));
+
 export async function generateStaticParams() {
   const companions = await getPublishedCompanions();
   return companions
@@ -30,7 +33,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const companion = await getCompanionBySlug(slug);
+  const companion = await loadCompanion(slug);
 
   return pageMetadata({
     title: companion?.name_ar ?? "صحابي",
@@ -48,7 +51,7 @@ export default async function CompanionDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const companion = await getCompanionBySlug(slug);
+  const companion = await loadCompanion(slug);
 
   if (!companion) notFound();
 

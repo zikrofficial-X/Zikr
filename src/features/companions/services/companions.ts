@@ -229,7 +229,7 @@ export async function getCompanionBySlug(
       };
 
       const stories = await supabaseServerAnonRequest<Record<string, unknown>[]>(
-        `/rest/v1/companion_stories?select=id,companion_id,title_ar,title_en,content_ar,content_en,story_type,order_num&companion_id=eq.${encodeURIComponent(String(row.id))}&order=order_num.asc`,
+        `/rest/v1/companion_stories?select=id,companion_id,title_ar,title_en,content_ar,content_en,story_type,order_num&companion_id=eq.${encodeURIComponent(String(row.id))}&order=order_num.asc&limit=100`,
       ).catch((error) => {
         console.error("[companions] Failed to load companion stories:", error);
         return [];

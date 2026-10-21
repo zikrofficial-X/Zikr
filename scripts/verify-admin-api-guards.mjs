@@ -161,5 +161,5 @@ console.log(
     routeFiles.length + " API route files, " +
     handlerCount + " API handlers (" + apiGuardedCount + " guarded, " + methodRejectionCount + " explicit 405 stubs), " +
     actionFiles.length + " server-action modules across app/admin and features/admin/actions, " +
-    actionCount + " server actions guarded by role permission or MFA step-up."
+    actionCount + " server actions (" + actionGuardedCount + " guarded) by role permission or MFA step-up."
 );

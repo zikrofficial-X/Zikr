@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { cache } from 'react';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,10 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 1800;
 
 const MIN_PUBLIC_DUA_CHARS = 80;
+
+const loadDua = cache(
+  (slug: string, locale: "ar" | "en") => getDuaBySlug(slug, locale),
+);
 
 function hasPublicDuaContent(dua: Dua | null, locale: "ar" | "en"): dua is Dua {
   const text = locale === "en" ? dua?.textEn : dua?.textAr;
@@ -27,7 +32,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const locale = await getRequestLocale();
   const isEnglish = locale === "en";
-  const dua = await getDuaBySlug(slug, locale);
+  const dua = await loadDua(slug, locale);
 
   return pageMetadata({
     title: isEnglish ? (dua?.titleEn ?? 'Dua not found') : (dua?.titleAr ?? 'الدعاء غير موجود'),
@@ -45,7 +50,7 @@ export default async function DuaDetailPage({
   const { slug } = await params;
   const locale = await getRequestLocale();
   const isEnglish = locale === "en";
-  const dua = await getDuaBySlug(slug, locale);
+  const dua = await loadDua(slug, locale);
 
   if (!hasPublicDuaContent(dua, locale)) notFound();
 
