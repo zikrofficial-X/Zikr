@@ -87,7 +87,7 @@ export async function readStoredFacebookCredential(): Promise<StoredFacebookCred
   }
 }
 
-export async function getFacebookReelsRateLimitedUntil(): Promise<string | null> {
+export async function getFacebookReelsNextAllowedAt(): Promise<string | null> {
   const stored = await readStoredFacebookCredential();
   return stored?.facebook_reels_next_allowed_at ?? null;
 }
@@ -106,23 +106,6 @@ export async function setFacebookReelsNextAllowedAt(until: string): Promise<void
   );
 }
 
-export async function clearFacebookReelsCooldown(): Promise<void> {
-  try {
-    await supabaseServerAdminRequest(
-      "/rest/v1/social_platform_credentials?platform=eq.facebook",
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-        body: JSON.stringify({
-          facebook_reels_next_allowed_at: null,
-          updated_at: new Date().toISOString(),
-        }),
-      },
-    );
-  } catch {
-    // A successful external post remains successful if only cooldown cleanup fails.
-  }
-}
 export async function getFacebookPageCredentials(): Promise<FacebookPageCredentials> {
   // Outbound publishing uses only the validated Supabase credential. A server-side
   // environment token is never used directly; the admin must explicitly validate and
