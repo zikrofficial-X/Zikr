@@ -105,7 +105,6 @@ if (!packageJson.scripts["social:publish:check"]) failures.push("social:publish:
 if (!packageJson.scripts["verify:pr"]?.includes("pnpm social:publish:check")) failures.push("verify:pr must include social publishing verification");
 if (!packageJson.scripts["verify"]?.includes("pnpm social:publish:check")) failures.push("verify must include social publishing verification");
 
-const facebookCredentials = read("src/features/social/services/facebook-credentials.ts");
 for (const token of [
   "social_platform_credentials",
   "getFacebookPageCredentials",
