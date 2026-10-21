@@ -173,7 +173,7 @@ export function AdminMobileNav({ groups }: { groups: AdminNavGroup[] }) {
               setMobileQuery("");
               setOpen(current => (current === group.group ? null : group.group));
             }}
-            className={\`shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs transition \${open === group.group ? "border-brand-gold/30 bg-brand-gold/15 text-brand-gold" : "border-transparent text-brand-cream/60 hover:text-brand-gold"}\`}
+            className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs transition ${open === group.group ? "border-brand-gold/30 bg-brand-gold/15 text-brand-gold" : "border-transparent text-brand-cream/60 hover:text-brand-gold"}`}
           >
             {group.group}
           </button>
@@ -206,7 +206,7 @@ export function AdminMobileNav({ groups }: { groups: AdminNavGroup[] }) {
                         key={item.href}
                         href={item.href}
                         aria-current={active ? "page" : undefined}
-                        className={\`rounded-lg border px-2.5 py-2 text-xs transition \${active ? "border-brand-gold/30 bg-brand-gold/10 text-brand-gold" : "border-brand-gold/8 text-brand-cream/60 hover:text-brand-gold"}\`}
+                        className={`rounded-lg border px-2.5 py-2 text-xs transition ${active ? "border-brand-gold/30 bg-brand-gold/10 text-brand-gold" : "border-brand-gold/8 text-brand-cream/60 hover:text-brand-gold"}`}
                       >
                         {item.label}
                       </Link>
@@ -232,7 +232,7 @@ export function AdminMobileNav({ groups }: { groups: AdminNavGroup[] }) {
                     key={item.href}
                     href={item.href}
                     aria-current={active ? "page" : undefined}
-                    className={\`rounded-lg border px-2.5 py-2 text-xs transition \${active ? "border-brand-gold/30 bg-brand-gold/10 text-brand-gold" : "border-brand-gold/8 text-brand-cream/60 hover:text-brand-gold"}\`}
+                    className={`rounded-lg border px-2.5 py-2 text-xs transition ${active ? "border-brand-gold/30 bg-brand-gold/10 text-brand-gold" : "border-brand-gold/8 text-brand-cream/60 hover:text-brand-gold"}`}
                   >
                     {item.label}
                   </Link>
