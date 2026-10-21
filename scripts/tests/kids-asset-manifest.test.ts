@@ -19,7 +19,7 @@ for (const id of ids) {
   assert.equal(entry.scene.sourcePath, artworkPath);
   assert.equal(entry.scene.loading, "on-demand");
   assert.equal(entry.scene.viewBox, "0 0 640 320");
-  assert.match(entry.background.path, /^\\/kids\\/games\\/[\\w-]+\\.webp$/, id + " must use a local background");
+  assert.ok(entry.background.path.startsWith("/kids/games/") && entry.background.path.endsWith(".webp") && !entry.background.path.includes(".."), id + " must use a local background");
   const diskPath = join("public", entry.background.path.slice(1));
   assert.ok(existsSync(diskPath), id + " background is missing: " + diskPath);
   assert.ok(statSync(diskPath).size > 1000, id + " background file is suspiciously small");
@@ -38,8 +38,8 @@ for (const id of ids) {
   assert.equal(entry.audio.rightsStatus, "synthesized-tone-no-external-recordings");
   assert.equal(entry.motion.reducedMotionFallback, "decorative-motion-disabled");
 }
-assert.match(gameKit, /kids-game-motion\\.css/);
-assert.match(gameKit, /kids-game-stage/);
-assert.match(motionCss, /prefers-reduced-motion:\\s*reduce/);
-assert.doesNotMatch(motionCss, /https?:\\/\\//);
+assert.ok(gameKit.includes("kids-game-motion.css"));
+assert.ok(gameKit.includes("kids-game-stage"));
+assert.ok(motionCss.includes("@media (prefers-reduced-motion: reduce)"));
+assert.ok(!motionCss.includes("http://") && !motionCss.includes("https://"));
 console.log("Kids asset manifest passed: " + ids.length + " games, local backgrounds, bilingual prop metadata, optional audio, and reduced-motion fallback.");
