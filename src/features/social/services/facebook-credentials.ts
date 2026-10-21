@@ -40,6 +40,7 @@ export type FacebookPageCredentials = {
 export type FacebookConnectionHealth = {
   facebookEnabled: boolean;
   facebookCredentialsConfigured: boolean;
+  facebookEnvironmentTokenConfigured: boolean;
   facebookConnectionStatus: FacebookConnectionStatus;
   facebookPageName: string | null;
   facebookTokenSource: FacebookCredentialSource;
@@ -56,8 +57,10 @@ function siteGraphVersion() {
 }
 
 /**
- * The DB record is the canonical credential once the administrator completes OAuth.
- * The environment credential remains a migration/backward-compatibility fallback only.
+ * The Supabase row is the only credential used by publishing workers.
+ * A Vercel environment token may be explicitly imported by an administrator after
+ * app identity, expiry, required scopes, and target Page are verified server-side.
+ * Merely changing an environment variable never silently changes the active credential.
  */
 export async function readStoredFacebookCredential(): Promise<StoredFacebookCredential | null> {
   try {
@@ -73,10 +76,9 @@ export async function readStoredFacebookCredential(): Promise<StoredFacebookCred
 }
 
 export async function getFacebookPageCredentials(): Promise<FacebookPageCredentials> {
-  // Outbound Facebook publishing must use the token created by the verified OAuth
-  // callback and stored in Supabase. Environment tokens are legacy diagnostics only:
-  // they are not refreshed by this app and can silently expire, causing repeated
-  // publishing failures after a reconnect.
+  // Outbound publishing uses only the validated Supabase credential. A server-side
+  // environment token is never used directly; the admin must explicitly validate and
+  // import it through adoptServerConfiguredFacebookPageToken first.
   const stored = await readStoredFacebookCredential();
   if (!stored) {
     throw new Error(
@@ -165,80 +167,103 @@ export async function getFacebookPageConnectionHealth(): Promise<FacebookConnect
   const stored = await readStoredFacebookCredential();
   const envPageId = env.FACEBOOK_PAGE_ID?.trim() ?? "";
   const envToken = env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim() ?? "";
-  const pageId = stored?.page_id ?? envPageId;
-  const accessToken = stored?.page_access_token ?? envToken;
-  const source: FacebookCredentialSource = stored ? "database" : pageId && accessToken ? "environment" : "missing";
-  const enabled = stored ? stored.is_enabled === true : env.SOCIAL_PUBLISH_FACEBOOK_ENABLED === "true";
-  const hasProbeCredentials = Boolean(pageId && accessToken);
-  const configured = Boolean(stored?.page_id && stored.page_access_token);
+  const hasEnvironmentToken = Boolean(envPageId && envToken);
 
+  // A token configured in Vercel is not the active publishing credential until
+  // an administrator validates and imports it into the server-only credentials table.
+  // Do not probe it here and misreport a stale legacy token as the active connection.
+  if (!stored) {
+    return {
+      facebookEnabled: false,
+      facebookCredentialsConfigured: false,
+      facebookEnvironmentTokenConfigured: hasEnvironmentToken,
+      facebookConnectionStatus: "not_connected",
+      facebookPageName: null,
+      facebookTokenSource: hasEnvironmentToken ? "environment" : "missing",
+      facebookLastCheckedAt: null,
+      facebookTokenExpiresAt: null,
+      facebookConnectionMessage: hasEnvironmentToken
+        ? "يوجد توكن في إعدادات الخادم، لكنه غير محفوظ ضمن اعتماد النشر النشط. اضغط «اعتماد توكن الخادم» للتحقق من التطبيق والصفحة والصلاحيات ثم تفعيله دون كشف التوكن."
+        : "لا يوجد اعتماد Facebook نشط. اربط الصفحة عبر OAuth أو أضف توكن صفحة إلى إعدادات الخادم ثم اضغط «اعتماد توكن الخادم».",
+    };
+  }
+
+  const enabled = stored.is_enabled === true;
   const base: FacebookConnectionHealth = {
-    facebookEnabled: enabled && Boolean(stored),
-    facebookCredentialsConfigured: configured,
-    facebookConnectionStatus: !configured ? "not_connected" : enabled ? "error" : "disabled",
-    facebookPageName: stored?.page_name ?? null,
-    facebookTokenSource: source,
-    facebookLastCheckedAt: stored?.last_validated_at ?? null,
-    facebookTokenExpiresAt: stored?.expires_at ?? null,
-    facebookConnectionMessage: !stored
-      ? "اتصال Facebook لم يُعتمد عبر OAuth بعد. اضغط «ربط/تجديد Facebook» حتى تُحفظ بيانات صفحة صالحة في قاعدة البيانات."
-      : enabled
-        ? "يتم اختبار اتصال Facebook الآن."
-        : "تم التحقق من الصفحة، لكن النشر معطّل حتى تفعيل اتصال OAuth من مركز النشر.",
+    facebookEnabled: enabled,
+    facebookCredentialsConfigured: Boolean(stored.page_id && stored.page_access_token),
+    facebookEnvironmentTokenConfigured: hasEnvironmentToken,
+    facebookConnectionStatus: enabled ? "error" : "disabled",
+    facebookPageName: stored.page_name,
+    facebookTokenSource: "database",
+    facebookLastCheckedAt: stored.last_validated_at,
+    facebookTokenExpiresAt: stored.expires_at,
+    facebookConnectionMessage: enabled
+      ? "يتم اختبار اعتماد Facebook النشط."
+      : "اعتماد الصفحة موجود، لكن النشر معطّل.",
   };
-  if (!hasProbeCredentials) return base;
 
-  if (stored?.expires_at && Number.isFinite(Date.parse(stored.expires_at)) && Date.parse(stored.expires_at) <= Date.now()) {
-    const safeMessage = "انتهت صلاحية رمز الصفحة. اضغط «ربط/تجديد Facebook» لإعادة التفويض.";
-    await persistValidation(stored, "reauthorization_required", safeMessage, "190");
-    return { ...base, facebookConnectionStatus: "reauthorization_required", facebookConnectionMessage: safeMessage };
+  if (
+    stored.expires_at &&
+    Number.isFinite(Date.parse(stored.expires_at)) &&
+    Date.parse(stored.expires_at) <= Date.now()
+  ) {
+    const message = "انتهت صلاحية اعتماد الصفحة المحفوظ. أعد ربط Facebook أو اعتمد توكن الخادم الحالي.";
+    await persistValidation(stored, "reauthorization_required", message, "190");
+    return {
+      ...base,
+      facebookConnectionStatus: "reauthorization_required",
+      facebookConnectionMessage: message,
+    };
   }
 
   try {
-    const url = new URL(`https://graph.facebook.com/${siteGraphVersion()}/${encodeURIComponent(pageId)}`);
+    const url = new URL(
+      "https://graph.facebook.com/" +
+        siteGraphVersion() +
+        "/" +
+        encodeURIComponent(stored.page_id),
+    );
     url.searchParams.set("fields", "id,name");
-    url.searchParams.set("access_token", accessToken);
-    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(12_000) });
-    const body = await response.json().catch(() => ({})) as {
+    url.searchParams.set("access_token", stored.page_access_token);
+    const response = await fetch(url, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
+    const body = (await response.json().catch(() => ({}))) as {
       id?: unknown;
       name?: unknown;
       error?: { code?: unknown; message?: unknown };
     };
-    if (!response.ok || body.error || String(body.id ?? "") !== pageId) {
+
+    if (!response.ok || body.error || String(body.id ?? "") !== stored.page_id) {
       const code = body.error?.code == null ? null : String(body.error.code);
       const result = classifyGraphFailure(code, String(body.error?.message ?? ""));
-      if (stored) await persistValidation(stored, result.status, result.safeMessage, code);
+      await persistValidation(stored, result.status, result.safeMessage, code);
       return {
         ...base,
         facebookConnectionStatus: result.status,
         facebookConnectionMessage: result.safeMessage,
       };
     }
+
     const checkedAt = new Date().toISOString();
-    if (!stored) {
-      return {
-        ...base,
-        facebookConnectionStatus: "not_connected",
-        facebookPageName: String(body.name ?? "صفحة Facebook"),
-        facebookConnectionMessage: "الرمز القديم يستجيب، لكنه غير معتمد للنشر. اضغط «ربط/تجديد Facebook» لحفظ اعتماد OAuth داخل قاعدة البيانات.",
-      };
-    }
     const status: FacebookConnectionStatus = enabled ? "connected" : "disabled";
     await persistValidation(stored, status, null, null);
     return {
       ...base,
       facebookConnectionStatus: status,
-      facebookPageName: String(body.name ?? stored.page_name ?? "صفحة Facebook"),
+      facebookPageName: String(body.name ?? stored.page_name ?? "Facebook Page"),
       facebookLastCheckedAt: checkedAt,
       facebookConnectionMessage: enabled
-        ? "اتصال Facebook صالح؛ سيعالج الناشر العناصر تلقائيًا كل 15 دقيقة."
-        : "تم التحقق من الصفحة، لكن النشر معطّل حتى إكمال الربط من زر مركز النشر.",
+        ? "اعتماد Facebook صالح؛ سيعالج الناشر العناصر المؤهلة تلقائيًا كل 15 دقيقة."
+        : "تم التحقق من الصفحة، لكن النشر معطّل. فعّل الاتصال من مركز النشر.",
     };
   } catch {
     return {
       ...base,
       facebookConnectionStatus: "error",
-      facebookConnectionMessage: "تعذر الوصول إلى Meta للتحقق من الاتصال. لم يتم إيقاف الجدولة التلقائية؛ أعد الاختبار بعد قليل.",
+      facebookConnectionMessage: "تعذر الوصول إلى Meta للتحقق من الاعتماد النشط. أعد الاختبار لاحقًا.",
     };
   }
 }
@@ -274,6 +299,129 @@ export async function saveFacebookPageCredential(input: {
       updated_at: now,
     }),
   });
+}
+
+export async function adoptServerConfiguredFacebookPageToken(): Promise<{
+  pageId: string;
+  pageName: string;
+  expiresAt: string | null;
+  grantedPermissions: string[];
+}> {
+  const env = getServerEnv();
+  const pageId = env.FACEBOOK_PAGE_ID?.trim() ?? "";
+  const accessToken = env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim() ?? "";
+  const appId = env.FACEBOOK_APP_ID?.trim() ?? "";
+  const appSecret = env.FACEBOOK_APP_SECRET?.trim() ?? "";
+
+  if (!pageId || !accessToken) {
+    throw new Error("إعدادات الخادم لا تحتوي FACEBOOK_PAGE_ID وFACEBOOK_PAGE_ACCESS_TOKEN معًا.");
+  }
+  if (!appId || !appSecret) {
+    throw new Error("يلزم ضبط FACEBOOK_APP_ID وFACEBOOK_APP_SECRET للتحقق الآمن من التوكن.");
+  }
+
+  const graphBase = "https://graph.facebook.com/" + siteGraphVersion() + "/";
+  const debugUrl = new URL(graphBase + "debug_token");
+  debugUrl.searchParams.set("input_token", accessToken);
+  debugUrl.searchParams.set("access_token", appId + "|" + appSecret);
+
+  let debugResponse: Response;
+  let debugBody: {
+    data?: {
+      app_id?: unknown;
+      is_valid?: unknown;
+      expires_at?: unknown;
+      scopes?: unknown;
+    };
+    error?: { code?: unknown; message?: unknown };
+  };
+  try {
+    debugResponse = await fetch(debugUrl, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
+    debugBody = (await debugResponse.json().catch(() => ({}))) as typeof debugBody;
+  } catch {
+    throw new Error("تعذر الوصول إلى Meta للتحقق من توكن الخادم. لم يتم حفظه أو تغيير الطابور.");
+  }
+
+  if (!debugResponse.ok || debugBody.error || !debugBody.data) {
+    const code = debugBody.error?.code == null ? "" : String(debugBody.error.code);
+    if (code === "190") {
+      throw new Error("Meta رفض توكن الخادم الحالي. راجع التوكن في Vercel ثم أعد المحاولة.");
+    }
+    throw new Error("تعذر التحقق من توكن الخادم مع تطبيق Meta. لم يتم تغيير بيانات النشر.");
+  }
+
+  const data = debugBody.data;
+  if (data.is_valid !== true) {
+    throw new Error("توكن الخادم غير صالح أو تم إلغاؤه. لم يتم حفظه.");
+  }
+  if (String(data.app_id ?? "") !== appId) {
+    throw new Error("التوكن صادر عن تطبيق Meta مختلف عن FACEBOOK_APP_ID الحالي.");
+  }
+
+  const permissions = Array.isArray(data.scopes)
+    ? data.scopes.filter((value): value is string => typeof value === "string")
+    : [];
+  const required = ["pages_show_list", "pages_read_engagement", "pages_manage_posts"];
+  const missing = required.filter((permission) => !permissions.includes(permission));
+  if (missing.length) {
+    throw new Error("توكن الخادم صالح، لكن صلاحيات النشر ناقصة: " + missing.join("، ") + ". أعد تفويض التطبيق مع هذه الصلاحيات.");
+  }
+
+  const expirySeconds = Number(data.expires_at ?? 0);
+  if (Number.isFinite(expirySeconds) && expirySeconds > 0 && expirySeconds * 1000 <= Date.now()) {
+    throw new Error("توكن الخادم منتهي الصلاحية. استبدله بتوكن صفحة صالح ثم أعد المحاولة.");
+  }
+
+  const pageUrl = new URL(graphBase + encodeURIComponent(pageId));
+  pageUrl.searchParams.set("fields", "id,name");
+  pageUrl.searchParams.set("access_token", accessToken);
+
+  let pageResponse: Response;
+  let pageBody: {
+    id?: unknown;
+    name?: unknown;
+    error?: { code?: unknown; message?: unknown };
+  };
+  try {
+    pageResponse = await fetch(pageUrl, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
+    pageBody = (await pageResponse.json().catch(() => ({}))) as typeof pageBody;
+  } catch {
+    throw new Error("تعذر التحقق من صفحة Facebook المحددة. لم يتم حفظ التوكن.");
+  }
+
+  if (!pageResponse.ok || pageBody.error || String(pageBody.id ?? "") !== pageId) {
+    const code = pageBody.error?.code == null ? "" : String(pageBody.error.code);
+    if (code === "190") {
+      throw new Error("Meta رفض توكن الصفحة الحالي. تأكد أنك وضعت Page Access Token وليس User Token.");
+    }
+    if (code === "10" || code === "200") {
+      throw new Error("التوكن لا يملك صلاحية الوصول المطلوبة إلى الصفحة. راجع صلاحيات Meta وإمكانية إدارة الصفحة.");
+    }
+    throw new Error("التوكن لا يستطيع الوصول إلى Page ID المحدد. تحقق من FACEBOOK_PAGE_ID والتوكن معًا.");
+  }
+
+  const pageName = String(pageBody.name ?? "Facebook Page");
+  const expiresAt =
+    Number.isFinite(expirySeconds) && expirySeconds > 0
+      ? new Date(expirySeconds * 1000).toISOString()
+      : null;
+
+  // Store the server-only value only after app, token, permissions, and target Page validate.
+  await saveFacebookPageCredential({
+    pageId,
+    pageName,
+    accessToken,
+    expiresAt,
+    grantedPermissions: permissions,
+  });
+
+  return { pageId, pageName, expiresAt, grantedPermissions: permissions };
 }
 
 export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
