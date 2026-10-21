@@ -28,13 +28,10 @@ jobs:
       SOCIAL_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
-      SOCIAL_PUBLISH_FACEBOOK_ENABLED: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN != '' && secrets.FACEBOOK_PAGE_ID != '' }}
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
       YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
-      FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
-      FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
       FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
     steps:
       - name: Checkout
@@ -62,11 +59,45 @@ jobs:
           set -euo pipefail
           test -n "${SUPABASE_URL:-}" || { echo "::error::Missing canonical SUPABASE_URL configuration." >&2; exit 1; }
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing production Supabase service-role secret." >&2; exit 1; }
-          if [[ -z "${YOUTUBE_CLIENT_ID:-}" && -z "${FACEBOOK_PAGE_ID:-}" ]]; then
-            echo "::error::No social publisher credentials are configured." >&2
+          # The Facebook Page token is managed by the admin OAuth center and stored
+          # in the server-only Supabase table. Do not duplicate it in GitHub Actions.
+          facebook_response="$(mktemp)"
+          facebook_status="$(curl -sS -o "$facebook_response" -w '%{http_code}' \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            "$SUPABASE_URL/rest/v1/social_platform_credentials?platform=eq.facebook&select=page_id,is_enabled,connection_status,expires_at&limit=1")"
+          facebook_enabled="false"
+          if [[ "$facebook_status" == "200" ]]; then
+            facebook_enabled="$(node -e '
+              const fs = require("node:fs");
+              let rows = [];
+              try { rows = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); } catch {}
+              const row = Array.isArray(rows) ? rows[0] : null;
+              const expiry = row?.expires_at ? Date.parse(row.expires_at) : NaN;
+              const expiryOkay = !row?.expires_at || (Number.isFinite(expiry) && expiry > Date.now());
+              console.log(
+                row?.is_enabled === true &&
+                row?.connection_status === "connected" &&
+                typeof row?.page_id === "string" &&
+                row.page_id.length > 0 &&
+                expiryOkay ? "true" : "false"
+              );
+            ' "$facebook_response")"
+          else
+            echo "::warning::Unable to inspect the OAuth-managed Facebook connection (HTTP $facebook_status); Facebook will remain disabled for this run." >&2
+          fi
+          echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_enabled" >> "$GITHUB_ENV"
+
+          youtube_configured="false"
+          if [[ -n "${YOUTUBE_CLIENT_ID:-}" && -n "${YOUTUBE_CLIENT_SECRET:-}" && -n "${YOUTUBE_REFRESH_TOKEN:-}" ]]; then
+            youtube_configured="true"
+          fi
+          if [[ "$youtube_configured" != "true" && "$facebook_enabled" != "true" ]]; then
+            echo "::error::No ready social provider is configured. Connect Facebook from /admin/social or configure YouTube OAuth." >&2
             exit 1
           fi
-          echo "Social publisher runtime configuration: OK"
+          rm -f "$facebook_response"
+          echo "Social publisher runtime configuration: OK (Facebook OAuth-managed=$facebook_enabled, YouTube configured=$youtube_configured)"
 
       - name: Verify scheduler and social publishing contracts
         run: |
