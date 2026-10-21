@@ -2,6 +2,7 @@ import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { publishToFacebook, publishToYoutube } from "@/features/videos/services/video-automation";
 import { getServerEnv } from "@/lib/env";
 import { getFacebookPageCredentials } from "@/features/social/services/facebook-credentials";
+import { extractFacebookReelsRateLimitUntil } from "@/features/social/services/facebook-reels-rate-limit";
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing } from "@/features/videos/services/video-publish-approval";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
@@ -362,18 +363,32 @@ export async function processSocialPublishItem(
     isFacebookAuthFailure(failure.error)
   );
   const hasNonAuthFailure = failures.some(failure => !isFacebookAuthFailure(failure.error));
+  const facebookReelsRateLimitedUntil = failures
+    .filter(failure => failure.platform === "facebook_reels")
+    .map(failure => extractFacebookReelsRateLimitUntil(failure.error))
+    .find((value): value is string => Boolean(value)) ?? null;
 
-  const attempts = Number(item.metadata?.attempts ?? 0) + 1;
+  // Meta code 368 triggers a shared cooldown. Defer the whole queue row until
+  // that time without burning per-item attempts or re-uploading successful targets.
+  const attempts = facebookReelsRateLimitedUntil
+    ? 0
+    : Number(item.metadata?.attempts ?? 0) + 1;
   const maxAttempts = Math.max(1, Number(item.metadata?.maxAttempts ?? 5));
-  const shouldRetry = attempts < maxAttempts && (hasAuthFailure || nextStatus === "partial");
+  const shouldRetry = Boolean(facebookReelsRateLimitedUntil) ||
+    (attempts < maxAttempts && (hasAuthFailure || nextStatus === "partial"));
   const retryDelayMinutes = hasAuthFailure
     ? 15
     : Math.min(60, 2 ** Math.min(attempts, 6));
-  const nextRetryAt = shouldRetry
+  const nextRetryAt = facebookReelsRateLimitedUntil ?? (shouldRetry
     ? new Date(Date.now() + retryDelayMinutes * 60_000).toISOString()
-    : null;
+    : null);
+  const persistedStatus: SocialQueueStatus = facebookReelsRateLimitedUntil
+    ? "partial"
+    : shouldRetry
+      ? "partial"
+      : nextStatus;
 
-  await markQueueItem(item.id, shouldRetry ? "partial" : nextStatus, {
+  await markQueueItem(item.id, persistedStatus, {
     scheduled_at: nextRetryAt,
     published_at: successes.length > 0 ? new Date().toISOString() : null,
     error_message:
@@ -386,6 +401,7 @@ export async function processSocialPublishItem(
       maxAttempts,
       nextRetryAt,
       authBlocked: hasAuthFailure,
+      facebookReelsRateLimitedUntil,
       platformResults: mergedResults,
     },
   });
