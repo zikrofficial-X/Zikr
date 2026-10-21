@@ -821,6 +821,7 @@ const NON_EDITORIAL_PREFIXES = [
   '/profile',
   '/favorites',
   '/settings',
+  '/data-deletion',
 ];
 
 const PUBLIC_PAGE_LABELS: Record<string, string> = {
@@ -899,6 +900,8 @@ export function getEditorialPage(pathname: string): EditorialPage | null {
 }
 
 export function EditorialDepth({ pathname }: { pathname: string }) {
+  // A missing pathname header must not make unrelated routes inherit the homepage guide.
+  if (!pathname?.trim()) return null;
   const page = getEditorialPage(pathname);
   if (!page) return null;
 
