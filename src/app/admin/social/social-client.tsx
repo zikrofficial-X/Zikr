@@ -125,7 +125,8 @@ export default function AdminSocialPage() {
   }, []);
 
   const connectFacebook = useCallback(() => {
-    // Full-page navigation is intentional: this API route starts the server-side OAuth redirect to Meta.
+    // Full-page navigation is intentional because this API route starts the server-side OAuth redirect to Meta.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- OAuth must leave the current client route.
     window.location.href = "/api/admin/social/facebook/connect";
   }, []);
 
