@@ -8,6 +8,18 @@ import { Button } from "@/components/ui/button";
 import type { VideoGenerationRequest } from "@/features/videos/services/video-automation";
 
 type Status = "pending" | "processing" | "retry_wait" | "completed" | "failed";
+type ApprovalCheckKey = "sourceVerified" | "audioReviewed" | "visualsReviewed" | "captionsReviewed" | "rightsReviewed";
+const APPROVAL_CHECKS: ReadonlyArray<{ key: ApprovalCheckKey; label: string }> = [
+  { key: "sourceVerified", label: "راجعت المصدر الأصلي وتطابق النص معه." },
+  { key: "audioReviewed", label: "استمعت إلى الصوت وتأكدت من وضوحه ومناسبته." },
+  { key: "visualsReviewed", label: "راجعت المشاهد والتزمت بالهوية وسياسة المحتوى." },
+  { key: "captionsReviewed", label: "راجعت الترجمة والعناوين وعدم وجود أخطاء ظاهرة." },
+  { key: "rightsReviewed", label: "تحققت من حقوق استخدام الصوت والصور والعناصر." },
+];
+function isContentApproved(content: unknown): boolean {
+  return Boolean(content && typeof content === "object" && !Array.isArray(content)
+    && (content as Record<string, unknown>).approvalStatus === "approved");
+}
 
 const STATUS_LABELS: Record<Status, string> = {
   pending: "قيد الانتظار",
@@ -33,6 +45,9 @@ export default function AdminVideosClient() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [details, setDetails] = useState<VideoGenerationRequest | null>(null);
+  const [approvalChecks, setApprovalChecks] = useState<Record<ApprovalCheckKey, boolean>>({
+    sourceVerified: false, audioReviewed: false, visualsReviewed: false, captionsReviewed: false, rightsReviewed: false,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,12 +109,30 @@ export default function AdminVideosClient() {
       const response = await fetch(`/api/admin/videos/${encodeURIComponent(id)}`, { cache: "no-store" });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "تعذر تحميل التفاصيل.");
+      setApprovalChecks({ sourceVerified: false, audioReviewed: false, visualsReviewed: false, captionsReviewed: false, rightsReviewed: false });
       setDetails(data);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر تحميل التفاصيل.");
     } finally {
       setBusyId(null);
     }
+  }
+
+  async function approveForPublishing() {
+    if (!details || APPROVAL_CHECKS.some((check) => !approvalChecks[check.key])) return;
+    setBusyId(details.id); setError(""); setMessage("");
+    try {
+      const response = await fetch("/api/admin/video-generation", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: details.id, action: "approve_publish", qaChecklist: approvalChecks }),
+      });
+      const responseData = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(responseData.error || "تعذر اعتماد الفيديو للنشر.");
+      setMessage("تم تسجيل مراجعة الجودة. سينتقل الفيديو إلى طابور النشر عند المزامنة المجدولة.");
+      setDetails(null); await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر اعتماد الفيديو للنشر.");
+    } finally { setBusyId(null); }
   }
 
   return (
@@ -250,7 +283,37 @@ export default function AdminVideosClient() {
               <div><dt className="text-brand-cream/35">تاريخ الإنشاء</dt><dd className="mt-1 text-brand-cream/75">{new Date(details.created_at).toLocaleString("ar-EG-u-nu-latn")}</dd></div>
               <div><dt className="text-brand-cream/35">آخر تحديث</dt><dd className="mt-1 text-brand-cream/75">{new Date(details.updated_at).toLocaleString("ar-EG-u-nu-latn")}</dd></div>
             </dl>
-            {details.video_url && <a href={details.video_url} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex rounded-xl border border-emerald-500/20 px-4 py-2 text-sm text-emerald-300">فتح الفيديو الناتج</a>}
+            {details.video_url && (
+              <div className="mt-5 space-y-3">
+                <video controls preload="metadata" src={details.video_url} className="max-h-[55vh] w-full rounded-xl border border-brand-gold/15 bg-black" aria-label="معاينة الفيديو قبل النشر">
+                  المتصفح لا يدعم تشغيل الفيديو.
+                </video>
+                <a href={details.video_url} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-xl border border-emerald-500/20 px-4 py-2 text-sm text-emerald-300">فتح ملف الفيديو</a>
+              </div>
+            )}
+            {details.status === "completed" && details.video_url && (
+              <section className="mt-6 space-y-4 rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5">
+                {isContentApproved(details.content) ? (
+                  <div role="status" className="font-semibold text-emerald-200">تم اعتماد الفيديو للمزامنة مع طابور النشر.</div>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-bold text-brand-gold">مراجعة إلزامية قبل النشر العام</h3>
+                    <p className="text-sm leading-6 text-brand-cream/60">شاهد الفيديو كاملًا واستمع إلى الصوت. لن يُنشر هذا الفيديو اجتماعيًا قبل إكمال جميع الفحوص وتسجيل الاعتماد.</p>
+                    <div className="space-y-3">
+                      {APPROVAL_CHECKS.map((check) => (
+                        <label key={check.key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-brand-gold/10 bg-black/15 p-3 text-sm leading-6 text-brand-cream/80">
+                          <input type="checkbox" checked={approvalChecks[check.key]} onChange={(event) => setApprovalChecks((current) => ({ ...current, [check.key]: event.target.checked }))} className="mt-1 h-4 w-4 accent-amber-300" />
+                          <span>{check.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <Button variant="primary" disabled={busyId === details.id || APPROVAL_CHECKS.some((check) => !approvalChecks[check.key])} onClick={() => void approveForPublishing()}>
+                      {busyId === details.id ? "جاري تسجيل الاعتماد…" : "اعتماد الفيديو للنشر"}
+                    </Button>
+                  </>
+                )}
+              </section>
+            )}
             {details.content !== null && details.content !== undefined ? <pre className="mt-5 overflow-auto rounded-xl border border-brand-gold/10 bg-black/30 p-4 text-xs text-brand-cream/55">{JSON.stringify(details.content, null, 2)}</pre> : null}
           </Card>
         </div>

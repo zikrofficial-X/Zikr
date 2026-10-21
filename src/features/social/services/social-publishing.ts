@@ -2,6 +2,7 @@ import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { publishToFacebook, publishToYoutube } from "@/features/videos/services/video-automation";
 import { getServerEnv } from "@/lib/env";
 import { getFacebookPageCredentials } from "@/features/social/services/facebook-credentials";
+import { isVideoContentType, isVideoQueueItemApprovedForPublishing } from "@/features/videos/services/video-publish-approval";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 export type SocialQueueStatus =
@@ -113,6 +114,21 @@ async function markQueueItem(
   );
 }
 
+async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promise<boolean> {
+  if (!isVideoContentType(item.content_type)) return true;
+  if (!item.content_id || !item.video_url) return false;
+  try {
+    const rows = await supabaseServerAdminRequest<Array<{ status: string; video_url: string | null; content: unknown }>>(
+      '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(item.content_id) + '&select=status,video_url,content&limit=1',
+    );
+    return isVideoQueueItemApprovedForPublishing({ contentType: item.content_type, contentId: item.content_id,
+      queuedVideoUrl: item.video_url, request: rows?.[0] ?? null });
+  } catch (error) {
+    console.error("[social-publishing] Approval lookup failed; holding video item:", item.id, error);
+    return false;
+  }
+}
+
 export async function getPendingSocialPublishItems(
   limit = 10
 ): Promise<SocialPublishQueueItem[]> {
@@ -123,13 +139,15 @@ export async function getPendingSocialPublishItems(
     const rows =
       (await supabaseServerAdminRequest<SocialPublishQueueItem[]>(path)) || [];
 
-    return rows.filter((item) => {
+    const eligible = await Promise.all(rows.map(async (item) => {
       const metadata = item.metadata ?? {};
-      const authBlocked = metadata.authBlocked === true;
       const attempts = Number(metadata.attempts ?? 0);
       const maxAttempts = Math.max(1, Number(metadata.maxAttempts ?? 5));
-      return !authBlocked && attempts < maxAttempts;
-    });
+      if (metadata.authBlocked === true || attempts >= maxAttempts) return null;
+      if (!(await hasVideoApprovalForQueueItem(item))) return null;
+      return item;
+    }));
+    return eligible.filter((item): item is SocialPublishQueueItem => item !== null);
   } catch (error) {
     console.error("[social-publishing] Failed to fetch queue:", error);
     return [];
@@ -284,7 +302,15 @@ async function publishPlatform(
 export async function processSocialPublishItem(
   item: SocialPublishQueueItem,
   options: { alreadyClaimed?: boolean } = {}
-): Promise<"published" | "auth_blocked" | "failed"> {
+): Promise<"published" | "auth_blocked" | "approval_blocked" | "failed"> {
+  if (!(await hasVideoApprovalForQueueItem(item))) {
+    await markQueueItem(item.id, "queued", {
+      error_message: "Video held for human QA approval before public publishing.",
+      metadata: { ...(item.metadata ?? {}), approvalBlocked: true },
+    });
+    return "approval_blocked";
+  }
+
   if (!options.alreadyClaimed) {
     await markQueueItem(item.id, "processing");
   }
