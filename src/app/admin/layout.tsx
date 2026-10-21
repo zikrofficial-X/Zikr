@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminMobileNav, AdminSidebar, type AdminNavGroup } from "@/features/admin/components/admin-sidebar";
-import { getCurrentProfile, requireAdmin } from "@/features/admin/services/admin";
+import { requireAdmin } from "@/features/admin/services/admin";
 import { hasAdminPermission, type AdminPermission } from "@/features/admin/services/permissions";
 import { ADMIN_NAVIGATION } from "@/features/admin/config/navigation";
 
@@ -13,8 +13,7 @@ export const metadata: Metadata = {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireAdmin();
-  const currentProfile = await getCurrentProfile();
-  const role = currentProfile?.role ?? profile.role;
+  const role = profile.role;
 
   const visibleGroups: AdminNavGroup[] = ADMIN_NAVIGATION
     .map((group) => ({
