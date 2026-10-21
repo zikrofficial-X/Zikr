@@ -118,7 +118,22 @@ assert.ok(verseRoute.includes('{ error: "Verified Quran text is unavailable" }')
 
 const letterLab = readFileSync("src/features/kids/components/games/kids-letter-lab.tsx", "utf8");
 assert.ok(!letterLab.includes("Choose the letter you hear and see."), "Letter Lab must not promise audio input when it has no audio prompt");
+assert.ok(!letterLab.includes("Listen and try again."), "Letter Lab retry feedback must not imply unavailable audio");
+assert.ok(!letterLab.includes("Say the letter aloud, then choose the matching card."), "Letter Lab must not imply speaking is detected or required");
 assert.ok(letterLab.includes("Choose the matching Arabic letter."), "Letter Lab instruction must match visual gameplay");
+assert.ok(letterLab.includes("Look at the target letter, then choose the matching card."), "Letter Lab must describe the actual visual interaction");
+assert.ok(letterLab.includes("Look closely at the target letter and try again."), "Letter Lab retry feedback must match visual gameplay");
+const letterBlock = letterLab.match(/const LETTERS = \[([\s\S]*?)\];/)?.[1] ?? "";
+const letterInventory = Array.from(letterBlock.matchAll(/"([^"]+)"/g), match => match[1]);
+const canonicalBaseLetters = ["ا", "ب", "ت", "ث", "ج", "ح", "خ", "د", "ذ", "ر", "ز", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف", "ق", "ك", "ل", "م", "ن", "ه", "و", "ي"];
+assert.deepEqual(letterInventory, canonicalBaseLetters, "Letter Lab must expose the conventional 28 isolated base letters in order");
+assert.equal(new Set(letterInventory).size, 28, "Letter Lab base-letter inventory must contain 28 unique letters");
+assert.equal(GAME_REGISTRY["letter-lab"].skillEn, "Visual recognition & attention", "Letter Lab must not overstate literacy skills it does not teach");
+assert.equal(GAME_REGISTRY["letter-lab"].version, 2, "Letter Lab version must advance when educational copy changes");
+const letterManifest = manifest.find(entry => entry.gameId === "letter-lab")!;
+assert.equal(letterManifest.reviewStatus, "repository-copy-review-complete", "Letter Lab repository copy and base inventory review must be recorded");
+assert.equal(letterManifest.revision, 2, "Letter Lab content manifest revision must advance after educational copy review");
+assert.ok(letterManifest.reviewNote?.includes("Formal age-specific curriculum/pedagogy sign-off remains pending"), "Letter Lab must not be mistaken for externally curriculum-certified content");
 
 const deedsManifest = manifest.find(entry => entry.gameId === "good-deeds")!;
 const cleanupManifest = manifest.find(entry => entry.gameId === "mosque-cleanup")!;
