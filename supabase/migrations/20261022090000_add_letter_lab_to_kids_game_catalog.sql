@@ -1,7 +1,7 @@
 -- Canonicalize Letter Lab in the Kids game catalog.
 -- Additive and idempotent: preserves all existing game progress and results.
 
-INSERT INTO public.kids_games (
+INSERT INTO public.kids_games AS current_game (
   slug, title_ar, title_en, short_description_ar, description_ar, description_en,
   genre, age_min, age_max, difficulty, learning_objectives, engine, config,
   published, featured, order_index, mechanics, metadata, reward_xp
@@ -53,12 +53,12 @@ ON CONFLICT (slug) DO UPDATE SET
   difficulty = EXCLUDED.difficulty,
   learning_objectives = EXCLUDED.learning_objectives,
   engine = EXCLUDED.engine,
-  config = COALESCE(public.kids_games.config, '{}'::jsonb) || EXCLUDED.config,
+  config = COALESCE(current_game.config, '{}'::jsonb) || EXCLUDED.config,
   published = EXCLUDED.published,
   featured = EXCLUDED.featured,
   order_index = EXCLUDED.order_index,
   mechanics = EXCLUDED.mechanics,
-  metadata = COALESCE(public.kids_games.metadata, '{}'::jsonb) || EXCLUDED.metadata,
+  metadata = COALESCE(current_game.metadata, '{}'::jsonb) || EXCLUDED.metadata,
   reward_xp = EXCLUDED.reward_xp,
   updated_at = now();
 
@@ -83,7 +83,7 @@ titles AS (
     'ساحة القراءة', 'بوابة الحروف', 'نجوم اللغة', 'محطة الإتقان'
   ]::text[] AS names
 )
-INSERT INTO public.kids_game_levels (
+INSERT INTO public.kids_game_levels AS current_level (
   game_id, level_no, title_ar, title_en, description_ar, objective_ar,
   objective_en, mechanic, difficulty, reward_xp, reward_badge, config, published
 )
@@ -127,7 +127,7 @@ DO UPDATE SET
   mechanic = EXCLUDED.mechanic,
   reward_xp = EXCLUDED.reward_xp,
   reward_badge = EXCLUDED.reward_badge,
-  config = COALESCE(public.kids_game_levels.config, '{}'::jsonb) || EXCLUDED.config,
+  config = COALESCE(current_level.config, '{}'::jsonb) || EXCLUDED.config,
   published = EXCLUDED.published,
   updated_at = now();
 
