@@ -37,17 +37,19 @@ The release workflow requires:
 
 These are CI secrets and must never be committed to the repository.
 
-## Current production identity (verified 2026-10-08)
+## Current production identity (verified 2026-10-21)
 
-- GitHub repository: `zikrcontact-del/Zikr`
+- GitHub repository: `zikrofficial-X/Zikr`
 - Vercel project: `zikr`
-- Vercel project ID: `prj_1y2W5TZdugysh25Fgu4VRMDQwPcA`
-- Vercel team ID: `team_zifbzhks5C1PW9GXQnQnBU2y`
-- Supabase project: `wvetcauyerlkqvmntajq`
+- Vercel project ID: `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`
+- Vercel team slug/name: `zikr3` / `zikr`
+- Vercel team ID: `team_RxPjmgZoSFmKGjScefYmwIVv`
+- Supabase project name: `Zikrmediaofficial-X`
+- Supabase project ref: `ymxdswkaxafakugktsim`
 - Production domain: `https://zikrmediaofficial.vercel.app`
 
-The repository and workflow must use these identities. Obsolete IDs from previous Vercel/Supabase projects are not valid production configuration.
+The Vercel project is linked to the GitHub repository above, and the Supabase project ref is the active project used by the production-health workflow. Treat these identities as the current release targets; re-verify them through the connected provider contexts before changing deployment secrets. Never commit `VERCEL_TOKEN`, database passwords, or Supabase service-role keys.
 
 ## Important
 
-The current GitHub connector does not expose branch-protection or ruleset write operations for this private repository. The quality workflow is implemented, but making its checks formally required for merging must be completed in GitHub Repository Settings once those controls are available.
+The current GitHub connector does not expose branch-protection or ruleset write operations. The quality workflow is implemented, but whether its checks are formally required for merging must be verified in GitHub Repository Settings; configure required status checks there before treating the gate as mandatory.
