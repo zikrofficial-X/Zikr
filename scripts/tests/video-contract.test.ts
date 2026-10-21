@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
+import { MAX_AUTO_VIDEO_SECONDS, resolveRenderDuration } from "../../src/features/videos/services/render-duration";
 
 // Contract: TypeScript video status/category unions must match the latest DB check constraints.
 const migrations = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
@@ -34,6 +35,22 @@ assert.ok(
 assert.ok(
   worker.includes('`--pitch=${process.env.ARABIC_TTS_PITCH?.trim() || narrationProfile.pitch}`'),
   "Arabic TTS pitch must use --pitch=<value> because negative pitches are parsed as CLI options by argparse",
+);
+
+assert.equal(MAX_AUTO_VIDEO_SECONDS, 60, "automated video render ceiling must allow natural narration up to 60 seconds");
+assert.ok(
+  Math.abs(resolveRenderDuration(52.3, 20) - 53.1) < 0.001,
+  "a 52.3-second narration must render with its full duration and audio tail",
+);
+assert.ok(
+  Math.abs(resolveRenderDuration(53.6, 20) - 54.4) < 0.001,
+  "a 53.6-second narration must render with its full duration and audio tail",
+);
+assert.equal(resolveRenderDuration(0, 20), 20, "invalid audio duration must fall back to the requested target duration");
+assert.throws(
+  () => resolveRenderDuration(59.3, 20),
+  /59.3s > 60.0s max/,
+  "content that cannot fit within the supported 60-second format must fail explicitly rather than be truncated",
 );
 
 console.log("video contract tests passed");

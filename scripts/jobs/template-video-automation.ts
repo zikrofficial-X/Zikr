@@ -17,13 +17,12 @@ import { AI_VISUAL_POLICY_VERSION, aiVisualPolicyPromptLine } from "../../src/fe
 import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
 import { getDefaultVideoVoiceProfile, getVideoVoiceProfile } from "../../src/features/videos/services/voice-profiles";
 import { evaluateArabicNarrationText } from "../../src/features/videos/services/narration-quality";
+import { resolveRenderDuration } from "../../src/features/videos/services/render-duration";
 import { getFacebookPageCredentials } from "../../src/features/social/services/facebook-credentials";
 
 const execFileAsync = promisify(execFile);
 const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? process.env.DAILY_VIDEO_TARGET ?? 10));
 const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_VIDEO_SECONDS ?? 18)));
-const MIN_VIDEO_SECONDS = Math.min(TARGET_VIDEO_SECONDS, 10);
-const MAX_VIDEO_SECONDS = Math.max(TARGET_VIDEO_SECONDS, 45);
 const VIDEO_DEFAULT_TTS_PROFILE = process.env.ARABIC_TTS_PROFILE?.trim() || "hadith_male_msa";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
@@ -147,15 +146,6 @@ async function probeMedia(pathname: string) {
     streams?: Array<{ codec_type?: string; codec_name?: string; width?: number; height?: number; bit_rate?: string; sample_rate?: string; channels?: number }>;
     format?: { duration?: string };
   };
-}
-
-function resolveRenderDuration(audioDuration: number) {
-  if (!Number.isFinite(audioDuration) || audioDuration <= 0) return TARGET_VIDEO_SECONDS;
-  const desired = Math.max(MIN_VIDEO_SECONDS, audioDuration + 0.8);
-  if (desired > MAX_VIDEO_SECONDS) {
-    throw new Error("Narration is too long for an automated short: " + audioDuration.toFixed(1) + "s > " + MAX_VIDEO_SECONDS.toFixed(1) + "s max.");
-  }
-  return Math.min(MAX_VIDEO_SECONDS, desired);
 }
 
 function dayIndex(date = new Date()) {
@@ -1135,7 +1125,7 @@ async function renderVideo(request: GeneratedRequest) {
     await assertNarrationQuality(audioPath, narrationText, request.category, request.content?.audience);
     const audioProbe = await probeMedia(audioPath);
     const audioDuration = Number(audioProbe.format?.duration ?? 0);
-    const duration = resolveRenderDuration(audioDuration);
+    const duration = resolveRenderDuration(audioDuration, TARGET_VIDEO_SECONDS);
     await writeFile(assPath, makeAss(text, request.title, typeof request.content?.sourceLabel === "string" && request.content.sourceLabel.trim() ? request.content.sourceLabel : sourceUrl, aiPlan.reflection || null, duration, request.category, isVertical, request.content?.audience), "utf8");
 
     const fadeOutStart = Math.max(0, duration - 0.8);
