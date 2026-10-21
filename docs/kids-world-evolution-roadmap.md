@@ -49,6 +49,8 @@ Status: **implementation closed** (2026-10-21). A shared localized section navig
 
 ## Phase E — Art and audio asset system
 
+Status: **repository implementation closed (2026-10-21)**. A canonical manifest covers all 13 games, inline SVG identities, prop inventories, local WebP backgrounds, sound events, mute support, and reduced-motion behavior. Automated contracts fail on missing local files or untracked registry entries. License evidence for the three existing backgrounds remains an external provenance review item; this does not certify third-party licensing.
+
 - Define an asset manifest per game for characters, backgrounds, props, animations, and sound events.
 - Prefer compressed SVG/vector assets for interface art; use sprite sheets only where actual animation materially improves play.
 - Provide reduced-motion and sound-off experiences and avoid loading large art packs before a game is opened.
@@ -57,9 +59,11 @@ Status: **implementation closed** (2026-10-21). A shared localized section navig
 - Good Deeds, Cleanup, and Coloring localize child-facing titles, instructions, activity content, feedback, HUD labels, and artwork descriptions in Arabic and English.
 - Memory, Wudu, Verse Puzzle, and Quiz localize their controls, feedback, progress labels, and headers; verified dhikr, wudu steps, Quran text, quiz questions, and choices remain explicitly identified in their original Arabic wording.
 - Use ZIKR Memory as the reference gameplay experience: pair-progress text must match the metric shown, and cards must expose their flipped state and content through accessible labels; localize all 11 existing situation labels without changing the verified Arabic dhikr. Memoize the verified pair pool so routine HUD/feedback renders do not recompute the seeded board. Cancel hint, mismatch-reveal, and level-advance timeouts on restart, difficulty changes, level transitions, and unmount so an older round cannot mutate a new board.
-- Acceptance gate: no game card depends on a remote image for its core identity and no missing asset breaks gameplay.
+- Acceptance gate: no game card depends on a remote image for its core identity and no missing asset breaks gameplay. Automated manifest coverage is present; background asset licensing still needs evidence-based review.
 
 ## Phase F — Progress, privacy, and family controls
+
+Status: **local family settings implementation closed (2026-10-21)**. The parent dashboard includes an opt-in 15/20/30-minute break reminder (off by default), saved in browser local storage only. The game shell provides an accessible bilingual reminder with pause and dismiss actions. Existing secure result handling and offline queue remain unchanged. Logged-out/online/offline/reconnect result acceptance remains a separate runtime release gate.
 
 - Preserve server-side score bounds, authenticated result validation, offline queue retry, deduplication, XP, and achievements.
 - Make progress readable without ranking children against each other.
@@ -68,7 +72,9 @@ Status: **implementation closed** (2026-10-21). A shared localized section navig
 
 ## Phase G — Release readiness
 
-- Add browser-level smoke coverage for catalogue filtering, opening every game, starting/restarting, difficulty changes, and result states.
+Status: **automated source contracts pass; browser/device acceptance remains open**. The dedicated asset manifest contract joins the existing test suite. Source tests and HTTP checks do not count as browser automation or physical-device acceptance.
+
+- Add browser-level smoke coverage for catalogue filtering, opening every game, starting/restarting, difficulty changes, and result states. This remains open; source contracts are not a substitute for Playwright/browser coverage.
 - Run typecheck, lint, existing game-contract tests, route/integrity checks, and production build in CI.
 - Verify mobile layout, Arabic RTL, English LTR, keyboard focus, contrast, reduced motion, and tap target sizes.
 - Merge only after CI is green; deploy and verify production separately from the source change.
