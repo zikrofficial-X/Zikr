@@ -9,7 +9,8 @@ export type KidsContentReviewStatus =
   | "approved-source-linked"
   | "canonical-source"
   | "gameplay-only"
-  | "editorial-review-required";
+  | "editorial-review-required"
+  | "repository-copy-review-complete";
 
 type SourceDeclaration = {
   kind: KidsContentSourceKind;
@@ -54,6 +55,8 @@ const CONTENT_SOURCES: Record<GameId, SourceDeclaration> = {
     fields: ["quiz_data.questions"],
     reviewStatus: "approved-source-linked",
     revision: 1,
+    reviewNote:
+      "Scenario wording and child-safety review recorded in docs/kids-content-editorial-audit-2026-10-21.md; factual correctness remains bounded by the named source records.",
   },
   "zikr-memory": {
     kind: "kids-content-record",
@@ -107,6 +110,8 @@ const CONTENT_SOURCES: Record<GameId, SourceDeclaration> = {
     fields: ["quiz_data.questions.text", "quiz_data.questions.options", "quiz_data.questions.correctAnswer"],
     reviewStatus: "approved-source-linked",
     revision: 1,
+    reviewNote:
+      "Scenario wording and child-safety review recorded in docs/kids-content-editorial-audit-2026-10-21.md; factual correctness remains bounded by the named source records.",
   },
   "zikr-road": {
     kind: "kids-content-record",
@@ -118,6 +123,8 @@ const CONTENT_SOURCES: Record<GameId, SourceDeclaration> = {
     fields: ["quiz_data.questions.text", "quiz_data.questions.options", "quiz_data.questions.correctAnswer"],
     reviewStatus: "approved-source-linked",
     revision: 1,
+    reviewNote:
+      "Scenario wording and child-safety review recorded in docs/kids-content-editorial-audit-2026-10-21.md; factual correctness remains bounded by the named source records.",
   },
   "zikr-jump": {
     kind: "local-runtime",
@@ -130,10 +137,10 @@ const CONTENT_SOURCES: Record<GameId, SourceDeclaration> = {
     kind: "local-runtime",
     references: ["src/features/kids/components/games/kids-values-coloring.tsx#DEEDS"],
     fields: ["title", "description", "steps", "feedback"],
-    reviewStatus: "editorial-review-required",
+    reviewStatus: "repository-copy-review-complete",
     revision: 1,
     reviewNote:
-      "Values-based scenarios need a recorded editorial suitability review before this status can be changed.",
+      "Repository-level wording and basic child-safety review recorded in docs/kids-content-editorial-audit-2026-10-21.md; this is not external child-development certification.",
   },
   "hilal-fly": {
     kind: "local-runtime",
@@ -146,10 +153,10 @@ const CONTENT_SOURCES: Record<GameId, SourceDeclaration> = {
     kind: "local-runtime",
     references: ["src/features/kids/components/games/kids-values-coloring.tsx#CLEANUP_ITEMS", "src/features/kids/components/games/kids-values-coloring.tsx#CLEANUP_ZONES"],
     fields: ["item names", "sorting zones", "match rules"],
-    reviewStatus: "editorial-review-required",
+    reviewStatus: "repository-copy-review-complete",
     revision: 1,
     reviewNote:
-      "Child-facing item and zone labels require editorial suitability review.",
+      "Repository-level wording and category review recorded in docs/kids-content-editorial-audit-2026-10-21.md; this is not external educational certification.",
   },
   "zikr-coloring": {
     kind: "local-runtime",

@@ -118,6 +118,19 @@ assert.ok(verseRoute.includes('{ error: "Verified Quran text is unavailable" }')
 
 const letterLab = readFileSync("src/features/kids/components/games/kids-letter-lab.tsx", "utf8");
 assert.ok(!letterLab.includes("Choose the letter you hear and see."), "Letter Lab must not promise audio input when it has no audio prompt");
-assert.ok(letterLab.includes("Choose the matching Arabic letter."), "Letter Lab's instruction must match its visual gameplay");
+assert.ok(letterLab.includes("Choose the matching Arabic letter."), "Letter Lab instruction must match visual gameplay");
 
-console.log("Kids content manifest passed: all 13 game sources, age groups, objectives, reviews, structured content, and Quran fail-safe contracts are consistent.");
+const deedsManifest = manifest.find(entry => entry.gameId === "good-deeds")!;
+const cleanupManifest = manifest.find(entry => entry.gameId === "mosque-cleanup")!;
+assert.equal(deedsManifest.reviewStatus, "repository-copy-review-complete", "Good Deeds must have a recorded repository content review");
+assert.equal(cleanupManifest.reviewStatus, "repository-copy-review-complete", "Cleanup labels must have a recorded repository content review");
+for (const entry of [deedsManifest, cleanupManifest]) {
+  assert.ok(entry.reviewNote?.includes("docs/kids-content-editorial-audit-2026-10-21.md"), "reviewed content must link to its review record: " + entry.gameId);
+}
+const valuesSource = readFileSync("src/features/kids/components/games/kids-values-coloring.tsx", "utf8");
+assert.ok(valuesSource.includes("Notice what the character needs and choose a good time to help."), "Good Deeds copy must not imply unavailable audio interaction");
+assert.ok(!valuesSource.includes("Listen to the character and choose a good moment to help."), "stale audio-dependent Good Deeds copy must be removed");
+assert.equal(manifest.find(entry => entry.gameId === "letter-lab")!.reviewStatus, "editorial-review-required", "Letter Lab pedagogy must remain flagged until its curriculum review is recorded");
+assert.ok(readFileSync("docs/kids-content-editorial-audit-2026-10-21.md", "utf8").includes("not a formal child-development evaluation"), "the content audit must state its review limitations");
+
+console.log("Kids content manifest passed: all 13 game sources, age groups, objectives, review records, structured content, and Quran fail-safe contracts are consistent.");

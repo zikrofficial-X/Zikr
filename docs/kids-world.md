@@ -17,7 +17,10 @@ If the game is publishable through the Kids admin form, the registry selector al
 - `canonical-source`: the content is retrieved from the canonical source, such as Quran text from the Quran database.
 - `approved-source-linked`: the runtime points to the named approved Kids content records; CI checks that the records still exist and satisfy their structure.
 - `gameplay-only`: no religious or factual quiz text is authored by that game's runtime.
-- `editorial-review-required`: content remains usable as labelled but must not be described as editorially approved until a review is recorded.
+- `editorial-review-required`: content remains flagged until its specific source/curriculum review is recorded.
+- `repository-copy-review-complete`: a repository-level wording and basic safety review is recorded; this is not external child-development or religious certification.
+
+The current review record is `docs/kids-content-editorial-audit-2026-10-21.md`. It documents the three scenario sources, Good Deeds, Cleanup, and the Letter Lab audio-copy mismatch. Letter Lab curriculum review remains outstanding.
 
 The manifest test runs as part of `pnpm test` and therefore the PR and main quality gates. A missing required record, invalid quiz answer index, incomplete wudu sequence, duplicate scenario prompt, or unavailable canonical Quran text must fail validation or return a safe unavailable response.
 
