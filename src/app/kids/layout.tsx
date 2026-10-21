@@ -1,4 +1,5 @@
 import { pageMetadata } from "@/lib/site";
+import { KidsSectionNavigation } from "@/features/kids/components/kids-section-navigation";
 
 export const metadata = pageMetadata({
   title: "قسم الأطفال",
@@ -11,5 +12,10 @@ export default function KidsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <>
+      <KidsSectionNavigation />
+      {children}
+    </>
+  );
 }
