@@ -32,11 +32,12 @@ for (const token of ["facebook_reels_next_allowed_at", "24 * 60 * 60 * 1000", "1
 if (!facebookCredentials.includes("setFacebookReelsNextAllowedAt")) failures.push("Facebook credentials must persist shared Reels cooldown/pacing timestamps");
 if (!videoAutomation.includes("credentials.reelsNextAllowedAt")) failures.push("Facebook Reels publisher must honor the shared next-allowed time before calling Meta");
 if (!videoAutomation.includes("facebook_reels_next_allowed_at")) failures.push("Facebook Reels cooldown errors must persist a retry timestamp");
-if (!publisher.includes("extractFacebookReelsNextAllowedAt")) failures.push("social queue must defer rate-limited Reels to the shared next-allowed time");
-if (!publisher.includes("facebookReelsNextAllowedAt")) failures.push("social queue must persist the Reels cooldown deadline per item");
+
 if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_next_allowed_at")) failures.push("Supabase must have a durable global Facebook Reels next-allowed column");
 
 const publisher = read("src/features/social/services/social-publishing.ts");
+if (!publisher.includes("extractFacebookReelsNextAllowedAt")) failures.push("social queue must defer rate-limited Reels to the shared next-allowed time");
+if (!publisher.includes("facebookReelsNextAllowedAt")) failures.push("social queue must persist the Reels cooldown deadline per item");
 const adminSocial = read("src/app/api/admin/social/route.ts");
 if (adminSocial.includes("/api/internal/video-processing")) failures.push("admin social retry references a retired noop endpoint");
 if (!adminSocial.includes('dispatchGitHubWorkflow("publish-social.yml")')) failures.push("admin social retry must use the canonical GitHub social workflow");
