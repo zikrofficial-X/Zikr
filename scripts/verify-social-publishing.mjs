@@ -46,6 +46,7 @@ if (!workflow.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("GitHub
 if (!workflow.includes("FACEBOOK_PAGE_ACCESS_TOKEN")) failures.push("GitHub social workflow must receive the Facebook access-token secret");
 
 const adminApi = read("src/app/api/admin/social/route.ts");
+if (!adminApi.includes("const allTargetsSucceeded") || !adminApi.includes("targets.every(platform => succeeded.has(platform))")) failures.push("Admin retry must not label mixed-success/auth-blocked queue items as published");
 if (!adminApi.includes("authBlockedPlatforms")) failures.push("Admin retry path must understand Facebook auth-blocked platforms");
 if (!adminApi.includes("youtubeConfigured")) failures.push("Admin social health must expose YouTube configuration");
 if (!adminApi.includes("facebookAuthBlocked")) failures.push("Admin social health must expose Facebook auth-block count");
