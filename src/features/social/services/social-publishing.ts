@@ -86,7 +86,10 @@ function isFacebookAuthFailure(error: string | undefined) {
       normalized.includes("error validating access token") ||
       normalized.includes("oauthexception") ||
       normalized.includes("invalid oauth") ||
-      normalized.includes("access token")
+      normalized.includes("access token") ||
+      normalized.includes("oauth-managed publishing center") ||
+      normalized.includes("reauthorization_required") ||
+      normalized.includes("reconnect the page")
     )
   );
 }
