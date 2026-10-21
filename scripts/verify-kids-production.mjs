@@ -16,12 +16,13 @@ const stage = read("src/features/kids/components/games/world-game-stage.tsx");
 const index = read("src/features/kids/components/games/games-index.tsx");
 const page = read("src/app/kids/games/page.tsx");
 const shell = read("src/features/kids/components/games/game-shell.tsx");
+const letterLab = read("src/features/kids/components/games/kids-letter-lab.tsx");
 const packageJson = JSON.parse(read("package.json"));
 
 const expectedIds = [
   "zikr-runner", "zikr-memory", "wudu-challenge", "verse-puzzle",
   "zikr-quiz", "mosque-adventure", "zikr-road", "zikr-jump",
-  "good-deeds", "hilal-fly", "mosque-cleanup", "zikr-coloring",
+  "good-deeds", "hilal-fly", "mosque-cleanup", "letter-lab", "zikr-coloring",
 ];
 
 for (const id of expectedIds) {
@@ -36,6 +37,7 @@ if (!index.includes("bestScores")) failures.push("games index must render persis
 if (!index.includes("filtered.length")) failures.push("games index must retain filtering/empty-state handling");
 if (!page.includes("ContentGuide")) failures.push("kids games page must retain the educational safety guide");
 if (!shell.includes("syncQueuedGameResults")) failures.push("game shell must retain offline result synchronization");
+if (!letterLab.includes('getKidsLevelMeta("letter-lab"') || !letterLab.includes("onResult({")) failures.push("Letter Lab must use canonical level metadata and shared result submission.");
 
 for (const script of [
   "kids:memory:check", "kids:wudu:check", "kids:verse:check", "kids:quiz:check",
