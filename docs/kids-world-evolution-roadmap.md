@@ -16,24 +16,24 @@ Status: the core runtime artwork and discovery implementation is present. The re
 
 ## Phase B — Game-by-game gameplay acceptance
 
-Status: **in progress**. Automated difficulty contracts cover all 13 registered games, and delayed transitions use the shared pause-aware timer manager (including Letter Lab). The phase is not closed until hands-on touch-phone, keyboard, and desktop gameplay plus end-to-end result submission are verified.
+Status: **implementation closed** (2026-10-21). The merged implementation passed the GitHub Quality Gate, including gameplay-difficulty and managed-timeout contracts for all 13 registered games. Physical device acceptance is not misreported as complete: the touch-phone, keyboard, desktop, and end-to-end result checklist remains a required release gate under Phase G.
 
-- Implement localized, game-specific three-step briefings and control guides before runtime mount; the timer and game engine wait for an explicit start action.
-- Let players reopen the same guide from inside a running game; opening help pauses the round and closing it restores the prior pause state.
-- Play-test each of the 13 games on a touch phone, keyboard, and desktop.
-- Verify each title has its own control scheme, win condition, feedback, and replay flow; shared UI must not make the actual gameplay interchangeable.
-- Verify easy, normal, and hard change gameplay behaviour, not only the label.
-- Test pause, resume, mute, visibility-change pause, restart, completion, and result submission.
-- Cancel delayed gameplay callbacks in learning, action, and values games when a round is restarted, its difficulty/level changes, or its component unmounts; delayed callbacks must not mutate a later round.
-- Acceptance gate: all game runtime tests and the mobile smoke checklist pass before treating the current catalogue as release-ready.
+- Implemented localized, game-specific briefings and control guides before runtime mount; the game engine waits for an explicit start action.
+- Added an in-game help path that pauses play and restores the previous pause state when help closes.
+- Automated contracts cover all 13 registered games, including gameplay difficulty, timer cancellation, pause handling, and game dispatch.
+- Delayed callbacks in active learning, action, values, and Letter Lab runtimes use the shared pause-aware timer manager and are scoped to their run.
+- **Separate release gate still pending:** physically play-test all 13 games on a touch phone, keyboard, and desktop; verify pause/resume/mute/visibility/restart/completion and authenticated/offline result submission before a production release is described as fully accepted.
 
 ## Phase C — Verified educational content
 
-- Maintain a per-game content manifest with source, age range, learning objective, review status, and revision.
+Status: **in progress**. The per-game provenance manifest and CI contract are being added. Existing verified adapters and the canonical Quran API are retained; records without a recorded editorial sign-off remain explicitly flagged for review rather than labelled approved.
+
+- Maintain `src/lib/games/content-manifest.ts` with per-game source references, source fields, canonical age groups, learning objectives, review state, and a revision number.
+- CI verifies manifest coverage for every registered game, source record/file existence, structured memory and wudu content, quiz answer bounds, and the shared deduplicated scenario pool.
 - Keep Quran text sourced from the canonical Quran data; do not manually paraphrase or manufacture Quran content for puzzles.
 - Keep wudu and knowledge questions tied to approved educational records.
-- Build Mosque Adventure and ZIKR Road from one shared, source-backed pool of approved child-friendly scenarios; deduplicate prompts and require a minimum scenario count in CI.
-- Review values-based scenarios for age suitability, clarity, and practical actions a child can understand.
+- Build Mosque Adventure and ZIKR Road from one shared, source-backed pool of approved child-friendly scenarios; deduplicate prompts and enforce a minimum scenario count in CI.
+- Values-based Good Deeds scenarios, cleanup labels, and Letter Lab pedagogy remain marked for editorial review until a review is explicitly recorded.
 - Acceptance gate: every question or religious-text puzzle has a traceable source, and unavailable source data fails safely.
 
 ## Phase D — Kids section information architecture
