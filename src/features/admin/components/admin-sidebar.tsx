@@ -125,6 +125,20 @@ export function AdminMobileNav({ groups }: { groups: AdminNavGroup[] }) {
     [activeHref, groups]
   );
   const [open, setOpen] = useState<string | null>(activeGroup?.group ?? null);
+  const [mobileQuery, setMobileQuery] = useState("");
+  const filteredMobileGroups = useMemo(() => {
+    const normalized = mobileQuery.trim().toLocaleLowerCase("ar");
+    if (!normalized) return [];
+    return groups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) =>
+          item.label.toLocaleLowerCase("ar").includes(normalized) ||
+          item.href.toLocaleLowerCase("ar").includes(normalized)
+        ),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [groups, mobileQuery]);
 
   useEffect(() => {
     setOpen(activeGroup?.group ?? null);
@@ -135,14 +149,30 @@ export function AdminMobileNav({ groups }: { groups: AdminNavGroup[] }) {
       className="border-b border-brand-gold/15 bg-black/30 px-3 py-2 lg:hidden"
       aria-label="التنقل السريع في لوحة الإدارة"
     >
+      <div className="px-1 pb-2">
+        <label className="relative block">
+          <span className="sr-only">البحث في صفحات الإدارة على الهاتف</span>
+          <Search aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-brand-cream/35" />
+          <input
+            value={mobileQuery}
+            onChange={(event) => setMobileQuery(event.target.value)}
+            placeholder="ابحث في صفحات الإدارة..."
+            aria-label="البحث في صفحات الإدارة"
+            autoComplete="off"
+            className="w-full rounded-xl border border-brand-gold/10 bg-black/20 py-2.5 pl-3 pr-10 text-sm text-brand-cream outline-none placeholder:text-brand-cream/30 focus:border-brand-gold/35"
+          />
+        </label>
+      </div>
+
       <div className="flex gap-1.5 overflow-x-auto pb-1" dir="rtl">
         {groups.map(group => (
           <button
             key={group.group}
             type="button"
-            onClick={() =>
-              setOpen(current => (current === group.group ? null : group.group))
-            }
+            onClick={() => {
+              setMobileQuery("");
+              setOpen(current => (current === group.group ? null : group.group));
+            }}
             className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs transition ${open === group.group ? "border-brand-gold/30 bg-brand-gold/15 text-brand-gold" : "border-transparent text-brand-cream/60 hover:text-brand-gold"}`}
           >
             {group.group}
@@ -156,7 +186,42 @@ export function AdminMobileNav({ groups }: { groups: AdminNavGroup[] }) {
         </Link>
       </div>
 
-      {open && (
+      {mobileQuery.trim() ? (
+        <div
+          className="mt-2 space-y-3 rounded-xl border border-brand-gold/10 bg-black/20 p-2"
+          role="region"
+          aria-label="نتائج البحث في صفحات الإدارة"
+        >
+          {filteredMobileGroups.length ? (
+            filteredMobileGroups.map((group) => (
+              <section key={group.group}>
+                <h2 className="mb-2 px-2 text-[10px] font-bold text-brand-gold/50" dir="rtl">
+                  {group.group}
+                </h2>
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3" dir="rtl">
+                  {group.items.map((item) => {
+                    const active = item.href === activeHref;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        className={`rounded-lg border px-2.5 py-2 text-xs transition ${active ? "border-brand-gold/30 bg-brand-gold/10 text-brand-gold" : "border-brand-gold/8 text-brand-cream/60 hover:text-brand-gold"}`}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            ))
+          ) : (
+            <p className="px-2 py-3 text-center text-xs text-brand-cream/45" role="status" dir="rtl">
+              لا توجد صفحة مطابقة للبحث.
+            </p>
+          )}
+        </div>
+      ) : open ? (
         <div className="mt-2 rounded-xl border border-brand-gold/10 bg-black/20 p-2">
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3" dir="rtl">
             {(groups.find(group => group.group === open)?.items ?? []).map(
@@ -176,7 +241,7 @@ export function AdminMobileNav({ groups }: { groups: AdminNavGroup[] }) {
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </nav>
   );
 }
