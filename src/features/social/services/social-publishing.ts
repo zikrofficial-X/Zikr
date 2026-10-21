@@ -222,19 +222,26 @@ async function publishFacebookPost(item: SocialPublishQueueItem): Promise<string
   return data.id ?? null;
 }
 
-async function publishFacebookReelItem(item: SocialPublishQueueItem): Promise<string | null> {
+async function publishFacebookVideoItem(
+  item: SocialPublishQueueItem,
+  asReel: boolean
+): Promise<string | null> {
   const credentials = await getFacebookPageCredentials();
   if (!credentials.isEnabled) {
     throw new Error("Facebook publishing is disabled. Connect and enable the Page from the admin publishing center.");
   }
-  if (!item.video_url) throw new Error("Facebook Reels publishing requires video_url");
+  if (!item.video_url) {
+    throw new Error(asReel ? "Facebook Reels publishing requires video_url" : "Facebook video publishing requires video_url");
+  }
   const mediaUrl = assertPublishableVideoUrl(item.video_url, "facebook");
+  // Both feed videos and Reels use the verified OAuth-managed Page token stored in Supabase.
+  // GitHub Actions must never need a duplicate Facebook Page token secret.
   return publishToFacebook(
     item.id,
     { title: item.title, description: item.body ?? "" },
     mediaUrl,
     credentials.pageId,
-    true
+    asReel
   );
 }
 
@@ -266,21 +273,10 @@ async function publishPlatform(
     const remoteId =
       platform === "facebook"
         ? item.video_url
-          ? await publishToFacebook(
-              item.id,
-              { title: item.title, description: item.body ?? "" },
-              assertPublishableVideoUrl(item.video_url, "facebook"),
-              (() => {
-                const env = getServerEnv();
-                if (!env.FACEBOOK_PAGE_ID) throw new Error("FACEBOOK_PAGE_ID is not configured");
-                if (!env.FACEBOOK_PAGE_ACCESS_TOKEN) throw new Error("FACEBOOK_PAGE_ACCESS_TOKEN is not configured");
-                return env.FACEBOOK_PAGE_ID;
-              })(),
-              false
-            )
+          ? await publishFacebookVideoItem(item, false)
           : await publishFacebookPost(item)
         : platform === "facebook_reels"
-          ? await publishFacebookReelItem(item)
+          ? await publishFacebookVideoItem(item, true)
           : await publishYoutubeItem(item);
 
     if (!remoteId) {
