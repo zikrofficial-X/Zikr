@@ -141,7 +141,7 @@ for (const token of ["debug_token", "is_valid", "pages_show_list", "pages_read_e
 if (!adminApi.includes('action === "adopt_server_facebook_token"')) failures.push("admin API must provide a protected action to adopt the current server token");
 if (!adminApi.includes("unblockFacebookAuthBlockedQueue()")) failures.push("adopting a valid token must release historical Facebook-auth-blocked items");
 if (!adminUi.includes("facebookEnvironmentTokenConfigured")) failures.push("admin UI must expose adoption only when a server token is configured");
-if (!adminUi.includes("role="tablist"") || !adminUi.includes("activeView === "queue"") || !adminUi.includes("sm:hidden")) failures.push("publishing center must have separate mobile-friendly overview and queue views");
+if (!adminUi.includes('role="tablist"') || !adminUi.includes('activeView === "queue"') || !adminUi.includes("sm:hidden")) failures.push("publishing center must have separate mobile-friendly overview and queue views");
 
 if (credentialsMigration.includes("to anon") && /grant\s+select[^;]+to\s+anon/i.test(credentialsMigration)) failures.push("Facebook credentials must not be readable by anonymous clients");
 
