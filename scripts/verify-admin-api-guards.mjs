@@ -4,11 +4,14 @@ import { join, relative, sep } from "node:path";
 
 const root = process.cwd();
 const apiRoot = join(root, "src/app/api/admin");
-const actionRoot = join(root, "src/app/admin");
+const actionRoots = [
+  join(root, "src/app/admin"),
+  join(root, "src/features/admin/actions"),
+].filter((dir) => existsSync(dir));
 const failures = [];
 const methods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]);
 
-if (!existsSync(apiRoot) || !existsSync(actionRoot)) {
+if (!existsSync(apiRoot) || actionRoots.length === 0) {
   console.error("ADMIN_SECURITY_SURFACE_CHECK_FAILED: admin API or action root is missing.");
   process.exit(1);
 }
@@ -156,6 +159,6 @@ console.log(
   "✅ Admin security-surface audit passed: " +
     routeFiles.length + " API route files, " +
     handlerCount + " API handlers (" + apiGuardedCount + " guarded, " + methodRejectionCount + " explicit 405 stubs), " +
-    actionFiles.length + " server-action modules, " +
+    actionFiles.length + " server-action modules across app/admin and features/admin/actions, " +
     actionCount + " server actions guarded by role permission or MFA step-up."
 );
