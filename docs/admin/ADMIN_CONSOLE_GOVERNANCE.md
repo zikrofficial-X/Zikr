@@ -162,7 +162,7 @@
 
 ## 7. أوامر التحقق
 
-تتضمن بوابة `verify` و`verify:pr` الآن `pnpm admin:api:check`، الذي يجرد كل ملفات API تحت `src/app/api/admin` وكل ملفات Server Actions ضمن `src/app/admin`، ويتحقق من وجود حارس صلاحيات أو MFA step-up قبل قراءة البيانات أو تنفيذ العمل الحساس. يُسمح فقط بوحدات HTTP التي ترفض الطريقة صراحةً بـ405 دون تنفيذ أي عملية.
+تتضمن بوابة `verify` و`verify:pr` الآن `pnpm admin:api:check`، الذي يجرد كل ملفات API تحت `src/app/api/admin` وكل ملفات Server Actions ضمن `src/app/admin` و`src/features/admin/actions`، ويتحقق من وجود حارس صلاحيات أو MFA step-up قبل قراءة البيانات أو تنفيذ العمل الحساس. يُسمح فقط بوحدات HTTP التي ترفض الطريقة صراحةً بـ405 دون تنفيذ أي عملية.
 
 ```bash
 pnpm admin:architecture:check
