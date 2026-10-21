@@ -6,24 +6,24 @@ Build a coherent, child-friendly learning world with clear navigation, age-aware
 
 ## Current release: Phase A — Visual identity and discovery
 
-Status: implemented in the companion GitHub change.
+Status: the core runtime artwork and discovery implementation is present. The release remains blocked if the registry, runtime dispatch, static metadata, database catalog, or production checks disagree.
 
 - Give every registered game a bespoke vector scene rather than a generic icon.
 - Localize artwork names for screen readers and make repeated SVG instances safe by generating unique gradient IDs.
 - Show a curated mix of game genres on the Kids landing page with artwork, learning skill, category, and estimated play time.
-- Add a test contract that verifies all 12 registered games have an explicit art scene and gameplay dispatch, unique Arabic names, and defined learning goals.
+- Add a test contract that verifies all 13 registered games have an explicit art scene and gameplay dispatch, unique Arabic names, and defined learning goals.
 - Keep the full searchable catalog at /kids/games and retain the current progress API.
 
 ## Phase B — Game-by-game gameplay acceptance
 
 - Implement localized, game-specific three-step briefings and control guides before runtime mount; the timer and game engine wait for an explicit start action.
 - Let players reopen the same guide from inside a running game; opening help pauses the round and closing it restores the prior pause state.
-- Play-test each of the 12 games on a touch phone, keyboard, and desktop.
+- Play-test each of the 13 games on a touch phone, keyboard, and desktop.
 - Verify each title has its own control scheme, win condition, feedback, and replay flow; shared UI must not make the actual gameplay interchangeable.
 - Verify easy, normal, and hard change gameplay behaviour, not only the label.
 - Test pause, resume, mute, visibility-change pause, restart, completion, and result submission.
 - Cancel delayed gameplay callbacks in learning, action, and values games when a round is restarted, its difficulty/level changes, or its component unmounts; delayed callbacks must not mutate a later round.
-- Acceptance gate: all game runtime tests and the mobile smoke checklist pass before expanding the catalogue.
+- Acceptance gate: all game runtime tests and the mobile smoke checklist pass before treating the current catalogue as release-ready.
 
 ## Phase C — Verified educational content
 
@@ -47,7 +47,7 @@ Status: implemented in the companion GitHub change.
 - Define an asset manifest per game for characters, backgrounds, props, animations, and sound events.
 - Prefer compressed SVG/vector assets for interface art; use sprite sheets only where actual animation materially improves play.
 - Provide reduced-motion and sound-off experiences and avoid loading large art packs before a game is opened.
-- Coloring now offers six original vector scenes, keyboard-operable paint regions, and a rotation that guarantees each difficulty visits all six scenes across the 20 levels.
+- Coloring now offers six original vector scenes, keyboard-operable paint regions, and a rotation that guarantees each difficulty visits all six scenes across the 30-level progression.
 - Track asset dimensions, format, source/rights, and game ownership.
 - Good Deeds, Cleanup, and Coloring localize child-facing titles, instructions, activity content, feedback, HUD labels, and artwork descriptions in Arabic and English.
 - Memory, Wudu, Verse Puzzle, and Quiz localize their controls, feedback, progress labels, and headers; verified dhikr, wudu steps, Quran text, quiz questions, and choices remain explicitly identified in their original Arabic wording.
