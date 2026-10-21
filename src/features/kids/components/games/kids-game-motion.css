@@ -1,0 +1,5 @@
+@media (prefers-reduced-motion: reduce) {
+  .kids-game-stage [class*="animate-"] { animation: none !important; }
+  .kids-game-stage [class*="transition-"] { transition: none !important; scroll-behavior: auto !important; }
+  .kids-game-stage [class*="hover:-translate"] { transform: none !important; }
+}

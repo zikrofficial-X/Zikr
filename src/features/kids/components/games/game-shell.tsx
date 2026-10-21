@@ -95,6 +95,19 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   const wasPausedBeforeHelpRef = useRef(false);
   const instructions = useMemo(() => getGameInstructions(gameId, isEnglish ? "en" : "ar"), [gameId, isEnglish]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [breakReminderMinutes, setBreakReminderMinutes] = useState(0);
+  const [breakReminderDismissed, setBreakReminderDismissed] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("zikr-parent-settings") || "{}") as { breakReminderMinutes?: number };
+      if ([0, 15, 20, 30].includes(saved.breakReminderMinutes ?? -1)) setBreakReminderMinutes(saved.breakReminderMinutes ?? 0);
+    } catch {
+      // Safe default: reminders remain disabled unless a caregiver enables one.
+    }
+  }, []);
+  useEffect(() => { setBreakReminderDismissed(false); }, [difficulty, restartToken]);
+  const showBreakReminder = hasStarted && !result && breakReminderMinutes > 0 &&
+    elapsedSeconds >= breakReminderMinutes * 60 && !breakReminderDismissed;
   const elapsedRef = useRef(0);
   const runningSinceRef = useRef<number | null>(null);
   const lastHudUpdate = useRef(0);
@@ -304,6 +317,19 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
         />
       )}
 
+      {showBreakReminder && (
+        <div role="status" aria-live="polite" className="mb-4 flex flex-col gap-3 rounded-2xl border border-brand-gold/40 bg-brand-gold/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm leading-6 text-brand-cream">
+            {isEnglish
+              ? "You have played for about " + breakReminderMinutes + " minutes. Consider taking a short break."
+              : "مرّت " + breakReminderMinutes + " دقيقة تقريبًا من اللعب. يُفضّل أخذ استراحة قصيرة الآن."}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" onClick={() => setPaused(true)}>{isEnglish ? "Pause for a break" : "إيقاف اللعب للاستراحة"}</Button>
+            <Button type="button" onClick={() => setBreakReminderDismissed(true)}>{isEnglish ? "Dismiss" : "إخفاء التذكير"}</Button>
+          </div>
+        </div>
+      )}
       <div id="kids-world-game-frame" className="relative min-w-0 overflow-hidden rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
         {!hasStarted ? null : (
           <>
