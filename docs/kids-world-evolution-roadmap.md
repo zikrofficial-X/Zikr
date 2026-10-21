@@ -38,11 +38,14 @@ Status: **in progress**. The per-game provenance manifest and CI contract are me
 
 ## Phase D — Kids section information architecture
 
-- Group activities by age, skill, duration, and activity type.
-- Separate stories, learning activities, audio, creative tools, games, achievements, and progress into clear paths.
-- Keep labels consistent between the landing page, catalogue, detail pages, and Admin Kids editor.
-- Ensure empty, loading, offline, and unavailable states remain understandable in Arabic and English.
-- Acceptance gate: a child can find a suitable activity in two navigation steps without duplicate or dead links.
+Status: **implementation closed** (2026-10-21). A shared localized section navigator is mounted across Kids routes, primary paths have one canonical Arabic/English label and destination, the landing page derives the number of games from the canonical registry, and the route contract is part of `pnpm test`. The catalogue continues to filter by age, skill/search, category, difficulty, and duration.
+
+- Added canonical destinations for home, stories and activities, learning, audio, games, creative coloring, progress, achievements, and the family guide.
+- Rendered the same navigation on Kids landing, catalogue, activity details, and progress/achievement/family routes, with RTL/LTR support, keyboard-visible focus, touch-sized targets, and active-route feedback.
+- Removed the stale hard-coded “12 games” label; the displayed count now follows `GAME_REGISTRY`.
+- Added an automated navigation contract for unique IDs/URLs, bilingual labels/descriptions, registered direct or dynamic destinations, existing discovery facets, and the canonical game count.
+- Loading and unavailable-content states are now announced accessibly and explain next steps in Arabic and English instead of incorrectly implying that all English content is missing.
+- **Separate release gate still pending:** manually verify the two-step discovery goal with children/caregivers and test small-screen scrolling, RTL/LTR, keyboard focus, and contrast as part of Phase G. The automated route contract does not replace a usability study.
 
 ## Phase E — Art and audio asset system
 
