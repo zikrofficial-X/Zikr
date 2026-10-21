@@ -147,7 +147,7 @@ assert.ok(buildStep < deployStep && deployStep < migrationStep && migrationStep 
 const gameRegistry = read("src/lib/games/registry.ts");
 const productionSmoke = read("scripts/verify-production-smoke.mjs");
 const canonicalGameIds = [...gameRegistry.matchAll(/^  "([^"]+)": \{\n    id:/gm)].map((match) => match[1]);
-assert.equal(canonicalGameIds.length, 12, "the current canonical kids game registry should expose twelve games");
+assert.equal(canonicalGameIds.length, 13, "the current canonical kids game registry should expose thirteen games");
 for (const id of canonicalGameIds) {
   assert.ok(productionSmoke.includes(`"${id}"`), `production smoke must cover kids game slug ${id}`);
 }
