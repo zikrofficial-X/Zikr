@@ -41,7 +41,7 @@ Secrets are server-side only. Provider tokens are never returned in errors or lo
 1. Seed source-locked requests with an idempotent key and SHA-256 `content_hash`/`source_hash`.
 2. Claim a pending or due `retry_wait` request conditionally.
 3. Revalidate the current published source; Quran, hadith, dua, adhkar, and verified stories cannot be edited through a request payload.
-4. Select a provider, render/finalize with Arabic audio and subtitles, and validate with `ffprobe`.
+4. Select a provider, render/finalize with Arabic audio and subtitles, apply full-frame visual fitting, motion, voice compression and loudness normalization, and validate with `ffprobe`.
 5. Upload only validated MP4 output to the existing `videos` bucket.
 6. Mark `completed`; only then can a social draft be queued.
 7. Public publishing remains disabled unless the two explicit approval flags allow it and credentials exist.
@@ -86,4 +86,4 @@ pnpm video:engine:check
 pnpm build
 ```
 
-A video may only be called successful when a real MP4 exists and `ffprobe` confirms a valid duration, resolution, H.264 video stream, required AAC audio stream, Arabic metadata, and non-silent audio.
+A video may only be called successful when a real MP4 exists and `ffprobe` confirms a valid duration, resolution, H.264 video stream, required AAC audio stream, Arabic metadata, and non-silent audio. The v4 renderer defaults to CRF 18, 30 fps, full-frame AI crop-to-fill, gentle sharpening, dynamic background motion, AAC 192k audio, compressor, and -16 LUFS loudness normalization; override `VIDEO_OUTPUT_CRF` and `VIDEO_AUDIO_BITRATE` only when a platform-specific delivery profile requires it.

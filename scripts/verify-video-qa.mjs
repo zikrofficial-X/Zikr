@@ -37,11 +37,20 @@ const worker = read("scripts/jobs/template-video-automation.ts");
 for (const token of [
   "assertNarrationQuality",
   "evaluateArabicNarrationText",
-  "VIDEO_TEMPLATE_VERSION = \"2026-10-08-quality-v3\"",
+  "VIDEO_TEMPLATE_VERSION = \"2026-10-21-quality-v4\"",
   "category === \"quran\" && !audioUrl",
   "QURAN_AYAH_AUDIO_BASE_URL",
 ]) {
   if (!worker.includes(token)) failures.push(`worker missing narration/video QA contract: ${token}`);
+}
+for (const token of [
+  "force_original_aspect_ratio=increase",
+  "crop=${width}:${height}",
+  "acompressor=threshold=-18dB",
+  "loudnorm=I=-16:TP=-1.5:LRA=11",
+  "VIDEO_OUTPUT_CRF",
+]) {
+  if (!worker.includes(token)) failures.push(`worker missing quality enhancement: ${token}`);
 }
 const voiceProfiles = read("src/features/videos/services/voice-profiles.ts");
 if (!voiceProfiles.includes("hadith_male_msa")) failures.push("hadith voice profile missing from canonical voice service");

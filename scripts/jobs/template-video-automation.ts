@@ -26,7 +26,9 @@ const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_V
 const VIDEO_DEFAULT_TTS_PROFILE = process.env.ARABIC_TTS_PROFILE?.trim() || "hadith_male_msa";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
-const VIDEO_TEMPLATE_VERSION = "2026-10-08-quality-v3";
+const VIDEO_TEMPLATE_VERSION = "2026-10-21-quality-v4";
+const VIDEO_OUTPUT_CRF = Math.min(23, Math.max(16, Number(process.env.VIDEO_OUTPUT_CRF ?? 18) || 18));
+const VIDEO_AUDIO_BITRATE = process.env.VIDEO_AUDIO_BITRATE?.trim() || "192k";
 const engineConfig = () => getVideoEngineConfig();
 const AI_ATTEMPTS_PER_RUN = Math.max(0, Math.min(4, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 3) || 3));
 let aiAttemptsUsed = 0;
@@ -258,7 +260,7 @@ function makeAss(
   title = normalizeArabicText(title);
   const events = [
     "Dialogue: 5,0:00:00.00,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Badge,,0,0,0,," + badge,
-    "Dialogue: 0,0:00:00.20,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Title,,0,0,0,," + assEscape(title),
+    "Dialogue: 0,0:00:00.12,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Title,,0,0,0,,{\\fad(220,420)}" + assEscape(title),
     "Dialogue: 3,0:00:00.00,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Brand,,0,0,0,,ZIKR • ذِكرٌ",
     ...textEvents,
     "Dialogue: 2,0:00:" + Math.max(0.6, duration - 3).toFixed(2).padStart(5, "0") + ",0:00:" + duration.toFixed(2).padStart(5, "0") + ",Source,,0,0,0,," + source,
@@ -1137,10 +1139,13 @@ async function renderVideo(request: GeneratedRequest) {
     const cardW = width - cardX * 2;
     const cardH = Math.round(height * 0.46);
     const filter = [
-      aiVideoPath ? `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2` : `zoompan=z='min(zoom+0.00018,1.075)':d=1:s=${width}x${height}:fps=30`,
+      aiVideoPath
+        ? `fps=30,scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1`
+        : `zoompan=z='min(zoom+0.00035,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${width}x${height}:fps=30`,
       "drawbox=x=" + cardX + ":y=" + cardY + ":w=" + cardW + ":h=" + cardH + ":color=0x06110D@0.58:t=fill",
       "drawbox=x=" + cardX + ":y=" + cardY + ":w=" + cardW + ":h=" + cardH + ":color=0xEFD39A@0.18:t=2",
-      "eq=contrast=1.05:saturation=0.94:brightness=0.00",
+      "eq=contrast=1.08:saturation=1.02:brightness=0.00",
+      "unsharp=5:5:0.25:5:5:0.0",
       "vignette=PI/5",
       ...motionFilters,
       "subtitles=" + assPath + ":fontsdir=/usr/share/fonts/truetype/noto",
@@ -1153,11 +1158,19 @@ async function renderVideo(request: GeneratedRequest) {
       "-map", "1:a:0",
       "-t", duration.toFixed(2),
       "-vf", filter,
-      "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-profile:v", "high",
+      "-c:v", "libx264", "-preset", "medium", "-crf", String(VIDEO_OUTPUT_CRF), "-profile:v", "high",
+      "-maxrate", isVertical ? "8M" : "10M", "-bufsize", isVertical ? "16M" : "20M",
       "-pix_fmt", "yuv420p", "-r", "30", "-movflags", "+faststart",
       "-metadata:s:v:0", "language=ara",
-      "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
-      "-af", `loudnorm=I=-16:TP=-1.5:LRA=11,apad=whole_dur=${duration.toFixed(2)}s`,
+      "-c:a", "aac", "-b:a", VIDEO_AUDIO_BITRATE, "-ar", "48000", "-ac", "2",
+      "-af", [
+        "highpass=f=65",
+        "lowpass=f=16000",
+        "acompressor=threshold=-18dB:ratio=2.5:attack=20:release=250:makeup=2",
+        "loudnorm=I=-16:TP=-1.5:LRA=11",
+        `afade=t=out:st=${Math.max(0, duration - 0.7).toFixed(2)}:d=0.7`,
+        `apad=whole_dur=${duration.toFixed(2)}s`,
+      ].join(","),
       "-metadata:s:a:0", "language=ara",
       "-metadata", "title=" + request.title.slice(0, 180),
       "-metadata", "comment=ZIKR template " + VIDEO_TEMPLATE_VERSION,
