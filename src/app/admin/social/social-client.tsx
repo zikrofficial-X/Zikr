@@ -23,6 +23,7 @@ type Health = {
   facebookTokenExpiresAt?: string | null;
   facebookConnectionMessage?: string;
 };
+type SocialView = "overview" | "queue";
 type PlatformStats = Record<
   string,
   { queued: number; published: number; failed: number }
@@ -66,6 +67,7 @@ export default function AdminSocialPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [activeView, setActiveView] = useState<SocialView>("overview");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -158,6 +160,46 @@ export default function AdminSocialPage() {
       setBusy(false);
     }
   }, []);
+
+  const adoptServerToken = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "adopt_server_facebook_token" }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        adopted?: boolean;
+        pageName?: string;
+        released?: number;
+        queueUpdateFailed?: boolean;
+        workerDispatched?: boolean;
+        health?: Health;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error || "تعذر اعتماد توكن Facebook المحفوظ على الخادم.");
+      }
+      if (payload.health) {
+        setHealth(current => ({ ...current, ...payload.health }));
+      }
+      const summary = [
+        "تم التحقق من التوكن وحفظ اعتماد الصفحة " + (payload.pageName || "Facebook") + ".",
+        "تم تحرير " + (payload.released ?? 0) + " عنصرًا قديمًا لإعادة المعالجة دون تكرار ما نُشر بنجاح.",
+        payload.queueUpdateFailed ? "لكن تعذر تحديث بعض عناصر الطابور؛ أعد تحديث الصفحة قبل تشغيل العامل." : "",
+        (payload.released ?? 0) > 0 && !payload.workerDispatched ? "سيكمل العامل المجدول المعالجة خلال دورة النشر التالية." : "",
+      ].filter(Boolean);
+      setMessage(summary.join(" "));
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر اعتماد توكن Facebook من إعدادات الخادم.");
+    } finally {
+      setBusy(false);
+    }
+  }, [load]);
 
   const runWorker = useCallback(async () => {
     setBusy(true);
@@ -267,29 +309,73 @@ export default function AdminSocialPage() {
 
   return (
     <Container className="space-y-6 py-10 text-right">
-      <section className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold text-brand-gold">مركز النشر</h1>
-          <p className="mt-1 text-sm text-brand-cream/60">
-            إدارة YouTube وFacebook من مكان واحد، بأقل عدد من الخطوات.
-          </p>
+      <section className="space-y-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="mb-1 text-xs font-semibold tracking-wide text-brand-gold/60">النشر الاجتماعي</p>
+            <h1 className="text-2xl font-bold text-brand-gold sm:text-3xl">مركز النشر</h1>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-brand-cream/60">
+              مكان واحد لحالة الاتصال، ومتابعة العناصر، ومعالجة الأعطال دون تكرار المنشورات الناجحة.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <Button variant="outline" disabled={busy} onClick={() => void connectFacebook()}>
+              ربط Facebook عبر OAuth
+            </Button>
+            {health.facebookTokenSource === "environment" && !health.facebookCredentialsConfigured && (
+              <Button disabled={busy} onClick={() => void adoptServerToken()}>
+                اعتماد توكن الخادم
+              </Button>
+            )}
+            <Button variant="outline" disabled={busy || loading} onClick={() => void load()}>
+              تحديث البيانات
+            </Button>
+            <Button disabled={busy} onClick={() => void runWorker()}>
+              تشغيل العامل الآن
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={busy} onClick={() => void connectFacebook()}>
-            ربط/تجديد Facebook
-          </Button>
-          <Button variant="outline" disabled={busy} onClick={() => void load()}>
-            تحديث
-          </Button>
-          <Button disabled={busy} onClick={() => void runWorker()}>
-            تشغيل العامل الآن
-          </Button>
+        <div className="rounded-2xl border border-brand-gold/15 bg-black/15 p-3 sm:p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-brand-cream">النشر التلقائي</p>
+              <p className="mt-1 text-xs leading-5 text-brand-cream/55">
+                GitHub Actions يعالج الطابور كل 15 دقيقة. التشغيل اليدوي للتسريع فقط ولا يغيّر الجدولة.
+              </p>
+            </div>
+            <span className="inline-flex w-fit items-center rounded-full border border-brand-gold/15 px-3 py-1 text-xs text-brand-gold/80">
+              الجدولة: كل 15 دقيقة
+            </span>
+          </div>
         </div>
       </section>
-      <p className="rounded-xl border border-brand-gold/10 bg-black/10 px-4 py-3 text-sm leading-6 text-brand-cream/60">
-        النشر يعمل تلقائيًا عبر GitHub Actions كل 15 دقيقة. زر «تشغيل العامل الآن» للتشغيل الفوري فقط، وليس شرطًا لاستمرار الجدولة.
-      </p>
+      <div
+        role="tablist"
+        aria-label="أقسام مركز النشر"
+        className="grid grid-cols-2 gap-2 rounded-2xl border border-brand-gold/10 bg-black/20 p-1.5"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeView === "overview"}
+          onClick={() => setActiveView("overview")}
+          className={`rounded-xl px-3 py-3 text-sm font-semibold transition ${activeView === "overview" ? "bg-brand-gold text-brand-emeraldDeep" : "text-brand-cream/60 hover:bg-white/5"}`}
+        >
+          الملخص والاتصالات
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeView === "queue"}
+          onClick={() => setActiveView("queue")}
+          className={`rounded-xl px-3 py-3 text-sm font-semibold transition ${activeView === "queue" ? "bg-brand-gold text-brand-emeraldDeep" : "text-brand-cream/60 hover:bg-white/5"}`}
+        >
+          طابور النشر ({items.length})
+        </button>
+      </div>
 
+      {activeView === "overview" && (
+        <>
       <section className="grid gap-3 md:grid-cols-3">
         <Card>
           <div className="text-xs text-brand-cream/50">YouTube</div>
@@ -328,6 +414,11 @@ export default function AdminSocialPage() {
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void connectFacebook()}>
               تجديد الاتصال
             </Button>
+            {health.facebookTokenSource === "environment" && !health.facebookCredentialsConfigured && (
+              <Button size="sm" disabled={busy} onClick={() => void adoptServerToken()}>
+                اعتماد توكن الخادم
+              </Button>
+            )}
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void testFacebook()}>
               اختبار الاتصال
             </Button>
@@ -347,14 +438,8 @@ export default function AdminSocialPage() {
           role="status"
           className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-200"
         >
-          تم تسجيل {health.facebookAuthBlocked} عنصرًا سابقًا بفشل اعتماد
-          Facebook. هذا العداد تاريخي للعناصر الموجودة في الطابور، ولا يعني أن
-          اعتماد Facebook الحالي منتهي.{" "}
-          {health.facebookCredentialsConfigured && health.facebookEnabled
-            ? "إعداد Facebook الحالي ما زال مفعّلًا ومهيأً للنشر."
-            : !health.facebookCredentialsConfigured
-              ? "تحقق من بيانات Page ID وPage Access Token الحالية."
-              : "تحقق من مفتاح التشغيل الحالي للنشر الاجتماعي."}
+          يوجد {health.facebookAuthBlocked} عنصرًا قديمًا محجوبًا بسبب فشل اعتماد Facebook.
+          هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي. بعد اعتماد توكن صالح، سيعاد فتح العناصر تلقائيًا مع الاحتفاظ بنتائج النشر الناجحة لتجنب تكرارها.
         </div>
       )}
       {error && (
@@ -374,12 +459,24 @@ export default function AdminSocialPage() {
         </div>
       )}
 
-      <section className="grid gap-3 grid-cols-2 md:grid-cols-5">
+        </>
+      )}
+
+      {activeView === "overview" && (
+        <>
+      <div className="flex items-center justify-between gap-3 pt-2">
+        <h2 className="text-lg font-bold text-brand-cream">ملخص الطابور</h2>
+        <p className="text-xs text-brand-cream/45">{loading ? "جارٍ التحديث..." : "آخر قراءة مباشرة"}</p>
+      </div>
+      <section className="grid grid-cols-2 gap-2 md:grid-cols-5">
         {STATUS_ORDER.map(status => (
           <button
             key={status}
             type="button"
-            onClick={() => setFilter(filter === status ? "all" : status)}
+            onClick={() => {
+              setFilter(filter === status ? "all" : status);
+              setActiveView("queue");
+            }}
             className={`rounded-2xl border p-4 text-right ${filter === status ? "border-brand-gold/40 bg-brand-gold/10" : "border-brand-gold/10 bg-black/15"}`}
           >
             <div className="text-xs text-brand-cream/50">
@@ -439,12 +536,15 @@ export default function AdminSocialPage() {
         })}
       </section>
       {oldestQueuedAt && (
-        <p className="text-xs text-brand-cream/40">
+        <p className="text-xs leading-5 text-brand-cream/40">
           أقدم عنصر قيد التشغيل أو الانتظار:{" "}
           <span dir="ltr">{oldestQueuedAt}</span>
         </p>
       )}
+        </>
+      )}
 
+      {activeView === "queue" && (
       <Card className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -480,7 +580,7 @@ export default function AdminSocialPage() {
             </Button>
           </div>
         </div>
-        <div className="overflow-auto rounded-xl border border-brand-gold/10">
+        <div className="hidden overflow-auto rounded-xl border border-brand-gold/10 sm:block">
           <table className="min-w-[900px] w-full text-sm">
             <thead className="bg-black/20 text-brand-cream/50">
               <tr>
@@ -560,7 +660,52 @@ export default function AdminSocialPage() {
             </tbody>
           </table>
         </div>
+        <div className="space-y-2 sm:hidden">
+          {filtered.map(item => {
+            const status = STATUS_ORDER.includes(item.status as Status)
+              ? (item.status as Status)
+              : "failed";
+            const selectable = status === "failed" || status === "partial";
+            return (
+              <article key={item.id} className="space-y-3 rounded-2xl border border-brand-gold/10 bg-black/15 p-3">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(item.id)}
+                    disabled={!selectable || busy}
+                    onChange={() =>
+                      setSelected(current =>
+                        current.includes(item.id)
+                          ? current.filter(id => id !== item.id)
+                          : [...current, item.id]
+                      )
+                    }
+                    aria-label={`تحديد ${item.title}`}
+                    className="mt-1"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="break-words text-sm font-semibold leading-6 text-brand-cream">{item.title}</h3>
+                    <p className="mt-1 text-xs text-brand-cream/50">{item.content_type} · {item.target_platforms.join("، ")}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full border px-2 py-1 text-[11px] ${STATUS_CLASSES[status]}`}>
+                    {STATUS_LABELS[status]}
+                  </span>
+                </div>
+                <div className="space-y-1 border-t border-brand-gold/10 pt-2 text-xs leading-5">
+                  <p className="text-brand-cream/45">الموعد: <span dir="ltr">{item.scheduled_at ?? "فوري"}</span></p>
+                  {item.error_message && <p className="break-words text-red-300/80">الخطأ: {item.error_message}</p>}
+                </div>
+              </article>
+            );
+          })}
+          {!loading && filtered.length === 0 && (
+            <p className="rounded-xl border border-brand-gold/10 p-8 text-center text-sm text-brand-cream/40">
+              لا توجد عناصر مطابقة.
+            </p>
+          )}
+        </div>
       </Card>
+      )}
     </Container>
   );
 }
