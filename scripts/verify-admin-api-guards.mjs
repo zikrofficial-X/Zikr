@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 
 const root = process.cwd();
 const apiRoot = join(root, "src/app/api/admin");
 const failures = [];
-const audit = [];
 const methods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]);
 
 if (!existsSync(apiRoot)) {
@@ -25,13 +24,9 @@ function walk(dir) {
 
 function isMethodRejectionOnly(block) {
   // Explicit 405 stubs have no data access or side effects and need no role lookup.
-  const compact = block
-    .replace(/export\s+async\s+function\s+[A-Z]+\s*\([^)]*\)\s*\{?/, "")
-    .replace(/\s+/g, " ")
-    .trim();
   return (
-    /return\s+(?:NextResponse\.json|(?:jsonError|errorResponse))\(\s*['"]Method not allowed['"]\s*,\s*405\s*\)/i.test(compact) &&
-    !/(?:createAdminClient|supabaseServerAdminRequest|dispatchGitHubWorkflow|\.insert\s*\(|\.update\s*\(|\.delete\s*\(|\.upsert\s*\(|uploadCloudinaryImage|createPresignedUploadUrl|fetch\s*\()/i.test(compact)
+    /return\s+(?:NextResponse\.json|(?:jsonError|errorResponse))\(\s*['"]Method not allowed['"]\s*,\s*405\s*\)/i.test(block) &&
+    !/(?:createAdminClient|supabaseServerAdminRequest|dispatchGitHubWorkflow|\.insert\s*\(|\.update\s*\(|\.delete\s*\(|\.upsert\s*\(|uploadCloudinaryImage|createPresignedUploadUrl|createVideoGenerationRequest|fetch\s*\()/i.test(block)
   );
 }
 
@@ -44,7 +39,7 @@ if (!routeFiles.length) failures.push("no admin API route files were discovered"
 
 for (const file of routeFiles) {
   const source = readFileSync(file, "utf8");
-  const route = relative(root, file).replaceAll("\\\\", "/");
+  const route = relative(root, file).split(sep).join("/");
   const handlers = [...source.matchAll(/export\s+async\s+function\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\s*\(/g)]
     .filter((match) => methods.has(match[1]));
 
@@ -64,7 +59,6 @@ for (const file of routeFiles) {
 
     if (!gate && isMethodRejectionOnly(block)) {
       methodRejectionCount++;
-      audit.push({ route: label, outcome: "explicit-405" });
       continue;
     }
 
@@ -88,20 +82,16 @@ for (const file of routeFiles) {
       if (candidate && candidate.index < firstPrivilegedIndex) firstPrivilegedIndex = candidate.index;
     }
 
-    if (gate.index > 900) {
-      failures.push(label + ": admin permission guard is too far from the handler entry");
-    }
+    if (gate.index > 900) failures.push(label + ": admin permission guard is too far from the handler entry");
     if (firstPrivilegedIndex !== Infinity && gate.index > firstPrivilegedIndex) {
       failures.push(label + ": protected work begins before authorization");
     }
+
     guardedCount++;
-    audit.push({ route: label, outcome: "guarded", permission: gate[2] || gate[4] || "admin" });
   }
 }
 
-if (handlerCount < routeFiles.length) {
-  failures.push("handler inventory is inconsistent with the route-file inventory");
-}
+if (handlerCount < routeFiles.length) failures.push("handler inventory is inconsistent with the route-file inventory");
 
 if (failures.length) {
   console.error("ADMIN_API_GUARD_CHECK_FAILED");
