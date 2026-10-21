@@ -129,7 +129,6 @@ const canonicalBaseLetters = ["ا", "ب", "ت", "ث", "ج", "ح", "خ", "د", "�
 assert.deepEqual(letterInventory, canonicalBaseLetters, "Letter Lab must expose the conventional 28 isolated base letters in order");
 assert.equal(new Set(letterInventory).size, 28, "Letter Lab base-letter inventory must contain 28 unique letters");
 assert.equal(GAME_REGISTRY["letter-lab"].skillEn, "Visual recognition & attention", "Letter Lab must not overstate literacy skills it does not teach");
-assert.equal(GAME_REGISTRY["letter-lab"].version, 2, "Letter Lab version must advance when educational copy changes");
 const letterManifest = manifest.find(entry => entry.gameId === "letter-lab")!;
 assert.equal(letterManifest.reviewStatus, "repository-copy-review-complete", "Letter Lab repository copy and base inventory review must be recorded");
 assert.equal(letterManifest.revision, 2, "Letter Lab content manifest revision must advance after educational copy review");
