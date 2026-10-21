@@ -26,14 +26,14 @@ Status: **implementation closed** (2026-10-21). The merged implementation passed
 
 ## Phase C — Verified educational content
 
-Status: **in progress**. The per-game provenance manifest and CI contract are merged. A repository-level wording and basic child-safety audit is recorded in `docs/kids-content-editorial-audit-2026-10-21.md`; content without an appropriate source or review sign-off remains flagged rather than labelled approved.
+Status: **in progress**. The per-game provenance manifest and CI contract are merged. The repository audit now checks Letter Lab's 28 isolated base-letter inventory against The Open University's introductory OpenLearn alphabet table, corrects misleading audio/speaking copy, and records a repository-copy review. Formal age-specific curriculum/pedagogy sign-off remains open; repository review is not external education certification.
 
 - Maintain `src/lib/games/content-manifest.ts` with per-game source references, source fields, canonical age groups, learning objectives, review state, and a revision number.
 - CI verifies manifest coverage for every registered game, source record/file existence, structured memory and wudu content, quiz answer bounds, and the shared deduplicated scenario pool.
 - Keep Quran text sourced from the canonical Quran data; do not manually paraphrase or manufacture Quran content for puzzles.
 - Keep wudu and knowledge questions tied to approved educational records.
 - Build Mosque Adventure and ZIKR Road from one shared, source-backed pool of approved child-friendly scenarios; deduplicate prompts and enforce a minimum scenario count in CI.
-- Good Deeds scenarios and Cleanup labels have a repository-level wording/safety review record; this is not external child-development certification. Letter Lab pedagogy remains marked for editorial review. Quran, wudu, and factual quiz records are source-linked but this audit does not independently certify religious authenticity.
+- Good Deeds scenarios and Cleanup labels have a repository-level wording/safety review record; this is not external child-development certification. Letter Lab now has a source-linked 28-letter inventory and visual-copy review, with a manifest revision bump; external age-fit and literacy-method sign-off remains pending. Quran, wudu, and factual quiz records are source-linked but this audit does not independently certify religious authenticity.
 - Acceptance gate: every question or religious-text puzzle has a traceable source, and unavailable source data fails safely.
 
 ## Phase D — Kids section information architecture

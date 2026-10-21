@@ -128,8 +128,8 @@ export function KidsLetterLabGame({
       onSound("miss");
       setFeedback(
         isEnglish
-          ? "Almost! Listen and try again."
-          : "قريبًا! استمع وحاول مرة أخرى."
+          ? "Look closely at the target letter and try again."
+          : "انظر إلى الحرف المطلوب جيدًا وحاول مرة أخرى."
       );
       return;
     }
@@ -187,8 +187,8 @@ export function KidsLetterLabGame({
         title={isEnglish ? "Arabic Letter Lab" : "مختبر الحروف"}
         description={
           isEnglish
-            ? "Recognize Arabic letters through a calm, replayable game."
-            : "تعرّف على الحروف العربية من خلال لعبة هادئة قابلة لإعادة اللعب."
+            ? "Practice visual recognition of isolated Arabic letters in a calm, replayable game."
+            : "تدرّب على التعرّف البصري على أشكال الحروف العربية المفردة في جولات هادئة قابلة لإعادة اللعب."
         }
         right={
           <div className="hidden w-52 sm:block">
@@ -248,8 +248,8 @@ export function KidsLetterLabGame({
         </div>
         <p className="mt-4 text-sm leading-7 text-brand-cream/65">
           {isEnglish
-            ? "Say the letter aloud, then choose the matching card."
-            : "انطق الحرف بصوتك، ثم اختر البطاقة المطابقة."}
+            ? "Look at the target letter, then choose the matching card."
+            : "انظر إلى الحرف المطلوب، ثم اختر البطاقة المطابقة."}
         </p>
         <div className="mx-auto mt-6 grid max-w-xl gap-3 sm:grid-cols-5">
           {choices.map(letter => (

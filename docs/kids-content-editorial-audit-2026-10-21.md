@@ -29,10 +29,14 @@ The 16 items align with the four sorting zones: books, lighting, soft/play items
 
 ### Letter Lab
 
-The instruction previously said “Choose the letter you hear and see” even though the game currently presents a visual target and does not play an audio prompt. The instruction now describes visual letter matching. The letter inventory and the broader teaching approach still need a maintained source/curriculum review before the manifest can call them reviewed.
+The runtime was checked against The Open University's introductory [OpenLearn Arabic alphabet section](https://www.open.edu/openlearn/mod/oucontent/view.php?id=171153&section=3), which lists the 28 independent base-letter forms and recommends learning independent letters before joining them. The game's `LETTERS` sequence contains those 28 base forms in the same order, with no duplicates. This comparison validates the inventory's scope; it does not establish an approved teaching method for ages 3–5.
+
+Two copy mismatches were corrected: the wrong-answer feedback said “Listen and try again” without providing audio, and the instruction said “Say the letter aloud” despite having no speech-detection feature. The runtime and registry now describe the actual interaction: look at a displayed isolated letter and select its visual match. The learning skill was narrowed from “Reading & attention” to “Visual recognition & attention.” The Letter Lab manifest revision is now 2 and the repository copy/inventory review is recorded as `repository-copy-review-complete`.
+
+**Still unresolved:** the game is a visual matching exercise, not a complete alphabet curriculum. It does not teach audio pronunciation, letter names, connected letter forms, or reading words. An Arabic literacy educator still needs to review age fit, progression, and whether the activity should be supplemented with sound/name/form instruction before any broader educational efficacy claim is made.
 
 ## Review status and limitations
 
-This is a source-code wording and basic child-safety review, not a formal child-development evaluation or an independent religious-scholar review. The per-game manifest uses `repository-copy-review-complete` only for Good Deeds and Mosque Cleanup copy reviewed here. Letter Lab remains `editorial-review-required`. Religious wording, Quran text, wudu material, and knowledge-question correctness continue to rely on their existing named source records and canonical Quran retrieval; this review does not independently certify their religious authenticity.
+This is a source-code wording, base-inventory, and basic child-safety review, not a formal child-development evaluation or an independent religious-scholar review. `repository-copy-review-complete` records repository-level copy/inventory review only; it is not external child-development certification or formal curriculum sign-off. Religious wording, Quran text, wudu material, and knowledge-question correctness continue to rely on their existing named source records and canonical Quran retrieval; this review does not independently certify their religious authenticity.
 
 Future text or scenario changes must increment the relevant manifest revision and rerun `pnpm test`.
