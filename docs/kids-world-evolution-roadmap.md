@@ -16,6 +16,8 @@ Status: the core runtime artwork and discovery implementation is present. The re
 
 ## Phase B — Game-by-game gameplay acceptance
 
+Status: **in progress**. Automated difficulty contracts cover all 13 registered games, and delayed transitions use the shared pause-aware timer manager (including Letter Lab). The phase is not closed until hands-on touch-phone, keyboard, and desktop gameplay plus end-to-end result submission are verified.
+
 - Implement localized, game-specific three-step briefings and control guides before runtime mount; the timer and game engine wait for an explicit start action.
 - Let players reopen the same guide from inside a running game; opening help pauses the round and closing it restores the prior pause state.
 - Play-test each of the 13 games on a touch phone, keyboard, and desktop.
