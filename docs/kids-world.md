@@ -108,3 +108,10 @@ The content integrity check `pnpm kids:mosque:check` is part of PR and main veri
 The shared game shell must not repeat the artwork or HUD already rendered inside the game stage. On phones, controls use a two-column touch grid; approved Wudu and Quran wording wraps rather than truncates; Verse Puzzle tokens and Quiz answer cards reflow for small screens; and the daily mission is collapsed below the active game. Native fullscreen respects device safe areas.
 
 The central level system now provides 30 levels per game and difficulty with expanded themed names and deterministic seeds. Verse Puzzle uses exact source text from the canonical Mushaf corpus and has 30 unique references within each difficulty. The additive migration `20261021010000_kids_games_level_catalog_extend_to_30.sql` adds levels 21–30 and catalog metadata without modifying existing player progress or result history.
+
+
+## Kids information architecture
+
+The canonical bilingual section links live in `src/features/kids/data/navigation.ts` and are rendered by `KidsSectionNavigation` from the shared Kids layout. This keeps home, activities, learning, audio, games, creativity, progress, achievements, and family guidance reachable with consistent Arabic/English labels. Keep destinations unique, preserve a direct game-catalogue path, and do not duplicate navigation arrays in page components.
+
+The Kids game catalogue already filters by age group, skill/search terms, category, difficulty, and duration. The landing page must derive its displayed game total from `GAME_REGISTRY`. The `kids-navigation.test.ts` contract verifies the canonical links, direct or dynamic route targets, bilingual copy, catalogue filters, and count consistency. Manual small-screen and child/caregiver usability checks remain part of release acceptance.
