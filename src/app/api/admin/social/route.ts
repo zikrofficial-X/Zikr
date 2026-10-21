@@ -229,23 +229,32 @@ export async function POST(request: NextRequest) {
         if (!retryableStatuses.has(item.status)) continue;
         const platforms = retryPlatforms(item);
         if (platforms.length === 0) {
-          await supabaseServerAdminRequest(
-            `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}`,
-            {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Prefer: "return=minimal",
-              },
-              body: JSON.stringify({
-                status: "published",
-                error_message: null,
-                published_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              }),
-            }
-          );
-          affected += 1;
+          // A retry is complete only when every requested platform has a recorded
+          // successful remote ID. A Facebook auth-block must not be hidden just
+          // because another platform (for example YouTube) succeeded.
+          const targets = item.target_platforms ?? [];
+          const allTargetsSucceeded =
+            targets.length > 0 && targets.every(platform => succeeded.has(platform));
+          if (allTargetsSucceeded) {
+            await supabaseServerAdminRequest(
+              `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}`,
+              {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                  Prefer: "return=minimal",
+                },
+                body: JSON.stringify({
+                  status: "published",
+                  error_message: null,
+                  published_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                }),
+              }
+            );
+            affected += 1;
+          }
+          // Leave partial/failed records unchanged if any target is still blocked.
           continue;
         }
         await supabaseServerAdminRequest(
