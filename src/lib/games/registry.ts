@@ -330,7 +330,7 @@ export const GAME_REGISTRY = {
     skillEn: "Visual recognition & attention",
     storyEn: "Look at the target letter and choose the matching card in every round.",
     runtimeKind: "letter-lab",
-    version: 2,
+    version: 1,
     defaultDifficulty: "easy",
     supportedAgeGroups: ["3-5", "6-8", "9-12"] as const,
     difficulties: ["easy", "normal", "hard"] as const,
