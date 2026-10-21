@@ -121,8 +121,13 @@ async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promi
     const rows = await supabaseServerAdminRequest<Array<{ status: string; video_url: string | null; content: unknown }>>(
       '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(item.content_id) + '&select=status,video_url,content&limit=1',
     );
-    return isVideoQueueItemApprovedForPublishing({ contentType: item.content_type, contentId: item.content_id,
-      queuedVideoUrl: item.video_url, request: rows?.[0] ?? null });
+    return isVideoQueueItemApprovedForPublishing({
+      contentType: item.content_type,
+      contentId: item.content_id,
+      queuedVideoUrl: item.video_url,
+      request: rows?.[0] ?? null,
+      requireApproval: process.env.AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL?.trim().toLowerCase() !== "false",
+    });
   } catch (error) {
     console.error("[social-publishing] Approval lookup failed; holding video item:", item.id, error);
     return false;
