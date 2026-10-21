@@ -71,9 +71,9 @@ jobs:
       VERIFY_VIDEO_RUNTIME_TOOLS: "true"
       # Social publishing is owned by .github/workflows/publish-social.yml.
       SOCIAL_PUBLISH_ENABLED: "false"
-      # Facebook publishing is enabled only when the production environment has both required secrets.
-      # The Admin setting can still disable it at runtime.
-      # Facebook publishing credentials are managed by /admin/social and stored server-side in Supabase.
+      # Generation does not publish social posts directly. The dedicated publisher checks
+      # the OAuth-managed Facebook Page credential stored server-side in Supabase.
+      # The Admin setting remains authoritative for the runtime feature gate.
       SOCIAL_PUBLISH_FACEBOOK_ENABLED: "false"
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
