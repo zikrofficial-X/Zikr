@@ -16,7 +16,7 @@ assert.equal(isFacebookReelsRateLimitResponseError(metaRateLimit), true);
 assert.equal(resolveFacebookReelsRateLimitUntil(metaRateLimit, now), expectedUntil);
 
 const deferred = new Error(
-  \`Facebook Reels publishing paused by Meta rate-limit protection until \${expectedUntil} (code=368). [facebook_reels_rate_limited_until=\${expectedUntil}]\`,
+  `Facebook Reels publishing paused by Meta rate-limit protection until ${expectedUntil} (code=368). [facebook_reels_rate_limited_until=${expectedUntil}]`,
 );
 assert.equal(extractFacebookReelsRateLimitUntil(deferred), expectedUntil);
 assert.equal(isFacebookReelsRateLimitResponseError(deferred), false);
