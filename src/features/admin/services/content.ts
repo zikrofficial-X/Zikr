@@ -16,6 +16,26 @@ export type ManagedContentItem = {
   table: "stories" | "articles" | "competitions" | "memorization_plans" | "pinned_messages";
 };
 
+export type ScheduledContentItem = {
+  id: string;
+  content_table: ManagedContentItem["table"];
+  content_id: string;
+  scheduled_at: string;
+  status: "queued" | "processing" | "published" | "cancelled" | "failed";
+};
+
+export async function getScheduledContent(): Promise<ScheduledContentItem[]> {
+  try {
+    return await supabaseServerAdminRequest<ScheduledContentItem[]>(
+      "/rest/v1/content_publish_queue?status=eq.queued&select=id,content_table,content_id,scheduled_at,status&order=scheduled_at.asc&limit=20",
+      { method: "GET" },
+    );
+  } catch (error) {
+    console.error("[admin/content] failed to load scheduled content:", error);
+    return [];
+  }
+}
+
 export async function getManagedContent(): Promise<ManagedContentItem[]> {
   try {
     const supabase = await createClient();

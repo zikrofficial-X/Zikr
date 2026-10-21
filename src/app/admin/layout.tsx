@@ -4,6 +4,7 @@ import { AdminMobileNav, AdminSidebar, type AdminNavGroup } from "@/features/adm
 import { requireAdmin } from "@/features/admin/services/admin";
 import { hasAdminPermission, type AdminPermission } from "@/features/admin/services/permissions";
 import { ADMIN_NAVIGATION } from "@/features/admin/config/navigation";
+import { AdminPageViewTracker } from "@/features/admin/components/admin-page-view-tracker";
 
 export const metadata: Metadata = {
   title: "لوحة الإدارة | ذِكرٌ",
@@ -26,6 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex min-h-screen bg-brand-emeraldDeep" dir="rtl">
+      <AdminPageViewTracker />
       <AdminSidebar groups={visibleGroups} />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="sticky top-0 z-20 border-b border-brand-gold/10 bg-brand-emeraldDeep/95 px-4 py-3 backdrop-blur-md">

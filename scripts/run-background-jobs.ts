@@ -6,6 +6,7 @@ import {
   seedAutomatedVideoRequests,
 } from "./jobs/template-video-automation";
 import { processSocialPublishQueue } from "./jobs/social-publishing";
+import { processScheduledContent } from "./jobs/content-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
 type VideoAutomationRunNow = {
@@ -345,6 +346,12 @@ async function main() {
   const social = target === "all" || target === "social"
     ? await processSocial(videoSettings)
     : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
+  const scheduledContent = target === "all"
+    ? await processScheduledContent(20).catch((error) => {
+        console.error("[background-jobs] Scheduled content publishing unavailable:", error instanceof Error ? error.message : String(error));
+        return { claimed: 0, published: 0 };
+      })
+    : { claimed: 0, published: 0 };
   const failed = videos.failed + social.failed;
 
   await recordAutomationRun({
@@ -360,7 +367,7 @@ async function main() {
 
   console.log(
     "[background-jobs] Summary:",
-    JSON.stringify({ target, videos, reconciledSocialQueue, social, durationMs: Date.now() - startedAt }, null, 2)
+    JSON.stringify({ target, videos, reconciledSocialQueue, social, scheduledContent, durationMs: Date.now() - startedAt }, null, 2)
   );
 
   if (failed > 0) {
