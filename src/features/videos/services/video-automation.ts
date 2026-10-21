@@ -385,6 +385,46 @@ function isFacebookAuthFailureMessage(error: unknown): boolean {
   );
 }
 
+type FacebookVideoApiResponse = {
+  id?: string;
+  video_id?: string;
+  upload_url?: string;
+  post_id?: string;
+  success?: boolean;
+  message?: string;
+  error?: {
+    message?: string;
+    type?: string;
+    code?: number | string;
+    error_subcode?: number | string;
+    fbtrace_id?: string;
+  };
+};
+
+async function readFacebookApiResponse(response: Response): Promise<FacebookVideoApiResponse> {
+  const body = await response.text().catch(() => "");
+  if (!body) return {};
+  try {
+    return JSON.parse(body) as FacebookVideoApiResponse;
+  } catch {
+    return { message: body.slice(0, 300) };
+  }
+}
+
+function facebookApiFailure(stage: string, status: number, payload: FacebookVideoApiResponse): Error {
+  const provider = payload.error;
+  const message = provider?.message || payload.message;
+  const details = [
+    provider?.type ? `type=${provider.type}` : "",
+    provider?.code !== undefined ? `code=${provider.code}` : "",
+    provider?.error_subcode !== undefined ? `subcode=${provider.error_subcode}` : "",
+    provider?.fbtrace_id ? `trace=${provider.fbtrace_id}` : "",
+  ].filter(Boolean);
+  const responseHint = message ? `: ${message}` : " (Meta did not provide an error message)";
+  const codes = details.length ? ` [${details.join(", ")}]` : "";
+  return new Error(`${stage} failed (HTTP ${status})${responseHint}${codes}`);
+}
+
 export async function publishToFacebook(
   videoId: string,
   metadata: ReturnType<typeof generateFacebookMetadata>,
@@ -415,15 +455,30 @@ export async function publishToFacebook(
         body: startParams,
         signal: AbortSignal.timeout(20_000),
       });
-      const startData = (await startResponse.json().catch(() => ({}))) as { video_id?: string; upload_url?: string; error?: { message?: string } };
-      if (!startResponse.ok || !startData.video_id || !startData.upload_url) throw new Error(`Facebook Reel start failed: ${startData.error?.message ?? `HTTP ${startResponse.status}`}`);
+      const startData = await readFacebookApiResponse(startResponse);
+      if (!startResponse.ok || !startData.video_id || !startData.upload_url) {
+        throw facebookApiFailure("Facebook Reel start", startResponse.status, {
+          ...startData,
+          message: startData.message || (!startData.video_id || !startData.upload_url
+            ? "Meta response omitted video_id or upload_url"
+            : undefined),
+        });
+      }
 
       const uploadResponse = await fetch(startData.upload_url, {
         method: 'POST',
         headers: { Authorization: `OAuth ${pageAccessToken}`, file_url: source },
         signal: AbortSignal.timeout(120_000),
       });
-      if (!uploadResponse.ok) throw new Error(`Facebook Reel upload failed (HTTP ${uploadResponse.status})`);
+      const uploadData = await readFacebookApiResponse(uploadResponse);
+      if (!uploadResponse.ok || uploadData.success !== true) {
+        throw facebookApiFailure("Facebook Reel upload", uploadResponse.status, {
+          ...uploadData,
+          message: uploadData.message || (uploadData.success !== true
+            ? "Meta upload response did not confirm success"
+            : undefined),
+        });
+      }
 
       const finishParams = new URLSearchParams({ upload_phase: 'finish', video_id: startData.video_id, video_state: 'PUBLISHED', title: metadata.title, description: metadata.description, is_ai_generated: 'true', access_token: pageAccessToken });
       const finishResponse = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(actualPageId)}/video_reels`, {
@@ -432,8 +487,15 @@ export async function publishToFacebook(
         body: finishParams,
         signal: AbortSignal.timeout(20_000),
       });
-      const finishData = (await finishResponse.json().catch(() => ({}))) as { success?: boolean; post_id?: string; error?: { message?: string } };
-      if (!finishResponse.ok || finishData.success === false) throw new Error(`Facebook Reel publish failed: ${finishData.error?.message ?? `HTTP ${finishResponse.status}`}`);
+      const finishData = await readFacebookApiResponse(finishResponse);
+      if (!finishResponse.ok || finishData.success !== true) {
+        throw facebookApiFailure("Facebook Reel publish", finishResponse.status, {
+          ...finishData,
+          message: finishData.message || (finishData.success !== true
+            ? "Meta publish response did not confirm success"
+            : undefined),
+        });
+      }
       return finishData.post_id ?? startData.video_id;
     }
 
@@ -444,18 +506,22 @@ export async function publishToFacebook(
       body: params,
       signal: AbortSignal.timeout(120_000),
     });
+    const data = await readFacebookApiResponse(response);
     if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      throw new Error(`Facebook API error (HTTP ${response.status}): ${body.slice(0, 300)}`);
+      throw facebookApiFailure("Facebook video publish", response.status, data);
     }
-    const data = (await response.json()) as { id?: string };
-    return data.id ?? null;
+    if (!data.id) {
+      throw new Error("Facebook video publish succeeded without returning a video ID.");
+    }
+    return data.id;
   } catch (error) {
-    console.error('[video-automation] Failed to publish to Facebook:', error);
-    if (isFacebookAuthFailureMessage(error)) {
-      throw error;
-    }
-    return null;
+    // Preserve the stage-specific Meta error so the queue records the real provider
+    // failure instead of converting every Reels/API error into an opaque null result.
+    console.error(
+      '[video-automation] Failed to publish to Facebook:',
+      error instanceof Error ? error.message : String(error),
+    );
+    throw error;
   }
 }
 
