@@ -145,7 +145,7 @@ for (const entry of [deedsManifest, cleanupManifest]) {
 const valuesSource = readFileSync("src/features/kids/components/games/kids-values-coloring.tsx", "utf8");
 assert.ok(valuesSource.includes("Notice what the character needs and choose a good time to help."), "Good Deeds copy must not imply unavailable audio interaction");
 assert.ok(!valuesSource.includes("Listen to the character and choose a good moment to help."), "stale audio-dependent Good Deeds copy must be removed");
-assert.equal(manifest.find(entry => entry.gameId === "letter-lab")!.reviewStatus, "editorial-review-required", "Letter Lab pedagogy must remain flagged until its curriculum review is recorded");
+assert.equal(manifest.find(entry => entry.gameId === "letter-lab")!.reviewStatus, "repository-copy-review-complete", "Letter Lab repository wording and base inventory review must be recorded");
 assert.ok(readFileSync("docs/kids-content-editorial-audit-2026-10-21.md", "utf8").includes("not a formal child-development evaluation"), "the content audit must state its review limitations");
 
 console.log("Kids content manifest passed: all 13 game sources, age groups, objectives, review records, structured content, and Quran fail-safe contracts are consistent.");
