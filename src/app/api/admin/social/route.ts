@@ -233,6 +233,7 @@ export async function POST(request: NextRequest) {
           // successful remote ID. A Facebook auth-block must not be hidden just
           // because another platform (for example YouTube) succeeded.
           const targets = item.target_platforms ?? [];
+          const succeeded = successfulPlatforms(item.metadata);
           const allTargetsSucceeded =
             targets.length > 0 && targets.every(platform => succeeded.has(platform));
           if (allTargetsSucceeded) {
