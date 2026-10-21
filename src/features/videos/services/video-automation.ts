@@ -1,15 +1,15 @@
 import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
 import { getServerEnv } from '@/lib/env';
 import {
-  clearFacebookReelsRateLimit,
   getFacebookPageCredentials,
-  recordFacebookReelsRateLimit,
+  setFacebookReelsNextAllowedAt,
 } from '@/features/social/services/facebook-credentials';
 import {
+  FACEBOOK_REELS_MIN_POST_INTERVAL_MS,
   FACEBOOK_REELS_RATE_LIMIT_COOLDOWN_MS,
-  facebookReelsRateLimitDeferredError,
+  facebookReelsCooldownDeferredError,
   isFacebookReelsRateLimitResponseError,
-  resolveFacebookReelsRateLimitUntil,
+  resolveFacebookReelsNextAllowedAt,
 } from '@/features/social/services/facebook-reels-rate-limit';
 import type { VideoGenerationRequest } from '@/lib/types/video';
 
@@ -442,10 +442,10 @@ export async function publishToFacebook(
     if (!pageAccessToken || !actualPageId) {
       throw new Error("Facebook Page credentials are incomplete. Reconnect the Page from the admin publishing center.");
     }
-    if (asReel && credentials.reelsRateLimitedUntil) {
+    if (asReel && credentials.reelsNextAllowedAt) {
       const cooldownUntil = Date.parse(credentials.reelsRateLimitedUntil);
       if (Number.isFinite(cooldownUntil) && cooldownUntil > Date.now()) {
-        throw facebookReelsRateLimitDeferredError(credentials.reelsRateLimitedUntil);
+        throw facebookReelsCooldownDeferredError(credentials.reelsRateLimitedUntil);
       }
     }
     const source = assertRemoteVideoUrl(videoUrl, 'Facebook');
@@ -500,7 +500,11 @@ export async function publishToFacebook(
             : undefined),
         });
       }
-      await clearFacebookReelsRateLimit();
+      // Pace Reels to at most one per scheduled publisher run. Meta has already
+      // applied a rate restriction, so do not send a burst immediately after recovery.
+      await setFacebookReelsNextAllowedAt(
+        new Date(Date.now() + FACEBOOK_REELS_MIN_POST_INTERVAL_MS).toISOString(),
+      );
       return finishData.post_id ?? startData.video_id;
     }
 
@@ -521,10 +525,10 @@ export async function publishToFacebook(
     return data.id;
   } catch (error) {
     if (asReel && isFacebookReelsRateLimitResponseError(error)) {
-      const rateLimitedUntil = resolveFacebookReelsRateLimitUntil(error)
+      const rateLimitedUntil = resolveFacebookReelsNextAllowedAt(error)
         ?? new Date(Date.now() + FACEBOOK_REELS_RATE_LIMIT_COOLDOWN_MS).toISOString();
       try {
-        await recordFacebookReelsRateLimit(rateLimitedUntil);
+        await setFacebookReelsNextAllowedAt(rateLimitedUntil);
       } catch {
         // Keep the external provider failure visible even if cooldown persistence fails.
         console.error('[video-automation] Unable to persist the Facebook Reels rate-limit cooldown.');
