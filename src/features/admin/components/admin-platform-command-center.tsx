@@ -13,10 +13,15 @@ async function loadAdminSnapshotSafely(): Promise<AdminSnapshot> {
   } catch (error) {
     console.error("[admin] failed to load platform command center snapshot", error);
     const unavailableTables = [
-      ["profiles", "المستخدمون"], ["articles", "المقالات"], ["stories", "القصص"],
-      ["content_library", "مكتبة المحتوى"], ["videos", "الفيديوهات"], ["hadiths", "الأحاديث"],
-      ["duas", "الأدعية"], ["prophets", "الأنبياء"], ["companions", "الصحابة"],
-      ["scholars", "العلماء"], ["kids_content", "محتوى الأطفال"], ["media_assets", "الوسائط"],
+      ["articles", "المقالات"], ["stories", "القصص"], ["content_library", "مكتبة المحتوى"],
+      ["hadiths", "الأحاديث"], ["duas", "الأدعية"], ["prophets", "الأنبياء"],
+      ["companions", "الصحابة"], ["scholars", "العلماء"], ["quran_surahs", "السور القرآنية"],
+      ["quran_reciters", "القراء"], ["quran_audio", "ملفات التلاوة"], ["tawasheeh", "التواشيح"],
+      ["site_audio_assets", "مكتبة صوت الموقع"], ["kids_content", "محتوى الأطفال"],
+      ["kids_games", "الألعاب"], ["kids_game_levels", "مستويات الألعاب"],
+      ["videos", "الفيديوهات"], ["media_assets", "أصول الوسائط"], ["profiles", "المستخدمون"],
+      ["video_generation_requests", "طلبات الفيديو"], ["social_publish_queue", "عناصر النشر الاجتماعي"],
+      ["admin_audit_events", "سجلات التدقيق"],
     ] as const;
     return {
       counts: unavailableTables.map(([table, label]) => ({ table, label, count: null, state: "unavailable" as const })),
@@ -71,6 +76,39 @@ export async function AdminPlatformCommandCenter() {
     socialPublish: "طابور النشر الاجتماعي",
   };
   const outcomeLabels: Record<string, string> = { success: "ناجح", denied: "مرفوض", failed: "فشل" };
+
+  const countSections: Array<{ key: string; title: string; description: string; tables: string[] }> = [
+    {
+      key: "content",
+      title: "المحتوى والمعرفة",
+      description: "الأقسام المعرفية الرئيسية، وتشمل المنشور والمسودات.",
+      tables: ["articles", "stories", "content_library", "hadiths", "duas", "prophets", "companions", "scholars"],
+    },
+    {
+      key: "quran-audio",
+      title: "القرآن والصوت",
+      description: "السور، القراء، ملفات التلاوة، التواشيح، والأصول الصوتية.",
+      tables: ["quran_surahs", "quran_reciters", "quran_audio", "tawasheeh", "site_audio_assets"],
+    },
+    {
+      key: "kids",
+      title: "الأطفال والألعاب",
+      description: "محتوى الأطفال والألعاب ومراحل اللعب المسجلة.",
+      tables: ["kids_content", "kids_games", "kids_game_levels"],
+    },
+    {
+      key: "media",
+      title: "الفيديو والوسائط",
+      description: "الفيديوهات المنشورة وسجل أصول الوسائط.",
+      tables: ["videos", "media_assets"],
+    },
+    {
+      key: "operations",
+      title: "المستخدمون والتشغيل",
+      description: "الحسابات، طلبات التوليد، النشر الاجتماعي، وسجل التدقيق.",
+      tables: ["profiles", "video_generation_requests", "social_publish_queue", "admin_audit_events"],
+    },
+  ];
 
   return (
     <div className="space-y-8" dir="rtl">
@@ -216,18 +254,40 @@ export async function AdminPlatformCommandCenter() {
           })}
         </div>      </section>
 
-      <section>
-        <h2 className="mb-4 text-xl font-bold text-brand-gold">جرد البيانات</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-          {snapshot.counts.map((value) => (
-            <div key={value.table} className={`rounded-2xl border p-4 ${value.count === null ? "border-red-500/15 bg-red-500/5" : "border-brand-gold/8 bg-black/10"}`}>
-              <p className="text-xs text-brand-cream/35">{value.label}</p>
-              <p className="mt-1 text-xl font-bold text-brand-cream">
-                {value.count === null ? "غير متاح" : value.count.toLocaleString("ar-EG-u-nu-latn")}
-              </p>
-            </div>
-          ))}
-        </div>
+      <section className="space-y-5">
+        <header>
+          <h2 className="text-xl font-bold text-brand-gold">جرد المنصة حسب المجال</h2>
+          <p className="mt-1 max-w-4xl text-sm leading-6 text-brand-cream/40">
+            أعداد من قاعدة البيانات الفعلية، منظّمة بحسب وظيفة كل جزء من المنصة. الأرقام تمثل السجلات ولا تعني وحدها أن كل عنصر منشور أو معتمد.
+          </p>
+        </header>
+        {countSections.map((section) => {
+          const values = snapshot.counts.filter((value) => section.tables.includes(value.table));
+          if (!values.length) return null;
+          return (
+            <section key={section.key} className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-brand-cream">{section.title}</h3>
+                  <p className="mt-1 text-xs text-brand-cream/35">{section.description}</p>
+                </div>
+                <span className="rounded-full border border-brand-gold/10 px-2.5 py-1 text-[10px] text-brand-cream/40">
+                  {values.length} مؤشر
+                </span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+                {values.map((value) => (
+                  <div key={value.table} className={`min-w-0 rounded-2xl border p-4 ${value.count === null ? "border-red-500/15 bg-red-500/5" : "border-brand-gold/8 bg-black/10"}`}>
+                    <p className="text-xs leading-5 text-brand-cream/40">{value.label}</p>
+                    <p className="mt-1 text-xl font-bold tabular-nums text-brand-cream">
+                      {value.count === null ? "غير متاح" : value.count.toLocaleString("ar-EG-u-nu-latn")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </section>
 
       <p className="text-center text-xs text-brand-cream/20">آخر تحديث للبيانات: {new Date(snapshot.generatedAt).toLocaleString("ar-EG-u-nu-latn")}</p>
