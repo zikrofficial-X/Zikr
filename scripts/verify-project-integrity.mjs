@@ -128,7 +128,7 @@ const platformPageRoutes = platformRouteFiles.filter((file) => file.endsWith('/p
 const platformApiRoutes = platformRouteFiles.filter((file) => file.endsWith('/route.ts')).length;
 // Keep this baseline synchronized with the verified route inventory; update it deliberately when canonical routes are added or retired.
 const EXPECTED_PLATFORM_PAGES = 127;
-const EXPECTED_PLATFORM_APIS = 72;
+const EXPECTED_PLATFORM_APIS = 73;
 if (platformPageRoutes !== EXPECTED_PLATFORM_PAGES || platformApiRoutes !== EXPECTED_PLATFORM_APIS) {
   warnings.push('Platform route inventory changed: expected ' + EXPECTED_PLATFORM_PAGES + ' pages + ' + EXPECTED_PLATFORM_APIS + ' APIs, found ' + platformPageRoutes + ' pages + ' + platformApiRoutes + ' APIs.');
 }
