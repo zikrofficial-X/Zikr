@@ -55,18 +55,28 @@ export type AdminHealth = {
 };
 
 const COUNT_TABLES: Array<{ table: string; label: string }> = [
-  { table: "profiles", label: "المستخدمون" },
   { table: "articles", label: "المقالات" },
   { table: "stories", label: "القصص" },
   { table: "content_library", label: "مكتبة المحتوى" },
-  { table: "videos", label: "الفيديوهات" },
   { table: "hadiths", label: "الأحاديث" },
   { table: "duas", label: "الأدعية" },
   { table: "prophets", label: "الأنبياء" },
   { table: "companions", label: "الصحابة" },
   { table: "scholars", label: "العلماء" },
+  { table: "quran_surahs", label: "السور القرآنية" },
+  { table: "quran_reciters", label: "القراء" },
+  { table: "quran_audio", label: "ملفات التلاوة" },
+  { table: "tawasheeh", label: "التواشيح" },
+  { table: "site_audio_assets", label: "مكتبة صوت الموقع" },
   { table: "kids_content", label: "محتوى الأطفال" },
-  { table: "media_assets", label: "الوسائط" },
+  { table: "kids_games", label: "الألعاب" },
+  { table: "kids_game_levels", label: "مستويات الألعاب" },
+  { table: "videos", label: "الفيديوهات" },
+  { table: "media_assets", label: "أصول الوسائط" },
+  { table: "profiles", label: "المستخدمون" },
+  { table: "video_generation_requests", label: "طلبات الفيديو" },
+  { table: "social_publish_queue", label: "عناصر النشر الاجتماعي" },
+  { table: "admin_audit_events", label: "سجلات التدقيق" },
 ];
 
 async function safeCount(table: string): Promise<number | null> {
