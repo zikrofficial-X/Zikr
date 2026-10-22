@@ -171,7 +171,7 @@ export function AnalyticsDashboard({ data }: { data: AdminAnalytics }) {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
-        <Card className="overflow-hidden p-0">
+        <Card className="overflow-x-auto p-0">
           <div className="flex items-center justify-between border-b border-brand-gold/10 px-5 py-4">
             <div>
               <h2 className="font-bold text-brand-gold">الأداء التحريري</h2>
