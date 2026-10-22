@@ -4,6 +4,7 @@ import { ADMIN_NAVIGATION } from "@/features/admin/config/navigation";
 import { getCurrentProfile } from "@/features/admin/services/admin";
 import { hasAdminPermission } from "@/features/admin/services/permissions";
 import { deleteFailedVideoGenerationAction } from "@/features/admin/actions/video";
+import { AdminModuleDirectory } from "@/features/admin/components/admin-module-directory";
 
 type AdminSnapshot = Awaited<ReturnType<typeof getAdminSnapshot>>;
 
@@ -59,7 +60,36 @@ export async function AdminPlatformCommandCenter() {
     }))
     .filter((group) => group.items.length > 0);
   const availableHrefs = new Set(availableGroups.flatMap((group) => group.items.map((item) => item.href)));
-  const groups = availableGroups.filter((group) => group.key !== "operations");
+  const canReadAudit = hasAdminPermission(role, "audit.read");
+  const canReadSocialQueue = hasAdminPermission(role, "social.manage");
+  const canReadVideoQueue = hasAdminPermission(role, "video.manage");
+  const visibleMetrics = snapshot.metrics.filter((metric) => {
+    if (metric.key === "auditFailures") return canReadAudit;
+    if (metric.key === "social") return canReadSocialQueue;
+    if (metric.key === "video") return canReadVideoQueue;
+    if (metric.key === "drafts") {
+      return hasAdminPermission(role, "content.manage") ||
+        hasAdminPermission(role, "library.manage") ||
+        hasAdminPermission(role, "knowledge.manage");
+    }
+    return true;
+  });
+  const availableRoute = (...routes: string[]) => routes.find((href) => availableHrefs.has(href));
+  const metricValue = (key: string) => snapshot.metrics.find((metric) => metric.key === key)?.value ?? null;
+  type AttentionItem = { key: string; title: string; description: string; count: number | null; href: string | undefined; tone: "warning" | "danger" };
+  const attentionCandidates: AttentionItem[] = [
+    { key: "drafts", title: "محتوى ينتظر المراجعة", description: "راجع المسودات والعناصر التي لم تكتمل موافقتها.", count: metricValue("drafts"), href: availableRoute("/admin/editorial", "/admin/library", "/admin/content"), tone: "warning" },
+    { key: "social", title: "منشورات فاشلة", description: "تحقق من سبب الفشل قبل إعادة محاولة النشر.", count: canReadSocialQueue ? snapshot.queues.socialFailed : null, href: availableRoute("/admin/social"), tone: "danger" },
+    { key: "video", title: "طلبات فيديو فاشلة", description: "افحص الطلبات قبل إعادة المحاولة أو تنظيفها.", count: canReadVideoQueue ? snapshot.queues.videoFailed : null, href: availableRoute("/admin/video-factory/queue", "/admin/video-factory", "/admin/ai-video"), tone: "danger" },
+    { key: "audit", title: "عمليات إدارية فاشلة", description: "راجع حالات الفشل الظاهرة ضمن أحدث أحداث التدقيق.", count: canReadAudit ? metricValue("auditFailures") : null, href: canReadAudit ? availableRoute("/admin/audit") : undefined, tone: "warning" },
+  ];
+  const attentionItems = attentionCandidates.filter(
+    (item): item is AttentionItem & { count: number; href: string } =>
+      typeof item.count === "number" && item.count > 0 && typeof item.href === "string",
+  );
+  const queueEntries = Object.entries(snapshot.queues).filter(([key]) =>
+    key.startsWith("social") ? canReadSocialQueue : canReadVideoQueue,
+  );
   const quickActionCandidates: Array<[string, string, string]> = [
     ["إدارة المحتوى", "/admin/content", "راجع المحتوى والمسودات"],
     ["تحليلات المنصة", "/admin/analytics", "تابع الاستخدام والنمو"],
@@ -143,7 +173,7 @@ export async function AdminPlatformCommandCenter() {
       ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {snapshot.metrics.map((metric) => (
+        {visibleMetrics.map((metric) => (
           <div
             key={metric.key}
             className={`rounded-2xl border p-5 ${metric.tone === "danger" ? "border-red-500/25 bg-red-500/10 text-red-200" : metric.tone === "warning" ? "border-amber-500/20 bg-amber-500/5 text-amber-200" : metric.tone === "success" ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-200" : "border-brand-gold/10 bg-black/15 text-brand-cream"}`}
@@ -154,22 +184,52 @@ export async function AdminPlatformCommandCenter() {
         ))}
       </section>
 
+      {attentionItems.length > 0 ? (
+        <section className="space-y-3" aria-labelledby="admin-attention-heading">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 id="admin-attention-heading" className="text-lg font-bold text-brand-gold">تحتاج متابعة</h2>
+              <p className="mt-1 text-xs text-brand-cream/40">مهام مبنية على بيانات الطوابير والمراجعة المتاحة لهذا الدور.</p>
+            </div>
+            <span className="rounded-full border border-amber-400/20 px-2.5 py-1 text-[10px] text-amber-200">{attentionItems.length} تنبيه</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {attentionItems.map((item) => (
+              <Link key={item.key} href={item.href} className={"rounded-2xl border p-4 transition hover:bg-white/[0.03] " + (item.tone === "danger" ? "border-red-500/20 bg-red-500/5" : "border-amber-400/20 bg-amber-400/5")}>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-brand-cream/85">{item.title}</p>
+                  <span className={"rounded-lg px-2 py-1 text-sm font-bold tabular-nums " + (item.tone === "danger" ? "bg-red-500/10 text-red-200" : "bg-amber-400/10 text-amber-200")}>{item.count.toLocaleString("ar-EG-u-nu-latn")}</span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-brand-cream/45">{item.description}</p>
+                <span className="mt-3 inline-flex text-xs font-semibold text-brand-gold">فتح صفحة المعالجة ←</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : snapshot.unavailable.length === 0 ? (
+        <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-200/80" role="status">
+          لا توجد عناصر حرجة تحتاج متابعة بحسب البيانات المتاحة حالياً.
+        </div>
+      ) : null}
+
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-3xl border border-brand-gold/10 bg-black/15 p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-bold text-brand-gold">حالة الطوابير</h2>
-            <Link href="/admin/health" className="text-xs text-brand-cream/40 hover:text-brand-gold">تفاصيل الصحة</Link>
+            {hasAdminPermission(role, "system.manage") ? <Link href="/admin/health" className="text-xs text-brand-cream/40 hover:text-brand-gold">تفاصيل الصحة</Link> : null}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {Object.entries(snapshot.queues).map(([key, value]) => (
+            {queueEntries.map(([key, value]) => (
               <div key={key} className="rounded-xl border border-brand-gold/8 bg-black/10 p-3">
                 <p className="text-[11px] text-brand-cream/35">{queueLabels[key] ?? key}</p>
                 <p className="mt-1 text-xl font-bold text-brand-cream">{value === null ? "غير متاح" : value.toLocaleString("ar-EG-u-nu-latn")}</p>
               </div>
             ))}
           </div>
+          {queueEntries.length === 0 ? <p className="mt-3 text-xs text-brand-cream/40">لا توجد طوابير متاحة لصلاحيات حسابك.</p> : null}
         </div>
 
+        {canReadAudit ? (
         <div className="rounded-3xl border border-brand-gold/10 bg-black/15 p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-bold text-brand-gold">آخر عمليات الإدارة</h2>
@@ -188,9 +248,15 @@ export async function AdminPlatformCommandCenter() {
             {snapshot.audit.length === 0 && <p className="text-sm text-brand-cream/35">{snapshot.unavailable.includes("سجل التدقيق") || snapshot.unavailable.includes("طوابير التشغيل وسجل التدقيق") ? "تعذر قراءة سجل التدقيق؛ لا يمكن تأكيد وجود عمليات حديثة أو عدمها." : "لا توجد عمليات حديثة مسجلة."}</p>}
           </div>
         </div>
+        ) : (
+          <div className="rounded-3xl border border-brand-gold/10 bg-black/15 p-6">
+            <h2 className="text-lg font-bold text-brand-gold">سجل التدقيق</h2>
+            <p className="mt-2 text-sm leading-6 text-brand-cream/40">لا يعرض هذا الدور تفاصيل العمليات الإدارية. يلزم وجود صلاحية قراءة سجل التدقيق.</p>
+          </div>
+        )}
       </section>
 
-      {failedVideoJobs > 0 && (
+      {failedVideoJobs > 0 && hasAdminPermission(role, "video.delete") && (
         <section className="rounded-3xl border border-red-500/15 bg-red-500/5 p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -206,53 +272,7 @@ export async function AdminPlatformCommandCenter() {
         </section>
       )}
 
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-xl font-bold text-brand-gold">مراكز الإدارة</h2>
-          <p className="mt-1 text-sm text-brand-cream/40">الصفحات هنا تشير إلى الوحدات الفعلية المسجلة في نظام الصلاحيات.</p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-          {groups.map((group) => {
-            const primaryItems = group.items.slice(0, 3);
-            const secondaryItems = group.items.slice(3);
-            return (
-              <article key={group.key} className="min-w-0 rounded-2xl border border-brand-gold/10 bg-black/10 p-4 sm:p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="break-words font-bold text-brand-gold">{group.label}</h3>
-                    <p className="mt-1 text-xs text-brand-cream/35">روابط القسم حسب صلاحيات حسابك</p>
-                  </div>
-                  <span className="shrink-0 rounded-full border border-brand-gold/10 px-2 py-1 text-[10px] text-brand-cream/45">
-                    {group.items.length} صفحة
-                  </span>
-                </div>
-                <div className="mt-4 space-y-1.5">
-                  {primaryItems.map((item) => (
-                    <Link key={item.href} href={item.href} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm text-brand-cream/70 transition hover:border-brand-gold/15 hover:bg-brand-gold/5 hover:text-brand-gold">
-                      <span className="min-w-0 break-words">{item.label}</span>
-                      <span className="shrink-0 text-[10px] text-brand-cream/25" dir="ltr">{item.href}</span>
-                    </Link>
-                  ))}
-                </div>
-                {secondaryItems.length > 0 && (
-                  <details className="mt-3 border-t border-brand-gold/10 pt-3">
-                    <summary className="cursor-pointer list-none rounded-lg px-3 py-2 text-xs font-semibold text-brand-gold/70 transition hover:bg-brand-gold/5 hover:text-brand-gold">
-                      عرض باقي الصفحات ({secondaryItems.length})
-                    </summary>
-                    <div className="mt-1 space-y-1">
-                      {secondaryItems.map((item) => (
-                        <Link key={item.href} href={item.href} className="flex min-w-0 items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs text-brand-cream/60 transition hover:bg-brand-gold/5 hover:text-brand-gold">
-                          <span className="min-w-0 break-words">{item.label}</span>
-                          <span className="shrink-0 text-[10px] text-brand-cream/25" dir="ltr">{item.href}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  </details>
-                )}
-              </article>
-            );
-          })}
-        </div>      </section>
+      <AdminModuleDirectory groups={availableGroups} />
 
       <section className="space-y-5">
         <header>
