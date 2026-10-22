@@ -75,7 +75,7 @@ export async function registerAction(formData: FormData): Promise<AuthActionResu
   if (!isStrongPassword(password)) {
     return {
       ok: false,
-      message: `كلمة المرور يجب أن تكون من ${MIN_PASSWORD_LENGTH} إلى ${MAX_PASSWORD_LENGTH} حرفاً، وتتضمن رقماً ورمزاً خاصاً.`,
+      message: 'كلمة المرور يجب أن تكون من ' + MIN_PASSWORD_LENGTH + ' إلى ' + MAX_PASSWORD_LENGTH + ' حرفاً، وتتضمن رقماً ورمزاً خاصاً.',
     };
   }
 
@@ -150,6 +150,59 @@ export async function registerAction(formData: FormData): Promise<AuthActionResu
   } catch (error) {
     console.error('[auth] registerAction error:', error);
     return { ok: false, message: 'تعذر إنشاء الحساب. حاول مرة أخرى.' };
+  }
+}
+
+export async function updatePasswordAction(formData: FormData): Promise<AuthActionResult> {
+  const password = String(formData.get('password') || '');
+
+  if (!isStrongPassword(password)) {
+    return {
+      ok: false,
+      message: 'كلمة المرور يجب أن تكون من ' + MIN_PASSWORD_LENGTH + ' إلى ' + MAX_PASSWORD_LENGTH + ' حرفاً، وتتضمن رقماً ورمزاً خاصاً.',
+    };
+  }
+
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return {
+        ok: false,
+        message: 'انتهت جلسة إعادة تعيين كلمة المرور. اطلب رابطاً جديداً ثم حاول مرة أخرى.',
+      };
+    }
+
+    try {
+      const pwned = await isPwnedPassword(password);
+      if (pwned) {
+        return {
+          ok: false,
+          message: 'كلمة المرور ظهرت في تسريبات سابقة. اختر كلمة مرور أخرى غير مستخدمة من قبل.',
+        };
+      }
+    } catch (error) {
+      // Keep password changes available if the optional breach-check service is unavailable.
+      console.warn('[auth] password-reset breach check unavailable:', error);
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    if (updateError) {
+      const normalizedError = updateError.message.toLowerCase();
+      if (normalizedError.includes('password')) {
+        return {
+          ok: false,
+          message: 'كلمة المرور غير مقبولة. استخدم كلمة مرور أقوى وحاول مرة أخرى.',
+        };
+      }
+      console.error('[auth] updatePasswordAction Supabase error:', updateError.message, updateError.status);
+      return { ok: false, message: 'تعذر تحديث كلمة المرور. اطلب رابط إعادة تعيين جديداً وحاول مرة أخرى.' };
+    }
+
+    return { ok: true, message: 'تم تحديث كلمة المرور بنجاح.' };
+  } catch (error) {
+    console.error('[auth] updatePasswordAction error:', error);
+    return { ok: false, message: 'تعذر تحديث كلمة المرور. اطلب رابط إعادة تعيين جديداً وحاول مرة أخرى.' };
   }
 }
 
