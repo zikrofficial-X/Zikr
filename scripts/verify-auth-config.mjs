@@ -11,6 +11,9 @@ const enhanced = read("src/lib/auth-enhanced.ts");
 const callback = read("src/app/auth/callback/route.ts");
 const googleRoute = read("src/features/auth/integrations/google-oauth.ts");
 const proxy = read("proxy.ts");
+const authActions = read("src/features/auth/actions.ts");
+const resetPasswordPage = read("src/features/auth/components/reset-password-page.tsx");
+const pwnedPassword = read("src/lib/security/pwned-password.ts");
 const button = read("src/features/auth/components/google-oauth-button.tsx");
 const native = read("src/components/layout/native-google-oauth-handler.tsx");
 
@@ -59,6 +62,18 @@ requireText("Google route", googleRoute, 'url.searchParams.set("native", "1")');
 requireText("browser Google button", button, "PKCE verifier cookies are scoped to the current browser origin");
 requireText("Google route", googleRoute, "The PKCE verifier is written to the response origin");
 requireText("proxy", proxy, "getCanonicalAuthBaseUrl");
+
+requireText("password update action", authActions, "export async function updatePasswordAction(formData: FormData)");
+requireText("password update action", authActions, "await supabase.auth.getUser()");
+requireText("password update action", authActions, "await isPwnedPassword(password)");
+requireText("password update action", authActions, "supabase.auth.updateUser({ password })");
+requireText("password reset page", resetPasswordPage, "updatePasswordAction(formData)");
+requireText("HIBP range checker", pwnedPassword, "https://api.pwnedpasswords.com/range/");
+requireText("HIBP range checker", pwnedPassword, "body.split(/\\r?\\n/u)");
+if (resetPasswordPage.includes("createClient from '@/lib/supabase/client'")) {
+  failures.push("password reset page must not bypass server-side password screening");
+}
+
 
 if (config.includes(supabaseProvider)) {
   failures.push("supabase/config.toml: provider callback must not be placed in the application redirect allowlist as AUTH_CALLBACK_URL");

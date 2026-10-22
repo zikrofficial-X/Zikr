@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
-import { createClient } from '@/lib/supabase/client';
+import { updatePasswordAction } from '@/features/auth/actions';
 
 const MIN_PASSWORD_LENGTH = 12;
 const MAX_PASSWORD_LENGTH = 128;
@@ -41,11 +41,12 @@ function ResetForm() {
     setError('');
 
     try {
-      const supabase = createClient();
-      const { error: updateError } = await supabase.auth.updateUser({ password });
+      const formData = new FormData();
+      formData.set('password', password);
+      const result = await updatePasswordAction(formData);
 
-      if (updateError) {
-        setError(updateError.message || 'حدث خطأ أثناء تحديث كلمة المرور');
+      if (!result.ok) {
+        setError(result.message);
         setLoading(false);
         return;
       }

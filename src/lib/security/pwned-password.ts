@@ -27,7 +27,7 @@ export async function isPwnedPassword(password: string): Promise<boolean> {
   }
 
   const body = await response.text();
-  for (const line of body.split('\r\n')) {
+  for (const line of body.split(/\r?\n/u)) {
     const [returnedSuffix, count] = line.split(':');
     if (returnedSuffix?.toUpperCase() === suffix) {
       return Number.parseInt(count ?? '0', 10) > 0;
