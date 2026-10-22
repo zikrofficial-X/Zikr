@@ -25,6 +25,7 @@ const analytics = read("src/app/admin/analytics/page.tsx");
 const analyticsDashboard = read("src/app/admin/analytics/analytics-dashboard.tsx");
 const securityService = read("src/features/admin/services/security.ts");
 const auditService = read("src/features/admin/services/audit.ts");
+const editorialActions = read("src/app/admin/editorial-actions.ts");
 const docs = read("docs/admin/ADMIN_CONSOLE_GOVERNANCE.md");
 const packageJson = JSON.parse(read("package.json"));
 
@@ -90,6 +91,8 @@ if (!dashboard.includes("AdminModuleDirectory groups={availableGroups}")) failur
 if (!moduleDirectory.includes("FAVORITES_KEY") || !moduleDirectory.includes("RECENTS_KEY") || !moduleDirectory.includes("visibleGroups")) failures.push("admin directory must provide favorites, recent pages, and searchable group filtering");
 if (!dashboard.includes('hasAdminPermission(role, "audit.read")') || !dashboard.includes('hasAdminPermission(role, "social.manage")') || !dashboard.includes('hasAdminPermission(role, "video.manage")')) failures.push("audit and queue operational details must respect admin role permissions");
 if (!dashboard.includes("attentionItems.length > 0")) failures.push("dashboard must display actionable attention items based on operational counts");
+if (!editorialActions.includes("enforceEditorialRateLimit") || !editorialActions.includes("EDITORIAL_RATE_LIMIT_MESSAGE") || !editorialActions.includes("editorialError(EDITORIAL_RATE_LIMIT_MESSAGE)")) failures.push("expected editorial rate-limit denials must redirect to a visible message instead of surfacing as runtime exceptions");
+if (editorialActions.includes('await enforceAdminRateLimit(admin, "editorial.')) failures.push("editorial actions must not expose expected rate-limit denials as unhandled exceptions");
 if (!analytics.includes("topArticles.filter((article) => article.views > 0)")) failures.push("analytics must not rank articles whose view counts are all zero");
 if (!analyticsDashboard.includes("grid-cols-2") || !analyticsDashboard.includes("overflow-x-auto")) failures.push("analytics content and rankings must remain usable on mobile screens");
 if (analytics.includes('href="/admin/videos"')) failures.push("analytics page must not link to the retired non-canonical video route");

@@ -20,9 +20,28 @@ function editorialError(message: string) {
   redirect(`/admin/editorial?error=${encodeURIComponent(message)}`);
 }
 
+const EDITORIAL_RATE_LIMIT_MESSAGE = "تم تجاوز حد العمليات مؤقتًا. انتظر قليلًا ثم أعد المحاولة.";
+
+async function enforceEditorialRateLimit(
+  admin: Awaited<ReturnType<typeof requireAdminStepUp>>,
+  bucket: string,
+  limit: number,
+  windowSeconds: number,
+) {
+  try {
+    await enforceAdminRateLimit(admin, bucket, limit, windowSeconds);
+  } catch (error) {
+    if (error instanceof Error && error.message === EDITORIAL_RATE_LIMIT_MESSAGE) {
+      editorialError(EDITORIAL_RATE_LIMIT_MESSAGE);
+    }
+    // Infrastructure failures remain visible to monitoring; only expected denials become a UI message.
+    throw error;
+  }
+}
+
 export async function changeEditorialReviewStatusAction(formData: FormData) {
   const admin = await requireAdminStepUp("knowledge.manage", "/admin/editorial");
-  await enforceAdminRateLimit(admin, "editorial.review", 30, 60);
+  await enforceEditorialRateLimit(admin, "editorial.review", 30, 60);
   const { id, updatedAt } = target(formData);
   const status = String(formData.get("status") ?? "").trim();
   if (!REVIEW_STATES.has(status)) editorialError("حالة مراجعة غير صالحة.");
@@ -64,7 +83,7 @@ export async function changeEditorialReviewStatusAction(formData: FormData) {
 
 export async function publishApprovedContentAction(formData: FormData) {
   const admin = await requireAdminStepUp("content.publish", "/admin/editorial");
-  await enforceAdminRateLimit(admin, "editorial.publish", 10, 60);
+  await enforceEditorialRateLimit(admin, "editorial.publish", 10, 60);
   const { id, updatedAt } = target(formData);
   const current = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string; review_status: string; published: boolean; source_id: string | null }>>(
     `/rest/v1/content_library?select=id,updated_at,review_status,published,source_id&id=eq.${encodeURIComponent(id)}&limit=1`,
