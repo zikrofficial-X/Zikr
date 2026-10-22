@@ -8,7 +8,7 @@ import { useLanguage } from "./language-provider";
 
 const FACEBOOK_PAGE_URL = "https://www.facebook.com/zikrmediaofficial1";
 const YOUTUBE_CHANNEL_URL = "https://www.youtube.com/@zikrmediaofficial";
-const APP_VERSION = "1.1.5";
+const APP_VERSION = "1.1.6";
 
 type FooterSocialLinks = {
   facebookPageUrl?: string | null;
