@@ -75,7 +75,7 @@ export async function registerAction(formData: FormData): Promise<AuthActionResu
   if (!isStrongPassword(password)) {
     return {
       ok: false,
-      message: `كلمة المرور يجب أن تكون من ${MIN_PASSWORD_LENGTH} إلى ${MAX_PASSWORD_LENGTH} حرفاً، وتتضمن رقماً ورمزاً خاصاً.`,
+      message: 'كلمة المرور يجب أن تكون من ' + MIN_PASSWORD_LENGTH + ' إلى ' + MAX_PASSWORD_LENGTH + ' حرفاً، وتتضمن رقماً ورمزاً خاصاً.',
     };
   }
 
