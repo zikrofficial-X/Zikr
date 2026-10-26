@@ -64,10 +64,12 @@ jobs:
       # Generation queues publishable video records but never executes social publishing.
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
-      AUTO_VIDEO_SECONDS: "18"
+      AUTO_VIDEO_SECONDS: "22"
       # Generation only. Queue reconciliation and publishing belong to publish-social.yml (every 15 minutes).
       BACKGROUND_JOB_TARGET: "videos"
-      VIDEO_TEMPLATE_VERSION: "2026-10-08-quality-v3"
+      VIDEO_TEMPLATE_VERSION: "2026-10-26-growth-quality-v5"
+      VIDEO_OUTPUT_CRF: "17"
+      VIDEO_AUDIO_BITRATE: "192k"
       VERIFY_VIDEO_RUNTIME_TOOLS: "true"
       # Social publishing is owned by .github/workflows/publish-social.yml.
       SOCIAL_PUBLISH_ENABLED: "false"

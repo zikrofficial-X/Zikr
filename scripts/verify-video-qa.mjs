@@ -37,7 +37,9 @@ const worker = read("scripts/jobs/template-video-automation.ts");
 for (const token of [
   "assertNarrationQuality",
   "evaluateArabicNarrationText",
-  "VIDEO_TEMPLATE_VERSION = \"2026-10-21-quality-v4\"",
+  "VIDEO_TEMPLATE_VERSION = \"2026-10-26-growth-quality-v5\"",
+  "تابع ذِكر للمزيد",
+  "آية قصيرة • تدبّرها اليوم",
   "category === \"quran\" && !audioUrl",
   "QURAN_AYAH_AUDIO_BASE_URL",
 ]) {
@@ -54,6 +56,10 @@ for (const token of [
 }
 const voiceProfiles = read("src/features/videos/services/voice-profiles.ts");
 if (!voiceProfiles.includes("hadith_male_msa")) failures.push("hadith voice profile missing from canonical voice service");
+const socialPublisher = read("src/features/social/services/social-publishing.ts");
+for (const token of ["recoverStaleSocialPublishItems", "hasTransientFailure", "updated_at=lt."]) {
+  if (!socialPublisher.includes(token)) failures.push(`social publisher missing recovery contract: ${token}`);
+}
 
 const pkg = JSON.parse(read("package.json"));
 if (!pkg.scripts["video:qa:check"]) failures.push("video:qa:check must be registered");

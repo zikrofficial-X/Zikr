@@ -38,6 +38,30 @@ function isVerticalVideo(request: VideoGenerationRequest): boolean {
     : true;
 }
 
+function socialHook(category: string) {
+  const hooks: Record<string, string> = {
+    quran: 'آية قصيرة تستحق دقيقة من التدبر',
+    hadith: 'رسالة نحتاج أن نتذكرها اليوم',
+    dua: 'ردّد هذا الدعاء بقلب حاضر',
+    adhkar: 'اجعل هذه الدقيقة نصيبك من الذكر',
+    story: 'قصة قصيرة بمعنى يبقى معك',
+  };
+  return hooks[category] || 'خذ دقيقة هادئة مع ذِكر';
+}
+
+function growthCallToAction() {
+  return 'إذا نفعك المقطع، تابع ذِكر واحفظه وشاركه مع من تحب.';
+}
+
+function sourceSocialCaption(request: VideoGenerationRequest) {
+  const content = contentObject(request);
+  const ai = content.ai;
+  const caption = ai && typeof ai === 'object' && typeof (ai as Record<string, unknown>).socialCaption === 'string'
+    ? String((ai as Record<string, unknown>).socialCaption).trim()
+    : '';
+  return [caption || request.description || '', growthCallToAction()].filter(Boolean).join('\n\n').slice(0, 700);
+}
+
 /** Create a durable video-generation request for the canonical template worker. */
 export async function createVideoGenerationRequest(data: {
   title: string;
@@ -184,17 +208,18 @@ export function generateYoutubeMetadata(request: VideoGenerationRequest) {
   const content = contentObject(request);
   const sourceLabel = typeof content.sourceLabel === 'string' ? content.sourceLabel : '';
   const qualityNote = 'محتوى تعليمي موثق بإيقاع واضح وترجمة نصية سهلة القراءة.';
+  const title = `${socialHook(request.category)} | ${request.title}`.slice(0, 100);
   return {
-    title: request.title.slice(0, 100),
-    description: [request.description ?? '', qualityNote, sourceLabel, isShort ? '#Shorts' : ''].filter(Boolean).join('\n\n'),
-    tags: ['islamic', 'quran', 'hadith', 'dua', 'adhkar', 'تعلم', 'تدبر', ...(isShort ? ['shorts', 'ريلز'] : [])],
+    title,
+    description: [sourceSocialCaption(request), qualityNote, sourceLabel, isShort ? '#Shorts' : '', '#ذكر #تدبر #اسلاميات'].filter(Boolean).join('\n\n'),
+    tags: ['zikr', 'islamic', 'quran', 'hadith', 'dua', 'adhkar', 'تعلم', 'تدبر', 'ذكر', ...(isShort ? ['shorts', 'ريلز'] : [])],
     categoryId: '27',
     isShort,
   };
 }
 
 export function generateFacebookMetadata(request: VideoGenerationRequest) {
-  return { title: request.title, description: request.description ?? '' };
+  return { title: `${socialHook(request.category)} | ${request.title}`.slice(0, 150), description: sourceSocialCaption(request) };
 }
 
 export async function generateQuranVideo(
@@ -551,5 +576,3 @@ export async function publishToFacebook(
     throw error;
   }
 }
-
-

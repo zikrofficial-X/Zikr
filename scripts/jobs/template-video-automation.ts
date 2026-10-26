@@ -26,7 +26,7 @@ const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_V
 const VIDEO_DEFAULT_TTS_PROFILE = process.env.ARABIC_TTS_PROFILE?.trim() || "hadith_male_msa";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
-const VIDEO_TEMPLATE_VERSION = "2026-10-21-quality-v4";
+const VIDEO_TEMPLATE_VERSION = "2026-10-26-growth-quality-v5";
 const VIDEO_OUTPUT_CRF = Math.min(23, Math.max(16, Number(process.env.VIDEO_OUTPUT_CRF ?? 18) || 18));
 const VIDEO_AUDIO_BITRATE = process.env.VIDEO_AUDIO_BITRATE?.trim() || "192k";
 const engineConfig = () => getVideoEngineConfig();
@@ -213,6 +213,18 @@ function categoryLabel(category: string, audience?: unknown) {
   return labels[category] || "ذِكر";
 }
 
+function audienceHook(category: string, audience?: unknown) {
+  if (audience === "kids") return "قصة قصيرة • تعلّم وابتسم";
+  const hooks: Record<string, string> = {
+    quran: "آية قصيرة • تدبّرها اليوم",
+    hadith: "رسالة نحتاجها اليوم",
+    dua: "ردّد هذا الدعاء اليوم",
+    adhkar: "دقيقة من الذكر تغيّر يومك",
+    story: "قصة قصيرة • معنى عميق",
+  };
+  return hooks[category] || "توقّف لحظة وخذ نصيبك من الذكر";
+}
+
 function paginateArabic(value: string, lineChars: number, linesPerPage: number) {
   const lines = wrapArabic(value, lineChars);
   const pages: string[] = [];
@@ -260,6 +272,7 @@ function makeAss(
   title = normalizeArabicText(title);
   const events = [
     "Dialogue: 5,0:00:00.00,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Badge,,0,0,0,," + badge,
+    "Dialogue: 6,0:00:00.20,0:00:02.40,Hook,,0,0,0,,{\\fad(180,260)}" + assEscape(audienceHook(category, audience)),
     "Dialogue: 0,0:00:00.12,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Title,,0,0,0,,{\\fad(220,420)}" + assEscape(title),
     "Dialogue: 3,0:00:00.00,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Brand,,0,0,0,,ZIKR • ذِكرٌ",
     ...textEvents,
@@ -268,6 +281,7 @@ function makeAss(
   if (reflectionText) {
     events.push("Dialogue: 4,0:00:" + Math.max(0.9, duration - 4.5).toFixed(2).padStart(5, "0") + ",0:00:" + Math.max(1.4, duration - 1.8).toFixed(2).padStart(5, "0") + ",Reflection,,0,0,0,," + reflectionText);
   }
+  events.push("Dialogue: 7,0:00:" + Math.max(0.8, duration - 3.2).toFixed(2).padStart(5, "0") + ",0:00:" + duration.toFixed(2).padStart(5, "0") + ",CTA,,0,0,0,,{\\fad(220,300)}" + assEscape("تابع ذِكر للمزيد • احفظها وشاركها"));
   return [
     "[Script Info]",
     "ScriptType: v4.00+",
@@ -280,11 +294,13 @@ function makeAss(
     "[V4+ Styles]",
     "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
     "Style: Badge,Noto Sans Arabic,24,&H00F4D78A,&H00000000,&H00101513,&H9807110E,1,0,0,0,100,100,0,0,1,2,2,8,60,60,120,1",
+    "Style: Hook,Noto Sans Arabic," + (isVertical ? 29 : 24) + ",&H00FFFFFF,&H00000000,&H00101513,&H6A07110E,1,0,0,0,100,100,0,0,1,1,1,8,70,70,165,1",
     "Style: Title,Noto Naskh Arabic," + titleSize + ",&H00EFD39A,&H00000000,&H00101513,&H7007110E,1,0,0,0,100,100,0,0,1,2,2,8,70,70,215,1",
     "Style: Verse,Noto Naskh Arabic," + verseSize + ",&H00FFFFFF,&H00000000,&H00101513,&H9A07110E,0,0,0,0,100,100,0,0,1,3,3,5,100,100,190,1",
     "Style: Source,Noto Sans Arabic," + sourceSize + ",&H00D8C8A6,&H00000000,&H00101513,&H7007110E,0,0,0,0,100,100,0,0,1,1,1,2,70,70,105,1",
     "Style: Reflection,Noto Naskh Arabic," + reflectionSize + ",&H00EFD39A,&H00000000,&H00101513,&H7407110E,0,0,0,0,100,100,0,0,1,2,1,5,85,85,300,1",
     "Style: Brand,Noto Naskh Arabic," + brandSize + ",&H00E8D8B4,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,55,55,60,1",
+    "Style: CTA,Noto Sans Arabic," + (isVertical ? 27 : 22) + ",&H00F4D78A,&H00000000,&H00101513,&H7A07110E,1,0,0,0,100,100,0,0,1,2,1,2,70,70,95,1",
     "",
     "[Events]",
     "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
@@ -1279,6 +1295,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
           typeof content.ai === "object" && content.ai && typeof (content.ai as Record<string, unknown>).socialCaption === "string"
             ? String((content.ai as Record<string, unknown>).socialCaption)
             : "",
+          "إذا نفعك المقطع، تابع ذِكر واحفظه وشاركه مع من تحب.",
           content.audience === "kids" && typeof content.seriesTitle === "string"
             ? `سلسلة أطفال: ${content.seriesTitle} — الموسم ${Number(content.seasonNumber) || 1}، الحلقة ${Number(content.episodeNumber) || 1}. الهدف: ${String(content.learningObjective || "قيمة تربوية")}`
             : "",

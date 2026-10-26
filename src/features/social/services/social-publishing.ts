@@ -160,9 +160,31 @@ export async function getPendingSocialPublishItems(
   }
 }
 
+async function recoverStaleSocialPublishItems() {
+  const staleBefore = encodeURIComponent(new Date(Date.now() - 20 * 60_000).toISOString());
+  try {
+    await supabaseServerAdminRequest(
+      `/rest/v1/social_publish_queue?status=eq.processing&updated_at=lt.${staleBefore}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({
+          status: "partial",
+          scheduled_at: new Date().toISOString(),
+          error_message: "تمت استعادة عملية نشر عالقة تلقائيًا وسيُعاد تشغيل المنصات غير المكتملة.",
+          updated_at: new Date().toISOString(),
+        }),
+      },
+    );
+  } catch (error) {
+    console.error("[social-publishing] Failed to recover stale items:", error);
+  }
+}
+
 export async function claimPendingSocialPublishItems(
   limit = 10
 ): Promise<SocialPublishQueueItem[]> {
+  await recoverStaleSocialPublishItems();
   const normalItems = await getPendingSocialPublishItems(limit);
   // Failed Facebook-auth items are intentionally not auto-retried. An expired
   // page token will otherwise create an unbounded retry loop and repeated provider
@@ -363,6 +385,10 @@ export async function processSocialPublishItem(
     isFacebookAuthFailure(failure.error)
   );
   const hasNonAuthFailure = failures.some(failure => !isFacebookAuthFailure(failure.error));
+  const hasTransientFailure = failures.some(failure => {
+    const message = failure.error?.toLowerCase() || "";
+    return /http\s+(408|425|429|500|502|503|504)|timeout|timed out|fetch failed|temporar|rate limit|overloaded|quota/i.test(message);
+  });
   const facebookReelsNextAllowedAt = failures
     .filter(failure => failure.platform === "facebook_reels")
     .map(failure => extractFacebookReelsNextAllowedAt(failure.error))
@@ -375,7 +401,7 @@ export async function processSocialPublishItem(
     : Number(item.metadata?.attempts ?? 0) + 1;
   const maxAttempts = Math.max(1, Number(item.metadata?.maxAttempts ?? 5));
   const shouldRetry = Boolean(facebookReelsNextAllowedAt) ||
-    (attempts < maxAttempts && (hasAuthFailure || nextStatus === "partial"));
+    (attempts < maxAttempts && (hasAuthFailure || hasTransientFailure || nextStatus === "partial"));
   const retryDelayMinutes = hasAuthFailure
     ? 15
     : Math.min(60, 2 ** Math.min(attempts, 6));
