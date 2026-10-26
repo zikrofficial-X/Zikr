@@ -39,8 +39,8 @@ importers:
         specifier: 7.0.6
         version: 7.0.6(@capacitor/core@7.6.9)
       '@capacitor/local-notifications':
-        specifier: 7.0.2
-        version: 7.0.2(@capacitor/core@7.6.9)
+        specifier: 7.0.7
+        version: 7.0.7(@capacitor/core@7.6.9)
       '@capacitor/network':
         specifier: 7.0.2
         version: 7.0.2(@capacitor/core@7.6.9)
@@ -299,8 +299,8 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
-  '@capacitor/local-notifications@7.0.2':
-    resolution: {integrity: sha512-U83dKWZjqpD3BBc9nSW24/3rdzpCMgVgcenOmjtc5eee0OSdE3hFAB9RmmRFZbvg0XE3BmrBt595BnzcAEeqaQ==}
+  '@capacitor/local-notifications@7.0.7':
+    resolution: {integrity: sha512-3qSpa8PpVMONHqBOaJ4RbA/lB5vOdEngtep0myGmP3S56gShPScDCotbw7dwmQy3NCdY4Up9nH3ySrGvUh2jZg==}
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
@@ -3041,7 +3041,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 7.6.9
 
-  '@capacitor/local-notifications@7.0.2(@capacitor/core@7.6.9)':
+  '@capacitor/local-notifications@7.0.7(@capacitor/core@7.6.9)':
     dependencies:
       '@capacitor/core': 7.6.9
 
