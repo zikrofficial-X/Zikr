@@ -39,7 +39,7 @@ function configuredPython() {
 
 function styleAsset(style: VideoGenerationInput["style"]) {
   const normalized =
-    style === "dawn" || style === "night" || style === "gold" ? style : "calm";
+    style === "dawn" || style === "night" || style === "gold" || style === "emerald" || style === "paper" || style === "rose" ? style : "calm";
   return path.join(process.cwd(), "public", "video", "templates", normalized + ".svg");
 }
 

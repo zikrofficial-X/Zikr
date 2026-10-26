@@ -94,7 +94,7 @@ type GeneratedRequest = {
 type AiVideoPlan = {
   reflection: string;
   socialCaption: string;
-  scene: "calm" | "dawn" | "night" | "gold";
+  scene: "calm" | "dawn" | "night" | "gold" | "emerald" | "paper" | "rose";
   motion: "fade" | "slow";
 };
 
@@ -125,6 +125,9 @@ function backgroundAsset(scene: AiVideoPlan["scene"], content?: Record<string, u
     dawn: "public/video/templates/dawn.svg",
     night: "public/video/templates/night.svg",
     gold: "public/video/templates/gold.svg",
+    emerald: "public/video/templates/emerald.svg",
+    paper: "public/video/templates/paper.svg",
+    rose: "public/video/templates/rose.svg",
   };
   return map[scene] || map.calm;
 }
@@ -223,6 +226,21 @@ function audienceHook(category: string, audience?: unknown) {
     story: "قصة قصيرة • معنى عميق",
   };
   return hooks[category] || "توقّف لحظة وخذ نصيبك من الذكر";
+}
+
+function deterministicScene(request: GeneratedRequest): AiVideoPlan["scene"] {
+  if (request.content?.audience === "kids") return "emerald";
+  const categoryScenes: Record<string, AiVideoPlan["scene"]> = {
+    quran: "night",
+    hadith: "paper",
+    dua: "rose",
+    adhkar: "emerald",
+    story: "dawn",
+  };
+  const base = categoryScenes[request.category] || "calm";
+  const seed = [...request.id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const alternatives: AiVideoPlan["scene"][] = ["calm", "dawn", "night", "gold", "emerald", "paper", "rose"];
+  return seed % 5 === 0 ? alternatives[seed % alternatives.length] : base;
 }
 
 function paginateArabic(value: string, lineChars: number, linesPerPage: number) {
@@ -683,7 +701,10 @@ function normalizeAiVideoPlan(value: unknown): AiVideoPlan {
     candidate.scene === "dawn" ||
     candidate.scene === "night" ||
     candidate.scene === "gold" ||
-    candidate.scene === "calm"
+    candidate.scene === "calm" ||
+    candidate.scene === "emerald" ||
+    candidate.scene === "paper" ||
+    candidate.scene === "rose"
       ? candidate.scene
       : "calm";
   const motion = candidate.motion === "fade" || candidate.motion === "slow" ? candidate.motion : "slow";
@@ -758,11 +779,11 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
     aiVisualPolicyPromptLine(),
     "صمّم خطة قصيرة لفيديو عمودي يُرندر محليًا بواسطة FFmpeg.",
     "أعد JSON فقط بالمفاتيح الإنجليزية التالية:",
-    '{"reflection":"...","socialCaption":"...","scene":"calm|dawn|night|gold","motion":"fade|slow"}',
+    '{"reflection":"...","socialCaption":"...","scene":"calm|dawn|night|gold|emerald|paper|rose","motion":"fade|slow"}',
     "reflection: تأمل عربي أصلي <= 110 أحرف، عام وغير منسوب لمصدر ديني.",
     "socialCaption: كابشن عربي أصلي <= 220 حرفًا، يصف الفيديو دون إضافة معلومة غير موجودة في المصدر.",
     "لا تكرر الجملة الأصلية ولا أي جزء واضح منها.",
-    "scene: اختر مشهدًا هادئًا من القائمة فقط.",
+    "scene: اختر نمطًا بصريًا من القائمة فقط، ووزّع الاختيارات بين الهادئ والورقي والزمردي والليلي.",
     "motion: fade أو slow فقط.",
     `العنوان: ${request.title}`,
     `المصدر: ${contentSourceUrl(request)}`,
@@ -1013,7 +1034,7 @@ async function renderVideo(request: GeneratedRequest) {
     const persistedAi = request.content?.ai && typeof request.content.ai === "object"
       ? (request.content.ai as Partial<AiVideoPlan> & { scene?: AiVideoPlan["scene"]; motion?: AiVideoPlan["motion"] })
       : null;
-    const scene = persistedAi?.scene === "dawn" || persistedAi?.scene === "night" || persistedAi?.scene === "gold" || persistedAi?.scene === "calm" ? persistedAi.scene : "calm";
+    const scene = persistedAi?.scene === "dawn" || persistedAi?.scene === "night" || persistedAi?.scene === "gold" || persistedAi?.scene === "calm" || persistedAi?.scene === "emerald" || persistedAi?.scene === "paper" || persistedAi?.scene === "rose" ? persistedAi.scene : deterministicScene(request);
     const motion = persistedAi?.motion === "fade" ? "fade" : "slow";
     const isVertical = height >= width;
 

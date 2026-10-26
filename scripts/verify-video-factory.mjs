@@ -17,6 +17,10 @@ if (!router.includes("!templateAttempted")) failures.push("template provider mus
 
 const template = read("scripts/jobs/template-video-automation.ts");
 const durationService = read("src/features/videos/services/render-duration.ts");
+for (const scene of ["emerald", "paper", "rose"]) {
+  read(`public/video/templates/${scene}.svg`);
+  if (!template.includes(`public/video/templates/${scene}.svg`)) failures.push(`new visual template is not wired: ${scene}`);
+}
 if (!durationService.includes("MAX_AUTO_VIDEO_SECONDS = 60")) failures.push("automated video duration policy must support narrated shorts up to 60 seconds");
 if (!template.includes("resolveRenderDuration(audioDuration, TARGET_VIDEO_SECONDS)")) failures.push("video renderer must use the shared tested render-duration policy");
 if (template.includes("https://zikrmediaofficial.vercel.app")) failures.push("video worker must not hardcode the production origin");
@@ -27,6 +31,7 @@ if (!template.includes("assertPlayableOutput")) failures.push("rendered videos m
 if (!template.includes("assertAudibleAudio")) failures.push("rendered videos must pass audible-audio QA");
 if (!template.includes("Rendered output resolution mismatch")) failures.push("rendered video resolution must be validated");
 if (!template.includes("Rendered output video bitrate is too low")) failures.push("rendered video bitrate must be validated");
+if (!template.includes("deterministicScene(request)")) failures.push("template selection must provide deterministic visual variety");
 if (!template.includes("content_hash")) failures.push("video seed must persist a deterministic content hash");
 if (!template.includes("video_generation_requests_content_hash_unique")) failures.push("video seed must tolerate duplicate content-hash races without aborting the worker");
 if (!template.includes("day * 16 + slot")) failures.push("video seed source index must not overlap across day boundaries");
