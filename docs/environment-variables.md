@@ -109,6 +109,18 @@ Worker/runtime configuration includes:
 - `SOCIAL_BACKGROUND_BATCH_SIZE`
 - `INTERNAL_JOB_SECRET`
 
+Optional immediate queue-failure alerts:
+
+- `ADMIN_QUEUE_ALERT_WEBHOOK_URL` — server/worker-only destination for JSON alerts.
+- `ADMIN_QUEUE_ALERT_WEBHOOK_SECRET` — optional shared secret sent as `X-Zikr-Alert-Secret`.
+- `RESEND_API_KEY` — optional Resend API key for email delivery.
+- `ADMIN_QUEUE_ALERT_EMAIL_TO` — comma-separated supervisor recipients.
+- `ADMIN_QUEUE_ALERT_EMAIL_FROM` — verified sender address.
+
+The worker records an idempotency key in `admin_queue_alert_deliveries`, so the same
+failure set is not sent repeatedly. If a configured channel fails, the delivery stays
+retryable and the error is retained in Supabase.
+
 Optional Arabic TTS worker overrides:
 
 - `ARABIC_TTS_VOICE`

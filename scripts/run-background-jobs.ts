@@ -9,6 +9,7 @@ import { processSocialPublishQueue } from "./jobs/social-publishing";
 import { processScheduledContent } from "./jobs/content-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
+import { notifyNewQueueFailures } from "./jobs/admin-queue-alerts";
 type VideoAutomationRunNow = {
   requestedAt: string;
   requestedBy?: string | null;
@@ -354,6 +355,11 @@ async function main() {
     : { claimed: 0, published: 0 };
   const failed = videos.failed + social.failed;
 
+  const queueAlerts = await notifyNewQueueFailures(new Date(startedAt).toISOString()).catch((error) => {
+    console.error("[background-jobs] Queue failure alert delivery unavailable:", error instanceof Error ? error.message : String(error));
+    return { alerts: 0, delivered: 0 };
+  });
+
   await recordAutomationRun({
     target,
     seeded: videos.seeded || 0,
@@ -367,7 +373,7 @@ async function main() {
 
   console.log(
     "[background-jobs] Summary:",
-    JSON.stringify({ target, videos, reconciledSocialQueue, social, scheduledContent, durationMs: Date.now() - startedAt }, null, 2)
+    JSON.stringify({ target, videos, reconciledSocialQueue, social, scheduledContent, queueAlerts, durationMs: Date.now() - startedAt }, null, 2)
   );
 
   if (failed > 0) {
