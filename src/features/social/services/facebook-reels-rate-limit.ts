@@ -33,6 +33,12 @@ export function resolveFacebookReelsNextAllowedAt(value: unknown, nowMs: number 
   return new Date(nowMs + FACEBOOK_REELS_RATE_LIMIT_COOLDOWN_MS).toISOString();
 }
 
+export function isFacebookReelsCooldownDeferredError(value: unknown): boolean {
+  const message = value instanceof Error ? value.message : String(value ?? "");
+  return /^Facebook Reels publishing paused by provider cooldown until\b/i.test(message)
+    && Boolean(extractFacebookReelsNextAllowedAt(message));
+}
+
 export function facebookReelsCooldownDeferredError(until: string): Error {
   return new Error("Facebook Reels publishing paused by provider cooldown until " + until + ". [facebook_reels_next_allowed_at=" + until + "]");
 }
