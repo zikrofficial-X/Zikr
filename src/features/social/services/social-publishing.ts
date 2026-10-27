@@ -2,7 +2,7 @@ import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { publishToFacebook, publishToYoutube } from "@/features/videos/services/video-automation";
 import { getServerEnv } from "@/lib/env";
 import { getFacebookPageCredentials } from "@/features/social/services/facebook-credentials";
-import { extractFacebookReelsNextAllowedAt } from "@/features/social/services/facebook-reels-rate-limit";
+import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError } from "@/features/social/services/facebook-reels-rate-limit";
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing } from "@/features/videos/services/video-publish-approval";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
@@ -326,7 +326,7 @@ async function publishPlatform(
 export async function processSocialPublishItem(
   item: SocialPublishQueueItem,
   options: { alreadyClaimed?: boolean } = {}
-): Promise<"published" | "auth_blocked" | "approval_blocked" | "failed"> {
+): Promise<"published" | "auth_blocked" | "approval_blocked" | "deferred" | "failed"> {
   if (!(await hasVideoApprovalForQueueItem(item))) {
     await markQueueItem(item.id, "queued", {
       error_message: "Video held for human QA approval before public publishing.",
@@ -373,6 +373,12 @@ export async function processSocialPublishItem(
   const finalResults = platforms.map(platform => mergedResults[platform]).filter(Boolean);
   const failures = finalResults.filter(result => !result.ok);
   const successes = finalResults.filter(result => result.ok);
+  // The local pacing guard is an expected deferral, not a provider error.
+  // Keep it queued as partial, but do not surface it as a red failure.
+  const deferredFailures = failures.filter(failure =>
+    failure.platform === "facebook_reels" && isFacebookReelsCooldownDeferredError(failure.error)
+  );
+  const operationalFailures = failures.filter(failure => !deferredFailures.includes(failure));
   const nextStatus: SocialQueueStatus =
     failures.length === 0
       ? "published"
@@ -380,12 +386,12 @@ export async function processSocialPublishItem(
         ? "partial"
         : "failed";
 
-  const hasAuthFailure = failures.some(failure =>
+  const hasAuthFailure = operationalFailures.some(failure =>
     (failure.platform === "facebook" || failure.platform === "facebook_reels") &&
     isFacebookAuthFailure(failure.error)
   );
-  const hasNonAuthFailure = failures.some(failure => !isFacebookAuthFailure(failure.error));
-  const hasTransientFailure = failures.some(failure => {
+  const hasNonAuthFailure = operationalFailures.some(failure => !isFacebookAuthFailure(failure.error));
+  const hasTransientFailure = operationalFailures.some(failure => {
     const message = failure.error?.toLowerCase() || "";
     return /http\s+(408|425|429|500|502|503|504)|timeout|timed out|fetch failed|temporar|rate limit|overloaded|quota/i.test(message);
   });
@@ -418,7 +424,7 @@ export async function processSocialPublishItem(
     scheduled_at: nextRetryAt,
     published_at: successes.length > 0 ? new Date().toISOString() : null,
     error_message:
-      failures
+      operationalFailures
         .map(failure => `${failure.platform}: ${failure.error ?? "unknown error"}`)
         .join("; ") || null,
     metadata: {
@@ -428,11 +434,13 @@ export async function processSocialPublishItem(
       nextRetryAt,
       authBlocked: hasAuthFailure,
       facebookReelsNextAllowedAt,
+      deferredPlatforms: deferredFailures.map(failure => failure.platform),
       platformResults: mergedResults,
     },
   });
 
   if (nextStatus === "published") return "published";
+  if (deferredFailures.length > 0 && operationalFailures.length === 0) return "deferred";
   if (hasAuthFailure && !hasNonAuthFailure) return "auth_blocked";
   return "failed";
 }
