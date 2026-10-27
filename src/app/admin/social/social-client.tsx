@@ -711,7 +711,7 @@ export default function AdminSocialPage() {
                     <p className="mt-1 text-xs text-brand-cream/50">{item.content_type} · {item.target_platforms.join("، ")}</p>
                   </div>
                   <span className={`shrink-0 rounded-full border px-2 py-1 text-[11px] ${STATUS_CLASSES[status]}`}>
-                    {STATUS_LABELS[status]}
+                    {deferredAt && status === "partial" ? "نشر جزئي — Reels مؤجل" : STATUS_LABELS[status]}
                   </span>
                 </div>
                 <div className="space-y-1 border-t border-brand-gold/10 pt-2 text-xs leading-5">
