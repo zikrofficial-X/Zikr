@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, Radio, ShieldCheck } from "lucide-react";
+import { Activity, AlertTriangle, BellRing, Radio, ShieldCheck } from "lucide-react";
 import { getAdminSnapshot } from "@/features/admin/services/platform";
 import { ADMIN_NAVIGATION } from "@/features/admin/config/navigation";
 import { getCurrentProfile } from "@/features/admin/services/admin";
@@ -117,6 +117,26 @@ export async function AdminPlatformCommandCenter() {
   const queueTotal = queueEntries.reduce((sum, [, value]) => sum + (typeof value === "number" ? value : 0), 0);
   const failedQueueTotal = (canReadSocialQueue ? snapshot.queues.socialFailed ?? 0 : 0) + (canReadVideoQueue ? snapshot.queues.videoFailed ?? 0 : 0);
   const dataStatus = snapshot.unavailable.length ? "جزئية" : "مباشرة";
+  const queueAlerts = [
+    canReadVideoQueue && snapshot.queues.videoFailed !== null && snapshot.queues.videoFailed > 0
+      ? {
+          key: "video",
+          title: "فشل في طابور توليد الفيديو",
+          description: "توجد طلبات فيديو فاشلة تحتاج إلى فحص السجل أو إعادة المحاولة.",
+          count: snapshot.queues.videoFailed,
+          href: availableRoute("/admin/video-factory/queue", "/admin/video-factory", "/admin/ai-video") ?? "/admin",
+        }
+      : null,
+    canReadSocialQueue && snapshot.queues.socialFailed !== null && snapshot.queues.socialFailed > 0
+      ? {
+          key: "social",
+          title: "فشل في طابور النشر الاجتماعي",
+          description: "توجد منشورات لم تكتمل. راجع سبب الفشل قبل إعادة تنفيذ النشر.",
+          count: snapshot.queues.socialFailed,
+          href: availableRoute("/admin/social") ?? "/admin",
+        }
+      : null,
+  ].filter((item): item is NonNullable<typeof item> => Boolean(item));
 
   const countSections: Array<{ key: string; title: string; description: string; tables: string[] }> = [
     {
@@ -178,6 +198,42 @@ export async function AdminPlatformCommandCenter() {
           </div>
         </div>
       </header>
+
+      {queueAlerts.length > 0 ? (
+        <section aria-labelledby="automatic-queue-alerts-heading" className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <BellRing size={18} className="text-red-300" />
+              <h2 id="automatic-queue-alerts-heading" className="text-lg font-bold text-red-100">تنبيهات تشغيلية تلقائية</h2>
+            </div>
+            {hasAdminPermission(role, "notifications.manage") ? (
+              <Link href="/admin/notifications" className="text-xs text-brand-gold hover:underline">سجل التنبيهات</Link>
+            ) : null}
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {queueAlerts.map((alert) => (
+              <Link
+                key={alert.key}
+                href={alert.href}
+                role="alert"
+                className="group rounded-2xl border border-red-500/25 bg-red-500/[0.08] p-4 transition hover:border-red-300/45 hover:bg-red-500/[0.13]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="mt-0.5 rounded-lg bg-red-500/15 p-2 text-red-200"><AlertTriangle size={17} /></span>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-red-100">{alert.title}</h3>
+                      <p className="mt-1 text-xs leading-6 text-red-100/65">{alert.description}</p>
+                    </div>
+                  </div>
+                  <span className="rounded-lg bg-red-500/15 px-2.5 py-1 text-lg font-bold tabular-nums text-red-100">{alert.count.toLocaleString("ar-EG-u-nu-latn")}</span>
+                </div>
+                <span className="mt-3 inline-flex text-xs font-semibold text-red-200 group-hover:text-white">فتح مركز المعالجة ←</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section aria-label="إجراءات سريعة" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {quickActions.map(([label, href, description]) => (
