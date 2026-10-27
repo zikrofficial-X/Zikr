@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { Activity, ArrowUpLeft, BarChart3, Eye, Users } from "lucide-react";
+import { Activity, ArrowUpLeft, BarChart3, CheckCircle2, Clock3, Eye, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { AdminAnalytics } from "@/features/admin/services/analytics";
 
 const format = (value: number | null) =>
   value === null ? "غير متاح" : value.toLocaleString("ar-EG-u-nu-latn");
+
+const formatDuration = (milliseconds: number | null) => {
+  if (milliseconds === null) return "غير متاح";
+  const seconds = milliseconds / 1000;
+  return seconds >= 60 ? `${(seconds / 60).toFixed(1)} د` : `${seconds.toFixed(1)} ث`;
+};
 
 const CONTENT_STATS: Array<{ key: string; label: string }> = [
   { key: "articles", label: "المقالات" },
@@ -74,6 +80,72 @@ export function AnalyticsDashboard({ data }: { data: AdminAnalytics }) {
             </div>
           </Card>
         ))}
+      </section>
+
+      <section aria-labelledby="template-performance-heading">
+        <Card className="overflow-hidden p-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-gold/10 px-5 py-4">
+            <div>
+              <h2 id="template-performance-heading" className="flex items-center gap-2 font-bold text-brand-gold">
+                <Clock3 size={17} /> أداء القوالب البصرية
+              </h2>
+              <p className="mt-1 text-xs leading-5 text-brand-cream/45">
+                متوسط زمن الرندر المسجل في Supabase لكل scene · آخر ١٠٠٠ طلب
+              </p>
+            </div>
+            <Badge variant="outline" className="border-emerald-400/20 text-emerald-200/80">قياس فعلي</Badge>
+          </div>
+          {!data.templatePerformanceAvailable ? (
+            <p className="p-8 text-center text-sm leading-7 text-amber-100/70">تعذر تحميل قياسات القوالب حالياً. ستبقى البيانات غير مؤكدة بدلاً من عرض أرقام تقديرية.</p>
+          ) : !data.templatePerformance.length ? (
+            <div className="p-8 text-center">
+              <p className="text-sm text-brand-cream/60">لا توجد قياسات مسجلة بعد.</p>
+              <p className="mt-2 text-xs leading-6 text-brand-cream/35">ستظهر القوالب هنا بعد اكتمال تشغيلات التوليد القادمة.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-[760px] w-full text-right text-sm">
+                <thead className="bg-white/[0.03] text-xs text-brand-cream/45">
+                  <tr>
+                    <th className="px-5 py-3 font-medium">القالب</th>
+                    <th className="px-4 py-3 font-medium">متوسط الرندر</th>
+                    <th className="px-4 py-3 font-medium">الأسرع / الأبطأ</th>
+                    <th className="px-4 py-3 font-medium">الطلبات المقاسة</th>
+                    <th className="px-4 py-3 font-medium">النجاح</th>
+                    <th className="px-5 py-3 font-medium">الحالة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-brand-gold/8">
+                  {data.templatePerformance.map((item) => {
+                    const successRate = item.totalRequests ? Math.round((item.completedRequests / item.totalRequests) * 100) : 0;
+                    const averageRatio = item.averageRenderDurationMs && data.templatePerformance[0]?.averageRenderDurationMs
+                      ? Math.min(100, Math.max(8, (item.averageRenderDurationMs / data.templatePerformance[0].averageRenderDurationMs) * 100))
+                      : 0;
+                    return (
+                      <tr key={item.scene} className="text-brand-cream/70">
+                        <td className="px-5 py-4">
+                          <p className="font-mono text-sm text-brand-cream" dir="ltr">{item.scene}</p>
+                          <div className="mt-2 h-1.5 w-28 overflow-hidden rounded-full bg-white/10">
+                            <div className="h-full rounded-full bg-brand-gold/80" style={{ width: `${averageRatio}%` }} />
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 font-semibold tabular-nums text-brand-gold">{formatDuration(item.averageRenderDurationMs)}</td>
+                        <td className="px-4 py-4 text-xs tabular-nums text-brand-cream/55">
+                          {formatDuration(item.fastestRenderDurationMs)} <span className="px-1 text-brand-cream/25">/</span> {formatDuration(item.slowestRenderDurationMs)}
+                        </td>
+                        <td className="px-4 py-4 tabular-nums">{format(item.measuredRenders)} <span className="text-xs text-brand-cream/35">من {format(item.totalRequests)}</span></td>
+                        <td className="px-4 py-4 tabular-nums">{successRate}%</td>
+                        <td className="px-5 py-4">
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-200/75"><CheckCircle2 size={14} /> {item.failedRequests ? `${format(item.failedRequests)} فشل` : "مستقر"}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.25fr_.75fr]">

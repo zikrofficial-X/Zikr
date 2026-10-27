@@ -19,7 +19,21 @@ export type AdminAnalytics = {
   dashboardVisits: number | null;
   activityByDay: Array<{ label: string; count: number }>;
   routeViews: Array<{ route: string; views: number }>;
+  templatePerformance: TemplatePerformance[];
+  templatePerformanceAvailable: boolean;
   unavailable: string[];
+};
+
+export type TemplatePerformance = {
+  scene: string;
+  totalRequests: number;
+  completedRequests: number;
+  failedRequests: number;
+  activeRequests: number;
+  measuredRenders: number;
+  averageRenderDurationMs: number | null;
+  fastestRenderDurationMs: number | null;
+  slowestRenderDurationMs: number | null;
 };
 
 const CONTENT_TABLES = [
@@ -72,7 +86,7 @@ async function loadAdminAnalytics(): Promise<AdminAnalytics> {
   const periodStartMs = todayUtcStart - 6 * DAY_MS;
   const periodStart = new Date(periodStartMs).toISOString();
 
-  const [counts, topArticlesResult, userCount, viewsRes, auditRes] = await Promise.all([
+  const [counts, topArticlesResult, userCount, viewsRes, auditRes, templateRes] = await Promise.all([
     Promise.all(CONTENT_TABLES.map((table) => safeCount(table))),
     getTopArticles(),
     safeCount("profiles"),
@@ -93,6 +107,14 @@ async function loadAdminAnalytics(): Promise<AdminAnalytics> {
         ok: false,
         rows: [] as Array<{ actor_user_id: string | null; created_at: string; action: string }>,
       })),
+    supabaseServerAdminRequest<Array<{ scene: string; status: string; render_duration_ms: number | null }>>(
+      "/rest/v1/video_generation_requests?scene=not.is.null&select=scene,status,render_duration_ms&order=created_at.desc&limit=1000",
+    )
+      .then((rows) => ({ ok: true, rows }))
+      .catch(() => ({
+        ok: false,
+        rows: [] as Array<{ scene: string; status: string; render_duration_ms: number | null }>,
+      })),
   ]);
 
   const unavailable: string[] = [];
@@ -100,6 +122,7 @@ async function loadAdminAnalytics(): Promise<AdminAnalytics> {
   if (!viewsRes.ok) unavailable.push("زيارات لوحة التحكم");
   if (!auditRes.ok) unavailable.push("نشاط الإدارة");
   if (!topArticlesResult.available) unavailable.push("أداء المقالات");
+  if (!templateRes.ok) unavailable.push("أداء القوالب البصرية");
 
   const unavailableContent = CONTENT_TABLES.filter((table, index) => counts[index] === null).map(
     (table) => CONTENT_LABELS[table],
@@ -140,6 +163,36 @@ async function loadAdminAnalytics(): Promise<AdminAnalytics> {
     if (dayMap.has(day)) dayMap.set(day, (dayMap.get(day) ?? 0) + 1);
   }
 
+  const templateMap = new Map<string, { total: number; completed: number; failed: number; active: number; durations: number[] }>();
+  for (const row of templateRes.rows) {
+    const scene = row.scene.trim();
+    if (!scene) continue;
+    const current = templateMap.get(scene) ?? { total: 0, completed: 0, failed: 0, active: 0, durations: [] };
+    current.total += 1;
+    if (row.status === "completed") current.completed += 1;
+    else if (row.status === "failed") current.failed += 1;
+    else current.active += 1;
+    if (Number.isFinite(row.render_duration_ms) && (row.render_duration_ms ?? 0) >= 0) {
+      current.durations.push(row.render_duration_ms as number);
+    }
+    templateMap.set(scene, current);
+  }
+  const templatePerformance = [...templateMap.entries()]
+    .map(([scene, value]) => ({
+      scene,
+      totalRequests: value.total,
+      completedRequests: value.completed,
+      failedRequests: value.failed,
+      activeRequests: value.active,
+      measuredRenders: value.durations.length,
+      averageRenderDurationMs: value.durations.length
+        ? Math.round(value.durations.reduce((sum, duration) => sum + duration, 0) / value.durations.length)
+        : null,
+      fastestRenderDurationMs: value.durations.length ? Math.min(...value.durations) : null,
+      slowestRenderDurationMs: value.durations.length ? Math.max(...value.durations) : null,
+    }))
+    .sort((a, b) => (b.measuredRenders - a.measuredRenders) || (a.averageRenderDurationMs ?? Number.POSITIVE_INFINITY) - (b.averageRenderDurationMs ?? Number.POSITIVE_INFINITY));
+
   return {
     stats: Object.fromEntries(
       CONTENT_TABLES.map((table, index) => [table, counts[index]]),
@@ -157,6 +210,8 @@ async function loadAdminAnalytics(): Promise<AdminAnalytics> {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([route, views]) => ({ route, views })),
+    templatePerformance,
+    templatePerformanceAvailable: templateRes.ok,
     unavailable,
   };
 }
