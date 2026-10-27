@@ -35,7 +35,7 @@ export function resolveFacebookReelsNextAllowedAt(value: unknown, nowMs: number 
 
 export function isFacebookReelsCooldownDeferredError(value: unknown): boolean {
   const message = value instanceof Error ? value.message : String(value ?? "");
-  return /^Facebook Reels publishing paused by provider cooldown until\\b/i.test(message)
+  return /^Facebook Reels publishing paused by provider cooldown until\b/i.test(message)
     && Boolean(extractFacebookReelsNextAllowedAt(message));
 }
 
