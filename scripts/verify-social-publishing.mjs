@@ -38,6 +38,13 @@ if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_ne
 const publisher = read("src/features/social/services/social-publishing.ts");
 if (!publisher.includes("extractFacebookReelsNextAllowedAt")) failures.push("social queue must defer rate-limited Reels to the shared next-allowed time");
 if (!publisher.includes("facebookReelsNextAllowedAt")) failures.push("social queue must persist the Reels cooldown deadline per item");
+if (!publisher.includes("isFacebookReelsCooldownDeferredError")) failures.push("expected local Reels cooldown must be classified as a deferral");
+if (!publisher.includes("deferredPlatforms: deferredFailures.map")) failures.push("social queue must persist deferred platform metadata separately from errors");
+if (!publisher.includes("operationalFailures")) failures.push("expected Reels pacing must not be written as a publication error");
+const socialWorker = read("scripts/jobs/social-publishing.ts");
+if (!socialWorker.includes('outcome === "deferred"') || !socialWorker.includes("succeeded, deferred, authBlocked")) failures.push("social worker must count cooldown deferrals separately from failures");
+const socialAdminPage = read("src/app/admin/social/social-client.tsx");
+if (!socialAdminPage.includes("facebookReelsDeferredUntil") || !socialAdminPage.includes("مؤجل تلقائيًا حتى")) failures.push("admin social UI must show scheduled Reels deferrals as waiting, not as errors");
 const adminSocial = read("src/app/api/admin/social/route.ts");
 if (adminSocial.includes("/api/internal/video-processing")) failures.push("admin social retry references a retired noop endpoint");
 if (!adminSocial.includes('dispatchGitHubWorkflow("publish-social.yml")')) failures.push("admin social retry must use the canonical GitHub social workflow");
