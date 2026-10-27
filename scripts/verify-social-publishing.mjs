@@ -54,12 +54,18 @@ if (!publisher.includes("getFacebookPageCredentials")) failures.push("Facebook p
 if (!publisher.includes("credentials.isEnabled")) failures.push("Facebook publisher must honor the explicit OAuth connection enable switch");
 if (!publisher.includes("isFacebookAuthFailure")) failures.push("Facebook auth failures must be classified separately");
 if (!publisher.includes("authBlocked: hasAuthFailure")) failures.push("Facebook auth failures must block repeated automatic retries");
+if (!publisher.includes("status.eq.failed")) failures.push("failed social queue items must be eligible for scheduled automatic retry");
+if (!publisher.includes("permanentFailure === true")) failures.push("permanent social failures must be excluded from automatic retry");
+if (!publisher.includes("socialRetryDelayMinutes")) failures.push("social retries must use bounded exponential backoff");
+if (!publisher.includes("staleRecovery: true")) failures.push("stale social processing recovery must be recorded");
 if (!publisher.includes("platformResults")) failures.push("platform-level results must be persisted");
 if (!publisher.includes("pendingPlatforms")) failures.push("already-successful platforms must be excluded from retries");
 if (!publisher.includes("remoteId")) failures.push("successful providers must persist their remote platform IDs");
 if (publisher.includes("console.log(pageAccessToken") || publisher.includes("console.log(env.FACEBOOK_PAGE_ACCESS_TOKEN")) failures.push("Facebook access tokens must never be logged");
 
 const queue = read("scripts/jobs/template-video-automation.ts");
+if (!queue.includes("videoRetryDelayMinutes")) failures.push("video retries must use bounded exponential backoff");
+if (!queue.includes("counted the recovery as an attempt")) failures.push("stale video recovery must count toward the retry limit");
 if (!queue.includes("getFacebookPageCredentials()") || !queue.includes("facebookCredentials?.isEnabled")) failures.push("new Facebook targets must use the canonical OAuth connection state");
 if (!queue.includes("findSocialQueueByAutomationKey")) failures.push("social queue idempotency lookup is required");
 if (!queue.includes("desiredTargets = [...new Set([...existingTargets, ...targets])]")) failures.push("existing social targets must be preserved without duplicates");

@@ -32,6 +32,12 @@ const VIDEO_AUDIO_BITRATE = process.env.VIDEO_AUDIO_BITRATE?.trim() || "192k";
 const engineConfig = () => getVideoEngineConfig();
 const AI_ATTEMPTS_PER_RUN = Math.max(0, Math.min(4, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 3) || 3));
 let aiAttemptsUsed = 0;
+
+function videoRetryDelayMinutes(attempt: number, requestId: string) {
+  const seed = [...requestId].reduce((sum, character) => sum + character.charCodeAt(0), 0);
+  return Math.min(240, 2 ** Math.min(Math.max(0, attempt - 1), 7) * 5 + (seed % 7));
+}
+
 function getArabicTtsPython() {
   return process.env.ARABIC_TTS_PYTHON?.trim() || "python3";
 }
@@ -1420,19 +1426,24 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
     return { processed: 0, succeeded: 0, failed: 0 };
   }
   const staleBefore = new Date(Date.now() - engineConfig().staleAfterMinutes * 60_000).toISOString();
-  const stale = await supabaseServerAdminRequest<Array<{ id: string }>>(
-    `/rest/v1/video_generation_requests?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&video_url=is.null&select=id&limit=50`,
+  const stale = await supabaseServerAdminRequest<Array<{ id: string; generation_attempts?: number | null }>>(
+    `/rest/v1/video_generation_requests?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&video_url=is.null&select=id,generation_attempts&limit=50`,
   );
   for (const request of stale ?? []) {
+    const attempts = (request.generation_attempts ?? 0) + 1;
+    const terminalStatus = attempts >= engineConfig().maxRetries ? "failed" : "retry_wait";
     await supabaseServerAdminRequest(
       `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=eq.processing&video_url=is.null`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify({
-          status: "pending",
-          error_message: "تمت استعادة عملية عالقة تلقائيًا.",
-          error_details: null,
+          status: terminalStatus,
+          generation_attempts: attempts,
+          next_retry_at: terminalStatus === "retry_wait" ? new Date(Date.now() + videoRetryDelayMinutes(attempts, request.id) * 60_000).toISOString() : null,
+          last_attempt_at: new Date().toISOString(),
+          error_message: terminalStatus === "failed" ? "تجاوزت عملية الفيديو حد المحاولات بعد الاستعادة." : "تمت استعادة عملية فيديو عالقة تلقائيًا.",
+          error_details: "The worker reclaimed a stale processing item and counted the recovery as an attempt.",
           updated_at: new Date().toISOString(),
         }),
       },
@@ -1515,7 +1526,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ status: terminalStatus, scene: failedScene, render_duration_ms: Date.now() - attemptStartedAt, generation_attempts: attempts, next_retry_at: terminalStatus === "retry_wait" ? new Date(Date.now() + Math.min(60, attempts * 15) * 60_000).toISOString() : null, last_attempt_at: new Date().toISOString(), error_message: "Template generation failed", error_details: message.slice(0, 2000), updated_at: new Date().toISOString() }),
+        body: JSON.stringify({ status: terminalStatus, scene: failedScene, render_duration_ms: Date.now() - attemptStartedAt, generation_attempts: attempts, next_retry_at: terminalStatus === "retry_wait" ? new Date(Date.now() + videoRetryDelayMinutes(attempts, request.id) * 60_000).toISOString() : null, last_attempt_at: new Date().toISOString(), error_message: "Template generation failed", error_details: message.slice(0, 2000), updated_at: new Date().toISOString() }),
       });
       console.error(`[template-video] Failed ${request.id}: ${message}`);
     }

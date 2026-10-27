@@ -96,6 +96,24 @@ function isFacebookAuthFailure(error: string | undefined) {
   );
 }
 
+const SOCIAL_DEFAULT_MAX_ATTEMPTS = 5;
+const SOCIAL_MAX_ATTEMPTS_CAP = 8;
+
+function socialMaxAttempts(metadata: Record<string, unknown> | null) {
+  const configured = Number(metadata?.maxAttempts ?? process.env.SOCIAL_MAX_RETRIES ?? SOCIAL_DEFAULT_MAX_ATTEMPTS);
+  return Math.max(1, Math.min(SOCIAL_MAX_ATTEMPTS_CAP, Number.isFinite(configured) ? Math.floor(configured) : SOCIAL_DEFAULT_MAX_ATTEMPTS));
+}
+
+function socialRetryDelayMinutes(attempt: number, itemId: string) {
+  const seed = [...itemId].reduce((sum, character) => sum + character.charCodeAt(0), 0);
+  return Math.min(240, 2 ** Math.min(Math.max(0, attempt - 1), 7) + (seed % 6));
+}
+
+function isPermanentSocialFailure(message: string | undefined) {
+  const normalized = (message ?? "").toLowerCase();
+  return /no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|oauth|access token|publishing is disabled|not configured|human qa approval/i.test(normalized);
+}
+
 async function markQueueItem(
   itemId: string,
   status: SocialQueueStatus,
@@ -140,7 +158,7 @@ export async function getPendingSocialPublishItems(
 ): Promise<SocialPublishQueueItem[]> {
   const now = encodeURIComponent(new Date().toISOString());
   const path =
-    `/rest/v1/social_publish_queue?or=(and(status.eq.queued,or(scheduled_at.is.null,scheduled_at.lte.${now})),and(status.eq.partial,or(scheduled_at.is.null,scheduled_at.lte.${now})))&order=scheduled_at.asc.nullsfirst,created_at.asc&limit=${limit}`;
+    `/rest/v1/social_publish_queue?or=(and(status.eq.queued,or(scheduled_at.is.null,scheduled_at.lte.${now})),and(status.eq.partial,or(scheduled_at.is.null,scheduled_at.lte.${now})),and(status.eq.failed,or(scheduled_at.is.null,scheduled_at.lte.${now})))&order=scheduled_at.asc.nullsfirst,created_at.asc&limit=${limit}`;
   try {
     const rows =
       (await supabaseServerAdminRequest<SocialPublishQueueItem[]>(path)) || [];
@@ -148,8 +166,8 @@ export async function getPendingSocialPublishItems(
     const eligible = await Promise.all(rows.map(async (item) => {
       const metadata = item.metadata ?? {};
       const attempts = Number(metadata.attempts ?? 0);
-      const maxAttempts = Math.max(1, Number(metadata.maxAttempts ?? 5));
-      if (metadata.authBlocked === true || attempts >= maxAttempts) return null;
+      const maxAttempts = socialMaxAttempts(metadata);
+      if (metadata.authBlocked === true || metadata.permanentFailure === true || attempts >= maxAttempts) return null;
       if (!(await hasVideoApprovalForQueueItem(item))) return null;
       return item;
     }));
@@ -163,19 +181,29 @@ export async function getPendingSocialPublishItems(
 async function recoverStaleSocialPublishItems() {
   const staleBefore = encodeURIComponent(new Date(Date.now() - 20 * 60_000).toISOString());
   try {
-    await supabaseServerAdminRequest(
-      `/rest/v1/social_publish_queue?status=eq.processing&updated_at=lt.${staleBefore}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-        body: JSON.stringify({
-          status: "partial",
-          scheduled_at: new Date().toISOString(),
-          error_message: "تمت استعادة عملية نشر عالقة تلقائيًا وسيُعاد تشغيل المنصات غير المكتملة.",
-          updated_at: new Date().toISOString(),
-        }),
-      },
+    const stale = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
+      `/rest/v1/social_publish_queue?status=eq.processing&updated_at=lt.${staleBefore}&select=id,metadata&limit=50`,
     );
+    for (const item of stale ?? []) {
+      const metadata = item.metadata ?? {};
+      const attempts = Number(metadata.attempts ?? 0) + 1;
+      const maxAttempts = socialMaxAttempts(metadata);
+      const terminal = attempts >= maxAttempts;
+      await supabaseServerAdminRequest(
+        `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({
+            status: terminal ? "failed" : "partial",
+            scheduled_at: terminal ? null : new Date(Date.now() + socialRetryDelayMinutes(attempts, item.id) * 60_000).toISOString(),
+            error_message: "تمت استعادة عملية نشر عالقة تلقائيًا وسيُعاد تشغيل المنصات غير المكتملة.",
+            metadata: { ...metadata, attempts, maxAttempts, staleRecovery: true },
+            updated_at: new Date().toISOString(),
+          }),
+        },
+      );
+    }
   } catch (error) {
     console.error("[social-publishing] Failed to recover stale items:", error);
   }
@@ -405,12 +433,13 @@ export async function processSocialPublishItem(
   const attempts = facebookReelsNextAllowedAt
     ? 0
     : Number(item.metadata?.attempts ?? 0) + 1;
-  const maxAttempts = Math.max(1, Number(item.metadata?.maxAttempts ?? 5));
+  const maxAttempts = socialMaxAttempts(item.metadata);
+  const hasPermanentFailure = operationalFailures.some(failure => isPermanentSocialFailure(failure.error));
   const shouldRetry = Boolean(facebookReelsNextAllowedAt) ||
-    (attempts < maxAttempts && (hasAuthFailure || hasTransientFailure || nextStatus === "partial"));
+    (attempts < maxAttempts && !hasAuthFailure && !hasPermanentFailure && (hasTransientFailure || nextStatus === "partial"));
   const retryDelayMinutes = hasAuthFailure
     ? 15
-    : Math.min(60, 2 ** Math.min(attempts, 6));
+    : socialRetryDelayMinutes(attempts, item.id);
   const nextRetryAt = facebookReelsNextAllowedAt ?? (shouldRetry
     ? new Date(Date.now() + retryDelayMinutes * 60_000).toISOString()
     : null);
@@ -433,6 +462,7 @@ export async function processSocialPublishItem(
       maxAttempts,
       nextRetryAt,
       authBlocked: hasAuthFailure,
+      permanentFailure: hasPermanentFailure,
       facebookReelsNextAllowedAt,
       deferredPlatforms: deferredFailures.map(failure => failure.platform),
       platformResults: mergedResults,

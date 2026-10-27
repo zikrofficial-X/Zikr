@@ -93,7 +93,7 @@ export function getVideoEngineConfig(env = process.env): VideoEngineConfig {
     hfWanEnabled: bool(env.HF_WAN_VIDEO_ENABLED, false),
     hfLtxFastEnabled: bool(env.HF_LTX_FAST_VIDEO_ENABLED, false),
     dailyLimit: Math.max(1, Number(env.VIDEO_DAILY_LIMIT ?? 10) || 10),
-    maxRetries: Math.max(1, Number(env.VIDEO_MAX_RETRIES ?? 3) || 3),
+    maxRetries: Math.min(8, Math.max(1, Number(env.VIDEO_MAX_RETRIES ?? 3) || 3)),
     staleAfterMinutes: Math.max(
       5,
       Number(env.VIDEO_STALE_AFTER_MINUTES ?? 30) || 30,
