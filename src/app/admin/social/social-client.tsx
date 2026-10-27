@@ -52,6 +52,23 @@ const STATUS_CLASSES: Record<Status, string> = {
   failed: "border-red-500/25 bg-red-500/10 text-red-300",
 };
 
+function facebookReelsDeferredUntil(item: QueueItem): string | null {
+  const metadata = item.metadata ?? {};
+  const deferredPlatforms = metadata.deferredPlatforms;
+  const legacyCooldownMessage = /Facebook Reels publishing paused by provider cooldown until/i.test(item.error_message ?? "");
+  const isDeferred =
+    (Array.isArray(deferredPlatforms) && deferredPlatforms.includes("facebook_reels")) ||
+    legacyCooldownMessage;
+  if (!isDeferred) return null;
+
+  const candidate = metadata.nextRetryAt ?? metadata.facebookReelsNextAllowedAt ?? item.scheduled_at;
+  return typeof candidate === "string" && Number.isFinite(Date.parse(candidate)) ? candidate : null;
+}
+
+function formatDeferredAt(value: string): string {
+  return new Date(value).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" });
+}
+
 export default function AdminSocialPage() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [health, setHealth] = useState<Health>({
@@ -602,6 +619,7 @@ export default function AdminSocialPage() {
                 const status = STATUS_ORDER.includes(item.status as Status)
                   ? (item.status as Status)
                   : "failed";
+                const deferredAt = facebookReelsDeferredUntil(item);
                 const selectable = status === "failed" || status === "partial";
                 return (
                   <tr key={item.id} className="align-top hover:bg-black/10">
@@ -631,14 +649,22 @@ export default function AdminSocialPage() {
                       <span
                         className={`rounded-full border px-2 py-1 text-xs ${STATUS_CLASSES[status]}`}
                       >
-                        {STATUS_LABELS[status]}
+                        {deferredAt && status === "partial" ? "نشر جزئي — Reels مؤجل" : STATUS_LABELS[status]}
                       </span>
                     </td>
                     <td className="p-3 text-xs text-brand-cream/40" dir="ltr">
                       {item.scheduled_at ?? "فوري"}
                     </td>
-                    <td className="p-3 text-xs text-red-300/70">
-                      {item.error_message ?? "—"}
+                    <td className="p-3 text-xs">
+                      {deferredAt && (
+                        <p className="mb-1 text-amber-300/80">
+                          مؤجل تلقائيًا حتى {formatDeferredAt(deferredAt)}
+                        </p>
+                      )}
+                      {item.error_message && !(/Facebook Reels publishing paused by provider cooldown until/i.test(item.error_message)) && (
+                        <p className="text-red-300/80">{item.error_message}</p>
+                      )}
+                      {!deferredAt && !item.error_message && "—"}
                     </td>
                   </tr>
                 );
@@ -661,6 +687,7 @@ export default function AdminSocialPage() {
             const status = STATUS_ORDER.includes(item.status as Status)
               ? (item.status as Status)
               : "failed";
+            const deferredAt = facebookReelsDeferredUntil(item);
             const selectable = status === "failed" || status === "partial";
             return (
               <article key={item.id} className="space-y-3 rounded-2xl border border-brand-gold/10 bg-black/15 p-3">
@@ -689,7 +716,8 @@ export default function AdminSocialPage() {
                 </div>
                 <div className="space-y-1 border-t border-brand-gold/10 pt-2 text-xs leading-5">
                   <p className="text-brand-cream/45">الموعد: <span dir="ltr">{item.scheduled_at ?? "فوري"}</span></p>
-                  {item.error_message && <p className="break-words text-red-300/80">الخطأ: {item.error_message}</p>}
+                  {deferredAt && <p className="break-words text-amber-300/80">مؤجل تلقائيًا حتى {formatDeferredAt(deferredAt)}</p>}
+                  {item.error_message && !(/Facebook Reels publishing paused by provider cooldown until/i.test(item.error_message)) && <p className="break-words text-red-300/80">الخطأ: {item.error_message}</p>}
                 </div>
               </article>
             );
