@@ -4,6 +4,7 @@ import {
   FACEBOOK_REELS_RATE_LIMIT_COOLDOWN_MS,
   extractFacebookReelsNextAllowedAt,
   isFacebookReelsRateLimitResponseError,
+  isFacebookReelsCooldownDeferredError,
   resolveFacebookReelsNextAllowedAt,
 } from "../../src/features/social/services/facebook-reels-rate-limit";
 
@@ -22,6 +23,8 @@ const deferred = new Error(
 );
 assert.equal(extractFacebookReelsNextAllowedAt(deferred), expectedUntil);
 assert.equal(isFacebookReelsRateLimitResponseError(deferred), false);
+assert.equal(isFacebookReelsCooldownDeferredError(deferred), true);
+assert.equal(isFacebookReelsCooldownDeferredError(metaRateLimit), false);
 assert.equal(resolveFacebookReelsNextAllowedAt(deferred, now), expectedUntil);
 assert.equal(isFacebookReelsRateLimitResponseError(new Error("HTTP 403: permission denied")), false);
 assert.equal(resolveFacebookReelsNextAllowedAt(new Error("HTTP 403: permission denied"), now), null);
