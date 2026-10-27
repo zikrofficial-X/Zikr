@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Activity, Radio, ShieldCheck } from "lucide-react";
 import { getAdminSnapshot } from "@/features/admin/services/platform";
 import { ADMIN_NAVIGATION } from "@/features/admin/config/navigation";
 import { getCurrentProfile } from "@/features/admin/services/admin";
@@ -53,6 +54,13 @@ export async function AdminPlatformCommandCenter() {
 
   const currentProfile = await getCurrentProfile();
   const role = currentProfile?.role ?? "user";
+  const roleLabels: Record<string, string> = {
+    admin: "مدير النظام",
+    editor: "محرر",
+    moderator: "مشرف",
+    analyst: "محلل",
+    user: "مستخدم",
+  };
   const availableGroups = ADMIN_NAVIGATION
     .map((group) => ({
       ...group,
@@ -106,6 +114,9 @@ export async function AdminPlatformCommandCenter() {
     socialPublish: "طابور النشر الاجتماعي",
   };
   const outcomeLabels: Record<string, string> = { success: "ناجح", denied: "مرفوض", failed: "فشل" };
+  const queueTotal = queueEntries.reduce((sum, [, value]) => sum + (typeof value === "number" ? value : 0), 0);
+  const failedQueueTotal = (canReadSocialQueue ? snapshot.queues.socialFailed ?? 0 : 0) + (canReadVideoQueue ? snapshot.queues.videoFailed ?? 0 : 0);
+  const dataStatus = snapshot.unavailable.length ? "جزئية" : "مباشرة";
 
   const countSections: Array<{ key: string; title: string; description: string; tables: string[] }> = [
     {
@@ -154,6 +165,17 @@ export async function AdminPlatformCommandCenter() {
           <Link href="/" className="rounded-xl border border-brand-gold/20 px-4 py-2 text-sm text-brand-gold hover:bg-brand-gold/10">
             عرض الموقع
           </Link>
+        </div>
+        <div className="mt-6 grid gap-2 border-t border-brand-gold/10 pt-4 sm:grid-cols-3">
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-400/15 bg-emerald-400/5 px-3 py-2.5 text-xs text-emerald-200/80">
+            <Radio size={15} /> <span>حالة البيانات: {dataStatus}</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl border border-brand-gold/10 bg-black/15 px-3 py-2.5 text-xs text-brand-cream/60">
+            <ShieldCheck size={15} className="text-brand-gold/80" /> <span>الدور: {roleLabels[role] ?? role}</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl border border-brand-gold/10 bg-black/15 px-3 py-2.5 text-xs text-brand-cream/60">
+            <Activity size={15} className="text-sky-300/80" /> <span>{queueTotal.toLocaleString("ar-EG-u-nu-latn")} عنصر في الطوابير · {failedQueueTotal.toLocaleString("ar-EG-u-nu-latn")} فاشل</span>
+          </div>
         </div>
       </header>
 
