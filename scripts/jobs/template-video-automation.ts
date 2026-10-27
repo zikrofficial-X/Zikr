@@ -997,6 +997,7 @@ function requestedVideoShape(request: GeneratedRequest) {
 }
 
 async function renderVideo(request: GeneratedRequest) {
+  const renderStartedAt = Date.now();
   await validateSourceContent(request);
   assertKidsStoryContract(request);
   const text = contentText(request);
@@ -1216,6 +1217,7 @@ async function renderVideo(request: GeneratedRequest) {
     await execFileAsync("ffmpeg", args, { maxBuffer: 4 * 1024 * 1024 });
     await assertPlayableOutput(outputPath, width, height);
     await assertAudibleAudio(outputPath);
+    const renderDurationMs = Date.now() - renderStartedAt;
 
     const bytes = await readFile(outputPath);
     const storageKey = request.automation_key || request.id;
@@ -1255,9 +1257,14 @@ async function renderVideo(request: GeneratedRequest) {
         sourceLocked: ["quran", "hadith", "dua", "adhkar", "story"].includes(request.category),
         aiVisualPolicyVersion: AI_VISUAL_POLICY_VERSION,
         generatedAt: new Date().toISOString(),
+        renderDurationMs,
       },
     };
-    return supabaseUrl.replace(/\/$/, "") + "/storage/v1/object/public/videos/" + objectPath;
+    return {
+      videoUrl: supabaseUrl.replace(/\/$/, "") + "/storage/v1/object/public/videos/" + objectPath,
+      scene,
+      renderDurationMs,
+    };
   } finally {
     await rm(temp, { recursive: true, force: true });
     if (aiVideoPath && aiVideoPath.startsWith(tmpdir()) && !aiVideoPath.startsWith(temp)) await rm(path.dirname(aiVideoPath), { recursive: true, force: true });
@@ -1469,14 +1476,17 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
     );
     if (!claimed?.[0]) continue;
     processed += 1;
+    const attemptStartedAt = Date.now();
     try {
-      const videoUrl = await renderVideo(request);
+      const rendered = await renderVideo(request);
       await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({
           status: "completed",
-          video_url: videoUrl,
+          video_url: rendered.videoUrl,
+          scene: rendered.scene,
+          render_duration_ms: rendered.renderDurationMs,
           provider:
             typeof request.content.aiProvider === "string"
               ? request.content.aiProvider
@@ -1491,18 +1501,21 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           error_details: null,
         }),
       });
-      await queueSocialItems(request, videoUrl);
+      await queueSocialItems(request, rendered.videoUrl);
       succeeded += 1;
       console.log(`[template-video] Completed ${request.id}`);
     } catch (error) {
       failed += 1;
       const message = error instanceof Error ? error.message : String(error);
+      const failedScene = request.content?.ai && typeof request.content.ai === "object" && ["calm", "dawn", "night", "gold", "emerald", "paper", "rose"].includes(String((request.content.ai as { scene?: unknown }).scene))
+        ? String((request.content.ai as { scene?: unknown }).scene)
+        : deterministicScene(request);
       const attempts = (request.generation_attempts ?? 0) + 1;
       const terminalStatus = attempts >= engineConfig().maxRetries ? "failed" : "retry_wait";
       await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ status: terminalStatus, generation_attempts: attempts, next_retry_at: terminalStatus === "retry_wait" ? new Date(Date.now() + Math.min(60, attempts * 15) * 60_000).toISOString() : null, last_attempt_at: new Date().toISOString(), error_message: "Template generation failed", error_details: message.slice(0, 2000), updated_at: new Date().toISOString() }),
+        body: JSON.stringify({ status: terminalStatus, scene: failedScene, render_duration_ms: Date.now() - attemptStartedAt, generation_attempts: attempts, next_retry_at: terminalStatus === "retry_wait" ? new Date(Date.now() + Math.min(60, attempts * 15) * 60_000).toISOString() : null, last_attempt_at: new Date().toISOString(), error_message: "Template generation failed", error_details: message.slice(0, 2000), updated_at: new Date().toISOString() }),
       });
       console.error(`[template-video] Failed ${request.id}: ${message}`);
     }

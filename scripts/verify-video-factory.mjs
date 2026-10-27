@@ -32,6 +32,12 @@ if (!template.includes("assertAudibleAudio")) failures.push("rendered videos mus
 if (!template.includes("Rendered output resolution mismatch")) failures.push("rendered video resolution must be validated");
 if (!template.includes("Rendered output video bitrate is too low")) failures.push("rendered video bitrate must be validated");
 if (!template.includes("deterministicScene(request)")) failures.push("template selection must provide deterministic visual variety");
+if (!template.includes("render_duration_ms: rendered.renderDurationMs") || !template.includes("scene: rendered.scene")) failures.push("completed renders must persist scene and render duration metrics");
+if (!template.includes("render_duration_ms: Date.now() - attemptStartedAt")) failures.push("failed attempts must persist render duration metrics");
+const metricsMigration = read("supabase/migrations/20261027230500_video_render_metrics.sql");
+for (const token of ["scene text", "render_duration_ms integer", "video_generation_requests_template_scene"]) {
+  if (!metricsMigration.includes(token)) failures.push("render metrics migration missing: " + token);
+}
 if (!template.includes("content_hash")) failures.push("video seed must persist a deterministic content hash");
 if (!template.includes("video_generation_requests_content_hash_unique")) failures.push("video seed must tolerate duplicate content-hash races without aborting the worker");
 if (!template.includes("day * 16 + slot")) failures.push("video seed source index must not overlap across day boundaries");

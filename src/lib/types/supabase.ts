@@ -3741,7 +3741,9 @@ export type Database = {
           provider_job_id: string | null
           publish_status: string | null
           published_at: string | null
+          render_duration_ms: number | null
           source_hash: string | null
+          scene: string | null
           status: string
           template_version: string | null
           thumbnail_url: string | null
@@ -3773,7 +3775,9 @@ export type Database = {
           provider_job_id?: string | null
           publish_status?: string | null
           published_at?: string | null
+          render_duration_ms?: number | null
           source_hash?: string | null
+          scene?: string | null
           status?: string
           template_version?: string | null
           thumbnail_url?: string | null
@@ -3805,7 +3809,9 @@ export type Database = {
           provider_job_id?: string | null
           publish_status?: string | null
           published_at?: string | null
+          render_duration_ms?: number | null
           source_hash?: string | null
+          scene?: string | null
           status?: string
           template_version?: string | null
           thumbnail_url?: string | null
