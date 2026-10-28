@@ -34,7 +34,7 @@ if (!template.includes("Rendered output video bitrate is too low")) failures.pus
 if (!template.includes("deterministicScene(request)")) failures.push("template selection must provide deterministic visual variety");
 if (!template.includes("render_duration_ms: rendered.renderDurationMs") || !template.includes("scene: rendered.scene")) failures.push("completed renders must persist scene and render duration metrics");
 if (!template.includes("render_duration_ms: Date.now() - attemptStartedAt")) failures.push("failed attempts must persist render duration metrics");
-const metricsMigration = read("supabase/migrations/20261027230500_video_render_metrics.sql");
+const metricsMigration = read("supabase/migrations/20261027200748_video_render_metrics.sql");
 for (const token of ["scene text", "render_duration_ms integer", "video_generation_requests_template_scene"]) {
   if (!metricsMigration.includes(token)) failures.push("render metrics migration missing: " + token);
 }
