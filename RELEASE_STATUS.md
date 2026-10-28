@@ -71,7 +71,7 @@ Before treating a release as complete:
 
 `pnpm verify:pr`
 
-Android `v1.1.4` is now the latest published release. Its public APK/AAB and verification files passed the publisher's checksum, signature, manifest, and byte-for-byte asset checks. The separate tag/source commit mismatch listed above remains a provenance issue to enforce against in the next controlled release; it must not be hidden by marking source-to-tag correspondence as fully reconciled.
+Android `v1.1.7` is the latest published stable release. Its GitHub Release lists the APK, AAB, release metadata, and SHA256SUMS. The historical `v1.1.4` tag/source commit mismatch remains a provenance lesson; it must not be hidden by marking older source-to-tag correspondence as fully reconciled. The `v1.1.7` tag itself is also unsigned, which is distinct from APK/AAB signing.
 
 Production evidence must include:
 
