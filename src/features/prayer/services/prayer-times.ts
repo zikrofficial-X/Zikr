@@ -192,18 +192,19 @@ export async function getPrayerTimesByCity(
 export function getNextPrayer(
   timings: PrayerTime,
   currentTime: Date = new Date(),
+  timeZone?: string,
 ): { name: string; time: string; minutesUntil: number } | null {
+  // Sunrise and sunset are display times, not salah prayers; they must
+  // never replace Dhuhr or Maghrib in the next-prayer countdown.
   const prayers = [
     { name: 'Fajr', time: timings.Fajr },
-    { name: 'Sunrise', time: timings.Sunrise },
     { name: 'Dhuhr', time: timings.Dhuhr },
     { name: 'Asr', time: timings.Asr },
-    { name: 'Sunset', time: timings.Sunset },
     { name: 'Maghrib', time: timings.Maghrib },
     { name: 'Isha', time: timings.Isha },
   ];
 
-  const now = currentTime.getHours() * 60 + currentTime.getMinutes();
+  const now = getMinutesOfDayInTimeZone(currentTime, timeZone);
 
   for (const prayer of prayers) {
     const prayerMinutes = parsePrayerTimeMinutes(prayer.time);
@@ -228,6 +229,7 @@ export function getNextPrayer(
 export function getCurrentPrayer(
   timings: PrayerTime,
   currentTime: Date = new Date(),
+  timeZone?: string,
 ): { name: string; time: string } | null {
   const prayers = [
     { name: 'Fajr', time: timings.Fajr },
@@ -237,7 +239,7 @@ export function getCurrentPrayer(
     { name: 'Isha', time: timings.Isha },
   ];
 
-  const now = currentTime.getHours() * 60 + currentTime.getMinutes();
+  const now = getMinutesOfDayInTimeZone(currentTime, timeZone);
 
   for (let i = prayers.length - 1; i >= 0; i--) {
     const prayerMinutes = parsePrayerTimeMinutes(prayers[i].time);
@@ -245,6 +247,27 @@ export function getCurrentPrayer(
     if (prayerMinutes <= now) return prayers[i];
   }
   return null;
+}
+
+export function getMinutesOfDayInTimeZone(currentTime: Date, timeZone?: string): number {
+  if (timeZone) {
+    try {
+      const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(currentTime);
+      const hour = Number(parts.find((part) => part.type === "hour")?.value);
+      const minute = Number(parts.find((part) => part.type === "minute")?.value);
+      if (Number.isInteger(hour) && hour >= 0 && hour <= 23 && Number.isInteger(minute) && minute >= 0 && minute <= 59) {
+        return hour * 60 + minute;
+      }
+    } catch {
+      // Fall back to the device clock if the API returns an invalid timezone.
+    }
+  }
+  return currentTime.getHours() * 60 + currentTime.getMinutes();
 }
 
 export const getPrayerTimesByCoordinates = getPrayerTimes;

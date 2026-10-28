@@ -149,8 +149,9 @@ export function PrayerTimesPage() {
       const now = new Date();
       setCurrentTime(now);
       if (prayerData?.data?.timings) {
-        setNextPrayer(getNextPrayer(prayerData.data.timings, now));
-        setCurrentPrayer(getCurrentPrayer(prayerData.data.timings, now));
+        const timeZone = prayerData.data.meta.timezone;
+        setNextPrayer(getNextPrayer(prayerData.data.timings, now, timeZone));
+        setCurrentPrayer(getCurrentPrayer(prayerData.data.timings, now, timeZone));
       }
     }, 1000);
     return () => clearInterval(interval);
