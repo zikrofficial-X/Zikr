@@ -204,7 +204,7 @@ export function getNextPrayer(
     { name: 'Isha', time: timings.Isha },
   ];
 
-  const now = getMinutesOfDay(currentTime, timeZone);
+  const now = getMinutesOfDayInTimeZone(currentTime, timeZone);
 
   for (const prayer of prayers) {
     const prayerMinutes = parsePrayerTimeMinutes(prayer.time);
@@ -239,7 +239,7 @@ export function getCurrentPrayer(
     { name: 'Isha', time: timings.Isha },
   ];
 
-  const now = getMinutesOfDay(currentTime, timeZone);
+  const now = getMinutesOfDayInTimeZone(currentTime, timeZone);
 
   for (let i = prayers.length - 1; i >= 0; i--) {
     const prayerMinutes = parsePrayerTimeMinutes(prayers[i].time);
@@ -249,7 +249,7 @@ export function getCurrentPrayer(
   return null;
 }
 
-function getMinutesOfDay(currentTime: Date, timeZone?: string): number {
+export function getMinutesOfDayInTimeZone(currentTime: Date, timeZone?: string): number {
   if (timeZone) {
     try {
       const parts = new Intl.DateTimeFormat("en-GB", {

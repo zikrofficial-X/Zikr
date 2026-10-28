@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { convertTo12Hour, getPrayerTimes, getPrayerTimesByCity } from '@/features/prayer/services/prayer-times';
+import { convertTo12Hour, getPrayerTimes, getPrayerTimesByCity, getMinutesOfDayInTimeZone } from '@/features/prayer/services/prayer-times';
 import type { PrayerTimes } from '@/lib/types/prayer';
 import { resolveLocationLabel } from '@/lib/location/reverse-geocode';
 import { getSavedPrayerLocation, persistPrayerLocation, type SavedPrayerLocation } from '@/features/prayer/services/saved-prayer-location';
@@ -28,8 +28,9 @@ function toMinutes(value: string): number {
 function getPrayerState(
   timings: PrayerTimes,
   now: Date,
+  timeZone?: string,
 ): { active: MainPrayerKey | null; next: MainPrayerKey } {
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentMinutes = getMinutesOfDayInTimeZone(now, timeZone);
   const keys: MainPrayerKey[] = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 
   let active: MainPrayerKey | null = null;
@@ -226,7 +227,7 @@ function PrayerTimesPanel({ locale }: { locale: Locale }) {
   };
 
   const prayerState = prayerTimes
-    ? getPrayerState(prayerTimes, now)
+    ? getPrayerState(prayerTimes, now, savedLocation?.timezone)
     : { active: null as MainPrayerKey | null, next: 'Fajr' as MainPrayerKey };
 
   return (
