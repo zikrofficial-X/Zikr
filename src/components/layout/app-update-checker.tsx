@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { resolveAndroidApkDownloadUrl } from "@/features/releases/android-download-url";
 
 const UPDATE_ENDPOINT = "/api/app-version";
 const UPDATE_NOTIFICATION_ID = 905107;
@@ -113,7 +114,11 @@ export function AppUpdateChecker() {
     setOpening(true);
     setOpenError(false);
     try {
-      await native.openExternalUrl(update.apkUrl);
+      const downloadUrl = resolveAndroidApkDownloadUrl(
+        update.apkUrl,
+        window.location.origin,
+      );
+      await native.openExternalUrl(downloadUrl);
     } catch (error) {
       console.warn("[app-update] failed to open APK URL", error);
       setOpenError(true);
@@ -141,7 +146,16 @@ export function AppUpdateChecker() {
         </p>
         {openError && (
           <p className="text-sm text-red-200" role="alert">
-            تعذر فتح رابط التحديث. افتح صفحة الإصدار وحمّل APK يدويًا.
+            تعذر فتح رابط تنزيل التحديث. يمكنك فتح{" "}
+            <a
+              href={update.releaseUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline underline-offset-2"
+            >
+              صفحة الإصدار الرسمية
+            </a>{" "}
+            لتنزيل APK يدويًا.
           </p>
         )}
         <div className="flex flex-wrap gap-2 pt-1">
