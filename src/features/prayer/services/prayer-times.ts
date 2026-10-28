@@ -193,12 +193,12 @@ export function getNextPrayer(
   timings: PrayerTime,
   currentTime: Date = new Date(),
 ): { name: string; time: string; minutesUntil: number } | null {
+  // Sunrise and sunset are display times, not salah prayers; they must
+  // never replace Dhuhr or Maghrib in the next-prayer countdown.
   const prayers = [
     { name: 'Fajr', time: timings.Fajr },
-    { name: 'Sunrise', time: timings.Sunrise },
     { name: 'Dhuhr', time: timings.Dhuhr },
     { name: 'Asr', time: timings.Asr },
-    { name: 'Sunset', time: timings.Sunset },
     { name: 'Maghrib', time: timings.Maghrib },
     { name: 'Isha', time: timings.Isha },
   ];
