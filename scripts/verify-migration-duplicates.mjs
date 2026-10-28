@@ -25,6 +25,13 @@ const ALLOWED_LEGACY_DUPLICATES = [
     '20261015020000_remove_duplicate_nonunique_indexes.sql',
     '20261015023317_remove_duplicate_nonunique_indexes.sql',
   ],
+  // The connected Supabase migration tool recorded this idempotent deny-policy
+  // migration twice under two distinct versions. Preserve both immutable ledger
+  // entries, with byte-identical SQL, so repository and production histories align.
+  [
+    '20261028112823_social_credentials_explicit_deny_policies.sql',
+    '20261028112833_social_credentials_explicit_deny_policies.sql',
+  ],
 ];
 
 const files = readdirSync(MIGRATIONS_DIR)
