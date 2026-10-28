@@ -105,7 +105,7 @@ for (const token of [
 
 
 const credentialsMigrationPath =
-  "supabase/migrations/20261028113000_social_credentials_explicit_deny_policies.sql";
+  "supabase/migrations/20261028112823_social_credentials_explicit_deny_policies.sql";
 const credentialsMigration = read(credentialsMigrationPath);
 for (const token of [
   "REVOKE ALL ON TABLE public.social_platform_credentials",
@@ -120,6 +120,24 @@ for (const token of [
   if (!credentialsMigration.includes(token)) {
     failures.push(
       `${credentialsMigrationPath} missing fail-closed security contract: ${token}`,
+    );
+  }
+}
+
+
+const credentialsRetryMigrationPath =
+  "supabase/migrations/20261028112833_social_credentials_explicit_deny_policies.sql";
+const credentialsRetryMigration = read(credentialsRetryMigrationPath);
+for (const token of [
+  "Idempotent retry recorded as the second production migration version",
+  "REVOKE ALL ON TABLE public.social_platform_credentials",
+  "DROP POLICY IF EXISTS social_platform_credentials_deny_anon",
+  "DROP POLICY IF EXISTS social_platform_credentials_deny_authenticated",
+  "AS RESTRICTIVE",
+]) {
+  if (!credentialsRetryMigration.includes(token)) {
+    failures.push(
+      `${credentialsRetryMigrationPath} missing idempotent retry contract: ${token}`,
     );
   }
 }
