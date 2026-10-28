@@ -89,7 +89,7 @@ if (!games.includes('kids_record_game_result_internal')) {
   failures.push("kids games service must use the secure service-role RPC");
 }
 
-const queuePolicyMigrationPath = "supabase/migrations/20261028111000_optimize_admin_queue_alert_rls_initplan.sql";
+const queuePolicyMigrationPath = "supabase/migrations/20261028112016_optimize_admin_queue_alert_rls_initplan.sql";
 const queuePolicyMigration = read(queuePolicyMigrationPath);
 for (const token of [
   "DROP POLICY IF EXISTS admin_queue_alert_deliveries_admin_read",
