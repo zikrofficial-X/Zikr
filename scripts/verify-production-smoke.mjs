@@ -63,10 +63,10 @@ const KIDS_GAME_SLUGS = [
 
 const CORE_CHECKS = [
   { path: "/", label: "homepage", expectedMain: /ذِكر/i },
-  { path: "/quran", label: "Quran page", expectedMain: /القرآن/i },
+  { path: "/quran", label: "Quran page", expectedMain: /القرآن/i, expectedContent: /الفاتحة.*الناس/ },
   { path: "/prayer-times", label: "prayer times page", expectedMain: /مواقيت/i },
   { path: "/kids", label: "kids page", expectedMain: /نتعلم|الأطفال|الاطفال/i },
-  { path: "/kids/games", label: "kids games catalogue", expectedMain: /الألعاب|ألعاب|All games|Choose your next adventure/i },
+  { path: "/kids/games", label: "kids games catalogue", expectedMain: /الألعاب|ألعاب|All games|Choose your next adventure/i, expectedContent: /مختبر الحروف|Arabic Letter Lab|Letter Lab/i },
   { path: "/data-deletion", label: "Facebook data deletion instructions", expectedMain: /حذف بيانات المستخدم.*إرسال طلب حذف البيانات/i },
 ];
 
@@ -77,6 +77,24 @@ const ROUTE_CHECKS = PUBLIC_ROUTES
 // Test all individual game pages and their live content endpoints rather than
 // only checking the general kids landing page. This catches missing game slugs,
 // incomplete database seeds, and broken game metadata before release.
+const QURAN_CATALOG_API_CHECK = {
+  path: "/api/quran/surahs",
+  label: "canonical Quran catalog API",
+  expectedJson: (payload) =>
+    Array.isArray(payload) &&
+    payload.length === 114 &&
+    payload[0]?.id === 1 &&
+    payload[113]?.id === 114 &&
+    payload.every(
+      (surah, index) =>
+        surah?.id === index + 1 &&
+        typeof surah.name_ar === "string" &&
+        surah.name_ar.length > 0 &&
+        Number.isInteger(surah.ayahs_count) &&
+        surah.ayahs_count > 0,
+    ),
+};
+
 const KIDS_GAME_PAGE_CHECKS = KIDS_GAME_SLUGS.map((slug) => ({
   path: `/kids/${slug}`,
   label: `kids game page ${slug}`,
@@ -104,6 +122,7 @@ const checks = [
   ...CORE_CHECKS,
   ...ROUTE_CHECKS,
   ...KIDS_GAME_PAGE_CHECKS,
+  QURAN_CATALOG_API_CHECK,
   ...KIDS_GAME_API_CHECKS,
   ...ASSET_CHECKS,
 ];
@@ -130,7 +149,10 @@ function mainTextFrom(html) {
     .map((match) => extractText(match[1]))
     .sort((left, right) => right.length - left.length);
   const bestMain = mainTexts[0] ?? "";
-  if (bestMain.length >= 35 && !/^(?:جاري التحميل(?:\.\.\.)?|loading(?:\.\.\.)?)$/i.test(bestMain.trim())) {
+  const isLoadingShell =
+    /^(?:جاري التحميل(?:\.\.\.)?|loading(?:\.\.\.)?)$/i.test(bestMain.trim()) ||
+    /جاري تحميل المحتوى القرآني/i.test(bestMain);
+  if (bestMain.length >= 35 && !isLoadingShell) {
     return bestMain;
   }
   // When all main blocks are temporary loading shells, fall back to the HTML
@@ -161,6 +183,8 @@ async function checkEndpoint(check) {
 
         if (check.expectedMain && !check.expectedMain.test(mainTextFrom(body))) {
           last = "HTTP 200 but expected visible main-content pattern was missing";
+        } else if (check.expectedContent && !check.expectedContent.test(extractText(body))) {
+          last = "HTTP 200 but expected rendered content was missing (a loading shell alone does not pass)";
         } else if (check.expectedJson && (!jsonPayload || !check.expectedJson(jsonPayload))) {
           last = "HTTP 200 but JSON payload did not satisfy the expected route/content contract";
         } else if (check.expected && !check.expected.test(body)) {
