@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { ExportedVapidKeys } from "webpush";
 import {
   ApplicationServer,
   exportApplicationServerKey,
@@ -60,7 +61,7 @@ type Delivery = {
 
 type VapidBundle = {
   publicKey: string;
-  keys: JsonWebKeyPair;
+  keys: ExportedVapidKeys;
 };
 
 const PROJECT_URL = Deno.env.get("SUPABASE_URL") ?? "";
