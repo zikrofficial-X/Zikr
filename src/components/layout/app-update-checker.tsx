@@ -146,14 +146,14 @@ export function AppUpdateChecker() {
         </p>
         {openError && (
           <p className="text-sm text-red-200" role="alert">
-            تعذر فتح رابط تنزيل التحديث. يمكنك فتح{" "}
+            تعذر فتح تنزيل التحديث داخل التطبيق. استخدم{" "}
             <a
               href={update.releaseUrl}
               target="_blank"
               rel="noreferrer noopener"
               className="underline underline-offset-2"
             >
-              صفحة الإصدار الرسمية
+              رابط التنزيل البديل
             </a>{" "}
             لتنزيل APK يدويًا.
           </p>
