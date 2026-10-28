@@ -1,9 +1,23 @@
 # ZIKR — Current Project Status
 
 **Production branch:** `main`  
-**Last reconciled:** 2026-10-08  
+**Last reconciled:** 2026-10-28  
 **Repository:** `zikrofficial-X/Zikr`  
 **Production origin:** `https://zikrmediaofficial.vercel.app`
+
+## Audit checkpoint — 2026-10-28
+
+The production audit baseline at the start of this work was:
+
+- Vercel production deployment `dpl_C2ir1BurQUdkqdxXdAgqXwerhMWm` was `READY`, and `zikrmediaofficial.vercel.app` resolved to it.
+- GitHub `ZIKR Quality Gate` run #451 and `ZIKR Supabase Production Health` run #40 passed on baseline commit `c7dbd229f827aecffc5ce7c01c93cbe90d6cc7b7`.
+- Direct live HTTP checks returned 200 for the 38 public section routes, all 13 kids game pages, and all 13 kids content APIs. The APIs returned the requested game slug/type/metadata. `/api/quran/surahs` returned the ordered 114-surah catalog. No Vercel runtime error clusters were reported in the inspected one-hour window.
+- The baseline repository migration chain and the production Supabase ledger both contained 371 versions with no missing or extra version IDs.
+- Supabase advisors reported Leaked Password Protection disabled; an RLS-without-policy notice for `social_platform_credentials`; and a per-row `auth.uid()` policy-evaluation warning for `admin_queue_alert_deliveries`. The credentials table had no SELECT privilege granted to `anon` or `authenticated`, so the no-policy notice did not indicate client-readable credentials.
+- The follow-up forward migration in this audit adds explicit restrictive deny policies for browser roles on social publishing credentials and wraps `auth.uid()` in a scalar subquery for the admin queue policy. Apply and verify that migration through the production migration process; do not replay or rewrite older migrations.
+- Leaked Password Protection is an Auth project setting, not a SQL migration. It remains a separate dashboard-level follow-up until the project setting is enabled and the advisor is rechecked.
+
+The Quran page uses Next.js streamed Suspense content. The production smoke contract now rejects the Arabic loading fallback as sufficient evidence and validates both the rendered surah text and the canonical 114-row Quran API.
 
 ## Current Vercel/Supabase binding
 
