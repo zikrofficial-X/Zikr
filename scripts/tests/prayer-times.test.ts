@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { getNextPrayer, type PrayerTime } from "../../src/features/prayer/services/prayer-times";
+import { getCurrentPrayer, getNextPrayer, type PrayerTime } from "../../src/features/prayer/services/prayer-times";
 
 const timings: PrayerTime = {
   Fajr: "05:00",
@@ -41,4 +41,20 @@ assert.deepEqual(beforeFajr, {
   minutesUntil: 60,
 }, "the early-morning countdown must use Fajr");
 
-console.log("Prayer-time next-prayer regression tests passed.");
+const selectedCityNow = new Date("2026-06-15T12:30:00.000Z");
+assert.deepEqual(
+  getNextPrayer(timings, selectedCityNow, "America/New_York"),
+  {
+    name: "Dhuhr",
+    time: "12:00",
+    minutesUntil: 210,
+  },
+  "a selected city's timezone, not the device timezone, must drive the countdown",
+);
+assert.equal(
+  getCurrentPrayer(timings, selectedCityNow, "America/New_York")?.name,
+  "Fajr",
+  "the current prayer must be calculated in the selected city's timezone",
+);
+
+console.log("Prayer-time next-prayer and timezone regression tests passed.");

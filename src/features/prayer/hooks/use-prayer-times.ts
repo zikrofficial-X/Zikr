@@ -44,10 +44,17 @@ export function usePrayerTimes(): UsePrayerTimesReturn {
         if (!response.ok) throw new Error("Failed to fetch prayer times");
         const data = await response.json();
         const next = data.data?.timings ?? data.timings;
+        const timeZone =
+          typeof data.data?.meta?.timezone === "string"
+            ? data.data.meta.timezone
+            : typeof data.meta?.timezone === "string"
+              ? data.meta.timezone
+              : undefined;
+        const evaluatedAt = new Date();
         setTimes(next);
         if (next) {
-          setCurrentPrayer(getCurrentPrayer(next as PrayerTime)?.name ?? null);
-          setNextPrayer(getNextPrayer(next as PrayerTime)?.name ?? null);
+          setCurrentPrayer(getCurrentPrayer(next as PrayerTime, evaluatedAt, timeZone)?.name ?? null);
+          setNextPrayer(getNextPrayer(next as PrayerTime, evaluatedAt, timeZone)?.name ?? null);
         }
       } catch (err) {
         setError(err instanceof Error ? err : new Error("Unknown error"));
