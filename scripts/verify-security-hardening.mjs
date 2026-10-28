@@ -105,7 +105,7 @@ for (const token of [
 
 
 const credentialsMigrationPath =
-  "supabase/migrations/20261028113000_social_credentials_explicit_deny_policies.sql";
+  "supabase/migrations/20261028112823_social_credentials_explicit_deny_policies.sql";
 const credentialsMigration = read(credentialsMigrationPath);
 for (const token of [
   "REVOKE ALL ON TABLE public.social_platform_credentials",
