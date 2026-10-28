@@ -89,6 +89,36 @@ if (!games.includes('kids_record_game_result_internal')) {
   failures.push("kids games service must use the secure service-role RPC");
 }
 
+
+const credentialsMigrationPath =
+  "supabase/migrations/20261028111500_harden_social_credentials_and_admin_queue_rls.sql";
+const credentialsMigration = read(credentialsMigrationPath);
+for (const token of [
+  "REVOKE ALL ON TABLE public.social_platform_credentials FROM PUBLIC, anon, authenticated;",
+  "AS RESTRICTIVE",
+  "TO anon",
+  "TO authenticated",
+  "USING (false)",
+  "WITH CHECK (false)",
+  "WHERE a.user_id = (SELECT auth.uid())",
+  "WHERE p.id = (SELECT auth.uid())",
+]) {
+  if (!credentialsMigration.includes(token)) {
+    failures.push(
+      `${credentialsMigrationPath} missing security/performance contract: ${token}`,
+    );
+  }
+}
+if (
+  !credentialsMigration.includes(
+    "COMMENT ON TABLE public.social_platform_credentials",
+  )
+) {
+  failures.push(
+    "social publishing credentials must document their server-only access boundary",
+  );
+}
+
 if (failures.length) {
   console.error("SECURITY_HARDENING_CHECK_FAILED");
   for (const failure of failures) console.error("❌ " + failure);
