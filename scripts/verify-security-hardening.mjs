@@ -89,6 +89,20 @@ if (!games.includes('kids_record_game_result_internal')) {
   failures.push("kids games service must use the secure service-role RPC");
 }
 
+const queuePolicyMigrationPath = "supabase/migrations/20261028111000_optimize_admin_queue_alert_rls_initplan.sql";
+const queuePolicyMigration = read(queuePolicyMigrationPath);
+for (const token of [
+  "DROP POLICY IF EXISTS admin_queue_alert_deliveries_admin_read",
+  "WHERE a.user_id = (SELECT auth.uid())",
+  "WHERE p.id = (SELECT auth.uid())",
+  "FOR SELECT",
+  "TO authenticated",
+]) {
+  if (!queuePolicyMigration.includes(token)) {
+    failures.push(`${queuePolicyMigrationPath} missing optimized policy contract: ${token}`);
+  }
+}
+
 if (failures.length) {
   console.error("SECURITY_HARDENING_CHECK_FAILED");
   for (const failure of failures) console.error("❌ " + failure);
