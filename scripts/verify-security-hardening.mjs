@@ -103,6 +103,27 @@ for (const token of [
   }
 }
 
+
+const credentialsMigrationPath =
+  "supabase/migrations/20261028113000_social_credentials_explicit_deny_policies.sql";
+const credentialsMigration = read(credentialsMigrationPath);
+for (const token of [
+  "REVOKE ALL ON TABLE public.social_platform_credentials",
+  "FROM PUBLIC, anon, authenticated;",
+  "AS RESTRICTIVE",
+  "TO anon",
+  "TO authenticated",
+  "USING (false)",
+  "WITH CHECK (false)",
+  "COMMENT ON TABLE public.social_platform_credentials",
+]) {
+  if (!credentialsMigration.includes(token)) {
+    failures.push(
+      `${credentialsMigrationPath} missing fail-closed security contract: ${token}`,
+    );
+  }
+}
+
 if (failures.length) {
   console.error("SECURITY_HARDENING_CHECK_FAILED");
   for (const failure of failures) console.error("❌ " + failure);

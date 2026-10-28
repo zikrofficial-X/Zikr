@@ -1,9 +1,21 @@
 # ZIKR — Current Project Status
 
 **Production branch:** `main`  
-**Last reconciled:** 2026-10-08  
+**Last reconciled:** 2026-10-28  
 **Repository:** `zikrofficial-X/Zikr`  
 **Production origin:** `https://zikrmediaofficial.vercel.app`
+
+## Production audit checkpoint — 2026-10-28
+
+- Current repository head at the time of this checkpoint: `704ef2d40b38bacec307fdcfc0016422e7fdafa5`.
+- Last verified Vercel production deployment at audit time: `dpl_C2ir1BurQUdkqdxXdAgqXwerhMWm`, state `READY`, deployed commit `c7dbd229f827aecffc5ce7c01c93cbe90d6cc7b7`. The canonical alias was attached to that deployment. Main has since advanced; production must be redeployed through the controlled manual deployment path after reviewed changes merge.
+- Direct live HTTP checks returned 200 for the 38 public section routes, all 13 kids game pages, and all 13 kids game-content APIs. Each kids content API returned matching slug, type, and gameId metadata. `GET /api/quran/surahs` returned the ordered 114-surah catalog. No Vercel runtime error clusters were reported in the inspected one-hour window.
+- Repository and production Supabase migration ledgers each contained 372 versions with no missing or extra version IDs at this checkpoint.
+- The admin queue alert RLS policy was optimized by migration `20261028112016_optimize_admin_queue_alert_rls_initplan.sql`; live SQL confirmed an optimized policy. The advisor no longer reported the per-row `auth.uid()` initplan warning.
+- Supabase still reports `Leaked Password Protection Disabled`. This is a project-level Supabase Auth setting, not a database migration. Enable it in the supported Auth/security settings path, then re-run the advisor.
+- Supabase reports `public.social_platform_credentials` with RLS enabled but no policies. A live privilege check confirmed neither `anon` nor `authenticated` can SELECT from this table. A new forward migration is proposed to keep those client-role denials explicit using restrictive false policies; it must be applied through the controlled migration process and verified after its repository filename matches the production ledger.
+- Supabase also lists 71 unused-index observations. These are informational; do not drop indexes in bulk without workload/query evidence.
+- The production smoke contract is being strengthened so an HTTP 200 response containing only the Quran loading shell cannot pass as a healthy Quran page. The checks will validate both the actual streamed surah content and the canonical 114-row Quran API.
 
 ## Current Vercel/Supabase binding
 
