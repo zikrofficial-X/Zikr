@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/ensure-ffmpeg.mjs",
+    "prebuild": "node scripts/export-offline-content.mjs && node scripts/ensure-ffmpeg.mjs",
     "build": "next build --webpack",
     "start": "next start",
     "check": "tsc --noEmit",
@@ -90,7 +90,8 @@
     "kids:video:check": "tsx scripts/tests/kids-video-series.test.ts && node scripts/verify-kids-video-factory.mjs",
     "admin:api:check": "node scripts/verify-admin-api-guards.mjs",
     "admin:rbac:check": "node scripts/tests/admin-rbac-rls.test.mjs",
-    "performance:indexes:check": "node scripts/tests/performance-index-contract.test.mjs"
+    "performance:indexes:check": "node scripts/tests/performance-index-contract.test.mjs",
+    "offline:export": "node scripts/export-offline-content.mjs --required"
   },
   "dependencies": {
     "@capacitor/android": "7.6.9",
