@@ -22,7 +22,7 @@ The Admin dashboard/content scheduling/analytics task set above is implemented. 
 - [ ] Select AI visual provider, credential owner, quota, cost ceiling and approval process before enabling AI visual generation.
 - [ ] Choose/attach a custom domain and verify DNS, canonical/Auth redirects, CMP and legal requirements for target markets before AdSense reapplication.
 - [ ] Select a revenue model and complete its payment, refund, privacy, tax and legal requirements before collecting money.
-- [ ] Approve video/storage retention and verify quotas before deleting generated videos, Android artifacts or historical assets.
+- [ ] Urgent storage owner decision: live `storage.objects` inventory is 1.874 GB across `videos` and `android-releases` against the 1 GB Free allowance. Check billed Storage Size GB-Hours and grace-period state in Supabase Usage; then upgrade to Pro or approve reference-safe retention cleanup. Do not delete assets until public links and Android release provenance are checked. Database size is 80.37 MiB against a 500 MB Free database-size quota.
 - [ ] Finish per-file and database dependency proof, backup and rollback plan before retiring legacy tables, functions, indexes or assets.
 - [ ] Prepare the next semantic Android release from post-closeout main if the gold-crescent native launcher identity is to ship; v1.1.8 is immutable and was built from an older commit.
 - [ ] After PR #150 merges, run the post-merge full main gate, deploy the exact verified main SHA, pass the production route smoke suite and recheck Vercel runtime errors on article/dua routes.
