@@ -30,6 +30,8 @@ const datasets = [
   ['duas', 'duas', 'select=*', 'published=eq.true', 'order=created_at.asc'],
   ['kids', 'kids_content', 'select=*', 'published=eq.true', 'is_active=eq.true', 'order=created_at.asc'],
   ['companions', 'companions', 'select=*', 'published=eq.true', 'order=order_num.asc'],
+  ['stories', 'stories', 'select=id,slug,title,content,mood,category,created_at,updated_at,published,metadata,summary,is_approved', 'published=eq.true', 'is_approved=eq.true', 'order=created_at.desc'],
+  ['article_categories', 'article_categories', 'select=*', 'published=eq.true', 'is_active=eq.true', 'order=slug.asc'],
   ['companion_stories', 'companion_stories', 'select=*', 'order=companion_id.asc,order_num.asc'],
   ['scholars', 'scholars', 'select=*', 'published=eq.true', 'order=name_ar.asc'],
   ['tawasheeh', 'tawasheeh', 'select=*', 'published=eq.true', 'is_active=eq.true', 'order=created_at.asc'],
