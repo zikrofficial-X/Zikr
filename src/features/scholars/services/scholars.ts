@@ -120,7 +120,7 @@ export async function searchScholars(query: string): Promise<Scholar[]> {
   if (hasSupabaseConfig()) {
     try {
       const rows = await supabaseServerAnonRequest<ScholarRow[]>(
-        `/rest/v1/scholars?select=id,slug,name_ar,name_en,bio_ar,bio_en,thumbnail_url,website_url,youtube_url,published,created_at,updated_at,metadata&published=eq.true&searchable_normalized=plfts.simple.${encodeURIComponent(normalizedQuery)}&limit=6`,
+        `/rest/v1/scholars?select=id,slug,name_ar,name_en,bio_ar,bio_en,thumbnail_url,website_url,youtube_url,published,created_at,updated_at,metadata&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(normalizedQuery)}&limit=6`,
         { timeoutMs: 8000, retries: 1, cache: "no-store" },
       );
       if (rows.length) return rows.filter(isScholarRow).map(mapScholarRow);
