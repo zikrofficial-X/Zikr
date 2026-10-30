@@ -1,11 +1,24 @@
 # ZIKR — Current Project Status
 
 **Production branch:** `main`  
-**Last reconciled:** 2026-10-28  
+**Last reconciled:** 2026-10-30  
 **Repository:** `zikrofficial-X/Zikr`  
 **Production origin:** `https://zikrmediaofficial.vercel.app`
 
-## Production audit checkpoint — 2026-10-28
+## Consolidated closeout checkpoint — 2026-10-30
+
+This supersedes the 2026-10-28 deployment/schema snapshot below for current release state; older findings remain historical context.
+
+- Latest verified production deployment: `dpl_7gf9UjH1d5WyimqzBw6uAkXMexJy`, state `READY`, main commit `59f5cd0fb351ee61475e8cf21345da35fc9e19be`.
+- Supabase migration ledger: 381 versions, latest `20261030110000`; public admin compatibility RPC is SECURITY INVOKER and seven FK support indexes are present.
+- Latest verified GitHub Quality Gate, CircleCI application-build/docs, config guard, and Supabase production health checks passed.
+- Supabase Security Advisor still reports Leaked Password Protection Disabled. Performance Advisor reports 70 unused-index observations; these are not grounds for bulk index deletion.
+- Production video-generation requests: 363 completed. Social queue: 286 published and 5 partial (YouTube succeeded; Facebook Reels is deferred by provider cooldown). Video AI and automatic publishing remain disabled by live settings; social workflow remains frozen pending explicit approval.
+- The comprehensive phase-by-phase disposition, Kids/Games acceptance gates, growth/SEO/monetization status, and owner-required actions are recorded in [ZIKR_ALL_PLANS_CLOSEOUT_2026-10-30.md](docs/finalization/ZIKR_ALL_PLANS_CLOSEOUT_2026-10-30.md).
+- Full `pnpm verify` is being made mandatory on pushes to `main`; PRs retain `pnpm verify:pr`. This PR must merge and its full main-branch gate must pass before this CI improvement is considered closed.
+- Project closure is not certified while educator/religious review, physical-device/browser acceptance, Auth setting, custom-domain/CMP, revenue-model decisions, storage retention, and the five social deferrals remain open.
+
+## Historical production audit checkpoint — 2026-10-28
 
 - Current repository head at the time of this checkpoint: `704ef2d40b38bacec307fdcfc0016422e7fdafa5`.
 - Last verified Vercel production deployment at audit time: `dpl_C2ir1BurQUdkqdxXdAgqXwerhMWm`, state `READY`, deployed commit `c7dbd229f827aecffc5ce7c01c93cbe90d6cc7b7`. The canonical alias was attached to that deployment. Main has since advanced; production must be redeployed through the controlled manual deployment path after reviewed changes merge.
