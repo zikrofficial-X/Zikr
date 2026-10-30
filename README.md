@@ -46,7 +46,7 @@ pnpm supabase:migrations:check
 pnpm verify
 ```
 
-`pnpm verify` is the repository integrity gate; Vercel builds with `pnpm build`.
+`pnpm verify` is the full repository release gate, including mobile, SEO, content, security, lint, types, and the production build. GitHub Actions runs `pnpm verify:pr` for pull requests and the full `pnpm verify` on `main`. Vercel automatic Git deployment remains disabled; production releases are manual and separately verified.
 
 ## Database migrations
 
