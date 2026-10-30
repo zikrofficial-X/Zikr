@@ -28,14 +28,20 @@ const STORE_BY_DATASET: Record<string, string> = {
   kids: "kids",
   companions: "companions",
   companion_stories: "companionStories",
+  scholars: "scholars",
+  tawasheeh: "tawasheeh",
+  quran_reciters: "quranReciters",
+  quran_audio: "quranAudio",
+  kids_games: "kidsGames",
+  kids_game_levels: "kidsGameLevels",
 };
 
 const MANIFEST_URL = "/offline-content/v1/manifest.json";
 const MANIFEST_DB_KEY = "offline_manifest";
 const COMPLETION_DB_KEY = "offline_completion_v1";
 // v4 reflects the expanded public-route discovery and batched offline strategy.
-const VERSION_KEY = "offline-content-version-v5";
-const OFFLINE_CACHE_NAME = "zikr-v13";
+const VERSION_KEY = "offline-content-version-v6";
+const OFFLINE_CACHE_NAME = "zikr-v14";
 // Keep the client verifier, offline pack, and Service Worker on one cache name.
 const ROUTE_CACHE_REQUEST = "CACHE_OFFLINE_ROUTES";
 const CLEAR_OFFLINE_REQUEST = "CLEAR_OFFLINE_LIBRARY";
@@ -57,6 +63,12 @@ const OFFLINE_CONTENT_STORES = [
   "kids",
   "companions",
   "companion_stories",
+  "scholars",
+  "tawasheeh",
+  "quran_reciters",
+  "quran_audio",
+  "kids_games",
+  "kids_game_levels",
 ] as const;
 
 export function isCacheableOfflinePageRoute(route: string): boolean {
@@ -105,15 +117,16 @@ type OfflineCompletion = {
 
 export type OfflineHydrationResult = {
   manifest: OfflineManifest;
+  datasetCounts: Record<string, number>;
   complete: boolean;
   failedDatasets: string[];
   cachedRoutes: number;
   failedRoutes: string[];
 };
 
-function mergedRoutes(manifest: OfflineManifest): string[] {
+function mergedRoutes(manifest: OfflineManifest, additionalRoutes: string[] = []): string[] {
   return Array.from(
-    new Set([...ESSENTIAL_ROUTES, ...(manifest.routes ?? [])])
+    new Set([...ESSENTIAL_ROUTES, ...(manifest.routes ?? []), ...additionalRoutes])
   ).filter(isCacheableOfflinePageRoute);
 }
 
@@ -183,17 +196,16 @@ async function verifyCompletedDatasets(
   try {
     const completion =
       await offlineDb.getSetting<OfflineCompletion>(COMPLETION_DB_KEY);
-    if (!completion || completion.version !== manifest.version) return null;
+    if (!completion || completion.version !== manifest.version || !Array.isArray(completion.cachedRoutes)) return null;
 
     for (const [dataset, definition] of Object.entries(manifest.datasets)) {
       const storeName = STORE_BY_DATASET[dataset];
-      if (
-        !storeName ||
-        completion.datasetCounts[storeName] !== definition.count
-      )
-        return null;
+      if (!storeName || completion.datasetCounts[storeName] !== definition.count) return null;
       if ((await offlineDb.count(storeName)) !== definition.count) return null;
     }
+    const baselineRoutes = mergedRoutes(manifest);
+    if (!baselineRoutes.every(route => completion.cachedRoutes.includes(route))) return null;
+    if (!(await verifyCompletedRoutes(completion.cachedRoutes))) return null;
     return completion;
   } catch {
     return null;
@@ -276,27 +288,9 @@ export async function requestOfflineRouteCache(
 export async function clearOfflineLibrary(): Promise<void> {
   await offlineDb.initialize();
 
-  for (const storeName of OFFLINE_CONTENT_STORES) {
-    await offlineDb.clear(
-      ({
-        surahs: "surahs",
-        ayahs: "ayahs",
-        tafsir: "tafsir",
-        hadith_books: "hadithBooks",
-        hadith: "hadith",
-        prophets: "prophets",
-        prophet_sections: "prophetSections",
-        battles: "battles",
-        battle_events: "battleEvents",
-        conquests: "conquests",
-        conquest_events: "conquestEvents",
-        articles: "articles",
-        duas: "duas",
-        kids: "kids",
-        companions: "companions",
-        companion_stories: "companionStories",
-      } as const)[storeName],
-    );
+  for (const dataset of OFFLINE_CONTENT_STORES) {
+    const storeName = STORE_BY_DATASET[dataset];
+    if (storeName) await offlineDb.clear(storeName);
   }
 
   await offlineDb.clear("cache");
@@ -334,7 +328,7 @@ export async function clearOfflineLibrary(): Promise<void> {
 }
 
 export async function hydrateOfflineContent(
-  options: { force?: boolean; cacheRoutes?: boolean } = {}
+  options: { force?: boolean; cacheRoutes?: boolean; routes?: string[] } = {}
 ): Promise<OfflineHydrationResult | null> {
   if (typeof window === "undefined") return null;
 
@@ -347,6 +341,7 @@ export async function hydrateOfflineContent(
     console.warn("[OfflinePack] Failed to initialize IndexedDB", error);
     return {
       manifest,
+      datasetCounts: {},
       complete: false,
       failedDatasets: ["indexeddb"],
       cachedRoutes: 0,
@@ -354,16 +349,17 @@ export async function hydrateOfflineContent(
     };
   }
 
-  const expectedRoutes = mergedRoutes(manifest);
+  const expectedRoutes = mergedRoutes(manifest, options.routes);
   if (!options.force) {
     const completion = await verifyCompletedDatasets(manifest);
     if (
       completion &&
-      completion.cachedRoutes.length === expectedRoutes.length &&
+      expectedRoutes.every(route => completion.cachedRoutes.includes(route)) &&
       (await verifyCompletedRoutes(completion.cachedRoutes))
     ) {
       return {
         manifest,
+        datasetCounts: completion.datasetCounts,
         complete: true,
         failedDatasets: [],
         cachedRoutes: completion.cachedRoutes.length,
@@ -395,7 +391,7 @@ export async function hydrateOfflineContent(
         failedDatasets.push(dataset);
         continue;
       }
-      await offlineDb.setMany(storeName, rows);
+      await offlineDb.replaceAll(storeName, rows);
       datasetCounts[storeName] = await offlineDb.count(storeName);
       if (datasetCounts[storeName] !== definition.count)
         failedDatasets.push(dataset);
@@ -455,11 +451,47 @@ export async function hydrateOfflineContent(
 
   return {
     manifest,
+    datasetCounts,
     complete,
     failedDatasets,
     cachedRoutes: cachedRoutes.length,
     failedRoutes,
   };
+}
+
+
+export async function finalizeOfflineLibrary(
+  manifest: OfflineManifest,
+  datasetCounts: Record<string, number>,
+  cachedRoutes: string[],
+  expectedRoutes: string[],
+): Promise<boolean> {
+  await offlineDb.initialize();
+  for (const [dataset, definition] of Object.entries(manifest.datasets)) {
+    const storeName = STORE_BY_DATASET[dataset];
+    if (!storeName || datasetCounts[storeName] !== definition.count) return false;
+    if ((await offlineDb.count(storeName)) !== definition.count) return false;
+  }
+  const uniqueExpected = Array.from(new Set(expectedRoutes));
+  const uniqueCached = Array.from(new Set(cachedRoutes));
+  if (uniqueExpected.length !== uniqueCached.length || !uniqueExpected.every(route => uniqueCached.includes(route))) return false;
+  if (!(await verifyCompletedRoutes(uniqueExpected))) return false;
+  await persistManifest(manifest);
+  await persistCompletion({ version: manifest.version, datasetCounts, cachedRoutes: uniqueExpected });
+  try { window.localStorage.setItem(VERSION_KEY, manifest.version); } catch { /* IndexedDB is authoritative. */ }
+  return true;
+}
+
+export async function getOfflineLibraryStatus(): Promise<{
+  complete: boolean; cachedRoutes: number; datasetCounts: Record<string, number>;
+}> {
+  const manifest = await fetchOfflineManifest();
+  if (!manifest) return { complete: false, cachedRoutes: 0, datasetCounts: {} };
+  await offlineDb.initialize();
+  const completion = await verifyCompletedDatasets(manifest);
+  return completion
+    ? { complete: true, cachedRoutes: completion.cachedRoutes.length, datasetCounts: completion.datasetCounts }
+    : { complete: false, cachedRoutes: 0, datasetCounts: {} };
 }
 
 export async function getOfflineDataset<T>(dataset: string): Promise<T[]> {
