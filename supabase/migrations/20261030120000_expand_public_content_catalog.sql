@@ -42,7 +42,7 @@ canonical AS (
 INSERT INTO public.duas(category_id,title_ar,title_en,slug,text_ar,occasion_ar,source_ar,benefits_ar,published,metadata)
 SELECT (SELECT id FROM public.dua_categories WHERE slug='quranic-duas'),
   c.title_ar,c.title_en,
-  'zikr-dua-quran-'||lpad(c.surah_order::text,3,'0')||lpad(c.ayah_number::text,2,'0'),
+  'zikr-dua-quran-'||lpad(c.surah_order::text,3,'0')||lpad(c.ayah_number::text,3,'0'),
   c.text_uthmani,c.occasion_ar,
   'القرآن الكريم — '||c.surah_name||' '||c.ayah_number,
   c.benefits_ar,true,
@@ -50,7 +50,7 @@ SELECT (SELECT id FROM public.dua_categories WHERE slug='quranic-duas'),
 FROM canonical c
 WHERE NOT EXISTS (
   SELECT 1 FROM public.duas d
-  WHERE d.slug='zikr-dua-quran-'||lpad(c.surah_order::text,3,'0')||lpad(c.ayah_number::text,2,'0')
+  WHERE d.slug='zikr-dua-quran-'||lpad(c.surah_order::text,3,'0')||lpad(c.ayah_number::text,3,'0')
 );
 
 WITH incoming(category_slug,title_ar,title_en,slug,summary_ar,summary_en,content_ar,content_en,tags,metadata) AS (VALUES
