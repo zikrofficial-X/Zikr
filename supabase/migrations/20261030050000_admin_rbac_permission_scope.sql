@@ -82,11 +82,7 @@ CREATE POLICY admin_role_assignments_insert
   ON public.admin_role_assignments
   FOR INSERT TO authenticated
   WITH CHECK (
-    (SELECT private.has_admin_role(ARRAY['admin', 'super_admin']::text[]))
-    AND (
-      role <> 'super_admin'
-      OR (SELECT private.has_admin_role(ARRAY['super_admin']::text[]))
-    )
+    (SELECT private.has_admin_role(ARRAY['super_admin']::text[]))
   );
 
 DROP POLICY IF EXISTS admin_role_assignments_update ON public.admin_role_assignments;
@@ -94,18 +90,10 @@ CREATE POLICY admin_role_assignments_update
   ON public.admin_role_assignments
   FOR UPDATE TO authenticated
   USING (
-    (SELECT private.has_admin_role(ARRAY['admin', 'super_admin']::text[]))
-    AND (
-      role <> 'super_admin'
-      OR (SELECT private.has_admin_role(ARRAY['super_admin']::text[]))
-    )
+    (SELECT private.has_admin_role(ARRAY['super_admin']::text[]))
   )
   WITH CHECK (
-    (SELECT private.has_admin_role(ARRAY['admin', 'super_admin']::text[]))
-    AND (
-      role <> 'super_admin'
-      OR (SELECT private.has_admin_role(ARRAY['super_admin']::text[]))
-    )
+    (SELECT private.has_admin_role(ARRAY['super_admin']::text[]))
   );
 
 DROP POLICY IF EXISTS admin_role_assignments_delete ON public.admin_role_assignments;
@@ -113,11 +101,7 @@ CREATE POLICY admin_role_assignments_delete
   ON public.admin_role_assignments
   FOR DELETE TO authenticated
   USING (
-    (SELECT private.has_admin_role(ARRAY['admin', 'super_admin']::text[]))
-    AND (
-      role <> 'super_admin'
-      OR (SELECT private.has_admin_role(ARRAY['super_admin']::text[]))
-    )
+    (SELECT private.has_admin_role(ARRAY['super_admin']::text[]))
   );
 
 -- Audit access mirrors roles that actually carry the audit.read permission.

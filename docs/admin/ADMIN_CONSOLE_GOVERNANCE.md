@@ -152,7 +152,7 @@
 
 - `private.current_admin_role()` تعيد الدور المعيّن، ولا تحول كل دور مفوض إلى مدير كامل لمجرد أن `profiles.role = 'admin'`.
 - `private.is_admin_user()` و`public.is_admin_user()` تعتبران فقط المدير القديم غير المفوض أو `super_admin` مديرًا عامًا على مستوى RLS.
-- قراءة/تعديل تعيينات الأدوار للآخرين محصورة في `admin` و`super_admin`، وتعيين أو تعديل أو حذف `super_admin` محصور في `super_admin` نفسه.
+- قراءة تعيينات الأدوار للآخرين محصورة في `admin` و`super_admin`. الكتابة المباشرة على جدول التعيينات محصورة في `super_admin`، بينما يستخدم المدير العادي Server Action محميًا بـMFA وسجل تدقيق. لا يمكن تعديل حساب `super_admin` إلا بواسطة `super_admin` نفسه.
 - قراءة سجل التدقيق، وتنبيهات الطوابير، وإدارة طابور النشر الاجتماعي تستخدم قوائم أدوار صريحة مطابقة لمصفوفة `ADMIN_ROLE_PERMISSIONS`.
 - تظل أدوار `content_manager` و`editor` و`video_manager` و`social_manager` و`moderator` و`seo_manager` و`analyst` و`support` محكومة بصلاحياتها المحددة في التطبيق؛ لا تمنحها سياسات RLS امتياز المدير العام.
 - يظل تغيير الدور من خلال Server Action محميًا بـMFA وسجل التدقيق، ويُرفض تعديل حساب `super_admin` من أي دور آخر.

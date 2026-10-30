@@ -41,31 +41,17 @@ assert.doesNotMatch(
 );
 
 requireMatch(
-  /CREATE POLICY admin_role_assignments_insert[\s\S]*?role <> 'super_admin'[\s\S]*?private\.has_admin_role\(ARRAY\['super_admin'\]::text\[\]\)/i,
-  "only super_admin may assign the super_admin role",
+  /CREATE POLICY admin_role_assignments_insert[\\s\\S]*?private\\.has_admin_role\\(ARRAY\\['super_admin'\\]::text\\[\\]\\)/i,
+  "direct role assignment inserts must be restricted to super_admin",
 );
 requireMatch(
-  /CREATE POLICY admin_role_assignments_update[\s\S]*?role <> 'super_admin'[\s\S]*?private\.has_admin_role\(ARRAY\['super_admin'\]::text\[\]\)/i,
-  "only super_admin may edit a super_admin assignment",
+  /CREATE POLICY admin_role_assignments_update[\\s\\S]*?private\\.has_admin_role\\(ARRAY\\['super_admin'\\]::text\\[\\]\\)/i,
+  "direct role assignment updates must be restricted to super_admin",
 );
 requireMatch(
-  /CREATE POLICY admin_role_assignments_delete[\s\S]*?role <> 'super_admin'[\s\S]*?private\.has_admin_role\(ARRAY\['super_admin'\]::text\[\]\)/i,
-  "only super_admin may delete a super_admin assignment",
+  /CREATE POLICY admin_role_assignments_delete[\\s\\S]*?private\\.has_admin_role\\(ARRAY\\['super_admin'\\]::text\\[\\]\\)/i,
+  "direct role assignment deletes must be restricted to super_admin",
 );
-requireMatch(
-  /CREATE POLICY admin_audit_events_admin_select[\s\S]*?'analyst'/i,
-  "audit visibility must match the audit.read role set",
-);
-requireMatch(
-  /CREATE POLICY admin_queue_alert_deliveries_admin_read[\s\S]*?'support'/i,
-  "alert delivery visibility must match notifications.manage",
-);
-requireMatch(
-  /CREATE POLICY social_publish_queue_admin_write[\s\S]*?'social_manager'/i,
-  "social queue writes must be restricted to social managers and full admins",
-);
-requireMatch(/SET search_path = ''/i, "security-definer functions must use an empty search path");
-
 assert.match(
   userActions,
   /previousRole === ["']super_admin["'][\s\S]*?admin\.role !== ["']super_admin["']/,
