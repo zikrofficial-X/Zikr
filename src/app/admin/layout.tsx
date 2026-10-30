@@ -5,6 +5,7 @@ import { requireAdmin } from "@/features/admin/services/admin";
 import { hasAdminPermission, type AdminPermission } from "@/features/admin/services/permissions";
 import { ADMIN_NAVIGATION } from "@/features/admin/config/navigation";
 import { AdminPageViewTracker } from "@/features/admin/components/admin-page-view-tracker";
+import { AdminCommandPalette } from "@/features/admin/components/admin-command-palette";
 
 export const metadata: Metadata = {
   title: "لوحة الإدارة | ذِكرٌ",
@@ -37,6 +38,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <p className="text-[11px] text-brand-cream/40">تنقل موحّد · صلاحيات حسب الدور</p>
             </div>
             <div className="flex items-center gap-2">
+              <AdminCommandPalette groups={visibleGroups} />
               <div className="hidden rounded-lg border border-brand-gold/10 bg-black/10 px-3 py-1.5 text-right sm:block">
                 <p className="text-[10px] text-brand-cream/30">{profile.email ?? "حساب الإدارة"}</p>
                 <p className="mt-0.5 text-[11px] font-semibold text-brand-gold">{String(role).replaceAll("_", " ")}</p>
