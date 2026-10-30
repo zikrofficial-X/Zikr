@@ -207,13 +207,13 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
             ref={drawerRef}
             role="dialog"
             aria-modal="true"
-            aria-labelledby="mobile-navigation-dialog-title"
+            aria-labelledby="zikr-mobile-nav-title"
             dir={dir}
             className="fixed inset-y-0 end-0 z-[60] flex h-[100dvh] max-h-[100dvh] w-[min(23rem,92vw)] flex-col overflow-hidden border-s border-brand-gold/20 bg-brand-emeraldDeep shadow-2xl outline-none lg:hidden"
           >
             <div className="flex shrink-0 items-center justify-between border-b border-brand-gold/15 px-5 py-4">
               <div>
-                <p id="mobile-navigation-dialog-title" className="text-xl font-bold text-brand-gold">ذِكرٌ</p>
+                <p id="zikr-mobile-nav-title" className="text-xl font-bold text-brand-gold">ذِكرٌ</p>
                 <p className="mt-1 text-xs text-brand-cream/60">
                   {isEnglish ? "Explore the platform" : "استكشف أقسام المنصة"}
                 </p>
