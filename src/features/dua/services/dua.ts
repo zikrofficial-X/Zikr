@@ -186,34 +186,42 @@ export async function searchDuas(query: string, locale: Locale = "ar"): Promise<
   ).slice(0, 6);
 }
 
+function resolveDuaLocale(dua: Dua | null, requestedLocale: Locale): Dua | null {
+  if (!dua) return null;
+  if (
+    requestedLocale === "en" &&
+    dua.titleEn.trim() &&
+    dua.textEn?.trim()
+  ) {
+    return { ...dua, contentLocale: "en" };
+  }
+  if (dua.titleAr.trim() && dua.textAr.trim()) {
+    return { ...dua, contentLocale: "ar" };
+  }
+  return null;
+}
+
 export async function getDuaBySlug(slug: string, locale?: Locale): Promise<Dua | null> {
   const activeLocale = locale ?? await getRequestLocale();
   const cleanSlug = slug?.trim() ?? "";
   if (!cleanSlug) return null;
 
   const localDuas = await getOfflineOrFallbackDuas();
-  const localMatch = localDuas.find((dua) => dua.slug === cleanSlug);
+  const localMatch = localDuas.find(dua => dua.slug === cleanSlug) ?? null;
 
   if (!isSupabaseConfigured()) {
-    return localMatch && (activeLocale === "en"
-      ? Boolean(localMatch.titleEn?.trim() && localMatch.textEn?.trim())
-      : Boolean(localMatch.titleAr?.trim() && localMatch.textAr?.trim()))
-      ? localMatch
-      : null;
+    return resolveDuaLocale(localMatch, activeLocale);
   }
 
   const safeSlug = encodeURIComponent(cleanSlug);
   const rows = await supabaseServerAnonRequest<DuaRow[]>(
-    `/rest/v1/duas?select=*&slug=eq.${safeSlug}&published=eq.true&limit=1`,
-  ).catch((error) => {
+    `/rest/v1/duas?select=id,title_ar,title_en,slug,text_ar,text_en,occasion_ar,source_ar,benefits_ar,category_id,published&slug=eq.${safeSlug}&published=eq.true&limit=1`,
+    { timeoutMs: 8000, retries: 1, cache: "no-store" },
+  ).catch(error => {
     console.error("[dua] Failed to fetch dua by slug:", error);
     return [];
   });
 
-  if (!rows.length) return localMatch ?? null;
-
-  const mapped = mapDuaRow(rows[0]);
-  return activeLocale === "en"
-    ? (mapped.titleEn?.trim() && mapped.textEn?.trim() ? mapped : null)
-    : mapped;
+  if (!rows.length) return resolveDuaLocale(localMatch, activeLocale);
+  return resolveDuaLocale(mapDuaRow(rows[0]), activeLocale) ?? resolveDuaLocale(localMatch, activeLocale);
 }
