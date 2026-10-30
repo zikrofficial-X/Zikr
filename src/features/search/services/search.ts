@@ -113,7 +113,7 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
   }
 
   for (const item of stories) {
-    if (contains(item.title) || contains(item.summary ?? undefined) || contains(item.slug) || contains(item.category)) {
+    if (contains(item.title) || contains(item.summary ?? undefined) || contains(item.content ?? undefined) || contains(item.slug) || contains(item.category)) {
       results.push({
         id: item.id,
         type: "story",
