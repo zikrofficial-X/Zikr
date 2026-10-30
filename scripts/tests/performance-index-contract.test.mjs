@@ -18,7 +18,7 @@ const indexes = [
 ];
 for (const [table, column, index] of indexes) {
   const pattern = new RegExp(
-    `CREATE INDEX IF NOT EXISTS ${index}\\s+ON public\\.${table} USING btree \\\\(${column}\\\\)`,
+    \`CREATE INDEX IF NOT EXISTS \${index}\\s+ON public\\.\${table} USING btree \\(\${column}\\)\`,
     "i",
   );
   assert.match(migration, pattern, `Missing FK-support index ${index} on ${table}(${column})`);
