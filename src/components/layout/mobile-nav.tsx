@@ -118,7 +118,7 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
 
   useEffect(() => {
     if (!open) {
-      if (wasOpenRef.current && menuButtonRef.current?.offsetParent !== null) menuButtonRef.current.focus();
+      if (wasOpenRef.current && menuButtonRef.current && menuButtonRef.current.offsetParent !== null) menuButtonRef.current.focus();
       wasOpenRef.current = false;
       return;
     }
