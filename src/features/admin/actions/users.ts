@@ -36,6 +36,9 @@ export async function updateUserRoleAuditedAction(formData: FormData) {
     { method: "GET" },
   );
   const previousRole = assignment[0]?.role ?? target[0].role ?? "user";
+  if (previousRole === "super_admin" && admin.role !== "super_admin") {
+    throw new Error("لا يمكنك تعديل حساب المشرف الأعلى.");
+  }
   const now = new Date().toISOString();
 
   if (roleValue === "user" || roleValue === "admin") {
