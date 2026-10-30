@@ -651,12 +651,6 @@ async function main() {
     androidDeletes.push({ version, paths, verification: verification.reason });
   }
 
-  const androidBytes = androidDeletes.reduce((sum, item) => {
-    const files = androidVersionFiles.get(item.version) ?? [];
-    return sum + files
-      .filter((file) => file.id && REQUIRED_ANDROID_ASSETS.includes(file.name))
-      .reduce((versionSum, file) => versionSum + Number(file.metadata?.size ?? 0), 0);
-  }, 0);
   console.log(
     `Android copies eligible: ${androidDeletes.map((item) => item.version).join(", ") || "none"}.`,
   );
