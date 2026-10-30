@@ -487,11 +487,15 @@ export async function getOfflineLibraryStatus(): Promise<{
 }> {
   const manifest = await fetchOfflineManifest();
   if (!manifest) return { complete: false, cachedRoutes: 0, datasetCounts: {} };
-  await offlineDb.initialize();
-  const completion = await verifyCompletedDatasets(manifest);
-  return completion
-    ? { complete: true, cachedRoutes: completion.cachedRoutes.length, datasetCounts: completion.datasetCounts }
-    : { complete: false, cachedRoutes: 0, datasetCounts: {} };
+  try {
+    await offlineDb.initialize();
+    const completion = await verifyCompletedDatasets(manifest);
+    return completion
+      ? { complete: true, cachedRoutes: completion.cachedRoutes.length, datasetCounts: completion.datasetCounts }
+      : { complete: false, cachedRoutes: 0, datasetCounts: {} };
+  } catch {
+    return { complete: false, cachedRoutes: 0, datasetCounts: {} };
+  }
 }
 
 export async function getOfflineDataset<T>(dataset: string): Promise<T[]> {
