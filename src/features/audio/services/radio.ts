@@ -12,19 +12,19 @@ export interface RadioChannel {
 export const RADIO_CHANNELS: RadioChannel[] = [
   {
     id: "quran-sa",
-    name: "إذاعة القرآن الكريم - السعودية",
+    name: "إذاعة تلاوات القرآن",
     streamUrl: "https://qurango.net/radio/tarateel",
     description: "بث قرآني مستمر مناسب للاستماع الهادئ والتدبر.",
     category: "quran",
-    tags: ["قرآن", "السعودية", "مباشر"],
+    tags: ["قرآن", "تلاوات", "مباشر"],
   },
   {
     id: "quran-eg",
-    name: "إذاعة القرآن الكريم - مصر",
+    name: "إذاعة القرآن - مشاري العفاسي",
     streamUrl: "https://qurango.net/radio/mishary_alafasy",
-    description: "تلاوات قرآنية على مدار الساعة.",
+    description: "تلاوات الشيخ مشاري العفاسي عبر البث الصوتي المدرج.",
     category: "quran",
-    tags: ["قرآن", "مصر", "مباشر"],
+    tags: ["قرآن", "مشاري العفاسي", "مباشر"],
   },
   {
     id: "quran-minshawi",
@@ -116,19 +116,19 @@ export const RADIO_CHANNELS: RadioChannel[] = [
   },
   {
     id: "tawasheeh-maher",
-    name: "إذاعة تلاوات - ماهر المعيقلي",
+    name: "إذاعة القرآن - أبو بكر الشاطري",
     streamUrl: "https://qurango.net/radio/abu_bakr_al_shatri",
-    description: "قناة تلاوات الشيخ أبو بكر الشاطري.",
-    category: "tawasheeh",
-    tags: ["تلاوات", "أبو بكر الشاطري"],
+    description: "تلاوات الشيخ أبو بكر الشاطري عبر البث الصوتي المدرج.",
+    category: "quran",
+    tags: ["قرآن", "أبو بكر الشاطري"],
   },
   {
     id: "tawasheeh-ghamdi",
-    name: "إذاعة التلاوات - سعد الغامدي",
+    name: "إذاعة القرآن - فهد الكندري",
     streamUrl: "https://qurango.net/radio/fahad_al_kandari",
-    description: "قناة تلاوات الشيخ فهد الكندري.",
-    category: "tawasheeh",
-    tags: ["تلاوات", "فهد الكندري"],
+    description: "تلاوات الشيخ فهد الكندري عبر البث الصوتي المدرج.",
+    category: "quran",
+    tags: ["قرآن", "فهد الكندري"],
   },
 ];
 
