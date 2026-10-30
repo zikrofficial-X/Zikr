@@ -20,7 +20,7 @@ jobs:
   verify:
     name: "ZIKR / Quality Gate"
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
     env:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
     steps:
@@ -61,12 +61,26 @@ jobs:
 
       - name: Run canonical source and architecture gate
         shell: bash
-        run: pnpm verify:pr
-        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "Running the full main-branch verification suite."
+            pnpm verify
+          else
+            echo "Running the pull-request verification suite."
+            pnpm verify:pr
+          fi
+        timeout-minutes: 30
 
       - name: Report release rule
         if: success()
+        shell: bash
         run: |
-          echo "QUALITY_GATE=PASSED (source/architecture gate)"
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "QUALITY_GATE=PASSED_FULL (tests, integrity, mobile, SEO, security, lint, types, and production build)"
+          else
+            echo "QUALITY_GATE=PASSED_PR (tests, integrity, security, lint, types, and architecture)"
+          fi
           echo "Vercel automatic Git deployments are disabled."
           echo "Production deployment is available only through the manual release workflow."
