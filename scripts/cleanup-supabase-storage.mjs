@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -183,7 +184,25 @@ async function verifyAndroidReleaseCopy(client, version, storageFiles) {
   if (metadata.tag !== version || metadata.applicationId !== "com.zikr.app") {
     return { ok: false, reason: "Release metadata tag/applicationId mismatch." };
   }
-  return { ok: true, reason: "GitHub Release assets and stored checksums match." };
+
+  // Verify the actual Supabase APK/AAB bytes, not just metadata and file size.
+  // GitHub's published release remains the independent, externally retained copy.
+  for (const [name, expectedDigest] of [
+    ["app-release.apk", apkDigest],
+    ["app-release.aab", aabDigest],
+  ]) {
+    const { data: binary, error: binaryError } = await client.storage
+      .from(ANDROID_BUCKET)
+      .download(`android/${version}/${name}`);
+    if (binaryError || !binary) {
+      return { ok: false, reason: `Cannot download Supabase backup ${name}: ${binaryError?.message ?? "empty response"}.` };
+    }
+    const actualDigest = `sha256:${createHash("sha256").update(Buffer.from(await binary.arrayBuffer())).digest("hex")}`;
+    if (actualDigest !== expectedDigest) {
+      return { ok: false, reason: `Actual Supabase binary SHA256 does not match the published GitHub ${name}.` };
+    }
+  }
+  return { ok: true, reason: "GitHub Release assets, stored checksums, and actual Supabase APK/AAB bytes match." };
 }
 
 async function loadUnexpectedVideoReferences(client, candidatePaths) {
