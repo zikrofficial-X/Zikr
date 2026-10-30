@@ -47,13 +47,13 @@ jobs:
       AUTO_VIDEO_URGENT: ${{ inputs.urgent || 'false' }}
       VIDEO_DAILY_LIMIT: "24"
       VIDEO_AUTOMATION_DRY_RUN: "false"
-      VIDEO_AI_ENABLED: "true"
+      VIDEO_AI_ENABLED: "false"
       VIDEO_AI_ATTEMPTS_PER_RUN: "3"
-      VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,template"
+      VIDEO_PROVIDER_ORDER: "template"
       FREE_VIDEO_PROVIDER_ENABLED: "false"
       COMFYUI_ENABLED: "false"
-      HF_WAN_VIDEO_ENABLED: "true"
-      HF_LTX_FAST_VIDEO_ENABLED: "true"
+      HF_WAN_VIDEO_ENABLED: "false"
+      HF_LTX_FAST_VIDEO_ENABLED: "false"
       HF_WAN_SPACE: "zerogpu-aoti/wan2-2-fp8da-aoti-faster"
       HF_LTX_FAST_SPACE: "Lightricks/ltx-video-distilled"
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -62,8 +62,8 @@ jobs:
       ARABIC_TTS_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
       HF_VIDEO_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
       # Generation queues publishable video records but never executes social publishing.
-      AUTO_VIDEO_PUBLISH_ENABLED: "true"
-      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
+      AUTO_VIDEO_PUBLISH_ENABLED: "false"
+      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"
       AUTO_VIDEO_SECONDS: "22"
       # Generation only. Queue reconciliation and publishing belong to publish-social.yml (every 15 minutes).
       BACKGROUND_JOB_TARGET: "videos"
