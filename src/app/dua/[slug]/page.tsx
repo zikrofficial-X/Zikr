@@ -13,15 +13,17 @@ import { getRequestLocale } from '@/lib/i18n/server';
 export const dynamic = 'force-dynamic';
 export const revalidate = 1800;
 
-const MIN_PUBLIC_DUA_CHARS = 80;
+const MIN_PUBLIC_DUA_CHARS = 10;
 
 const loadDua = cache(
   (slug: string, locale: "ar" | "en") => getDuaBySlug(slug, locale),
 );
 
-function hasPublicDuaContent(dua: Dua | null, locale: "ar" | "en"): dua is Dua {
-  const text = locale === "en" ? dua?.textEn : dua?.textAr;
-  return Boolean(text?.trim() && text.trim().length >= MIN_PUBLIC_DUA_CHARS);
+function hasPublicDuaContent(dua: Dua | null): dua is Dua {
+  const contentLocale = dua?.contentLocale ?? "ar";
+  const title = contentLocale === "en" ? dua?.titleEn : dua?.titleAr;
+  const text = contentLocale === "en" ? dua?.textEn : dua?.textAr;
+  return Boolean(title?.trim() && text?.trim() && text.trim().length >= MIN_PUBLIC_DUA_CHARS);
 }
 
 export async function generateMetadata({
@@ -31,14 +33,14 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const locale = await getRequestLocale();
-  const isEnglish = locale === "en";
   const dua = await loadDua(slug, locale);
+  const isEnglish = (dua?.contentLocale ?? locale) === "en";
 
   return pageMetadata({
     title: isEnglish ? (dua?.titleEn ?? 'Dua not found') : (dua?.titleAr ?? 'الدعاء غير موجود'),
     description: isEnglish ? dua?.textEn?.trim().slice(0, 160) || 'A supplication in ZIKR.' : dua?.textAr?.trim().slice(0, 160) || 'دعاء مأثور في منصة ذِكرٌ.',
     path: `/dua/${slug}`,
-    noindex: !hasPublicDuaContent(dua, locale),
+    noindex: !hasPublicDuaContent(dua),
   });
 }
 
@@ -49,10 +51,10 @@ export default async function DuaDetailPage({
 }) {
   const { slug } = await params;
   const locale = await getRequestLocale();
-  const isEnglish = locale === "en";
   const dua = await loadDua(slug, locale);
 
-  if (!hasPublicDuaContent(dua, locale)) notFound();
+  if (!hasPublicDuaContent(dua)) notFound();
+  const isEnglish = (dua.contentLocale ?? locale) === "en";
 
   return (
     <Container className="py-12 space-y-8 max-w-2xl" dir={isEnglish ? "ltr" : "rtl"}>
@@ -63,6 +65,12 @@ export default async function DuaDetailPage({
         <span className="mx-2">/</span>
         <span>{isEnglish ? dua.titleEn : dua.titleAr}</span>
       </nav>
+
+      {locale === "en" && dua.contentLocale === "ar" && (
+        <aside className="rounded-2xl border border-brand-gold/20 bg-brand-gold/5 p-4 text-sm leading-7 text-brand-cream/80" role="status">
+          The English translation is not available yet. The original Arabic supplication is shown below.
+        </aside>
+      )}
 
       <header className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-brand-gold">{isEnglish ? dua.titleEn : dua.titleAr}</h1>
