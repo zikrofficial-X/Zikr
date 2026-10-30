@@ -115,7 +115,7 @@ for (const dataset of ['tafsir','articles','duas','kids','companions','stories',
 }
 if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY') || !exporter.includes("params.set('limit'")) failures.push('Offline exporter must use Supabase credentials and paginated public reads');
 if (!offlineDb.includes('DB_VERSION = 6')) failures.push('IndexedDB schema must be version 6');
-if (!offlineDb.includes('replaceAll<T>')) failures.push('IndexedDB atomic replaceAll method is missing');
+if (!offlineDb.includes('replaceAllMany(datasets: Record<string, unknown[]>')) failures.push('IndexedDB atomic full-pack replacement method is missing');
 for (const token of [
   'offline_manifest',
   'offline_completion_v1',
