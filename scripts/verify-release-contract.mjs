@@ -92,7 +92,8 @@ assert.ok(publish.includes("release-metadata.json"), "Android publisher must ver
 assert.ok(publish.includes('gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}"'), "Android publisher must publish the resolved GitHub release ID after asset verification");
 assert.ok(publish.includes('repos/${GITHUB_REPOSITORY}/releases?per_page=100'), "Android publisher must resolve draft releases from the releases list API");
 assert.ok(publish.includes('releases/413815658'), "Android publisher must recover the existing v1.1.4 draft by ID if the release list omits it");
-assert.ok(publish.includes('https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${asset}'), "Android publisher must upload verified binaries to the resolved release ID");
+assert.ok(publish.includes('gh release upload "$TAG" "$asset"') && publish.includes('--repo "$GITHUB_REPOSITORY"'), "Android publisher must upload verified binaries to the canonical repository and release tag through GitHub CLI");
+assert.ok(!publish.includes('https://uploads.github.com/'), "Android publisher must not use the legacy direct upload endpoint that caused the 404 race");
 assert.ok(publish.includes('repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}'), "Android publisher must read the release by immutable ID");
 assert.ok(!publish.includes('gh release view "$TAG"'), "Android publisher must not rely on tag lookup to resolve a draft release");
 assert.ok(!publish.includes('gh release download "$TAG"'), "Android publisher must verify binaries by direct asset URLs rather than draft tag lookup");
