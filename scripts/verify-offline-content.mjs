@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 const manifestPath = 'public/offline-content/v1/manifest.json';
 const routeSnapshotPath = 'public/offline-content/v2/routes.json';
@@ -122,10 +123,15 @@ for (const token of [
 }
 
 const exporter = read(exporterPath);
+try {
+  execFileSync(process.execPath, ['--check', exporterPath], { stdio: 'pipe' });
+} catch (error) {
+  failures.push(`Offline exporter syntax check failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+}
 for (const dataset of ['tafsir', 'articles', 'duas', 'kids', 'companions', 'scholars', 'tawasheeh', 'quran_reciters', 'quran_audio', 'kids_games', 'kids_game_levels']) {
   if (!exporter.includes(`['${dataset}',`)) failures.push(`Offline exporter missing dataset: ${dataset}`);
 }
-if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes("params.set('limit'")) failures.push('Offline exporter must use the server-only Supabase key and paginated reads');
+if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY') || !exporter.includes("params.set('limit'")) failures.push('Offline exporter must use a Supabase key and paginated public reads');
 
 const serviceWorker = read(serviceWorkerPath);
 for (const token of [
