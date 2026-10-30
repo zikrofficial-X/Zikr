@@ -99,6 +99,10 @@ function withLongformArticles(articles: Article[], locale: Locale, categoryId?: 
   return [...extras, ...articles];
 }
 
+export function getBundledLongformArticles(locale: Locale): Article[] {
+  return withLongformArticles([], locale);
+}
+
 const offlineArticlesPromise = new Map<Locale, Promise<Article[]>>();
 
 async function loadOfflineArticles(locale: Locale): Promise<Article[]> {

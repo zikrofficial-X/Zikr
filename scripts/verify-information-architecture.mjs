@@ -22,6 +22,9 @@ const videosPage = await read('src/app/videos/page.tsx');
 const audioPage = await read('src/app/audio/page.tsx');
 const kidsLayout = await read('src/app/kids/layout.tsx');
 const kidsDetailLayout = await read('src/app/kids/[slug]/layout.tsx');
+const searchService = await read('src/features/search/services/search.ts');
+const mobileNavigation = await read('src/components/layout/mobile-nav.tsx');
+const searchMigration = await read('supabase/migrations/20261030043335_arabic_full_text_search_v2.sql');
 const site = await read('src/lib/site.ts');
 const catalogHrefs = extractQuoted(catalog, /href:\s*['"]([^'"]+)['"]/g);
 if (sitemap.includes('"/videos"') && sitemap.includes('NON_INDEXABLE_PATHS')) {
@@ -44,6 +47,18 @@ if (!audioPage.includes("path: '/audio'")) {
 }
 if (!kidsDetailLayout.includes('select=title_ar,summary_ar') || kidsDetailLayout.includes('description_ar')) {
   failures.push('Kids detail metadata must use the live kids_content.summary_ar column, not a nonexistent description_ar column.');
+}
+if (!searchService.includes('/rest/v1/rpc/search_public_content') || !searchService.includes('searchIndexedContent')) {
+  failures.push('Public search must call the normalized Supabase full-text search RPC before any bounded fallback.');
+}
+if (!searchMigration.includes('searchable_normalized') || !searchMigration.includes('private.normalize_arabic_search_text') || !searchMigration.includes('SECURITY INVOKER')) {
+  failures.push('Arabic search migration is missing its normalized GIN index or invoker-security contract.');
+}
+if (!searchMigration.includes('st.user_id IS NULL') || !searchMigration.includes('st.is_approved IS TRUE')) {
+  failures.push('Public search must exclude personal or unapproved story records.');
+}
+if (!mobileNavigation.includes('mobile-platform-menu-search') || !mobileNavigation.includes('aria-controls="mobile-navigation-dialog"') || !mobileNavigation.includes('event.key !== "Tab"')) {
+  failures.push('Mobile navigation menu must provide searchable destinations and keyboard focus containment.');
 }
 if (!kidsLayout.includes('path: "/kids"')) {
   failures.push('Kids hub must expose a route-level canonical metadata contract.');
