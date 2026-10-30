@@ -51,6 +51,7 @@ try {
   failures.push(`Mobile configuration JSON is invalid: ${error instanceof Error ? error.message : "unknown error"}`);
 }
 const packageDependencies = { ...(packageJson.dependencies || {}), ...(packageJson.devDependencies || {}) };
+if (!packageDependencies["@capgo/capacitor-social-login"]) failures.push("package.json is missing @capgo/capacitor-social-login required for Android native Google login");
 
 if (capacitor.appId !== "com.zikr.app") failures.push("Capacitor appId must be com.zikr.app");
 if (capacitor.appName !== "ZIKR | ذِكرٌ") failures.push("Capacitor appName must be ZIKR | ذِكرٌ");
@@ -110,12 +111,33 @@ if (bridge.includes('parsed.protocol === "com.zikr.app:"') && bridge.includes("e
   failures.push("Native bridge must not exchange the Google OAuth session; NativeGoogleOAuthHandler is the single callback owner");
 }
 
+const mainActivity = read("android/app/src/main/java/com/zikr/app/MainActivity.java");
+for (const token of [
+  "ModifiedMainActivityForSocialLoginPlugin",
+  "REQUEST_AUTHORIZE_GOOGLE_MIN",
+  "handleGoogleLoginIntent",
+]) {
+  if (!mainActivity.includes(token)) failures.push(`Android MainActivity missing native Google plugin integration: ${token}`);
+}
+
 const nativeOAuth = read("src/components/layout/native-google-oauth-handler.tsx");
 for (const token of ["Capacitor.isNativePlatform", "appUrlOpen", "getLaunchUrl", "exchangeCodeForSession", "com.zikr.app:", "/callback"]) {
   if (!nativeOAuth.includes(token)) failures.push(`Native Google OAuth handler missing ${token}`);
 }
 
 const googleButton = read("src/features/auth/components/google-oauth-button.tsx");
+for (const token of [
+  'import { SocialLogin } from "@capgo/capacitor-social-login"',
+  'Capacitor.getPlatform() === "android"',
+  "SocialLogin.initialize({",
+  'provider: "google"',
+  "signInWithIdToken({",
+  "window.location.replace(safeNext)",
+  "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID",
+  "response.result.responseType !== \"online\"",
+]) {
+  if (!googleButton.includes(token)) failures.push(`Android native Google sign-in is missing ${token}`);
+}
 for (const token of [
   "Capacitor.isNativePlatform()",
   'new URL("/auth/callback", getCanonicalBrowserOrigin())',
