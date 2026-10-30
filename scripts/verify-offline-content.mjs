@@ -110,7 +110,7 @@ const offlineDb = read(offlineDbPath);
 const exporter = read(exporterPath);
 try { execFileSync(process.execPath, ['--check', exporterPath], { stdio: 'pipe' }); }
 catch (error) { failures.push(`Offline exporter syntax check failed: ${error instanceof Error ? error.message : 'unknown error'}`); }
-for (const dataset of ['tafsir','articles','duas','kids','companions','scholars','tawasheeh','quran_reciters','quran_audio','kids_games','kids_game_levels','dua_categories']) {
+for (const dataset of ['tafsir','articles','duas','kids','companions','stories','article_categories','scholars','tawasheeh','quran_reciters','quran_audio','kids_games','kids_game_levels','dua_categories']) {
   if (!exporter.includes(`['${dataset}',`)) failures.push(`Offline exporter missing dataset: ${dataset}`);
 }
 if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY') || !exporter.includes("params.set('limit'")) failures.push('Offline exporter must use Supabase credentials and paginated public reads');
