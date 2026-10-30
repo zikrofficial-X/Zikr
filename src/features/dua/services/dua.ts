@@ -160,12 +160,13 @@ export async function getDuas(
 
 export async function searchDuas(query: string, locale: Locale = "ar"): Promise<Dua[]> {
   const cleanQuery = query.trim().slice(0, 100);
-  if (!cleanQuery) return [];
+  const normalizedQuery = normalizeArabicSearchText(cleanQuery);
+  if (!normalizedQuery) return [];
 
   if (isSupabaseConfigured()) {
     try {
       const rows = await supabaseServerAnonRequest<DuaRow[]>(
-        `/rest/v1/duas?select=id,title_ar,title_en,slug,text_ar,text_en,occasion_ar,source_ar,benefits_ar,category_id,published&published=eq.true&searchable_normalized=plfts.simple.${encodeURIComponent(cleanQuery)}&limit=6`,
+        `/rest/v1/duas?select=id,title_ar,title_en,slug,text_ar,text_en,occasion_ar,source_ar,benefits_ar,category_id,published&published=eq.true&searchable_normalized=plfts.simple.${encodeURIComponent(normalizedQuery)}&limit=6`,
         { timeoutMs: 8000, retries: 1, cache: "no-store" },
       );
       const matches = rows.map(mapDuaRow).filter((dua) =>
@@ -179,7 +180,6 @@ export async function searchDuas(query: string, locale: Locale = "ar"): Promise<
     }
   }
 
-  const normalizedQuery = normalizeArabicSearchText(cleanQuery);
   return (await getOfflineOrFallbackDuas()).filter((dua) =>
     [dua.titleAr, dua.textAr, dua.titleEn ?? "", dua.textEn ?? "", dua.occasionAr ?? "", dua.sourceAr ?? ""]
       .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
