@@ -113,7 +113,7 @@ catch (error) { failures.push(`Offline exporter syntax check failed: ${error ins
 for (const dataset of ['tafsir','articles','duas','kids','companions','stories','article_categories','scholars','tawasheeh','quran_reciters','quran_audio','kids_games','kids_game_levels','dua_categories']) {
   if (!exporter.includes(`['${dataset}',`)) failures.push(`Offline exporter missing dataset: ${dataset}`);
 }
-if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY') || !exporter.includes("params.set('limit'")) failures.push('Offline exporter must use Supabase credentials and paginated public reads');
+if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY') || !exporter.includes("params.set('limit'") || !exporter.includes('const minimumRecords = {')) failures.push('Offline exporter must use paginated public reads with minimum dataset safety floors');
 if (!offlineDb.includes('DB_VERSION = 6')) failures.push('IndexedDB schema must be version 6');
 if (!offlineDb.includes('replaceAllMany(datasets: Record<string, unknown[]>')) failures.push('IndexedDB atomic full-pack replacement method is missing');
 for (const token of [
