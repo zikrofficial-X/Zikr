@@ -5,6 +5,7 @@ import { getPublicEnv } from "@/lib/env";
 import { ServiceError } from "@/lib/types/common";
 import type { Scholar } from "@/features/scholars/types/scholars";
 import { FALLBACK_SCHOLARS } from "@/features/scholars/data/fallback";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 interface ScholarRow {
   id: string;
