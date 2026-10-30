@@ -186,7 +186,7 @@ gtag('config', '${googleAnalyticsId}', { send_page_view: true });`}
           name="apple-mobile-web-app-title"
           content={siteConfig.shortName}
         />
-        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
       </head>
       <body className={locale === "ar" ? "font-arabic antialiased" : "font-sans antialiased"}>
