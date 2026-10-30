@@ -25,6 +25,8 @@ const LEGACY_PROPHET_SLUG_REDIRECTS: Record<string, string> = {
 
 const SECTION_TYPE_LABELS: Record<string, string> = {
   story: "القصة",
+  stories: "القصة",
+  miracles: "المعجزة",
   biography: "السيرة",
   miracle: "المعجزة",
   lesson: "الدروس والعبر",
