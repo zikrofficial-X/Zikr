@@ -193,6 +193,18 @@ for (const [dataset, store] of Object.entries(expectedDatasets)) {
   if (!offlinePackSource.includes(`${dataset}: '${store}'`) && !offlinePackSource.includes(`${dataset}: "${store}"`)) failures.push(`Offline pack mapping missing ${dataset} -> ${store}`);
   if (!offlineDbSource.includes(`name: '${store}'`) && !offlineDbSource.includes(`name: "${store}"`)) failures.push(`IndexedDB store missing: ${store}`);
 }
+const expandedOfflineDatasets = {
+  scholars: 'scholars',
+  tawasheeh: 'tawasheeh',
+  quran_reciters: 'quranReciters',
+  quran_audio: 'quranAudio',
+  kids_games: 'kidsGames',
+  kids_game_levels: 'kidsGameLevels',
+};
+for (const [dataset, store] of Object.entries(expandedOfflineDatasets)) {
+  if (!offlinePackSource.includes(`${dataset}: "${store}"`)) failures.push(`Offline pack mapping missing ${dataset} -> ${store}`);
+  if (!offlineDbSource.includes(`name: '${store}'`)) failures.push(`IndexedDB store missing: ${store}`);
+}
 if (!Array.isArray(offlineManifest.routes) || offlineManifest.routes.length === 0) failures.push('Offline manifest has no routes');
 for (const route of offlineManifest.routes || []) {
   if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) {
