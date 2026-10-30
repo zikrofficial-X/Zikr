@@ -5,7 +5,7 @@ const requirements = [
   ['dialog semantics', 'role="dialog"'],
   ['modal state', 'aria-modal="true"'],
   ['labelled dialog', 'aria-labelledby="zikr-mobile-nav-title"'],
-  ['dialog control relationship', 'aria-controls="zikr-mobile-navigation-dialog"'],
+  ['dialog control relationship', 'aria-controls="mobile-navigation-dialog"'],
   ['dynamic viewport sizing', 'h-[100dvh]'],
   ['keyboard focus trap', 'event.key !== "Tab"'],
   ['Escape dismissal', 'event.key === "Escape"'],
