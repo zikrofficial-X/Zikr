@@ -17,6 +17,9 @@ export type CompanionSummary = {
   bio_ar: string | null;
   slug: string;
   category: string | null;
+  birth_place_ar?: string | null;
+  death_place_ar?: string | null;
+  death_year?: string | null;
 };
 
 export type CompanionDetail = CompanionSummary & {
