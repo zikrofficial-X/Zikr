@@ -24,7 +24,7 @@ The action now runs as one verified operation:
 - Adds the essential public routes, route snapshot routes, same-origin sitemap routes and the current page inventory.
 - Rejects private routes before they are sent to the service worker.
 - Downloads each declared dataset and validates that it is a JSON array with the exact manifest record count.
-- Atomically replaces the matching IndexedDB store in one transaction, so removed or unpublished records do not survive an update and a failed write cannot leave a partially refreshed dataset.
+- Downloads and validates every dataset first, then swaps all IndexedDB stores in one read-write transaction. A failed fetch or write leaves the previous dataset pack intact; the completion marker is updated only after the route cache is verified.
 - Caches public HTML routes in controlled batches and records route-level failures.
 - Persists a completion marker only after every dataset and every required route is verified.
 - Shows failed datasets and failed routes instead of reporting a partial download as complete.
