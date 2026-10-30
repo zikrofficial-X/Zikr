@@ -9,7 +9,7 @@ const requirements = [
   ['dynamic viewport sizing', 'h-[100dvh]'],
   ['keyboard focus trap', 'event.key !== "Tab"'],
   ['Escape dismissal', 'event.key === "Escape"'],
-  ['focus restoration', 'menuButtonRef.current?.focus()'],
+  ['focus restoration', 'menuButtonRef.current.focus()'],
   ['body scroll lock', 'document.body.style.overflow = "hidden"'],
   ['scrollable drawer content', 'overflow-y-auto overscroll-contain'],
   ['desktop breakpoint cleanup', 'window.matchMedia("(min-width: 1024px)")'],
