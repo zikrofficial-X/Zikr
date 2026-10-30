@@ -1,13 +1,14 @@
 import "server-only";
 
-import { getArticles } from "@/features/articles/services/articles";
+import { searchArticles } from "@/features/articles/services/articles";
 import { searchHadith } from "@/features/hadith/services/hadith";
-import { getDuas } from "@/features/dua/services/dua";
-import { getProphets } from "@/features/prophets/services/prophets";
-import { getPublishedCompanions } from "@/features/companions/services/companions";
-import { getStories } from "@/features/stories/services/stories";
+import { searchDuas } from "@/features/dua/services/dua";
+import { searchProphets } from "@/features/prophets/services/prophets";
+import { searchPublishedCompanions } from "@/features/companions/services/companions";
+import { searchStories } from "@/features/stories/services/stories";
 import { searchLocalQuran } from "@/features/quran/services/quran-server";
 import { searchScholars } from "@/features/scholars/services/scholars";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 export type PublicSearchResult = {
   id: string;
@@ -21,18 +22,18 @@ export type PublicSearchResult = {
 const MAX_RESULTS_PER_TYPE = 6;
 
 export async function globalSearch(query: string): Promise<PublicSearchResult[]> {
-  const q = query.trim().toLocaleLowerCase("ar");
+  const q = normalizeArabicSearchText(query);
   if (q.length < 2) return [];
 
   const [quran, hadith, duas, prophets, companions, stories, articles, scholars] =
     await Promise.all([
       searchLocalQuran(query, "ar"),
       searchHadith(query),
-      getDuas(undefined, 100),
-      getProphets(),
-      getPublishedCompanions(),
-      getStories(),
-      getArticles(undefined, 100),
+      searchDuas(query, "ar"),
+      searchProphets(query),
+      searchPublishedCompanions(query),
+      searchStories(query),
+      searchArticles(query, "ar"),
       searchScholars(query),
     ]);
 
@@ -61,14 +62,15 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
   }
 
   const contains = (value: string | undefined) =>
-    Boolean(value && value.toLocaleLowerCase("ar").includes(q));
+    Boolean(value && normalizeArabicSearchText(value).includes(q));
 
   for (const item of duas) {
     if (
       contains(item.titleAr) ||
       contains(item.textAr) ||
       contains(item.occasionAr) ||
-      contains(item.sourceAr)
+      contains(item.sourceAr) ||
+      contains(item.benefitsAr)
     ) {
       results.push({
         id: item.id,
@@ -83,7 +85,7 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
   }
 
   for (const item of prophets) {
-    if (contains(item.nameAr) || contains(item.nameEn) || contains(item.bioAr)) {
+    if (contains(item.nameAr) || contains(item.nameEn) || contains(item.bioAr) || contains(item.birthPlaceAr) || contains(item.deathPlaceAr)) {
       results.push({
         id: item.id,
         type: "prophet",
@@ -97,7 +99,7 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
   }
 
   for (const item of companions) {
-    if (contains(item.name_ar) || contains(item.name_en ?? undefined) || contains(item.bio_ar ?? undefined)) {
+    if (contains(item.name_ar) || contains(item.name_en ?? undefined) || contains(item.bio_ar ?? undefined) || contains(item.birth_place_ar ?? undefined) || contains(item.death_place_ar ?? undefined) || contains(item.death_year ?? undefined)) {
       results.push({
         id: item.id,
         type: "companion",
@@ -111,7 +113,7 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
   }
 
   for (const item of stories) {
-    if (contains(item.title) || contains(item.summary ?? undefined) || contains(item.slug) || contains(item.category)) {
+    if (contains(item.title) || contains(item.summary ?? undefined) || contains(item.content ?? undefined) || contains(item.slug) || contains(item.category)) {
       results.push({
         id: item.id,
         type: "story",

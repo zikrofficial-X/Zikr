@@ -7,6 +7,7 @@ import {
   supabaseServerAnonRequest,
 } from "@/lib/supabase/server";
 import type { Surah, Ayah, Reciter, QuranTafsirSource } from "@/features/quran/types/quran";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 import {
   reciters as fallbackReciters,
   surahs as fallbackSurahs,
@@ -252,7 +253,7 @@ export async function searchLocalQuran(
   query: string,
   locale: Locale = "ar",
 ): Promise<Ayah[]> {
-  const cleanQuery = query.trim().toLocaleLowerCase();
+  const cleanQuery = normalizeArabicSearchText(query);
   if (!cleanQuery) return [];
 
   try {
@@ -267,7 +268,7 @@ export async function searchLocalQuran(
           row.text_en ?? "",
         ];
         return candidates.some((value) =>
-          value.toLocaleLowerCase().includes(cleanQuery),
+          normalizeArabicSearchText(value).includes(cleanQuery),
         );
       })
       .slice(0, 50)

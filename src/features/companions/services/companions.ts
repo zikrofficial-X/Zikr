@@ -7,6 +7,7 @@ import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/
 import { resolveCanonicalPublished } from "@/lib/data/content-merge";
 import { COMPANIONS } from "@/features/companions/data/fallback";
 import { uniqueCompanionSummaries } from "@/features/companions/utils/companions";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 export type CompanionSummary = {
   id: string;
@@ -16,6 +17,9 @@ export type CompanionSummary = {
   bio_ar: string | null;
   slug: string;
   category: string | null;
+  birth_place_ar?: string | null;
+  death_place_ar?: string | null;
+  death_year?: string | null;
 };
 
 export type CompanionDetail = CompanionSummary & {
@@ -98,6 +102,9 @@ function mapCompanionRow(row: Record<string, unknown>): CompanionSummary {
     bio_ar: typeof row.bio_ar === "string" ? row.bio_ar : null,
     slug: String(row.slug ?? ""),
     category: typeof row.category === "string" ? row.category : null,
+    birth_place_ar: typeof row.birth_place_ar === "string" ? row.birth_place_ar : null,
+    death_place_ar: typeof row.death_place_ar === "string" ? row.death_place_ar : null,
+    death_year: typeof row.death_year === "string" ? row.death_year : null,
   };
 }
 
@@ -161,7 +168,7 @@ function fallbackBySlug(slug: string): CompanionSummary | null {
 async function getDatabaseCompanions(): Promise<CompanionSummary[]> {
   try {
     const rows = await supabaseServerAnonRequest<CompanionSummary[]>(
-      "/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,slug,category&published=eq.true&order=name_ar.asc",
+      "/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,slug,category,birth_place_ar,death_place_ar,death_year&published=eq.true&order=name_ar.asc",
     );
     return Array.isArray(rows)
       ? uniqueCompanionSummaries(rows.filter((row) => row.slug && row.name_ar))
@@ -184,6 +191,28 @@ export async function getPublishedCompanions(): Promise<CompanionSummary[]> {
   if (database.length) return resolveCanonicalPublished(database, offline);
 
   return offline.length ? offline : FALLBACK_COMPANIONS;
+}
+
+export async function searchPublishedCompanions(query: string): Promise<CompanionSummary[]> {
+  const normalizedQuery = normalizeArabicSearchText(query).slice(0, 100);
+  if (!normalizedQuery) return [];
+
+  if (isSupabaseConfigured()) {
+    try {
+      const rows = await supabaseServerAnonRequest<Record<string, unknown>[]>(
+        `/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,slug,category&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(normalizedQuery)}&limit=6`,
+        { timeoutMs: 8000, retries: 1, cache: "no-store" },
+      );
+      if (rows.length) return uniqueCompanionSummaries(rows.map(mapCompanionRow).filter((row) => row.slug && row.name_ar));
+    } catch (error) {
+      console.error("[companions] Indexed search failed; using offline fallback:", error);
+    }
+  }
+
+  return (await getPublishedCompanions()).filter((item) =>
+    [item.name_ar, item.name_en ?? "", item.title_ar ?? "", item.bio_ar ?? "", item.birth_place_ar ?? "", item.death_place_ar ?? "", item.death_year ?? "", item.slug]
+      .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
+  ).slice(0, 6);
 }
 
 export async function getCompanionBySlug(

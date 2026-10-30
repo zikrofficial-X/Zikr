@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-02",
+  "generated_at": "2026-10-30",
   "phase": 17,
   "policy": "Empty runtime-optional tables with no active src consumer are retired from the runtime contract; historical migration/type references remain until coordinated DB retirement.",
   "entries": [
@@ -33,5 +33,25 @@
       "state": "RETIRED",
       "reason": "0 rows; no active src runtime consumer found."
     }
-  ]
+  ],
+  "production_audit": {
+    "project_id": "ymxdswkaxafakugktsim",
+    "audited_at": "2026-10-30",
+    "table_rows": {
+      "hadith_explanations": 0,
+      "recent_recitations": 0,
+      "reciter_favorites": 0,
+      "tawasheeh_favorites": 0,
+      "tawasheeh_playlists": 0,
+      "tawasheeh_playlist_items": 0
+    },
+    "foreign_key_dependencies": 0,
+    "view_or_function_dependencies": 0,
+    "policies_preserved": true,
+    "triggers_preserved": [
+      "hadith_explanations.update_hadith_explanations_updated_at",
+      "tawasheeh_playlists.update_tawasheeh_playlists_updated_at"
+    ],
+    "action": "drop only the seven non-unique unused indexes; retain tables and generated types"
+  }
 }

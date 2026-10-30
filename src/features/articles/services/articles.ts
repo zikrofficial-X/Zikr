@@ -14,6 +14,7 @@ import { extendedEditorialArticles } from "@/features/articles/data/extended-edi
 import { longformEditorialArticles } from "@/features/articles/data/longform-editorial";
 import type { Locale } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n/server";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 const MIN_PUBLIC_ARTICLE_CHARS = 1800;
 
@@ -231,6 +232,41 @@ export async function getArticles(categoryId?: string, limit = 100, locale?: Loc
     : offline;
 
   return withLongformArticles(fallback, activeLocale, categoryId).slice(0, safeLimit);
+}
+
+export async function searchArticles(query: string, locale: Locale = "ar"): Promise<Article[]> {
+  const cleanQuery = query.trim().slice(0, 100);
+  const normalizedQuery = normalizeArabicSearchText(cleanQuery);
+  if (!normalizedQuery) return [];
+
+  if (hasSupabaseConfig()) {
+    try {
+      const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
+        `/rest/v1/articles?select=id,title,title_ar,title_en,slug,summary,summary_ar,summary_en,content,content_ar,content_en,author,featured_image_url,views,published,category_id,tags,metadata,created_at&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(normalizedQuery)}&order=created_at.desc&limit=6`,
+        { timeoutMs: 8000, retries: 1, cache: "no-store" },
+      );
+      const matches = rows
+        .map((row) => mapRow(row, locale))
+        .filter((article) => article.title && normalizedText(article.content).length >= MIN_PUBLIC_ARTICLE_CHARS);
+      if (matches.length) {
+        return withLongformArticles(matches, locale)
+          .filter((article) =>
+            [article.title, article.summary ?? "", article.content ?? "", ...(article.tags ?? [])]
+              .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
+          )
+          .slice(0, 6);
+      }
+    } catch (error) {
+      console.error("[articles] Indexed search failed; using bounded fallback:", error);
+    }
+  }
+
+  return (await getArticles(undefined, 100, locale))
+    .filter((article) =>
+      [article.title, article.summary ?? "", article.content ?? "", ...(article.tags ?? [])]
+        .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
+    )
+    .slice(0, 6);
 }
 
 export async function getArticleBySlug(slug: string, locale?: Locale): Promise<Article | null> {

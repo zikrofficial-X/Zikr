@@ -1,5 +1,7 @@
 import "server-only";
 
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
+
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -317,15 +319,15 @@ export async function getHadithByNumber(
 }
 
 export async function searchHadith(query: string, locale: Locale = "ar"): Promise<Hadith[]> {
-  const q = query.trim().toLowerCase();
+  const q = query.trim();
   if (!q) return [];
 
-  const escapedQuery = q.replace(/[*,()]/g, "");
-  const field = locale === "en" ? "text_en" : "text_ar";
+  const safeQuery = normalizeArabicSearchText(q).slice(0, 100);
+  if (!safeQuery) return [];
   const dbHadiths = await readSupabase<DbHadith[]>(
-    `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&published=eq.true&or=${encodeURIComponent(`(${field}.ilike.*${escapedQuery}*,ref.ilike.*${escapedQuery}*)`)}&limit=50`,
+    `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(safeQuery)}&order=hadith_number.asc&limit=50`,
   );
-  if (dbHadiths?.length) {
+  if (dbHadiths) {
     return dbHadiths
       .map(mapDbHadith)
       .filter((item) => locale === "ar" || Boolean(item.english?.trim()));
@@ -333,14 +335,16 @@ export async function searchHadith(query: string, locale: Locale = "ar"): Promis
 
   const books = await getHadithBooks(locale);
   const seedBooks = books.slice(0, 3);
-
+  const normalizedQuery = normalizeArabicSearchText(q);
   const collections = await Promise.all(
     seedBooks.map(book => getHadithBook(book.id, 1, 50, locale)),
   );
   return collections
     .flatMap(collection => collection?.data ?? [])
     .filter((item) => {
-      const haystack = locale === "en" ? item.english?.toLowerCase() : item.arab?.toLowerCase();
-      return haystack?.includes(q) || item.id?.toLowerCase().includes(q);
+      const haystack = locale === "en" ? item.english : item.arab;
+      return Boolean(
+        haystack && normalizeArabicSearchText(haystack).includes(normalizedQuery),
+      ) || item.id?.toLowerCase().includes(q.toLowerCase());
     });
 }

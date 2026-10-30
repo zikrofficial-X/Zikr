@@ -16,6 +16,7 @@ import {
 } from "@/features/dua/data/fallback";
 import { getRequestLocale } from "@/lib/i18n/server";
 import type { Locale } from "@/lib/i18n";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 type DuaRow = Record<string, unknown>;
 
@@ -155,6 +156,34 @@ export async function getDuas(
     .filter((dua) => dua.slug && localeReady(dua));
 
   return resolveCanonicalPublished(mapped, fallback).slice(0, safeLimit);
+}
+
+export async function searchDuas(query: string, locale: Locale = "ar"): Promise<Dua[]> {
+  const cleanQuery = query.trim().slice(0, 100);
+  const normalizedQuery = normalizeArabicSearchText(cleanQuery);
+  if (!normalizedQuery) return [];
+
+  if (isSupabaseConfigured()) {
+    try {
+      const rows = await supabaseServerAnonRequest<DuaRow[]>(
+        `/rest/v1/duas?select=id,title_ar,title_en,slug,text_ar,text_en,occasion_ar,source_ar,benefits_ar,category_id,published&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(normalizedQuery)}&limit=6`,
+        { timeoutMs: 8000, retries: 1, cache: "no-store" },
+      );
+      const matches = rows.map(mapDuaRow).filter((dua) =>
+        dua.slug && (locale === "en"
+          ? Boolean(dua.titleEn?.trim() && dua.textEn?.trim())
+          : Boolean(dua.titleAr?.trim() && dua.textAr?.trim())),
+      );
+      if (matches.length) return matches;
+    } catch (error) {
+      console.error("[dua] Indexed search failed; using bounded fallback:", error);
+    }
+  }
+
+  return (await getOfflineOrFallbackDuas()).filter((dua) =>
+    [dua.titleAr, dua.textAr, dua.titleEn ?? "", dua.textEn ?? "", dua.occasionAr ?? "", dua.sourceAr ?? "", dua.benefitsAr ?? ""]
+      .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
+  ).slice(0, 6);
 }
 
 export async function getDuaBySlug(slug: string, locale?: Locale): Promise<Dua | null> {
