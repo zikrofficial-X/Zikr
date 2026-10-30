@@ -85,7 +85,7 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
   }
 
   for (const item of prophets) {
-    if (contains(item.nameAr) || contains(item.nameEn) || contains(item.bioAr)) {
+    if (contains(item.nameAr) || contains(item.nameEn) || contains(item.bioAr) || contains(item.birthPlaceAr) || contains(item.deathPlaceAr)) {
       results.push({
         id: item.id,
         type: "prophet",
