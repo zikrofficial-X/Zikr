@@ -3,9 +3,9 @@ import "server-only";
 import { searchArticles } from "@/features/articles/services/articles";
 import { searchHadith } from "@/features/hadith/services/hadith";
 import { searchDuas } from "@/features/dua/services/dua";
-import { getProphets } from "@/features/prophets/services/prophets";
-import { getPublishedCompanions } from "@/features/companions/services/companions";
-import { getStories } from "@/features/stories/services/stories";
+import { searchProphets } from "@/features/prophets/services/prophets";
+import { searchPublishedCompanions } from "@/features/companions/services/companions";
+import { searchStories } from "@/features/stories/services/stories";
 import { searchLocalQuran } from "@/features/quran/services/quran-server";
 import { searchScholars } from "@/features/scholars/services/scholars";
 import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
@@ -30,9 +30,9 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
       searchLocalQuran(query, "ar"),
       searchHadith(query),
       searchDuas(query, "ar"),
-      getProphets(),
-      getPublishedCompanions(),
-      getStories(),
+      searchProphets(query),
+      searchPublishedCompanions(query),
+      searchStories(query),
       searchArticles(query, "ar"),
       searchScholars(query),
     ]);
