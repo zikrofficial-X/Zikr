@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const root = process.cwd();
 const outputDir = path.join(root, 'public/offline-content/v1');
-const supabaseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\\/$/, '');
+const supabaseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
 const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
 if (!supabaseUrl || !serviceKey) {
