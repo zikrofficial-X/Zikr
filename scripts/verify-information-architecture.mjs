@@ -24,7 +24,12 @@ const kidsLayout = await read('src/app/kids/layout.tsx');
 const kidsDetailLayout = await read('src/app/kids/[slug]/layout.tsx');
 const searchService = await read('src/features/search/services/search.ts');
 const mobileNavigation = await read('src/components/layout/mobile-nav.tsx');
-const searchMigration = await read('supabase/migrations/20261030043335_arabic_full_text_search_v2.sql');
+// The normalized index lives in the v2 migration; the current definition of search_public_content
+// (SECURITY INVOKER, approved/non-personal stories only) lives in the latest migration that redefines it.
+const searchMigration = [
+  await read('supabase/migrations/20261030043335_arabic_full_text_search_v2.sql'),
+  await read('supabase/migrations/20261030090000_article_tags_and_english_search.sql'),
+].join('\n');
 const site = await read('src/lib/site.ts');
 const catalogHrefs = extractQuoted(catalog, /href:\s*['"]([^'"]+)['"]/g);
 if (sitemap.includes('"/videos"') && sitemap.includes('NON_INDEXABLE_PATHS')) {
