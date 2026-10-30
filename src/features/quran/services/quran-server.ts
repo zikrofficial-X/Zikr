@@ -252,7 +252,7 @@ export async function searchLocalQuran(
   query: string,
   locale: Locale = "ar",
 ): Promise<Ayah[]> {
-  const cleanQuery = query.trim().toLocaleLowerCase();
+  const cleanQuery = normalizeArabicSearchText(query);
   if (!cleanQuery) return [];
 
   try {
@@ -267,7 +267,7 @@ export async function searchLocalQuran(
           row.text_en ?? "",
         ];
         return candidates.some((value) =>
-          value.toLocaleLowerCase().includes(cleanQuery),
+          normalizeArabicSearchText(value).includes(cleanQuery),
         );
       })
       .slice(0, 50)
