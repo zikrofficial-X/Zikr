@@ -167,7 +167,7 @@ if (apis.length < 1) failures.push('No API routes discovered under src/app');
 // Shared route inventory baseline is also consumed by project-integrity checks.
 if (pages.length !== EXPECTED_PLATFORM_PAGES || apis.length !== EXPECTED_PLATFORM_APIS) {
   warnings.push(
-    `Route inventory drift: expected ${EXPECTED_PAGE_ROUTES} pages and ${EXPECTED_API_ROUTES} API routes; discovered ${pages.length} pages and ${apis.length} API routes.`,
+    `Route inventory drift: expected ${EXPECTED_PLATFORM_PAGES} pages and ${EXPECTED_PLATFORM_APIS} API routes; discovered ${pages.length} pages and ${apis.length} API routes.`,
   );
 }
 

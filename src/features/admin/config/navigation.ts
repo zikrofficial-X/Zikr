@@ -27,6 +27,7 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     label: "التشغيل والمراقبة",
     items: [
       { href: "/admin", label: "لوحة التحكم", permission: "dashboard.view" },
+      { href: "/admin/queues", label: "مركز الطوابير", permission: "dashboard.view" },
       { href: "/admin/automation", label: "التشغيل الآلي", permission: "system.manage" },
       { href: "/admin/health", label: "صحة النظام", permission: "system.manage" },
       { href: "/admin/notifications", label: "التنبيهات", permission: "notifications.manage" },
@@ -54,6 +55,9 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     key: "video-media",
     label: "الفيديو والوسائط",
     items: [
+      { href: "/admin/video", label: "مركز الفيديو", permission: "video.manage" },
+      { href: "/admin/video/requests", label: "طلبات الفيديو", permission: "video.manage" },
+      { href: "/admin/video/studio", label: "استوديو الفيديو", permission: "video.manage" },
       { href: "/admin/video-factory", label: "مصنع الفيديو", permission: "video.manage" },
       { href: "/admin/video-factory/queue", label: "قائمة طلبات الفيديو", permission: "video.manage" },
       { href: "/admin/ai-video", label: "استوديو إنشاء الفيديو", permission: "video.manage" },

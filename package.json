@@ -76,6 +76,7 @@
     "admin:pages:check": "node scripts/verify-admin-pages.mjs",
     "admin:architecture:check": "node scripts/verify-admin-architecture.mjs",
     "admin:governance:check": "node scripts/verify-admin-governance.mjs",
+    "admin:modules:check": "tsx scripts/verify-admin-module-registry.ts",
     "translate:articles:en": "tsx scripts/translate-published-articles-en.ts",
     "sync:hadith:en": "tsx scripts/sync-hadith-english.ts",
     "video:contract:check": "tsx scripts/tests/video-contract.test.ts",
