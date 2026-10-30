@@ -8,6 +8,7 @@ import { getPublishedCompanions } from "@/features/companions/services/companion
 import { getStories } from "@/features/stories/services/stories";
 import { searchLocalQuran } from "@/features/quran/services/quran-server";
 import { searchScholars } from "@/features/scholars/services/scholars";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 export type PublicSearchResult = {
   id: string;
@@ -21,7 +22,7 @@ export type PublicSearchResult = {
 const MAX_RESULTS_PER_TYPE = 6;
 
 export async function globalSearch(query: string): Promise<PublicSearchResult[]> {
-  const q = query.trim().toLocaleLowerCase("ar");
+  const q = normalizeArabicSearchText(query);
   if (q.length < 2) return [];
 
   const [quran, hadith, duas, prophets, companions, stories, articles, scholars] =
@@ -61,7 +62,7 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
   }
 
   const contains = (value: string | undefined) =>
-    Boolean(value && value.toLocaleLowerCase("ar").includes(q));
+    Boolean(value && normalizeArabicSearchText(value).includes(q));
 
   for (const item of duas) {
     if (
