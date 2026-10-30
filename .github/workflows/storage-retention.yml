@@ -4,9 +4,16 @@ on:
   schedule:
     - cron: "17 2 * * *"
   workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply the reviewed retention plan (leave false for a dry run)"
+        required: true
+        default: false
+        type: boolean
   push:
     branches:
       - storage-retention-run-2026-10-30
+      - storage-retention-apply-2026-10-30
 
 permissions:
   contents: read
@@ -17,7 +24,7 @@ concurrency:
 
 jobs:
   cleanup:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/storage-retention-run-2026-10-30'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/storage-retention-run-2026-10-30' || github.ref == 'refs/heads/storage-retention-apply-2026-10-30'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 25
@@ -60,6 +67,7 @@ jobs:
         run: pnpm storage:cleanup
 
       - name: Delete only verified, safely-retained objects
+        if: github.event_name == 'schedule' || inputs.apply == true || github.ref == 'refs/heads/storage-retention-apply-2026-10-30'
         run: pnpm storage:cleanup -- --apply
 
       - name: Verify final bucket inventory
