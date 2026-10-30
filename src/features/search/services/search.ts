@@ -1,8 +1,8 @@
 import "server-only";
 
-import { getArticles } from "@/features/articles/services/articles";
+import { searchArticles } from "@/features/articles/services/articles";
 import { searchHadith } from "@/features/hadith/services/hadith";
-import { getDuas } from "@/features/dua/services/dua";
+import { searchDuas } from "@/features/dua/services/dua";
 import { getProphets } from "@/features/prophets/services/prophets";
 import { getPublishedCompanions } from "@/features/companions/services/companions";
 import { getStories } from "@/features/stories/services/stories";
@@ -29,11 +29,11 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
     await Promise.all([
       searchLocalQuran(query, "ar"),
       searchHadith(query),
-      getDuas(undefined, 100),
+      searchDuas(query, "ar"),
       getProphets(),
       getPublishedCompanions(),
       getStories(),
-      getArticles(undefined, 100),
+      searchArticles(query, "ar"),
       searchScholars(query),
     ]);
 
