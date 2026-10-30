@@ -14,6 +14,7 @@ import { extendedEditorialArticles } from "@/features/articles/data/extended-edi
 import { longformEditorialArticles } from "@/features/articles/data/longform-editorial";
 import type { Locale } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n/server";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 const MIN_PUBLIC_ARTICLE_CHARS = 1800;
 
@@ -252,11 +253,11 @@ export async function searchArticles(query: string, locale: Locale = "ar"): Prom
     }
   }
 
-  const normalizedQuery = cleanQuery.normalize("NFKC").toLocaleLowerCase(locale);
+  const normalizedQuery = normalizeArabicSearchText(cleanQuery);
   return (await getArticles(undefined, 100, locale))
     .filter((article) =>
       [article.title, article.summary ?? "", article.content ?? "", ...(article.tags ?? [])]
-        .some((value) => value.normalize("NFKC").toLocaleLowerCase(locale).includes(normalizedQuery)),
+        .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
     )
     .slice(0, 6);
 }
