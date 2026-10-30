@@ -2,12 +2,32 @@
 -- This is additive: the original generated article vector and its GIN index remain unchanged.
 
 alter table public.articles
-  add column if not exists searchable_tags_normalized tsvector generated always as (
-    to_tsvector(
-      'simple'::regconfig,
-      private.normalize_arabic_search_text(array_to_string(coalesce(tags, '{}'::text[]), ' '))
-    )
-  ) stored;
+  add column if not exists searchable_tags_normalized tsvector not null default ''::tsvector;
+
+create or replace function public.refresh_article_searchable_tags_normalized()
+returns trigger
+language plpgsql
+set search_path to 'pg_catalog'
+as $function$
+begin
+  new.searchable_tags_normalized := to_tsvector(
+    'simple'::regconfig,
+    private.normalize_arabic_search_text(array_to_string(coalesce(new.tags, '{}'::text[]), ' '))
+  );
+  return new;
+end
+$function$;
+
+update public.articles
+set searchable_tags_normalized = to_tsvector(
+  'simple'::regconfig,
+  private.normalize_arabic_search_text(array_to_string(coalesce(tags, '{}'::text[]), ' '))
+);
+
+drop trigger if exists articles_refresh_searchable_tags_normalized on public.articles;
+create trigger articles_refresh_searchable_tags_normalized
+before insert or update of tags on public.articles
+for each row execute function public.refresh_article_searchable_tags_normalized();
 
 create index if not exists articles_tags_searchable_normalized_idx
   on public.articles using gin (searchable_tags_normalized)
