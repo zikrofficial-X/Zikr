@@ -4,11 +4,11 @@ import path from 'node:path';
 const root = process.cwd();
 const outputDir = path.join(root, 'public/offline-content/v1');
 const supabaseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
-const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+const apiKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLIC_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
 
-if (!supabaseUrl || !serviceKey) {
+if (!supabaseUrl || !apiKey) {
   if (process.argv.includes('--required')) {
-    throw new Error('Offline export requires SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY.');
+    throw new Error('Offline export requires SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and a Supabase service-role or public anon key.');
   }
   console.warn('[offline-export] Supabase server credentials are not configured; keeping the checked-in offline snapshot.');
   process.exit(0);
@@ -52,8 +52,8 @@ async function fetchAll(table, filters) {
     params.set('offset', String(offset));
     const response = await fetch(`${supabaseUrl}/rest/v1/${table}?${params}`, {
       headers: {
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
+        apikey: apiKey,
+        Authorization: `Bearer ${apiKey}`,
         Accept: 'application/json',
       },
       signal: AbortSignal.timeout(60_000),
