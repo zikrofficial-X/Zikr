@@ -129,19 +129,10 @@ export async function searchScholars(query: string): Promise<Scholar[]> {
   }
 
   const scholars = await getAllScholars();
-  return scholars.filter(scholar =>
+  return scholars.filter((scholar) =>
     [scholar.nameAr, scholar.nameEn, scholar.slug, scholar.bioAr ?? "", scholar.bioEn ?? ""]
-      .some(value => normalizeArabicSearchText(value).includes(normalizedQuery)),
+      .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
   ).slice(0, 6);
-}export async function searchScholars(query: string): Promise<Scholar[]> {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-
-  const scholars = await getAllScholars();
-  return scholars.filter(scholar =>
-    [scholar.nameAr, scholar.nameEn, scholar.slug, scholar.bioAr ?? "", scholar.bioEn ?? ""]
-      .some(value => value.toLowerCase().includes(q)),
-  );
 }
 
 export async function getScholarsByIds(ids: string[]): Promise<Scholar[]> {
