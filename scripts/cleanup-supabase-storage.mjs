@@ -70,11 +70,14 @@ export function compareSemverTags(a, b) {
   return 0;
 }
 
-export function selectProtectedAndroidTags(availableTags, pinnedTag) {
+export function selectProtectedAndroidTags(availableTags, pinnedTag, referencedTags = []) {
   const valid = [...new Set(availableTags.filter((tag) => /^v\d+\.\d+\.\d+$/.test(tag)))];
   valid.sort((a, b) => compareSemverTags(b, a));
   const protectedTags = new Set(valid.slice(0, 2));
   if (pinnedTag) protectedTags.add(pinnedTag);
+  for (const tag of referencedTags) {
+    if (/^v\d+\.\d+\.\d+$/.test(tag)) protectedTags.add(tag);
+  }
   // v1.1.3 has no GitHub Release binaries; keep it until an external backup exists.
   protectedTags.add("v1.1.3");
   return protectedTags;
@@ -220,6 +223,51 @@ async function loadUnexpectedVideoReferences(client) {
       column: "storage_path",
       filter: (query) => query.like("storage_path", "automated/%"),
     },
+    {
+      table: "video_generation_requests",
+      column: "thumbnail_url",
+      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "videos",
+      column: "thumbnail_url",
+      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "social_sync_jobs",
+      column: "thumbnail_url",
+      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "youtube_feed_cache",
+      column: "video_url",
+      filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "youtube_feed_cache",
+      column: "thumbnail_url",
+      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "content_agent_queue",
+      column: "source_url",
+      filter: (query) => query.ilike("source_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "content_sources",
+      column: "url",
+      filter: (query) => query.ilike("url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "social_publish_queue",
+      column: "image_url",
+      filter: (query) => query.ilike("image_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "content_library",
+      column: "cover_url",
+      filter: (query) => query.ilike("cover_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
   ];
 
   const referenceSet = new Set();
@@ -247,15 +295,29 @@ async function loadUnexpectedVideoReferences(client) {
   return referenceSet;
 }
 
-async function getAndroidPinnedTag(client) {
+async function getAndroidReleaseReferences(client) {
   const { data, error } = await client
     .from("site_settings")
-    .select("value")
-    .eq("key", "android_release")
-    .maybeSingle();
-  if (error) throw new Error(`Cannot read active Android release setting: ${error.message}`);
-  const value = asObject(data?.value);
-  return asString(value.releaseTag);
+    .select("key,value")
+    .range(0, 999);
+  if (error) throw new Error(`Cannot read Android release settings: ${error.message}`);
+  const rows = data ?? [];
+  if (rows.length >= 1000) {
+    throw new Error("Site settings exceeded the safe scan limit; refusing Android release cleanup.");
+  }
+
+  const releaseRow = rows.find((row) => row.key === "android_release");
+  const releaseValue = asObject(releaseRow?.value);
+  const pinnedTag = asString(releaseValue.releaseTag);
+  const referencedTags = new Set();
+
+  for (const row of rows) {
+    const serialized = JSON.stringify(row.value ?? {});
+    for (const match of serialized.matchAll(/android-releases\/android\/(v\d+\.\d+\.\d+)\//g)) {
+      referencedTags.add(match[1]);
+    }
+  }
+  return { pinnedTag, referencedTags: [...referencedTags] };
 }
 
 async function updateVideoRecords(client, candidate, retention, finalize) {
@@ -370,12 +432,13 @@ async function main() {
     console.log(`SKIP video queue ${item.id}: ${item.reason}`);
   }
 
-  const pinnedTag = await getAndroidPinnedTag(client);
+  const androidSettings = await getAndroidReleaseReferences(client);
+  const pinnedTag = androidSettings.pinnedTag;
   const androidVersions = androidRoot
     .filter((item) => /^v\d+\.\d+\.\d+$/.test(item.name ?? ""))
     .map((item) => item.name)
     .sort((a, b) => compareSemverTags(b, a));
-  const protectedTags = selectProtectedAndroidTags(androidVersions, pinnedTag);
+  const protectedTags = selectProtectedAndroidTags(androidVersions, pinnedTag, androidSettings.referencedTags);
   const androidDeletes = [];
   const androidVersionFiles = new Map();
 
