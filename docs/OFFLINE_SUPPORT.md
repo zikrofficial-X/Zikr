@@ -1,7 +1,8 @@
 # ZIKR Offline Support
 
 **Last updated: 2026-10-30**  
-**Offline pack:** `2026-10-30-content-v3`  
+**Client pack marker:** `offline-content-version-v7`  
+**Manifest version:** regenerated from the live public catalog during each CI/production build  
 **Service worker cache:** `zikr-v15`  
 **IndexedDB schema:** `ZikrOfflineDB` version 6
 
