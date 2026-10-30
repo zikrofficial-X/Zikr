@@ -86,10 +86,10 @@ const manifest = {
 for (const [dataset, table, ...filters] of datasets) {
   const rows = await fetchAll(table, filters);
   const fileName = `${dataset}.json`;
-  await writeFile(path.join(outputDir, fileName), `${JSON.stringify(rows)}\\n`, 'utf8');
+  await writeFile(path.join(outputDir, fileName), `${JSON.stringify(rows)}\n`, 'utf8');
   manifest.datasets[dataset] = { path: `/offline-content/v1/${fileName}`, count: rows.length };
   console.log(`[offline-export] ${dataset}: ${rows.length}`);
 }
 
-await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\\n`, 'utf8');
+await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 console.log(`[offline-export] Wrote ${Object.keys(manifest.datasets).length} datasets; version ${manifest.version}`);
