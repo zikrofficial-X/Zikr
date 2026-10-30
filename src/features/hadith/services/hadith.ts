@@ -325,7 +325,7 @@ export async function searchHadith(query: string, locale: Locale = "ar"): Promis
   const safeQuery = normalizeArabicSearchText(q).slice(0, 100);
   if (!safeQuery) return [];
   const dbHadiths = await readSupabase<DbHadith[]>(
-    `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&published=eq.true&searchable_normalized=plfts.simple.${encodeURIComponent(safeQuery)}&order=hadith_number.asc&limit=50`,
+    `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(safeQuery)}&order=hadith_number.asc&limit=50`,
   );
   if (dbHadiths?.length) {
     return dbHadiths
