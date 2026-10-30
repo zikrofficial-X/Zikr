@@ -248,7 +248,14 @@ export async function searchArticles(query: string, locale: Locale = "ar"): Prom
       const matches = rows
         .map((row) => mapRow(row, locale))
         .filter((article) => article.title && normalizedText(article.content).length >= MIN_PUBLIC_ARTICLE_CHARS);
-      if (matches.length) return matches;
+      if (matches.length) {
+        return withLongformArticles(matches, locale)
+          .filter((article) =>
+            [article.title, article.summary ?? "", article.content ?? "", ...(article.tags ?? [])]
+              .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
+          )
+          .slice(0, 6);
+      }
     } catch (error) {
       console.error("[articles] Indexed search failed; using bounded fallback:", error);
     }
