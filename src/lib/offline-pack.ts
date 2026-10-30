@@ -279,9 +279,7 @@ export async function fetchOfflineManifest(): Promise<OfflineManifest | null> {
   try {
     const response = await fetch(MANIFEST_URL, { cache: "no-store" });
     if (response.ok) {
-      const manifest = (await response.json()) as OfflineManifest;
-      await persistManifest(manifest);
-      return manifest;
+      return (await response.json()) as OfflineManifest;
     }
   } catch {
     // Offline: fall through to persistent local copies.
