@@ -7,6 +7,7 @@ const serviceWorkerPath = 'public/sw.js';
 const offlineLibraryPath = 'src/app/offline-library/page.tsx';
 const offlineLibraryClientPath = 'src/app/offline-library/offline-library-client.tsx';
 const guardPath = 'src/components/layout/offline-navigation-guard.tsx';
+const exporterPath = 'scripts/export-offline-content.mjs';
 
 const read = file => (existsSync(file) ? readFileSync(file, 'utf8') : '');
 const failures = [];
@@ -26,6 +27,7 @@ for (const file of [
   offlineLibraryPath,
   offlineLibraryClientPath,
   guardPath,
+  exporterPath,
 ]) {
   if (!existsSync(file)) failures.push(`Missing ${file}`);
 }
@@ -118,6 +120,12 @@ for (const token of [
 ]) {
   if (!offlinePack.includes(token)) failures.push(`Offline pack missing ${token}`);
 }
+
+const exporter = read(exporterPath);
+for (const dataset of ['tafsir', 'articles', 'duas', 'kids', 'companions', 'scholars', 'tawasheeh', 'quran_reciters', 'quran_audio', 'kids_games', 'kids_game_levels']) {
+  if (!exporter.includes(`['${dataset}',`)) failures.push(`Offline exporter missing dataset: ${dataset}`);
+}
+if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes('limit', '')) failures.push('Offline exporter must use the server-only Supabase key and paginated reads');
 
 const serviceWorker = read(serviceWorkerPath);
 for (const token of [
