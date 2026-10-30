@@ -7,30 +7,28 @@ import { AuthNavActions } from "./auth-nav-actions";
 import { LanguageToggle } from "./language-toggle";
 import { LanguageAwareNav, type NavLink } from "./language-aware-nav";
 import { getRequestLocale } from "@/lib/i18n/server";
+import { getCatalogItem } from "@/lib/navigation/catalog";
+
+const PRIMARY_NAVIGATION_HREFS = [
+  "/quran",
+  "/adhkar",
+  "/prayer-times",
+  "/stories",
+  "/audio",
+  "/kids",
+] as const;
 
 const links: NavLink[] = [
-  { href: "/quran", label: "القرآن", labelEn: "Quran" },
-  { href: "/hadith", label: "الأحاديث", labelEn: "Hadith" },
-  { href: "/stories", label: "القصص", labelEn: "Stories" },
-  { href: "/adhkar", label: "الأذكار", labelEn: "Adhkar" },
-  { href: "/dua", label: "الأدعية", labelEn: "Dua" },
-  { href: "/wird", label: "الورد", labelEn: "Wird" },
-  { href: "/prayer-times", label: "الصلاة", labelEn: "Prayer" },
-  { href: "/zakat", label: "الزكاة", labelEn: "Zakat" },
-  { href: "/qibla", label: "القبلة", labelEn: "Qibla" },
-  { href: "/prophets", label: "الأنبياء", labelEn: "Prophets" },
-  { href: "/companions", label: "الصحابة", labelEn: "Companions" },
-  { href: "/scholars", label: "العلماء", labelEn: "Scholars" },
-  { href: "/spiritual-ai", label: "الروحاني", labelEn: "Spiritual AI" },
-  { href: "/kids", label: "الأطفال", labelEn: "Kids" },
-  { href: "/audio", label: "الصوت", labelEn: "Audio" },
-  { href: "/sections", label: "الأقسام", labelEn: "Sections" },
-  { href: "/search", label: "بحث", labelEn: "Search" },
-  {
-    href: "/platform#android-download-title",
-    label: "تحميل التطبيق",
-    labelEn: "Download app",
-  },
+  ...PRIMARY_NAVIGATION_HREFS.map((href) => {
+    const item = getCatalogItem(href);
+    return {
+      href,
+      label: item?.ar ?? href,
+      labelEn: item?.en ?? href,
+      icon: item?.icon,
+    };
+  }),
+  { href: "/sections", label: "كل الأقسام", labelEn: "All sections", icon: "Grid3X3" },
 ];
 
 export async function Navbar() {
@@ -61,29 +59,29 @@ export async function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-brand-gold/15 bg-brand-emeraldDeep/90 backdrop-blur-md">
-      <Container className="flex min-h-16 flex-wrap items-center justify-between gap-3 py-2">
+    <header className="sticky top-0 z-40 border-b border-brand-gold/15 bg-brand-emeraldDeep/95 backdrop-blur-md">
+      <Container className="flex min-h-16 items-center justify-between gap-3 py-2">
         <Link
           href="/"
-          className="flex items-center gap-2 group"
-          aria-label={isEnglish ? "ZIKR - Home" : "ZIKR - الرئيسية"}
+          className="group flex shrink-0 items-center gap-2"
+          aria-label={isEnglish ? "ZIKR - Home" : "ذِكرٌ - الرئيسية"}
         >
-          <span className="text-2xl font-bold text-brand-gold tracking-tight group-hover:opacity-80 transition-opacity">
+          <span className="text-2xl font-bold tracking-tight text-brand-gold transition-opacity group-hover:opacity-80">
             {isEnglish ? "ZIKR" : "ذِكرٌ"}
           </span>
-          <span className="hidden sm:block text-xs text-brand-gold/40 font-mono tracking-widest pt-1">
+          <span className="hidden pt-1 font-mono text-xs tracking-widest text-brand-gold/55 sm:block">
             ZIKR
           </span>
         </Link>
 
         <LanguageAwareNav links={links} />
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <LanguageToggle />
           <Link
             href="/settings"
             aria-label={isEnglish ? "Settings" : "الإعدادات"}
-            className="rounded-md p-2 text-brand-cream/60 transition-colors hover:text-brand-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+            className="rounded-xl p-2 text-brand-cream/75 transition-colors hover:bg-brand-gold/8 hover:text-brand-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold"
           >
             <Settings className="h-5 w-5" aria-hidden="true" />
           </Link>

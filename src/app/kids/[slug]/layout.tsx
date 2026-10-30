@@ -15,12 +15,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     if (staticItem.content_ar) description = staticItem.content_ar.replace(/\s+/g, ' ').slice(0, 160);
   } else {
     try {
-      const data = await supabaseServerAnonRequest<{ title_ar: string; description_ar?: string }[]>(
-        `/rest/v1/kids_content?select=title_ar,description_ar&slug=eq.${encodeURIComponent(slug)}&published=eq.true&limit=1`
+      const data = await supabaseServerAnonRequest<{ title_ar: string; summary_ar?: string }[]>(
+        `/rest/v1/kids_content?select=title_ar,summary_ar&slug=eq.${encodeURIComponent(slug)}&published=eq.true&limit=1`
       );
       if (data?.[0]) {
         title = data[0].title_ar;
-        if (data[0].description_ar) description = data[0].description_ar.slice(0, 160);
+        if (data[0].summary_ar) description = data[0].summary_ar.slice(0, 160);
       }
     } catch {
       // fall back to generic metadata

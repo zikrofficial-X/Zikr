@@ -46,7 +46,7 @@ export default function SectionsPage() {
         {SITE_CATALOG.map(group => {
           const GroupIcon = resolveIcon(group.icon);
           return (
-            <section key={group.id} aria-labelledby={`${group.id}-heading`}>
+            <section id={group.id} key={group.id} aria-labelledby={`${group.id}-heading`}>
               <div className="mb-5 flex items-end justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 text-brand-gold">

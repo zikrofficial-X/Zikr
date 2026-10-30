@@ -49,7 +49,7 @@ export default function ContactPage() {
       {/* Hero */}
       <section className="py-16 bg-gradient-to-b from-[#071A13] to-transparent">
         <Container className="max-w-3xl text-center space-y-4">
-          <h1 className="text-5xl font-bold text-brand-gold">تواصل معنا</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-brand-gold">تواصل معنا</h1>
           <p className="text-lg leading-8 text-brand-cream/70">
             نسعد باستقبال استفساراتك واقتراحاتك، ونراجع الرسائل بحسب نوع الطلب وأولوية المعالجة.
           </p>
@@ -134,7 +134,7 @@ export default function ContactPage() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <h2 className="text-xl font-bold text-brand-gold">أرسل رسالة</h2>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <label className="block space-y-1.5">
                       <span className="text-sm text-brand-cream/60">الاسم *</span>
                       <input
@@ -184,7 +184,7 @@ export default function ContactPage() {
                   </label>
 
                   {error && (
-                    <p className="text-red-400 text-sm">{error}</p>
+                    <p className="text-red-400 text-sm" role="alert" aria-live="polite">{error}</p>
                   )}
 
                   <Button type="submit" disabled={loading} className="w-full gap-2">

@@ -21,6 +21,7 @@ const sitemap = await read('src/app/sitemap.ts');
 const videosPage = await read('src/app/videos/page.tsx');
 const audioPage = await read('src/app/audio/page.tsx');
 const kidsLayout = await read('src/app/kids/layout.tsx');
+const kidsDetailLayout = await read('src/app/kids/[slug]/layout.tsx');
 const site = await read('src/lib/site.ts');
 const catalogHrefs = extractQuoted(catalog, /href:\s*['"]([^'"]+)['"]/g);
 if (sitemap.includes('"/videos"') && sitemap.includes('NON_INDEXABLE_PATHS')) {
@@ -40,6 +41,9 @@ if (!sitemap.includes('siteConfigRoutes().map')) {
 }
 if (!audioPage.includes("path: '/audio'")) {
   failures.push('Audio hub must expose page-level canonical metadata.');
+}
+if (!kidsDetailLayout.includes('select=title_ar,summary_ar') || kidsDetailLayout.includes('description_ar')) {
+  failures.push('Kids detail metadata must use the live kids_content.summary_ar column, not a nonexistent description_ar column.');
 }
 if (!kidsLayout.includes('path: "/kids"')) {
   failures.push('Kids hub must expose a route-level canonical metadata contract.');

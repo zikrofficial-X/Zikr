@@ -1,6 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import {
+  ExternalLink,
+  BookOpen,
+  MoonStar,
+  Clock3,
+  BookMarked,
+  Shield,
+  Video,
+  Newspaper,
+  Users,
+  FileText,
+  Code2,
+  Palette,
+} from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { pageMetadata } from "@/lib/site";
@@ -19,14 +32,14 @@ export const metadata: Metadata = pageMetadata({
 });
 
 const features = [
-  { icon: "📖", title: "القرآن الكريم", desc: "تصفّح القرآن بخطوط عربية جميلة مع التفسير والتلاوة من أشهر القراء." },
-  { icon: "📿", title: "الأذكار والأدعية", desc: "أذكار الصباح والمساء وأدعية المناسبات منظّمة بشكل سهل." },
-  { icon: "🕌", title: "مواقيت الصلاة", desc: "توقيت دقيق لكل صلاة بناء على موقعك الجغرافي." },
-  { icon: "📚", title: "قصص الأنبياء", desc: "فهرس الأنبياء المذكورين في القرآن مع فصول قصصية وروابط الآيات والمراجع." },
-  { icon: "⚔️", title: "الغزوات الإسلامية", desc: "أحداث الغزوات مع التفريق بين النص القرآني والرواية التاريخية والمعلومة التقريبية." },
-  { icon: "🎥", title: "فيديوهات تعليمية", desc: "مقاطع يوتيوب مرتبطة بكل قصة ونبي لمزيد من الفهم." },
-  { icon: "📰", title: "المقالات", desc: "مقالات تعليمية تحريرية تُعرض مع مصادرها، مع التنبيه إلى أن المقالات العامة لا تستبدل سؤال أهل العلم في الفتوى." },
-  { icon: "👶", title: "قسم الأطفال", desc: "قصص وألعاب ومحتوى تعليمي مخصص لأبنائنا الصغار." },
+  { icon: BookOpen, title: "القرآن الكريم", desc: "تصفّح القرآن بخطوط عربية جميلة مع التفسير والتلاوة من أشهر القراء." },
+  { icon: MoonStar, title: "الأذكار والأدعية", desc: "أذكار الصباح والمساء وأدعية المناسبات منظّمة بشكل سهل." },
+  { icon: Clock3, title: "مواقيت الصلاة", desc: "توقيت دقيق لكل صلاة بناء على موقعك الجغرافي." },
+  { icon: BookMarked, title: "قصص الأنبياء", desc: "فهرس الأنبياء المذكورين في القرآن مع فصول قصصية وروابط الآيات والمراجع." },
+  { icon: Shield, title: "الغزوات الإسلامية", desc: "أحداث الغزوات مع التفريق بين النص القرآني والرواية التاريخية والمعلومة التقريبية." },
+  { icon: Video, title: "فيديوهات تعليمية", desc: "مقاطع يوتيوب مرتبطة بكل قصة ونبي لمزيد من الفهم." },
+  { icon: Newspaper, title: "المقالات", desc: "مقالات تعليمية تحريرية تُعرض مع مصادرها، مع التنبيه إلى أن المقالات العامة لا تستبدل سؤال أهل العلم في الفتوى." },
+  { icon: Users, title: "قسم الأطفال", desc: "قصص وألعاب ومحتوى تعليمي مخصص لأبنائنا الصغار." },
 ];
 
 async function getAboutStats() {
@@ -49,9 +62,9 @@ async function getAboutStats() {
 }
 
 const team = [
-  { name: "فريق المحتوى", role: "تحرير وتنظيم المحتوى مع توثيق المصدر وإتاحة التصحيح", icon: "📝" },
-  { name: "فريق التقنية", role: "تطوير أدوات قراءة ووصول آمنة وسهلة", icon: "💻" },
-  { name: "فريق التصميم", role: "تجربة عربية واضحة تراعي RTL وإتاحة الاستخدام", icon: "🎨" },
+  { name: "فريق المحتوى", role: "تحرير وتنظيم المحتوى مع توثيق المصدر وإتاحة التصحيح", icon: FileText },
+  { name: "فريق التقنية", role: "تطوير أدوات قراءة ووصول آمنة وسهلة", icon: Code2 },
+  { name: "فريق التصميم", role: "تجربة عربية واضحة تراعي RTL وإتاحة الاستخدام", icon: Palette },
 ];
 
 export default async function AboutPage() {
@@ -65,8 +78,8 @@ export default async function AboutPage() {
           <div className="absolute bottom-8 left-16 text-4xl text-brand-gold/20 font-arabic">﴿وَذَكِّرْ﴾</div>
         </div>
         <Container className="max-w-4xl text-center space-y-6 relative z-10">
-          <h1 className="text-5xl md:text-6xl font-bold text-brand-gold leading-tight">عن منصة <span className="font-arabic">ذِكرٌ</span></h1>
-          <p className="text-xl leading-9 text-brand-cream/80 max-w-2xl mx-auto">منصة روحانية رقمية عربية تجمع القرآن والحديث والقصص والعلم في تجربة حديثة وسهلة الوصول — للفرد والأسرة والناشئة.</p>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-brand-gold leading-tight">عن منصة <span className="font-arabic">ذِكرٌ</span></h1>
+          <p className="text-base sm:text-lg leading-8 sm:leading-9 text-brand-cream/80 max-w-2xl mx-auto">منصة روحانية رقمية عربية تجمع القرآن والحديث والقصص والعلم في تجربة حديثة وسهلة الوصول — للفرد والأسرة والناشئة.</p>
           <div className="flex flex-wrap justify-center gap-4 pt-4">
             <Link href="/quran" className="rounded-full border border-brand-gold/40 bg-brand-gold/10 px-6 py-2.5 text-brand-gold hover:bg-brand-gold/20 transition-colors text-sm font-semibold">تصفّح القرآن</Link>
             <Link href="/prophets" className="rounded-full border border-brand-gold/20 px-6 py-2.5 text-brand-cream/70 hover:text-brand-gold hover:border-brand-gold/40 transition-colors text-sm">قصص الأنبياء</Link>
@@ -79,7 +92,7 @@ export default async function AboutPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {stats.map((s) => (
               <div key={s.label} className="rounded-2xl border border-brand-gold/15 bg-black/20 p-6 text-center space-y-2 hover:border-brand-gold/30 transition-colors">
-                <p className="text-4xl font-bold text-brand-gold">{s.num}</p>
+                <p className="text-3xl sm:text-4xl font-bold text-brand-gold">{s.num}</p>
                 <p className="text-sm text-brand-cream/55">{s.label}</p>
               </div>
             ))}
@@ -122,13 +135,18 @@ export default async function AboutPage() {
         <section className="space-y-8">
           <h2 className="text-3xl font-bold text-brand-gold text-center">ما الذي تقدّمه المنصة؟</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {features.map(f => (
-              <Card key={f.title} className="p-6 space-y-3 hover:border-brand-gold/30 transition-colors group">
-                <div className="text-3xl" aria-hidden>{f.icon}</div>
-                <h3 className="font-bold text-brand-gold group-hover:text-brand-goldSoft transition-colors">{f.title}</h3>
-                <p className="text-sm leading-7 text-brand-cream/55">{f.desc}</p>
-              </Card>
-            ))}
+            {features.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <Card key={feature.title} className="group space-y-4 p-5 sm:p-6 transition-colors hover:border-brand-gold/30">
+                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-gold/20 bg-brand-gold/5 text-brand-gold" aria-hidden="true">
+                    <Icon className="h-6 w-6" />
+                  </span>
+                  <h3 className="font-bold text-brand-gold transition-colors group-hover:text-brand-goldSoft">{feature.title}</h3>
+                  <p className="text-sm leading-7 text-brand-cream/60">{feature.desc}</p>
+                </Card>
+              );
+            })}
           </div>
         </section>
 
@@ -148,13 +166,18 @@ export default async function AboutPage() {
         <section className="space-y-8">
           <h2 className="text-3xl font-bold text-brand-gold text-center">من نحن</h2>
           <div className="grid md:grid-cols-3 gap-6">
-            {team.map(t => (
-              <Card key={t.name} className="p-6 text-center space-y-3">
-                <div className="text-4xl mx-auto" aria-hidden>{t.icon}</div>
-                <h3 className="font-bold text-brand-gold">{t.name}</h3>
-                <p className="text-sm leading-7 text-brand-cream/55">{t.role}</p>
-              </Card>
-            ))}
+            {team.map((member) => {
+              const Icon = member.icon;
+              return (
+                <Card key={member.name} className="space-y-4 p-6 text-center">
+                  <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-gold/20 bg-brand-gold/5 text-brand-gold" aria-hidden="true">
+                    <Icon className="h-7 w-7" />
+                  </span>
+                  <h3 className="font-bold text-brand-gold">{member.name}</h3>
+                  <p className="text-sm leading-7 text-brand-cream/60">{member.role}</p>
+                </Card>
+              );
+            })}
           </div>
         </section>
 

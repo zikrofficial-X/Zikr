@@ -5,26 +5,28 @@ import { getSiteSetting } from '@/features/site-content/services/site-content';
 import { getArticles } from '@/features/articles/services/articles';
 import { HomeInteractive } from '@/features/home/components/home-interactive';
 import { SITE_CATALOG, CATALOG_ITEMS } from '@/lib/navigation/catalog';
+import * as Icons from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 const QUICK_ACTIONS = [
-  { href: '/quran', ar: 'القرآن', en: 'Quran', icon: '📖', tone: 'قراءة وتلاوة' },
-  { href: '/hadith', ar: 'الحديث', en: 'Hadith', icon: '📜', tone: 'السنة والمصادر' },
-  { href: '/adhkar', ar: 'الأذكار', en: 'Adhkar', icon: '📿', tone: 'الورد اليومي' },
-  { href: '/prayer-times', ar: 'الصلاة', en: 'Prayer', icon: '🕌', tone: 'المواقيت والتنبيهات' },
-  { href: '/audio', ar: 'الصوت', en: 'Audio', icon: '🎧', tone: 'أذان وذكر وتلاوات' },
-  { href: '/kids', ar: 'الأطفال', en: 'Kids', icon: '🌟', tone: 'تعلم ولعب' },
+  { href: '/quran', ar: 'القرآن', en: 'Quran', icon: 'BookOpen', tone: 'قراءة وتلاوة' },
+  { href: '/hadith', ar: 'الحديث', en: 'Hadith', icon: 'ScrollText', tone: 'السنة والمصادر' },
+  { href: '/adhkar', ar: 'الأذكار', en: 'Adhkar', icon: 'Sparkles', tone: 'الورد اليومي' },
+  { href: '/prayer-times', ar: 'الصلاة', en: 'Prayer', icon: 'Clock3', tone: 'المواقيت والتنبيهات' },
+  { href: '/audio', ar: 'الصوت', en: 'Audio', icon: 'Headphones', tone: 'أذان وذكر وتلاوات' },
+  { href: '/kids', ar: 'الأطفال', en: 'Kids', icon: 'Gamepad2', tone: 'تعلم ولعب' },
 ] as const;
 
 const FEATURED_GROUP_IDS = ['revelation', 'remembrance', 'daily', 'history'] as const;
 
 const DAILY_TOOLS = [
-  { href: '/wird', ar: 'الورد اليومي', en: 'Daily Wird', icon: '☀️', text: 'خطة بسيطة للقراءة والذكر والاستمرارية.' },
-  { href: '/qibla', ar: 'القبلة', en: 'Qibla', icon: '🧭', text: 'حدد اتجاه القبلة من جهازك.' },
-  { href: '/memorization', ar: 'الحفظ', en: 'Memorization', icon: '🧠', text: 'قسّم الحفظ والمراجعة إلى جلسات قابلة للمتابعة.' },
-  { href: '/tasbeeh', ar: 'التسبيح', en: 'Tasbeeh', icon: '🔘', text: 'عداد بسيط للذكر مع حفظ التقدم على جهازك.' },
-  { href: '/offline-library', ar: 'المكتبة بلا إنترنت', en: 'Offline Library', icon: '⬇️', text: 'ارجع للمحتوى المحفوظ عند ضعف الاتصال.' },
+  { href: '/wird', ar: 'الورد اليومي', en: 'Daily Wird', icon: 'Sun', text: 'خطة بسيطة للقراءة والذكر والاستمرارية.' },
+  { href: '/qibla', ar: 'القبلة', en: 'Qibla', icon: 'Navigation', text: 'حدد اتجاه القبلة من جهازك.' },
+  { href: '/memorization', ar: 'الحفظ', en: 'Memorization', icon: 'Brain', text: 'قسّم الحفظ والمراجعة إلى جلسات قابلة للمتابعة.' },
+  { href: '/tasbeeh', ar: 'التسبيح', en: 'Tasbeeh', icon: 'CircleDot', text: 'عداد بسيط للذكر مع حفظ التقدم على جهازك.' },
+  { href: '/offline-library', ar: 'المكتبة بلا إنترنت', en: 'Offline Library', icon: 'Download', text: 'ارجع للمحتوى المحفوظ عند ضعف الاتصال.' },
 ] as const;
 
 const GUIDED_PATHS = [
@@ -34,7 +36,7 @@ const GUIDED_PATHS = [
     en: 'Start with Quran',
     textAr: 'اقرأ أو استمع ثم افتح التفسير عند الحاجة، بدون تشتيت بين أكثر من مسار.',
     textEn: 'Read or listen, then open tafsir when you need context without losing the flow.',
-    icon: '📖',
+    icon: 'BookOpen',
   },
   {
     href: '/adhkar',
@@ -42,7 +44,7 @@ const GUIDED_PATHS = [
     en: 'Build a daily practice',
     textAr: 'اجعل أذكار الصباح والمساء والورد اليومي نقطة ثابتة في يومك.',
     textEn: 'Make morning, evening adhkar and your daily wird part of a consistent routine.',
-    icon: '📿',
+    icon: 'Sparkles',
   },
   {
     href: '/memorization',
@@ -50,9 +52,14 @@ const GUIDED_PATHS = [
     en: 'Build a memorization plan',
     textAr: 'قسّم الحفظ والمراجعة إلى جلسات قصيرة يمكن متابعتها وتطويرها.',
     textEn: 'Break memorization and review into short sessions you can track and improve.',
-    icon: '🧠',
+    icon: 'Brain',
   },
 ] as const;
+
+function resolveIcon(name: string): LucideIcon {
+  const candidate = (Icons as unknown as Record<string, unknown>)[name];
+  return (typeof candidate === 'function' || (typeof candidate === 'object' && candidate !== null)) ? (candidate as LucideIcon) : Icons.Circle;
+}
 
 const dailyVerse = 'إِنَّ هَٰذَا الْقُرْآنَ يَهْدِي لِلَّتِي هِيَ أَقْوَمُ';
 
@@ -119,8 +126,6 @@ export default async function HomePage() {
             >
               {homeBody}
             </p>
-            <HomeInteractive locale={locale} showPrayerTimes={showPrayerTimes} />
-
             <form action="/search" method="get" role="search" className="mx-auto mt-7 max-w-3xl" dir={dir}>
               <label htmlFor="home-search" className="sr-only">
                 {isEnglish ? 'Search ZIKR' : 'البحث في ذِكر'}
@@ -174,9 +179,10 @@ export default async function HomePage() {
                   className="group rounded-2xl border border-brand-gold/12 bg-black/15 p-4 text-center transition hover:-translate-y-0.5 hover:border-brand-gold/35"
                   dir={dir}
                 >
-                  <span className="text-2xl" aria-hidden="true">
-                    {action.icon}
-                  </span>
+                  {(() => {
+                    const ActionIcon = resolveIcon(action.icon);
+                    return <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-gold/15 bg-brand-gold/5 text-brand-gold" aria-hidden="true"><ActionIcon className="h-6 w-6" /></span>;
+                  })()}
                   <h3 className="mt-3 font-bold text-brand-cream group-hover:text-brand-gold">
                     {isEnglish ? action.en : action.ar}
                   </h3>
@@ -186,6 +192,12 @@ export default async function HomePage() {
                 </Link>
               ))}
             </div>
+          </Container>
+        </section>
+
+        <section className="border-b border-brand-gold/10 px-3 py-6 sm:px-4 sm:py-8" aria-label={isEnglish ? "Local time and prayer times" : "الوقت ومواقيت الصلاة"}>
+          <Container>
+            <HomeInteractive locale={locale} showPrayerTimes={showPrayerTimes} />
           </Container>
         </section>
 
@@ -218,7 +230,10 @@ export default async function HomePage() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-2xl" aria-hidden="true">{group.icon}</p>
+                      {(() => {
+                        const GroupIcon = resolveIcon(group.icon);
+                        return <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-brand-gold/15 bg-brand-gold/5 text-brand-gold" aria-hidden="true"><GroupIcon className="h-6 w-6" /></span>;
+                      })()}
                       <h3 className="mt-3 text-xl font-bold text-brand-gold">
                         {isEnglish ? group.en : group.ar}
                       </h3>
@@ -240,7 +255,13 @@ export default async function HomePage() {
                         href={item.href}
                         className="rounded-2xl border border-brand-gold/10 bg-black/15 p-3 hover:border-brand-gold/30"
                       >
-                        <p className="text-sm font-bold text-brand-cream">{isEnglish ? item.en : item.ar}</p>
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const ItemIcon = resolveIcon(item.icon);
+                            return <ItemIcon className="h-4 w-4 shrink-0 text-brand-gold/80" aria-hidden="true" />;
+                          })()}
+                          <p className="text-sm font-bold text-brand-cream">{isEnglish ? item.en : item.ar}</p>
+                        </div>
                         <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-brand-cream/45">
                           {isEnglish ? item.descriptionEn : item.descriptionAr}
                         </p>
@@ -282,7 +303,10 @@ export default async function HomePage() {
                   className="group rounded-3xl border border-brand-gold/13 bg-black/12 p-5 transition hover:-translate-y-0.5 hover:border-brand-gold/35"
                   dir={dir}
                 >
-                  <span className="text-2xl" aria-hidden="true">{path.icon}</span>
+                  {(() => {
+                    const PathIcon = resolveIcon(path.icon);
+                    return <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-brand-gold/15 bg-brand-gold/5 text-brand-gold" aria-hidden="true"><PathIcon className="h-6 w-6" /></span>;
+                  })()}
                   <h3 className="mt-4 text-lg font-bold text-brand-cream group-hover:text-brand-gold">
                     {isEnglish ? path.en : path.ar}
                   </h3>
@@ -368,7 +392,10 @@ export default async function HomePage() {
                   className="rounded-2xl border border-brand-gold/12 bg-black/15 p-4 hover:border-brand-gold/35"
                   dir={dir}
                 >
-                  <span className="text-xl" aria-hidden="true">{tool.icon}</span>
+                  {(() => {
+                    const ToolIcon = resolveIcon(tool.icon);
+                    return <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-brand-gold/15 bg-brand-gold/5 text-brand-gold" aria-hidden="true"><ToolIcon className="h-5 w-5" /></span>;
+                  })()}
                   <h3 className="mt-3 font-bold text-brand-gold">{isEnglish ? tool.en : tool.ar}</h3>
                   <p className="mt-2 text-xs leading-6 text-brand-cream/50">{tool.text}</p>
                 </Link>

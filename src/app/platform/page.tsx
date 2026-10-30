@@ -4,6 +4,7 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { pageMetadata } from "@/lib/site";
 import AndroidReleaseCard from "@/components/platform/android-release-card";
+import { BookOpen, Clock3, BookMarked, Shield, MoonStar, Users, Search, Brain } from "lucide-react";
 
 export const metadata: Metadata = pageMetadata({
   title: "كيف تستخدم منصة ذِكرٌ",
@@ -16,7 +17,7 @@ const sections = [
   {
     id: "quran",
     title: "قسم القرآن الكريم",
-    icon: "📖",
+    icon: BookOpen,
     href: "/quran",
     steps: [
       "انتقل إلى قسم القرآن من القائمة الرئيسية.",
@@ -30,7 +31,7 @@ const sections = [
   {
     id: "prayer",
     title: "مواقيت الصلاة",
-    icon: "🕌",
+    icon: Clock3,
     href: "/prayer-times",
     steps: [
       "اذهب إلى صفحة مواقيت الصلاة.",
@@ -44,7 +45,7 @@ const sections = [
   {
     id: "prophets",
     title: "قصص الأنبياء",
-    icon: "📚",
+    icon: BookMarked,
     href: "/prophets",
     steps: [
       "اذهب إلى صفحة قصص الأنبياء.",
@@ -58,7 +59,7 @@ const sections = [
   {
     id: "battles",
     title: "الغزوات الإسلامية",
-    icon: "⚔️",
+    icon: Shield,
     href: "/battles",
     steps: [
       "انتقل إلى صفحة الغزوات.",
@@ -72,7 +73,7 @@ const sections = [
   {
     id: "adhkar",
     title: "الأذكار والأدعية",
-    icon: "📿",
+    icon: MoonStar,
     href: "/adhkar",
     steps: [
       "اذهب إلى قسم الأذكار من القائمة.",
@@ -86,7 +87,7 @@ const sections = [
   {
     id: "kids",
     title: "قسم الأطفال",
-    icon: "👶",
+    icon: Users,
     href: "/kids",
     steps: [
       "انتقل إلى قسم الأطفال من القائمة.",
@@ -99,7 +100,7 @@ const sections = [
   {
     id: "search",
     title: "البحث الشامل",
-    icon: "🔍",
+    icon: Search,
     href: "/search",
     steps: [
       "استخدم أيقونة البحث في الشريط العلوي.",
@@ -112,7 +113,7 @@ const sections = [
   {
     id: "memorization",
     title: "قسم الحفظ",
-    icon: "🧠",
+    icon: Brain,
     href: "/memorization",
     steps: [
       "اختر خطة حفظ مناسبة لمستواك.",
@@ -130,7 +131,7 @@ export default function PlatformPage() {
       {/* Hero */}
       <section className="py-16 bg-gradient-to-b from-[#071A13] to-transparent">
         <Container className="max-w-3xl text-center space-y-5">
-          <h1 className="text-5xl font-bold text-brand-gold">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-brand-gold">
             دليل استخدام المنصة
           </h1>
           <p className="text-lg leading-8 text-brand-cream/70">
@@ -143,39 +144,45 @@ export default function PlatformPage() {
       <Container className="max-w-5xl py-12 space-y-8">
         {/* Quick nav */}
         <section className="flex flex-wrap gap-3 justify-center">
-          {sections.map(s => (
-            <a
-              key={s.id}
-              href={`#${s.id}`}
-              className="rounded-full border border-brand-gold/20 px-4 py-1.5 text-sm text-brand-gold/70 hover:border-brand-gold/40 hover:text-brand-gold transition-colors"
-            >
-              {s.icon} {s.title}
-            </a>
-          ))}
+          {sections.map((section) => {
+            const Icon = section.icon;
+            return (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-brand-gold/20 px-4 py-2 text-sm text-brand-gold/75 transition-colors hover:border-brand-gold/40 hover:text-brand-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold"
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                {section.title}
+              </a>
+            );
+          })}
         </section>
 
         {/* Section cards */}
         <div className="space-y-6">
-          {sections.map(s => (
-            <Card key={s.id} id={s.id} className="p-8 space-y-5 scroll-mt-20">
+          {sections.map((section) => {
+            const Icon = section.icon;
+            return (
+            <Card key={section.id} id={section.id} className="scroll-mt-24 space-y-5 p-5 sm:p-8">
               <div className="flex items-start gap-4">
-                <div className="text-4xl shrink-0" aria-hidden>
-                  {s.icon}
-                </div>
-                <div className="flex-1">
+                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-brand-gold/20 bg-brand-gold/5 text-brand-gold" aria-hidden="true">
+                  <Icon className="h-6 w-6" />
+                </span>
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <h2 className="text-2xl font-bold text-brand-gold">
-                      {s.title}
+                      {section.title}
                     </h2>
                     <Link
-                      href={s.href}
+                      href={section.href}
                       className="text-sm rounded-full border border-brand-gold/30 px-4 py-1.5 text-brand-gold hover:bg-brand-gold/10 transition-colors"
                     >
                       فتح القسم ←
                     </Link>
                   </div>
                   <div className="mt-4 space-y-2.5">
-                    {s.steps.map((step, idx) => (
+                    {section.steps.map((step, idx) => (
                       <div key={idx} className="flex items-start gap-3">
                         <span className="w-6 h-6 shrink-0 rounded-full bg-brand-gold/10 border border-brand-gold/20 text-xs text-brand-gold flex items-center justify-center font-bold mt-0.5">
                           {idx + 1}
@@ -187,12 +194,13 @@ export default function PlatformPage() {
                     ))}
                   </div>
                   <div className="mt-4 rounded-xl border border-brand-gold/20 bg-brand-gold/5 px-4 py-3 text-sm text-brand-gold/80">
-                    <span className="font-bold">نصيحة:</span> {s.tip}
+                    <span className="font-bold">نصيحة:</span> {section.tip}
                   </div>
                 </div>
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
 
         <AndroidReleaseCard />

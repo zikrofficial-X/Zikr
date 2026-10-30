@@ -1,26 +1,53 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import * as Icons from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useLanguage } from './language-provider';
 
-export type NavLink = { href: string; label: string; labelEn: string };
+export type NavLink = { href: string; label: string; labelEn: string; icon?: string };
+
+function resolveIcon(name?: string): LucideIcon | null {
+  if (!name) return null;
+  const candidate = (Icons as unknown as Record<string, unknown>)[name];
+  return (typeof candidate === 'function' || (typeof candidate === 'object' && candidate !== null)) ? (candidate as LucideIcon) : Icons.Circle;
+}
 
 export function LanguageAwareNav({ links }: { links: NavLink[] }) {
   const { isEnglish } = useLanguage();
-  const shouldShowEnglish = isEnglish;
-  const ariaLabel = shouldShowEnglish ? 'Primary navigation' : 'القائمة الرئيسية';
+  const pathname = usePathname() ?? '/';
+  const ariaLabel = isEnglish ? 'Primary navigation' : 'القائمة الرئيسية';
 
   return (
-    <nav className="hidden flex-wrap justify-end gap-x-4 gap-y-2 md:flex" aria-label={ariaLabel}>
-      {links.map((link) => (
-        <Link
-          key={link.href}
-          href={link.href}
-          className="text-sm text-brand-cream/70 transition-colors hover:text-brand-gold"
-        >
-          {shouldShowEnglish ? link.labelEn : link.label}
-        </Link>
-      ))}
+    <nav
+      className="hidden items-center justify-end gap-1 lg:flex"
+      aria-label={ariaLabel}
+    >
+      {links.map((link) => {
+        const Icon = resolveIcon(link.icon);
+        const current =
+          pathname === link.href ||
+          (link.href !== '/' && pathname.startsWith(link.href + '/'));
+
+        return (
+          <Link
+            key={link.href}
+            href={link.href}
+            aria-current={current ? 'page' : undefined}
+            className={[
+              'inline-flex min-h-10 items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold',
+              current
+                ? 'bg-brand-gold/12 text-brand-gold'
+                : 'text-brand-cream/75 hover:bg-brand-gold/8 hover:text-brand-gold',
+            ].join(' ')}
+          >
+            {Icon ? <Icon className="h-4 w-4 shrink-0" aria-hidden="true" /> : null}
+            <span>{isEnglish ? link.labelEn : link.label}</span>
+          </Link>
+        );
+      })}
     </nav>
   );
 }
