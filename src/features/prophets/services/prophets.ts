@@ -8,6 +8,7 @@ import { resolveCanonicalPublished } from "@/lib/data/content-merge";
 
 import type { Prophet } from "@/features/prophets/types/prophets";
 import { prophets as FALLBACK_PROPHETS } from "@/features/prophets/data/fallback";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 export interface ProphetSection {
   id: string;
