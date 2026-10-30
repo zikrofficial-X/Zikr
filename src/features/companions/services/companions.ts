@@ -102,6 +102,9 @@ function mapCompanionRow(row: Record<string, unknown>): CompanionSummary {
     bio_ar: typeof row.bio_ar === "string" ? row.bio_ar : null,
     slug: String(row.slug ?? ""),
     category: typeof row.category === "string" ? row.category : null,
+    birth_place_ar: typeof row.birth_place_ar === "string" ? row.birth_place_ar : null,
+    death_place_ar: typeof row.death_place_ar === "string" ? row.death_place_ar : null,
+    death_year: typeof row.death_year === "string" ? row.death_year : null,
   };
 }
 
