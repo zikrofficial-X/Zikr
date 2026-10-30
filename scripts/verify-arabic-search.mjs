@@ -23,6 +23,7 @@ if (!contents.normalizer.includes("normalizeArabicSearchText")) failures.push("s
 if (!contents.quran.includes("normalizeArabicSearchText(value).includes(cleanQuery)")) failures.push("local Quran search is not normalized");
 for (const key of normalizedFields) {
   if (!contents[key].includes("searchable_normalized=plfts.simple.")) failures.push(`${key} service does not query the normalized FTS index`);
+  if (!contents[key].includes('import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";')) failures.push(`${key} service does not import the shared Arabic normalizer`);
 }
 for (const key of ["migrationOne", "migrationTwo"]) {
   if (!contents[key].includes("searchable_normalized")) failures.push(`${key} does not define normalized search schema`);
