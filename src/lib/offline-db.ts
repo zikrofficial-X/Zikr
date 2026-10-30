@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = 'ZikrOfflineDB';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 type OfflineRecord = Record<string, unknown>;
 
@@ -32,6 +32,9 @@ const STORES: DbStore[] = [
   { name: 'kids', keyPath: 'id', indexes: [{ name: 'slug', keyPath: 'slug' }] },
   { name: 'companions', keyPath: 'id', indexes: [{ name: 'slug', keyPath: 'slug' }] },
   { name: 'companionStories', keyPath: 'id', indexes: [{ name: 'companionId', keyPath: 'companion_id' }] },
+  { name: 'scholars', keyPath: 'id', indexes: [{ name: 'slug', keyPath: 'slug' }] },
+  { name: 'stories', keyPath: 'id', indexes: [{ name: 'slug', keyPath: 'slug' }] },
+  { name: 'articleCategories', keyPath: 'id', indexes: [{ name: 'slug', keyPath: 'slug' }] },
   {
     name: 'favorites',
     keyPath: 'id',
