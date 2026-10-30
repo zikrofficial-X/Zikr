@@ -69,7 +69,8 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
       contains(item.titleAr) ||
       contains(item.textAr) ||
       contains(item.occasionAr) ||
-      contains(item.sourceAr)
+      contains(item.sourceAr) ||
+      contains(item.benefitsAr)
     ) {
       results.push({
         id: item.id,
