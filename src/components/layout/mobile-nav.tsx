@@ -51,6 +51,7 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
   const [authResolved, setAuthResolved] = useState(false);
   const dialogRef = useRef<HTMLElement | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const wasOpenRef = useRef(false);
 
   const activeGroupId = useMemo(
     () =>
@@ -108,9 +109,11 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
 
   useEffect(() => {
     if (!open) {
-      menuButtonRef.current?.focus();
+      if (wasOpenRef.current) menuButtonRef.current?.focus();
+      wasOpenRef.current = false;
       return;
     }
+    wasOpenRef.current = true;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
