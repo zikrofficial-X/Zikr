@@ -168,7 +168,7 @@ function fallbackBySlug(slug: string): CompanionSummary | null {
 async function getDatabaseCompanions(): Promise<CompanionSummary[]> {
   try {
     const rows = await supabaseServerAnonRequest<CompanionSummary[]>(
-      "/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,slug,category&published=eq.true&order=name_ar.asc",
+      "/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,slug,category,birth_place_ar,death_place_ar,death_year&published=eq.true&order=name_ar.asc",
     );
     return Array.isArray(rows)
       ? uniqueCompanionSummaries(rows.filter((row) => row.slug && row.name_ar))
