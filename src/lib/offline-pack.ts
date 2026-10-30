@@ -248,7 +248,7 @@ async function verifyCompletedRoutes(routes: string[]): Promise<boolean> {
   try {
     const cache = await caches.open(OFFLINE_CACHE_NAME);
     const results = await Promise.all(
-      routes.map(route => cache.match(new Request(route, { headers: { Accept: "text/html" } })))
+      routes.map(route => cache.match(new Request(new URL(route, window.location.origin).href, { headers: { Accept: "text/html" } })))
     );
     return results.every(Boolean);
   } catch {
@@ -365,7 +365,7 @@ export async function clearOfflineLibrary(): Promise<void> {
         const channel = new MessageChannel();
         const timeoutId = window.setTimeout(() => {
           channel.port1.onmessage = null;
-          resolve();
+          reject(new Error("Timed out waiting for the service worker to confirm the offline cache clear."));
         }, 30_000);
 
         channel.port1.onmessage = event => {
