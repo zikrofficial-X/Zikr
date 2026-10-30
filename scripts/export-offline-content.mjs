@@ -4,7 +4,7 @@ import path from 'node:path';
 const root = process.cwd();
 const outputDir = path.join(root, 'public/offline-content/v1');
 const supabaseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
-const apiKey = (process.env.SUPABASE_PUBLIC_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+const apiKey = (process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLIC_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
 if (!supabaseUrl || !apiKey) {
   if (process.argv.includes('--required') || process.env.CI === 'true' || process.env.VERCEL === '1') {
