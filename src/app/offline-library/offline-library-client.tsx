@@ -119,8 +119,7 @@ export default function OfflineLibraryClient() {
       fetchOfflineManifest(),
       discoverSupplementalRoutes(),
       discoverSitemapRoutes(),
-      getOfflineLibraryStatus(),
-    ]).then(([nextManifest, supplementalRoutes, sitemapRoutes, offlineStatus]) => {
+    ]).then(async ([nextManifest, supplementalRoutes, sitemapRoutes]) => {
       if (!mounted) return;
       setManifest(nextManifest);
       const routes = Array.from(
@@ -134,6 +133,8 @@ export default function OfflineLibraryClient() {
         ]),
       );
       setDiscoveredRoutes(routes);
+      const offlineStatus = await getOfflineLibraryStatus(routes);
+      if (!mounted) return;
       setCachedRoutes(offlineStatus.cachedRoutes);
       setStatus(
         offlineStatus.complete
