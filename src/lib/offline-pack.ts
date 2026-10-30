@@ -39,7 +39,7 @@ const STORE_BY_DATASET: Record<string, string> = {
 const MANIFEST_URL = "/offline-content/v1/manifest.json";
 const MANIFEST_DB_KEY = "offline_manifest";
 const COMPLETION_DB_KEY = "offline_completion_v1";
-// v4 reflects the expanded public-route discovery and batched offline strategy.
+// v6 adds atomic dataset replacement and the expanded public content catalog.
 const VERSION_KEY = "offline-content-version-v6";
 const OFFLINE_CACHE_NAME = "zikr-v14";
 // Keep the client verifier, offline pack, and Service Worker on one cache name.
@@ -130,10 +130,12 @@ function mergedRoutes(manifest: OfflineManifest, additionalRoutes: string[] = []
   ).filter(isCacheableOfflinePageRoute);
 }
 
-async function persistManifest(manifest: OfflineManifest): Promise<void> {
+async function persistManifest(manifest: OfflineManifest): Promise<boolean> {
+  let persisted = false;
   try {
     await offlineDb.initialize();
     await offlineDb.saveSetting(MANIFEST_DB_KEY, manifest);
+    persisted = true;
   } catch (error) {
     console.warn(
       "[OfflinePack] Failed to persist manifest in IndexedDB",
@@ -153,6 +155,7 @@ async function persistManifest(manifest: OfflineManifest): Promise<void> {
           },
         })
       );
+      persisted = true;
     }
   } catch (error) {
     console.warn(
@@ -160,13 +163,16 @@ async function persistManifest(manifest: OfflineManifest): Promise<void> {
       error
     );
   }
+  return persisted;
 }
 
-async function persistCompletion(completion: OfflineCompletion): Promise<void> {
+async function persistCompletion(completion: OfflineCompletion): Promise<boolean> {
   try {
     await offlineDb.saveSetting(COMPLETION_DB_KEY, completion);
+    return true;
   } catch (error) {
     console.warn("[OfflinePack] Failed to persist completion marker", error);
+    return false;
   }
 }
 
@@ -429,16 +435,20 @@ export async function hydrateOfflineContent(
     failedRoutes.length === 0 &&
     cachedRoutes.length === expectedRoutes.length
   ) {
-    await persistManifest(manifest);
-    await persistCompletion({
+    const manifestPersisted = await persistManifest(manifest);
+    const completionPersisted = await persistCompletion({
       version: manifest.version,
       datasetCounts,
       cachedRoutes,
     });
-    try {
-      window.localStorage.setItem(VERSION_KEY, manifest.version);
-    } catch {
-      // IndexedDB completion is authoritative when Web Storage is restricted.
+    if (manifestPersisted && completionPersisted) {
+      try {
+        window.localStorage.setItem(VERSION_KEY, manifest.version);
+      } catch {
+        // IndexedDB completion is authoritative when Web Storage is restricted.
+      }
+    } else {
+      try { await offlineDb.delete("settings", COMPLETION_DB_KEY); } catch { /* Keep the pack unverified. */ }
     }
   } else {
     try {
@@ -476,8 +486,9 @@ export async function finalizeOfflineLibrary(
   const uniqueCached = Array.from(new Set(cachedRoutes));
   if (uniqueExpected.length !== uniqueCached.length || !uniqueExpected.every(route => uniqueCached.includes(route))) return false;
   if (!(await verifyCompletedRoutes(uniqueExpected))) return false;
-  await persistManifest(manifest);
-  await persistCompletion({ version: manifest.version, datasetCounts, cachedRoutes: uniqueExpected });
+  const manifestPersisted = await persistManifest(manifest);
+  const completionPersisted = await persistCompletion({ version: manifest.version, datasetCounts, cachedRoutes: uniqueExpected });
+  if (!manifestPersisted || !completionPersisted) return false;
   try { window.localStorage.setItem(VERSION_KEY, manifest.version); } catch { /* IndexedDB is authoritative. */ }
   return true;
 }
