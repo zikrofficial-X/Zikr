@@ -128,13 +128,15 @@ for (const token of [
   'zikr-v15',
   'offlineDb.replaceAll(storeName, rows)',
   'verifyCompletedRoutes(completion.cachedRoutes)',
-  'offline-content-version-v6',
   'routesComplete',
   'fullyComplete',
   'additionalRoutes',
   'stories: "stories"',
   'scholars: "scholars"',
   'article_categories: "articleCategories"',
+  'quran_audio: "quranAudio"',
+  'kids_game_levels: "kidsGameLevels"',
+  'dua_categories: "duaCategories"',
   'scholars/ahmad-ibn-hanbal',
   'videos/importance-of-prayer',
 ]) {
@@ -144,6 +146,7 @@ for (const token of [
 const serviceWorker = read(serviceWorkerPath);
 for (const token of [
   'CACHE_NAME = "zikr-v15"',
+  'credentials: "omit"',
   'CACHE_PREFIX = "zikr-"',
   'OFFLINE_CONTENT_PREFIX',
   '"/settings"',
