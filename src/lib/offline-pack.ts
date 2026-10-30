@@ -368,7 +368,7 @@ export async function clearOfflineLibrary(): Promise<void> {
 
   await offlineDb.clear("cache");
   await offlineDb.delete("settings", MANIFEST_DB_KEY).catch(() => undefined);
-  await offlineDb.delete("settings", COMPLETION_DB_KEY).catch(() => undefined);
+  await offlineDb.delete("settings", COMPLETION_DB_KEY);
 
   try {
     window.localStorage.removeItem(VERSION_KEY);
