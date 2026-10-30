@@ -186,7 +186,7 @@ async function verifyAndroidReleaseCopy(client, version, storageFiles) {
   return { ok: true, reason: "GitHub Release assets and stored checksums match." };
 }
 
-async function loadUnexpectedVideoReferences(client) {
+async function loadUnexpectedVideoReferences(client, candidatePaths) {
   const patterns = [
     {
       table: "kids_content",
@@ -268,6 +268,131 @@ async function loadUnexpectedVideoReferences(client) {
       column: "cover_url",
       filter: (query) => query.ilike("cover_url", "%/storage/v1/object/public/videos/automated/%"),
     },
+    {
+      table: "articles",
+      column: "featured_image_url",
+      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "battles",
+      column: "featured_image_url",
+      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "battles",
+      column: "thumbnail_url",
+      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "companions",
+      column: "featured_image_url",
+      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "companions",
+      column: "thumbnail_url",
+      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "conquests",
+      column: "featured_image_url",
+      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "conquests",
+      column: "thumbnail_url",
+      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "prophets",
+      column: "featured_image_url",
+      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "prophets",
+      column: "thumbnail_url",
+      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "kids_games",
+      column: "cover_url",
+      filter: (query) => query.ilike("cover_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "kids_games",
+      column: "icon_url",
+      filter: (query) => query.ilike("icon_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "profiles",
+      column: "avatar_url",
+      filter: (query) => query.ilike("avatar_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "quran_audio",
+      column: "audio_url",
+      filter: (query) => query.ilike("audio_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "quran_audio",
+      column: "storage_url",
+      filter: (query) => query.ilike("storage_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "quran_ayahs",
+      column: "audio_url",
+      filter: (query) => query.ilike("audio_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "quran_reciters",
+      column: "thumbnail_url",
+      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "quran_reciters",
+      column: "base_url_template",
+      filter: (query) => query.ilike("base_url_template", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "scholars",
+      column: "thumbnail_url",
+      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "scholars",
+      column: "website_url",
+      filter: (query) => query.ilike("website_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "scholars",
+      column: "youtube_url",
+      filter: (query) => query.ilike("youtube_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "social_platform_profiles",
+      column: "avatar_url",
+      filter: (query) => query.ilike("avatar_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "social_platform_profiles",
+      column: "cover_url",
+      filter: (query) => query.ilike("cover_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "social_platform_profiles",
+      column: "page_url",
+      filter: (query) => query.ilike("page_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "tawasheeh",
+      column: "audio_url",
+      filter: (query) => query.ilike("audio_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "tawasheeh",
+      column: "thumbnail_url",
+      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
   ];
 
   const referenceSet = new Set();
@@ -290,6 +415,22 @@ async function loadUnexpectedVideoReferences(client) {
     for (const row of result.data ?? []) {
       const value = asString(row[pattern.column]);
       if (value) referenceSet.add(value);
+    }
+  }
+
+  const { data: libraryRows, error: libraryError } = await client
+    .from("content_library")
+    .select("media")
+    .not("media", "is", null)
+    .range(0, 4999);
+  if (libraryError) throw new Error(`Reference inventory failed for content_library.media: ${libraryError.message}`);
+  if ((libraryRows ?? []).length >= 5000) {
+    throw new Error("content_library.media exceeded the safe scan limit; refusing cleanup.");
+  }
+  for (const row of libraryRows ?? []) {
+    const serialized = JSON.stringify(row.media ?? {});
+    for (const path of candidatePaths) {
+      if (serialized.includes(path)) referenceSet.add(path);
     }
   }
   return referenceSet;
@@ -370,12 +511,12 @@ async function main() {
   const queueRows = queueResult.data ?? [];
   const requestRows = requestResult.data ?? [];
   const requestById = new Map(requestRows.map((row) => [row.id, row]));
-  const unexpectedReferences = await loadUnexpectedVideoReferences(client);
   const filesByPath = new Map(
     videoFiles
       .filter((file) => file.id && file.name?.endsWith(".mp4"))
       .map((file) => [`${VIDEO_PREFIX}/${file.name}`, file]),
   );
+  const unexpectedReferences = await loadUnexpectedVideoReferences(client, [...filesByPath.keys()]);
   const queueByUrl = new Map();
   for (const row of queueRows) {
     if (!row.video_url) continue;
