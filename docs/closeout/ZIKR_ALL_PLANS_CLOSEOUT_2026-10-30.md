@@ -18,7 +18,8 @@
 | Production aliases | `zikrmediaofficial.vercel.app`, `zikr-zikr3.vercel.app`, `zikr-git-main-zikr3.vercel.app` | Attached |
 | Supabase | Project ACTIVE_HEALTHY; live ledger has 384 migration versions; latest `20261030110000` | Healthy / aligned at checkpoint |
 | Admin RPC hardening | Public admin compatibility RPC recorded as SECURITY INVOKER; seven FK-support indexes present | Verified at prior reconciliation |
-| Supabase Security Advisor | `auth_leaked_password_protection`: Leaked Password Protection Disabled; Supabase organization plan is Free | Upgrade to Pro or accept the documented security exception; setting is unavailable on current plan |
+| Supabase plan / Auth | Organization plan Free; database size 80.37 MiB; Auth leaked-password protection unavailable on Free | Database is below the 500 MB Free quota; Auth protection needs Pro or an explicit exception |
+| Supabase storage | 409 objects across `videos` and `android-releases`, 1,874,392,887 bytes (~1.874 GB) live snapshot vs 1 GB Free storage quota | Over-quota snapshot; check billed GB-Hours and grace-period state, then owner chooses Pro upgrade or approved retention cleanup. Do not delete assets without reference/retention proof. |
 | Supabase Performance Advisor | 68 unused-index observations, INFO | Monitor; do not bulk-delete |
 | Runtime monitoring | React streaming-boundary errors still occur on article/dua detail routes; timeout cluster also observed on article route | Open production defect; fixes are in this PR, not yet certified live |
 | Android stable release | `v1.1.8`, versionCode 62, signed APK/AAB and release metadata/checksums listed on GitHub Release | Published; branding update still needs next semantic release |
