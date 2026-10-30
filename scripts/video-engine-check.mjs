@@ -28,15 +28,23 @@ for (const token of ["content_hash", "source_hash", "video_automation_runs", "IF
 }
 
 const workflow = readFileSync(".github/workflows/generate-ai-video.yml", "utf8");
-for (const token of [
-  "VIDEO_AI_ENABLED: \"true\"",
-  "HF_WAN_VIDEO_ENABLED: \"true\"",
-  "HF_LTX_FAST_VIDEO_ENABLED: \"true\"",
-  "AUTO_VIDEO_PUBLISH_ENABLED: \"true\"",
-  "AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: \"false\"",
-  "VIDEO_PROVIDER_ORDER",
-]) {
-  if (!workflow.includes(token)) throw new Error("Workflow missing " + token);
+if (!workflow.includes("VIDEO_PROVIDER_ORDER")) {
+  throw new Error("Workflow must preserve the canonical provider priority contract");
+}
+const phase0Freeze =
+  workflow.includes('VIDEO_AI_ENABLED: "false"') &&
+  workflow.includes('HF_WAN_VIDEO_ENABLED: "false"') &&
+  workflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "false"') &&
+  workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
+  workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"');
+const normalProductionMode =
+  workflow.includes('VIDEO_AI_ENABLED: "true"') &&
+  workflow.includes('HF_WAN_VIDEO_ENABLED: "true"') &&
+  workflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "true"') &&
+  workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') &&
+  workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"');
+if (!phase0Freeze && !normalProductionMode) {
+  throw new Error("Video workflow must be either fully configured or explicitly Phase 0 frozen");
 }
 
 if ((process.env.VERIFY_VIDEO_RUNTIME_TOOLS ?? "false").toLowerCase() === "true") {
