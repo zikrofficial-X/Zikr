@@ -78,13 +78,20 @@ const example = read(".env.example");
 if (!example.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED=false")) failures.push(".env.example must keep Facebook publishing disabled by default");
 
 const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
-if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"')) failures.push("video generation must keep social queueing enabled");
+const phase0AutomationFreeze =
+  generationWorkflow.includes('VIDEO_AI_ENABLED: "false"') &&
+  generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
+  generationWorkflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"') &&
+  workflow.includes('SOCIAL_PUBLISH_ENABLED: "false"') &&
+  workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
+  workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"');
+if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze) failures.push("video generation must keep social queueing enabled unless Phase 0 freeze is explicitly active");
 if (!generationWorkflow.includes('SOCIAL_PUBLISH_ENABLED: "false"')) failures.push("video generation must not execute social publishing directly");
 if (!generationWorkflow.includes('SOCIAL_PUBLISH_FACEBOOK_ENABLED: "false"')) failures.push("video generation must not enable Facebook from legacy GitHub Page-token secrets");
 if (generationWorkflow.includes("secrets.FACEBOOK_PAGE_ACCESS_TOKEN") || generationWorkflow.includes("FACEBOOK_PAGE_ACCESS_TOKEN:")) failures.push("video generation must not duplicate the Facebook Page token in GitHub Actions");
 
 const workflow = read(".github/workflows/publish-social.yml");
-if (!workflow.includes('SOCIAL_PUBLISH_ENABLED: "true"')) failures.push("dedicated GitHub social workflow must explicitly enable publishing");
+if (!workflow.includes('SOCIAL_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze) failures.push("dedicated GitHub social workflow must explicitly enable publishing unless Phase 0 freeze is active");
 if (!workflow.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("GitHub social workflow must only process the social queue");
 if (!workflow.includes("social_platform_credentials?platform=eq.facebook&select=page_id,is_enabled,connection_status,expires_at&limit=1")) failures.push("GitHub social workflow must derive Facebook readiness from the OAuth-managed Supabase credential");
 if (!workflow.includes('echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_enabled" >> "$GITHUB_ENV"')) failures.push("GitHub social workflow must set the Facebook feature gate from validated OAuth-managed connection state");
@@ -203,7 +210,7 @@ if (!adminUi.includes("اختبار الاتصال")) failures.push("publishing 
 
 const socialWorkflow = workflow;
 if (!socialWorkflow.includes('cron: "*/15 * * * *"')) failures.push("automatic social publisher must remain scheduled every 15 minutes");
-if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"')) failures.push("video generation must automatically enqueue publishable assets");
+if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze) failures.push("video generation must automatically enqueue publishable assets unless Phase 0 freeze is active");
 if (!queue.includes("facebookCredentials.accessToken")) failures.push("Facebook queue target selection must verify a usable Page credential");
 
 if (failures.length) {
