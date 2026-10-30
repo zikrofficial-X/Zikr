@@ -75,7 +75,9 @@ export default async function ScholarDetailPage({ params }: ScholarPageProps) {
 
         {scholar.bioAr || scholar.bioEn ? (
           <div className="space-y-4 leading-8 arabic-muted">
-            {scholar.bioAr && <p>{scholar.bioAr}</p>}
+            {scholar.bioAr?.split(/\n{2,}/).map((paragraph, index) => (
+              <p key={`${scholar.slug}-bio-${index}`}>{paragraph}</p>
+            ))}
             {scholar.bioEn && (
               <p dir="ltr" className="text-left">
                 {scholar.bioEn}
