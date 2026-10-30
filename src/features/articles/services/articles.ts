@@ -242,7 +242,7 @@ export async function searchArticles(query: string, locale: Locale = "ar"): Prom
   if (hasSupabaseConfig()) {
     try {
       const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
-        `/rest/v1/articles?select=id,title,title_ar,title_en,slug,summary,summary_ar,summary_en,content,content_ar,content_en,author,featured_image_url,views,published,category_id,tags,metadata,created_at&published=eq.true&searchable_normalized=plfts.simple.${encodeURIComponent(normalizedQuery)}&order=created_at.desc&limit=6`,
+        `/rest/v1/articles?select=id,title,title_ar,title_en,slug,summary,summary_ar,summary_en,content,content_ar,content_en,author,featured_image_url,views,published,category_id,tags,metadata,created_at&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(normalizedQuery)}&order=created_at.desc&limit=6`,
         { timeoutMs: 8000, retries: 1, cache: "no-store" },
       );
       const matches = rows
