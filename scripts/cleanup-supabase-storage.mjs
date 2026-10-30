@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const VIDEO_BUCKET = "videos";
 const ANDROID_BUCKET = "android-releases";
@@ -443,7 +445,9 @@ async function main() {
   console.log("ZIKR Storage retention completed.");
 }
 
-main().catch((error) => {
-  console.error("[storage-retention] FAILED:", error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().catch((error) => {
+    console.error("[storage-retention] FAILED:", error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}
