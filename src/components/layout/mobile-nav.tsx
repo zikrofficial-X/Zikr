@@ -179,7 +179,7 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
             onClick={() => setOpen(false)}
           />
           <nav
-            ref={dialogRef}
+            ref={(element) => { dialogRef.current = element; }}
             role="dialog"
             aria-modal="true"
             aria-labelledby="zikr-mobile-nav-title"
