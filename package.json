@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/export-offline-content.mjs && node scripts/ensure-ffmpeg.mjs",
+    "prebuild": "node scripts/export-offline-content.mjs && node scripts/verify-offline-content.mjs && node scripts/ensure-ffmpeg.mjs",
     "build": "next build --webpack",
     "start": "next start",
     "check": "tsc --noEmit",
