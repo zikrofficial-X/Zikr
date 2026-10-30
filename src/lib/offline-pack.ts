@@ -200,11 +200,9 @@ async function persistManifest(manifest: OfflineManifest): Promise<void> {
 }
 
 async function persistCompletion(completion: OfflineCompletion): Promise<void> {
-  try {
-    await offlineDb.saveSetting(COMPLETION_DB_KEY, completion);
-  } catch (error) {
-    console.warn("[OfflinePack] Failed to persist completion marker", error);
-  }
+  // A full-pack success marker is part of the verification contract. Never
+  // report success when IndexedDB could not persist it.
+  await offlineDb.saveSetting(COMPLETION_DB_KEY, completion);
 }
 
 async function readPersistedManifest(): Promise<OfflineManifest | null> {
@@ -250,7 +248,7 @@ async function verifyCompletedRoutes(routes: string[]): Promise<boolean> {
   try {
     const cache = await caches.open(OFFLINE_CACHE_NAME);
     const results = await Promise.all(
-      routes.map(route => cache.match(new Request(route)))
+      routes.map(route => cache.match(new Request(route, { headers: { Accept: "text/html" } })))
     );
     return results.every(Boolean);
   } catch {
@@ -340,6 +338,9 @@ export async function clearOfflineLibrary(): Promise<void> {
         kids: "kids",
         companions: "companions",
         companion_stories: "companionStories",
+        scholars: "scholars",
+        stories: "stories",
+        article_categories: "articleCategories",
       } as const)[storeName],
     );
   }
