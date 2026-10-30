@@ -57,7 +57,7 @@ if (!searchMigration.includes('searchable_normalized') || !searchMigration.inclu
 if (!searchMigration.includes('st.user_id IS NULL') || !searchMigration.includes('st.is_approved IS TRUE')) {
   failures.push('Public search must exclude personal or unapproved story records.');
 }
-if (!mobileNavigation.includes('mobile-platform-menu-search') || !mobileNavigation.includes('aria-controls="mobile-navigation-dialog"') || !mobileNavigation.includes('event.key === "Tab"')) {
+if (!mobileNavigation.includes('mobile-platform-menu-search') || !mobileNavigation.includes('aria-controls="mobile-navigation-dialog"') || !mobileNavigation.includes('event.key !== "Tab"')) {
   failures.push('Mobile navigation menu must provide searchable destinations and keyboard focus containment.');
 }
 if (!kidsLayout.includes('path: "/kids"')) {

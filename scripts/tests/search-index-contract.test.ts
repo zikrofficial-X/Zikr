@@ -31,6 +31,6 @@ assert.ok(search.includes("searchIndexedContent"));
 assert.ok(search.includes("if (indexedResults !== null) return indexedResults"));
 assert.ok(navigation.includes("mobile-platform-menu-search"));
 assert.ok(navigation.includes('aria-controls="mobile-navigation-dialog"'));
-assert.ok(navigation.includes('event.key === "Tab"'));
+assert.ok(navigation.includes('event.key !== "Tab"'));
 
 console.log("Arabic indexed search contract passed: 8 tables, RPC permissions, official-story privacy, and mobile menu accessibility/search.");
