@@ -73,7 +73,8 @@ assert.ok(publish.includes("github.ref_type == 'tag'"), "Android publisher must 
 assert.ok(publish.includes("inputs.retry == true"), "Android publisher must support an explicit guarded recovery retry");
 assert.ok(publish.includes("docs/finalization/RELEASE_RETRY.flag"), "Android publisher retry must require the repository release guard");
 assert.ok(publish.includes("seq 1 120") && publish.includes("sleep 30"), "Android publisher must wait long enough for CircleCI's signed build to finish");
-assert.ok(publish.includes('gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"'), "Android publisher must remove same-named stale assets before re-uploading verified assets");
+assert.ok(publish.includes('group: android-release-publish-global'), "Android publisher must serialize all tag/branch retries with a single release-wide concurrency lock");
+assert.ok(publish.includes('gh release upload "$TAG" "$asset"') && publish.includes("--clobber"), "Android publisher must use the idempotent GitHub CLI upload path for same-named assets");
 assert.ok(publish.includes("statuses: read"), "Android publisher must be able to inspect CircleCI status");
 assert.ok(publish.includes('select(.context == "ci/circleci: android-rebuild")'), "Android publisher must inspect the canonical Android build status");
 assert.ok(publish.includes("failure|error"), "Android publisher must stop promptly when the signed build fails");
