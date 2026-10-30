@@ -129,6 +129,9 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
       const isNative = Capacitor.isNativePlatform();
       const isAndroidNative = Capacitor.getPlatform() === "android";
 
+      // Browser PKCE verifier cookies are scoped to the current browser origin.
+      // Keep web/preview OAuth on the same origin as its verifier; Android uses
+      // the native ID-token flow above and does not create a browser PKCE verifier.
       const previewRedirect = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL;
       const usePreviewRedirect =
         !isNative &&
