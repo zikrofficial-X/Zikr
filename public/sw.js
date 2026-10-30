@@ -30,7 +30,7 @@ function isSafeOfflineRoute(route) {
   try {
     const url = new URL(route, self.location.origin);
     if (url.origin !== self.location.origin) return false;
-    pathname = url.pathname.replace(/\\/+$/, "") || "/";
+    pathname = url.pathname.replace(/\/+$/, "") || "/";
   } catch {
     return false;
   }
