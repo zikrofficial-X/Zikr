@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = 'ZikrOfflineDB';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 type OfflineRecord = Record<string, unknown>;
 
@@ -32,6 +32,12 @@ const STORES: DbStore[] = [
   { name: 'kids', keyPath: 'id', indexes: [{ name: 'slug', keyPath: 'slug' }] },
   { name: 'companions', keyPath: 'id', indexes: [{ name: 'slug', keyPath: 'slug' }] },
   { name: 'companionStories', keyPath: 'id', indexes: [{ name: 'companionId', keyPath: 'companion_id' }] },
+  { name: 'scholars', keyPath: 'id', indexes: [{ name: 'slug', keyPath: 'slug' }] },
+  { name: 'tawasheeh', keyPath: 'id', indexes: [{ name: 'slug', keyPath: 'slug' }] },
+  { name: 'quranReciters', keyPath: 'id', indexes: [{ name: 'code', keyPath: 'code' }] },
+  { name: 'quranAudio', keyPath: 'id', indexes: [{ name: 'surahId', keyPath: 'surah_id' }, { name: 'reciterId', keyPath: 'reciter_id' }] },
+  { name: 'kidsGames', keyPath: 'id', indexes: [{ name: 'slug', keyPath: 'slug' }] },
+  { name: 'kidsGameLevels', keyPath: 'id', indexes: [{ name: 'gameId', keyPath: 'game_id' }] },
   {
     name: 'favorites',
     keyPath: 'id',
@@ -154,6 +160,23 @@ export class OfflineDatabase {
       transaction.oncomplete = () => resolve(rows.length);
       transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB transaction failed'));
       transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
+      for (const row of rows) {
+        const request = store.put(row);
+        request.onerror = () => transaction.abort();
+      }
+    });
+  }
+
+  /** Atomically replaces a complete public dataset, removing stale rows from older exports. */
+  async replaceAll<T>(storeName: string, rows: T[]): Promise<number> {
+    await this.initialize();
+    const store = this.getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
+      const transaction = store.transaction;
+      transaction.oncomplete = () => resolve(rows.length);
+      transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB replacement failed'));
+      transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB replacement aborted'));
+      store.clear();
       for (const row of rows) {
         const request = store.put(row);
         request.onerror = () => transaction.abort();
