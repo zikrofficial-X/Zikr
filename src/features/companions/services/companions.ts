@@ -186,6 +186,28 @@ export async function getPublishedCompanions(): Promise<CompanionSummary[]> {
   return offline.length ? offline : FALLBACK_COMPANIONS;
 }
 
+export async function searchPublishedCompanions(query: string): Promise<CompanionSummary[]> {
+  const normalizedQuery = normalizeArabicSearchText(query).slice(0, 100);
+  if (!normalizedQuery) return [];
+
+  if (isSupabaseConfigured()) {
+    try {
+      const rows = await supabaseServerAnonRequest<Record<string, unknown>[]>(
+        `/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,slug,category&published=eq.true&searchable_normalized=plfts.simple.${encodeURIComponent(normalizedQuery)}&limit=6`,
+        { timeoutMs: 8000, retries: 1, cache: "no-store" },
+      );
+      if (rows.length) return uniqueCompanionSummaries(rows.map(mapCompanionRow).filter((row) => row.slug && row.name_ar));
+    } catch (error) {
+      console.error("[companions] Indexed search failed; using offline fallback:", error);
+    }
+  }
+
+  return (await getPublishedCompanions()).filter((item) =>
+    [item.name_ar, item.name_en ?? "", item.title_ar ?? "", item.bio_ar ?? "", item.slug]
+      .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
+  ).slice(0, 6);
+}
+
 export async function getCompanionBySlug(
   slug: string,
 ): Promise<CompanionDetail | null> {
