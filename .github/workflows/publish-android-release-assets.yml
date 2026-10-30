@@ -19,8 +19,11 @@ permissions:
   contents: write
   statuses: read
 
+# Tag pushes and recovery dispatches can target the same GitHub Release from
+# different refs. A single shared lock prevents concurrent asset delete/upload
+# races that can produce GitHub uploads.github.com 404 responses.
 concurrency:
-  group: android-release-publish-${{ github.ref_name }}
+  group: android-release-publish-global
   cancel-in-progress: false
 
 jobs:
@@ -378,30 +381,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Publish against the resolved release ID. A draft can be returned by
-          # the releases list while the get-by-tag endpoint still returns 404.
+          # Use GitHub CLI so the upload endpoint is resolved from the Release
+          # upload_url. --clobber is idempotent for retries. The global workflow
+          # concurrency lock prevents another publisher from deleting assets
+          # while this run is uploading them.
           for asset in app-release.apk app-release.aab SHA256SUMS release-metadata.json; do
-            release_body="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"
-            existing_ids="$(jq -r --arg name "$asset" '.assets[] | select(.name == $name) | .id' <<< "$release_body")"
-            while IFS= read -r asset_id; do
-              if [[ -n "$asset_id" ]]; then
-                gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" >/dev/null
-              fi
-            done <<< "$existing_ids"
-
-            uploaded="$(curl --fail-with-body --silent --show-error \
-              --request POST \
-              --header "Authorization: Bearer ${GH_TOKEN}" \
-              --header "Accept: application/vnd.github+json" \
-              --header "X-GitHub-Api-Version: 2022-11-28" \
-              --header "Content-Type: application/octet-stream" \
-              --data-binary "@${asset}" \
-              "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${asset}")"
-            uploaded_name="$(jq -r '.name // empty' <<< "$uploaded")"
-            if [[ "$uploaded_name" != "$asset" ]]; then
-              echo "::error title=Android asset upload mismatch::GitHub did not confirm upload of $asset." >&2
-              exit 1
-            fi
+            gh release upload "$TAG" "$asset" \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
             echo "Uploaded and confirmed $asset."
           done
 
@@ -411,7 +398,6 @@ jobs:
             --raw-field make_latest=true >/tmp/published-release.json
           test "$(jq -r '.draft' /tmp/published-release.json)" = "false"
           echo "Published Android release $TAG."
-
 
       - name: Verify published GitHub Release contains the exact signed assets
         if: steps.gate.outputs.publish == 'true'
