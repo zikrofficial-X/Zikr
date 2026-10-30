@@ -158,7 +158,7 @@ WITH prophet_story_ranges(slug, surah_id, start_ayah, end_ayah) AS (
 ),
 prophet_story_content AS (
   SELECT r.slug,
-    string_agg(format('﴿ %s:%s ﴾ %s', q.surah_id, q.ayah_number, coalesce(q.text_uthmani, q.text_ar)), E'\\n\\n' ORDER BY q.surah_id, q.ayah_number) AS quran_text,
+    string_agg(format('﴿ %s:%s ﴾ %s', q.surah_id, q.ayah_number, coalesce(q.text_uthmani, q.text_ar)), E'\n\n' ORDER BY q.surah_id, q.ayah_number) AS quran_text,
     jsonb_agg(jsonb_build_object(
       'url',format('https://quran.com/%s/%s-%s',r.surah_id,r.start_ayah,r.end_ayah),
       'title_ar','القرآن الكريم — مواضع قصة النبي',
@@ -185,7 +185,7 @@ updated_prophets AS (
 updated_sections AS (
   UPDATE public.prophet_sections s
   SET title_ar='النص القرآني الكامل للقصة ومواضعها',
-      content_ar='يعرض هذا القسم النص القرآني للمواضع التي سردت قصة النبي أو ذكرت أخباره، مرتبًا بحسب السورة والآية. النص من جدول المصحف المعتمد في ذِكر، ويمكن فتح مواضعه من روابط المراجع أعلى الصفحة. لا تُضاف هنا تفاصيل تاريخية من خارج القرآن على أنها يقين؛ وعند الحاجة إلى تفسير أو خبر تاريخي يجب تمييزه عن النص القرآني وذكر مصدره ودرجة ثبوته.'||E'\\n\\n'||c.quran_text,
+      content_ar='يعرض هذا القسم النص القرآني للمواضع التي سردت قصة النبي أو ذكرت أخباره، مرتبًا بحسب السورة والآية. النص من جدول المصحف المعتمد في ذِكر، ويمكن فتح مواضعه من روابط المراجع أعلى الصفحة. لا تُضاف هنا تفاصيل تاريخية من خارج القرآن على أنها يقين؛ وعند الحاجة إلى تفسير أو خبر تاريخي يجب تمييزه عن النص القرآني وذكر مصدره ودرجة ثبوته.'||E'\n\n'||c.quran_text,
       section_type='stories',
       order_num=1
   FROM prophet_story_content c JOIN public.prophets p ON p.slug=c.slug
@@ -248,7 +248,7 @@ WITH expanded_companion_stories(slug,order_num,content_ar) AS (VALUES
 ('bilal-ibn-rabah', 109, 'تراجع أحاديث فضائل بلال في مصادرها الأصلية، وتُفصل عن روايات السيرة التي تصف ما لقيه في مكة. لا تنسب إليه عبارته المشهورة في كل موقف إلا إذا ثبتت الرواية. وتعرض المادة أثره في الأذان وخدمة الجماعة، ومعنى الكرامة الإنسانية التي لا تقاس باللون أو النسب.')
 )
 UPDATE public.companion_stories cs
-SET content_ar=cs.content_ar||E'\\n\\n'||e.content_ar
+SET content_ar=cs.content_ar||E'\n\n'||e.content_ar
 FROM expanded_companion_stories e
 JOIN public.companions c ON c.slug=e.slug
 WHERE cs.companion_id=c.id AND cs.order_num=e.order_num;
@@ -281,7 +281,7 @@ WITH expanded_fictional_stories(slug,extra_content) AS (VALUES
 ('zikr-story-09','بعد شهر لم تختفِ كل مظاهر الهدر، لكن الأسرة صارت تلاحظها مبكرًا. وضعوا قائمة أسبوعية بما يمكن إصلاحه أو إعادة استخدامه، وناقشوا ما لا يمكن تغييره دون لوم. تعلم الأطفال أن المسؤولية لا تحتاج إلى إعلان كبير؛ بل إلى عادة قابلة للاستمرار واحترام الموارد. القصة متخيلة وليست واقعة دينية تاريخية.')
 )
 UPDATE public.stories s
-SET content=s.content||E'\\n\\n'||e.extra_content,
+SET content=s.content||E'\n\n'||e.extra_content,
     metadata=coalesce(s.metadata,'{}'::jsonb)||jsonb_build_object(
       'content_depth_version',1,'fictional',true,'fictional_story',true,
       'not_historical_claim',true,'source_type','fictional_editorial','editorial_status','published'
