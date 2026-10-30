@@ -1,49 +1,70 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Session, User } from "@supabase/supabase-js";
+import { usePathname } from "next/navigation";
+import * as Icons from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { logoutAction } from "@/app/auth/actions";
 import { createClient } from "@/lib/supabase/client";
+import { SITE_CATALOG } from "@/lib/navigation/catalog";
 import { useLanguage } from "./language-provider";
-
-const allLinks = [
-  { href: "/quran", label: "القرآن الكريم", labelEn: "Holy Quran" },
-  { href: "/hadith", label: "الأحاديث", labelEn: "Hadith" },
-  { href: "/adhkar", label: "الأذكار", labelEn: "Adhkar" },
-  { href: "/dua", label: "الأدعية", labelEn: "Dua" },
-  { href: "/tasbeeh", label: "التسبيح", labelEn: "Tasbeeh" },
-  { href: "/wird", label: "الورد اليومي وختم القرآن", labelEn: "Daily Wird & Khatm" },
-  { href: "/prayer-times", label: "مواقيت الصلاة", labelEn: "Prayer Times" },
-  { href: "/zakat", label: "الزكاة والتذكير", labelEn: "Zakat" },
-  { href: "/qibla", label: "القبلة", labelEn: "Qibla" },
-  { href: "/prophets", label: "قصص الأنبياء", labelEn: "Prophets" },
-  { href: "/companions", label: "الصحابة", labelEn: "Companions" },
-  { href: "/scholars", label: "العلماء", labelEn: "Scholars" },
-  { href: "/stories", label: "القصص الإسلامية", labelEn: "Islamic Stories" },
-  { href: "/articles", label: "المقالات", labelEn: "Articles" },
-  { href: "/videos", label: "الفيديوهات", labelEn: "Videos" },
-  { href: "/radio", label: "إذاعة القرآن", labelEn: "Quran Radio" },
-  { href: "/audio", label: "مكتبة الصوت", labelEn: "Audio Library" },
-  { href: "/sections", label: "دليل الأقسام", labelEn: "Sections Guide" },
-  { href: "/spiritual-ai", label: "الرفيق الروحاني", labelEn: "Spiritual AI" },
-  { href: "/memorization", label: "الحفظ", labelEn: "Memorization" },
-  { href: "/poetry", label: "الشعر", labelEn: "Poetry" },
-  { href: "/kids", label: "قسم الأطفال", labelEn: "Kids" },
-  { href: "/battles", label: "الغزوات", labelEn: "Battles" },
-  { href: "/conquests", label: "الفتوحات", labelEn: "Conquests" },
-  { href: "/search", label: "البحث", labelEn: "Search" },
-  { href: "/offline-library", label: "المكتبة الأوفلاين", labelEn: "Offline library" },
-  { href: "/platform#android-download-title", label: "تحميل تطبيق Android", labelEn: "Download Android app" },
-];
 
 type MobileNavProps = { isAuthenticated?: boolean };
 
+type IconName = string;
+
+function resolveIcon(name?: IconName): LucideIcon {
+  if (!name) return Icons.Circle;
+  const candidate = (Icons as unknown as Record<string, unknown>)[name];
+  return typeof candidate === "function" ? (candidate as LucideIcon) : Icons.Circle;
+}
+
+const utilityLinks = [
+  { href: "/about", ar: "عن المنصة", en: "About ZIKR", icon: "Info" },
+  { href: "/platform", ar: "دليل الاستخدام", en: "Platform guide", icon: "BookOpenCheck" },
+  { href: "/faq", ar: "الأسئلة الشائعة", en: "Frequently asked questions", icon: "CircleHelp" },
+  { href: "/contact", ar: "تواصل معنا", en: "Contact us", icon: "Mail" },
+  { href: "/privacy", ar: "سياسة الخصوصية", en: "Privacy policy", icon: "ShieldCheck" },
+  { href: "/editorial-policy", ar: "المصادر ومعايير التحرير", en: "Sources & editorial policy", icon: "FileCheck2" },
+  { href: "/terms", ar: "الشروط والأحكام", en: "Terms", icon: "ClipboardList" },
+];
+
+const bottomLinks = [
+  { href: "/", ar: "الرئيسية", en: "Home", icon: "House" },
+  { href: "/quran", ar: "القرآن", en: "Quran", icon: "BookOpen" },
+  { href: "/adhkar", ar: "الأذكار", en: "Adhkar", icon: "MoonStar" },
+  { href: "/prayer-times", ar: "الصلاة", en: "Prayer", icon: "Clock3" },
+];
+
+function isCurrentPath(pathname: string, href: string) {
+  return pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
+}
+
 export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
+  const pathname = usePathname() ?? "/";
+  const { isEnglish, dir } = useLanguage();
   const [open, setOpen] = useState(false);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
-  const { isEnglish, dir } = useLanguage();
+
+  const activeGroupId = useMemo(
+    () =>
+      SITE_CATALOG.find((group) =>
+        group.items.some((item) => isCurrentPath(pathname, item.href)),
+      )?.id ?? null,
+    [pathname],
+  );
+
+  useEffect(() => {
+    if (activeGroupId) setExpandedGroup(activeGroupId);
+  }, [activeGroupId]);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -54,79 +75,237 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
     }
 
     const supabase = createClient();
+    let alive = true;
 
     const syncUser = async () => {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      setUser(currentUser);
-      setAuthResolved(true);
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (alive) setUser(currentUser);
+      } catch {
+        if (alive) setUser(null);
+      } finally {
+        if (alive) setAuthResolved(true);
+      }
     };
 
     void syncUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event: string, session: Session | null) => {
+        if (!alive) return;
         setUser(session?.user ?? null);
         setAuthResolved(true);
       },
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      alive = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
   const showAuthenticated = authResolved ? Boolean(user) : isAuthenticated;
+  const isNavigationExcluded =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/kids");
+
+  if (isNavigationExcluded) return null;
 
   return (
     <>
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="md:hidden flex flex-col justify-center items-center w-9 h-9 gap-1.5 rounded-lg hover:bg-brand-gold/10 transition-colors"
-        aria-label={open ? (isEnglish ? "Close menu" : "إغلاق القائمة") : (isEnglish ? "Open menu" : "فتح القائمة")}
-        aria-expanded={open}
-      >
-        <span className={`block h-0.5 w-5 bg-brand-gold transition-all duration-200 ${open ? "translate-y-2 rotate-45" : ""}`} />
-        <span className={`block h-0.5 w-5 bg-brand-gold transition-all duration-200 ${open ? "opacity-0" : ""}`} />
-        <span className={`block h-0.5 w-5 bg-brand-gold transition-all duration-200 ${open ? "-translate-y-2 -rotate-45" : ""}`} />
-      </button>
+      {open ? (
+        <>
+          <button
+            type="button"
+            aria-label={isEnglish ? "Close navigation menu" : "إغلاق قائمة التنقل"}
+            className="fixed inset-0 z-[55] bg-black/70 backdrop-blur-sm md:hidden"
+            onClick={() => setOpen(false)}
+          />
+          <nav
+            role="dialog"
+            aria-modal="true"
+            aria-label={isEnglish ? "All platform sections" : "كل أقسام المنصة"}
+            dir={dir}
+            className="fixed inset-y-0 end-0 z-[60] flex w-[min(23rem,92vw)] flex-col border-s border-brand-gold/20 bg-brand-emeraldDeep shadow-2xl md:hidden"
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-brand-gold/15 px-5 py-4">
+              <div>
+                <p className="text-xl font-bold text-brand-gold">ذِكرٌ</p>
+                <p className="mt-1 text-xs text-brand-cream/60">
+                  {isEnglish ? "Explore the platform" : "استكشف أقسام المنصة"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-brand-gold/15 text-brand-gold hover:bg-brand-gold/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold"
+                aria-label={isEnglish ? "Close" : "إغلاق"}
+              >
+                <Icons.X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
 
-      {open && <div className="fixed inset-0 z-50 bg-black/50 md:hidden" onClick={() => setOpen(false)} aria-hidden="true" />}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
+              <div className="mb-4 rounded-2xl border border-brand-gold/15 bg-brand-gold/5 p-3">
+                {showAuthenticated ? (
+                  <div className="flex items-center gap-2">
+                    <Icons.UserCircle2 className="h-5 w-5 text-brand-gold" aria-hidden="true" />
+                    <Link href="/profile" onClick={() => setOpen(false)} className="min-h-10 flex-1 content-center text-sm font-semibold text-brand-gold">
+                      {isEnglish ? "My profile" : "الملف الشخصي"}
+                    </Link>
+                    <form action={logoutAction}>
+                      <button type="submit" className="rounded-lg px-3 py-2 text-xs text-brand-cream/70 hover:bg-white/5 hover:text-brand-gold">
+                        {isEnglish ? "Sign out" : "تسجيل الخروج"}
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  <Link href="/auth/login" onClick={() => setOpen(false)} className="flex min-h-10 items-center gap-2 text-sm font-bold text-brand-gold">
+                    <Icons.LogIn className="h-5 w-5" aria-hidden="true" />
+                    {isEnglish ? "Sign in" : "تسجيل الدخول"}
+                  </Link>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {SITE_CATALOG.map((group) => {
+                  const GroupIcon = resolveIcon(group.icon);
+                  const expanded = expandedGroup === group.id;
+                  const active = group.id === activeGroupId;
+
+                  return (
+                    <section key={group.id} className="overflow-hidden rounded-2xl border border-brand-cream/10 bg-black/15">
+                      <button
+                        type="button"
+                        aria-expanded={expanded}
+                        onClick={() => setExpandedGroup(expanded ? null : group.id)}
+                        className={[
+                          "flex min-h-14 w-full items-center gap-3 px-3 py-3 text-start transition-colors",
+                          active ? "bg-brand-gold/10 text-brand-gold" : "text-brand-cream hover:bg-white/[.03]",
+                        ].join(" ")}
+                      >
+                        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-brand-gold/15 bg-brand-gold/5 text-brand-gold">
+                          <GroupIcon className="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-bold">{isEnglish ? group.en : group.ar}</span>
+                          <span className="mt-0.5 block text-[11px] text-brand-cream/50">
+                            {isEnglish ? group.descriptionEn : group.descriptionAr}
+                          </span>
+                        </span>
+                        <span className="inline-flex min-w-7 items-center justify-center rounded-full border border-brand-cream/10 px-2 py-1 text-[10px] tabular-nums text-brand-cream/65">
+                          {group.items.length}
+                        </span>
+                        <Icons.ChevronDown className={["h-4 w-4 shrink-0 transition-transform", expanded ? "rotate-180 text-brand-gold" : "text-brand-cream/50"].join(" ")} aria-hidden="true" />
+                      </button>
+
+                      {expanded ? (
+                        <div className="space-y-1 border-t border-brand-cream/10 p-2">
+                          {group.items.map((item) => {
+                            const ItemIcon = resolveIcon(item.icon);
+                            const current = isCurrentPath(pathname, item.href);
+                            return (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={() => setOpen(false)}
+                                aria-current={current ? "page" : undefined}
+                                className={[
+                                  "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
+                                  current ? "bg-brand-gold/12 font-bold text-brand-gold" : "text-brand-cream/75 hover:bg-white/[.04] hover:text-brand-gold",
+                                ].join(" ")}
+                              >
+                                <ItemIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                                <span className="min-w-0 flex-1">{isEnglish ? item.en : item.ar}</span>
+                                <span className="text-[10px] text-brand-cream/40">{isEnglish ? "Open" : "فتح"}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </section>
+                  );
+                })}
+              </div>
+
+              <section className="mt-5 rounded-2xl border border-brand-gold/15 bg-brand-gold/[.04] p-3">
+                <h2 className="mb-2 px-2 text-xs font-bold tracking-wide text-brand-gold">
+                  {isEnglish ? "Platform information" : "معلومات المنصة والمساعدة"}
+                </h2>
+                <div className="grid grid-cols-1 gap-1">
+                  {utilityLinks.map((item) => {
+                    const Icon = resolveIcon(item.icon);
+                    const current = isCurrentPath(pathname, item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        aria-current={current ? "page" : undefined}
+                        className="flex min-h-10 items-center gap-3 rounded-lg px-2 text-sm text-brand-cream/75 hover:bg-white/[.04] hover:text-brand-gold"
+                      >
+                        <Icon className="h-4 w-4 text-brand-gold/80" aria-hidden="true" />
+                        {isEnglish ? item.en : item.ar}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+          </nav>
+        </>
+      ) : null}
 
       <nav
-        className={`fixed top-0 end-0 z-[60] h-dvh max-h-dvh w-[min(18rem,calc(100vw-1rem))] bg-brand-emeraldDeep border-s border-brand-gold/15 shadow-xl md:hidden transition-all duration-300 ease-in-out overflow-y-auto overscroll-contain touch-pan-y ${open ? "translate-x-0 visible pointer-events-auto" : dir === "rtl" ? "translate-x-full invisible pointer-events-none" : "-translate-x-full invisible pointer-events-none"}`}
-        aria-label={isEnglish ? "Primary navigation" : "القائمة الرئيسية"}
-        aria-hidden={!open}
+        data-mobile-nav
+        aria-label={isEnglish ? "Primary mobile navigation" : "التنقل السفلي"}
+        dir={dir}
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-brand-gold/20 bg-brand-emeraldDeep/95 shadow-[0_-8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl md:hidden"
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-brand-gold/15">
-          <span className="text-xl font-bold text-brand-gold">ذِكرٌ</span>
-          <button onClick={() => setOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-brand-gold/10 transition-colors" aria-label={isEnglish ? "Close" : "إغلاق"}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-brand-gold/70">
-              <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L10 8.94 6.28 5.22Z" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="py-3 px-3">
-          {showAuthenticated ? (
-            <>
-              <Link href="/profile" onClick={() => setOpen(false)} className="mb-2 flex items-center rounded-lg border border-brand-gold/30 bg-brand-gold/10 px-4 py-3 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20 transition-all">
-                {isEnglish ? "My profile" : "الملف الشخصي"}
+        <div className="mx-auto grid max-w-xl grid-cols-5 gap-1 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          {bottomLinks.map((item) => {
+            const Icon = resolveIcon(item.icon);
+            const current = isCurrentPath(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={current ? "page" : undefined}
+                className={[
+                  "flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[10px] font-semibold transition-colors",
+                  current ? "bg-brand-gold/10 text-brand-gold" : "text-brand-cream/65 hover:text-brand-gold",
+                ].join(" ")}
+              >
+                <Icon className="h-5 w-5" aria-hidden="true" />
+                <span>{isEnglish ? item.en : item.ar}</span>
               </Link>
-              <form action={logoutAction} className="mb-2">
-                <button type="submit" className="flex w-full items-center rounded-lg border border-brand-cream/15 px-4 py-3 text-sm font-semibold text-brand-cream/75 transition-all hover:border-brand-gold/30 hover:bg-brand-gold/10 hover:text-brand-gold">
-                  {isEnglish ? "Sign out" : "تسجيل الخروج"}
-                </button>
-              </form>
-            </>
-          ) : (
-            <Link href="/auth/login" onClick={() => setOpen(false)} className="mb-2 flex items-center rounded-lg border border-brand-gold/30 bg-brand-gold/10 px-4 py-3 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20 transition-all">
-              {isEnglish ? "Sign in" : "تسجيل الدخول"}
-            </Link>
-          )}
-
-          {allLinks.map(link => (
-            <Link key={link.href} href={link.href} onClick={() => setOpen(false)} className="flex items-center px-4 py-2.5 rounded-lg text-sm text-brand-cream/70 hover:text-brand-gold hover:bg-brand-gold/8 transition-all">
-              {isEnglish ? link.labelEn : link.label}
-            </Link>
-          ))}
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-expanded={open}
+            aria-haspopup="dialog"
+            className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[10px] font-semibold text-brand-cream/65 transition-colors hover:bg-brand-gold/8 hover:text-brand-gold"
+          >
+            <Icons.Menu className="h-5 w-5" aria-hidden="true" />
+            <span>{isEnglish ? "More" : "المزيد"}</span>
+          </button>
         </div>
       </nav>
     </>

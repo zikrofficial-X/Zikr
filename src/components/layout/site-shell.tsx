@@ -31,7 +31,7 @@ export async function SiteShell({ children }: { children: React.ReactNode }) {
 
   return (
     <LanguageProvider initialLocale={initialLocale}>
-      <div className="min-h-screen">
+      <div className={pathname.startsWith("/admin") || pathname.startsWith("/auth") || pathname.startsWith("/kids") ? "min-h-screen" : "min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0"}>
         <Navbar />
         <main>
           {children}
