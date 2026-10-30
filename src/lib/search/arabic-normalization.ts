@@ -1,0 +1,16 @@
+const ARABIC_DIACRITICS = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/gu;
+const ALEF_VARIANTS = /[أإآٱ]/gu;
+const YA_VARIANTS = /[ىئ]/gu;
+
+/** Mirrors private.normalize_arabic_search_text in Supabase. Search-only; never alter source text. */
+export function normalizeArabicSearchText(value: string): string {
+  return value
+    .toLocaleLowerCase("ar")
+    .normalize("NFKC")
+    .replace(ARABIC_DIACRITICS, "")
+    .replace(ALEF_VARIANTS, "ا")
+    .replace(YA_VARIANTS, "ي")
+    .replace(/ؤ/gu, "و")
+    .replace(/[ـ\s]+/gu, " ")
+    .trim();
+}
