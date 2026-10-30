@@ -1,0 +1,197 @@
+name: ZIKR Android Native Login Debug APK
+
+on:
+  push:
+    branches:
+      - fix/google-native-login-canonical
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-android-debug-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-debug-apk:
+    name: Build Android Debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle*
+            android/**/gradle-wrapper.properties
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Cache Android debug signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: zikr-android-debug-keystore-v1-${{ github.ref_name }}
+
+      - name: Ensure stable Android debug keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          KEYSTORE="$HOME/.android/debug.keystore"
+          if [[ ! -s "$KEYSTORE" ]]; then
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          test -s "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass android -alias androiddebugkey >/dev/null
+          echo "Stable debug signing key is ready."
+
+      - name: Install Android SDK 36 packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK_ROOT"
+          test -x "$SDK_ROOT/build-tools/36.0.0/aapt"
+          echo "ANDROID SDK ready at: $SDK_ROOT"
+
+      - name: Install JavaScript dependencies
+        shell: bash
+        run: pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+        timeout-minutes: 15
+
+      - name: Validate TypeScript
+        run: pnpm check
+        timeout-minutes: 10
+
+      - name: Verify native Google OAuth contract
+        run: pnpm auth:native:check
+
+      - name: Lint native Google login button
+        run: pnpm exec eslint src/features/auth/components/google-oauth-button.tsx
+        timeout-minutes: 5
+
+      - name: TypeScript typecheck
+        run: pnpm exec tsc --noEmit
+        timeout-minutes: 10
+
+      - name: Verify native Google login plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const plugin = '@capgo/capacitor-social-login';
+          const version = pkg.dependencies?.[plugin] ?? pkg.devDependencies?.[plugin];
+          if (!version) {
+            console.error(`${plugin} is missing from package.json`);
+            process.exit(1);
+          }
+          console.log(`${plugin}: ${version}`);
+          NODE
+
+      - name: Prepare Capacitor webDir for remote-server app
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          const config = JSON.parse(fs.readFileSync('capacitor.config.json', 'utf8'));
+          if (!config.server?.url) {
+            throw new Error('Expected capacitor.config.json server.url for this remote-server Android app.');
+          }
+          const webDir = path.resolve(config.webDir || 'www');
+          fs.mkdirSync(webDir, { recursive: true });
+          const index = path.join(webDir, 'index.html');
+          if (!fs.existsSync(index)) {
+            fs.writeFileSync(index, '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body></body></html>\\n');
+          }
+          console.log(`Capacitor webDir: ${webDir}`);
+          console.log(`Remote app URL: ${config.server.url}`);
+          NODE
+
+      - name: Sync Capacitor Android plugins
+        run: pnpm exec cap sync android
+        timeout-minutes: 10
+
+      - name: Build Debug APK (no release signing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          java -version
+          ./gradlew :app:assembleDebug --no-daemon --max-workers=2 --stacktrace \
+            -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
+        timeout-minutes: 30
+
+      - name: Verify APK package, checksum and debug certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          AAPT="$SDK_ROOT/build-tools/36.0.0/aapt"
+          KEYSTORE="$HOME/.android/debug.keystore"
+          test -s "$APK"
+          test -s "$KEYSTORE"
+          BADGING="$("$AAPT" dump badging "$APK")"
+          printf '%s\\n' "$BADGING" | grep -F "name='com.zikr.app'"
+          printf '%s\\n' "$BADGING" | grep -Fx "targetSdkVersion:'36'"
+          {
+            echo "APK: $APK"
+            echo "Package: com.zikr.app"
+            echo "Target SDK: 36"
+            echo
+            echo "APK SHA-256:"
+            sha256sum "$APK"
+            echo
+            echo "APK signature verification:"
+            "$SDK_ROOT/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+            echo
+            echo "Debug certificate fingerprints:"
+            keytool -list -v -keystore "$KEYSTORE" -storepass android -alias androiddebugkey | grep -E "SHA1:|SHA256:"
+          } | tee android-debug-verification.txt
+
+      - name: Upload Debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zikr-android-debug-${{ github.sha }}
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android-debug-verification.txt
+          if-no-files-found: error
+          retention-days: 7
