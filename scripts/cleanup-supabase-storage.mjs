@@ -58,7 +58,7 @@ export function isEligiblePublishedQueueItem(item, cutoffIso, supabaseUrl) {
 
 export function compareSemverTags(a, b) {
   const parse = (value) => {
-    const match = /^v?(\\d+)\\.(\\d+)\\.(\\d+)$/.exec(String(value ?? ""));
+    const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(String(value ?? ""));
     return match ? match.slice(1).map(Number) : null;
   };
   const left = parse(a);
@@ -71,7 +71,7 @@ export function compareSemverTags(a, b) {
 }
 
 export function selectProtectedAndroidTags(availableTags, pinnedTag) {
-  const valid = [...new Set(availableTags.filter((tag) => /^v\\d+\\.\\d+\\.\\d+$/.test(tag)))];
+  const valid = [...new Set(availableTags.filter((tag) => /^v\d+\.\d+\.\d+$/.test(tag)))];
   valid.sort((a, b) => compareSemverTags(b, a));
   const protectedTags = new Set(valid.slice(0, 2));
   if (pinnedTag) protectedTags.add(pinnedTag);
@@ -86,7 +86,8 @@ function assertEnv() {
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
   }
-  if (!/^https:\\/\\//.test(supabaseUrl)) throw new Error("SUPABASE_URL must use HTTPS.");
+  const parsedUrl = new URL(supabaseUrl);
+  if (parsedUrl.protocol !== "https:") throw new Error("SUPABASE_URL must use HTTPS.");
   return { supabaseUrl: supabaseUrl.replace(/\\/$/, ""), serviceRoleKey };
 }
 
@@ -390,7 +391,7 @@ async function main() {
 
   const pinnedTag = await getAndroidPinnedTag(client);
   const androidVersions = androidRoot
-    .filter((item) => /^v\\d+\\.\\d+\\.\\d+$/.test(item.name ?? ""))
+    .filter((item) => /^v\d+\.\d+\.\d+$/.test(item.name ?? ""))
     .map((item) => item.name)
     .sort((a, b) => compareSemverTags(b, a));
   const protectedTags = selectProtectedAndroidTags(androidVersions, pinnedTag);
@@ -471,7 +472,7 @@ async function main() {
   const remainingAndroidFolders = await listDirectory(client, ANDROID_BUCKET, "android");
   const remainingVideoCount = remainingVideos.filter((file) => file.id && file.name?.endsWith(".mp4")).length;
   console.log(`Post-cleanup verification: ${remainingVideoCount} video objects remain in Storage.`);
-  console.log(`Post-cleanup Android release folders: ${remainingAndroidFolders.filter((item) => /^v\\d+\\.\\d+\\.\\d+$/.test(item.name ?? "")).map((item) => item.name).join(", ")}.`);
+  console.log(`Post-cleanup Android release folders: ${remainingAndroidFolders.filter((item) => /^v\d+\.\d+\.\d+$/.test(item.name ?? "")).map((item) => item.name).join(", ")}.`);
   console.log("ZIKR Storage retention completed.");
 }
 
