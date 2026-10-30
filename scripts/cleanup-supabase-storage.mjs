@@ -205,7 +205,7 @@ async function verifyAndroidReleaseCopy(client, version, storageFiles) {
   return { ok: true, reason: "GitHub Release assets, stored checksums, and actual Supabase APK/AAB bytes match." };
 }
 
-async function loadUnexpectedVideoReferences(client, candidatePaths) {
+async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl) {
   const patterns = [
     {
       table: "kids_content",
@@ -420,6 +420,29 @@ async function loadUnexpectedVideoReferences(client, candidatePaths) {
   ];
 
   const referenceSet = new Set();
+  const candidateSet = new Set(candidatePaths);
+  const canonicalUrlPrefix = `${supabaseUrl}/storage/v1/object/public/videos/`;
+
+  function recordReference(value) {
+    const clean = asString(value);
+    if (!clean) return;
+    if (candidateSet.has(clean)) {
+      referenceSet.add(clean);
+      return;
+    }
+
+    if (clean.startsWith(canonicalUrlPrefix)) {
+      try {
+        const parsed = new URL(clean);
+        const prefix = "/storage/v1/object/public/videos/";
+        const path = decodeURIComponent(parsed.pathname.slice(prefix.length));
+        if (candidateSet.has(path)) referenceSet.add(path);
+      } catch {
+        // Malformed references are ignored here; exact matching has already failed.
+      }
+    }
+  }
+
   const results = await Promise.all(patterns.map(async (pattern) => {
     let query = client.from(pattern.table).select(pattern.column);
     query = pattern.filter(query);
@@ -437,8 +460,7 @@ async function loadUnexpectedVideoReferences(client, candidatePaths) {
       throw new Error(`Reference inventory exceeded the safe scan limit for ${pattern.table}.${pattern.column}; refusing cleanup.`);
     }
     for (const row of result.data ?? []) {
-      const value = asString(row[pattern.column]);
-      if (value) referenceSet.add(value);
+      recordReference(row[pattern.column]);
     }
   }
 
@@ -540,7 +562,7 @@ async function main() {
       .filter((file) => file.id && file.name?.endsWith(".mp4"))
       .map((file) => [`${VIDEO_PREFIX}/${file.name}`, file]),
   );
-  const unexpectedReferences = await loadUnexpectedVideoReferences(client, [...filesByPath.keys()]);
+  const unexpectedReferences = await loadUnexpectedVideoReferences(client, [...filesByPath.keys()], supabaseUrl);
   const queueByUrl = new Map();
   for (const row of queueRows) {
     if (!row.video_url) continue;
@@ -575,7 +597,7 @@ async function main() {
       skipped.push({ id: row.id, reason: "Storage object is missing without a matching pending-retention record." });
       continue;
     }
-    if (unexpectedReferences.has(path) || unexpectedReferences.has(row.video_url)) {
+    if (unexpectedReferences.has(path)) {
       skipped.push({ id: row.id, reason: "Another public content table still references this video path." });
       continue;
     }
