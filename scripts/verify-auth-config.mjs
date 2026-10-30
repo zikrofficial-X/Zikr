@@ -59,7 +59,11 @@ requireText("callback route", callback, "getTrustedAuthOrigin");
 requireText("Google route", googleRoute, "getCanonicalAuthBaseUrl");
 requireText("Google route", googleRoute, 'new URL("/auth/callback", authOrigin)');
 requireText("Google route", googleRoute, 'url.searchParams.set("native", "1")');
-requireText("browser Google button", button, "PKCE verifier cookies are scoped to the current browser origin");
+requireText("browser Google button", button, "Browser PKCE verifier cookies are scoped to the current origin");
+requireText("Android Google button", button, 'Capacitor.isPluginAvailable("SocialLogin")');
+requireText("Android Google button", button, "startBrowserGoogleOAuth(");
+requireText("Android Google button", button, "browserFallbackAvailable");
+requireText("Android Google button", button, "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID");
 requireText("Google route", googleRoute, "The PKCE verifier is written to the response origin");
 requireText("proxy", proxy, "getCanonicalAuthBaseUrl");
 

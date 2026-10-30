@@ -22,9 +22,6 @@ function getSafeNextPath(next?: string): string {
 }
 
 function getCanonicalBrowserOrigin(): string {
-  // The browser bundle may contain a stale or alias-valued public env var.
-  // Keep production Google OAuth pinned to the canonical public origin while
-  // preserving localhost for local development.
   if (typeof window !== "undefined") {
     const host = window.location.hostname.toLowerCase();
     if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
@@ -35,12 +32,30 @@ function getCanonicalBrowserOrigin(): string {
 }
 
 function buildNativeOAuthRedirect(nextPath: string): string {
-  // Retained for iOS' existing browser-based OAuth path. Android now signs in
-  // natively through Credential Manager and Supabase signInWithIdToken.
+  // Browser fallback returns the PKCE callback to the installed app through
+  // NativeGoogleOAuthHandler. This also supports older APKs without SocialLogin.
   const url = new URL("/auth/callback", getCanonicalBrowserOrigin());
   url.searchParams.set("native", "1");
   url.searchParams.set("next", nextPath);
   return url.toString();
+}
+
+function getNativeGoogleErrorMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = raw.toLowerCase();
+  if (
+    normalized.includes("activity is cancelled") ||
+    normalized.includes("activity is canceled") ||
+    normalized.includes("user_cancelled") ||
+    normalized.includes("user canceled") ||
+    normalized.includes("28444") ||
+    normalized.includes("developer console")
+  ) {
+    return "تعذر إكمال تسجيل Google الأصلي. غالبًا إعداد Android OAuth غير مطابق: راجع اسم الحزمة com.zikr.app وبصمة SHA-1 للنسخة المثبتة، وتأكد أن Web Client ID وAndroid OAuth Client من مشروع Google نفسه.";
+  }
+  return raw
+    ? `تعذر تسجيل الدخول عبر Google الأصلي: ${raw}`
+    : "تعذر تسجيل الدخول عبر Google الأصلي. يمكنك المتابعة باستخدام المتصفح الآمن.";
 }
 
 async function signInWithNativeGoogle(
@@ -66,8 +81,6 @@ async function signInWithNativeGoogle(
   }
   await nativeGoogleInitialization;
 
-  // Google receives the SHA-256 nonce; Supabase receives the original nonce
-  // and verifies that it matches the nonce embedded in Google's ID token.
   const response = await SocialLogin.login({
     provider: "google",
     options: {
@@ -90,8 +103,6 @@ async function signInWithNativeGoogle(
 
   if (error) throw error;
 
-  // Keep the existing server-side profile synchronization behavior after
-  // the Supabase session has been established in the WebView.
   try {
     await fetch("/api/auth/profile-sync", {
       method: "POST",
@@ -99,13 +110,53 @@ async function signInWithNativeGoogle(
       cache: "no-store",
     });
   } catch {
-    // Profile sync is best-effort; authentication is already successful.
+    // Authentication is already successful; profile synchronization is best-effort.
+  }
+}
+
+async function startBrowserGoogleOAuth(
+  supabase: ReturnType<typeof createBrowserSupabaseClient>,
+  safeNext: string,
+  isNative: boolean,
+  usePreviewRedirect: boolean,
+  previewRedirect?: string,
+): Promise<void> {
+  const redirectTo = isNative
+    ? buildNativeOAuthRedirect(safeNext)
+    : usePreviewRedirect && previewRedirect
+      ? previewRedirect
+      : new URL(
+          `/auth/callback?next=${encodeURIComponent(safeNext)}`,
+          getCanonicalBrowserOrigin(),
+        ).toString();
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true,
+      queryParams: {
+        prompt: "select_account",
+      },
+    },
+  });
+
+  if (error) throw error;
+  if (!data.url) {
+    throw new Error("Google OAuth authorization URL was not returned.");
+  }
+
+  if (isNative) {
+    await Browser.open({ url: data.url });
+  } else {
+    window.location.assign(data.url);
   }
 }
 
 export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [browserFallbackAvailable, setBrowserFallbackAvailable] = useState(false);
 
   useEffect(() => {
     const handleBrowserFinished = () => setLoading(false);
@@ -123,15 +174,15 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
   const onClick = async () => {
     setLoading(true);
     setError(null);
+    setBrowserFallbackAvailable(false);
     const safeNext = getSafeNextPath(next);
 
     try {
       const isNative = Capacitor.isNativePlatform();
-      const isAndroidNative = Capacitor.getPlatform() === "android";
+      const isAndroidNative = isNative && Capacitor.getPlatform() === "android";
 
-      // Browser PKCE verifier cookies are scoped to the current browser origin.
-      // Keep web/preview OAuth on the same origin as its verifier; Android uses
-      // the native ID-token flow above and does not create a browser PKCE verifier.
+      // Browser PKCE verifier cookies are scoped to the current origin. Web and
+      // preview sign-in must keep the verifier on the same host as its callback.
       const previewRedirect = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL;
       const usePreviewRedirect =
         !isNative &&
@@ -152,46 +203,31 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
 
       const supabase = createBrowserSupabaseClient();
 
-      // Android uses Google's native Credential Manager. No Chrome,
-      // Custom Tab, browser redirect, or PKCE callback is involved.
-      if (isAndroidNative) {
-        await signInWithNativeGoogle(supabase);
-        window.location.replace(safeNext);
-        return;
+      // Only call Credential Manager when the installed native binary actually
+      // contains the plugin. Capacitor apps load this page from the live server,
+      // so an older APK can otherwise run newer JS against a missing native plugin.
+      if (isAndroidNative && Capacitor.isPluginAvailable("SocialLogin")) {
+        try {
+          await signInWithNativeGoogle(supabase);
+          window.location.replace(safeNext);
+          return;
+        } catch (nativeError) {
+          setError(getNativeGoogleErrorMessage(nativeError));
+          setBrowserFallbackAvailable(true);
+          setLoading(false);
+          return;
+        }
       }
 
-      // Keep the existing web OAuth flow unchanged. iOS continues to use its
-      // existing browser-based flow until a separate iOS client is configured.
-      const redirectTo = isNative
-        ? buildNativeOAuthRedirect(safeNext)
-        : usePreviewRedirect && previewRedirect
-          ? previewRedirect
-          : new URL(
-              `/auth/callback?next=${encodeURIComponent(safeNext)}`,
-              getCanonicalBrowserOrigin(),
-            ).toString();
-
-      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo,
-          skipBrowserRedirect: true,
-          queryParams: {
-            prompt: "select_account",
-          },
-        },
-      });
-
-      if (oauthError) throw oauthError;
-      if (!data.url) {
-        throw new Error("Google OAuth authorization URL was not returned.");
-      }
-
-      if (isNative) {
-        await Browser.open({ url: data.url });
-      } else {
-        window.location.assign(data.url);
-      }
+      // Compatibility path for older Android APKs (without SocialLogin) and
+      // iOS: use the HTTPS PKCE bridge, then return to the app's deep link.
+      await startBrowserGoogleOAuth(
+        supabase,
+        safeNext,
+        isNative,
+        usePreviewRedirect,
+        previewRedirect,
+      );
     } catch (err) {
       const message =
         err instanceof Error
@@ -199,6 +235,27 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
           : "تعذر تسجيل الدخول عبر Google. حاول مرة أخرى.";
 
       setError(message);
+      setLoading(false);
+    }
+  };
+
+  const onContinueWithBrowser = async () => {
+    setLoading(true);
+    setError(null);
+    setBrowserFallbackAvailable(false);
+    try {
+      await startBrowserGoogleOAuth(
+        createBrowserSupabaseClient(),
+        getSafeNextPath(next),
+        true,
+        false,
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "تعذر فتح تسجيل الدخول عبر المتصفح. حاول مرة أخرى.",
+      );
       setLoading(false);
     }
   };
@@ -218,9 +275,21 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
       {error && (
         <div className="space-y-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3">
           <p className="text-sm text-red-300">{error}</p>
-          <p className="text-xs text-red-400">
-            تأكد من إعداد Google OAuth في Supabase ثم حاول مرة أخرى.
-          </p>
+          {browserFallbackAvailable ? (
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={onContinueWithBrowser}
+              disabled={loading}
+            >
+              المتابعة عبر المتصفح الآمن
+            </Button>
+          ) : (
+            <p className="text-xs text-red-400">
+              تعذر تسجيل الدخول عبر Google. تأكد من إعداد مزود Google في Supabase ثم حاول مرة أخرى.
+            </p>
+          )}
         </div>
       )}
     </div>

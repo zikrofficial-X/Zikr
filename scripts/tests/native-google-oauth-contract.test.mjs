@@ -16,7 +16,12 @@ assert.ok(button.includes("SocialLogin.login("), "Native Google Credential Manag
 assert.ok(button.includes("supabase.auth.signInWithIdToken("), "Google ID token must be exchanged with Supabase");
 assert.ok(button.includes("NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID"), "Native login must use the Web OAuth client ID");
 assert.ok(button.includes("window.location.replace(safeNext)"), "Native success must return to the in-app route");
-assert.ok(button.indexOf('if (isAndroidNative)') < button.indexOf("Browser.open({ url: data.url })"), "Android native flow must return before Browser.open");
+assert.ok(button.includes('Capacitor.isPluginAvailable("SocialLogin")'), "Credential Manager must only run when the installed APK contains the native plugin");
+assert.ok(button.includes("startBrowserGoogleOAuth("), "Native-compatible browser OAuth fallback must remain available");
+assert.ok(button.includes("browserFallbackAvailable"), "Native Google failure must expose a browser fallback");
+assert.ok(button.includes("المتابعة عبر المتصفح الآمن"), "Browser fallback must be visible to users");
+assert.ok(button.includes("buildNativeOAuthRedirect(safeNext)"), "Native browser fallback must return through the app HTTPS/deep-link bridge");
+assert.ok(button.includes("Android OAuth غير مطابق"), "Credential Manager configuration errors must be explained accurately");
 assert.ok(activity.includes("ModifiedMainActivityForSocialLoginPlugin"), "MainActivity must implement the required plugin marker interface");
 assert.ok(activity.includes("handleGoogleLoginIntent"), "MainActivity must forward Google activity results");
 assert.ok(proxy.includes('request.headers.get("host")'), "Canonical-host logic must inspect the incoming Host header");

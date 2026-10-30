@@ -1,24 +1,67 @@
 # ZIKR — Google OAuth Configuration
 
-## Canonical production flow
+## Canonical production origins
 
-ZIKR uses Supabase Auth with PKCE.
+Production application URL:
 
-**Browser**
-1. ZIKR calls `supabase.auth.signInWithOAuth({ provider: "google", redirectTo: "https://zikrmediaofficial.vercel.app/auth/callback" })`.
+`https://zikrmediaofficial.vercel.app`
+
+Production Supabase project:
+
+`ymxdswkaxafakugktsim`
+
+The Google OAuth provider callback for this Supabase project is:
+
+`https://ymxdswkaxafakugktsim.supabase.co/auth/v1/callback`
+
+Do not use a callback from an old Supabase project.
+
+## Browser and iOS flow
+
+1. ZIKR calls `supabase.auth.signInWithOAuth({ provider: "google", redirectTo })`.
 2. Supabase sends the user to Google.
-3. Google sends the authorization response to the **Supabase provider callback**:
-   `https://wvetcauyerlkqvmntajq.supabase.co/auth/v1/callback`.
-4. Supabase validates the provider response and redirects to ZIKR's app callback.
-5. `src/app/auth/callback/route.ts` exchanges the PKCE code for the user session and redirects to the safe `next` path.
+3. Google redirects to the Supabase provider callback above.
+4. Supabase redirects to ZIKR's application callback.
+5. The web callback exchanges the PKCE code for the session. Native iOS uses the HTTPS callback bridge and Capacitor deep link when required.
 
-**Native Android/iOS**
-1. The app starts the same Supabase Google OAuth flow.
-2. The redirect target is the registered deep link `com.zikr.app://auth/callback`.
-3. The native Capacitor handler receives `appUrlOpen` and performs the PKCE code exchange inside the app.
-4. The app returns to the requested internal route.
+## Android native flow
 
-Supabase's current Google setup documentation uses the Supabase project's `/auth/v1/callback` as the Google OAuth client's redirect URI, while the application's post-login URL is configured in Supabase Auth Redirect URLs.
+Recent Android binaries include `@capgo/capacitor-social-login` and use Google Credential Manager:
+
+1. `SocialLogin.initialize({ google: { webClientId } })` receives the **Web application OAuth client ID**.
+2. `SocialLogin.login({ provider: "google" })` returns a Google ID token.
+3. ZIKR passes that ID token to `supabase.auth.signInWithIdToken()`.
+
+Two OAuth client types must exist in the **same Google Cloud project**:
+
+| Client type | Purpose | Configuration |
+|---|---|---|
+| Web application | ID-token audience / Supabase provider | Store the Web client ID in `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` and configure the same client ID + secret in Supabase Auth → Google |
+| Android | Authorizes the installed Android package/signing certificate | Create one Android client for each signing certificate, with package `com.zikr.app` and the matching SHA-1 |
+
+Never pass the Android client ID to `webClientId`. The code must receive the Web client ID.
+
+Register every signing certificate that can sign an installed build:
+
+- Debug builds: SHA-1 from `cd android && ./gradlew signingReport`.
+- Sideloaded release builds: SHA-1 from the exact APK installed, using `keytool -printcert -jarfile app-release.apk`.
+- Google Play builds: Play Console → Test and release → Setup / App integrity → App signing key certificate. Register this SHA-1 as an additional Android OAuth client even when the upload-key SHA-1 is already registered.
+
+The Android OAuth client package name must exactly equal `com.zikr.app`. If Google Auth Platform consent is in Testing mode, add the account used for testing under Audience → Test users.
+
+## Older Android APK compatibility
+
+Capacitor's `server.url` loads the live website inside the installed native shell. Therefore, the web bundle can be newer than the native APK. The Google button must call Credential Manager only when:
+
+`Capacitor.isPluginAvailable("SocialLogin")`
+
+If the installed APK does not contain the native plugin, use the browser PKCE bridge instead:
+
+`https://zikrmediaofficial.vercel.app/auth/callback?native=1`
+
+The callback returns to `com.zikr.app://auth/callback`, where `NativeGoogleOAuthHandler` exchanges the PKCE code. Do not remove this compatibility path while older APKs remain in use.
+
+If Credential Manager fails on a newer binary, offer the browser PKCE flow as a user-selectable fallback rather than reporting that Supabase is necessarily misconfigured.
 
 ## Supabase configuration
 
@@ -28,77 +71,37 @@ Production Site URL:
 
 Allowed application redirect URLs:
 
-`https://zikrmediaofficial.vercel.app/auth/callback`
-
-`http://localhost:3000/auth/callback`
-
-`com.zikr.app://auth/callback`
+- `https://zikrmediaofficial.vercel.app/auth/callback`
+- `http://localhost:3000/auth/callback`
+- `com.zikr.app://auth/callback`
 
 The source-of-truth local configuration is `supabase/config.toml`.
 
-## Google Auth Platform configuration
+The Google OAuth Web client must include the exact Supabase provider callback URI as an Authorized redirect URI:
 
-Create a **Web application** OAuth client.
+`https://ymxdswkaxafakugktsim.supabase.co/auth/v1/callback`
 
-Authorized JavaScript origins:
+For the web client, configure the production JavaScript origin:
 
 `https://zikrmediaofficial.vercel.app`
 
-For local development only:
+For local development only, also use `http://localhost:3000` and the local Supabase callback from the local project.
 
-`http://localhost:3000`
+## Credentials and security
 
-Authorized redirect URI:
+Put the Google OAuth Web Client ID and Client Secret in Supabase Dashboard → Authentication → Sign In / Providers → Google.
 
-`https://wvetcauyerlkqvmntajq.supabase.co/auth/v1/callback`
+The public Web client ID used by the Android plugin is configured in Vercel as `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`. It must match the Web client configured in Supabase.
 
-Do **not** use `https://zikrmediaofficial.vercel.app/auth/callback` as Google's provider callback for the Supabase-managed social-login flow.
-
-For local Supabase CLI development, use the local Supabase callback shown by the local Supabase project instead of the production project callback.
-
-## Credentials
-
-Put the Google OAuth Client ID and Client Secret in the Supabase Dashboard under Authentication → Sign In / Providers → Google.
-
-Never commit the client secret.
-
-The application does not need `GOOGLE_CLIENT_SECRET` just to sign users in through Supabase Auth. Google API credentials used by YouTube are a separate integration and must not be confused with the Supabase Auth provider credentials.
-
-## Code ownership
-
-The canonical auth files are:
-
-- `src/features/auth/components/google-oauth-button.tsx`
-- `src/features/auth/integrations/google-oauth.ts`
-- `src/app/auth/callback/route.ts`
-- `src/components/layout/native-google-oauth-handler.tsx`
-- `src/lib/auth-enhanced.ts`
-- `src/lib/supabase/client.ts`
-- `src/lib/supabase/server.ts`
-
-Do not recreate old `app/auth/*`, `lib/*`, or duplicate Google button implementations.
-
-## Troubleshooting
-
-**Unsupported provider**
-Google is disabled in the Supabase Authentication provider settings.
-
-**redirect_uri_mismatch**
-The Google OAuth client must contain the exact Supabase provider callback URI. Supabase's own redirect allowlist controls the final redirect back to the ZIKR app.
-
-**PKCE verifier missing**
-Restart the OAuth flow from ZIKR. The callback deliberately treats missing/expired PKCE state as a recoverable OAuth restart.
-
-**Native app returns to Chrome**
-Verify that `com.zikr.app://auth/callback` is present in the Supabase Auth redirect allowlist and that the installed app is using the current Capacitor configuration.
-
-**Profile row missing**
-Profile creation is best-effort after successful authentication. Authentication is not invalidated when a profile write fails.
+Never commit the Google client secret. YouTube API credentials are a separate integration and must not be confused with Supabase Auth credentials.
 
 ## Verification
 
 Run:
 
-`pnpm verify`
+- `pnpm auth:check`
+- `pnpm auth:native:check`
+- `pnpm mobile:check`
+- `pnpm test`
 
-The verification suite checks project paths, local imports, content integrity, migrations, mobile configuration, auth/security-sensitive configuration, lint, typecheck, and the production build. The current repository has no checked-in automated test suite; browser/native OAuth still requires a real end-to-end session test before release.
+A successful static check does not prove the Google Cloud Android SHA-1 registration is correct. Finish with an end-to-end test using the exact signed APK installed on a physical Android device.
