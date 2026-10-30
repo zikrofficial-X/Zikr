@@ -210,7 +210,7 @@ export async function searchPublishedCompanions(query: string): Promise<Companio
   }
 
   return (await getPublishedCompanions()).filter((item) =>
-    [item.name_ar, item.name_en ?? "", item.title_ar ?? "", item.bio_ar ?? "", item.slug]
+    [item.name_ar, item.name_en ?? "", item.title_ar ?? "", item.bio_ar ?? "", item.birth_place_ar ?? "", item.death_place_ar ?? "", item.death_year ?? "", item.slug]
       .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
   ).slice(0, 6);
 }
