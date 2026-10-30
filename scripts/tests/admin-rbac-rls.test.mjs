@@ -81,12 +81,12 @@ requireMatch(
 
 assert.match(
   publicRpcMigration,
-  /CREATE OR REPLACE FUNCTION public\\.is_admin_user\\(\\)[\\s\\S]*?SECURITY INVOKER[\\s\\S]*?SELECT private\\.is_admin_user\\(\\)/i,
+  /CREATE OR REPLACE FUNCTION public\.is_admin_user\(\)[\s\S]*?SECURITY INVOKER[\s\S]*?SELECT private\.is_admin_user\(\)/i,
   "the exposed compatibility wrapper must execute as invoker, not definer",
 );
 assert.doesNotMatch(
   publicRpcMigration,
-  /CREATE OR REPLACE FUNCTION public\\.is_admin_user\\(\\)[\\s\\S]*?SECURITY DEFINER/i,
+  /CREATE OR REPLACE FUNCTION public\.is_admin_user\(\)[\s\S]*?SECURITY DEFINER/i,
   "the public RPC must not become a security-definer entry point",
 );
 assert.match(
