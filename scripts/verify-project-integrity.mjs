@@ -196,6 +196,18 @@ for (const [dataset, store] of Object.entries(expectedDatasets)) {
   if (!offlinePackSource.includes(`${dataset}: '${store}'`) && !offlinePackSource.includes(`${dataset}: "${store}"`)) failures.push(`Offline pack mapping missing ${dataset} -> ${store}`);
   if (!offlineDbSource.includes(`name: '${store}'`) && !offlineDbSource.includes(`name: "${store}"`)) failures.push(`IndexedDB store missing: ${store}`);
 }
+const expandedOfflineStores = {
+  tawasheeh: 'tawasheeh',
+  quran_reciters: 'quranReciters',
+  quran_audio: 'quranAudio',
+  kids_games: 'kidsGames',
+  kids_game_levels: 'kidsGameLevels',
+  dua_categories: 'duaCategories',
+};
+for (const [dataset, store] of Object.entries(expandedOfflineStores)) {
+  if (!offlinePackSource.includes(`${dataset}: "${store}"`)) failures.push(`Offline pack mapping missing ${dataset} -> ${store}`);
+  if (!offlineDbSource.includes(`name: '${store}'`)) failures.push(`IndexedDB store missing: ${store}`);
+}
 if (!Array.isArray(offlineManifest.routes) || offlineManifest.routes.length === 0) failures.push('Offline manifest has no routes');
 for (const route of offlineManifest.routes || []) {
   if (typeof route !== 'string' || !route.startsWith('/') || route.startsWith('//')) {
@@ -206,7 +218,7 @@ for (const route of offlineManifest.routes || []) {
 }
 
 requireText('public/sw.js', [
-  'const CACHE_NAME = "zikr-v14"',
+  'const CACHE_NAME = "zikr-v15"',
   'CACHE_PREFIX = "zikr-"',
   'CACHE_OFFLINE_ROUTES',
   'OFFLINE_CONTENT_PREFIX',
@@ -236,7 +248,7 @@ requireText('src/lib/offline-pack.ts', [
   'requestOfflineRouteCache',
   'routesComplete',
   'fullyComplete',
-  'offline-content-version-v6',
+  'offline-content-version-v7',
   'failedRoutes',
 ]);
 requireText('src/lib/offline-db.ts', [

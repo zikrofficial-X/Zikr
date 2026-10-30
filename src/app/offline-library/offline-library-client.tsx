@@ -10,6 +10,7 @@ import {
   hydrateOfflineContent,
   clearOfflineLibrary,
   isCacheableOfflinePageRoute,
+  getOfflineLibraryStatus,
 } from '@/lib/offline-pack';
 
 type Manifest = Awaited<ReturnType<typeof fetchOfflineManifest>>;
@@ -44,6 +45,15 @@ const DATASET_LABELS: Record<string, string> = {
   kids: 'محتوى الأطفال',
   companions: 'الصحابة',
   companion_stories: 'قصص الصحابة',
+  scholars: 'العلماء',
+  stories: 'قصص إضافية',
+  article_categories: 'تصنيفات المقالات',
+  tawasheeh: 'التواشيح',
+  quran_reciters: 'قراء القرآن',
+  quran_audio: 'مقاطع التلاوة',
+  kids_games: 'ألعاب الأطفال',
+  kids_game_levels: 'مستويات الألعاب',
+  dua_categories: 'تصنيفات الأدعية',
 };
 
 function normalizeRoute(value: string): string | null {
@@ -110,7 +120,7 @@ export default function OfflineLibraryClient() {
       fetchOfflineManifest(),
       discoverSupplementalRoutes(),
       discoverSitemapRoutes(),
-    ]).then(([nextManifest, supplementalRoutes, sitemapRoutes]) => {
+    ]).then(async ([nextManifest, supplementalRoutes, sitemapRoutes]) => {
       if (!mounted) return;
       setManifest(nextManifest);
       const routes = Array.from(
@@ -124,8 +134,13 @@ export default function OfflineLibraryClient() {
         ]),
       );
       setDiscoveredRoutes(routes);
+      const offlineStatus = await getOfflineLibraryStatus(routes);
+      if (!mounted) return;
+      setCachedRoutes(offlineStatus.cachedRoutes);
       setStatus(
-        `تم اكتشاف ${routes.length.toLocaleString('ar-EG')} صفحة عامة من الـ sitemap والحزم المحلية، جاهزة للتنزيل.`
+        offlineStatus.complete
+          ? `المكتبة مكتملة محليًا: ${offlineStatus.cachedRoutes.toLocaleString('ar-EG')} صفحة محفوظة وتم التحقق من قواعد البيانات.`
+          : `تم اكتشاف ${routes.length.toLocaleString('ar-EG')} صفحة عامة. المكتبة تحتاج إلى تحديث أو استكمال.`
       );
     }).catch(() => {
       if (!mounted) return;

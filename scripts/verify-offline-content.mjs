@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 const manifestPath = 'public/offline-content/v1/manifest.json';
 const routeSnapshotPath = 'public/offline-content/v2/routes.json';
@@ -7,6 +8,8 @@ const serviceWorkerPath = 'public/sw.js';
 const offlineLibraryPath = 'src/app/offline-library/page.tsx';
 const offlineLibraryClientPath = 'src/app/offline-library/offline-library-client.tsx';
 const guardPath = 'src/components/layout/offline-navigation-guard.tsx';
+const exporterPath = 'scripts/export-offline-content.mjs';
+const offlineDbPath = 'src/lib/offline-db.ts';
 
 const read = file => (existsSync(file) ? readFileSync(file, 'utf8') : '');
 const failures = [];
@@ -26,6 +29,8 @@ for (const file of [
   offlineLibraryPath,
   offlineLibraryClientPath,
   guardPath,
+  exporterPath,
+  offlineDbPath,
 ]) {
   if (!existsSync(file)) failures.push(`Missing ${file}`);
 }
@@ -101,23 +106,37 @@ try {
 }
 
 const offlinePack = read(offlinePackPath);
+const offlineDb = read(offlineDbPath);
+const exporter = read(exporterPath);
+try { execFileSync(process.execPath, ['--check', exporterPath], { stdio: 'pipe' }); }
+catch (error) { failures.push(`Offline exporter syntax check failed: ${error instanceof Error ? error.message : 'unknown error'}`); }
+for (const dataset of ['surahs','ayahs','tafsir','hadith_books','hadith','prophets','prophet_sections','battles','battle_events','conquests','conquest_events','articles','duas','kids','companions','stories','article_categories','companion_stories','scholars','tawasheeh','quran_reciters','quran_audio','kids_games','kids_game_levels','dua_categories']) {
+  if (!exporter.includes(`['${dataset}',`)) failures.push(`Offline exporter missing dataset: ${dataset}`);
+}
+if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY') || !exporter.includes("params.set('limit'") || !exporter.includes('const minimumRecords = {') || !exporter.includes('select=id,slug,title,content,mood,category,created_at,updated_at,published,metadata,summary,is_approved')) failures.push('Offline exporter must use paginated public reads, minimum safety floors, and explicit public story fields');
+if (!offlineDb.includes('DB_VERSION = 6')) failures.push('IndexedDB schema must be version 6');
+if (!offlineDb.includes('replaceAllMany(datasets: Record<string, unknown[]>')) failures.push('IndexedDB atomic full-pack replacement method is missing');
 for (const token of [
   'offline_manifest',
   'offline_completion_v1',
   'verifyCompletedDatasets',
   'requestOfflineRouteCache',
   'cacheRoutes?: boolean',
-  'offline-content-version-v6',
+  'offline-content-version-v7',
   'OFFLINE_CACHE_NAME',
   'isCacheableOfflinePageRoute',
-  'zikr-v14',
-  'offline-content-version-v6',
+  'zikr-v15',
+  'offlineDb.replaceAllMany(pendingDatasets)',
+  'verifyCompletedRoutes(completion.cachedRoutes)',
   'routesComplete',
   'fullyComplete',
   'additionalRoutes',
   'stories: "stories"',
   'scholars: "scholars"',
   'article_categories: "articleCategories"',
+  'quran_audio: "quranAudio"',
+  'kids_game_levels: "kidsGameLevels"',
+  'dua_categories: "duaCategories"',
   'scholars/ahmad-ibn-hanbal',
   'videos/importance-of-prayer',
 ]) {
@@ -126,7 +145,8 @@ for (const token of [
 
 const serviceWorker = read(serviceWorkerPath);
 for (const token of [
-  'CACHE_NAME = "zikr-v14"',
+  'CACHE_NAME = "zikr-v15"',
+  'credentials: "omit"',
   'CACHE_PREFIX = "zikr-"',
   'OFFLINE_CONTENT_PREFIX',
   '"/settings"',
@@ -145,7 +165,7 @@ if (htmlHandlerStart !== -1) {
 const coreMatch = serviceWorker.match(/const CORE_INSTALL_ASSETS = \[([\s\S]*?)\];/);
 if (coreMatch && coreMatch[1].includes('"/"')) failures.push('Service worker must not pre-cache the root HTML route');
 if (serviceWorker.includes('const CACHE_NAME = "zikr-v10"')) failures.push('Legacy service worker cache version zikr-v10 must not remain');
-if (!offlinePack.includes('const OFFLINE_CACHE_NAME = "zikr-v14"')) failures.push('Offline pack cache name must match Service Worker cache zikr-v14');
+if (!offlinePack.includes('const OFFLINE_CACHE_NAME = "zikr-v15"')) failures.push('Offline pack cache name must match Service Worker cache zikr-v15');
 
 const offlineLibrary = read(offlineLibraryPath);
 const offlineLibraryClient = read(offlineLibraryClientPath);
@@ -164,4 +184,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('✅ Offline data files match manifest counts; public routes and privacy rules are valid; IndexedDB and Service Worker v14 use durable dataset+route completion.');
+console.log('✅ Offline datasets match manifest counts; export source, atomic IndexedDB replacement, public routes, and Service Worker v15 completion checks passed.');

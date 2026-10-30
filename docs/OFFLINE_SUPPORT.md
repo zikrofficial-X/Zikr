@@ -1,9 +1,10 @@
 # ZIKR Offline Support
 
 **Last updated: 2026-10-30**  
-**Offline pack:** `2026-10-30-content-v2`  
-**Service worker cache:** `zikr-v14`  
-**IndexedDB schema:** `ZikrOfflineDB` version 5
+**Client pack marker:** `offline-content-version-v7`  
+**Manifest version:** regenerated from the live public catalog during each CI/production build  
+**Service worker cache:** `zikr-v15`  
+**IndexedDB schema:** `ZikrOfflineDB` version 6
 
 ## What is available offline
 
@@ -24,7 +25,7 @@ The action now runs as one verified operation:
 - Adds the essential public routes, route snapshot routes, same-origin sitemap routes and the current page inventory.
 - Rejects private routes before they are sent to the service worker.
 - Downloads each declared dataset and validates that it is a JSON array with the exact manifest record count.
-- Replaces the matching IndexedDB store before writing the new rows, so removed or unpublished records do not survive an update.
+- Downloads and validates every dataset first, then swaps all IndexedDB stores in one read-write transaction. A failed fetch or write leaves the previous dataset pack intact; the completion marker is updated only after the route cache is verified.
 - Caches public HTML routes in controlled batches and records route-level failures.
 - Persists a completion marker only after every dataset and every required route is verified.
 - Shows failed datasets and failed routes instead of reporting a partial download as complete.
@@ -40,25 +41,31 @@ The manifest is refreshed from currently published/approved Supabase records. It
 |---|---:|
 | Surahs | 114 |
 | Quran ayahs | 6,236 |
-| Tafsir records currently exported | 2 |
+| Tafsir records | 6,236 |
 | Hadith books | 9 |
 | Published hadith | 2,964 |
 | Prophets | 25 |
-| Prophet sections | 150 |
+| Prophet sections | 175 |
 | Published battles | 21 |
 | Battle events linked to published battles | 84 |
 | Published conquests | 15 |
 | Conquest events linked to published conquests | 60 |
 | Published articles | 38 |
-| Published duas | 33 |
-| Active, published kids content | 59 |
+| Published duas | 43 |
+| Active, published kids content | 65 |
 | Published companions | 12 |
 | Companion stories linked to published companions | 21 |
 | Published scholars | 8 |
 | Published and approved stories | 21 |
 | Active, published article categories | 5 |
+| Active, published dua categories | 6 |
+| Published tawasheeh | 12 |
+| Quran reciters | 172 |
+| Quran audio references | 19,608 |
+| Published kids games | 13 |
+| Published kids game levels | 1,170 |
 
-The package contains 19 datasets. Datasets with no public records are not fabricated: the current database has no published hadith explanations or memorization plans, and no active/published dua-category records, so those tables are not represented as populated offline datasets.
+The build-time export produces 25 public datasets. Unpublished article drafts are intentionally excluded. Tables without public records are not fabricated: there are currently no published hadith explanations or memorization plans.
 
 ## Public route inventory and privacy
 
@@ -71,7 +78,7 @@ The pack deliberately excludes:
 - `/account`, `/dashboard`
 - Cross-origin routes and non-page files such as JSON, scripts, stylesheets, images, audio and video.
 
-The Service Worker applies the same private-route checks as the offline library client. It will not cache a public route that redirects to a private path. Cache cleanup only removes older cache entries with the ZIKR `zikr-` prefix; unrelated same-origin Cache Storage entries are preserved.
+The Service Worker applies the same private-route checks as the offline library client, excludes settings/account paths, and fetches public HTML without session cookies. It will not cache a public route that redirects to a private path. Cache cleanup only removes older cache entries with the ZIKR `zikr-` prefix; unrelated same-origin Cache Storage entries are preserved.
 
 Favorites and local preferences remain in their own IndexedDB stores when the user clears the offline content package. The clear action removes downloaded public datasets and cached public routes, not favorites or local settings.
 
@@ -80,7 +87,7 @@ Favorites and local preferences remain in their own IndexedDB stores when the us
 Offline support does not turn external services into local services:
 
 - Gemini/AI generation and live YouTube/Facebook synchronization still require internet access.
-- Radio streams and external recitation/video media are not downloaded as part of the text-content package.
+- Radio streams and external recitation/video media are not downloaded as part of the text-content package. Reciter profiles and Quran audio references are stored, but playback of remote audio still requires a connection.
 - Server writes, authentication, profile changes and account synchronization require connectivity.
 - A first launch on a fresh install still requires internet because the native shell loads the production SSR origin.
 - Notification delivery, background work and storage retention depend on browser/WebView and Android operating-system behavior.
@@ -93,6 +100,7 @@ Run these checks from the repository root:
 
 ```bash
 pnpm offline:check
+pnpm offline:export # requires Supabase URL and a service-role or public anon key
 pnpm mobile:check
 pnpm project:check
 pnpm typecheck
@@ -122,3 +130,11 @@ A physical-device test is still required before claiming that every Android WebV
 8. Reconnect and confirm that server-backed functions return to normal.
 
 This test is especially important for Android WebView storage eviction, device storage pressure, force-stop/restart behavior and notifications.
+
+## Build-time content refresh
+
+The prebuild exporter reads public, RLS-protected Supabase content in pages of 1,000 rows and regenerates the JSON files and manifest counts. It includes Quran, the full tafsir corpus, hadith, prophets and sections, battles and events, conquests and events, published articles and duas, dua categories, kids content, companions and stories, scholars, tawasheeh, Quran reciters/audio references, and kids games/levels. It prefers the public anon/publishable key so Supabase RLS remains active, and uses the server-only service-role key only as a fallback in controlled builds. No user records or admin-only data are exported. Approved user-submitted stories are exported using an explicit public-field selection that omits `user_id` and internal search columns.
+
+The 2026-10-30 content expansion added 10 canonical Quranic duas, 6 original bilingual children's stories, and 25 Quran reading guides. Eleven article drafts remain unpublished for editorial review. Four original poems and three optional tasbeeh counters were added to the static content modules. The new stories and Quranic duas are included in the next build-time offline export.
+
+The project plan requires offline game-result queues to survive content refreshes. The content clear operation intentionally leaves the `gameResultsQueue`, favorites, and local settings stores intact.

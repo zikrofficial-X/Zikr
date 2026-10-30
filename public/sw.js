@@ -1,5 +1,5 @@
 // Service Worker for Zikr PWA
-const CACHE_NAME = "zikr-v14";
+const CACHE_NAME = "zikr-v15";
 const CACHE_PREFIX = "zikr-";
 const OFFLINE_CONTENT_PREFIX = "/offline-content/";
 const MAX_OFFLINE_ROUTES = 400;
@@ -89,6 +89,7 @@ async function cacheOfflineRoute(route, cache) {
   try {
     const fetchRequest = new Request(url.href, {
       method: "GET",
+      credentials: "omit",
       headers: { Accept: "text/html" },
       cache: "no-store",
     });
