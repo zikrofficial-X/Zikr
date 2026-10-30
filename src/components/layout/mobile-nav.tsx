@@ -99,6 +99,14 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
     setOpen(false);
     setMenuQuery("");
   }, [pathname]);
+  useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) setOpen(false);
+    };
+    desktopQuery.addEventListener("change", closeOnDesktop);
+    return () => desktopQuery.removeEventListener("change", closeOnDesktop);
+  }, []);
 
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -172,7 +180,7 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
-      menuButtonRef.current?.focus();
+      if (menuButtonRef.current && menuButtonRef.current.offsetParent !== null) menuButtonRef.current.focus();
     };
   }, [open]);
 
@@ -199,13 +207,13 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
             ref={drawerRef}
             role="dialog"
             aria-modal="true"
-            aria-label={isEnglish ? "All platform sections" : "كل أقسام المنصة"}
+            aria-labelledby="mobile-navigation-dialog-title"
             dir={dir}
-            className="fixed inset-y-0 end-0 z-[60] flex w-[min(23rem,92vw)] flex-col border-s border-brand-gold/20 bg-brand-emeraldDeep shadow-2xl lg:hidden"
+            className="fixed inset-y-0 end-0 z-[60] flex h-[100dvh] max-h-[100dvh] w-[min(23rem,92vw)] flex-col overflow-hidden border-s border-brand-gold/20 bg-brand-emeraldDeep shadow-2xl outline-none lg:hidden"
           >
             <div className="flex shrink-0 items-center justify-between border-b border-brand-gold/15 px-5 py-4">
               <div>
-                <p className="text-xl font-bold text-brand-gold">ذِكرٌ</p>
+                <p id="mobile-navigation-dialog-title" className="text-xl font-bold text-brand-gold">ذِكرٌ</p>
                 <p className="mt-1 text-xs text-brand-cream/60">
                   {isEnglish ? "Explore the platform" : "استكشف أقسام المنصة"}
                 </p>
