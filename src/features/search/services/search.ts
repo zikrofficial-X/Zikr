@@ -99,7 +99,7 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
   }
 
   for (const item of companions) {
-    if (contains(item.name_ar) || contains(item.name_en ?? undefined) || contains(item.bio_ar ?? undefined)) {
+    if (contains(item.name_ar) || contains(item.name_en ?? undefined) || contains(item.bio_ar ?? undefined) || contains(item.birth_place_ar ?? undefined) || contains(item.death_place_ar ?? undefined) || contains(item.death_year ?? undefined)) {
       results.push({
         id: item.id,
         type: "companion",
