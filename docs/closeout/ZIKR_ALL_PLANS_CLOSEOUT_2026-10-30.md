@@ -18,7 +18,7 @@
 | Production aliases | `zikrmediaofficial.vercel.app`, `zikr-zikr3.vercel.app`, `zikr-git-main-zikr3.vercel.app` | Attached |
 | Supabase | Project ACTIVE_HEALTHY; live ledger has 384 migration versions; latest `20261030110000` | Healthy / aligned at checkpoint |
 | Admin RPC hardening | Public admin compatibility RPC recorded as SECURITY INVOKER; seven FK-support indexes present | Verified at prior reconciliation |
-| Supabase Security Advisor | `auth_leaked_password_protection`: Leaked Password Protection Disabled | Open service setting |
+| Supabase Security Advisor | `auth_leaked_password_protection`: Leaked Password Protection Disabled; Supabase organization plan is Free | Upgrade to Pro or accept the documented security exception; setting is unavailable on current plan |
 | Supabase Performance Advisor | 68 unused-index observations, INFO | Monitor; do not bulk-delete |
 | Runtime monitoring | React streaming-boundary errors still occur on article/dua detail routes; timeout cluster also observed on article route | Open production defect; fixes are in this PR, not yet certified live |
 | Android stable release | `v1.1.8`, versionCode 62, signed APK/AAB and release metadata/checksums listed on GitHub Release | Published; branding update still needs next semantic release |
@@ -115,7 +115,7 @@ PR #150 now:
 
 These cannot be truthfully closed by changing repository files alone:
 
-1. Enable Supabase Auth leaked-password protection (feature requires Pro or above); rerun the Security Advisor afterward.
+1. The Supabase organization is currently on the Free plan. Leaked Password Protection requires Pro or above; either approve a plan upgrade and enable it, or formally accept the warning as an open security exception. Rerun Security Advisor after any change.
 2. Educator sign-off for all 13 Kids games and qualified religious review for Quran/Hadith/dua/dhikr/wudu/source-sensitive content.
 3. Physical game, audio, prayer/Qibla, PWA/offline/reconnect and mobile acceptance on the target Android devices; iOS acceptance where iOS is supported.
 4. Browser E2E for public routes, auth, article/dua detail, audio, prayer, Kids result sync and privileged Admin actions.
