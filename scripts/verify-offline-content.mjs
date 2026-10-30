@@ -164,4 +164,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('✅ Offline core datasets, expanded v5 public route inventory, route-cache integration, durable completion, navigation safety, and Service Worker v13 checks passed');
+console.log('✅ Offline data files match manifest counts; public routes and privacy rules are valid; IndexedDB and Service Worker v14 use durable dataset+route completion.');
