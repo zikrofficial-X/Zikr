@@ -244,6 +244,8 @@ async function readPersistedManifest(): Promise<OfflineManifest | null> {
 async function verifyCompletedDatasets(
   manifest: OfflineManifest
 ): Promise<OfflineCompletion | null> {
+  if (OFFLINE_CONTENT_STORES.some(dataset => !manifest.datasets[dataset])) return null;
+  if (Object.keys(manifest.datasets).some(dataset => !STORE_BY_DATASET[dataset])) return null;
   try {
     const completion = await offlineDb.getSetting<OfflineCompletion>(COMPLETION_DB_KEY);
     if (!completion || completion.version !== manifest.version || !Array.isArray(completion.cachedRoutes)) return null;
@@ -508,7 +510,7 @@ export async function hydrateOfflineContent(
         if (!storeName || datasetCounts[storeName] !== definition.count) failedDatasets.push(dataset);
       }
       if (failedDatasets.length === 0) {
-        await offlineDb.delete("settings", COMPLETION_DB_KEY).catch(() => undefined);
+        await offlineDb.delete("settings", COMPLETION_DB_KEY);
         try { window.localStorage.removeItem(VERSION_KEY); } catch { /* IndexedDB remains authoritative. */ }
       }
     } catch (error) {
