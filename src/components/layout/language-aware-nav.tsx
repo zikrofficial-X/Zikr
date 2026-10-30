@@ -11,7 +11,7 @@ export type NavLink = { href: string; label: string; labelEn: string; icon?: str
 function resolveIcon(name?: string): LucideIcon | null {
   if (!name) return null;
   const candidate = (Icons as unknown as Record<string, unknown>)[name];
-  return typeof candidate === 'function' ? (candidate as LucideIcon) : Icons.Circle;
+  return (typeof candidate === 'function' || (typeof candidate === 'object' && candidate !== null)) ? (candidate as LucideIcon) : Icons.Circle;
 }
 
 export function LanguageAwareNav({ links }: { links: NavLink[] }) {
@@ -21,7 +21,7 @@ export function LanguageAwareNav({ links }: { links: NavLink[] }) {
 
   return (
     <nav
-      className="hidden items-center justify-end gap-1 xl:flex"
+      className="hidden items-center justify-end gap-1 lg:flex"
       aria-label={ariaLabel}
     >
       {links.map((link) => {

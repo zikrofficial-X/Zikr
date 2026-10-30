@@ -18,7 +18,7 @@ type IconName = string;
 function resolveIcon(name?: IconName): LucideIcon {
   if (!name) return Icons.Circle;
   const candidate = (Icons as unknown as Record<string, unknown>)[name];
-  return typeof candidate === "function" ? (candidate as LucideIcon) : Icons.Circle;
+  return (typeof candidate === "function" || (typeof candidate === "object" && candidate !== null)) ? (candidate as LucideIcon) : Icons.Circle;
 }
 
 const utilityLinks = [
@@ -133,7 +133,7 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
           <button
             type="button"
             aria-label={isEnglish ? "Close navigation menu" : "إغلاق قائمة التنقل"}
-            className="fixed inset-0 z-[55] bg-black/70 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-[55] bg-black/70 backdrop-blur-sm lg:hidden"
             onClick={() => setOpen(false)}
           />
           <nav
@@ -141,7 +141,7 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
             aria-modal="true"
             aria-label={isEnglish ? "All platform sections" : "كل أقسام المنصة"}
             dir={dir}
-            className="fixed inset-y-0 end-0 z-[60] flex w-[min(23rem,92vw)] flex-col border-s border-brand-gold/20 bg-brand-emeraldDeep shadow-2xl md:hidden"
+            className="fixed inset-y-0 end-0 z-[60] flex w-[min(23rem,92vw)] flex-col border-s border-brand-gold/20 bg-brand-emeraldDeep shadow-2xl lg:hidden"
           >
             <div className="flex shrink-0 items-center justify-between border-b border-brand-gold/15 px-5 py-4">
               <div>
@@ -275,7 +275,7 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
         data-mobile-nav
         aria-label={isEnglish ? "Primary mobile navigation" : "التنقل السفلي"}
         dir={dir}
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-brand-gold/20 bg-brand-emeraldDeep/95 shadow-[0_-8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-brand-gold/20 bg-brand-emeraldDeep/95 shadow-[0_-8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl lg:hidden"
       >
         <div className="mx-auto grid max-w-xl grid-cols-5 gap-1 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           {bottomLinks.map((item) => {

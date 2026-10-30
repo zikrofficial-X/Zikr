@@ -58,7 +58,7 @@ const GUIDED_PATHS = [
 
 function resolveIcon(name: string): LucideIcon {
   const candidate = (Icons as unknown as Record<string, unknown>)[name];
-  return typeof candidate === 'function' ? (candidate as LucideIcon) : Icons.Circle;
+  return (typeof candidate === 'function' || (typeof candidate === 'object' && candidate !== null)) ? (candidate as LucideIcon) : Icons.Circle;
 }
 
 const dailyVerse = 'إِنَّ هَٰذَا الْقُرْآنَ يَهْدِي لِلَّتِي هِيَ أَقْوَمُ';
