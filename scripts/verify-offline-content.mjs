@@ -125,7 +125,7 @@ const exporter = read(exporterPath);
 for (const dataset of ['tafsir', 'articles', 'duas', 'kids', 'companions', 'scholars', 'tawasheeh', 'quran_reciters', 'quran_audio', 'kids_games', 'kids_game_levels']) {
   if (!exporter.includes(`['${dataset}',`)) failures.push(`Offline exporter missing dataset: ${dataset}`);
 }
-if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes('limit', '')) failures.push('Offline exporter must use the server-only Supabase key and paginated reads');
+if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes("params.set('limit'")) failures.push('Offline exporter must use the server-only Supabase key and paginated reads');
 
 const serviceWorker = read(serviceWorkerPath);
 for (const token of [
