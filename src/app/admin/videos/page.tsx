@@ -3,5 +3,5 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export default function AdminVideosLegacyPage() {
-  redirect("/admin/video-factory/queue");
+  redirect("/admin/video/requests");
 }

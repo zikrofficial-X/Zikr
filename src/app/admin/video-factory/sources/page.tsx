@@ -11,7 +11,7 @@ export default async function VideoFactorySourcesPage() {
       title="Sources"
       description="مصادر الفيديو هي نقطة البداية الموثقة. الاستوديو الحالي يحتوي على اختيار المصادر والتحقق من النص قبل الرندر."
       links={[
-        { href: "/admin/ai-video", label: "Video Studio", description: "اختيار مصدر منشور وإنشاء طلب فيديو موثق." },
+        { href: "/admin/video/studio", label: "Video Studio", description: "اختيار مصدر منشور وإنشاء طلب فيديو موثق." },
         { href: "/admin/sources", label: "Content Sources", description: "إدارة مصادر المحتوى الأساسية على مستوى المنصة." },
       ]}
     />

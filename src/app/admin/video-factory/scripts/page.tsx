@@ -38,7 +38,7 @@ export default async function VideoFactoryScriptsPage() {
         </article>
       </section>
 
-      <Link href="/admin/ai-video" className="inline-flex rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/15">فتح استوديو الفيديو</Link>
+      <Link href="/admin/video/studio" className="inline-flex rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/15">فتح استوديو الفيديو</Link>
     </Container>
   );
 }

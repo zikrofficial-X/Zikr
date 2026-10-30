@@ -145,7 +145,7 @@ export default function AdminVideosClient() {
           <a href="#visuals" className="rounded-xl border border-brand-gold/10 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/25 hover:text-brand-gold">العناصر المرئية</a>
           <a href="#voices" className="rounded-xl border border-brand-gold/10 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/25 hover:text-brand-gold">الأصوات</a>
           <span className="mx-1 h-6 w-px bg-brand-gold/10" aria-hidden="true" />
-          <Link href="/admin/ai-video" className="rounded-xl border border-brand-gold/20 px-4 py-2 text-sm text-brand-gold hover:bg-brand-gold/10">استوديو الإنشاء</Link>
+          <Link href="/admin/video/studio" className="rounded-xl border border-brand-gold/20 px-4 py-2 text-sm text-brand-gold hover:bg-brand-gold/10">استوديو الإنشاء</Link>
           <Link href="/admin/social" className="rounded-xl border border-brand-gold/10 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/25 hover:text-brand-gold">النشر الاجتماعي</Link>
           <Link href="/admin/automation" className="rounded-xl border border-brand-gold/10 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/25 hover:text-brand-gold">التشغيل الآلي</Link>
         </div>
@@ -157,7 +157,7 @@ export default function AdminVideosClient() {
           <p className="mt-2 text-sm leading-7 text-brand-cream/50">هذه الصفحة للمراقبة وإعادة المحاولة والتفاصيل فقط. إنشاء الطلبات موجود في استوديو الفيديو حتى لا تتكرر أدوات الإنشاء.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/admin/ai-video" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20">استوديو إنشاء الفيديو</Link>
+          <Link href="/admin/video/studio" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/20">استوديو إنشاء الفيديو</Link>
           <Button variant="outline" onClick={() => void load()} disabled={loading}>تحديث</Button>
         </div>
       </header>

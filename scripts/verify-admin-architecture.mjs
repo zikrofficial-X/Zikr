@@ -39,9 +39,11 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/search", "البحث والفهرسة", "content.manage"],
   ],
   "الفيديو والوسائط": [
+    ["/admin/video", "مركز الفيديو", "video.manage"],
+    ["/admin/video/requests", "طلبات الفيديو", "video.manage"],
+    ["/admin/video/studio", "استوديو الفيديو", "video.manage"],
+    ["/admin/video/studio/curated", "المحتوى الموثق للفيديو", "video.manage"],
     ["/admin/video-factory", "مصنع الفيديو", "video.manage"],
-    ["/admin/ai-video", "استوديو إنشاء الفيديو", "video.manage"],
-    ["/admin/ai-video/curated", "المحتوى الموثق للفيديو", "video.manage"],
     ["/admin/video-factory/sources", "مصادر الفيديو", "video.manage"],
     ["/admin/video-factory/scripts", "نصوص السرد", "video.manage"],
     ["/admin/video-factory/voices", "الأصوات", "video.manage"],
@@ -133,7 +135,10 @@ for (const label of visibleLabels) {
 }
 
 const legacyRedirects = {
-  "src/app/admin/videos/page.tsx": "/admin/video-factory/queue",
+  "src/app/admin/videos/page.tsx": "/admin/video/requests",
+  "src/app/admin/video-factory/queue/page.tsx": "/admin/video/requests",
+  "src/app/admin/ai-video/page.tsx": "/admin/video/studio",
+  "src/app/admin/ai-video/curated/page.tsx": "/admin/video/studio/curated",
   "src/app/admin/alerts/page.tsx": "/admin/notifications",
   "src/app/admin/audio/site-audio/page.tsx": "/admin/site-audio",
   "src/app/admin/video-factory/publishing/page.tsx": "/admin/social",
@@ -144,6 +149,10 @@ for (const [path, target] of Object.entries(legacyRedirects)) {
   if (!page.includes(`redirect("${target}")`)) {
     failures.push(`legacy admin route must redirect to canonical path: ${path} -> ${target}`);
   }
+}
+for (const canonicalPath of ["src/app/admin/video/requests/page.tsx", "src/app/admin/video/studio/page.tsx"]) {
+  const page = read(canonicalPath);
+  if (/\bredirect\(/.test(page)) failures.push("canonical video route must render directly: " + canonicalPath);
 }
 
 const hrefs = [...navigation.matchAll(/href:\s*["']([^"']+)["']/g)].map((m) => m[1]);

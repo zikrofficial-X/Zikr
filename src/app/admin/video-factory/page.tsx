@@ -12,7 +12,7 @@ const modules = [
   { href: "/admin/video-factory/visuals", label: "المشاهد", description: "مزودات AI، الخلفيات، الحركة والسياسة البصرية." },
   { href: "/admin/video-factory/templates", label: "القوالب", description: "إصدارات FFmpeg ودقات الإخراج." },
   { href: "/admin/video-factory/qa", label: "الجودة", description: "فحص المصدر، الصوت، المدة، الترميز والنتيجة النهائية." },
-  { href: "/admin/videos", label: "الطابور", description: "طلبات الانتظار والمعالجة وإعادة المحاولة." },
+  { href: "/admin/video/requests", label: "الطابور", description: "طلبات الانتظار والمعالجة وإعادة المحاولة." },
   { href: "/admin/social", label: "النشر", description: "YouTube وFacebook/Reels والطابور الاجتماعي." },
   { href: "/admin/automation", label: "الأتمتة", description: "الهدف اليومي، AI، المدة، التشغيل العاجل والجدولة." },
 ] as const;
@@ -78,7 +78,7 @@ export default async function VideoFactoryDashboardPage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
-        <Link href="/admin/ai-video" className="rounded-2xl border border-emerald-400/15 bg-emerald-400/5 p-5 hover:border-emerald-400/30">
+        <Link href="/admin/video/studio" className="rounded-2xl border border-emerald-400/15 bg-emerald-400/5 p-5 hover:border-emerald-400/30">
           <p className="text-xs text-emerald-200/55">Production Studio</p>
           <h2 className="mt-1 font-semibold text-brand-gold">استوديو إنشاء الفيديو</h2>
           <p className="mt-2 text-sm leading-6 text-brand-cream/50">اختيار مصدر، إنشاء طلب، وتوليد فيديو source-locked.</p>

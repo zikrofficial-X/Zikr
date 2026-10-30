@@ -317,7 +317,7 @@ export default function AdminAiVideoPage() {
           </div>
         </div>
         <Link
-          href="/admin/videos"
+          href="/admin/video/requests"
           className="text-sm text-brand-gold underline-offset-4 hover:underline"
         >
           متابعة طابور الفيديوهات

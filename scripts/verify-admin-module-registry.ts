@@ -3,11 +3,11 @@ import { ADMIN_MODULES, ADMIN_ROUTE_ALIASES } from "../src/features/admin/config
 
 const failures: string[] = [];
 const seen = new Set<string>();
-for (const module of ADMIN_MODULES) {
-  if (seen.has(module.key)) failures.push(`Duplicate admin module key: ${module.key}`);
-  seen.add(module.key);
-  if (!module.basePath.startsWith("/admin")) failures.push(`Invalid module path: ${module.basePath}`);
-  if (!module.sourceTables.length) failures.push(`Module has no declared source tables: ${module.key}`);
+for (const adminModule of ADMIN_MODULES) {
+  if (seen.has(adminModule.key)) failures.push(`Duplicate admin module key: ${adminModule.key}`);
+  seen.add(adminModule.key);
+  if (!adminModule.basePath.startsWith("/admin")) failures.push(`Invalid module path: ${adminModule.basePath}`);
+  if (!adminModule.sourceTables.length) failures.push(`Module has no declared source tables: ${adminModule.key}`);
 }
 for (const alias of ADMIN_ROUTE_ALIASES) {
   if (!alias.from.startsWith("/admin") || !alias.to.startsWith("/admin")) failures.push(`Invalid admin alias: ${alias.from}`);

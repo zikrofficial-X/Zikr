@@ -88,7 +88,7 @@ export async function AdminPlatformCommandCenter() {
   const attentionCandidates: AttentionItem[] = [
     { key: "drafts", title: "محتوى ينتظر المراجعة", description: "راجع المسودات والعناصر التي لم تكتمل موافقتها.", count: metricValue("drafts"), href: availableRoute("/admin/editorial", "/admin/library", "/admin/content"), tone: "warning" },
     { key: "social", title: "منشورات فاشلة", description: "تحقق من سبب الفشل قبل إعادة محاولة النشر.", count: canReadSocialQueue ? snapshot.queues.socialFailed : null, href: availableRoute("/admin/social"), tone: "danger" },
-    { key: "video", title: "طلبات فيديو فاشلة", description: "افحص الطلبات قبل إعادة المحاولة أو تنظيفها.", count: canReadVideoQueue ? snapshot.queues.videoFailed : null, href: availableRoute("/admin/video-factory/queue", "/admin/video-factory", "/admin/ai-video"), tone: "danger" },
+    { key: "video", title: "طلبات فيديو فاشلة", description: "افحص الطلبات قبل إعادة المحاولة أو تنظيفها.", count: canReadVideoQueue ? snapshot.queues.videoFailed : null, href: availableRoute("/admin/video/requests", "/admin/video", "/admin/video/studio"), tone: "danger" },
     { key: "audit", title: "عمليات إدارية فاشلة", description: "راجع حالات الفشل الظاهرة ضمن أحدث أحداث التدقيق.", count: canReadAudit ? metricValue("auditFailures") : null, href: canReadAudit ? availableRoute("/admin/audit") : undefined, tone: "warning" },
   ];
   const attentionItems = attentionCandidates.filter(
@@ -124,7 +124,7 @@ export async function AdminPlatformCommandCenter() {
           title: "فشل في طابور توليد الفيديو",
           description: "توجد طلبات فيديو فاشلة تحتاج إلى فحص السجل أو إعادة المحاولة.",
           count: snapshot.queues.videoFailed,
-          href: availableRoute("/admin/video-factory/queue", "/admin/video-factory", "/admin/ai-video") ?? "/admin",
+          href: availableRoute("/admin/video/requests", "/admin/video", "/admin/video/studio") ?? "/admin",
         }
       : null,
     canReadSocialQueue && snapshot.queues.socialFailed !== null && snapshot.queues.socialFailed > 0
