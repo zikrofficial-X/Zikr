@@ -1,20 +1,28 @@
 # Phase 19 — Index / Performance Governance
-## ZIKR Finalization — 2026-10-02
+## Updated production checkpoint — 2026-10-30
 
 ### Advisor snapshot
-Supabase Performance Advisor currently reports 77 unused-index findings after Phase 18 retirement.
+Supabase Performance Advisor reports 70 unused-index findings (INFO). This is not a reason to bulk-delete indexes: usage counters are workload- and reset-window-dependent.
 
-### Deliberate cleanup
-Only indexes attached to runtime-retired tables and the obsolete HeyGen processing path are scheduled for removal:
-- hadith_explanations_hadith_id_idx
-- recent_recitations user/played_at/reciter indexes
-- reciter_favorites_reciter_id_idx
-- tawasheeh_favorites user/tawasheeh indexes
-- tawasheeh_playlists user index
-- tawasheeh_playlist_items_tawasheeh_id_idx
-- idx_video_generation_requests_processing_heygen
+### Verified safe retirement set
+Seven non-unique, non-primary indexes were checked directly:
+- `hadith_explanations_hadith_id_idx`
+- `recent_recitations_user_id_idx`
+- `recent_recitations_reciter_id_idx`
+- `reciter_favorites_reciter_id_idx`
+- `tawasheeh_favorites_tawasheeh_id_idx`
+- `tawasheeh_playlist_items_tawasheeh_id_idx`
+- `tawasheeh_playlists_user_id_idx`
 
-Primary/unique/constraint-backed indexes are preserved.
+Each was valid/ready, non-unique, 8 KiB, on a table with zero rows and no FK/view/function dependency. These exact indexes are retired by `20261030070000_retire_runtime_optional_indexes.sql`. The migration also drops `idx_video_generation_requests_processing_heygen` only if it still exists.
 
-### Non-goals
-Do not bulk-delete the remaining unused-index findings. Many belong to active Quran, Kids, Prayer, Content, Social, or Admin paths and need workload evidence before removal.
+### Preserve
+- Primary, unique, constraint-backed, and foreign-key indexes.
+- All indexes on active Quran, Kids, Prayer, Content, Social, and Admin tables unless workload evidence proves redundancy.
+- The remaining unused-index findings are not removed in bulk.
+
+### Verification
+- Re-run Performance Advisor after the migration.
+- Confirm the seven named indexes are absent.
+- Confirm all remaining indexes are valid and ready.
+- Run migration replay, app verification, and production health checks.
