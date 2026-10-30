@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 import { getPublicEnv } from "@/lib/env";
 import { ServiceError } from "@/lib/types/common";
 import type { Scholar } from "@/features/scholars/types/scholars";
@@ -113,13 +114,13 @@ export async function getScholarBySlug(slug: string): Promise<Scholar | null> {
 }
 
 export async function searchScholars(query: string): Promise<Scholar[]> {
-  const q = query.trim().toLowerCase();
+  const q = normalizeArabicSearchText(query);
   if (!q) return [];
 
   const scholars = await getAllScholars();
   return scholars.filter(scholar =>
     [scholar.nameAr, scholar.nameEn, scholar.slug, scholar.bioAr ?? "", scholar.bioEn ?? ""]
-      .some(value => value.toLowerCase().includes(q)),
+      .some(value => normalizeArabicSearchText(value).includes(q)),
   );
 }
 
