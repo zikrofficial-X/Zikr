@@ -23,6 +23,10 @@ jobs:
     timeout-minutes: 50
     env:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+      NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ5bXhkc3drYXhmYWtha3Vna3RzaW0iLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc5MTgzMzk5MiwiZXhwIjoyMTA3NDA5OTk5fQ.H1mKDKeajvE4k7NfPz5jVcy_-nohpDO1lL-eh6RXfGA
+      NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: 224706285284-fubdladk24v49v2lnq4p5jrk5ht1uqk8.apps.googleusercontent.com
+      AUTH_CALLBACK_URL: https://zikrmediaofficial.vercel.app/auth/callback
     steps:
       - name: Checkout
         uses: actions/checkout@v7
