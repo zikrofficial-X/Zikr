@@ -36,6 +36,7 @@ const STORE_BY_DATASET: Record<string, string> = {
   quran_audio: "quranAudio",
   kids_games: "kidsGames",
   kids_game_levels: "kidsGameLevels",
+  dua_categories: "duaCategories",
 };
 
 const MANIFEST_URL = "/offline-content/v1/manifest.json";
@@ -74,6 +75,7 @@ const OFFLINE_CONTENT_STORES = [
   "quran_audio",
   "kids_games",
   "kids_game_levels",
+  "dua_categories",
 ] as const;
 
 export function isCacheableOfflinePageRoute(route: string): boolean {
@@ -361,6 +363,7 @@ export async function clearOfflineLibrary(): Promise<void> {
         quran_audio: "quranAudio",
         kids_games: "kidsGames",
         kids_game_levels: "kidsGameLevels",
+        dua_categories: "duaCategories",
       } as const)[storeName],
     );
   }
