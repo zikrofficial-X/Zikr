@@ -4,6 +4,7 @@ import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { ServiceError } from "@/lib/types/common";
 import type { Story, StoryCategory } from "@/features/stories/types/stories";
 import { PRIMARY_STORY_SOURCES, FALLBACK_STORIES } from "@/features/stories/data/fallback";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 interface StoryRow {
   id: string;
