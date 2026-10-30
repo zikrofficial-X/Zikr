@@ -122,7 +122,7 @@ export async function searchStories(query: string): Promise<Story[]> {
   if (hasSupabaseConfig()) {
     try {
       const rows = await supabaseServerAnonRequest<StoryRow[]>(
-        `/rest/v1/stories?select=id,slug,title,summary,content,category,mood,metadata,published,created_at,updated_at&published=eq.true&is_approved=eq.true&user_id=is.null&searchable_normalized=plfts.simple.${encodeURIComponent(normalizedQuery)}&order=created_at.desc&limit=6`,
+        `/rest/v1/stories?select=id,slug,title,summary,content,category,mood,metadata,published,created_at,updated_at&published=eq.true&is_approved=eq.true&user_id=is.null&searchable_normalized=plfts(simple).${encodeURIComponent(normalizedQuery)}&order=created_at.desc&limit=6`,
         { timeoutMs: 8000, retries: 1, cache: "no-store" },
       );
       if (rows.length) return rows.filter(isStoryRow).map(mapStoryRow);
