@@ -7,7 +7,7 @@ const supabaseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABAS
 const apiKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLIC_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
 
 if (!supabaseUrl || !apiKey) {
-  if (process.argv.includes('--required')) {
+  if (process.argv.includes('--required') || process.env.CI === 'true' || process.env.VERCEL === '1') {
     throw new Error('Offline export requires SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and a Supabase service-role or public anon key.');
   }
   console.warn('[offline-export] Supabase server credentials are not configured; keeping the checked-in offline snapshot.');
