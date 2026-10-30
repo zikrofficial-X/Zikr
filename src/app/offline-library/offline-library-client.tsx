@@ -11,6 +11,8 @@ import {
   clearOfflineLibrary,
   requestOfflineRouteCache,
   isCacheableOfflinePageRoute,
+  finalizeOfflineLibrary,
+  getOfflineLibraryStatus,
 } from '@/lib/offline-pack';
 
 type Manifest = Awaited<ReturnType<typeof fetchOfflineManifest>>;
@@ -46,6 +48,12 @@ const DATASET_LABELS: Record<string, string> = {
   kids: 'محتوى الأطفال',
   companions: 'الصحابة',
   companion_stories: 'قصص الصحابة',
+  scholars: 'العلماء',
+  tawasheeh: 'التواشيح',
+  quran_reciters: 'قراء القرآن',
+  quran_audio: 'مقاطع التلاوة',
+  kids_games: 'ألعاب الأطفال',
+  kids_game_levels: 'مستويات الألعاب',
 };
 
 function normalizeRoute(value: string): string | null {
@@ -111,7 +119,8 @@ export default function OfflineLibraryClient() {
       fetchOfflineManifest(),
       discoverSupplementalRoutes(),
       discoverSitemapRoutes(),
-    ]).then(([nextManifest, supplementalRoutes, sitemapRoutes]) => {
+      getOfflineLibraryStatus(),
+    ]).then(([nextManifest, supplementalRoutes, sitemapRoutes, offlineStatus]) => {
       if (!mounted) return;
       setManifest(nextManifest);
       const routes = Array.from(
@@ -125,8 +134,11 @@ export default function OfflineLibraryClient() {
         ]),
       );
       setDiscoveredRoutes(routes);
+      setCachedRoutes(offlineStatus.cachedRoutes);
       setStatus(
-        `تم اكتشاف ${routes.length.toLocaleString('ar-EG')} صفحة عامة من الـ sitemap والحزم المحلية، جاهزة للتنزيل.`
+        offlineStatus.complete
+          ? `المكتبة مكتملة محليًا: ${offlineStatus.cachedRoutes.toLocaleString('ar-EG')} صفحة محفوظة مع التحقق من قواعد البيانات.`
+          : `تم اكتشاف ${routes.length.toLocaleString('ar-EG')} صفحة عامة. المكتبة تحتاج إلى تحديث أو استكمال.`
       );
     }).catch(() => {
       if (!mounted) return;
@@ -195,6 +207,12 @@ export default function OfflineLibraryClient() {
         return;
       }
 
+      setManifest(result.manifest);
+      if (!result.complete) {
+        setStatus(`توقف تجهيز الصفحات لأن ${result.failedDatasets.length.toLocaleString('ar-EG')} من مجموعات البيانات لم تكتمل: ${result.failedDatasets.map(name => DATASET_LABELS[name] ?? name).join('، ')}. أعد المحاولة بعد إصلاح المصدر أو الاتصال.`);
+        return;
+      }
+
       const routes = Array.from(new Set(discoveredRoutes));
       const batches: string[][] = [];
       for (let index = 0; index < routes.length; index += ROUTE_BATCH_SIZE) {
@@ -216,12 +234,17 @@ export default function OfflineLibraryClient() {
         setFailedRoutes(failures);
       }
 
-      const complete = result.complete && failures.length === 0 && cached === routes.length;
-      setManifest(result.manifest);
+      const complete = failures.length === 0 && cached === routes.length;
+      const finalized = complete
+        ? await finalizeOfflineLibrary(result.manifest, result.datasetCounts, routes, routes)
+        : false;
+      const recordTotal = Object.values(result.datasetCounts).reduce((sum, count) => sum + count, 0);
+      setCachedRoutes(cached);
+      setFailedRoutes(failures);
       setStatus(
-        complete
-          ? `اكتملت مكتبة ذِكر أوفلاين: ${routes.length.toLocaleString('ar-EG')} صفحة عامة + ${totalRecords.toLocaleString('ar-EG')} سجل من datasets.`
-          : `تم تنزيل datasets كاملة وتجهيز ${cached.toLocaleString('ar-EG')} من ${routes.length.toLocaleString('ar-EG')} صفحة. ${failures.length.toLocaleString('ar-EG')} صفحة تحتاج إعادة محاولة.`,
+        finalized
+          ? `اكتملت مكتبة ذِكر وتم التحقق منها: ${routes.length.toLocaleString('ar-EG')} صفحة عامة و${recordTotal.toLocaleString('ar-EG')} سجل محلي. يمكنك الآن فتح الصفحات العامة دون اتصال.`
+          : `لم يتم اعتماد الاكتمال. تم حفظ ${cached.toLocaleString('ar-EG')} من ${routes.length.toLocaleString('ar-EG')} صفحة؛ ${failures.length.toLocaleString('ar-EG')} صفحة فشلت أو تعذر التحقق منها. أعد المحاولة.`,
       );
     } catch (error) {
       console.warn('[OfflineLibrary] Full offline refresh failed', error);
@@ -283,7 +306,8 @@ export default function OfflineLibraryClient() {
             <p><strong className="text-foreground">الصفحات العامة:</strong> صفحات الأقسام والتفاصيل العامة تُكتشف من sitemap ومن قوائم المسارات المحلية، لذلك لا تعتمد الحزمة على قائمة ثابتة قد تصبح قديمة بعد إضافة صفحة جديدة.</p>
           </div>
           <div className="space-y-3 leading-8 text-muted-foreground">
-            <p><strong className="text-foreground">ما لا ننزله تلقائيًا:</strong> ملفات الصوت والفيديو الخارجية الضخمة، وحسابات المستخدمين وبيانات الإدارة. الصفحات والبيانات الوصفية تظل متاحة عند انقطاع الشبكة، بينما البث الخارجي يحتاج اتصالًا.</p>
+            <p><strong className="text-foreground">ما لا ننزله تلقائيًا:</strong> ملفات الصوت والفيديو الخارجية الضخمة، وحسابات المستخدمين وبيانات الإدارة. نحفظ إعداداتك ومفضلتك المحلية وقائمة نتائج الألعاب المنتظرة للمزامنة، ولا نمسحها عند تحديث الحزمة.</p>
+            <p><strong className="text-foreground">الصوت:</strong> بيانات القراء وروابط التلاوة تحفظ ضمن الحزمة عند توفرها، أما تشغيل الملفات الخارجية أو البث المباشر فيحتاج اتصالًا ما لم يكن الملف نفسه محفوظًا محليًا.</p>
             <p><strong className="text-foreground">التحديث:</strong> استخدم زر التحديث وأنت متصل لإعادة مزامنة البيانات والصفحات. العملية مقسمة إلى دفعات حتى تتعامل بأمان مع مكتبة كبيرة.</p>
           </div>
         </div>
