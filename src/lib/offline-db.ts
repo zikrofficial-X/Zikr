@@ -40,6 +40,7 @@ const STORES: DbStore[] = [
   { name: 'quranAudio', keyPath: 'id', indexes: [{ name: 'surahId', keyPath: 'surah_id' }, { name: 'reciterId', keyPath: 'reciter_id' }] },
   { name: 'kidsGames', keyPath: 'id', indexes: [{ name: 'slug', keyPath: 'slug' }] },
   { name: 'kidsGameLevels', keyPath: 'id', indexes: [{ name: 'gameId', keyPath: 'game_id' }] },
+  { name: 'duaCategories', keyPath: 'id', indexes: [{ name: 'slug', keyPath: 'slug' }] },
   {
     name: 'favorites',
     keyPath: 'id',
