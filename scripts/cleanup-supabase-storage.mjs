@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import { createHash } from "node:crypto";
 
 const VIDEO_BUCKET = "videos";
 const ANDROID_BUCKET = "android-releases";
@@ -184,6 +183,7 @@ async function verifyAndroidReleaseCopy(client, version, storageFiles) {
 async function findUnexpectedVideoReferences(client, path, publicUrl, requestId, queueId) {
   const checks = [
     ["kids_content", "video_url", publicUrl],
+    ["videos", "thumbnail_url", publicUrl],
     ["media_assets", "storage_path", path],
     ["media_assets", "url", publicUrl],
     ["social_sync_jobs", "source_media_path", path],
@@ -263,10 +263,8 @@ async function updateVideoRecords(client, candidate, retention) {
 
 async function updateAndroidBucketRows(client, paths) {
   if (!paths.length) return;
-  for (const path of paths) {
-    const { error } = await client.storage.from(ANDROID_BUCKET).remove([path]);
-    if (error) throw new Error(`Android Storage remove failed for ${path}: ${error.message}`);
-  }
+  const { error } = await client.storage.from(ANDROID_BUCKET).remove(paths);
+  if (error) throw new Error(`Android Storage remove failed: ${error.message}`);
 }
 
 async function main() {
@@ -325,7 +323,7 @@ async function main() {
       skipped.push({ id: row.id, reason: "No exact completed video-generation record." });
       continue;
     }
-    if (!asObject(request.content) || Array.isArray(request.content)) {
+    if (!request.content || typeof request.content !== "object" || Array.isArray(request.content)) {
       skipped.push({ id: row.id, reason: "Video request content is not a JSON object." });
       continue;
     }
@@ -365,10 +363,12 @@ async function main() {
     .sort((a, b) => compareSemverTags(b, a));
   const protectedTags = selectProtectedAndroidTags(androidVersions, pinnedTag);
   const androidDeletes = [];
+  const androidVersionFiles = new Map();
 
   for (const version of androidVersions) {
     if (protectedTags.has(version)) continue;
     const versionFiles = await listDirectory(client, ANDROID_BUCKET, `android/${version}`);
+    androidVersionFiles.set(version, versionFiles);
     const verification = await verifyAndroidReleaseCopy(client, version, versionFiles);
     if (!verification.ok) {
       console.log(`KEEP Android ${version}: ${verification.reason}`);
@@ -385,8 +385,10 @@ async function main() {
   }
 
   const androidBytes = androidDeletes.reduce((sum, item) => {
-    const files = androidRoot.find((entry) => entry.name === item.version);
-    return sum + item.paths.length * Number(files?.metadata?.size ?? 0);
+    const files = androidVersionFiles.get(item.version) ?? [];
+    return sum + files
+      .filter((file) => file.id && REQUIRED_ANDROID_ASSETS.includes(file.name))
+      .reduce((versionSum, file) => versionSum + Number(file.metadata?.size ?? 0), 0);
   }, 0);
   console.log(
     `Android copies eligible: ${androidDeletes.map((item) => item.version).join(", ") || "none"}.`,
@@ -418,6 +420,10 @@ async function main() {
         publishedAt: item.publishedAt,
         reason: "All targeted social platforms have confirmed remote IDs; local source retained for at least 48 hours.",
         bytes: item.bytes,
+        confirmedPlatforms: item.queue.target_platforms.map((platform) => ({
+          platform,
+          remoteId: asString(asObject(asObject(item.queue.metadata).platformResults)[platform]?.remoteId),
+        })),
       };
       await updateVideoRecords(client, item, retention);
     }
