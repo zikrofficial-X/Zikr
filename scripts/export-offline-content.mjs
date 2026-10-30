@@ -10,7 +10,7 @@ if (!supabaseUrl || !apiKey) {
   if (process.argv.includes('--required') || process.env.CI === 'true' || process.env.VERCEL === '1') {
     throw new Error('Offline export requires SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and a Supabase service-role or public anon key.');
   }
-  console.warn('[offline-export] Supabase server credentials are not configured; keeping the checked-in offline snapshot.');
+  console.warn('[offline-export] Supabase credentials are not configured; keeping the checked-in offline snapshot.');
   process.exit(0);
 }
 
@@ -41,6 +41,34 @@ const datasets = [
   ['kids_game_levels', 'kids_game_levels', 'select=*', 'published=eq.true', 'order=game_id.asc,level_no.asc'],
   ['dua_categories', 'dua_categories', 'select=*', 'published=eq.true', 'is_active=eq.true', 'order=slug.asc'],
 ];
+
+const minimumRecords = {
+  surahs: 114,
+  ayahs: 6000,
+  tafsir: 6000,
+  hadith_books: 1,
+  hadith: 2000,
+  prophets: 25,
+  prophet_sections: 100,
+  battles: 20,
+  battle_events: 50,
+  conquests: 10,
+  conquest_events: 30,
+  articles: 10,
+  duas: 20,
+  kids: 20,
+  companions: 10,
+  stories: 10,
+  article_categories: 3,
+  companion_stories: 10,
+  scholars: 5,
+  tawasheeh: 5,
+  quran_reciters: 100,
+  quran_audio: 10000,
+  kids_games: 10,
+  kids_game_levels: 500,
+  dua_categories: 3,
+};
 
 async function fetchAll(table, filters) {
   const rows = [];
@@ -73,6 +101,17 @@ async function fetchAll(table, filters) {
   return rows;
 }
 
+const exported = [];
+for (const [dataset, table, ...filters] of datasets) {
+  const rows = await fetchAll(table, filters);
+  const minimum = minimumRecords[dataset] ?? 0;
+  if (rows.length < minimum) {
+    throw new Error(`Offline export safety check failed for ${dataset}: expected at least ${minimum} rows, received ${rows.length}.`);
+  }
+  exported.push({ dataset, rows });
+  console.log(`[offline-export] verified ${dataset}: ${rows.length}`);
+}
+
 await mkdir(outputDir, { recursive: true });
 const manifestPath = path.join(outputDir, 'manifest.json');
 let previous = { routes: [] };
@@ -86,13 +125,10 @@ const manifest = {
   routes: Array.isArray(previous.routes) ? previous.routes : [],
 };
 
-for (const [dataset, table, ...filters] of datasets) {
-  const rows = await fetchAll(table, filters);
+for (const { dataset, rows } of exported) {
   const fileName = `${dataset}.json`;
   await writeFile(path.join(outputDir, fileName), `${JSON.stringify(rows)}\n`, 'utf8');
   manifest.datasets[dataset] = { path: `/offline-content/v1/${fileName}`, count: rows.length };
-  console.log(`[offline-export] ${dataset}: ${rows.length}`);
 }
-
 await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
-console.log(`[offline-export] Wrote ${Object.keys(manifest.datasets).length} datasets; version ${manifest.version}`);
+console.log(`[offline-export] Wrote ${Object.keys(manifest.datasets).length} validated datasets; version ${manifest.version}`);
