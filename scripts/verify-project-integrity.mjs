@@ -185,6 +185,9 @@ const expectedDatasets = {
   kids: 'kids',
   companions: 'companions',
   companion_stories: 'companionStories',
+  scholars: 'scholars',
+  stories: 'stories',
+  article_categories: 'articleCategories',
 };
 const offlineDbSource = read('src/lib/offline-db.ts');
 const offlinePackSource = read('src/lib/offline-pack.ts');
@@ -203,11 +206,13 @@ for (const route of offlineManifest.routes || []) {
 }
 
 requireText('public/sw.js', [
-  'const CACHE_NAME = "zikr-v13"',
+  'const CACHE_NAME = "zikr-v14"',
+  'CACHE_PREFIX = "zikr-"',
   'CACHE_OFFLINE_ROUTES',
   'OFFLINE_CONTENT_PREFIX',
-  'pathname.startsWith("/api/")',
-  'pathname.startsWith("/admin")',
+  '"/settings"',
+  '"/account"',
+  '"/dashboard"',
 ]);
 const serviceWorker = read('public/sw.js');
 const htmlHandlerStart = serviceWorker.indexOf('if (request.headers.get("accept")?.includes("text/html"))');
@@ -229,6 +234,9 @@ requireText('src/lib/offline-pack.ts', [
   'verifyCompletedDatasets',
   'COMPLETION_DB_KEY',
   'requestOfflineRouteCache',
+  'routesComplete',
+  'fullyComplete',
+  'offline-content-version-v6',
   'failedRoutes',
 ]);
 requireText('src/lib/offline-db.ts', [
