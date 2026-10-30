@@ -1,4 +1,4 @@
--- ZIKR content-depth refresh (2026-10-30).
+-- ZIKR content-depth refresh (2026-10-30); idempotent so it can be safely re-applied.
 -- Quran-first prophet chapters are hydrated after the canonical Quran corpus was seeded.
 -- Existing approved content is expanded; existing review/publish states and source records are retained.
 -- This migration is data-only: no schema changes, deletes, permissions, or secrets are modified.
