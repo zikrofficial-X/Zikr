@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getArticles } from "@/features/articles/services/articles";
+import { getArticles, getBundledLongformArticles } from "@/features/articles/services/articles";
 import { searchHadith } from "@/features/hadith/services/hadith";
 import { getDuas } from "@/features/dua/services/dua";
 import { getProphets } from "@/features/prophets/services/prophets";
@@ -9,6 +9,7 @@ import { getStories } from "@/features/stories/services/stories";
 import { searchLocalQuran } from "@/features/quran/services/quran-server";
 import { searchScholars } from "@/features/scholars/services/scholars";
 import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 export type PublicSearchResult = {
   id: string;
@@ -22,7 +23,7 @@ export type PublicSearchResult = {
 const MAX_RESULTS_PER_TYPE = 6;
 
 async function legacyGlobalSearch(query: string): Promise<PublicSearchResult[]> {
-  const q = query.trim().toLocaleLowerCase("ar");
+  const q = normalizeArabicSearchText(query);
   if (q.length < 2) return [];
 
   const [quran, hadith, duas, prophets, companions, stories, articles, scholars] =
@@ -62,7 +63,7 @@ async function legacyGlobalSearch(query: string): Promise<PublicSearchResult[]> 
   }
 
   const contains = (value: string | undefined) =>
-    Boolean(value && value.toLocaleLowerCase("ar").includes(q));
+    Boolean(value && normalizeArabicSearchText(value).includes(q));
 
   for (const item of duas) {
     if (
@@ -207,7 +208,29 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
   if (cleanQuery.length < 2 || cleanQuery.length > 100) return [];
 
   const indexedResults = await searchIndexedContent(cleanQuery);
-  if (indexedResults !== null) return indexedResults;
+  if (indexedResults !== null) {
+    const knownHrefs = new Set(indexedResults.map((item) => item.href));
+    const bundledArticles = getBundledLongformArticles("ar")
+      .filter((article) => {
+        const matches = [
+          article.title,
+          article.summary ?? "",
+          article.content ?? "",
+          ...(article.tags ?? []),
+        ].some((value) => normalizeArabicSearchText(value).includes(normalizeArabicSearchText(cleanQuery)));
+        return matches && !knownHrefs.has(`/articles/${article.slug}`);
+      })
+      .slice(0, MAX_RESULTS_PER_TYPE)
+      .map((article): PublicSearchResult => ({
+        id: article.id,
+        type: "article",
+        labelAr: "مقال",
+        title: article.title,
+        subtitle: article.summary || article.author || "مقال تعليمي من مكتبة ذِكر",
+        href: `/articles/${article.slug}`,
+      }));
+    return [...indexedResults, ...bundledArticles].slice(0, 40);
+  }
 
   return legacyGlobalSearch(cleanQuery);
 }
