@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sun, Moon, BedDouble, Sunrise, BookOpen, type LucideIcon } from 'lucide-react';
 
-const adhkarData: Record<string, { title: string; icon: LucideIcon; items: { text: string; count: number; reward: string }[] }> = {
+const adhkarData: Record<string, { title: string; icon: LucideIcon; items: { text: string; count: number; reward: string; source?: string }[] }> = {
   morning: {
     title: 'أذكار الصباح',
     icon: Sun,
@@ -28,6 +28,7 @@ const adhkarData: Record<string, { title: string; icon: LucideIcon; items: { tex
       { text: 'اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ الْمَصِيرُ', count: 1, reward: '' },
       { text: 'اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ', count: 1, reward: 'كان النبي ﷺ لا يدعها صباحاً ومساءً' },
       { text: 'اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ، وَأَعُوذُ بِكَ مِنَ الْعَجْزِ وَالْكَسَلِ، وَأَعُوذُ بِكَ مِنَ الْجُبْنِ وَالْبُخْلِ، وَأَعُوذُ بِكَ مِنْ غَلَبَةِ الدَّيْنِ وَقَهْرِ الرِّجَالِ', count: 1, reward: '' },
+      { text: 'اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ، وَالْعَجْزِ وَالْكَسَلِ، وَالْجُبْنِ وَالْبُخْلِ، وَضَلَعِ الدَّيْنِ، وَغَلَبَةِ الرِّجَالِ', count: 1, reward: '', source: 'صحيح البخاري 6369 — sunnah.com/bukhari:6369' },
       { text: 'أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ', count: 3, reward: 'لم يضره شيء في تلك الليلة' },
     ],
   },
@@ -35,7 +36,7 @@ const adhkarData: Record<string, { title: string; icon: LucideIcon; items: { tex
     title: 'أذكار النوم',
     icon: BedDouble,
     items: [
-      { text: 'بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا', count: 1, reward: '' },
+      { text: 'بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا', count: 1, reward: '', source: 'صحيح البخاري 6324 — sunnah.com/bukhari/80/21' },
       { text: 'اللَّهُمَّ قِنِي عَذَابَكَ يَوْمَ تَبْعَثُ عِبَادَكَ', count: 3, reward: '' },
       { text: 'سُبْحَانَ اللَّهِ (33) وَالْحَمْدُ لِلَّهِ (33) وَاللَّهُ أَكْبَرُ (34)', count: 1, reward: 'خير لكما من خادم' },
       { text: 'آية الكرسي: اللَّهُ لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ...', count: 1, reward: 'لا يقربك شيطان حتى تصبح' },
@@ -60,6 +61,8 @@ const adhkarData: Record<string, { title: string; icon: LucideIcon; items: { tex
       { text: 'الْحَمْدُ لِلَّهِ', count: 33, reward: '' },
       { text: 'اللَّهُ أَكْبَرُ', count: 33, reward: '' },
       { text: 'لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ', count: 1, reward: 'تمام المئة' },
+      { text: 'اللَّهُمَّ أَعِنِّي عَلَى ذِكْرِكَ وَشُكْرِكَ وَحُسْنِ عِبَادَتِكَ', count: 1, reward: '', source: 'سنن أبي داود 1522 — sunnah.com/abudawud:1522' },
+      { text: 'اللَّهُمَّ لَا مَانِعَ لِمَا أَعْطَيْتَ وَلَا مُعْطِيَ لِمَا مَنَعْتَ وَلَا يَنْفَعُ ذَا الْجَدِّ مِنْكَ الْجَدُّ', count: 1, reward: '', source: 'صحيح البخاري — sunnah.com/bukhari/10/236' },
       { text: 'آية الكرسي', count: 1, reward: 'لم يمنعه من دخول الجنة إلا الموت' },
     ],
   },
@@ -173,6 +176,11 @@ export function AdhkarPage() {
               {dhikr.reward && (
                 <p className="text-sm text-brand-gold/80 text-center border-t border-brand-gold/20 pt-3">
                   {dhikr.reward}
+                </p>
+              )}
+              {dhikr.source && (
+                <p className="text-xs text-brand-cream/55 text-center" dir="rtl">
+                  المصدر: {dhikr.source}
                 </p>
               )}
 
