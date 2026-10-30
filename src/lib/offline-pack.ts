@@ -467,6 +467,9 @@ export async function hydrateOfflineContent(
   const failedDatasets: string[] = [];
   const datasetCounts: Record<string, number> = {};
   const pendingDatasets: Record<string, unknown[]> = {};
+  for (const dataset of OFFLINE_CONTENT_STORES) {
+    if (!manifest.datasets[dataset]) failedDatasets.push(dataset);
+  }
 
   for (const [dataset, definition] of Object.entries(manifest.datasets)) {
     const storeName = STORE_BY_DATASET[dataset];
