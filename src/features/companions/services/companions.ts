@@ -7,6 +7,7 @@ import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/
 import { resolveCanonicalPublished } from "@/lib/data/content-merge";
 import { COMPANIONS } from "@/features/companions/data/fallback";
 import { uniqueCompanionSummaries } from "@/features/companions/utils/companions";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 export type CompanionSummary = {
   id: string;
