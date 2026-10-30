@@ -31,14 +31,19 @@ const STORE_BY_DATASET: Record<string, string> = {
   scholars: "scholars",
   stories: "stories",
   article_categories: "articleCategories",
+  tawasheeh: "tawasheeh",
+  quran_reciters: "quranReciters",
+  quran_audio: "quranAudio",
+  kids_games: "kidsGames",
+  kids_game_levels: "kidsGameLevels",
 };
 
 const MANIFEST_URL = "/offline-content/v1/manifest.json";
 const MANIFEST_DB_KEY = "offline_manifest";
 const COMPLETION_DB_KEY = "offline_completion_v1";
-// v4 reflects the expanded public-route discovery and batched offline strategy.
-const VERSION_KEY = "offline-content-version-v6";
-const OFFLINE_CACHE_NAME = "zikr-v14";
+// v7 adds the complete public audio, scholars, and kids-games catalog.
+const VERSION_KEY = "offline-content-version-v7";
+const OFFLINE_CACHE_NAME = "zikr-v15";
 const ROUTE_SNAPSHOT_URL = "/offline-content/v2/routes.json";
 // Keep the client verifier, offline pack, and Service Worker on one cache name.
 const ROUTE_CACHE_REQUEST = "CACHE_OFFLINE_ROUTES";
@@ -64,6 +69,11 @@ const OFFLINE_CONTENT_STORES = [
   "scholars",
   "stories",
   "article_categories",
+  "tawasheeh",
+  "quran_reciters",
+  "quran_audio",
+  "kids_games",
+  "kids_game_levels",
 ] as const;
 
 export function isCacheableOfflinePageRoute(route: string): boolean {
@@ -167,10 +177,12 @@ async function fetchSupplementalRouteInventory(): Promise<string[]> {
   }
 }
 
-async function persistManifest(manifest: OfflineManifest): Promise<void> {
+async function persistManifest(manifest: OfflineManifest): Promise<boolean> {
+  let persisted = false;
   try {
     await offlineDb.initialize();
     await offlineDb.saveSetting(MANIFEST_DB_KEY, manifest);
+    persisted = true;
   } catch (error) {
     console.warn(
       "[OfflinePack] Failed to persist manifest in IndexedDB",
@@ -190,6 +202,7 @@ async function persistManifest(manifest: OfflineManifest): Promise<void> {
           },
         })
       );
+      persisted = true;
     }
   } catch (error) {
     console.warn(
@@ -197,6 +210,7 @@ async function persistManifest(manifest: OfflineManifest): Promise<void> {
       error
     );
   }
+  return persisted;
 }
 
 async function persistCompletion(completion: OfflineCompletion): Promise<void> {
@@ -237,6 +251,7 @@ async function verifyCompletedDatasets(
       if (!storeName || completion.datasetCounts?.[storeName] !== definition.count) return null;
       if ((await offlineDb.count(storeName)) !== definition.count) return null;
     }
+    if (!(await verifyCompletedRoutes(completion.cachedRoutes))) return null;
     return completion;
   } catch {
     return null;
@@ -341,6 +356,11 @@ export async function clearOfflineLibrary(): Promise<void> {
         scholars: "scholars",
         stories: "stories",
         article_categories: "articleCategories",
+        tawasheeh: "tawasheeh",
+        quran_reciters: "quranReciters",
+        quran_audio: "quranAudio",
+        kids_games: "kidsGames",
+        kids_game_levels: "kidsGameLevels",
       } as const)[storeName],
     );
   }
@@ -478,8 +498,7 @@ export async function hydrateOfflineContent(
       }
 
       // Replace, do not append: removed/unpublished rows must not survive in local storage.
-      await offlineDb.clear(storeName);
-      if (rows.length > 0) await offlineDb.setMany(storeName, rows);
+      await offlineDb.replaceAll(storeName, rows);
       datasetCounts[storeName] = await offlineDb.count(storeName);
       if (datasetCounts[storeName] !== definition.count) failedDatasets.push(dataset);
     } catch (error) {
@@ -517,11 +536,13 @@ export async function hydrateOfflineContent(
   const routesComplete =
     Boolean(options.cacheRoutes) &&
     failedRoutes.length === 0 &&
-    cachedRoutes.length === routeInventory.length;
+    cachedRoutes.length === routeInventory.length &&
+    (await verifyCompletedRoutes(cachedRoutes));
   const fullyComplete = complete && routesComplete;
 
   if (fullyComplete) {
-    await persistManifest(manifest);
+    const manifestPersisted = await persistManifest(manifest);
+    if (!manifestPersisted) throw new Error("Offline manifest could not be persisted.");
     await persistCompletion({
       version: manifest.version,
       datasetCounts,
@@ -551,6 +572,24 @@ export async function hydrateOfflineContent(
     totalRoutes: routeInventory.length,
     failedRoutes,
   };
+}
+
+
+export async function getOfflineLibraryStatus(expectedRoutes: string[] = []): Promise<{ complete: boolean; cachedRoutes: number }> {
+  const manifest = await fetchOfflineManifest();
+  if (!manifest) return { complete: false, cachedRoutes: 0 };
+  try {
+    await offlineDb.initialize();
+    const completion = await verifyCompletedDatasets(manifest);
+    if (!completion) return { complete: false, cachedRoutes: 0 };
+    const requiredRoutes = mergedRoutes(manifest, await fetchSupplementalRouteInventory(), expectedRoutes);
+    const complete = requiredRoutes.every(route => completion.cachedRoutes.includes(route));
+    return complete
+      ? { complete: true, cachedRoutes: completion.cachedRoutes.length }
+      : { complete: false, cachedRoutes: 0 };
+  } catch {
+    return { complete: false, cachedRoutes: 0 };
+  }
 }
 
 export async function getOfflineDataset<T>(dataset: string): Promise<T[]> {
