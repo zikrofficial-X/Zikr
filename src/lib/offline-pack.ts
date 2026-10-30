@@ -493,7 +493,7 @@ export async function finalizeOfflineLibrary(
   return true;
 }
 
-export async function getOfflineLibraryStatus(): Promise<{
+export async function getOfflineLibraryStatus(expectedRoutes: string[] = []): Promise<{
   complete: boolean; cachedRoutes: number; datasetCounts: Record<string, number>;
 }> {
   const manifest = await fetchOfflineManifest();
@@ -501,7 +501,11 @@ export async function getOfflineLibraryStatus(): Promise<{
   try {
     await offlineDb.initialize();
     const completion = await verifyCompletedDatasets(manifest);
-    return completion
+    const allExpectedRoutes = mergedRoutes(manifest, expectedRoutes);
+    const isComplete = Boolean(
+      completion && allExpectedRoutes.every(route => completion.cachedRoutes.includes(route))
+    );
+    return isComplete && completion
       ? { complete: true, cachedRoutes: completion.cachedRoutes.length, datasetCounts: completion.datasetCounts }
       : { complete: false, cachedRoutes: 0, datasetCounts: {} };
   } catch {
