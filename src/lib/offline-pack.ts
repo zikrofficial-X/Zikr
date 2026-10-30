@@ -361,7 +361,7 @@ export async function clearOfflineLibrary(): Promise<void> {
       registration.active ?? registration.waiting ?? registration.installing;
 
     if (worker) {
-      await new Promise<void>(resolve => {
+      await new Promise<void>((resolve, reject) => {
         const channel = new MessageChannel();
         const timeoutId = window.setTimeout(() => {
           channel.port1.onmessage = null;
