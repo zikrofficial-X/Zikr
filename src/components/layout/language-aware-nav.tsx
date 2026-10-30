@@ -21,7 +21,7 @@ export function LanguageAwareNav({ links }: { links: NavLink[] }) {
 
   return (
     <nav
-      className="hidden items-center justify-end gap-1 lg:flex"
+      className="hidden min-w-0 flex-1 items-center justify-end gap-0.5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] lg:flex"
       aria-label={ariaLabel}
     >
       {links.map((link) => {
@@ -36,7 +36,7 @@ export function LanguageAwareNav({ links }: { links: NavLink[] }) {
             href={link.href}
             aria-current={current ? 'page' : undefined}
             className={[
-              'inline-flex min-h-10 items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+              'inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl px-2 py-2 text-xs font-medium transition-colors xl:gap-2 xl:px-2.5 xl:text-sm',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold',
               current
                 ? 'bg-brand-gold/12 text-brand-gold'

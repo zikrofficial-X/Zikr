@@ -14,6 +14,8 @@ interface StoryRow {
   category: string;
   mood?: string;
   published?: boolean;
+  is_approved?: boolean;
+  user_id?: string | null;
   metadata?: Record<string, unknown>;
   created_at?: string;
   updated_at?: string;
@@ -65,13 +67,13 @@ export async function getStories(limit = 100): Promise<Story[]> {
     let response: StoryRow[] | undefined;
     try {
       response = await supabaseServerAnonRequest<StoryRow[]>(
-        `/rest/v1/stories?select=id,slug,title,summary,content,category,mood,metadata,published,created_at,updated_at&published=eq.true&limit=${limit}&order=created_at.desc`,
+        `/rest/v1/stories?select=id,slug,title,summary,content,category,mood,metadata,published,created_at,updated_at&published=eq.true&is_approved=eq.true&user_id=is.null&limit=${limit}&order=created_at.desc`,
         { cache: "force-cache", next: { revalidate: 1800 } }
       );
     } catch (summaryError) {
       console.warn("[stories] Summary column may not exist, trying without it", summaryError);
       response = await supabaseServerAnonRequest<StoryRow[]>(
-        `/rest/v1/stories?select=id,slug,title,category,published,created_at,updated_at&published=eq.true&limit=${limit}&order=created_at.desc`,
+        `/rest/v1/stories?select=id,slug,title,category,published,created_at,updated_at&published=eq.true&is_approved=eq.true&user_id=is.null&limit=${limit}&order=created_at.desc`,
         { cache: "force-cache", next: { revalidate: 1800 } }
       );
     }

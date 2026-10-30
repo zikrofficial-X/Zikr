@@ -8,6 +8,7 @@ import { getPublishedCompanions } from "@/features/companions/services/companion
 import { getStories } from "@/features/stories/services/stories";
 import { searchLocalQuran } from "@/features/quran/services/quran-server";
 import { searchScholars } from "@/features/scholars/services/scholars";
+import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
 
 export type PublicSearchResult = {
   id: string;
@@ -20,7 +21,7 @@ export type PublicSearchResult = {
 
 const MAX_RESULTS_PER_TYPE = 6;
 
-export async function globalSearch(query: string): Promise<PublicSearchResult[]> {
+async function legacyGlobalSearch(query: string): Promise<PublicSearchResult[]> {
   const q = query.trim().toLocaleLowerCase("ar");
   if (q.length < 2) return [];
 
@@ -150,4 +151,63 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
   }
 
   return results.slice(0, 40);
+}
+
+
+type SearchRpcRow = {
+  id: string;
+  type: PublicSearchResult["type"];
+  label_ar: string;
+  title: string;
+  subtitle: string;
+  href: string;
+};
+
+async function searchIndexedContent(query: string): Promise<PublicSearchResult[] | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  try {
+    const rows = await supabaseServerAnonRequest<SearchRpcRow[]>(
+      "/rest/v1/rpc/search_public_content",
+      {
+        method: "POST",
+        body: JSON.stringify({ p_query: query, p_limit: 40 }),
+        timeoutMs: 12_000,
+        retries: 0,
+        cache: "no-store",
+      },
+    );
+
+    if (!Array.isArray(rows)) throw new Error("Search RPC returned an unexpected payload.");
+
+    return rows
+      .filter((row) =>
+        typeof row.id === "string" &&
+        typeof row.title === "string" &&
+        typeof row.href === "string" &&
+        row.href.startsWith("/") &&
+        ["surah", "hadith", "dua", "story", "article", "prophet", "companion", "scholar"].includes(row.type),
+      )
+      .map((row) => ({
+        id: row.id,
+        type: row.type,
+        labelAr: row.label_ar,
+        title: row.title,
+        subtitle: row.subtitle,
+        href: row.href,
+      }));
+  } catch (error) {
+    console.error("[search] Indexed Supabase search failed; using bounded fallback:", error);
+    return null;
+  }
+}
+
+export async function globalSearch(query: string): Promise<PublicSearchResult[]> {
+  const cleanQuery = query.trim();
+  if (cleanQuery.length < 2 || cleanQuery.length > 100) return [];
+
+  const indexedResults = await searchIndexedContent(cleanQuery);
+  if (indexedResults !== null) return indexedResults;
+
+  return legacyGlobalSearch(cleanQuery);
 }

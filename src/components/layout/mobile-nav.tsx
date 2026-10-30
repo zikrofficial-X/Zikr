@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { Session, User } from "@supabase/supabase-js";
 import { usePathname } from "next/navigation";
@@ -47,6 +47,10 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
   const { isEnglish, dir } = useLanguage();
   const [open, setOpen] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [menuQuery, setMenuQuery] = useState("");
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const drawerRef = useRef<HTMLElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
 
@@ -58,12 +62,42 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
     [pathname],
   );
 
+  const searchNeedle = menuQuery.trim().toLocaleLowerCase(isEnglish ? "en" : "ar");
+  const filteredGroups = useMemo(
+    () =>
+      SITE_CATALOG.map((group) => {
+        const groupMatches = [
+          group.ar,
+          group.en,
+          group.descriptionAr,
+          group.descriptionEn,
+        ].some((value) => value.toLocaleLowerCase(isEnglish ? "en" : "ar").includes(searchNeedle));
+        const visibleItems = groupMatches
+          ? group.items
+          : group.items.filter((item) =>
+              [item.ar, item.en, item.descriptionAr, item.descriptionEn]
+                .some((value) => value.toLocaleLowerCase(isEnglish ? "en" : "ar").includes(searchNeedle)),
+            );
+        return { ...group, visibleItems };
+      }).filter((group) => !searchNeedle || group.visibleItems.length > 0),
+    [isEnglish, searchNeedle],
+  );
+  const filteredUtilityLinks = useMemo(
+    () => utilityLinks.filter((item) =>
+      [item.ar, item.en].some((value) =>
+        value.toLocaleLowerCase(isEnglish ? "en" : "ar").includes(searchNeedle),
+      ),
+    ),
+    [isEnglish, searchNeedle],
+  );
+
   useEffect(() => {
     if (activeGroupId) setExpandedGroup(activeGroupId);
   }, [activeGroupId]);
 
   useEffect(() => {
     setOpen(false);
+    setMenuQuery("");
   }, [pathname]);
 
   useEffect(() => {
@@ -108,13 +142,37 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    searchInputRef.current?.focus();
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focusable = drawerRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      menuButtonRef.current?.focus();
     };
   }, [open]);
 
@@ -137,6 +195,8 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
             onClick={() => setOpen(false)}
           />
           <nav
+            id="mobile-navigation-dialog"
+            ref={drawerRef}
             role="dialog"
             aria-modal="true"
             aria-label={isEnglish ? "All platform sections" : "كل أقسام المنصة"}
@@ -161,6 +221,36 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
+              <div className="mb-4 rounded-2xl border border-brand-gold/15 bg-black/20 p-3">
+                <label htmlFor="mobile-platform-menu-search" className="mb-2 block text-xs font-semibold text-brand-gold">
+                  {isEnglish ? "Find a section or tool" : "ابحث عن قسم أو أداة"}
+                </label>
+                <div className="flex items-center gap-2">
+                  <Icons.Search className="h-4 w-4 shrink-0 text-brand-cream/45" aria-hidden="true" />
+                  <input
+                    ref={searchInputRef}
+                    id="mobile-platform-menu-search"
+                    type="search"
+                    value={menuQuery}
+                    onChange={(event) => setMenuQuery(event.target.value)}
+                    placeholder={isEnglish ? "Quran, prayer, stories…" : "القرآن، الصلاة، القصص…"}
+                    autoComplete="off"
+                    className="min-w-0 min-h-11 flex-1 bg-transparent text-sm text-brand-cream outline-none placeholder:text-brand-cream/35"
+                  />
+                  {menuQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuQuery("");
+                        searchInputRef.current?.focus();
+                      }}
+                      className="min-h-9 rounded-lg px-2 text-xs text-brand-gold hover:bg-brand-gold/10"
+                    >
+                      {isEnglish ? "Clear" : "مسح"}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
               <div className="mb-4 rounded-2xl border border-brand-gold/15 bg-brand-gold/5 p-3">
                 {showAuthenticated ? (
                   <div className="flex items-center gap-2">
@@ -183,9 +273,9 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
               </div>
 
               <div className="space-y-2">
-                {SITE_CATALOG.map((group) => {
+                {filteredGroups.map((group) => {
                   const GroupIcon = resolveIcon(group.icon);
-                  const expanded = expandedGroup === group.id;
+                  const expanded = searchNeedle.length > 0 || expandedGroup === group.id;
                   const active = group.id === activeGroupId;
 
                   return (
@@ -209,14 +299,14 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
                           </span>
                         </span>
                         <span className="inline-flex min-w-7 items-center justify-center rounded-full border border-brand-cream/10 px-2 py-1 text-[10px] tabular-nums text-brand-cream/65">
-                          {group.items.length}
+                          {group.visibleItems.length}
                         </span>
                         <Icons.ChevronDown className={["h-4 w-4 shrink-0 transition-transform", expanded ? "rotate-180 text-brand-gold" : "text-brand-cream/50"].join(" ")} aria-hidden="true" />
                       </button>
 
                       {expanded ? (
                         <div className="space-y-1 border-t border-brand-cream/10 p-2">
-                          {group.items.map((item) => {
+                          {group.visibleItems.map((item) => {
                             const ItemIcon = resolveIcon(item.icon);
                             const current = isCurrentPath(pathname, item.href);
                             return (
@@ -248,7 +338,7 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
                   {isEnglish ? "Platform information" : "معلومات المنصة والمساعدة"}
                 </h2>
                 <div className="grid grid-cols-1 gap-1">
-                  {utilityLinks.map((item) => {
+                  {filteredUtilityLinks.map((item) => {
                     const Icon = resolveIcon(item.icon);
                     const current = isCurrentPath(pathname, item.href);
                     return (
@@ -266,6 +356,11 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
                   })}
                 </div>
               </section>
+              {filteredGroups.length === 0 && filteredUtilityLinks.length === 0 ? (
+                <p role="status" className="mt-5 rounded-xl border border-brand-cream/10 p-4 text-center text-sm text-brand-cream/55">
+                  {isEnglish ? "No matching sections were found." : "لا توجد أقسام مطابقة لعبارة البحث."}
+                </p>
+              ) : null}
             </div>
           </nav>
         </>
@@ -298,9 +393,11 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
           })}
           <button
             type="button"
+            ref={menuButtonRef}
             onClick={() => setOpen(true)}
             aria-expanded={open}
             aria-haspopup="dialog"
+            aria-controls="mobile-navigation-dialog"
             className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[10px] font-semibold text-brand-cream/65 transition-colors hover:bg-brand-gold/8 hover:text-brand-gold"
           >
             <Icons.Menu className="h-5 w-5" aria-hidden="true" />
