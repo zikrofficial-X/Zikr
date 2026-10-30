@@ -168,7 +168,7 @@ for (const token of ["offline_manifest", "requestOfflineRouteCache", "cacheRoute
 }
 
 const serviceWorker = read("public/sw.js");
-for (const token of ['CACHE_NAME = "zikr-v14"', "OFFLINE_CONTENT_PREFIX", "CACHE_OFFLINE_ROUTES", "cacheReferencedStaticAssets"]) {
+for (const token of ['CACHE_NAME = "zikr-v14"', 'CACHE_PREFIX = "zikr-"', '"/settings"', "OFFLINE_CONTENT_PREFIX", "CACHE_OFFLINE_ROUTES", "cacheReferencedStaticAssets"]) {
   if (!serviceWorker.includes(token)) failures.push(`Service worker missing ${token}`);
 }
 
