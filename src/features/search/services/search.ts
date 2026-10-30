@@ -70,7 +70,8 @@ async function legacyGlobalSearch(query: string): Promise<PublicSearchResult[]> 
       contains(item.titleAr) ||
       contains(item.textAr) ||
       contains(item.occasionAr) ||
-      contains(item.sourceAr)
+      contains(item.sourceAr) ||
+      contains(item.benefitsAr)
     ) {
       results.push({
         id: item.id,
@@ -85,7 +86,7 @@ async function legacyGlobalSearch(query: string): Promise<PublicSearchResult[]> 
   }
 
   for (const item of prophets) {
-    if (contains(item.nameAr) || contains(item.nameEn) || contains(item.bioAr)) {
+    if (contains(item.nameAr) || contains(item.nameEn) || contains(item.bioAr) || contains(item.birthPlaceAr) || contains(item.deathPlaceAr)) {
       results.push({
         id: item.id,
         type: "prophet",
@@ -99,7 +100,7 @@ async function legacyGlobalSearch(query: string): Promise<PublicSearchResult[]> 
   }
 
   for (const item of companions) {
-    if (contains(item.name_ar) || contains(item.name_en ?? undefined) || contains(item.bio_ar ?? undefined)) {
+    if (contains(item.name_ar) || contains(item.name_en ?? undefined) || contains(item.bio_ar ?? undefined) || contains(item.birth_place_ar ?? undefined) || contains(item.death_place_ar ?? undefined) || contains(item.death_year ?? undefined)) {
       results.push({
         id: item.id,
         type: "companion",
@@ -113,7 +114,7 @@ async function legacyGlobalSearch(query: string): Promise<PublicSearchResult[]> 
   }
 
   for (const item of stories) {
-    if (contains(item.title) || contains(item.summary ?? undefined) || contains(item.slug) || contains(item.category)) {
+    if (contains(item.title) || contains(item.summary ?? undefined) || contains(item.content ?? undefined) || contains(item.slug) || contains(item.category)) {
       results.push({
         id: item.id,
         type: "story",
@@ -229,7 +230,7 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
         subtitle: article.summary || article.author || "مقال تعليمي من مكتبة ذِكر",
         href: `/articles/${article.slug}`,
       }));
-    return [...indexedResults, ...bundledArticles].slice(0, 40);
+    return [...indexedResults.slice(0, 40 - bundledArticles.length), ...bundledArticles].slice(0, 40);
   }
 
   return legacyGlobalSearch(cleanQuery);
