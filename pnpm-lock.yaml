@@ -62,6 +62,9 @@ importers:
       '@capawesome/capacitor-background-task':
         specifier: 7.0.1
         version: 7.0.1(@capacitor/core@7.6.9)
+      '@capgo/capacitor-social-login':
+        specifier: ^7
+        version: 7.20.0(@capacitor/core@7.6.9)
       '@google/generative-ai':
         specifier: ^0.24.1
         version: 0.24.1
@@ -339,6 +342,11 @@ packages:
 
   '@capawesome/capacitor-background-task@7.0.1':
     resolution: {integrity: sha512-ILkJ0bCOLperUc+fezzhpiH3Bfnr/318TI9XSrPU/vwvBXjMH7p7xYxKtjDA4VpJfbVh1cHmWLtRSWIk2wUglg==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
+
+  '@capgo/capacitor-social-login@7.20.0':
+    resolution: {integrity: sha512-rHlEALFUonLe4sDG+qybDowh2/XDiHJ4DK9pShe1aPTGSrmA5j7kz8VbHYGqgof5xdyeC7pAY3+8PASTW+qGKg==}
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
@@ -3072,6 +3080,10 @@ snapshots:
   '@capacitor/synapse@1.0.4': {}
 
   '@capawesome/capacitor-background-task@7.0.1(@capacitor/core@7.6.9)':
+    dependencies:
+      '@capacitor/core': 7.6.9
+
+  '@capgo/capacitor-social-login@7.20.0(@capacitor/core@7.6.9)':
     dependencies:
       '@capacitor/core': 7.6.9
 

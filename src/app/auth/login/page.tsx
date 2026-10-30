@@ -14,7 +14,11 @@ export default async function Page({ searchParams }: LoginPageProps) {
   const requestHost = forwardedHost.split(",")[0].trim().split(":")[0].toLowerCase();
   const canonicalHost = new URL(PRODUCTION_URL).hostname.toLowerCase();
 
-  if (requestHost.endsWith(".vercel.app") && requestHost !== canonicalHost) {
+  if (
+    process.env.VERCEL_ENV === "production" &&
+    requestHost.endsWith(".vercel.app") &&
+    requestHost !== canonicalHost
+  ) {
     const canonicalLogin = new URL("/auth/login", PRODUCTION_URL);
     const params = searchParams ? await searchParams : {};
     for (const [key, value] of Object.entries(params)) {

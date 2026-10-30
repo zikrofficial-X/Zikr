@@ -23,7 +23,12 @@ export async function handleGoogleOAuth(request: NextRequest) {
   // before starting OAuth so the verifier and callback share one host.
   const requestHost = request.nextUrl.hostname.toLowerCase();
   const canonicalHost = new URL(authOrigin).hostname.toLowerCase();
-  if (!native && requestHost.endsWith(".vercel.app") && requestHost !== canonicalHost) {
+  if (
+    !native &&
+    process.env.VERCEL_ENV === "production" &&
+    requestHost.endsWith(".vercel.app") &&
+    requestHost !== canonicalHost
+  ) {
     const canonicalStart = new URL(request.url);
     canonicalStart.protocol = "https:";
     canonicalStart.host = canonicalHost;

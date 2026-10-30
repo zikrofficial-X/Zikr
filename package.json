@@ -92,7 +92,8 @@
     "admin:rbac:check": "node scripts/tests/admin-rbac-rls.test.mjs",
     "performance:indexes:check": "node scripts/tests/performance-index-contract.test.mjs",
     "offline:export": "node scripts/export-offline-content.mjs --required",
-    "storage:cleanup": "node scripts/cleanup-supabase-storage.mjs"
+    "storage:cleanup": "node scripts/cleanup-supabase-storage.mjs",
+    "auth:native:check": "node scripts/tests/native-google-oauth-contract.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "7.6.9",
@@ -128,7 +129,8 @@
     "server-only": "^0.0.1",
     "sonner": "2.0.8",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "@capgo/capacitor-social-login": "^7"
   },
   "devDependencies": {
     "@capacitor/cli": "7.4.3",
