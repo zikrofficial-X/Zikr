@@ -57,6 +57,7 @@ function mapRow(row: Record<string, unknown>, locale: Locale): Article {
     metadata: row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
       ? row.metadata as Record<string, unknown>
       : undefined,
+    contentLocale: locale,
     createdAt: typeof row.created_at === "string" ? row.created_at : new Date(0).toISOString(),
   };
 }
@@ -75,6 +76,7 @@ function mapStaticArticle(item: StaticArticle, locale: Locale): Article {
     categoryId: item.category_id,
     tags: item.tags,
     metadata: item.metadata as Record<string, unknown> | undefined,
+    contentLocale: locale,
     createdAt: item.created_at,
   };
 }
@@ -273,6 +275,14 @@ export async function searchArticles(query: string, locale: Locale = "ar"): Prom
     .slice(0, 6);
 }
 
+function isSubstantialPublicArticle(article: Article | null): article is Article & { content: string } {
+  return Boolean(
+    article?.title?.trim() &&
+    article.content?.trim() &&
+    normalizedText(article.content).length >= MIN_PUBLIC_ARTICLE_CHARS,
+  );
+}
+
 export async function getArticleBySlug(slug: string, locale?: Locale): Promise<Article | null> {
   const activeLocale = locale ?? await getRequestLocale();
   const safeSlug = slug?.trim();
@@ -282,11 +292,19 @@ export async function getArticleBySlug(slug: string, locale?: Locale): Promise<A
     try {
       const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
         `/rest/v1/articles?select=id,title,title_ar,title_en,slug,summary,summary_ar,summary_en,content,content_ar,content_en,author,featured_image_url,views,published,category_id,tags,metadata,created_at&slug=eq.${encodeURIComponent(safeSlug)}&published=eq.true&limit=1`,
-        { cache: "force-cache", next: { revalidate: 1800 } },
+        { timeoutMs: 8000, retries: 1, cache: "force-cache", next: { revalidate: 1800 } },
       );
-      const article = rows[0] ? mapRow(rows[0], activeLocale) : null;
-      if (article && normalizedText(article.content).length >= MIN_PUBLIC_ARTICLE_CHARS) {
-        return article;
+      const row = rows[0];
+      if (row) {
+        const localized = mapRow(row, activeLocale);
+        if (isSubstantialPublicArticle(localized)) return localized;
+
+        // English translations are incomplete for part of the published catalogue.
+        // Keep the canonical Arabic article accessible instead of turning it into a 404.
+        if (activeLocale === "en") {
+          const arabicSource = mapRow(row, "ar");
+          if (isSubstantialPublicArticle(arabicSource)) return arabicSource;
+        }
       }
     } catch (error) {
       if (!isUnavailableArticlesTable(error)) {
@@ -295,15 +313,20 @@ export async function getArticleBySlug(slug: string, locale?: Locale): Promise<A
     }
   }
 
-  try {
-    const offlineArticles = await loadOfflineArticles(activeLocale);
-    const offlineMatch = offlineArticles.find(
-      (article) => article.slug === safeSlug,
-    );
-    if (offlineMatch) return offlineMatch;
-  } catch (error) {
-    console.error("[articles] Offline article catalogue unavailable:", error);
+  for (const contentLocale of activeLocale === "en" ? ["en", "ar"] as const : ["ar"] as const) {
+    try {
+      const offlineArticles = await loadOfflineArticles(contentLocale);
+      const offlineMatch = offlineArticles.find(article => article.slug === safeSlug);
+      if (isSubstantialPublicArticle(offlineMatch ?? null)) return offlineMatch;
+    } catch (error) {
+      console.error("[articles] Offline article catalogue unavailable:", error);
+    }
   }
 
-  return getFallbackArticles(activeLocale).find(article => article.slug === safeSlug) ?? null;
+  for (const contentLocale of activeLocale === "en" ? ["en", "ar"] as const : ["ar"] as const) {
+    const fallbackMatch = getFallbackArticles(contentLocale).find(article => article.slug === safeSlug);
+    if (isSubstantialPublicArticle(fallbackMatch ?? null)) return fallbackMatch;
+  }
+
+  return null;
 }
