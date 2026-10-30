@@ -263,36 +263,16 @@ async function getAndroidPinnedTag(client) {
   return asString(value.releaseTag);
 }
 
-async function updateVideoRecords(client, candidate, retention) {
-  const queueMetadata = {
-    ...asObject(candidate.queue.metadata),
-    storageRetention: retention,
-  };
-  const requestContent = {
-    ...asObject(candidate.request.content),
-    storageRetention: retention,
-  };
-
-  const { data: queueUpdated, error: queueError } = await client
-    .from("social_publish_queue")
-    .update({ video_url: null, metadata: queueMetadata, updated_at: new Date().toISOString() })
-    .eq("id", candidate.queue.id)
-    .eq("video_url", candidate.queue.video_url)
-    .eq("status", "published")
-    .select("id");
-  if (queueError || queueUpdated?.length !== 1) {
-    throw new Error(`Could not safely finalize social queue row ${candidate.queue.id}: ${queueError?.message ?? "row count mismatch"}`);
-  }
-
-  const { data: requestUpdated, error: requestError } = await client
-    .from("video_generation_requests")
-    .update({ video_url: null, content: requestContent, updated_at: new Date().toISOString() })
-    .eq("id", candidate.request.id)
-    .eq("video_url", candidate.request.video_url)
-    .eq("status", "completed")
-    .select("id");
-  if (requestError || requestUpdated?.length !== 1) {
-    throw new Error(`Could not safely finalize video request row ${candidate.request.id}: ${requestError?.message ?? "row count mismatch"}`);
+async function updateVideoRecords(client, candidate, retention, finalize) {
+  const { error } = await client.rpc("update_video_storage_retention", {
+    p_queue_id: candidate.queue.id,
+    p_request_id: candidate.request.id,
+    p_expected_url: candidate.queue.video_url,
+    p_retention: retention,
+    p_finalize: finalize,
+  });
+  if (error) {
+    throw new Error(`Atomic retention bookkeeping failed for queue row ${candidate.queue.id}: ${error.message}`);
   }
 }
 
@@ -364,8 +344,13 @@ async function main() {
       continue;
     }
     const file = filesByPath.get(path);
-    if (!file) {
-      skipped.push({ id: row.id, reason: "Storage object already missing; no new deletion attempted." });
+    const queueRetention = asObject(asObject(row.metadata).storageRetention);
+    const requestRetention = asObject(asObject(request.content).storageRetention);
+    const pendingRecovery =
+      queueRetention.state === "purge_pending" &&
+      requestRetention.state === "purge_pending";
+    if (!file && !pendingRecovery) {
+      skipped.push({ id: row.id, reason: "Storage object is missing without a matching pending-retention record." });
       continue;
     }
     if (unexpectedReferences.has(path) || unexpectedReferences.has(row.video_url)) {
@@ -376,7 +361,8 @@ async function main() {
       queue: row,
       request,
       path,
-      bytes: Number(file.metadata?.size ?? 0),
+      fileMissing: !file,
+      bytes: Number(file?.metadata?.size ?? queueRetention.bytes ?? requestRetention.bytes ?? 0),
       publishedAt: row.published_at,
     });
   }
@@ -440,25 +426,45 @@ async function main() {
   // the publish time is older than 48 hours, and all relevant database references match.
   for (let offset = 0; offset < candidates.length; offset += 100) {
     const batch = candidates.slice(offset, offset + 100);
-    const paths = batch.map((item) => item.path);
-    const { error } = await client.storage.from(VIDEO_BUCKET).remove(paths);
-    if (error) throw new Error(`Video Storage remove failed for batch ${offset / 100 + 1}: ${error.message}`);
+    const pendingRecords = new Map();
 
+    // First persist both sides of the relationship atomically. If Storage removal
+    // fails, the next run sees the pending marker and safely retries.
     for (const item of batch) {
-      const retention = {
-        state: "purged",
+      const pending = {
+        state: "purge_pending",
         bucket: VIDEO_BUCKET,
         path: item.path,
-        purgedAt: new Date().toISOString(),
+        pendingSince: new Date().toISOString(),
         publishedAt: item.publishedAt,
-        reason: "All targeted social platforms have confirmed remote IDs; local source retained for at least 48 hours.",
+        reason: "Every target platform confirmed publication; waiting for Storage object removal.",
         bytes: item.bytes,
         confirmedPlatforms: item.queue.target_platforms.map((platform) => ({
           platform,
           remoteId: asString(asObject(asObject(item.queue.metadata).platformResults)[platform]?.remoteId),
         })),
       };
-      await updateVideoRecords(client, item, retention);
+      await updateVideoRecords(client, item, pending, false);
+      pendingRecords.set(item, pending);
+    }
+
+    const pathsToRemove = batch.filter((item) => !item.fileMissing).map((item) => item.path);
+    if (pathsToRemove.length > 0) {
+      const { error } = await client.storage.from(VIDEO_BUCKET).remove(pathsToRemove);
+      if (error) throw new Error(`Video Storage remove failed for batch ${offset / 100 + 1}: ${error.message}`);
+    }
+
+    // One database function updates queue + generation rows in a single transaction.
+    // If this step fails, both rows remain marked purge_pending and the next daily
+    // run can finalize them even when the binary is already absent.
+    for (const item of batch) {
+      const pending = pendingRecords.get(item);
+      await updateVideoRecords(client, item, {
+        ...pending,
+        state: "purged",
+        purgedAt: new Date().toISOString(),
+        reason: "All target platforms confirmed publication; local Storage copy removed after the 48-hour grace period.",
+      }, true);
     }
     console.log(`Purged and reconciled video batch ${offset / 100 + 1}: ${batch.length} objects.`);
   }
