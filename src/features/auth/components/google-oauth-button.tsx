@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
+import { SocialLogin } from "@capgo/capacitor-social-login";
 import { Button } from "@/components/ui/button";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { PRODUCTION_URL, isV0PreviewHost } from "@/lib/site";
@@ -11,6 +12,8 @@ type GoogleOAuthButtonProps = {
   next?: string;
   label: string;
 };
+
+let nativeGoogleInitialization: Promise<void> | null = null;
 
 function getSafeNextPath(next?: string): string {
   return typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
@@ -32,13 +35,72 @@ function getCanonicalBrowserOrigin(): string {
 }
 
 function buildNativeOAuthRedirect(nextPath: string): string {
-  // Start with the canonical HTTPS application callback. Supabase/Google can
-  // reliably validate this URI, and the callback route hands the code back to
-  // the app deep link after Google completes authentication.
+  // Retained for iOS' existing browser-based OAuth path. Android now signs in
+  // natively through Credential Manager and Supabase signInWithIdToken.
   const url = new URL("/auth/callback", getCanonicalBrowserOrigin());
   url.searchParams.set("native", "1");
   url.searchParams.set("next", nextPath);
   return url.toString();
+}
+
+async function signInWithNativeGoogle(
+  supabase: ReturnType<typeof createBrowserSupabaseClient>,
+): Promise<void> {
+  const webClientId = process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim();
+  if (!webClientId) {
+    throw new Error(
+      "إعداد Google Web Client ID غير موجود. راجع NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID في إعدادات Vercel.",
+    );
+  }
+
+  if (!nativeGoogleInitialization) {
+    nativeGoogleInitialization = SocialLogin.initialize({
+      google: {
+        webClientId,
+        mode: "online",
+      },
+    }).catch((error: unknown) => {
+      nativeGoogleInitialization = null;
+      throw error;
+    });
+  }
+  await nativeGoogleInitialization;
+
+  // Google receives the SHA-256 nonce; Supabase receives the original nonce
+  // and verifies that it matches the nonce embedded in Google's ID token.
+  const response = await SocialLogin.login({
+    provider: "google",
+    options: {
+      scopes: ["email", "profile"],
+      style: "bottom",
+      filterByAuthorizedAccounts: false,
+    },
+  });
+
+  if (response.result.responseType !== "online" || !response.result.idToken) {
+    throw new Error("لم يُرجع Google رمز هوية صالحًا لتسجيل الدخول.");
+  }
+
+  const { idToken, accessToken } = response.result;
+  const { error } = await supabase.auth.signInWithIdToken({
+    provider: "google",
+    token: idToken,
+    ...(accessToken?.token ? { access_token: accessToken.token } : {}),
+  });
+
+  if (error) throw error;
+
+  // Keep the existing server-side profile synchronization behavior after
+  // the Supabase session has been established in the WebView.
+  try {
+    await fetch("/api/auth/profile-sync", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+    });
+  } catch {
+    // Profile sync is best-effort; authentication is already successful.
+  }
 }
 
 export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
@@ -65,11 +127,8 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
 
     try {
       const isNative = Capacitor.isNativePlatform();
+      const isAndroidNative = Capacitor.getPlatform() === "android";
 
-      // PKCE verifier cookies are scoped to the current browser origin. If a
-      // user opened a Vercel alias, move them to the canonical origin before
-      // creating the verifier; otherwise Google returns to the canonical host
-      // while the verifier remains stranded on the alias.
       const previewRedirect = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL;
       const usePreviewRedirect =
         !isNative &&
@@ -90,9 +149,16 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
 
       const supabase = createBrowserSupabaseClient();
 
-      // Native OAuth starts at the canonical HTTPS app callback. The callback
-      // route then hands the authorization code back to the app deep link,
-      // while the PKCE verifier remains in this WebView's Supabase client.
+      // Android uses Google's native Credential Manager. No Chrome,
+      // Custom Tab, browser redirect, or PKCE callback is involved.
+      if (isAndroidNative) {
+        await signInWithNativeGoogle(supabase);
+        window.location.replace(safeNext);
+        return;
+      }
+
+      // Keep the existing web OAuth flow unchanged. iOS continues to use its
+      // existing browser-based flow until a separate iOS client is configured.
       const redirectTo = isNative
         ? buildNativeOAuthRedirect(safeNext)
         : usePreviewRedirect && previewRedirect
@@ -143,7 +209,7 @@ export function GoogleOAuthButton({ next, label }: GoogleOAuthButtonProps) {
         onClick={onClick}
         disabled={loading}
       >
-        {loading ? "جارٍ التوجيه إلى Google..." : label}
+        {loading ? "جارٍ تسجيل الدخول عبر Google..." : label}
       </Button>
 
       {error && (
