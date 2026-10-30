@@ -91,7 +91,7 @@ assert.doesNotMatch(
 );
 assert.match(
   publicRpcMigration,
-  /GRANT EXECUTE ON FUNCTION public\\.is_admin_user\\(\\) TO anon, authenticated, service_role/i,
+  /GRANT EXECUTE ON FUNCTION public\.is_admin_user\(\) TO anon, authenticated, service_role/i,
   "the wrapper must remain callable where public-read RLS policies reference it",
 );
 
