@@ -126,7 +126,7 @@ for (const token of [
   'OFFLINE_CACHE_NAME',
   'isCacheableOfflinePageRoute',
   'zikr-v15',
-  'offlineDb.replaceAll(storeName, rows)',
+  'offlineDb.replaceAllMany(pendingDatasets)',
   'verifyCompletedRoutes(completion.cachedRoutes)',
   'routesComplete',
   'fullyComplete',
