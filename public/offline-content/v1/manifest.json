@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-15-content-v1",
-  "generatedAt": "2026-08-15T00:00:00Z",
-  "source": "Zikr Supabase public content tables",
+  "version": "2026-10-30-content-v2",
+  "generatedAt": "2026-10-30T00:00:00Z",
+  "source": "Zikr Supabase public and approved content tables, refreshed 2026-10-30",
   "licenseNote": "Quran and hadith records retain their source attribution. Editorial records are prepared for Zikr.",
   "datasets": {
     "surahs": {
@@ -38,11 +38,11 @@
     },
     "battle_events": {
       "path": "/offline-content/v1/battle_events.json",
-      "count": 104
+      "count": 84
     },
     "conquests": {
       "path": "/offline-content/v1/conquests.json",
-      "count": 19
+      "count": 15
     },
     "conquest_events": {
       "path": "/offline-content/v1/conquest_events.json",
@@ -50,23 +50,35 @@
     },
     "articles": {
       "path": "/offline-content/v1/articles.json",
-      "count": 26
+      "count": 38
     },
     "duas": {
       "path": "/offline-content/v1/duas.json",
-      "count": 23
+      "count": 33
     },
     "kids": {
       "path": "/offline-content/v1/kids.json",
-      "count": 28
+      "count": 59
     },
     "companions": {
       "path": "/offline-content/v1/companions.json",
-      "count": 11
+      "count": 12
     },
     "companion_stories": {
       "path": "/offline-content/v1/companion_stories.json",
       "count": 21
+    },
+    "scholars": {
+      "path": "/offline-content/v1/scholars.json",
+      "count": 8
+    },
+    "stories": {
+      "path": "/offline-content/v1/stories.json",
+      "count": 21
+    },
+    "article_categories": {
+      "path": "/offline-content/v1/article_categories.json",
+      "count": 5
     }
   },
   "routes": [
@@ -266,7 +278,8 @@
     "/conquests/quds",
     "/conquests/north-africa",
     "/conquests/maghreb",
-    "/articles/tazkiyat-an-nafs",    "/articles/as-sabr-miftah-al-faraj",
+    "/articles/tazkiyat-an-nafs",
+    "/articles/as-sabr-miftah-al-faraj",
     "/articles/story-of-the-companions",
     "/articles/tafsir-surah-al-fatiha",
     "/articles/hadith-jibreel",

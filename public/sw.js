@@ -1,5 +1,6 @@
 // Service Worker for Zikr PWA
-const CACHE_NAME = "zikr-v13";
+const CACHE_NAME = "zikr-v14";
+const CACHE_PREFIX = "zikr-";
 const OFFLINE_CONTENT_PREFIX = "/offline-content/";
 const MAX_OFFLINE_ROUTES = 400;
 const ROUTE_CACHE_CONCURRENCY = 4;
@@ -24,22 +25,17 @@ function isPublicContentApi(url) {
 }
 
 function isSafeOfflineRoute(route) {
-  if (
-    typeof route !== "string" ||
-    !route.startsWith("/") ||
-    route.startsWith("//")
-  )
-    return false;
-  const pathname = new URL(route, self.location.origin).pathname;
-  if (
-    pathname.startsWith("/api/") ||
-    pathname.startsWith("/auth/") ||
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/profile") ||
-    pathname.startsWith("/favorites")
-  ) {
+  if (typeof route !== "string" || !route.startsWith("/") || route.startsWith("//")) return false;
+  let pathname;
+  try {
+    const url = new URL(route, self.location.origin);
+    if (url.origin !== self.location.origin) return false;
+    pathname = url.pathname.replace(/\/+$/, "") || "/";
+  } catch {
     return false;
   }
+  const privatePrefixes = ["/api", "/auth", "/admin", "/profile", "/favorites", "/settings", "/account", "/dashboard"];
+  if (privatePrefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + "/"))) return false;
   return true;
 }
 
@@ -106,13 +102,21 @@ async function cacheOfflineRoute(route, cache) {
       !response.headers.get("content-type")?.includes("text/html")
     )
       return false;
+    const finalUrl = response.url ? new URL(response.url) : url;
+    if (finalUrl.origin !== self.location.origin || !isSafeOfflineRoute(finalUrl.pathname)) {
+      return false;
+    }
     const html = await response.clone().text();
+    const safeHeaders = new Headers(response.headers);
+    safeHeaders.delete("content-encoding");
+    safeHeaders.delete("content-length");
+    safeHeaders.delete("set-cookie");
     await cache.put(
       cacheRequest,
       new Response(html, {
         status: response.status,
         statusText: response.statusText,
-        headers: response.headers,
+        headers: safeHeaders,
       })
     );
     await cacheReferencedStaticAssets(html, cache);
@@ -195,7 +199,9 @@ self.addEventListener("activate", event => {
     caches.keys().then(cacheNames =>
       Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) return caches.delete(cacheName);
+          if (cacheName.startsWith(CACHE_PREFIX) && cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
           return undefined;
         })
       )

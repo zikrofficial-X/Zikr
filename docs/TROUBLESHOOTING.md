@@ -1,99 +1,38 @@
-# ZIKR Troubleshooting Guide
+# Troubleshooting
 
-This file reflects the current authentication and deployment architecture. It replaces older debugging examples that referenced the former `app/` and `lib/` layouts.
+## Offline library says it is incomplete
 
-## Google OAuth
+Open `/offline-library` while online and run **«تحديث وتجهيز المكتبة كاملة»** again. The page now reports failures by dataset and by route; use those names to identify the failing file or page. A partial result is intentionally not recorded as a full-pack success.
 
-ZIKR uses Supabase Auth with PKCE.
+## Dataset count mismatch
 
-Application callback URLs:
-- Browser: `https://zikrmediaofficial.vercel.app/auth/callback`
-- Native: `com.zikr.app://auth/callback`
-- Local: `http://localhost:3000/auth/callback`
-
-Google's OAuth client uses the Supabase provider callback:
-
-`https://wvetcauyerlkqvmntajq.supabase.co/auth/v1/callback`
-
-Do not replace the Supabase provider callback with the application callback in Google's OAuth client.
-
-### Error: "Unsupported provider: provider is not enabled"
-
-Enable Google under Supabase Authentication → Sign In / Providers → Google and configure the Google Client ID and Client Secret there. The application does not require Google provider secrets in Vercel.
-
-### Error: "redirect_uri_mismatch"
-
-For Supabase-managed Google login, the Google OAuth client must contain the exact Supabase provider callback shown by the project. The application's final redirect is controlled by Supabase Auth Redirect URLs.
-
-### Native app returns to the browser
-
-Verify that `com.zikr.app://auth/callback` exists in:
-- `supabase/config.toml`
-- `capacitor.config.json`
-- Android intent filters
-- iOS URL schemes
-
-The native OAuth handler in `src/components/layout/native-google-oauth-handler.tsx` owns the native authorization-code exchange.
-
-## Vercel build failures
-
-Check the latest deployment status and build log first. The repository's Vercel build command is:
-
-```text
-pnpm install --frozen-lockfile
-pnpm build
-```
-
-Do not treat an older READY production deployment as proof that the current finalization branch builds. A current validation deployment on the cleaned repository has completed successfully; production still requires the controlled release workflow.
-
-## Supabase issues
-
-Live database verification requires an authenticated Supabase project with SQL access. The repository migration source is `supabase/migrations/`.
-
-Use:
+Run:
 
 ```bash
-pnpm supabase:migrations:check
-pnpm supabase:migrations:replay
+pnpm offline:check
 ```
 
-Never reset production migration history simply to make local filenames match.
+The verifier reads every dataset JSON file and compares its actual row count with `public/offline-content/v1/manifest.json`. Refresh the affected static file from the published Supabase records, update the manifest count and rerun the check. Do not fix a mismatch by changing only the count.
 
-## Offline issues
+## A page is missing while offline
 
-The service worker does not cache arbitrary HTML automatically. To prepare the full public offline experience:
+Check that the page exists in `public/offline-content/v2/routes.json` or the sitemap, is a same-origin public page, and does not redirect to a private route. Private pages such as account, admin, profile, favorites and settings are intentionally excluded.
 
-1. Open `/offline-library` while online.
-2. Run the full offline-pack action.
-3. Wait for dataset and route validation to complete.
-4. Test again with network disabled.
+## Clearing the local offline library
 
-Private/admin/auth routes are intentionally excluded.
+Use **«إفراغ المكتبة المحلية»** from `/offline-library`. It clears downloaded public datasets and route caches while preserving IndexedDB favorites and local preferences. The UI reports a clear failure if the service worker does not acknowledge the request.
 
-## Mobile build issues
+## Media does not play offline
 
-The native runtime packages are Capacitor 7.x. The repository is currently aligned on the Capacitor 7.x runtime/CLI line. Do not change the major version without refreshing the lockfile and running a real native sync/build.
+External radio, recitation and video streams require internet unless a specific media file is explicitly bundled with the app. The text-content offline package does not download large external streams.
 
-For Android:
+## Validation commands
 
 ```bash
-pnpm install --frozen-lockfile
-pnpm build
-pnpm exec cap sync android
-cd android
-./gradlew assembleDebug
+pnpm offline:check
+pnpm mobile:check
+pnpm project:check
+pnpm verify
 ```
 
-For iOS:
-
-```bash
-pnpm install --frozen-lockfile
-pnpm build
-pnpm exec cap sync ios
-```
-
-The iOS Podfile is maintained against the locked Capacitor plugin versions; rerun `cap sync ios` after dependency changes.
-
-## Security rules during troubleshooting
-
-Never disable RLS, authentication, OAuth validation, or canonical-origin checks just to make a route or build pass. Never paste service-role keys, OAuth refresh tokens, Facebook access tokens, VAPID private keys, or Android signing material into source files or public logs.
+A browser-based verification does not replace the Android Airplane Mode acceptance test described in `docs/OFFLINE_SUPPORT.md`.

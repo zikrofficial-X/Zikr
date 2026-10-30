@@ -41,10 +41,10 @@ export function ServiceWorkerRegister() {
       if (hydrationStarted || hydrationFinished || !canHydrate()) return;
       hydrationStarted = true;
       try {
-        // Hydrate the complete public dataset pack and cache every safe public
-        // route so the installed app remains usable without a network connection.
+        // Hydrate the public datasets and explicitly cache the complete route pack.
+        // The hydration is complete only after both datasets and routes pass verification.
         const result = await hydrateOfflineContent({ cacheRoutes: true });
-        hydrationFinished = result?.complete === true;
+        hydrationFinished = result?.fullyComplete === true;
       } catch (error) {
         console.warn('[PWA] Offline content hydration failed:', error);
       } finally {

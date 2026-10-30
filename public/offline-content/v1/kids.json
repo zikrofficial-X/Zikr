@@ -1,1 +1,2243 @@
-[{"id":"a0a17a30-9476-4356-96ec-f64938b05004","title_ar":"قصة الصدق","slug":"kids-truth","content_ar":"قصة قصيرة عن فضيلة الصدق","type":"story","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-06-07T06:27:26.526666+00:00","title_en":"قصة الصدق","content_en":null,"video_url":null,"quiz_data":null,"metadata":{"shareMessage":"شارك هذا المحتوى التعليمي الرائع!"},"is_active":true,"updated_at":"2026-07-31T10:59:35.08105+00:00","content_type":"story","summary_ar":null,"summary_en":null,"age_min":6,"age_max":8,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"05049cdd-7b46-448c-957b-d9d1508c9703","title_ar":"قصة الأمانة","slug":"kids-amanah","content_ar":"قصة مبسطة عن أهمية الأمانة للأطفال","type":"story","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-06-07T06:27:26.526666+00:00","title_en":"قصة الأمانة","content_en":null,"video_url":null,"quiz_data":null,"metadata":{"shareMessage":"شارك هذا المحتوى التعليمي الرائع!"},"is_active":true,"updated_at":"2026-07-31T10:59:35.08105+00:00","content_type":"story","summary_ar":null,"summary_en":null,"age_min":6,"age_max":8,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"02e2cab1-dbb3-4585-8255-01bb1f2e9884","title_ar":"آداب الصلاة","slug":"kids-prayer","content_ar":"تعليم مبسط لآداب الصلاة","type":"lesson","age_group":"9-12","featured_image_url":null,"published":true,"created_at":"2026-06-07T06:27:26.526666+00:00","title_en":"آداب الصلاة","content_en":null,"video_url":null,"quiz_data":null,"metadata":{"shareMessage":"شارك هذا المحتوى التعليمي الرائع!"},"is_active":true,"updated_at":"2026-07-31T10:59:35.08105+00:00","content_type":"lesson","summary_ar":null,"summary_en":null,"age_min":9,"age_max":12,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"6b38b233-eddc-5a99-bb1f-593395fe2275","title_ar":"خطة حفظ سورة الفلق","slug":"memorize-al-falaq","content_ar":"خطة سبعة أيام لحفظ سورة الفلق مع تكرار الآيات، الاستماع، والمراجعة اليومية. اجعل الحفظ قصيرًا ثابتًا ومفرحًا.","type":"game","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:10:14.118262+00:00","title_en":"Memorize Al-Falaq","content_en":"Original educational content prepared for Zikr families.","video_url":null,"quiz_data":null,"metadata":{"reward":"وسام الحافظ الصغير","dailyPlan":["استمع للسورة مرتين","احفظ الآيتين الأولى والثانية","أكمل آيتين جديدتين","اربط الآيات","اقرأ مع أحد الوالدين","سمّع السورة كاملة","مراجعة وفرحة الإنجاز"],"objective":"بناء عادة حفظ يومية","durationDays":7,"memorizationTarget":"سورة الفلق"},"is_active":true,"updated_at":"2026-08-14T22:23:16.58775+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"92e02979-84cd-5669-a915-af2bd77ae01c","title_ar":"مريم عليها السلام","slug":"story-maryam-kids","content_ar":"كانت مريم عليها السلام عابدة طاهرة اصطفاها الله، وواجهت ابتلاءً عظيمًا بثقة وصبر. تذكر القصة أن كرامة الإنسان في طاعته، وأن الله يرزق من يشاء بغير حساب.","type":"story","age_group":"9-12","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:10:14.118262+00:00","title_en":"Maryam Story","content_en":"Original educational content prepared for Zikr families.","video_url":null,"quiz_data":null,"metadata":{"reward":"زهرة العفة","objective":"تعلم الصبر والعفة"},"is_active":true,"updated_at":"2026-08-14T22:23:16.58775+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"5bb2f665-4c31-5550-9d1c-ffd1e5083633","title_ar":"لعبة أوقات الصلاة","slug":"game-salah-times","content_ar":"صِل كل صلاة بوقتها التقريبي، وتذكر أن الصلاة صلة يومية بين العبد وربه.","type":"game","age_group":"9-12","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:10:14.118262+00:00","title_en":"Prayer Times Game","content_en":"Original educational content prepared for Zikr families.","video_url":null,"quiz_data":{"questions":[{"text":"متى يدخل وقت الفجر؟","options":["من طلوع الفجر الصادق","بعد الظهر","عند منتصف الليل فقط","بعد المغرب"],"correctAnswer":0},{"text":"أي صلاة وقتها بعد زوال الشمس؟","options":["الظهر","الفجر","العشاء","المغرب"],"correctAnswer":0},{"text":"ما الصلاة التي يدخل وقتها بغروب الشمس؟","options":["المغرب","العصر","الضحى","الفجر"],"correctAnswer":0}]},"metadata":{"reward":"مفتاح الصلاة","gameType":"matching","objective":"ربط الصلوات بأوقاتها"},"is_active":true,"updated_at":"2026-08-14T22:23:16.58775+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"73536ba2-faa5-53ee-ad29-8a0223395a0a","title_ar":"اختبر معلوماتك عن الأنبياء","slug":"quiz-prophets","content_ar":"اختبار قصير يراجع أسماء الأنبياء ومعاني الصبر والتوحيد من خلال أسئلة مناسبة للناشئة.","type":"quiz","age_group":"9-12","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:10:14.118262+00:00","title_en":"Prophets Quiz","content_en":"Original educational content prepared for Zikr families.","video_url":null,"quiz_data":{"questions":[{"text":"من أول الأنبياء؟","options":["آدم عليه السلام","نوح عليه السلام","موسى عليه السلام","يوسف عليه السلام"],"correctAnswer":0},{"text":"من بنى الكعبة مع إبراهيم؟","options":["إسماعيل","هارون","يحيى","داود"],"correctAnswer":0},{"text":"من النبي الذي ابتلعه الحوت؟","options":["يونس","صالح","شعيب","إدريس"],"correctAnswer":0}]},"metadata":{"reward":"باحث القصص","gameType":"quiz","objective":"مراجعة المعلومات الإسلامية"},"is_active":true,"updated_at":"2026-08-14T22:23:16.58775+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"c3cea784-13ff-52ce-8338-9d718635dcc6","title_ar":"أكمل جملة الخُلُق الجميل","slug":"puzzle-good-manners","content_ar":"اسحب الكلمة المناسبة لإكمال الجمل: المسلم صادق، رحيم، أمين، ويقول خيرًا أو يصمت.","type":"game","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:10:14.118262+00:00","title_en":"Good Manners Puzzle","content_en":"Original educational content prepared for Zikr families.","video_url":null,"quiz_data":{"questions":[{"text":"المسلم ____ ولا يكذب.","options":["صادق","غاضب","مؤذٍ","متكبر"],"correctAnswer":0},{"text":"نرحم ____ ونساعد المحتاج.","options":["الضعيف","الظلم","الكذب","الأذى"],"correctAnswer":0}]},"metadata":{"reward":"تاج الخُلُق","gameType":"word-puzzle","objective":"تثبيت الأخلاق الإسلامية"},"is_active":true,"updated_at":"2026-08-14T22:23:16.58775+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"855f481c-6531-5876-bc2c-59903ada9960","title_ar":"رتّب خطوات الوضوء","slug":"game-wudu-steps","content_ar":"رتّب خطوات الوضوء من النية إلى غسل الرجلين، ثم راجع الإجابة وتعلم أن النظافة عبادة.","type":"game","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:10:14.118262+00:00","title_en":"Arrange the Wudu Steps","content_en":"Original educational content prepared for Zikr families.","video_url":null,"quiz_data":{"questions":[{"text":"ما أول ما نستحضره عند الوضوء؟","options":["النية","النوم","اللعب","الطعام"],"correctAnswer":0},{"text":"أي عضو نغسله بعد الوجه؟","options":["الرجلان","اليدان إلى المرفقين","الرأس","الأذنان"],"correctAnswer":1},{"text":"كم مرة يُستحب غسل العضو؟","options":["ثلاثًا دون إسراف","سبعًا دائمًا","مرة في الشهر","لا يُغسل"],"correctAnswer":0}]},"metadata":{"reward":"وسام الطهارة","gameType":"quiz","objective":"تعلم ترتيب الوضوء"},"is_active":true,"updated_at":"2026-08-14T22:23:16.58775+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"24edbcd2-91d1-5f19-9f59-c8097c1a54c3","title_ar":"قصة أصحاب الفيل","slug":"story-ashab-al-fil","content_ar":"كان أبرهة يريد هدم الكعبة، فسار بجيش كبير ومعه فيل. حفظ الله بيته وأرسل طيرًا ترميهم بحجارة من سجيل، فعرف الأطفال أن حماية الله أقوى من كل قوة. الدرس: نحترم بيوت الله ونثق بحفظه. ","type":"story","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:10:14.118262+00:00","title_en":"The People of the Elephant","content_en":"Original educational content prepared for Zikr families.","video_url":null,"quiz_data":null,"metadata":{"reward":"وسام حامي الكعبة","objective":"تعلم معنى الحماية والثقة بالله"},"is_active":true,"updated_at":"2026-08-14T22:23:16.58775+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"74f4f82b-017c-56a3-a065-e6a4e74cf8d7","title_ar":"سليمان والنملة","slug":"story-sulayman-ant","content_ar":"سمع سليمان نملة تحذر قومها، فتبسم وشكر الله. الدرس: نرحم المخلوقات الصغيرة ولا نسخر من أحد.","type":"story","age_group":"3-5","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:10:14.118262+00:00","title_en":"Sulaiman and the Ant","content_en":"Original educational content prepared for Zikr families.","video_url":null,"quiz_data":null,"metadata":{"reward":"قلب رحيم","objective":"تنمية الرحمة والانتباه"},"is_active":true,"updated_at":"2026-08-14T22:23:16.58775+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"3efae434-e46f-5c88-a964-2533dda26c4f","title_ar":"تقويم أعمال الخير","slug":"activity-kindness-calendar","content_ar":"كل يوم اختَر عملًا صغيرًا: ابتسامة، مساعدة الوالدين، إطعام طائر، أو كلمة طيبة. ضع علامة عند الإنجاز وشارك فرحتك مع الأسرة.","type":"game","age_group":"3-5","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:10:14.118262+00:00","title_en":"Kindness Calendar","content_en":"Original educational content prepared for Zikr families.","video_url":null,"quiz_data":null,"metadata":{"reward":"حديقة الخير","gameType":"daily-challenge","objective":"تحويل الأخلاق إلى عادة","durationDays":14},"is_active":true,"updated_at":"2026-08-14T22:23:16.58775+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"1f939452-7ac0-523d-be1f-1d5ae4d6b0f1","title_ar":"يونس والحوت","slug":"story-yunus-kids","content_ar":"خرج يونس من قومه ثم وجد نفسه في بطن الحوت، فنادى الله بصدق فاستجاب له. الدرس: لا نيأس من رحمة الله ونعتذر عندما نخطئ.","type":"story","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:10:14.118262+00:00","title_en":"Yunus and the Whale","content_en":"Original educational content prepared for Zikr families.","video_url":null,"quiz_data":null,"metadata":{"reward":"نجمة التوبة","objective":"تعلم الاعتذار والرجوع إلى الله"},"is_active":true,"updated_at":"2026-08-14T22:23:16.58775+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"f79a43d5-aee3-5df5-be19-962e3cce1bc7","title_ar":"صيد الكلمات الطيبة","slug":"zikr-kids-expansion-05","content_ar":"لعبة يختار فيها الطفل كلمات مثل شكرًا وآسف من بين كلمات مؤذية، ثم يركب جملة إصلاحية.","type":"game","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":{"reward":"وسام العمل الصالح","questions":[{"text":"ما السلوك الأفضل؟","options":["الصدق والتعاون","السخرية","الإسراف","نشر الخبر بلا تحقق"],"correctAnswer":0}]},"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"8a2a022e-fc21-566b-9db5-cedeba730adf","title_ar":"مغامرة التثبت","slug":"zikr-kids-expansion-14","content_ar":"لعبة يميز فيها الطفل بين خبر صحيح وخبر يحتاج إلى سؤال، ويتعلم ألا يعيد نشر كل ما يسمعه.","type":"game","age_group":"9-12","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":{"reward":"وسام العمل الصالح","questions":[{"text":"ما السلوك الأفضل؟","options":["الصدق والتعاون","السخرية","الإسراف","نشر الخبر بلا تحقق"],"correctAnswer":0}]},"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"22ac8f8d-c00c-5fbf-8cb5-b749ba80f429","title_ar":"دفتر الامتنان","slug":"zikr-kids-expansion-15","content_ar":"نشاط يومي يكتب أو يرسم فيه الطفل ثلاث نعم وعمل شكر واحد، مثل مساعدة الأسرة أو حفظ الماء.","type":"game","age_group":"3-5","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":{"reward":"وسام العمل الصالح","questions":[{"text":"ما السلوك الأفضل؟","options":["الصدق والتعاون","السخرية","الإسراف","نشر الخبر بلا تحقق"],"correctAnswer":0}]},"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"c2371bb7-186e-529c-a749-02cdb22d50c8","title_ar":"يوسف والصبر الجميل","slug":"zikr-kids-expansion-06","content_ar":"قصة مبسطة مستلهمة من المعاني الثابتة في سورة يوسف، تركز على عدم اليأس والعفو دون اختراع حوارات منسوبة للوحي.","type":"story","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":null,"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"0521047b-5c15-5449-b7f0-5396c2a0cc4f","title_ar":"اختبار أسماء الأنبياء","slug":"zikr-kids-expansion-07","content_ar":"أسئلة قصيرة عن الأنبياء المذكورين في القرآن، مع إظهار الإجابة الصحيحة وعبارة أن التفاصيل تُؤخذ من المصادر الموثوقة.","type":"quiz","age_group":"9-12","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":{"reward":"وسام العمل الصالح","questions":[{"text":"ما السلوك الأفضل؟","options":["الصدق والتعاون","السخرية","الإسراف","نشر الخبر بلا تحقق"],"correctAnswer":0}]},"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"95c2edb8-3540-55e7-9bc6-12ac11072b91","title_ar":"خريطة الغزوات","slug":"zikr-kids-expansion-08","content_ar":"نشاط يطلب من الطفل وصل اسم الغزوة بفكرتها العامة: بدر، أحد، الخندق، خيبر، حنين، تبوك.","type":"game","age_group":"9-12","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":{"reward":"وسام العمل الصالح","questions":[{"text":"ما السلوك الأفضل؟","options":["الصدق والتعاون","السخرية","الإسراف","نشر الخبر بلا تحقق"],"correctAnswer":0}]},"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"e19a3a8a-cd63-56af-a733-a7ce3933e35a","title_ar":"أصدقاء المسجد","slug":"zikr-kids-expansion-09","content_ar":"قصة عن مجموعة أطفال يتعلمون آداب المسجد: النظافة، خفض الصوت، احترام المصلين، وعدم العبث بممتلكات الآخرين.","type":"story","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":null,"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"700f82f9-de9c-5478-aa47-6bbae41cec27","title_ar":"تحدي حفظ قصار السور","slug":"zikr-kids-expansion-10","content_ar":"خطة أسبوعين لسور قصيرة مع الاستماع والترديد والتسميع لولي الأمر دون ضغط أو مقارنة.","type":"game","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":{"reward":"وسام العمل الصالح","questions":[{"text":"ما السلوك الأفضل؟","options":["الصدق والتعاون","السخرية","الإسراف","نشر الخبر بلا تحقق"],"correctAnswer":0}]},"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"68386838-f15b-5d5c-884e-581cdb01aad3","title_ar":"ميزان العدل","slug":"zikr-kids-expansion-11","content_ar":"لعبة مواقف يختار فيها الطفل التصرف العادل عند تقسيم الحلوى أو الدور في اللعب أو الاعتذار عن الخطأ.","type":"game","age_group":"9-12","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":{"reward":"وسام العمل الصالح","questions":[{"text":"ما السلوك الأفضل؟","options":["الصدق والتعاون","السخرية","الإسراف","نشر الخبر بلا تحقق"],"correctAnswer":0}]},"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"04133ef1-ed12-57ba-aa83-b07e16f6ff59","title_ar":"آداب الطعام","slug":"zikr-kids-expansion-12","content_ar":"قصة تعليمية عن غسل اليدين والتسمية والأكل بلا إسراف وشكر النعمة ومشاركة الطعام.","type":"story","age_group":"3-5","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":null,"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"1b696077-d27f-5872-a4b5-1bce264fa464","title_ar":"رحلة إلى بيت المقدس","slug":"zikr-kids-expansion-13","content_ar":"محتوى تعريفي يربط المسجد الأقصى بالأنبياء والقبلة الأولى، مع احترام قدسية المكان وتجنب الصور النمطية.","type":"story","age_group":"9-12","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":null,"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"a52df769-e853-598e-9c89-19a3f68dffcc","title_ar":"قصة الصدق مع التاجر الصغير","slug":"zikr-kids-expansion-01","content_ar":"قصة تفاعلية عن طفل وجد خطأ في حساب متجر، فأخبر صاحبه رغم أن الاحتفاظ بالمال كان أسهل. يتعلم الطفل أن الأمانة تحمي القلب وثقة الناس.","type":"story","age_group":"3-5","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":null,"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"4a4cada8-4cb4-5bac-b21c-18c0b21dcc9e","title_ar":"رحلة قطرة الماء","slug":"zikr-kids-expansion-02","content_ar":"تتبع القصة قطرة ماء من السحاب إلى البيت، وتشرح للطفل لماذا نغلق الصنبور ولا نسرف، وأن شكر النعمة يكون بحسن استخدامها.","type":"story","age_group":"3-5","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":null,"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"c1a2e628-125d-5a6e-b7e9-dd07bdee93dc","title_ar":"سلمى وتعاون الجيران","slug":"zikr-kids-expansion-03","content_ar":"تتعلم سلمى أن مساعدة الجار لا تحتاج إلى مال؛ يمكنها حمل كتاب أو مشاركة طعام أو سؤال كبير السن عن حاجته.","type":"story","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":null,"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0},{"id":"34fc06e3-583f-58d7-9dba-1dab5cf2e6d2","title_ar":"مفتاح الصلاة","slug":"zikr-kids-expansion-04","content_ar":"لعبة ترتيب خمس بطاقات للصلاة والوضوء والنية والوقت، مع تفسير بسيط يربط الصلاة بالطمأنينة.","type":"game","age_group":"6-8","featured_image_url":null,"published":true,"created_at":"2026-08-14T22:43:29.578267+00:00","title_en":"Zikr Kids Content","content_en":"Original educational content prepared for families.","video_url":null,"quiz_data":{"reward":"وسام العمل الصالح","questions":[{"text":"ما السلوك الأفضل؟","options":["الصدق والتعاون","السخرية","الإسراف","نشر الخبر بلا تحقق"],"correctAnswer":0}]},"metadata":{"editorial":true,"source_note":"Original educational adaptation; parents should guide age-appropriate use."},"is_active":true,"updated_at":"2026-08-14T22:43:29.578267+00:00","content_type":null,"summary_ar":null,"summary_en":null,"age_min":null,"age_max":null,"featured":false,"youtube_video_id":null,"facebook_share_enabled":true,"likes":0,"shares":0}]
+[
+  {
+    "id": "9703adcc-aba8-4051-9c9f-3b67f2202496",
+    "slug": "letter-lab",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "gameId": "letter-lab",
+      "version": 1,
+      "category": "لغة وتعلم",
+      "objective": "مطابقة الحروف العربية",
+      "difficulty": "easy",
+      "safetyNote": "اللعب مستقل عن المقارنة مع الآخرين ويُنصح بالتفاعل مع أحد الوالدين."
+    },
+    "title_ar": "مختبر الحروف",
+    "title_en": "Arabic Letter Lab",
+    "age_group": "3-5",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "لعبة تعليمية قصيرة للتعرف على الحروف العربية ومطابقتها.",
+    "content_en": "A short educational game for recognizing and matching Arabic letters.",
+    "created_at": "2026-10-20T23:54:56.347555+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-20T23:54:56.347555+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "0225807a-e4c1-408b-ab47-0f97609bf866",
+    "slug": "zikr-kids-07",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": 5,
+    "age_min": 3,
+    "featured": false,
+    "metadata": {
+      "original": true,
+      "educational": true,
+      "reviewed_at": "2026-09-19T01:45:17.855Z"
+    },
+    "title_ar": "أعمال الخير",
+    "title_en": "Little Acts of Good",
+    "age_group": "3-5",
+    "is_active": true,
+    "published": true,
+    "quiz_data": [
+      {
+        "answer": 0,
+        "choices": [
+          "أحاول",
+          "أطلب المساعدة",
+          "أفكر أولًا"
+        ],
+        "question": "أعمال الخير"
+      }
+    ],
+    "video_url": null,
+    "content_ar": "اقترح على الطفل ثلاث أعمال سهلة: مساعدة أحد أفراد الأسرة، وضع لعبة في مكانها، وكلمة طيبة لصديق. اجعل الطفل يختار واحدًا وينفذه ثم يخبرك كيف شعر الطرف الآخر. لا تحول العمل إلى جائزة مالية؛ ركز على أثر الخير.",
+    "content_en": "Choose one kind action and talk about its effect.",
+    "created_at": "2026-10-12T20:11:26.007486+00:00",
+    "summary_ar": "اقترح على الطفل ثلاث أعمال سهلة: مساعدة أحد أفراد الأسرة، وضع لعبة في مكانها، وكلمة طيبة لصديق. اجعل الطفل يختار واحدًا وينفذه ثم يخبرك كيف شعر الطرف الآخر. لا تحول العمل إلى جائزة",
+    "summary_en": "Choose one kind action and talk about its effect.",
+    "updated_at": "2026-10-12T20:11:26.007486+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "06ab08f5-5c83-47ed-b93a-bfd04728c20d",
+    "slug": "zikr-kids-08",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": 8,
+    "age_min": 6,
+    "featured": false,
+    "metadata": {
+      "original": true,
+      "educational": true,
+      "reviewed_at": "2026-09-19T01:45:17.855Z"
+    },
+    "title_ar": "ترتيب المكان",
+    "title_en": "Tidy the Place",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": [
+      {
+        "answer": 0,
+        "choices": [
+          "أحاول",
+          "أطلب المساعدة",
+          "أفكر أولًا"
+        ],
+        "question": "ترتيب المكان"
+      }
+    ],
+    "video_url": null,
+    "content_ar": "بعد اللعب، اختر خمس قطع فقط لإعادتها إلى مكانها. علّم الطفل أن النظافة مسؤولية مشتركة وليست مهمة شخص واحد. يمكن أن يستخدم مؤقتًا لدقيقتين ثم يتوقف حتى لا تتحول المهمة إلى عبء. في النهاية اسأله: كيف تغير المكان عندما تعاونّا؟",
+    "content_en": "Put five things back in place and notice the difference.",
+    "created_at": "2026-10-12T20:11:26.007486+00:00",
+    "summary_ar": "بعد اللعب، اختر خمس قطع فقط لإعادتها إلى مكانها. علّم الطفل أن النظافة مسؤولية مشتركة وليست مهمة شخص واحد. يمكن أن يستخدم مؤقتًا لدقيقتين ثم يتوقف حتى لا تتحول المهمة إلى عبء. في ا",
+    "summary_en": "Put five things back in place and notice the difference.",
+    "updated_at": "2026-10-12T20:11:26.007486+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "46df68f1-ae58-45e1-90c8-b1e50ebe0044",
+    "slug": "zikr-kids-02",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": 8,
+    "age_min": 6,
+    "featured": false,
+    "metadata": {
+      "original": true,
+      "educational": true,
+      "reviewed_at": "2026-09-19T01:45:17.855Z"
+    },
+    "title_ar": "قصة الصدق",
+    "title_en": "The Honesty Story",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": [
+      {
+        "answer": 0,
+        "choices": [
+          "أحاول",
+          "أطلب المساعدة",
+          "أفكر أولًا"
+        ],
+        "question": "قصة الصدق"
+      }
+    ],
+    "video_url": null,
+    "content_ar": "وجد سامر لعبة في ساحة المدرسة ولم يعرف صاحبها. فكر أن يحتفظ بها، لكنه قال للمعلم الحقيقة ووضع اللعبة في صندوق المفقودات. في اليوم التالي وجدها طفل يبحث عنها وفرح بها. تعلم سامر أن الصدق قد يجعلنا نترك شيئًا نحبه، لكنه يجعلنا نثق بأنفسنا والآخرين. نشاط اليوم: احكِ موقفًا كان فيه الصدق صعبًا ثم ناقش لماذا اخترته.",
+    "content_en": "Tell a time when honesty was difficult.",
+    "created_at": "2026-10-12T20:11:26.007486+00:00",
+    "summary_ar": "وجد سامر لعبة في ساحة المدرسة ولم يعرف صاحبها. فكر أن يحتفظ بها، لكنه قال للمعلم الحقيقة ووضع اللعبة في صندوق المفقودات. في اليوم التالي وجدها طفل يبحث عنها وفرح بها. تعلم سامر أن ",
+    "summary_en": "Tell a time when honesty was difficult.",
+    "updated_at": "2026-10-12T20:11:26.007486+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "492b9c35-ce36-4ee4-9158-17a67cae2c51",
+    "slug": "zikr-kids-05",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": 8,
+    "age_min": 6,
+    "featured": false,
+    "metadata": {
+      "original": true,
+      "educational": true,
+      "reviewed_at": "2026-09-19T01:45:17.855Z"
+    },
+    "title_ar": "طريق الذكر",
+    "title_en": "The Dhikr Path",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": [
+      {
+        "answer": 0,
+        "choices": [
+          "أحاول",
+          "أطلب المساعدة",
+          "أفكر أولًا"
+        ],
+        "question": "طريق الذكر"
+      }
+    ],
+    "video_url": null,
+    "content_ar": "حوّل الذكر إلى مسار ممتع غير قائم على المنافسة. ضع ثلاث محطات في البيت، وعند كل محطة كلمة طيبة أو دعاء مأثور يراجعه الطفل مع والده. بعد انتهاء الجولة، اختاروا محطة واحدة فقط لتصبح عادة يومية.",
+    "content_en": "Create three calm stations for a family remembrance routine.",
+    "created_at": "2026-10-12T20:11:26.007486+00:00",
+    "summary_ar": "حوّل الذكر إلى مسار ممتع غير قائم على المنافسة. ضع ثلاث محطات في البيت، وعند كل محطة كلمة طيبة أو دعاء مأثور يراجعه الطفل مع والده. بعد انتهاء الجولة، اختاروا محطة واحدة فقط لتصبح ",
+    "summary_en": "Create three calm stations for a family remembrance routine.",
+    "updated_at": "2026-10-12T20:11:26.007486+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "6a89ee3f-24bc-4471-8d67-358b707b0cef",
+    "slug": "zikr-kids-06",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": 8,
+    "age_min": 6,
+    "featured": false,
+    "metadata": {
+      "original": true,
+      "educational": true,
+      "reviewed_at": "2026-09-19T01:45:17.855Z"
+    },
+    "title_ar": "قفزة ذِكر",
+    "title_en": "Dhikr Jump",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": [
+      {
+        "answer": 0,
+        "choices": [
+          "أحاول",
+          "أطلب المساعدة",
+          "أفكر أولًا"
+        ],
+        "question": "قفزة ذِكر"
+      }
+    ],
+    "video_url": null,
+    "content_ar": "لعبة حركة بسيطة: يختار الأب أو المعلم كلمة ذكر صحيحة ومأثورة يعرفها الطفل، ثم يتحرك الطفل خطوة مع كل ترديد حتى يصل إلى عدد متفق عليه يناسب عمره. احرص على أن يكون الهدف الفهم والحب للذكر، لا الضغط على الطفل أو جعله يشعر بالفشل.",
+    "content_en": "Make the game about joy and understanding, not pressure.",
+    "created_at": "2026-10-12T20:11:26.007486+00:00",
+    "summary_ar": "لعبة حركة بسيطة: يختار الأب أو المعلم كلمة ذكر صحيحة ومأثورة يعرفها الطفل، ثم يتحرك الطفل خطوة مع كل ترديد حتى يصل إلى عدد متفق عليه يناسب عمره. احرص على أن يكون الهدف الفهم والحب ",
+    "summary_en": "Make the game about joy and understanding, not pressure.",
+    "updated_at": "2026-10-12T20:11:26.007486+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "8495a3a7-4ea4-49ce-b8e6-e7ac91fbed85",
+    "slug": "zikr-kids-09",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": 12,
+    "age_min": 9,
+    "featured": false,
+    "metadata": {
+      "original": true,
+      "educational": true,
+      "reviewed_at": "2026-09-19T01:45:17.855Z"
+    },
+    "title_ar": "لغز الآية",
+    "title_en": "Verse Puzzle",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": [
+      {
+        "answer": 0,
+        "choices": [
+          "أحاول",
+          "أطلب المساعدة",
+          "أفكر أولًا"
+        ],
+        "question": "لغز الآية"
+      }
+    ],
+    "video_url": null,
+    "content_ar": "اقرأ آية قصيرة من مصدر موثوق ثم اطلب من الطفل تحديد فكرة واحدة واضحة منها بكلماته، دون حفظ نص طويل. بعد ذلك ناقش كيف يمكن تطبيق الفكرة في البيت أو المدرسة. النشاط يدرب على الفهم والتدبر بدل جمع الإجابات السريعة.",
+    "content_en": "Explain one lesson from a short verse in your own words.",
+    "created_at": "2026-10-12T20:11:26.007486+00:00",
+    "summary_ar": "اقرأ آية قصيرة من مصدر موثوق ثم اطلب من الطفل تحديد فكرة واحدة واضحة منها بكلماته، دون حفظ نص طويل. بعد ذلك ناقش كيف يمكن تطبيق الفكرة في البيت أو المدرسة. النشاط يدرب على الفهم وا",
+    "summary_en": "Explain one lesson from a short verse in your own words.",
+    "updated_at": "2026-10-12T20:11:26.007486+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "852b2560-77ed-40df-bb0f-9f8d1eff6e1b",
+    "slug": "zikr-kids-03",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": 8,
+    "age_min": 6,
+    "featured": false,
+    "metadata": {
+      "original": true,
+      "educational": true,
+      "reviewed_at": "2026-09-19T01:45:17.855Z"
+    },
+    "title_ar": "مهمة الأمانة",
+    "title_en": "The Trust Mission",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": [
+      {
+        "answer": 0,
+        "choices": [
+          "أحاول",
+          "أطلب المساعدة",
+          "أفكر أولًا"
+        ],
+        "question": "مهمة الأمانة"
+      }
+    ],
+    "video_url": null,
+    "content_ar": "اختر مهمة منزلية صغيرة لا تحتاج أن يذكرك بها أحد: ترتيب الكتب، وضع الحذاء في مكانه، أو إطعام حيوان أليف بإشراف الأسرة. سجّلها في بطاقة اسمها «مهمة الأمانة». الهدف ليس الكمال، بل أن يعرف الطفل أن الناس يستطيعون الاعتماد عليه.",
+    "content_en": "Choose one small responsibility and complete it without reminders.",
+    "created_at": "2026-10-12T20:11:26.007486+00:00",
+    "summary_ar": "اختر مهمة منزلية صغيرة لا تحتاج أن يذكرك بها أحد: ترتيب الكتب، وضع الحذاء في مكانه، أو إطعام حيوان أليف بإشراف الأسرة. سجّلها في بطاقة اسمها «مهمة الأمانة». الهدف ليس الكمال، بل أن",
+    "summary_en": "Choose one small responsibility and complete it without reminders.",
+    "updated_at": "2026-10-12T20:11:26.007486+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "8982ef42-8cd8-4f1e-863f-e97af2e3c1db",
+    "slug": "zikr-kids-10",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": 8,
+    "age_min": 6,
+    "featured": false,
+    "metadata": {
+      "original": true,
+      "educational": true,
+      "reviewed_at": "2026-09-19T01:45:17.855Z"
+    },
+    "title_ar": "اختبار ذِكر",
+    "title_en": "Zikr Quiz",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": [
+      {
+        "answer": 0,
+        "choices": [
+          "أحاول",
+          "أطلب المساعدة",
+          "أفكر أولًا"
+        ],
+        "question": "اختبار ذِكر"
+      }
+    ],
+    "video_url": null,
+    "content_ar": "اختبار قصير بثلاثة أسئلة: متى نحتاج إلى التثبت من معلومة؟ ما الفرق بين كلمة طيبة وسخرية؟ ولماذا نحافظ على وقت الصلاة؟ لا تجعل النتيجة أهم من الحوار. الطفل الذي يسأل سؤالًا جديدًا يحصل على نقطة فضول إضافية.",
+    "content_en": "Three questions for reflection, not competition.",
+    "created_at": "2026-10-12T20:11:26.007486+00:00",
+    "summary_ar": "اختبار قصير بثلاثة أسئلة: متى نحتاج إلى التثبت من معلومة؟ ما الفرق بين كلمة طيبة وسخرية؟ ولماذا نحافظ على وقت الصلاة؟ لا تجعل النتيجة أهم من الحوار. الطفل الذي يسأل سؤالًا جديدًا ي",
+    "summary_en": "Three questions for reflection, not competition.",
+    "updated_at": "2026-10-12T20:11:26.007486+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "8aa27e1a-1c24-4a06-958d-229f822927e7",
+    "slug": "zikr-kids-04",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": 8,
+    "age_min": 6,
+    "featured": false,
+    "metadata": {
+      "original": true,
+      "educational": true,
+      "reviewed_at": "2026-09-19T01:45:17.855Z"
+    },
+    "title_ar": "مغامرة المسجد",
+    "title_en": "Mosque Adventure",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": [
+      {
+        "answer": 0,
+        "choices": [
+          "أحاول",
+          "أطلب المساعدة",
+          "أفكر أولًا"
+        ],
+        "question": "مغامرة المسجد"
+      }
+    ],
+    "video_url": null,
+    "content_ar": "في طريقه إلى المسجد، لاحظ مازن أن شخصًا يحتاج إلى معرفة مكان الوضوء. ساعده ثم دخل بهدوء. بعد الصلاة أعاد حذاءه إلى مكانه ولم يترك ورقة في الأرض. كانت المغامرة قصيرة، لكنها علمته أن آداب المسجد تبدأ من الطريق وتستمر بعد الصلاة. نشاط: اكتب أو ارسم ثلاث طرق تجعل المسجد أجمل لمن يأتي بعدك.",
+    "content_en": "Draw three ways to keep the mosque welcoming.",
+    "created_at": "2026-10-12T20:11:26.007486+00:00",
+    "summary_ar": "في طريقه إلى المسجد، لاحظ مازن أن شخصًا يحتاج إلى معرفة مكان الوضوء. ساعده ثم دخل بهدوء. بعد الصلاة أعاد حذاءه إلى مكانه ولم يترك ورقة في الأرض. كانت المغامرة قصيرة، لكنها علمته أن",
+    "summary_en": "Draw three ways to keep the mosque welcoming.",
+    "updated_at": "2026-10-12T20:11:26.007486+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "982d9090-d570-452a-ac78-fa23cca1f450",
+    "slug": "zikr-kids-01",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": 8,
+    "age_min": 6,
+    "featured": false,
+    "metadata": {
+      "original": true,
+      "educational": true,
+      "reviewed_at": "2026-09-19T01:45:17.855Z"
+    },
+    "title_ar": "آداب الصلاة للصغار",
+    "title_en": "Prayer Manners for Kids",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": [
+      {
+        "answer": 0,
+        "choices": [
+          "أحاول",
+          "أطلب المساعدة",
+          "أفكر أولًا"
+        ],
+        "question": "آداب الصلاة للصغار"
+      }
+    ],
+    "video_url": null,
+    "content_ar": "قبل الصلاة نستعد بهدوء ونحافظ على المكان ونحاول التركيز. ليس المطلوب أن يكون الطفل كاملًا من أول مرة؛ المطلوب أن يتعلم خطوة جديدة كل مرة. جربوا اليوم ثلاث عادات: غسل اليدين والوجه عند الوضوء بهدوء، إغلاق المشتتات، والوقوف في مكان مرتب. بعد الصلاة اسأل طفلك: ما الشيء الذي ساعدك على التركيز؟",
+    "content_en": "What helped you focus during prayer?",
+    "created_at": "2026-10-12T20:11:26.007486+00:00",
+    "summary_ar": "قبل الصلاة نستعد بهدوء ونحافظ على المكان ونحاول التركيز. ليس المطلوب أن يكون الطفل كاملًا من أول مرة؛ المطلوب أن يتعلم خطوة جديدة كل مرة. جربوا اليوم ثلاث عادات: غسل اليدين والوجه ",
+    "summary_en": "What helped you focus during prayer?",
+    "updated_at": "2026-10-12T20:11:26.007486+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "a84dc565-e5eb-4d5d-a176-2d5bed0f0b67",
+    "slug": "zikr-kids-11",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": 12,
+    "age_min": 9,
+    "featured": false,
+    "metadata": {
+      "original": true,
+      "educational": true,
+      "reviewed_at": "2026-09-19T01:45:17.855Z"
+    },
+    "title_ar": "كيف أعتذر؟",
+    "title_en": "How Do I Apologize?",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": [
+      {
+        "answer": 0,
+        "choices": [
+          "أحاول",
+          "أطلب المساعدة",
+          "أفكر أولًا"
+        ],
+        "question": "كيف أعتذر؟"
+      }
+    ],
+    "video_url": null,
+    "content_ar": "الاعتذار الجيد يتكون من ثلاث خطوات: الاعتراف بالخطأ دون أعذار طويلة، بيان أنك فهمت أثره، ثم محاولة إصلاح ما يمكن إصلاحه. استخدم موقفًا بسيطًا من المدرسة أو البيت وتدرّب على الاعتذار بجملة واحدة واضحة.",
+    "content_en": "Practice a clear apology with three simple steps.",
+    "created_at": "2026-10-12T20:11:26.007486+00:00",
+    "summary_ar": "الاعتذار الجيد يتكون من ثلاث خطوات: الاعتراف بالخطأ دون أعذار طويلة، بيان أنك فهمت أثره، ثم محاولة إصلاح ما يمكن إصلاحه. استخدم موقفًا بسيطًا من المدرسة أو البيت وتدرّب على الاعتذا",
+    "summary_en": "Practice a clear apology with three simple steps.",
+    "updated_at": "2026-10-12T20:11:26.007486+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "b9442a38-b109-4dca-9359-3af88c65ff4c",
+    "slug": "zikr-kids-12",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": 8,
+    "age_min": 6,
+    "featured": false,
+    "metadata": {
+      "original": true,
+      "educational": true,
+      "reviewed_at": "2026-09-19T01:45:17.855Z"
+    },
+    "title_ar": "صديق يسمع",
+    "title_en": "A Friend Who Listens",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": [
+      {
+        "answer": 0,
+        "choices": [
+          "أحاول",
+          "أطلب المساعدة",
+          "أفكر أولًا"
+        ],
+        "question": "صديق يسمع"
+      }
+    ],
+    "video_url": null,
+    "content_ar": "جلس رائد مع صديقه الذي كان منزعجًا. حاول في البداية أن يعطيه نصيحة مباشرة، ثم توقف وسأله: «هل تريد مني أن أسمع فقط أم نبحث عن حل؟». شعر صديقه بالراحة لأن رائد فهم حاجته أولًا. نشاط اليوم: جرّب الاستماع لدقيقة كاملة دون مقاطعة.",
+    "content_en": "Listen for one full minute before giving advice.",
+    "created_at": "2026-10-12T20:11:26.007486+00:00",
+    "summary_ar": "جلس رائد مع صديقه الذي كان منزعجًا. حاول في البداية أن يعطيه نصيحة مباشرة، ثم توقف وسأله: «هل تريد مني أن أسمع فقط أم نبحث عن حل؟». شعر صديقه بالراحة لأن رائد فهم حاجته أولًا. نشاط",
+    "summary_en": "Listen for one full minute before giving advice.",
+    "updated_at": "2026-10-12T20:11:26.007486+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "0f367fe8-23e8-4c78-982b-822cf36a7dd3",
+    "slug": "zikr-road",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "gameId": "zikr-road",
+      "version": 2,
+      "category": "حركة ومغامرة",
+      "difficulty": "easy"
+    },
+    "title_ar": "طريق ذِكر",
+    "title_en": "ZIKR Road",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "تجاوز العوائق واجمع النجوم في طريق آمن.",
+    "content_en": "Avoid hazards and collect stars on a safe road.",
+    "created_at": "2026-10-12T20:11:24.434245+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:56:27.378257+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "2668b51d-990f-4c20-9318-89dab3ef0281",
+    "slug": "wudu-challenge",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "gameId": "wudu-challenge",
+      "version": 2,
+      "category": "تعلم إسلامي",
+      "difficulty": "easy"
+    },
+    "title_ar": "تحدي الوضوء",
+    "title_en": "Wudu Challenge",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "رتب خطوات الوضوء من المحتوى التعليمي المعتمد.",
+    "content_en": "Arrange wudu steps from approved educational content.",
+    "created_at": "2026-10-12T20:11:24.434245+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:56:27.378257+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "3d5a14b1-92bd-468b-8be2-de0288b8b4d4",
+    "slug": "zikr-coloring",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "gameId": "zikr-coloring",
+      "version": 2,
+      "category": "إبداع",
+      "difficulty": "easy"
+    },
+    "title_ar": "تلوين ذِكر",
+    "title_en": "ZIKR Coloring",
+    "age_group": "3-5",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "لون رسومات أصلية واحفظها محليًا على جهازك.",
+    "content_en": "Color original illustrations and save them locally.",
+    "created_at": "2026-10-12T20:11:24.434245+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:56:27.378257+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "4bcb855a-b03a-4573-957e-f2745b28cc9c",
+    "slug": "zikr-quiz",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "gameId": "zikr-quiz",
+      "version": 2,
+      "category": "أسئلة وتعلم",
+      "difficulty": "easy"
+    },
+    "title_ar": "اختبار ذِكر",
+    "title_en": "ZIKR Quiz",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "أجب عن أسئلة قصيرة من المحتوى التعليمي الموثق.",
+    "content_en": "Answer short questions from approved educational content.",
+    "created_at": "2026-10-12T20:11:24.434245+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:56:27.378257+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "6d63e98b-917b-4847-b2ce-c38a01205a60",
+    "slug": "zikr-memory",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "gameId": "zikr-memory",
+      "version": 2,
+      "category": "ذاكرة وتركيز",
+      "difficulty": "easy"
+    },
+    "title_ar": "ذاكرة ذِكر",
+    "title_en": "ZIKR Memory",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "طابق البطاقات ذات الرموز الأصلية وتعلم بهدوء.",
+    "content_en": "Match original themed cards and learn calmly.",
+    "created_at": "2026-10-12T20:11:24.434245+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:56:27.378257+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "716805c1-9ee5-4a9b-8b55-2e7abbf2a24c",
+    "slug": "verse-puzzle",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "gameId": "verse-puzzle",
+      "version": 2,
+      "category": "القرآن",
+      "difficulty": "easy"
+    },
+    "title_ar": "لغز الآية",
+    "title_en": "Verse Puzzle",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "رتب كلمات النص القرآني الموثق دون تعديل.",
+    "content_en": "Arrange exact words from verified Quran text.",
+    "created_at": "2026-10-12T20:11:24.434245+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:56:27.378257+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "7863d9cc-5286-4957-90ae-83baeddd4f25",
+    "slug": "hilal-fly",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "gameId": "hilal-fly",
+      "version": 2,
+      "category": "أركيد هادئ",
+      "difficulty": "easy"
+    },
+    "title_ar": "طيران الهلال",
+    "title_en": "Hilal Fly",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "حرك الهلال اللطيف واجمع النجوم.",
+    "content_en": "Guide a friendly crescent and collect stars.",
+    "created_at": "2026-10-12T20:11:24.434245+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:56:27.378257+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "8e2dcd3f-ddc5-45d9-bf03-a0d416514d44",
+    "slug": "mosque-adventure",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "gameId": "mosque-adventure",
+      "version": 2,
+      "category": "حركة ومغامرة",
+      "difficulty": "easy"
+    },
+    "title_ar": "مغامرة المسجد",
+    "title_en": "Mosque Adventure",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "استكشف خريطة خيالية وأكمل أهدافًا تعليمية صغيرة.",
+    "content_en": "Explore a fictional map and complete small learning objectives.",
+    "created_at": "2026-10-12T20:11:24.434245+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:56:27.378257+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "c7a373bf-a430-4732-966a-4b45a1462275",
+    "slug": "mosque-cleanup",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "gameId": "mosque-cleanup",
+      "version": 2,
+      "category": "قيم وتعاون",
+      "difficulty": "easy"
+    },
+    "title_ar": "ترتيب المكان",
+    "title_en": "Mosque Cleanup",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "رتب بيئة خيالية نظيفة ومحترمة.",
+    "content_en": "Sort a clean fictional environment respectfully.",
+    "created_at": "2026-10-12T20:11:24.434245+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:56:27.378257+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "e57cc626-d163-450c-8392-017c35a27375",
+    "slug": "zikr-jump",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "gameId": "zikr-jump",
+      "version": 2,
+      "category": "حركة ومغامرة",
+      "difficulty": "easy"
+    },
+    "title_ar": "قفزة ذِكر",
+    "title_en": "ZIKR Jump",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "اقفز بين المنصات واجمع نجوم التعلم.",
+    "content_en": "Jump between platforms and collect learning stars.",
+    "created_at": "2026-10-12T20:11:24.434245+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:56:27.378257+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "f5c8097b-e9de-49ef-9ae5-5b731a274de3",
+    "slug": "good-deeds",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "gameId": "good-deeds",
+      "version": 2,
+      "category": "قيم وتعاون",
+      "difficulty": "easy"
+    },
+    "title_ar": "أعمال الخير",
+    "title_en": "Good Deeds",
+    "age_group": "3-5",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "اختر مهامًا تعليمية اختيارية داخل عالم اللعبة.",
+    "content_en": "Choose optional educational tasks inside the game world.",
+    "created_at": "2026-10-12T20:11:24.434245+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:56:27.378257+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "43c7ac2d-8905-4245-bab9-4a6c5d9b1a6a",
+    "slug": "zikr-runner",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "value": "التركيز والمثابرة",
+      "gameId": "zikr-runner",
+      "reward": "نجوم التعلم",
+      "version": 2,
+      "category": "ألعاب الحركة الآمنة",
+      "difficulty": "easy"
+    },
+    "title_ar": "ذِكر رانر",
+    "title_en": "ZIKR Runner",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "اجمع النجوم وتجاوز العوائق في رحلة جري آمنة ولطيفة. استخدم اللعبة للتعلم والمرح، وخذ استراحة متى شئت.",
+    "content_en": "Collect stars and avoid obstacles in a gentle, safe running journey.",
+    "created_at": "2026-10-12T20:11:24.359164+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:56:27.378257+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "0e272306-385c-433b-ad8f-e23b9b20eefe",
+    "slug": "story-luqman-kind-words",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "value": "الرفق واحترام الآخرين",
+      "reward": "وسام الكلمة الطيبة",
+      "category": "الأخلاق",
+      "objective": "تحويل الكلام الجميل إلى عادة يومية.",
+      "familyPrompt": "كل فرد يقول كلمة تقدير حقيقية لشخص آخر اليوم."
+    },
+    "title_ar": "لقمان والكلمة الطيبة",
+    "title_en": "Luqman and the Kind Word",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "كان ياسر يحب أن يكون أول من يجيب في الصف، لكنه كان يقاطع أصدقاءه أحيانًا ويضحك على أخطائهم.\n\nفي يوم النشاط، طلبت المعلمة من كل طفل أن يكتب كلمة تشجّع زميلًا. كتب ياسر: \"أنت تستطيع أن تتعلم، وأنا أساعدك\".\n\nفرح صديقه عمر بالكلمة، ثم طلب ياسر منه أن يعلّمه المسألة التي لم يفهمها. اكتشف ياسر أن الكلمة الطيبة لا تجعل الآخرين سعداء فقط، بل تجعل صاحبها ألطف وأقوى.\n\nالدرس: فكّر قبل أن تتكلم، واجعل كلماتك عونًا لا أذى.",
+    "content_en": "A story about kind words, respect, and encouraging friends.",
+    "created_at": "2026-10-12T20:11:22.599963+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.599963+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "0f03ffb1-bbb7-48ef-b274-ae58ddc65aad",
+    "slug": "quiz-akhlaq-adventure",
+    "type": "quiz",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "value": "التثبت والتعاون وضبط الغضب",
+      "reward": "تاج الخُلُق الجميل",
+      "category": "الأخلاق والمهارات",
+      "gameType": "quiz",
+      "familyPrompt": "اختاروا خلقًا واحدًا لتجربته طوال اليوم."
+    },
+    "title_ar": "اختبار أبطال الأخلاق",
+    "title_en": "Heroes of Good Character Quiz",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "رحلة قصيرة من خمسة مواقف. فكر في أثر كل اختيار على نفسك والآخرين، ثم ناقش خلقًا واحدًا مع أسرتك.",
+    "content_en": "A five-question quiz about kindness, patience, honesty, and wise choices.",
+    "created_at": "2026-10-12T20:11:22.599963+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.599963+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "49da171d-f275-4464-841e-0be1e00449f9",
+    "slug": "story-safaa-sharing-lunch",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "value": "الكرم والانتباه لسلامة الآخرين",
+      "reward": "قلب العطاء",
+      "category": "الرحمة والمشاركة",
+      "familyPrompt": "اختاروا شيئًا آمنًا يمكن مشاركته بعد سؤال ولي الأمر."
+    },
+    "title_ar": "صفاء وعلبة الطعام",
+    "title_en": "Safaa and the Lunch Box",
+    "age_group": "3-5",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "حضرت صفاء إلى المدرسة بعلبة طعام جميلة. رأت صديقتها نورة تنظر إلى طعامها لأنها نسيت علبتها في البيت.\n\nقسمت صفاء طعامها نصفين، ثم تذكرت أن تسأل والدتها قبل مشاركة أي طعام بسبب الحساسية.\n\nالدرس: المشاركة جميلة، ومعها ننتبه دائمًا إلى السلامة وإذن الكبار.",
+    "content_en": "A gentle story about sharing safely and caring for friends.",
+    "created_at": "2026-10-12T20:11:22.599963+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.599963+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "8c47be5f-659a-4a38-811a-abee39df1a86",
+    "slug": "game-memory-dhikr-cards",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "value": "ربط الذكر بالموقف",
+      "gameId": "zikr-memory",
+      "reward": "وسام الذاكرة",
+      "version": 2,
+      "category": "ألعاب الذاكرة",
+      "gameType": "memory",
+      "difficulty": "easy",
+      "safetyNote": "لعبة منزلية بإشراف ولي الأمر.",
+      "activitySteps": [
+        "اصنع البطاقات مع كبير",
+        "اقلب بطاقتين",
+        "اذكر المناسبة",
+        "احتفل بالتعلم"
+      ]
+    },
+    "title_ar": "ذاكرة الأذكار اليومية",
+    "title_en": "Daily Dhikr Memory",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "لعبة بطاقات الذاكرة: اقلب البطاقات وابحث عن كل موقف والذكر المناسب له.\n\nالأزواج المقترحة: قبل النوم / باسمك اللهم أموت وأحيا، قبل الطعام / بسم الله، بعد الطعام / الحمد لله، عند العطاس / الحمد لله، عند دخول البيت / السلام على الأهل.\n\nطريقة اللعب: اقلب بطاقتين في كل دور. إذا لم تجد الزوج، أعد البطاقتين مكانهما وتعلم من دورك التالي. الهدف هو التذكر والهدوء، لا السرعة.",
+    "content_en": "A safe memory game that connects daily moments with simple adhkar.",
+    "created_at": "2026-10-12T20:11:22.599963+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-17T07:50:28.561551+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "92eea2a6-2fbd-4fb0-9579-7ddfe70d0fb1",
+    "slug": "game-kindness-spinner",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "value": "الرحمة والتعاون",
+      "reward": "حديقة الخير",
+      "category": "مهام يومية",
+      "gameType": "daily-challenge",
+      "durationDays": 7,
+      "familyPrompt": "شارِكوا مهمة واحدة يوميًا دون نشر بيانات الأطفال.",
+      "activitySteps": [
+        "اختر مهمة",
+        "نفذها بأمان",
+        "أخبر أسرتك",
+        "أضف نجمة"
+      ]
+    },
+    "title_ar": "عجلة أعمال الخير",
+    "title_en": "Kindness Spinner",
+    "age_group": "3-5",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "اختر مهمة خير من القائمة: ابتسم لأخيك، ساعد في ترتيب الألعاب، اسقِ نباتًا، قل شكرًا، أو ادعُ بالخير لشخص تحبه.\n\nيمكن لولي الأمر كتابة المهام على دوائر ورقية، ثم تدوير قلم في الوسط. لا توجد خسارة في هذه اللعبة؛ كل مهمة منجزة تصنع نجمة في شجرة الخير.",
+    "content_en": "A family kindness challenge with no losing outcome.",
+    "created_at": "2026-10-12T20:11:22.599963+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.599963+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "c9f21ba8-f9b6-4787-bd71-a575de87f3b2",
+    "slug": "activity-family-shukr-journal",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "value": "الشكر والتعبير عن المشاعر",
+      "reward": "وسام القلب الشاكر",
+      "category": "التأمل والشكر",
+      "gameType": "drawing",
+      "familyPrompt": "اكتبوا أنتم أيضًا نعمة واحدة في دفتر الأسرة دون إجبار الطفل على مشاركة مشاعره.",
+      "activitySteps": [
+        "ارسم نعمة",
+        "اكتب سبب الشكر",
+        "حدد استخدامًا نافعًا",
+        "شارك مع الأسرة إن أحببت"
+      ]
+    },
+    "title_ar": "دفتر نعمتي اليوم",
+    "title_en": "My Gratitude Journal",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "ارسم ثلاث نعم تفرح بها اليوم، ثم اكتب أو أخبر ولي أمرك لماذا تشكر الله عليها. في أسفل الصفحة أكمل الجملة: \"سأستخدم هذه النعمة في ...\".\n\nلا نقارن رسوماتنا برسومات الآخرين؛ لكل طفل طريقته الجميلة في التعبير.",
+    "content_en": "A gratitude drawing and reflection activity.",
+    "created_at": "2026-10-12T20:11:22.599963+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.599963+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "cdba3136-0839-4436-9e0d-5fedfb312ae4",
+    "slug": "activity-wudu-science-safe",
+    "type": "wudu",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "value": "الطهارة والاعتدال وعدم الإسراف",
+      "reward": "وسام أمين الماء",
+      "category": "الوضوء والبيئة",
+      "safetyNote": "لا تستخدم الزجاج أو الماء الساخن، ولا تترك الطفل وحده قرب الماء.",
+      "familyPrompt": "نفذوا النشاط بجانب حوض مناسب وتحت إشراف كبير.",
+      "activitySteps": [
+        "جهز أكوابًا آمنة",
+        "قارن الكميات",
+        "اكتب ملاحظة",
+        "نظف المكان"
+      ]
+    },
+    "title_ar": "مختبر الماء والنظافة",
+    "title_en": "Water and Cleanliness Lab",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "ضع ثلاث كميات مختلفة من الماء في أكواب آمنة، ثم قارن كيف يمكن للإنسان أن ينظف يديه بكمية معتدلة بدل الإسراف.\n\nاكتب ملاحظتك: متى يكون الماء ضروريًا؟ وكيف نحافظ عليه؟ نفذ النشاط مع ولي الأمر ولا تستخدم ماءً ساخنًا أو أدوات زجاجية.",
+    "content_en": "A supervised activity about wudu, cleanliness, moderation, and water safety.",
+    "created_at": "2026-10-12T20:11:22.599963+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.599963+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "eae494ea-ac5b-4634-95fd-b1f7503f2d39",
+    "slug": "story-anas-clean-planet",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "value": "الأمانة والعناية بالنعم",
+      "reward": "وسام حارس الحديقة",
+      "category": "البيئة والسلوك",
+      "familyPrompt": "نفّذوا مهمة نظافة قصيرة مع إشراف كبير.",
+      "activitySteps": [
+        "اختر مكانًا صغيرًا",
+        "اجمع المخلفات بأمان مع ولي الأمر",
+        "اترك المكان أجمل"
+      ]
+    },
+    "title_ar": "أنس وحديقة الحي",
+    "title_en": "Anas and the Neighborhood Garden",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "كان أنس يحب اللعب في الحديقة، لكنه لاحظ أوراقًا وأكوابًا ملقاة على الأرض. قال: \"هذه الحديقة بيتنا الصغير، ويجب أن نحافظ عليها\".\n\nطلب أنس مساعدة والده، ثم جمعا النفايات ووضعاها في سلالها. في اليوم التالي أحضر أنس زجاجة ماء قابلة لإعادة الاستخدام، وشجّع أصدقاءه على ترك المكان أجمل مما وجدوه.\n\nالدرس: النظافة مسؤولية، والاهتمام بالمخلوقات والبيئة من الشكر على النعم.",
+    "content_en": "A story about caring for shared spaces and thanking Allah for blessings.",
+    "created_at": "2026-10-12T20:11:22.599963+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.599963+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "f86d4591-d6e3-4da4-b8f7-516aff7d371c",
+    "slug": "game-scenario-smart-choice",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "value": "الأمانة والحدود الرقمية وطلب المساعدة",
+      "reward": "وسام الاختيار الحكيم",
+      "category": "السلامة والقرارات",
+      "gameType": "scenario",
+      "familyPrompt": "تحدثوا عن شخص بالغ موثوق يمكن الرجوع إليه عند القلق."
+    },
+    "title_ar": "ماذا ستفعل؟ مدينة الاختيارات",
+    "title_en": "What Would You Do?",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "أنت في مدينة الاختيارات. اقرأ الموقف واختر التصرف الأقرب إلى الخُلُق الحسن.\n\nالمواقف: رسالة من مجهول يطلب صورتك، خطأ في حق صديق، قلم ليس لك، خسارة في لعبة، وخبر غير مؤكد عن زميل.\n\nالدرس: الشجاعة ليست في الصراخ، بل في اختيار الصواب وطلب المساعدة عند الحاجة.",
+    "content_en": "Scenario game about good choices, digital safety, and asking trusted adults for help.",
+    "created_at": "2026-10-12T20:11:22.599963+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.599963+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "04133ef1-ed12-57ba-aa83-b07e16f6ff59",
+    "slug": "zikr-kids-expansion-12",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "آداب الطعام",
+    "title_en": "Zikr Kids Content",
+    "age_group": "3-5",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "قصة تعليمية عن غسل اليدين والتسمية والأكل بلا إسراف وشكر النعمة ومشاركة الطعام.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "0521047b-5c15-5449-b7f0-5396c2a0cc4f",
+    "slug": "zikr-kids-expansion-07",
+    "type": "quiz",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "اختبار أسماء الأنبياء",
+    "title_en": "Zikr Kids Content",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": {
+      "reward": "وسام العمل الصالح",
+      "questions": [
+        {
+          "text": "ما السلوك الأفضل؟",
+          "options": [
+            "الصدق والتعاون",
+            "السخرية",
+            "الإسراف",
+            "نشر الخبر بلا تحقق"
+          ],
+          "correctAnswer": 0
+        }
+      ]
+    },
+    "video_url": null,
+    "content_ar": "أسئلة قصيرة عن الأنبياء المذكورين في القرآن، مع إظهار الإجابة الصحيحة وعبارة أن التفاصيل تُؤخذ من المصادر الموثوقة.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "1b696077-d27f-5872-a4b5-1bce264fa464",
+    "slug": "zikr-kids-expansion-13",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "رحلة إلى بيت المقدس",
+    "title_en": "Zikr Kids Content",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "محتوى تعريفي يربط المسجد الأقصى بالأنبياء والقبلة الأولى، مع احترام قدسية المكان وتجنب الصور النمطية.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "22ac8f8d-c00c-5fbf-8cb5-b749ba80f429",
+    "slug": "zikr-kids-expansion-15",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "دفتر الامتنان",
+    "title_en": "Zikr Kids Content",
+    "age_group": "3-5",
+    "is_active": true,
+    "published": true,
+    "quiz_data": {
+      "reward": "وسام العمل الصالح",
+      "questions": [
+        {
+          "text": "ما السلوك الأفضل؟",
+          "options": [
+            "الصدق والتعاون",
+            "السخرية",
+            "الإسراف",
+            "نشر الخبر بلا تحقق"
+          ],
+          "correctAnswer": 0
+        }
+      ]
+    },
+    "video_url": null,
+    "content_ar": "نشاط يومي يكتب أو يرسم فيه الطفل ثلاث نعم وعمل شكر واحد، مثل مساعدة الأسرة أو حفظ الماء.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "34fc06e3-583f-58d7-9dba-1dab5cf2e6d2",
+    "slug": "zikr-kids-expansion-04",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "مفتاح الصلاة",
+    "title_en": "Zikr Kids Content",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": {
+      "reward": "وسام العمل الصالح",
+      "questions": [
+        {
+          "text": "ما السلوك الأفضل؟",
+          "options": [
+            "الصدق والتعاون",
+            "السخرية",
+            "الإسراف",
+            "نشر الخبر بلا تحقق"
+          ],
+          "correctAnswer": 0
+        }
+      ]
+    },
+    "video_url": null,
+    "content_ar": "لعبة ترتيب خمس بطاقات للصلاة والوضوء والنية والوقت، مع تفسير بسيط يربط الصلاة بالطمأنينة.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "4a4cada8-4cb4-5bac-b21c-18c0b21dcc9e",
+    "slug": "zikr-kids-expansion-02",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "رحلة قطرة الماء",
+    "title_en": "Zikr Kids Content",
+    "age_group": "3-5",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "تتبع القصة قطرة ماء من السحاب إلى البيت، وتشرح للطفل لماذا نغلق الصنبور ولا نسرف، وأن شكر النعمة يكون بحسن استخدامها.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "68386838-f15b-5d5c-884e-581cdb01aad3",
+    "slug": "zikr-kids-expansion-11",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "ميزان العدل",
+    "title_en": "Zikr Kids Content",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": {
+      "reward": "وسام العمل الصالح",
+      "questions": [
+        {
+          "text": "ما السلوك الأفضل؟",
+          "options": [
+            "الصدق والتعاون",
+            "السخرية",
+            "الإسراف",
+            "نشر الخبر بلا تحقق"
+          ],
+          "correctAnswer": 0
+        }
+      ]
+    },
+    "video_url": null,
+    "content_ar": "لعبة مواقف يختار فيها الطفل التصرف العادل عند تقسيم الحلوى أو الدور في اللعب أو الاعتذار عن الخطأ.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "700f82f9-de9c-5478-aa47-6bbae41cec27",
+    "slug": "zikr-kids-expansion-10",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "تحدي حفظ قصار السور",
+    "title_en": "Zikr Kids Content",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": {
+      "reward": "وسام العمل الصالح",
+      "questions": [
+        {
+          "text": "ما السلوك الأفضل؟",
+          "options": [
+            "الصدق والتعاون",
+            "السخرية",
+            "الإسراف",
+            "نشر الخبر بلا تحقق"
+          ],
+          "correctAnswer": 0
+        }
+      ]
+    },
+    "video_url": null,
+    "content_ar": "خطة أسبوعين لسور قصيرة مع الاستماع والترديد والتسميع لولي الأمر دون ضغط أو مقارنة.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "8a2a022e-fc21-566b-9db5-cedeba730adf",
+    "slug": "zikr-kids-expansion-14",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "مغامرة التثبت",
+    "title_en": "Zikr Kids Content",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": {
+      "reward": "وسام العمل الصالح",
+      "questions": [
+        {
+          "text": "ما السلوك الأفضل؟",
+          "options": [
+            "الصدق والتعاون",
+            "السخرية",
+            "الإسراف",
+            "نشر الخبر بلا تحقق"
+          ],
+          "correctAnswer": 0
+        }
+      ]
+    },
+    "video_url": null,
+    "content_ar": "لعبة يميز فيها الطفل بين خبر صحيح وخبر يحتاج إلى سؤال، ويتعلم ألا يعيد نشر كل ما يسمعه.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "95c2edb8-3540-55e7-9bc6-12ac11072b91",
+    "slug": "zikr-kids-expansion-08",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "خريطة الغزوات",
+    "title_en": "Zikr Kids Content",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": {
+      "reward": "وسام العمل الصالح",
+      "questions": [
+        {
+          "text": "ما السلوك الأفضل؟",
+          "options": [
+            "الصدق والتعاون",
+            "السخرية",
+            "الإسراف",
+            "نشر الخبر بلا تحقق"
+          ],
+          "correctAnswer": 0
+        }
+      ]
+    },
+    "video_url": null,
+    "content_ar": "نشاط يطلب من الطفل وصل اسم الغزوة بفكرتها العامة: بدر، أحد، الخندق، خيبر، حنين، تبوك.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "a52df769-e853-598e-9c89-19a3f68dffcc",
+    "slug": "zikr-kids-expansion-01",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "قصة الصدق مع التاجر الصغير",
+    "title_en": "Zikr Kids Content",
+    "age_group": "3-5",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "قصة تفاعلية عن طفل وجد خطأ في حساب متجر، فأخبر صاحبه رغم أن الاحتفاظ بالمال كان أسهل. يتعلم الطفل أن الأمانة تحمي القلب وثقة الناس.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "c1a2e628-125d-5a6e-b7e9-dd07bdee93dc",
+    "slug": "zikr-kids-expansion-03",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "سلمى وتعاون الجيران",
+    "title_en": "Zikr Kids Content",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "تتعلم سلمى أن مساعدة الجار لا تحتاج إلى مال؛ يمكنها حمل كتاب أو مشاركة طعام أو سؤال كبير السن عن حاجته.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "c2371bb7-186e-529c-a749-02cdb22d50c8",
+    "slug": "zikr-kids-expansion-06",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "يوسف والصبر الجميل",
+    "title_en": "Zikr Kids Content",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "قصة مبسطة مستلهمة من المعاني الثابتة في سورة يوسف، تركز على عدم اليأس والعفو دون اختراع حوارات منسوبة للوحي.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "e19a3a8a-cd63-56af-a733-a7ce3933e35a",
+    "slug": "zikr-kids-expansion-09",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "أصدقاء المسجد",
+    "title_en": "Zikr Kids Content",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "قصة عن مجموعة أطفال يتعلمون آداب المسجد: النظافة، خفض الصوت، احترام المصلين، وعدم العبث بممتلكات الآخرين.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "f79a43d5-aee3-5df5-be19-962e3cce1bc7",
+    "slug": "zikr-kids-expansion-05",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "editorial": true,
+      "source_note": "Original educational adaptation; parents should guide age-appropriate use."
+    },
+    "title_ar": "صيد الكلمات الطيبة",
+    "title_en": "Zikr Kids Content",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": {
+      "reward": "وسام العمل الصالح",
+      "questions": [
+        {
+          "text": "ما السلوك الأفضل؟",
+          "options": [
+            "الصدق والتعاون",
+            "السخرية",
+            "الإسراف",
+            "نشر الخبر بلا تحقق"
+          ],
+          "correctAnswer": 0
+        }
+      ]
+    },
+    "video_url": null,
+    "content_ar": "لعبة يختار فيها الطفل كلمات مثل شكرًا وآسف من بين كلمات مؤذية، ثم يركب جملة إصلاحية.",
+    "content_en": "Original educational content prepared for families.",
+    "created_at": "2026-10-12T20:11:22.475567+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:22.475567+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "1f939452-7ac0-523d-be1f-1d5ae4d6b0f1",
+    "slug": "story-yunus-kids",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "reward": "نجمة التوبة",
+      "objective": "تعلم الاعتذار والرجوع إلى الله"
+    },
+    "title_ar": "يونس والحوت",
+    "title_en": "Yunus and the Whale",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "خرج يونس من قومه ثم وجد نفسه في بطن الحوت، فنادى الله بصدق فاستجاب له. الدرس: لا نيأس من رحمة الله ونعتذر عندما نخطئ.",
+    "content_en": "Original educational content prepared for Zikr families.",
+    "created_at": "2026-10-12T20:11:20.993033+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:20.993033+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "24edbcd2-91d1-5f19-9f59-c8097c1a54c3",
+    "slug": "story-ashab-al-fil",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "reward": "وسام حامي الكعبة",
+      "objective": "تعلم معنى الحماية والثقة بالله"
+    },
+    "title_ar": "قصة أصحاب الفيل",
+    "title_en": "The People of the Elephant",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "كان أبرهة يريد هدم الكعبة، فسار بجيش كبير ومعه فيل. حفظ الله بيته وأرسل طيرًا ترميهم بحجارة من سجيل، فعرف الأطفال أن حماية الله أقوى من كل قوة. الدرس: نحترم بيوت الله ونثق بحفظه. ",
+    "content_en": "Original educational content prepared for Zikr families.",
+    "created_at": "2026-10-12T20:11:20.993033+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:20.993033+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "3efae434-e46f-5c88-a964-2533dda26c4f",
+    "slug": "activity-kindness-calendar",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "reward": "حديقة الخير",
+      "gameType": "daily-challenge",
+      "objective": "تحويل الأخلاق إلى عادة",
+      "durationDays": 14
+    },
+    "title_ar": "تقويم أعمال الخير",
+    "title_en": "Kindness Calendar",
+    "age_group": "3-5",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "كل يوم اختَر عملًا صغيرًا: ابتسامة، مساعدة الوالدين، إطعام طائر، أو كلمة طيبة. ضع علامة عند الإنجاز وشارك فرحتك مع الأسرة.",
+    "content_en": "Original educational content prepared for Zikr families.",
+    "created_at": "2026-10-12T20:11:20.993033+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:20.993033+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "5bb2f665-4c31-5550-9d1c-ffd1e5083633",
+    "slug": "game-salah-times",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "reward": "مفتاح الصلاة",
+      "gameType": "matching",
+      "objective": "ربط الصلوات بأوقاتها"
+    },
+    "title_ar": "لعبة أوقات الصلاة",
+    "title_en": "Prayer Times Game",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": {
+      "questions": [
+        {
+          "text": "متى يدخل وقت الفجر؟",
+          "options": [
+            "من طلوع الفجر الصادق",
+            "بعد الظهر",
+            "عند منتصف الليل فقط",
+            "بعد المغرب"
+          ],
+          "correctAnswer": 0
+        },
+        {
+          "text": "أي صلاة وقتها بعد زوال الشمس؟",
+          "options": [
+            "الظهر",
+            "الفجر",
+            "العشاء",
+            "المغرب"
+          ],
+          "correctAnswer": 0
+        },
+        {
+          "text": "ما الصلاة التي يدخل وقتها بغروب الشمس؟",
+          "options": [
+            "المغرب",
+            "العصر",
+            "الضحى",
+            "الفجر"
+          ],
+          "correctAnswer": 0
+        }
+      ]
+    },
+    "video_url": null,
+    "content_ar": "صِل كل صلاة بوقتها التقريبي، وتذكر أن الصلاة صلة يومية بين العبد وربه.",
+    "content_en": "Original educational content prepared for Zikr families.",
+    "created_at": "2026-10-12T20:11:20.993033+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:20.993033+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "6b38b233-eddc-5a99-bb1f-593395fe2275",
+    "slug": "memorize-al-falaq",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "reward": "وسام الحافظ الصغير",
+      "dailyPlan": [
+        "استمع للسورة مرتين",
+        "احفظ الآيتين الأولى والثانية",
+        "أكمل آيتين جديدتين",
+        "اربط الآيات",
+        "اقرأ مع أحد الوالدين",
+        "سمّع السورة كاملة",
+        "مراجعة وفرحة الإنجاز"
+      ],
+      "objective": "بناء عادة حفظ يومية",
+      "durationDays": 7,
+      "memorizationTarget": "سورة الفلق"
+    },
+    "title_ar": "خطة حفظ سورة الفلق",
+    "title_en": "Memorize Al-Falaq",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "خطة سبعة أيام لحفظ سورة الفلق مع تكرار الآيات، الاستماع، والمراجعة اليومية. اجعل الحفظ قصيرًا ثابتًا ومفرحًا.",
+    "content_en": "Original educational content prepared for Zikr families.",
+    "created_at": "2026-10-12T20:11:20.993033+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:20.993033+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "73536ba2-faa5-53ee-ad29-8a0223395a0a",
+    "slug": "quiz-prophets",
+    "type": "quiz",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "reward": "باحث القصص",
+      "gameType": "quiz",
+      "objective": "مراجعة المعلومات الإسلامية"
+    },
+    "title_ar": "اختبر معلوماتك عن الأنبياء",
+    "title_en": "Prophets Quiz",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": {
+      "questions": [
+        {
+          "text": "من أول الأنبياء؟",
+          "options": [
+            "آدم عليه السلام",
+            "نوح عليه السلام",
+            "موسى عليه السلام",
+            "يوسف عليه السلام"
+          ],
+          "correctAnswer": 0
+        },
+        {
+          "text": "من بنى الكعبة مع إبراهيم؟",
+          "options": [
+            "إسماعيل",
+            "هارون",
+            "يحيى",
+            "داود"
+          ],
+          "correctAnswer": 0
+        },
+        {
+          "text": "من النبي الذي ابتلعه الحوت؟",
+          "options": [
+            "يونس",
+            "صالح",
+            "شعيب",
+            "إدريس"
+          ],
+          "correctAnswer": 0
+        }
+      ]
+    },
+    "video_url": null,
+    "content_ar": "اختبار قصير يراجع أسماء الأنبياء ومعاني الصبر والتوحيد من خلال أسئلة مناسبة للناشئة.",
+    "content_en": "Original educational content prepared for Zikr families.",
+    "created_at": "2026-10-12T20:11:20.993033+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:20.993033+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "74f4f82b-017c-56a3-a065-e6a4e74cf8d7",
+    "slug": "story-sulayman-ant",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "reward": "قلب رحيم",
+      "objective": "تنمية الرحمة والانتباه"
+    },
+    "title_ar": "سليمان والنملة",
+    "title_en": "Sulaiman and the Ant",
+    "age_group": "3-5",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "سمع سليمان نملة تحذر قومها، فتبسم وشكر الله. الدرس: نرحم المخلوقات الصغيرة ولا نسخر من أحد.",
+    "content_en": "Original educational content prepared for Zikr families.",
+    "created_at": "2026-10-12T20:11:20.993033+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:20.993033+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "855f481c-6531-5876-bc2c-59903ada9960",
+    "slug": "game-wudu-steps",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "reward": "وسام الطهارة",
+      "gameType": "quiz",
+      "objective": "تعلم ترتيب الوضوء"
+    },
+    "title_ar": "رتّب خطوات الوضوء",
+    "title_en": "Arrange the Wudu Steps",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": {
+      "questions": [
+        {
+          "text": "ما أول ما نستحضره عند الوضوء؟",
+          "options": [
+            "النية",
+            "النوم",
+            "اللعب",
+            "الطعام"
+          ],
+          "correctAnswer": 0
+        },
+        {
+          "text": "أي عضو نغسله بعد الوجه؟",
+          "options": [
+            "الرجلان",
+            "اليدان إلى المرفقين",
+            "الرأس",
+            "الأذنان"
+          ],
+          "correctAnswer": 1
+        },
+        {
+          "text": "كم مرة يُستحب غسل العضو؟",
+          "options": [
+            "ثلاثًا دون إسراف",
+            "سبعًا دائمًا",
+            "مرة في الشهر",
+            "لا يُغسل"
+          ],
+          "correctAnswer": 0
+        }
+      ]
+    },
+    "video_url": null,
+    "content_ar": "رتّب خطوات الوضوء من النية إلى غسل الرجلين، ثم راجع الإجابة وتعلم أن النظافة عبادة.",
+    "content_en": "Original educational content prepared for Zikr families.",
+    "created_at": "2026-10-12T20:11:20.993033+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:20.993033+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "92e02979-84cd-5669-a915-af2bd77ae01c",
+    "slug": "story-maryam-kids",
+    "type": "story",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "reward": "زهرة العفة",
+      "objective": "تعلم الصبر والعفة"
+    },
+    "title_ar": "مريم عليها السلام",
+    "title_en": "Maryam Story",
+    "age_group": "9-12",
+    "is_active": true,
+    "published": true,
+    "quiz_data": null,
+    "video_url": null,
+    "content_ar": "كانت مريم عليها السلام عابدة طاهرة اصطفاها الله، وواجهت ابتلاءً عظيمًا بثقة وصبر. تذكر القصة أن كرامة الإنسان في طاعته، وأن الله يرزق من يشاء بغير حساب.",
+    "content_en": "Original educational content prepared for Zikr families.",
+    "created_at": "2026-10-12T20:11:20.993033+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:20.993033+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  },
+  {
+    "id": "c3cea784-13ff-52ce-8338-9d718635dcc6",
+    "slug": "puzzle-good-manners",
+    "type": "game",
+    "likes": 0,
+    "shares": 0,
+    "age_max": null,
+    "age_min": null,
+    "featured": false,
+    "metadata": {
+      "reward": "تاج الخُلُق",
+      "gameType": "word-puzzle",
+      "objective": "تثبيت الأخلاق الإسلامية"
+    },
+    "title_ar": "أكمل جملة الخُلُق الجميل",
+    "title_en": "Good Manners Puzzle",
+    "age_group": "6-8",
+    "is_active": true,
+    "published": true,
+    "quiz_data": {
+      "questions": [
+        {
+          "text": "المسلم ____ ولا يكذب.",
+          "options": [
+            "صادق",
+            "غاضب",
+            "مؤذٍ",
+            "متكبر"
+          ],
+          "correctAnswer": 0
+        },
+        {
+          "text": "نرحم ____ ونساعد المحتاج.",
+          "options": [
+            "الضعيف",
+            "الظلم",
+            "الكذب",
+            "الأذى"
+          ],
+          "correctAnswer": 0
+        }
+      ]
+    },
+    "video_url": null,
+    "content_ar": "اسحب الكلمة المناسبة لإكمال الجمل: المسلم صادق، رحيم، أمين، ويقول خيرًا أو يصمت.",
+    "content_en": "Original educational content prepared for Zikr families.",
+    "created_at": "2026-10-12T20:11:20.993033+00:00",
+    "summary_ar": null,
+    "summary_en": null,
+    "updated_at": "2026-10-12T20:11:20.993033+00:00",
+    "youtube_video_id": null,
+    "featured_image_url": null,
+    "facebook_share_enabled": true
+  }
+]

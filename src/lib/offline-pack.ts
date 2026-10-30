@@ -28,14 +28,18 @@ const STORE_BY_DATASET: Record<string, string> = {
   kids: "kids",
   companions: "companions",
   companion_stories: "companionStories",
+  scholars: "scholars",
+  stories: "stories",
+  article_categories: "articleCategories",
 };
 
 const MANIFEST_URL = "/offline-content/v1/manifest.json";
 const MANIFEST_DB_KEY = "offline_manifest";
 const COMPLETION_DB_KEY = "offline_completion_v1";
 // v4 reflects the expanded public-route discovery and batched offline strategy.
-const VERSION_KEY = "offline-content-version-v5";
-const OFFLINE_CACHE_NAME = "zikr-v13";
+const VERSION_KEY = "offline-content-version-v6";
+const OFFLINE_CACHE_NAME = "zikr-v14";
+const ROUTE_SNAPSHOT_URL = "/offline-content/v2/routes.json";
 // Keep the client verifier, offline pack, and Service Worker on one cache name.
 const ROUTE_CACHE_REQUEST = "CACHE_OFFLINE_ROUTES";
 const CLEAR_OFFLINE_REQUEST = "CLEAR_OFFLINE_LIBRARY";
@@ -57,29 +61,47 @@ const OFFLINE_CONTENT_STORES = [
   "kids",
   "companions",
   "companion_stories",
+  "scholars",
+  "stories",
+  "article_categories",
 ] as const;
 
 export function isCacheableOfflinePageRoute(route: string): boolean {
   if (typeof route !== "string" || !route.startsWith("/") || route.startsWith("//")) {
     return false;
   }
-  const pathname = route.replace(/\/+$/, "") || "/";
-  if (
-    pathname === "/manifest.webmanifest" ||
-    pathname === "/sw.js" ||
-    pathname === "/robots.txt" ||
-    pathname === "/sitemap.xml" ||
-    pathname === "/sitemap-index.xml"
-  ) {
+
+  let pathname: string;
+  try {
+    pathname = new URL(route, typeof window === "undefined" ? "https://zikr.invalid" : window.location.origin).pathname;
+  } catch {
     return false;
   }
-  if (
-    ["/api", "/auth", "/admin", "/profile", "/favorites", "/settings"].some(
-      prefix => pathname === prefix || pathname.startsWith(prefix + "/")
-    )
-  ) {
+  pathname = pathname.replace(/\/+$/, "") || "/";
+
+  const excludedFiles = new Set([
+    "/manifest.webmanifest",
+    "/sw.js",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/sitemap-index.xml",
+  ]);
+  if (excludedFiles.has(pathname)) return false;
+
+  const privatePrefixes = [
+    "/api",
+    "/auth",
+    "/admin",
+    "/profile",
+    "/favorites",
+    "/settings",
+    "/account",
+    "/dashboard",
+  ];
+  if (privatePrefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + "/"))) {
     return false;
   }
+
   return !/\.(?:json|js|css|xml|txt|map|svg|png|jpe?g|gif|webp|ico|woff2?|mp3|wav|mp4|webm)$/i.test(pathname);
 }
 
@@ -106,15 +128,43 @@ type OfflineCompletion = {
 export type OfflineHydrationResult = {
   manifest: OfflineManifest;
   complete: boolean;
+  routesComplete: boolean;
+  fullyComplete: boolean;
   failedDatasets: string[];
   cachedRoutes: number;
+  totalRoutes: number;
   failedRoutes: string[];
 };
 
-function mergedRoutes(manifest: OfflineManifest): string[] {
+function mergedRoutes(manifest: OfflineManifest, supplementalRoutes: string[] = [], additionalRoutes: string[] = []): string[] {
   return Array.from(
-    new Set([...ESSENTIAL_ROUTES, ...(manifest.routes ?? [])])
+    new Set([...ESSENTIAL_ROUTES, ...(manifest.routes ?? []), ...supplementalRoutes, ...additionalRoutes])
   ).filter(isCacheableOfflinePageRoute);
+}
+
+async function fetchSupplementalRouteInventory(): Promise<string[]> {
+  if (typeof window === "undefined") return [];
+  try {
+    const response = await fetch(ROUTE_SNAPSHOT_URL, { cache: "no-store" });
+    if (response.ok) {
+      const routes: unknown = await response.json();
+      if (Array.isArray(routes)) {
+        return routes.filter((route): route is string => typeof route === "string" && isCacheableOfflinePageRoute(route));
+      }
+    }
+  } catch {
+    // Offline: use the service-worker or browser cache copy when available.
+  }
+  try {
+    const cached = await caches.match(ROUTE_SNAPSHOT_URL);
+    if (!cached?.ok) return [];
+    const routes: unknown = await cached.json();
+    return Array.isArray(routes)
+      ? routes.filter((route): route is string => typeof route === "string" && isCacheableOfflinePageRoute(route))
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 async function persistManifest(manifest: OfflineManifest): Promise<void> {
@@ -150,11 +200,9 @@ async function persistManifest(manifest: OfflineManifest): Promise<void> {
 }
 
 async function persistCompletion(completion: OfflineCompletion): Promise<void> {
-  try {
-    await offlineDb.saveSetting(COMPLETION_DB_KEY, completion);
-  } catch (error) {
-    console.warn("[OfflinePack] Failed to persist completion marker", error);
-  }
+  // A full-pack success marker is part of the verification contract. Never
+  // report success when IndexedDB could not persist it.
+  await offlineDb.saveSetting(COMPLETION_DB_KEY, completion);
 }
 
 async function readPersistedManifest(): Promise<OfflineManifest | null> {
@@ -181,17 +229,12 @@ async function verifyCompletedDatasets(
   manifest: OfflineManifest
 ): Promise<OfflineCompletion | null> {
   try {
-    const completion =
-      await offlineDb.getSetting<OfflineCompletion>(COMPLETION_DB_KEY);
-    if (!completion || completion.version !== manifest.version) return null;
+    const completion = await offlineDb.getSetting<OfflineCompletion>(COMPLETION_DB_KEY);
+    if (!completion || completion.version !== manifest.version || !Array.isArray(completion.cachedRoutes)) return null;
 
     for (const [dataset, definition] of Object.entries(manifest.datasets)) {
       const storeName = STORE_BY_DATASET[dataset];
-      if (
-        !storeName ||
-        completion.datasetCounts[storeName] !== definition.count
-      )
-        return null;
+      if (!storeName || completion.datasetCounts?.[storeName] !== definition.count) return null;
       if ((await offlineDb.count(storeName)) !== definition.count) return null;
     }
     return completion;
@@ -205,7 +248,7 @@ async function verifyCompletedRoutes(routes: string[]): Promise<boolean> {
   try {
     const cache = await caches.open(OFFLINE_CACHE_NAME);
     const results = await Promise.all(
-      routes.map(route => cache.match(new Request(route)))
+      routes.map(route => cache.match(new Request(new URL(route, window.location.origin).href, { headers: { Accept: "text/html" } })))
     );
     return results.every(Boolean);
   } catch {
@@ -295,6 +338,9 @@ export async function clearOfflineLibrary(): Promise<void> {
         kids: "kids",
         companions: "companions",
         companion_stories: "companionStories",
+        scholars: "scholars",
+        stories: "stories",
+        article_categories: "articleCategories",
       } as const)[storeName],
     );
   }
@@ -319,12 +365,14 @@ export async function clearOfflineLibrary(): Promise<void> {
         const channel = new MessageChannel();
         const timeoutId = window.setTimeout(() => {
           channel.port1.onmessage = null;
-          resolve();
+          reject(new Error("Timed out waiting for the service worker to confirm the offline cache clear."));
         }, 30_000);
 
-        channel.port1.onmessage = () => {
+        channel.port1.onmessage = event => {
           window.clearTimeout(timeoutId);
-          resolve();
+          const result = (event.data ?? {}) as { ok?: boolean; error?: string };
+          if (result.ok === true) resolve();
+          else reject(new Error(result.error || "Service worker did not confirm the offline cache was cleared."));
         };
 
         worker.postMessage({ type: CLEAR_OFFLINE_REQUEST }, [channel.port2]);
@@ -333,8 +381,19 @@ export async function clearOfflineLibrary(): Promise<void> {
   }
 }
 
+export type OfflineRouteProgress = {
+  cachedRoutes: number;
+  failedRoutes: string[];
+  totalRoutes: number;
+};
+
 export async function hydrateOfflineContent(
-  options: { force?: boolean; cacheRoutes?: boolean } = {}
+  options: {
+    force?: boolean;
+    cacheRoutes?: boolean;
+    additionalRoutes?: string[];
+    onRouteProgress?: (progress: OfflineRouteProgress) => void;
+  } = {}
 ): Promise<OfflineHydrationResult | null> {
   if (typeof window === "undefined") return null;
 
@@ -345,30 +404,51 @@ export async function hydrateOfflineContent(
     await offlineDb.initialize();
   } catch (error) {
     console.warn("[OfflinePack] Failed to initialize IndexedDB", error);
+    const routeInventory = mergedRoutes(manifest, await fetchSupplementalRouteInventory(), options.additionalRoutes);
     return {
       manifest,
       complete: false,
+      routesComplete: false,
+      fullyComplete: false,
       failedDatasets: ["indexeddb"],
       cachedRoutes: 0,
-      failedRoutes: mergedRoutes(manifest),
+      totalRoutes: routeInventory.length,
+      failedRoutes: routeInventory,
     };
   }
 
-  const expectedRoutes = mergedRoutes(manifest);
+  const routeInventory = mergedRoutes(
+    manifest,
+    await fetchSupplementalRouteInventory(),
+    options.additionalRoutes,
+  );
+
   if (!options.force) {
     const completion = await verifyCompletedDatasets(manifest);
     if (
       completion &&
-      completion.cachedRoutes.length === expectedRoutes.length &&
+      routeInventory.every(route => completion.cachedRoutes.includes(route)) &&
       (await verifyCompletedRoutes(completion.cachedRoutes))
     ) {
       return {
         manifest,
         complete: true,
+        routesComplete: true,
+        fullyComplete: true,
         failedDatasets: [],
         cachedRoutes: completion.cachedRoutes.length,
+        totalRoutes: completion.cachedRoutes.length,
         failedRoutes: [],
       };
+    }
+  }
+
+  if (options.force) {
+    await offlineDb.delete("settings", COMPLETION_DB_KEY).catch(() => undefined);
+    try {
+      window.localStorage.removeItem(VERSION_KEY);
+    } catch {
+      // IndexedDB remains authoritative if Web Storage is restricted.
     }
   }
 
@@ -377,7 +457,7 @@ export async function hydrateOfflineContent(
 
   for (const [dataset, definition] of Object.entries(manifest.datasets)) {
     const storeName = STORE_BY_DATASET[dataset];
-    if (!storeName || !definition?.path) {
+    if (!storeName || !definition?.path || !Number.isInteger(definition.count) || definition.count < 0) {
       failedDatasets.push(dataset);
       continue;
     }
@@ -390,15 +470,18 @@ export async function hydrateOfflineContent(
         failedDatasets.push(dataset);
         continue;
       }
-      const rows = await response.json();
+
+      const rows: unknown = await response.json();
       if (!Array.isArray(rows) || rows.length !== definition.count) {
         failedDatasets.push(dataset);
         continue;
       }
-      await offlineDb.setMany(storeName, rows);
+
+      // Replace, do not append: removed/unpublished rows must not survive in local storage.
+      await offlineDb.clear(storeName);
+      if (rows.length > 0) await offlineDb.setMany(storeName, rows);
       datasetCounts[storeName] = await offlineDb.count(storeName);
-      if (datasetCounts[storeName] !== definition.count)
-        failedDatasets.push(dataset);
+      if (datasetCounts[storeName] !== definition.count) failedDatasets.push(dataset);
     } catch (error) {
       failedDatasets.push(dataset);
       console.warn(`[OfflinePack] Failed to hydrate ${dataset}`, error);
@@ -410,29 +493,34 @@ export async function hydrateOfflineContent(
   let failedRoutes: string[] = [];
 
   if (complete && options.cacheRoutes) {
-    const batchedResults: Array<{
-      cachedRoutes: number;
-      failedRoutes: string[];
-    }> = [];
-    const ROUTE_CACHE_BATCH_SIZE = 160;
+    const ROUTE_CACHE_BATCH_SIZE = 120;
+    const failures = new Set<string>();
+    let cachedCount = 0;
 
-    for (let index = 0; index < expectedRoutes.length; index += ROUTE_CACHE_BATCH_SIZE) {
-      const batch = expectedRoutes.slice(index, index + ROUTE_CACHE_BATCH_SIZE);
-      batchedResults.push(await requestOfflineRouteCache(batch));
+    for (let index = 0; index < routeInventory.length; index += ROUTE_CACHE_BATCH_SIZE) {
+      const batch = routeInventory.slice(index, index + ROUTE_CACHE_BATCH_SIZE);
+      const result = await requestOfflineRouteCache(batch);
+      cachedCount += result.cachedRoutes;
+      for (const route of result.failedRoutes) failures.add(route);
+
+      options.onRouteProgress?.({
+        cachedRoutes: cachedCount,
+        failedRoutes: Array.from(failures),
+        totalRoutes: routeInventory.length,
+      });
     }
 
-    const allFailedRoutes = Array.from(
-      new Set(batchedResults.flatMap(result => result.failedRoutes))
-    );
-    cachedRoutes = expectedRoutes.filter(route => !allFailedRoutes.includes(route));
-    failedRoutes = allFailedRoutes;
+    failedRoutes = Array.from(failures);
+    cachedRoutes = routeInventory.filter(route => !failures.has(route));
   }
 
-  if (
-    complete &&
+  const routesComplete =
+    Boolean(options.cacheRoutes) &&
     failedRoutes.length === 0 &&
-    cachedRoutes.length === expectedRoutes.length
-  ) {
+    cachedRoutes.length === routeInventory.length;
+  const fullyComplete = complete && routesComplete;
+
+  if (fullyComplete) {
     await persistManifest(manifest);
     await persistCompletion({
       version: manifest.version,
@@ -445,19 +533,22 @@ export async function hydrateOfflineContent(
       // IndexedDB completion is authoritative when Web Storage is restricted.
     }
   } else {
+    await offlineDb.delete("settings", COMPLETION_DB_KEY).catch(() => undefined);
     try {
-      await offlineDb.delete("settings", COMPLETION_DB_KEY);
       window.localStorage.removeItem(VERSION_KEY);
     } catch {
-      // Preserve already-downloaded datasets but do not keep a stale completion marker.
+      // Preserve partial datasets but do not retain a stale full-pack marker.
     }
   }
 
   return {
     manifest,
     complete,
+    routesComplete,
+    fullyComplete,
     failedDatasets,
     cachedRoutes: cachedRoutes.length,
+    totalRoutes: routeInventory.length,
     failedRoutes,
   };
 }

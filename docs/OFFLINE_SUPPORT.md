@@ -1,111 +1,124 @@
 # ZIKR Offline Support
 
-## What is actually offline
+**Last updated: 2026-10-30**  
+**Offline pack:** `2026-10-30-content-v2`  
+**Service worker cache:** `zikr-v14`  
+**IndexedDB schema:** `ZikrOfflineDB` version 5
 
-ZIKR uses two local layers:
+## What is available offline
 
-1. **IndexedDB** stores the complete public content pack and user-local settings/favorites.
-2. **Service Worker + Cache Storage** stores the app shell, visited HTML, public API responses, versioned offline datasets, and — when the user explicitly downloads the full offline pack — the public content routes and their same-origin static assets.
+ZIKR uses two local storage layers:
 
-The native Capacitor application currently points at the production origin (`https://zikrmediaofficial.vercel.app`). Therefore the first-ever launch still requires network access. After the service worker and offline pack are installed, the cached public application can continue working without network access.
+1. **IndexedDB** stores the versioned structured public-content package, local favorites, preferences and supported offline queues.
+2. **Service Worker + Cache Storage** stores the app shell, explicitly prepared public HTML routes, same-origin static assets and versioned offline-content files.
 
-## Complete offline pack
+The native Capacitor application currently uses the production origin `https://zikrmediaofficial.vercel.app`. The first-ever launch therefore needs an internet connection. Once the service worker is installed and the offline package is prepared, the cached public pages and structured content can be read without a network connection.
 
-Open **/offline-library** while online and press **"تحديث وتجهيز الحزمة كاملة"**.
+## Preparing the complete library
 
-The operation:
+Open `/offline-library` while online and press **«تحديث وتجهيز المكتبة كاملة»**.
 
-- refreshes every dataset declared by `public/offline-content/v1/manifest.json`;
-- validates each dataset against its expected record count;
-- saves the verified rows into IndexedDB;
-- persists the manifest locally;
-- asks the service worker to cache the public route inventory;
-- caches same-origin Next/static assets referenced by those HTML pages;
-- reports failed datasets and failed routes instead of silently claiming success.
+The action now runs as one verified operation:
 
-The route pack includes the manifest inventory plus additional public routes such as Quran, Hadith, stories, articles, prophets, companions, scholars, battles, conquests, kids, videos, YouTube, tafsir, reciters, radio, qibla, tasbeeh, wird, zakat, poetry, competitions, FAQ, platform, legal pages, settings, and the offline library.
+- Reads the current manifest and public route snapshot.
+- Adds the essential public routes, route snapshot routes, same-origin sitemap routes and the current page inventory.
+- Rejects private routes before they are sent to the service worker.
+- Downloads each declared dataset and validates that it is a JSON array with the exact manifest record count.
+- Replaces the matching IndexedDB store before writing the new rows, so removed or unpublished records do not survive an update.
+- Caches public HTML routes in controlled batches and records route-level failures.
+- Persists a completion marker only after every dataset and every required route is verified.
+- Shows failed datasets and failed routes instead of reporting a partial download as complete.
+- Requests persistent browser storage during the explicit download action when the browser supports it.
 
-Personalized or privileged routes are deliberately excluded from full route caching: `/admin`, `/profile`, `/favorites`, authentication routes, and API mutation endpoints.
+The offline page distinguishes **dataset completion** from **full-library completion**. A complete data download with failed route downloads is not marked as a complete library.
 
-## Offline data package
+## Current structured content package
 
-The current manifest contains these datasets:
+The manifest is refreshed from currently published/approved Supabase records. It contains:
 
-- 114 surahs
-- 6,236 ayahs
-- 2 tafsir rows
-- 9 hadith books
-- 2,964 hadith rows
-- 25 prophets
-- 150 prophet sections
-- 21 battles
-- 104 battle events
-- 19 conquests
-- 60 conquest events
-- 26 articles
-- 23 duas
-- 28 kids records
-- 11 companions
-- 21 companion stories
+| Dataset | Records |
+|---|---:|
+| Surahs | 114 |
+| Quran ayahs | 6,236 |
+| Tafsir records currently exported | 2 |
+| Hadith books | 9 |
+| Published hadith | 2,964 |
+| Prophets | 25 |
+| Prophet sections | 150 |
+| Published battles | 21 |
+| Battle events linked to published battles | 84 |
+| Published conquests | 15 |
+| Conquest events linked to published conquests | 60 |
+| Published articles | 38 |
+| Published duas | 33 |
+| Active, published kids content | 59 |
+| Published companions | 12 |
+| Companion stories linked to published companions | 21 |
+| Published scholars | 8 |
+| Published and approved stories | 21 |
+| Active, published article categories | 5 |
 
-The exact counts are validated during hydration, so a partial or corrupted download is not marked as complete.
+The package contains 19 datasets. Datasets with no public records are not fabricated: the current database has no published hadith explanations or memorization plans, and no active/published dua-category records, so those tables are not represented as populated offline datasets.
 
-## Settings and choices
+## Public route inventory and privacy
 
-User-local settings are already designed to survive offline operation through browser storage and the existing IndexedDB settings store. Examples include prayer alert choices, salawat reminder choices, and selected audio choices. Server-backed settings require connectivity to be synchronized to Supabase; the application must continue using the last locally stored value when the network is unavailable.
+The versioned supplemental route inventory currently contains **259 unique public detail routes**. The offline library also combines this with the manifest route list, essential public section pages and routes discovered from the current sitemap.
 
-Admin settings are different: actions such as selecting a pinned Android release or changing server-managed media cannot be committed to Supabase while the device is offline. Such actions must report failure rather than pretending that a server change was saved.
+The pack deliberately excludes:
 
-## Service worker strategy
+- `/api`, `/auth`, `/admin`
+- `/profile`, `/favorites`, `/settings`
+- `/account`, `/dashboard`
+- Cross-origin routes and non-page files such as JSON, scripts, stylesheets, images, audio and video.
 
-- **Offline manifest:** network first, local Cache Storage fallback.
-- **Versioned `/offline-content/*`:** cache first, then network when not already cached.
-- **Public content APIs:** network first with cached response fallback.
-- **Prayer time API:** network first with cached response fallback.
-- **HTML:** network first, cached HTML fallback, then `/offline.html`.
-- **Static assets:** cache first.
-- **Audio/video streams and cross-origin media:** intentionally not intercepted by the service worker.
-- **Private/admin/auth APIs:** network only.
+The Service Worker applies the same private-route checks as the offline library client. It will not cache a public route that redirects to a private path. Cache cleanup only removes older cache entries with the ZIKR `zikr-` prefix; unrelated same-origin Cache Storage entries are preserved.
 
-## Limitations
+Favorites and local preferences remain in their own IndexedDB stores when the user clears the offline content package. The clear action removes downloaded public datasets and cached public routes, not favorites or local settings.
 
-Some features cannot be made fully functional without their external service:
+## What does not become offline automatically
 
-- Gemini/AI generation requires network access.
-- Live YouTube/Facebook synchronization requires network access.
-- Radio/streaming audio from external CDNs requires network access unless a specific file was packaged locally.
-- Server writes and account synchronization require network access.
-- The native Capacitor shell still needs an initial online load because the project uses the production SSR origin rather than a static-export bundle.
+Offline support does not turn external services into local services:
 
-Offline support means the public content and previously prepared application shell remain readable and navigable; it does not mean every live service becomes local.
+- Gemini/AI generation and live YouTube/Facebook synchronization still require internet access.
+- Radio streams and external recitation/video media are not downloaded as part of the text-content package.
+- Server writes, authentication, profile changes and account synchronization require connectivity.
+- A first launch on a fresh install still requires internet because the native shell loads the production SSR origin.
+- Notification delivery, background work and storage retention depend on browser/WebView and Android operating-system behavior.
 
-## Verification
+The UI reports these limitations rather than implying that a stream or remote service is available offline.
 
-Run:
+## Verification commands
+
+Run these checks from the repository root:
 
 ```bash
 pnpm offline:check
 pnpm mobile:check
+pnpm project:check
+pnpm typecheck
+pnpm lint
+pnpm build
 ```
 
-Full CI verification also includes `pnpm verify`.
+The offline verifier parses each manifest dataset file and fails when the actual JSON row count differs from the manifest count. It also validates the supplemental route inventory, private-route exclusions, IndexedDB store mappings, cache-version alignment and the full-completion contract.
 
-The repository now validates that the offline manifest exists, every declared dataset file exists, sensitive routes are excluded from the offline manifest, the offline pack exposes route caching, and the service worker contains the expected offline-pack logic.
+The full repository gate is:
 
-## Manual device test
+```bash
+pnpm verify
+```
 
-On an Android device:
+## Android device acceptance test
 
-1. Open the production app while online.
-2. Wait for the service worker registration.
-3. Open `/offline-library` and run **"تحديث وتجهيز الحزمة كاملة"**.
-4. Verify the page reports all datasets complete and the expected route count cached.
-5. Enable Airplane Mode.
-6. Relaunch the application.
-7. Verify `/`, `/mushaf`, Quran, Hadith, prophets, battles, conquests, articles, kids, and other public cached routes render without network access.
-8. Verify local settings and favorites still appear.
-9. Reconnect and confirm normal server synchronization resumes.
+A physical-device test is still required before claiming that every Android WebView/device combination has been certified:
 
-A physical-device test is still required to certify behavior across Android WebView versions, battery restrictions, force-stop/restart, notification delivery, and storage pressure.
+1. Install or update the Android application while online.
+2. Open the application once so the service worker registers and activates.
+3. Open `/offline-library` and run the full library update.
+4. Wait for the UI to report full completion, with zero failed datasets and zero failed routes.
+5. Enable Airplane Mode and force-close/reopen the application.
+6. Open the home page, Mushaf, Quran, Hadith, articles, duas, prophets, companions, scholars, battles, conquests, stories and kids sections.
+7. Confirm that previously downloaded local preferences and favorites remain available.
+8. Reconnect and confirm that server-backed functions return to normal.
 
-**Last Updated:** 2026-08-28
+This test is especially important for Android WebView storage eviction, device storage pressure, force-stop/restart behavior and notifications.

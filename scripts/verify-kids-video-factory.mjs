@@ -44,8 +44,10 @@ const route = read("src/app/api/admin/videos/create/route.ts");
 if (!route.includes('source.audience === "kids" ? { voiceProfile: "kids_friendly", contentFormat: "series_episode" }')) failures.push("manual series requests must inherit kids voice and episode format");
 if (!route.includes("source.factorySequence")) failures.push("manual series requests must retain the canonical factory sequence");
 
-const page = read("src/app/admin/ai-video/curated/page.tsx");
-if (!page.includes("سلاسل قصص الأطفال")) failures.push("curated admin page must expose serial children's stories");
+const page = read("src/app/admin/video/studio/curated/page.tsx");
+if (!page.includes("سلاسل قصص الأطفال") || !page.includes("CURATED_KIDS_STORY_SOURCES")) {
+  failures.push("canonical curated video studio page must expose serial children's stories");
+}
 
 const workflow = read(".github/workflows/generate-ai-video.yml");
 for (const token of ['VIDEO_FREE_ONLY: "true"', 'VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,template"', 'FREE_VIDEO_PROVIDER_ENABLED: "false"', "pnpm kids:video:check"]) {

@@ -1,0 +1,240 @@
+[
+  {
+    "id": "fa2211e6-4eaf-4b31-bbe5-7d2ef984ab31",
+    "slug": "abu-hanifa",
+    "bio_ar": "فقيه وعالم من الكوفة عاش في القرنين الأول والثاني الهجريين، ونُسبت إليه المدرسة الحنفية. تعرض هذه الصفحة أثره في الفقه وتاريخ تشكل المدرسة مع إحالات إلى مصادر بحثية مستقلة، دون تحويل السيرة التاريخية إلى فتوى.",
+    "bio_en": "A jurist and scholar from Kufa who lived in the first two Islamic centuries and is associated with the Hanafi school. This profile presents his historical and legal legacy with independent references rather than treating biography as a fatwa.",
+    "name_ar": "الإمام أبو حنيفة النعمان بن ثابت",
+    "name_en": "Abu Hanifa",
+    "metadata": {
+      "field": "الفقه وأصوله",
+      "category": "متقدمين",
+      "references": [
+        {
+          "url": "https://www.iranicaonline.org/articles/abu-hanifa-noman-b",
+          "title_ar": "Encyclopaedia Iranica — أبو حنيفة",
+          "source_type": "academic"
+        }
+      ],
+      "review_status": "editorially_reviewed_source_links",
+      "source_verified": true
+    },
+    "published": true,
+    "created_at": "2026-10-12T20:11:27.108138+00:00",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "website_url": "https://www.iranicaonline.org/articles/abu-hanifa-noman-b",
+    "youtube_url": null,
+    "thumbnail_url": null
+  },
+  {
+    "id": "453c40bd-87a5-4d81-81e0-7b3958580610",
+    "slug": "ahmad-ibn-hanbal",
+    "bio_ar": "عالم ومحدث وفقيه عُرف بعنايته بالحديث، ونُسب إليه تأسيس المدرسة الحنبلية. تُعرض سيرته تاريخيًا مع إحالات إلى مصادر مستقلة، دون نقل عبارات وعظية أو فتاوى بلا نص موثق.",
+    "bio_en": "A scholar, hadith specialist, and jurist known for his attention to hadith and associated with the Hanbali school. His profile is historical and source-linked, without unattributed devotional sayings or legal rulings.",
+    "name_ar": "الإمام أحمد بن حنبل",
+    "name_en": "Ahmad ibn Hanbal",
+    "metadata": {
+      "category": "متقدمين",
+      "references": [
+        {
+          "url": "https://www.britannica.com/biography/Ahmad-ibn-Hanbal",
+          "title_ar": "موسوعة Britannica — أحمد بن حنبل",
+          "locator_ar": "Biography and legal school",
+          "source_type": "academic"
+        }
+      ],
+      "review_status": "editorially_reviewed_source_links",
+      "source_verified": true
+    },
+    "published": true,
+    "created_at": "2026-10-12T20:11:24.296092+00:00",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "website_url": "https://www.britannica.com/biography/Ahmad-ibn-Hanbal",
+    "youtube_url": null,
+    "thumbnail_url": null
+  },
+  {
+    "id": "2eadc256-9562-42ee-8935-052d0fd888ee",
+    "slug": "al-nawawi",
+    "bio_ar": "فقيه ومحدث شافعي من علماء القرن السابع الهجري، ارتبطت به مؤلفات في الحديث والفقه مثل رياض الصالحين وشرح صحيح مسلم. تقدم الصفحة نبذة تاريخية ومراجع دون نسبة أقوال إليه بلا توثيق.",
+    "bio_en": "A Shafi‘i jurist and hadith scholar of the seventh Islamic century, known for works in hadith and jurisprudence including Riyad al-Salihin and his commentary on Sahih Muslim. The profile is historical and source-linked.",
+    "name_ar": "الإمام يحيى بن شرف النووي",
+    "name_en": "Yahya ibn Sharaf al-Nawawi",
+    "metadata": {
+      "field": "الحديث والفقه",
+      "category": "متقدمين",
+      "references": [
+        {
+          "url": "https://kclpure.kcl.ac.uk/ws/files/2927554/503464.pdf",
+          "title_ar": "King's College London — دراسة حياة النووي والحديث",
+          "source_type": "academic"
+        }
+      ],
+      "review_status": "editorially_reviewed_source_links",
+      "source_verified": true
+    },
+    "published": true,
+    "created_at": "2026-10-12T20:11:27.108138+00:00",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "website_url": "https://kclpure.kcl.ac.uk/ws/files/2927554/503464.pdf",
+    "youtube_url": null,
+    "thumbnail_url": null
+  },
+  {
+    "id": "5557917d-e691-4ba7-951b-3412ca06c8dd",
+    "slug": "bukhari",
+    "bio_ar": "محدث وعالم مسلم اشتهر بجمع الحديث ونقد الروايات، وصاحب الجامع الصحيح. تُعرّف الصفحة بمنهجه وأثره العلمي مع التأكيد على قراءة كل حديث في موضعه وعدم تحويل الوصف التاريخي إلى حكم مستقل.",
+    "bio_en": "A Muslim hadith scholar renowned for collecting and critically selecting reports and for compiling al-Jami al-Sahih. The profile explains his scholarly legacy while directing readers to each hadith in its original location.",
+    "name_ar": "الإمام محمد بن إسماعيل البخاري",
+    "name_en": "Muhammad ibn Ismail al-Bukhari",
+    "metadata": {
+      "category": "متقدمين",
+      "references": [
+        {
+          "url": "https://www.britannica.com/biography/al-Bukhari",
+          "title_ar": "موسوعة Britannica — البخاري",
+          "locator_ar": "Biography and hadith compilation",
+          "source_type": "academic"
+        },
+        {
+          "url": "https://sunnah.com/bukhari",
+          "title_ar": "صحيح البخاري — النسخة المرجعية",
+          "locator_ar": "Collection index",
+          "source_type": "hadith"
+        }
+      ],
+      "review_status": "editorially_reviewed_source_links",
+      "source_verified": true
+    },
+    "published": true,
+    "created_at": "2026-10-12T20:11:24.296092+00:00",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "website_url": "https://www.britannica.com/biography/al-Bukhari",
+    "youtube_url": null,
+    "thumbnail_url": null
+  },
+  {
+    "id": "bbe50eb9-5cab-44ae-891e-592552d183f8",
+    "slug": "ibn-kathir",
+    "bio_ar": "مفسر ومحدث ومؤرخ من علماء دمشق في القرن الثامن الهجري، اشتهر بتفسير القرآن وبأعماله في الحديث والتاريخ والسيرة. تعرض الصفحة أثره العلمي مع الإحالة إلى دراسات ومراجع يمكن الرجوع إليها.",
+    "bio_en": "A Qur’anic exegete, hadith scholar, and historian associated with Damascus in the eighth Islamic century, known especially for his tafsir and works in hadith, history, and sira.",
+    "name_ar": "الحافظ ابن كثير",
+    "name_en": "Isma‘il ibn Umar ibn Kathir",
+    "metadata": {
+      "field": "التفسير والحديث والتاريخ",
+      "category": "متقدمين",
+      "references": [
+        {
+          "url": "https://etheses.whiterose.ac.uk/id/eprint/548/1/uk_bl_ethos_496564.pdf",
+          "title_ar": "University of Leeds/White Rose — دراسة ابن كثير والتفسير",
+          "source_type": "academic"
+        },
+        {
+          "url": "https://dar-us-salam.com/authors/hafiz-ibn-kathir.htm",
+          "title_ar": "دار السلام — السيرة والأعمال",
+          "source_type": "reference"
+        }
+      ],
+      "review_status": "editorially_reviewed_source_links",
+      "source_verified": true
+    },
+    "published": true,
+    "created_at": "2026-10-12T20:11:27.108138+00:00",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "website_url": "https://etheses.whiterose.ac.uk/id/eprint/548/1/uk_bl_ethos_496564.pdf",
+    "youtube_url": null,
+    "thumbnail_url": null
+  },
+  {
+    "id": "7060fb7b-90f2-4b06-b457-7214f3eba544",
+    "slug": "ibn-taymiyya",
+    "bio_ar": "عالم حنبلي من دمشق في العصر المملوكي، وُلد سنة 1263م وتوفي سنة 1328م. تناولت الدراسات الحديثة فكره في العقيدة والفقه والمنهج والتفاعل مع قضايا عصره، ولذلك تعرض الصفحة المعلومات التاريخية مع إحالة أكاديمية واضحة.",
+    "bio_en": "A Hanbali scholar from the Mamluk period, born in 1263 and died in 1328. Modern scholarship discusses his work in theology, law, method, and the issues of his time; this profile keeps those descriptions historical and source-linked.",
+    "name_ar": "تقي الدين أحمد بن تيمية",
+    "name_en": "Taqi al-Din Ahmad Ibn Taymiyya",
+    "metadata": {
+      "field": "العقيدة والفقه والمنهج",
+      "category": "متقدمين",
+      "references": [
+        {
+          "url": "https://plato.stanford.edu/entries/ibn-taymiyya/",
+          "title_ar": "Stanford Encyclopedia of Philosophy — ابن تيمية",
+          "source_type": "academic"
+        },
+        {
+          "url": "https://academic.oup.com/reference/62361/reference-article-abstract/554574605",
+          "title_ar": "Oxford Bibliographies — Ibn Taymiyya",
+          "source_type": "academic"
+        }
+      ],
+      "review_status": "editorially_reviewed_source_links",
+      "source_verified": true
+    },
+    "published": true,
+    "created_at": "2026-10-12T20:11:27.108138+00:00",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "website_url": "https://plato.stanford.edu/entries/ibn-taymiyya/",
+    "youtube_url": null,
+    "thumbnail_url": null
+  },
+  {
+    "id": "7f32f13b-715e-430d-a86f-231810eb6a87",
+    "slug": "malik-ibn-anas",
+    "bio_ar": "فقيه ومحدث من علماء المدينة، ارتبط اسمه بالمذهب المالكي وبكتاب الموطأ. يُقدّم هذا السجل أثره العلمي في الفقه والحديث مع ربط الأعمال بالمصادر بدل إضافة أقوال منسوبة بلا توثيق.",
+    "bio_en": "A Medinan jurist and hadith scholar associated with the Maliki school and the Muwatta. This entry presents his contribution to law and hadith and links works to sources rather than attributing unverified quotations.",
+    "name_ar": "الإمام مالك بن أنس",
+    "name_en": "Malik ibn Anas",
+    "metadata": {
+      "category": "متقدمين",
+      "references": [
+        {
+          "url": "https://www.britannica.com/biography/Malik-ibn-Anas",
+          "title_ar": "موسوعة Britannica — مالك بن أنس",
+          "locator_ar": "Biography and legal school",
+          "source_type": "academic"
+        },
+        {
+          "url": "https://sunnah.com/malik",
+          "title_ar": "الموطأ — فهرس الروايات",
+          "locator_ar": "Muwatta Malik index",
+          "source_type": "hadith"
+        }
+      ],
+      "review_status": "editorially_reviewed_source_links",
+      "source_verified": true
+    },
+    "published": true,
+    "created_at": "2026-10-12T20:11:24.296092+00:00",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "website_url": "https://www.britannica.com/biography/Malik-ibn-Anas",
+    "youtube_url": null,
+    "thumbnail_url": null
+  },
+  {
+    "id": "9fda5827-066f-47ad-bc38-567d966af3dd",
+    "slug": "shafii",
+    "bio_ar": "فقيه ومحدث من كبار علماء الإسلام، أسس المدرسة الشافعية وأسهم في تنظيم البحث في أصول الفقه. تذكر المصادر الأكاديمية أن كتاب الرسالة من أبرز أعماله في منهج الاستدلال، وتُعرض هذه المادة بوصفها تعريفًا تاريخيًا لا فتوى.",
+    "bio_en": "A major Muslim jurist and hadith scholar, founder of the Shafi‘i school, who contributed to the organization of legal methodology. Academic sources identify al-Risalah as a major work in legal reasoning; this is a historical profile, not a fatwa.",
+    "name_ar": "الإمام محمد بن إدريس الشافعي",
+    "name_en": "Muhammad ibn Idris al-Shafi‘i",
+    "metadata": {
+      "category": "متقدمين",
+      "references": [
+        {
+          "url": "https://www.britannica.com/biography/Abu-Abd-Allah-ash-Shafii",
+          "title_ar": "موسوعة Britannica — الشافعي",
+          "locator_ar": "Biography and Risalah",
+          "source_type": "academic"
+        }
+      ],
+      "review_status": "editorially_reviewed_source_links",
+      "source_verified": true
+    },
+    "published": true,
+    "created_at": "2026-10-12T20:11:24.296092+00:00",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "website_url": "https://www.britannica.com/biography/Abu-Abd-Allah-ash-Shafii",
+    "youtube_url": null,
+    "thumbnail_url": null
+  }
+]

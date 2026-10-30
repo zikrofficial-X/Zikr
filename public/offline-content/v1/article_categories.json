@@ -1,0 +1,67 @@
+[
+  {
+    "id": "c8bd8934-b01b-442f-bb71-091ca9e97913",
+    "icon": "🏛️",
+    "slug": "history",
+    "name_ar": "التاريخ والسيرة",
+    "name_en": "History & Seerah",
+    "is_active": true,
+    "published": true,
+    "created_at": "2026-10-12T20:11:29.814296+00:00",
+    "updated_at": "2026-10-12T20:11:29.814296+00:00",
+    "description_ar": "قصص وسياق تاريخي مع التمييز بين النص والرواية والتحليل.",
+    "description_en": "Stories and historical context with clear source boundaries."
+  },
+  {
+    "id": "bf8c8b08-03c2-4ff0-9020-7dfa2e985da5",
+    "icon": "🌿",
+    "slug": "tazkiyah",
+    "name_ar": "التزكية",
+    "name_en": "Tazkiyah",
+    "is_active": true,
+    "published": true,
+    "created_at": "2026-10-12T20:11:29.814296+00:00",
+    "updated_at": "2026-10-12T20:11:29.814296+00:00",
+    "description_ar": "محتوى عملي يساعد على الذكر والتدبر وبناء العادات الصالحة.",
+    "description_en": "Practical content for remembrance, reflection and good habits."
+  },
+  {
+    "id": "8ff4f2cc-8e62-4dcd-9b8c-3cc9efcb7dbf",
+    "icon": "🧩",
+    "slug": "aqeedah",
+    "name_ar": "العقيدة",
+    "name_en": "Aqeedah",
+    "is_active": true,
+    "published": true,
+    "created_at": "2026-10-12T20:11:29.814296+00:00",
+    "updated_at": "2026-10-12T20:11:29.814296+00:00",
+    "description_ar": "محتوى يشرح المفاهيم الإيمانية مع الرجوع إلى المصادر.",
+    "description_en": "Faith concepts with source-aware educational content."
+  },
+  {
+    "id": "d442d420-e0e5-4914-b2bb-12432b0ad9f8",
+    "icon": "🧭",
+    "slug": "fiqh",
+    "name_ar": "الفقه والعبادات",
+    "name_en": "Fiqh & Worship",
+    "is_active": true,
+    "published": true,
+    "created_at": "2026-10-12T20:11:29.814296+00:00",
+    "updated_at": "2026-10-12T20:11:29.814296+00:00",
+    "description_ar": "محتوى تعليمي منظم حول العبادات والأدوات اليومية.",
+    "description_en": "Structured educational content about worship and daily tools."
+  },
+  {
+    "id": "1f27f438-331b-4e5a-848a-03e58beee799",
+    "icon": "📖",
+    "slug": "quran",
+    "name_ar": "القرآن وعلومه",
+    "name_en": "Quran & Sciences",
+    "is_active": true,
+    "published": true,
+    "created_at": "2026-10-12T20:11:29.814296+00:00",
+    "updated_at": "2026-10-12T20:11:29.814296+00:00",
+    "description_ar": "القراءة والتفسير والتجويد والحفظ ومهارات التعامل مع القرآن.",
+    "description_en": "Reading, tafsir and memorization skills."
+  }
+]
