@@ -68,6 +68,21 @@ const CORE_CHECKS = [
   { path: "/kids", label: "kids page", expectedMain: /نتعلم|الأطفال|الاطفال/i },
   { path: "/kids/games", label: "kids games catalogue", expectedMain: /الألعاب|ألعاب|All games|Choose your next adventure/i, expectedContent: /مختبر الحروف|Arabic Letter Lab|Letter Lab/i },
   { path: "/data-deletion", label: "Facebook data deletion instructions", expectedMain: /حذف بيانات المستخدم.*إرسال طلب حذف البيانات/i },
+  { path: "/dua/zikr-dua-expansion-14", label: "short published dua detail", minMainText: 35 },
+  {
+    path: "/dua/zikr-dua-expansion-14",
+    label: "English-locale dua Arabic fallback",
+    minMainText: 35,
+    expectedContent: /English translation is not available yet/,
+    headers: { cookie: "zikr-locale=en" },
+  },
+  {
+    path: "/articles/how-to-read-hadith-carefully",
+    label: "English-locale article Arabic fallback",
+    minMainText: 35,
+    expectedContent: /English translation is not available yet/,
+    headers: { cookie: "zikr-locale=en" },
+  },
 ];
 
 const ROUTE_CHECKS = PUBLIC_ROUTES
@@ -166,7 +181,7 @@ async function checkEndpoint(check) {
     try {
       const response = await fetch(url, {
         redirect: "follow",
-        headers: { "user-agent": "ZIKR-Production-Smoke/1.0" },
+        headers: { "user-agent": "ZIKR-Production-Smoke/1.0", ...(check.headers ?? {}) },
         signal: AbortSignal.timeout(20_000),
       });
       const body = await response.text();
