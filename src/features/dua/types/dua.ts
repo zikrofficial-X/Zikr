@@ -18,5 +18,6 @@ export interface Dua {
   benefitsAr?: string;
   categoryId?: string;
   published: boolean;
+  contentLocale?: "ar" | "en";
 }
 

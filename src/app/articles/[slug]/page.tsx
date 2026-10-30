@@ -91,8 +91,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const locale = await getRequestLocale();
-  const isEnglish = locale === "en";
   const article = await loadArticle(slug, locale);
+  const isEnglish = (article?.contentLocale ?? locale) === "en";
 
   if (!article) {
     return pageMetadata({
@@ -127,13 +127,13 @@ export default async function ArticleDetailPage({
 }) {
   const { slug } = await params;
   const locale = await getRequestLocale();
-  const isEnglish = locale === "en";
   const article = await loadArticle(slug, locale);
 
   if (!hasSubstantialContent(article)) {
     notFound();
   }
 
+  const isEnglish = (article.contentLocale ?? locale) === "en";
   const references = dedupeReferences([
     ...getArticleReferences(article.metadata, isEnglish),
     ...getMetadataReferences(article.metadata, isEnglish),
@@ -145,6 +145,11 @@ export default async function ArticleDetailPage({
 
   return (
     <Container className="py-12 space-y-8 max-w-3xl" dir={isEnglish ? "ltr" : "rtl"}>
+      {locale === "en" && article.contentLocale === "ar" && (
+        <aside className="rounded-2xl border border-brand-gold/20 bg-brand-gold/5 p-4 text-sm leading-7 text-brand-cream/80" role="status">
+          The English translation is not available yet. The original Arabic article is shown below.
+        </aside>
+      )}
       {article.featuredImageUrl && (
         <div className="w-full h-96 rounded-lg overflow-hidden">
           <Image

@@ -19,6 +19,7 @@ export interface Article {
   categoryId?: string;
   tags?: string[];
   metadata?: Record<string, unknown>;
+  contentLocale?: "ar" | "en";
   createdAt: string;
 }
 
