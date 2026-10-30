@@ -248,7 +248,7 @@ requireText('src/lib/offline-pack.ts', [
   'requestOfflineRouteCache',
   'routesComplete',
   'fullyComplete',
-  'offline-content-version-v6',
+  'offline-content-version-v7',
   'failedRoutes',
 ]);
 requireText('src/lib/offline-db.ts', [
