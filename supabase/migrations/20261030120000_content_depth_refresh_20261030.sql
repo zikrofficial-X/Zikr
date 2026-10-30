@@ -186,7 +186,7 @@ updated_sections AS (
   UPDATE public.prophet_sections s
   SET title_ar='النص القرآني الكامل للقصة ومواضعها',
       content_ar='يعرض هذا القسم النص القرآني للمواضع التي سردت قصة النبي أو ذكرت أخباره، مرتبًا بحسب السورة والآية. النص من جدول المصحف المعتمد في ذِكر، ويمكن فتح مواضعه من روابط المراجع أعلى الصفحة. لا تُضاف هنا تفاصيل تاريخية من خارج القرآن على أنها يقين؛ وعند الحاجة إلى تفسير أو خبر تاريخي يجب تمييزه عن النص القرآني وذكر مصدره ودرجة ثبوته.'||E'\n\n'||c.quran_text,
-      section_type='stories',
+      section_type='story',
       order_num=1
   FROM prophet_story_content c JOIN public.prophets p ON p.slug=c.slug
   WHERE p.id=s.prophet_id AND p.published=true AND s.order_num=1
