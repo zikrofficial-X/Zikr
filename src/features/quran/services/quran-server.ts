@@ -7,6 +7,7 @@ import {
   supabaseServerAnonRequest,
 } from "@/lib/supabase/server";
 import type { Surah, Ayah, Reciter, QuranTafsirSource } from "@/features/quran/types/quran";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 import {
   reciters as fallbackReciters,
   surahs as fallbackSurahs,
