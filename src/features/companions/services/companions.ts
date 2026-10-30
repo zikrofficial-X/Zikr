@@ -200,7 +200,7 @@ export async function searchPublishedCompanions(query: string): Promise<Companio
   if (isSupabaseConfigured()) {
     try {
       const rows = await supabaseServerAnonRequest<Record<string, unknown>[]>(
-        `/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,slug,category&published=eq.true&searchable_normalized=plfts.simple.${encodeURIComponent(normalizedQuery)}&limit=6`,
+        `/rest/v1/companions?select=id,name_ar,name_en,title_ar,bio_ar,slug,category&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(normalizedQuery)}&limit=6`,
         { timeoutMs: 8000, retries: 1, cache: "no-store" },
       );
       if (rows.length) return uniqueCompanionSummaries(rows.map(mapCompanionRow).filter((row) => row.slug && row.name_ar));
