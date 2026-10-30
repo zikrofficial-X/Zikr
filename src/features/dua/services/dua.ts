@@ -181,7 +181,7 @@ export async function searchDuas(query: string, locale: Locale = "ar"): Promise<
   }
 
   return (await getOfflineOrFallbackDuas()).filter((dua) =>
-    [dua.titleAr, dua.textAr, dua.titleEn ?? "", dua.textEn ?? "", dua.occasionAr ?? "", dua.sourceAr ?? ""]
+    [dua.titleAr, dua.textAr, dua.titleEn ?? "", dua.textEn ?? "", dua.occasionAr ?? "", dua.sourceAr ?? "", dua.benefitsAr ?? ""]
       .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
   ).slice(0, 6);
 }
