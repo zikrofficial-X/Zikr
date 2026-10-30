@@ -11,7 +11,7 @@ ZIKR has one authoritative execution owner per production workload. Quran audio 
 | Social publishing queue | GitHub Actions `publish-social.yml` → `pnpm background:jobs` → social publisher | Every 15 minutes + manual dispatch | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
 | Quran text/catalog | Local canonical corpus → Supabase fallback | Request time | 114 surahs / 6,236 ayahs are verified; Supabase remains compatibility data. |
 | Quran audio playback | External HTTPS audio URLs via `quran_audio.audio_url` | On demand | No Supabase Storage dependency; no bulk MP3 import job is permitted. |
-| Repository verification | GitHub Actions `ZIKR Quality Gate` | Pull requests and `main` | `pnpm verify:pr` on PRs and `pnpm verify` on `main`; one automatic source gate. |
+| Repository verification | GitHub Actions `ZIKR Quality Gate` | Pull requests and `main` | `pnpm verify:pr` on PRs; full `pnpm verify` (including mobile, SEO, lint, types, and production build) on `main`. |
 | Production smoke | GitHub Actions `ZIKR Production Release` | Manual post-deploy verification | Public HTTP checks for home, robots, and sitemap. |
 | Security audit | CircleCI `security-audit` | Manual pipeline parameter | No production publishing credentials required. |
 
