@@ -9,8 +9,8 @@ const YA_VARIANTS = /[ىئ]/gu;
  */
 export function normalizeArabicSearchText(value: string): string {
   return value
-    .normalize("NFKC")
     .toLocaleLowerCase("ar")
+    .normalize("NFKC")
     .replace(ARABIC_DIACRITICS, "")
     .replace(ALEF_VARIANTS, "ا")
     .replace(YA_VARIANTS, "ي")
