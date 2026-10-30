@@ -12,6 +12,8 @@ const requirements = [
   ['focus restoration', 'menuButtonRef.current?.focus()'],
   ['body scroll lock', 'document.body.style.overflow = "hidden"'],
   ['scrollable drawer content', 'overflow-y-auto overscroll-contain'],
+  ['desktop breakpoint cleanup', 'window.matchMedia("(min-width: 1024px)")'],
+  ['focus restoration guard', 'menuButtonRef.current.offsetParent !== null'],
 ];
 
 const failures = requirements.filter(([, token]) => !source.includes(token));
