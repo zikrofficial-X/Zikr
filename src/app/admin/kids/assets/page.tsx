@@ -33,14 +33,17 @@ const number = (value: number) => value.toLocaleString("ar-EG-u-nu-latn");
 export default async function KidsAssetsPage() {
   await requireAdminPermission("kids.manage");
 
-  const assetsResult = await Promise.allSettled([
-    supabaseServerAdminRequest<AssetRow[]>(
+  let loaded = true;
+  let assets: AssetRow[] = [];
+  try {
+    assets = await supabaseServerAdminRequest<AssetRow[]>(
       "/rest/v1/media_assets?select=id,title,name,asset_type,media_type,mime_type,size_bytes,rights_verified,verified_rights,metadata&order=created_at.desc&limit=300",
       { method: "GET" },
-    ),
-  ]);
-  const loaded = assetsResult[0].status === "fulfilled";
-  const assets = loaded ? assetsResult[0].value : [];
+    );
+  } catch (error) {
+    loaded = false;
+    console.error("[admin/kids/assets] failed to load assets:", error);
+  }
   const kidsAssets = assets.filter(isKidsAsset);
   const verified = kidsAssets.filter((asset) => asset.rights_verified === true || asset.verified_rights === true).length;
   const unverified = kidsAssets.length - verified;

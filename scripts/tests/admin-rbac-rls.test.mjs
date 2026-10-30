@@ -55,8 +55,8 @@ requireMatch(
 );
 assert.match(
   userActions,
-  /previousRole === ["']super_admin["'][\s\S]*?admin\.role !== ["']super_admin["']/,
-  "server actions must protect super_admin accounts from delegated administrator changes",
+  /isFullAdminTarget[\s\S]*?isGrantingFullAdmin[\s\S]*?admin\.role !== ["']super_admin["']/,
+  "server actions must protect full-admin accounts and full-admin role grants from delegated administrators",
 );
 requireMatch(
   /CREATE POLICY admin_audit_events_admin_select[\s\S]*?'analyst'/i,
