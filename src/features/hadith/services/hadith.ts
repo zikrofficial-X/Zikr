@@ -327,7 +327,7 @@ export async function searchHadith(query: string, locale: Locale = "ar"): Promis
   const dbHadiths = await readSupabase<DbHadith[]>(
     `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(safeQuery)}&order=hadith_number.asc&limit=50`,
   );
-  if (dbHadiths?.length) {
+  if (dbHadiths) {
     return dbHadiths
       .map(mapDbHadith)
       .filter((item) => locale === "ar" || Boolean(item.english?.trim()));
