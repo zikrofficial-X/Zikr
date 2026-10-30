@@ -197,7 +197,7 @@ export async function searchProphets(query: string): Promise<Prophet[]> {
   }
 
   return (await getProphets()).filter((prophet) =>
-    [prophet.nameAr, prophet.nameEn, prophet.bioAr ?? "", prophet.bioEn ?? "", prophet.slug]
+    [prophet.nameAr, prophet.nameEn, prophet.bioAr ?? "", prophet.bioEn ?? "", prophet.birthPlaceAr ?? "", prophet.deathPlaceAr ?? "", prophet.slug]
       .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
   ).slice(0, 6);
 }
