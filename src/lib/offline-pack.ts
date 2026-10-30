@@ -466,17 +466,9 @@ export async function hydrateOfflineContent(
     }
   }
 
-  if (options.force) {
-    await offlineDb.delete("settings", COMPLETION_DB_KEY).catch(() => undefined);
-    try {
-      window.localStorage.removeItem(VERSION_KEY);
-    } catch {
-      // IndexedDB remains authoritative if Web Storage is restricted.
-    }
-  }
-
   const failedDatasets: string[] = [];
   const datasetCounts: Record<string, number> = {};
+  const pendingDatasets: Record<string, unknown[]> = {};
 
   for (const [dataset, definition] of Object.entries(manifest.datasets)) {
     const storeName = STORE_BY_DATASET[dataset];
@@ -499,17 +491,30 @@ export async function hydrateOfflineContent(
         failedDatasets.push(dataset);
         continue;
       }
-
-      // Replace, do not append: removed/unpublished rows must not survive in local storage.
-      await offlineDb.replaceAll(storeName, rows);
-      datasetCounts[storeName] = await offlineDb.count(storeName);
-      if (datasetCounts[storeName] !== definition.count) failedDatasets.push(dataset);
+      pendingDatasets[storeName] = rows;
     } catch (error) {
       failedDatasets.push(dataset);
       console.warn(`[OfflinePack] Failed to hydrate ${dataset}`, error);
     }
   }
 
+  if (failedDatasets.length === 0) {
+    try {
+      const committedCounts = await offlineDb.replaceAllMany(pendingDatasets);
+      Object.assign(datasetCounts, committedCounts);
+      for (const [dataset, definition] of Object.entries(manifest.datasets)) {
+        const storeName = STORE_BY_DATASET[dataset];
+        if (!storeName || datasetCounts[storeName] !== definition.count) failedDatasets.push(dataset);
+      }
+      if (failedDatasets.length === 0) {
+        await offlineDb.delete("settings", COMPLETION_DB_KEY).catch(() => undefined);
+        try { window.localStorage.removeItem(VERSION_KEY); } catch { /* IndexedDB remains authoritative. */ }
+      }
+    } catch (error) {
+      failedDatasets.push("indexeddb");
+      console.warn("[OfflinePack] Atomic dataset pack replacement failed", error);
+    }
+  }
   const complete = failedDatasets.length === 0;
   let cachedRoutes: string[] = [];
   let failedRoutes: string[] = [];
