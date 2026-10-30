@@ -88,7 +88,7 @@ function assertEnv() {
   }
   const parsedUrl = new URL(supabaseUrl);
   if (parsedUrl.protocol !== "https:") throw new Error("SUPABASE_URL must use HTTPS.");
-  return { supabaseUrl: supabaseUrl.replace(/\\/$/, ""), serviceRoleKey };
+  return { supabaseUrl: supabaseUrl.endsWith("/") ? supabaseUrl.slice(0, -1) : supabaseUrl, serviceRoleKey };
 }
 
 async function listDirectory(client, bucket, prefix) {
