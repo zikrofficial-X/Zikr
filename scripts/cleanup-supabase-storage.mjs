@@ -194,6 +194,11 @@ async function loadUnexpectedVideoReferences(client, candidatePaths) {
       filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
     },
     {
+      table: "kids_content",
+      column: "featured_image_url",
+      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
       table: "media_assets",
       column: "storage_path",
       filter: (query) => query.like("storage_path", "automated/%"),
