@@ -69,11 +69,9 @@ Production must be recorded per release using the exact commit, Vercel deploymen
 
 ## Verification requirements
 
-Before treating a release as complete:
+Before treating a release as complete, require the applicable PR gate (`pnpm verify:pr`) and the full main gate (`pnpm verify`) on the merged main SHA.
 
-`pnpm verify:pr`
-
-Android `v1.1.7` is the latest published stable release. Its GitHub Release lists the APK, AAB, release metadata, and SHA256SUMS. The historical `v1.1.4` tag/source commit mismatch remains a provenance lesson; it must not be hidden by marking older source-to-tag correspondence as fully reconciled. The `v1.1.7` tag itself is also unsigned, which is distinct from APK/AAB signing.
+Android `v1.1.8` is the latest published stable release. Its GitHub Release lists the APK, AAB, release metadata, and SHA256SUMS; CircleCI Android rebuild and Supabase production gate succeeded for the exact tag source commit. The `v1.1.8` annotated tag is unsigned, which is distinct from APK/AAB signing. The historical `v1.1.4` tag/source commit mismatch remains a provenance lesson; do not mark older source-to-tag correspondence as fully reconciled.
 
 Production evidence must include:
 
