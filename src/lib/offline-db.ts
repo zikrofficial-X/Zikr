@@ -187,6 +187,34 @@ export class OfflineDatabase {
     });
   }
 
+  /** Atomically swaps every dataset in one IndexedDB transaction. */
+  async replaceAllMany(datasets: Record<string, unknown[]>): Promise<Record<string, number>> {
+    await this.initialize();
+    if (!this.db || !this.ready) throw new Error('Database not initialized');
+    const storeNames = Object.keys(datasets);
+    if (!storeNames.length) return {};
+    for (const storeName of storeNames) {
+      if (!this.db.objectStoreNames.contains(storeName)) {
+        throw new Error(`Unknown offline store: ${storeName}`);
+      }
+    }
+    const counts = Object.fromEntries(storeNames.map(name => [name, datasets[name].length]));
+    const transaction = this.db.transaction(storeNames, 'readwrite');
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => resolve(counts);
+      transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB pack replacement failed'));
+      transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB pack replacement aborted'));
+      for (const storeName of storeNames) {
+        const store = transaction.objectStore(storeName);
+        store.clear();
+        for (const row of datasets[storeName]) {
+          const request = store.put(row);
+          request.onerror = () => transaction.abort();
+        }
+      }
+    });
+  }
+
   async get<T>(storeName: string, key: string | number): Promise<T | undefined> {
     await this.initialize();
     const store = this.getStore(storeName, 'readonly');
