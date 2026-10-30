@@ -202,7 +202,7 @@ for (const route of offlineManifest.routes || []) {
     failures.push(`Invalid offline route: ${route}`);
     continue;
   }
-  if (/^\/(admin|profile|favorites)(\/|$)/.test(route)) failures.push(`Private route must not be in offline manifest: ${route}`);
+  if (/^\/(api|auth|admin|profile|favorites|settings|account|dashboard)(\/|$)/.test(route)) failures.push(\`Private route must not be in offline manifest: \${route}\`);
 }
 
 requireText('public/sw.js', [
