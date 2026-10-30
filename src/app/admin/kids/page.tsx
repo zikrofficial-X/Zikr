@@ -74,21 +74,22 @@ function Field({
   );
 }
 
-async function getKidsContent(): Promise<KidsRow[]> {
+async function getKidsContent(): Promise<{ rows: KidsRow[]; ok: boolean }> {
   try {
-    return await supabaseServerAdminRequest<KidsRow[]>(
+    const rows = await supabaseServerAdminRequest<KidsRow[]>(
       "/rest/v1/kids_content?select=id,title_ar,title_en,slug,type,age_group,published,is_active,created_at,updated_at&order=updated_at.desc&limit=300",
       { method: "GET" },
     );
+    return { rows, ok: true };
   } catch (error) {
     console.error("[admin/kids] failed to load database content:", error);
-    return [];
+    return { rows: [], ok: false };
   }
 }
 
 export default async function AdminKidsPage() {
   await requireAdminPermission("kids.manage");
-  const rows = await getKidsContent();
+  const { rows, ok } = await getKidsContent();
   const publishedCount = rows.filter((item) => item.published && item.is_active).length;
   const draftCount = rows.length - publishedCount;
   const typeCounts = rows.reduce<Record<string, number>>((acc, item) => {
@@ -104,11 +105,17 @@ export default async function AdminKidsPage() {
         <h1 className="text-2xl font-bold text-brand-gold">إدارة قسم الأطفال</h1>
       </div>
 
+      {!ok && (
+        <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm text-red-100">
+          تعذر تحميل محتوى الأطفال من Supabase. الأرقام أدناه غير متاحة وليست أصفارًا.
+        </div>
+      )}
+
       <section className="grid gap-4 md:grid-cols-4">
-        <Card><p className="text-sm arabic-muted">إجمالي السجلات الفعلية</p><strong className="text-3xl text-brand-gold">{rows.length}</strong></Card>
-        <Card><p className="text-sm arabic-muted">منشور ومفعّل</p><strong className="text-3xl text-emerald-300">{publishedCount}</strong></Card>
-        <Card><p className="text-sm arabic-muted">مسودة / مخفي</p><strong className="text-3xl text-amber-300">{draftCount}</strong></Card>
-        <Card><p className="text-sm arabic-muted">أنواع المحتوى</p><strong className="text-3xl text-brand-gold">{Object.keys(typeCounts).length}</strong></Card>
+        <Card><p className="text-sm arabic-muted">إجمالي السجلات الفعلية</p><strong className="text-3xl text-brand-gold">{ok ? rows.length : "غير متاح"}</strong></Card>
+        <Card><p className="text-sm arabic-muted">منشور ومفعّل</p><strong className="text-3xl text-emerald-300">{ok ? publishedCount : "غير متاح"}</strong></Card>
+        <Card><p className="text-sm arabic-muted">مسودة / مخفي</p><strong className="text-3xl text-amber-300">{ok ? draftCount : "غير متاح"}</strong></Card>
+        <Card><p className="text-sm arabic-muted">أنواع المحتوى</p><strong className="text-3xl text-brand-gold">{ok ? Object.keys(typeCounts).length : "غير متاح"}</strong></Card>
       </section>
 
       <section className="flex flex-wrap gap-2">
