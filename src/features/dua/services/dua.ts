@@ -166,7 +166,7 @@ export async function searchDuas(query: string, locale: Locale = "ar"): Promise<
   if (isSupabaseConfigured()) {
     try {
       const rows = await supabaseServerAnonRequest<DuaRow[]>(
-        `/rest/v1/duas?select=id,title_ar,title_en,slug,text_ar,text_en,occasion_ar,source_ar,benefits_ar,category_id,published&published=eq.true&searchable_normalized=plfts.simple.${encodeURIComponent(normalizedQuery)}&limit=6`,
+        `/rest/v1/duas?select=id,title_ar,title_en,slug,text_ar,text_en,occasion_ar,source_ar,benefits_ar,category_id,published&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(normalizedQuery)}&limit=6`,
         { timeoutMs: 8000, retries: 1, cache: "no-store" },
       );
       const matches = rows.map(mapDuaRow).filter((dua) =>
