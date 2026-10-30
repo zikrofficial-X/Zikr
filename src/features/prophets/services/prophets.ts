@@ -187,7 +187,7 @@ export async function searchProphets(query: string): Promise<Prophet[]> {
   if (isSupabaseConfigured()) {
     try {
       const rows = await supabaseServerAnonRequest<ProphetRow[]>(
-        `/rest/v1/prophets?select=*&published=eq.true&searchable_normalized=plfts.simple.${encodeURIComponent(normalizedQuery)}&limit=6`,
+        `/rest/v1/prophets?select=*&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(normalizedQuery)}&limit=6`,
         { timeoutMs: 8000, retries: 1, cache: "no-store" },
       );
       if (rows.length) return rows.map(mapProphetRow);
