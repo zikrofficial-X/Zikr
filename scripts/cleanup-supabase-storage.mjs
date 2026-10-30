@@ -444,36 +444,39 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
   }
 
   const results = await Promise.all(patterns.map(async (pattern) => {
-    let query = client.from(pattern.table).select(pattern.column);
-    query = pattern.filter(query);
-    return {
-      pattern,
-      result: await query.range(0, 4999),
-    };
+    const rows = [];
+    for (let offset = 0; offset < 5000; offset += 1000) {
+      let query = client.from(pattern.table).select(pattern.column);
+      query = pattern.filter(query);
+      const { data, error } = await query.range(offset, offset + 999);
+      if (error) {
+        throw new Error(`Reference inventory failed for ${pattern.table}.${pattern.column}: ${error.message}`);
+      }
+      rows.push(...(data ?? []));
+      if (!data || data.length < 1000) return { pattern, rows };
+    }
+    throw new Error(`Reference inventory exceeded the safe scan limit for ${pattern.table}.${pattern.column}; refusing cleanup.`);
   }));
 
-  for (const { pattern, result } of results) {
-    if (result.error) {
-      throw new Error(`Reference inventory failed for ${pattern.table}.${pattern.column}: ${result.error.message}`);
-    }
-    if ((result.data ?? []).length >= 5000) {
-      throw new Error(`Reference inventory exceeded the safe scan limit for ${pattern.table}.${pattern.column}; refusing cleanup.`);
-    }
-    for (const row of result.data ?? []) {
-      recordReference(row[pattern.column]);
-    }
+  for (const { pattern, rows } of results) {
+    for (const row of rows) recordReference(row[pattern.column]);
   }
 
-  const { data: libraryRows, error: libraryError } = await client
-    .from("content_library")
-    .select("media")
-    .not("media", "is", null)
-    .range(0, 4999);
-  if (libraryError) throw new Error(`Reference inventory failed for content_library.media: ${libraryError.message}`);
-  if ((libraryRows ?? []).length >= 5000) {
+  const libraryRows = [];
+  for (let offset = 0; offset < 5000; offset += 1000) {
+    const { data, error } = await client
+      .from("content_library")
+      .select("media")
+      .not("media", "is", null)
+      .range(offset, offset + 999);
+    if (error) throw new Error(`Reference inventory failed for content_library.media: ${error.message}`);
+    libraryRows.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  if (libraryRows.length >= 5000) {
     throw new Error("content_library.media exceeded the safe scan limit; refusing cleanup.");
   }
-  for (const row of libraryRows ?? []) {
+  for (const row of libraryRows) {
     const serialized = JSON.stringify(row.media ?? {});
     for (const path of candidatePaths) {
       if (serialized.includes(path)) referenceSet.add(path);
