@@ -203,7 +203,7 @@ for (const route of offlineManifest.routes || []) {
 }
 
 requireText('public/sw.js', [
-  'const CACHE_NAME = "zikr-v13"',
+  'const CACHE_NAME = "zikr-v14"',
   'CACHE_OFFLINE_ROUTES',
   'OFFLINE_CONTENT_PREFIX',
   'pathname.startsWith("/api/")',
