@@ -29,6 +29,10 @@ for (const key of ["migrationOne", "migrationTwo"]) {
   if (!contents[key].includes("searchable_normalized")) failures.push(`${key} does not define normalized search schema`);
 }
 if (!contents.migrationOne.includes("private.normalize_arabic_search_text")) failures.push("canonical database normalizer is missing from migration history");
+for (const key of normalizedFields) {
+  if (!contents[key].includes("searchable_normalized=plfts(simple).")) failures.push(`${key} does not use PostgREST configured plain-text search syntax`);
+}
+if (!contents.articles.includes("withLongformArticles(matches, locale)")) failures.push("indexed article search must retain bundled longform editorial results");
 
 if (failures.length) {
   console.error("Arabic search contract failed:");
