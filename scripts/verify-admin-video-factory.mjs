@@ -40,15 +40,15 @@ if (!permissions.includes("'video.manage'")) failures.push("video.manage permiss
 if (!permissions.includes("'video.delete'")) failures.push("video.delete permission missing");
 if (!permissions.includes("'video.manage', 'video.delete'")) failures.push("video_manager role must own video permissions");
 
-const page = read("src/app/admin/ai-video/page.tsx");
-if (!page.includes('requireAdminPermission("video.manage")')) failures.push("AI video admin page must require video.manage");
+const page = read("src/app/admin/video/studio/page.tsx");
+if (!page.includes('requireAdminPermission("video.manage")')) failures.push("Video Studio admin page must require video.manage");
 
-const canonicalQueue = read("src/app/admin/video-factory/queue/page.tsx");
+const canonicalQueue = read("src/app/admin/video/requests/page.tsx");
 if (!canonicalQueue.includes("AdminVideosClient")) failures.push("Video Factory queue must render the canonical queue client");
 if (!canonicalQueue.includes('requireAdminPermission("video.manage")')) failures.push("Video Factory queue must require video.manage");
 
 const legacyQueue = read("src/app/admin/videos/page.tsx");
-if (!legacyQueue.includes('redirect("/admin/video-factory/queue")')) failures.push("Legacy /admin/videos route must redirect to /admin/video-factory/queue");
+if (!legacyQueue.includes('redirect("/admin/video/requests")')) failures.push("Legacy /admin/videos route must redirect to /admin/video/requests");
 
 for (const adminPage of [
   "src/app/admin/video-factory/page.tsx",
