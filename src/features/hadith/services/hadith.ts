@@ -317,15 +317,13 @@ export async function getHadithByNumber(
 }
 
 export async function searchHadith(query: string, locale: Locale = "ar"): Promise<Hadith[]> {
-  const q = query.trim().toLowerCase();
+  const q = normalizeArabicSearchText(query);
   if (!q) return [];
 
-  const escapedQuery = q.replace(/[*,()]/g, "");
-  const field = locale === "en" ? "text_en" : "text_ar";
   const dbHadiths = await readSupabase<DbHadith[]>(
-    `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&published=eq.true&or=${encodeURIComponent(`(${field}.ilike.*${escapedQuery}*,ref.ilike.*${escapedQuery}*)`)}&limit=50`,
+    `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(q)}&limit=50`,
   );
-  if (dbHadiths?.length) {
+  if (dbHadiths) {
     return dbHadiths
       .map(mapDbHadith)
       .filter((item) => locale === "ar" || Boolean(item.english?.trim()));
@@ -340,7 +338,7 @@ export async function searchHadith(query: string, locale: Locale = "ar"): Promis
   return collections
     .flatMap(collection => collection?.data ?? [])
     .filter((item) => {
-      const haystack = locale === "en" ? item.english?.toLowerCase() : item.arab?.toLowerCase();
-      return haystack?.includes(q) || item.id?.toLowerCase().includes(q);
+      const haystack = locale === "en" ? item.english : item.arab;
+      return normalizeArabicSearchText(haystack ?? "").includes(q) || item.id?.toLowerCase().includes(q);
     });
 }
