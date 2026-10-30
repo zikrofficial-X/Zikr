@@ -114,6 +114,28 @@ export async function getStories(limit = 100): Promise<Story[]> {
   }
 }
 
+export async function searchStories(query: string): Promise<Story[]> {
+  const normalizedQuery = normalizeArabicSearchText(query).slice(0, 100);
+  if (!normalizedQuery) return [];
+
+  if (hasSupabaseConfig()) {
+    try {
+      const rows = await supabaseServerAnonRequest<StoryRow[]>(
+        `/rest/v1/stories?select=id,slug,title,summary,content,category,mood,metadata,published,created_at,updated_at&published=eq.true&is_approved=eq.true&user_id=is.null&searchable_normalized=plfts.simple.${encodeURIComponent(normalizedQuery)}&order=created_at.desc&limit=6`,
+        { timeoutMs: 8000, retries: 1, cache: "no-store" },
+      );
+      if (rows.length) return rows.filter(isStoryRow).map(mapStoryRow);
+    } catch (error) {
+      console.error("[stories] Indexed search failed; using cached fallback:", error);
+    }
+  }
+
+  return (await getStories()).filter((story) =>
+    [story.title, story.summary ?? "", story.content ?? "", story.category, story.slug]
+      .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
+  ).slice(0, 6);
+}
+
 export async function getStoryBySlug(slug: string): Promise<Story | null> {
   const stories = await getStories();
   const story = stories.find((s) => s.slug === slug);
