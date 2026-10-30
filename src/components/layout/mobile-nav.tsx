@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { Session, User } from "@supabase/supabase-js";
 import { usePathname } from "next/navigation";
@@ -49,6 +49,8 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [authResolved, setAuthResolved] = useState(false);
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const activeGroupId = useMemo(
     () =>
@@ -105,12 +107,49 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      menuButtonRef.current?.focus();
+      return;
+    }
+
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const dialog = dialogRef.current;
+    const getFocusable = () =>
+      Array.from(
+        dialog?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter((element) => element.offsetParent !== null);
+
+    getFocusable()[0]?.focus();
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      const focusable = getFocusable();
+      if (!focusable.length) {
+        event.preventDefault();
+        dialog?.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
@@ -137,15 +176,18 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
             onClick={() => setOpen(false)}
           />
           <nav
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
-            aria-label={isEnglish ? "All platform sections" : "كل أقسام المنصة"}
+            aria-labelledby="zikr-mobile-nav-title"
+            id="zikr-mobile-navigation-dialog"
+            tabIndex={-1}
             dir={dir}
-            className="fixed inset-y-0 end-0 z-[60] flex w-[min(23rem,92vw)] flex-col border-s border-brand-gold/20 bg-brand-emeraldDeep shadow-2xl lg:hidden"
+            className="fixed inset-y-0 end-0 z-[60] flex h-[100dvh] max-h-[100dvh] w-[min(23rem,92vw)] flex-col overflow-hidden border-s border-brand-gold/20 bg-brand-emeraldDeep shadow-2xl outline-none lg:hidden"
           >
             <div className="flex shrink-0 items-center justify-between border-b border-brand-gold/15 px-5 py-4">
               <div>
-                <p className="text-xl font-bold text-brand-gold">ذِكرٌ</p>
+                <p id="zikr-mobile-nav-title" className="text-xl font-bold text-brand-gold">{isEnglish ? "ZIKR" : "ذِكرٌ"}</p>
                 <p className="mt-1 text-xs text-brand-cream/60">
                   {isEnglish ? "Explore the platform" : "استكشف أقسام المنصة"}
                 </p>
@@ -298,8 +340,10 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
           })}
           <button
             type="button"
+            ref={menuButtonRef}
             onClick={() => setOpen(true)}
             aria-expanded={open}
+            aria-controls="zikr-mobile-navigation-dialog"
             aria-haspopup="dialog"
             className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[10px] font-semibold text-brand-cream/65 transition-colors hover:bg-brand-gold/8 hover:text-brand-gold"
           >
