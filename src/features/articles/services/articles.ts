@@ -317,7 +317,7 @@ export async function getArticleBySlug(slug: string, locale?: Locale): Promise<A
     try {
       const offlineArticles = await loadOfflineArticles(contentLocale);
       const offlineMatch = offlineArticles.find(article => article.slug === safeSlug);
-      if (isSubstantialPublicArticle(offlineMatch ?? null)) return offlineMatch;
+      if (offlineMatch && isSubstantialPublicArticle(offlineMatch)) return offlineMatch;
     } catch (error) {
       console.error("[articles] Offline article catalogue unavailable:", error);
     }
@@ -325,7 +325,7 @@ export async function getArticleBySlug(slug: string, locale?: Locale): Promise<A
 
   for (const contentLocale of activeLocale === "en" ? ["en", "ar"] as const : ["ar"] as const) {
     const fallbackMatch = getFallbackArticles(contentLocale).find(article => article.slug === safeSlug);
-    if (isSubstantialPublicArticle(fallbackMatch ?? null)) return fallbackMatch;
+    if (fallbackMatch && isSubstantialPublicArticle(fallbackMatch)) return fallbackMatch;
   }
 
   return null;
