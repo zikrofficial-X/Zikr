@@ -74,6 +74,33 @@ export const DEFAULT_TASBEEH_ITEMS: TasbeehItem[] = [
     targetCount: 100,
     category: 'morning',
   },
+  {
+    id: 'la-hawla',
+    name: 'La hawla wa la quwwata illa billah',
+    nameAr: 'لا حول ولا قوة إلا بالله',
+    text: 'There is no power or might except through Allah',
+    textAr: 'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ',
+    count: 0,
+    category: 'custom',
+  },
+  {
+    id: 'salawat',
+    name: 'Salawat',
+    nameAr: 'الصلاة على النبي ﷺ',
+    text: 'Send blessings upon the Prophet',
+    textAr: 'اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ',
+    count: 0,
+    category: 'custom',
+  },
+  {
+    id: 'hasbuna',
+    name: 'HasbunAllahu wa ni‘mal wakeel',
+    nameAr: 'حسبنا الله ونعم الوكيل',
+    text: 'Allah is sufficient for us, and He is the best disposer of affairs',
+    textAr: 'حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ',
+    count: 0,
+    category: 'custom',
+  },
 ];
 
 // Morning Adhkar
