@@ -7,16 +7,20 @@
 
 ## Consolidated closeout checkpoint — 2026-10-30
 
-This supersedes the 2026-10-28 deployment/schema snapshot below for current release state; older findings remain historical context.
+This checkpoint supersedes the older deployment and schema snapshots below.
 
-- Latest verified production deployment: `dpl_7gf9UjH1d5WyimqzBw6uAkXMexJy`, state `READY`, main commit `59f5cd0fb351ee61475e8cf21345da35fc9e19be`.
-- Supabase migration ledger: 381 versions, latest `20261030110000`; public admin compatibility RPC is SECURITY INVOKER and seven FK support indexes are present.
-- Latest verified GitHub Quality Gate, CircleCI application-build/docs, config guard, and Supabase production health checks passed.
-- Supabase Security Advisor still reports Leaked Password Protection Disabled. Performance Advisor reports 70 unused-index observations; these are not grounds for bulk index deletion.
-- Production video-generation requests: 363 completed. Social queue: 286 published and 5 partial (YouTube succeeded; Facebook Reels is deferred by provider cooldown). Video AI and automatic publishing remain disabled by live settings; social workflow remains frozen pending explicit approval.
-- The comprehensive phase-by-phase disposition, Kids/Games acceptance gates, growth/SEO/monetization status, and owner-required actions are recorded in [ZIKR_ALL_PLANS_CLOSEOUT_2026-10-30.md](docs/finalization/ZIKR_ALL_PLANS_CLOSEOUT_2026-10-30.md).
-- Full `pnpm verify` is being made mandatory on pushes to `main`; PRs retain `pnpm verify:pr`. This PR must merge and its full main-branch gate must pass before this CI improvement is considered closed.
-- Project closure is not certified while educator/religious review, physical-device/browser acceptance, Auth setting, custom-domain/CMP, revenue-model decisions, storage retention, and the five social deferrals remain open.
+- Latest verified production deployment: `dpl_6A7XdBAjUWrMrp6KSxKKYtuTHSpw`, state `READY`, production commit `0adf4c3b701bbb18ec9d3bf674d972b7e0af5c39` (branding PR #149).
+- Production aliases verified on that deployment: `zikrmediaofficial.vercel.app`, `zikr-zikr3.vercel.app`, and `zikr-git-main-zikr3.vercel.app`.
+- Main Quality Gate run `41041147885` passed the full `pnpm verify` suite. CircleCI application-build/docs and config-guard statuses for the main commit also passed.
+- Supabase project `ymxdswkaxafakugktsim` is `ACTIVE_HEALTHY`; live migration ledger contains **384** versions, latest `20261030110000`.
+- Supabase Security Advisor still reports **Leaked Password Protection Disabled**. Performance Advisor reports **68 unused-index observations** at this checkpoint; these are informational and are not grounds for bulk index deletion.
+- Production counters at the latest live SQL check: video requests 375 completed, 9 pending, 1 processing, 1 retry-wait; social queue 286 published and 5 partial. The 5 partial rows are YouTube-success / Facebook Reels cooldown deferrals; do not retry or enable social automation without owner approval.
+- Current Kids registry is **13 games**, superseding the older 12-game inventory. Automated registry/game/content contracts exist; educator/religious review and physical/browser acceptance remain separate gates.
+- Vercel runtime monitoring still showed React streaming-boundary errors on `/articles/[slug]` and `/dua/[slug]`, with a historical 300-second article timeout cluster. PR #150 contains a targeted fix for short published duas, missing English article/dua translations, duplicate dua metadata reads, and regression smoke checks. This fix is **not yet a live-production fix** until the PR merges, the main gate passes, and a deployment/smoke run verifies it.
+- PR #150 is the active closeout branch: [closeout/all-plans-2026-10-30](https://github.com/zikrofficial-X/Zikr/tree/closeout/all-plans-2026-10-30). Its current head requires its own PR Quality Gate and review before merge. Do not treat prior runs for earlier branch heads as evidence for the latest head.
+- Android `v1.1.8` is published with APK, AAB, SHA256SUMS and release metadata. Its immutable tag targets `3bddc73c9d9c35c90b6c84d1a7bb825c0d1cc04e`, which predates the new branding rollout; the new Android launcher identity needs the next semantic release and must not be forced into the immutable v1.1.8 tag.
+- The phase-by-phase dispositions, video pipeline, Kids/Games acceptance, growth/SEO/monetization status, and owner-required actions are recorded in [ZIKR_ALL_PLANS_CLOSEOUT_2026-10-30.md](docs/closeout/ZIKR_ALL_PLANS_CLOSEOUT_2026-10-30.md).
+- Project-wide certification is not complete while Supabase Auth hardening, qualified editorial/educator review, device/browser acceptance, social deferrals, domain/CMP/AdSense, revenue decisions, storage retention and file-dependency cleanup remain open. These are listed explicitly in the closeout ledger rather than marked complete by documentation alone.
 
 ## Historical production audit checkpoint — 2026-10-28
 
