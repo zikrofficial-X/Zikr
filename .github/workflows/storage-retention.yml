@@ -1,0 +1,79 @@
+name: ZIKR Supabase Storage Retention
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply the reviewed retention plan (leave false for a dry run)"
+        required: true
+        default: false
+        type: boolean
+  push:
+    branches:
+      - storage-retention-run-2026-10-30
+      - storage-retention-apply-2026-10-30
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-supabase-storage-retention
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/storage-retention-run-2026-10-30' || github.ref == 'refs/heads/storage-retention-apply-2026-10-30'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 25
+    env:
+      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Validate protected runtime credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_URL:-}" || { echo "::error::Missing SUPABASE_URL" >&2; exit 1; }
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing protected SUPABASE_SERVICE_ROLE_KEY" >&2; exit 1; }
+          test -n "${GITHUB_TOKEN:-}" || { echo "::error::Missing GitHub release read token" >&2; exit 1; }
+
+      - name: Install runtime dependencies
+        run: pnpm install --frozen-lockfile --prod
+
+      - name: Verify retention safety tests
+        run: node scripts/tests/storage-retention.test.mjs
+
+      - name: Print deletion plan (dry run)
+        run: pnpm storage:cleanup
+
+      - name: Delete only verified, safely-retained objects
+        if: github.event_name == 'schedule' || inputs.apply == true || github.ref == 'refs/heads/storage-retention-apply-2026-10-30'
+        run: pnpm storage:cleanup -- --apply
+
+      - name: Verify final bucket inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Storage retention run completed for commit ${GITHUB_SHA}."
+          echo "Only fully published videos older than 48 hours and checksum-verified redundant Android copies are eligible."
+          echo "Queued, partial, recently published, non-queued, pinned, rollback, or unbacked release assets are retained."

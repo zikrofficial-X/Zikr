@@ -9,7 +9,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "check": "tsc --noEmit",
-    "test": "tsx scripts/tests/app-update-download.test.ts && tsx scripts/tests/facebook-reels-rate-limit.test.ts && tsx scripts/tests/schema-contract.test.ts && tsx scripts/tests/video-publish-approval.test.ts && tsx scripts/tests/video-contract.test.ts && tsx scripts/tests/kids-video-series.test.ts && tsx scripts/tests/kids-visual-contract.test.ts && tsx scripts/tests/phase21-games.test.ts && tsx scripts/tests/kids-action-games-localization.test.ts && tsx scripts/tests/kids-gameplay-difficulty.test.ts && tsx scripts/tests/kids-timeout-safety.test.ts && tsx scripts/tests/contact-validation.test.ts && tsx scripts/tests/kids-content-manifest.test.ts && tsx scripts/tests/kids-asset-manifest.test.ts && tsx scripts/tests/kids-navigation.test.ts && tsx scripts/tests/auth-password-security.test.ts && tsx scripts/tests/prayer-times.test.ts && tsx scripts/tests/production-smoke-contract.test.ts && tsx scripts/tests/arabic-search-normalization.test.ts && node scripts/tests/admin-rbac-rls.test.mjs && node scripts/tests/performance-index-contract.test.mjs",
+    "test": "node scripts/tests/storage-retention.test.mjs && tsx scripts/tests/app-update-download.test.ts && tsx scripts/tests/facebook-reels-rate-limit.test.ts && tsx scripts/tests/schema-contract.test.ts && tsx scripts/tests/video-publish-approval.test.ts && tsx scripts/tests/video-contract.test.ts && tsx scripts/tests/kids-video-series.test.ts && tsx scripts/tests/kids-visual-contract.test.ts && tsx scripts/tests/phase21-games.test.ts && tsx scripts/tests/kids-action-games-localization.test.ts && tsx scripts/tests/kids-gameplay-difficulty.test.ts && tsx scripts/tests/kids-timeout-safety.test.ts && tsx scripts/tests/contact-validation.test.ts && tsx scripts/tests/kids-content-manifest.test.ts && tsx scripts/tests/kids-asset-manifest.test.ts && tsx scripts/tests/kids-navigation.test.ts && tsx scripts/tests/auth-password-security.test.ts && tsx scripts/tests/prayer-times.test.ts && tsx scripts/tests/production-smoke-contract.test.ts && tsx scripts/tests/arabic-search-normalization.test.ts && node scripts/tests/admin-rbac-rls.test.mjs && node scripts/tests/performance-index-contract.test.mjs",
     "format": "prettier --write .",
     "db:migrate-supabase": "pnpm dlx supabase db push",
     "lint": "eslint .",
@@ -91,7 +91,8 @@
     "admin:api:check": "node scripts/verify-admin-api-guards.mjs",
     "admin:rbac:check": "node scripts/tests/admin-rbac-rls.test.mjs",
     "performance:indexes:check": "node scripts/tests/performance-index-contract.test.mjs",
-    "offline:export": "node scripts/export-offline-content.mjs --required"
+    "offline:export": "node scripts/export-offline-content.mjs --required",
+    "storage:cleanup": "node scripts/cleanup-supabase-storage.mjs"
   },
   "dependencies": {
     "@capacitor/android": "7.6.9",
