@@ -1,1 +1,463 @@
-[{"id":"29cdc5b9-8fe0-48fb-a600-af29a638071e","name_ar":"علي بن أبي طالب","name_en":"Ali ibn Abi Talib","slug":"ali-ibn-abi-talib","bio_ar":"ابن عم النبي ﷺ وزوج فاطمة، ومن الخلفاء الراشدين، عُرف بالعلم والشجاعة.","bio_en":"Original concise biography for Zikr.","category":"الخلفاء الراشدون","thumbnail_url":null,"featured_image_url":null,"order_num":4,"published":true,"metadata":{"editorial":true},"created_at":"2026-07-05T00:41:14.076154+00:00","updated_at":"2026-08-14T22:48:00.647777+00:00","title_ar":"أبو تراب","birth_place_ar":null,"death_place_ar":null,"death_year":null},{"id":"3723a9b3-c5c2-49f1-862a-88a44e93362a","name_ar":"خالد بن الوليد","name_en":"Khalid ibn al-Walid","slug":"khalid","bio_ar":"قائد عسكري عظيم لم يُهزم في أي معركة.","bio_en":"A great military commander who was never defeated in any battle.","category":null,"thumbnail_url":null,"featured_image_url":null,"order_num":null,"published":true,"metadata":{},"created_at":"2026-07-31T10:59:54.398132+00:00","updated_at":"2026-07-31T10:59:54.398132+00:00","title_ar":"سيف الله المسلول","birth_place_ar":null,"death_place_ar":null,"death_year":null},{"id":"4e59c23f-4c89-49c8-b64d-d2f15b421cd1","name_ar":"أبو بكر الصديق","name_en":"Abu Bakr al-Siddiq","slug":"abu-bakr","bio_ar":"من السابقين إلى الإسلام وصاحب رسول الله ﷺ، عُرف بالصدق والرحمة والثبات.","bio_en":"Original concise biography for Zikr.","category":"الصحابة","thumbnail_url":null,"featured_image_url":null,"order_num":1,"published":true,"metadata":{"editorial":true},"created_at":"2026-07-05T00:41:14.076154+00:00","updated_at":"2026-08-14T22:48:00.647777+00:00","title_ar":"الخليفة الأول","birth_place_ar":null,"death_place_ar":null,"death_year":null},{"id":"684c987a-3df4-4b46-a78c-58d6fd2a9bb4","name_ar":"خالد بن الوليد","name_en":"Khalid ibn al-Walid","slug":"khalid-ibn-walid","bio_ar":"صحابي وقائد عسكري أسلم وأخلص، واشتهر بحسن التدبير في ميادين القتال.","bio_en":"Original concise biography for Zikr.","category":"القادة","thumbnail_url":null,"featured_image_url":null,"order_num":5,"published":true,"metadata":{"editorial":true},"created_at":"2026-07-05T00:41:14.076154+00:00","updated_at":"2026-08-14T22:48:00.647777+00:00","title_ar":"سيف الله المسلول","birth_place_ar":null,"death_place_ar":null,"death_year":null},{"id":"7cbed2ac-4b3b-4204-8a81-ab1898acc76d","name_ar":"بلال بن رباح","name_en":"Bilal ibn Rabah","slug":"bilal-ibn-rabah","bio_ar":"صحابي جليل ثبت على التوحيد، وكان من أوائل المؤذنين.","bio_en":"Original concise biography for Zikr.","category":"السابقون","thumbnail_url":null,"featured_image_url":null,"order_num":6,"published":true,"metadata":{"editorial":true},"created_at":"2026-07-05T00:41:14.076154+00:00","updated_at":"2026-08-14T22:48:00.647777+00:00","title_ar":"مؤذن رسول الله ﷺ","birth_place_ar":null,"death_place_ar":null,"death_year":null},{"id":"97960ab8-7a40-4b24-b27a-23b746455d86","name_ar":"عثمان بن عفان","name_en":"Uthman ibn Affan","slug":"uthman-ibn-affan","bio_ar":"من السابقين إلى الإسلام والخلفاء الراشدين، عُرف بالحياء والإنفاق.","bio_en":"Original concise biography for Zikr.","category":"الخلفاء الراشدون","thumbnail_url":null,"featured_image_url":null,"order_num":3,"published":true,"metadata":{"editorial":true},"created_at":"2026-07-05T00:41:14.076154+00:00","updated_at":"2026-08-14T22:48:00.647777+00:00","title_ar":"ذو النورين","birth_place_ar":null,"death_place_ar":null,"death_year":null},{"id":"a15f45e9-4ba6-4b4c-b720-0b5c2201eab9","name_ar":"عمر بن الخطاب","name_en":"Umar ibn al-Khattab","slug":"umar","bio_ar":"ثاني الخلفاء الراشدين، فُتحت في عهده بلاد كثيرة.","bio_en":"The second Rightly Guided Caliph, under whose rule many lands were conquered.","category":null,"thumbnail_url":null,"featured_image_url":null,"order_num":null,"published":true,"metadata":{},"created_at":"2026-07-31T10:59:54.398132+00:00","updated_at":"2026-07-31T10:59:54.398132+00:00","title_ar":"الفاروق","birth_place_ar":null,"death_place_ar":null,"death_year":null},{"id":"e4d296e8-aef9-4439-ada5-76e0ca87d3ef","name_ar":"علي بن أبي طالب","name_en":"Ali ibn Abi Talib","slug":"ali","bio_ar":"رابع الخلفاء الراشدين وابن عم النبي وزوج فاطمة.","bio_en":"The fourth Rightly Guided Caliph, cousin of the Prophet and husband of Fatima.","category":null,"thumbnail_url":null,"featured_image_url":null,"order_num":null,"published":true,"metadata":{},"created_at":"2026-07-31T10:59:54.398132+00:00","updated_at":"2026-07-31T10:59:54.398132+00:00","title_ar":"أمير المؤمنين","birth_place_ar":null,"death_place_ar":null,"death_year":null},{"id":"ef167ce7-aaab-4f53-bec8-a3f86fa98d0b","name_ar":"عمر بن الخطاب","name_en":"Umar ibn al-Khattab","slug":"umar-ibn-khattab","bio_ar":"من كبار أصحاب النبي ﷺ والخليفة الثاني، عُرف بالعدل وقوة الحق.","bio_en":"Original concise biography for Zikr.","category":"الخلفاء الراشدون","thumbnail_url":null,"featured_image_url":null,"order_num":2,"published":true,"metadata":{"editorial":true},"created_at":"2026-07-05T00:41:14.076154+00:00","updated_at":"2026-08-14T22:48:00.647777+00:00","title_ar":"الفاروق","birth_place_ar":null,"death_place_ar":null,"death_year":null},{"id":"f76a8616-2998-4c98-83ab-432d5d95d8da","name_ar":"عثمان بن عفان","name_en":"Uthman ibn Affan","slug":"uthman","bio_ar":"ثالث الخلفاء الراشدين، جمع القرآن في مصحف واحد.","bio_en":"The third Rightly Guided Caliph, compiled the Quran into one manuscript.","category":null,"thumbnail_url":null,"featured_image_url":null,"order_num":null,"published":true,"metadata":{},"created_at":"2026-07-31T10:59:54.398132+00:00","updated_at":"2026-07-31T10:59:54.398132+00:00","title_ar":"ذو النورين","birth_place_ar":null,"death_place_ar":null,"death_year":null},{"id":"f77819d6-a1f3-45de-981d-a8566ac42bc8","name_ar":"بلال بن رباح","name_en":"Bilal ibn Rabah","slug":"bilal","bio_ar":"صحابي جليل ثبت على التوحيد، وكان من أوائل المؤذنين.","bio_en":"Original concise biography for Zikr.","category":"السابقون","thumbnail_url":null,"featured_image_url":null,"order_num":null,"published":true,"metadata":{"editorial":true},"created_at":"2026-07-31T10:59:54.398132+00:00","updated_at":"2026-08-14T22:48:00.647777+00:00","title_ar":"مؤذن رسول الله ﷺ","birth_place_ar":null,"death_place_ar":null,"death_year":null}]
+[
+  {
+    "id": "6a33a3f0-3f6b-4a6c-8b21-2f0a5d0e1101",
+    "slug": "khadijah-bint-khuwaylid",
+    "bio_ar": "أم المؤمنين خديجة بنت خويلد رضي الله عنها، زوج النبي ﷺ وأول من آمن به وصدّقه عند بدء الوحي. عُرفت برجاحة العقل والكرم وحسن المعاشرة، وكانت سندًا للنبي في أصعب أعوام الدعوة المكية. لا تُفهم سيرتها في المنصة على أنها مجرد قصة عائلية، بل نموذج للإيمان المبكر، وبذل المال، وتثبيت صاحب الرسالة مع حفظ مقام النبوة.",
+    "bio_en": "Khadijah bint Khuwaylid, Mother of the Believers and the first person to believe in the Prophet ﷺ.",
+    "name_ar": "خديجة بنت خويلد",
+    "name_en": "Khadijah bint Khuwaylid",
+    "category": "أمهات المؤمنين",
+    "metadata": {
+      "references": [
+        {
+          "url": "https://sunnah.com/bukhari:3",
+          "note_ar": "يُرجع إلى النص الكامل وسياق الرواية.",
+          "title_ar": "صحيح البخاري — بدء الوحي وقصة خديجة رضي الله عنها",
+          "locator_ar": "حديث بدء الوحي",
+          "source_type": "hadith"
+        },
+        {
+          "url": "https://sunnah.com/bukhari/61",
+          "note_ar": "الفهرس العام يحتاج إلى تحديد رقم الحديث عند الاقتباس.",
+          "title_ar": "صحيح البخاري — فضائل خديجة رضي الله عنها",
+          "locator_ar": "كتاب المناقب",
+          "source_type": "hadith"
+        }
+      ],
+      "source_policy": "hadith_primary",
+      "content_status": "primary_indexed",
+      "source_verified": true,
+      "editorial_status": "published"
+    },
+    "title_ar": null,
+    "order_num": 7,
+    "published": true,
+    "created_at": "2026-10-12T20:11:22.264204+00:00",
+    "death_year": "قبل الهجرة",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "thumbnail_url": null,
+    "birth_place_ar": "مكة المكرمة",
+    "death_place_ar": "مكة المكرمة",
+    "featured_image_url": null
+  },
+  {
+    "id": "6a33a3f0-3f6b-4a6c-8b21-2f0a5d0e1102",
+    "slug": "aisha-bint-abi-bakr",
+    "bio_ar": "أم المؤمنين عائشة رضي الله عنها، زوج النبي ﷺ وابنة أبي بكر الصديق. كانت من أعلم الصحابة بالحديث والفقه وأحوال بيت النبوة، ورجع إليها كبار الصحابة في مسائل العلم. تحفظ سيرتها معاني طلب العلم، ودقة النقل، والرجوع إلى الدليل، كما تتضمن حادثة الإفك التي برأها الله منها بآيات من سورة النور، ولذلك ينبغي عرضها بتوقير وبالرجوع إلى النص القرآني والرواية الصحيحة.",
+    "bio_en": "Aishah bint Abi Bakr, Mother of the Believers and a major early authority in hadith and Islamic knowledge.",
+    "name_ar": "عائشة بنت أبي بكر",
+    "name_en": "Aishah bint Abi Bakr",
+    "category": "أمهات المؤمنين",
+    "metadata": {
+      "references": [
+        {
+          "url": "https://quran.com/24/11-26",
+          "note_ar": "تُقرأ الآيات كاملة مع سياقها، ولا يُختزل الحدث في عبارات عاطفية.",
+          "title_ar": "القرآن الكريم — آيات حادثة الإفك",
+          "locator_ar": "سورة النور 11–26",
+          "source_type": "quran"
+        },
+        {
+          "url": "https://sunnah.com/bukhari:4141",
+          "note_ar": "يُراجع النص الكامل قبل الاستشهاد.",
+          "title_ar": "صحيح البخاري — رواية الإفك",
+          "locator_ar": "حديث الإفك",
+          "source_type": "hadith"
+        }
+      ],
+      "source_policy": "hadith_primary",
+      "content_status": "primary_indexed",
+      "source_verified": true,
+      "editorial_status": "published"
+    },
+    "title_ar": null,
+    "order_num": 8,
+    "published": true,
+    "created_at": "2026-10-12T20:11:22.264204+00:00",
+    "death_year": "58هـ",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "thumbnail_url": null,
+    "birth_place_ar": "مكة المكرمة",
+    "death_place_ar": "المدينة المنورة",
+    "featured_image_url": null
+  },
+  {
+    "id": "6a33a3f0-3f6b-4a6c-8b21-2f0a5d0e1103",
+    "slug": "hamzah-ibn-abd-al-muttalib",
+    "bio_ar": "حمزة بن عبد المطلب رضي الله عنه عم النبي ﷺ وأخوه من الرضاعة، ومن السابقين إلى الإسلام. جمع بين قوة الشخصية ونصرة الحق، وكان حضوره حماية للمؤمنين في مكة. استشهد في غزوة أُحد، وتُعرض سيرته في إطار الشجاعة المنضبطة ونصرة المظلوم، مع تجنب القصص المتأخرة التي لا يثبت سندها.",
+    "bio_en": "Hamzah ibn Abd al-Muttalib, the Prophet’s uncle and an early Muslim who was martyred at Uhud.",
+    "name_ar": "حمزة بن عبد المطلب",
+    "name_en": "Hamzah ibn Abd al-Muttalib",
+    "category": "آل بيت النبي والصحابة",
+    "metadata": {
+      "references": [
+        {
+          "url": "https://sunnah.com/bukhari/62",
+          "note_ar": "يجب تحديد الحديث بعينه عند النقل.",
+          "title_ar": "صحيح البخاري — فضائل أصحاب النبي ﷺ",
+          "locator_ar": "كتاب المناقب",
+          "source_type": "hadith"
+        },
+        {
+          "url": "https://quran.com/3/169",
+          "note_ar": "الآية أصل عام في حياة الشهداء عند ربهم، وليست سردًا تفصيليًا لكل أحداث أُحد.",
+          "title_ar": "القرآن الكريم — منزلة الشهداء",
+          "locator_ar": "آل عمران 169",
+          "source_type": "quran"
+        }
+      ],
+      "source_policy": "hadith_primary",
+      "content_status": "source_indexed",
+      "source_verified": true,
+      "editorial_status": "published"
+    },
+    "title_ar": null,
+    "order_num": 9,
+    "published": true,
+    "created_at": "2026-10-12T20:11:22.264204+00:00",
+    "death_year": "3هـ",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "thumbnail_url": null,
+    "birth_place_ar": "مكة المكرمة",
+    "death_place_ar": "جبل أُحد",
+    "featured_image_url": null
+  },
+  {
+    "id": "6a33a3f0-3f6b-4a6c-8b21-2f0a5d0e1104",
+    "slug": "zayd-ibn-thabit",
+    "bio_ar": "زيد بن ثابت رضي الله عنه من الأنصار، ومن كتّاب الوحي، وكان من أهل العلم والقراءة والفرائض. برز دوره في جمع القرآن في خلافة أبي بكر ثم في نسخ المصاحف في خلافة عثمان رضي الله عنهما، كما كان مرجعًا في العلم بالقراءة والمواريث. تُظهر سيرته أن خدمة الوحي تحتاج إلى حفظ وإتقان وعمل مؤسسي جماعي، لا إلى الاعتماد على الذاكرة المجردة وحدها.",
+    "bio_en": "Zayd ibn Thabit, an Ansari scribe of revelation and a leading authority in Quranic compilation and inheritance.",
+    "name_ar": "زيد بن ثابت",
+    "name_en": "Zayd ibn Thabit",
+    "category": "الأنصار وكتّاب الوحي",
+    "metadata": {
+      "references": [
+        {
+          "url": "https://sunnah.com/bukhari:4986",
+          "note_ar": "يُقرأ الحديث كاملًا لمعرفة التسلسل التاريخي.",
+          "title_ar": "صحيح البخاري — جمع القرآن",
+          "locator_ar": "حديث جمع القرآن في عهد أبي بكر",
+          "source_type": "hadith"
+        },
+        {
+          "url": "https://sunnah.com/bukhari/61",
+          "note_ar": "تُراجع الرواية المحددة قبل إدراج اقتباس مباشر.",
+          "title_ar": "صحيح البخاري — كتابة المصحف في عهد عثمان",
+          "locator_ar": "كتاب المناقب",
+          "source_type": "hadith"
+        }
+      ],
+      "source_policy": "hadith_primary",
+      "content_status": "primary_indexed",
+      "source_verified": true,
+      "editorial_status": "published"
+    },
+    "title_ar": null,
+    "order_num": 10,
+    "published": true,
+    "created_at": "2026-10-12T20:11:22.264204+00:00",
+    "death_year": "45هـ",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "thumbnail_url": null,
+    "birth_place_ar": "المدينة المنورة",
+    "death_place_ar": "المدينة المنورة",
+    "featured_image_url": null
+  },
+  {
+    "id": "6a33a3f0-3f6b-4a6c-8b21-2f0a5d0e1105",
+    "slug": "abdullah-ibn-abbas",
+    "bio_ar": "عبد الله بن عباس رضي الله عنهما ابن عم النبي ﷺ، ومن كبار علماء الصحابة والمفسرين. لازم النبي في صغره، ودعا له النبي بالفقه في الدين والعلم بالتأويل، ثم أصبح مرجعًا في تفسير القرآن واللغة والفقه. تعلمنا سيرته أن صغر السن لا يمنع بلوغ العلم، وأن الفهم يحتاج إلى ملازمة العلماء، وحسن السؤال، وحفظ النص مع فهم دلالته.",
+    "bio_en": "Abdullah ibn Abbas, a Companion known for Quranic knowledge, tafsir, and jurisprudence.",
+    "name_ar": "عبد الله بن عباس",
+    "name_en": "Abdullah ibn Abbas",
+    "category": "العلماء والمفسرون من الصحابة",
+    "metadata": {
+      "references": [
+        {
+          "url": "https://sunnah.com/bukhari:75",
+          "note_ar": "يُراجع لفظ الحديث ورقمه في الطبعة المستخدمة.",
+          "title_ar": "صحيح البخاري — الدعاء لابن عباس بالفقه",
+          "locator_ar": "كتاب العلم",
+          "source_type": "hadith"
+        },
+        {
+          "url": "https://sunnah.com/bukhari/62",
+          "note_ar": "الفهرس العام لا يغني عن تحديد الرواية.",
+          "title_ar": "صحيح البخاري — فضائل ابن عباس",
+          "locator_ar": "كتاب المناقب",
+          "source_type": "hadith"
+        }
+      ],
+      "source_policy": "hadith_primary",
+      "content_status": "primary_indexed",
+      "source_verified": true,
+      "editorial_status": "published"
+    },
+    "title_ar": null,
+    "order_num": 11,
+    "published": true,
+    "created_at": "2026-10-12T20:11:22.264204+00:00",
+    "death_year": "68هـ",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "thumbnail_url": null,
+    "birth_place_ar": "مكة المكرمة",
+    "death_place_ar": "الطائف",
+    "featured_image_url": null
+  },
+  {
+    "id": "6a33a3f0-3f6b-4a6c-8b21-2f0a5d0e1106",
+    "slug": "abu-dharr-al-ghifari",
+    "bio_ar": "أبو ذر الغفاري رضي الله عنه من السابقين إلى الإسلام، عُرف بصدق اللهجة والزهد والجرأة في إعلان التوحيد. تروي المصادر الصحيحة قصة بحثه عن النبي ﷺ ووصوله إلى مكة ثم إسلامه وإعلانه الشهادة رغم الأذى. تعرض سيرته قيمة الصدق والثبات، مع التنبيه إلى أن الزهد لا يعني ترك المسؤولية أو تحريم الطيبات التي أباحها الله.",
+    "bio_en": "Abu Dharr al-Ghifari, an early Companion known for truthfulness, courage, and ascetic character.",
+    "name_ar": "أبو ذر الغفاري",
+    "name_en": "Abu Dharr al-Ghifari",
+    "category": "السابقون إلى الإسلام",
+    "metadata": {
+      "references": [
+        {
+          "url": "https://sunnah.com/bukhari:3522",
+          "note_ar": "يُقرأ الحديث مع الروايات المتصلة به.",
+          "title_ar": "صحيح البخاري — قصة إسلام أبي ذر",
+          "locator_ar": "كتاب المناقب",
+          "source_type": "hadith"
+        },
+        {
+          "note_ar": "التلخيص التعليمي ليس حديثًا ولا نصًا تاريخيًا مستقلًا.",
+          "title_ar": "تنبيه تربوي حول الزهد",
+          "locator_ar": "لا تُنسب العبارات التربوية إلى أبي ذر إلا بمصدر محدد",
+          "source_type": "editorial"
+        }
+      ],
+      "source_policy": "hadith_primary",
+      "content_status": "primary_indexed",
+      "source_verified": true,
+      "editorial_status": "published"
+    },
+    "title_ar": null,
+    "order_num": 12,
+    "published": true,
+    "created_at": "2026-10-12T20:11:22.264204+00:00",
+    "death_year": "32هـ",
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "thumbnail_url": null,
+    "birth_place_ar": "نجد/غفار",
+    "death_place_ar": "الربذة",
+    "featured_image_url": null
+  },
+  {
+    "id": "d265308b-c9d5-5067-83e4-2fa872f82e43",
+    "slug": "abu-bakr",
+    "bio_ar": "من السابقين إلى الإسلام وصاحب رسول الله ﷺ، عُرف بالصدق والرحمة والثبات.",
+    "bio_en": "Original concise biography for Zikr.",
+    "name_ar": "أبو بكر الصديق",
+    "name_en": "Abu Bakr al-Siddiq",
+    "category": "الصحابة",
+    "metadata": {
+      "editorial": true,
+      "references": [
+        {
+          "url": "https://sunnah.com/tirmidhi:3657",
+          "title_ar": "جامع الترمذي — فضائل أبي بكر الصديق رضي الله عنه",
+          "locator_ar": "حديث 3657",
+          "source_type": "hadith"
+        }
+      ],
+      "source_policy": "hadith_primary",
+      "source_verified": true,
+      "editorial_status": "published"
+    },
+    "title_ar": "الخليفة الأول",
+    "order_num": 302,
+    "published": true,
+    "created_at": "2026-10-12T20:11:22.55942+00:00",
+    "death_year": null,
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "thumbnail_url": null,
+    "birth_place_ar": null,
+    "death_place_ar": null,
+    "featured_image_url": null
+  },
+  {
+    "id": "30b6115c-402c-56e7-8b4e-59544cb79464",
+    "slug": "umar-ibn-khattab",
+    "bio_ar": "عمر بن الخطاب رضي الله عنه من كبار أصحاب النبي ﷺ وثاني الخلفاء الراشدين. أسلم فكان إسلامه قوة للمؤمنين، ثم تولى الخلافة فاشتهر بالعدل ومحاسبة الولاة وتنظيم شؤون الدولة. تُذكر مواقفه الإدارية والتربوية بقدر ما تثبته الروايات، ولا تُنسب إليه قصة أو عبارة إلا بإحالة قابلة للتحقق.",
+    "bio_en": "Original concise biography for Zikr.",
+    "name_ar": "عمر بن الخطاب",
+    "name_en": "Umar ibn al-Khattab",
+    "category": "الخلفاء الراشدون",
+    "metadata": {
+      "references": [
+        {
+          "url": "https://sunnah.com/bukhari:3683",
+          "title_ar": "صحيح البخاري — فضائل عمر رضي الله عنه",
+          "locator_ar": "كتاب فضائل أصحاب النبي ﷺ",
+          "source_type": "hadith"
+        },
+        {
+          "url": "https://sunnah.com/bukhari/62",
+          "title_ar": "صحيح البخاري — فضائل أصحاب النبي ﷺ",
+          "locator_ar": "فهرس عام؛ يحدد الحديث قبل الاقتباس",
+          "source_type": "hadith"
+        }
+      ],
+      "source_policy": "hadith_primary",
+      "content_status": "primary_indexed",
+      "source_verified": true,
+      "editorial_status": "published"
+    },
+    "title_ar": "الفاروق",
+    "order_num": 303,
+    "published": true,
+    "created_at": "2026-10-12T20:11:22.55942+00:00",
+    "death_year": null,
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "thumbnail_url": null,
+    "birth_place_ar": null,
+    "death_place_ar": null,
+    "featured_image_url": null
+  },
+  {
+    "id": "7bf9a66d-8086-529c-888d-2fac42a4de24",
+    "slug": "uthman-ibn-affan",
+    "bio_ar": "عثمان بن عفان رضي الله عنه من السابقين إلى الإسلام، وثالث الخلفاء الراشدين، وزوج ابنتي النبي ﷺ ولذلك لُقّب بذي النورين. عُرف بالحياء والإنفاق، وكان له دور في نسخ المصاحف على قراءة جامعة في خلافته. تُعرض سيرته مع التفريق بين ما ثبت في الحديث وما يروى في كتب الأخبار دون إسناد محدد.",
+    "bio_en": "Original concise biography for Zikr.",
+    "name_ar": "عثمان بن عفان",
+    "name_en": "Uthman ibn Affan",
+    "category": "الخلفاء الراشدون",
+    "metadata": {
+      "references": [
+        {
+          "url": "https://sunnah.com/bukhari:4987",
+          "title_ar": "صحيح البخاري — جمع المصاحف",
+          "locator_ar": "رواية نسخ المصاحف في عهد عثمان",
+          "source_type": "hadith"
+        },
+        {
+          "url": "https://sunnah.com/bukhari/62",
+          "title_ar": "صحيح البخاري — فضائل أصحاب النبي ﷺ",
+          "locator_ar": "كتاب المناقب؛ يحدد الحديث قبل الاقتباس",
+          "source_type": "hadith"
+        }
+      ],
+      "source_policy": "hadith_primary",
+      "content_status": "primary_indexed",
+      "source_verified": true,
+      "editorial_status": "published"
+    },
+    "title_ar": "ذو النورين",
+    "order_num": 304,
+    "published": true,
+    "created_at": "2026-10-12T20:11:22.55942+00:00",
+    "death_year": null,
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "thumbnail_url": null,
+    "birth_place_ar": null,
+    "death_place_ar": null,
+    "featured_image_url": null
+  },
+  {
+    "id": "754137d7-f07b-5306-be6e-bf0390eee285",
+    "slug": "ali-ibn-abi-talib",
+    "bio_ar": "علي بن أبي طالب رضي الله عنه ابن عم النبي ﷺ وزوج فاطمة رضي الله عنها، ومن أوائل من أسلم، ورابع الخلفاء الراشدين. عُرف بالعلم والشجاعة والقضاء، وشهد عددًا من المشاهد مع رسول الله ﷺ. تعرض سيرته مكانته بين أهل البيت والصحابة مع تجنب الغلو والعبارات التي لا يثبت معناها بمصدر.",
+    "bio_en": "Original concise biography for Zikr.",
+    "name_ar": "علي بن أبي طالب",
+    "name_en": "Ali ibn Abi Talib",
+    "category": "الخلفاء الراشدون",
+    "metadata": {
+      "references": [
+        {
+          "url": "https://sunnah.com/bukhari:3701",
+          "title_ar": "صحيح البخاري — فضائل علي رضي الله عنه",
+          "locator_ar": "حديث المنزلة",
+          "source_type": "hadith"
+        },
+        {
+          "url": "https://sunnah.com/bukhari:4210",
+          "title_ar": "صحيح البخاري — راية خيبر",
+          "locator_ar": "حديث خيبر؛ يحدد الحديث قبل الاقتباس",
+          "source_type": "hadith"
+        }
+      ],
+      "source_policy": "hadith_primary",
+      "content_status": "primary_indexed",
+      "source_verified": true,
+      "editorial_status": "published"
+    },
+    "title_ar": "أبو تراب",
+    "order_num": 305,
+    "published": true,
+    "created_at": "2026-10-12T20:11:22.55942+00:00",
+    "death_year": null,
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "thumbnail_url": null,
+    "birth_place_ar": null,
+    "death_place_ar": null,
+    "featured_image_url": null
+  },
+  {
+    "id": "e08a95ca-050d-58fb-b709-685cd7b7bc8c",
+    "slug": "khalid-ibn-walid",
+    "bio_ar": "خالد بن الوليد رضي الله عنه صحابي وقائد من قادة المسلمين، أسلم بعد الحديبية، وبرز دوره في مؤتة وغيرها. وصفه النبي ﷺ في رواية صحيحة بأنه سيف من سيوف الله، وهو وصف لمكانته في الجهاد لا ترخيص في الغلو أو نسبة تفاصيل عسكرية بلا مصدر. تعرض سيرته التحول من الخصومة إلى الإسلام، وحسن القيادة، والالتزام بضوابط الرواية.",
+    "bio_en": "Original concise biography for Zikr.",
+    "name_ar": "خالد بن الوليد",
+    "name_en": "Khalid ibn al-Walid",
+    "category": "القادة",
+    "metadata": {
+      "references": [
+        {
+          "url": "https://sunnah.com/bukhari:3757",
+          "title_ar": "صحيح البخاري — سيف من سيوف الله",
+          "locator_ar": "حديث خالد بن الوليد",
+          "source_type": "hadith"
+        }
+      ],
+      "source_policy": "hadith_primary",
+      "content_status": "primary_indexed",
+      "source_verified": true,
+      "editorial_status": "published"
+    },
+    "title_ar": "سيف الله المسلول",
+    "order_num": 306,
+    "published": true,
+    "created_at": "2026-10-12T20:11:22.55942+00:00",
+    "death_year": null,
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "thumbnail_url": null,
+    "birth_place_ar": null,
+    "death_place_ar": null,
+    "featured_image_url": null
+  },
+  {
+    "id": "7e0074fc-5b8b-593d-8f46-94d6d174d885",
+    "slug": "bilal-ibn-rabah",
+    "bio_ar": "بلال بن رباح رضي الله عنه من السابقين إلى الإسلام، ثبت على التوحيد حين لقي الأذى في مكة، ثم صار من مؤذني رسول الله ﷺ. تعرض سيرته معنى الثبات مع حفظ الدليل، ولا يصح اختزالها في عبارات شعبية غير موثقة. يذكره هذا المدخل بوصفه صحابيًا ومؤذنًا، مع إحالة كل رواية تفصيلية إلى مصدرها المحدد.",
+    "bio_en": "Original concise biography for Zikr.",
+    "name_ar": "بلال بن رباح",
+    "name_en": "Bilal ibn Rabah",
+    "category": "السابقون",
+    "metadata": {
+      "references": [
+        {
+          "url": "https://sunnah.com/bukhari:3754",
+          "title_ar": "صحيح البخاري — فضائل بلال رضي الله عنه",
+          "locator_ar": "حديث بلال",
+          "source_type": "hadith"
+        }
+      ],
+      "source_policy": "hadith_primary",
+      "content_status": "primary_indexed",
+      "source_verified": true,
+      "editorial_status": "published"
+    },
+    "title_ar": "مؤذن رسول الله ﷺ",
+    "order_num": 307,
+    "published": true,
+    "created_at": "2026-10-12T20:11:22.55942+00:00",
+    "death_year": null,
+    "updated_at": "2026-10-12T20:11:28.352839+00:00",
+    "thumbnail_url": null,
+    "birth_place_ar": null,
+    "death_place_ar": null,
+    "featured_image_url": null
+  }
+]
