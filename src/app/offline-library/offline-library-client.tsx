@@ -53,6 +53,7 @@ const DATASET_LABELS: Record<string, string> = {
   quran_audio: 'مقاطع التلاوة',
   kids_games: 'ألعاب الأطفال',
   kids_game_levels: 'مستويات الألعاب',
+  dua_categories: 'تصنيفات الأدعية',
 };
 
 function normalizeRoute(value: string): string | null {
