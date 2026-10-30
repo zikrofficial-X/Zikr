@@ -57,7 +57,7 @@ export default function TermsPage() {
   return (
     <Container className="max-w-4xl space-y-8 py-12" dir="rtl">
       <header className="space-y-3 text-center">
-        <h1 className="text-4xl font-bold text-brand-gold">الشروط والأحكام</h1>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-brand-gold">الشروط والأحكام</h1>
         <p className="arabic-muted">آخر تحديث: 15 أغسطس 2026</p>
         <p className="mx-auto max-w-2xl leading-8 arabic-muted">
           توضح هذه الصفحة طريقة استخدام منصة ZIKR وحدود الميزات والمحتوى والخدمات الخارجية.

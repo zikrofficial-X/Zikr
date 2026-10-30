@@ -78,7 +78,7 @@ export default function FaqPage() {
     <main className="min-h-screen" dir="rtl">
       <section className="py-16 bg-gradient-to-b from-[#071A13] to-transparent">
         <Container className="max-w-3xl text-center space-y-4">
-          <h1 className="text-5xl font-bold text-brand-gold">الأسئلة الشائعة</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-brand-gold">الأسئلة الشائعة</h1>
           <p className="text-lg text-brand-cream/70">إجابات على أكثر الأسئلة شيوعاً حول منصة ذِكرٌ</p>
         </Container>
       </section>
