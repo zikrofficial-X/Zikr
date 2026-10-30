@@ -36,6 +36,12 @@ export async function updateUserRoleAuditedAction(formData: FormData) {
     { method: "GET" },
   );
   const previousRole = assignment[0]?.role ?? target[0].role ?? "user";
+
+  // A delegated administrator must never be able to demote or replace a super admin.
+  if (previousRole === "super_admin" && admin.role !== "super_admin") {
+    throw new Error("لا يمكن تعديل حساب المدير الأعلى إلا بواسطة مدير أعلى آخر.");
+  }
+
   const now = new Date().toISOString();
 
   if (roleValue === "user" || roleValue === "admin") {
