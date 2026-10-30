@@ -251,7 +251,8 @@ UPDATE public.companion_stories cs
 SET content_ar=cs.content_ar||E'\n\n'||e.content_ar
 FROM expanded_companion_stories e
 JOIN public.companions c ON c.slug=e.slug
-WHERE cs.companion_id=c.id AND cs.order_num=e.order_num;
+WHERE cs.companion_id=c.id AND cs.order_num=e.order_num
+  AND position(e.content_ar in coalesce(cs.content_ar,''))=0;
 
 WITH expanded_scholars(slug,bio_ar) AS (VALUES
 ('abu-hanifa','أبو حنيفة النعمان بن ثابت فقيه من الكوفة، ارتبط اسمه بتشكل المدرسة الحنفية التي أصبحت من أوسع المدارس الفقهية انتشارًا. عاش في القرن الثاني الهجري، وتتحدث المصادر عن عنايته بالفقه والنظر في النوازل وتكوين الطلاب، ومن أبرز من نقل مذهبه أبو يوسف ومحمد بن الحسن الشيباني. لا يصح أن تنسب إليه كل مسألة متأخرة في كتب المذهب بوصفها رأيه الشخصي؛ فالمذهب تطور عبر أجيال من أصحابه ومحرريه. كما أن تفاصيل حياته ومواقفه مع الولاة تختلف رواياتها، ولذلك تعرض الصفحة ما تدعمه الدراسات التاريخية وتترك مواضع الخلاف موضحة. دراسة أبي حنيفة تعطي مدخلًا لفهم نشأة الفقه المدرسي وطريقة أهل العراق في الاستدلال وعلاقة الفقيه بالواقع الاجتماعي والقضائي. المرجع الأكاديمي: Encyclopaedia Iranica، مادة Abu Hanifa، إلى جانب كتب طبقات الفقهاء.'),
@@ -287,7 +288,8 @@ SET content=s.content||E'\n\n'||e.extra_content,
       'not_historical_claim',true,'source_type','fictional_editorial','editorial_status','published'
     )
 FROM expanded_fictional_stories e
-WHERE s.slug=e.slug AND s.published=true AND s.is_approved=true;
+WHERE s.slug=e.slug AND s.published=true AND s.is_approved=true
+  AND position(e.extra_content in coalesce(s.content,''))=0;
 
 WITH expanded_articles(slug,body_ar,refs) AS (VALUES
 ('zikr-article-expansion-17', '# أخلاق التجارة
