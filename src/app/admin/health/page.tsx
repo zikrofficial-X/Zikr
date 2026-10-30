@@ -32,6 +32,7 @@ export default async function AdminHealthPage() {
     supabaseServerAdminCount("quran_audio").catch(() => null),
   ]);
   const engine = getVideoEngineConfig();
+  const activeVideoOrder = engine.aiEnabled ? engine.order : ["template"];
   const queueAttention =
     health.queues.socialPartial +
     health.queues.socialFailed +
@@ -49,11 +50,15 @@ export default async function AdminHealthPage() {
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
           <p className="text-xs text-brand-cream/35">محركات الفيديو</p>
-          <p className="mt-1 text-sm font-bold text-brand-gold" dir="ltr">{engine.order.join(" → ")}</p>
+          <p className="mt-1 text-sm font-bold text-brand-gold" dir="ltr">{activeVideoOrder.join(" → ")}</p>
+        </div>
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
+          <p className="text-xs text-brand-cream/35">التوليد المرئي بالذكاء الاصطناعي</p>
+          <p className="mt-1 text-sm font-bold text-brand-cream/75">{engine.aiEnabled ? "مفعل" : "متوقف — القوالب المحلية فقط"}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
           <p className="text-xs text-brand-cream/35">النشر الآلي</p>
-          <p className="mt-1 text-sm font-bold text-brand-cream/75">{engine.autoPublishEnabled ? "مفعل" : "متوقف"}</p>
+          <p className="mt-1 text-sm font-bold text-brand-cream/75">{engine.autoPublishEnabled ? "مفعل" : "متوقف — يتطلب موافقة بشرية"}</p>
         </div>
         <div className={`rounded-2xl border p-5 ${health.database === 'healthy' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/25 bg-red-500/10'}`}>
           <p className="text-xs text-brand-cream/40">قاعدة البيانات</p>
