@@ -179,6 +179,28 @@ export async function getProphets(): Promise<Prophet[]> {
   return offline.length ? offline : FALLBACK_PROPHETS.map(mapFallbackProphet);
 }
 
+export async function searchProphets(query: string): Promise<Prophet[]> {
+  const normalizedQuery = normalizeArabicSearchText(query).slice(0, 100);
+  if (!normalizedQuery) return [];
+
+  if (isSupabaseConfigured()) {
+    try {
+      const rows = await supabaseServerAnonRequest<ProphetRow[]>(
+        `/rest/v1/prophets?select=*&published=eq.true&searchable_normalized=plfts.simple.${encodeURIComponent(normalizedQuery)}&limit=6`,
+        { timeoutMs: 8000, retries: 1, cache: "no-store" },
+      );
+      if (rows.length) return rows.map(mapProphetRow);
+    } catch (error) {
+      console.error("[prophets] Indexed search failed; using offline fallback:", error);
+    }
+  }
+
+  return (await getProphets()).filter((prophet) =>
+    [prophet.nameAr, prophet.nameEn, prophet.bioAr ?? "", prophet.bioEn ?? "", prophet.slug]
+      .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
+  ).slice(0, 6);
+}
+
 export async function getProphetBySlug(slug: string): Promise<ProphetDetail | null> {
   const cleanSlug = slug.trim();
   if (!cleanSlug) return null;
