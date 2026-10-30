@@ -61,7 +61,7 @@ PR #150 now:
 | 9 | Voice Factory | Technically closed | Bounded TTS, voice/audio checks and source-safe Quran handling are implemented; retain human recitation for Quran and review sampled outputs. |
 | 10 | Video Factory | Implemented; operationally gated | 375 generation requests completed; 9 pending, 1 processing, 1 retry-wait at this check. Confirm queue convergence and sample-review evidence. |
 | 11 | AI Visual Factory | Implemented; production-paused | Live AI visual provider remains disabled. Provider, quota, cost ceiling, credentials and approval must be explicitly selected before enablement. |
-| 12 | Video QA | Automated contracts implemented | Automated media/audio/codec checks exist; 363 historical outputs were not all newly human-reviewed in this checkpoint. |
+| 12 | Video QA | Automated contracts implemented | Automated media/audio/codec checks exist; 375 completed generation requests were counted at this checkpoint, but the checkpoint does not evidence that every output received a new human visual review. |
 | 13 | Scheduler | Closed for ownership/configuration | GitHub Actions owns video/social; Supabase pg_cron owns prayer and source-verified ingestion. No parallel Vercel cron should be added. |
 | 14 | Social publishing | Partly closed; intentionally paused | 286 published; 5 partial rows had YouTube success with Facebook Reels deferred by provider cooldown. Retry only after explicit approval and valid Meta readiness. |
 | 15 | Admin Video Factory | Technically closed | Protected source, queue, approval and publishing contracts exist; run browser acceptance for administrator roles and queue recovery. |
