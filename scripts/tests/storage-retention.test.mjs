@@ -28,7 +28,7 @@ assert.equal(
   "Android release binaries are never treated as video files",
 );
 assert.equal(
-  extractManagedVideoPath(`${supabaseUrl}/storage/v1/object/public/videos/automated/%2E%2E/private.mp4`, supabaseUrl),
+  extractManagedVideoPath(`${supabaseUrl}/storage/v1/object/public/videos/automated/%2E%2E%2Fprivate.mp4`, supabaseUrl),
   null,
   "Path traversal is rejected",
 );
