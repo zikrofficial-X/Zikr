@@ -4,8 +4,8 @@ const source = await readFile("src/components/layout/mobile-nav.tsx", "utf8");
 const requirements = [
   ['dialog semantics', 'role="dialog"'],
   ['modal state', 'aria-modal="true"'],
-  ['labelled dialog', 'aria-labelledby="zikr-mobile-nav-title"'],
-  ['dialog control relationship', 'aria-controls="zikr-mobile-navigation-dialog"'],
+  ['labelled dialog', ['aria-labelledby="zikr-mobile-nav-title"', 'aria-labelledby="mobile-navigation-dialog-title"']],
+  ['dialog control relationship', ['aria-controls="zikr-mobile-navigation-dialog"', 'aria-controls="mobile-navigation-dialog"']],
   ['dynamic viewport sizing', 'h-[100dvh]'],
   ['keyboard focus trap', 'event.key !== "Tab"'],
   ['Escape dismissal', 'event.key === "Escape"'],
@@ -16,7 +16,9 @@ const requirements = [
   ['focus restoration guard', 'menuButtonRef.current.offsetParent !== null'],
 ];
 
-const failures = requirements.filter(([, token]) => !source.includes(token));
+const failures = requirements.filter(([, token]) =>
+  Array.isArray(token) ? !token.some((candidate) => source.includes(candidate)) : !source.includes(token),
+);
 if (failures.length) {
   console.error("Mobile navigation contract failed:");
   for (const [label] of failures) console.error(`- Missing ${label}`);

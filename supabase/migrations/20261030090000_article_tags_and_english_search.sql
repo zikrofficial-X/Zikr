@@ -2,12 +2,32 @@
 -- This is additive: the original generated article vector and its GIN index remain unchanged.
 
 alter table public.articles
-  add column if not exists searchable_tags_normalized tsvector generated always as (
-    to_tsvector(
-      'simple'::regconfig,
-      private.normalize_arabic_search_text(array_to_string(coalesce(tags, '{}'::text[]), ' '))
-    )
-  ) stored;
+  add column if not exists searchable_tags_normalized tsvector;
+
+create or replace function private.refresh_article_tags_search_vector()
+returns trigger
+language plpgsql
+set search_path = pg_catalog
+as $function$
+begin
+  new.searchable_tags_normalized := to_tsvector(
+    'simple',
+    private.normalize_arabic_search_text(array_to_string(coalesce(new.tags, '{}'::text[]), ' '))
+  );
+  return new;
+end;
+$function$;
+
+drop trigger if exists articles_refresh_tags_search_vector on public.articles;
+create trigger articles_refresh_tags_search_vector
+before insert or update of tags on public.articles
+for each row execute function private.refresh_article_tags_search_vector();
+
+update public.articles
+set searchable_tags_normalized = to_tsvector(
+  'simple',
+  private.normalize_arabic_search_text(array_to_string(coalesce(tags, '{}'::text[]), ' '))
+);
 
 create index if not exists articles_tags_searchable_normalized_idx
   on public.articles using gin (searchable_tags_normalized)
@@ -17,6 +37,7 @@ CREATE OR REPLACE FUNCTION public.search_public_content(p_query text, p_limit in
  RETURNS TABLE(id text, type text, label_ar text, title text, subtitle text, href text)
  LANGUAGE sql
  STABLE
+ SECURITY INVOKER
  SET search_path TO 'pg_catalog'
 AS $function$
   WITH normalized_query AS (

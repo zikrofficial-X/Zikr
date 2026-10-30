@@ -1,13 +1,14 @@
 import "server-only";
 
-import { searchArticles } from "@/features/articles/services/articles";
+import { getArticles, getBundledLongformArticles } from "@/features/articles/services/articles";
 import { searchHadith } from "@/features/hadith/services/hadith";
-import { searchDuas } from "@/features/dua/services/dua";
-import { searchProphets } from "@/features/prophets/services/prophets";
-import { searchPublishedCompanions } from "@/features/companions/services/companions";
-import { searchStories } from "@/features/stories/services/stories";
+import { getDuas } from "@/features/dua/services/dua";
+import { getProphets } from "@/features/prophets/services/prophets";
+import { getPublishedCompanions } from "@/features/companions/services/companions";
+import { getStories } from "@/features/stories/services/stories";
 import { searchLocalQuran } from "@/features/quran/services/quran-server";
 import { searchScholars } from "@/features/scholars/services/scholars";
+import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 export type PublicSearchResult = {
@@ -21,7 +22,7 @@ export type PublicSearchResult = {
 
 const MAX_RESULTS_PER_TYPE = 6;
 
-export async function globalSearch(query: string): Promise<PublicSearchResult[]> {
+async function legacyGlobalSearch(query: string): Promise<PublicSearchResult[]> {
   const q = normalizeArabicSearchText(query);
   if (q.length < 2) return [];
 
@@ -29,11 +30,11 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
     await Promise.all([
       searchLocalQuran(query, "ar"),
       searchHadith(query),
-      searchDuas(query, "ar"),
-      searchProphets(query),
-      searchPublishedCompanions(query),
-      searchStories(query),
-      searchArticles(query, "ar"),
+      getDuas(undefined, 100),
+      getProphets(),
+      getPublishedCompanions(),
+      getStories(),
+      getArticles(undefined, 100),
       searchScholars(query),
     ]);
 
@@ -152,4 +153,85 @@ export async function globalSearch(query: string): Promise<PublicSearchResult[]>
   }
 
   return results.slice(0, 40);
+}
+
+
+type SearchRpcRow = {
+  id: string;
+  type: PublicSearchResult["type"];
+  label_ar: string;
+  title: string;
+  subtitle: string;
+  href: string;
+};
+
+async function searchIndexedContent(query: string): Promise<PublicSearchResult[] | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  try {
+    const rows = await supabaseServerAnonRequest<SearchRpcRow[]>(
+      "/rest/v1/rpc/search_public_content",
+      {
+        method: "POST",
+        body: JSON.stringify({ p_query: query, p_limit: 40 }),
+        timeoutMs: 12_000,
+        retries: 0,
+        cache: "no-store",
+      },
+    );
+
+    if (!Array.isArray(rows)) throw new Error("Search RPC returned an unexpected payload.");
+
+    return rows
+      .filter((row) =>
+        typeof row.id === "string" &&
+        typeof row.title === "string" &&
+        typeof row.href === "string" &&
+        row.href.startsWith("/") &&
+        ["surah", "hadith", "dua", "story", "article", "prophet", "companion", "scholar"].includes(row.type),
+      )
+      .map((row) => ({
+        id: row.id,
+        type: row.type,
+        labelAr: row.label_ar,
+        title: row.title,
+        subtitle: row.subtitle,
+        href: row.href,
+      }));
+  } catch (error) {
+    console.error("[search] Indexed Supabase search failed; using bounded fallback:", error);
+    return null;
+  }
+}
+
+export async function globalSearch(query: string): Promise<PublicSearchResult[]> {
+  const cleanQuery = query.trim();
+  if (cleanQuery.length < 2 || cleanQuery.length > 100) return [];
+
+  const indexedResults = await searchIndexedContent(cleanQuery);
+  if (indexedResults !== null) {
+    const knownHrefs = new Set(indexedResults.map((item) => item.href));
+    const bundledArticles = getBundledLongformArticles("ar")
+      .filter((article) => {
+        const matches = [
+          article.title,
+          article.summary ?? "",
+          article.content ?? "",
+          ...(article.tags ?? []),
+        ].some((value) => normalizeArabicSearchText(value).includes(normalizeArabicSearchText(cleanQuery)));
+        return matches && !knownHrefs.has(`/articles/${article.slug}`);
+      })
+      .slice(0, MAX_RESULTS_PER_TYPE)
+      .map((article): PublicSearchResult => ({
+        id: article.id,
+        type: "article",
+        labelAr: "مقال",
+        title: article.title,
+        subtitle: article.summary || article.author || "مقال تعليمي من مكتبة ذِكر",
+        href: `/articles/${article.slug}`,
+      }));
+    return [...indexedResults.slice(0, 40 - bundledArticles.length), ...bundledArticles].slice(0, 40);
+  }
+
+  return legacyGlobalSearch(cleanQuery);
 }

@@ -15,18 +15,18 @@ for (const table of [
   "prophets", "companions", "scholars", "stories",
 ]) {
   assert.ok(
-    migration.includes("ALTER TABLE public." + table) &&
+    new RegExp(`alter\\s+table\\s+public\\.${table}`, "i").test(migration) &&
       migration.includes(table + "_searchable_normalized_idx"),
     "Arabic normalized search column and GIN index must exist for " + table,
   );
 }
 
 assert.ok(migration.includes("private.normalize_arabic_search_text"));
-assert.ok(migration.includes("SECURITY INVOKER"));
-assert.ok(migration.includes("st.user_id IS NULL"));
-assert.ok(migration.includes("st.is_approved IS TRUE"));
-assert.ok(migration.includes("REVOKE ALL ON FUNCTION public.search_public_content"));
-assert.ok(migration.includes("GRANT EXECUTE ON FUNCTION public.search_public_content(text, integer) TO anon, authenticated"));
+assert.ok(migration3.includes("SECURITY INVOKER"));
+assert.ok(migration3.includes("st.user_id IS NULL"));
+assert.ok(migration3.includes("st.is_approved IS TRUE"));
+assert.match(migration3, /revoke all on function public\.search_public_content/i);
+assert.match(migration3, /grant execute on function public\.search_public_content\(text, integer\) to anon, authenticated/i);
 
 assert.ok(search.includes("/rest/v1/rpc/search_public_content"));
 assert.ok(search.includes("searchIndexedContent"));
