@@ -110,10 +110,10 @@ const offlineDb = read(offlineDbPath);
 const exporter = read(exporterPath);
 try { execFileSync(process.execPath, ['--check', exporterPath], { stdio: 'pipe' }); }
 catch (error) { failures.push(`Offline exporter syntax check failed: ${error instanceof Error ? error.message : 'unknown error'}`); }
-for (const dataset of ['tafsir','articles','duas','kids','companions','stories','article_categories','scholars','tawasheeh','quran_reciters','quran_audio','kids_games','kids_game_levels','dua_categories']) {
+for (const dataset of ['surahs','ayahs','tafsir','hadith_books','hadith','prophets','prophet_sections','battles','battle_events','conquests','conquest_events','articles','duas','kids','companions','stories','article_categories','companion_stories','scholars','tawasheeh','quran_reciters','quran_audio','kids_games','kids_game_levels','dua_categories']) {
   if (!exporter.includes(`['${dataset}',`)) failures.push(`Offline exporter missing dataset: ${dataset}`);
 }
-if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY') || !exporter.includes("params.set('limit'") || !exporter.includes('const minimumRecords = {')) failures.push('Offline exporter must use paginated public reads with minimum dataset safety floors');
+if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY') || !exporter.includes("params.set('limit'") || !exporter.includes('const minimumRecords = {') || !exporter.includes('select=id,slug,title,content,mood,category,created_at,updated_at,published,metadata,summary,is_approved')) failures.push('Offline exporter must use paginated public reads, minimum safety floors, and explicit public story fields');
 if (!offlineDb.includes('DB_VERSION = 6')) failures.push('IndexedDB schema must be version 6');
 if (!offlineDb.includes('replaceAllMany(datasets: Record<string, unknown[]>')) failures.push('IndexedDB atomic full-pack replacement method is missing');
 for (const token of [
