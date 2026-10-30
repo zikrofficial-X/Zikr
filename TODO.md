@@ -13,7 +13,7 @@
 
 The Admin dashboard/content scheduling/analytics task set above is implemented. The following are deliberately **not** marked complete until the named evidence exists:
 
-- [ ] Enable Supabase Auth leaked-password protection (plan entitlement permitting) and save a clean Security Advisor result.
+- [ ] Decide whether to upgrade the Supabase organization from Free to Pro to enable leaked-password protection, or formally accept this Auth security warning as an exception; rerun Security Advisor after the decision.
 - [ ] Complete qualified educator review for the 13 registered Kids games, including age suitability, literacy progression and Letter Lab.
 - [ ] Complete qualified religious review of source-sensitive Quran, Hadith, dua, adhkar and wudu material.
 - [ ] Pass browser E2E for public content detail, auth/OAuth, audio, prayer, Kids, offline/reconnect and privileged Admin flows.
