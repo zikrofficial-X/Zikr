@@ -68,6 +68,15 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+  useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) setOpen(false);
+    };
+
+    desktopQuery.addEventListener("change", closeOnDesktop);
+    return () => desktopQuery.removeEventListener("change", closeOnDesktop);
+  }, []);
 
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -109,7 +118,7 @@ export function MobileNav({ isAuthenticated = false }: MobileNavProps) {
 
   useEffect(() => {
     if (!open) {
-      if (wasOpenRef.current) menuButtonRef.current?.focus();
+      if (wasOpenRef.current && menuButtonRef.current?.offsetParent !== null) menuButtonRef.current.focus();
       wasOpenRef.current = false;
       return;
     }
