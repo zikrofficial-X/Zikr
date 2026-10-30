@@ -8,6 +8,10 @@ const migrationPath = resolve(
   "supabase/migrations/20261030050000_admin_rbac_permission_scope.sql",
 );
 const migration = readFileSync(migrationPath, "utf8");
+const publicRpcMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261030100000_admin_public_rpc_invoker.sql"),
+  "utf8",
+);
 const userActions = readFileSync(
   resolve(process.cwd(), "src/features/admin/actions/users.ts"),
   "utf8",
@@ -73,6 +77,22 @@ requireMatch(
 requireMatch(
   /SET search_path = ''/i,
   "security-definer functions must use an empty search path",
+);
+
+assert.match(
+  publicRpcMigration,
+  /CREATE OR REPLACE FUNCTION public\.is_admin_user\(\)[\s\S]*?SECURITY INVOKER[\s\S]*?SELECT private\.is_admin_user\(\)/i,
+  "the exposed compatibility wrapper must execute as invoker, not definer",
+);
+assert.doesNotMatch(
+  publicRpcMigration,
+  /CREATE OR REPLACE FUNCTION public\.is_admin_user\(\)[\s\S]*?SECURITY DEFINER/i,
+  "the public RPC must not become a security-definer entry point",
+);
+assert.match(
+  publicRpcMigration,
+  /GRANT EXECUTE ON FUNCTION public\.is_admin_user\(\) TO anon, authenticated, service_role/i,
+  "the wrapper must remain callable where public-read RLS policies reference it",
 );
 
 console.log("Admin RBAC/RLS migration contract passed.");
