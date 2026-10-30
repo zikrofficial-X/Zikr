@@ -16,6 +16,7 @@ import {
 } from "@/features/dua/data/fallback";
 import { getRequestLocale } from "@/lib/i18n/server";
 import type { Locale } from "@/lib/i18n";
+import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
 
 type DuaRow = Record<string, unknown>;
 
@@ -178,10 +179,10 @@ export async function searchDuas(query: string, locale: Locale = "ar"): Promise<
     }
   }
 
-  const normalizedQuery = cleanQuery.normalize("NFKC").toLocaleLowerCase(locale);
+  const normalizedQuery = normalizeArabicSearchText(cleanQuery);
   return (await getOfflineOrFallbackDuas()).filter((dua) =>
     [dua.titleAr, dua.textAr, dua.titleEn ?? "", dua.textEn ?? "", dua.occasionAr ?? "", dua.sourceAr ?? ""]
-      .some((value) => value.normalize("NFKC").toLocaleLowerCase(locale).includes(normalizedQuery)),
+      .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
   ).slice(0, 6);
 }
 
