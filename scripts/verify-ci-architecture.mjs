@@ -57,7 +57,12 @@ assert.ok(video.includes("environment: production"), "Video worker must use prot
 assert.ok(video.includes("github.ref == 'refs/heads/main'"), "Video worker must be main-only");
 
 assert.ok(social.includes('BACKGROUND_JOB_TARGET: "social"'), "Social publisher must target the social queue only");
-assert.ok(social.includes('SOCIAL_PUBLISH_ENABLED: "true"'), "Social publisher must explicitly enable publishing");
+const socialPublishingActive = social.includes('SOCIAL_PUBLISH_ENABLED: "true"');
+const socialPublishingFrozen =
+  social.includes('SOCIAL_PUBLISH_ENABLED: "false"') &&
+  social.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
+  social.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"');
+assert.ok(socialPublishingActive || socialPublishingFrozen, "Social publisher must be explicitly active or safely frozen with approval required");
 assert.ok(social.includes("environment: production"), "Social publisher must use protected production environment");
 assert.ok(social.includes("github.ref == 'refs/heads/main'"), "Social publisher must be main-only");
 
