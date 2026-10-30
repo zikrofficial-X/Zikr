@@ -48,6 +48,15 @@ try {
     }
     const file = `public/${definition.path.replace(/^\//, '')}`;
     if (!existsSync(file)) failures.push(`Missing dataset file: ${file}`);
+    else {
+      try {
+        const rows = JSON.parse(read(file));
+        if (!Array.isArray(rows)) failures.push(`Dataset is not a JSON array: ${file}`);
+        else if (rows.length !== definition.count) failures.push(`Dataset count mismatch for ${name}: manifest=${definition.count}, file=${rows.length}`);
+      } catch (error) {
+        failures.push(`Invalid dataset JSON ${file}: ${error instanceof Error ? error.message : 'unknown error'}`);
+      }
+    }
   }
 
   const sensitivePrefixes = ['/api/', '/auth/', '/admin', '/profile', '/favorites', '/settings'];
@@ -97,10 +106,13 @@ for (const token of [
   'verifyCompletedDatasets',
   'requestOfflineRouteCache',
   'cacheRoutes?: boolean',
-  'offline-content-version-v5',
+  'offline-content-version-v6',
   'OFFLINE_CACHE_NAME',
   'isCacheableOfflinePageRoute',
-  'zikr-v13',
+  'zikr-v14',
+  'replaceAll(storeName, rows)',
+  'finalizeOfflineLibrary',
+  'getOfflineLibraryStatus',
   'scholars/ahmad-ibn-hanbal',
   'videos/importance-of-prayer',
 ]) {
@@ -109,7 +121,7 @@ for (const token of [
 
 const serviceWorker = read(serviceWorkerPath);
 for (const token of [
-  'CACHE_NAME = "zikr-v13"',
+  'CACHE_NAME = "zikr-v14"',
   'OFFLINE_CONTENT_PREFIX',
   'CACHE_OFFLINE_ROUTES',
   'cacheOfflineRoutes',
@@ -126,12 +138,12 @@ if (htmlHandlerStart !== -1) {
 const coreMatch = serviceWorker.match(/const CORE_INSTALL_ASSETS = \[([\s\S]*?)\];/);
 if (coreMatch && coreMatch[1].includes('"/"')) failures.push('Service worker must not pre-cache the root HTML route');
 if (serviceWorker.includes('const CACHE_NAME = "zikr-v10"')) failures.push('Legacy service worker cache version zikr-v10 must not remain');
-if (!offlinePack.includes('const OFFLINE_CACHE_NAME = "zikr-v13"')) failures.push('Offline pack cache name must match Service Worker cache zikr-v12');
+if (!offlinePack.includes('const OFFLINE_CACHE_NAME = "zikr-v14"')) failures.push('Offline pack cache name must match Service Worker cache zikr-v14');
 
 const offlineLibrary = read(offlineLibraryPath);
 const offlineLibraryClient = read(offlineLibraryClientPath);
 if (!offlineLibrary.includes('OfflineLibraryClient')) failures.push('Offline Library page does not render client component');
-for (const token of ['cacheRoutes: false', 'تحديث وتجهيز المكتبة كاملة', 'SUPPLEMENTAL_ROUTE_URL', 'requestOfflineRouteCache']) {
+for (const token of ['cacheRoutes: false', 'تحديث وتجهيز المكتبة كاملة', 'SUPPLEMENTAL_ROUTE_URL', 'requestOfflineRouteCache', 'finalizeOfflineLibrary', 'if (!result.complete)']) {
   if (!offlineLibraryClient.includes(token)) failures.push(`Offline Library client missing ${token}`);
 }
 
@@ -145,4 +157,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('✅ Offline core datasets, expanded v5 public route inventory, route-cache integration, durable completion, navigation safety, and Service Worker v13 checks passed');
+console.log('✅ Offline datasets match their manifest; atomic refresh, durable completion, public route inventory, navigation safety, and Service Worker v14 checks passed');
