@@ -9,14 +9,12 @@ import {
   fetchOfflineManifest,
   hydrateOfflineContent,
   clearOfflineLibrary,
-  requestOfflineRouteCache,
   isCacheableOfflinePageRoute,
 } from '@/lib/offline-pack';
 
 type Manifest = Awaited<ReturnType<typeof fetchOfflineManifest>>;
 
 const SUPPLEMENTAL_ROUTE_URL = '/offline-content/v2/routes.json';
-const ROUTE_BATCH_SIZE = 160;
 
 const PUBLIC_LIBRARY_ROUTES = [
   '/', '/mushaf', '/quran', '/hadith', '/stories', '/adhkar', '/dua',
@@ -100,6 +98,7 @@ export default function OfflineLibraryClient() {
   const [isHydrating, setIsHydrating] = useState(false);
   const [cachedRoutes, setCachedRoutes] = useState(0);
   const [failedRoutes, setFailedRoutes] = useState<string[]>([]);
+  const [failedDatasets, setFailedDatasets] = useState<string[]>([]);
   const [activeBatch, setActiveBatch] = useState(0);
   const [quota, setQuota] = useState<{ usage?: number; quota?: number }>({});
   const [isClearing, setIsClearing] = useState(false);
@@ -179,56 +178,82 @@ export default function OfflineLibraryClient() {
       return;
     }
 
+    if (isHydrating || isClearing) return;
+
     setIsHydrating(true);
     setCachedRoutes(0);
     setFailedRoutes([]);
+    setFailedDatasets([]);
     setActiveBatch(0);
 
     try {
-      // First hydrate every structured dataset. Route caching is handled below
-      // in controlled batches because the service worker intentionally limits
-      // a single CACHE_OFFLINE_ROUTES message.
-      setStatus('المرحلة 1/2: تنزيل جميع قواعد البيانات والمحتويات المنظمة…');
-      const result = await hydrateOfflineContent({ force: true, cacheRoutes: false });
-      if (!result) {
-        setStatus('تعذر تنزيل الحزمة الأساسية. تحقق من الاتصال ثم أعد المحاولة.');
-        return;
+      // Ask for persistent storage during the user's explicit download action.
+      let persistentStorage = false;
+      try {
+        if ('storage' in navigator && 'persist' in navigator.storage) {
+          persistentStorage = await navigator.storage.persist();
+        }
+      } catch {
+        // Browser policy may decline persistence; the download can still proceed.
       }
 
       const routes = Array.from(new Set(discoveredRoutes));
-      const batches: string[][] = [];
-      for (let index = 0; index < routes.length; index += ROUTE_BATCH_SIZE) {
-        batches.push(routes.slice(index, index + ROUTE_BATCH_SIZE));
+      setStatus('جاري تنزيل قواعد البيانات وتجهيز كل الصفحات العامة في حزمة واحدة قابلة للتحقق…');
+
+      const result = await hydrateOfflineContent({
+        force: true,
+        cacheRoutes: true,
+        additionalRoutes: routes,
+        onRouteProgress: progress => {
+          setCachedRoutes(progress.cachedRoutes);
+          setFailedRoutes(progress.failedRoutes);
+          setStatus(
+            `تجهيز الصفحات دون اتصال: ${progress.cachedRoutes.toLocaleString('ar-EG')} / ${progress.totalRoutes.toLocaleString('ar-EG')} صفحة…`,
+          );
+        },
+      });
+
+      if (!result) {
+        setStatus('تعذر تنزيل الحزمة الأساسية. تحقق من الاتصال وملفات manifest ثم أعد المحاولة.');
+        return;
       }
 
-      let cached = 0;
-      let failures: string[] = [];
-      for (let index = 0; index < batches.length; index += 1) {
-        const batch = batches[index];
-        setActiveBatch(index + 1);
-        setStatus(
-          `المرحلة 2/2: تجهيز الصفحات دون اتصال — الدفعة ${index + 1} من ${batches.length} (${cached.toLocaleString('ar-EG')} / ${routes.length.toLocaleString('ar-EG')})…`,
-        );
-        const batchResult = await requestOfflineRouteCache(batch);
-        cached += batchResult.cachedRoutes;
-        failures = Array.from(new Set([...failures, ...batchResult.failedRoutes]));
-        setCachedRoutes(cached);
-        setFailedRoutes(failures);
-      }
-
-      const complete = result.complete && failures.length === 0 && cached === routes.length;
       setManifest(result.manifest);
-      setStatus(
-        complete
-          ? `اكتملت مكتبة ذِكر أوفلاين: ${routes.length.toLocaleString('ar-EG')} صفحة عامة + ${totalRecords.toLocaleString('ar-EG')} سجل من datasets.`
-          : `تم تنزيل datasets كاملة وتجهيز ${cached.toLocaleString('ar-EG')} من ${routes.length.toLocaleString('ar-EG')} صفحة. ${failures.length.toLocaleString('ar-EG')} صفحة تحتاج إعادة محاولة.`,
-      );
+      setCachedRoutes(result.cachedRoutes);
+      setFailedRoutes(result.failedRoutes);
+      setFailedDatasets(result.failedDatasets);
+
+      const downloadedRecords = Object.values(result.manifest.datasets)
+        .reduce((sum, dataset) => sum + dataset.count, 0);
+
+      if (result.fullyComplete) {
+        setStatus(
+          `اكتملت المكتبة بالكامل: ${result.cachedRoutes.toLocaleString('ar-EG')} صفحة عامة و${downloadedRecords.toLocaleString('ar-EG')} سجل من ${Object.keys(result.manifest.datasets).length.toLocaleString('ar-EG')} مجموعات بيانات. ${persistentStorage ? 'تم طلب حفظ التخزين بصورة دائمة من المتصفح.' : 'قد يحذف المتصفح بعض الملفات عند ضغط مساحة التخزين.'}`,
+        );
+      } else {
+        const datasetMessage = result.failedDatasets.length
+          ? `مجموعات البيانات التي فشلت: ${result.failedDatasets.join('، ')}.`
+          : 'اكتملت مجموعات البيانات.';
+        const routeMessage = result.failedRoutes.length
+          ? `صفحات لم تُحفظ: ${result.failedRoutes.length.toLocaleString('ar-EG')}.`
+          : result.routesComplete
+            ? 'تم حفظ جميع الصفحات.'
+            : 'لم يكتمل التحقق من تخزين الصفحات.';
+        setStatus(
+          `المكتبة غير مكتملة بعد. ${datasetMessage} ${routeMessage} أعد المحاولة بعد مراجعة الاتصال ومساحة التخزين.`,
+        );
+      }
     } catch (error) {
       console.warn('[OfflineLibrary] Full offline refresh failed', error);
-      setStatus('حدث خطأ أثناء تجهيز المكتبة. أعد المحاولة بعد التأكد من الاتصال ومساحة التخزين.');
+      setStatus('حدث خطأ أثناء تجهيز المكتبة. لم يتم تسجيل الحزمة كمكتملة؛ أعد المحاولة بعد التأكد من الاتصال ومساحة التخزين.');
     } finally {
       setActiveBatch(0);
       setIsHydrating(false);
+      if ('storage' in navigator && 'estimate' in navigator.storage) {
+        void navigator.storage.estimate().then(result => {
+          setQuota({ usage: result.usage, quota: result.quota });
+        }).catch(() => undefined);
+      }
     }
   };
 
@@ -317,6 +342,13 @@ export default function OfflineLibraryClient() {
         </Button>
         <span className="text-sm text-muted-foreground">الحفظ يتم في IndexedDB وCache Storage، مع الاحتفاظ بالمفضلة وإعدادات المستخدم.</span>
       </div>
+
+      {failedDatasets.length > 0 && (
+        <Card className="border-red-400/20">
+          <h2 className="text-lg font-semibold text-red-300">مجموعات بيانات تحتاج مراجعة</h2>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">{failedDatasets.join('، ')}</p>
+        </Card>
+      )}
 
       {failedRoutes.length > 0 && (
         <Card className="border-brand-gold/10">
