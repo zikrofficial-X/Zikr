@@ -37,7 +37,7 @@ export function extractManagedVideoPath(value, supabaseUrl) {
   try {
     const parsed = new URL(value);
     const base = new URL(supabaseUrl);
-    if (parsed.protocol !== "https:" || parsed.hostname !== base.hostname) return null;
+    if (parsed.protocol !== "https:" || parsed.origin !== base.origin) return null;
     const prefix = "/storage/v1/object/public/videos/";
     if (!parsed.pathname.startsWith(prefix)) return null;
     const path = decodeURIComponent(parsed.pathname.slice(prefix.length));
@@ -182,41 +182,73 @@ async function verifyAndroidReleaseCopy(client, version, storageFiles) {
   return { ok: true, reason: "GitHub Release assets and stored checksums match." };
 }
 
-async function findUnexpectedVideoReferences(client, path, publicUrl, requestId, queueId) {
-  const checks = [
-    ["kids_content", "video_url", publicUrl],
-    ["videos", "thumbnail_url", publicUrl],
-    ["media_assets", "storage_path", path],
-    ["media_assets", "url", publicUrl],
-    ["social_sync_jobs", "source_media_path", path],
-    ["social_sync_jobs", "source_media_url", publicUrl],
-    ["quran_audio", "storage_path", path],
-    ["site_audio_assets", "storage_path", path],
+async function loadUnexpectedVideoReferences(client) {
+  const patterns = [
+    {
+      table: "kids_content",
+      column: "video_url",
+      filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "videos",
+      column: "thumbnail_url",
+      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "media_assets",
+      column: "storage_path",
+      filter: (query) => query.like("storage_path", "automated/%"),
+    },
+    {
+      table: "media_assets",
+      column: "url",
+      filter: (query) => query.ilike("url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "social_sync_jobs",
+      column: "source_media_path",
+      filter: (query) => query.like("source_media_path", "automated/%"),
+    },
+    {
+      table: "social_sync_jobs",
+      column: "source_media_url",
+      filter: (query) => query.ilike("source_media_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "quran_audio",
+      column: "storage_path",
+      filter: (query) => query.like("storage_path", "automated/%"),
+    },
+    {
+      table: "site_audio_assets",
+      column: "storage_path",
+      filter: (query) => query.like("storage_path", "automated/%"),
+    },
   ];
-  for (const [table, column, value] of checks) {
-    const { data, error } = await client.from(table).select("id").eq(column, value).limit(1);
-    if (error) throw new Error(`Reference check failed for ${table}.${column}: ${error.message}`);
-    if (data?.length) return `${table}.${column}`;
+
+  const referenceSet = new Set();
+  const results = await Promise.all(patterns.map(async (pattern) => {
+    let query = client.from(pattern.table).select(pattern.column);
+    query = pattern.filter(query);
+    return {
+      pattern,
+      result: await query.range(0, 4999),
+    };
+  }));
+
+  for (const { pattern, result } of results) {
+    if (result.error) {
+      throw new Error(`Reference inventory failed for ${pattern.table}.${pattern.column}: ${result.error.message}`);
+    }
+    if ((result.data ?? []).length >= 5000) {
+      throw new Error(`Reference inventory exceeded the safe scan limit for ${pattern.table}.${pattern.column}; refusing cleanup.`);
+    }
+    for (const row of result.data ?? []) {
+      const value = asString(row[pattern.column]);
+      if (value) referenceSet.add(value);
+    }
   }
-
-  const { data: otherRequests, error: requestError } = await client
-    .from("video_generation_requests")
-    .select("id")
-    .eq("video_url", publicUrl)
-    .neq("id", requestId)
-    .limit(1);
-  if (requestError) throw new Error(`Video request reference check failed: ${requestError.message}`);
-  if (otherRequests?.length) return "another video_generation_requests row";
-
-  const { data: otherQueue, error: queueError } = await client
-    .from("social_publish_queue")
-    .select("id")
-    .eq("video_url", publicUrl)
-    .neq("id", queueId)
-    .limit(1);
-  if (queueError) throw new Error(`Social queue reference check failed: ${queueError.message}`);
-  if (otherQueue?.length) return "another social_publish_queue row";
-  return null;
+  return referenceSet;
 }
 
 async function getAndroidPinnedTag(client) {
@@ -300,6 +332,7 @@ async function main() {
   const queueRows = queueResult.data ?? [];
   const requestRows = requestResult.data ?? [];
   const requestById = new Map(requestRows.map((row) => [row.id, row]));
+  const unexpectedReferences = await loadUnexpectedVideoReferences(client);
   const filesByPath = new Map(
     videoFiles
       .filter((file) => file.id && file.name?.endsWith(".mp4"))
@@ -334,11 +367,8 @@ async function main() {
       skipped.push({ id: row.id, reason: "Storage object already missing; no new deletion attempted." });
       continue;
     }
-    const unexpectedReference = await findUnexpectedVideoReferences(
-      client, path, row.video_url, request.id, row.id,
-    );
-    if (unexpectedReference) {
-      skipped.push({ id: row.id, reason: `Unexpected live reference: ${unexpectedReference}.` });
+    if (unexpectedReferences.has(path) || unexpectedReferences.has(row.video_url)) {
+      skipped.push({ id: row.id, reason: "Another public content table still references this video path." });
       continue;
     }
     candidates.push({
