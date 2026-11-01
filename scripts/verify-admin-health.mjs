@@ -23,6 +23,19 @@ const health = platform.slice(
   platform.indexOf("export async function getAdminHealth"),
   platform.indexOf("export async function getAdminSettings"),
 );
+const snapshot = platform.slice(
+  platform.indexOf("export async function getAdminSnapshot"),
+  platform.indexOf("const OVERVIEW_TABLES"),
+);
+if (!snapshot.includes('getExactStatusCounts("social_publish_queue"')) {
+  throw new Error("Admin video dashboard must use exact social queue counts");
+}
+if (!snapshot.includes('getExactStatusCounts("video_generation_requests"')) {
+  throw new Error("Admin video dashboard must use exact video queue counts");
+}
+if (snapshot.includes("limit=500") && snapshot.includes("social_publish_queue")) {
+  throw new Error("Admin video dashboard must not estimate queue totals from a 500-row sample");
+}
 if (!health.includes("getExactStatusCounts")) {
   throw new Error("Admin health must count all queue rows by exact status");
 }
