@@ -52,8 +52,8 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     ],
   },
   {
-    key: "video-media",
-    label: "الفيديو والوسائط",
+    key: "media-production",
+    label: "الوسائط والإنتاج والنشر",
     items: [
       { href: "/admin/video", label: "مركز الفيديو والإنتاج", permission: "video.manage" },
       { href: "/admin/video/requests", label: "طلبات الفيديو والطابور", permission: "video.manage" },
@@ -66,29 +66,17 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
       { href: "/admin/video/templates", label: "القوالب", permission: "video.manage" },
       { href: "/admin/video/qa", label: "ضبط الجودة", permission: "video.manage" },
       { href: "/admin/media", label: "مكتبة الوسائط", permission: "media.manage" },
-    ],
-  },
-  {
-    key: "audio",
-    label: "الصوت",
-    items: [
       { href: "/admin/audio", label: "مركز الصوت", permission: "audio.manage" },
       { href: "/admin/audio/quran", label: "تلاوات القرآن", permission: "audio.manage" },
       { href: "/admin/audio/adhan", label: "الأذان", permission: "audio.manage" },
       { href: "/admin/audio/tts", label: "تحويل النص إلى صوت", permission: "audio.manage" },
       { href: "/admin/site-audio", label: "صوت الموقع والتذكيرات", permission: "audio.manage" },
-    ],
-  },
-  {
-    key: "social",
-    label: "النشر الاجتماعي",
-    items: [
       { href: "/admin/social", label: "مركز النشر الاجتماعي", permission: "social.manage" },
     ],
   },
   {
     key: "kids",
-    label: "قسم الأطفال",
+    label: "مركز الأطفال",
     items: [
       { href: "/admin/kids", label: "لوحة الأطفال", permission: "kids.manage" },
       { href: "/admin/kids/content", label: "محتوى الأطفال", permission: "kids.manage" },
@@ -99,17 +87,11 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     ],
   },
   {
-    key: "users-analytics",
-    label: "المستخدمون والتحليلات",
+    key: "growth-system",
+    label: "النمو والنظام",
     items: [
       { href: "/admin/users", label: "المستخدمون والأدوار", permission: "users.read" },
       { href: "/admin/analytics", label: "تحليلات المنصة", permission: "analytics.read" },
-    ],
-  },
-  {
-    key: "system",
-    label: "الأمن والإعدادات",
-    items: [
       { href: "/admin/security", label: "أمن لوحة الإدارة", permission: "security.manage" },
       { href: "/admin/seo", label: "تحسين الظهور", permission: "settings.manage" },
       { href: "/admin/android", label: "إصدار أندرويد", permission: "android.manage" },

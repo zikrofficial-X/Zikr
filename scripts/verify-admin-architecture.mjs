@@ -19,7 +19,7 @@ const navigation = read(navigationPath);
 
 const CANONICAL_ARCHITECTURE = {
   "التشغيل والمراقبة": [
-    ["/admin", "لوحة التحكم", "dashboard.view"],
+["/admin", "لوحة التحكم", "dashboard.view"],
     ["/admin/queues", "مركز الطوابير", "dashboard.view"],
     ["/admin/automation", "التشغيل الآلي", "system.manage"],
     ["/admin/health", "صحة النظام", "system.manage"],
@@ -28,7 +28,7 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/release", "مركز الإصدار", "release.manage"],
   ],
   "المحتوى والمعرفة": [
-    ["/admin/content", "إدارة المحتوى", "content.manage"],
+["/admin/content", "إدارة المحتوى", "content.manage"],
     ["/admin/library", "مكتبة المحتوى", "library.manage"],
     ["/admin/sources", "مصادر المحتوى", "sources.manage"],
     ["/admin/editorial", "التحرير والنشر", "knowledge.manage"],
@@ -39,8 +39,8 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/sections", "الأقسام وترتيبها", "sections.manage"],
     ["/admin/search", "البحث والفهرسة", "content.manage"],
   ],
-  "الفيديو والوسائط": [
-    ["/admin/video", "مركز الفيديو والإنتاج", "video.manage"],
+  "الوسائط والإنتاج والنشر": [
+["/admin/video", "مركز الفيديو والإنتاج", "video.manage"],
     ["/admin/video/requests", "طلبات الفيديو والطابور", "video.manage"],
     ["/admin/video/studio", "استوديو الفيديو", "video.manage"],
     ["/admin/video/studio/curated", "المحتوى الموثق للفيديو", "video.manage"],
@@ -51,31 +51,25 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/video/templates", "القوالب", "video.manage"],
     ["/admin/video/qa", "ضبط الجودة", "video.manage"],
     ["/admin/media", "مكتبة الوسائط", "media.manage"],
-  ],
-  "الصوت": [
-    ["/admin/audio", "مركز الصوت", "audio.manage"],
+["/admin/audio", "مركز الصوت", "audio.manage"],
     ["/admin/audio/quran", "تلاوات القرآن", "audio.manage"],
     ["/admin/audio/adhan", "الأذان", "audio.manage"],
     ["/admin/audio/tts", "تحويل النص إلى صوت", "audio.manage"],
     ["/admin/site-audio", "صوت الموقع والتذكيرات", "audio.manage"],
+["/admin/social", "مركز النشر الاجتماعي", "social.manage"],
   ],
-  "النشر الاجتماعي": [
-    ["/admin/social", "مركز النشر الاجتماعي", "social.manage"],
-  ],
-  "قسم الأطفال": [
-    ["/admin/kids", "لوحة الأطفال", "kids.manage"],
+  "مركز الأطفال": [
+["/admin/kids", "لوحة الأطفال", "kids.manage"],
     ["/admin/kids/content", "محتوى الأطفال", "kids.manage"],
     ["/admin/kids/games", "الألعاب", "kids.manage"],
     ["/admin/kids/levels", "المستويات", "kids.manage"],
     ["/admin/kids/assets", "الأصول", "kids.manage"],
     ["/admin/kids/analytics", "تحليلات الأطفال", "kids.manage"],
   ],
-  "المستخدمون والتحليلات": [
-    ["/admin/users", "المستخدمون والأدوار", "users.read"],
+  "النمو والنظام": [
+["/admin/users", "المستخدمون والأدوار", "users.read"],
     ["/admin/analytics", "تحليلات المنصة", "analytics.read"],
-  ],
-  "الأمن والإعدادات": [
-    ["/admin/security", "أمن لوحة الإدارة", "security.manage"],
+["/admin/security", "أمن لوحة الإدارة", "security.manage"],
     ["/admin/seo", "تحسين الظهور", "settings.manage"],
     ["/admin/android", "إصدار أندرويد", "android.manage"],
     ["/admin/settings", "إعدادات الإدارة", "settings.manage"],
