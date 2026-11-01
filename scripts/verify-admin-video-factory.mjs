@@ -40,6 +40,19 @@ if (!permissions.includes("'video.manage'")) failures.push("video.manage permiss
 if (!permissions.includes("'video.delete'")) failures.push("video.delete permission missing");
 if (!permissions.includes("'video.manage', 'video.delete'")) failures.push("video_manager role must own video permissions");
 
+const hub = read("src/app/admin/video/page.tsx");
+for (const [href, route] of [
+  ["/admin/video/requests", "src/app/admin/video/requests/page.tsx"],
+  ["/admin/video/studio", "src/app/admin/video/studio/page.tsx"],
+  ["/admin/video-factory/scripts", "src/app/admin/video-factory/scripts/page.tsx"],
+  ["/admin/video-factory/voices", "src/app/admin/video-factory/voices/page.tsx"],
+  ["/admin/video-factory/visuals", "src/app/admin/video-factory/visuals/page.tsx"],
+  ["/admin/video-factory/qa", "src/app/admin/video-factory/qa/page.tsx"],
+]) {
+  if (!hub.includes(href)) failures.push(`Video hub destination is missing: ${href}`);
+  read(route);
+}
+
 const page = read("src/app/admin/video/studio/page.tsx");
 if (!page.includes('requireAdminPermission("video.manage")')) failures.push("Video Studio admin page must require video.manage");
 
