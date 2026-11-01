@@ -3,11 +3,19 @@ export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
-import { getAdminHealth } from "@/features/admin/services/platform";
-import { getVideoEngineConfig } from "@/features/videos/providers/types";
+import { getAdminHealth, getAdminSettings } from "@/features/admin/services/platform";
 import { supabaseServerAdminCount } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "صحة النظام | لوحة الإدارة" };
+
+function readBooleanSetting(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    if (value.toLowerCase() === "true") return true;
+    if (value.toLowerCase() === "false") return false;
+  }
+  return null;
+}
 
 const STATE_LABELS: Record<string, string> = {
   healthy: "سليم",
@@ -27,12 +35,22 @@ const STATE_LABELS: Record<string, string> = {
 
 export default async function AdminHealthPage() {
   await requireAdminPermission("system.manage");
-  const [health, quranAudioCount] = await Promise.all([
+  const [health, quranAudioCount, settings] = await Promise.all([
     getAdminHealth(),
     supabaseServerAdminCount("quran_audio").catch(() => null),
+    getAdminSettings().catch(() => null),
   ]);
-  const engine = getVideoEngineConfig();
-  const activeVideoOrder = engine.aiEnabled ? engine.order : ["template"];
+  // The production worker reads these canonical values from admin_settings.
+  // Vercel process.env is not the worker runtime and must not be used to report its state.
+  const automationEnabled = readBooleanSetting(settings?.video_automation_enabled);
+  const aiEnabled = readBooleanSetting(settings?.video_automation_ai_enabled);
+  const autoPublishEnabled = readBooleanSetting(settings?.video_automation_auto_publish);
+  const facebookEnabled = readBooleanSetting(settings?.video_automation_facebook_enabled);
+  const activeVideoOrder = aiEnabled === true
+    ? "Hugging Face LTX → WAN → FFmpeg"
+    : aiEnabled === false
+      ? "FFmpeg template"
+      : "غير متاح";
   const queueAttention =
     health.queuesAvailable.social && health.queuesAvailable.video
       ? health.queues.socialPartial +
@@ -46,21 +64,32 @@ export default async function AdminHealthPage() {
       <header>
         <p className="text-xs tracking-[0.18em] text-brand-cream/30">صحة النظام</p>
         <h1 className="mt-2 text-3xl font-bold text-brand-gold">صحة وتشغيل النظام</h1>
-        <p className="mt-2 text-sm leading-7 text-brand-cream/50">فحص قاعدة البيانات، الجداول التشغيلية، وطوابير الفيديو والنشر بدون كشف أسرار البيئة.</p>
+        <p className="mt-2 text-sm leading-7 text-brand-cream/50">فحص قاعدة البيانات والجداول والطوابير وحالة التشغيل. إعدادات الفيديو والنشر تُقرأ من admin_settings لأنها المصدر الذي يستهلكه عامل GitHub Actions، وليس من متغيرات خادم Vercel.</p>
       </header>
 
+      {automationEnabled === false && (
+        <div role="alert" className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm leading-7 text-amber-100/85">
+          تشغيل مصنع الفيديو معطّل من إعدادات الإدارة؛ لن ينشئ العامل طلبات جديدة حتى إعادة تفعيله.
+        </div>
+      )}
+      {automationEnabled === true && aiEnabled === true && autoPublishEnabled === true && (
+        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-emerald-100/80">
+          التوليد والنشر الآلي مفعّلان في إعدادات العامل. يظل اعتماد كل فيديو ومراجعة النص والصوت والمرئيات والحقوق إلزاميًا قبل النشر العام؛ كما يتحقق عامل النشر من اتصال المنصة وبيانات OAuth.
+        </div>
+      )}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
           <p className="text-xs text-brand-cream/35">محركات الفيديو</p>
-          <p className="mt-1 text-sm font-bold text-brand-gold" dir="ltr">{activeVideoOrder.join(" → ")}</p>
+          <p className="mt-1 text-sm font-bold text-brand-gold" dir="ltr">{activeVideoOrder}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
           <p className="text-xs text-brand-cream/35">التوليد المرئي بالذكاء الاصطناعي</p>
-          <p className="mt-1 text-sm font-bold text-brand-cream/75">{engine.aiEnabled ? "مفعل" : "متوقف — القوالب المحلية فقط"}</p>
+          <p className="mt-1 text-sm font-bold text-brand-cream/75">{aiEnabled === null ? "غير متاح — تعذر قراءة الإعداد" : aiEnabled ? "مفعل في عامل GitHub Actions" : "متوقف — القوالب المحلية فقط"}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
           <p className="text-xs text-brand-cream/35">النشر الآلي</p>
-          <p className="mt-1 text-sm font-bold text-brand-cream/75">{engine.autoPublishEnabled ? "مفعل" : "متوقف — يتطلب موافقة بشرية"}</p>
+          <p className="mt-1 text-sm font-bold text-brand-cream/75">{autoPublishEnabled === null ? "غير متاح — تعذر قراءة الإعداد" : autoPublishEnabled ? "مفعل بعد اعتماد كل فيديو" : "متوقف من إعدادات الإدارة"}</p>
+          <p className="mt-1 text-xs text-brand-cream/35">Facebook: {facebookEnabled === null ? "غير متاح" : facebookEnabled ? "مسموح — الاتصال الفعلي يتحقق منه عامل النشر" : "متوقف"}</p>
         </div>
         <div className={`rounded-2xl border p-5 ${health.database === 'healthy' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/25 bg-red-500/10'}`}>
           <p className="text-xs text-brand-cream/40">قاعدة البيانات</p>
