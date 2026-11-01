@@ -34,10 +34,12 @@ export default async function AdminHealthPage() {
   const engine = getVideoEngineConfig();
   const activeVideoOrder = engine.aiEnabled ? engine.order : ["template"];
   const queueAttention =
-    health.queues.socialPartial +
-    health.queues.socialFailed +
-    health.queues.videoRetryWait +
-    health.queues.videoFailed;
+    health.queuesAvailable.social && health.queuesAvailable.video
+      ? health.queues.socialPartial +
+        health.queues.socialFailed +
+        health.queues.videoRetryWait +
+        health.queues.videoFailed
+      : null;
 
   return (
     <Container className="py-10 space-y-6" dir="rtl">
@@ -64,9 +66,9 @@ export default async function AdminHealthPage() {
           <p className="text-xs text-brand-cream/40">قاعدة البيانات</p>
           <p className="mt-2 text-xl font-bold">{health.database === 'healthy' ? 'سليمة' : 'متدهورة'}</p>
         </div>
-        <div className={`rounded-2xl border p-5 ${queueAttention ? 'border-amber-500/25 bg-amber-500/10' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
+        <div className={`rounded-2xl border p-5 ${queueAttention === null ? 'border-brand-gold/10 bg-black/15' : queueAttention > 0 ? 'border-amber-500/25 bg-amber-500/10' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
           <p className="text-xs text-brand-cream/40">حالات تحتاج معالجة</p>
-          <p className="mt-2 text-xl font-bold">{queueAttention}</p>
+          <p className="mt-2 text-xl font-bold">{queueAttention === null ? "غير متاح" : queueAttention}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <p className="text-xs text-brand-cream/40">آخر فحص</p>
