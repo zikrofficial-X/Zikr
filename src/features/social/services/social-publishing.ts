@@ -515,6 +515,7 @@ export async function retryPendingPublishedVideoCleanup(limit = 25): Promise<{
   attempted: number;
   cleaned: number;
   pending: number;
+  error?: string;
 }> {
   let attempted = 0;
   let cleaned = 0;
@@ -529,6 +530,12 @@ export async function retryPendingPublishedVideoCleanup(limit = 25): Promise<{
     }
   } catch (error) {
     console.error("[social-publishing] Failed to retry published-video cleanup:", error);
+    return {
+      attempted,
+      cleaned,
+      pending: Math.max(1, attempted - cleaned),
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
   return { attempted, cleaned, pending: Math.max(0, attempted - cleaned) };
 }
