@@ -18,7 +18,7 @@ docker run --detach \
 
 ready=0
 for attempt in $(seq 1 40); do
-  if docker exec "$CONTAINER_NAME" pg_isready -U postgres -d zikr_kids_test >/dev/null 2>&1; then
+  if docker exec "$CONTAINER_NAME" psql -X -q -v ON_ERROR_STOP=1 -U postgres -d zikr_kids_test -c "SELECT 1" >/dev/null 2>&1; then
     ready=1
     break
   fi

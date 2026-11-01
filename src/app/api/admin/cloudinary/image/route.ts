@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { uploadCloudinaryImage } from '@/features/media/services/cloudinary';
 
 export const runtime = 'nodejs';
@@ -39,6 +40,13 @@ export async function POST(request: NextRequest) {
       publicId: requestedPublicId || `${guard.profile.id}-${Date.now()}`,
       tags: ['zikr', 'admin', folder],
       maxBytes: MAX_IMAGE_BYTES,
+    });
+    await recordAdminAuditEvent({
+      action: "media.cloudinary.image.upload",
+      permission: "media.manage",
+      resourceType: "cloudinary_assets",
+      resourceId: upload.publicId,
+      metadata: { folder, bytes: upload.bytes, format: upload.format },
     });
 
     return NextResponse.json(upload, { headers: { 'Cache-Control': 'no-store' } });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 
 const BUCKET = "youtube-facebook-media";
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -84,6 +85,13 @@ export async function POST(request: Request) {
       );
     }
 
+    await recordAdminAuditEvent({
+      action: "youtube_facebook.upload_url.create",
+      permission: "media.manage",
+      resourceType: "social_sync_jobs",
+      resourceId: youtubeVideoId,
+      metadata: { bucket: BUCKET, path, contentType, size },
+    });
     return NextResponse.json({
       bucket: BUCKET,
       path,

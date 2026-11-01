@@ -22,6 +22,23 @@ function editorialError(message: string) {
 
 const EDITORIAL_RATE_LIMIT_MESSAGE = "تم تجاوز حد العمليات مؤقتًا. انتظر قليلًا ثم أعد المحاولة.";
 
+async function updateEditorialContentAtVersion(
+  id: string,
+  expectedUpdatedAt: string,
+  patch: Record<string, unknown>,
+): Promise<boolean> {
+  const rows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    `/rest/v1/content_library?id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(patch),
+    },
+  );
+  return rows.length > 0;
+}
+
+
 async function enforceEditorialRateLimit(
   admin: Awaited<ReturnType<typeof requireAdminStepUp>>,
   bucket: string,
@@ -53,20 +70,21 @@ export async function changeEditorialReviewStatusAction(formData: FormData) {
   if (!current[0]) editorialError("المحتوى غير موجود.");
   if (updatedAt && current[0].updated_at !== updatedAt) editorialError("تم تعديل المحتوى. حدّث الصفحة ثم أعد المحاولة.");
 
+  const expectedUpdatedAt = updatedAt || current[0].updated_at;
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = { review_status: status, updated_at: now };
   if (status === "approved") patch.published = false;
   if (status === "rejected" || status === "draft" || status === "editorial_review" || status === "scholarly_review") patch.published = false;
 
+  let updated = false;
   try {
-    await supabaseServerAdminRequest(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}${updatedAt ? `&updated_at=eq.${encodeURIComponent(updatedAt)}` : ""}`, {
-      method: "PATCH",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify(patch),
-    });
+    updated = await updateEditorialContentAtVersion(id, expectedUpdatedAt, patch);
   } catch (error) {
     console.error("[admin/editorial] review update failed", error);
     editorialError("تعذر تحديث حالة المحتوى. تحقق من الحقول المطلوبة ثم أعد المحاولة.");
+  }
+  if (!updated) {
+    editorialError("تم تعديل المحتوى بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
   }
 
   await recordAdminAuditEvent({
@@ -94,16 +112,21 @@ export async function publishApprovedContentAction(formData: FormData) {
   if (!current[0].source_id) editorialError("لا يمكن نشر المحتوى قبل ربط مصدر موثوق به.");
   if (updatedAt && current[0].updated_at !== updatedAt) editorialError("تم تعديل المحتوى. حدّث الصفحة ثم أعد المحاولة.");
 
+  const expectedUpdatedAt = updatedAt || current[0].updated_at;
   const now = new Date().toISOString();
+  let published = false;
   try {
-    await supabaseServerAdminRequest(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}${updatedAt ? `&updated_at=eq.${encodeURIComponent(updatedAt)}` : ""}`, {
-      method: "PATCH",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ published: true, published_at: now, updated_at: now }),
+    published = await updateEditorialContentAtVersion(id, expectedUpdatedAt, {
+      published: true,
+      published_at: now,
+      updated_at: now,
     });
   } catch (error) {
     console.error("[admin/editorial] publish failed", error);
     editorialError("فشل النشر. يجب اعتماد المحتوى وربطه بمصدر موثوق قبل النشر.");
+  }
+  if (!published) {
+    editorialError("تم تعديل المحتوى بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
   }
 
   await recordAdminAuditEvent({

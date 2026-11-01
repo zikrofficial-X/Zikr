@@ -16,6 +16,38 @@ const userActions = readFileSync(
   resolve(process.cwd(), "src/features/admin/actions/users.ts"),
   "utf8",
 );
+const atomicRoleMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261101170000_admin_atomic_role_update.sql"),
+  "utf8",
+);
+const contentService = readFileSync(
+  resolve(process.cwd(), "src/features/admin/services/content.ts"),
+  "utf8",
+);
+const siteAudioMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261101190000_admin_atomic_site_audio_primary.sql"),
+  "utf8",
+);
+const siteAudioRoute = readFileSync(
+  resolve(process.cwd(), "src/app/api/admin/site-audio/route.ts"),
+  "utf8",
+);
+const editorialActions = readFileSync(
+  resolve(process.cwd(), "src/app/admin/editorial-actions.ts"),
+  "utf8",
+);
+const queuesPage = readFileSync(
+  resolve(process.cwd(), "src/app/admin/queues/page.tsx"),
+  "utf8",
+);
+const socialRoute = readFileSync(
+  resolve(process.cwd(), "src/app/api/admin/social/route.ts"),
+  "utf8",
+);
+const videoRoute = readFileSync(
+  resolve(process.cwd(), "src/app/api/admin/videos/[id]/route.ts"),
+  "utf8",
+);
 
 function requireMatch(pattern, description) {
   assert.match(migration, pattern, `Missing admin RLS invariant: ${description}`);
@@ -59,8 +91,18 @@ requireMatch(
 );
 assert.match(
   userActions,
-  /isFullAdminTarget[\s\S]*?isGrantingFullAdmin[\s\S]*?admin\.role !== ["']super_admin["']/,
-  "server actions must protect full-admin accounts and full-admin role grants from delegated administrators",
+  /roleValue === "super_admin" && admin\.role !== "super_admin"/,
+  "only a super administrator may request the super_admin role",
+);
+assert.match(
+  userActions,
+  /userId === admin\.id[\s\S]*?roleValue !== "admin"[\s\S]*?roleValue !== "super_admin"/,
+  "the server action must prevent an administrator from removing their own admin role",
+);
+assert.match(
+  atomicRoleMigration,
+  /v_actor_role <> 'super_admin'[\s\S]*?v_previous_role IN \('admin', 'super_admin'\)/,
+  "the atomic database function must prevent delegated administrators from managing full-admin accounts",
 );
 requireMatch(
   /CREATE POLICY admin_audit_events_admin_select[\s\S]*?'analyst'/i,
@@ -93,6 +135,94 @@ assert.match(
   publicRpcMigration,
   /GRANT EXECUTE ON FUNCTION public\.is_admin_user\(\) TO anon, authenticated, service_role/i,
   "the wrapper must remain callable where public-read RLS policies reference it",
+);
+
+assert.match(
+  atomicRoleMigration,
+  /CREATE OR REPLACE FUNCTION public\.admin_update_user_role\([\s\S]*?SECURITY INVOKER[\s\S]*?SET search_path = ''/i,
+  "role updates must use a fixed-search-path invoker RPC",
+);
+assert.match(
+  atomicRoleMigration,
+  /INSERT INTO public\.admin_audit_events[\s\S]*?'users\.role\.update'[\s\S]*?GRANT EXECUTE ON FUNCTION public\.admin_update_user_role\(uuid, text, uuid\)[\s\S]*?TO service_role/i,
+  "role changes and audit entries must commit inside one service-role-only database transaction",
+);
+assert.match(
+  atomicRoleMigration,
+  /REVOKE ALL ON FUNCTION public\.admin_update_user_role\(uuid, text, uuid\)[\s\S]*?FROM PUBLIC, anon, authenticated/i,
+  "the atomic role RPC must not be callable from browser roles",
+);
+assert.match(
+  userActions,
+  /supabaseServerAdminRequest\([\s\S]*?["']\/rest\/v1\/rpc\/admin_update_user_role["'][\s\S]*?p_actor_user_id: admin\.id/,
+  "the role server action must call the atomic RPC using the authenticated server actor",
+);
+assert.doesNotMatch(
+  userActions,
+  /supabaseServerAdminRequest\([\s\S]*?["']\/rest\/v1\/(?:admin_role_assignments|profiles\?id=eq\.)/,
+  "the role server action must not split one role change across independent REST mutations",
+);
+assert.match(
+  contentService,
+  /const filter = [\s\S]*?optimisticUpdatedAt[\s\S]*?Prefer: "return=representation"[\s\S]*?if \(!updated\.length\)/,
+  "content publish toggles must compare-and-set and verify the affected row",
+);
+assert.match(
+  contentService,
+  /\/rest\/v1\/\$\{table\}\?id=eq\.\$\{encodeURIComponent\(id\)\}&updated_at=eq\.\$\{encodeURIComponent\(String\(current\[0\]\.updated_at\)\)\}[\s\S]*?method: "DELETE"[\s\S]*?if \(!deleted\.length\)/,
+  "content deletion must compare-and-set against the row version",
+);
+assert.match(
+  editorialActions,
+  /updateEditorialContentAtVersion[\s\S]*?return rows\.length > 0/,
+  "editorial mutations must update using a version predicate and check affected rows",
+);
+assert.match(
+  queuesPage,
+  /hasAdminPermission\(admin\.role, "video\.manage"\)[\s\S]*?hasAdminPermission\(admin\.role, "social\.manage"\)/,
+  "the operations page must not read module queues beyond the viewer's role permissions",
+);
+assert.match(
+  socialRoute,
+  /requireAdminApi\("social\.manage"\)[\s\S]*?requireAdminApi\("social\.publish"\)/,
+  "social execution must require a separate publishing permission",
+);
+assert.match(
+  socialRoute,
+  /recordAdminAuditEvent\([\s\S]*?social\.queue\.(?:retry|delete)/,
+  "social queue mutations must append audit events",
+);
+assert.match(
+  videoRoute,
+  /recordAdminAuditEvent\([\s\S]*?video_generation\.update[\s\S]*?recordAdminAuditEvent\([\s\S]*?video_generation\.delete_failed/,
+  "video mutation endpoints must append audit events",
+);
+
+
+assert.match(
+  siteAudioMigration,
+  /CREATE OR REPLACE FUNCTION public\.admin_set_primary_site_audio_asset\([\s\S]*?SECURITY INVOKER[\s\S]*?SET search_path = ''/i,
+  "primary audio changes must use a fixed-search-path invoker RPC",
+);
+assert.match(
+  siteAudioMigration,
+  /UPDATE public\.site_audio_assets[\s\S]*?SET is_primary = false[\s\S]*?UPDATE public\.site_audio_assets[\s\S]*?SET is_primary = true[\s\S]*?INSERT INTO public\.admin_audit_events[\s\S]*?'site_audio\.primary\.set'/i,
+  "primary audio change and its audit event must run in one database transaction",
+);
+assert.match(
+  siteAudioMigration,
+  /REVOKE ALL ON FUNCTION public\.admin_set_primary_site_audio_asset\(uuid, text, uuid\)[\s\S]*?FROM PUBLIC, anon, authenticated[\s\S]*?GRANT EXECUTE ON FUNCTION public\.admin_set_primary_site_audio_asset\(uuid, text, uuid\)[\s\S]*?TO service_role/i,
+  "primary audio RPC must be executable by service_role only",
+);
+assert.match(
+  siteAudioRoute,
+  /rpc\/admin_set_primary_site_audio_asset[\s\S]*?p_actor_user_id: guard\.profile\.id/,
+  "primary audio API must call the atomic RPC with the authenticated actor",
+);
+assert.doesNotMatch(
+  siteAudioRoute,
+  /update\(\{ is_primary: false \}\)/,
+  "the API route must not clear primary audio in a separate non-atomic request",
 );
 
 console.log("Admin RBAC/RLS migration contract passed.");

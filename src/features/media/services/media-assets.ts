@@ -124,7 +124,8 @@ export async function createAdminMediaAsset(input: {
     },
   );
 
-  return rows[0] ?? {};
+  if (!rows[0]) throw new Error("تعذر تسجيل أصل الوسائط بعد رفع الملف.");
+  return rows[0];
 }
 
 export async function updateAdminMediaAsset(
@@ -134,13 +135,13 @@ export async function updateAdminMediaAsset(
   if (!id.trim()) return { ok: false, error: "معرّف الأصل غير صالح." };
 
   if (action === "verify_rights") {
-    await supabaseServerAdminRequest(
+    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
       `/rest/v1/media_assets?id=eq.${encodeURIComponent(id)}`,
       {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Prefer: "return=minimal",
+          Prefer: "return=representation",
         },
         body: JSON.stringify({
           rights_verified: true,
@@ -149,32 +150,34 @@ export async function updateAdminMediaAsset(
         }),
       },
     );
+    if (!updated.length) return { ok: false, error: "أصل الوسائط غير موجود." };
     return { ok: true };
   }
 
   const current = await supabaseServerAdminRequest<
-    Array<{ rights_verified: boolean; verified_rights: boolean }>
+    Array<{ id: string; rights_verified: boolean; verified_rights: boolean; updated_at: string }>
   >(
-    `/rest/v1/media_assets?select=rights_verified,verified_rights&id=eq.${encodeURIComponent(
+    `/rest/v1/media_assets?select=id,rights_verified,verified_rights,updated_at&id=eq.${encodeURIComponent(
       id,
     )}&limit=1`,
     { method: "GET" },
   );
 
+  if (!current[0]) return { ok: false, error: "أصل الوسائط غير موجود." };
   if (
     action === "publish" &&
-    !(current[0]?.rights_verified && current[0]?.verified_rights)
+    !(current[0].rights_verified && current[0].verified_rights)
   ) {
     return { ok: false, error: "لا يمكن نشر الأصل قبل توثيق حقوقه." };
   }
 
-  await supabaseServerAdminRequest(
-    `/rest/v1/media_assets?id=eq.${encodeURIComponent(id)}`,
+  const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    `/rest/v1/media_assets?id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(current[0].updated_at)}`,
     {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Prefer: "return=minimal",
+        Prefer: "return=representation",
       },
       body: JSON.stringify({
         published: action === "publish",
@@ -182,6 +185,9 @@ export async function updateAdminMediaAsset(
       }),
     },
   );
+  if (!updated.length) {
+    return { ok: false, error: "تم تعديل الأصل بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة." };
+  }
 
   return { ok: true };
 }

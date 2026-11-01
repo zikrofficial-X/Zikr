@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { createVideoGenerationRequest } from "@/features/videos/services/video-automation";
 import { resolveVideoSource } from "@/features/videos/services/video-sources";
 import { resolveCuratedVideoSource } from "@/features/videos/data/curated-content";
@@ -235,6 +236,13 @@ export async function POST(request: NextRequest) {
         { error: "تعذر حفظ طلب توليد الفيديو." },
         { status: 500 }
       );
+    await recordAdminAuditEvent({
+      action: "video_generation.create",
+      permission: "video.manage",
+      resourceType: "video_generation_requests",
+      resourceId: result.id,
+      metadata: { category, sourceVerified: Boolean(source), hasHumanAudio: Boolean(humanAudioUrl) },
+    });
 
     return NextResponse.json(
       {
