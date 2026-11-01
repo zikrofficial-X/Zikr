@@ -63,6 +63,11 @@ jobs:
           pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
         timeout-minutes: 15
 
+      - name: Verify Kids result trigger against PostgreSQL 17
+        shell: bash
+        run: pnpm kids:db-trigger:check
+        timeout-minutes: 5
+
       - name: Run canonical source and architecture gate
         shell: bash
         run: |
