@@ -1,6 +1,6 @@
 # ZIKR — CircleCI and Supabase environment matrix
 
-**Last updated:** 2026-10-08
+**Last updated:** 2026-11-01
 
 This document covers the current CircleCI CI/release lanes and the Supabase Edge Function runtime. GitHub Actions is the production owner for video/social scheduling. CircleCI does not execute the production video/social worker.
 
@@ -20,9 +20,9 @@ pnpm ci:build:report
 
 `android-rebuild` pins these non-secret build settings in `.circleci/config.yml`:
 
-- `NEXT_PUBLIC_SUPABASE_URL=https://wvetcauyerlkqvmntajq.supabase.co`
+- `NEXT_PUBLIC_SUPABASE_URL=https://ymxdswkaxafakugktsim.supabase.co`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the public anon key; it is not a service-role secret)
-- `SUPABASE_URL=https://wvetcauyerlkqvmntajq.supabase.co`
+- `SUPABASE_URL=https://ymxdswkaxafakugktsim.supabase.co`
 
 The following values must be available before the Android job starts:
 
@@ -32,9 +32,9 @@ The following values must be available before the Android job starts:
 - `ANDROID_KEY_ALIAS` — CircleCI context `android-signing`
 - `ANDROID_KEY_PASSWORD` — CircleCI context `android-signing`
 
-The `android-rebuild` workflow attaches the `android-signing` context so CircleCI can inject the four protected signing variables. The context must exist in the CircleCI organization and be authorized for this project before the release workflow is run. Keep signing material and service-role credentials out of the repository.
+The `android-rebuild` workflow attaches the `android-signing` context for the four protected signing variables. The follow-up `android-release-dispatch` job uses the same context and additionally requires `GH_TOKEN` to dispatch the guarded GitHub recovery workflow after the signed build succeeds. The context must exist in the CircleCI organization and be authorized for this project before the release workflow is run. Keep signing material, service-role credentials, and the GitHub token out of the repository.
 
-The job fails early and lists the missing variable names without printing their values. Do not move the signing material or service-role key into the repository or a public workflow file.
+The Android jobs fail early and list missing variable names without printing their values. `GH_TOKEN` must be a protected fine-grained GitHub token scoped to this repository with Actions write, Contents read, and commit-status read permissions. Do not move the signing material, service-role key, or GitHub token into the repository or a public workflow file.
 
 The Android release lane uses one semantic tag (`vX.Y.Z`). There is no `-build` parallel tag.
 
