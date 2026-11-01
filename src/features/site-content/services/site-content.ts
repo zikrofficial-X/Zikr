@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, supabaseServerAnonRequest } from '@/lib/supabase/server';
 import type { Competition } from '@/features/competitions/types';
 import { FALLBACK_COMPETITIONS } from '@/features/competitions/data/fallback';
 
@@ -72,14 +72,14 @@ const FALLBACK_MEMORIZATION_PLANS: MemorizationPlan[] = [
 
 export async function getSiteSetting(key: string): Promise<SiteSettingValue | null> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from('site_settings')
-      .select('value')
-      .eq('key', key)
-      .limit(1)
-      .maybeSingle();
-    return (data?.value as SiteSettingValue) ?? null;
+    const rows = await supabaseServerAnonRequest<Array<{ value?: unknown }>>(
+      `/rest/v1/site_settings?select=value&key=eq.${encodeURIComponent(key)}&limit=1`,
+      {
+        cache: "force-cache",
+        next: { revalidate: 300, tags: [`site-setting:${key}`] },
+      },
+    );
+    return (rows?.[0]?.value as SiteSettingValue) ?? null;
   } catch {
     return null;
   }
