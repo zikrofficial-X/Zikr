@@ -4,6 +4,7 @@ import { BookmarkButton } from '@/features/quran/components/bookmark-button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
 import { getHadithByNumber } from '@/features/hadith/services/hadith';
+import { resolveHadithDisplay } from '@/features/hadith/types/hadith';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Share2 } from 'lucide-react';
 import Link from 'next/link';
@@ -40,6 +41,7 @@ export default async function HadithDetail({ params }: HadithDetailPageProps) {
   const h = await getHadithByNumber(bookSlug, num, locale);
 
   if (!h) return notFound();
+  const display = resolveHadithDisplay(h, locale);
 
   return (
     <Container className='py-12 max-w-4xl' dir={isEnglish ? "ltr" : "rtl"}>
@@ -56,9 +58,14 @@ export default async function HadithDetail({ params }: HadithDetailPageProps) {
         </CardHeader>
         <CardContent className="p-8">
           <div className="space-y-8">
-            <p className={`text-3xl leading-relaxed ${isEnglish ? "text-left" : "text-right"} font-arabic`} dir={isEnglish ? "ltr" : "rtl"}>
-              {isEnglish ? (h.english ?? "English translation unavailable.") : h.arab}
+            <p className={`text-3xl leading-relaxed ${display.contentLocale === "en" ? "text-left" : "text-right"} font-arabic`} dir={display.contentLocale === "en" ? "ltr" : "rtl"}>
+              {display.text}
             </p>
+            {display.usedArabicFallback && (
+              <p role="note" className="text-sm leading-6 text-amber-700 dark:text-amber-300">
+                English translation unavailable — showing the original Arabic text.
+              </p>
+            )}
 
             <div className='flex items-center justify-between pt-6 border-t'>
               <div className="flex gap-4">

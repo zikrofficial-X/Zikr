@@ -52,8 +52,13 @@ assert.ok(recoveryDispatch.includes("branchData.commit.sha"), "Android recovery 
 
 assert.ok(recoveryDispatch.includes("RELEASE_RETRY.flag"), "Android recovery dispatch must require the repository release retry guard");
 assert.ok(recoveryDispatch.includes("createWorkflowDispatch"), "Android recovery dispatch must start the guarded publisher workflow");
-assert.ok(recoveryDispatch.includes("github.event_name == 'push'"), "Android recovery must retry after the guarded workflow is merged to main");
-assert.ok(recoveryDispatch.includes("getCombinedStatusForRef"), "Push-triggered recovery must confirm success of the exact CircleCI Android build");
+assert.ok(recoveryDispatch.includes("github.event_name == 'workflow_dispatch'"), "Android recovery must only run after explicit CircleCI dispatch");
+assert.ok(recoveryDispatch.includes("getCombinedStatusForRef"), "Dispatched recovery must confirm success of the exact CircleCI Android build");
+assert.ok(recoveryDispatch.includes("  statuses: read"), "Android recovery must have read permission for CircleCI commit statuses");
+assert.ok(recoveryDispatch.includes("  actions: write"), "Android recovery must have permission to dispatch the guarded publisher");
+assert.ok(recoveryDispatch.includes("  contents: read"), "Android recovery must use read-only repository contents permission");
+assert.ok(!recoveryDispatch.includes("  contents: write"), "Android recovery must not receive unnecessary repository write permission");
+
 assert.ok(!recoveryDispatch.includes('const core = require("@actions/core")'), "github-script must not redeclare its built-in core binding");
 assert.ok(recoveryDispatch.includes("getRef") && recoveryDispatch.includes("getTag"), "Android recovery must resolve annotated tags to their target commits");
 assert.ok(recoveryDispatch.includes("tagTargetSha !== sourceSha"), "Android recovery must refuse publication when the recovery branch differs from the tag target");
@@ -110,6 +115,16 @@ assert.ok(androidReleaseService.includes("hasApk(release) &&\n        hasAab(rel
 assert.ok(androidReleaseService.includes("!hasApk(release) || !hasAab(release)"), "Pinned Android releases missing either APK or AAB must be rejected");
 
 const circle = read(".circleci/config.yml");
+const androidDispatchJob = circle.split("  android-release-dispatch:")[1]?.split("\nworkflows:")[0] ?? "";
+assert.ok(androidDispatchJob.includes("GH_TOKEN"), "Android recovery dispatch must use a protected GitHub token");
+assert.ok(androidDispatchJob.includes("actions/workflows/dispatch-android-release-recovery.yml/dispatches"), "CircleCI must dispatch the guarded recovery workflow after the signed build");
+assert.ok(androidDispatchJob.includes('RECOVERY_REF="$CIRCLE_TAG"'), "CircleCI tag releases must dispatch the exact release tag, not a synthetic branch");
+assert.ok(androidDispatchJob.includes('RECOVERY_REF="$CIRCLE_BRANCH"'), "CircleCI branch recovery must preserve the exact guarded branch");
+assert.ok(recoveryDispatch.includes("startsWith(github.ref, 'refs/tags/v')"), "Android recovery must accept the canonical release tag ref");
+assert.ok(recoveryDispatch.includes('const isTagDispatch = context.ref === "refs/tags/" + tag;'), "Android recovery must distinguish exact tag dispatch from branch recovery");
+assert.ok(recoveryDispatch.includes("ref: isTagDispatch ? tag : recoveryBranch"), "Android publisher must run from the exact tag or guarded recovery branch");
+
+
 assert.ok(circle.includes(`releaseUrl": "https://github.com/${repo}/releases/tag/`), "CircleCI Android release metadata must use the canonical repository");
 const androidJob = circle.split("  android-rebuild:")[1]?.split("\n  security-audit:")[0] ?? "";
 assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co"), "Android job must use the canonical public Supabase URL");
@@ -120,6 +135,9 @@ const releaseWorkflow = circle.split("workflows:\n")[1] ?? "";
 const androidWorkflowJob = releaseWorkflow.split("- android-rebuild:")[1]?.split("\n      - ")[0] ?? "";
 assert.ok(androidWorkflowJob.includes("context:\n            - android-signing"), "Signed Android build must use the protected android-signing context");
 assert.ok(androidWorkflowJob.includes("requires:\n            - source-verify\n            - supabase-production-gate"), "Signed Android build must wait for both source validation and Supabase production preflight");
+const dispatchWorkflowJob = releaseWorkflow.split("- android-release-dispatch:")[1]?.split("\n      - ")[0] ?? "";
+assert.ok(dispatchWorkflowJob.includes("requires:\n            - android-rebuild"), "Android recovery dispatch must wait for the signed Android build to finish successfully");
+
 assert.ok(circle.includes("ANDROID_KEYSTORE_BASE64"), "Android release must require protected signing material");
 assert.ok(circle.includes("Detected Android versionName"), "Android release must validate the generated version");
 assert.ok(circle.includes('"$AAPT" dump badging "$APK"'), "Android release must inspect APK metadata with JAXB-independent aapt");

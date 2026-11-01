@@ -580,6 +580,35 @@ jobs:
             rm -f "$CIRCLE_WORKING_DIRECTORY/android/keystore.properties"
             rm -f "$CIRCLE_WORKING_DIRECTORY/.circleci-signing/zikr-release.keystore"
 
+
+  android-release-dispatch:
+    docker:
+      - image: cimg/node:22.11.0
+    resource_class: small
+    steps:
+      - run:
+          name: Dispatch guarded Android recovery after the signed build succeeds
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            test -n "${GH_TOKEN:-}" || { echo "Missing GH_TOKEN for guarded Android recovery dispatch." >&2; exit 1; }
+            if [[ "${CIRCLE_BRANCH:-}" =~ ^android-release-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              RECOVERY_REF="$CIRCLE_BRANCH"
+            elif [[ "${CIRCLE_TAG:-}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              RECOVERY_REF="$CIRCLE_TAG"
+            else
+              echo "No canonical Android release branch/tag is available." >&2
+              exit 1
+            fi
+            curl --fail --silent --show-error --location \
+              --request POST "https://api.github.com/repos/zikrofficial-X/Zikr/actions/workflows/dispatch-android-release-recovery.yml/dispatches" \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              --header "Content-Type: application/json" \
+              --data "{\"ref\":\"$RECOVERY_REF\"}"
+            echo "Guarded Android recovery dispatched for $RECOVERY_REF."
+
 workflows:
   build-and-release:
     when: << pipeline.parameters.run_circleci_ci >>
@@ -615,6 +644,18 @@ workflows:
           requires:
             - source-verify
             - supabase-production-gate
+          filters:
+            branches:
+              only:
+                - /^android-release-v[0-9]+\.[0-9]+\.[0-9]+$/
+            tags:
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+
+      - android-release-dispatch:
+          context:
+            - android-signing
+          requires:
+            - android-rebuild
           filters:
             branches:
               only:

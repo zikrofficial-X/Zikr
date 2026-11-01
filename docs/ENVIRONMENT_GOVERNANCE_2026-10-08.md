@@ -1,4 +1,4 @@
-# ZIKR Environment Governance — 2026-10-08
+# ZIKR Environment Governance — 2026-11-01
 
 ## Canonical source of truth
 
@@ -7,7 +7,7 @@ Production configuration is owned by:
 - GitHub repository: `zikrofficial-X/Zikr`
 - Branch: `main`
 - Vercel project: `zikr`
-- Supabase production project: `wvetcauyerlkqvmntajq`
+- Supabase production project: `ymxdswkaxafakugktsim`
 - Production origin: `https://zikrmediaofficial.vercel.app`
 
 The repository must reference only canonical environment variable names. Legacy duplicate names such as `*_2` are forbidden in runtime/configuration source.

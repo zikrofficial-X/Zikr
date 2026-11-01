@@ -54,6 +54,30 @@ for (const path of [
   }
 }
 
+const videoSources = read("src/features/videos/services/video-sources.ts");
+for (const token of [
+  "QURAN_VIDEO_RECITER_CODE",
+  "QURAN_AYAH_AUDIO_RECITER_CODE",
+  "QURAN_VIDEO_RECITER_CODE !== QURAN_AYAH_AUDIO_RECITER_CODE",
+  "/rest/v1/quran_audio",
+  "audioRow?.audio_url",
+  "QURAN_BASE",
+]) {
+  if (!videoSources.includes(token)) failures.push("Quran video source missing human-recitation alignment contract: " + token);
+}
+const videoWorker = read("scripts/jobs/template-video-automation.ts");
+for (const token of [
+  "QURAN_AYAH_AUDIO_BASE_URL",
+  "getVerifiedQuranAyahAudioUrl",
+  "category === \"quran\" && !audioUrl",
+  "verified human recitation audio is unavailable",
+]) {
+  if (!videoWorker.includes(token)) failures.push("Video worker missing Quran recitation safety contract: " + token);
+}
+if (videoWorker.includes('category === "quran" ? "arabic_tts_narration"')) {
+  failures.push("Quran video must never classify generated TTS as its narration source");
+}
+
 const retriever = read("src/features/spiritual-ai/services/retriever.ts");
 if (!retriever.includes("searchLocalQuran")) {
   failures.push("Spiritual AI Quran retrieval must use the local canonical Quran corpus");

@@ -40,6 +40,50 @@ if (!permissions.includes("'video.manage'")) failures.push("video.manage permiss
 if (!permissions.includes("'video.delete'")) failures.push("video.delete permission missing");
 if (!permissions.includes("'video.manage', 'video.delete'")) failures.push("video_manager role must own video permissions");
 
+const hub = read("src/app/admin/video/page.tsx");
+for (const [href, route] of [
+  ["/admin/video/requests", "src/app/admin/video/requests/page.tsx"],
+  ["/admin/video/studio", "src/app/admin/video/studio/page.tsx"],
+  ["/admin/video/sources", "src/app/admin/video/sources/page.tsx"],
+  ["/admin/video/scripts", "src/app/admin/video/scripts/page.tsx"],
+  ["/admin/video/voices", "src/app/admin/video/voices/page.tsx"],
+  ["/admin/video/visuals", "src/app/admin/video/visuals/page.tsx"],
+  ["/admin/video/templates", "src/app/admin/video/templates/page.tsx"],
+  ["/admin/video/qa", "src/app/admin/video/qa/page.tsx"],
+]) {
+  if (!hub.includes(href)) failures.push(`Canonical Video Hub destination is missing: ${href}`);
+  read(route);
+}
+
+if (hub.includes("/admin/video-factory/")) {
+  failures.push("Canonical Video Hub must not link into the legacy video-factory route tree");
+}
+
+const legacyScheduler = read("src/app/admin/video-factory/scheduler/page.tsx");
+if (!legacyScheduler.includes('requireAdminPermission("system.manage")')) {
+  failures.push("Legacy video scheduler redirect must preserve the destination system.manage permission");
+}
+const legacyPublishing = read("src/app/admin/video-factory/publishing/page.tsx");
+if (!legacyPublishing.includes('requireAdminPermission("social.manage")')) {
+  failures.push("Legacy publishing redirect must preserve the destination social.manage permission");
+}
+
+for (const [legacyPath, destination] of [
+  ["src/app/admin/video-factory/page.tsx", "/admin/video"],
+  ["src/app/admin/video-factory/sources/page.tsx", "/admin/video/sources"],
+  ["src/app/admin/video-factory/scripts/page.tsx", "/admin/video/scripts"],
+  ["src/app/admin/video-factory/voices/page.tsx", "/admin/video/voices"],
+  ["src/app/admin/video-factory/visuals/page.tsx", "/admin/video/visuals"],
+  ["src/app/admin/video-factory/templates/page.tsx", "/admin/video/templates"],
+  ["src/app/admin/video-factory/qa/page.tsx", "/admin/video/qa"],
+  ["src/app/admin/video-factory/queue/page.tsx", "/admin/video/requests"],
+  ["src/app/admin/video-factory/scheduler/page.tsx", "/admin/automation"],
+  ["src/app/admin/video-factory/publishing/page.tsx", "/admin/social"],
+]) {
+  const legacy = read(legacyPath);
+  if (!legacy.includes(`redirect("${destination}")`)) failures.push(`Legacy Video Factory route must redirect to ${destination}: ${legacyPath}`);
+}
+
 const page = read("src/app/admin/video/studio/page.tsx");
 if (!page.includes('requireAdminPermission("video.manage")')) failures.push("Video Studio admin page must require video.manage");
 
@@ -51,9 +95,13 @@ const legacyQueue = read("src/app/admin/videos/page.tsx");
 if (!legacyQueue.includes('redirect("/admin/video/requests")')) failures.push("Legacy /admin/videos route must redirect to /admin/video/requests");
 
 for (const adminPage of [
+  "src/app/admin/video/page.tsx",
   "src/app/admin/video-factory/page.tsx",
+  "src/app/admin/video-factory/sources/page.tsx",
   "src/app/admin/video-factory/scripts/page.tsx",
   "src/app/admin/video-factory/voices/page.tsx",
+  "src/app/admin/video-factory/visuals/page.tsx",
+  "src/app/admin/video-factory/templates/page.tsx",
   "src/app/admin/video-factory/qa/page.tsx",
   "src/app/admin/audio/tts/page.tsx",
   "src/app/admin/audio/quran/page.tsx",
@@ -68,6 +116,39 @@ const client = read("src/app/admin/ai-video/ai-video-client.tsx");
 if (client.includes("SUPABASE_SERVICE_ROLE_KEY") || client.includes("createAdminClient")) failures.push("AI video client must not contain service-role access");
 
 const worker = read("scripts/jobs/template-video-automation.ts");
+
+for (const [path, destinations] of [
+  ["src/app/admin/audio/tts/page.tsx", ["/admin/video/voices", "/admin/video/scripts"]],
+  ["src/app/admin/audio/quran/page.tsx", ["/admin/video/voices"]],
+  ["src/app/admin/automation/page.tsx", ["/admin/video/voices", "/admin/video/scripts", "/admin/video/qa"]],
+]) {
+  const source = read(path);
+  if (source.includes("/admin/video-factory/")) failures.push(`${path} still links into the legacy video-factory tree`);
+  for (const destination of destinations) {
+    if (!source.includes(destination)) failures.push(`${path} is missing canonical destination ${destination}`);
+  }
+}
+
+const routeManifest = JSON.parse(read("public/manus-routes.json"));
+for (const route of [
+  "/admin/queues",
+  "/admin/video",
+  "/admin/video/requests",
+  "/admin/video/studio",
+  "/admin/video/studio/curated",
+  "/admin/video/sources",
+  "/admin/video/scripts",
+  "/admin/video/voices",
+  "/admin/video/visuals",
+  "/admin/video/templates",
+  "/admin/video/qa",
+  "/data-deletion",
+  "/kids/parent-dashboard",
+]) {
+  if (!routeManifest.routes.some((entry) => entry.path === route)) {
+    failures.push(`Manus route manifest is missing canonical route: ${route}`);
+  }
+}
 
 const pkg = JSON.parse(read("package.json"));
 if (!pkg.scripts["admin:video:check"]) failures.push("admin:video:check must be registered");

@@ -22,6 +22,13 @@ assert.ok(androidPublish.includes("github.ref_type == 'tag'"), "Android publishi
 const circle = read(".circleci/config.yml");
 const ownership = read("docs/AUTOMATION_OWNERSHIP_2026-10-08.md");
 const supabaseConfig = read("supabase/config.toml");
+const androidRecovery = read(".github/workflows/dispatch-android-release-recovery.yml");
+assert.ok(androidRecovery.includes("workflow_dispatch:"), "Android recovery must be explicitly dispatched by the successful CircleCI release pipeline");
+assert.ok(!androidRecovery.includes("\n  status:") && !androidRecovery.includes("\n  push:"), "Android recovery must not subscribe to every repository status or push event");
+assert.ok(androidRecovery.includes("github.event_name == 'workflow_dispatch'"), "Android recovery must accept only an explicit workflow dispatch");
+assert.ok(circle.includes("android-release-dispatch:"), "CircleCI must dispatch Android recovery only after android-rebuild succeeds");
+assert.ok(circle.includes("api.github.com/repos/zikrofficial-X/Zikr/actions/workflows/dispatch-android-release-recovery.yml/dispatches"), "CircleCI must invoke the guarded Android recovery workflow");
+
 
 const workflowDir = ".github/workflows";
 const workflowFiles = readdirSync(workflowDir)
@@ -48,10 +55,12 @@ assert.ok(!circle.includes('cron: "17 3,9,15,21 * * *"'), "CircleCI must not own
 
 assert.ok(quality.includes('name: "ZIKR / Quality Gate"'), "Canonical GitHub quality check name is incorrect");
 assert.ok(
-  quality.includes('if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]]; then') &&
+  quality.includes('[[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]') &&
+    quality.includes('[[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]]') &&
+    quality.includes('[[ "${GITHUB_EVENT_NAME}" == "pull_request" && "${GITHUB_HEAD_REF}" == codex/zikr-comprehensive-repair-* ]]') &&
     quality.includes("pnpm verify") &&
     quality.includes("pnpm verify:pr"),
-  "GitHub Quality Gate must run the full pnpm verify suite on main and the PR verification suite on pull requests",
+  "GitHub Quality Gate must run full verification on main, manual dispatch, and comprehensive repair PRs",
 );
 assert.ok(quality.includes("timeout-minutes: 30"), "Full main-branch verification must have an explicit bounded timeout");
 assert.ok(quality.includes("QUALITY_GATE=PASSED_FULL"), "The main-branch gate must report full verification scope");
@@ -65,7 +74,8 @@ assert.ok(video.includes("github.ref == 'refs/heads/main'"), "Video worker must 
 assert.ok(social.includes('BACKGROUND_JOB_TARGET: "social"'), "Social publisher must target the social queue only");
 const socialPublishingActive = social.includes('SOCIAL_PUBLISH_ENABLED: "true"');
 const socialPublishingFrozen =
-  social.includes('SOCIAL_PUBLISH_ENABLED: "false"') &&
+  social.includes("SOCIAL_PUBLISH_ENABLED: ${{ vars.SOCIAL_PUBLISH_ENABLED || 'false' }}") &&
+  social.includes("vars.SOCIAL_PUBLISH_ENABLED == 'true'") &&
   social.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
   social.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"');
 assert.ok(socialPublishingActive || socialPublishingFrozen, "Social publisher must be explicitly active or safely frozen with approval required");

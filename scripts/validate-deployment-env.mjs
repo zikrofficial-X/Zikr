@@ -49,6 +49,9 @@ const OPTIONAL = [
   "NEXT_PUBLIC_GA_MEASUREMENT_ID",
   "NEXT_PUBLIC_GTM_ID",
   "NEXT_PUBLIC_ADSENSE_CLIENT",
+  "NEXT_PUBLIC_KIDS_ANALYTICS_ENABLED",
+  "QURAN_VIDEO_RECITER_CODE",
+  "QURAN_AYAH_AUDIO_RECITER_CODE",
   "IOS_ASSOCIATED_DOMAIN_APP_ID",
 ];
 
@@ -91,6 +94,20 @@ if (callback) {
     callback.origin === (site?.origin ?? CANONICAL_SITE) &&
     callback.pathname === "/auth/callback";
   if (!ok) add("fail", "AUTH_CALLBACK_URL", "must point to /auth/callback on the ZIKR app origin");
+}
+if (env("NEXT_PUBLIC_KIDS_ANALYTICS_ENABLED") && !/^(true|false)$/i.test(env("NEXT_PUBLIC_KIDS_ANALYTICS_ENABLED"))) {
+  add("fail", "NEXT_PUBLIC_KIDS_ANALYTICS_ENABLED", "must be true or false; default is false");
+}
+if (env("QURAN_VIDEO_RECITER_CODE") && !/^[a-z0-9_-]+$/i.test(env("QURAN_VIDEO_RECITER_CODE"))) {
+  add("fail", "QURAN_VIDEO_RECITER_CODE", "must be a simple reciter catalogue code");
+}
+if (env("QURAN_AYAH_AUDIO_RECITER_CODE") && !/^[a-z0-9_-]+$/i.test(env("QURAN_AYAH_AUDIO_RECITER_CODE"))) {
+  add("fail", "QURAN_AYAH_AUDIO_RECITER_CODE", "must be a simple per-ayah audio provider code");
+}
+const quranVideoReciterCode = env("QURAN_VIDEO_RECITER_CODE") || "alafasy";
+const quranAyahAudioReciterCode = env("QURAN_AYAH_AUDIO_RECITER_CODE") || "alafasy";
+if (quranVideoReciterCode !== quranAyahAudioReciterCode) {
+  add("fail", "Quran audio provider alignment", "effective QURAN_VIDEO_RECITER_CODE and QURAN_AYAH_AUDIO_RECITER_CODE must match (both default to alafasy)");
 }
 if (env("FACEBOOK_GRAPH_API_VERSION") && !/^v\d+\.\d+$/.test(env("FACEBOOK_GRAPH_API_VERSION"))) {
   add("fail", "FACEBOOK_GRAPH_API_VERSION", "must match vNN.N");

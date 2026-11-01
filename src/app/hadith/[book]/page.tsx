@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
 import { getHadithBook } from '@/features/hadith/services/hadith';
+import { resolveHadithDisplay } from '@/features/hadith/types/hadith';
 import { Badge } from '@/components/ui/badge';
 
 import { pageMetadata } from '@/lib/site';
@@ -48,20 +49,28 @@ export default async function BookPage({ params, searchParams }: BookPageProps) 
       </div>
 
       <div className="grid gap-4">
-        {result.data.map((h) => (
-          <Link href={`/hadith/${slug}/${h.number}`} key={h.number}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg text-brand-gold">{isEnglish ? `Hadith ${h.number}` : `حديث رقم ${h.number}`}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className='arabic-muted line-clamp-3 text-lg leading-relaxed' dir={isEnglish ? "ltr" : "rtl"}>
-                  {isEnglish ? (h.english ?? "English translation unavailable.") : h.arab}
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+        {result.data.map((h) => {
+          const display = resolveHadithDisplay(h, locale);
+          return (
+            <Link href={`/hadith/${slug}/${h.number}`} key={h.number}>
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg text-brand-gold">{isEnglish ? `Hadith ${h.number}` : `حديث رقم ${h.number}`}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="line-clamp-3 text-lg leading-relaxed" dir={display.contentLocale === "en" ? "ltr" : "rtl"}>
+                    {display.text}
+                  </p>
+                  {display.usedArabicFallback && (
+                    <p role="note" className="mt-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
+                      English translation unavailable — showing the original Arabic text.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
       </div>
 
       {result.pagination && result.pagination.totalPages > 1 && (

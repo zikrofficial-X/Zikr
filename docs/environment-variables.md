@@ -1,6 +1,6 @@
 # ZIKR Environment Variables
 
-Last reconciled: **2026-10-08**
+Last reconciled: **2026-11-01**
 
 This document describes the current environment contract for the web application, GitHub Actions/background workers, CircleCI recovery jobs, and Supabase Edge Functions.
 
@@ -12,7 +12,7 @@ These are the variables required by the Next.js application.
 
 | Variable | Scope | Required | Notes |
 |---|---|---:|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | Canonical project: `https://wvetcauyerlkqvmntajq.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | Canonical project: `https://ymxdswkaxafakugktsim.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Yes | Public/publishable Supabase client credential |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only | Yes | Never expose to browser/client code |
 | `NEXT_PUBLIC_SITE_URL` | Public | Yes | Locked canonical origin: `https://zikrmediaofficial.vercel.app` |
@@ -33,6 +33,7 @@ The application treats `NEXT_PUBLIC_SUPABASE_ANON_KEY` as the browser-facing can
 | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Public | Google Analytics |
 | `NEXT_PUBLIC_GTM_ID` | Public | Google Tag Manager |
 | `NEXT_PUBLIC_ADSENSE_CLIENT` | Public | AdSense publisher identifier |
+| `NEXT_PUBLIC_KIDS_ANALYTICS_ENABLED` | Public | Kids game analytics opt-in; default `false`, enable only after consent/CMP review |
 | `AI_GATEWAY_API_KEY` | Server | Optional Vercel AI Gateway path; no current core-runtime requirement |
 
 ## 3. YouTube / Facebook publishing
@@ -51,7 +52,7 @@ Facebook / Meta:
 - `FACEBOOK_APP_SECRET`
 - `FACEBOOK_PAGE_ID`
 - `FACEBOOK_PAGE_ACCESS_TOKEN`
-- `SOCIAL_PUBLISH_FACEBOOK_ENABLED` (runtime gate; the production publisher enables it only when both Page ID and Page access token secrets are present, and the Admin setting can still disable it)
+- `SOCIAL_PUBLISH_FACEBOOK_ENABLED` (runtime gate; Facebook publishing requires a valid OAuth-managed Page connection in Supabase and the Admin setting)
 - `FACEBOOK_GRAPH_API_VERSION` (current default: `v26.0`)
 
 Native social:
@@ -61,7 +62,7 @@ The canonical Meta variable name is `FACEBOOK_GRAPH_API_VERSION`. `META_GRAPH_AP
 
 ## 4. Video worker contract
 
-Production video generation is owned by GitHub Actions `generate-ai-video.yml`. Social publishing is owned by GitHub Actions `publish-social.yml`. CircleCI does not execute either production worker.
+Production video generation is owned by GitHub Actions `generate-ai-video.yml`. Social publishing is owned by GitHub Actions `publish-social.yml`. CircleCI does not execute either production worker. Social publishing is fail-closed: it runs only when the repository variable `SOCIAL_PUBLISH_ENABLED` is explicitly set to `true`; the default is `false`.
 
 Worker/runtime configuration includes:
 
@@ -244,11 +245,11 @@ The repository does **not** contain or print production secret values.
 
 ## 10. Supabase/Vercel binding status
 
-The linked Vercel project already contains the required Supabase runtime variable names, and its configured URLs point to `https://wvetcauyerlkqvmntajq.supabase.co`. Secret values were not printed or changed.
+The linked Vercel project already contains the required Supabase runtime variable names, and its configured URLs point to `https://ymxdswkaxafakugktsim.supabase.co`. Secret values were not printed or changed.
 
 The current production contract is aligned around:
 
-- Supabase project `wvetcauyerlkqvmntajq`;
+- Supabase project `ymxdswkaxafakugktsim`;
 - canonical site `https://zikrmediaofficial.vercel.app`;
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` as the browser-facing key;
 - `SUPABASE_SERVICE_ROLE_KEY` as the server-only key;
@@ -259,9 +260,9 @@ A read-only check against that target passed for Auth settings, `quran_surahs`, 
 
 The deployment environment validator also flags the existing `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` application variables because Google login is handled by Supabase Auth. Those values were not changed; review them separately.
 
-As of October 9, 2026, a fresh production schema query confirmed that `public.content_library.summary_en` and `public.content_translation_queue` both exist. The earlier schema-gap note has been reconciled; it is no longer a current production gap. The current Supabase Security Advisor still warns that leaked-password protection is disabled, and the Performance Advisor reports 79 unused indexes (informational; review query workload before removal).
+As of October 9, 2026, a fresh production schema query confirmed that `public.content_library.summary_en` and `public.content_translation_queue` both exist. The earlier schema-gap note has been reconciled; it is no longer a current production gap. The current Supabase Security Advisor still warns that leaked-password protection is disabled, and the Performance Advisor reports 68 unused indexes (informational; review query workload before removal).
 
-The active Supabase health workflow is pinned to the canonical production target. Historical documentation may still mention retired project refs, but active runtime and workflow configuration must remain on `wvetcauyerlkqvmntajq`. Any future database-target change must use a reviewed forward migration or configuration change rather than rewriting applied migration history.
+The active Supabase health workflow is pinned to the canonical production target. Historical documentation may still mention retired project refs, but active runtime and workflow configuration must remain on `ymxdswkaxafakugktsim`. Any future database-target change must use a reviewed forward migration or configuration change rather than rewriting applied migration history.
 
 ## Security rules
 
@@ -277,3 +278,32 @@ Never commit:
 - VAPID private keys.
 
 Only placeholders and variable names belong in repository documentation.
+
+## 11. Vercel environment audit — 2026-11-01
+
+Read-only verification of the connected production Vercel project confirmed these exact runtime values:
+
+- `NEXT_PUBLIC_SUPABASE_URL=https://ymxdswkaxafakugktsim.supabase.co`
+- `NEXT_PUBLIC_SITE_URL=https://zikrmediaofficial.vercel.app`
+- `AUTH_CALLBACK_URL=https://zikrmediaofficial.vercel.app/auth/callback`
+
+The following variables were found in Vercel and are cleanup candidates after confirming ownership:
+
+- Android signing material: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. These belong in the protected CircleCI `android-signing` context only.
+- Obsolete Google OAuth application variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. Google web/native login uses Supabase Auth and `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
+- Retired/stale application variables: `VIDEO_AUTO_PUBLISH`, `SOCIAL_SYNC_SECRET`.
+- `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`, `POSTGRES_HOST`, `POSTGRES_DATABASE`, `POSTGRES_USER`, `POSTGRES_PASSWORD` are integration-managed database connection variables. They are not used by the Next.js runtime; **review their Vercel/Supabase integration ownership before removal** and do not delete them blindly.
+
+Do not remove `ANDROID_APP_LINKS_SHA256`; it is read by the Android asset-links route. Do not remove `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, or `FACEBOOK_PAGE_ID`; the server-side Facebook OAuth connect/callback uses them. `FACEBOOK_PAGE_ACCESS_TOKEN` is read only by the explicit Admin server-token adoption flow, which validates and imports it into `social_platform_credentials`; outbound publishers read the managed database credential, not the Vercel environment token. Keep it only while that adoption flow is in use. The GitHub dispatch/release tokens remain required by the admin release manager.
+
+The connected Vercel actions available to this repair session can list, read, create, and edit project environment variables, but do not expose a delete operation. Therefore the obsolete variables above have been identified but not removed in this pass. Remove them from Vercel Project Settings → Environment Variables, preserving the separate CircleCI context and GitHub repository/environment secrets. Never copy secret values into Git or this document.
+
+## Quran video recitation alignment
+
+These optional settings must refer to the same human reciter:
+
+- `QURAN_VIDEO_RECITER_CODE`: code in `public.quran_reciters` used to verify the canonical full-surah audio catalogue.
+- `QURAN_AYAH_AUDIO_RECITER_CODE`: reciter actually served by the per-ayah audio endpoint.
+- `QURAN_AYAH_AUDIO_BASE_URL`: per-ayah MP3 base URL for that reciter; default is the Alafasy endpoint.
+
+The code defaults both reciter identifiers to `alafasy` and rejects a mismatch before a Quran video source can be accepted. Do not change only one variable. The `quran_audio` table currently stores full-surah records, so the per-ayah endpoint is a separate provider and must be verified as the same reciter.

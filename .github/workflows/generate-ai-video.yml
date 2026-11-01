@@ -10,7 +10,7 @@ on:
       batch_size:
         description: "Number of new video jobs to seed in this run"
         required: false
-        default: "3"
+        default: "10"
         type: string
       urgent:
         description: "Whether this dispatch originated from the admin Run Now control"
@@ -30,7 +30,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       # The canonical Supabase URL is public configuration; only the service-role key remains secret.
       SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
@@ -42,18 +42,20 @@ jobs:
       GEMINI_MODEL: gemini-3.1-flash-lite
       GEMINI_AUDIO_SMOKE_TEST: "false"
       AUTO_VIDEO_ENABLED: "true"
-      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '3' }}
-      DAILY_VIDEO_TARGET: "12"
+      AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '10' }}
+      DAILY_VIDEO_TARGET: "20"
       AUTO_VIDEO_URGENT: ${{ inputs.urgent || 'false' }}
       VIDEO_DAILY_LIMIT: "24"
       VIDEO_AUTOMATION_DRY_RUN: "false"
-      VIDEO_AI_ENABLED: "false"
-      VIDEO_AI_ATTEMPTS_PER_RUN: "3"
+      VIDEO_AI_ENABLED: "true"
+      VIDEO_AI_ATTEMPTS_PER_RUN: "2"
       VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,template"
       FREE_VIDEO_PROVIDER_ENABLED: "false"
       COMFYUI_ENABLED: "false"
-      HF_WAN_VIDEO_ENABLED: "false"
-      HF_LTX_FAST_VIDEO_ENABLED: "false"
+      HF_WAN_VIDEO_ENABLED: "true"
+      HF_LTX_FAST_VIDEO_ENABLED: "true"
+      HF_VIDEO_PROVIDER_TIMEOUT_MS: "150000"
+      VIDEO_WORKER_BATCH_SIZE: "2"
       HF_WAN_SPACE: "zerogpu-aoti/wan2-2-fp8da-aoti-faster"
       HF_LTX_FAST_SPACE: "Lightricks/ltx-video-distilled"
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -61,11 +63,11 @@ jobs:
       ARABIC_TTS_PROFILE: "hadith_male_msa"
       ARABIC_TTS_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
       HF_VIDEO_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
-      # Generation queues publishable video records but never executes social publishing.
-      AUTO_VIDEO_PUBLISH_ENABLED: "false"
-      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"
-      AUTO_VIDEO_SECONDS: "22"
-      # Generation only. Queue reconciliation and publishing belong to publish-social.yml (every 15 minutes).
+      # Generate on free visual AI providers with deterministic FFmpeg fallback; enqueue eligible videos for the separate publisher.
+      AUTO_VIDEO_PUBLISH_ENABLED: "true"
+      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
+      AUTO_VIDEO_SECONDS: "20"
+      # Generation only. Queue reconciliation and public posting belong to publish-social.yml (every 15 minutes).
       BACKGROUND_JOB_TARGET: "videos"
       VIDEO_TEMPLATE_VERSION: "2026-10-26-growth-quality-v5"
       VIDEO_OUTPUT_CRF: "17"

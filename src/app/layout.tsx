@@ -151,6 +151,27 @@ export default async function RootLayout({
       suppressHydrationWarning={true}
     >
       <head>
+        <Script id="google-consent-mode-default" strategy="beforeInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('consent', 'default', {
+  ad_storage: 'denied',
+  analytics_storage: 'denied',
+  ad_user_data: 'denied',
+  ad_personalization: 'denied',
+  personalization_storage: 'denied',
+  functionality_storage: 'granted',
+  security_storage: 'granted',
+  wait_for_update: 500
+});
+gtag('set', 'ads_data_redaction', true);`}
+        </Script>
+        <Script
+          id="google-funding-choices"
+          async
+          src="https://fundingchoicesmessages.google.com/i/fundingchoicesmessages.js"
+          strategy="beforeInteractive"
+        />
         {process.env.NODE_ENV === "production" && isValidGoogleAnalyticsId && (
           <>
             <Script
@@ -190,17 +211,6 @@ gtag('config', '${googleAnalyticsId}', { send_page_view: true });`}
         <link rel="manifest" href="/manifest.webmanifest" />
       </head>
       <body className={locale === "ar" ? "font-arabic antialiased" : "font-sans antialiased"}>
-        {process.env.NODE_ENV === "production" && isValidGoogleTagManagerId && (
-          <noscript>
-            <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${googleTagManagerId}`}
-              height="0"
-              width="0"
-              style={{ display: "none", visibility: "hidden" }}
-              title="Google Tag Manager"
-            />
-          </noscript>
-        )}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

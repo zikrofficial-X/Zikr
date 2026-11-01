@@ -7,6 +7,7 @@ import {
 } from "@/lib/supabase/server";
 import type { AdminPermission } from "@/features/admin/services/permissions";
 import { readAdminRows } from "@/features/admin/services/safe-read";
+import { getServerEnv } from "@/lib/env";
 
 export type AdminMetric = {
   key: string;
@@ -36,6 +37,31 @@ export type AdminAuditRow = {
   actor_user_id: string | null;
 };
 
+export type AdminGitHubStatus = {
+  context: string;
+  state: string;
+  description: string | null;
+  targetUrl: string | null;
+  updatedAt: string | null;
+};
+
+export type AdminWorkflowRun = {
+  name: string;
+  status: string;
+  conclusion: string | null;
+  createdAt: string;
+  url: string;
+};
+
+export type AdminGitHubHealth = {
+  statusesAvailable: boolean;
+  workflowsAvailable: boolean;
+  overall: string | null;
+  commitSha: string | null;
+  statuses: AdminGitHubStatus[];
+  workflows: AdminWorkflowRun[];
+};
+
 export type AdminHealth = {
   database: "healthy" | "degraded";
   tables: Array<{ table: string; count: number | null; state: "healthy" | "empty" | "unavailable" }>;
@@ -51,6 +77,7 @@ export type AdminHealth = {
   };
   /** false means the queue could not be read and its counts are not real zeros. */
   queuesAvailable: { social: boolean; video: boolean };
+  github: AdminGitHubHealth;
   generatedAt: string;
 };
 
@@ -95,34 +122,28 @@ export async function getAdminSnapshot() {
     }),
   );
 
-  const [auditRes, socialRes, videoRes, draftsRes] = await Promise.all([
+  const [auditRes, socialCounts, videoCounts, draftsRes] = await Promise.all([
     readAdminRows<AdminAuditRow>(
       "/rest/v1/admin_audit_events?select=id,action,permission,resource_type,resource_id,outcome,request_id,metadata,created_at,actor_user_id&order=created_at.desc&limit=12",
     ),
-    readAdminRows<{ status: string }>(
-      "/rest/v1/social_publish_queue?select=status&order=created_at.desc&limit=500",
-    ),
-    readAdminRows<{ status: string }>(
-      "/rest/v1/video_generation_requests?select=status&order=created_at.desc&limit=500",
-    ),
+    getExactStatusCounts("social_publish_queue", ["queued", "processing", "partial", "failed"]),
+    getExactStatusCounts("video_generation_requests", ["pending", "processing", "retry_wait", "failed"]),
     readAdminRows<{ review_status: string; published: boolean }>(
       "/rest/v1/content_library?select=review_status,published&order=updated_at.desc&limit=500",
     ),
   ]);
 
   const audit = auditRes.rows;
-  const socialQueue = socialRes.rows;
-  const videoQueue = videoRes.rows;
   const contentDrafts = draftsRes.rows;
   const unavailable = [
     !auditRes.ok && "سجل التدقيق",
-    !socialRes.ok && "طابور النشر الاجتماعي",
-    !videoRes.ok && "طابور توليد الفيديو",
+    !socialCounts.available && "طابور النشر الاجتماعي",
+    !videoCounts.available && "طابور توليد الفيديو",
     !draftsRes.ok && "مكتبة المحتوى",
   ].filter(Boolean) as string[];
 
-  const socialStatus = (status: string) => (socialRes.ok ? socialQueue.filter((item) => item.status === status).length : null);
-  const videoStatus = (status: string) => (videoRes.ok ? videoQueue.filter((item) => item.status === status).length : null);
+  const socialStatus = (status: string) => socialCounts.available ? socialCounts.counts[status] : null;
+  const videoStatus = (status: string) => videoCounts.available ? videoCounts.counts[status] : null;
   const sum = (a: number | null, b: number | null) => (a === null || b === null ? null : a + b);
   const drafts = draftsRes.ok ? contentDrafts.filter((item) => !item.published || item.review_status !== "approved").length : null;
   const socialFailed = socialStatus("failed");
@@ -217,44 +238,149 @@ export async function getAdminOverview() {
   };
 }
 
-export async function getAdminHealth(): Promise<AdminHealth> {
-  const databaseHealthy = await assertSupabaseConnection();
-  const tables = await Promise.all(
-    ["admin_audit_events", "admin_settings", "profiles", "content_library", "media_assets", "social_publish_queue", "video_generation_requests"].map(async (table) => {
+const GITHUB_WORKFLOW_PATHS = new Set([
+  ".github/workflows/supabase-production-health.yml",
+  ".github/workflows/generate-ai-video.yml",
+  ".github/workflows/publish-social.yml",
+  ".github/workflows/storage-retention.yml",
+  ".github/workflows/dispatch-android-release-recovery.yml",
+]);
+
+async function getAdminGitHubHealth(): Promise<AdminGitHubHealth> {
+  const token = getServerEnv().GITHUB_DISPATCH_TOKEN;
+  if (!token) {
+    return {
+      statusesAvailable: false,
+      workflowsAvailable: false,
+      overall: null,
+      commitSha: null,
+      statuses: [],
+      workflows: [],
+    };
+  }
+
+  const headers = {
+    Accept: "application/vnd.github+json",
+    Authorization: `Bearer ${token}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  const [statusResult, runsResult] = await Promise.allSettled([
+    fetch("https://api.github.com/repos/zikrofficial-X/Zikr/commits/main/status", {
+      headers,
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    }),
+    fetch("https://api.github.com/repos/zikrofficial-X/Zikr/actions/runs?branch=main&per_page=30", {
+      headers,
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    }),
+  ]);
+
+  let statusesAvailable = false;
+  let workflowsAvailable = false;
+  let overall: string | null = null;
+  let commitSha: string | null = null;
+  let statuses: AdminGitHubStatus[] = [];
+  let workflows: AdminWorkflowRun[] = [];
+
+  if (statusResult.status === "fulfilled" && statusResult.value.ok) {
+    try {
+      const payload = await statusResult.value.json() as {
+        state?: string;
+        sha?: string;
+        statuses?: Array<{ context?: string; state?: string; description?: string | null; target_url?: string | null; updated_at?: string | null }>;
+      };
+      statusesAvailable = true;
+      overall = payload.state ?? null;
+      commitSha = payload.sha ?? null;
+      statuses = (payload.statuses ?? []).map((item) => ({
+        context: item.context ?? "unknown",
+        state: item.state ?? "unknown",
+        description: item.description ?? null,
+        targetUrl: item.target_url ?? null,
+        updatedAt: item.updated_at ?? null,
+      }));
+    } catch {
+      statusesAvailable = false;
+    }
+  }
+
+  if (runsResult.status === "fulfilled" && runsResult.value.ok) {
+    try {
+      const payload = await runsResult.value.json() as {
+        workflow_runs?: Array<{ path?: string; name?: string; status?: string; conclusion?: string | null; created_at?: string; html_url?: string }>;
+      };
+      workflowsAvailable = true;
+      workflows = (payload.workflow_runs ?? [])
+        .filter((run) => GITHUB_WORKFLOW_PATHS.has(run.path ?? ""))
+        .map((run) => ({
+          name: run.name ?? run.path ?? "Workflow",
+          status: run.status ?? "unknown",
+          conclusion: run.conclusion ?? null,
+          createdAt: run.created_at ?? "",
+          url: run.html_url ?? "",
+        }));
+    } catch {
+      workflowsAvailable = false;
+    }
+  }
+
+  return { statusesAvailable, workflowsAvailable, overall, commitSha, statuses, workflows };
+}
+
+async function getExactStatusCounts(
+  table: string,
+  statuses: readonly string[],
+): Promise<{ counts: Record<string, number>; available: boolean }> {
+  const results = await Promise.all(
+    statuses.map(async (status) => {
       try {
-        const count = await supabaseServerAdminCount(table);
-        return {
-          table,
-          count,
-          state: count === 0 ? "empty" : "healthy",
-        } as const;
+        return [status, await supabaseServerAdminCount(table, { column: "status", value: status })] as const;
       } catch {
-        return { table, count: null, state: "unavailable" } as const;
+        return [status, null] as const;
       }
     }),
   );
+  return {
+    counts: Object.fromEntries(results.map(([status, count]) => [status, count ?? 0])),
+    available: results.every(([, count]) => count !== null),
+  };
+}
 
-  const [socialRes, videoRes] = await Promise.all([
-    readAdminRows<{ status: string }>("/rest/v1/social_publish_queue?select=status&limit=500"),
-    readAdminRows<{ status: string }>("/rest/v1/video_generation_requests?select=status&limit=500"),
+export async function getAdminHealth(): Promise<AdminHealth> {
+  const [databaseHealthy, tables, social, video, github] = await Promise.all([
+    assertSupabaseConnection(),
+    Promise.all(
+      ["admin_audit_events", "admin_settings", "profiles", "content_library", "media_assets", "social_publish_queue", "video_generation_requests"].map(async (table) => {
+        try {
+          const count = await supabaseServerAdminCount(table);
+          return { table, count, state: count === 0 ? "empty" : "healthy" } as const;
+        } catch {
+          return { table, count: null, state: "unavailable" } as const;
+        }
+      }),
+    ),
+    getExactStatusCounts("social_publish_queue", ["queued", "processing", "partial", "failed"]),
+    getExactStatusCounts("video_generation_requests", ["pending", "processing", "retry_wait", "failed"]),
+    getAdminGitHubHealth(),
   ]);
-  const social = socialRes.rows;
-  const video = videoRes.rows;
 
   return {
     database: databaseHealthy ? "healthy" : "degraded",
     tables,
     queues: {
-      socialQueued: social.filter((row) => row.status === "queued").length,
-      socialProcessing: social.filter((row) => row.status === "processing").length,
-      socialPartial: social.filter((row) => row.status === "partial").length,
-      socialFailed: social.filter((row) => row.status === "failed").length,
-      videoPending: video.filter((row) => row.status === "pending").length,
-      videoProcessing: video.filter((row) => row.status === "processing").length,
-      videoRetryWait: video.filter((row) => row.status === "retry_wait").length,
-      videoFailed: video.filter((row) => row.status === "failed").length,
+      socialQueued: social.counts.queued,
+      socialProcessing: social.counts.processing,
+      socialPartial: social.counts.partial,
+      socialFailed: social.counts.failed,
+      videoPending: video.counts.pending,
+      videoProcessing: video.counts.processing,
+      videoRetryWait: video.counts.retry_wait,
+      videoFailed: video.counts.failed,
     },
-    queuesAvailable: { social: socialRes.ok, video: videoRes.ok },
+    queuesAvailable: { social: social.available, video: video.available },
+    github,
     generatedAt: new Date().toISOString(),
   };
 }

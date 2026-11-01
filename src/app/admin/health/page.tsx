@@ -34,10 +34,12 @@ export default async function AdminHealthPage() {
   const engine = getVideoEngineConfig();
   const activeVideoOrder = engine.aiEnabled ? engine.order : ["template"];
   const queueAttention =
-    health.queues.socialPartial +
-    health.queues.socialFailed +
-    health.queues.videoRetryWait +
-    health.queues.videoFailed;
+    health.queuesAvailable.social && health.queuesAvailable.video
+      ? health.queues.socialPartial +
+        health.queues.socialFailed +
+        health.queues.videoRetryWait +
+        health.queues.videoFailed
+      : null;
 
   return (
     <Container className="py-10 space-y-6" dir="rtl">
@@ -64,9 +66,9 @@ export default async function AdminHealthPage() {
           <p className="text-xs text-brand-cream/40">قاعدة البيانات</p>
           <p className="mt-2 text-xl font-bold">{health.database === 'healthy' ? 'سليمة' : 'متدهورة'}</p>
         </div>
-        <div className={`rounded-2xl border p-5 ${queueAttention ? 'border-amber-500/25 bg-amber-500/10' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
+        <div className={`rounded-2xl border p-5 ${queueAttention === null ? 'border-brand-gold/10 bg-black/15' : queueAttention > 0 ? 'border-amber-500/25 bg-amber-500/10' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
           <p className="text-xs text-brand-cream/40">حالات تحتاج معالجة</p>
-          <p className="mt-2 text-xl font-bold">{queueAttention}</p>
+          <p className="mt-2 text-xl font-bold">{queueAttention === null ? "غير متاح" : queueAttention}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <p className="text-xs text-brand-cream/40">آخر فحص</p>
@@ -114,6 +116,72 @@ export default async function AdminHealthPage() {
             <div key={key} className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4"><p className="text-xs text-brand-cream/35">{STATE_LABELS[key] ?? key}</p><p className="mt-1 text-2xl font-bold text-brand-cream">{readable ? value : "غير متاح"}</p></div>
           );
         })}
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
+        <header>
+          <h2 className="text-lg font-bold text-brand-gold">حالة النشر والتكاملات</h2>
+          <p className="mt-1 text-sm text-brand-cream/45">قراءة مباشرة لحالة Vercel وCircleCI وعمليات GitHub Actions من آخر حالة على main.</p>
+        </header>
+
+        {!health.github.statusesAvailable && !health.github.workflowsAvailable && (
+          <p role="status" className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-sm text-amber-100/80">
+            تعذر قراءة حالة GitHub. لا تعتبر هذه الحالة نجاحًا أو فشلًا؛ راجع صلاحية GitHub dispatch token.
+          </p>
+        )}
+
+        {health.github.statusesAvailable && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/15 p-3">
+              <span className="text-sm text-brand-cream/65">حالة آخر Commit على main</span>
+              <span className={health.github.overall === "success" ? "font-bold text-emerald-300" : health.github.overall === "failure" || health.github.overall === "error" ? "font-bold text-red-300" : "font-bold text-amber-300"}>
+                {health.github.overall ?? "غير متاح"}
+              </span>
+            </div>
+            {health.github.commitSha && <p className="text-xs text-brand-cream/35" dir="ltr">Commit: {health.github.commitSha.slice(0, 12)}</p>}
+            <div className="grid gap-2 sm:grid-cols-2">
+              {health.github.statuses.map((status, index) => (
+                <div key={status.context + index} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/10 p-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm text-brand-cream/75" dir="ltr">{status.context}</p>
+                    {status.description && <p className="mt-1 text-xs text-brand-cream/35">{status.description}</p>}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className={status.state === "success" ? "text-xs font-bold text-emerald-300" : status.state === "failure" || status.state === "error" ? "text-xs font-bold text-red-300" : "text-xs font-bold text-amber-300"}>{status.state}</span>
+                    {status.targetUrl && <a href={status.targetUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-gold underline">فتح</a>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {health.github.statusesAvailable && !health.github.workflowsAvailable && (
+          <p role="status" className="text-xs text-amber-200/70">تمت قراءة حالات Vercel وCircleCI، لكن تعذرت قراءة GitHub Actions. تحقق من صلاحية actions:read للرمز.</p>
+        )}
+        {!health.github.statusesAvailable && health.github.workflowsAvailable && (
+          <p role="status" className="text-xs text-amber-200/70">تمت قراءة GitHub Actions، لكن تعذرت قراءة حالة Commit checks.</p>
+        )}
+
+        {health.github.workflowsAvailable && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-bold text-brand-cream/75">آخر تشغيلات الأتمتة</h3>
+            {health.github.workflows.length === 0 ? (
+              <p className="text-sm text-brand-cream/40">لا توجد تشغيلات حديثة مسجلة لهذه المهام.</p>
+            ) : health.github.workflows.slice(0, 8).map((run, index) => (
+              <div key={run.name + run.createdAt + index} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/10 p-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-brand-cream/75">{run.name}</p>
+                  <p className="mt-1 text-xs text-brand-cream/35">{run.createdAt ? new Date(run.createdAt).toLocaleString("ar-EG-u-nu-latn") : "وقت غير متاح"}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={(run.conclusion ?? run.status) === "success" ? "text-xs font-bold text-emerald-300" : (run.conclusion ?? run.status) === "failure" ? "text-xs font-bold text-red-300" : "text-xs font-bold text-amber-300"}>{run.conclusion ?? run.status}</span>
+                  {run.url && <a href={run.url} target="_blank" rel="noreferrer" className="text-xs text-brand-gold underline">تفاصيل</a>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </Container>
   );

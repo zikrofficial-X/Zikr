@@ -341,6 +341,7 @@ export async function publishToYoutube(
   videoId: string,
   metadata: ReturnType<typeof generateYoutubeMetadata>,
   videoUrl: string,
+  options: { selfDeclaredMadeForKids?: boolean } = {},
 ): Promise<string> {
   void videoId;
   const accessToken = await getYoutubeAccessToken();
@@ -371,7 +372,10 @@ export async function publishToYoutube(
           tags: metadata.tags,
           categoryId: metadata.categoryId,
         },
-        status: { privacyStatus: resolveYoutubePrivacy(), selfDeclaredMadeForKids: false },
+        status: {
+          privacyStatus: resolveYoutubePrivacy(),
+          selfDeclaredMadeForKids: options.selfDeclaredMadeForKids === true,
+        },
       }),
       signal: AbortSignal.timeout(30_000),
     },

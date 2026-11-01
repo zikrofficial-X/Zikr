@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { KidsShare } from "@/features/kids/components/kids-share";
 import { KidsWorldGameShell } from "@/features/kids/components/games/game-shell";
-import { parseGameContentMetadata } from "@/lib/games/registry";
+import { GAME_REGISTRY, parseGameContentMetadata } from "@/lib/games/registry";
 import { useLanguage } from "@/components/layout/language-provider";
 import {
   getKidsItemBySlug,
@@ -130,6 +130,7 @@ export default function KidsDetailPage() {
   );
   const gameConfig = content?.type === "game" ? parseGameContentMetadata(content.metadata) : null;
   const isLegacyGameActivity = content?.type === "game" && !gameConfig;
+  const registeredGameCount = Object.keys(GAME_REGISTRY).length;
 
   useEffect(() => {
     if (!slug) {
@@ -523,7 +524,7 @@ export default function KidsDetailPage() {
         <Card className="space-y-3 border-brand-emerald/20 bg-brand-emerald/5 p-4 text-center sm:p-6">
           <h3 className="text-lg font-black text-brand-gold sm:text-xl">{isEnglish ? "Keep exploring" : "واصل الاستكشاف"}</h3>
           <p className="mx-auto max-w-xl break-words text-sm leading-7 text-brand-cream/75">{isEnglish ? "Choose another short, age-appropriate game and continue at your own pace." : "اختر لعبة تعليمية قصيرة أخرى مناسبة للعمر، وتابع التعلم بالسرعة التي تناسبك."}</p>
-          <Link href="/kids/games" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-brand-gold/40 px-5 py-3 text-sm font-bold text-brand-gold transition hover:bg-brand-gold hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold">{isEnglish ? "Browse all 12 games" : "تصفح الألعاب الـ12"}</Link>
+          <Link href="/kids/games" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-brand-gold/40 px-5 py-3 text-sm font-bold text-brand-gold transition hover:bg-brand-gold hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold">{isEnglish ? `Browse all ${registeredGameCount} games` : `تصفح الألعاب الـ${registeredGameCount}`}</Link>
         </Card>
       ) : (
         <Card className="space-y-3 bg-brand-gold/10 p-4 text-center sm:p-6">

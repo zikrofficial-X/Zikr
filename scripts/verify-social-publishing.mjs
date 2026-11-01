@@ -36,6 +36,7 @@ if (!videoAutomation.includes("facebook_reels_next_allowed_at")) failures.push("
 if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_next_allowed_at")) failures.push("Supabase must have a durable global Facebook Reels next-allowed column");
 
 const publisher = read("src/features/social/services/social-publishing.ts");
+const ytAutomation = read("src/features/videos/services/video-automation.ts");
 if (!publisher.includes("extractFacebookReelsNextAllowedAt")) failures.push("social queue must defer rate-limited Reels to the shared next-allowed time");
 if (!publisher.includes("facebookReelsNextAllowedAt")) failures.push("social queue must persist the Reels cooldown deadline per item");
 if (!publisher.includes("isFacebookReelsCooldownDeferredError")) failures.push("expected local Reels cooldown must be classified as a deferral");
@@ -83,7 +84,8 @@ const phase0AutomationFreeze =
   generationWorkflow.includes('VIDEO_AI_ENABLED: "false"') &&
   generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
   generationWorkflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"') &&
-  workflow.includes('SOCIAL_PUBLISH_ENABLED: "false"') &&
+  workflow.includes("SOCIAL_PUBLISH_ENABLED: ${{ vars.SOCIAL_PUBLISH_ENABLED || 'false' }}") &&
+  workflow.includes("vars.SOCIAL_PUBLISH_ENABLED == 'true'") &&
   workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
   workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"');
 if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze) failures.push("video generation must keep social queueing enabled unless Phase 0 freeze is explicitly active");
@@ -92,8 +94,18 @@ if (!generationWorkflow.includes('SOCIAL_PUBLISH_FACEBOOK_ENABLED: "false"')) fa
 if (generationWorkflow.includes("secrets.FACEBOOK_PAGE_ACCESS_TOKEN") || generationWorkflow.includes("FACEBOOK_PAGE_ACCESS_TOKEN:")) failures.push("video generation must not duplicate the Facebook Page token in GitHub Actions");
 
 if (!workflow.includes('SOCIAL_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze) failures.push("dedicated GitHub social workflow must explicitly enable publishing unless Phase 0 freeze is active");
+if (!workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"')) failures.push("social worker must allow automatically generated videos into the publisher");
+if (!workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"')) failures.push("autonomous publishing must use the validated source/status gate without a manual approval dependency");
+if (!workflow.includes('SOCIAL_PUBLISH_BATCH_SIZE: "1"')) failures.push("scheduled publishing must process one queue item per 15-minute run");
+if (!generationWorkflow.includes('VIDEO_FREE_ONLY: "true"') || !generationWorkflow.includes('VIDEO_AI_ENABLED: "true"')) failures.push("video generation must use enabled free-only visual AI with deterministic fallback");
+if (!generationWorkflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "true"') || !generationWorkflow.includes('HF_WAN_VIDEO_ENABLED: "true"')) failures.push("both free Hugging Face video providers must be enabled ahead of the FFmpeg fallback");
+if (!generationWorkflow.includes('HF_VIDEO_PROVIDER_TIMEOUT_MS: "150000"') || !generationWorkflow.includes('VIDEO_AI_ATTEMPTS_PER_RUN: "2"') || !generationWorkflow.includes('VIDEO_WORKER_BATCH_SIZE: "2"')) failures.push("free video provider attempts and worker batches must remain bounded for the scheduled job timeout");
 if (!workflow.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("GitHub social workflow must only process the social queue");
-if (!workflow.includes("social_platform_credentials?platform=eq.facebook&select=page_id,is_enabled,connection_status,expires_at&limit=1")) failures.push("GitHub social workflow must derive Facebook readiness from the OAuth-managed Supabase credential");
+if (!publisher.includes('.audience === "kids"')) failures.push("YouTube publishing must read the source audience for child-directed videos");
+if (!ytAutomation.includes("selfDeclaredMadeForKids: options.selfDeclaredMadeForKids === true")) failures.push("YouTube uploads must set Made for Kids from the source audience metadata");
+if (!workflow.includes("social_platform_credentials?platform=eq.facebook&select=page_id,page_access_token,is_enabled,connection_status,expires_at&limit=1")) failures.push("GitHub social workflow must derive Facebook readiness from the OAuth-managed Supabase credential");
+if (!workflow.includes('typeof row?.page_access_token === "string"')) failures.push("Facebook readiness must verify that the OAuth-managed Page token is present without printing it");
+if (!workflow.includes('if [[ "$youtube_configured" != "true" ]]') || !workflow.includes('if [[ "$facebook_enabled" != "true" ]]')) failures.push("the automatic publisher must fail closed unless both configured providers are ready");
 if (!workflow.includes('echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_enabled" >> "$GITHUB_ENV"')) failures.push("GitHub social workflow must set the Facebook feature gate from validated OAuth-managed connection state");
 if (workflow.includes("secrets.FACEBOOK_PAGE_ACCESS_TOKEN") || workflow.includes("FACEBOOK_PAGE_ACCESS_TOKEN:")) failures.push("GitHub social workflow must not duplicate the Facebook Page token outside Supabase");
 if (!publisher.includes("async function publishFacebookVideoItem")) failures.push("Facebook feed videos and Reels must use the same OAuth-managed Page credential");

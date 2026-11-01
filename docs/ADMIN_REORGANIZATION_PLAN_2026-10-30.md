@@ -306,8 +306,8 @@ type AdminModuleDefinition = {
 | `/admin/videos` | `/admin/video/requests` | redirect |
 | `/admin/video-factory` | `/admin/video` | redirect/واجهة توافق |
 | `/admin/ai-video` | `/admin/video/studio` | redirect |
-| `/admin/video-factory/publishing` | `/admin/social` | redirect |
-| `/admin/video-factory/scheduler` | `/admin/automation` أو `/admin/queues` | مراجعة ثم redirect |
+| `/admin/video-factory/publishing` | `/admin/social` | redirect محمي بصلاحية `social.manage` |
+| `/admin/video-factory/scheduler` | `/admin/automation` | redirect محمي بصلاحية `system.manage` |
 | `/admin/alerts` | `/admin/notifications` | redirect |
 | `/admin/control` | `/admin` | redirect |
 | `/admin/audio/site-audio` | `/admin/site-audio` أو تبويب الصوت | redirect |
@@ -525,3 +525,16 @@ src/app/admin/video/studio/page.tsx
 الأساس الحالي صالح وقوي، والفحوصات تؤكد أن الحماية والمسارات الأساسية تعمل. أفضل استثمار الآن هو **تنظيم لوحة الإدارة حول مهام المشرف** بدل إضافة صفحات جديدة. نبدأ بمركز العمليات والطوابير، ثم نوحّد المحتوى، ثم نعيد تقديم الفيديو كمركز واحد، مع إبقاء التوافق مع المسارات القديمة وتوسيع الاختبارات تدريجيًا.
 
 هذه الخطة لا تتضمن تنفيذ migrations أو حذف مسارات أو تغيير صلاحيات إنتاجية؛ هي خطة تطوير آمنة قابلة للتنفيذ على مراحل، ويجب اعتماد ترتيب P0 قبل بدء التغييرات البرمجية.
+
+## تحديث التنفيذ — 1 نوفمبر 2026
+
+تم تنفيذ توحيد مسارات مركز الفيديو على الفرع الإصلاحي:
+
+- المسار الرسمي الوحيد أصبح `/admin/video`، ويعرض لوحة الإنتاج ومؤشرات الطوابير والروابط التشغيلية.
+- أصبحت صفحات `sources`, `scripts`, `voices`, `visuals`, `templates`, و`qa` تحت `/admin/video/*`.
+- أزيلت روابط `video-factory` المكررة من قائمة الإدارة، وأضيفت المسارات الرسمية الجديدة.
+- تحولت الصفحات القديمة `/admin/video-factory/*` إلى redirects للمسارات الرسمية، مع الإبقاء على فحص الصلاحيات قبل التحويل.
+- بقيت صفحات queue وscheduler وpublishing القديمة متوافقة مع مسارات `/admin/video/requests`, `/admin/automation`, و`/admin/social`.
+- أضيفت عقود CI للتحقق من وجود المسارات الرسمية والتحويلات القديمة، ومنع عودة روابط المصنع القديمة داخل المركز.
+
+**الحالة:** تنفيذ مسارات الكود واختبارات البنية مكتمل على فرع الإصلاح. لا يُعد هذا قبولًا بصريًا نهائيًا؛ ما زال اختبار التصفح الفعلي للأدوار والصلاحيات على المتصفح والهاتف مطلوبًا قبل النشر.

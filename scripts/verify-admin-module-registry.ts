@@ -13,11 +13,34 @@ for (const alias of ADMIN_ROUTE_ALIASES) {
   if (!alias.from.startsWith("/admin") || !alias.to.startsWith("/admin")) failures.push(`Invalid admin alias: ${alias.from}`);
   if (String(alias.from) === String(alias.to)) failures.push(`Self-referencing admin alias: ${alias.from}`);
 }
-for (const required of ["src/app/admin/queues/page.tsx", "src/app/admin/video/page.tsx", "src/app/admin/video/requests/page.tsx", "src/app/admin/video/studio/page.tsx"]) {
+for (const required of [
+  "src/app/admin/queues/page.tsx",
+  "src/app/admin/video/page.tsx",
+  "src/app/admin/video/requests/page.tsx",
+  "src/app/admin/video/studio/page.tsx",
+  "src/app/admin/video/sources/page.tsx",
+  "src/app/admin/video/scripts/page.tsx",
+  "src/app/admin/video/voices/page.tsx",
+  "src/app/admin/video/visuals/page.tsx",
+  "src/app/admin/video/templates/page.tsx",
+  "src/app/admin/video/qa/page.tsx",
+]) {
   if (!existsSync(required)) failures.push(`Missing canonical admin route: ${required}`);
 }
+for (const legacyPath of [
+  "src/app/admin/video-factory/page.tsx",
+  "src/app/admin/video-factory/sources/page.tsx",
+  "src/app/admin/video-factory/scripts/page.tsx",
+  "src/app/admin/video-factory/voices/page.tsx",
+  "src/app/admin/video-factory/visuals/page.tsx",
+  "src/app/admin/video-factory/templates/page.tsx",
+  "src/app/admin/video-factory/qa/page.tsx",
+]) {
+  if (!existsSync(legacyPath)) failures.push(`Missing compatibility redirect: ${legacyPath}`);
+}
+
 if (failures.length) {
   failures.forEach((failure) => console.error(`❌ ${failure}`));
   process.exit(1);
 }
-console.log(`✅ Admin module registry passed: ${ADMIN_MODULES.length} modules, ${ADMIN_ROUTE_ALIASES.length} aliases, canonical queue/video routes present.`);
+console.log(`✅ Admin module registry passed: ${ADMIN_MODULES.length} modules, ${ADMIN_ROUTE_ALIASES.length} aliases, canonical unified video routes and legacy compatibility paths present.`);

@@ -25,9 +25,11 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       BACKGROUND_JOB_TARGET: "social"
-      SOCIAL_PUBLISH_ENABLED: "false"
-      AUTO_VIDEO_PUBLISH_ENABLED: "false"
-      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"
+      SOCIAL_PUBLISH_BATCH_SIZE: "1"
+      YOUTUBE_UPLOAD_PRIVACY: "public"
+      SOCIAL_PUBLISH_ENABLED: "true"
+      AUTO_VIDEO_PUBLISH_ENABLED: "true"
+      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
@@ -70,7 +72,7 @@ jobs:
           facebook_status="$(curl -sS -o "$facebook_response" -w '%{http_code}' \
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-            "$SUPABASE_URL/rest/v1/social_platform_credentials?platform=eq.facebook&select=page_id,is_enabled,connection_status,expires_at&limit=1")"
+            "$SUPABASE_URL/rest/v1/social_platform_credentials?platform=eq.facebook&select=page_id,page_access_token,is_enabled,connection_status,expires_at&limit=1")"
           facebook_enabled="false"
           if [[ "$facebook_status" == "200" ]]; then
             facebook_enabled="$(node -e '
@@ -85,6 +87,8 @@ jobs:
                 row?.connection_status === "connected" &&
                 typeof row?.page_id === "string" &&
                 row.page_id.length > 0 &&
+                typeof row?.page_access_token === "string" &&
+                row.page_access_token.length > 0 &&
                 expiryOkay ? "true" : "false"
               );
             ' "$facebook_response")"
@@ -97,8 +101,12 @@ jobs:
           if [[ -n "${YOUTUBE_CLIENT_ID:-}" && -n "${YOUTUBE_CLIENT_SECRET:-}" && -n "${YOUTUBE_REFRESH_TOKEN:-}" ]]; then
             youtube_configured="true"
           fi
-          if [[ "$youtube_configured" != "true" && "$facebook_enabled" != "true" ]]; then
-            echo "::error::No ready social provider is configured. Connect Facebook from /admin/social or configure YouTube OAuth." >&2
+          if [[ "$youtube_configured" != "true" ]]; then
+            echo "::error::YouTube OAuth is required for the active two-platform publishing queue." >&2
+            exit 1
+          fi
+          if [[ "$facebook_enabled" != "true" ]]; then
+            echo "::error::The OAuth-managed Facebook Page connection is not enabled, connected, and complete." >&2
             exit 1
           fi
           rm -f "$facebook_response"

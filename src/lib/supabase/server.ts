@@ -224,24 +224,37 @@ export const supabaseServerAdminRequest = <T>(
     return restRequest<T>(path, init, serviceKey);
   })();
 
-export async function supabaseServerAdminCount(table: string): Promise<number> {
+export async function supabaseServerAdminCount(
+  table: string,
+  filter?: { column: string; value: string },
+): Promise<number> {
   const { url, serviceKey } = getSupabaseConfig();
   if (!serviceKey) {
     throw new Error(
       "Missing SUPABASE_SERVICE_ROLE_KEY for server-admin Supabase count."
     );
   }
+  if (!/^[a-z_][a-z0-9_]*$/i.test(table)) {
+    throw new Error("Invalid table name for server-admin Supabase count.");
+  }
+  const query = new URLSearchParams({ select: "*", limit: "1" });
+  if (filter) {
+    if (!/^[a-z_][a-z0-9_]*$/i.test(filter.column)) {
+      throw new Error("Invalid filter column for server-admin Supabase count.");
+    }
+    query.set(filter.column, `eq.${filter.value}`);
+  }
   const key = serviceKey;
 
-  // Use a bounded GET with an explicit range and a wildcard projection so
-  // the helper works for tables whose primary key is not named `id`
-  // (for example `admin_settings` uses `key`).
-  const res = await fetch(`${url}/rest/v1/${table}?select=*&limit=1`, {
-    method: "GET",
+  // Use a bounded GET with an exact count and optional equality filter. The
+  // range limits returned rows without truncating the Content-Range total.
+  const res = await fetch(`${url}/rest/v1/${table}?${query.toString()}`, {
+    method: "HEAD",
     headers: {
       apikey: key,
       Authorization: `Bearer ${key}`,
       Prefer: "count=exact",
+      "Range-Unit": "items",
       Range: "0-0",
     },
     cache: "no-store",
@@ -252,10 +265,10 @@ export async function supabaseServerAdminCount(table: string): Promise<number> {
     throw new Error(`Supabase REST ${res.status}: ${body.slice(0, 500)}`);
   }
   const range = res.headers.get("content-range") ?? "";
-  const total = Number(range.split("/")[1]);
-  if (Number.isFinite(total)) return total;
-  const rows = await res.json().catch(() => []);
-  return Array.isArray(rows) && rows.length > 0 ? 1 : 0;
+  const totalText = range.split("/")[1];
+  const total = totalText && totalText !== "*" ? Number(totalText) : Number.NaN;
+  if (Number.isSafeInteger(total) && total >= 0) return total;
+  throw new Error("Supabase REST did not return an exact Content-Range count for admin health.");
 }
 
 export async function assertSupabaseConnection() {

@@ -1,6 +1,6 @@
 # ZIKR — CircleCI and Supabase environment matrix
 
-**Last updated:** 2026-10-08
+**Last updated:** 2026-11-01
 
 This document covers the current CircleCI CI/release lanes and the Supabase Edge Function runtime. GitHub Actions is the production owner for video/social scheduling. CircleCI does not execute the production video/social worker.
 
@@ -20,9 +20,9 @@ pnpm ci:build:report
 
 `android-rebuild` pins these non-secret build settings in `.circleci/config.yml`:
 
-- `NEXT_PUBLIC_SUPABASE_URL=https://wvetcauyerlkqvmntajq.supabase.co`
+- `NEXT_PUBLIC_SUPABASE_URL=https://ymxdswkaxafakugktsim.supabase.co`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the public anon key; it is not a service-role secret)
-- `SUPABASE_URL=https://wvetcauyerlkqvmntajq.supabase.co`
+- `SUPABASE_URL=https://ymxdswkaxafakugktsim.supabase.co`
 
 The following values must be available before the Android job starts:
 
@@ -31,16 +31,27 @@ The following values must be available before the Android job starts:
 - `ANDROID_KEYSTORE_PASSWORD` — CircleCI context `android-signing`
 - `ANDROID_KEY_ALIAS` — CircleCI context `android-signing`
 - `ANDROID_KEY_PASSWORD` — CircleCI context `android-signing`
+- `GH_TOKEN` — CircleCI context `android-signing` (fine-grained token for the guarded GitHub Actions dispatch)
 
-The `android-rebuild` workflow attaches the `android-signing` context so CircleCI can inject the four protected signing variables. The context must exist in the CircleCI organization and be authorized for this project before the release workflow is run. Keep signing material and service-role credentials out of the repository.
+The `android-rebuild` workflow attaches the `android-signing` context for the four protected signing variables. The follow-up `android-release-dispatch` job uses the same context and additionally requires `GH_TOKEN` to dispatch the guarded GitHub recovery workflow after the signed build succeeds. The context must exist in the CircleCI organization and be authorized for this project before the release workflow is run. Keep signing material, service-role credentials, and the GitHub token out of the repository.
 
-The job fails early and lists the missing variable names without printing their values. Do not move the signing material or service-role key into the repository or a public workflow file.
+The Android jobs fail early and list missing variable names without printing their values. `GH_TOKEN` must be a protected fine-grained GitHub token scoped to this repository with **Actions: Read and write** permission. The dispatched GitHub Actions workflow uses its own restricted `GITHUB_TOKEN` (`actions: write`, `contents: read`, `statuses: read`) to inspect the exact source commit and dispatch the guarded publisher. Do not move the signing material, service-role key, or GitHub token into the repository or a public workflow file.
 
 The Android release lane uses one semantic tag (`vX.Y.Z`). There is no `-build` parallel tag.
 
 ### English content synchronization
 
 CircleCI owns the recurring English article/Hadith synchronization schedule. GitHub keeps a manual fallback workflow only.
+
+The scheduled `english-content-sync` job does not attach the `android-signing` context. It requires these CircleCI **project environment variables**:
+
+- `SUPABASE_URL=https://ymxdswkaxafakugktsim.supabase.co`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `GEMINI_API_KEY`
+
+The job validates all three names before running `pnpm translate:articles:en` and `pnpm sync:hadith:en`. Missing variables cause an early failure; valid credentials can still fail later due to provider/API or content-sync errors.
+
+An earlier main commit reported an `english-content-sync` failure, but the latest production baseline commit `9e429094` currently has a successful combined status for its three attached checks: CircleCI `application-build-docs`, Vercel, and CircleCI `config-guard`. The scheduled sync is a separate daily pipeline and is not represented in that current commit status. This repair session cannot read CircleCI project environment values or authenticated scheduled-job logs, so the latest standalone sync result and its failure cause are **not verified**. Do not attach the Android signing context as a workaround; confirm the three project variables and inspect the scheduled job's first error step.
 
 ### Security and Supabase gates
 
@@ -77,3 +88,13 @@ The retired `sync-youtube-facebook` Edge Function is not part of the active runt
 ## Repository rules
 
 Never place secret values in repository files. Keep service-role keys, OAuth refresh tokens, Page access tokens, Android signing material, and GitHub dispatch tokens in protected runtime secret stores.
+
+## Android release recovery dispatch
+
+The signed Android build is followed by a separate `android-release-dispatch` CircleCI job. The job uses the existing `android-signing` context and requires:
+
+- `GH_TOKEN`: a fine-grained GitHub token scoped only to `zikrofficial-X/Zikr`, with **Actions: Read and write** permission. It is used only to dispatch `.github/workflows/dispatch-android-release-recovery.yml` on the exact release ref (the `android-release-vX.Y.Z` branch or the `vX.Y.Z` tag) after `android-rebuild` succeeds.
+- Keep `GH_TOKEN` in the protected CircleCI context. Never add it to the repository, Vercel public variables, build args, or logs.
+- If `GH_TOKEN` is absent, the dispatch job intentionally fails instead of silently claiming the Android release recovery was started.
+
+After adding or rotating the token, verify the CircleCI `android-signing` context is available to the release pipeline before creating the next Android release.
