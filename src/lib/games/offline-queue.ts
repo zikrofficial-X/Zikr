@@ -1,4 +1,3 @@
-// @ts-nocheck - Game implementation with Phaser physics engine
 import { offlineDb } from "@/lib/offline-db";
 import type { GameResultPayload, OfflineQueuedResult } from "@/lib/games/registry";
 
@@ -52,7 +51,24 @@ export async function enqueueGameResult(
 
 export async function getQueuedGameResultCount() {
   if (!(await ensureReady())) return 0;
-  return (await offlineDb.getAll<OfflineQueuedResult>("gameResultsQueue")).length;
+  const items = await offlineDb.getAll<OfflineQueuedResult>("gameResultsQueue");
+  return items.filter(item => item.status !== "failed").length;
+}
+
+export async function getFailedGameResultCount() {
+  if (!(await ensureReady())) return 0;
+  const items = await offlineDb.getAll<OfflineQueuedResult>("gameResultsQueue");
+  return items.filter(item => item.status === "failed").length;
+}
+
+export async function retryFailedGameResults() {
+  if (!(await ensureReady())) return 0;
+  const items = await offlineDb.getAll<OfflineQueuedResult>("gameResultsQueue");
+  const failed = items.filter(item => item.status === "failed");
+  await Promise.all(failed.map(item => offlineDb.set("gameResultsQueue", {
+    ...item, status: "pending" as const, attempts: 0, nextAttemptAt: Date.now(), failedAt: undefined, lastError: undefined,
+  })));
+  return failed.length;
 }
 
 export async function syncQueuedGameResults() {
@@ -63,7 +79,12 @@ export async function syncQueuedGameResults() {
   const queued = await offlineDb.getAll<OfflineQueuedResult>("gameResultsQueue");
   let sent = 0;
   for (const item of queued) {
-    if (item.nextAttemptAt > now || item.attempts >= MAX_ATTEMPTS) continue;
+    if (item.status === "failed") continue;
+    if (item.attempts >= MAX_ATTEMPTS) {
+      await offlineDb.set("gameResultsQueue", { ...item, status: "failed", failedAt: Date.now(), lastError: "Retry limit reached" });
+      continue;
+    }
+    if (item.nextAttemptAt > now) continue;
     try {
       const response = await fetch("/api/kids/games/score", {
         method: "POST",
@@ -88,16 +109,20 @@ export async function syncQueuedGameResults() {
         sent += 1;
         continue;
       }
-      if (response.status === 400 || response.status === 404) {
-        await offlineDb.delete("gameResultsQueue", item.clientSubmissionId);
+      if ([400, 403, 404, 422].includes(response.status)) {
+        await offlineDb.set("gameResultsQueue", { ...item, status: "failed", failedAt: Date.now(), lastError: `HTTP ${response.status}` });
         continue;
       }
       throw new Error(`HTTP ${response.status}`);
     } catch (error) {
       const attempts = item.attempts + 1;
+      const failed = attempts >= MAX_ATTEMPTS;
       await offlineDb.set("gameResultsQueue", {
         ...item,
         attempts,
+        status: failed ? "failed" : "pending",
+        failedAt: failed ? Date.now() : undefined,
+        lastError: error instanceof Error ? error.message.slice(0, 200) : "Unknown sync error",
         nextAttemptAt: Date.now() + Math.min(60 * 60 * 1000, BASE_RETRY_MS * 2 ** attempts),
       });
       console.warn("[KidsGame] queued result retry scheduled", error);
