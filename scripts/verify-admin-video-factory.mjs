@@ -44,22 +44,35 @@ const hub = read("src/app/admin/video/page.tsx");
 for (const [href, route] of [
   ["/admin/video/requests", "src/app/admin/video/requests/page.tsx"],
   ["/admin/video/studio", "src/app/admin/video/studio/page.tsx"],
-  ["/admin/video-factory/scripts", "src/app/admin/video-factory/scripts/page.tsx"],
-  ["/admin/video-factory/voices", "src/app/admin/video-factory/voices/page.tsx"],
-  ["/admin/video-factory/visuals", "src/app/admin/video-factory/visuals/page.tsx"],
-  ["/admin/video-factory/qa", "src/app/admin/video-factory/qa/page.tsx"],
+  ["/admin/video/sources", "src/app/admin/video/sources/page.tsx"],
+  ["/admin/video/scripts", "src/app/admin/video/scripts/page.tsx"],
+  ["/admin/video/voices", "src/app/admin/video/voices/page.tsx"],
+  ["/admin/video/visuals", "src/app/admin/video/visuals/page.tsx"],
+  ["/admin/video/templates", "src/app/admin/video/templates/page.tsx"],
+  ["/admin/video/qa", "src/app/admin/video/qa/page.tsx"],
 ]) {
-  if (!hub.includes(href)) failures.push(`Video hub destination is missing: ${href}`);
+  if (!hub.includes(href)) failures.push(`Canonical Video Hub destination is missing: ${href}`);
   read(route);
 }
 
-for (const legacyHref of [
-  "/admin/video/scripts",
-  "/admin/video/voices",
-  "/admin/video/visuals",
-  "/admin/video/qa",
+if (hub.includes("/admin/video-factory/")) {
+  failures.push("Canonical Video Hub must not link into the legacy video-factory route tree");
+}
+
+for (const [legacyPath, destination] of [
+  ["src/app/admin/video-factory/page.tsx", "/admin/video"],
+  ["src/app/admin/video-factory/sources/page.tsx", "/admin/video/sources"],
+  ["src/app/admin/video-factory/scripts/page.tsx", "/admin/video/scripts"],
+  ["src/app/admin/video-factory/voices/page.tsx", "/admin/video/voices"],
+  ["src/app/admin/video-factory/visuals/page.tsx", "/admin/video/visuals"],
+  ["src/app/admin/video-factory/templates/page.tsx", "/admin/video/templates"],
+  ["src/app/admin/video-factory/qa/page.tsx", "/admin/video/qa"],
+  ["src/app/admin/video-factory/queue/page.tsx", "/admin/video/requests"],
+  ["src/app/admin/video-factory/scheduler/page.tsx", "/admin/automation"],
+  ["src/app/admin/video-factory/publishing/page.tsx", "/admin/social"],
 ]) {
-  if (hub.includes(legacyHref)) failures.push(`Video hub contains a non-existent legacy destination: ${legacyHref}`);
+  const legacy = read(legacyPath);
+  if (!legacy.includes(`redirect("${destination}")`)) failures.push(`Legacy Video Factory route must redirect to ${destination}: ${legacyPath}`);
 }
 
 const page = read("src/app/admin/video/studio/page.tsx");
@@ -73,11 +86,14 @@ const legacyQueue = read("src/app/admin/videos/page.tsx");
 if (!legacyQueue.includes('redirect("/admin/video/requests")')) failures.push("Legacy /admin/videos route must redirect to /admin/video/requests");
 
 for (const adminPage of [
+  "src/app/admin/video/page.tsx",
   "src/app/admin/video-factory/page.tsx",
+  "src/app/admin/video-factory/sources/page.tsx",
   "src/app/admin/video-factory/scripts/page.tsx",
   "src/app/admin/video-factory/voices/page.tsx",
-  "src/app/admin/video-factory/qa/page.tsx",
   "src/app/admin/video-factory/visuals/page.tsx",
+  "src/app/admin/video-factory/templates/page.tsx",
+  "src/app/admin/video-factory/qa/page.tsx",
   "src/app/admin/audio/tts/page.tsx",
   "src/app/admin/audio/quran/page.tsx",
 ]) {
