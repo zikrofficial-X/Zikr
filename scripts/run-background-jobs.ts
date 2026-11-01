@@ -6,6 +6,7 @@ import {
   seedAutomatedVideoRequests,
 } from "./jobs/template-video-automation";
 import { processSocialPublishQueue } from "./jobs/social-publishing";
+import { retryPendingPublishedVideoCleanup } from "../src/features/social/services/social-publishing";
 import { processScheduledContent } from "./jobs/content-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
@@ -319,6 +320,14 @@ async function recordAutomationRun(summary: {
 }
 async function main() {
   validateRequiredEnv();
+  if (process.env.SOCIAL_CLEANUP_ONLY === "true") {
+    const result = await retryPendingPublishedVideoCleanup(250);
+    console.log("[background-jobs] Published media cleanup-only sweep:", JSON.stringify(result));
+    if (result.pending > 0) {
+      throw new Error(`Published media cleanup left ${result.pending} item(s) pending.`);
+    }
+    return;
+  }
   const target = process.env.BACKGROUND_JOB_TARGET ?? "all";
   const videoSettings = await getVideoAutomationSettings();
   const runNowRequestedAt = videoSettings.runNowRequest?.requestedAt ?? null;
