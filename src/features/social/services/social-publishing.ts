@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { publishToFacebook, publishToYoutube } from "@/features/videos/services/video-automation";
 import { getServerEnv } from "@/lib/env";
@@ -371,6 +372,107 @@ async function publishPlatform(
   }
 }
 
+/**
+ * Remove temporary video artifacts only after every requested social target
+ * has confirmed publication. Provider post IDs and the text/audit records stay.
+ * Supabase originals are kept only until Cloudinary and Supabase cleanup succeed.
+ */
+async function disposePublishedVideo(item: SocialPublishQueueItem) {
+  if (!item.video_url) return;
+  const env = getServerEnv();
+  const backupUrl =
+    typeof item.metadata?.supabaseOriginalVideoUrl === "string"
+      ? item.metadata.supabaseOriginalVideoUrl
+      : null;
+  const failures: string[] = [];
+
+  try {
+    const url = new URL(item.video_url);
+    if (url.hostname === "res.cloudinary.com") {
+      const parts = url.pathname.split("/").filter(Boolean);
+      const uploadIndex = parts.indexOf("upload");
+      if (uploadIndex < 0) throw new Error("Unrecognized Cloudinary delivery URL");
+      const afterUpload = parts.slice(uploadIndex + 1).filter(part => !/^v\\d+$/.test(part));
+      const publicId = afterUpload.join("/").replace(/\\.[^.]+$/, "");
+      const cloudName = env.CLOUDINARY_CLOUD_NAME;
+      const apiKey = env.CLOUDINARY_API_KEY;
+      const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+      if (!cloudName || !apiKey || !apiSecret || !publicId) {
+        throw new Error("Cloudinary delete credentials or public ID are unavailable");
+      }
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const signatureBase = "public_id=" + publicId + "&timestamp=" + timestamp + apiSecret;
+      const signature = createHash("sha1").update(signatureBase).digest("hex");
+      const form = new URLSearchParams({ public_id: publicId, timestamp, api_key: apiKey, signature });
+      const response = await fetch(
+        "https://api.cloudinary.com/v1_1/" + encodeURIComponent(cloudName) + "/video/destroy",
+        { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form, signal: AbortSignal.timeout(15_000) },
+      );
+      const result = await response.json().catch(() => ({})) as { result?: string; error?: { message?: string } };
+      if (!response.ok || (result.result !== "ok" && result.result !== "not found")) {
+        throw new Error(result.error?.message || "Cloudinary asset deletion failed");
+      }
+    } else {
+      throw new Error("Video URL is not a managed Cloudinary asset");
+    }
+  } catch (error) {
+    failures.push("Cloudinary: " + (error instanceof Error ? error.message : String(error)));
+  }
+
+  if (backupUrl) {
+    try {
+      const original = new URL(backupUrl);
+      const match = original.pathname.match(/\\/storage\\/v1\\/object\\/public\\/videos\\/(.+)$/);
+      if (!match || !env.NEXT_PUBLIC_SUPABASE_URL) throw new Error("Unrecognized Supabase source URL");
+      const objectPath = match[1].split("/").map(decodeURIComponent).join("/");
+      await supabaseServerAdminRequest(
+        "/storage/v1/object/videos/" + objectPath.split("/").map(encodeURIComponent).join("/"),
+        { method: "DELETE" },
+      );
+    } catch (error) {
+      failures.push("Supabase: " + (error instanceof Error ? error.message : String(error)));
+    }
+  }
+
+  if (failures.length) {
+    console.error("[social-publishing] Published video cleanup incomplete:", item.id, failures);
+    await markQueueItem(item.id, "published", {
+      metadata: { ...(item.metadata ?? {}), videoCleanupPending: true, videoCleanupErrors: failures },
+    });
+    return;
+  }
+
+  if (item.content_id) {
+    await supabaseServerAdminRequest(
+      "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id),
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          video_url: null,
+          content: {
+            ...((await supabaseServerAdminRequest<Array<{ content: Record<string, unknown> | null }>>(
+              "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id) + "&select=content&limit=1",
+            ))?.[0]?.content ?? {}),
+            videoDisposedAt: new Date().toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        }),
+      },
+    );
+  }
+  await markQueueItem(item.id, "published", {
+    video_url: null,
+    metadata: {
+      ...(item.metadata ?? {}),
+      supabaseOriginalVideoUrl: null,
+      videoDisposedAt: new Date().toISOString(),
+      videoCleanupPending: false,
+      videoCleanupErrors: [],
+    },
+  });
+}
+
 export async function processSocialPublishItem(
   item: SocialPublishQueueItem,
   options: { alreadyClaimed?: boolean } = {}
@@ -489,7 +591,10 @@ export async function processSocialPublishItem(
     },
   });
 
-  if (nextStatus === "published") return "published";
+  if (nextStatus === "published") {
+    if (isVideoContentType(item.content_type)) await disposePublishedVideo(item);
+    return "published";
+  }
   if (deferredFailures.length > 0 && operationalFailures.length === 0) return "deferred";
   if (hasAuthFailure && !hasNonAuthFailure) return "auth_blocked";
   return "failed";
