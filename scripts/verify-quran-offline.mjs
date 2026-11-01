@@ -46,7 +46,7 @@ for (const token of ["quran_enabled", "quran_time", "quran_message"]) {
 const packageJson = JSON.parse(readText("package.json"));
 if (!packageJson.scripts?.["quran:offline:check"]) failures.push("package.json must register quran:offline:check");
 if (!packageJson.scripts?.verify?.includes("pnpm quran:offline:check")) failures.push("verify must include quran:offline:check");
-if (!packageJson.scripts?.["verify:pr"]?.includes("pnpm quran:offline:check")) failures.push("verify:pr must include quran:offline:check");
+if (!packageJson.scripts?.["verify:pr"]?.includes("pnpm verify")) failures.push("verify:pr must delegate to the canonical full verification suite");
 
 if (failures.length) {
   console.error(failures.join("\n"));
