@@ -7,6 +7,7 @@ import {
 } from "@/lib/supabase/server";
 import type { AdminPermission } from "@/features/admin/services/permissions";
 import { readAdminRows } from "@/features/admin/services/safe-read";
+import { getServerEnv } from "@/lib/env";
 
 export type AdminMetric = {
   key: string;
@@ -36,6 +37,31 @@ export type AdminAuditRow = {
   actor_user_id: string | null;
 };
 
+export type AdminGitHubStatus = {
+  context: string;
+  state: string;
+  description: string | null;
+  targetUrl: string | null;
+  updatedAt: string | null;
+};
+
+export type AdminWorkflowRun = {
+  name: string;
+  status: string;
+  conclusion: string | null;
+  createdAt: string;
+  url: string;
+};
+
+export type AdminGitHubHealth = {
+  statusesAvailable: boolean;
+  workflowsAvailable: boolean;
+  overall: string | null;
+  commitSha: string | null;
+  statuses: AdminGitHubStatus[];
+  workflows: AdminWorkflowRun[];
+};
+
 export type AdminHealth = {
   database: "healthy" | "degraded";
   tables: Array<{ table: string; count: number | null; state: "healthy" | "empty" | "unavailable" }>;
@@ -51,6 +77,7 @@ export type AdminHealth = {
   };
   /** false means the queue could not be read and its counts are not real zeros. */
   queuesAvailable: { social: boolean; video: boolean };
+  github: AdminGitHubHealth;
   generatedAt: string;
 };
 
@@ -217,6 +244,89 @@ export async function getAdminOverview() {
   };
 }
 
+const GITHUB_WORKFLOW_PATHS = new Set([
+  ".github/workflows/supabase-production-health.yml",
+  ".github/workflows/generate-ai-video.yml",
+  ".github/workflows/publish-social.yml",
+  ".github/workflows/storage-retention.yml",
+  ".github/workflows/dispatch-android-release-recovery.yml",
+]);
+
+async function getAdminGitHubHealth(): Promise<AdminGitHubHealth> {
+  const token = getServerEnv().GITHUB_DISPATCH_TOKEN;
+  if (!token) {
+    return {
+      statusesAvailable: false,
+      workflowsAvailable: false,
+      overall: null,
+      commitSha: null,
+      statuses: [],
+      workflows: [],
+    };
+  }
+
+  const headers = {
+    Accept: "application/vnd.github+json",
+    Authorization: `Bearer ${token}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  const [statusResult, runsResult] = await Promise.allSettled([
+    fetch("https://api.github.com/repos/zikrofficial-X/Zikr/commits/main/status", {
+      headers,
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    }),
+    fetch("https://api.github.com/repos/zikrofficial-X/Zikr/actions/runs?branch=main&per_page=30", {
+      headers,
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    }),
+  ]);
+
+  let statusesAvailable = false;
+  let workflowsAvailable = false;
+  let overall: string | null = null;
+  let commitSha: string | null = null;
+  let statuses: AdminGitHubStatus[] = [];
+  let workflows: AdminWorkflowRun[] = [];
+
+  if (statusResult.status === "fulfilled" && statusResult.value.ok) {
+    const payload = await statusResult.value.json() as {
+      state?: string;
+      sha?: string;
+      statuses?: Array<{ context?: string; state?: string; description?: string | null; target_url?: string | null; updated_at?: string | null }>;
+    };
+    statusesAvailable = true;
+    overall = payload.state ?? null;
+    commitSha = payload.sha ?? null;
+    statuses = (payload.statuses ?? []).map((item) => ({
+      context: item.context ?? "unknown",
+      state: item.state ?? "unknown",
+      description: item.description ?? null,
+      targetUrl: item.target_url ?? null,
+      updatedAt: item.updated_at ?? null,
+    }));
+  }
+
+  if (runsResult.status === "fulfilled" && runsResult.value.ok) {
+    const payload = await runsResult.value.json() as {
+      workflow_runs?: Array<{ path?: string; name?: string; status?: string; conclusion?: string | null; created_at?: string; html_url?: string }>;
+    };
+    workflowsAvailable = true;
+    workflows = (payload.workflow_runs ?? [])
+      .filter((run) => GITHUB_WORKFLOW_PATHS.has(run.path ?? ""))
+      .map((run) => ({
+        name: run.name ?? run.path ?? "Workflow",
+        status: run.status ?? "unknown",
+        conclusion: run.conclusion ?? null,
+        createdAt: run.created_at ?? "",
+        url: run.html_url ?? "",
+      }));
+  }
+
+  return { statusesAvailable, workflowsAvailable, overall, commitSha, statuses, workflows };
+}
+
 async function getExactStatusCounts(
   table: string,
   statuses: readonly string[],
@@ -237,7 +347,7 @@ async function getExactStatusCounts(
 }
 
 export async function getAdminHealth(): Promise<AdminHealth> {
-  const [databaseHealthy, tables, social, video] = await Promise.all([
+  const [databaseHealthy, tables, social, video, github] = await Promise.all([
     assertSupabaseConnection(),
     Promise.all(
       ["admin_audit_events", "admin_settings", "profiles", "content_library", "media_assets", "social_publish_queue", "video_generation_requests"].map(async (table) => {
@@ -251,6 +361,7 @@ export async function getAdminHealth(): Promise<AdminHealth> {
     ),
     getExactStatusCounts("social_publish_queue", ["queued", "processing", "partial", "failed"]),
     getExactStatusCounts("video_generation_requests", ["pending", "processing", "retry_wait", "failed"]),
+    getAdminGitHubHealth(),
   ]);
 
   return {
@@ -267,6 +378,7 @@ export async function getAdminHealth(): Promise<AdminHealth> {
       videoFailed: video.counts.failed,
     },
     queuesAvailable: { social: social.available, video: video.available },
+    github,
     generatedAt: new Date().toISOString(),
   };
 }
