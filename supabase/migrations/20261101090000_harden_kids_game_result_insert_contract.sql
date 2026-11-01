@@ -15,9 +15,11 @@ DECLARE
   v_max_collectibles integer;
   v_max_distance integer;
   v_recent_count integer;
+  -- The RPC adds level/combo/completed before merging these client-approved fields.
   v_allowed_keys text[] := ARRAY[
-    'source', 'runtime', 'dailyMissionId', 'dailyMissionCompleted',
-    'roundTimeSeconds', 'mistakes', 'accuracy'
+    'level', 'combo', 'completed', 'source', 'runtime',
+    'dailyMissionId', 'dailyMissionCompleted', 'roundTimeSeconds',
+    'mistakes', 'accuracy'
   ];
 BEGIN
   IF NEW.game_id NOT IN (
