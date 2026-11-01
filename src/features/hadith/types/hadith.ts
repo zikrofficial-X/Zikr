@@ -14,6 +14,24 @@ export interface Hadith {
   arab?: string;
   english?: string;
   id?: string;
+  contentLocale?: "ar" | "en";
+}
+
+export type HadithDisplay = {
+  text: string;
+  contentLocale: "ar" | "en";
+  usedArabicFallback: boolean;
+};
+
+export function resolveHadithDisplay(hadith: Hadith, requestedLocale: "ar" | "en"): HadithDisplay {
+  if (requestedLocale === "en" && hadith.english?.trim()) {
+    return { text: hadith.english, contentLocale: "en", usedArabicFallback: false };
+  }
+  return {
+    text: hadith.arab ?? "",
+    contentLocale: "ar",
+    usedArabicFallback: requestedLocale === "en",
+  };
 }
 
 export interface HadithResponse<T> {
