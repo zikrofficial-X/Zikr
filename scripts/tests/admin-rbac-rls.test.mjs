@@ -83,8 +83,18 @@ requireMatch(
 );
 assert.match(
   userActions,
-  /isFullAdminTarget[\s\S]*?isGrantingFullAdmin[\s\S]*?admin\.role !== ["']super_admin["']/,
-  "server actions must protect full-admin accounts and full-admin role grants from delegated administrators",
+  /roleValue === "super_admin" && admin\.role !== "super_admin"/,
+  "only a super administrator may request the super_admin role",
+);
+assert.match(
+  userActions,
+  /userId === admin\.id[\s\S]*?roleValue !== "admin"[\s\S]*?roleValue !== "super_admin"/,
+  "the server action must prevent an administrator from removing their own admin role",
+);
+assert.match(
+  atomicRoleMigration,
+  /v_previous_role IN \('admin', 'super_admin'\)[\s\S]*?v_actor_role <> 'super_admin'/,
+  "the atomic database function must prevent delegated administrators from managing full-admin accounts",
 );
 requireMatch(
   /CREATE POLICY admin_audit_events_admin_select[\s\S]*?'analyst'/i,
