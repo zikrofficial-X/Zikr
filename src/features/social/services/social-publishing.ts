@@ -485,7 +485,7 @@ async function disposePublishedVideo(item: SocialPublishQueueItem) {
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({
           video_url: null,
-          content: { ...existingContent, videoDisposedAt: new Date().toISOString() },
+          content: { ...existingContent, supabaseOriginalVideoUrl: null, videoDisposedAt: new Date().toISOString() },
           updated_at: new Date().toISOString(),
         }),
       },
