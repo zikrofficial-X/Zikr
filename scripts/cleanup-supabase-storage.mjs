@@ -588,6 +588,7 @@ async function main() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const apply = process.argv.includes("--apply");
+  const videosOnly = process.argv.includes("--videos-only");
   const now = new Date();
   const cutoff = new Date(now.getTime() - VIDEO_RETENTION_HOURS * 60 * 60 * 1000);
   const cutoffIso = cutoff.toISOString();
@@ -706,7 +707,9 @@ async function main() {
     console.log(`SKIP video queue ${item.id}: ${item.reason}`);
   }
 
-  const androidSettings = await getAndroidReleaseReferences(client);
+  const androidSettings = videosOnly
+    ? { pinnedTag: "", referencedTags: [] }
+    : await getAndroidReleaseReferences(client);
   const pinnedTag = androidSettings.pinnedTag;
   const androidVersions = androidRoot
     .filter((item) => /^v\d+\.\d+\.\d+$/.test(item.name ?? ""))
@@ -716,7 +719,7 @@ async function main() {
   const androidDeletes = [];
   const androidVersionFiles = new Map();
 
-  for (const version of androidVersions) {
+  for (const version of (videosOnly ? [] : androidVersions)) {
     if (protectedTags.has(version)) continue;
     const versionFiles = await listDirectory(client, ANDROID_BUCKET, `android/${version}`);
     androidVersionFiles.set(version, versionFiles);
@@ -736,9 +739,7 @@ async function main() {
   }
 
   console.log(`Cloudinary generated videos eligible: ${candidates.filter((item) => item.cloudinaryPublicId).length}.`);
-  console.log(
-    `Android copies eligible: ${androidDeletes.map((item) => item.version).join(", ") || "none"}.`,
-  );
+  console.log(videosOnly ? "Android release files: untouched (videos-only run)." : `Android copies eligible: ${androidDeletes.map((item) => item.version).join(", ") || "none"}.`);
   console.log(`Active Android tag: ${pinnedTag || "unset"}; protected: ${[...protectedTags].join(", ")}.`);
   console.log(
     `Expected storage reduction: at least ${(totalVideoBytes / 1024 / 1024).toFixed(2)} MiB from videos plus verified Android versions.`,
