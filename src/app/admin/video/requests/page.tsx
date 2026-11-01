@@ -1,5 +1,5 @@
 import { Container } from "@/components/ui/container";
-import AdminVideosClient from "@/app/admin/videos/videos-client";
+import AdminVideoRequestsClient from "@/features/admin/video-requests/components/admin-video-requests-client";
 import { AdminBreadcrumbs } from "@/features/admin/components/admin-breadcrumbs";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 
@@ -10,7 +10,7 @@ export default async function AdminVideoRequestsPage() {
   return (
     <Container className="py-8">
       <AdminBreadcrumbs current="طلبات الفيديو" />
-      <AdminVideosClient />
+      <AdminVideoRequestsClient />
     </Container>
   );
 }
