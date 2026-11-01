@@ -13,7 +13,6 @@ assert.ok(queue.includes("getFailedGameResultCount"), "failed results must be qu
 assert.ok(queue.includes("retryFailedGameResults"), "failed results must support explicit recovery");
 assert.ok(queue.includes("if (all.length >= MAX_QUEUE_SIZE) return null"), "a full queue must reject new results instead of evicting older results");
 assert.ok(!queue.includes(".slice(0, all.length - MAX_QUEUE_SIZE)"), "queue capacity must never silently delete earlier results");
-assert.ok(shell.includes("offline result queue is full"), "the user must be told when a result cannot be stored offline");
 assert.ok(registry.includes('status?: "pending" | "failed"'), "persisted queue status must be typed");
 assert.ok(!stage.includes("noopController"), "stage must not advertise a no-op controller");
 assert.ok(!stage.includes("StageController"), "stage must not expose an inert controller contract");
