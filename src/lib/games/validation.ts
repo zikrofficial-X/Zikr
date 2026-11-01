@@ -14,6 +14,10 @@ const MAX_METADATA_DEPTH = 4;
 const MAX_METADATA_KEYS = 32;
 const MAX_METADATA_ARRAY_LENGTH = 50;
 const MAX_METADATA_STRING_LENGTH = 512;
+const ALLOWED_METADATA_KEYS = new Set([
+  "source", "runtime", "dailyMissionId", "dailyMissionCompleted",
+  "roundTimeSeconds", "mistakes", "accuracy",
+]);
 
 function isSafeJsonValue(value: unknown, depth = 0): boolean {
   if (depth > MAX_METADATA_DEPTH) return false;
@@ -26,7 +30,7 @@ function isSafeJsonValue(value: unknown, depth = 0): boolean {
   if (!isRecord(value)) return false;
   const entries = Object.entries(value);
   return entries.length <= MAX_METADATA_KEYS && entries.every(([key, item]) =>
-    key.length > 0 && key.length <= 64 && isSafeJsonValue(item, depth + 1)
+    ALLOWED_METADATA_KEYS.has(key) && isSafeJsonValue(item, depth + 1)
   );
 }
 
