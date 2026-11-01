@@ -28,24 +28,21 @@ export async function enqueueGameResult(
 ): Promise<OfflineQueuedResult | null> {
   if (!(await ensureReady())) return null;
 
+  const clientSubmissionId = payload.clientSubmissionId ?? createSubmissionId();
+  const all = await offlineDb.getAll<OfflineQueuedResult>("gameResultsQueue");
+  const existing = all.find(item => item.clientSubmissionId === clientSubmissionId);
+  if (existing) return existing;
+  if (all.length >= MAX_QUEUE_SIZE) return null;
+
   const queued: OfflineQueuedResult = {
     ...payload,
-    clientSubmissionId: payload.clientSubmissionId ?? createSubmissionId(),
+    clientSubmissionId,
     queuedAt: Date.now(),
     attempts: 0,
     nextAttemptAt: Date.now(),
+    status: "pending",
   };
   await offlineDb.set("gameResultsQueue", queued);
-
-  const all = await offlineDb.getAll<OfflineQueuedResult>("gameResultsQueue");
-  if (all.length > MAX_QUEUE_SIZE) {
-    const oldest = all
-      .sort((a, b) => a.queuedAt - b.queuedAt)
-      .slice(0, all.length - MAX_QUEUE_SIZE);
-    await Promise.all(
-      oldest.map(item => offlineDb.delete("gameResultsQueue", item.clientSubmissionId))
-    );
-  }
   return queued;
 }
 
