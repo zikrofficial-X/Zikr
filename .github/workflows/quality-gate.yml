@@ -68,6 +68,11 @@ jobs:
         run: pnpm kids:db-trigger:check
         timeout-minutes: 5
 
+      - name: Verify atomic Admin role update against PostgreSQL 17
+        shell: bash
+        run: pnpm admin:role-db:check
+        timeout-minutes: 5
+
       - name: Run canonical source and architecture gate
         shell: bash
         run: |
