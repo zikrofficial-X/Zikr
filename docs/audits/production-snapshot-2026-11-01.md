@@ -144,3 +144,21 @@ At the time of this snapshot, Vercel's latest production deployment was:
 The GitHub combined status for that exact main commit was `success` with three attached checks: CircleCI `application-build-docs`, Vercel, and CircleCI `config-guard`. An English content-sync failure had been observed on an earlier commit; the scheduled standalone sync run is not represented in the current commit status and its latest result was not available through the connected actions.
 
 The repair branch is not yet the production deployment. The controlled release workflow is manual-only and requires an explicit `RELEASE` dispatch on `main`; merging the PR does not auto-deploy.
+
+## Hadith catalogue coverage
+
+Live production query on 2026-11-01 found all nine book catalogue rows but only partial published hadith rows in the local database:
+
+| Book | Published local rows | Catalogue total |
+|---|---:|---:|
+| Abu Dawud | 180 | 4,591 |
+| Ahmad | 180 | 26,363 |
+| Bukhari | 1,000 | 7,009 |
+| Darimi | 180 | 3,367 |
+| Ibn Majah | 180 | 4,333 |
+| Muslim | 704 | 5,363 |
+| Muwatta | 180 | 1,595 |
+| Nasai | 180 | 5,663 |
+| Tirmidhi | 180 | 3,892 |
+
+The catalogue count represents the complete external collection, not the number of rows locally seeded. The old service treated an empty local page as a successful database result, so later pages beyond the seeded subset could appear empty instead of falling back to the external Hadith provider. The repair branch now uses the local page only when it contains rows and otherwise falls back to the remote provider; tests cover populated, empty, and missing local results.
