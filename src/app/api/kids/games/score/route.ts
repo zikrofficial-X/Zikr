@@ -6,6 +6,11 @@ export async function POST(request: NextRequest) {
   const unavailable = requireSupabaseAuth();
   if (unavailable) return unavailable;
 
+  const declaredLength = Number(request.headers.get("content-length") ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > 16_384) {
+    return NextResponse.json({ error: "Request body is too large" }, { status: 413 });
+  }
+
   let body: unknown;
   try {
     const rawBody = await request.text();
