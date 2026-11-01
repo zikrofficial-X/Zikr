@@ -83,7 +83,7 @@ export default async function AdminHealthPage() {
           <p className="mt-1 text-sm font-bold text-brand-gold" dir="ltr">{activeVideoOrder}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
-          <p className="text-xs text-brand-cream/35">التوليد المرئي بالذكاء الاصطناعي</p>
+          <p className="text-xs text-brand-cream/35">توليد الفيديو بمزودي الذكاء الاصطناعي</p>
           <p className="mt-1 text-sm font-bold text-brand-cream/75">{aiEnabled === null ? "غير متاح — تعذر قراءة الإعداد" : aiEnabled ? "مفعل في عامل GitHub Actions" : "متوقف — القوالب المحلية فقط"}</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
