@@ -24,6 +24,9 @@ jobs:
       SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
       NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       BACKGROUND_JOB_TARGET: "social"
       SOCIAL_PUBLISH_BATCH_SIZE: "1"
@@ -73,6 +76,9 @@ jobs:
           set -euo pipefail
           test -n "${SUPABASE_URL:-}" || { echo "::error::Missing canonical SUPABASE_URL configuration." >&2; exit 1; }
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing production Supabase service-role secret." >&2; exit 1; }
+          test -n "${CLOUDINARY_CLOUD_NAME:-}" || { echo "::error::Missing Cloudinary cloud name secret." >&2; exit 1; }
+          test -n "${CLOUDINARY_API_KEY:-}" || { echo "::error::Missing Cloudinary API key secret." >&2; exit 1; }
+          test -n "${CLOUDINARY_API_SECRET:-}" || { echo "::error::Missing Cloudinary API secret." >&2; exit 1; }
           # The Facebook Page token is managed by the admin OAuth center and stored
           # in the server-only Supabase table. Do not duplicate it in GitHub Actions.
           facebook_response="$(mktemp)"
