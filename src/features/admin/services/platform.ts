@@ -122,34 +122,28 @@ export async function getAdminSnapshot() {
     }),
   );
 
-  const [auditRes, socialRes, videoRes, draftsRes] = await Promise.all([
+  const [auditRes, socialCounts, videoCounts, draftsRes] = await Promise.all([
     readAdminRows<AdminAuditRow>(
       "/rest/v1/admin_audit_events?select=id,action,permission,resource_type,resource_id,outcome,request_id,metadata,created_at,actor_user_id&order=created_at.desc&limit=12",
     ),
-    readAdminRows<{ status: string }>(
-      "/rest/v1/social_publish_queue?select=status&order=created_at.desc&limit=500",
-    ),
-    readAdminRows<{ status: string }>(
-      "/rest/v1/video_generation_requests?select=status&order=created_at.desc&limit=500",
-    ),
+    getExactStatusCounts("social_publish_queue", ["queued", "processing", "partial", "failed"]),
+    getExactStatusCounts("video_generation_requests", ["pending", "processing", "retry_wait", "failed"]),
     readAdminRows<{ review_status: string; published: boolean }>(
       "/rest/v1/content_library?select=review_status,published&order=updated_at.desc&limit=500",
     ),
   ]);
 
   const audit = auditRes.rows;
-  const socialQueue = socialRes.rows;
-  const videoQueue = videoRes.rows;
   const contentDrafts = draftsRes.rows;
   const unavailable = [
     !auditRes.ok && "سجل التدقيق",
-    !socialRes.ok && "طابور النشر الاجتماعي",
-    !videoRes.ok && "طابور توليد الفيديو",
+    !socialCounts.available && "طابور النشر الاجتماعي",
+    !videoCounts.available && "طابور توليد الفيديو",
     !draftsRes.ok && "مكتبة المحتوى",
   ].filter(Boolean) as string[];
 
-  const socialStatus = (status: string) => (socialRes.ok ? socialQueue.filter((item) => item.status === status).length : null);
-  const videoStatus = (status: string) => (videoRes.ok ? videoQueue.filter((item) => item.status === status).length : null);
+  const socialStatus = (status: string) => socialCounts.available ? socialCounts.counts[status] : null;
+  const videoStatus = (status: string) => videoCounts.available ? videoCounts.counts[status] : null;
   const sum = (a: number | null, b: number | null) => (a === null || b === null ? null : a + b);
   const drafts = draftsRes.ok ? contentDrafts.filter((item) => !item.published || item.review_status !== "approved").length : null;
   const socialFailed = socialStatus("failed");
