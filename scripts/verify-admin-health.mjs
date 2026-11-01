@@ -29,6 +29,15 @@ if (!health.includes("queuesAvailable: { social: social.available, video: video.
 if (!page.includes("health.queuesAvailable.social && health.queuesAvailable.video")) {
   throw new Error("Admin health attention metric must require both queue sources to be readable");
 }
+if (!platform.includes("getAdminGitHubHealth") || !platform.includes("/commits/main/status") || !platform.includes("/actions/runs?branch=main")) {
+  throw new Error("Admin health must expose read-only GitHub commit and workflow status");
+}
+if (!platform.includes("GITHUB_WORKFLOW_PATHS") || !platform.includes("storage-retention.yml")) {
+  throw new Error("Admin health must include the canonical production workflow inventory");
+}
+if (!page.includes("حالة النشر والتكاملات") || !page.includes("health.github.statuses") || !page.includes("health.github.workflows")) {
+  throw new Error("Admin health page must render deployment and automation health");
+}
 if (!page.includes('queueAttention === null ? "غير متاح" : queueAttention')) {
   throw new Error("Admin health must render unavailable queue attention as unknown, not zero");
 }
