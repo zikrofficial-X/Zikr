@@ -93,7 +93,7 @@ assert.match(
 );
 assert.match(
   atomicRoleMigration,
-  /v_previous_role IN \('admin', 'super_admin'\)[\s\S]*?v_actor_role <> 'super_admin'/,
+  /v_actor_role <> 'super_admin'[\s\S]*?v_previous_role IN \('admin', 'super_admin'\)/,
   "the atomic database function must prevent delegated administrators from managing full-admin accounts",
 );
 requireMatch(
