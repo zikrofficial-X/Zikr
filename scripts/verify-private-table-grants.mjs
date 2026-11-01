@@ -1,0 +1,54 @@
+#!/usr/bin/env node
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const migrationPath = "supabase/migrations/20261101135000_revoke_anon_privileges_private_tables.sql";
+const sql = readFileSync(migrationPath, "utf8");
+
+const privateTables = [
+  "admin_page_views",
+  "admin_queue_alert_deliveries",
+  "admin_role_assignments",
+  "background_reminder_preferences",
+  "contacts",
+  "content_agent_queue",
+  "content_agent_runs",
+  "content_publish_queue",
+  "content_translation_queue",
+  "favorites",
+  "memorization_progress",
+  "notifications",
+  "prayer_notification_deliveries",
+  "prayer_notifications",
+  "prayer_preferences",
+  "profiles",
+  "push_subscriptions",
+  "reading_progress",
+  "recent_recitations",
+  "reciter_favorites",
+  "reminders",
+  "social_publish_queue",
+  "social_sync_jobs",
+  "social_sync_state",
+  "tawasheeh_favorites",
+  "user_behavior",
+  "video_automation_runs",
+  "video_generation_requests",
+];
+
+assert.ok(sql.includes("REVOKE ALL PRIVILEGES ON TABLE public.%I FROM anon"), "migration must revoke all direct table privileges from anon");
+assert.ok(sql.includes("to_regclass("), "migration must safely skip tables absent in a fresh/partial schema");
+assert.ok(sql.includes("BEGIN;") && sql.includes("COMMIT;"), "grant hardening must be transactional");
+
+for (const table of privateTables) {
+  assert.ok(sql.includes("'" + table + "'"), "private table is missing from the anon-grant hardening list: " + table);
+}
+
+if (/REVOKE\s+ALL\s+PRIVILEGES[\s\S]{0,120}\s+FROM\s+(authenticated|service_role)/i.test(sql)) {
+  throw new Error("migration must preserve authenticated and service_role table privileges");
+}
+if (/DROP\s+POLICY|DISABLE\s+ROW\s+LEVEL\s+SECURITY|TRUNCATE\s+TABLE|DELETE\s+FROM/i.test(sql)) {
+  throw new Error("grant hardening migration must not modify RLS policies or application data");
+}
+
+console.log("Private-table anonymous-grant hardening contract passed.");
