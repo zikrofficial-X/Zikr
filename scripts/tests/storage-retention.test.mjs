@@ -135,4 +135,4 @@ assert.equal(
   "The newest two published local release versions stay available after an upgrade",
 );
 
-console.log("Supabase Storage retention policy passed: 20 assertions.");
+console.log("Supabase Storage retention policy passed: 24 assertions.");
