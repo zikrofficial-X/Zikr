@@ -2,7 +2,7 @@
 
 ## Scope
 
-Kids World is the Arabic-first, RTL-friendly game area under `/kids/games`. The central registry in `lib/games/registry.ts` is the source of truth for the twelve registered game IDs, runtime kind, age groups, difficulty options, score limits, and display metadata. The registry is shared by the game shell, Kids content adapter, score validator, admin selector, seed migration, and progress labels.
+Kids World is the Arabic-first, RTL-friendly game area under `/kids/games`. The central registry in `lib/games/registry.ts` is the source of truth for the thirteen registered game IDs, runtime kind, age groups, difficulty options, score limits, and display metadata. The registry is shared by the game shell, Kids content adapter, score validator, admin selector, seed migration, and progress labels.
 
 ## Adding a game
 
@@ -26,9 +26,11 @@ The manifest test runs as part of `pnpm test` and therefore the PR and main qual
 
 ## Runtime and accessibility
 
-`KidsWorldGameShell` owns difficulty, HUD, pause, mute, fullscreen, restart, submission, and offline status. `WorldGameStage` delegates to either the lifecycle-safe Phaser bridge or a focused React mini-game. Phaser wrappers are browser-only, lazy-load Phaser, dispose the instance on unmount, and apply `touch-action: none` so swipe controls do not scroll the page. Canvas play is interactive but not fully screen-reader accessible; the surrounding UI must provide labels, status text, pause/mute controls, and an escape route.
+`KidsWorldGameShell` owns difficulty, HUD, pause, mute, fullscreen, restart, result submission, and offline status. `WorldGameStage` dispatches the registered game ID to its dedicated React runtime; the current 13-game implementation does not use Phaser or a Canvas game engine. Each runtime receives pause and restart state through props and reports HUD/result events to the shell. Do not reintroduce an inert controller abstraction.
 
-Audio feedback is generated locally with `ToneFeedback`. It is optional, non-autoplay, uses no external media, and is controlled by the same explicit `setMuted` contract as Phaser sound. Do not add copyrighted music, commercial characters, iframe games, trackers, ads, gambling, or monetization.
+The game scenes use repository-managed inline SVG artwork and three shared local WebP environments. These provide distinct game foregrounds but do not yet constitute 13 independently illustrated environments. Real-device touch, keyboard, screen-reader, focus-order, reduced-motion, and fullscreen acceptance must be tested before release; automated source checks do not certify those experiences.
+
+`ToneFeedback` combines synthesized Web Audio event tones with optional local MP3 theme tracks. Audio is non-autoplay and follows the shell's mute state. The MP3 files remain flagged for source/licensing review; being stored locally does not establish usage rights. Do not add unlicensed music, commercial characters, iframe games, trackers, ads, gambling, or monetization.
 
 ## Verified educational content
 
@@ -115,3 +117,12 @@ The central level system now provides 30 levels per game and difficulty with exp
 The canonical bilingual section links live in `src/features/kids/data/navigation.ts` and are rendered by `KidsSectionNavigation` from the shared Kids layout. This keeps home, activities, learning, audio, games, creativity, progress, achievements, and family guidance reachable with consistent Arabic/English labels. Keep destinations unique, preserve a direct game-catalogue path, and do not duplicate navigation arrays in page components.
 
 The Kids game catalogue already filters by age group, skill/search terms, category, difficulty, and duration. The landing page must derive its displayed game total from `GAME_REGISTRY`. The `kids-navigation.test.ts` contract verifies the canonical links, direct or dynamic route targets, bilingual copy, catalogue filters, and count consistency. Manual small-screen and child/caregiver usability checks remain part of release acceptance.
+
+
+## Game result integrity and offline recovery
+
+The score endpoint rejects request bodies larger than 16 KiB. Result metadata is limited to the approved runtime keys, bounded strings, arrays, nesting depth, key count, and a 4 KiB serialized payload. The database insert trigger independently enforces the canonical game IDs, per-game score/collectible/distance ceilings, metadata shape/size, and a per-user 60-results-per-minute guard. XP remains calculated by the server-side result processor; client-supplied XP is never accepted. These controls harden the submission boundary but do not cryptographically prove that a reported score was earned through real gameplay: the current React runtimes still report their outcome from the client. Full anti-cheat assurance requires a separate server-authoritative session/event design and must not be claimed from this rate guard alone.
+
+Offline game results remain in IndexedDB through transient failures. After five failed attempts or a permanent client validation response, an item enters a visible failed state instead of being silently retained or deleted. A full queue refuses new results rather than evicting older ones. The game shell syncs eligible results on mount, reconnection, and return to the tab, and exposes manual retry controls for pending and failed results. HTTP 401 pauses retries until a session is available; HTTP 429 respects Retry-After or schedules a bounded delay without consuming the failure budget. Concurrent sync triggers in one page share one in-flight request. Idempotency continues to use the original client submission ID.
+
+Pause is state-driven: the Game Shell updates the paused prop consumed by each runtime. The former no-op StageController contract has been removed. Runtime and device acceptance (touch, keyboard, screen reader, background/foreground, offline/reconnect, and actual Android devices) remains a release gate and cannot be certified by static checks alone.

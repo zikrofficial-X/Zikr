@@ -168,7 +168,7 @@ export async function recordKidsGameResultForUser(
   body: unknown,
 ): Promise<
   | KidsGameResultResponse
-  | { success: false; status: 400 | 401; error: string }
+  | { success: false; status: 400 | 401 | 429; error: string }
   | { success: false; status: 500; error: string }
 > {
   if (!userId) {
@@ -203,6 +203,10 @@ export async function recordKidsGameResultForUser(
       p_metadata: payload.metadata,
     },
   );
+
+  if (error?.code === "P0001") {
+    return { success: false, status: 429, error: "Too many game results. Please wait before syncing again." };
+  }
 
   if (error || !Array.isArray(data) || !data[0]) {
     console.error(
@@ -248,7 +252,7 @@ export async function recordCurrentKidsGameResult(
   body: unknown,
 ): Promise<
   | KidsGameResultResponse
-  | { success: false; status: 400 | 401; error: string }
+  | { success: false; status: 400 | 401 | 429; error: string }
   | { success: false; status: 500; error: string }
 > {
   const session = await getCurrentUser();

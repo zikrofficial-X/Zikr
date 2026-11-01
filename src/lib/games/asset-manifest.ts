@@ -22,7 +22,7 @@ export type KidsGameAssetDefinition = {
     events: readonly GameSoundEvent[];
     optional: true;
     soundOffSupported: true;
-    rightsStatus: "synthesized-tone-no-external-recordings";
+    rightsStatus: "local-mp3-license-source-review-required";
   };
   motion: {
     reducedMotionFallback: "decorative-motion-disabled";
@@ -40,7 +40,7 @@ const audio = {
   events: ["start", "move", "jump", "collect", "success", "miss", "gameOver"],
   optional: true,
   soundOffSupported: true,
-  rightsStatus: "synthesized-tone-no-external-recordings",
+  rightsStatus: "local-mp3-license-source-review-required",
 } as const;
 const motion = {
   reducedMotionFallback: "decorative-motion-disabled",

@@ -6,9 +6,18 @@ export async function POST(request: NextRequest) {
   const unavailable = requireSupabaseAuth();
   if (unavailable) return unavailable;
 
+  const declaredLength = Number(request.headers.get("content-length") ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > 16_384) {
+    return NextResponse.json({ error: "Request body is too large" }, { status: 413 });
+  }
+
   let body: unknown;
   try {
-    body = await request.json();
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).byteLength > 16_384) {
+      return NextResponse.json({ error: "Request body is too large" }, { status: 413 });
+    }
+    body = JSON.parse(rawBody);
   } catch {
     return NextResponse.json(
       { error: "Invalid JSON payload" },
@@ -21,7 +30,10 @@ export async function POST(request: NextRequest) {
     if (!result.success) {
       return NextResponse.json(
         { error: result.error },
-        { status: result.status },
+        {
+          status: result.status,
+          headers: result.status === 429 ? { "Retry-After": "60" } : undefined,
+        },
       );
     }
     return NextResponse.json(result);

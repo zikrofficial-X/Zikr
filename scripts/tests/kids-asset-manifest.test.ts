@@ -35,7 +35,10 @@ for (const id of ids) {
   assert.ok(entry.audio.events.every(event => toneSource.includes(event + ":")), id + " declares an unsupported tone event");
   assert.equal(entry.audio.optional, true);
   assert.equal(entry.audio.soundOffSupported, true);
-  assert.equal(entry.audio.rightsStatus, "synthesized-tone-no-external-recordings");
+  assert.equal(entry.audio.rightsStatus, "local-mp3-license-source-review-required");
+  const audioPath = join("public", "audio", `kids-${id === "zikr-memory" || id === "verse-puzzle" ? "night" : id === "wudu-challenge" || id === "zikr-quiz" ? "learning" : "adventure"}-theme.mp3`);
+  assert.ok(existsSync(audioPath), id + " theme audio file is missing: " + audioPath);
+  assert.ok(statSync(audioPath).size > 1000, id + " theme audio file is suspiciously small");
   assert.equal(entry.motion.reducedMotionFallback, "decorative-motion-disabled");
 }
 assert.ok(gameKit.includes("kids-game-motion.css"));

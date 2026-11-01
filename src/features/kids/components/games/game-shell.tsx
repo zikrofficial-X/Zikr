@@ -5,8 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
 import { Button } from "@/components/ui/button";
 import { getGameDefinition, type GameDifficulty, type GameId, type GameResultPayload } from "@/lib/games/registry";
-import { enqueueGameResult, getQueuedGameResultCount, syncQueuedGameResults } from "@/lib/games/offline-queue";
-import { WorldGameStage, type StageController, type WorldHud } from "@/features/kids/components/games/world-game-stage";
+import { enqueueGameResult, getFailedGameResultCount, getQueuedGameResultCount, retryFailedGameResults, retryQueuedGameResults, syncQueuedGameResults } from "@/lib/games/offline-queue";
+import { WorldGameStage, type WorldHud } from "@/features/kids/components/games/world-game-stage";
 import { getDailyMission, getMissionProgress } from "@/lib/games/game-missions";
 import { getGameInstructions, type KidsGameGuide } from "@/lib/games/game-instructions";
 
@@ -81,13 +81,13 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     ? { easy: "Easy", normal: "Normal", hard: "Advanced" }
     : { easy: "سهل", normal: "متوسط", hard: "متقدم" };
   const [difficulty, setDifficulty] = useState<GameDifficulty>(initialDifficulty ?? definition.defaultDifficulty);
-  const [controller, setController] = useState<StageController | null>(null);
   const [hud, setHud] = useState<WorldHud>({ score: 0, collectibles: 0, distance: 0, combo: 0, level: 1, completed: false });
   const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(false);
   const [result, setResult] = useState<WorldHud | null>(null);
   const [message, setMessage] = useState("");
   const [queuedCount, setQueuedCount] = useState(0);
+  const [failedQueueCount, setFailedQueueCount] = useState(0);
   const [restartToken, setRestartToken] = useState(0);
   const [initializing, setInitializing] = useState(true);
   const [hasStarted, setHasStarted] = useState(false);
@@ -114,12 +114,24 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   const dailyMission = useMemo(() => getDailyMission(gameId), [gameId]);
   const missionProgress = useMemo(() => getMissionProgress(dailyMission, hud), [dailyMission, hud]);
 
-  const refreshQueue = useCallback(async () => setQueuedCount(await getQueuedGameResultCount()), []);
+  const refreshQueue = useCallback(async () => {
+    const [pending, failed] = await Promise.all([getQueuedGameResultCount(), getFailedGameResultCount()]);
+    setQueuedCount(pending);
+    setFailedQueueCount(failed);
+  }, []);
   useEffect(() => {
     void refreshQueue();
     const sync = () => { void syncQueuedGameResults().finally(refreshQueue); };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    sync();
     window.addEventListener("online", sync);
-    return () => window.removeEventListener("online", sync);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("online", sync);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [refreshQueue]);
 
   const getElapsedSeconds = useCallback(() => {
@@ -206,8 +218,10 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     };
     const clientSubmissionId = createSubmissionId();
     if (!navigator.onLine) {
-      await enqueueGameResult({ ...payload, clientSubmissionId });
-      setMessage(isEnglish ? "Your result was saved on this device and will sync when you reconnect." : "تم حفظ النتيجة على جهازك وستتم مزامنتها عند عودة الاتصال.");
+      const saved = await enqueueGameResult({ ...payload, clientSubmissionId });
+      setMessage(saved
+        ? (isEnglish ? "Your result was saved on this device and will sync when you reconnect." : "تم حفظ النتيجة على جهازك وستتم مزامنتها عند عودة الاتصال.")
+        : (isEnglish ? "Could not store this result offline. Reconnect before continuing." : "تعذر حفظ النتيجة دون اتصال. أعد الاتصال قبل المتابعة."));
       await refreshQueue();
       return;
     }
@@ -220,13 +234,17 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
       });
       if (response.ok) setMessage(isEnglish ? "Your result was saved successfully." : "تم حفظ نتيجتك بنجاح.");
       else if (response.status === 401) {
-        await enqueueGameResult({ ...payload, clientSubmissionId });
-        setMessage(isEnglish ? "You can play without signing in; your result is stored locally until you sign in." : "يمكنك اللعب دون تسجيل الدخول؛ ستحفظ النتيجة محليًا حتى تسجل الدخول.");
+        const saved = await enqueueGameResult({ ...payload, clientSubmissionId });
+        setMessage(saved
+          ? (isEnglish ? "You can play without signing in; your result is stored locally until you sign in." : "يمكنك اللعب دون تسجيل الدخول؛ ستحفظ النتيجة محليًا حتى تسجل الدخول.")
+          : (isEnglish ? "Could not store this result offline. Sign in and sync before continuing." : "تعذر حفظ النتيجة دون اتصال. سجّل الدخول وزامن النتائج قبل المتابعة."));
         await refreshQueue();
       } else throw new Error(`HTTP ${response.status}`);
     } catch {
-      await enqueueGameResult({ ...payload, clientSubmissionId });
-      setMessage(isEnglish ? "Sync is unavailable right now, so the result was saved locally for another attempt." : "تعذر المزامنة الآن، فتم حفظ النتيجة محليًا للمحاولة لاحقًا.");
+      const saved = await enqueueGameResult({ ...payload, clientSubmissionId });
+      setMessage(saved
+        ? (isEnglish ? "Sync is unavailable right now, so the result was saved locally for another attempt." : "تعذر المزامنة الآن، فتم حفظ النتيجة محليًا للمحاولة لاحقًا.")
+        : (isEnglish ? "Could not store this result offline. Reconnect and sync before another round." : "تعذر حفظ النتيجة دون اتصال. أعد الاتصال والمزامنة قبل بدء جولة جديدة."));
       await refreshQueue();
     }
   }, [dailyMission, definition.runtimeKind, difficulty, gameId, getElapsedSeconds, isEnglish, refreshQueue]);
@@ -243,9 +261,9 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     setResult(null); setMessage(""); setPaused(false); setRestartToken(value => value + 1);
   }, []);
   const togglePause = useCallback(() => {
-    if (!controller || result) return;
-    if (paused) { controller.resume(); setPaused(false); } else { controller.pause(); setPaused(true); }
-  }, [controller, paused, result]);
+    if (result) return;
+    setPaused(value => !value);
+  }, [result]);
 
   const openHelp = useCallback(() => {
     if (result || helpOpen) return;
@@ -264,9 +282,8 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     try { if (document.fullscreenElement) await document.exitFullscreen(); else await element.requestFullscreen(); }
     catch { setMessage(isEnglish ? "This browser does not support fullscreen mode." : "لا يدعم هذا المتصفح وضع ملء الشاشة."); }
   }, [isEnglish]);
-  const handleStageReady = useCallback((value: StageController | null) => {
-    setController(value);
-    setInitializing(false);
+  const handleStageReady = useCallback((ready: boolean) => {
+    setInitializing(!ready);
   }, []);
   const handleStageError = useCallback((messageText: string) => {
     setInitializing(false);
@@ -418,7 +435,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
             variant="outline"
             className="min-h-11 w-full min-w-0 whitespace-normal px-2 text-xs sm:w-auto sm:px-4 sm:text-sm"
             onClick={openHelp}
-            disabled={!controller || Boolean(result) || helpOpen}
+            disabled={initializing || Boolean(result) || helpOpen}
             aria-label={isEnglish ? "Open game instructions" : "فتح تعليمات اللعبة"}
           >
             {isEnglish ? "How to play" : "طريقة اللعب"}
@@ -428,7 +445,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
             variant="outline"
             className="min-h-11 w-full min-w-0 whitespace-normal px-2 text-xs sm:w-auto sm:px-4 sm:text-sm"
             onClick={togglePause}
-            disabled={!controller || Boolean(result)}
+            disabled={initializing || Boolean(result)}
             aria-label={paused ? (isEnglish ? "Resume game" : "متابعة اللعبة") : (isEnglish ? "Pause game" : "إيقاف اللعبة مؤقتًا")}
           >
             {paused ? (isEnglish ? "Resume" : "متابعة") : (isEnglish ? "Pause" : "إيقاف مؤقت")}
@@ -437,11 +454,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
             type="button"
             variant="outline"
             className="min-h-11 w-full min-w-0 whitespace-normal px-2 text-xs sm:w-auto sm:px-4 sm:text-sm"
-            onClick={() => setMuted((value) => {
-              const next = !value;
-              controller?.setMuted(next);
-              return next;
-            })}
+            onClick={() => setMuted(value => !value)}
             aria-pressed={muted}
             aria-label={muted ? (isEnglish ? "Unmute sound" : "تشغيل الصوت") : (isEnglish ? "Mute sound" : "كتم الصوت")}
           >
@@ -480,10 +493,29 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
 
       {message && <p className="text-center text-sm text-brand-emerald" role="status">{message}</p>}
       {queuedCount > 0 && (
-        <p className="text-center text-xs text-brand-cream/60">
-          {isEnglish ? "Results waiting to sync: " : "نتائج محفوظة بانتظار المزامنة: "}
-          {formatNumber(queuedCount, isEnglish)}
-        </p>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <p className="text-center text-xs text-brand-cream/60">
+            {isEnglish ? "Results waiting to sync: " : "نتائج محفوظة بانتظار المزامنة: "}
+            {formatNumber(queuedCount, isEnglish)}
+          </p>
+          <Button type="button" size="sm" variant="outline" onClick={async () => {
+            await retryQueuedGameResults();
+            await syncQueuedGameResults();
+            await refreshQueue();
+          }}>
+            {isEnglish ? "Sync saved results" : "مزامنة النتائج المحفوظة"}
+          </Button>
+        </div>
+      )}
+      {failedQueueCount > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/5 p-3" role="status">
+          <p className="text-xs text-brand-cream/70">
+            {isEnglish ? `${failedQueueCount} result(s) need attention.` : `${formatNumber(failedQueueCount, isEnglish)} نتيجة تحتاج إلى إعادة المحاولة.`}
+          </p>
+          <Button type="button" size="sm" onClick={async () => { await retryFailedGameResults(); await syncQueuedGameResults(); await refreshQueue(); }}>
+            {isEnglish ? "Retry failed results" : "إعادة محاولة النتائج"}
+          </Button>
+        </div>
       )}
     </section>
   );
