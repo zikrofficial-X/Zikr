@@ -47,7 +47,8 @@ const checks = [
 
 const timeoutMs = 15000;
 
-async function runCheck({ name, path }) {
+async function runCheck(check) {
+  const { name, path } = check;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
