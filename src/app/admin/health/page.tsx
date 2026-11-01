@@ -156,6 +156,13 @@ export default async function AdminHealthPage() {
           </div>
         )}
 
+        {health.github.statusesAvailable && !health.github.workflowsAvailable && (
+          <p role="status" className="text-xs text-amber-200/70">تمت قراءة حالات Vercel وCircleCI، لكن تعذرت قراءة GitHub Actions. تحقق من صلاحية actions:read للرمز.</p>
+        )}
+        {!health.github.statusesAvailable && health.github.workflowsAvailable && (
+          <p role="status" className="text-xs text-amber-200/70">تمت قراءة GitHub Actions، لكن تعذرت قراءة حالة Commit checks.</p>
+        )}
+
         {health.github.workflowsAvailable && (
           <div className="space-y-2">
             <h3 className="text-sm font-bold text-brand-cream/75">آخر تشغيلات الأتمتة</h3>
