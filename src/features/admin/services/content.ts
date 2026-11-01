@@ -306,4 +306,5 @@ export async function deleteManagedContent(
     throw new Error(
       "تم تعديل هذا العنصر أو حذفه بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
     );
-  }}
+  }
+}
