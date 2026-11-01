@@ -1,6 +1,7 @@
 -- Remove unnecessary direct anon privileges from private/user-scoped tables.
--- RLS already prevents anonymous row access; this is defense-in-depth and does
--- not change authenticated or service_role access.
+-- Most listed tables were already protected by RLS. The server-only social
+-- profile cache's public-read policy is removed below. This preserves
+-- authenticated and service_role access while reducing anonymous exposure.
 BEGIN;
 
 DO $anon_acl$
