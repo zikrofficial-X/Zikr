@@ -3,7 +3,7 @@
 -- not change authenticated or service_role access.
 BEGIN;
 
-DO $grant_hardening$
+DO $anon_acl$
 DECLARE
   target_table text;
   private_tables text[] := ARRAY[
@@ -46,6 +46,6 @@ BEGIN
     END IF;
   END LOOP;
 END;
-$grant_hardening$;
+$anon_acl$;
 
 COMMIT;
