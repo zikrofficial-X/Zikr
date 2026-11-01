@@ -6,7 +6,7 @@ import { useLanguage } from "@/components/layout/language-provider";
 import { Button } from "@/components/ui/button";
 import { getGameDefinition, type GameDifficulty, type GameId, type GameResultPayload } from "@/lib/games/registry";
 import { enqueueGameResult, getQueuedGameResultCount, syncQueuedGameResults } from "@/lib/games/offline-queue";
-import { WorldGameStage, type StageController, type WorldHud } from "@/features/kids/components/games/world-game-stage";
+import { WorldGameStage, type WorldHud } from "@/features/kids/components/games/world-game-stage";
 import { getDailyMission, getMissionProgress } from "@/lib/games/game-missions";
 import { getGameInstructions, type KidsGameGuide } from "@/lib/games/game-instructions";
 
@@ -81,7 +81,6 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     ? { easy: "Easy", normal: "Normal", hard: "Advanced" }
     : { easy: "سهل", normal: "متوسط", hard: "متقدم" };
   const [difficulty, setDifficulty] = useState<GameDifficulty>(initialDifficulty ?? definition.defaultDifficulty);
-  const [controller, setController] = useState<StageController | null>(null);
   const [hud, setHud] = useState<WorldHud>({ score: 0, collectibles: 0, distance: 0, combo: 0, level: 1, completed: false });
   const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -243,9 +242,9 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     setResult(null); setMessage(""); setPaused(false); setRestartToken(value => value + 1);
   }, []);
   const togglePause = useCallback(() => {
-    if (!controller || result) return;
-    if (paused) { controller.resume(); setPaused(false); } else { controller.pause(); setPaused(true); }
-  }, [controller, paused, result]);
+    if (result) return;
+    setPaused(value => !value);
+  }, [result]);
 
   const openHelp = useCallback(() => {
     if (result || helpOpen) return;
@@ -264,9 +263,8 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     try { if (document.fullscreenElement) await document.exitFullscreen(); else await element.requestFullscreen(); }
     catch { setMessage(isEnglish ? "This browser does not support fullscreen mode." : "لا يدعم هذا المتصفح وضع ملء الشاشة."); }
   }, [isEnglish]);
-  const handleStageReady = useCallback((value: StageController | null) => {
-    setController(value);
-    setInitializing(false);
+  const handleStageReady = useCallback((ready: boolean) => {
+    setInitializing(!ready);
   }, []);
   const handleStageError = useCallback((messageText: string) => {
     setInitializing(false);
