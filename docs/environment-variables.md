@@ -1,6 +1,6 @@
 # ZIKR Environment Variables
 
-Last reconciled: **2026-10-08**
+Last reconciled: **2026-11-01**
 
 This document describes the current environment contract for the web application, GitHub Actions/background workers, CircleCI recovery jobs, and Supabase Edge Functions.
 
@@ -12,7 +12,7 @@ These are the variables required by the Next.js application.
 
 | Variable | Scope | Required | Notes |
 |---|---|---:|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | Canonical project: `https://wvetcauyerlkqvmntajq.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Public | Yes | Canonical project: `https://ymxdswkaxafakugktsim.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Yes | Public/publishable Supabase client credential |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only | Yes | Never expose to browser/client code |
 | `NEXT_PUBLIC_SITE_URL` | Public | Yes | Locked canonical origin: `https://zikrmediaofficial.vercel.app` |
@@ -244,11 +244,11 @@ The repository does **not** contain or print production secret values.
 
 ## 10. Supabase/Vercel binding status
 
-The linked Vercel project already contains the required Supabase runtime variable names, and its configured URLs point to `https://wvetcauyerlkqvmntajq.supabase.co`. Secret values were not printed or changed.
+The linked Vercel project already contains the required Supabase runtime variable names, and its configured URLs point to `https://ymxdswkaxafakugktsim.supabase.co`. Secret values were not printed or changed.
 
 The current production contract is aligned around:
 
-- Supabase project `wvetcauyerlkqvmntajq`;
+- Supabase project `ymxdswkaxafakugktsim`;
 - canonical site `https://zikrmediaofficial.vercel.app`;
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` as the browser-facing key;
 - `SUPABASE_SERVICE_ROLE_KEY` as the server-only key;
@@ -259,9 +259,9 @@ A read-only check against that target passed for Auth settings, `quran_surahs`, 
 
 The deployment environment validator also flags the existing `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` application variables because Google login is handled by Supabase Auth. Those values were not changed; review them separately.
 
-As of October 9, 2026, a fresh production schema query confirmed that `public.content_library.summary_en` and `public.content_translation_queue` both exist. The earlier schema-gap note has been reconciled; it is no longer a current production gap. The current Supabase Security Advisor still warns that leaked-password protection is disabled, and the Performance Advisor reports 79 unused indexes (informational; review query workload before removal).
+As of October 9, 2026, a fresh production schema query confirmed that `public.content_library.summary_en` and `public.content_translation_queue` both exist. The earlier schema-gap note has been reconciled; it is no longer a current production gap. The current Supabase Security Advisor still warns that leaked-password protection is disabled, and the Performance Advisor reports 68 unused indexes (informational; review query workload before removal).
 
-The active Supabase health workflow is pinned to the canonical production target. Historical documentation may still mention retired project refs, but active runtime and workflow configuration must remain on `wvetcauyerlkqvmntajq`. Any future database-target change must use a reviewed forward migration or configuration change rather than rewriting applied migration history.
+The active Supabase health workflow is pinned to the canonical production target. Historical documentation may still mention retired project refs, but active runtime and workflow configuration must remain on `ymxdswkaxafakugktsim`. Any future database-target change must use a reviewed forward migration or configuration change rather than rewriting applied migration history.
 
 ## Security rules
 
