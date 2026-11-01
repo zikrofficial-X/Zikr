@@ -50,12 +50,12 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/video/visuals", "العناصر المرئية", "video.manage"],
     ["/admin/video/templates", "القوالب", "video.manage"],
     ["/admin/video/qa", "ضبط الجودة", "video.manage"],
-    ["/admin/media", "مكتبة الوسائط", "media.manage"],,
+    ["/admin/media", "مكتبة الوسائط", "media.manage"],
 ["/admin/audio", "مركز الصوت", "audio.manage"],
     ["/admin/audio/quran", "تلاوات القرآن", "audio.manage"],
     ["/admin/audio/adhan", "الأذان", "audio.manage"],
     ["/admin/audio/tts", "تحويل النص إلى صوت", "audio.manage"],
-    ["/admin/site-audio", "صوت الموقع والتذكيرات", "audio.manage"],,
+    ["/admin/site-audio", "صوت الموقع والتذكيرات", "audio.manage"],
 ["/admin/social", "مركز النشر الاجتماعي", "social.manage"],
   ],
   "مركز الأطفال": [
@@ -68,7 +68,7 @@ const CANONICAL_ARCHITECTURE = {
   ],
   "النمو والنظام": [
 ["/admin/users", "المستخدمون والأدوار", "users.read"],
-    ["/admin/analytics", "تحليلات المنصة", "analytics.read"],,
+    ["/admin/analytics", "تحليلات المنصة", "analytics.read"],
 ["/admin/security", "أمن لوحة الإدارة", "security.manage"],
     ["/admin/seo", "تحسين الظهور", "settings.manage"],
     ["/admin/android", "إصدار أندرويد", "android.manage"],
