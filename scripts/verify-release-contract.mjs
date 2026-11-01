@@ -110,7 +110,7 @@ assert.ok(androidReleaseService.includes("hasApk(release) &&\n        hasAab(rel
 assert.ok(androidReleaseService.includes("!hasApk(release) || !hasAab(release)"), "Pinned Android releases missing either APK or AAB must be rejected");
 
 const circle = read(".circleci/config.yml");
-const androidDispatchJob = circle.split("  android-release-dispatch:")[1]?.split("\\nworkflows:")[0] ?? "";
+const androidDispatchJob = circle.split("  android-release-dispatch:")[1]?.split("\nworkflows:")[0] ?? "";
 assert.ok(androidDispatchJob.includes("GH_TOKEN"), "Android recovery dispatch must use a protected GitHub token");
 assert.ok(androidDispatchJob.includes("actions/workflows/dispatch-android-release-recovery.yml/dispatches"), "CircleCI must dispatch the guarded recovery workflow after the signed build");
 
@@ -124,8 +124,8 @@ const releaseWorkflow = circle.split("workflows:\n")[1] ?? "";
 const androidWorkflowJob = releaseWorkflow.split("- android-rebuild:")[1]?.split("\n      - ")[0] ?? "";
 assert.ok(androidWorkflowJob.includes("context:\n            - android-signing"), "Signed Android build must use the protected android-signing context");
 assert.ok(androidWorkflowJob.includes("requires:\n            - source-verify\n            - supabase-production-gate"), "Signed Android build must wait for both source validation and Supabase production preflight");
-const dispatchWorkflowJob = releaseWorkflow.split("- android-release-dispatch:")[1]?.split("\\n      - ")[0] ?? "";
-assert.ok(dispatchWorkflowJob.includes("requires:\\n            - android-rebuild"), "Android recovery dispatch must wait for the signed Android build to finish successfully");
+const dispatchWorkflowJob = releaseWorkflow.split("- android-release-dispatch:")[1]?.split("\n      - ")[0] ?? "";
+assert.ok(dispatchWorkflowJob.includes("requires:\n            - android-rebuild"), "Android recovery dispatch must wait for the signed Android build to finish successfully");
 
 assert.ok(circle.includes("ANDROID_KEYSTORE_BASE64"), "Android release must require protected signing material");
 assert.ok(circle.includes("Detected Android versionName"), "Android release must validate the generated version");
