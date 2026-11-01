@@ -213,7 +213,7 @@ async function recoverStaleSocialPublishItems() {
 export async function claimPendingSocialPublishItems(
   limit = 10
 ): Promise<SocialPublishQueueItem[]> {
-  await retryPendingPublishedVideoCleanup(Math.max(1, Math.min(limit, 25)));
+  await retryPendingPublishedVideoCleanup(25);
   await recoverStaleSocialPublishItems();
   const normalItems = await getPendingSocialPublishItems(limit);
   // Failed Facebook-auth items are intentionally not auto-retried. An expired
@@ -434,7 +434,12 @@ async function deleteManagedVideoUrl(
     .map(segment => encodeURIComponent(decodeURIComponent(segment)))
     .join("/");
   try {
-    await supabaseServerAdminRequest("/storage/v1/object/videos/" + encodedPath, { method: "DELETE" });
+    await supabaseServerAdminRequest("/storage/v1/object/videos/" + encodedPath, {
+      method: "DELETE",
+      // The Supabase Storage DELETE endpoint has no JSON payload.
+      // Override the shared REST helper's default JSON content type.
+      headers: { "Content-Type": "application/octet-stream" },
+    });
   } catch (error) {
     // Cleanup is idempotent: a retry after a previous successful DELETE may see 404.
     if (!(error instanceof Error) || !error.message.startsWith("Supabase REST 404:")) throw error;
