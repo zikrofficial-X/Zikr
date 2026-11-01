@@ -1,16 +1,22 @@
 {
   "routes": [
     {
+      "path": "/"
+    },
+    {
       "path": "/about"
     },
     {
       "path": "/adhkar"
     },
     {
-      "path": "/admin/ai-video/curated"
+      "path": "/admin"
     },
     {
       "path": "/admin/ai-video"
+    },
+    {
+      "path": "/admin/ai-video/curated"
     },
     {
       "path": "/admin/alerts"
@@ -22,10 +28,10 @@
       "path": "/admin/android"
     },
     {
-      "path": "/admin/audio/adhan"
+      "path": "/admin/audio"
     },
     {
-      "path": "/admin/audio"
+      "path": "/admin/audio/adhan"
     },
     {
       "path": "/admin/audio/quran"
@@ -61,6 +67,9 @@
       "path": "/admin/health"
     },
     {
+      "path": "/admin/kids"
+    },
+    {
       "path": "/admin/kids/analytics"
     },
     {
@@ -76,9 +85,6 @@
       "path": "/admin/kids/levels"
     },
     {
-      "path": "/admin/kids"
-    },
-    {
       "path": "/admin/knowledge"
     },
     {
@@ -91,10 +97,10 @@
       "path": "/admin/notifications"
     },
     {
-      "path": "/admin"
+      "path": "/admin/prophets"
     },
     {
-      "path": "/admin/prophets"
+      "path": "/admin/queues"
     },
     {
       "path": "/admin/release"
@@ -133,6 +139,9 @@
       "path": "/admin/users"
     },
     {
+      "path": "/admin/video"
+    },
+    {
       "path": "/admin/video-factory"
     },
     {
@@ -163,13 +172,40 @@
       "path": "/admin/video-factory/voices"
     },
     {
+      "path": "/admin/video/qa"
+    },
+    {
+      "path": "/admin/video/requests"
+    },
+    {
+      "path": "/admin/video/scripts"
+    },
+    {
+      "path": "/admin/video/sources"
+    },
+    {
+      "path": "/admin/video/studio"
+    },
+    {
+      "path": "/admin/video/studio/curated"
+    },
+    {
+      "path": "/admin/video/templates"
+    },
+    {
+      "path": "/admin/video/visuals"
+    },
+    {
+      "path": "/admin/video/voices"
+    },
+    {
       "path": "/admin/videos"
     },
     {
-      "path": "/articles/:slug"
+      "path": "/articles"
     },
     {
-      "path": "/articles"
+      "path": "/articles/:slug"
     },
     {
       "path": "/audio"
@@ -187,25 +223,25 @@
       "path": "/auth/reset"
     },
     {
-      "path": "/battles/:slug"
-    },
-    {
       "path": "/battles"
     },
     {
-      "path": "/companions/:slug"
+      "path": "/battles/:slug"
     },
     {
       "path": "/companions"
     },
     {
+      "path": "/companions/:slug"
+    },
+    {
       "path": "/competitions"
     },
     {
-      "path": "/conquests/:slug"
+      "path": "/conquests"
     },
     {
-      "path": "/conquests"
+      "path": "/conquests/:slug"
     },
     {
       "path": "/contact"
@@ -214,10 +250,10 @@
       "path": "/content/:slug"
     },
     {
-      "path": "/dua/:slug"
+      "path": "/dua"
     },
     {
-      "path": "/dua"
+      "path": "/dua/:slug"
     },
     {
       "path": "/duas"
@@ -232,13 +268,16 @@
       "path": "/favorites"
     },
     {
-      "path": "/hadith/:book/:id"
+      "path": "/hadith"
     },
     {
       "path": "/hadith/:book"
     },
     {
-      "path": "/hadith"
+      "path": "/hadith/:book/:id"
+    },
+    {
+      "path": "/kids"
     },
     {
       "path": "/kids/:slug"
@@ -254,9 +293,6 @@
     },
     {
       "path": "/kids/games"
-    },
-    {
-      "path": "/kids"
     },
     {
       "path": "/kids/progress"
@@ -280,9 +316,6 @@
       "path": "/offline-library"
     },
     {
-      "path": "/"
-    },
-    {
       "path": "/platform"
     },
     {
@@ -298,37 +331,37 @@
       "path": "/profile"
     },
     {
-      "path": "/prophets/:slug"
+      "path": "/prophets"
     },
     {
-      "path": "/prophets"
+      "path": "/prophets/:slug"
     },
     {
       "path": "/qibla"
     },
     {
-      "path": "/quran/:surah/:ayah"
+      "path": "/quran"
     },
     {
       "path": "/quran/:surah"
     },
     {
-      "path": "/quran"
+      "path": "/quran/:surah/:ayah"
     },
     {
       "path": "/radio"
     },
     {
-      "path": "/reciters/:slug"
-    },
-    {
       "path": "/reciters"
     },
     {
-      "path": "/scholars/:slug"
+      "path": "/reciters/:slug"
     },
     {
       "path": "/scholars"
+    },
+    {
+      "path": "/scholars/:slug"
     },
     {
       "path": "/search"
@@ -343,10 +376,10 @@
       "path": "/spiritual-ai"
     },
     {
-      "path": "/stories/:slug"
+      "path": "/stories"
     },
     {
-      "path": "/stories"
+      "path": "/stories/:slug"
     },
     {
       "path": "/tafsir"
@@ -361,10 +394,10 @@
       "path": "/terms"
     },
     {
-      "path": "/videos/:slug"
+      "path": "/videos"
     },
     {
-      "path": "/videos"
+      "path": "/videos/:slug"
     },
     {
       "path": "/wird"
