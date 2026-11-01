@@ -106,3 +106,9 @@ Do not enable publishing as a generic repair step: that could release the 103-it
 A direct ACL inspection found 28 private or user-scoped tables with explicit table privileges granted to the `anon` role. The matching RLS policies currently deny anonymous access or require `auth.uid()` ownership, so the audit did not establish an anonymous row-read path. However, these grants are unnecessary and create avoidable exposure if a policy is later weakened.
 
 The repair branch adds migration `20261101135000_revoke_anon_privileges_private_tables.sql`, which revokes all table privileges from `anon` on the 28 affected tables only. The same migration separates the `hadiths`, `stories`, and `scholars` read policies into published-only anonymous access and published-or-admin authenticated access, then revokes anonymous execution of the `SECURITY DEFINER` function `private.is_admin_user()`. It preserves authenticated admin access and `service_role` privileges and does not modify data. This migration has **not** been applied to production as of this snapshot; production verification is required after the controlled release migration step.
+
+### Admin-role escalation check
+
+- `profiles.role` is an enum (`user`, `admin`), but the live `guard_profile_sensitive_fields` trigger resets role to `user` on user inserts and rejects authenticated changes to `role` or `email`.
+- `admin_role_assignments` insert/update/delete policies require `super_admin`; select is self-or-admin.
+- `private.is_admin_user()` is `SECURITY DEFINER` with an empty `search_path`, and its body delegates to the role-check function. Its execute grant included `anon`; anonymous callers have no authenticated UID and the function only returns a boolean. The repair migration replaces the three public-read policies that referenced it with explicit anonymous published-only and authenticated admin-aware policies, then revokes the unnecessary anon execute grant.
