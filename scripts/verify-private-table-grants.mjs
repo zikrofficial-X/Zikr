@@ -39,7 +39,7 @@ const privateTables = [
 assert.ok(sql.includes("REVOKE ALL PRIVILEGES ON TABLE public.%I FROM anon"), "migration must revoke all direct table privileges from anon");
 assert.ok(sql.includes("to_regclass("), "migration must safely skip tables absent in a fresh/partial schema");
 assert.ok(sql.includes("BEGIN;") && sql.includes("COMMIT;"), "grant hardening must be transactional");
-assert.ok(sql.includes("\nEND;\n$$;"), "anonymous grant revocation DO block must have a valid PL/pgSQL terminator");
+assert.ok(sql.includes("DO $anon_acl$") && sql.includes("\nEND;\n$anon_acl$;"), "migration must use a valid named SQL block");
 
 
 for (const table of privateTables) {
