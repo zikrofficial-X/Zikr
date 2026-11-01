@@ -103,7 +103,7 @@ Do not enable publishing as a generic repair step: that could release the 103-it
 
 ## Anonymous table grants — security finding
 
-A direct ACL inspection found 29 private or user-scoped tables with explicit table privileges granted to the `anon` role. The matching RLS policies currently deny anonymous access or require `auth.uid()` ownership, so the audit did not establish an anonymous row-read path. However, these grants are unnecessary and create avoidable exposure if a policy is later weakened.
+A direct ACL inspection found 29 private, server-only, or user-scoped tables with explicit table privileges granted to the `anon` role. Most were blocked by RLS policies requiring an authenticated owner or explicitly denying client access. One confirmed exception was `social_platform_profiles`: it had an anonymous `SELECT` grant and a permissive `USING (true)` policy, so the two cached social profile rows were publicly readable. The table has no OAuth token columns and both current `last_error` values are null, but it also stores internal sync status/error metadata and all current code reads it through server-side service-role clients. This public read path is unnecessary and is closed by the repair migration.
 
 The `social_platform_profiles` cache also had a public-read policy despite being read only through server-side `createAdminClient` services. It exposes internal fields such as `last_error`; the current two rows have no error value, but the policy was unnecessary. The migration removes that public-read policy and anon grants while preserving the server-side profile API.
 
