@@ -112,3 +112,16 @@ The repair branch adds migration `20261101135000_revoke_anon_privileges_private_
 - `profiles.role` is an enum (`user`, `admin`), but the live `guard_profile_sensitive_fields` trigger resets role to `user` on user inserts and rejects authenticated changes to `role` or `email`.
 - `admin_role_assignments` insert/update/delete policies require `super_admin`; select is self-or-admin.
 - `private.is_admin_user()` is `SECURITY DEFINER` with an empty `search_path`, and its body delegates to the role-check function. Its execute grant included `anon`; anonymous callers have no authenticated UID and the function only returns a boolean. The repair migration replaces the three public-read policies that referenced it with explicit anonymous published-only and authenticated admin-aware policies, then revokes the unnecessary anon execute grant.
+
+## Supabase scheduler ownership and live cron targets
+
+Live `cron.job` inspection on the canonical project `ymxdswkaxafakugktsim` confirmed:
+
+| Job | Schedule | Active | Target |
+|---|---|---:|---|
+| `zikr-prayer-push-dispatch` | Every minute | Yes | `prayer-notification-worker` on `ymxdswkaxafakugktsim` |
+| `zikr-source-verified-content-agent` | Daily 03:00 UTC | Yes | `source-verified-content-agent` on `ymxdswkaxafakugktsim` |
+| `zikr-cron-history-cleanup` | Daily 03:30 UTC | Yes | Local `cron.job_run_details` retention cleanup (3 days) |
+| `zikr-youtube-facebook-sync` | Every 10 minutes | **No** | Legacy `sync-youtube-facebook` function; inactive |
+
+All active HTTP cron targets use the canonical current Supabase project. Two older migration files still contain the previous project reference, but applied migration files are historical and remain immutable; the live cron rows were repointed by later migrations. Do not re-enable the legacy social sync cron: GitHub Actions owns the current social publisher.
