@@ -7,6 +7,9 @@ const page = readFileSync("src/app/admin/health/page.tsx", "utf8");
 if (!server.includes("filter?: { column: string; value: string }")) {
   throw new Error("Admin count helper must support exact status-filtered counts");
 }
+if (!server.includes('method: "HEAD"')) {
+  throw new Error("Admin health exact counts must not fetch table row contents");
+}
 if (!server.includes("Prefer: \"count=exact\"") || !server.includes("query.set(filter.column, `eq.${filter.value}`)")) {
   throw new Error("Filtered admin counts must preserve the exact Content-Range total");
 }
