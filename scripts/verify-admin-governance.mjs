@@ -37,7 +37,10 @@ const groups = [...navigation.matchAll(/key:\s*"([^"]+)",\s*label:\s*"([^"]+)",\
       .map((item) => ({ href: item[1], label: item[2], permission: item[3] })),
   }));
 const items = groups.flatMap((group) => group.items);
-if (groups.length < 6) failures.push("expected at least six canonical admin navigation groups");
+if (groups.length !== 5) failures.push("expected exactly five canonical admin navigation zones");
+for (const label of ["التشغيل والمراقبة", "المحتوى والمعرفة", "الوسائط والإنتاج والنشر", "مركز الأطفال", "النمو والنظام"]) {
+  if (!groups.some((group) => group.label === label)) failures.push("missing canonical admin navigation zone: " + label);
+}
 if (!items.length) failures.push("no canonical navigation items were parsed");
 if (items.some((item) => !item.label.trim() || !item.permission.trim())) failures.push("navigation item has an empty label or permission");
 
