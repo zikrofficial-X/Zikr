@@ -102,8 +102,9 @@ export async function toggleCategoryVisibilityAction(formData: FormData) {
     name_ar: string;
     is_active: boolean | null;
     published: boolean | null;
+    updated_at: string;
   }>>(
-    `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}&select=id,name_ar,is_active,published&limit=1`,
+    `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}&select=id,name_ar,is_active,published,updated_at&limit=1`,
     { method: "GET" },
   );
   const category = rows[0];
@@ -111,11 +112,11 @@ export async function toggleCategoryVisibilityAction(formData: FormData) {
 
   const currentlyActive = category.is_active ?? category.published ?? true;
   const nextActive = !currentlyActive;
-  await supabaseServerAdminRequest(
-    `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
+  const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(category.updated_at)}`,
     {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      headers: { "Content-Type": "application/json", Prefer: "return=representation" },
       body: JSON.stringify({
         is_active: nextActive,
         published: nextActive,
@@ -123,6 +124,9 @@ export async function toggleCategoryVisibilityAction(formData: FormData) {
       }),
     },
   );
+  if (!updated.length) {
+    throw new Error("تم تعديل التصنيف بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
+  }
 
   await recordAdminAuditEvent({
     action: "categories.visibility.update",
