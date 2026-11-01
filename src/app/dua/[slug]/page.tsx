@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { cache } from 'react';
 import { Container } from '@/components/ui/container';
@@ -53,7 +52,27 @@ export default async function DuaDetailPage({
   const locale = await getRequestLocale();
   const dua = await loadDua(slug, locale);
 
-  if (!hasPublicDuaContent(dua)) notFound();
+  if (!hasPublicDuaContent(dua)) {
+    return (
+      <Container className="py-16 max-w-2xl" dir={locale === "en" ? "ltr" : "rtl"}>
+        <Card className="space-y-4 p-8 text-center">
+          <h1 className="text-2xl font-bold text-brand-gold">
+            {locale === "en" ? "Supplication not found" : "الدعاء غير موجود"}
+          </h1>
+          <p className="leading-7 text-brand-cream/70">
+            {locale === "en"
+              ? "This supplication is unavailable or is not approved for public display."
+              : "هذا الدعاء غير متاح حاليًا أو لم يستوفِ شروط العرض العام."}
+          </p>
+          <div className="flex justify-center">
+            <Button href="/dua" variant="secondary">
+              {locale === "en" ? "Back to Duas" : "العودة إلى الأدعية"}
+            </Button>
+          </div>
+        </Card>
+      </Container>
+    );
+  }
   const isEnglish = (dua.contentLocale ?? locale) === "en";
 
   return (
