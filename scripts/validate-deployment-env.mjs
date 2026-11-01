@@ -49,6 +49,7 @@ const OPTIONAL = [
   "NEXT_PUBLIC_GA_MEASUREMENT_ID",
   "NEXT_PUBLIC_GTM_ID",
   "NEXT_PUBLIC_ADSENSE_CLIENT",
+  "NEXT_PUBLIC_KIDS_ANALYTICS_ENABLED",
   "IOS_ASSOCIATED_DOMAIN_APP_ID",
 ];
 
@@ -91,6 +92,9 @@ if (callback) {
     callback.origin === (site?.origin ?? CANONICAL_SITE) &&
     callback.pathname === "/auth/callback";
   if (!ok) add("fail", "AUTH_CALLBACK_URL", "must point to /auth/callback on the ZIKR app origin");
+}
+if (env("NEXT_PUBLIC_KIDS_ANALYTICS_ENABLED") && !/^(true|false)$/i.test(env("NEXT_PUBLIC_KIDS_ANALYTICS_ENABLED"))) {
+  add("fail", "NEXT_PUBLIC_KIDS_ANALYTICS_ENABLED", "must be true or false; default is false");
 }
 if (env("FACEBOOK_GRAPH_API_VERSION") && !/^v\d+\.\d+$/.test(env("FACEBOOK_GRAPH_API_VERSION"))) {
   add("fail", "FACEBOOK_GRAPH_API_VERSION", "must match vNN.N");
