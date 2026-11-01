@@ -88,3 +88,15 @@ Live production queries on 2026-11-01 confirmed:
 - All 13 `cover_url` fields are currently `NULL`. This is a metadata/artwork-catalogue gap only; the web game cards use the in-repository game-art components and asset manifest. Do not bulk-write guessed cover URLs.
 
 These checks confirm that the earlier 12-game snapshot is stale; production and the current registry now both contain 13 games.
+
+## Social publishing queue
+
+Live production query on 2026-11-01:
+
+- `published`: **286** records (oldest 2026-10-15, newest 2026-10-30).
+- `queued`: **103** records (oldest 2026-10-29, newest 2026-11-01).
+- All 103 queued records target both YouTube and Facebook Reels.
+- 98 queued rows have `scheduled_at IS NULL`; 5 have explicit scheduled timestamps around 2026-10-30 21:27 UTC.
+- The GitHub publisher is currently fail-closed (`SOCIAL_PUBLISH_ENABLED=false`); no new posts were sent by the disabled runs.
+
+Do not enable publishing as a generic repair step: that could release the 103-item backlog to public accounts. Before activation, review and approve the backlog, define a publish cadence, and verify the current provider cooldown/partial-delivery state. No queue records were changed.
