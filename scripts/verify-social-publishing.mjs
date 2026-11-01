@@ -99,6 +99,7 @@ if (!workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"')) failure
 if (!workflow.includes('SOCIAL_PUBLISH_BATCH_SIZE: "1"')) failures.push("scheduled publishing must process one queue item per 15-minute run");
 if (!generationWorkflow.includes('VIDEO_FREE_ONLY: "true"') || !generationWorkflow.includes('VIDEO_AI_ENABLED: "true"')) failures.push("video generation must use enabled free-only visual AI with deterministic fallback");
 if (!generationWorkflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "true"') || !generationWorkflow.includes('HF_WAN_VIDEO_ENABLED: "true"')) failures.push("both free Hugging Face video providers must be enabled ahead of the FFmpeg fallback");
+if (!generationWorkflow.includes('HF_VIDEO_PROVIDER_TIMEOUT_MS: "150000"') || !generationWorkflow.includes('VIDEO_AI_ATTEMPTS_PER_RUN: "2"') || !generationWorkflow.includes('VIDEO_WORKER_BATCH_SIZE: "2"')) failures.push("free video provider attempts and worker batches must remain bounded for the scheduled job timeout");
 if (!workflow.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("GitHub social workflow must only process the social queue");
 if (!publisher.includes('content.audience === "kids"')) failures.push("YouTube publishing must read the source audience for child-directed videos");
 if (!ytAutomation.includes("selfDeclaredMadeForKids: options.selfDeclaredMadeForKids === true")) failures.push("YouTube uploads must set Made for Kids from the source audience metadata");
