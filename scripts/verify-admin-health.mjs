@@ -67,8 +67,8 @@ if (!page.includes("getAdminSettings") || !page.includes("video_automation_ai_en
 if (page.includes("getVideoEngineConfig()") || page.includes("engine.autoPublishEnabled")) {
   throw new Error("Admin health must not infer GitHub worker state from the Vercel process environment");
 }
-if (!page.includes("اعتماد كل فيديو") || !page.includes("Facebook")) {
-  throw new Error("Admin health must explain per-video approval and the separate Facebook publisher gate");
+if (!page.includes("فحص المصدر والوسائط") || !page.includes("Facebook")) {
+  throw new Error("Admin health must explain the automatic publishing integrity checks and the separate Facebook OAuth gate");
 }
 
 console.log("Admin health accuracy contract passed.");
