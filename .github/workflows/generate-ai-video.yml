@@ -66,7 +66,7 @@ jobs:
       # Generate on free visual AI providers with deterministic FFmpeg fallback; enqueue eligible videos for the separate publisher.
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
-      AUTO_VIDEO_SECONDS: "22"
+      AUTO_VIDEO_SECONDS: "20"
       # Generation only. Queue reconciliation and public posting belong to publish-social.yml (every 15 minutes).
       BACKGROUND_JOB_TARGET: "videos"
       VIDEO_TEMPLATE_VERSION: "2026-10-26-growth-quality-v5"
