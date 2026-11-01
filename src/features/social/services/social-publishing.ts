@@ -436,9 +436,7 @@ async function deleteManagedVideoUrl(
   try {
     await supabaseServerAdminRequest("/storage/v1/object/videos/" + encodedPath, {
       method: "DELETE",
-      // The Supabase Storage DELETE endpoint has no JSON payload.
-      // Override the shared REST helper's default JSON content type.
-      headers: { "Content-Type": "application/octet-stream" },
+      // The DELETE request has no body; the shared REST helper omits Content-Type.
     });
   } catch (error) {
     // Cleanup is idempotent: a retry after a previous successful DELETE may see 404.
