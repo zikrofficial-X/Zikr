@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
 import type { VideoGenerationRequest } from '@/lib/types/video';
 
@@ -56,6 +57,13 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       },
     );
     if (!updated?.length) return NextResponse.json({ error: 'Video request not found' }, { status: 404 });
+    await recordAdminAuditEvent({
+      action: 'video_generation.update',
+      permission: 'video.manage',
+      resourceType: 'video_generation_requests',
+      resourceId: id,
+      metadata: { status, changedFields: Object.keys(patch) },
+    });
     return NextResponse.json({ ok: true, item: updated[0] });
   } catch (error) {
     console.error('[api/admin/videos/[id]] PATCH:', error);
@@ -77,10 +85,22 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
       return NextResponse.json({ error: 'يمكن حذف عمليات التوليد الفاشلة فقط.' }, { status: 409 });
     }
 
-    await supabaseServerAdminRequest(
+    const deleted = await supabaseServerAdminRequest<Array<{ id: string }>>(
       `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}&status=eq.failed`,
-      { method: 'DELETE', headers: { Prefer: 'return=minimal' } },
+      { method: 'DELETE', headers: { Prefer: 'return=representation' } },
     );
+    if (!deleted.length) {
+      return NextResponse.json(
+        { error: 'تم تغيير حالة العملية؛ حدّث الصفحة ثم أعد المحاولة.' },
+        { status: 409 },
+      );
+    }
+    await recordAdminAuditEvent({
+      action: 'video_generation.delete_failed',
+      permission: 'video.delete',
+      resourceType: 'video_generation_requests',
+      resourceId: id,
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('[api/admin/videos/[id]] DELETE:', error);

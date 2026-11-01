@@ -47,7 +47,7 @@ const checks = [
 
 const timeoutMs = 15000;
 
-async function runCheck({ name, path }) {
+async function runCheck({ name, path, expectDenied = false }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -59,7 +59,7 @@ async function runCheck({ name, path }) {
     });
 
     const body = await response.text();
-    if (check.expectDenied) {
+    if (expectDenied) {
       if (response.status === 401 || response.status === 403) {
         console.log("PASS: " + name + " (anonymous access correctly denied; HTTP " + response.status + ")");
         return;
