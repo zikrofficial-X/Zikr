@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
 import { Button } from "@/components/ui/button";
 import { getGameDefinition, type GameDifficulty, type GameId, type GameResultPayload } from "@/lib/games/registry";
-import { enqueueGameResult, getQueuedGameResultCount, syncQueuedGameResults } from "@/lib/games/offline-queue";
+import { enqueueGameResult, getFailedGameResultCount, getQueuedGameResultCount, retryFailedGameResults, syncQueuedGameResults } from "@/lib/games/offline-queue";
 import { WorldGameStage, type WorldHud } from "@/features/kids/components/games/world-game-stage";
 import { getDailyMission, getMissionProgress } from "@/lib/games/game-missions";
 import { getGameInstructions, type KidsGameGuide } from "@/lib/games/game-instructions";
@@ -87,6 +87,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   const [result, setResult] = useState<WorldHud | null>(null);
   const [message, setMessage] = useState("");
   const [queuedCount, setQueuedCount] = useState(0);
+  const [failedQueueCount, setFailedQueueCount] = useState(0);
   const [restartToken, setRestartToken] = useState(0);
   const [initializing, setInitializing] = useState(true);
   const [hasStarted, setHasStarted] = useState(false);
@@ -113,7 +114,11 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   const dailyMission = useMemo(() => getDailyMission(gameId), [gameId]);
   const missionProgress = useMemo(() => getMissionProgress(dailyMission, hud), [dailyMission, hud]);
 
-  const refreshQueue = useCallback(async () => setQueuedCount(await getQueuedGameResultCount()), []);
+  const refreshQueue = useCallback(async () => {
+    const [pending, failed] = await Promise.all([getQueuedGameResultCount(), getFailedGameResultCount()]);
+    setQueuedCount(pending);
+    setFailedQueueCount(failed);
+  }, []);
   useEffect(() => {
     void refreshQueue();
     const sync = () => { void syncQueuedGameResults().finally(refreshQueue); };
@@ -482,6 +487,16 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
           {isEnglish ? "Results waiting to sync: " : "نتائج محفوظة بانتظار المزامنة: "}
           {formatNumber(queuedCount, isEnglish)}
         </p>
+      )}
+      {failedQueueCount > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/5 p-3" role="status">
+          <p className="text-xs text-brand-cream/70">
+            {isEnglish ? `${failedQueueCount} result(s) need attention.` : `${formatNumber(failedQueueCount, isEnglish)} نتيجة تحتاج إلى إعادة المحاولة.`}
+          </p>
+          <Button type="button" size="sm" onClick={async () => { await retryFailedGameResults(); await syncQueuedGameResults(); await refreshQueue(); }}>
+            {isEnglish ? "Retry failed results" : "إعادة محاولة النتائج"}
+          </Button>
+        </div>
       )}
     </section>
   );
