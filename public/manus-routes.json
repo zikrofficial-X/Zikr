@@ -250,6 +250,9 @@
       "path": "/content/:slug"
     },
     {
+      "path": "/data-deletion"
+    },
+    {
       "path": "/dua"
     },
     {
@@ -293,6 +296,9 @@
     },
     {
       "path": "/kids/games"
+    },
+    {
+      "path": "/kids/parent-dashboard"
     },
     {
       "path": "/kids/progress"
