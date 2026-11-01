@@ -118,6 +118,12 @@ const circle = read(".circleci/config.yml");
 const androidDispatchJob = circle.split("  android-release-dispatch:")[1]?.split("\nworkflows:")[0] ?? "";
 assert.ok(androidDispatchJob.includes("GH_TOKEN"), "Android recovery dispatch must use a protected GitHub token");
 assert.ok(androidDispatchJob.includes("actions/workflows/dispatch-android-release-recovery.yml/dispatches"), "CircleCI must dispatch the guarded recovery workflow after the signed build");
+assert.ok(androidDispatchJob.includes('RECOVERY_REF="$CIRCLE_TAG"'), "CircleCI tag releases must dispatch the exact release tag, not a synthetic branch");
+assert.ok(androidDispatchJob.includes('RECOVERY_REF="$CIRCLE_BRANCH"'), "CircleCI branch recovery must preserve the exact guarded branch");
+assert.ok(recoveryDispatch.includes("startsWith(github.ref, 'refs/tags/v')"), "Android recovery must accept the canonical release tag ref");
+assert.ok(recoveryDispatch.includes('const isTagDispatch = context.ref === "refs/tags/" + tag;'), "Android recovery must distinguish exact tag dispatch from branch recovery");
+assert.ok(recoveryDispatch.includes("ref: isTagDispatch ? tag : recoveryBranch"), "Android publisher must run from the exact tag or guarded recovery branch");
+
 
 assert.ok(circle.includes(`releaseUrl": "https://github.com/${repo}/releases/tag/`), "CircleCI Android release metadata must use the canonical repository");
 const androidJob = circle.split("  android-rebuild:")[1]?.split("\n  security-audit:")[0] ?? "";
