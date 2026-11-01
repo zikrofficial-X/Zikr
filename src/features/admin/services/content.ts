@@ -32,7 +32,7 @@ export async function getScheduledContent(): Promise<ScheduledContentItem[]> {
     );
   } catch (error) {
     console.error("[admin/content] failed to load scheduled content:", error);
-    return [];
+    throw error;
   }
 }
 
@@ -67,6 +67,18 @@ export async function getManagedContent(): Promise<ManagedContentItem[]> {
           .order("created_at", { ascending: false })
           .limit(20),
       ]);
+
+    const queryErrors = [
+      storiesRes.error,
+      articlesRes.error,
+      competitionsRes.error,
+      plansRes.error,
+      pinnedRes.error,
+    ].filter(Boolean);
+    if (queryErrors.length > 0) {
+      const details = queryErrors.map((error) => error?.message ?? "Unknown query error");
+      throw new Error(`تعذر تحميل بعض مصادر المحتوى: ${details.join(" | ")}`);
+    }
 
     const items: ManagedContentItem[] = [
       ...(storiesRes.data ?? []).map((item) => ({
@@ -127,7 +139,7 @@ export async function getManagedContent(): Promise<ManagedContentItem[]> {
     );
   } catch (error) {
     console.error("[admin/content] failed to load managed content:", error);
-    return [];
+    throw error;
   }
 }
 
