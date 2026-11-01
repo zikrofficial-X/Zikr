@@ -221,7 +221,7 @@ if (!adminUi.includes("كل 15 دقيقة")) failures.push("publishing center mu
 if (!adminUi.includes("اختبار الاتصال")) failures.push("publishing center must show a live connection test");
 
 const socialWorkflow = workflow;
-if (!socialWorkflow.includes('cron: "*/15 * * * *"')) failures.push("automatic social publisher must remain scheduled every 15 minutes");
+if (!socialWorkflow.includes('cron: "7,22,37,52 * * * *"')) failures.push("automatic social publisher must remain scheduled every 15 minutes off peak");
 if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze) failures.push("video generation must automatically enqueue publishable assets unless Phase 0 freeze is active");
 if (!queue.includes("facebookCredentials.accessToken")) failures.push("Facebook queue target selection must verify a usable Page credential");
 
