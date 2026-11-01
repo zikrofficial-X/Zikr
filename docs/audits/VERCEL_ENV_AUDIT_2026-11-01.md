@@ -23,6 +23,7 @@ Secret values were not retrieved or printed.
 ## Keep
 
 - `ANDROID_APP_LINKS_SHA256` is read by `src/app/.well-known/assetlinks.json/route.ts`.
+- `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` is required by `src/features/auth/components/google-oauth-button.tsx` for native Android Google sign-in; production and Preview values are present in Vercel and must be kept.
 - `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, and `FACEBOOK_PAGE_ID` are used by the Facebook OAuth connect/callback.
 - `FACEBOOK_PAGE_ACCESS_TOKEN` is a legacy fallback in `src/features/social/services/facebook-credentials.ts`; retire only after the fallback code path is removed.
 - `GITHUB_DISPATCH_TOKEN` and `GH_TOKEN` support the admin release manager and Android release listing.
