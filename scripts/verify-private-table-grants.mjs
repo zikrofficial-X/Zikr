@@ -61,8 +61,8 @@ const droppedPolicies = [...sql.matchAll(/DROP\s+POLICY\s+IF\s+EXISTS\s+([a-z_]+
   .sort();
 assert.deepEqual(
   droppedPolicies,
-  ["public_read_hadiths", "public_read_scholars", "public_read_stories", "social_platform_profiles_public_read"],
-  "only the three admin-aware public-read policies and the internal social profile policy may be removed",
+  ["public_read_hadiths", "public_read_scholars", "public_read_stories", "social_platform_profiles_public_read", "youtube_sync_state_public_read"],
+  "only the three admin-aware public-read policies and two server-only social sync policies may be removed",
 );
 if (/DISABLE\s+ROW\s+LEVEL\s+SECURITY|TRUNCATE\s+TABLE|DELETE\s+FROM/i.test(sql)) {
   throw new Error("grant hardening migration must not disable RLS or modify application data");
