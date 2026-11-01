@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 
 const BUCKET = "youtube-facebook-media";
 const PUBLIC_URL_PREFIX = "/storage/v1/object/public/";
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
     const rawScore = Number(body.matchScore ?? scoreFilename(filename, job.title));
     const matchScore = Number.isFinite(rawScore) ? Math.max(0, Math.min(1, rawScore)) : 0;
 
-    const { error: updateError } = await supabase
+    const { data: updatedJob, error: updateError } = await supabase
       .from("social_sync_jobs")
       .update({
         source_media_path: path,
@@ -105,9 +106,24 @@ export async function POST(request: Request) {
       })
       .eq("id", job.id)
       .is("facebook_post_id", null)
-      .in("status", ["waiting_media", "failed", "pending"]);
+      .in("status", ["waiting_media", "failed", "pending"])
+      .select("id")
+      .maybeSingle();
 
     if (updateError) throw updateError;
+    if (!updatedJob) {
+      return NextResponse.json(
+        { error: "تغيرت حالة مهمة النشر أو تم نشرها بالفعل؛ حدّث الصفحة قبل تسجيل الوسائط." },
+        { status: 409 },
+      );
+    }
+    await recordAdminAuditEvent({
+      action: "youtube_facebook.media.register",
+      permission: "media.manage",
+      resourceType: "social_sync_jobs",
+      resourceId: job.id,
+      metadata: { sourceVideoId, matchMethod: method, matchScore, mimeType, size },
+    });
 
     return NextResponse.json({
       ok: true,
