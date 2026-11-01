@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
@@ -43,7 +42,21 @@ export async function generateMetadata({ params }: VideoDetailPageProps): Promis
 export default async function VideoDetailPage({ params }: VideoDetailPageProps) {
   const { slug } = await params;
   const video = await loadVideo(slug);
-  if (!video) notFound();
+  if (!video) {
+    return (
+      <Container className="py-16 max-w-3xl">
+        <Card className="space-y-4 p-8 text-center">
+          <h1 className="text-2xl font-bold text-brand-gold">الفيديو غير موجود</h1>
+          <p className="leading-7 text-brand-cream/70">
+            ربما حُذف الفيديو أو لم يعد متاحًا للعامة. يمكنك العودة إلى مكتبة الفيديوهات.
+          </p>
+          <div className="flex justify-center">
+            <Button href="/videos" variant="secondary">العودة إلى الفيديوهات</Button>
+          </div>
+        </Card>
+      </Container>
+    );
+  }
 
   const directVideoUrl =
     typeof video.metadata?.sourceVideoUrl === 'string'
