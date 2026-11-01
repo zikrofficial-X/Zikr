@@ -24,6 +24,14 @@ const contentService = readFileSync(
   resolve(process.cwd(), "src/features/admin/services/content.ts"),
   "utf8",
 );
+const siteAudioMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261101190000_admin_atomic_site_audio_primary.sql"),
+  "utf8",
+);
+const siteAudioRoute = readFileSync(
+  resolve(process.cwd(), "src/app/api/admin/site-audio/route.ts"),
+  "utf8",
+);
 const editorialActions = readFileSync(
   resolve(process.cwd(), "src/app/admin/editorial-actions.ts"),
   "utf8",
@@ -190,4 +198,30 @@ assert.match(
   "video mutation endpoints must append audit events",
 );
 
+
+assert.match(
+  siteAudioMigration,
+  /CREATE OR REPLACE FUNCTION public\\.admin_set_primary_site_audio_asset\\([\\s\\S]*?SECURITY INVOKER[\\s\\S]*?SET search_path = ''/i,
+  "primary audio changes must use a fixed-search-path invoker RPC",
+);
+assert.match(
+  siteAudioMigration,
+  /UPDATE public\\.site_audio_assets[\\s\\S]*?SET is_primary = false[\\s\\S]*?UPDATE public\\.site_audio_assets[\\s\\S]*?SET is_primary = true[\\s\\S]*?INSERT INTO public\\.admin_audit_events[\\s\\S]*?'site_audio\\.primary\\.set'/i,
+  "primary audio change and its audit event must run in one database transaction",
+);
+assert.match(
+  siteAudioMigration,
+  /REVOKE ALL ON FUNCTION public\\.admin_set_primary_site_audio_asset\\(uuid, text, uuid\\)[\\s\\S]*?FROM PUBLIC, anon, authenticated[\\s\\S]*?GRANT EXECUTE ON FUNCTION public\\.admin_set_primary_site_audio_asset\\(uuid, text, uuid\\)[\\s\\S]*?TO service_role/i,
+  "primary audio RPC must be executable by service_role only",
+);
+assert.match(
+  siteAudioRoute,
+  /rpc\\/admin_set_primary_site_audio_asset[\\s\\S]*?p_actor_user_id: guard\\.profile\\.id/,
+  "primary audio API must call the atomic RPC with the authenticated actor",
+);
+assert.doesNotMatch(
+  siteAudioRoute,
+  /update\\(\\{ is_primary: false \\}\\)/,
+  "the API route must not clear primary audio in a separate non-atomic request",
+);
 console.log("Admin RBAC/RLS migration contract passed.");
