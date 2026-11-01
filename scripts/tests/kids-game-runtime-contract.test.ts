@@ -5,6 +5,7 @@ const queue = readFileSync("src/lib/games/offline-queue.ts", "utf8");
 const registry = readFileSync("src/lib/games/registry.ts", "utf8");
 const stage = readFileSync("src/features/kids/components/games/world-game-stage.tsx", "utf8");
 const shell = readFileSync("src/features/kids/components/games/game-shell.tsx", "utf8");
+const scoreRoute = readFileSync("src/app/api/kids/games/score/route.ts", "utf8");
 
 assert.ok(!queue.includes("@ts-nocheck"), "offline queue must remain type checked");
 assert.ok(!queue.includes("MAX_ATTEMPTS) continue"), "exhausted retries must not remain silently pending");
@@ -15,6 +16,7 @@ assert.ok(queue.includes("retryQueuedGameResults"), "pending results must suppor
 assert.ok(queue.includes("if (syncInFlight) return syncInFlight"), "simultaneous sync triggers must share one in-flight request");
 assert.ok(queue.includes("response.status === 401"), "unauthenticated sync must wait for a session instead of consuming retries");
 assert.ok(queue.includes("response.status === 429"), "rate-limited sync must be rescheduled instead of dead-lettered");
+assert.ok(scoreRoute.includes('"Retry-After": "60"'), "score API must provide a retry delay for rate-limited submissions");
 assert.ok(queue.includes("AUTH_RETRY_MS"), "authentication failures must use a longer retry delay");
 assert.ok(queue.includes("if (all.length >= MAX_QUEUE_SIZE) return null"), "a full queue must reject new results instead of evicting older results");
 assert.ok(!queue.includes(".slice(0, all.length - MAX_QUEUE_SIZE)"), "queue capacity must never silently delete earlier results");
