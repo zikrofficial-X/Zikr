@@ -51,6 +51,10 @@ END;
 $anon_acl$;
 
 
+-- The social sync job sequence is server-only as well; do not leave direct
+-- sequence read/update access after revoking the parent table grants.
+REVOKE ALL PRIVILEGES ON SEQUENCE public.social_sync_jobs_id_seq FROM anon;
+
 -- Keep public content readable by anon, but do not expose the SECURITY DEFINER
 -- admin predicate to anonymous callers. Authenticated admins retain draft access.
 DROP POLICY IF EXISTS public_read_hadiths ON public.hadiths;
