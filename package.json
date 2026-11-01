@@ -95,6 +95,7 @@
     "storage:cleanup": "node scripts/cleanup-supabase-storage.mjs",
     "auth:native:check": "node scripts/tests/native-google-oauth-contract.test.mjs",
     "kids:db-trigger:check": "bash scripts/tests/kids-game-db-trigger.integration.sh",
+    "admin:role-db:check": "bash scripts/tests/admin-role-update.integration.sh",
     "privacy:check": "node scripts/verify-consent-mode.mjs && node scripts/verify-kids-analytics.mjs",
     "admin:health:check": "node scripts/verify-admin-health.mjs",
     "supabase:types:check": "node scripts/verify-generated-supabase-types.mjs",
