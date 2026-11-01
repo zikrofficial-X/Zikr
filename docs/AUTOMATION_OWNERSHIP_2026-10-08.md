@@ -63,7 +63,7 @@
 
 ### GitHub Actions
 - Video generation: `17 3,9,15,21 * * *` UTC.
-- Social publishing: `*/15 * * * *`.
+- Social publishing: `7,22,37,52 * * * *` UTC (every 15 minutes, shifted away from quarter-hour boundaries).
 
 ### CircleCI
 - English content sync: `17 4 * * *` UTC.
