@@ -69,6 +69,9 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
     key === "video_automation_auto_publish" ||
     key === "video_automation_facebook_enabled"
   ) {
+    if (rawValue !== "true" && rawValue !== "false") {
+      throw new Error("قيمة منطقية غير صالحة لإعداد أتمتة الفيديو.");
+    }
     value = rawValue === "true";
   } else if (key === "video_automation_batch_size") {
     const numeric = Number(rawValue);
