@@ -1,4 +1,5 @@
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { hasAdminPermission } from "@/features/admin/services/permissions";
 import { readAdminRows } from "@/features/admin/services/safe-read";
 import { AdminBreadcrumbs } from "@/features/admin/components/admin-breadcrumbs";
 
@@ -42,18 +43,22 @@ function QueueCard({ queue }: { queue: QueueCard }) {
 }
 
 export default async function AdminQueuesPage() {
-  await requireAdminPermission("dashboard.view");
+  const admin = await requireAdminPermission("dashboard.view");
+  const canViewVideo = hasAdminPermission(admin.role, "video.manage");
+  const canViewSocial = hasAdminPermission(admin.role, "social.manage");
+  const canViewContent = hasAdminPermission(admin.role, "content.manage") || hasAdminPermission(admin.role, "content.publish");
+  const canViewTranslation = hasAdminPermission(admin.role, "knowledge.manage");
   const [video, social, content, translation] = await Promise.all([
-    loadQueue("/rest/v1/video_generation_requests?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200"),
-    loadQueue("/rest/v1/social_publish_queue?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200"),
-    loadQueue("/rest/v1/content_publish_queue?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200"),
-    loadQueue("/rest/v1/content_translation_queue?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200"),
+    canViewVideo ? loadQueue("/rest/v1/video_generation_requests?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200") : null,
+    canViewSocial ? loadQueue("/rest/v1/social_publish_queue?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200") : null,
+    canViewContent ? loadQueue("/rest/v1/content_publish_queue?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200") : null,
+    canViewTranslation ? loadQueue("/rest/v1/content_translation_queue?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200") : null,
   ]);
   const queues: QueueCard[] = [
-    { key: "video", title: "طابور الفيديو", href: "/admin/video/requests", rows: video.rows, ok: video.ok, statuses: ["pending", "processing", "retry_wait", "failed"] },
-    { key: "social", title: "طابور النشر الاجتماعي", href: "/admin/social", rows: social.rows, ok: social.ok, statuses: ["queued", "processing", "partial", "failed"] },
-    { key: "content", title: "طابور نشر المحتوى", href: "/admin/editorial", rows: content.rows, ok: content.ok, statuses: ["queued", "processing", "published", "failed"] },
-    { key: "translation", title: "طابور الترجمة", href: "/admin/content", rows: translation.rows, ok: translation.ok, statuses: ["queued", "processing", "completed", "failed"] },
+    ...(video ? [{ key: "video", title: "طابور الفيديو", href: "/admin/video/requests", rows: video.rows, ok: video.ok, statuses: ["pending", "processing", "retry_wait", "failed"] }] : []),
+    ...(social ? [{ key: "social", title: "طابور النشر الاجتماعي", href: "/admin/social", rows: social.rows, ok: social.ok, statuses: ["queued", "processing", "partial", "failed"] }] : []),
+    ...(content ? [{ key: "content", title: "طابور نشر المحتوى", href: "/admin/editorial", rows: content.rows, ok: content.ok, statuses: ["queued", "processing", "published", "failed"] }] : []),
+    ...(translation ? [{ key: "translation", title: "طابور الترجمة", href: "/admin/content", rows: translation.rows, ok: translation.ok, statuses: ["queued", "processing", "completed", "failed"] }] : []),
   ];
   return <div className="mx-auto max-w-[1800px] space-y-6 p-4 md:p-8" dir="rtl">
     <AdminBreadcrumbs current="مركز الطوابير" />
