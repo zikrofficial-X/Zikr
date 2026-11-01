@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main' && vars.SOCIAL_PUBLISH_ENABLED == 'true'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 15
@@ -25,9 +25,11 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       BACKGROUND_JOB_TARGET: "social"
-      SOCIAL_PUBLISH_ENABLED: ${{ vars.SOCIAL_PUBLISH_ENABLED || 'false' }}
-      AUTO_VIDEO_PUBLISH_ENABLED: "false"
-      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"
+      SOCIAL_PUBLISH_BATCH_SIZE: "1"
+      YOUTUBE_UPLOAD_PRIVACY: "public"
+      SOCIAL_PUBLISH_ENABLED: "true"
+      AUTO_VIDEO_PUBLISH_ENABLED: "true"
+      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
