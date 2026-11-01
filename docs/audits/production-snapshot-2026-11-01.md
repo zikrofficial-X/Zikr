@@ -162,3 +162,7 @@ Live production query on 2026-11-01 found all nine book catalogue rows but only 
 | Tirmidhi | 180 | 3,892 |
 
 The catalogue count represents the complete external collection, not the number of rows locally seeded. The old service treated an empty local page as a successful database result, so later pages beyond the seeded subset could appear empty instead of falling back to the external Hadith provider. The repair branch now uses the local page only when it contains rows and otherwise falls back to the remote provider; tests cover populated, empty, and missing local results.
+
+## Admin dashboard queue-count accuracy
+
+The Admin Health page already used exact PostgREST `HEAD` counts, but the Video Factory dashboard still counted only the latest 500 queue rows. This could under-report backlog totals after the queues grew beyond that sample. The repair branch now routes both dashboards through the same exact status-count helper and marks the queue unavailable when any status query fails; it no longer presents a sampled count as a complete queue total.
