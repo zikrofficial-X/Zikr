@@ -93,7 +93,8 @@
     "performance:indexes:check": "node scripts/tests/performance-index-contract.test.mjs",
     "offline:export": "node scripts/export-offline-content.mjs --required",
     "storage:cleanup": "node scripts/cleanup-supabase-storage.mjs",
-    "auth:native:check": "node scripts/tests/native-google-oauth-contract.test.mjs"
+    "auth:native:check": "node scripts/tests/native-google-oauth-contract.test.mjs",
+    "kids:db-trigger:check": "bash scripts/tests/kids-game-db-trigger.integration.sh"
   },
   "dependencies": {
     "@capacitor/android": "7.6.9",
