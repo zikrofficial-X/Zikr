@@ -4,6 +4,12 @@ import { readFileSync } from "node:fs";
 
 const migrationPath = "supabase/migrations/20261101135000_revoke_anon_privileges_private_tables.sql";
 const sql = readFileSync(migrationPath, "utf8");
+const contactService = readFileSync("src/features/contact/services/contact.ts", "utf8");
+const contactRoute = readFileSync("src/app/api/contact/route.ts", "utf8");
+assert.ok(contactService.includes('import "server-only"'), "public contact inserts must stay in a server-only service");
+assert.ok(contactService.includes("createAdminClient()") && contactService.includes('.from("contacts").insert'), "contact form must use the service-role server API, not anon table grants");
+assert.ok(contactRoute.includes("submitContactMessage("), "public contact form must submit through the validated /api/contact handler");
+
 
 const privateTables = [
   "admin_page_views",
