@@ -104,9 +104,10 @@ if (env("QURAN_VIDEO_RECITER_CODE") && !/^[a-z0-9_-]+$/i.test(env("QURAN_VIDEO_R
 if (env("QURAN_AYAH_AUDIO_RECITER_CODE") && !/^[a-z0-9_-]+$/i.test(env("QURAN_AYAH_AUDIO_RECITER_CODE"))) {
   add("fail", "QURAN_AYAH_AUDIO_RECITER_CODE", "must be a simple per-ayah audio provider code");
 }
-if (env("QURAN_VIDEO_RECITER_CODE") && env("QURAN_AYAH_AUDIO_RECITER_CODE") &&
-    env("QURAN_VIDEO_RECITER_CODE") !== env("QURAN_AYAH_AUDIO_RECITER_CODE")) {
-  add("fail", "Quran audio provider alignment", "QURAN_VIDEO_RECITER_CODE and QURAN_AYAH_AUDIO_RECITER_CODE must match");
+const quranVideoReciterCode = env("QURAN_VIDEO_RECITER_CODE") || "alafasy";
+const quranAyahAudioReciterCode = env("QURAN_AYAH_AUDIO_RECITER_CODE") || "alafasy";
+if (quranVideoReciterCode !== quranAyahAudioReciterCode) {
+  add("fail", "Quran audio provider alignment", "effective QURAN_VIDEO_RECITER_CODE and QURAN_AYAH_AUDIO_RECITER_CODE must match (both default to alafasy)");
 }
 if (env("FACEBOOK_GRAPH_API_VERSION") && !/^v\d+\.\d+$/.test(env("FACEBOOK_GRAPH_API_VERSION"))) {
   add("fail", "FACEBOOK_GRAPH_API_VERSION", "must match vNN.N");
