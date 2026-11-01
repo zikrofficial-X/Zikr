@@ -29,8 +29,8 @@ for (const token of ["content_hash", "source_hash", "video_automation_runs", "IF
 
 const workflow = readFileSync(".github/workflows/generate-ai-video.yml", "utf8");
 const adminHealth = readFileSync("src/app/admin/health/page.tsx", "utf8");
-if (!adminHealth.includes("engine.aiEnabled") || !adminHealth.includes("engine.autoPublishEnabled") || !adminHealth.includes('["template"]')) {
-  throw new Error("Admin health must expose the AI generation and publishing safety gates");
+if (!adminHealth.includes("getAdminSettings") || !adminHealth.includes("video_automation_ai_enabled") || !adminHealth.includes("video_automation_auto_publish") || !adminHealth.includes("اعتماد كل فيديو")) {
+  throw new Error("Admin health must report canonical worker AI/publishing settings and preserve per-video approval");
 }
 if (!workflow.includes("VIDEO_PROVIDER_ORDER")) {
   throw new Error("Workflow must preserve the canonical provider priority contract");
