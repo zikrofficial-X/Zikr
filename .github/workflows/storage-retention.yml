@@ -10,11 +10,6 @@ on:
         required: true
         default: false
         type: boolean
-  push:
-    branches:
-      - main
-      - storage-retention-run-2026-10-30
-      - storage-retention-apply-2026-10-30
 
 permissions:
   contents: read
