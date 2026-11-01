@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { EXPECTED_PLATFORM_APIS, EXPECTED_PLATFORM_PAGES } from './platform-route-baseline.mjs';
 
@@ -147,6 +147,50 @@ for (const file of discoveredRoutes) {
 
 const pagePaths = new Set(pages.map((file) => normalizeRoutePath(file)));
 const apiPaths = new Set(apis.map((file) => normalizeRoutePath(file)));
+
+// The public Manus route manifest is consumed by external route smoke tests.
+// Keep it identical to the actual Next.js page inventory, including dynamic
+// parameters, admin compatibility redirects, and canonical routes.
+const manusManifestPath = join(root, "public/manus-routes.json");
+if (!existsSync(manusManifestPath)) {
+  failures.push("Missing public/manus-routes.json route manifest");
+} else {
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync(manusManifestPath, "utf8"));
+  } catch {
+    manifest = null;
+  }
+  if (!manifest || !Array.isArray(manifest.routes)) {
+    failures.push("public/manus-routes.json must contain a routes array");
+  } else {
+    const manifestPaths = manifest.routes.map((route) =>
+      typeof route?.path === "string" ? route.path : "",
+    );
+    const uniqueManifestPaths = new Set(manifestPaths);
+    if (uniqueManifestPaths.size !== manifestPaths.length) {
+      failures.push("public/manus-routes.json contains duplicate route paths");
+    }
+
+    const toManifestPath = (path) => path.replace(/\\[([^\\]]+)\\]/g, ":$1");
+    const expectedManifestPaths = new Set([...pagePaths].map(toManifestPath));
+    for (const path of expectedManifestPaths) {
+      if (!uniqueManifestPaths.has(path)) {
+        failures.push("Manus route manifest is missing a discovered page: " + path);
+      }
+    }
+    for (const path of uniqueManifestPaths) {
+      if (!expectedManifestPaths.has(path)) {
+        failures.push("Manus route manifest contains a page that no longer exists: " + path);
+      }
+    }
+    if (manifestPaths.length !== pages.length) {
+      failures.push(
+        `Manus route manifest count drift: expected ${pages.length}, found ${manifestPaths.length}.`,
+      );
+    }
+  }
+}
 
 for (const path of pagePaths) {
   if (apiPaths.has(path)) {
