@@ -2,7 +2,7 @@
 
 ## Final audited baseline
 - Repository: `zikrofficial-X/Zikr`
-- Code release commit deployed to production: `18349e48fa601ffe16d13014549f03ca5186a07d`
+- Current production main commit at final recheck: `d4b5f794dd365c490d3e2e96843fb59614f20215` (docs-only follow-up after the application code release at `18349e48fa601ffe16d13014549f03ca5186a07d`).
 - Vercel project: `zikr`, team `zikr3`, linked Git repository `zikrofficial-X/Zikr`
 - Supabase project: `ymxdswkaxafakugktsim`
 - Follow-up owner controls: [GitHub issue #170](https://github.com/zikrofficial-X/Zikr/issues/170)
@@ -17,16 +17,16 @@
 
 ## Vercel
 - Project uses Next.js and Node 22.x.
-- Production deployment `dpl_7b2zkK2cD7zZe9Rwx4wattmSyJQX` is `READY`, target `production`, built from `main` at `18349e48fa601ffe16d13014549f03ca5186a07d`.
+- Production deployment `dpl_DcUL7uoysAu63babGUjN9VTYN7QQ` is `READY`, target `production`, built from `main` at `d4b5f794dd365c490d3e2e96843fb59614f20215`.
 - Production aliases: `zikrmediaofficial.vercel.app`, `zikr-zikr3.vercel.app`, and `zikr-git-main-zikr3.vercel.app`.
-- `zikrmediaofficial.vercel.app` is verified and attached to the production deployment.
-- Vercel Git auto-deploy is disabled; the above deployment was explicitly created from the linked Git repository and exact commit after the main Quality Gate passed.
+- `zikrmediaofficial.vercel.app` is verified and attached to the current production deployment.
+- A production deployment was observed automatically after PR #171 pushed the docs-only follow-up to `main`; the resulting deployment metadata matches the exact Git commit `d4b5f794`. An earlier manual release for the application-code commit `18349e48` was also verified READY.
 - `POSTGRES_URL` was changed to the Vercel `sensitive` variable type without retrieving or changing its value. Follow-up metadata confirmed `visibility=secret` and no remaining security issues for this variable.
 - Two preview-only `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` entries remain scoped to branch names no longer present: `fix/google-native-login-canonical` and `branding/zikr-identity`. The available Vercel connection exposes list/create/edit but no delete-project-environment-variable action. Do not repurpose them. Owner should remove those two Preview-only entries after confirming no external preview process depends on them; keep the generic Preview and Production entries.
 - Preview deployment protection was not weakened.
 
 ## Production smoke tests
-All checks below were performed against the public production alias after deployment `dpl_7b2zkK2cD7zZe9Rwx4wattmSyJQX` reached READY:
+All checks below were repeated against the public production alias after deployment `dpl_DcUL7uoysAu63babGUjN9VTYN7QQ` for `d4b5f794` reached READY:
 - Home page: HTTP 200.
 - Valid video `/videos/story-of-musa-full`: HTTP 200, expected YouTube embed ID present, metadata remains noindex.
 - Valid dua `/dua/zikr-dua-quran-002250`: HTTP 200 and the expected published Arabic dua text is present.
