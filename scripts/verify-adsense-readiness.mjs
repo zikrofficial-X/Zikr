@@ -64,6 +64,7 @@ const site = read('src/lib/site.ts');
 const adsTxt = read('public/ads.txt');
 const nextConfig = read('next.config.ts');
 const analytics = read('src/components/layout/analytics.tsx');
+const runtimeEffects = read('src/components/layout/runtime-effects.tsx');
 
 if (!/google-adsense-account/.test(layout)) fail('AdSense publisher meta tag is missing from app/layout.tsx.');
 const layoutPublisher = layout.match(/ca-pub-\d{8,}/)?.[0] ?? null;
@@ -124,6 +125,19 @@ if (!/article:\s*1800/.test(read('src/lib/content-quality.ts'))) {
   fail('Article indexing threshold in src/lib/content-quality.ts must not be lowered below 1800 characters.');
 }
 
+if (!/const\s+NON_AD_PATHS[\s\S]*?"\/kids"/.test(runtimeEffects)) {
+  fail('All /kids routes must remain excluded from AdSense until child privacy/legal review is complete.');
+}
+
+const productionUrl = site.match(/PRODUCTION_URL\s*=\s*["']([^"']+)["']/)?.[1];
+if (productionUrl && /\.vercel\.app$/i.test(new URL(productionUrl).hostname)) {
+  warn('The canonical origin is a shared vercel.app hostname; a custom-domain decision and attachment remain an owner-level AdSense review blocker.');
+}
+if (longformBlocks.length < 20) {
+  warn(`The internal growth plan calls for 20–30 substantial original editorial pages before reapplication; this check found ${longformBlocks.length} long-form articles.`);
+}
+warn('This source check cannot verify AdSense approval, site review, live ad serving, Funding Choices/CMP configuration, Search Console status, or account-level policy findings. Confirm these in the publisher accounts before reapplying.');
+
 if (failures.length) {
   console.error('ADSENSE_READINESS_FAILED');
   for (const item of failures) console.error(`❌ ${item}`);
@@ -131,6 +145,6 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('ADSENSE_READINESS_PASSED');
+console.log('ADSENSE_SOURCE_CHECKS_PASSED (publisher/account readiness is not verified)');
 console.log(`Checked ${requiredFiles.length} required assets and ${appCode.length} application source files.`);
 for (const item of warnings) console.warn(`⚠️ ${item}`);
