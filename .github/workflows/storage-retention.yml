@@ -25,7 +25,6 @@ concurrency:
 
 jobs:
   cleanup:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/storage-retention-run-2026-10-30' || github.ref == 'refs/heads/storage-retention-apply-2026-10-30'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 25
@@ -73,8 +72,12 @@ jobs:
       - name: Print deletion plan (dry run)
         run: pnpm storage:cleanup
 
-      - name: Delete only verified, safely-retained objects
-        if: github.event_name == 'schedule' || inputs.apply == true || github.ref == 'refs/heads/storage-retention-apply-2026-10-30' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.head_commit.message == 'ops(storage): apply verified 48-hour video cleanup')
+      - name: Apply verified videos-only cleanup for an explicit main-branch run
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.head_commit.message == 'ops(storage): apply verified 48-hour video cleanup' }}
+        run: pnpm storage:cleanup -- --apply --videos-only
+
+      - name: Apply scheduled or manually approved full storage retention
+        if: ${{ github.event_name == 'schedule' || inputs.apply == true || github.ref == 'refs/heads/storage-retention-apply-2026-10-30' }}
         run: pnpm storage:cleanup -- --apply
 
       - name: Verify final bucket inventory
