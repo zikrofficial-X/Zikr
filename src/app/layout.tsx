@@ -5,7 +5,6 @@ import { SiteShell } from "@/components/layout/site-shell";
 
 import { defaultOgImage, siteConfig } from "@/lib/site";
 import { Analytics } from "@/components/layout/analytics";
-import { GoogleFundingChoices } from "@/components/layout/google-funding-choices";
 import { DeferredRuntime } from "@/components/layout/deferred-runtime";
 import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
@@ -167,7 +166,12 @@ gtag('consent', 'default', {
 });
 gtag('set', 'ads_data_redaction', true);`}
         </Script>
-        <GoogleFundingChoices />
+        <Script
+          id="google-funding-choices"
+          async
+          src="https://fundingchoicesmessages.google.com/i/fundingchoicesmessages.js"
+          strategy="beforeInteractive"
+        />
         {process.env.NODE_ENV === "production" && isValidGoogleAnalyticsId && (
           <>
             <Script
