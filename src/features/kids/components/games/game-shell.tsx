@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
 import { Button } from "@/components/ui/button";
 import { getGameDefinition, type GameDifficulty, type GameId, type GameResultPayload } from "@/lib/games/registry";
-import { enqueueGameResult, getFailedGameResultCount, getQueuedGameResultCount, retryFailedGameResults, syncQueuedGameResults } from "@/lib/games/offline-queue";
+import { enqueueGameResult, getFailedGameResultCount, getQueuedGameResultCount, retryFailedGameResults, retryQueuedGameResults, syncQueuedGameResults } from "@/lib/games/offline-queue";
 import { WorldGameStage, type WorldHud } from "@/features/kids/components/games/world-game-stage";
 import { getDailyMission, getMissionProgress } from "@/lib/games/game-missions";
 import { getGameInstructions, type KidsGameGuide } from "@/lib/games/game-instructions";
@@ -122,8 +122,16 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   useEffect(() => {
     void refreshQueue();
     const sync = () => { void syncQueuedGameResults().finally(refreshQueue); };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    sync();
     window.addEventListener("online", sync);
-    return () => window.removeEventListener("online", sync);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("online", sync);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [refreshQueue]);
 
   const getElapsedSeconds = useCallback(() => {
@@ -485,10 +493,19 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
 
       {message && <p className="text-center text-sm text-brand-emerald" role="status">{message}</p>}
       {queuedCount > 0 && (
-        <p className="text-center text-xs text-brand-cream/60">
-          {isEnglish ? "Results waiting to sync: " : "نتائج محفوظة بانتظار المزامنة: "}
-          {formatNumber(queuedCount, isEnglish)}
-        </p>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <p className="text-center text-xs text-brand-cream/60">
+            {isEnglish ? "Results waiting to sync: " : "نتائج محفوظة بانتظار المزامنة: "}
+            {formatNumber(queuedCount, isEnglish)}
+          </p>
+          <Button type="button" size="sm" variant="outline" onClick={async () => {
+            await retryQueuedGameResults();
+            await syncQueuedGameResults();
+            await refreshQueue();
+          }}>
+            {isEnglish ? "Sync saved results" : "مزامنة النتائج المحفوظة"}
+          </Button>
+        </div>
       )}
       {failedQueueCount > 0 && (
         <div className="flex flex-wrap items-center justify-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/5 p-3" role="status">
