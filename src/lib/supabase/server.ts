@@ -254,6 +254,7 @@ export async function supabaseServerAdminCount(
       apikey: key,
       Authorization: `Bearer ${key}`,
       Prefer: "count=exact",
+      "Range-Unit": "items",
       Range: "0-0",
     },
     cache: "no-store",
