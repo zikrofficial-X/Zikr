@@ -16,9 +16,8 @@ DECLARE
   v_max_distance integer;
   v_recent_count integer;
   v_allowed_keys text[] := ARRAY[
-    'level', 'combo', 'completed', 'source', 'runtime',
-    'dailyMissionId', 'dailyMissionCompleted', 'roundTimeSeconds',
-    'mistakes', 'accuracy'
+    'source', 'runtime', 'dailyMissionId', 'dailyMissionCompleted',
+    'roundTimeSeconds', 'mistakes', 'accuracy'
   ];
 BEGIN
   IF NEW.game_id NOT IN (
@@ -53,13 +52,14 @@ BEGIN
     ELSE 0
   END;
 
-  IF NEW.score NOT BETWEEN 0 AND v_max_score
+  IF NEW.score IS NULL OR NEW.collectibles IS NULL OR NEW.distance IS NULL
+    OR NEW.score NOT BETWEEN 0 AND v_max_score
     OR NEW.collectibles NOT BETWEEN 0 AND v_max_collectibles
     OR NEW.distance NOT BETWEEN 0 AND v_max_distance THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'game result exceeds per-game limits';
   END IF;
 
-  IF NEW.difficulty NOT IN ('easy', 'normal', 'hard') THEN
+  IF NEW.difficulty IS NULL OR NEW.difficulty NOT IN ('easy', 'normal', 'hard') THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'invalid game difficulty';
   END IF;
 
@@ -75,6 +75,8 @@ BEGIN
     ) THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'invalid game result metadata';
   END IF;
+
+  NEW.created_at := COALESCE(NEW.created_at, now());
 
   -- Serialize the per-user counter to avoid concurrent requests bypassing the cap.
   PERFORM pg_advisory_xact_lock(hashtext(NEW.user_id::text));
