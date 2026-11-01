@@ -301,6 +301,24 @@ async function publishFacebookVideoItem(
   );
 }
 
+async function isMadeForKidsVideo(item: SocialPublishQueueItem): Promise<boolean> {
+  if (!isVideoContentType(item.content_type)) return false;
+  if (!item.content_id) throw new Error("YouTube video audience metadata is unavailable; publishing was held.");
+
+  const rows = await supabaseServerAdminRequest<Array<{ content: unknown }>>(
+    "/rest/v1/video_generation_requests?id=eq." +
+      encodeURIComponent(item.content_id) +
+      "&select=content&limit=1",
+  );
+  if (!Array.isArray(rows) || !rows[0]) {
+    throw new Error("YouTube video audience metadata is unavailable; publishing was held.");
+  }
+
+  const content = rows[0].content;
+  if (!content || typeof content !== "object" || Array.isArray(content)) return false;
+  return (content as Record<string, unknown>).audience === "kids";
+}
+
 async function publishYoutubeItem(item: SocialPublishQueueItem): Promise<string | null> {
   if (!item.video_url) throw new Error("YouTube publishing requires video_url");
   const mediaUrl = assertPublishableVideoUrl(item.video_url, "youtube");
@@ -308,6 +326,7 @@ async function publishYoutubeItem(item: SocialPublishQueueItem): Promise<string 
   if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET || !env.YOUTUBE_REFRESH_TOKEN) {
     throw new Error("YouTube OAuth is not configured: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET and YOUTUBE_REFRESH_TOKEN are required");
   }
+  const madeForKids = await isMadeForKidsVideo(item);
   return publishToYoutube(
     item.id,
     {
@@ -317,7 +336,8 @@ async function publishYoutubeItem(item: SocialPublishQueueItem): Promise<string 
       categoryId: "27",
       isShort: item.metadata?.videoFormat !== "horizontal",
     },
-    mediaUrl
+    mediaUrl,
+    { selfDeclaredMadeForKids: madeForKids },
   );
 }
 
