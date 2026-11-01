@@ -1,4 +1,5 @@
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { hasAdminPermission } from "@/features/admin/services/permissions";
 import { readAdminRows } from "@/features/admin/services/safe-read";
 import { AdminBreadcrumbs } from "@/features/admin/components/admin-breadcrumbs";
 
@@ -42,22 +43,30 @@ function QueueCard({ queue }: { queue: QueueCard }) {
 }
 
 export default async function AdminQueuesPage() {
-  await requireAdminPermission("dashboard.view");
+  const admin = await requireAdminPermission("dashboard.view");
+  const canReadVideo = hasAdminPermission(admin.role, "video.manage");
+  const canReadSocial = hasAdminPermission(admin.role, "social.manage");
+  const canReadContent = hasAdminPermission(admin.role, "content.manage");
   const [video, social, content, translation] = await Promise.all([
-    loadQueue("/rest/v1/video_generation_requests?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200"),
-    loadQueue("/rest/v1/social_publish_queue?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200"),
-    loadQueue("/rest/v1/content_publish_queue?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200"),
-    loadQueue("/rest/v1/content_translation_queue?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200"),
+    canReadVideo ? loadQueue("/rest/v1/video_generation_requests?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200") : Promise.resolve(null),
+    canReadSocial ? loadQueue("/rest/v1/social_publish_queue?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200") : Promise.resolve(null),
+    canReadContent ? loadQueue("/rest/v1/content_publish_queue?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200") : Promise.resolve(null),
+    canReadContent ? loadQueue("/rest/v1/content_translation_queue?select=id,status,created_at,updated_at,error_message&order=created_at.desc&limit=200") : Promise.resolve(null),
   ]);
+
   const queues: QueueCard[] = [
-    { key: "video", title: "طابور الفيديو", href: "/admin/video/requests", rows: video.rows, ok: video.ok, statuses: ["pending", "processing", "retry_wait", "failed"] },
-    { key: "social", title: "طابور النشر الاجتماعي", href: "/admin/social", rows: social.rows, ok: social.ok, statuses: ["queued", "processing", "partial", "failed"] },
-    { key: "content", title: "طابور نشر المحتوى", href: "/admin/editorial", rows: content.rows, ok: content.ok, statuses: ["queued", "processing", "published", "failed"] },
-    { key: "translation", title: "طابور الترجمة", href: "/admin/content", rows: translation.rows, ok: translation.ok, statuses: ["queued", "processing", "completed", "failed"] },
+    ...(video ? [{ key: "video", title: "طابور الفيديو", href: "/admin/video/requests", rows: video.rows, ok: video.ok, statuses: ["pending", "processing", "retry_wait", "failed"] }] : []),
+    ...(social ? [{ key: "social", title: "طابور النشر الاجتماعي", href: "/admin/social", rows: social.rows, ok: social.ok, statuses: ["queued", "processing", "partial", "failed"] }] : []),
+    ...(content ? [{ key: "content", title: "طابور نشر المحتوى", href: "/admin/content", rows: content.rows, ok: content.ok, statuses: ["queued", "processing", "published", "failed"] }] : []),
+    ...(translation ? [{ key: "translation", title: "طابور الترجمة", href: "/admin/content", rows: translation.rows, ok: translation.ok, statuses: ["queued", "processing", "completed", "failed"] }] : []),
   ];
   return <div className="mx-auto max-w-[1800px] space-y-6 p-4 md:p-8" dir="rtl">
     <AdminBreadcrumbs current="مركز الطوابير" />
-    <header><p className="text-xs tracking-[0.18em] text-brand-cream/30">OPERATIONS QUEUE CENTER</p><h1 className="mt-2 text-3xl font-bold text-brand-gold">مركز الطوابير</h1><p className="mt-2 max-w-3xl text-sm leading-7 text-brand-cream/50">قراءة موحدة للطوابير التشغيلية مع إبقاء حالة البيانات غير المتاحة واضحة.</p></header>
-    <div className="grid gap-4 xl:grid-cols-2">{queues.map((queue) => <QueueCard key={queue.key} queue={queue} />)}</div>
+    <header><p className="text-xs tracking-[0.18em] text-brand-cream/30">OPERATIONS QUEUE CENTER</p><h1 className="mt-2 text-3xl font-bold text-brand-gold">مركز الطوابير</h1><p className="mt-2 max-w-3xl text-sm leading-7 text-brand-cream/50">تُعرض فقط الطوابير التي يملك دورك صلاحية قراءتها.</p></header>
+    {queues.length ? (
+      <div className="grid gap-4 xl:grid-cols-2">{queues.map((queue) => <QueueCard key={queue.key} queue={queue} />)}</div>
+    ) : (
+      <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-6 text-center text-sm text-brand-cream/60">لا توجد طوابير ضمن نطاق صلاحيات هذا الدور.</div>
+    )}
   </div>;
 }

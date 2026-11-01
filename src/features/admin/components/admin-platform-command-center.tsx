@@ -3,7 +3,7 @@ import { Activity, AlertTriangle, BellRing, Radio, ShieldCheck } from "lucide-re
 import { getAdminSnapshot } from "@/features/admin/services/platform";
 import { ADMIN_NAVIGATION } from "@/features/admin/config/navigation";
 import { getCurrentProfile } from "@/features/admin/services/admin";
-import { hasAdminPermission } from "@/features/admin/services/permissions";
+import { ADMIN_TABLE_PERMISSIONS, hasAdminPermission } from "@/features/admin/services/permissions";
 import { deleteFailedVideoGenerationAction } from "@/features/admin/actions/video";
 import { AdminModuleDirectory } from "@/features/admin/components/admin-module-directory";
 
@@ -360,7 +360,11 @@ export async function AdminPlatformCommandCenter() {
           </p>
         </header>
         {countSections.map((section) => {
-          const values = snapshot.counts.filter((value) => section.tables.includes(value.table));
+          const values = snapshot.counts.filter((value) =>
+            section.tables.includes(value.table) &&
+            ADMIN_TABLE_PERMISSIONS[value.table as keyof typeof ADMIN_TABLE_PERMISSIONS] &&
+            hasAdminPermission(role, ADMIN_TABLE_PERMISSIONS[value.table as keyof typeof ADMIN_TABLE_PERMISSIONS])
+          );
           if (!values.length) return null;
           return (
             <section key={section.key} className="space-y-3">

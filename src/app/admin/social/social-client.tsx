@@ -69,7 +69,7 @@ function formatDeferredAt(value: string): string {
   return new Date(value).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" });
 }
 
-export default function AdminSocialPage() {
+export default function AdminSocialPage({ canDelete }: { canDelete: boolean }) {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [health, setHealth] = useState<Health>({
     youtubeConfigured: false,
@@ -584,13 +584,15 @@ export default function AdminSocialPage() {
             >
               إعادة المحدد ({selectedRetryableCount})
             </Button>
-            <Button
-              variant="outline"
-              disabled={!retryable.length || busy}
-              onClick={() => void runAction("delete_failed")}
-            >
-              حذف الفاشلة/الجزئية ({retryable.length})
-            </Button>
+            {canDelete ? (
+              <Button
+                variant="outline"
+                disabled={!retryable.length || busy}
+                onClick={() => void runAction("delete_failed")}
+              >
+                حذف الفاشلة/الجزئية ({retryable.length})
+              </Button>
+            ) : null}
           </div>
         </div>
         <div className="hidden overflow-auto rounded-xl border border-brand-gold/10 sm:block">

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { requireAdminStepUp } from "@/features/admin/services/security";
+import { enforceAdminRateLimit } from "@/features/admin/services/rate-limit";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
@@ -16,6 +18,10 @@ export async function saveAdminSettingAction(formData: FormData) {
   const rawValues = formData.getAll("value").map((value) => String(value).trim());
   const rawValue = rawValues.at(-1) ?? "";
   if (!key) throw new Error("مفتاح الإعداد مطلوب.");
+  await enforceAdminRateLimit(profile, "admin.settings.update", 20, 60);
+  if (key === "require_mfa_for_destructive") {
+    await requireAdminStepUp("security.manage", "/admin/security");
+  }
 
   const allowedSettings = new Set([
     "require_mfa_for_destructive",
@@ -56,6 +62,7 @@ export async function saveAdminSettingAction(formData: FormData) {
 
 export async function saveVideoAutomationSettingAction(formData: FormData) {
   const profile = await requireAdminPermission("system.manage");
+  await enforceAdminRateLimit(profile, "admin.video_automation.setting_update", 20, 60);
   const key = formValue(formData, "key");
   if (!key.startsWith("video_automation_")) throw new Error("إعداد أتمتة الفيديو غير صالح.");
 
@@ -69,7 +76,18 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
     key === "video_automation_auto_publish" ||
     key === "video_automation_facebook_enabled"
   ) {
+    if (rawValue !== "true" && rawValue !== "false") {
+      throw new Error("قيمة منطقية غير صالحة.");
+    }
     value = rawValue === "true";
+    if (
+      rawValue === "true" &&
+      (key === "video_automation_enabled" ||
+        key === "video_automation_auto_publish" ||
+        key === "video_automation_facebook_enabled")
+    ) {
+      await requireAdminStepUp("system.manage", "/admin/automation");
+    }
   } else if (key === "video_automation_batch_size") {
     const numeric = Number(rawValue);
     if (!Number.isInteger(numeric) || numeric < 1 || numeric > 10) {
@@ -121,10 +139,11 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
 }
 
 export async function requestVideoAutomationRunAction() {
-  const profile = await requireAdminPermission("system.manage");
+  const profile = await requireAdminStepUp("system.manage", "/admin/automation");
+  await enforceAdminRateLimit(profile, "admin.video_automation.run", 3, 60);
   const batchRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
     "/rest/v1/admin_settings?key=eq.video_automation_batch_size&select=value&limit=1",
-  ).catch(() => []);
+  );
   const rawBatch = Number(batchRows?.[0]?.value ?? 3);
   const batchSize = Number.isInteger(rawBatch) ? Math.min(10, Math.max(1, rawBatch)) : 3;
   const enabledRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
@@ -214,6 +233,7 @@ export async function requestVideoAutomationRunAction() {
 
 export async function createAdminNotificationAction(formData: FormData) {
   const profile = await requireAdminPermission("notifications.manage");
+  await enforceAdminRateLimit(profile, "admin.notifications.create", 20, 60);
   const title = formValue(formData, "title");
   const body = formValue(formData, "body");
   const link = formValue(formData, "link") || null;
@@ -244,7 +264,8 @@ export async function createAdminNotificationAction(formData: FormData) {
 }
 
 export async function markAdminNotificationsReadAction() {
-  await requireAdminPermission("notifications.manage");
+  const profile = await requireAdminPermission("notifications.manage");
+  await enforceAdminRateLimit(profile, "admin.notifications.mark_read", 5, 60);
   await supabaseServerAdminRequest("/rest/v1/notifications?user_id=is.null&read=eq.false", {
     method: "PATCH",
     headers: { Prefer: "return=minimal" },

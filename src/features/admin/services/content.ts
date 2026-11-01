@@ -24,19 +24,26 @@ export type ScheduledContentItem = {
   status: "queued" | "processing" | "published" | "cancelled" | "failed";
 };
 
-export async function getScheduledContent(): Promise<ScheduledContentItem[]> {
+export type AdminReadResult<T> = {
+  items: T[];
+  available: boolean;
+  failedSources: string[];
+};
+
+export async function getScheduledContent(): Promise<AdminReadResult<ScheduledContentItem>> {
   try {
-    return await supabaseServerAdminRequest<ScheduledContentItem[]>(
+    const items = await supabaseServerAdminRequest<ScheduledContentItem[]>(
       "/rest/v1/content_publish_queue?status=eq.queued&select=id,content_table,content_id,scheduled_at,status&order=scheduled_at.asc&limit=20",
       { method: "GET" },
     );
+    return { items: items ?? [], available: true, failedSources: [] };
   } catch (error) {
     console.error("[admin/content] failed to load scheduled content:", error);
-    return [];
+    return { items: [], available: false, failedSources: ["content_publish_queue"] };
   }
 }
 
-export async function getManagedContent(): Promise<ManagedContentItem[]> {
+export async function getManagedContent(): Promise<AdminReadResult<ManagedContentItem>> {
   try {
     const supabase = await createClient();
     const [storiesRes, articlesRes, competitionsRes, plansRes, pinnedRes] =
@@ -61,76 +68,56 @@ export async function getManagedContent(): Promise<ManagedContentItem[]> {
           .select("id, title, published, created_at, updated_at")
           .order("created_at", { ascending: false })
           .limit(20),
+        // Production schema uses "published" on pinned_messages (not "is_active").
         supabase
           .from("pinned_messages")
-          .select("id, title, is_active, created_at, updated_at")
+          .select("id, title, published, created_at, updated_at")
           .order("created_at", { ascending: false })
           .limit(20),
       ]);
 
+    const sources = [
+      ["stories", storiesRes],
+      ["articles", articlesRes],
+      ["competitions", competitionsRes],
+      ["memorization_plans", plansRes],
+      ["pinned_messages", pinnedRes],
+    ] as const;
+    const failedSources = sources.filter(([, result]) => result.error).map(([name]) => name);
+
     const items: ManagedContentItem[] = [
       ...(storiesRes.data ?? []).map((item) => ({
-        id: item.id,
-        title: item.title,
-        published: item.published ?? false,
-        views: 0,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        type: "قصة",
-        table: "stories" as const,
+        id: item.id, title: item.title, published: item.published ?? false, views: 0,
+        created_at: item.created_at, updated_at: item.updated_at, type: "قصة", table: "stories" as const,
       })),
       ...(articlesRes.data ?? []).map((item) => ({
-        id: item.id,
-        title: item.title,
-        published: item.published ?? false,
-        views: item.views ?? 0,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        type: "مقالة",
-        table: "articles" as const,
+        id: item.id, title: item.title, published: item.published ?? false, views: item.views ?? 0,
+        created_at: item.created_at, updated_at: item.updated_at, type: "مقالة", table: "articles" as const,
       })),
       ...(competitionsRes.data ?? []).map((item) => ({
-        id: item.id,
-        title: item.title,
-        published: item.published ?? false,
-        views: 0,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        type: "مسابقة",
-        table: "competitions" as const,
+        id: item.id, title: item.title, published: item.published ?? false, views: 0,
+        created_at: item.created_at, updated_at: item.updated_at, type: "مسابقة", table: "competitions" as const,
       })),
       ...(plansRes.data ?? []).map((item) => ({
-        id: item.id,
-        title: item.title,
-        published: item.published ?? false,
-        views: 0,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        type: "خطة حفظ",
-        table: "memorization_plans" as const,
+        id: item.id, title: item.title, published: item.published ?? false, views: 0,
+        created_at: item.created_at, updated_at: item.updated_at, type: "خطة حفظ", table: "memorization_plans" as const,
       })),
       ...(pinnedRes.data ?? []).map((item) => ({
-        id: item.id,
-        title: item.title ?? "رسالة مثبتة",
-        published: item.is_active ?? false,
-        views: 0,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        type: "رسالة مثبتة",
-        table: "pinned_messages" as const,
+        id: item.id, title: item.title ?? "رسالة مثبتة", published: item.published ?? false, views: 0,
+        created_at: item.created_at, updated_at: item.updated_at, type: "رسالة مثبتة", table: "pinned_messages" as const,
       })),
     ];
 
-    return items.sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    );
+    items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    for (const [source, result] of sources) {
+      if (result.error) console.error(`[admin/content] ${source} query failed:`, result.error);
+    }
+    return { items, available: failedSources.length === 0, failedSources };
   } catch (error) {
     console.error("[admin/content] failed to load managed content:", error);
-    return [];
+    return { items: [], available: false, failedSources: ["content_catalogue"] };
   }
 }
-
 
 export type AdminContentApiItem = {
   id: string;
@@ -226,35 +213,21 @@ export async function toggleManagedContent(
   optimisticUpdatedAt?: string | null,
 ): Promise<void> {
   assertManagedContentTarget(table, id);
-  if (optimisticUpdatedAt) {
-    const result = await supabaseServerAdminRequest<Array<{ id: string }>>(
-      `/rest/v1/${table}?id=eq.${encodeURIComponent(
-        id,
-      )}&updated_at=eq.${encodeURIComponent(optimisticUpdatedAt)}&select=id`,
-      { method: "GET" },
-    );
-    if (result.length === 0) {
-      throw new Error(
-        "تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
-      );
-    }
-  }
+  const column = "published";
+  const filters = new URLSearchParams({ id: `eq.${id}` });
+  if (optimisticUpdatedAt) filters.set("updated_at", `eq.${optimisticUpdatedAt}`);
 
-  const column = table === "pinned_messages" ? "is_active" : "published";
-  await supabaseServerAdminRequest(
-    `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
+  const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    `/rest/v1/${table}?${filters.toString()}&select=id`,
     {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      },
-      body: JSON.stringify({
-        [column]: published,
-        updated_at: new Date().toISOString(),
-      }),
+      headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ [column]: published, updated_at: new Date().toISOString() }),
     },
   );
+  if (!Array.isArray(updated) || updated.length === 0) {
+    throw new Error("تم تعديل هذا العنصر بواسطة مستخدم آخر أو لم يعد موجودًا. حدّث الصفحة ثم أعد المحاولة.");
+  }
 }
 
 export async function deleteManagedContent(
@@ -263,37 +236,24 @@ export async function deleteManagedContent(
   optimisticUpdatedAt?: string | null,
 ): Promise<void> {
   assertManagedContentTarget(table, id);
-  const column = table === "pinned_messages" ? "is_active" : "published";
+  const filters = new URLSearchParams({ id: `eq.${id}` });
+  filters.set("or", "(published.is.null,published.eq.false)");
+  if (optimisticUpdatedAt) filters.set("updated_at", `eq.${optimisticUpdatedAt}`);
 
-  const current = await supabaseServerAdminRequest<
-    Array<Record<string, unknown>>
-  >(
-    `/rest/v1/${table}?select=id,${column},updated_at&id=eq.${encodeURIComponent(
-      id,
-    )}&limit=1`,
+  const deleted = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    `/rest/v1/${table}?${filters.toString()}&select=id`,
+    { method: "DELETE", headers: { Prefer: "return=representation" } },
+  );
+  if (Array.isArray(deleted) && deleted.length > 0) return;
+
+  const current = await supabaseServerAdminRequest<Array<{ id: string; published: boolean; updated_at: string }>>(
+    `/rest/v1/${table}?select=id,published,updated_at&id=eq.${encodeURIComponent(id)}&limit=1`,
     { method: "GET" },
   );
-
   if (!current[0]) throw new Error("العنصر غير موجود.");
-  if (Boolean(current[0][column])) {
-    throw new Error(
-      "لا يمكن حذف عنصر منشور. قم بإخفائه أولاً ثم أعد المحاولة.",
-    );
+  if (current[0].published) throw new Error("لا يمكن حذف عنصر منشور. قم بإخفائه أولاً ثم أعد المحاولة.");
+  if (optimisticUpdatedAt && current[0].updated_at !== optimisticUpdatedAt) {
+    throw new Error("تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
   }
-  if (
-    optimisticUpdatedAt &&
-    String(current[0].updated_at) !== optimisticUpdatedAt
-  ) {
-    throw new Error(
-      "تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
-    );
-  }
-
-  await supabaseServerAdminRequest(
-    `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
-    {
-      method: "DELETE",
-      headers: { Prefer: "return=minimal" },
-    },
-  );
+  throw new Error("تعذر حذف العنصر؛ لم يتغير أي سجل في قاعدة البيانات.");
 }

@@ -15,6 +15,7 @@ export const ADMIN_PERMISSIONS = {
   'video.delete': 'حذف عمليات توليد الفيديو',
   'social.manage': 'إدارة النشر الاجتماعي',
   'social.publish': 'تنفيذ النشر الاجتماعي',
+  'social.delete': 'حذف عناصر طابور النشر الاجتماعي',
   'sections.manage': 'إدارة ظهور وترتيب الأقسام',
   'users.read': 'عرض المستخدمين',
   'users.roles': 'إدارة أدوار المستخدمين',
@@ -30,6 +31,34 @@ export const ADMIN_PERMISSIONS = {
 } as const;
 
 export type AdminPermission = keyof typeof ADMIN_PERMISSIONS;
+
+/** Minimum permission required before an admin-facing aggregate for a table may be returned. */
+export const ADMIN_TABLE_PERMISSIONS = {
+  articles: "content.manage",
+  stories: "content.manage",
+  competitions: "content.manage",
+  content_library: "library.manage",
+  hadiths: "knowledge.manage",
+  duas: "knowledge.manage",
+  prophets: "prophets.manage",
+  companions: "knowledge.manage",
+  scholars: "knowledge.manage",
+  quran_surahs: "audio.manage",
+  quran_reciters: "audio.manage",
+  quran_audio: "audio.manage",
+  tawasheeh: "audio.manage",
+  site_audio_assets: "audio.manage",
+  kids_content: "kids.manage",
+  kids_games: "kids.manage",
+  kids_game_levels: "kids.manage",
+  videos: "video.manage",
+  video_generation_requests: "video.manage",
+  media_assets: "media.manage",
+  profiles: "users.read",
+  social_publish_queue: "social.manage",
+  admin_audit_events: "audit.read",
+} as const satisfies Record<string, AdminPermission>;
+
 export type AdminAssignedRole =
   | 'super_admin'
   | 'content_manager'

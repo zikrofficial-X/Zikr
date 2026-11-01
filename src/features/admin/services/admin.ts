@@ -22,27 +22,46 @@ export async function getCurrentProfile(): Promise<AdminProfile | null> {
     } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, display_name, role')
       .eq('id', user.id)
       .single();
 
-    if (!profile) return { id: user.id, email: user.email, display_name: null, role: 'user' };
+    if (profileError?.code === 'PGRST116' || !profile) {
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('[admin] profile lookup failed:', profileError);
+        return null;
+      }
+      return { id: user.id, email: user.email, display_name: null, role: 'user' };
+    }
+    if (profileError) {
+      console.error('[admin] profile lookup failed:', profileError);
+      return null;
+    }
 
-    const { data: assignment } = await supabase
+    const { data: assignment, error: assignmentError } = await supabase
       .from('admin_role_assignments')
       .select('role')
       .eq('user_id', user.id)
       .maybeSingle();
 
+    // The database resolver only treats an assignment as an admin role when the
+    // profiles.role enum is also "admin". Any read failure must fail closed:
+    // never fall back to the legacy full-admin role after an assignment error.
+    if (assignmentError) {
+      console.error('[admin] role assignment lookup failed:', assignmentError);
+      return null;
+    }
+
     const assignedRole = assignment?.role as AdminRole | null;
-    const role: AdminRole =
-      assignedRole && assignedRole in ADMIN_ROLE_PERMISSIONS
+    const role: AdminRole = profile.role !== 'admin'
+      ? 'user'
+      : assignedRole && assignedRole in ADMIN_ROLE_PERMISSIONS
         ? assignedRole
-        : profile.role === 'admin'
-          ? 'admin'
-          : 'user';
+        : assignment
+          ? 'user'
+          : 'admin';
 
     return { ...profile, email: user.email, role };
   } catch {

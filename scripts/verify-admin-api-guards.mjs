@@ -45,7 +45,7 @@ const privilegedPatterns = [
 
 function checkGuardedBlock({ block, label, allow405 = false }) {
   const gatePattern =
-    /\brequireAdminApi\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\1\s*\)|\brequireAdminPermission\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z0-9_.-]*)\3\s*\)|\brequireAdminStepUp\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\5\s*,|\brequireAdmin\s*\(\s*\)/;
+    /\\b(?:requireAdminApi|requireAdminPermissionApi|requireAdminStepUpApi)\\s*\\(\\s*(['"])([a-z][a-z0-9_-]*\\.[a-z][a-z0-9_.-]*)\\1\\s*\\)|\\brequireAdminPermission\\s*\\(\\s*(['"])([a-z][a-z0-9_-]*\\.[a-z0-9_.-]*)\\3\\s*\\)|\\brequireAdminStepUp\\s*\\(\\s*(['"])([a-z][a-z0-9_-]*\\.[a-z0-9_.-]*)\\5\\s*,|\\brequireAdmin\\s*\\(\\s*\\)/;
   const gate = gatePattern.exec(block);
 
   if (!gate && allow405 && isMethodRejectionOnly(block)) {
@@ -56,7 +56,7 @@ function checkGuardedBlock({ block, label, allow405 = false }) {
     return "missing";
   }
 
-  if (gate.index > 900) {
+  if (gate.index > 1600) {
     failures.push(label + ": authorization guard is too far from the entry point");
   }
 

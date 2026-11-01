@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
+import { enforceAdminRateLimit } from "@/features/admin/services/rate-limit";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
@@ -23,6 +26,7 @@ type QueueItem = {
   error_message: string | null;
   created_at: string;
   metadata?: Record<string, unknown> | null;
+  updated_at?: string;
 };
 
 const retryableStatuses = new Set(["failed", "partial"]);
@@ -120,7 +124,7 @@ export async function GET() {
 
   try {
     const items = await supabaseServerAdminRequest<QueueItem[]>(
-      "/rest/v1/social_publish_queue?select=id,content_type,content_id,title,target_platforms,status,scheduled_at,published_at,error_message,created_at,metadata&order=created_at.desc&limit=250"
+      "/rest/v1/social_publish_queue?select=id,content_type,content_id,title,target_platforms,status,scheduled_at,published_at,error_message,created_at,updated_at,metadata&order=created_at.desc&limit=250"
     );
     const rows = items ?? [];
     const counts = rows.reduce<Record<string, number>>((acc, item) => {
@@ -187,32 +191,65 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminApi("social.manage");
-  if (!auth.ok)
+  const body = await request.json().catch(() => null) as { action?: unknown; ids?: unknown } | null;
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "طلب غير صالح." }, { status: 400 });
+  }
+
+  const action = typeof body.action === "string" ? body.action : "";
+  const allowedActions = new Set([
+    "test_facebook",
+    "adopt_server_facebook_token",
+    "run_worker",
+    "retry",
+    "retry_all_failed",
+    "delete",
+    "delete_failed",
+  ]);
+  if (!allowedActions.has(action)) {
+    return NextResponse.json({ error: "إجراء غير صالح." }, { status: 400 });
+  }
+
+  const ids = Array.isArray(body.ids)
+    ? [...new Set(body.ids.filter((id): id is string =>
+        typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      ))]
+    : [];
+  if ((action === "retry" || action === "delete") && (ids.length === 0 || ids.length > 100)) {
+    return NextResponse.json({ error: "حدد من 1 إلى 100 عنصر صالح." }, { status: 400 });
+  }
+
+  const auth = action === "delete" || action === "delete_failed"
+    ? await requireAdminStepUpApi("social.delete")
+    : action === "adopt_server_facebook_token"
+      ? await requireAdminStepUpApi("social.manage")
+      : action === "test_facebook"
+        ? await requireAdminApi("social.manage")
+        : await requireAdminApi("social.publish");
+  if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const rateLimits: Record<string, { bucket: string; limit: number }> = {
+    test_facebook: { bucket: "social.test_facebook", limit: 10 },
+    adopt_server_facebook_token: { bucket: "social.adopt_facebook", limit: 3 },
+    run_worker: { bucket: "social.run_worker", limit: 5 },
+    retry: { bucket: "social.retry", limit: 10 },
+    retry_all_failed: { bucket: "social.retry_all", limit: 3 },
+    delete: { bucket: "social.delete", limit: 5 },
+    delete_failed: { bucket: "social.delete_failed", limit: 2 },
+  };
 
   try {
-    const body = (await request.json().catch(() => ({}))) as {
-      action?: unknown;
-      ids?: unknown;
-    };
-    const action = typeof body.action === "string" ? body.action : "";
-    const ids = Array.isArray(body.ids)
-      ? [
-          ...new Set(
-            body.ids.filter(
-              (id): id is string => typeof id === "string" && id.length > 0
-            )
-          ),
-        ]
-      : [];
+    const limit = rateLimits[action];
+    await enforceAdminRateLimit(auth.profile, limit.bucket, limit.limit, 60);
+
     if (action === "test_facebook") {
       const health = await getFacebookPageConnectionHealth();
       return NextResponse.json({ ok: true, health }, { headers: { "Cache-Control": "no-store" } });
     }
+
     if (action === "adopt_server_facebook_token") {
-      // No token is accepted from the browser. The server-only Vercel value is validated,
-      // stored only after verification, and then old auth-blocked queue entries are released.
       const adopted = await adoptServerConfiguredFacebookPageToken();
       let released = 0;
       let queueUpdateFailed = false;
@@ -233,56 +270,50 @@ export async function POST(request: NextRequest) {
       }
 
       const health = await getFacebookPageConnectionHealth();
+      await recordAdminAuditEvent({
+        action: "social.facebook_token.adopt",
+        permission: "social.manage",
+        resourceType: "social_platform_credentials",
+        metadata: { pageName: adopted.pageName, released, queueUpdateFailed, workerDispatched },
+      });
       return NextResponse.json({
-        ok: true,
-        adopted: true,
-        pageName: adopted.pageName,
-        released,
-        queueUpdateFailed,
-        workerDispatched,
-        health,
+        ok: true, adopted: true, pageName: adopted.pageName, released,
+        queueUpdateFailed, workerDispatched, health,
       }, { headers: { "Cache-Control": "no-store" } });
     }
 
     if (action === "run_worker") {
       const worker = await triggerSocialWorker();
+      await recordAdminAuditEvent({
+        action: "social.worker.dispatch",
+        permission: "social.publish",
+        resourceType: "social_publish_queue",
+        metadata: { workflow: "publish-social.yml" },
+      });
       return NextResponse.json({ ok: true, worker });
     }
-    if (
-      !["retry", "retry_all_failed", "delete", "delete_failed"].includes(action)
-    )
-      return NextResponse.json({ error: "إجراء غير صالح." }, { status: 400 });
-    if ((action === "retry" || action === "delete") && ids.length === 0)
-      return NextResponse.json(
-        { error: "حدد عملية فاشلة أولًا." },
-        { status: 400 }
-      );
 
     const retryItems = async (filter: string) => {
       const items = await supabaseServerAdminRequest<QueueItem[]>(
-        `/rest/v1/social_publish_queue?${filter}&select=id,target_platforms,metadata,status`
+        `/rest/v1/social_publish_queue?${filter}&select=id,target_platforms,metadata,status,updated_at`
       );
       let affected = 0;
       for (const item of items ?? []) {
         if (!retryableStatuses.has(item.status)) continue;
         const platforms = retryPlatforms(item);
+        const concurrencyFilter = item.updated_at
+          ? `&updated_at=eq.${encodeURIComponent(item.updated_at)}`
+          : "";
         if (platforms.length === 0) {
-          // A retry is complete only when every requested platform has a recorded
-          // successful remote ID. A Facebook auth-block must not be hidden just
-          // because another platform (for example YouTube) succeeded.
           const targets = item.target_platforms ?? [];
           const succeeded = successfulPlatforms(item.metadata);
-          const allTargetsSucceeded =
-            targets.length > 0 && targets.every(platform => succeeded.has(platform));
+          const allTargetsSucceeded = targets.length > 0 && targets.every(platform => succeeded.has(platform));
           if (allTargetsSucceeded) {
-            await supabaseServerAdminRequest(
-              `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}`,
+            const changed = await supabaseServerAdminRequest<Array<{ id: string }>>(
+              `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=in.(failed,partial)${concurrencyFilter}&select=id`,
               {
                 method: "PATCH",
-                headers: {
-                  "Content-Type": "application/json",
-                  Prefer: "return=minimal",
-                },
+                headers: { "Content-Type": "application/json", Prefer: "return=representation" },
                 body: JSON.stringify({
                   status: "published",
                   error_message: null,
@@ -291,19 +322,16 @@ export async function POST(request: NextRequest) {
                 }),
               }
             );
-            affected += 1;
+            if (changed.length) affected += 1;
           }
-          // Leave partial/failed records unchanged if any target is still blocked.
           continue;
         }
-        await supabaseServerAdminRequest(
-          `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}`,
+
+        const changed = await supabaseServerAdminRequest<Array<{ id: string }>>(
+          `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=in.(failed,partial)${concurrencyFilter}&select=id`,
           {
             method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              Prefer: "return=minimal",
-            },
+            headers: { "Content-Type": "application/json", Prefer: "return=representation" },
             body: JSON.stringify({
               status: "queued",
               target_platforms: platforms,
@@ -319,49 +347,47 @@ export async function POST(request: NextRequest) {
             }),
           }
         );
-        affected += 1;
+        if (changed.length) affected += 1;
       }
       return affected;
     };
 
-    if (action === "retry_all_failed") {
-      const affected = await retryItems("status=in.(failed,partial)");
+    if (action === "retry_all_failed" || action === "retry") {
+      const filter = action === "retry_all_failed"
+        ? "status=in.(failed,partial)"
+        : `id=in.(${ids.map(encodeURIComponent).join(",")})&status=in.(failed,partial)`;
+      const affected = await retryItems(filter);
       const worker = affected > 0 ? await triggerSocialWorker() : null;
+      await recordAdminAuditEvent({
+        action: action === "retry_all_failed" ? "social.queue.retry_all" : "social.queue.retry",
+        permission: "social.publish",
+        resourceType: "social_publish_queue",
+        metadata: { requestedIds: action === "retry" ? ids : undefined, affected, workerDispatched: Boolean(worker) },
+      });
       return NextResponse.json({ ok: true, affected, worker });
     }
 
-    const filter = ids.map(encodeURIComponent).join(",");
-    if (action === "retry") {
-      const affected = await retryItems(
-        `id=in.(${filter})&status=in.(failed,partial)`
-      );
-      const worker = affected > 0 ? await triggerSocialWorker() : null;
-      return NextResponse.json({ ok: true, affected, worker });
-    }
-
-    if (action === "delete") {
-      const affected = await supabaseServerAdminRequest<QueueItem[]>(
-        `/rest/v1/social_publish_queue?id=in.(${filter})&status=in.(failed,partial)&select=id`,
-        { method: "DELETE", headers: { Prefer: "return=representation" } }
-      );
-      return NextResponse.json({ ok: true, affected: affected?.length ?? 0 });
-    }
-
-    const affected = await supabaseServerAdminRequest<QueueItem[]>(
-      "/rest/v1/social_publish_queue?status=in.(failed,partial)&select=id",
+    const deleteFilter = action === "delete"
+      ? `id=in.(${ids.map(encodeURIComponent).join(",")})&status=in.(failed,partial)`
+      : "status=in.(failed,partial)";
+    const deleted = await supabaseServerAdminRequest<Array<{ id: string }>>(
+      `/rest/v1/social_publish_queue?${deleteFilter}&select=id`,
       { method: "DELETE", headers: { Prefer: "return=representation" } }
     );
-    return NextResponse.json({ ok: true, affected: affected?.length ?? 0 });
+    const affected = deleted?.length ?? 0;
+    await recordAdminAuditEvent({
+      action: action === "delete" ? "social.queue.delete" : "social.queue.delete_failed",
+      permission: "social.delete",
+      resourceType: "social_publish_queue",
+      metadata: { requestedIds: action === "delete" ? ids : undefined, affected },
+    });
+    return NextResponse.json({ ok: true, affected });
   } catch (error) {
     console.error("[api/admin/social] POST:", error);
+    const message = error instanceof Error ? error.message : "تعذر تنفيذ إجراء مركز النشر.";
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "تعذر تنفيذ إجراء مركز النشر.",
-      },
-      { status: 500 }
+      { error: message },
+      { status: message.includes("تم تجاوز حد العمليات") ? 429 : 500 }
     );
   }
 }

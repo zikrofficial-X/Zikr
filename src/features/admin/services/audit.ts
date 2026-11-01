@@ -16,15 +16,28 @@ export type AdminAuditEvent = {
   metadata?: Record<string, unknown>;
 };
 
-function safeMetadata(metadata: Record<string, unknown> | undefined) {
-  const source = metadata ?? {};
-  const output: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(source)) {
-    if (/token|secret|password|cookie|authorization|key/i.test(key)) continue;
-    if (typeof value === "string" && value.length > 2000) output[key] = `${value.slice(0, 2000)}…`;
-    else output[key] = value;
+const SENSITIVE_METADATA_KEY = /token|secret|password|cookie|authorization|api[_-]?key|private[_-]?key|credential/i;
+
+function scrubMetadataValue(value: unknown, depth = 0): unknown {
+  if (depth > 4) return "[depth-limited]";
+  if (typeof value === "string") {
+    return value.length > 2000 ? `${value.slice(0, 2000)}…` : value;
   }
-  return output;
+  if (value === null || typeof value === "boolean" || typeof value === "number") return value;
+  if (Array.isArray(value)) return value.slice(0, 50).map((item) => scrubMetadataValue(item, depth + 1));
+  if (typeof value === "object") {
+    const output: Record<string, unknown> = {};
+    for (const [key, nested] of Object.entries(value as Record<string, unknown>).slice(0, 50)) {
+      if (SENSITIVE_METADATA_KEY.test(key)) continue;
+      output[key] = scrubMetadataValue(nested, depth + 1);
+    }
+    return output;
+  }
+  return String(value);
+}
+
+function safeMetadata(metadata: Record<string, unknown> | undefined): Record<string, unknown> {
+  return (scrubMetadataValue(metadata ?? {}) as Record<string, unknown>) ?? {};
 }
 
 /** Append one administrative event to the immutable audit stream. */

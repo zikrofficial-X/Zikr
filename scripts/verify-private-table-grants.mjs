@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 const migrationPath = "supabase/migrations/20261101135000_revoke_anon_privileges_private_tables.sql";
 const sql = readFileSync(migrationPath, "utf8");
+const ddlMigration = readFileSync("supabase/migrations/20261101160000_admin_atomic_role_and_acl_hardening.sql", "utf8");
 const contactService = readFileSync("src/features/contact/services/contact.ts", "utf8");
 const contactRoute = readFileSync("src/app/api/contact/route.ts", "utf8");
 assert.ok(contactService.includes('import "server-only"'), "public contact inserts must stay in a server-only service");
@@ -44,6 +45,22 @@ const privateTables = [
 ];
 
 assert.ok(sql.includes("REVOKE ALL PRIVILEGES ON TABLE public.%I FROM anon"), "migration must revoke all direct table privileges from anon");
+assert.match(
+  ddlMigration,
+  /REVOKE TRUNCATE, REFERENCES, TRIGGER[\\s\\S]*?ON ALL TABLES IN SCHEMA public[\\s\\S]*?FROM PUBLIC, anon, authenticated/i,
+  "public schema DDL-level table privileges must be revoked from PUBLIC, anon and authenticated",
+);
+assert.match(
+  ddlMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public[\\s\\S]*?REVOKE TRUNCATE, REFERENCES, TRIGGER ON TABLES[\\s\\S]*?FROM PUBLIC, anon, authenticated/i,
+  "future public tables must not reintroduce browser-role DDL privileges",
+);
+assert.doesNotMatch(
+  ddlMigration,
+  /REVOKE[\\s\\S]{0,180}FROM[^;]*service_role/i,
+  "the hardening migration must preserve explicit service_role grants",
+);
+assert.ok(ddlMigration.includes("content_publish_queue_one_active_item_idx"), "active content scheduling must have a uniqueness guard");
 assert.ok(sql.includes("to_regclass("), "migration must safely skip tables absent in a fresh/partial schema");
 assert.ok(sql.includes("BEGIN;") && sql.includes("COMMIT;"), "grant hardening must be transactional");
 assert.ok(sql.includes("DO $anon_acl$") && sql.includes("\nEND;\n$anon_acl$;"), "migration must use a valid named SQL block");

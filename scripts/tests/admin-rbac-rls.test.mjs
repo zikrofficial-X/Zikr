@@ -16,6 +16,10 @@ const userActions = readFileSync(
   resolve(process.cwd(), "src/features/admin/actions/users.ts"),
   "utf8",
 );
+const atomicMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261101160000_admin_atomic_role_and_acl_hardening.sql"),
+  "utf8",
+);
 
 function requireMatch(pattern, description) {
   assert.match(migration, pattern, `Missing admin RLS invariant: ${description}`);
@@ -57,11 +61,21 @@ requireMatch(
   /CREATE POLICY admin_role_assignments_delete[\s\S]*?private\.has_admin_role\(ARRAY\['super_admin'\]::text\[\]\)/i,
   "direct role assignment deletes must be restricted to super_admin",
 );
+assert.ok(userActions.includes("/rest/v1/rpc/admin_update_user_role"), "role updates must use the transactional database RPC");
+assert.ok(!userActions.includes("/rest/v1/admin_role_assignments") && !userActions.includes("/rest/v1/profiles?id=eq."), "role changes must not split assignment and profile writes");
 assert.match(
-  userActions,
-  /isFullAdminTarget[\s\S]*?isGrantingFullAdmin[\s\S]*?admin\.role !== ["']super_admin["']/,
-  "server actions must protect full-admin accounts and full-admin role grants from delegated administrators",
+  atomicMigration,
+  /CREATE OR REPLACE FUNCTION public\.admin_update_user_role\([\s\S]*?SECURITY DEFINER[\s\S]*?SET search_path = ''/i,
+  "the atomic role RPC must use SECURITY DEFINER with an empty search path",
 );
+assert.ok(atomicMigration.includes("PERFORM 1 FROM public.profiles WHERE id = p_target_user_id FOR UPDATE"), "target role changes must lock the profile row");
+assert.ok(atomicMigration.includes("INSERT INTO public.admin_audit_events"), "the audit event must be inserted in the same transaction function");
+assert.match(
+  atomicMigration,
+  /REVOKE ALL ON FUNCTION public\.admin_update_user_role\(uuid, uuid, text, text\)[\s\S]*?FROM PUBLIC, anon, authenticated[\s\S]*?GRANT EXECUTE ON FUNCTION public\.admin_update_user_role\(uuid, uuid, text, text\)[\s\S]*?TO service_role/i,
+  "only the service role may invoke the transactional role RPC",
+);
+assert.ok(atomicMigration.includes("content_publish_queue_one_active_item_idx"), "active content publication jobs must be unique per item");
 requireMatch(
   /CREATE POLICY admin_audit_events_admin_select[\s\S]*?'analyst'/i,
   "audit visibility must match the audit.read role set",

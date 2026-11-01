@@ -58,16 +58,18 @@ export async function changeEditorialReviewStatusAction(formData: FormData) {
   if (status === "approved") patch.published = false;
   if (status === "rejected" || status === "draft" || status === "editorial_review" || status === "scholarly_review") patch.published = false;
 
+  let updatedRows: Array<{ id: string }> = [];
   try {
-    await supabaseServerAdminRequest(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}${updatedAt ? `&updated_at=eq.${encodeURIComponent(updatedAt)}` : ""}`, {
+    updatedRows = await supabaseServerAdminRequest<Array<{ id: string }>>(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(current[0].updated_at)}&select=id`, {
       method: "PATCH",
-      headers: { Prefer: "return=minimal" },
+      headers: { Prefer: "return=representation" },
       body: JSON.stringify(patch),
     });
   } catch (error) {
     console.error("[admin/editorial] review update failed", error);
     editorialError("تعذر تحديث حالة المحتوى. تحقق من الحقول المطلوبة ثم أعد المحاولة.");
   }
+  if (!updatedRows.length) editorialError("تم تعديل المحتوى بالتزامن. حدّث الصفحة ثم أعد المحاولة.");
 
   await recordAdminAuditEvent({
     action: "editorial.review_status.update",
@@ -95,16 +97,18 @@ export async function publishApprovedContentAction(formData: FormData) {
   if (updatedAt && current[0].updated_at !== updatedAt) editorialError("تم تعديل المحتوى. حدّث الصفحة ثم أعد المحاولة.");
 
   const now = new Date().toISOString();
+  let updatedRows: Array<{ id: string }> = [];
   try {
-    await supabaseServerAdminRequest(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}${updatedAt ? `&updated_at=eq.${encodeURIComponent(updatedAt)}` : ""}`, {
+    updatedRows = await supabaseServerAdminRequest<Array<{ id: string }>>(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(current[0].updated_at)}&select=id`, {
       method: "PATCH",
-      headers: { Prefer: "return=minimal" },
+      headers: { Prefer: "return=representation" },
       body: JSON.stringify({ published: true, published_at: now, updated_at: now }),
     });
   } catch (error) {
     console.error("[admin/editorial] publish failed", error);
     editorialError("فشل النشر. يجب اعتماد المحتوى وربطه بمصدر موثوق قبل النشر.");
   }
+  if (!updatedRows.length) editorialError("تم تعديل المحتوى بالتزامن. حدّث الصفحة ثم أعد المحاولة.");
 
   await recordAdminAuditEvent({
     action: "editorial.publish",
