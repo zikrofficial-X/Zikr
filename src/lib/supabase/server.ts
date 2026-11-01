@@ -88,7 +88,7 @@ export async function getSupabaseUser() {
 type RestRequestInit = RequestInit & {
   timeoutMs?: number;
   retries?: number;
-  next?: { revalidate?: number };
+  next?: { revalidate?: number; tags?: string[] };
 };
 
 function isRetryableTransportError(error: unknown): boolean {
