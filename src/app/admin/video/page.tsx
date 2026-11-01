@@ -7,10 +7,10 @@ export default async function AdminVideoHubPage() {
   const modules = [
     ["/admin/video/requests", "الطلبات والطابور", "متابعة حالات التوليد وإعادة المحاولة."],
     ["/admin/video/studio", "الاستوديو", "إنشاء فيديو موثق من مصدر منشور."],
-    ["/admin/video/scripts", "نصوص السرد", "مراجعة النصوص العربية والمصادر."],
-    ["/admin/video/voices", "الأصوات", "إدارة التلاوة وملفات TTS."],
-    ["/admin/video/visuals", "العناصر المرئية", "إدارة الخلفيات والسياسة البصرية."],
-    ["/admin/video/qa", "ضبط الجودة", "فحص المصدر والصوت والترميز قبل النشر."],
+    ["/admin/video-factory/scripts", "نصوص السرد", "مراجعة النصوص العربية والمصادر."],
+    ["/admin/video-factory/voices", "الأصوات", "إدارة التلاوة وملفات TTS."],
+    ["/admin/video-factory/visuals", "العناصر المرئية", "إدارة الخلفيات والسياسة البصرية."],
+    ["/admin/video-factory/qa", "ضبط الجودة", "فحص المصدر والصوت والترميز قبل النشر."],
   ];
   return <div className="mx-auto max-w-[1800px] space-y-6 p-4 md:p-8" dir="rtl">
     <AdminBreadcrumbs current="مركز الفيديو" />
