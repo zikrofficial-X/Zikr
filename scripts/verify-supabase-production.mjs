@@ -41,12 +41,13 @@ const checks = [
   {
     name: "Translation queue access is isolated",
     path: "/rest/v1/content_translation_queue?select=id&limit=0",
+    expectDenied: true,
   },
 ];
 
 const timeoutMs = 15000;
 
-async function runCheck({ name, path }) {
+async function runCheck({ name, path, expectDenied = false }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -58,6 +59,15 @@ async function runCheck({ name, path }) {
     });
 
     const body = await response.text();
+    if (expectDenied) {
+      if (response.status === 401 || response.status === 403) {
+        console.log("PASS: " + name + " (anonymous access correctly denied; HTTP " + response.status + ")");
+        return;
+      }
+      const preview = body.replace(/\s+/g, " ").slice(0, 300);
+      throw new Error(name + " expected HTTP 401/403 for anonymous access, received HTTP " + response.status + (preview ? ": " + preview : ""));
+    }
+
     if (!response.ok) {
       const preview = body.replace(/\s+/g, " ").slice(0, 300);
       throw new Error(
