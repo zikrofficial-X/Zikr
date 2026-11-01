@@ -143,9 +143,7 @@ export function WorldGameStage(props: WorldGameStageProps) {
   useEffect(() => {
     onReady(true);
     return () => onReady(false);
-  }, [onReady]);  useEffect(() => {
-    onReady(noopController);
-  }, [noopController, onReady]);
+  }, [onReady]);
 
   useEffect(() => {
     onError("");
