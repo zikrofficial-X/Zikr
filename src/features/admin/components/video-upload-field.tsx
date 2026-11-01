@@ -55,6 +55,7 @@ export function VideoUploadField() {
         .from(presignData.bucket)
         .uploadToSignedUrl(presignData.path, presignData.token, file, {
           contentType: file.type,
+          cacheControl: "31536000",
           upsert: false,
         });
       if (uploadError) throw new Error(`فشل رفع الملف إلى التخزين: ${uploadError.message}`);
