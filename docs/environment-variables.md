@@ -33,6 +33,7 @@ The application treats `NEXT_PUBLIC_SUPABASE_ANON_KEY` as the browser-facing can
 | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Public | Google Analytics |
 | `NEXT_PUBLIC_GTM_ID` | Public | Google Tag Manager |
 | `NEXT_PUBLIC_ADSENSE_CLIENT` | Public | AdSense publisher identifier |
+| `NEXT_PUBLIC_KIDS_ANALYTICS_ENABLED` | Public | Kids game analytics opt-in; default `false`, enable only after consent/CMP review |
 | `AI_GATEWAY_API_KEY` | Server | Optional Vercel AI Gateway path; no current core-runtime requirement |
 
 ## 3. YouTube / Facebook publishing
