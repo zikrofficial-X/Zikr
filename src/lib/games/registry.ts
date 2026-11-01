@@ -413,6 +413,9 @@ export type OfflineQueuedResult = GameResultPayload & {
   queuedAt: number;
   attempts: number;
   nextAttemptAt: number;
+  status?: "pending" | "failed";
+  failedAt?: number;
+  lastError?: string;
 };
 
 export function isRegisteredGameId(value: unknown): value is GameId {
