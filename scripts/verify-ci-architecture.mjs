@@ -24,10 +24,10 @@ const ownership = read("docs/AUTOMATION_OWNERSHIP_2026-10-08.md");
 const supabaseConfig = read("supabase/config.toml");
 const androidRecovery = read(".github/workflows/dispatch-android-release-recovery.yml");
 assert.ok(androidRecovery.includes("workflow_dispatch:"), "Android recovery must be explicitly dispatched by the successful CircleCI release pipeline");
-assert.ok(!androidRecovery.includes("\\n  status:") && !androidRecovery.includes("\\n  push:"), "Android recovery must not subscribe to every repository status or push event");
+assert.ok(!androidRecovery.includes("\n  status:") && !androidRecovery.includes("\n  push:"), "Android recovery must not subscribe to every repository status or push event");
 assert.ok(androidRecovery.includes("github.event_name == 'workflow_dispatch'"), "Android recovery must accept only an explicit workflow dispatch");
 assert.ok(circle.includes("android-release-dispatch:"), "CircleCI must dispatch Android recovery only after android-rebuild succeeds");
-assert.ok(circle.includes("android-rebuild/dispatch-android-release-recovery.yml/dispatches"), "CircleCI must invoke the guarded Android recovery workflow");
+assert.ok(circle.includes("api.github.com/repos/zikrofficial-X/Zikr/actions/workflows/dispatch-android-release-recovery.yml/dispatches"), "CircleCI must invoke the guarded Android recovery workflow");
 
 
 const workflowDir = ".github/workflows";
