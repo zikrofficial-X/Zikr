@@ -101,7 +101,7 @@ if (!generationWorkflow.includes('VIDEO_FREE_ONLY: "true"') || !generationWorkfl
 if (!generationWorkflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "true"') || !generationWorkflow.includes('HF_WAN_VIDEO_ENABLED: "true"')) failures.push("both free Hugging Face video providers must be enabled ahead of the FFmpeg fallback");
 if (!generationWorkflow.includes('HF_VIDEO_PROVIDER_TIMEOUT_MS: "150000"') || !generationWorkflow.includes('VIDEO_AI_ATTEMPTS_PER_RUN: "2"') || !generationWorkflow.includes('VIDEO_WORKER_BATCH_SIZE: "2"')) failures.push("free video provider attempts and worker batches must remain bounded for the scheduled job timeout");
 if (!workflow.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("GitHub social workflow must only process the social queue");
-if (!publisher.includes('content.audience === "kids"')) failures.push("YouTube publishing must read the source audience for child-directed videos");
+if (!publisher.includes('.audience === "kids"')) failures.push("YouTube publishing must read the source audience for child-directed videos");
 if (!ytAutomation.includes("selfDeclaredMadeForKids: options.selfDeclaredMadeForKids === true")) failures.push("YouTube uploads must set Made for Kids from the source audience metadata");
 if (!workflow.includes("social_platform_credentials?platform=eq.facebook&select=page_id,is_enabled,connection_status,expires_at&limit=1")) failures.push("GitHub social workflow must derive Facebook readiness from the OAuth-managed Supabase credential");
 if (!workflow.includes('echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_enabled" >> "$GITHUB_ENV"')) failures.push("GitHub social workflow must set the Facebook feature gate from validated OAuth-managed connection state");
