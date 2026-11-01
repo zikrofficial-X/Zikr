@@ -72,7 +72,9 @@ async function restRequest<T>(
       const response = await fetch(`${url}${path}`, {
         ...fetchInit,
         headers: {
-          "Content-Type": "application/json",
+          ...(fetchInit.body !== undefined && fetchInit.body !== null
+            ? { "Content-Type": "application/json" }
+            : {}),
           apikey: key,
           Authorization: `Bearer ${key}`,
           ...(fetchInit.headers || {}),
