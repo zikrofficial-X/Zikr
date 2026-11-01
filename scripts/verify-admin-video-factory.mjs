@@ -116,7 +116,7 @@ const client = read("src/features/admin/video-studio/components/admin-video-stud
 if (client.includes("SUPABASE_SERVICE_ROLE_KEY") || client.includes("createAdminClient")) failures.push("AI video client must not contain service-role access");
 const studioClientRoute = read("src/app/admin/video/studio/page.tsx");
 if (!studioClientRoute.includes('@/features/admin/video-studio/components/admin-video-studio-client')) failures.push("Video Studio must import its client from feature ownership");
-if (!requests.includes('@/features/admin/video-requests/components/admin-video-requests-client')) failures.push("Video Requests page must import its client from feature ownership");
+if (!canonicalQueue.includes('@/features/admin/video-requests/components/admin-video-requests-client')) failures.push("Video Requests page must import its client from feature ownership");
 if (existsSync("src/app/admin/ai-video/ai-video-client.tsx")) failures.push("Legacy AI video client must be moved out of app route folders");
 if (existsSync("src/app/admin/videos/videos-client.tsx")) failures.push("Legacy Video Requests client must be moved out of app route folders");
 
