@@ -84,6 +84,13 @@ if (/googletagmanager\.com/.test(analytics)) {
   if (!/www\.google-analytics\.com/.test(nextConfig)) fail('Google Analytics endpoint is not allowed by the production CSP.');
 }
 
+const runtimeEffects = read("src/components/layout/runtime-effects.tsx");
+if (!runtimeEffects.includes('  "/kids",')) {
+  fail("The entire child-directed Kids area must be excluded from AdSense loading.");
+}
+if (runtimeEffects.includes('  "/kids/puzzle",') && !runtimeEffects.includes('  "/kids",')) {
+  fail("Kids ad exclusions must cover every game and content route, not only the puzzle page.");
+}
 const noindexPaths = [...site.matchAll(/"\/(?:search|qibla|prayer-times|tasbeeh|memorization|wird|zakat|offline-library|settings|favorites|profile|spiritual-ai|radio|youtube|reciters|tawasheeh)"/g)].length;
 if (noindexPaths < 10) warn('Expected utility/account noindex coverage was not found in lib/site.ts.');
 
