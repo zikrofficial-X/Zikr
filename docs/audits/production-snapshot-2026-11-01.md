@@ -78,3 +78,13 @@ Do not proceed with destructive schema or storage operations until those recover
 - [ ] Complete file-by-file repository status matrix and architecture dependency map.
 - [ ] Complete route, browser, and physical Android device acceptance.
 
+## Kids production catalogue
+
+Live production queries on 2026-11-01 confirmed:
+
+- `public.kids_games`: **13** published game records; IDs/order match the current canonical registry, with order indexes 1–13.
+- `public.kids_game_levels`: **1,170** published level rows: 13 games × 3 difficulties × 30 levels.
+- Every game has exactly 30 levels for `easy`, `normal`, and `hard`, numbered 1–30.
+- All 13 `cover_url` fields are currently `NULL`. This is a metadata/artwork-catalogue gap only; the web game cards use the in-repository game-art components and asset manifest. Do not bulk-write guessed cover URLs.
+
+These checks confirm that the earlier 12-game snapshot is stale; production and the current registry now both contain 13 games.
