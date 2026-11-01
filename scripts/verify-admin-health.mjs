@@ -10,6 +10,9 @@ if (!server.includes("filter?: { column: string; value: string }")) {
 if (!server.includes('method: "HEAD"')) {
   throw new Error("Admin health exact counts must not fetch table row contents");
 }
+if (!server.includes('"Range-Unit": "items"') || !server.includes('Range: "0-0"')) {
+  throw new Error("Admin health exact counts must use an explicit bounded PostgREST item range");
+}
 if (!server.includes("Prefer: \"count=exact\"") || !server.includes("query.set(filter.column, `eq.${filter.value}`)")) {
   throw new Error("Filtered admin counts must preserve the exact Content-Range total");
 }
