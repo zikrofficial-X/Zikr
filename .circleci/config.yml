@@ -494,6 +494,7 @@ jobs:
                 --header "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
                 --header "x-upsert: true" \
                 --header "Content-Type: ${mime_type}" \
+                --header "Cache-Control: max-age=31536000, immutable" \
                 --data-binary "@${file_path}" >/dev/null
             }
 
