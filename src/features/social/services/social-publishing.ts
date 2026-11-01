@@ -449,8 +449,8 @@ async function deleteManagedVideoUrl(
  * has confirmed publication. Provider post IDs and text/audit records stay.
  * Failed cleanup is retried by the social publishing worker.
  */
-async function disposePublishedVideo(item: SocialPublishQueueItem) {
-  if (!item.video_url) return;
+async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<boolean> {
+  if (!item.video_url) return true;
   const env = getServerEnv();
   const backupUrl =
     typeof item.metadata?.supabaseOriginalVideoUrl === "string"
@@ -476,7 +476,7 @@ async function disposePublishedVideo(item: SocialPublishQueueItem) {
     await markQueueItem(item.id, "published", {
       metadata: { ...(item.metadata ?? {}), videoCleanupPending: true, videoCleanupErrors: failures },
     });
-    return;
+    return false;
   }
 
   if (item.content_id) {
@@ -508,19 +508,29 @@ async function disposePublishedVideo(item: SocialPublishQueueItem) {
       videoCleanupErrors: [],
     },
   });
+  return true;
 }
 
-async function retryPendingPublishedVideoCleanup(limit = 25) {
+export async function retryPendingPublishedVideoCleanup(limit = 25): Promise<{
+  attempted: number;
+  cleaned: number;
+  pending: number;
+}> {
+  let attempted = 0;
+  let cleaned = 0;
   try {
     const rows = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-      "/rest/v1/social_publish_queue?status=eq.published&video_url=not.is.null&order=updated_at.asc&limit=" + limit,
+      "/rest/v1/social_publish_queue?status=eq.published&video_url=not.is.null&order=updated_at.asc&limit=" + Math.max(1, Math.min(500, Math.floor(limit))),
     );
     for (const item of rows ?? []) {
-      if (isVideoContentType(item.content_type)) await disposePublishedVideo(item);
+      if (!isVideoContentType(item.content_type)) continue;
+      attempted += 1;
+      if (await disposePublishedVideo(item)) cleaned += 1;
     }
   } catch (error) {
     console.error("[social-publishing] Failed to retry published-video cleanup:", error);
   }
+  return { attempted, cleaned, pending: Math.max(0, attempted - cleaned) };
 }
 
 export async function processSocialPublishItem(
