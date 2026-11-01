@@ -291,37 +291,45 @@ async function getAdminGitHubHealth(): Promise<AdminGitHubHealth> {
   let workflows: AdminWorkflowRun[] = [];
 
   if (statusResult.status === "fulfilled" && statusResult.value.ok) {
-    const payload = await statusResult.value.json() as {
-      state?: string;
-      sha?: string;
-      statuses?: Array<{ context?: string; state?: string; description?: string | null; target_url?: string | null; updated_at?: string | null }>;
-    };
-    statusesAvailable = true;
-    overall = payload.state ?? null;
-    commitSha = payload.sha ?? null;
-    statuses = (payload.statuses ?? []).map((item) => ({
-      context: item.context ?? "unknown",
-      state: item.state ?? "unknown",
-      description: item.description ?? null,
-      targetUrl: item.target_url ?? null,
-      updatedAt: item.updated_at ?? null,
-    }));
+    try {
+      const payload = await statusResult.value.json() as {
+        state?: string;
+        sha?: string;
+        statuses?: Array<{ context?: string; state?: string; description?: string | null; target_url?: string | null; updated_at?: string | null }>;
+      };
+      statusesAvailable = true;
+      overall = payload.state ?? null;
+      commitSha = payload.sha ?? null;
+      statuses = (payload.statuses ?? []).map((item) => ({
+        context: item.context ?? "unknown",
+        state: item.state ?? "unknown",
+        description: item.description ?? null,
+        targetUrl: item.target_url ?? null,
+        updatedAt: item.updated_at ?? null,
+      }));
+    } catch {
+      statusesAvailable = false;
+    }
   }
 
   if (runsResult.status === "fulfilled" && runsResult.value.ok) {
-    const payload = await runsResult.value.json() as {
-      workflow_runs?: Array<{ path?: string; name?: string; status?: string; conclusion?: string | null; created_at?: string; html_url?: string }>;
-    };
-    workflowsAvailable = true;
-    workflows = (payload.workflow_runs ?? [])
-      .filter((run) => GITHUB_WORKFLOW_PATHS.has(run.path ?? ""))
-      .map((run) => ({
-        name: run.name ?? run.path ?? "Workflow",
-        status: run.status ?? "unknown",
-        conclusion: run.conclusion ?? null,
-        createdAt: run.created_at ?? "",
-        url: run.html_url ?? "",
-      }));
+    try {
+      const payload = await runsResult.value.json() as {
+        workflow_runs?: Array<{ path?: string; name?: string; status?: string; conclusion?: string | null; created_at?: string; html_url?: string }>;
+      };
+      workflowsAvailable = true;
+      workflows = (payload.workflow_runs ?? [])
+        .filter((run) => GITHUB_WORKFLOW_PATHS.has(run.path ?? ""))
+        .map((run) => ({
+          name: run.name ?? run.path ?? "Workflow",
+          status: run.status ?? "unknown",
+          conclusion: run.conclusion ?? null,
+          createdAt: run.created_at ?? "",
+          url: run.html_url ?? "",
+        }));
+    } catch {
+      workflowsAvailable = false;
+    }
   }
 
   return { statusesAvailable, workflowsAvailable, overall, commitSha, statuses, workflows };
