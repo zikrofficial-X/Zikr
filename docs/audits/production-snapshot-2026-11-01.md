@@ -100,3 +100,9 @@ Live production query on 2026-11-01:
 - The GitHub publisher is currently fail-closed (`SOCIAL_PUBLISH_ENABLED=false`); no new posts were sent by the disabled runs.
 
 Do not enable publishing as a generic repair step: that could release the 103-item backlog to public accounts. Before activation, review and approve the backlog, define a publish cadence, and verify the current provider cooldown/partial-delivery state. No queue records were changed.
+
+## Anonymous table grants — security finding
+
+A direct ACL inspection found 28 private or user-scoped tables with explicit table privileges granted to the `anon` role. The matching RLS policies currently deny anonymous access or require `auth.uid()` ownership, so the audit did not establish an anonymous row-read path. However, these grants are unnecessary and create avoidable exposure if a policy is later weakened.
+
+The repair branch adds migration `20261101135000_revoke_anon_privileges_private_tables.sql`, which revokes all table privileges from `anon` on the 28 affected tables only. It does not revoke privileges from `authenticated` or `service_role`, change policies, or modify data. This migration has **not** been applied to production as of this snapshot; production verification is required after the controlled release migration step.
