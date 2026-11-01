@@ -1,45 +1,62 @@
 # ZIKR External Platform Readiness — 2026-11-01
 
-## Audited baseline
+## Final audited baseline
 - Repository: `zikrofficial-X/Zikr`
-- `main` at the time of this check: `cec54b8e7533c8ce37b4345a4ae84f1cd9a1598c`
-- Vercel project: `zikr` in team `zikr3`, linked to `zikrofficial-X/Zikr`
+- Code release commit deployed to production: `18349e48fa601ffe16d13014549f03ca5186a07d`
+- Vercel project: `zikr`, team `zikr3`, linked Git repository `zikrofficial-X/Zikr`
 - Supabase project: `ymxdswkaxafakugktsim`
+- Follow-up owner controls: [GitHub issue #170](https://github.com/zikrofficial-X/Zikr/issues/170)
 
 ## GitHub
-- Default branch is `main`; only `main` exists in the branch listing at audit time.
-- `main.protected` is false and the repository has no active repository rulesets.
-- The connected GitHub integration cannot read the branch-protection endpoint (HTTP 403) and exposes no write action for branch protection/rulesets. Therefore this setting cannot be changed through the available connection in this run.
-- The most recent `main` Quality Gate and Supabase Production Health runs on `cec54b8` both completed successfully.
-- Owner action: enable branch protection/rulesets in GitHub Settings for `main`, require the ZIKR Quality Gate plus CircleCI config guard and application-build-docs checks, require pull requests, block force-pushes and deletion, and dismiss stale approvals after new commits.
+- Default branch is `main`; only `main` exists in the branch listing after the completed merges.
+- `main.protected=false` and repository rulesets are empty. The connected GitHub integration cannot read the branch-protection endpoint (HTTP 403) and exposes no write action for branch protection/rulesets.
+- On the deployed code commit, ZIKR Quality Gate and CircleCI `config-guard` and `application-build-docs` all completed successfully.
+- PRs #162, #165, #167, #168 and #169 are merged.
+- Owner action: enable Branch Protection or Rulesets for `main`; require pull requests; require the ZIKR Quality Gate, CircleCI config guard and application-build-docs checks; block force pushes and deletion; dismiss stale approvals.
+- This cannot safely be claimed complete until it is enabled and re-read in GitHub settings.
 
 ## Vercel
-- Project is correctly linked to `zikrofficial-X/Zikr`; the project uses Next.js and Node 22.x.
-- The latest production deployment inspected is READY and points to `main` at `cec54b8`.
-- The attached public alias `zikrmediaofficial.vercel.app` is verified and successfully served the public ZIKR home page during the live availability check.
-- Preview deployment protection remains enabled; it was not weakened.
-- `POSTGRES_URL` was changed from a readable encrypted variable to Vercel's `sensitive` type without retrieving or changing its value. A follow-up metadata read confirmed `visibility=secret` and no remaining `securityIssues` for this variable.
-- Two preview-only `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` entries are still scoped to branch names that no longer exist. The available Vercel connector exposes list/create/edit actions but no delete-project-environment-variable action. They were not repurposed or silently removed. Remove those two stale entries from Vercel Project → Settings → Environment Variables after confirming no external preview workflow still depends on them; keep the generic Preview and Production entries.
-- No other environment-variable values were decrypted or copied into this audit.
+- Project uses Next.js and Node 22.x.
+- Production deployment `dpl_7b2zkK2cD7zZe9Rwx4wattmSyJQX` is `READY`, target `production`, built from `main` at `18349e48fa601ffe16d13014549f03ca5186a07d`.
+- Production aliases: `zikrmediaofficial.vercel.app`, `zikr-zikr3.vercel.app`, and `zikr-git-main-zikr3.vercel.app`.
+- `zikrmediaofficial.vercel.app` is verified and attached to the production deployment.
+- Vercel Git auto-deploy is disabled; the above deployment was explicitly created from the linked Git repository and exact commit after the main Quality Gate passed.
+- `POSTGRES_URL` was changed to the Vercel `sensitive` variable type without retrieving or changing its value. Follow-up metadata confirmed `visibility=secret` and no remaining security issues for this variable.
+- Two preview-only `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` entries remain scoped to branch names no longer present: `fix/google-native-login-canonical` and `branding/zikr-identity`. The available Vercel connection exposes list/create/edit but no delete-project-environment-variable action. Do not repurpose them. Owner should remove those two Preview-only entries after confirming no external preview process depends on them; keep the generic Preview and Production entries.
+- Preview deployment protection was not weakened.
+
+## Production smoke tests
+All checks below were performed against the public production alias after deployment `dpl_7b2zkK2cD7zZe9Rwx4wattmSyJQX` reached READY:
+- Home page: HTTP 200.
+- Valid video `/videos/story-of-musa-full`: HTTP 200, expected YouTube embed ID present, metadata remains noindex.
+- Valid dua `/dua/zikr-dua-quran-002250`: HTTP 200 and the expected published Arabic dua text is present.
+- Missing video `/videos/non-existent-zikr-smoke-check`: HTTP 200, localized unavailable-content state rendered, `noindex, nofollow`.
+- Missing dua `/dua/non-existent-zikr-smoke-check`: HTTP 200, localized unavailable-content state rendered, `noindex, nofollow`.
+- None of these returned HTML contained the React streaming-boundary error. The missing-resource pages intentionally render an inline unavailable state rather than throwing a late streamed `notFound()`; consequently they return HTTP 200 with noindex instead of an HTTP 404.
+- Vercel Runtime Errors for the 10-minute period after smoke checks reported no runtime errors. Deployment-specific error/fatal runtime logs for that same period were empty.
 
 ## Supabase
 - Project status: `ACTIVE_HEALTHY`; PostgreSQL 17.11.
-- Production exposes 86 public tables. All 86 have RLS enabled.
-- Repository and production migration ledgers both contain 391 versions; no version exists only in one side of the comparison.
-- The Production Health workflow passes the public Auth/content probes and confirms anonymous access to `content_translation_queue` is denied with HTTP 401.
-- Security advisor findings:
-  - `youtube_sync_state` has RLS enabled and no policies. This is default-deny behavior for a private sync-state table and is intentionally retained; do not create an anonymous policy.
-  - Leaked-password protection is disabled. The connected Supabase actions do not expose an Auth password-security settings update. Enable compromised-password checks in Supabase Dashboard → Authentication → Settings → Password Security, then rerun the security advisor.
-- Performance advisor reported 64 indexes with no observed usage. These are candidates for workload review only, not deletion candidates yet. The advisor snapshot is not sufficient proof that an index is unused over a complete business cycle. Capture index usage after representative traffic and check query plans, constraints and FK support before proposing individual drops.
+- Production exposes 86 public tables; all 86 have RLS enabled.
+- Repository and production migration ledgers both contain 391 versions; there is no local-only or production-only migration version.
+- Production Health passed public Auth/content checks and confirmed anonymous access to `content_translation_queue` is denied with HTTP 401. No extra anon grants were introduced.
+- Security advisor:
+  - `youtube_sync_state` has RLS enabled and no policies. This is intended default-deny protection for a private sync-state table; do not add an anonymous policy.
+  - Leaked-password protection is disabled. The connected Supabase tools expose no Auth password-security setting update. Owner action: Supabase Dashboard → Authentication → Settings → Password Security; enable compromised-password checks, then rerun Security Advisor.
+- Performance advisor reported 64 indexes with no observed usage in its snapshot. These are review candidates only, not approved deletion candidates. Capture usage across a representative business cycle and check query plans, PK/unique constraints and FK support before proposing any individual index drop.
+- No production table, row, policy, schema, migration, index or storage object was destructively changed as part of this closeout.
 
-## Public web and release checks
-- `https://zikrmediaofficial.vercel.app` is reachable and serves the public home-page content.
-- This is a Vercel-hosted subdomain, not an independently registered custom domain. Google Search Console ownership and AdSense account/review status are not available through the connected GitHub/Vercel/Supabase actions and remain unverified.
-- CI mobile-readiness checks passed, but no physical Android device/emulator verification was available here.
-- Religious text/source review and final editorial sign-off require a qualified human reviewer; automation must not self-approve Quran, hadith grading or religious rulings.
+## Remaining owner / human acceptance
+- GitHub branch protection and required checks.
+- Remove the two stale Preview-only Vercel environment-variable records after dependency confirmation.
+- Enable Supabase leaked-password protection and re-run advisor.
+- Physical Android/iOS device and full interactive browser acceptance; CI mobile-readiness passed but a real device test was not available through these connections.
+- Qualified human religious/editorial review of Quran text, hadith grading and rulings. Automation must not self-approve religious sources.
+- Google Search Console ownership, AdSense publisher account approval, live ad serving and CMP/account status remain unverified because they require the owner’s Google account.
+- Review the 64 advisor-flagged indexes before any removal; no indexes were dropped.
 
 ## Safety decisions
-- No Supabase table, index, policy, migration, row or storage object was deleted during this audit.
-- No applied migration was renamed, reordered or rewritten.
-- No public deployment protection was removed.
-- The feature-client relocation is source-only and keeps the legacy route redirects intact.
+- No applied migration was deleted, renamed, reordered or rewritten.
+- No compatibility route redirect was deleted.
+- Active Admin Video Studio and Video Requests clients were moved to feature-owned modules; canonical route imports were updated.
+- No production deployment protection was removed.
