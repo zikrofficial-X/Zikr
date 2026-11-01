@@ -1,13 +1,15 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getVideoBySlug, getVideos } from '@/features/videos/services/videos';
+import { getVideoBySlug } from '@/features/videos/services/videos';
 import { pageMetadata } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+
+const loadVideo = cache((slug: string) => getVideoBySlug(slug));
 
 type VideoDetailPageProps = {
   params: Promise<{ slug: string }>;
@@ -15,7 +17,7 @@ type VideoDetailPageProps = {
 
 export async function generateMetadata({ params }: VideoDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const video = await getVideoBySlug(slug);
+  const video = await loadVideo(slug);
   if (!video) {
     return pageMetadata({
       title: 'الفيديو غير موجود',
@@ -38,14 +40,9 @@ export async function generateMetadata({ params }: VideoDetailPageProps): Promis
   });
 }
 
-export async function generateStaticParams() {
-  const videos = await getVideos(undefined, 100);
-  return videos.map(video => ({ slug: video.slug }));
-}
-
 export default async function VideoDetailPage({ params }: VideoDetailPageProps) {
   const { slug } = await params;
-  const video = await getVideoBySlug(slug);
+  const video = await loadVideo(slug);
   if (!video) notFound();
 
   const directVideoUrl =
