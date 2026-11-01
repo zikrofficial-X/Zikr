@@ -3,7 +3,8 @@ name: ZIKR Autonomous Social Publisher
 on:
   # GitHub Actions is the sole production owner for social/video publishing.
   schedule:
-    - cron: "*/15 * * * *"
+    # Avoid quarter-hour/top-of-hour contention; GitHub schedule events are best-effort.
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -41,6 +42,12 @@ jobs:
       ADMIN_QUEUE_ALERT_EMAIL_FROM: ${{ vars.ADMIN_QUEUE_ALERT_EMAIL_FROM || secrets.ADMIN_QUEUE_ALERT_EMAIL_FROM }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
     steps:
+      - name: Record schedule trigger
+        run: |
+          echo "GitHub event: ${GITHUB_EVENT_NAME}"
+          echo "GitHub ref: ${GITHUB_REF}"
+          echo "Scheduled expression: ${{ github.event.schedule || 'manual workflow_dispatch' }}"
+
       - name: Checkout
         uses: actions/checkout@v7
 
