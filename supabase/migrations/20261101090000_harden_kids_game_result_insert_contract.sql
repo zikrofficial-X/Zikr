@@ -100,3 +100,5 @@ CREATE TRIGGER kids_game_results_validate_insert
 
 REVOKE ALL ON FUNCTION public.kids_validate_game_result_insert()
   FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.kids_validate_game_result_insert()
+  TO service_role;
