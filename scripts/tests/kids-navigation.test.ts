@@ -30,6 +30,11 @@ for (const link of KIDS_SECTION_LINKS) {
   );
 }
 
+const detail = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
+assert.ok(detail.includes("Object.keys(GAME_REGISTRY).length"), "Kids detail recommendations must derive the game count from the canonical registry");
+assert.ok(detail.includes("registeredGameCount"), "Kids detail recommendations must display the live registry count");
+assert.ok(!detail.includes("Browse all 12 games") && !detail.includes("الألعاب الـ12"), "Kids detail recommendations must not contain a stale 12-game count");
+
 const layout = readFileSync("src/app/kids/layout.tsx", "utf8");
 assert.ok(layout.includes("KidsSectionNavigation"), "the shared navigation must be rendered across Kids routes");
 
