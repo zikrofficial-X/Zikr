@@ -78,3 +78,13 @@ The retired `sync-youtube-facebook` Edge Function is not part of the active runt
 ## Repository rules
 
 Never place secret values in repository files. Keep service-role keys, OAuth refresh tokens, Page access tokens, Android signing material, and GitHub dispatch tokens in protected runtime secret stores.
+
+## Android release recovery dispatch
+
+The signed Android build is followed by a separate `android-release-dispatch` CircleCI job. The job uses the existing `android-signing` context and requires:
+
+- `GH_TOKEN`: a fine-grained GitHub token scoped only to `zikrofficial-X/Zikr`, with **Actions: Read and write** permission. It is used only to dispatch `.github/workflows/dispatch-android-release-recovery.yml` on the exact `android-release-vX.Y.Z` branch after `android-rebuild` succeeds.
+- Keep `GH_TOKEN` in the protected CircleCI context. Never add it to the repository, Vercel public variables, build args, or logs.
+- If `GH_TOKEN` is absent, the dispatch job intentionally fails instead of silently claiming the Android release recovery was started.
+
+After adding or rotating the token, verify the CircleCI `android-signing` context is available to the release pipeline before creating the next Android release.
