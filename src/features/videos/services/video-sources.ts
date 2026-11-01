@@ -80,6 +80,7 @@ const QURAN_BASE = "https://quran.com";
 const HADITH_BASE = "https://sunnah.com";
 const SITE_BASE = getServerEnv().NEXT_PUBLIC_SITE_URL;
 const QURAN_VIDEO_RECITER_CODE = process.env.QURAN_VIDEO_RECITER_CODE?.trim() || "alafasy";
+const QURAN_AYAH_AUDIO_RECITER_CODE = process.env.QURAN_AYAH_AUDIO_RECITER_CODE?.trim() || "alafasy";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
 
@@ -115,6 +116,11 @@ async function quranSource(
     ),
   ]);
   const surahName = nameRows?.[0]?.name_ar || `السورة ${surahId}`;
+  if (QURAN_VIDEO_RECITER_CODE !== QURAN_AYAH_AUDIO_RECITER_CODE) {
+    throw new Error(
+      "Quran video reciter mismatch: quran_audio catalogue reciter and per-ayah audio CDN reciter must match.",
+    );
+  }
   const reciter = reciterRows?.[0] ?? null;
   if (!reciter?.id) return null;
 
