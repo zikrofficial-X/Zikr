@@ -68,7 +68,7 @@ BEGIN
   IF jsonb_typeof(NEW.metadata) IS DISTINCT FROM 'object' THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'game result metadata must be an object';
   END IF;
-  IF jsonb_object_length(NEW.metadata) > 10
+  IF (SELECT count(*) FROM jsonb_object_keys(NEW.metadata)) > 10
     OR pg_column_size(NEW.metadata) > 4096
     OR EXISTS (
       SELECT 1
