@@ -85,11 +85,10 @@ export async function retryFailedGameResults() {
 export function syncQueuedGameResults() {
   if (syncInFlight) return syncInFlight;
   const task = syncQueuedGameResultsInternal();
-  const tracked = task.finally(() => {
-    if (syncInFlight === tracked) syncInFlight = null;
+  syncInFlight = task;
+  return task.finally(() => {
+    if (syncInFlight === task) syncInFlight = null;
   });
-  syncInFlight = tracked;
-  return tracked;
 }
 
 async function syncQueuedGameResultsInternal() {
