@@ -306,8 +306,8 @@ type AdminModuleDefinition = {
 | `/admin/videos` | `/admin/video/requests` | redirect |
 | `/admin/video-factory` | `/admin/video` | redirect/واجهة توافق |
 | `/admin/ai-video` | `/admin/video/studio` | redirect |
-| `/admin/video-factory/publishing` | `/admin/social` | redirect |
-| `/admin/video-factory/scheduler` | `/admin/automation` أو `/admin/queues` | مراجعة ثم redirect |
+| `/admin/video-factory/publishing` | `/admin/social` | redirect محمي بصلاحية `social.manage` |
+| `/admin/video-factory/scheduler` | `/admin/automation` | redirect محمي بصلاحية `system.manage` |
 | `/admin/alerts` | `/admin/notifications` | redirect |
 | `/admin/control` | `/admin` | redirect |
 | `/admin/audio/site-audio` | `/admin/site-audio` أو تبويب الصوت | redirect |
