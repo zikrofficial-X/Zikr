@@ -458,7 +458,9 @@ async function disposePublishedVideo(item: SocialPublishQueueItem) {
     typeof item.metadata?.supabaseOriginalVideoUrl === "string"
       ? item.metadata.supabaseOriginalVideoUrl
       : null;
-  const candidates = [...new Set([item.video_url, backupUrl].filter((value): value is string => Boolean(value)))];
+  // Remove the Supabase staging copy first. Keep the public Cloudinary URL alive
+  // until the staging delete succeeds, so a retry never strands a live queue row.
+  const candidates = [...new Set([backupUrl, item.video_url].filter((value): value is string => Boolean(value)))];
   const failures: string[] = [];
 
   for (const candidate of candidates) {
@@ -467,6 +469,7 @@ async function disposePublishedVideo(item: SocialPublishQueueItem) {
     } catch (error) {
       failures.push((candidate.includes("cloudinary.com") ? "Cloudinary: " : "Supabase: ") +
         (error instanceof Error ? error.message : String(error)));
+      break;
     }
   }
 
