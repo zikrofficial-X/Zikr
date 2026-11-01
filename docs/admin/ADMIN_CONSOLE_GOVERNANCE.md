@@ -1,20 +1,28 @@
 # حوكمة لوحة إدارة ذِكر
 
-**آخر مراجعة:** 30 أكتوبر 2026
+**آخر مراجعة:** 1 نوفمبر 2026
 **مصدر الحقيقة للتنقل:** `src/features/admin/config/navigation.ts`  
 **مصدر الحقيقة للصلاحيات:** `src/features/admin/services/permissions.ts`
 
-تعتمد اللوحة على 8 مجموعات تنقل و45 مسارًا إداريًا ظاهرًا. ملف التنقل هو المصدر المنفرد لترتيب الصفحات، بينما يرشّح `src/app/admin/layout.tsx` الروابط بحسب دور المستخدم. لا تُضاف روابط إلى قائمة الإدارة قبل وجود صفحة فعلية وفحص صلاحية خادمي.
+تعتمد اللوحة على 8 مجموعات تنقل و46 رابطًا إداريًا ظاهرًا بحسب مصدر التنقل الحالي. ملف التنقل هو المصدر المنفرد لترتيب الصفحات، بينما يرشّح `src/app/admin/layout.tsx` الروابط بحسب دور المستخدم. لا تُضاف روابط إلى قائمة الإدارة قبل وجود صفحة فعلية وفحص صلاحية خادمي.
 
 ### المسارات الرسمية المضافة في مركز التشغيل
 
 أصبحت هذه المسارات هي نقاط الدخول الرسمية التي يجب استخدامها في الروابط الجديدة، مع إبقاء المسارات القديمة للتحويل التوافقي:
 
 - مركز الطوابير: `/admin/queues` بصلاحية `dashboard.view`.
-- مركز الفيديو: `/admin/video` بصلاحية `video.manage`.
-- طلبات الفيديو: `/admin/video/requests` بصلاحية `video.manage`.
+- مركز الفيديو والإنتاج: `/admin/video` بصلاحية `video.manage`.
+- طلبات الفيديو والطابور: `/admin/video/requests` بصلاحية `video.manage`.
 - استوديو الفيديو: `/admin/video/studio` بصلاحية `video.manage`.
 - مكتبة المحتوى الموثق: `/admin/video/studio/curated` بصلاحية `video.manage`.
+- مصادر الفيديو: `/admin/video/sources` بصلاحية `video.manage`.
+- نصوص السرد: `/admin/video/scripts` بصلاحية `video.manage`.
+- ملفات الأصوات: `/admin/video/voices` بصلاحية `video.manage`.
+- العناصر المرئية: `/admin/video/visuals` بصلاحية `video.manage`.
+- القوالب: `/admin/video/templates` بصلاحية `video.manage`.
+- ضبط الجودة: `/admin/video/qa` بصلاحية `video.manage`.
+
+جميع صفحات الفيديو السابقة تحت `/admin/video-factory/*` أصبحت تحويلات توافقية إلى مسارات مركز الفيديو الرسمية. صفحة الجدولة القديمة تحوّل إلى `/admin/automation` بصلاحية `system.manage`، وصفحة النشر القديمة تحوّل إلى `/admin/social` بصلاحية `social.manage`.
 
 يوفر تخطيط الإدارة بحثًا سريعًا مفلترًا حسب الدور عبر `Ctrl+K`، بينما يحتفظ دليل الوحدات بالمفضلة والصفحات الأخيرة على الجهاز دون إرسال هذه التفضيلات إلى الخادم.
 
@@ -55,18 +63,19 @@
 
 | المسار | الصفحة | الصلاحية المطلوبة |
 |---|---|---|
-| `/admin/video-factory` | مصنع الفيديو | `video.manage` |
-| `/admin/video-factory/queue` | قائمة طلبات الفيديو | `video.manage` |
-| `/admin/ai-video` | استوديو إنشاء الفيديو | `video.manage` |
-| `/admin/ai-video/curated` | المحتوى الموثق للفيديو | `video.manage` |
-| `/admin/video-factory/sources` | مصادر الفيديو | `video.manage` |
-| `/admin/video-factory/scripts` | نصوص السرد | `video.manage` |
-| `/admin/video-factory/voices` | الأصوات | `video.manage` |
-| `/admin/video-factory/visuals` | العناصر المرئية | `video.manage` |
-| `/admin/video-factory/templates` | القوالب | `video.manage` |
-| `/admin/video-factory/qa` | ضبط الجودة | `video.manage` |
+| `/admin/video` | مركز الفيديو والإنتاج | `video.manage` |
+| `/admin/video/requests` | طلبات الفيديو والطابور | `video.manage` |
+| `/admin/video/studio` | استوديو الفيديو | `video.manage` |
+| `/admin/video/studio/curated` | المحتوى الموثق للفيديو | `video.manage` |
+| `/admin/video/sources` | مصادر الفيديو | `video.manage` |
+| `/admin/video/scripts` | نصوص السرد | `video.manage` |
+| `/admin/video/voices` | الأصوات | `video.manage` |
+| `/admin/video/visuals` | العناصر المرئية | `video.manage` |
+| `/admin/video/templates` | القوالب | `video.manage` |
+| `/admin/video/qa` | ضبط الجودة | `video.manage` |
 | `/admin/media` | مكتبة الوسائط | `media.manage` |
 
+**التوافق:** المسارات القديمة `/admin/video-factory/*` و`/admin/ai-video*` لا تظهر في القائمة الرسمية، وتحوّل إلى المسارات أعلاه أو إلى مركز الاستوديو/النشر/الأتمتة المعني. لا تضف روابط جديدة إلى شجرة المسارات القديمة.
 
 ### الصوت
 
@@ -141,7 +150,7 @@
 | الحسابات والصلاحيات | `/admin/users`, `/admin/security` | `profiles`, `admin_role_assignments` | تغيير الأدوار عبر Server Actions المحمية، مع MFA للعمليات الحساسة وسجل تدقيق. |
 | التدقيق والإعدادات | `/admin/audit`, `/admin/settings` | `admin_audit_events`, `admin_settings`, `admin_rate_limits` | أحداث الإدارة تضاف عبر خدمة التدقيق؛ لا تسجل الرموز أو كلمات المرور أو مفاتيح السر. |
 | المحتوى والمعرفة | `/admin/content`, `/admin/library`, `/admin/editorial`, `/admin/knowledge` | `content_library`, `content_revisions`, `articles`, `stories`, `hadiths`, `duas`, `prophets`, `companions`, `scholars` | تُراجع صلاحية القراءة/التعديل/النشر مستقلة، ولا يكفي إخفاء الرابط من القائمة. |
-| الفيديو والوسائط | `/admin/video-factory`, `/admin/ai-video`, `/admin/media` | `videos`, `video_generation_requests`, `media_assets` وموارد التخزين | لا يُعلن عن تنفيذ فوري إذا كانت العملية قد دخلت طابور عامل مجدول. |
+| الفيديو والوسائط | `/admin/video`, `/admin/video/requests`, `/admin/video/studio`, `/admin/video/sources`, `/admin/video/scripts`, `/admin/video/voices`, `/admin/video/visuals`, `/admin/video/templates`, `/admin/video/qa`, `/admin/media` | `videos`, `video_generation_requests`, `media_assets` وموارد التخزين | لا يُعلن عن تنفيذ فوري إذا كانت العملية قد دخلت طابور عامل مجدول. |
 | النشر الاجتماعي | `/admin/social` | `social_publish_queue`, `social_sync_jobs`, `social_platform_credentials` | بيانات OAuth ورموز الصفحات Server-only؛ لا تضاف سياسات قراءة للـanon أو authenticated على جدول الاعتمادات. |
 | الأطفال والألعاب | `/admin/kids` وما يتفرع عنها | `kids_content` وجداول الألعاب والتقدم والنتائج | تعديلات اللعب ونتائج الأطفال تُفحص بعقود الاختبار وسياسات RLS الخاصة بالمجال. |
 | الصوت | `/admin/audio`, `/admin/site-audio` | `site_audio_assets` ومصادر الصوت | تُختبر روابط الأصول وحالات فشل التحميل؛ لا تُعرض حالة نجاح وهمية عند فشل القراءة. |
@@ -178,7 +187,7 @@
 ## 6. قواعد تنظيم الواجهة وتجربة الهاتف
 
 - الصفحة الرئيسية تعرض إجراءات سريعة مسموحة للدور الحالي فقط؛ روابط التنقل لا تتجاوز فحص الصلاحية على الخادم.
-- تعرض مراكز الإدارة كبطاقات مجموعات، مع ثلاث روابط رئيسية ومحتوى إضافي قابل للفتح. لا تُكرر قائمة المسارات الخمسة والأربعين كبطاقات متساوية داخل لوحة العمليات.
+- تعرض مراكز الإدارة كبطاقات مجموعات، مع ثلاث روابط رئيسية ومحتوى إضافي قابل للفتح. لا تُكرر قائمة روابط الإدارة الستة والأربعين كبطاقات متساوية داخل لوحة العمليات.
 - قائمة الهاتف تختار المجموعة من قائمة واحدة قابلة للمس، بدل شريط فئات أفقي ضيق يضغط أسماء المجموعات.
 - تحليلات المحتوى تستخدم عمودين على الهاتف وتسمح بتمرير جدول الترتيب أفقيًا عند الحاجة.
 - لا تظهر مقالة في «الأكثر مشاهدة» قبل وجود مشاهدة مسجلة أكبر من صفر؛ غياب البيانات ليس ترتيبًا حقيقيًا.
