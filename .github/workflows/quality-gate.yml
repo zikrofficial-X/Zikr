@@ -74,7 +74,7 @@ jobs:
           set -euo pipefail
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]] || \
              [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]] || \
-             [[ "${GITHUB_EVENT_NAME}" == "pull_request" && "${GITHUB_HEAD_REF}" == codex/zikr-comprehensive-repair-* ]]; then
+             [[ "${GITHUB_EVENT_NAME}" == "pull_request" && ( "${GITHUB_HEAD_REF}" == codex/zikr-comprehensive-repair-* || "${GITHUB_HEAD_REF}" == codex/zikr-platform-cleanup-* ) ]]; then
             echo "Running the full verification suite for main or a comprehensive repair branch."
             pnpm verify
           else
@@ -90,7 +90,7 @@ jobs:
           set -euo pipefail
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]] || \
              [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]] || \
-             [[ "${GITHUB_EVENT_NAME}" == "pull_request" && "${GITHUB_HEAD_REF}" == codex/zikr-comprehensive-repair-* ]]; then
+             [[ "${GITHUB_EVENT_NAME}" == "pull_request" && ( "${GITHUB_HEAD_REF}" == codex/zikr-comprehensive-repair-* || "${GITHUB_HEAD_REF}" == codex/zikr-platform-cleanup-* ) ]]; then
             echo "QUALITY_GATE=PASSED_FULL (tests, integrity, mobile, SEO, security, lint, types, and production build)"
           else
             echo "QUALITY_GATE=PASSED_PR (tests, integrity, security, lint, types, and architecture)"
