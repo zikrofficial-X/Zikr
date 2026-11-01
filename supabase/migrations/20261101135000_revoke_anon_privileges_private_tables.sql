@@ -70,6 +70,7 @@ CREATE POLICY stories_authenticated_read_published_or_admin
   USING (published = true OR private.is_admin_user());
 
 DROP POLICY IF EXISTS social_platform_profiles_public_read ON public.social_platform_profiles;
+DROP POLICY IF EXISTS youtube_sync_state_public_read ON public.youtube_sync_state;
 
 DROP POLICY IF EXISTS public_read_scholars ON public.scholars;
 CREATE POLICY scholars_public_read_published
