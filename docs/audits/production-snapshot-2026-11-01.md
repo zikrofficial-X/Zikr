@@ -125,3 +125,16 @@ Live `cron.job` inspection on the canonical project `ymxdswkaxafakugktsim` confi
 | `zikr-youtube-facebook-sync` | Every 10 minutes | **No** | Legacy `sync-youtube-facebook` function; inactive |
 
 All active HTTP cron targets use the canonical current Supabase project. Two older migration files still contain the previous project reference, but applied migration files are historical and remain immutable; the live cron rows were repointed by later migrations. Do not re-enable the legacy social sync cron: GitHub Actions owns the current social publisher.
+
+## Production deployment and main-branch status
+
+At the time of this snapshot, Vercel's latest production deployment was:
+
+- Deployment: `dpl_AMvvdg7hTG7bZyh4PNRogwGXgt8m` — READY.
+- Git ref/SHA: `main` / `9e429094ae9f296f1d2875d1d2a648148e7a7f9d`.
+- Aliases: `zikrmediaofficial.vercel.app`, `zikr-zikr3.vercel.app`, and `zikr-git-main-zikr3.vercel.app`.
+- Vercel project/team: `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs` / `team_RxPjmgZoSFmKGjScefYmwIVv`.
+
+The GitHub combined status for that exact main commit was `success` with three attached checks: CircleCI `application-build-docs`, Vercel, and CircleCI `config-guard`. An English content-sync failure had been observed on an earlier commit; the scheduled standalone sync run is not represented in the current commit status and its latest result was not available through the connected actions.
+
+The repair branch is not yet the production deployment. The controlled release workflow is manual-only and requires an explicit `RELEASE` dispatch on `main`; merging the PR does not auto-deploy.
