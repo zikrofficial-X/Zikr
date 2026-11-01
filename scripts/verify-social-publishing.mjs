@@ -103,7 +103,9 @@ if (!generationWorkflow.includes('HF_VIDEO_PROVIDER_TIMEOUT_MS: "150000"') || !g
 if (!workflow.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("GitHub social workflow must only process the social queue");
 if (!publisher.includes('.audience === "kids"')) failures.push("YouTube publishing must read the source audience for child-directed videos");
 if (!ytAutomation.includes("selfDeclaredMadeForKids: options.selfDeclaredMadeForKids === true")) failures.push("YouTube uploads must set Made for Kids from the source audience metadata");
-if (!workflow.includes("social_platform_credentials?platform=eq.facebook&select=page_id,is_enabled,connection_status,expires_at&limit=1")) failures.push("GitHub social workflow must derive Facebook readiness from the OAuth-managed Supabase credential");
+if (!workflow.includes("social_platform_credentials?platform=eq.facebook&select=page_id,page_access_token,is_enabled,connection_status,expires_at&limit=1")) failures.push("GitHub social workflow must derive Facebook readiness from the OAuth-managed Supabase credential");
+if (!workflow.includes('typeof row?.page_access_token === "string"')) failures.push("Facebook readiness must verify that the OAuth-managed Page token is present without printing it");
+if (!workflow.includes('if [[ "$youtube_configured" != "true" ]]') || !workflow.includes('if [[ "$facebook_enabled" != "true" ]]')) failures.push("the automatic publisher must fail closed unless both configured providers are ready");
 if (!workflow.includes('echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_enabled" >> "$GITHUB_ENV"')) failures.push("GitHub social workflow must set the Facebook feature gate from validated OAuth-managed connection state");
 if (workflow.includes("secrets.FACEBOOK_PAGE_ACCESS_TOKEN") || workflow.includes("FACEBOOK_PAGE_ACCESS_TOKEN:")) failures.push("GitHub social workflow must not duplicate the Facebook Page token outside Supabase");
 if (!publisher.includes("async function publishFacebookVideoItem")) failures.push("Facebook feed videos and Reels must use the same OAuth-managed Page credential");
