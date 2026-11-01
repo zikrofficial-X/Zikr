@@ -1,4 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE ROLE anon NOLOGIN;
+CREATE ROLE authenticated NOLOGIN;
 CREATE ROLE service_role NOLOGIN BYPASSRLS;
 
 CREATE TYPE public.role AS ENUM ('user', 'admin');
