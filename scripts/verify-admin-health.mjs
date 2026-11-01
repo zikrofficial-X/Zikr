@@ -33,7 +33,7 @@ if (!snapshot.includes('getExactStatusCounts("social_publish_queue"')) {
 if (!snapshot.includes('getExactStatusCounts("video_generation_requests"')) {
   throw new Error("Admin video dashboard must use exact video queue counts");
 }
-if (snapshot.includes("limit=500") && snapshot.includes("social_publish_queue")) {
+if (snapshot.includes("/rest/v1/social_publish_queue?select=status") || snapshot.includes("/rest/v1/video_generation_requests?select=status")) {
   throw new Error("Admin video dashboard must not estimate queue totals from a 500-row sample");
 }
 if (!health.includes("getExactStatusCounts")) {
