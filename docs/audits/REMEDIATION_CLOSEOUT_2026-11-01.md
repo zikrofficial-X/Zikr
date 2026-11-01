@@ -20,9 +20,10 @@
 ### Retain compatibility routes
 Admin video legacy route files are redirect aliases to canonical destinations; they are required for old bookmarks/deep links and the admin architecture tests. Do not delete them solely because they duplicate a route name.
 
-### Retain active components in legacy folders until moved safely
-- `src/app/admin/videos/videos-client.tsx` is still imported by canonical `/admin/video/requests`. It is active. A separate refactor may move it into feature-owned components after import tracing.
-- `src/app/admin/ai-video/ai-video-client.tsx` needs import tracing against the canonical studio before retirement.
+### Active client UI is now feature-owned
+- `src/features/admin/video-requests/components/admin-video-requests-client.tsx` is imported by canonical `/admin/video/requests`.
+- `src/features/admin/video-studio/components/admin-video-studio-client.tsx` is imported by canonical `/admin/video/studio`.
+- The old component files have been removed from `src/app/admin/videos` and `src/app/admin/ai-video`; compatibility page routes remain as redirects.
 
 ### Retain Supabase migration history
 - `supabase/migrations`: 389 current migration files.
