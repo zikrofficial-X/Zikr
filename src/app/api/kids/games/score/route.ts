@@ -30,7 +30,10 @@ export async function POST(request: NextRequest) {
     if (!result.success) {
       return NextResponse.json(
         { error: result.error },
-        { status: result.status },
+        {
+          status: result.status,
+          headers: result.status === 429 ? { "Retry-After": "60" } : undefined,
+        },
       );
     }
     return NextResponse.json(result);
