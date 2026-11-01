@@ -51,7 +51,7 @@ Facebook / Meta:
 - `FACEBOOK_APP_SECRET`
 - `FACEBOOK_PAGE_ID`
 - `FACEBOOK_PAGE_ACCESS_TOKEN`
-- `SOCIAL_PUBLISH_FACEBOOK_ENABLED` (runtime gate; the production publisher enables it only when both Page ID and Page access token secrets are present, and the Admin setting can still disable it)
+- `SOCIAL_PUBLISH_FACEBOOK_ENABLED` (runtime gate; Facebook publishing requires a valid OAuth-managed Page connection in Supabase and the Admin setting)
 - `FACEBOOK_GRAPH_API_VERSION` (current default: `v26.0`)
 
 Native social:
@@ -61,7 +61,7 @@ The canonical Meta variable name is `FACEBOOK_GRAPH_API_VERSION`. `META_GRAPH_AP
 
 ## 4. Video worker contract
 
-Production video generation is owned by GitHub Actions `generate-ai-video.yml`. Social publishing is owned by GitHub Actions `publish-social.yml`. CircleCI does not execute either production worker.
+Production video generation is owned by GitHub Actions `generate-ai-video.yml`. Social publishing is owned by GitHub Actions `publish-social.yml`. CircleCI does not execute either production worker. Social publishing is fail-closed: it runs only when the repository variable `SOCIAL_PUBLISH_ENABLED` is explicitly set to `true`; the default is `false`.
 
 Worker/runtime configuration includes:
 
