@@ -48,7 +48,7 @@ Nine buckets were configured. The metadata query found:
 | `android-releases` | 12 | 216,722,808 |
 | **Total observed** | **148** | **680,006,097** |
 
-The total is approximately 648.5 MiB based on `storage.objects.metadata.size`; it is not a billing export and does not include provider-side overhead. No objects were deleted as part of this snapshot.
+The total is approximately 648.5 MiB based on `storage.objects.metadata.size`; it is not a billing export and does not include provider-side overhead. The other seven configured buckets contain zero objects. No objects were deleted as part of this snapshot.
 
 ## Supabase advisors
 
