@@ -40,6 +40,12 @@ assert.ok(sql.includes("REVOKE ALL PRIVILEGES ON TABLE public.%I FROM anon"), "m
 assert.ok(sql.includes("to_regclass("), "migration must safely skip tables absent in a fresh/partial schema");
 assert.ok(sql.includes("BEGIN;") && sql.includes("COMMIT;"), "grant hardening must be transactional");
 assert.ok(sql.includes("DO $anon_acl$") && sql.includes("\nEND;\n$anon_acl$;"), "migration must use a valid named SQL block");
+for (const table of ["hadiths", "stories", "scholars"]) {
+  assert.ok(sql.includes(table + "_public_read_published"), "anonymous public-read policy must be explicit for " + table);
+  assert.ok(sql.includes(table + "_authenticated_read_published_or_admin"), "authenticated admin-read policy must remain for " + table);
+}
+assert.ok(sql.includes("REVOKE EXECUTE ON FUNCTION private.is_admin_user() FROM anon"), "anonymous role must not execute the SECURITY DEFINER admin predicate");
+
 
 
 for (const table of privateTables) {
