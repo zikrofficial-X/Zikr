@@ -23,6 +23,13 @@ export type HadithDisplay = {
   usedArabicFallback: boolean;
 };
 
+/** A locally seeded page is authoritative only when it contains rows. */
+export function hasHadithPageRows<T>(
+  rows: readonly T[] | null | undefined,
+): rows is readonly T[] {
+  return Array.isArray(rows) && rows.length > 0;
+}
+
 export function resolveHadithDisplay(hadith: Hadith, requestedLocale: "ar" | "en"): HadithDisplay {
   if (requestedLocale === "en" && hadith.english?.trim()) {
     return { text: hadith.english, contentLocale: "en", usedArabicFallback: false };
