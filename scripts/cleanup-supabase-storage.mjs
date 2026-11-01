@@ -50,6 +50,59 @@ export function extractManagedVideoPath(value, supabaseUrl) {
   }
 }
 
+export function extractCloudinaryVideoPublicId(value, cloudName) {
+  try {
+    if (!cloudName) return null;
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com") return null;
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (parts[0] !== cloudName || parts[1] !== "video" || parts[2] !== "upload") return null;
+    const publicParts = parts.slice(3);
+    const version = publicParts[0] ?? "";
+    if (version.startsWith("v") && version.slice(1).length > 0 && [...version.slice(1)].every((character) => character >= "0" && character <= "9")) {
+      publicParts.shift();
+    }
+    const fileName = publicParts.pop() ?? "";
+    const extension = fileName.lastIndexOf(".");
+    const publicId = [...publicParts, extension > 0 ? fileName.slice(0, extension) : fileName].filter(Boolean).join("/");
+    // Only delete generated ZIKR video assets. Audio, artwork, samples, and other
+    // Cloudinary content must never be treated as disposable publishing files.
+    if (!/^auto-[A-Za-z0-9._/-]+$/.test(publicId)) return null;
+    if (publicId.split("/").some((part) => !part || part === "." || part === "..")) return null;
+    return publicId;
+  } catch {
+    return null;
+  }
+}
+
+async function deleteCloudinaryVideo(publicId) {
+  const cloudName = asString(process.env.CLOUDINARY_CLOUD_NAME);
+  const apiKey = asString(process.env.CLOUDINARY_API_KEY);
+  const apiSecret = asString(process.env.CLOUDINARY_API_SECRET);
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error("Cloudinary credentials are required to remove a published generated video.");
+  }
+
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const signatureBase = "public_id=" + publicId + "&timestamp=" + timestamp + apiSecret;
+  const signature = createHash("sha1").update(signatureBase).digest("hex");
+  const form = new URLSearchParams({ public_id: publicId, timestamp, api_key: apiKey, signature });
+  const response = await fetch(
+    "https://api.cloudinary.com/v1_1/" + encodeURIComponent(cloudName) + "/video/destroy",
+    { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form, signal: AbortSignal.timeout(20_000) },
+  );
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || (result.result !== "ok" && result.result !== "not found")) {
+    throw new Error(result.error?.message || "Cloudinary generated-video deletion failed.");
+  }
+}
+
+function getSupabaseBackupUrl(queue, request, supabaseUrl) {
+  return asString(asObject(queue?.metadata).supabaseOriginalVideoUrl)
+    || asString(asObject(request?.content).supabaseOriginalVideoUrl)
+    || (extractManagedVideoPath(queue?.video_url, supabaseUrl) ? asString(queue?.video_url) : "");
+}
+
 export function isEligiblePublishedQueueItem(item, cutoffIso, supabaseUrl) {
   if (!item || item.status !== "published") return false;
   if (!item.published_at || !(Date.parse(item.published_at) < Date.parse(cutoffIso))) return false;
@@ -572,11 +625,22 @@ async function main() {
     queueByUrl.set(row.video_url, (queueByUrl.get(row.video_url) ?? 0) + 1);
   }
 
+  const sourcePathCounts = new Map();
+  for (const row of queueRows) {
+    const request = requestById.get(row.content_id);
+    const backupUrl = getSupabaseBackupUrl(row, request, supabaseUrl);
+    const path = extractManagedVideoPath(backupUrl, supabaseUrl);
+    if (path) sourcePathCounts.set(path, (sourcePathCounts.get(path) ?? 0) + 1);
+  }
+
+  const cloudinaryCloudName = asString(process.env.CLOUDINARY_CLOUD_NAME);
   const candidates = [];
   const skipped = [];
   for (const row of queueRows) {
-    if (!isEligiblePublishedQueueItem(row, cutoffIso, supabaseUrl)) continue;
-    const path = extractManagedVideoPath(row.video_url, supabaseUrl);
+    if (row.status !== "published" || !row.published_at ||
+        !(Date.parse(row.published_at) < Date.parse(cutoffIso)) ||
+        !hasConfirmedPlatformResults(row.target_platforms, row.metadata)) continue;
+
     if (queueByUrl.get(row.video_url) !== 1) {
       skipped.push({ id: row.id, reason: "Duplicate social queue URL." });
       continue;
@@ -590,6 +654,24 @@ async function main() {
       skipped.push({ id: row.id, reason: "Video request content is not a JSON object." });
       continue;
     }
+
+    const backupUrl = getSupabaseBackupUrl(row, request, supabaseUrl);
+    const path = extractManagedVideoPath(backupUrl, supabaseUrl);
+    const cloudinaryPublicId = extractCloudinaryVideoPublicId(row.video_url, cloudinaryCloudName);
+    const directSupabasePath = extractManagedVideoPath(row.video_url, supabaseUrl);
+    if (!path) {
+      skipped.push({ id: row.id, reason: "No verified managed Supabase backup path." });
+      continue;
+    }
+    if (!directSupabasePath && !cloudinaryPublicId) {
+      skipped.push({ id: row.id, reason: "Video URL is neither a managed Supabase video nor an approved ZIKR Cloudinary auto-video." });
+      continue;
+    }
+    if (sourcePathCounts.get(path) !== 1) {
+      skipped.push({ id: row.id, reason: "Supabase backup path is shared by multiple queue rows." });
+      continue;
+    }
+
     const file = filesByPath.get(path);
     const queueRetention = asObject(asObject(row.metadata).storageRetention);
     const requestRetention = asObject(asObject(request.content).storageRetention);
@@ -608,6 +690,8 @@ async function main() {
       queue: row,
       request,
       path,
+      backupUrl,
+      cloudinaryPublicId,
       fileMissing: !file,
       bytes: Number(file?.metadata?.size ?? queueRetention.bytes ?? requestRetention.bytes ?? 0),
       publishedAt: row.published_at,
@@ -651,6 +735,7 @@ async function main() {
     androidDeletes.push({ version, paths, verification: verification.reason });
   }
 
+  console.log(`Cloudinary generated videos eligible: ${candidates.filter((item) => item.cloudinaryPublicId).length}.`);
   console.log(
     `Android copies eligible: ${androidDeletes.map((item) => item.version).join(", ") || "none"}.`,
   );
@@ -660,8 +745,15 @@ async function main() {
   );
 
   if (!apply) {
-    console.log("DRY RUN COMPLETE: no Storage objects or database rows were changed.");
+    console.log("DRY RUN COMPLETE: no Cloudinary assets, Storage objects, or database rows were changed.");
     return;
+  }
+
+  if (candidates.some((item) => item.cloudinaryPublicId) &&
+      (!asString(process.env.CLOUDINARY_CLOUD_NAME) ||
+       !asString(process.env.CLOUDINARY_API_KEY) ||
+       !asString(process.env.CLOUDINARY_API_SECRET))) {
+    throw new Error("Cloudinary secrets are required before applying cleanup for migrated published videos.");
   }
 
   // Video files are deleted only after every target platform has a confirmed remote ID,
@@ -694,6 +786,13 @@ async function main() {
     if (pathsToRemove.length > 0) {
       const { error } = await client.storage.from(VIDEO_BUCKET).remove(pathsToRemove);
       if (error) throw new Error(`Video Storage remove failed for batch ${offset / 100 + 1}: ${error.message}`);
+    }
+
+    // Remove only managed auto-generated Cloudinary assets paired to the same
+    // published queue row and Supabase backup. Failures leave purge_pending
+    // markers so the next scheduled run can safely retry.
+    for (const item of batch) {
+      if (item.cloudinaryPublicId) await deleteCloudinaryVideo(item.cloudinaryPublicId);
     }
 
     // One database function updates queue + generation rows in a single transaction.
