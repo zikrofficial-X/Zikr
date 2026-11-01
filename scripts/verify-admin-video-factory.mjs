@@ -53,6 +53,15 @@ for (const [href, route] of [
   read(route);
 }
 
+for (const legacyHref of [
+  "/admin/video/scripts",
+  "/admin/video/voices",
+  "/admin/video/visuals",
+  "/admin/video/qa",
+]) {
+  if (hub.includes(legacyHref)) failures.push(`Video hub contains a non-existent legacy destination: ${legacyHref}`);
+}
+
 const page = read("src/app/admin/video/studio/page.tsx");
 if (!page.includes('requireAdminPermission("video.manage")')) failures.push("Video Studio admin page must require video.manage");
 
@@ -68,6 +77,7 @@ for (const adminPage of [
   "src/app/admin/video-factory/scripts/page.tsx",
   "src/app/admin/video-factory/voices/page.tsx",
   "src/app/admin/video-factory/qa/page.tsx",
+  "src/app/admin/video-factory/visuals/page.tsx",
   "src/app/admin/audio/tts/page.tsx",
   "src/app/admin/audio/quran/page.tsx",
 ]) {
