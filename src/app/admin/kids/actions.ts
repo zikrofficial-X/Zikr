@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { uploadCloudinaryImage } from "@/features/media/services/cloudinary";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { isRegisteredGameId } from "@/lib/games/registry";
@@ -68,9 +69,9 @@ export async function saveKidsContentAction(formData: FormData) {
     throw new Error("معرف اللعبة غير مسجل أو غير صالح.");
   }
 
-  await supabaseServerAdminRequest("/rest/v1/kids_content?on_conflict=slug", {
+  const saved = await supabaseServerAdminRequest<Array<{ id: string; slug: string }>>("/rest/v1/kids_content?on_conflict=slug&select=id,slug", {
     method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    headers: { Prefer: "resolution=merge-duplicates,return=representation" },
     body: JSON.stringify({
       title_ar,
       title_en: value(formData, "title_en") ?? title_ar,
@@ -92,6 +93,14 @@ export async function saveKidsContentAction(formData: FormData) {
       },
       updated_at: new Date().toISOString(),
     }),
+  });
+  if (!saved[0]?.id) throw new Error("لم يتم تأكيد حفظ محتوى الأطفال من قاعدة البيانات.");
+  await recordAdminAuditEvent({
+    action: "kids.content.save",
+    permission: "kids.manage",
+    resourceType: "kids_content",
+    resourceId: saved[0].id,
+    metadata: { slug, type, published: formData.has("published"), gameId },
   });
 
   revalidatePath("/kids");
