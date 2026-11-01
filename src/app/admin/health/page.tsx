@@ -11,8 +11,8 @@ export const metadata: Metadata = { title: "صحة النظام | لوحة ال�
 function readBooleanSetting(value: unknown): boolean | null {
   if (typeof value === "boolean") return value;
   if (typeof value === "string") {
-    if (value.toLowerCase() === "true") return true;
-    if (value.toLowerCase() === "false") return false;
+    if (value.trim().toLowerCase() === "true") return true;
+    if (value.trim().toLowerCase() === "false") return false;
   }
   return null;
 }
@@ -74,7 +74,7 @@ export default async function AdminHealthPage() {
       )}
       {automationEnabled === true && aiEnabled === true && autoPublishEnabled === true && (
         <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-emerald-100/80">
-          التوليد والنشر الآلي مفعّلان في إعدادات العامل. يظل اعتماد كل فيديو ومراجعة النص والصوت والمرئيات والحقوق إلزاميًا قبل النشر العام؛ كما يتحقق عامل النشر من اتصال المنصة وبيانات OAuth.
+          التوليد والنشر الآلي مفعّلان في إعدادات العامل. يُنشر الفيديو بعد اكتمال التوليد والتحقق من حالة الطلب وتطابق رابط الوسائط مع المصدر؛ ويظل اتصال YouTube وFacebook شرطًا مستقلًا.
         </div>
       )}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -88,8 +88,8 @@ export default async function AdminHealthPage() {
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
           <p className="text-xs text-brand-cream/35">النشر الآلي</p>
-          <p className="mt-1 text-sm font-bold text-brand-cream/75">{autoPublishEnabled === null ? "غير متاح — تعذر قراءة الإعداد" : autoPublishEnabled ? "مفعل بعد اعتماد كل فيديو" : "متوقف من إعدادات الإدارة"}</p>
-          <p className="mt-1 text-xs text-brand-cream/35">Facebook: {facebookEnabled === null ? "غير متاح" : facebookEnabled ? "مسموح — الاتصال الفعلي يتحقق منه عامل النشر" : "متوقف"}</p>
+          <p className="mt-1 text-sm font-bold text-brand-cream/75">{autoPublishEnabled === null ? "غير متاح — تعذر قراءة الإعداد" : autoPublishEnabled ? "مفعل تلقائيًا بعد اكتمال الفيديو وفحص المصدر والوسائط" : "متوقف — يتطلب مراجعة بشرية"}</p>
+          <p className="mt-1 text-xs text-brand-cream/35">Facebook: {facebookEnabled === null ? "غير متاح" : facebookEnabled ? "مسموح — العامل يتحقق من OAuth الفعلي" : "متوقف"}</p>
         </div>
         <div className={`rounded-2xl border p-5 ${health.database === 'healthy' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/25 bg-red-500/10'}`}>
           <p className="text-xs text-brand-cream/40">قاعدة البيانات</p>
