@@ -35,7 +35,7 @@ The following values must be available before the Android job starts:
 
 The `android-rebuild` workflow attaches the `android-signing` context for the four protected signing variables. The follow-up `android-release-dispatch` job uses the same context and additionally requires `GH_TOKEN` to dispatch the guarded GitHub recovery workflow after the signed build succeeds. The context must exist in the CircleCI organization and be authorized for this project before the release workflow is run. Keep signing material, service-role credentials, and the GitHub token out of the repository.
 
-The Android jobs fail early and list missing variable names without printing their values. `GH_TOKEN` must be a protected fine-grained GitHub token scoped to this repository with Actions write, Contents read, and commit-status read permissions. Do not move the signing material, service-role key, or GitHub token into the repository or a public workflow file.
+The Android jobs fail early and list missing variable names without printing their values. `GH_TOKEN` must be a protected fine-grained GitHub token scoped to this repository with **Actions: Read and write** permission. The dispatched GitHub Actions workflow uses its own restricted `GITHUB_TOKEN` (`actions: write`, `contents: read`, `statuses: read`) to inspect the exact source commit and dispatch the guarded publisher. Do not move the signing material, service-role key, or GitHub token into the repository or a public workflow file.
 
 The Android release lane uses one semantic tag (`vX.Y.Z`). There is no `-build` parallel tag.
 
