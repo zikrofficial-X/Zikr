@@ -433,7 +433,12 @@ async function deleteManagedVideoUrl(
     .split("/")
     .map(segment => encodeURIComponent(decodeURIComponent(segment)))
     .join("/");
-  await supabaseServerAdminRequest("/storage/v1/object/videos/" + encodedPath, { method: "DELETE" });
+  try {
+    await supabaseServerAdminRequest("/storage/v1/object/videos/" + encodedPath, { method: "DELETE" });
+  } catch (error) {
+    // Cleanup is idempotent: a retry after a previous successful DELETE may see 404.
+    if (!(error instanceof Error) || !error.message.startsWith("Supabase REST 404:")) throw error;
+  }
 }
 
 /**
