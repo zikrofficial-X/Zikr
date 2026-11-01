@@ -323,8 +323,8 @@ async function main() {
   if (process.env.SOCIAL_CLEANUP_ONLY === "true") {
     const result = await retryPendingPublishedVideoCleanup(250);
     console.log("[background-jobs] Published media cleanup-only sweep:", JSON.stringify(result));
-    if (result.pending > 0) {
-      throw new Error(`Published media cleanup left ${result.pending} item(s) pending.`);
+    if (result.pending > 0 || result.error) {
+      throw new Error(result.error || `Published media cleanup left ${result.pending} item(s) pending.`);
     }
     return;
   }
