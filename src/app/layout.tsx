@@ -5,6 +5,7 @@ import { SiteShell } from "@/components/layout/site-shell";
 
 import { defaultOgImage, siteConfig } from "@/lib/site";
 import { Analytics } from "@/components/layout/analytics";
+import { GoogleFundingChoices } from "@/components/layout/google-funding-choices";
 import { DeferredRuntime } from "@/components/layout/deferred-runtime";
 import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
@@ -151,6 +152,21 @@ export default async function RootLayout({
       suppressHydrationWarning={true}
     >
       <head>
+        <Script id="google-consent-mode-default" strategy="beforeInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('consent', 'default', {
+  ad_storage: 'denied',
+  analytics_storage: 'denied',
+  ad_user_data: 'denied',
+  ad_personalization: 'denied',
+  functionality_storage: 'granted',
+  security_storage: 'granted',
+  wait_for_update: 500
+});
+gtag('set', 'ads_data_redaction', true);`}
+        </Script>
+        <GoogleFundingChoices />
         {process.env.NODE_ENV === "production" && isValidGoogleAnalyticsId && (
           <>
             <Script
