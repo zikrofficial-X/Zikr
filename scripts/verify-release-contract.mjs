@@ -177,4 +177,18 @@ assert.ok(productionSmoke.includes("/kids/${slug}"), "production smoke must test
 assert.ok(productionSmoke.includes("/api/kids/content/${slug}"), "production smoke must test the API backing each kids game page");
 assert.ok(productionSmoke.includes("payload.metadata?.gameId === slug"), "production smoke must verify game metadata, not just HTTP status");
 
+const atomicReleaseManager = read("src/features/releases/services/github-release-manager.ts");
+assert.ok(atomicReleaseManager.includes('"/git/blobs"'), "Release metadata must be written as Git blobs, not sequential Contents API updates");
+assert.ok(atomicReleaseManager.includes('"/git/trees"'), "Release metadata must be assembled into one Git tree");
+assert.ok(atomicReleaseManager.includes('"/git/commits"'), "Release metadata must be committed through the Git Data API exactly once");
+assert.ok(atomicReleaseManager.includes("parents: [baseSha]"), "The atomic release commit must be based on the single immutable main snapshot");
+assert.ok(atomicReleaseManager.includes('"/git/refs/heads/main"'), "The atomic release commit must update the main ref directly");
+assert.ok(atomicReleaseManager.includes('method: "PATCH"') && atomicReleaseManager.includes("force: false"), "The main ref update must be a non-force fast-forward");
+assert.ok(atomicReleaseManager.includes("latestRef.object?.sha !== baseSha"), "Release preparation must reject a concurrent main update before moving the ref");
+assert.ok(atomicReleaseManager.includes("preparedCommitSha"), "The release tag and release audit must use the exact atomic commit SHA");
+assert.ok(!atomicReleaseManager.includes("upsertTextFile"), "Release preparation must not create one main commit per metadata file");
+assert.ok(atomicReleaseManager.includes("Promise.all(["), "All release source files must be read from the same immutable base commit");
+assert.ok(atomicReleaseManager.includes("replaceMatchesExactly"), "Release metadata updates must fail closed when an expected version field is missing or duplicated");
+assert.ok(atomicReleaseManager.includes("assertAllVersionsMatch"), "Release preparation must reject pre-existing Android/iOS/footer version drift");
+
 console.log("✅ Release contract checks passed");

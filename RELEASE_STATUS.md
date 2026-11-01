@@ -47,11 +47,15 @@ The Android publisher has successfully resolved the exact tag and draft, but is 
 
 The CircleCI status summary identifies `application-build-docs` as failed but does not expose its failing step or error text. The build detail is linked above; do not invent a root cause or mark the job as passed.
 
-## Release automation issue identified
+## Release automation hardening
 
-The current `prepareAndroidRelease()` implementation writes the Android, package, footer, iOS project, iOS plist, tag metadata and release notes through separate GitHub Contents API updates. Each update creates its own commit on `main`, and each main commit triggers another CircleCI pipeline. The v1.1.11 preparation therefore created a sequence of release-metadata commits and repeated application-build attempts, including builds against partially updated metadata.
+The release manager now reads every release source file from one immutable main commit, validates that Android, package, footer, and iOS versions are aligned, and fails closed when expected version fields are missing or duplicated.
 
-**Required engineering fix for the next release:** change the release manager to create all release metadata blobs, one Git tree and one Git commit through the Git Data API; update `main` once using a non-force ref update; then create the annotated semantic tag and Draft Release against that exact commit. Add a regression contract proving one release preparation creates one main commit. Do not retarget or recreate the already-existing v1.1.11 tag.
+It writes the changed metadata as Git blobs, assembles one tree, creates one child commit, and updates main once with a non-force fast-forward ref update. If main changes while the metadata is being prepared, the operation stops rather than overwriting the concurrent update. The semantic tag and Draft Release use the exact atomic commit SHA, never a newly-read unrelated main head.
+
+A regression contract in scripts/verify-release-contract.mjs enforces the Git Data API path, single-parent snapshot, non-force ref update, immutable source reads, version-alignment checks, and removal of sequential Contents API writes.
+
+This code change affects future release preparations. It does not retarget or mutate the existing v1.1.11 tag or its draft. The current v1.1.11 Android build remains governed by the exact-source CircleCI and GitHub publisher gates listed above.
 
 ## Android publication gate
 
