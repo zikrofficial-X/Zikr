@@ -297,3 +297,13 @@ The following variables were found in Vercel and are cleanup candidates after co
 Do not remove `ANDROID_APP_LINKS_SHA256`; it is read by the Android asset-links route. Do not remove `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, or `FACEBOOK_PAGE_ID`; the server-side Facebook OAuth connect/callback uses them. `FACEBOOK_PAGE_ACCESS_TOKEN` is read only by the explicit Admin server-token adoption flow, which validates and imports it into `social_platform_credentials`; outbound publishers read the managed database credential, not the Vercel environment token. Keep it only while that adoption flow is in use. The GitHub dispatch/release tokens remain required by the admin release manager.
 
 The connected Vercel actions available to this repair session can list, read, create, and edit project environment variables, but do not expose a delete operation. Therefore the obsolete variables above have been identified but not removed in this pass. Remove them from Vercel Project Settings → Environment Variables, preserving the separate CircleCI context and GitHub repository/environment secrets. Never copy secret values into Git or this document.
+
+## Quran video recitation alignment
+
+These optional settings must refer to the same human reciter:
+
+- `QURAN_VIDEO_RECITER_CODE`: code in `public.quran_reciters` used to verify the canonical full-surah audio catalogue.
+- `QURAN_AYAH_AUDIO_RECITER_CODE`: reciter actually served by the per-ayah audio endpoint.
+- `QURAN_AYAH_AUDIO_BASE_URL`: per-ayah MP3 base URL for that reciter; default is the Alafasy endpoint.
+
+The code defaults both reciter identifiers to `alafasy` and rejects a mismatch before a Quran video source can be accepted. Do not change only one variable. The `quran_audio` table currently stores full-surah records, so the per-ayah endpoint is a separate provider and must be verified as the same reciter.
