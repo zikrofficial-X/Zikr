@@ -210,8 +210,10 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
     };
     const clientSubmissionId = createSubmissionId();
     if (!navigator.onLine) {
-      await enqueueGameResult({ ...payload, clientSubmissionId });
-      setMessage(isEnglish ? "Your result was saved on this device and will sync when you reconnect." : "تم حفظ النتيجة على جهازك وستتم مزامنتها عند عودة الاتصال.");
+      const saved = await enqueueGameResult({ ...payload, clientSubmissionId });
+      setMessage(saved
+        ? (isEnglish ? "Your result was saved on this device and will sync when you reconnect." : "تم حفظ النتيجة على جهازك وستتم مزامنتها عند عودة الاتصال.")
+        : (isEnglish ? "The offline result queue is full. Reconnect and sync before playing another round." : "قائمة النتائج غير المتصلة ممتلئة. أعد الاتصال ومزامنة النتائج قبل بدء جولة جديدة."));
       await refreshQueue();
       return;
     }
@@ -224,13 +226,17 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
       });
       if (response.ok) setMessage(isEnglish ? "Your result was saved successfully." : "تم حفظ نتيجتك بنجاح.");
       else if (response.status === 401) {
-        await enqueueGameResult({ ...payload, clientSubmissionId });
-        setMessage(isEnglish ? "You can play without signing in; your result is stored locally until you sign in." : "يمكنك اللعب دون تسجيل الدخول؛ ستحفظ النتيجة محليًا حتى تسجل الدخول.");
+        const saved = await enqueueGameResult({ ...payload, clientSubmissionId });
+        setMessage(saved
+          ? (isEnglish ? "You can play without signing in; your result is stored locally until you sign in." : "يمكنك اللعب دون تسجيل الدخول؛ ستحفظ النتيجة محليًا حتى تسجل الدخول.")
+          : (isEnglish ? "The offline result queue is full. Sign in and sync before playing another round." : "قائمة النتائج غير المتصلة ممتلئة. سجّل الدخول وزامن النتائج قبل بدء جولة جديدة."));
         await refreshQueue();
       } else throw new Error(`HTTP ${response.status}`);
     } catch {
-      await enqueueGameResult({ ...payload, clientSubmissionId });
-      setMessage(isEnglish ? "Sync is unavailable right now, so the result was saved locally for another attempt." : "تعذر المزامنة الآن، فتم حفظ النتيجة محليًا للمحاولة لاحقًا.");
+      const saved = await enqueueGameResult({ ...payload, clientSubmissionId });
+      setMessage(saved
+        ? (isEnglish ? "Sync is unavailable right now, so the result was saved locally for another attempt." : "تعذر المزامنة الآن، فتم حفظ النتيجة محليًا للمحاولة لاحقًا.")
+        : (isEnglish ? "The offline result queue is full. Reconnect and sync; this result could not be stored." : "قائمة النتائج غير المتصلة ممتلئة. أعد الاتصال والمزامنة؛ تعذر حفظ هذه النتيجة محليًا."));
       await refreshQueue();
     }
   }, [dailyMission, definition.runtimeKind, difficulty, gameId, getElapsedSeconds, isEnglish, refreshQueue]);
