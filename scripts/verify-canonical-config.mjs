@@ -8,6 +8,9 @@ const production = "https://zikrmediaofficial.vercel.app";
 const nativeCallback = "com.zikr.app://auth/callback";
 const localWildcard = "http://localhost:3000/**";
 const browserCallback = production + "/auth/callback";
+const canonicalSupabaseProject = "ymxdswkaxafakugktsim";
+const canonicalSupabaseUrl = `https://${canonicalSupabaseProject}.supabase.co`;
+
 
 const failures = [];
 
@@ -32,6 +35,28 @@ const expected = [nativeCallback, localWildcard, browserCallback];
 if (siteUrl !== production) fail(`Supabase Auth site_url drift: ${siteUrl || "<missing>"}`);
 if (JSON.stringify(redirects) !== JSON.stringify(expected)) {
   fail(`Supabase Auth redirect allowlist drift: ${JSON.stringify(redirects)}`);
+}
+
+const supabaseTargetFiles = [
+  "docs/environment-variables.md",
+  ".github/workflows/quality-gate.yml",
+  ".github/workflows/supabase-production-health.yml",
+  ".github/workflows/generate-ai-video.yml",
+  ".github/workflows/publish-social.yml",
+];
+for (const file of supabaseTargetFiles) {
+  const source = read(file);
+  if (!source) {
+    fail(`Missing Supabase target contract file: ${file}`);
+    continue;
+  }
+  if (!source.includes(canonicalSupabaseUrl)) {
+    fail(`Supabase target drift in ${file}; expected ${canonicalSupabaseUrl}`);
+  }
+}
+const environmentDocs = read("docs/environment-variables.md");
+if (environmentDocs.includes("wvetcauyerlkqvmntajq")) {
+  fail("Environment documentation still references the retired Supabase project");
 }
 
 const forbiddenAlias = /zikr-zikrmediaofficial\.vercel\.app/i;
