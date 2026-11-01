@@ -131,7 +131,8 @@ export async function getVideoBySlug(slug: string): Promise<Video | null> {
   if (!isSupabaseConfigured()) return FALLBACK_VIDEOS.find((video) => video.slug === slug.trim()) ?? null;
 
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
-    `/rest/v1/videos?select=*&slug=eq.${safeSlug}&published=eq.true&limit=1`
+    `/rest/v1/videos?select=*&slug=eq.${safeSlug}&published=eq.true&limit=1`,
+    { timeoutMs: 8000, retries: 1, cache: "force-cache", next: { revalidate: 900 } },
   ).catch(error => {
     console.error("[content] Failed to fetch video by slug:", error);
     return [];
