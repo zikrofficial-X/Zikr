@@ -61,4 +61,14 @@ if (!page.includes('queueAttention === null ? "غير متاح" : queueAttention
   throw new Error("Admin health must render unavailable queue attention as unknown, not zero");
 }
 
+if (!page.includes("getAdminSettings") || !page.includes("video_automation_ai_enabled") || !page.includes("video_automation_auto_publish")) {
+  throw new Error("Admin health must read the canonical worker settings from admin_settings, not Vercel runtime defaults");
+}
+if (page.includes("getVideoEngineConfig()") || page.includes("engine.autoPublishEnabled")) {
+  throw new Error("Admin health must not infer GitHub worker state from the Vercel process environment");
+}
+if (!page.includes("اعتماد كل فيديو") || !page.includes("Facebook")) {
+  throw new Error("Admin health must explain per-video approval and the separate Facebook publisher gate");
+}
+
 console.log("Admin health accuracy contract passed.");
