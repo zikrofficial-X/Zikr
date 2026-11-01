@@ -43,6 +43,16 @@ The Android release lane uses one semantic tag (`vX.Y.Z`). There is no `-build` 
 
 CircleCI owns the recurring English article/Hadith synchronization schedule. GitHub keeps a manual fallback workflow only.
 
+The scheduled `english-content-sync` job does not attach the `android-signing` context. It requires these CircleCI **project environment variables**:
+
+- `SUPABASE_URL=https://ymxdswkaxafakugktsim.supabase.co`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `GEMINI_API_KEY`
+
+The job validates all three names before running `pnpm translate:articles:en` and `pnpm sync:hadith:en`. Missing variables cause an early failure; valid credentials can still fail later due to provider/API or content-sync errors.
+
+The last observed `english-content-sync` CircleCI status was failing. This repair session can inspect the checked-in config but cannot read CircleCI project environment values or authenticated job logs, so the precise failure cause is **not verified**. Do not attach the Android signing context as a workaround; confirm the three variables and inspect the failing CircleCI job's first error step.
+
 ### Security and Supabase gates
 
 CircleCI also runs the release-specific Supabase production gate and manual security audit. It does not execute `scripts/run-background-jobs.ts` for production video/social processing.
