@@ -83,7 +83,8 @@ const phase0AutomationFreeze =
   generationWorkflow.includes('VIDEO_AI_ENABLED: "false"') &&
   generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
   generationWorkflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"') &&
-  workflow.includes('SOCIAL_PUBLISH_ENABLED: "false"') &&
+  workflow.includes("SOCIAL_PUBLISH_ENABLED: ${{ vars.SOCIAL_PUBLISH_ENABLED || 'false' }}") &&
+  workflow.includes("vars.SOCIAL_PUBLISH_ENABLED == 'true'") &&
   workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
   workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"');
 if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze) failures.push("video generation must keep social queueing enabled unless Phase 0 freeze is explicitly active");
