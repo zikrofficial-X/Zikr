@@ -25,7 +25,7 @@ const NON_AD_PATHS = [
   "/videos",
   "/reciters",
   "/tawasheeh",
-  "/kids/puzzle",
+  "/kids",
   "/admin",
   "/api",
   "/auth",
