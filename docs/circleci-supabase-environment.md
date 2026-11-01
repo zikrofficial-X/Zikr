@@ -31,6 +31,7 @@ The following values must be available before the Android job starts:
 - `ANDROID_KEYSTORE_PASSWORD` — CircleCI context `android-signing`
 - `ANDROID_KEY_ALIAS` — CircleCI context `android-signing`
 - `ANDROID_KEY_PASSWORD` — CircleCI context `android-signing`
+- `GH_TOKEN` — CircleCI context `android-signing` (fine-grained token for the guarded GitHub Actions dispatch)
 
 The `android-rebuild` workflow attaches the `android-signing` context for the four protected signing variables. The follow-up `android-release-dispatch` job uses the same context and additionally requires `GH_TOKEN` to dispatch the guarded GitHub recovery workflow after the signed build succeeds. The context must exist in the CircleCI organization and be authorized for this project before the release workflow is run. Keep signing material, service-role credentials, and the GitHub token out of the repository.
 
