@@ -59,6 +59,15 @@ if (hub.includes("/admin/video-factory/")) {
   failures.push("Canonical Video Hub must not link into the legacy video-factory route tree");
 }
 
+const legacyScheduler = read("src/app/admin/video-factory/scheduler/page.tsx");
+if (!legacyScheduler.includes('requireAdminPermission("system.manage")')) {
+  failures.push("Legacy video scheduler redirect must preserve the destination system.manage permission");
+}
+const legacyPublishing = read("src/app/admin/video-factory/publishing/page.tsx");
+if (!legacyPublishing.includes('requireAdminPermission("social.manage")')) {
+  failures.push("Legacy publishing redirect must preserve the destination social.manage permission");
+}
+
 for (const [legacyPath, destination] of [
   ["src/app/admin/video-factory/page.tsx", "/admin/video"],
   ["src/app/admin/video-factory/sources/page.tsx", "/admin/video/sources"],
