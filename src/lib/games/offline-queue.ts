@@ -4,6 +4,10 @@ import type { GameResultPayload, OfflineQueuedResult } from "@/lib/games/registr
 const MAX_QUEUE_SIZE = 50;
 const MAX_ATTEMPTS = 5;
 const BASE_RETRY_MS = 5_000;
+const AUTH_RETRY_MS = 5 * 60 * 1000;
+const RATE_LIMIT_RETRY_MS = 60 * 1000;
+
+let syncInFlight: Promise<{ sent: number; remaining: number }> | null = null;
 
 function createSubmissionId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -58,6 +62,16 @@ export async function getFailedGameResultCount() {
   return items.filter(item => item.status === "failed").length;
 }
 
+export async function retryQueuedGameResults() {
+  if (!(await ensureReady())) return 0;
+  const items = await offlineDb.getAll<OfflineQueuedResult>("gameResultsQueue");
+  const pending = items.filter(item => item.status !== "failed");
+  await Promise.all(pending.map(item => offlineDb.set("gameResultsQueue", {
+    ...item, status: "pending" as const, nextAttemptAt: Date.now(),
+  })));
+  return pending.length;
+}
+
 export async function retryFailedGameResults() {
   if (!(await ensureReady())) return 0;
   const items = await offlineDb.getAll<OfflineQueuedResult>("gameResultsQueue");
@@ -68,7 +82,17 @@ export async function retryFailedGameResults() {
   return failed.length;
 }
 
-export async function syncQueuedGameResults() {
+export function syncQueuedGameResults() {
+  if (syncInFlight) return syncInFlight;
+  const task = syncQueuedGameResultsInternal();
+  const tracked = task.finally(() => {
+    if (syncInFlight === tracked) syncInFlight = null;
+  });
+  syncInFlight = tracked;
+  return tracked;
+}
+
+async function syncQueuedGameResultsInternal() {
   if (typeof navigator === "undefined" || !navigator.onLine) return { sent: 0, remaining: 0 };
   if (!(await ensureReady())) return { sent: 0, remaining: 0 };
 
@@ -106,7 +130,25 @@ export async function syncQueuedGameResults() {
         sent += 1;
         continue;
       }
-      if ([400, 403, 404, 422].includes(response.status)) {
+      if (response.status === 401) {
+        await offlineDb.set("gameResultsQueue", {
+          ...item, status: "pending", nextAttemptAt: Date.now() + AUTH_RETRY_MS,
+          lastError: "Authentication required before syncing this result",
+        });
+        break;
+      }
+      if (response.status === 429) {
+        const retryAfterSeconds = Number(response.headers.get("Retry-After"));
+        const retryDelay = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+          ? Math.min(15 * 60 * 1000, retryAfterSeconds * 1000)
+          : RATE_LIMIT_RETRY_MS;
+        await offlineDb.set("gameResultsQueue", {
+          ...item, status: "pending", nextAttemptAt: Date.now() + retryDelay,
+          lastError: "Server rate limit; retry scheduled",
+        });
+        break;
+      }
+      if ([400, 403, 404, 413, 422].includes(response.status)) {
         await offlineDb.set("gameResultsQueue", { ...item, status: "failed", failedAt: Date.now(), lastError: `HTTP ${response.status}` });
         continue;
       }
