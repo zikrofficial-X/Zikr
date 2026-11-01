@@ -41,6 +41,12 @@ if (groups.length !== 5) failures.push("expected exactly five canonical admin na
 for (const label of ["التشغيل والمراقبة", "المحتوى والمعرفة", "الوسائط والإنتاج والنشر", "مركز الأطفال", "النمو والنظام"]) {
   if (!groups.some((group) => group.label === label)) failures.push("missing canonical admin navigation zone: " + label);
 }
+const routeInventorySection = docs.split("## 1. جرد المسارات والصلاحيات")[1]?.split("## 2. نطاق الأدوار")[0] ?? "";
+const documentedGroups = [...routeInventorySection.matchAll(/^### (.+)$/gm)].map((match) => match[1].trim());
+const canonicalGroupLabels = ["التشغيل والمراقبة", "المحتوى والمعرفة", "الوسائط والإنتاج والنشر", "مركز الأطفال", "النمو والنظام"];
+if (documentedGroups.join("|") !== canonicalGroupLabels.join("|")) {
+  failures.push("admin governance headings must match the five canonical navigation zones in the same order");
+}
 if (!items.length) failures.push("no canonical navigation items were parsed");
 if (items.some((item) => !item.label.trim() || !item.permission.trim())) failures.push("navigation item has an empty label or permission");
 
