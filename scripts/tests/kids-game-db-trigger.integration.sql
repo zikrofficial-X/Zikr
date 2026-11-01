@@ -9,6 +9,19 @@ DECLARE
 BEGIN
   INSERT INTO public.kids_game_results (
     user_id, game_id, score, collectibles, distance, difficulty,
+    client_submission_id, metadata
+  ) VALUES (
+    v_user, 'zikr-memory', 50000, 500, 0, 'hard', 'valid-boundary-001',
+    jsonb_build_object(
+      'level', 30, 'combo', 5, 'completed', true, 'source', 'kids-world',
+      'runtime', 'memory', 'dailyMissionId', 'daily-1',
+      'dailyMissionCompleted', true, 'roundTimeSeconds', 300,
+      'mistakes', 0, 'accuracy', 100
+    )
+  );
+
+  INSERT INTO public.kids_game_results (
+    user_id, game_id, score, collectibles, distance, difficulty,
     client_submission_id, metadata, created_at
   ) VALUES (
     v_user, 'zikr-runner', 1200, 4, 250, 'normal', 'valid-submission-001',
@@ -164,6 +177,21 @@ BEGIN
   END IF;
   IF NOT has_function_privilege('service_role', 'public.kids_validate_game_result_insert()', 'EXECUTE') THEN
     RAISE EXCEPTION 'service_role lacks EXECUTE on the trigger function';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgrelid = 'public.kids_game_results'::regclass
+      AND tgname = 'kids_game_results_validate_insert'
+      AND tgenabled <> 'D'
+  ) THEN
+    RAISE EXCEPTION 'result validation trigger is missing or disabled';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND indexname = 'kids_game_results_user_created_at_idx'
+  ) THEN
+    RAISE EXCEPTION 'per-user rate-limit index is missing';
   END IF;
 END;
 $$;
