@@ -55,10 +55,12 @@ assert.ok(!circle.includes('cron: "17 3,9,15,21 * * *"'), "CircleCI must not own
 
 assert.ok(quality.includes('name: "ZIKR / Quality Gate"'), "Canonical GitHub quality check name is incorrect");
 assert.ok(
-  quality.includes('if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]]; then') &&
+  quality.includes('[[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]') &&
+    quality.includes('[[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]]') &&
+    quality.includes('[[ "${GITHUB_EVENT_NAME}" == "pull_request" && "${GITHUB_HEAD_REF}" == codex/zikr-comprehensive-repair-* ]]') &&
     quality.includes("pnpm verify") &&
     quality.includes("pnpm verify:pr"),
-  "GitHub Quality Gate must run the full pnpm verify suite on main and the PR verification suite on pull requests",
+  "GitHub Quality Gate must run full verification on main, manual dispatch, and comprehensive repair PRs",
 );
 assert.ok(quality.includes("timeout-minutes: 30"), "Full main-branch verification must have an explicit bounded timeout");
 assert.ok(quality.includes("QUALITY_GATE=PASSED_FULL"), "The main-branch gate must report full verification scope");
