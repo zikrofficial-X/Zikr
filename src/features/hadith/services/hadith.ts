@@ -129,10 +129,12 @@ function mapDbHadithBook(book: DbHadithBook, locale: Locale = "ar"): HadithBook 
 }
 
 function mapDbHadith(hadith: DbHadith): Hadith {
+  const english = hadith.text_en?.trim() || undefined;
   return {
     number: Number.parseInt(hadith.hadith_number, 10),
     arab: hadith.text_ar,
-    english: hadith.text_en ?? undefined,
+    english,
+    contentLocale: english ? "en" : "ar",
     id: hadith.ref ?? hadith.hadith_number,
   };
 }
@@ -155,10 +157,12 @@ function mapUmmahHadith(hadith: UmmahHadith): Hadith | null {
   const english = hadith.hadith_english || hadith.english || hadith.text_en;
   if (!Number.isFinite(rawNumber) || !arab) return null;
 
+  const translated = english?.trim() || undefined;
   return {
     number: rawNumber,
     arab,
-    english: english?.trim() || undefined,
+    english: translated,
+    contentLocale: translated ? "en" : "ar",
     id: hadith.id || String(rawNumber),
   };
 }
@@ -269,11 +273,20 @@ export async function getHadithBook(
       totalPages: Math.max(1, Math.ceil(total / limit)),
     };
 
-    const localizedData = (dbHadiths ?? [])
-      .map(mapDbHadith)
-      .filter((hadith) => locale === "ar" || Boolean(hadith.english?.trim()));
-
-    if (locale === "ar" || localizedData.length > 0) {
+    if (dbHadiths) {
+      const mappedData = dbHadiths.map(mapDbHadith);
+      let remoteByNumber = new Map<number, Hadith>();
+      if (locale === "en" && mappedData.some((hadith) => !hadith.english?.trim())) {
+        const remoteLocalized = await getUmmahBook(clean, page, limit, "en");
+        remoteByNumber = new Map((remoteLocalized?.data ?? []).map((hadith) => [hadith.number, hadith]));
+      }
+      const localizedData = mappedData.map((hadith) => {
+        const remote = remoteByNumber.get(hadith.number);
+        if (locale === "en" && !hadith.english?.trim() && remote?.english?.trim()) {
+          return { ...hadith, english: remote.english, contentLocale: "en" as const };
+        }
+        return hadith;
+      });
       return {
         name: locale === "en" && dbBooks[0].name_en ? dbBooks[0].name_en : dbBooks[0].name_ar,
         slug: dbBooks[0].slug,
@@ -308,14 +321,17 @@ export async function getHadithByNumber(
     );
     if (dbHadiths?.[0]) {
       const mapped = mapDbHadith(dbHadiths[0]);
-      if (locale === "en" && !mapped.english?.trim()) return null;
+      if (locale === "en" && !mapped.english?.trim()) {
+        const remote = await getUmmahHadithByNumber(book, number, "en");
+        if (remote?.english?.trim()) {
+          return { ...mapped, english: remote.english, contentLocale: "en" };
+        }
+      }
       return mapped;
     }
   }
 
-  const remote = await getUmmahHadithByNumber(book, number, locale);
-  if (locale === "en") return remote?.english?.trim() ? remote : null;
-  return remote;
+  return getUmmahHadithByNumber(book, number, locale);
 }
 
 export async function searchHadith(query: string, locale: Locale = "ar"): Promise<Hadith[]> {
