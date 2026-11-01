@@ -69,6 +69,7 @@ const migration = readFileSync(
   "utf8"
 );
 assert.ok(migration.includes("kids_game_results_validate_insert"));
+assert.ok(migration.includes("TO service_role"));
 assert.ok(migration.includes("pg_advisory_xact_lock"));
 assert.ok(migration.includes("kids_game_results_user_created_at_idx"));
 assert.ok(migration.includes("interval '1 minute'"));
