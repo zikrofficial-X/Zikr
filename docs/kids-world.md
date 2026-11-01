@@ -115,3 +115,12 @@ The central level system now provides 30 levels per game and difficulty with exp
 The canonical bilingual section links live in `src/features/kids/data/navigation.ts` and are rendered by `KidsSectionNavigation` from the shared Kids layout. This keeps home, activities, learning, audio, games, creativity, progress, achievements, and family guidance reachable with consistent Arabic/English labels. Keep destinations unique, preserve a direct game-catalogue path, and do not duplicate navigation arrays in page components.
 
 The Kids game catalogue already filters by age group, skill/search terms, category, difficulty, and duration. The landing page must derive its displayed game total from `GAME_REGISTRY`. The `kids-navigation.test.ts` contract verifies the canonical links, direct or dynamic route targets, bilingual copy, catalogue filters, and count consistency. Manual small-screen and child/caregiver usability checks remain part of release acceptance.
+
+
+## Game result integrity and offline recovery
+
+The score endpoint rejects request bodies larger than 16 KiB. Result metadata is limited to the approved runtime keys, bounded strings, arrays, nesting depth, key count, and a 4 KiB serialized payload. The database insert trigger independently enforces the canonical game IDs, per-game score/collectible/distance ceilings, metadata shape/size, and a per-user 60-results-per-minute guard. XP remains calculated by the server-side result processor; client-supplied XP is never accepted.
+
+Offline game results remain in IndexedDB through transient failures. After five failed attempts or a permanent client validation response, an item enters a visible failed state instead of being silently retained or deleted. The game shell exposes a manual retry action. Idempotency continues to use the original client submission ID.
+
+Pause is state-driven: the Game Shell updates the paused prop consumed by each runtime. The former no-op StageController contract has been removed. Runtime and device acceptance (touch, keyboard, screen reader, background/foreground, offline/reconnect, and actual Android devices) remains a release gate and cannot be certified by static checks alone.
