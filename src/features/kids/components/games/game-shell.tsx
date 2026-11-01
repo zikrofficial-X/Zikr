@@ -427,7 +427,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
             variant="outline"
             className="min-h-11 w-full min-w-0 whitespace-normal px-2 text-xs sm:w-auto sm:px-4 sm:text-sm"
             onClick={openHelp}
-            disabled={!controller || Boolean(result) || helpOpen}
+            disabled={initializing || Boolean(result) || helpOpen}
             aria-label={isEnglish ? "Open game instructions" : "فتح تعليمات اللعبة"}
           >
             {isEnglish ? "How to play" : "طريقة اللعب"}
@@ -437,7 +437,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
             variant="outline"
             className="min-h-11 w-full min-w-0 whitespace-normal px-2 text-xs sm:w-auto sm:px-4 sm:text-sm"
             onClick={togglePause}
-            disabled={!controller || Boolean(result)}
+            disabled={initializing || Boolean(result)}
             aria-label={paused ? (isEnglish ? "Resume game" : "متابعة اللعبة") : (isEnglish ? "Pause game" : "إيقاف اللعبة مؤقتًا")}
           >
             {paused ? (isEnglish ? "Resume" : "متابعة") : (isEnglish ? "Pause" : "إيقاف مؤقت")}
@@ -446,11 +446,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
             type="button"
             variant="outline"
             className="min-h-11 w-full min-w-0 whitespace-normal px-2 text-xs sm:w-auto sm:px-4 sm:text-sm"
-            onClick={() => setMuted((value) => {
-              const next = !value;
-              controller?.setMuted(next);
-              return next;
-            })}
+            onClick={() => setMuted(value => !value)}
             aria-pressed={muted}
             aria-label={muted ? (isEnglish ? "Unmute sound" : "تشغيل الصوت") : (isEnglish ? "Mute sound" : "كتم الصوت")}
           >
