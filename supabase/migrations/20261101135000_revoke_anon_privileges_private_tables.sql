@@ -31,6 +31,7 @@ DECLARE
     'social_publish_queue',
     'social_sync_jobs',
     'social_sync_state',
+    'social_platform_profiles',
     'tawasheeh_favorites',
     'user_behavior',
     'video_automation_runs',
@@ -66,6 +67,8 @@ CREATE POLICY stories_public_read_published
 CREATE POLICY stories_authenticated_read_published_or_admin
   ON public.stories FOR SELECT TO authenticated
   USING (published = true OR private.is_admin_user());
+
+DROP POLICY IF EXISTS social_platform_profiles_public_read ON public.social_platform_profiles;
 
 DROP POLICY IF EXISTS public_read_scholars ON public.scholars;
 CREATE POLICY scholars_public_read_published
