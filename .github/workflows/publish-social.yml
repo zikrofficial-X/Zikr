@@ -76,9 +76,9 @@ jobs:
           set -euo pipefail
           test -n "${SUPABASE_URL:-}" || { echo "::error::Missing canonical SUPABASE_URL configuration." >&2; exit 1; }
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing production Supabase service-role secret." >&2; exit 1; }
-          test -n "${CLOUDINARY_CLOUD_NAME:-}" || { echo "::error::Missing Cloudinary cloud name secret." >&2; exit 1; }
-          test -n "${CLOUDINARY_API_KEY:-}" || { echo "::error::Missing Cloudinary API key secret." >&2; exit 1; }
-          test -n "${CLOUDINARY_API_SECRET:-}" || { echo "::error::Missing Cloudinary API secret." >&2; exit 1; }
+          if [[ -z "${CLOUDINARY_CLOUD_NAME:-}" || -z "${CLOUDINARY_API_KEY:-}" || -z "${CLOUDINARY_API_SECRET:-}" ]]; then
+            echo "::warning::Cloudinary cleanup credentials are incomplete; the worker will retain and retry any failed cleanup instead of blocking social publishing." >&2
+          fi
           # The Facebook Page token is managed by the admin OAuth center and stored
           # in the server-only Supabase table. Do not duplicate it in GitHub Actions.
           facebook_response="$(mktemp)"
