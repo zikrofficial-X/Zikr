@@ -52,7 +52,7 @@ export default async function AudioQuranPage() {
             <h2 className="text-xl font-bold text-brand-gold">القراء المتاحون</h2>
             <p className="mt-1 text-sm text-brand-cream/45">المصنع يثبت قارئًا واحدًا تلقائيًا ويمكن تغييره عبر QURAN_VIDEO_RECITER_CODE بعد المراجعة.</p>
           </div>
-          <Link href="/admin/video-factory/voices" className="rounded-xl border border-brand-gold/15 px-3 py-2 text-xs text-brand-gold hover:bg-brand-gold/10">مصنع الأصوات</Link>
+          <Link href="/admin/video/voices" className="rounded-xl border border-brand-gold/15 px-3 py-2 text-xs text-brand-gold hover:bg-brand-gold/10">مصنع الأصوات</Link>
         </div>
         <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {reciters.slice(0, 60).map((reciter) => (
