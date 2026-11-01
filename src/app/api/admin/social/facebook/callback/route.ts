@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { getServerEnv } from "@/lib/env";
 import {
   saveFacebookPageCredential,
@@ -221,6 +222,21 @@ export async function GET(request: NextRequest) {
       expiresAt: expiresAt(selectedPage),
       grantedPermissions: granted,
     });
+    try {
+      await recordAdminAuditEvent({
+        action: "social.facebook.page.connect",
+        permission: "social.manage",
+        resourceType: "social_page_credentials",
+        resourceId: String(selectedPage.id),
+        metadata: {
+          pageName: String(verifiedPage.name ?? selectedPage.name ?? "Facebook Page"),
+          grantedPermissions: granted,
+        },
+      });
+    } catch (auditError) {
+      // Credential storage has succeeded; preserve that state while leaving a server-side error signal.
+      console.error("[admin/audit] Facebook Page connection event could not be recorded:", auditError);
+    }
 
     // Invalidate cached Page metadata so the public Facebook card immediately tests the new credential.
     try {
