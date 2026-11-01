@@ -48,4 +48,33 @@ BEGIN
 END;
 $anon_acl$;
 
+
+-- Keep public content readable by anon, but do not expose the SECURITY DEFINER
+-- admin predicate to anonymous callers. Authenticated admins retain draft access.
+DROP POLICY IF EXISTS public_read_hadiths ON public.hadiths;
+CREATE POLICY hadiths_public_read_published
+  ON public.hadiths FOR SELECT TO anon
+  USING (published = true);
+CREATE POLICY hadiths_authenticated_read_published_or_admin
+  ON public.hadiths FOR SELECT TO authenticated
+  USING (published = true OR private.is_admin_user());
+
+DROP POLICY IF EXISTS public_read_stories ON public.stories;
+CREATE POLICY stories_public_read_published
+  ON public.stories FOR SELECT TO anon
+  USING (published = true);
+CREATE POLICY stories_authenticated_read_published_or_admin
+  ON public.stories FOR SELECT TO authenticated
+  USING (published = true OR private.is_admin_user());
+
+DROP POLICY IF EXISTS public_read_scholars ON public.scholars;
+CREATE POLICY scholars_public_read_published
+  ON public.scholars FOR SELECT TO anon
+  USING (published = true);
+CREATE POLICY scholars_authenticated_read_published_or_admin
+  ON public.scholars FOR SELECT TO authenticated
+  USING (published = true OR private.is_admin_user());
+
+REVOKE EXECUTE ON FUNCTION private.is_admin_user() FROM anon;
+
 COMMIT;
