@@ -64,7 +64,6 @@ const site = read('src/lib/site.ts');
 const adsTxt = read('public/ads.txt');
 const nextConfig = read('next.config.ts');
 const analytics = read('src/components/layout/analytics.tsx');
-const runtimeEffects = read('src/components/layout/runtime-effects.tsx');
 
 if (!/google-adsense-account/.test(layout)) fail('AdSense publisher meta tag is missing from app/layout.tsx.');
 const layoutPublisher = layout.match(/ca-pub-\d{8,}/)?.[0] ?? null;
@@ -128,7 +127,7 @@ for (const block of longformBlocks) {
     fail(`Long-form article "${slug}" talks about the product instead of serving the reader.`);
   }
 }
-if (!/const\s+NON_AD_PATHS[\s\S]*?"\/kids"/.test(runtimeEffects)) {
+if (!runtimeEffects.includes('  "/kids",')) {
   fail('All /kids routes must remain excluded from AdSense until child privacy/legal review is complete.');
 }
 
