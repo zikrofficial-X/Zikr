@@ -65,7 +65,8 @@ assert.ok(video.includes("github.ref == 'refs/heads/main'"), "Video worker must 
 assert.ok(social.includes('BACKGROUND_JOB_TARGET: "social"'), "Social publisher must target the social queue only");
 const socialPublishingActive = social.includes('SOCIAL_PUBLISH_ENABLED: "true"');
 const socialPublishingFrozen =
-  social.includes('SOCIAL_PUBLISH_ENABLED: "false"') &&
+  social.includes("SOCIAL_PUBLISH_ENABLED: ${{ vars.SOCIAL_PUBLISH_ENABLED || 'false' }}") &&
+  social.includes("vars.SOCIAL_PUBLISH_ENABLED == 'true'") &&
   social.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
   social.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"');
 assert.ok(socialPublishingActive || socialPublishingFrozen, "Social publisher must be explicitly active or safely frozen with approval required");
