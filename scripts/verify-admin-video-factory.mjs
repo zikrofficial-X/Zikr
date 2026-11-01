@@ -117,6 +117,39 @@ if (client.includes("SUPABASE_SERVICE_ROLE_KEY") || client.includes("createAdmin
 
 const worker = read("scripts/jobs/template-video-automation.ts");
 
+for (const [path, destinations] of [
+  ["src/app/admin/audio/tts/page.tsx", ["/admin/video/voices", "/admin/video/scripts"]],
+  ["src/app/admin/audio/quran/page.tsx", ["/admin/video/voices"]],
+  ["src/app/admin/automation/page.tsx", ["/admin/video/voices", "/admin/video/scripts", "/admin/video/qa"]],
+]) {
+  const source = read(path);
+  if (source.includes("/admin/video-factory/")) failures.push(`${path} still links into the legacy video-factory tree`);
+  for (const destination of destinations) {
+    if (!source.includes(destination)) failures.push(`${path} is missing canonical destination ${destination}`);
+  }
+}
+
+const routeManifest = JSON.parse(read("public/manus-routes.json"));
+for (const route of [
+  "/admin/queues",
+  "/admin/video",
+  "/admin/video/requests",
+  "/admin/video/studio",
+  "/admin/video/studio/curated",
+  "/admin/video/sources",
+  "/admin/video/scripts",
+  "/admin/video/voices",
+  "/admin/video/visuals",
+  "/admin/video/templates",
+  "/admin/video/qa",
+  "/data-deletion",
+  "/kids/parent-dashboard",
+]) {
+  if (!routeManifest.routes.some((entry) => entry.path === route)) {
+    failures.push(`Manus route manifest is missing canonical route: ${route}`);
+  }
+}
+
 const pkg = JSON.parse(read("package.json"));
 if (!pkg.scripts["admin:video:check"]) failures.push("admin:video:check must be registered");
 if (!pkg.scripts["verify:pr"]?.includes("pnpm admin:video:check")) failures.push("verify:pr must include Admin Video Factory verification");
