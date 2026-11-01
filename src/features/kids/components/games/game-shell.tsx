@@ -9,6 +9,7 @@ import { enqueueGameResult, getFailedGameResultCount, getQueuedGameResultCount, 
 import { WorldGameStage, type WorldHud } from "@/features/kids/components/games/world-game-stage";
 import { getDailyMission, getMissionProgress } from "@/lib/games/game-missions";
 import { getGameInstructions, type KidsGameGuide } from "@/lib/games/game-instructions";
+import { trackKidsGameEvent } from "@/lib/analytics/kids-events";
 
 function formatNumber(value: number, isEnglish: boolean) { return new Intl.NumberFormat(isEnglish ? "en-US" : "ar-SA").format(value); }
 function createSubmissionId() { return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `game-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
@@ -93,6 +94,17 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   const [hasStarted, setHasStarted] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const wasPausedBeforeHelpRef = useRef(false);
+  const openedGameRef = useRef<GameId | null>(null);
+  const completedEventSentRef = useRef(false);
+  useEffect(() => {
+    if (openedGameRef.current === gameId) return;
+    openedGameRef.current = gameId;
+    trackKidsGameEvent("game_opened", {
+      gameId,
+      difficulty,
+      runtimeKind: definition.runtimeKind,
+    });
+  }, [definition.runtimeKind, difficulty, gameId]);
   const instructions = useMemo(() => getGameInstructions(gameId, isEnglish ? "en" : "ar"), [gameId, isEnglish]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [breakReminderMinutes, setBreakReminderMinutes] = useState(0);
@@ -250,16 +262,45 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   }, [dailyMission, definition.runtimeKind, difficulty, gameId, getElapsedSeconds, isEnglish, refreshQueue]);
 
   const handleResult = useCallback((next: WorldHud) => {
-    const completedRound = { ...next, timeSeconds: Math.max(0, Math.floor(next.timeSeconds ?? getElapsedSeconds())) };
+    const durationSeconds = Math.max(0, Math.floor(next.timeSeconds ?? getElapsedSeconds()));
+    const completedRound = { ...next, timeSeconds: durationSeconds };
+    if (next.completed && !completedEventSentRef.current) {
+      completedEventSentRef.current = true;
+      trackKidsGameEvent("game_completed", {
+        gameId,
+        difficulty,
+        runtimeKind: definition.runtimeKind,
+        durationSeconds,
+      });
+    }
     setHud(completedRound); setResult(completedRound); setPaused(false); void submitResult(completedRound);
-  }, [getElapsedSeconds, submitResult]);
+  }, [definition.runtimeKind, difficulty, gameId, getElapsedSeconds, submitResult]);
 
   const restart = useCallback(() => {
+    if (result) {
+      trackKidsGameEvent("game_replayed", {
+        gameId,
+        difficulty,
+        runtimeKind: definition.runtimeKind,
+        durationSeconds: result.timeSeconds,
+      });
+    }
+    completedEventSentRef.current = false;
     elapsedRef.current = 0;
     runningSinceRef.current = null;
     setElapsedSeconds(0);
     setResult(null); setMessage(""); setPaused(false); setRestartToken(value => value + 1);
-  }, []);
+  }, [definition.runtimeKind, difficulty, gameId, result]);
+  const startGame = useCallback(() => {
+    if (hasStarted) return;
+    setHasStarted(true);
+    trackKidsGameEvent("game_started", {
+      gameId,
+      difficulty,
+      runtimeKind: definition.runtimeKind,
+    });
+  }, [definition.runtimeKind, difficulty, gameId, hasStarted]);
+
   const togglePause = useCallback(() => {
     if (result) return;
     setPaused(value => !value);
@@ -329,7 +370,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
           goal={isEnglish ? definition.goalEn : definition.goalAr}
           isEnglish={isEnglish}
           sourceNotice={sourceNotice}
-          onAction={() => setHasStarted(true)}
+          onAction={startGame}
           actionLabel={isEnglish ? "Start playing" : "ابدأ اللعب"}
         />
       )}
