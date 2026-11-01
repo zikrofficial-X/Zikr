@@ -76,7 +76,7 @@ assert.ok(migration.includes("TO service_role"));
 assert.ok(migration.includes("pg_advisory_xact_lock"));
 assert.ok(migration.includes("kids_game_results_user_created_at_idx"));
 assert.ok(migration.includes("interval '1 minute'"));
-assert.ok(migration.includes("jsonb_object_length"));
+assert.ok(migration.includes("SELECT count(*) FROM jsonb_object_keys(NEW.metadata)"));
 assert.ok(migration.includes("'level', 'combo', 'completed'"), "database metadata validation must allow server-generated result fields");
 assert.ok(migration.includes("'letter-lab'"));
 console.log("Kids game result validation passed: bounded metadata, registered score limits, and database insert guard.");
