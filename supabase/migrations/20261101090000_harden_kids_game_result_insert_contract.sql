@@ -1,6 +1,9 @@
 -- Enforce Kids game result contracts at the database boundary as well as the API.
 -- This is additive: existing results and player progress are preserved.
 
+CREATE INDEX IF NOT EXISTS kids_game_results_user_created_at_idx
+  ON public.kids_game_results (user_id, created_at DESC);
+
 CREATE OR REPLACE FUNCTION public.kids_validate_game_result_insert()
 RETURNS trigger
 LANGUAGE plpgsql
