@@ -30,6 +30,7 @@ const privateTables = [
   "social_publish_queue",
   "social_sync_jobs",
   "social_sync_state",
+  "social_platform_profiles",
   "tawasheeh_favorites",
   "user_behavior",
   "video_automation_runs",
@@ -60,7 +61,7 @@ const droppedPolicies = [...sql.matchAll(/DROP\s+POLICY\s+IF\s+EXISTS\s+([a-z_]+
   .sort();
 assert.deepEqual(
   droppedPolicies,
-  ["public_read_hadiths", "public_read_scholars", "public_read_stories"],
+  ["public_read_hadiths", "public_read_scholars", "public_read_stories", "social_platform_profiles_public_read"],
   "only the three public-read policies that invoked the admin predicate may be replaced",
 );
 if (/DISABLE\s+ROW\s+LEVEL\s+SECURITY|TRUNCATE\s+TABLE|DELETE\s+FROM/i.test(sql)) {
