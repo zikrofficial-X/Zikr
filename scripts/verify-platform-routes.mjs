@@ -172,7 +172,7 @@ if (!existsSync(manusManifestPath)) {
       failures.push("public/manus-routes.json contains duplicate route paths");
     }
 
-    const toManifestPath = (path) => path.replace(/\\[([^\\]]+)\\]/g, ":$1");
+    const toManifestPath = (path) => path.replace(/\[(.+?)\]/g, ":$1");
     const expectedManifestPaths = new Set([...pagePaths].map(toManifestPath));
     for (const path of expectedManifestPaths) {
       if (!uniqueManifestPaths.has(path)) {
