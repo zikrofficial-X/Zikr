@@ -440,7 +440,12 @@ async function deleteManagedVideoUrl(
     });
   } catch (error) {
     // Cleanup is idempotent: a retry after a previous successful DELETE may see 404.
-    if (!(error instanceof Error) || !error.message.startsWith("Supabase REST 404:")) throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    const alreadyMissing =
+      message.startsWith("Supabase REST 404:") ||
+      message.includes('"code":"NoSuchKey"') ||
+      message.includes('"message":"Object not found"');
+    if (!alreadyMissing) throw error;
   }
 }
 
