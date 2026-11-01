@@ -52,6 +52,9 @@ for (const table of ["hadiths", "stories", "scholars"]) {
   assert.ok(sql.includes(table + "_authenticated_read_published_or_admin"), "authenticated admin-read policy must remain for " + table);
 }
 assert.ok(sql.includes("REVOKE EXECUTE ON FUNCTION private.is_admin_user() FROM anon"), "anonymous role must not execute the SECURITY DEFINER admin predicate");
+assert.ok(sql.includes("REVOKE ALL PRIVILEGES ON SEQUENCE public.social_sync_jobs_id_seq FROM anon"), "anonymous role must not read or advance the private social sync sequence");
+assert.ok(sql.includes("to_regclass('public.social_sync_jobs_id_seq')"), "sequence revocation must safely handle fresh/partial schemas");
+
 
 
 
