@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AdSense } from "./adsense";
 import { AppUpdateChecker } from "./app-update-checker";
-import { GoogleFundingChoices } from "./google-funding-choices";
 import { PrayerAlertProvider } from "./prayer-alert-provider";
 import { ServiceWorkerRegister } from "./service-worker-register";
 
@@ -63,7 +62,6 @@ function DeferredThirdPartyRuntime() {
     <>
       {process.env.NODE_ENV === "production" && adsAllowed && (
         <>
-          <GoogleFundingChoices />
           <AdSense />
         </>
       )}
