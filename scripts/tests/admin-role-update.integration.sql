@@ -30,6 +30,38 @@ BEGIN
 END;
 $$;
 
+-- A primary site-audio switch and its audit event commit atomically.
+SET ROLE service_role;
+SELECT public.admin_set_primary_site_audio_asset(
+  '66666666-6666-4666-8666-666666666666',
+  'adhan',
+  '11111111-1111-4111-8111-111111111111'
+);
+RESET ROLE;
+
+DO $
+DECLARE
+  v_old_primary boolean;
+  v_new_primary boolean;
+  v_audit_count integer;
+BEGIN
+  SELECT is_primary INTO v_old_primary
+  FROM public.site_audio_assets WHERE id = '55555555-5555-4555-8555-555555555555';
+  SELECT is_primary INTO v_new_primary
+  FROM public.site_audio_assets WHERE id = '66666666-6666-4666-8666-666666666666';
+  SELECT count(*) INTO v_audit_count
+  FROM public.admin_audit_events
+  WHERE action = 'site_audio.primary.set'
+    AND resource_id = '66666666-6666-4666-8666-666666666666';
+  IF v_old_primary OR NOT v_new_primary THEN
+    RAISE EXCEPTION 'primary audio switch did not update the correct asset';
+  END IF;
+  IF v_audit_count <> 1 THEN
+    RAISE EXCEPTION 'primary audio switch did not append one audit event';
+  END IF;
+END;
+$;
+
 -- A delegated role must not be able to use the service RPC to grant full admin.
 SET ROLE service_role;
 DO $$
@@ -55,7 +87,10 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   IF NEW.metadata ->> 'nextRole' = 'editor' THEN
-    RAISE EXCEPTION 'forced audit failure';
+    RAISE EXCEPTION 'forced role audit failure';
+  END IF;
+  IF NEW.action = 'site_audio.primary.set' THEN
+    RAISE EXCEPTION 'forced audio audit failure';
   END IF;
   RETURN NEW;
 END;
@@ -75,7 +110,7 @@ BEGIN
     );
     RAISE EXCEPTION 'expected audit failure was not raised';
   EXCEPTION WHEN OTHERS THEN
-    IF SQLERRM <> 'forced audit failure' THEN
+    IF SQLERRM <> 'forced role audit failure' THEN
       RAISE;
     END IF;
   END;
@@ -107,7 +142,21 @@ BEGIN
 END;
 $$;
 
-DO $$
+DO $
+BEGIN
+  IF has_function_privilege('anon', 'public.admin_set_primary_site_audio_asset(uuid,text,uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'anon can execute admin_set_primary_site_audio_asset';
+  END IF;
+  IF has_function_privilege('authenticated', 'public.admin_set_primary_site_audio_asset(uuid,text,uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'authenticated can execute admin_set_primary_site_audio_asset';
+  END IF;
+  IF NOT has_function_privilege('service_role', 'public.admin_set_primary_site_audio_asset(uuid,text,uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'service_role cannot execute admin_set_primary_site_audio_asset';
+  END IF;
+END;
+$;
+
+DO $
 BEGIN
   IF has_function_privilege('anon', 'public.admin_update_user_role(uuid,text,uuid)', 'EXECUTE') THEN
     RAISE EXCEPTION 'anon can execute admin_update_user_role';
