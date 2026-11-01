@@ -54,6 +54,11 @@ assert.ok(recoveryDispatch.includes("RELEASE_RETRY.flag"), "Android recovery dis
 assert.ok(recoveryDispatch.includes("createWorkflowDispatch"), "Android recovery dispatch must start the guarded publisher workflow");
 assert.ok(recoveryDispatch.includes("github.event_name == 'workflow_dispatch'"), "Android recovery must only run after explicit CircleCI dispatch");
 assert.ok(recoveryDispatch.includes("getCombinedStatusForRef"), "Dispatched recovery must confirm success of the exact CircleCI Android build");
+assert.ok(recoveryDispatch.includes("  statuses: read"), "Android recovery must have read permission for CircleCI commit statuses");
+assert.ok(recoveryDispatch.includes("  actions: write"), "Android recovery must have permission to dispatch the guarded publisher");
+assert.ok(recoveryDispatch.includes("  contents: read"), "Android recovery must use read-only repository contents permission");
+assert.ok(!recoveryDispatch.includes("  contents: write"), "Android recovery must not receive unnecessary repository write permission");
+
 assert.ok(!recoveryDispatch.includes('const core = require("@actions/core")'), "github-script must not redeclare its built-in core binding");
 assert.ok(recoveryDispatch.includes("getRef") && recoveryDispatch.includes("getTag"), "Android recovery must resolve annotated tags to their target commits");
 assert.ok(recoveryDispatch.includes("tagTargetSha !== sourceSha"), "Android recovery must refuse publication when the recovery branch differs from the tag target");
