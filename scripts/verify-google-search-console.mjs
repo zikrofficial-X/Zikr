@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 const failures = [];
 const layout = readFileSync('src/app/layout.tsx', 'utf8');
 const deferredAnalytics = readFileSync('src/components/layout/deferred-analytics.tsx', 'utf8');
+const nextConfig = readFileSync('next.config.ts', 'utf8');
 const approvedGaId = 'G-W30Z9JW0VF';
 const approvedGtmId = 'GTM-PVQCFKCB';
 const verificationFiles = [
@@ -37,6 +38,8 @@ if (!layout.includes('strategy="lazyOnload"')) failures.push('GA4/GTM لا يس�
 if (!layout.includes('https://www.googletagmanager.com/gtag/js?id=')) failures.push('مصدر gtag.js غير موجود في root layout.');
 if (/import\(.+analytics/.test(deferredAnalytics)) failures.push('تمت إعادة تحميل Analytics ديناميكيًا خارج root layout.');
 if (!layout.includes('NEXT_PUBLIC_GTM_ID')) failures.push('متغير GTM canonical غير موجود في root layout.');
+const frameSrc = nextConfig.match(/frame-src\\s+([^;]+)/)?.[1] ?? '';
+if (!frameSrc.split(/\\s+/).includes('https://www.googletagmanager.com')) failures.push('أصل GTM مفقود من CSP frame-src؛ قد يُحجب إطار noscript.');
 
 if (failures.length) {
   console.error('GOOGLE_SEARCH_CONSOLE_VERIFICATION_FAILED');
