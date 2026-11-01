@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
 import type { GameDifficulty, GameId } from "@/lib/games/registry";
 import { ToneFeedback, type GameSoundEvent } from "@/lib/games/tone-feedback";
@@ -45,19 +45,10 @@ type WorldGameStageProps = {
   paused: boolean;
   restartToken: number;
   onPausedChange: (paused: boolean) => void;
-  onReady: (controller: StageController | null) => void;
+  onReady: (ready: boolean) => void;
   onHud: (hud: WorldHud) => void;
   onResult: (result: WorldHud) => void;
   onError: (message: string) => void;
-};
-
-export type StageController = {
-  pause: () => void;
-  resume: () => void;
-  restart: () => void;
-  toggleMute: () => boolean;
-  setMuted: (value: boolean) => void;
-  isPaused: () => boolean;
 };
 
 type RuntimeBoundaryProps = {
@@ -149,19 +140,10 @@ export function WorldGameStage(props: WorldGameStageProps) {
     [muted]
   );
 
-  const noopController = useMemo<StageController>(
-    () => ({
-      pause: () => undefined,
-      resume: () => undefined,
-      restart: () => undefined,
-      toggleMute: () => false,
-      setMuted: () => undefined,
-      isPaused: () => paused,
-    }),
-    [paused]
-  );
-
   useEffect(() => {
+    onReady(true);
+    return () => onReady(false);
+  }, [onReady]);  useEffect(() => {
     onReady(noopController);
   }, [noopController, onReady]);
 
