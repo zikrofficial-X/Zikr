@@ -16,6 +16,19 @@
 - CircleCI config: `.circleci/config.yml`
 - Supabase migrations: **388**
 
+## Repair-branch route delta — PR #159
+
+The table below preserves the immutable `main` baseline above. The comprehensive repair branch adds six canonical Admin Video pages:
+
+- `/admin/video/sources`
+- `/admin/video/scripts`
+- `/admin/video/voices`
+- `/admin/video/visuals`
+- `/admin/video/templates`
+- `/admin/video/qa`
+
+This changes the branch's expected page count from **132 to 138** while leaving the 73 API routes unchanged. Existing `/admin/video-factory/*` paths remain as permission-checked compatibility redirects; the duplicate legacy navigation entries are removed. The route baseline in `scripts/platform-route-baseline.mjs` is updated to 138 pages.
+
 ## Runtime ownership map (first pass)
 
 | Area | Feature module directory | Route entries |
