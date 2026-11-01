@@ -41,7 +41,7 @@ Video generation: 4 runs/day
 Social publishing: every 15 minutes, one item per run (about four queue items/hour)
 Admin Run Now: direct GitHub workflow dispatch from the admin action
 English content sync: daily, at most 5 article translations and 25 Hadith records by default
-Video length: 22 seconds by default; two bounded free-AI attempts per run, then deterministic FFmpeg fallback
+Video length: 20 seconds by default; two bounded free-AI attempts per run, then deterministic FFmpeg fallback
 ```
 
 The daily English content sync uses one shared runner for one article batch and one Hadith batch. Article work is capped at five by default and uses one configured Gemini key/model request per article; it does not retry the same batch ten times or rotate through API keys/models. Hadith work is capped at 25 records by default. Manual dispatch remains available, with script-level upper bounds.
