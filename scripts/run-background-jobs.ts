@@ -259,8 +259,13 @@ async function processSocial(settings: VideoAutomationSettings) {
     return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
   }
 
-  console.log("[background-jobs] Claiming up to 10 queued social publish item(s).");
-  const result = await processSocialPublishQueue(10);
+  const configuredBatchSize = Number(process.env.SOCIAL_PUBLISH_BATCH_SIZE ?? 1);
+  const batchSize = Math.max(
+    1,
+    Math.min(10, Number.isFinite(configuredBatchSize) ? Math.floor(configuredBatchSize) : 1),
+  );
+  console.log(`[background-jobs] Claiming up to ${batchSize} queued social publish item(s).`);
+  const result = await processSocialPublishQueue(batchSize);
   if (result.processed === 0) {
     console.log("[background-jobs] No queued social publish items claimed.");
   }
