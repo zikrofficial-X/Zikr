@@ -21,5 +21,7 @@ assert.ok(stage.includes("onReady: (ready: boolean) => void"), "stage readiness 
 assert.ok(shell.includes("setPaused(value => !value)"), "pause must update the state consumed by game runtimes");
 assert.ok(shell.includes("getFailedGameResultCount"), "the game shell must expose failed queue state");
 assert.ok(shell.includes("retryFailedGameResults"), "the game shell must let users retry failed results");
+assert.ok(!shell.includes("controller"), "the game shell must not retain stale controller references");
+assert.ok(shell.includes("Could not store this result offline"), "storage-unavailable and full-queue states must not be mislabeled as the same cause");
 
 console.log("Kids runtime contract passed: offline dead-letter recovery and state-driven pause controls.");
