@@ -277,3 +277,22 @@ Never commit:
 - VAPID private keys.
 
 Only placeholders and variable names belong in repository documentation.
+
+## 11. Vercel environment audit — 2026-11-01
+
+Read-only verification of the connected production Vercel project confirmed these exact runtime values:
+
+- `NEXT_PUBLIC_SUPABASE_URL=https://ymxdswkaxafakugktsim.supabase.co`
+- `NEXT_PUBLIC_SITE_URL=https://zikrmediaofficial.vercel.app`
+- `AUTH_CALLBACK_URL=https://zikrmediaofficial.vercel.app/auth/callback`
+
+The following variables were also found in Vercel and require cleanup because they are not part of the web runtime contract:
+
+- Android signing material: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. These belong in the protected CircleCI `android-signing` context only.
+- Obsolete Google OAuth application variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. Google web/native login uses Supabase Auth and `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
+- Retired/stale application variables: `VIDEO_AUTO_PUBLISH`, `SOCIAL_SYNC_SECRET`.
+- Direct Postgres integration values not used by the web application: `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`, `POSTGRES_HOST`, `POSTGRES_DATABASE`, `POSTGRES_USER`, `POSTGRES_PASSWORD`.
+
+Do not remove `ANDROID_APP_LINKS_SHA256`; it is read by the Android asset-links route. Do not remove `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, or `FACEBOOK_PAGE_ID`; the server-side Facebook OAuth connect/callback uses them. `FACEBOOK_PAGE_ACCESS_TOKEN` remains a legacy fallback and should be removed only after that fallback path is retired. The GitHub dispatch/release tokens remain required by the admin release manager.
+
+The connected Vercel actions available to this repair session can list, read, create, and edit project environment variables, but do not expose a delete operation. Therefore the obsolete variables above have been identified but not removed in this pass. Remove them from Vercel Project Settings → Environment Variables, preserving the separate CircleCI context and GitHub repository/environment secrets. Never copy secret values into Git or this document.
