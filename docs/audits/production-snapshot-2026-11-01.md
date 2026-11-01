@@ -166,3 +166,7 @@ The catalogue count represents the complete external collection, not the number 
 ## Admin dashboard queue-count accuracy
 
 The Admin Health page already used exact PostgREST `HEAD` counts, but the Video Factory dashboard still counted only the latest 500 queue rows. This could under-report backlog totals after the queues grew beyond that sample. The repair branch now routes both dashboards through the same exact status-count helper and marks the queue unavailable when any status query fails; it no longer presents a sampled count as a complete queue total.
+
+## Video generation queue
+
+Live production query on 2026-11-01 found **420** video-generation requests, all in `completed` state. No `pending`, `processing`, `retry_wait`, or `failed` requests were present at snapshot time. The video worker is therefore not blocked by a current production backlog; the social publisher backlog described above is a separate queue and remains disabled.
