@@ -29,7 +29,7 @@ for (const token of ["content_hash", "source_hash", "video_automation_runs", "IF
 
 const workflow = readFileSync(".github/workflows/generate-ai-video.yml", "utf8");
 const adminHealth = readFileSync("src/app/admin/health/page.tsx", "utf8");
-if (!adminHealth.includes("getAdminSettings") || !adminHealth.includes("video_automation_ai_enabled") || !adminHealth.includes("video_automation_auto_publish") || !adminHealth.includes("اعتماد كل فيديو")) {
+if (!adminHealth.includes("getAdminSettings") || !adminHealth.includes("video_automation_ai_enabled") || !adminHealth.includes("video_automation_auto_publish") || !adminHealth.includes("فحص المصدر والوسائط")) {
   throw new Error("Admin health must report canonical worker AI/publishing settings and preserve per-video approval");
 }
 if (!workflow.includes("VIDEO_PROVIDER_ORDER")) {
