@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -61,6 +62,16 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify({ key: SETTINGS_KEY, value: { visibility }, updated_at: new Date().toISOString() }),
+    });
+    await recordAdminAuditEvent({
+      action: "admin.sections.visibility.update",
+      permission: "sections.manage",
+      resourceType: "site_settings",
+      resourceId: SETTINGS_KEY,
+      metadata: {
+        enabled: Object.values(visibility).filter(Boolean).length,
+        disabled: Object.values(visibility).filter(value => !value).length,
+      },
     });
     return NextResponse.json({ ok: true, visibility }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
