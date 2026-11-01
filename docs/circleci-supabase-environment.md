@@ -83,7 +83,7 @@ Never place secret values in repository files. Keep service-role keys, OAuth ref
 
 The signed Android build is followed by a separate `android-release-dispatch` CircleCI job. The job uses the existing `android-signing` context and requires:
 
-- `GH_TOKEN`: a fine-grained GitHub token scoped only to `zikrofficial-X/Zikr`, with **Actions: Read and write** permission. It is used only to dispatch `.github/workflows/dispatch-android-release-recovery.yml` on the exact `android-release-vX.Y.Z` branch after `android-rebuild` succeeds.
+- `GH_TOKEN`: a fine-grained GitHub token scoped only to `zikrofficial-X/Zikr`, with **Actions: Read and write** permission. It is used only to dispatch `.github/workflows/dispatch-android-release-recovery.yml` on the exact release ref (the `android-release-vX.Y.Z` branch or the `vX.Y.Z` tag) after `android-rebuild` succeeds.
 - Keep `GH_TOKEN` in the protected CircleCI context. Never add it to the repository, Vercel public variables, build args, or logs.
 - If `GH_TOKEN` is absent, the dispatch job intentionally fails instead of silently claiming the Android release recovery was started.
 
