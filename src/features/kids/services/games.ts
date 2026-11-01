@@ -252,7 +252,7 @@ export async function recordCurrentKidsGameResult(
   body: unknown,
 ): Promise<
   | KidsGameResultResponse
-  | { success: false; status: 400 | 401; error: string }
+  | { success: false; status: 400 | 401 | 429; error: string }
   | { success: false; status: 500; error: string }
 > {
   const session = await getCurrentUser();
