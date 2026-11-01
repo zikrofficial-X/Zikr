@@ -53,3 +53,18 @@ The Vercel project is linked to the GitHub repository above, and the Supabase pr
 ## Important
 
 The current GitHub connector does not expose branch-protection or ruleset write operations. The quality workflow is implemented, but whether its checks are formally required for merging must be verified in GitHub Repository Settings; configure required status checks there before treating the gate as mandatory.
+
+
+## Cryptographically signed Git tags
+
+GitHub REST's annotated-tag creation endpoint does not accept a detached or embedded signing signature. The release manager must not claim that an API-created annotated tag is signed.
+
+For each future semantic release:
+1. Prepare all release metadata in one atomic source commit.
+2. In a protected signing runner, import the owner-managed GPG or SSH private signing key from a CI secret.
+3. Create the annotated tag with `git tag -s` (GPG) or the configured SSH signing mode, targeting the exact prepared commit.
+4. Run `git verify-tag` and require a valid signature from the expected signing key/fingerprint.
+5. Push the signed tag and verify GitHub's tag object reports a valid signature before creating/publishing the release.
+6. Only then publish the immutable release and artifacts.
+
+The signing key must be provisioned by the repository owner as a protected CI secret. The release must fail closed if the key is missing, invalid, expired, or does not match the trusted fingerprint. Never delete or move an existing immutable release tag to retrofit a signature.
