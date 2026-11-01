@@ -55,8 +55,16 @@ for (const table of privateTables) {
 if (/REVOKE\s+ALL\s+PRIVILEGES[\s\S]{0,120}\s+FROM\s+(authenticated|service_role)/i.test(sql)) {
   throw new Error("migration must preserve authenticated and service_role table privileges");
 }
-if (/DROP\s+POLICY|DISABLE\s+ROW\s+LEVEL\s+SECURITY|TRUNCATE\s+TABLE|DELETE\s+FROM/i.test(sql)) {
-  throw new Error("grant hardening migration must not modify RLS policies or application data");
+const droppedPolicies = [...sql.matchAll(/DROP\s+POLICY\s+IF\s+EXISTS\s+([a-z_]+)/gi)]
+  .map((match) => match[1])
+  .sort();
+assert.deepEqual(
+  droppedPolicies,
+  ["public_read_hadiths", "public_read_scholars", "public_read_stories"],
+  "only the three public-read policies that invoked the admin predicate may be replaced",
+);
+if (/DISABLE\s+ROW\s+LEVEL\s+SECURITY|TRUNCATE\s+TABLE|DELETE\s+FROM/i.test(sql)) {
+  throw new Error("grant hardening migration must not disable RLS or modify application data");
 }
 
 console.log("Private-table anonymous-grant hardening contract passed.");
