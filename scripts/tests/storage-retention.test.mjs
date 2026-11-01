@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   compareSemverTags,
   extractManagedVideoPath,
+  extractCloudinaryVideoPublicId,
   hasConfirmedPlatformResults,
   isEligiblePublishedQueueItem,
   selectProtectedAndroidTags,
@@ -16,6 +17,38 @@ assert.equal(
   extractManagedVideoPath(publicUrl, supabaseUrl),
   "automated/story:20750:11.mp4",
   "Only canonical videos bucket URLs are converted into Storage paths",
+);
+assert.equal(
+  extractCloudinaryVideoPublicId(
+    "https://res.cloudinary.com/dcuveyab9/video/upload/v1793575328/auto-story-20756-18-97cca8e1.mp4",
+    "dcuveyab9",
+  ),
+  "auto-story-20756-18-97cca8e1",
+  "Only generated auto-video public IDs are accepted for Cloudinary cleanup",
+);
+assert.equal(
+  extractCloudinaryVideoPublicId(
+    "https://res.cloudinary.com/dcuveyab9/video/upload/v1790961968/zikr/audio/salawat/ba-salawat-variant.ogg",
+    "dcuveyab9",
+  ),
+  null,
+  "Cloudinary audio assets are never eligible for video cleanup",
+);
+assert.equal(
+  extractCloudinaryVideoPublicId(
+    "https://res.cloudinary.com/dcuveyab9/video/upload/v1773194710/samples/elephants.mp4",
+    "dcuveyab9",
+  ),
+  null,
+  "Cloudinary sample videos are never eligible for ZIKR cleanup",
+);
+assert.equal(
+  extractCloudinaryVideoPublicId(
+    "https://res.cloudinary.com/other/video/upload/v1793575328/auto-story-1.mp4",
+    "dcuveyab9",
+  ),
+  null,
+  "Assets from another Cloudinary cloud are never deleted",
 );
 assert.equal(
   extractManagedVideoPath("https://evil.example/storage/v1/object/public/videos/a.mp4", supabaseUrl),
