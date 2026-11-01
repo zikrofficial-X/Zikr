@@ -262,8 +262,8 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
   }, [dailyMission, definition.runtimeKind, difficulty, gameId, getElapsedSeconds, isEnglish, refreshQueue]);
 
   const handleResult = useCallback((next: WorldHud) => {
-    const durationSeconds = Math.max(0, Math.floor(next.timeSeconds ?? getElapsedSeconds()));
-    const completedRound = { ...next, timeSeconds: durationSeconds };
+    const completedRound = { ...next, timeSeconds: Math.max(0, Math.floor(next.timeSeconds ?? getElapsedSeconds())) };
+    const durationSeconds = completedRound.timeSeconds ?? 0;
     if (next.completed && !completedEventSentRef.current) {
       completedEventSentRef.current = true;
       trackKidsGameEvent("game_completed", {
