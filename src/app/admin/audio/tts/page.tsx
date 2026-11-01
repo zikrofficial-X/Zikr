@@ -43,8 +43,8 @@ export default async function AudioTtsAdminPage() {
       </section>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/admin/video-factory/voices" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/15">ملفات الأصوات</Link>
-        <Link href="/admin/video-factory/scripts" className="rounded-xl border border-brand-gold/15 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/30 hover:text-brand-gold">مراجعة النصوص</Link>
+        <Link href="/admin/video/voices" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/15">ملفات الأصوات</Link>
+        <Link href="/admin/video/scripts" className="rounded-xl border border-brand-gold/15 px-4 py-2 text-sm text-brand-cream/65 hover:border-brand-gold/30 hover:text-brand-gold">مراجعة النصوص</Link>
       </div>
     </Container>
   );
