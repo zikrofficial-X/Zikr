@@ -12,7 +12,7 @@ The queue is idempotent through `video_generation_requests.automation_key` and c
 
 ## Automatic social publishing
 
-The dedicated GitHub Actions publisher runs every 15 minutes with `SOCIAL_PUBLISH_ENABLED=true`, processes one queue item per run, and publishes to both configured targets when their OAuth credentials are ready. Facebook requires the OAuth-managed Page connection in Supabase to be enabled and healthy. Video publishing uses the source/status integrity gate; the Admin `video_automation_auto_publish` switch controls unattended posting. It consumes `social_publish_queue` entries produced by the video worker and does not render videos itself.
+The dedicated GitHub Actions publisher runs every 15 minutes with `SOCIAL_PUBLISH_ENABLED=true`, processes one queue item per run, and publishes to both configured targets when their OAuth credentials are ready. The workflow fails closed before claiming queue items unless both YouTube OAuth and the enabled, connected Facebook Page credential are present. Facebook credentials are read from the OAuth-managed Supabase row; the readiness check never prints the Page token. Video publishing uses the source/status integrity gate; the Admin `video_automation_auto_publish` switch controls unattended posting. It consumes `social_publish_queue` entries produced by the video worker and does not render videos itself.
 
 YouTube requires:
 
