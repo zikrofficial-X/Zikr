@@ -187,16 +187,18 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminApi("social.manage");
-  if (!auth.ok)
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-
   try {
     const body = (await request.json().catch(() => ({}))) as {
       action?: unknown;
       ids?: unknown;
     };
     const action = typeof body.action === "string" ? body.action : "";
+    const requiredPermission = ["retry", "retry_all_failed", "run_worker"].includes(action)
+      ? "social.publish"
+      : "social.manage";
+    const auth = await requireAdminApi(requiredPermission);
+    if (!auth.ok)
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     const ids = Array.isArray(body.ids)
       ? [
           ...new Set(
