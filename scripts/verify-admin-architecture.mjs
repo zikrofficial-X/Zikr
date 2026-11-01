@@ -39,17 +39,16 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/search", "البحث والفهرسة", "content.manage"],
   ],
   "الفيديو والوسائط": [
-    ["/admin/video", "مركز الفيديو", "video.manage"],
-    ["/admin/video/requests", "طلبات الفيديو", "video.manage"],
+    ["/admin/video", "مركز الفيديو والإنتاج", "video.manage"],
+    ["/admin/video/requests", "طلبات الفيديو والطابور", "video.manage"],
     ["/admin/video/studio", "استوديو الفيديو", "video.manage"],
     ["/admin/video/studio/curated", "المحتوى الموثق للفيديو", "video.manage"],
-    ["/admin/video-factory", "مصنع الفيديو", "video.manage"],
-    ["/admin/video-factory/sources", "مصادر الفيديو", "video.manage"],
-    ["/admin/video-factory/scripts", "نصوص السرد", "video.manage"],
-    ["/admin/video-factory/voices", "الأصوات", "video.manage"],
-    ["/admin/video-factory/visuals", "العناصر المرئية", "video.manage"],
-    ["/admin/video-factory/templates", "القوالب", "video.manage"],
-    ["/admin/video-factory/qa", "ضبط الجودة", "video.manage"],
+    ["/admin/video/sources", "مصادر الفيديو", "video.manage"],
+    ["/admin/video/scripts", "نصوص السرد", "video.manage"],
+    ["/admin/video/voices", "الأصوات", "video.manage"],
+    ["/admin/video/visuals", "العناصر المرئية", "video.manage"],
+    ["/admin/video/templates", "القوالب", "video.manage"],
+    ["/admin/video/qa", "ضبط الجودة", "video.manage"],
     ["/admin/media", "مكتبة الوسائط", "media.manage"],
   ],
   "الصوت": [
@@ -136,6 +135,13 @@ for (const label of visibleLabels) {
 
 const legacyRedirects = {
   "src/app/admin/videos/page.tsx": "/admin/video/requests",
+  "src/app/admin/video-factory/page.tsx": "/admin/video",
+  "src/app/admin/video-factory/sources/page.tsx": "/admin/video/sources",
+  "src/app/admin/video-factory/scripts/page.tsx": "/admin/video/scripts",
+  "src/app/admin/video-factory/voices/page.tsx": "/admin/video/voices",
+  "src/app/admin/video-factory/visuals/page.tsx": "/admin/video/visuals",
+  "src/app/admin/video-factory/templates/page.tsx": "/admin/video/templates",
+  "src/app/admin/video-factory/qa/page.tsx": "/admin/video/qa",
   "src/app/admin/video-factory/queue/page.tsx": "/admin/video/requests",
   "src/app/admin/ai-video/page.tsx": "/admin/video/studio",
   "src/app/admin/ai-video/curated/page.tsx": "/admin/video/studio/curated",
@@ -150,7 +156,18 @@ for (const [path, target] of Object.entries(legacyRedirects)) {
     failures.push(`legacy admin route must redirect to canonical path: ${path} -> ${target}`);
   }
 }
-for (const canonicalPath of ["src/app/admin/video/requests/page.tsx", "src/app/admin/video/studio/page.tsx"]) {
+for (const canonicalPath of [
+  "src/app/admin/video/page.tsx",
+  "src/app/admin/video/requests/page.tsx",
+  "src/app/admin/video/studio/page.tsx",
+  "src/app/admin/video/studio/curated/page.tsx",
+  "src/app/admin/video/sources/page.tsx",
+  "src/app/admin/video/scripts/page.tsx",
+  "src/app/admin/video/voices/page.tsx",
+  "src/app/admin/video/visuals/page.tsx",
+  "src/app/admin/video/templates/page.tsx",
+  "src/app/admin/video/qa/page.tsx",
+]) {
   const page = read(canonicalPath);
   if (/\bredirect\(/.test(page)) failures.push("canonical video route must render directly: " + canonicalPath);
 }
