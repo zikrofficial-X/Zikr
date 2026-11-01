@@ -188,7 +188,7 @@ export default async function AdminAutomationPage() {
             التشغيل المتكرر للفيديو والنشر الاجتماعي ملك لـGitHub Actions. زر «تشغيل التوليد الآن» يستخدم dispatch يدويًا مباشرًا ولا يضيف Cron جديدًا.
           </div>
           <div className="rounded-xl border border-brand-gold/10 bg-black/10 p-4 text-sm leading-7 text-brand-cream/55">
-            جودة الصوت: <Link href="/admin/video-factory/voices" className="text-brand-gold hover:underline">ملفات الأصوات</Link> · ضبط النص: <Link href="/admin/video-factory/scripts" className="text-brand-gold hover:underline">النصوص</Link> · فحوصات ما قبل النشر: <Link href="/admin/video-factory/qa" className="text-brand-gold hover:underline">QA</Link>
+            جودة الصوت: <Link href="/admin/video/voices" className="text-brand-gold hover:underline">ملفات الأصوات</Link> · ضبط النص: <Link href="/admin/video/scripts" className="text-brand-gold hover:underline">النصوص</Link> · فحوصات ما قبل النشر: <Link href="/admin/video/qa" className="text-brand-gold hover:underline">QA</Link>
           </div>
         </div>
 
