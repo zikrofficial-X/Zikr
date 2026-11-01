@@ -59,17 +59,19 @@ export async function changeEditorialReviewStatusAction(formData: FormData) {
   if (status === "approved") patch.published = false;
   if (status === "rejected" || status === "draft" || status === "editorial_review" || status === "scholarly_review") patch.published = false;
 
+  let didUpdate = false;
   try {
     const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify(patch),
     });
-    if (!updated.length) editorialError("تم تعديل المحتوى بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
+    didUpdate = updated.length > 0;
   } catch (error) {
     console.error("[admin/editorial] review update failed", error);
     editorialError("تعذر تحديث حالة المحتوى. تحقق من الحقول المطلوبة ثم أعد المحاولة.");
   }
+  if (!didUpdate) editorialError("تم تعديل المحتوى بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
 
   await recordAdminAuditEvent({
     action: "editorial.review_status.update",
@@ -98,17 +100,19 @@ export async function publishApprovedContentAction(formData: FormData) {
 
   const expectedUpdatedAt = updatedAt || current[0].updated_at;
   const now = new Date().toISOString();
+  let didPublish = false;
   try {
     const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(`/rest/v1/content_library?id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify({ published: true, published_at: now, updated_at: now }),
     });
-    if (!updated.length) editorialError("تم تعديل المحتوى بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
+    didPublish = updated.length > 0;
   } catch (error) {
     console.error("[admin/editorial] publish failed", error);
     editorialError("فشل النشر. يجب اعتماد المحتوى وربطه بمصدر موثوق قبل النشر.");
   }
+  if (!didPublish) editorialError("تم تعديل المحتوى بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
 
   await recordAdminAuditEvent({
     action: "editorial.publish",
