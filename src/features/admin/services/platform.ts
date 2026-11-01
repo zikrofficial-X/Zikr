@@ -217,44 +217,56 @@ export async function getAdminOverview() {
   };
 }
 
-export async function getAdminHealth(): Promise<AdminHealth> {
-  const databaseHealthy = await assertSupabaseConnection();
-  const tables = await Promise.all(
-    ["admin_audit_events", "admin_settings", "profiles", "content_library", "media_assets", "social_publish_queue", "video_generation_requests"].map(async (table) => {
+async function getExactStatusCounts(
+  table: string,
+  statuses: readonly string[],
+): Promise<{ counts: Record<string, number>; available: boolean }> {
+  const results = await Promise.all(
+    statuses.map(async (status) => {
       try {
-        const count = await supabaseServerAdminCount(table);
-        return {
-          table,
-          count,
-          state: count === 0 ? "empty" : "healthy",
-        } as const;
+        return [status, await supabaseServerAdminCount(table, { column: "status", value: status })] as const;
       } catch {
-        return { table, count: null, state: "unavailable" } as const;
+        return [status, null] as const;
       }
     }),
   );
+  return {
+    counts: Object.fromEntries(results.map(([status, count]) => [status, count ?? 0])),
+    available: results.every(([, count]) => count !== null),
+  };
+}
 
-  const [socialRes, videoRes] = await Promise.all([
-    readAdminRows<{ status: string }>("/rest/v1/social_publish_queue?select=status&limit=500"),
-    readAdminRows<{ status: string }>("/rest/v1/video_generation_requests?select=status&limit=500"),
+export async function getAdminHealth(): Promise<AdminHealth> {
+  const [databaseHealthy, tables, social, video] = await Promise.all([
+    assertSupabaseConnection(),
+    Promise.all(
+      ["admin_audit_events", "admin_settings", "profiles", "content_library", "media_assets", "social_publish_queue", "video_generation_requests"].map(async (table) => {
+        try {
+          const count = await supabaseServerAdminCount(table);
+          return { table, count, state: count === 0 ? "empty" : "healthy" } as const;
+        } catch {
+          return { table, count: null, state: "unavailable" } as const;
+        }
+      }),
+    ),
+    getExactStatusCounts("social_publish_queue", ["queued", "processing", "partial", "failed"]),
+    getExactStatusCounts("video_generation_requests", ["pending", "processing", "retry_wait", "failed"]),
   ]);
-  const social = socialRes.rows;
-  const video = videoRes.rows;
 
   return {
     database: databaseHealthy ? "healthy" : "degraded",
     tables,
     queues: {
-      socialQueued: social.filter((row) => row.status === "queued").length,
-      socialProcessing: social.filter((row) => row.status === "processing").length,
-      socialPartial: social.filter((row) => row.status === "partial").length,
-      socialFailed: social.filter((row) => row.status === "failed").length,
-      videoPending: video.filter((row) => row.status === "pending").length,
-      videoProcessing: video.filter((row) => row.status === "processing").length,
-      videoRetryWait: video.filter((row) => row.status === "retry_wait").length,
-      videoFailed: video.filter((row) => row.status === "failed").length,
+      socialQueued: social.counts.queued,
+      socialProcessing: social.counts.processing,
+      socialPartial: social.counts.partial,
+      socialFailed: social.counts.failed,
+      videoPending: video.counts.pending,
+      videoProcessing: video.counts.processing,
+      videoRetryWait: video.counts.retry_wait,
+      videoFailed: video.counts.failed,
     },
-    queuesAvailable: { social: socialRes.ok, video: videoRes.ok },
+    queuesAvailable: { social: social.available, video: video.available },
     generatedAt: new Date().toISOString(),
   };
 }
