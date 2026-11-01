@@ -526,9 +526,9 @@ jobs:
               "sourceCommit": "${CIRCLE_SHA1}",
               "apkSha256": "${APK_SHA}",
               "aabSha256": "${AAB_SHA}",
-              "apkUrl": "${PUBLIC_BASE}/app-release.apk",
-              "aabUrl": "${PUBLIC_BASE}/app-release.aab",
-              "sha256Url": "${PUBLIC_BASE}/SHA256SUMS"
+              "apkUrl": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/app-release.apk",
+              "aabUrl": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/app-release.aab",
+              "sha256Url": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/SHA256SUMS"
             }
             EOF
 
@@ -552,10 +552,10 @@ jobs:
                 "targetSdk": 36,
                 "sourceCommit": "${CIRCLE_SHA1}",
                 "releaseUrl": "https://github.com/zikrofficial-X/Zikr/releases/tag/${RELEASE_TAG}",
-                "apkUrl": "${PUBLIC_BASE}/app-release.apk",
-                "aabUrl": "${PUBLIC_BASE}/app-release.aab",
-                "sha256Url": "${PUBLIC_BASE}/SHA256SUMS",
-                "metadataUrl": "${PUBLIC_BASE}/release-metadata.json",
+                "apkUrl": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/app-release.apk",
+                "aabUrl": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/app-release.aab",
+                "sha256Url": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/SHA256SUMS",
+                "metadataUrl": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/release-metadata.json",
                 "apkSha256": "${APK_SHA}",
                 "aabSha256": "${AAB_SHA}"
               }
