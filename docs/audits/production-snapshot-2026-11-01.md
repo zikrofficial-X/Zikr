@@ -50,6 +50,8 @@ Nine buckets were configured. The metadata query found:
 
 The total is approximately 648.5 MiB based on `storage.objects.metadata.size`; it is not a billing export and does not include provider-side overhead. The other seven configured buckets contain zero objects. No objects were deleted as part of this snapshot.
 
+A fresh database-size query at **2026-11-01 15:02 UTC** reported **81.63 MiB** (`pg_database_size(current_database())`). The earlier 1.874 GB storage figure in `TODO.md` was an older snapshot; the current object metadata inventory is lower, but billed Storage Size GB-Hours and any grace-period status still require confirmation in Supabase Usage.
+
 ## Supabase advisors
 
 - Security: one warning — leaked-password protection is disabled.
