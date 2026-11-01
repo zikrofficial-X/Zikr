@@ -57,7 +57,7 @@ assert.ok(quality.includes('name: "ZIKR / Quality Gate"'), "Canonical GitHub qua
 assert.ok(
   quality.includes('[[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]') &&
     quality.includes('[[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]]') &&
-    quality.includes('[[ "${GITHUB_EVENT_NAME}" == "pull_request" && "${GITHUB_HEAD_REF}" == codex/zikr-comprehensive-repair-* ]]') &&
+    quality.includes('[[ "${GITHUB_EVENT_NAME}" == "pull_request" && ( "${GITHUB_HEAD_REF}" == codex/zikr-comprehensive-repair-* || "${GITHUB_HEAD_REF}" == codex/zikr-final-cleanup-* ) ]]') &&
     quality.includes("pnpm verify") &&
     quality.includes("pnpm verify:pr"),
   "GitHub Quality Gate must run full verification on main, manual dispatch, and comprehensive repair PRs",
