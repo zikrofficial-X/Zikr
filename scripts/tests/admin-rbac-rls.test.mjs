@@ -119,65 +119,64 @@ assert.match(
   "the wrapper must remain callable where public-read RLS policies reference it",
 );
 
-
 assert.match(
   atomicRoleMigration,
-  /CREATE OR REPLACE FUNCTION public\\.admin_update_user_role\\([\\s\\S]*?SECURITY INVOKER[\\s\\S]*?SET search_path = ''/i,
+  /CREATE OR REPLACE FUNCTION public\.admin_update_user_role\([\s\S]*?SECURITY INVOKER[\s\S]*?SET search_path = ''/i,
   "role updates must use a fixed-search-path invoker RPC",
 );
 assert.match(
   atomicRoleMigration,
-  /INSERT INTO public\\.admin_audit_events[\\s\\S]*?'users\\.role\\.update'[\\s\\S]*?GRANT EXECUTE ON FUNCTION public\\.admin_update_user_role\\(uuid, text, uuid\\)[\\s\\S]*?TO service_role/i,
+  /INSERT INTO public\.admin_audit_events[\s\S]*?'users\.role\.update'[\s\S]*?GRANT EXECUTE ON FUNCTION public\.admin_update_user_role\(uuid, text, uuid\)[\s\S]*?TO service_role/i,
   "role changes and audit entries must commit inside one service-role-only database transaction",
 );
 assert.match(
   atomicRoleMigration,
-  /REVOKE ALL ON FUNCTION public\\.admin_update_user_role\\(uuid, text, uuid\\)[\\s\\S]*?FROM PUBLIC, anon, authenticated/i,
+  /REVOKE ALL ON FUNCTION public\.admin_update_user_role\(uuid, text, uuid\)[\s\S]*?FROM PUBLIC, anon, authenticated/i,
   "the atomic role RPC must not be callable from browser roles",
 );
 assert.match(
   userActions,
-  /rpc\\/admin_update_user_role[\\s\\S]*?p_actor_user_id: admin\\.id/,
+  /supabaseServerAdminRequest\([\s\S]*?["']\/rest\/v1\/rpc\/admin_update_user_role["'][\s\S]*?p_actor_user_id: admin\.id/,
   "the role server action must call the atomic RPC using the authenticated server actor",
 );
 assert.doesNotMatch(
   userActions,
-  /admin_role_assignments|profiles\\?id=eq\\.\$\\{encodeURIComponent\\(userId\\)\\}/,
+  /supabaseServerAdminRequest\([\s\S]*?["']\/rest\/v1\/(?:admin_role_assignments|profiles\?id=eq\.)/,
   "the role server action must not split one role change across independent REST mutations",
 );
 assert.match(
   contentService,
-  /updated_at=eq\\.\\$\\{encodeURIComponent\\(optimisticUpdatedAt\\)\\}[\\s\\S]*?return=representation[\\s\\S]*?if \\(!updated\\.length\\)/,
+  /const filter = [\s\S]*?optimisticUpdatedAt[\s\S]*?Prefer: "return=representation"[\s\S]*?if \(!updated\.length\)/,
   "content publish toggles must compare-and-set and verify the affected row",
 );
 assert.match(
   contentService,
-  /method: "DELETE"[\\s\\S]*?updated_at=eq\\.\\$\\{encodeURIComponent\\(String\\(current\\[0\\]\\.updated_at\\)\\)\\}[\\s\\S]*?if \\(!deleted\\.length\\)/,
+  /\/rest\/v1\/\$\{table\}\?id=eq\.\$\{encodeURIComponent\(id\)\}&updated_at=eq\.\$\{encodeURIComponent\(String\(current\[0\]\.updated_at\)\)\}[\s\S]*?method: "DELETE"[\s\S]*?if \(!deleted\.length\)/,
   "content deletion must compare-and-set against the row version",
 );
 assert.match(
   editorialActions,
-  /updateEditorialContentAtVersion[\\s\\S]*?return rows\\.length > 0/,
+  /updateEditorialContentAtVersion[\s\S]*?return rows\.length > 0/,
   "editorial mutations must update using a version predicate and check affected rows",
 );
 assert.match(
   queuesPage,
-  /hasAdminPermission\\(admin\\.role, "video\\.manage"\\)[\\s\\S]*?hasAdminPermission\\(admin\\.role, "social\\.manage"\\)/,
+  /hasAdminPermission\(admin\.role, "video\.manage"\)[\s\S]*?hasAdminPermission\(admin\.role, "social\.manage"\)/,
   "the operations page must not read module queues beyond the viewer's role permissions",
 );
 assert.match(
   socialRoute,
-  /requireAdminApi\\("social\\.manage"\\)[\\s\\S]*?requireAdminApi\\("social\\.publish"\\)/,
+  /requireAdminApi\("social\.manage"\)[\s\S]*?requireAdminApi\("social\.publish"\)/,
   "social execution must require a separate publishing permission",
 );
 assert.match(
   socialRoute,
-  /recordAdminAuditEvent\\([\\s\\S]*?social\\.queue\\.(?:retry|delete)/,
+  /recordAdminAuditEvent\([\s\S]*?social\.queue\.(?:retry|delete)/,
   "social queue mutations must append audit events",
 );
 assert.match(
   videoRoute,
-  /recordAdminAuditEvent\\([\\s\\S]*?video_generation\\.update[\\s\\S]*?recordAdminAuditEvent\\([\\s\\S]*?video_generation\\.delete_failed/,
+  /recordAdminAuditEvent\([\s\S]*?video_generation\.update[\s\S]*?recordAdminAuditEvent\([\s\S]*?video_generation\.delete_failed/,
   "video mutation endpoints must append audit events",
 );
 
