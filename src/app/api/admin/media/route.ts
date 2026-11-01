@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import {
   createAdminMediaAsset,
   getAdminMediaAssets,
@@ -64,6 +65,13 @@ export async function POST(request: NextRequest) {
       folder: assetFolder,
       createdBy: auth.profile.id,
     });
+    await recordAdminAuditEvent({
+      action: "media.asset.create",
+      permission: "media.manage",
+      resourceType: "media_assets",
+      resourceId: typeof asset.id === "string" ? asset.id : null,
+      metadata: { folder: assetFolder, mimeType: file.type, sizeBytes: file.size, sourceLinked: Boolean(sourceId) },
+    });
 
     return NextResponse.json(
       { asset },
@@ -106,6 +114,12 @@ export async function PATCH(request: NextRequest) {
       action as 'verify_rights' | 'publish' | 'unpublish',
     );
     if (!result.ok) return responseError(result.error);
+    await recordAdminAuditEvent({
+      action: `media.asset.${action}`,
+      permission: "media.manage",
+      resourceType: "media_assets",
+      resourceId: id,
+    });
 
     return NextResponse.json(
       { ok: true },
