@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { resolveHadithDisplay } from "../../src/features/hadith/types/hadith";
+import { hasHadithPageRows, resolveHadithDisplay } from "../../src/features/hadith/types/hadith";
 
 const translated = resolveHadithDisplay(
   { number: 1, arab: "النص العربي", english: "English translation", contentLocale: "en" },
@@ -24,5 +24,10 @@ const arabicRequest = resolveHadithDisplay(
 assert.equal(arabicRequest.text, "النص العربي");
 assert.equal(arabicRequest.contentLocale, "ar");
 assert.equal(arabicRequest.usedArabicFallback, false);
+
+assert.equal(hasHadithPageRows([{ number: 1 }]), true, "a non-empty local page should be used");
+assert.equal(hasHadithPageRows([]), false, "an empty partial seed page must fall back to the remote provider");
+assert.equal(hasHadithPageRows(null), false, "a failed local query must fall back to the remote provider");
+assert.equal(hasHadithPageRows(undefined), false, "an absent local result must fall back to the remote provider");
 
 console.log("Hadith localization fallback contract passed.");
