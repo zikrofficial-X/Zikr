@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
-import AdminAiVideoClient from "@/app/admin/ai-video/ai-video-client";
+import AdminVideoStudioClient from "@/features/admin/video-studio/components/admin-video-studio-client";
 import { AdminBreadcrumbs } from "@/features/admin/components/admin-breadcrumbs";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 
@@ -16,7 +16,7 @@ export default async function AdminVideoStudioPage() {
           مكتبة المحتوى الموثق
         </Link>
       </div>
-      <AdminAiVideoClient />
+      <AdminVideoStudioClient />
     </Container>
   );
 }
