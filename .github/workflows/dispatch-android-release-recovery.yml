@@ -1,10 +1,7 @@
 name: Dispatch guarded Android release recovery
 
 on:
-  status:
-  push:
-    branches:
-      - 'android-release-v*'
+  workflow_dispatch:
 
 permissions:
   actions: write
@@ -12,11 +9,7 @@ permissions:
 
 jobs:
   dispatch:
-    if: >-
-      (github.event_name == 'status' &&
-       github.event.context == 'ci/circleci: android-rebuild' &&
-       github.event.state == 'success') ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/android-release-v'))
+    if: github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/android-release-v')
     runs-on: ubuntu-24.04
     steps:
       - name: Dispatch publisher only for the exact guarded release with a successful signed build
@@ -87,28 +80,26 @@ jobs:
               core.info("Recovery branch push detected; validating the exact commit's signed-build status.");
             }
 
-            if (eventName === "status") {
-              if (sourceSha !== eventSha) {
-                core.info("Skipping: successful CircleCI status is not for the current recovery branch commit.");
-                return;
-              }
-            } else if (eventName === "push") {
-              if (sourceSha !== eventSha) {
-                core.info("Skipping: push event does not match the release source commit.");
-                return;
-              }
-              const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
-                owner, repo, ref: sourceSha,
-              });
-              const androidBuild = (combined.statuses ?? []).find(
-                item => item.context === "ci/circleci: android-rebuild"
-              );
-              if (!androidBuild || androidBuild.state !== "success") {
-                core.info("Skipping: CircleCI has not successfully signed the current recovery branch commit.");
-                return;
-              }
-            } else {
-              core.info("Skipping: unsupported event type.");
+            if (eventName !== "workflow_dispatch") {
+              core.info("Skipping: recovery must be explicitly dispatched by the successful CircleCI release pipeline.");
+              return;
+            }
+            if (!context.ref.startsWith("refs/heads/android-release-v")) {
+              core.info("Skipping: dispatch ref is not a guarded Android release branch.");
+              return;
+            }
+            if (sourceSha !== eventSha) {
+              core.info("Skipping: dispatch SHA does not match the current recovery branch commit.");
+              return;
+            }
+            const { data: combined } = await github.rest.repos.getCombinedStatusForRef({
+              owner, repo, ref: sourceSha,
+            });
+            const androidBuild = (combined.statuses ?? []).find(
+              item => item.context === "ci/circleci: android-rebuild"
+            );
+            if (!androidBuild || androidBuild.state !== "success") {
+              core.info("Skipping: CircleCI has not successfully signed the current recovery branch commit.");
               return;
             }
 
