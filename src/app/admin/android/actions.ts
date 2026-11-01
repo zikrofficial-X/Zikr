@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
@@ -32,6 +32,7 @@ export async function saveAndroidReleaseAction(formData: FormData) {
     }),
   });
 
+  updateTag("site-setting:android_release");
   revalidatePath("/admin/android");
   revalidatePath("/platform");
   revalidatePath("/api/download/android");

@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
           apikey: serviceKey,
           Authorization: `Bearer ${serviceKey}`,
           "Content-Type": contentType,
+          "Cache-Control": "max-age=31536000, immutable",
           "x-upsert": "false",
         },
         body: bytes,

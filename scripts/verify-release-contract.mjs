@@ -38,8 +38,10 @@ assert.ok(androidStorageLimitMigration.includes("SET file_size_limit = 52428800"
 assert.ok(androidStorageLimitMigration.includes("WHERE id = 'android-releases'"), "The bucket limit repair must target only the Android release bucket");
 
 const siteContentService = read("src/features/site-content/services/site-content.ts");
-assert.ok(siteContentService.includes(".limit(1)\n      .maybeSingle()"), "Optional homepage settings must return null for missing keys without raising PostgREST 406 errors");
-assert.ok(!siteContentService.includes(".limit(1)\n      .single()"), "Optional homepage settings must not require a row to exist");
+assert.ok(siteContentService.includes("supabaseServerAnonRequest"), "Public site settings must use the shared server-side REST cache");
+assert.ok(siteContentService.includes("key=eq.${encodeURIComponent(key)}&limit=1"), "Public site-setting lookup must filter to the requested key and a single row");
+assert.ok(siteContentService.includes("revalidate: 300"), "Public site settings must use the bounded five-minute cache");
+assert.ok(siteContentService.includes("rows?.[0]?.value"), "Optional site settings must return null when the filtered REST response contains no row");
 
 const publish = read(".github/workflows/publish-android-release-assets.yml");
 

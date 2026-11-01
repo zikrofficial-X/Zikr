@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
@@ -143,6 +143,7 @@ export async function savePublicSiteSettingAction(formData: FormData) {
     metadata: { section, fields: Object.keys(setting), actor: profile.id },
   });
 
+  updateTag(`site-setting:${section}`);
   revalidatePath("/");
   revalidatePath("/videos");
   revalidatePath("/admin/seo");

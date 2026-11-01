@@ -1235,7 +1235,7 @@ async function renderVideo(request: GeneratedRequest) {
       supabaseUrl.replace(/\/$/, "") + "/storage/v1/object/videos/" + objectPath,
       {
         method: "POST",
-        headers: { apikey: serviceKey, Authorization: "Bearer " + serviceKey, "Content-Type": "video/mp4", "x-upsert": "true" },
+        headers: { apikey: serviceKey, Authorization: "Bearer " + serviceKey, "Content-Type": "video/mp4", "Cache-Control": "max-age=86400", "x-upsert": "true" },
         body: bytes,
         signal: AbortSignal.timeout(60_000),
       },
