@@ -320,6 +320,7 @@ async function recordAutomationRun(summary: {
 }
 async function main() {
   validateRequiredEnv();
+  // A cleanup-only run must not reconcile or publish new queue items.
   if (process.env.SOCIAL_CLEANUP_ONLY === "true") {
     const result = await retryPendingPublishedVideoCleanup(250);
     console.log("[background-jobs] Published media cleanup-only sweep:", JSON.stringify(result));
