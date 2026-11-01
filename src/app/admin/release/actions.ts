@@ -2,7 +2,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
@@ -97,6 +97,7 @@ export async function createAndroidReleaseAction() {
     },
   });
 
+  updateTag("site-setting:android_release");
   revalidatePath("/admin/release");
   revalidatePath("/admin/android");
   revalidatePath("/platform");
