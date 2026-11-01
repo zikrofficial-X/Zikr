@@ -2,7 +2,7 @@
 
 ## Scope
 
-Kids World is the Arabic-first, RTL-friendly game area under `/kids/games`. The central registry in `lib/games/registry.ts` is the source of truth for the twelve registered game IDs, runtime kind, age groups, difficulty options, score limits, and display metadata. The registry is shared by the game shell, Kids content adapter, score validator, admin selector, seed migration, and progress labels.
+Kids World is the Arabic-first, RTL-friendly game area under `/kids/games`. The central registry in `lib/games/registry.ts` is the source of truth for the thirteen registered game IDs, runtime kind, age groups, difficulty options, score limits, and display metadata. The registry is shared by the game shell, Kids content adapter, score validator, admin selector, seed migration, and progress labels.
 
 ## Adding a game
 
@@ -26,9 +26,11 @@ The manifest test runs as part of `pnpm test` and therefore the PR and main qual
 
 ## Runtime and accessibility
 
-`KidsWorldGameShell` owns difficulty, HUD, pause, mute, fullscreen, restart, submission, and offline status. `WorldGameStage` delegates to either the lifecycle-safe Phaser bridge or a focused React mini-game. Phaser wrappers are browser-only, lazy-load Phaser, dispose the instance on unmount, and apply `touch-action: none` so swipe controls do not scroll the page. Canvas play is interactive but not fully screen-reader accessible; the surrounding UI must provide labels, status text, pause/mute controls, and an escape route.
+`KidsWorldGameShell` owns difficulty, HUD, pause, mute, fullscreen, restart, result submission, and offline status. `WorldGameStage` dispatches the registered game ID to its dedicated React runtime; the current 13-game implementation does not use Phaser or a Canvas game engine. Each runtime receives pause and restart state through props and reports HUD/result events to the shell. Do not reintroduce an inert controller abstraction.
 
-Audio feedback is generated locally with `ToneFeedback`. It is optional, non-autoplay, uses no external media, and is controlled by the same explicit `setMuted` contract as Phaser sound. Do not add copyrighted music, commercial characters, iframe games, trackers, ads, gambling, or monetization.
+The game scenes use repository-managed inline SVG artwork and three shared local WebP environments. These provide distinct game foregrounds but do not yet constitute 13 independently illustrated environments. Real-device touch, keyboard, screen-reader, focus-order, reduced-motion, and fullscreen acceptance must be tested before release; automated source checks do not certify those experiences.
+
+`ToneFeedback` combines synthesized Web Audio event tones with optional local MP3 theme tracks. Audio is non-autoplay and follows the shell's mute state. The MP3 files remain flagged for source/licensing review; being stored locally does not establish usage rights. Do not add unlicensed music, commercial characters, iframe games, trackers, ads, gambling, or monetization.
 
 ## Verified educational content
 
