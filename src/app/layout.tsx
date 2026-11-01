@@ -206,17 +206,6 @@ gtag('config', '${googleAnalyticsId}', { send_page_view: true });`}
         <link rel="manifest" href="/manifest.webmanifest" />
       </head>
       <body className={locale === "ar" ? "font-arabic antialiased" : "font-sans antialiased"}>
-        {process.env.NODE_ENV === "production" && isValidGoogleTagManagerId && (
-          <noscript>
-            <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${googleTagManagerId}`}
-              height="0"
-              width="0"
-              style={{ display: "none", visibility: "hidden" }}
-              title="Google Tag Manager"
-            />
-          </noscript>
-        )}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
