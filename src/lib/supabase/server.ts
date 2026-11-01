@@ -249,7 +249,7 @@ export async function supabaseServerAdminCount(
   // Use a bounded GET with an exact count and optional equality filter. The
   // range limits returned rows without truncating the Content-Range total.
   const res = await fetch(`${url}/rest/v1/${table}?${query.toString()}`, {
-    method: "GET",
+    method: "HEAD",
     headers: {
       apikey: key,
       Authorization: `Bearer ${key}`,
