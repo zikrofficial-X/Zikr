@@ -54,6 +54,29 @@ for (const file of supabaseTargetFiles) {
     fail(`Supabase target drift in ${file}; expected ${canonicalSupabaseUrl}`);
   }
 }
+const supabaseUrlReferenceDocs = [
+  "docs/circleci-supabase-environment.md",
+  "docs/AUTH_SYSTEM_GUIDE.md",
+];
+for (const file of supabaseUrlReferenceDocs) {
+  const source = read(file);
+  if (!source || !source.includes(canonicalSupabaseUrl)) {
+    fail(`Canonical Supabase URL documentation drift in ${file}; expected ${canonicalSupabaseUrl}`);
+  }
+}
+const supabaseProjectReferenceDocs = [
+  "docs/SOURCE_OF_TRUTH.md",
+  "docs/ENVIRONMENT_GOVERNANCE_2026-10-08.md",
+];
+for (const file of supabaseProjectReferenceDocs) {
+  const source = read(file);
+  if (!source || !source.includes(canonicalSupabaseProject)) {
+    fail(`Canonical Supabase project reference drift in ${file}; expected ${canonicalSupabaseProject}`);
+  }
+  if (source.includes("wvetcauyerlkqvmntajq")) {
+    fail(`Retired Supabase project reference remains in current documentation: ${file}`);
+  }
+}
 const environmentDocs = read("docs/environment-variables.md");
 if (environmentDocs.includes("wvetcauyerlkqvmntajq")) {
   fail("Environment documentation still references the retired Supabase project");
