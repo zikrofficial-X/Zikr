@@ -1,92 +1,105 @@
 # ZIKR Project Release & Build Status
 
-**Last Updated:** 2026-10-30  
+**Last reconciled:** 2026-11-01  
 **Repository:** https://github.com/zikrofficial-X/Zikr  
 **Production URL:** https://zikrmediaofficial.vercel.app
 
-## Current release state
+## Latest verified production source
 
-| Item | Status |
+| Item | Verified state |
 |---|---|
-| Application version | **1.1.8** |
-| Android versionCode | **62** |
+| Source branch | `main` |
+| Source commit at this checkpoint | [`42c08f67e5a7a4a3dfff700aa71033851dc0a956`](https://github.com/zikrofficial-X/Zikr/commit/42c08f67e5a7a4a3dfff700aa71033851dc0a956) |
+| Source commit message | `fix(actions): offset social publisher schedule` |
+| Vercel project | `zikr` |
+| Production deployment | `dpl_peDiydBCDx7LgdywtHTUi5WZ65tr` — **READY** |
+| Deployment commit | `42c08f67e5a7a4a3dfff700aa71033851dc0a956` |
+| Production aliases | `zikrmediaofficial.vercel.app`, `zikr-zikr3.vercel.app`, `zikr-git-main-zikr3.vercel.app` |
+| Main commit checks observed | CircleCI `config-guard`: success; CircleCI `application-build-docs`: success; Vercel: success |
+
+The production deployment is on the same application source commit shown above. The combined commit-status check returned the three successful contexts listed here; this record does not claim that an unobserved full GitHub Quality Gate has passed.
+
+## Latest published stable Android release
+
+| Item | Verified state |
+|---|---|
+| Application version | **1.1.10** |
+| Android versionCode | **64** |
 | Application ID | `com.zikr.app` |
-| Compile / Target SDK | **36** |
-| Canonical release tag | **[`v1.1.8`](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.8)** (annotated tag; unsigned) |
-| Latest published stable Android release | **[v1.1.8 — published 2026-10-28](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.8)** |
-| APK + AAB + checksums + metadata | **Present on the v1.1.8 GitHub Release** |
-| Android asset publisher | **CircleCI signed build passed; GitHub Release lists APK, AAB, release metadata and SHA256SUMS** |
-| Main branch | Active; branding PR #149 merged |
-| CI/CD ownership cleanup | Applied |
-| Production Vercel promotion | Controlled-release path; latest verified production deployment is recorded in `PROJECT_STATUS.md` |
+| Compile / Target SDK | **36 / 36** |
+| Canonical release tag | [`v1.1.10`](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.10) |
+| Published | 2026-10-30 |
+| Git tag target commit | [`d50c580db24c0a79c5f7526670f4e93f0cae54c1`](https://github.com/zikrofficial-X/Zikr/commit/d50c580db24c0a79c5f7526670f4e93f0cae54c1) |
+| Annotated tag object | `88be5ebd3abfb6e86a7b93c53a455ae22afd4570` |
+| Git tag signature | **Unsigned** (GitHub verification reason: `unsigned`) |
+| Release state | Published and immutable |
 
-The current public Android stable release is [v1.1.8](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.8), published on 2026-10-28. The GitHub Release lists `app-release.apk`, `app-release.aab`, `release-metadata.json`, and `SHA256SUMS`; CircleCI status checks for the tag source commit report `android-rebuild` and `supabase-production-gate` success. The annotated `v1.1.8` tag resolves to commit `3bddc73c9d9c35c90b6c84d1a7bb825c0d1cc04e` and is unsigned. APK/AAB signing verification and Git-tag signature verification are separate checks.
+### Published Android assets
 
-**Native branding gap:** PR #149 merged the gold-crescent web/PWA and native launcher assets after the v1.1.8 source commit. The immutable v1.1.8 tag is 229 commits behind the current main branding commit and its published APK/AAB do not contain the newest native identity. Do not retarget or mutate v1.1.8. Distribute the native identity through the next controlled semantic Android release after the current closeout changes merge and the release manager creates a new tag/draft from main.
+GitHub lists all four expected release assets. The asset digests below are the SHA-256 digests returned by GitHub.
 
-**Historical v1.1.4 provenance defect:** the annotated tag targets `a2fbc9f6bafdf9a91202d11270cdae984173e1f1`; the published Release notes name `a1eec652a7d20ac22dafb6bf72e560260e5f568b`; the successful asset publication run verified artifacts from `c3186f774d4a1889153c3ab7375f8fa2a0190dc1`. The APK/AAB signature, checksums, and published bytes passed validation, but the three commit identities differ. GitHub reports the annotated tag is unsigned. **Safeguard merged:** [PR #36](https://github.com/zikrofficial-X/Zikr/pull/36) blocks tag/recovery publication unless the tag target and signed artifact source SHA match exactly. Do not retarget the immutable `v1.1.4` tag; resolve lineage through a later controlled semantic release.
+| Asset | Size | SHA-256 |
+|---|---:|---|
+| `app-release.apk` | 40,574,860 bytes | `ac7576b9f1b1f165e7287a43e9a60f4d4fc965c8acf1bbe3854a28f1b6578e99` |
+| `app-release.aab` | 35,388,091 bytes | `3b124300f4bed8b1d59ae8ce6f60cd3210488ce51d9721ec49ac2f00507192b5` |
+| `release-metadata.json` | 737 bytes | `5e440e3703c0e504de58551a007bc0349aa99ef7fe67bb6ff1730fa84b02c2fb` |
+| `SHA256SUMS` | 243 bytes | `49e39b9ffeb258d2840a561e3b5462a32ee241f17bd8fe2940aab9ba27f854a9` |
 
-## Current automation topology
+Download page: https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.10
+
+The exact tag-source commit has successful CircleCI statuses for `source-verify`, `application-build-docs`, `config-guard`, `supabase-production-gate`, and `android-rebuild`. The published APK/AAB assets and their GitHub SHA-256 digests are present. The unsigned Git tag is a separate provenance property from Android APK/AAB signing.
+
+## Current source version versus published Android version
+
+At the verified main-source checkpoint, the repository metadata remains aligned at:
+
+- `package.json`: `1.1.10`
+- `android/app/build.gradle`: `versionName "1.1.10"`, `versionCode 64`
+- `.release-tag`: `v1.1.10`
+
+Main has newer commits than the Android release source commit. The current web application is deployed to production, but **a newer Android package has not yet been built or published**. Do not describe v1.1.10 binaries as builds of the newer main commit.
+
+## Next Android release — controlled procedure
+
+The canonical release path is the protected Admin Release action, not a manual version-file edit or an independently-created tag:
+
+1. Open https://zikrmediaofficial.vercel.app/admin/release with an account that has `release.manage`.
+2. Run **إطلاق أحدث نسخة Android**. The current release manager computes the next patch version and increments `versionCode`; from the recorded source values, the expected next version is `1.1.11` / versionCode `65`.
+3. The release manager updates the canonical Android, package, footer, iOS, tag, and release-note metadata; creates the annotated semantic tag; and opens a GitHub Draft Release against the exact resulting main commit.
+4. CircleCI must complete the `android-rebuild` signing job for that exact tag commit. The GitHub Actions publisher then validates the source SHA, release metadata, APK/AAB, checksums, and signatures before publishing the Draft Release.
+5. Verify that the release is public and contains `app-release.apk`, `app-release.aab`, `release-metadata.json`, and `SHA256SUMS`.
+
+The Admin action requires an authenticated administrator with `release.manage` and the server-side GitHub token. That protected action was not invoked during this documentation reconciliation. **No `v1.1.11` tag, Draft Release, or new Android binaries are claimed as created here.** The previous immutable release must never be retargeted or reused for newer source code.
+
+## Current automation ownership
 
 | Responsibility | Owner |
 |---|---|
-| PR/main verification | GitHub Actions — `ZIKR / Quality Gate` |
+| PR/main source verification | GitHub Actions — `ZIKR / Quality Gate` |
 | Video generation | GitHub Actions — `generate-ai-video.yml` |
 | Social publishing | GitHub Actions — `publish-social.yml` |
-| Production web deploy | GitHub Actions — `release-finalization.yml` |
+| Controlled production web release | GitHub Actions — `release-finalization.yml` |
 | Production smoke verification | GitHub Actions — `release-vercel.yml` |
-| Android release tag/draft | Admin Release service — `prepareAndroidRelease()` |
-| Android asset verification/publishing | GitHub Actions — `publish-android-release-assets.yml` |
+| Android tag and draft creation | Admin Release service — `prepareAndroidRelease()` |
+| Android asset verification and publication | GitHub Actions — `publish-android-release-assets.yml` |
+| Android build and signing | CircleCI — `android-rebuild` |
 | Application build/documentation | CircleCI — `application-build-docs` |
-| Android build/signing | CircleCI — `android-rebuild` |
-| English content schedule | CircleCI — `scheduled-english-content-sync` |
-| Prayer notifications | Supabase pg_cron + `prayer-notification-worker` |
-| Source-verified content agent | Supabase pg_cron + `source-verified-content-agent` |
-| Runtime web hosting | Vercel |
-| Database/Auth/Storage | Supabase |
+| Runtime hosting | Vercel |
+| Database, Auth, Storage | Supabase |
+| Prayer/source-agent scheduling | Supabase `pg_cron` and Edge Functions |
 
-There is no active CircleCI video/social worker, no Vercel Cron scheduler, and no active Supabase social/video scheduler.
+There is no active Vercel Cron scheduler for the video/social workers. Do not add duplicate schedulers to the existing ownership model.
 
-## Android release pipeline
+## Release sign-off requirements
 
-The Android release pipeline uses one canonical semantic release tag: `vX.Y.Z`.
+A release is not **PUBLISHED**, **PRODUCTION READY**, or **FULLY VERIFIED** solely because Vercel reports `READY`. Record and verify all applicable evidence:
 
-The Admin Release page calls `prepareAndroidRelease()`, which updates the canonical release metadata, creates the single semantic Git tag, and opens a draft GitHub Release. CircleCI performs the Android build/signing lane for that tag. `Publish Android Release Assets` verifies the uploaded artifacts, checksums, signature, manifest, and publishes the GitHub Release.
+- exact source commit and tag target;
+- passing source and production database gates;
+- Vercel production deployment ID, URL, state, and live smoke result;
+- Android build result for the exact tag commit;
+- APK/AAB presence, signing verification, release metadata, and SHA-256;
+- active Supabase cron/Edge Function state for scheduler-owned tasks;
+- unresolved security, storage, and owner-approval exceptions.
 
-The obsolete `vX.Y.Z-build` parallel lane has been removed to prevent duplicate Android builds.
-
-## Production web release
-
-Production Vercel Git auto-deployment is disabled in `vercel.json`. The intended production path is:
-
-1. controlled `release-finalization.yml` dispatch from `main`;
-2. exact-commit verification;
-3. Vercel production build;
-4. prebuilt production deployment;
-5. smoke verification against the deployed artifact.
-
-Production must be recorded per release using the exact commit, Vercel deployment ID/state, and live smoke result. At the start of the 2026-10-28 audit, Vercel deployment `dpl_C2ir1BurQUdkqdxXdAgqXwerhMWm` was READY on commit `c7dbd229f827aecffc5ce7c01c93cbe90d6cc7b7`; main has since advanced, and this baseline is not proof that later commits are deployed.
-
-## Verification requirements
-
-Before treating a release as complete, require the applicable PR gate (`pnpm verify:pr`) and the full main gate (`pnpm verify`) on the merged main SHA.
-
-Android `v1.1.8` is the latest published stable release. Its GitHub Release lists the APK, AAB, release metadata, and SHA256SUMS; CircleCI Android rebuild and Supabase production gate succeeded for the exact tag source commit. The `v1.1.8` annotated tag is unsigned, which is distinct from APK/AAB signing. The historical `v1.1.4` tag/source commit mismatch remains a provenance lesson; do not mark older source-to-tag correspondence as fully reconciled.
-
-Production evidence must include:
-
-- intended commit SHA;
-- Vercel deployment URL/state;
-- production smoke result;
-- Android artifact metadata and SHA-256 when an Android release is performed;
-- active Supabase cron/Edge Function state for scheduler-owned tasks.
-
-## Remaining non-blocking platform finding
-
-Supabase security advisors currently report **Leaked Password Protection Disabled** as a warning. This is a project-level Auth setting and is not represented as a migration in the repository; it must be enabled through the supported Supabase Auth/project configuration path.
-
-Supabase performance advisors report unused-index observations. These are informational and must not be converted into bulk index drops without workload evidence.
-
-## Sign-off rule
-
-Do not mark a release **PUBLISHED**, **PRODUCTION READY**, or **FULLY VERIFIED** solely because a Vercel deployment is `READY`. The release evidence above is required.
+Historical audit snapshots are not proof of current production state. Do not bulk-drop indexes or delete storage objects merely to silence advisor or quota observations; review workload, retention, and ownership first.
