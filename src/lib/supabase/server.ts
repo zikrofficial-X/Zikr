@@ -224,19 +224,31 @@ export const supabaseServerAdminRequest = <T>(
     return restRequest<T>(path, init, serviceKey);
   })();
 
-export async function supabaseServerAdminCount(table: string): Promise<number> {
+export async function supabaseServerAdminCount(
+  table: string,
+  filter?: { column: string; value: string },
+): Promise<number> {
   const { url, serviceKey } = getSupabaseConfig();
   if (!serviceKey) {
     throw new Error(
       "Missing SUPABASE_SERVICE_ROLE_KEY for server-admin Supabase count."
     );
   }
+  if (!/^[a-z_][a-z0-9_]*$/i.test(table)) {
+    throw new Error("Invalid table name for server-admin Supabase count.");
+  }
+  const query = new URLSearchParams({ select: "*", limit: "1" });
+  if (filter) {
+    if (!/^[a-z_][a-z0-9_]*$/i.test(filter.column)) {
+      throw new Error("Invalid filter column for server-admin Supabase count.");
+    }
+    query.set(filter.column, `eq.${filter.value}`);
+  }
   const key = serviceKey;
 
-  // Use a bounded GET with an explicit range and a wildcard projection so
-  // the helper works for tables whose primary key is not named `id`
-  // (for example `admin_settings` uses `key`).
-  const res = await fetch(`${url}/rest/v1/${table}?select=*&limit=1`, {
+  // Use a bounded GET with an exact count and optional equality filter. The
+  // range limits returned rows without truncating the Content-Range total.
+  const res = await fetch(`${url}/rest/v1/${table}?${query.toString()}`, {
     method: "GET",
     headers: {
       apikey: key,
