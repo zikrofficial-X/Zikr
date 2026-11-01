@@ -371,13 +371,18 @@ assert.match(
 );
 assert.match(
   shellSource,
-  /if \(!controller \|\| result\) return;/,
-  "pause/resume must be blocked when the controller is unavailable or the round has ended"
+  /if \(result\) return;/,
+  "pause/resume must be blocked after the round has ended"
 );
 assert.match(
   shellSource,
-  /if \(paused\) \{ controller\.resume\(\); setPaused\(false\); \} else \{ controller\.pause\(\); setPaused\(true\); \}/,
-  "pause/resume must call the runtime controller as well as update UI state"
+  /setPaused\(value => !value\);/,
+  "pause/resume must update the single state source consumed by the runtime"
+);
+assert.doesNotMatch(
+  shellSource,
+  /controller\.(?:pause|resume)\(/,
+  "the game shell must not depend on the removed inert stage controller"
 );
 assert.match(
   shellSource,
