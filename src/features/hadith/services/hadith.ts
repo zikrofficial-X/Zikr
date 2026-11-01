@@ -8,7 +8,7 @@ import path from "node:path";
 import { getServerEnv } from "@/lib/env";
 import { safeApiFetch } from "@/lib/services/http";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
-import type { Hadith, HadithBook, HadithResponse } from "@/features/hadith/types/hadith";
+import { hasHadithPageRows, type Hadith, type HadithBook, type HadithResponse } from "@/features/hadith/types/hadith";
 import type { Locale } from "@/lib/i18n";
 import type { PaginationMeta } from "@/lib/types/common";
 
@@ -273,7 +273,7 @@ export async function getHadithBook(
       totalPages: Math.max(1, Math.ceil(total / limit)),
     };
 
-    if (dbHadiths) {
+    if (hasHadithPageRows(dbHadiths)) {
       const mappedData = dbHadiths.map(mapDbHadith);
       let remoteByNumber = new Map<number, Hadith>();
       if (locale === "en" && mappedData.some((hadith) => !hadith.english?.trim())) {
