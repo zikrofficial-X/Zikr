@@ -39,7 +39,7 @@ SELECT public.admin_set_primary_site_audio_asset(
 );
 RESET ROLE;
 
-DO $
+DO $$
 DECLARE
   v_old_primary boolean;
   v_new_primary boolean;
@@ -60,7 +60,7 @@ BEGIN
     RAISE EXCEPTION 'primary audio switch did not append one audit event';
   END IF;
 END;
-$;
+$$;
 
 -- A delegated role must not be able to use the service RPC to grant full admin.
 SET ROLE service_role;
@@ -142,7 +142,7 @@ BEGIN
 END;
 $$;
 
-DO $
+DO $$
 BEGIN
   IF has_function_privilege('anon', 'public.admin_set_primary_site_audio_asset(uuid,text,uuid)', 'EXECUTE') THEN
     RAISE EXCEPTION 'anon can execute admin_set_primary_site_audio_asset';
@@ -154,9 +154,9 @@ BEGIN
     RAISE EXCEPTION 'service_role cannot execute admin_set_primary_site_audio_asset';
   END IF;
 END;
-$;
+$$;
 
-DO $
+DO $$
 BEGIN
   IF has_function_privilege('anon', 'public.admin_update_user_role(uuid,text,uuid)', 'EXECUTE') THEN
     RAISE EXCEPTION 'anon can execute admin_update_user_role';
