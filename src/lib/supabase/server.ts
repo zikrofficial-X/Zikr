@@ -264,10 +264,10 @@ export async function supabaseServerAdminCount(
     throw new Error(`Supabase REST ${res.status}: ${body.slice(0, 500)}`);
   }
   const range = res.headers.get("content-range") ?? "";
-  const total = Number(range.split("/")[1]);
-  if (Number.isFinite(total)) return total;
-  const rows = await res.json().catch(() => []);
-  return Array.isArray(rows) && rows.length > 0 ? 1 : 0;
+  const totalText = range.split("/")[1];
+  const total = totalText && totalText !== "*" ? Number(totalText) : Number.NaN;
+  if (Number.isSafeInteger(total) && total >= 0) return total;
+  throw new Error("Supabase REST did not return an exact Content-Range count for admin health.");
 }
 
 export async function assertSupabaseConnection() {
