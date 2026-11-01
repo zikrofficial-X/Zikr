@@ -60,13 +60,15 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'invalid game difficulty';
   END IF;
 
-  IF jsonb_typeof(NEW.metadata) IS DISTINCT FROM 'object'
-    OR jsonb_object_length(NEW.metadata) > 10
+  IF jsonb_typeof(NEW.metadata) IS DISTINCT FROM 'object' THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'game result metadata must be an object';
+  END IF;
+  IF jsonb_object_length(NEW.metadata) > 10
     OR pg_column_size(NEW.metadata) > 4096
     OR EXISTS (
       SELECT 1
-      FROM jsonb_object_keys(NEW.metadata) AS metadata_key
-      WHERE metadata_key <> ALL(v_allowed_keys)
+      FROM jsonb_object_keys(NEW.metadata) AS metadata_keys(key)
+      WHERE key <> ALL(v_allowed_keys)
     ) THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'invalid game result metadata';
   END IF;
