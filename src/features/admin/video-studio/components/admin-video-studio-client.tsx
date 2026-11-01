@@ -66,7 +66,7 @@ const AUDIO_TYPES = [
 ];
 const MAX_AUDIO_BYTES = 15 * 1024 * 1024;
 
-export default function AdminAiVideoPage() {
+export default function AdminVideoStudioClient() {
   const [category, setCategory] = useState<Category>("story");
   const [format, setFormat] = useState<Format>("vertical");
   const [title, setTitle] = useState("");

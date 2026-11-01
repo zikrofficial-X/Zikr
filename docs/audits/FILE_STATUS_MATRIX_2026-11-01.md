@@ -17,7 +17,7 @@
 | ACTIVE / CI-CD | 17 |
 | ACTIVE / DYNAMIC RUNTIME ENTRY | 27 |
 | ACTIVE / EDGE FUNCTION | 8 |
-| ACTIVE / FEATURE MODULE | 209 |
+| ACTIVE / FEATURE MODULE | 211 |
 | ACTIVE / IMMUTABLE MIGRATION | 379 |
 | ACTIVE / NATIVE PLATFORM | 75 |
 | ACTIVE / ROOT CONFIG | 8 |
@@ -29,7 +29,7 @@
 | DUPLICATE / IMMUTABLE MIGRATION | 8 |
 | LEGACY / COMPATIBILITY MIRROR | 1 |
 | LEGACY / PRESERVE | 1 |
-| REVIEW_REQUIRED | 92 |
+| REVIEW_REQUIRED | 90 |
 | TEST | 29 |
 | TEST / OPERATIONS | 74 |
 
@@ -490,7 +490,7 @@
 | `src/app/adhkar/layout.tsx` | ACTIVE / RUNTIME ENTRY | Application page, API, or layout entry |
 | `src/app/adhkar/loading.tsx` | ACTIVE / RUNTIME ENTRY | Application page, API, or layout entry |
 | `src/app/adhkar/page.tsx` | ACTIVE / RUNTIME ENTRY | Application page, API, or layout entry |
-| `src/app/admin/ai-video/ai-video-client.tsx` | REVIEW_REQUIRED | No safe status assigned without dependency/reference tracing |
+| `src/features/admin/video-studio/components/admin-video-studio-client.tsx` | ACTIVE / FEATURE MODULE | Imported by canonical `/admin/video/studio`; route-independent client UI |
 | `src/app/admin/ai-video/curated/page.tsx` | ACTIVE / RUNTIME ENTRY | Application page, API, or layout entry |
 | `src/app/admin/ai-video/page.tsx` | ACTIVE / RUNTIME ENTRY | Application page, API, or layout entry |
 | `src/app/admin/alerts/page.tsx` | ACTIVE / RUNTIME ENTRY | Application page, API, or layout entry |
@@ -567,7 +567,7 @@
 | `src/app/admin/video/studio/curated/page.tsx` | ACTIVE / RUNTIME ENTRY | Application page, API, or layout entry |
 | `src/app/admin/video/studio/page.tsx` | ACTIVE / RUNTIME ENTRY | Application page, API, or layout entry |
 | `src/app/admin/videos/page.tsx` | ACTIVE / RUNTIME ENTRY | Application page, API, or layout entry |
-| `src/app/admin/videos/videos-client.tsx` | REVIEW_REQUIRED | No safe status assigned without dependency/reference tracing |
+| `src/features/admin/video-requests/components/admin-video-requests-client.tsx` | ACTIVE / FEATURE MODULE | Imported by canonical `/admin/video/requests`; route-independent client UI |
 | `src/app/api/admin/analytics/route.ts` | ACTIVE / RUNTIME ENTRY | Application page, API, or layout entry |
 | `src/app/api/admin/cloudinary/image/route.ts` | ACTIVE / RUNTIME ENTRY | Application page, API, or layout entry |
 | `src/app/api/admin/content/route.ts` | ACTIVE / RUNTIME ENTRY | Application page, API, or layout entry |

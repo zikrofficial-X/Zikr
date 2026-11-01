@@ -88,7 +88,7 @@ const page = read("src/app/admin/video/studio/page.tsx");
 if (!page.includes('requireAdminPermission("video.manage")')) failures.push("Video Studio admin page must require video.manage");
 
 const canonicalQueue = read("src/app/admin/video/requests/page.tsx");
-if (!canonicalQueue.includes("AdminVideosClient")) failures.push("Video Factory queue must render the canonical queue client");
+if (!canonicalQueue.includes("AdminVideoRequestsClient")) failures.push("Video Factory queue must render the feature-owned queue client");
 if (!canonicalQueue.includes('requireAdminPermission("video.manage")')) failures.push("Video Factory queue must require video.manage");
 
 const legacyQueue = read("src/app/admin/videos/page.tsx");
@@ -112,8 +112,13 @@ for (const adminPage of [
   }
 }
 
-const client = read("src/app/admin/ai-video/ai-video-client.tsx");
+const client = read("src/features/admin/video-studio/components/admin-video-studio-client.tsx");
 if (client.includes("SUPABASE_SERVICE_ROLE_KEY") || client.includes("createAdminClient")) failures.push("AI video client must not contain service-role access");
+const studioClientRoute = read("src/app/admin/video/studio/page.tsx");
+if (!studioClientRoute.includes('@/features/admin/video-studio/components/admin-video-studio-client')) failures.push("Video Studio must import its client from feature ownership");
+if (!canonicalQueue.includes('@/features/admin/video-requests/components/admin-video-requests-client')) failures.push("Video Requests page must import its client from feature ownership");
+if (existsSync("src/app/admin/ai-video/ai-video-client.tsx")) failures.push("Legacy AI video client must be moved out of app route folders");
+if (existsSync("src/app/admin/videos/videos-client.tsx")) failures.push("Legacy Video Requests client must be moved out of app route folders");
 
 const worker = read("scripts/jobs/template-video-automation.ts");
 

@@ -37,7 +37,7 @@ const STATUS_CLASSES: Record<Status, string> = {
   failed: "border-red-500/25 bg-red-500/10 text-red-300",
 };
 
-export default function AdminVideosClient() {
+export default function AdminVideoRequestsClient() {
   const [requests, setRequests] = useState<VideoGenerationRequest[]>([]);
   const [filter, setFilter] = useState<"all" | Status>("all");
   const [loading, setLoading] = useState(true);
