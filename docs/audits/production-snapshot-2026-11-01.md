@@ -1,0 +1,80 @@
+# ZIKR Production Stabilization Snapshot — 2026-11-01
+
+## Scope and safety
+
+- Repository: `zikrofficial-X/Zikr`
+- Production branch baseline: `main` at `9e429094ae9f296f1d2875d1d2a648148e7a7f9d`
+- Repair branch: `codex/zikr-comprehensive-repair-2026-11-01`
+- Supabase project: `ymxdswkaxafakugktsim`
+- Supabase status: `ACTIVE_HEALTHY`
+- Database engine: PostgreSQL 17.11.0.003
+- Snapshot observation time: 2026-11-01 12:37 UTC (read-only metadata queries)
+
+No production rows, objects, tables, policies, or migration history were modified during this snapshot. No destructive migration was applied.
+
+## Repository and migration ledger
+
+| Check | Result |
+|---|---:|
+| Local SQL migration files at baseline | 388 |
+| Production migration ledger entries | 388 |
+| Local versions missing remotely | 0 |
+| Remote versions missing locally | 0 |
+| Latest production migration | `20261101090000_harden_kids_game_result_insert_contract` |
+
+The local migration version set and the production ledger version set matched exactly at snapshot time. The two entries named `video_storage_retention_rpc` are distinct, documented versions; the earlier file is explicitly a compatibility mirror. Applied migration files must remain immutable.
+
+## Database access controls
+
+| Check | Result |
+|---|---:|
+| Application tables in `public` and `private` | 86 |
+| Tables with RLS enabled | 86 |
+| Tables with RLS disabled | 0 |
+| Tables with no RLS policy | 0 |
+| Application tables in `private` | 0 |
+
+The `private` schema exists, but the current application table inventory is in `public`. This is an architecture-review item for the database canonicalization/security phases, not authorization to move tables automatically. Table moves require a dependency and grant review.
+
+There are 27 zero-row public tables in this snapshot. Zero rows alone do not establish that a table is unused; keep/retire decisions require source, RPC, trigger, policy, and migration dependency tracing.
+
+## Storage metadata
+
+Nine buckets were configured. The metadata query found:
+
+| Bucket | Objects | Metadata bytes |
+|---|---:|---:|
+| `videos` | 136 | 463,283,289 |
+| `android-releases` | 12 | 216,722,808 |
+| **Total observed** | **148** | **680,006,097** |
+
+The total is approximately 648.5 MiB based on `storage.objects.metadata.size`; it is not a billing export and does not include provider-side overhead. No objects were deleted as part of this snapshot.
+
+## Supabase advisors
+
+- Security: one warning — leaked-password protection is disabled.
+- Performance: 65 informational unused-index findings.
+- Unused-index findings are not deletion instructions. Query workload and retention windows must be reviewed before any index is removed.
+- Leaked-password protection is an account/project security setting and must be enabled only after checking the plan and current Auth configuration.
+
+## Backup limitation
+
+This record is a read-only metadata and migration-ledger snapshot. The available connected Supabase actions did not expose a database `pg_dump`/physical backup or a full storage-object export. Therefore this file is **not** a recoverable production backup.
+
+Before any database schema migration or table retirement, obtain and verify:
+1. A Supabase-managed database backup/PITR restore point or an independently verified logical dump.
+2. A storage object inventory export including bucket, path, size, MIME type, checksum/ETag, and metadata.
+3. The migration ledger and the current Git commit SHA (recorded above).
+
+Do not proceed with destructive schema or storage operations until those recovery artifacts are confirmed.
+
+## Open stabilization gates
+
+- [ ] Verify a recoverable database backup/PITR point or logical dump.
+- [ ] Export full storage object metadata and verify checksums where available.
+- [ ] Inspect policies/grants for privileged tables and security-definer functions.
+- [ ] Reconcile the leaked-password protection warning with the available Supabase plan.
+- [ ] Review all 65 unused-index notices against query plans and production workload.
+- [ ] Complete file-by-file repository status matrix and architecture dependency map.
+- [ ] Complete route, browser, and physical Android device acceptance.
+
