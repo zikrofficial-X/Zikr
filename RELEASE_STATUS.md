@@ -1,80 +1,92 @@
 # ZIKR Project Release & Build Status
 
-**Last reconciled:** 2026-11-01  
-**Repository:** https://github.com/zikrofficial-X/Zikr  
-**Production URL:** https://zikrmediaofficial.vercel.app
+Last reconciled: 2026-11-01  
+Repository: https://github.com/zikrofficial-X/Zikr  
+Production URL: https://zikrmediaofficial.vercel.app
 
-## Current source and production state
+## Production web deployment
 
-| Item | State |
+| Item | Verified state |
 |---|---|
-| Main branch head | [`dabfeee915a6f1e0b86732eb0409ffeb6de69665`](https://github.com/zikrofficial-X/Zikr/commit/dabfeee915a6f1e0b86732eb0409ffeb6de69665) |
-| Vercel production | Previous verified deployment remains `READY` on `42c08f67e5a7a4a3dfff700aa71033851dc0a956` |
-| Android release tag | [`v1.1.11`](https://github.com/zikrofficial-X/Zikr/tree/v1.1.11) |
-| Tag target | `dabfeee915a6f1e0b86732eb0409ffeb6de69665` |
-| Git tag type/signature | Annotated tag; **unsigned** |
-| GitHub Release | [ZIKR Android v1.1.11](https://github.com/zikrofficial-X/Zikr/releases/tag/untagged-469128052e224f0a4879) — **Draft** |
-| Public Android assets | **Not published yet**; draft currently has no assets |
+| Source commit | 3eeaa292716b09ec42119833659d6c1b7c7f53d3 |
+| Vercel deployment | dpl_HKb4e5QoVVvqS5aLDgnMVcRKE1qC |
+| Deployment state | READY |
+| Production alias | zikrmediaofficial.vercel.app |
+| Deployment URL | https://zikr-esv89ap9k-zikr3.vercel.app |
+| Runtime error clusters | None found in the inspected one-hour window |
+| Runtime error/fatal logs | None found for the deployment in the inspected 30-minute window |
 
-The Android release action was triggered from the production Admin Release page. It updated release metadata, created the semantic tag and draft, and pushed the source commits to `main`. The v1.1.11 tag resolves to the final release-preparation commit above. The tag is annotated but not cryptographically signed; do not describe it as a signed Git tag.
+The deployment was explicitly built from the verified main commit above. Automatic Git deployment remains disabled; production deployment was performed through the controlled Vercel path.
 
-## Version metadata verified on the release source
+## Atomic Android release preparation
 
-| Platform/file | Verified value |
+The release manager reads all Android, package, footer, and iOS version files from one immutable main commit. It verifies their versions are aligned and fails closed when expected fields are missing, duplicated, or inconsistent.
+
+It creates file blobs, assembles one Git tree, creates one child commit, and advances main once through a non-force fast-forward update. If main changes during preparation, the operation stops instead of overwriting a concurrent update. The semantic tag and Draft Release are bound to the exact created commit SHA.
+
+Regression checks in scripts/verify-release-contract.mjs enforce the Git Data API flow, immutable source snapshot, single-parent commit, non-force ref update, exact tag provenance, absence of sequential Contents API writes, and version alignment across Android/iOS/footer/package.
+
+Implementation commit: https://github.com/zikrofficial-X/Zikr/commit/3eeaa292716b09ec42119833659d6c1b7c7f53d3
+
+## Release automation CI
+
+The atomic release-manager fix commit passed:
+- GitHub Actions — ZIKR / Quality Gate: SUCCESS.
+- GitHub Actions — Supabase Preview: SUCCESS.
+- CircleCI — application-build-docs on main: SUCCESS (build 2080).
+- CircleCI — config-guard on main: SUCCESS (build 2081).
+
+The v1.1.11 Android tag had one unrelated CircleCI application-build-docs failure (build 2071). Android's own source verification, Supabase production gate, signed build, and guarded publication all passed. The main web build/docs job passed independently; the tag-only web build result did not block or invalidate Android signing/publication.
+
+Pipeline correction: CircleCI application-build-docs is main-only. Semantic Android tags continue to run source-verify, supabase-production-gate, android-rebuild, and the guarded Android release dispatch; they no longer trigger the separate web build/docs job. A regression assertion protects these filters.
+
+## Latest published stable Android release
+
+| Item | Verified state |
 |---|---|
-| `package.json` | `1.1.11` |
-| `android/app/build.gradle` | `versionName 1.1.11`, `versionCode 65` |
-| `src/components/layout/footer.tsx` | `APP_VERSION = 1.1.11` |
-| iOS Xcode project | `MARKETING_VERSION 1.1.11`, `CURRENT_PROJECT_VERSION 65` |
-| iOS Info.plist | `CFBundleShortVersionString 1.1.11`, `CFBundleVersion 65` |
-| `.release-tag` | `v1.1.11` |
-| Application ID / Target SDK | `com.zikr.app` / `36` |
+| Android version | 1.1.11 |
+| Android versionCode | 65 |
+| Application ID | com.zikr.app |
+| Compile / Target SDK | 36 / 36 |
+| Release tag | https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.11 |
+| Tag target commit | dabfeee915a6f1e0b86732eb0409ffeb6de69665 |
+| Git tag signature | Annotated tag, unsigned |
+| Release state | Published |
+| Published at | 2026-11-01 19:36:08 UTC |
 
-## v1.1.11 CI status at reconciliation
+### Published assets
 
-The following checks were read from the exact tag-source commit `dabfeee915a6f1e0b86732eb0409ffeb6de69665`:
+| Asset | Size | SHA-256 |
+|---|---:|---|
+| app-release.apk | 40,840,191 bytes | 490b3fc815221c2ad3b316a3a43ea4fbc57b76352204f1ac5dbb143f98a82fe5 |
+| app-release.aab | 35,654,052 bytes | 200557b1bff6333cb01877b185fa18ca94a873d596130f8a08a954c71b2826cd |
+| release-metadata.json | 737 bytes | f94d55fad03ecd197284d238cb0f5acd9427f755427a2f1d931d2a3af88dc44b |
+| SHA256SUMS | 243 bytes | 228b65b91d249c097f6becfbe88c7faae37c50f1fdd2e8604b4436dfcc8139a8 |
 
-| Check | State | Details |
-|---|---|---|
-| CircleCI `config-guard` | **SUCCESS** | [Build 2072](https://circleci.com/gh/zikrofficial-X/Zikr/2072) |
-| CircleCI `source-verify` | **SUCCESS** | [Build 2074](https://circleci.com/gh/zikrofficial-X/Zikr/2074) |
-| CircleCI `supabase-production-gate` | **SUCCESS** | [Build 2075](https://circleci.com/gh/zikrofficial-X/Zikr/2075) |
-| CircleCI `application-build-docs` | **FAILED** | [Build 2071](https://circleci.com/gh/zikrofficial-X/Zikr/2071) |
-| CircleCI `android-rebuild` | **PENDING** | [Build 2076](https://circleci.com/gh/zikrofficial-X/Zikr/2076) |
-| GitHub Android asset publisher | **WAITING** | [Publisher workflow](https://github.com/zikrofficial-X/Zikr/actions/runs/41341409736) |
+Release: https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.11
 
-The Android publisher has successfully resolved the exact tag and draft, but is waiting for CircleCI's `android-rebuild` success status. Until the signed APK/AAB, release metadata, checksums and signature checks finish, v1.1.11 must remain a draft. The most recently published stable Android release remains [v1.1.10](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.10).
+CircleCI source-verify, supabase-production-gate, android-rebuild, and android-release-dispatch succeeded for the exact tag source commit. GitHub Actions verified source/tag provenance, metadata, checksums, APK signature and manifest, AAB signature, uploaded all four assets, published the release, and downloaded the published assets again to compare them byte-for-byte.
 
-The CircleCI status summary identifies `application-build-docs` as failed but does not expose its failing step or error text. The build detail is linked above; do not invent a root cause or mark the job as passed.
+Publisher run: https://github.com/zikrofficial-X/Zikr/actions/runs/41341409736
 
-## Release automation hardening
+## Current CI ownership
 
-The release manager now reads every release source file from one immutable main commit, validates that Android, package, footer, and iOS versions are aligned, and fails closed when expected version fields are missing or duplicated.
+| Responsibility | Owner |
+|---|---|
+| PR/main source verification | GitHub Actions — ZIKR / Quality Gate |
+| Main web build and docs | CircleCI — application-build-docs |
+| Android source and Supabase gates | CircleCI — source-verify, supabase-production-gate |
+| Android signing build | CircleCI — android-rebuild |
+| Android verification and publication | GitHub Actions — publish-android-release-assets.yml |
+| Controlled production web deploy | Vercel |
+| Video generation / social publishing | GitHub Actions |
+| Prayer/source-agent scheduling | Supabase pg_cron and Edge Functions |
 
-It writes the changed metadata as Git blobs, assembles one tree, creates one child commit, and updates main once with a non-force fast-forward ref update. If main changes while the metadata is being prepared, the operation stops rather than overwriting the concurrent update. The semantic tag and Draft Release use the exact atomic commit SHA, never a newly-read unrelated main head.
+## Release safeguards
 
-A regression contract in scripts/verify-release-contract.mjs enforces the Git Data API path, single-parent snapshot, non-force ref update, immutable source reads, version-alignment checks, and removal of sequential Contents API writes.
-
-This code change affects future release preparations. It does not retarget or mutate the existing v1.1.11 tag or its draft. The current v1.1.11 Android build remains governed by the exact-source CircleCI and GitHub publisher gates listed above.
-
-## Android publication gate
-
-The existing publisher is intentionally gated:
-
-1. CircleCI `source-verify` and `supabase-production-gate` must pass for the exact tag commit.
-2. CircleCI `android-rebuild` must build and sign APK and AAB from that same tag commit.
-3. CircleCI uploads the artifacts, release metadata and SHA-256 file to the configured Supabase Storage path and verifies the uploaded bytes.
-4. GitHub Actions checks tag/source provenance, metadata, APK signature and manifest, AAB signature, checksums, and Draft Release state.
-5. Only after every check succeeds may the GitHub Release become public.
-
-Do not manually attach older binaries to v1.1.11, reuse v1.1.10 assets, retarget the immutable tag, or publish while the Android build is pending.
-
-## Controlled web production gate
-
-Vercel automatic Git deployment is disabled. The web app must be promoted through the controlled production release workflow after the exact main commit passes its quality gate. The existence of an Android tag or a Vercel `READY` deployment alone is not evidence that the web release and Android package are both complete.
-
-## Current published release
-
-- Latest published stable Android: **v1.1.10**, versionCode `64`, target SDK `36`.
-- Assets: APK, AAB, `release-metadata.json`, and `SHA256SUMS`.
-- Release: https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.10
+- Never reuse a published semantic tag for a different source SHA.
+- Never place old APK/AAB files under a newer tag.
+- Never publish before signature, manifest, metadata, and checksum verification.
+- Keep Android, package, footer, and iOS version metadata aligned.
+- Never force-update main; abort on concurrent changes during release preparation.
+- Do not apply database migrations as part of a metadata-only release update.

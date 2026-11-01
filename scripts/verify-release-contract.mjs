@@ -191,4 +191,9 @@ assert.ok(atomicReleaseManager.includes("Promise.all(["), "All release source fi
 assert.ok(atomicReleaseManager.includes("replaceMatchesExactly"), "Release metadata updates must fail closed when an expected version field is missing or duplicated");
 assert.ok(atomicReleaseManager.includes("assertAllVersionsMatch"), "Release preparation must reject pre-existing Android/iOS/footer version drift");
 
+
+const applicationBuildDocsJob = releaseWorkflow.split("- application-build-docs:")[1]?.split("\n      - ")[0] ?? "";
+assert.ok(applicationBuildDocsJob.includes("branches:\n              only:\n                - main"), "Application build/docs verification must remain required for main");
+assert.ok(applicationBuildDocsJob.includes("tags:\n              ignore: /.*/"), "Android semantic tags must not trigger the unrelated web application build/docs job");
+
 console.log("✅ Release contract checks passed");
