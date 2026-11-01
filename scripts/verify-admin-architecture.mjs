@@ -20,6 +20,7 @@ const navigation = read(navigationPath);
 const CANONICAL_ARCHITECTURE = {
   "التشغيل والمراقبة": [
     ["/admin", "لوحة التحكم", "dashboard.view"],
+    ["/admin/queues", "مركز الطوابير", "dashboard.view"],
     ["/admin/automation", "التشغيل الآلي", "system.manage"],
     ["/admin/health", "صحة النظام", "system.manage"],
     ["/admin/notifications", "التنبيهات", "notifications.manage"],
