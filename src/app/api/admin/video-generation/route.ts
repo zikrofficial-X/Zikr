@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
 import { hasCompleteVideoApprovalChecklist, REQUIRED_VIDEO_APPROVAL_CHECKS } from '@/features/videos/services/video-publish-approval';
 
@@ -61,22 +62,23 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'حدد عمليات للحذف أو استخدم deleteFailed.' }, { status: 400 });
     }
 
-    if (ids.length) {
-      const filter = ids.map(encodeURIComponent).join(',');
-      await supabaseServerAdminRequest(
-        `/rest/v1/video_generation_requests?id=in.(${filter})&status=eq.failed`,
-        { method: 'DELETE', headers: { Prefer: 'return=minimal' } },
-      );
+    const filter = deleteFailed
+      ? "status=eq.failed"
+      : `id=in.(${ids.map(encodeURIComponent).join(",")})&status=eq.failed`;
+    const deleted = await supabaseServerAdminRequest<Array<{ id: string }>>(
+      `/rest/v1/video_generation_requests?${filter}&select=id`,
+      { method: 'DELETE', headers: { Prefer: 'return=representation' } },
+    );
+    if (!deleted.length) {
+      return NextResponse.json({ ok: true, affected: 0 });
     }
-
-    if (deleteFailed) {
-      await supabaseServerAdminRequest(
-        '/rest/v1/video_generation_requests?status=eq.failed',
-        { method: 'DELETE', headers: { Prefer: 'return=minimal' } },
-      );
-    }
-
-    return NextResponse.json({ ok: true });
+    await recordAdminAuditEvent({
+      action: "video_generation.delete_failed",
+      permission: "video.delete",
+      resourceType: "video_generation_requests",
+      metadata: { requestedIds: ids.length, deleteFailed, affected: deleted.length },
+    });
+    return NextResponse.json({ ok: true, affected: deleted.length });
   } catch (error) {
     console.error('[api/admin/video-generation] DELETE:', error);
     return NextResponse.json({ error: 'تعذر حذف عمليات توليد الفيديو الفاشلة.' }, { status: 500 });
@@ -136,6 +138,13 @@ export async function PATCH(request: NextRequest) {
           body: JSON.stringify({ content: updatedContent, updated_at: reviewedAt }) },
       );
       if (!updated?.length) return NextResponse.json({ error: 'تغيرت حالة العملية أثناء المراجعة؛ حدّث التفاصيل ثم أعد الفحص.' }, { status: 409 });
+      await recordAdminAuditEvent({
+        action: "video_generation.publish.approve",
+        permission: "video.manage",
+        resourceType: "video_generation_requests",
+        resourceId: id,
+        metadata: { category: current.category, approvalChecks: REQUIRED_VIDEO_APPROVAL_CHECKS.length },
+      });
       return NextResponse.json({ ok: true, approvalStatus: 'approved',
         note: 'سيتولى عامل GitHub Actions المجدول مزامنة طابور النشر؛ لم تتم إضافة مجدول جديد.' });
     }
@@ -156,15 +165,23 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: 'لا توجد مهمة توليد مكتملة يمكن إعادة نشرها.' }, { status: 409 });
       }
 
-      await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}&status=eq.${encodeURIComponent(current.status)}&updated_at=eq.${encodeURIComponent(current.updated_at)}`, {
+      const retried = await supabaseServerAdminRequest<Array<{ id: string }>>(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}&status=eq.${encodeURIComponent(current.status)}&updated_at=eq.${encodeURIComponent(current.updated_at)}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
         body: JSON.stringify({
           status: 'processing',
           error_message: null,
           error_details: null,
           updated_at: new Date().toISOString(),
         }),
+      });
+      if (!retried.length) return NextResponse.json({ error: 'تغيرت حالة العملية؛ حدّث الصفحة ثم أعد المحاولة.' }, { status: 409 });
+      await recordAdminAuditEvent({
+        action: "video_generation.publish.retry",
+        permission: "video.manage",
+        resourceType: "video_generation_requests",
+        resourceId: id,
+        metadata: { preservedYoutube: Boolean(current.youtube_id), preservedFacebook: Boolean(current.facebook_id) },
       });
       return NextResponse.json({ ok: true, mode: 'retry_publish', preserved: { youtube: Boolean(current.youtube_id), facebook: Boolean(current.facebook_id) } });
     }
@@ -187,10 +204,18 @@ export async function PATCH(request: NextRequest) {
     }
     if (typeof body.errorMessage === 'string') patch.error_message = body.errorMessage.slice(0, 1000);
 
-    await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}`, {
+    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
       body: JSON.stringify(patch),
+    });
+    if (!updated.length) return NextResponse.json({ error: 'عملية الفيديو غير موجودة.' }, { status: 404 });
+    await recordAdminAuditEvent({
+      action: "video_generation.status.update",
+      permission: "video.manage",
+      resourceType: "video_generation_requests",
+      resourceId: id,
+      metadata: { status, changedFields: Object.keys(patch) },
     });
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -50,6 +50,18 @@ export async function GET() {
       supabase.from("favorites").select("item_type, item_ref"),
     ]);
 
+    const queryErrors = [
+      usersRes.error,
+      behaviorCountRes.error,
+      recentProfilesRes.error,
+      behaviorRes.error,
+      favoritesRes.error,
+    ].filter(Boolean);
+    if (queryErrors.length > 0) {
+      const details = queryErrors.map((error) => error?.message ?? "Unknown analytics query error");
+      throw new Error(`Analytics data source unavailable: ${details.join(" | ")}`);
+    }
+
     const timeline = Array.from({ length: 30 }, (_, i) => {
       const day = new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000);
       const dayKey = day.toISOString().slice(0, 10);
@@ -94,18 +106,18 @@ export async function GET() {
 
     return NextResponse.json({
       stats: {
-        totalUsers: usersRes.count ?? 0,
+        totalUsers: usersRes.count,
         activeSessions: new Set(
           ((behaviorRes.data || []) as BehaviorRow[])
             .map(b => b.user_id)
             .filter(Boolean)
         ).size,
-        totalPageViews: behaviorCountRes.count ?? 0,
-        avgSessionDuration: 0,
+        totalPageViews: behaviorCountRes.count,
+        avgSessionDuration: null,
       },
       timeline,
       topContent,
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     console.error("[api/admin/analytics] GET error:", error);
     return NextResponse.json(

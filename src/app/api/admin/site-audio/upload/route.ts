@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sanitizeStorageSegment } from '@/lib/services/storage';
 
@@ -23,5 +24,12 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
   const { data, error } = await supabase.storage.from('site-audio').createSignedUploadUrl(path);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await recordAdminAuditEvent({
+    action: "site_audio.upload_url.create",
+    permission: "audio.manage",
+    resourceType: "site_audio_assets",
+    resourceId: path,
+    metadata: { contentType, contentLength },
+  });
   return NextResponse.json({ path, token: data.token, uploadUrl: data.signedUrl });
 }

@@ -32,7 +32,7 @@ export async function getScheduledContent(): Promise<ScheduledContentItem[]> {
     );
   } catch (error) {
     console.error("[admin/content] failed to load scheduled content:", error);
-    return [];
+    throw error;
   }
 }
 
@@ -67,6 +67,18 @@ export async function getManagedContent(): Promise<ManagedContentItem[]> {
           .order("created_at", { ascending: false })
           .limit(20),
       ]);
+
+    const queryErrors = [
+      storiesRes.error,
+      articlesRes.error,
+      competitionsRes.error,
+      plansRes.error,
+      pinnedRes.error,
+    ].filter(Boolean);
+    if (queryErrors.length > 0) {
+      const details = queryErrors.map((error) => error?.message ?? "Unknown query error");
+      throw new Error(`تعذر تحميل بعض مصادر المحتوى: ${details.join(" | ")}`);
+    }
 
     const items: ManagedContentItem[] = [
       ...(storiesRes.data ?? []).map((item) => ({
@@ -127,7 +139,7 @@ export async function getManagedContent(): Promise<ManagedContentItem[]> {
     );
   } catch (error) {
     console.error("[admin/content] failed to load managed content:", error);
-    return [];
+    throw error;
   }
 }
 
@@ -226,28 +238,15 @@ export async function toggleManagedContent(
   optimisticUpdatedAt?: string | null,
 ): Promise<void> {
   assertManagedContentTarget(table, id);
-  if (optimisticUpdatedAt) {
-    const result = await supabaseServerAdminRequest<Array<{ id: string }>>(
-      `/rest/v1/${table}?id=eq.${encodeURIComponent(
-        id,
-      )}&updated_at=eq.${encodeURIComponent(optimisticUpdatedAt)}&select=id`,
-      { method: "GET" },
-    );
-    if (result.length === 0) {
-      throw new Error(
-        "تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
-      );
-    }
-  }
-
   const column = table === "pinned_messages" ? "is_active" : "published";
-  await supabaseServerAdminRequest(
-    `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
+  const filter = `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}${optimisticUpdatedAt ? `&updated_at=eq.${encodeURIComponent(optimisticUpdatedAt)}` : ""}`;
+  const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    filter,
     {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Prefer: "return=minimal",
+        Prefer: "return=representation",
       },
       body: JSON.stringify({
         [column]: published,
@@ -255,6 +254,11 @@ export async function toggleManagedContent(
       }),
     },
   );
+  if (!updated.length) {
+    throw new Error(
+      "تم تعديل هذا العنصر أو حذفه بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
+    );
+  }
 }
 
 export async function deleteManagedContent(
@@ -289,11 +293,16 @@ export async function deleteManagedContent(
     );
   }
 
-  await supabaseServerAdminRequest(
-    `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
+  const deleted = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(String(current[0].updated_at))}`,
     {
       method: "DELETE",
-      headers: { Prefer: "return=minimal" },
+      headers: { Prefer: "return=representation" },
     },
   );
+  if (!deleted.length) {
+    throw new Error(
+      "تم تعديل هذا العنصر أو حذفه بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
+    );
+  }
 }

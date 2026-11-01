@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { createPresignedUploadUrl } from '@/lib/services/storage';
 
 export const runtime = 'nodejs';
@@ -43,6 +44,13 @@ export async function POST(request: NextRequest) {
       contentType,
       contentLength,
       expiresIn: 900,
+    });
+    await recordAdminAuditEvent({
+      action: "video.upload_url.create",
+      permission: "video.manage",
+      resourceType: "video_uploads",
+      resourceId: upload.path,
+      metadata: { filename, contentType, contentLength },
     });
 
     return NextResponse.json(upload, { headers: { 'Cache-Control': 'no-store' } });

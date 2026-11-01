@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { updateVideoRequestStatus } from '@/features/videos/services/video-automation';
 
 export async function POST(
@@ -21,7 +22,13 @@ export async function POST(
         { status: 500 }
       );
     }
-    
+    await recordAdminAuditEvent({
+      action: "video_generation.retry",
+      permission: "video.manage",
+      resourceType: "video_generation_requests",
+      resourceId: id,
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[api] Failed to retry video request:', error);

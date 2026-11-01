@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
@@ -197,6 +198,15 @@ export async function POST(request: NextRequest) {
       ids?: unknown;
     };
     const action = typeof body.action === "string" ? body.action : "";
+    if (["retry", "retry_all_failed", "run_worker"].includes(action)) {
+      const executionAuth = await requireAdminApi("social.publish");
+      if (!executionAuth.ok) {
+        return NextResponse.json(
+          { error: executionAuth.error },
+          { status: executionAuth.status },
+        );
+      }
+    }
     const ids = Array.isArray(body.ids)
       ? [
           ...new Set(
@@ -233,6 +243,12 @@ export async function POST(request: NextRequest) {
       }
 
       const health = await getFacebookPageConnectionHealth();
+      await recordAdminAuditEvent({
+        action: "social.facebook.token_adopt",
+        permission: "social.manage",
+        resourceType: "social_publish_queue",
+        metadata: { released, queueUpdateFailed, workerDispatched, pageName: adopted.pageName },
+      });
       return NextResponse.json({
         ok: true,
         adopted: true,
@@ -246,6 +262,12 @@ export async function POST(request: NextRequest) {
 
     if (action === "run_worker") {
       const worker = await triggerSocialWorker();
+      await recordAdminAuditEvent({
+        action: "social.worker.run",
+        permission: "social.publish",
+        resourceType: "social_publish_queue",
+        metadata: { workerDispatched: true },
+      });
       return NextResponse.json({ ok: true, worker });
     }
     if (
@@ -327,6 +349,12 @@ export async function POST(request: NextRequest) {
     if (action === "retry_all_failed") {
       const affected = await retryItems("status=in.(failed,partial)");
       const worker = affected > 0 ? await triggerSocialWorker() : null;
+      await recordAdminAuditEvent({
+        action: "social.queue.retry_all_failed",
+        permission: "social.publish",
+        resourceType: "social_publish_queue",
+        metadata: { affected, workerDispatched: affected > 0 },
+      });
       return NextResponse.json({ ok: true, affected, worker });
     }
 
@@ -336,6 +364,12 @@ export async function POST(request: NextRequest) {
         `id=in.(${filter})&status=in.(failed,partial)`
       );
       const worker = affected > 0 ? await triggerSocialWorker() : null;
+      await recordAdminAuditEvent({
+        action: "social.queue.retry",
+        permission: "social.publish",
+        resourceType: "social_publish_queue",
+        metadata: { requestedIds: ids.length, affected, workerDispatched: affected > 0 },
+      });
       return NextResponse.json({ ok: true, affected, worker });
     }
 
@@ -344,6 +378,12 @@ export async function POST(request: NextRequest) {
         `/rest/v1/social_publish_queue?id=in.(${filter})&status=in.(failed,partial)&select=id`,
         { method: "DELETE", headers: { Prefer: "return=representation" } }
       );
+      await recordAdminAuditEvent({
+        action: "social.queue.delete",
+        permission: "social.manage",
+        resourceType: "social_publish_queue",
+        metadata: { requestedIds: ids.length, affected: affected?.length ?? 0 },
+      });
       return NextResponse.json({ ok: true, affected: affected?.length ?? 0 });
     }
 
@@ -351,6 +391,12 @@ export async function POST(request: NextRequest) {
       "/rest/v1/social_publish_queue?status=in.(failed,partial)&select=id",
       { method: "DELETE", headers: { Prefer: "return=representation" } }
     );
+    await recordAdminAuditEvent({
+      action: "social.queue.delete_failed",
+      permission: "social.manage",
+      resourceType: "social_publish_queue",
+      metadata: { affected: affected?.length ?? 0 },
+    });
     return NextResponse.json({ ok: true, affected: affected?.length ?? 0 });
   } catch (error) {
     console.error("[api/admin/social] POST:", error);
