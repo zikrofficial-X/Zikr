@@ -213,7 +213,7 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
       const saved = await enqueueGameResult({ ...payload, clientSubmissionId });
       setMessage(saved
         ? (isEnglish ? "Your result was saved on this device and will sync when you reconnect." : "تم حفظ النتيجة على جهازك وستتم مزامنتها عند عودة الاتصال.")
-        : (isEnglish ? "The offline result queue is full. Reconnect and sync before playing another round." : "قائمة النتائج غير المتصلة ممتلئة. أعد الاتصال ومزامنة النتائج قبل بدء جولة جديدة."));
+        : (isEnglish ? "Could not store this result offline. Reconnect before continuing." : "تعذر حفظ النتيجة دون اتصال. أعد الاتصال قبل المتابعة."));
       await refreshQueue();
       return;
     }
@@ -229,14 +229,14 @@ export function KidsWorldGameShell({ gameId, initialDifficulty }: KidsWorldGameS
         const saved = await enqueueGameResult({ ...payload, clientSubmissionId });
         setMessage(saved
           ? (isEnglish ? "You can play without signing in; your result is stored locally until you sign in." : "يمكنك اللعب دون تسجيل الدخول؛ ستحفظ النتيجة محليًا حتى تسجل الدخول.")
-          : (isEnglish ? "The offline result queue is full. Sign in and sync before playing another round." : "قائمة النتائج غير المتصلة ممتلئة. سجّل الدخول وزامن النتائج قبل بدء جولة جديدة."));
+          : (isEnglish ? "Could not store this result offline. Sign in and sync before continuing." : "تعذر حفظ النتيجة دون اتصال. سجّل الدخول وزامن النتائج قبل المتابعة."));
         await refreshQueue();
       } else throw new Error(`HTTP ${response.status}`);
     } catch {
       const saved = await enqueueGameResult({ ...payload, clientSubmissionId });
       setMessage(saved
         ? (isEnglish ? "Sync is unavailable right now, so the result was saved locally for another attempt." : "تعذر المزامنة الآن، فتم حفظ النتيجة محليًا للمحاولة لاحقًا.")
-        : (isEnglish ? "The offline result queue is full. Reconnect and sync; this result could not be stored." : "قائمة النتائج غير المتصلة ممتلئة. أعد الاتصال والمزامنة؛ تعذر حفظ هذه النتيجة محليًا."));
+        : (isEnglish ? "Could not store this result offline. Reconnect and sync before another round." : "تعذر حفظ النتيجة دون اتصال. أعد الاتصال والمزامنة قبل بدء جولة جديدة."));
       await refreshQueue();
     }
   }, [dailyMission, definition.runtimeKind, difficulty, gameId, getElapsedSeconds, isEnglish, refreshQueue]);
