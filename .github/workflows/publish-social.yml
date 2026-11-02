@@ -92,14 +92,17 @@ jobs:
           set -euo pipefail
           test -n "${SUPABASE_URL:-}" || { echo "::error::Missing canonical SUPABASE_URL configuration." >&2; exit 1; }
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing production Supabase service-role secret." >&2; exit 1; }
-          if [[ -z "${CLOUDINARY_CLOUD_NAME:-}" || -z "${CLOUDINARY_API_KEY:-}" || -z "${CLOUDINARY_API_SECRET:-}" ]]; then
-            echo "::error::Cloudinary credentials are required for safe managed-media cleanup." >&2
-            exit 1
-          fi
           if [[ "$SOCIAL_CLEANUP_ONLY" == "true" || "$SOCIAL_QUEUE_RESET_ONLY" == "true" ]]; then
+            if [[ -z "${CLOUDINARY_CLOUD_NAME:-}" || -z "${CLOUDINARY_API_KEY:-}" || -z "${CLOUDINARY_API_SECRET:-}" ]]; then
+              echo "::error::Cloudinary credentials are required for explicit managed-media deletion." >&2
+              exit 1
+            fi
             echo "Maintenance-only operation selected; provider publishing credentials are not needed."
             echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=false" >> "$GITHUB_ENV"
             exit 0
+          fi
+          if [[ -z "${CLOUDINARY_CLOUD_NAME:-}" || -z "${CLOUDINARY_API_KEY:-}" || -z "${CLOUDINARY_API_SECRET:-}" ]]; then
+            echo "::warning::Cloudinary credentials are incomplete; new media deletion will remain pending and retry safely." >&2
           fi
           # The Facebook Page token is managed by the admin OAuth center and stored
           # in the server-only Supabase table. Do not duplicate it in GitHub Actions.
