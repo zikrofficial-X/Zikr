@@ -398,6 +398,9 @@ async function deleteManagedVideoUrl(
     const extensionIndex = fileName.lastIndexOf(".");
     const publicId = [...publicParts, extensionIndex > 0 ? fileName.slice(0, extensionIndex) : fileName].filter(Boolean).join("/");
     const cloudName = env.CLOUDINARY_CLOUD_NAME;
+    if (parts[0] !== cloudName || parts[1] !== "video" || parts[2] !== "upload" || !publicId.startsWith("auto-")) {
+      throw new Error("Only ZIKR auto-generated upload videos can be deleted");
+    }
     const apiKey = env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
     if (!cloudName || !apiKey || !apiSecret || !publicId) {
@@ -521,7 +524,10 @@ export async function resetQueuedSocialVideoMedia(limit = 500): Promise<{ attemp
   const queueItems = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
     "/rest/v1/social_publish_queue?status=eq.queued&video_url=not.is.null&select=id,content_type,content_id,title,body,image_url,video_url,target_platforms,status,scheduled_at,published_at,error_message,metadata,created_at,updated_at&order=created_at.asc&limit=" + maxItems,
   );
-  const items = queueItems ?? [];
+  const retryItems = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
+    "/rest/v1/social_publish_queue?status=eq.failed&metadata->>queueResetPending=eq.true&video_url=not.is.null&select=id,content_type,content_id,title,body,image_url,video_url,target_platforms,status,scheduled_at,published_at,error_message,metadata,created_at,updated_at&order=updated_at.asc&limit=" + maxItems,
+  );
+  const items = [...(queueItems ?? []), ...(retryItems ?? [])];
   if (!items.length) return { attempted: 0, cleaned: 0, pending: 0 };
 
   const ids = items.map(item => item.content_id).filter((id): id is string => Boolean(id));
@@ -541,7 +547,7 @@ export async function resetQueuedSocialVideoMedia(limit = 500): Promise<{ attemp
       throw new Error("Reset stopped: selected queue item is not a video.");
     }
     const request = byId.get(item.content_id);
-    if (!request || request.status !== "completed" || request.video_url !== item.video_url) {
+    if (!request || !["completed", "failed"].includes(request.status) || request.video_url !== item.video_url) {
       throw new Error("Reset stopped: generation request mismatch for " + item.id);
     }
     const queueBackup = item.metadata?.supabaseOriginalVideoUrl;
