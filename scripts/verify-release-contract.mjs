@@ -2,7 +2,6 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 
-const repo = "zikrofficial-X/Zikr";
 const read = (file) => {
   assert.ok(existsSync(file), `Missing release contract file: ${file}`);
   return readFileSync(file, "utf8");
