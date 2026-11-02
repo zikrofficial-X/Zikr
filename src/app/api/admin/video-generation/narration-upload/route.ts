@@ -86,52 +86,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabaseUrl = (
-      process.env.SUPABASE_URL ||
-      process.env.NEXT_PUBLIC_SUPABASE_URL ||
-      ""
-    ).replace(/\/$/, "");
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !serviceKey) {
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+    const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+    const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+    if (!cloudName || !apiKey || !apiSecret) {
       return NextResponse.json(
-        { error: "تخزين الملفات غير مهيأ على الخادم." },
+        { error: "تخزين التسجيلات غير مهيأ على الخادم." },
         { status: 503 }
       );
     }
 
-    const objectPath = `human-narration/${randomUUID()}.${extension}`;
+    // Audio is uploaded directly to Cloudinary; it must not use the Supabase
+    // videos bucket, which is reserved for no persistent generated-media files.
+    const publicId = `audio-human-${randomUUID()}`;
+    const form = new FormData();
+    form.append("file", new Blob([bytes], { type: contentType }), `${publicId}.${extension}`);
+    form.append("public_id", publicId);
+    form.append("overwrite", "false");
+    form.append("invalidate", "true");
+    const authorization = `Basic ${Buffer.from(`${apiKey}:${apiSecret}`).toString("base64")}`;
     const upload = await fetch(
-      `${supabaseUrl}/storage/v1/object/videos/${objectPath}`,
+      `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/video/upload`,
       {
         method: "POST",
-        headers: {
-          apikey: serviceKey,
-          Authorization: `Bearer ${serviceKey}`,
-          "Content-Type": contentType,
-          "Cache-Control": "max-age=31536000, immutable",
-          "x-upsert": "false",
-        },
-        body: bytes,
+        headers: { Authorization: authorization },
+        body: form,
         signal: AbortSignal.timeout(30_000),
       }
     );
-    if (!upload.ok) {
-      console.error(
-        "[api/admin/video-generation/narration-upload] Storage HTTP",
-        upload.status,
-        (await upload.text()).slice(0, 300)
-      );
+    const result = await upload.json().catch(() => ({})) as {
+      secure_url?: string;
+      public_id?: string;
+      error?: { message?: string };
+    };
+    if (!upload.ok || !result.secure_url || result.public_id !== publicId) {
+      console.error("[api/admin/video-generation/narration-upload] Cloudinary HTTP", upload.status, result.error?.message ?? "invalid upload response");
       return NextResponse.json(
-        { error: "تعذر حفظ التسجيل في التخزين. تحقق من إعدادات حاوية videos." },
+        { error: "تعذر حفظ التسجيل في التخزين الخارجي." },
         { status: 502 }
       );
     }
+    const audioUrl = new URL(result.secure_url);
+    if (audioUrl.protocol !== "https:" || audioUrl.hostname !== "res.cloudinary.com" ||
+        !audioUrl.pathname.includes(`/${cloudName}/video/upload/`)) {
+      return NextResponse.json({ error: "رابط التخزين الناتج غير صالح." }, { status: 502 });
+    }
 
     return NextResponse.json(
-      {
-        audioUrl: `${supabaseUrl}/storage/v1/object/public/videos/${objectPath}`,
-        audioSource: "human_recording",
-      },
+      { audioUrl: result.secure_url, audioSource: "human_recording" },
       { status: 201, headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
