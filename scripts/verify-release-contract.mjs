@@ -26,16 +26,10 @@ assert.ok(releaseManager.includes('const REPO = process.env.GITHUB_REPOSITORY?.t
 assert.ok(releaseAction.includes("prepareAndroidRelease"), "Admin release action must use the canonical Android release manager");
 assert.ok(!releaseManager.includes("buildTag"), "Android release manager must not create a redundant -build tag");
 
-const supabaseConfig = read("supabase/config.toml");
-const androidStorageMigration = read("supabase/migrations/20261009145051_android_releases_storage_bucket.sql");
-const androidStorageLimitMigration = read("supabase/migrations/20261009180000_android_release_bucket_free_tier_limit.sql");
-assert.ok(supabaseConfig.includes("[storage]\nenabled = true\nfile_size_limit = \"50MiB\""), "The project-wide Supabase Free-tier upload limit must remain 50 MiB");
-const androidBucketConfig = supabaseConfig.split("[storage.buckets.android-releases]")[1] ?? "";
-assert.ok(androidBucketConfig.includes('file_size_limit = "50MiB"'), "Android release bucket must not exceed the project-wide Free-tier upload limit");
-assert.ok(androidStorageMigration.includes("'android-releases'"), "A production migration must provision the Android release bucket");
-assert.ok(androidStorageMigration.includes("ON CONFLICT (id) DO UPDATE"), "Android release bucket migration must be safe to re-apply");
-assert.ok(androidStorageLimitMigration.includes("SET file_size_limit = 52428800"), "A forward migration must align the already-applied Android bucket limit with Supabase Free tier");
-assert.ok(androidStorageLimitMigration.includes("WHERE id = 'android-releases'"), "The bucket limit repair must target only the Android release bucket");
+const androidCircle = read(".circleci/config.yml");
+assert.ok(androidCircle.includes("Upload verified Android assets to GitHub Draft Release"), "CircleCI must upload signed Android assets to GitHub Draft Releases");
+assert.ok(androidCircle.includes("gh release upload"), "CircleCI Android artifacts must be uploaded with GitHub CLI");
+assert.ok(!androidCircle.includes("Upload verified Android assets to Supabase Storage"), "CircleCI must not upload Android release assets to Supabase Storage");
 
 const siteContentService = read("src/features/site-content/services/site-content.ts");
 assert.ok(siteContentService.includes("supabaseServerAnonRequest"), "Public site settings must use the shared server-side REST cache");
@@ -45,6 +39,8 @@ assert.ok(siteContentService.includes("tags: [`site-setting:${key}`]"), "Cached 
 assert.ok(siteContentService.includes("rows?.[0]?.value"), "Optional site settings must return null when the filtered REST response contains no row");
 
 const publish = read(".github/workflows/publish-android-release-assets.yml");
+assert.ok(publish.includes("Wait for GitHub Release Android artifacts"), "GitHub publisher must consume Android assets from GitHub Releases");
+assert.ok(!publish.includes("SUPABASE_PUBLIC_ROOT") && !publish.includes("SUPABASE_PUBLIC_BASE"), "GitHub publisher must not consume Android release assets from Supabase Storage");
 
 const recoveryDispatch = read(".github/workflows/dispatch-android-release-recovery.yml");
 assert.ok(recoveryDispatch.includes("ci/circleci: android-rebuild"), "Android recovery publisher must wait for signed CircleCI build success");
@@ -137,12 +133,13 @@ assert.ok(recoveryDispatch.includes('const isTagDispatch = context.ref === "refs
 assert.ok(recoveryDispatch.includes("ref: isTagDispatch ? tag : recoveryBranch"), "Android publisher must run from the exact tag or guarded recovery branch");
 
 
-assert.ok(circle.includes(`releaseUrl": "https://github.com/${repo}/releases/tag/`), "CircleCI Android release metadata must use the canonical repository");
+assert.ok(circle.includes('REPOSITORY="zikrofficial-X/Zikr"') && circle.includes('https://github.com/${REPOSITORY}/releases/download/'), "CircleCI Android release metadata must use GitHub Releases in the canonical repository");
 const androidJob = circle.split("  android-rebuild:")[1]?.split("\n  security-audit:")[0] ?? "";
 assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co"), "Android job must use the canonical public Supabase URL");
 assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY:"), "Android job must declare the public Supabase anon key required by preflight");
-assert.ok(androidJob.includes("SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co"), "Android job must pin the canonical Supabase project URL");
-assert.ok(androidJob.includes("SUPABASE_SERVICE_ROLE_KEY"), "Android job must validate the protected Supabase service-role key");
+assert.ok(!androidJob.includes("\n      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co"), "Android artifact publisher must not configure a Supabase storage URL");
+assert.ok(!androidJob.includes("SUPABASE_SERVICE_ROLE_KEY"), "Android artifact publisher must not validate the Supabase service-role key");
+assert.ok(androidJob.includes("GH_TOKEN"), "Android artifact publisher must use a protected GitHub token");
 const releaseWorkflow = circle.split("workflows:\n")[1] ?? "";
 const androidWorkflowJob = releaseWorkflow.split("- android-rebuild:")[1]?.split("\n      - ")[0] ?? "";
 assert.ok(androidWorkflowJob.includes("context:\n            - android-signing"), "Signed Android build must use the protected android-signing context");

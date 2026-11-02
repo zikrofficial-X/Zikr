@@ -3,6 +3,7 @@ version: 2.1
 # ZIKR CI ownership:
 # - GitHub Actions owns PR/main source verification, recurring video generation, social publishing, and controlled Vercel release.
 # - CircleCI owns the application build/documentation artifact, Android release builds, Supabase release gates, and English-content sync.
+# - GitHub Releases is the only persistent store for signed Android release assets.
 # - CircleCI does NOT execute the production video or social worker.
 #
 # IMPORTANT:
@@ -264,7 +265,6 @@ jobs:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlteGRzd2theGFmYWt1Z2t0c2ltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MzM5OTIsImV4cCI6MjEwNzQwOTk5Mn0.H1mKDKeajvE4k7NfPz5jVcy_-nohpDO1lL-eh6RXfGA
-      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
       GRADLE_OPTS: >-
         -Dorg.gradle.daemon=false
         -Dorg.gradle.workers.max=1
@@ -281,8 +281,7 @@ jobs:
             REQUIRED_VARS=(
               NEXT_PUBLIC_SUPABASE_URL
               NEXT_PUBLIC_SUPABASE_ANON_KEY
-              SUPABASE_URL
-              SUPABASE_SERVICE_ROLE_KEY
+              GH_TOKEN
               ANDROID_KEYSTORE_BASE64
               ANDROID_KEYSTORE_PASSWORD
               ANDROID_KEY_ALIAS
@@ -440,11 +439,11 @@ jobs:
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
             test -s "$APK"
             test -s "$AAB"
-            MAX_STORAGE_OBJECT_BYTES=52428800
+            MAX_GITHUB_RELEASE_ASSET_BYTES=2147483648
             for artifact in "$APK" "$AAB"; do
               size_bytes="$(stat -c '%s' "$artifact")"
-              if (( size_bytes > MAX_STORAGE_OBJECT_BYTES )); then
-                echo "Artifact exceeds the 50 MiB Supabase Free-tier upload limit: $artifact ($size_bytes bytes)." >&2
+              if (( size_bytes > MAX_GITHUB_RELEASE_ASSET_BYTES )); then
+                echo "Artifact exceeds the 2 GiB GitHub Release asset limit: $artifact ($size_bytes bytes)." >&2
                 exit 1
               fi
             done
@@ -469,35 +468,20 @@ jobs:
             sha256sum "$APK" "$AAB" > SHA256SUMS
             cat SHA256SUMS
       - run:
-          name: Upload verified Android assets to Supabase Storage
+          name: Upload verified Android assets to GitHub Draft Release
           shell: /bin/bash
           command: |
             set -euo pipefail
+            test -n "${GH_TOKEN:-}" || { echo "Missing protected GH_TOKEN for GitHub Release upload." >&2; exit 1; }
+            if ! command -v gh >/dev/null 2>&1; then
+              sudo apt-get update
+              sudo apt-get install -y gh
+            fi
             RELEASE_TAG="$ANDROID_RELEASE_TAG"
+            REPOSITORY="zikrofficial-X/Zikr"
             APK="android/app/build/outputs/apk/release/app-release.apk"
             AAB="android/app/build/outputs/bundle/release/app-release.aab"
             SHA_FILE="SHA256SUMS"
-
-            SUPABASE_URL="${SUPABASE_URL%/}"
-            BUCKET="android-releases"
-            BASE_PATH="android/${RELEASE_TAG}"
-            STORAGE_API="${SUPABASE_URL}/storage/v1/object"
-            PUBLIC_BASE="${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${BASE_PATH}"
-
-            upload_object() {
-              local file_path="$1"
-              local object_path="$2"
-              local mime_type="$3"
-              curl --fail --silent --show-error --location \
-                --request POST "${STORAGE_API}/${BUCKET}/${object_path}" \
-                --header "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-                --header "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
-                --header "x-upsert: true" \
-                --header "Content-Type: ${mime_type}" \
-                --header "Cache-Control: max-age=31536000, immutable" \
-                --data-binary "@${file_path}" >/dev/null
-            }
-
             APK_SHA="$(sha256sum "$APK" | awk '{print $1}')"
             AAB_SHA="$(sha256sum "$AAB" | awk '{print $1}')"
             VERSION_NAME="$(sed -n 's/.*versionName \"\([^\"]*\)\".*/\1/p' android/app/build.gradle | head -1)"
@@ -513,11 +497,7 @@ jobs:
               exit 1
             }
 
-            upload_object "$APK" "${BASE_PATH}/app-release.apk" "application/vnd.android.package-archive"
-            upload_object "$AAB" "${BASE_PATH}/app-release.aab" "application/octet-stream"
-            upload_object "$SHA_FILE" "${BASE_PATH}/SHA256SUMS" "text/plain"
-
-            cat > /tmp/release-metadata.json \<<EOF
+            cat > release-metadata.json <<EOF
             {
               "tag": "${RELEASE_TAG}",
               "version": "${VERSION_NAME}",
@@ -527,51 +507,19 @@ jobs:
               "sourceCommit": "${CIRCLE_SHA1}",
               "apkSha256": "${APK_SHA}",
               "aabSha256": "${AAB_SHA}",
-              "apkUrl": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/app-release.apk",
-              "aabUrl": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/app-release.aab",
-              "sha256Url": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/SHA256SUMS"
+              "apkUrl": "https://github.com/${REPOSITORY}/releases/download/${RELEASE_TAG}/app-release.apk",
+              "aabUrl": "https://github.com/${REPOSITORY}/releases/download/${RELEASE_TAG}/app-release.aab",
+              "sha256Url": "https://github.com/${REPOSITORY}/releases/download/${RELEASE_TAG}/SHA256SUMS"
             }
             EOF
 
-            upload_object /tmp/release-metadata.json "${BASE_PATH}/release-metadata.json" "application/json"
-
-            curl --fail --silent --show-error --location "${PUBLIC_BASE}/app-release.apk" -o /tmp/verified-app-release.apk
-            curl --fail --silent --show-error --location "${PUBLIC_BASE}/app-release.aab" -o /tmp/verified-app-release.aab
-            test "$(sha256sum /tmp/verified-app-release.apk | awk '{print $1}')" = "${APK_SHA}"
-            test "$(sha256sum /tmp/verified-app-release.aab | awk '{print $1}')" = "${AAB_SHA}"
-
-            cat > /tmp/site-setting.json \<<EOF
-            {
-              "key": "android_release",
-              "value": {
-                "mode": "github-supabase",
-                "status": "assets_ready",
-                "releaseTag": "${RELEASE_TAG}",
-                "version": "${VERSION_NAME}",
-                "versionCode": ${VERSION_CODE},
-                "applicationId": "com.zikr.app",
-                "targetSdk": 36,
-                "sourceCommit": "${CIRCLE_SHA1}",
-                "releaseUrl": "https://github.com/zikrofficial-X/Zikr/releases/tag/${RELEASE_TAG}",
-                "apkUrl": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/app-release.apk",
-                "aabUrl": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/app-release.aab",
-                "sha256Url": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/SHA256SUMS",
-                "metadataUrl": "https://github.com/zikrofficial-X/Zikr/releases/download/${RELEASE_TAG}/release-metadata.json",
-                "apkSha256": "${APK_SHA}",
-                "aabSha256": "${AAB_SHA}"
-              }
-            }
-            EOF
-
-            curl --fail --silent --show-error --location \
-              --request PATCH "${SUPABASE_URL}/rest/v1/site_settings?key=eq.android_release" \
-              --header "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-              --header "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
-              --header "Content-Type: application/json" \
-              --header "Prefer: return=minimal" \
-              --data-binary @/tmp/site-setting.json >/dev/null
-
-            echo "Supabase Android release assets uploaded and checksum-verified."
+            RELEASE_STATE="$(GH_TOKEN="$GH_TOKEN" gh release view "$RELEASE_TAG" --repo "$REPOSITORY" --json tagName,isDraft)"
+            test "$(jq -r '.tagName' <<< "$RELEASE_STATE")" = "$RELEASE_TAG"
+            test "$(jq -r '.isDraft' <<< "$RELEASE_STATE")" = "true"
+            GH_TOKEN="$GH_TOKEN" gh release upload "$RELEASE_TAG" "$APK" "$AAB" "$SHA_FILE" release-metadata.json \
+              --repo "$REPOSITORY" \
+              --clobber
+            echo "Verified Android assets uploaded to GitHub Draft Release only; GitHub Actions will verify and publish them."
       - run:
           name: Remove signing material
           when: always
