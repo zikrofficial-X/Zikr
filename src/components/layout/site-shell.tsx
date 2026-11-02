@@ -29,6 +29,14 @@ export async function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = requestHeaders.get('x-zikr-pathname') ?? '';
   const socialSettings = await getSiteSetting('social');
 
+  const smartLinkExcludedPrefixes = [
+    "/admin", "/auth", "/kids", "/quran", "/mushaf", "/hadith",
+    "/dua", "/adhkar", "/prayer-times", "/qibla", "/videos/",
+  ];
+  const showSmartLink = !smartLinkExcludedPrefixes.some(
+    prefix => pathname === prefix || pathname.startsWith(prefix),
+  );
+
   return (
     <LanguageProvider initialLocale={initialLocale}>
       <div className={pathname.startsWith("/admin") || pathname.startsWith("/auth") || pathname.startsWith("/kids") ? "min-h-screen" : "min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0"}>
@@ -44,7 +52,7 @@ export async function SiteShell({ children }: { children: React.ReactNode }) {
           instagramUrl: socialSettings?.instagramUrl,
           twitterUrl: socialSettings?.twitterUrl,
           xUrl: socialSettings?.xUrl,
-        }} />
+        }} showSmartLink={showSmartLink} />
         {/* Non-critical client integrations stay code-split from the shell. */}
         <NotificationPermissionBanner />
         <InstallPrompt />
