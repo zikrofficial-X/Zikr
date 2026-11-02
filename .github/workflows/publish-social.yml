@@ -11,6 +11,7 @@ on:
       - main
     paths:
       - .github/ops/run-published-video-cleanup.trigger
+      - .github/ops/reset-queued-social-videos.trigger
 
 permissions:
   contents: read
@@ -32,7 +33,8 @@ jobs:
       CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
       CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-      SOCIAL_CLEANUP_ONLY: ${{ github.event_name == 'push' }}
+      SOCIAL_CLEANUP_ONLY: ${{ github.event_name == 'push' && github.event.head_commit.message == 'ops(video): run published media cleanup sweep' }}
+      SOCIAL_QUEUE_RESET_ONLY: ${{ github.event_name == 'push' && github.event.head_commit.message == 'ops(video): reset pending queue' }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       BACKGROUND_JOB_TARGET: "social"
       SOCIAL_PUBLISH_BATCH_SIZE: "1"
