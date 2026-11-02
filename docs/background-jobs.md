@@ -1,10 +1,10 @@
 # Background jobs runbook
 
-ZIKR's recurring production video queue is executed by GitHub Actions `generate-ai-video.yml`, and the social publishing queue is executed by GitHub Actions `publish-social.yml`. `scripts/run-background-jobs.ts` remains the shared worker entrypoint; CircleCI no longer executes it for production video/social work.
+ZIKR's recurring production video queue is executed by GitHub Actions `generate-ai-video.yml`, and the social publishing queue is owned by GitHub Actions `publish-social.yml`. `scripts/run-background-jobs.ts` remains the shared worker entrypoint; CircleCI no longer executes it for production video/social work.
 
 ## Production video generation
 
-GitHub Actions runs video generation four times per day at 03:17, 09:17, 15:17, and 21:17 UTC, with a manual dispatch path for Run Now/recovery. Social publishing runs every 15 minutes in its own workflow. Commits and merges do not start production video generation.
+GitHub Actions runs video generation four times per day at 03:17, 09:17, 15:17, and 21:17 UTC, with a manual dispatch path for Run Now/recovery. The social workflow is scheduled every 15 minutes, but the current production publisher is fail-closed. Commits and merges do not start production video generation.
 
 GitHub Actions invokes `pnpm background:jobs` with free Hugging Face video providers (`LTX Fast` and `Wan`) enabled first and the deterministic FFmpeg template renderer as the automatic fallback. `VIDEO_FREE_ONLY=true` excludes paid/custom providers and keeps Gemini text generation off. Production generation uses trusted Quran/Hadith/Dua content, Arabic fonts, verified HTTPS Quran recitation audio, and Arabic TTS where allowed. Completed MP4 bytes are uploaded directly from the GitHub runner to Cloudinary; generated videos and human narration files must not be staged in Supabase Storage. Supabase stores only the generation queue, content metadata, and audit records. Source religious text remains locked and is never rewritten.
 
@@ -12,7 +12,7 @@ The queue is idempotent through `video_generation_requests.automation_key` and c
 
 ## Automatic social publishing
 
-The dedicated GitHub Actions publisher runs every 15 minutes with `SOCIAL_PUBLISH_ENABLED=true`, processes one queue item per run, and publishes to both configured targets when their OAuth credentials are ready. The workflow fails closed before claiming queue items unless both YouTube OAuth and the enabled, connected Facebook Page credential are present. Facebook credentials are read from the OAuth-managed Supabase row; the readiness check never prints the Page token. Video publishing uses the source/status integrity gate; the Admin `video_automation_auto_publish` switch controls unattended posting. It consumes `social_publish_queue` entries produced by the video worker and does not render videos itself.
+The dedicated GitHub Actions publisher is currently configured with `SOCIAL_PUBLISH_ENABLED=false`. Scheduled runs and explicit manual `publish_queue` dispatches therefore do not claim queue items or post publicly. The Admin dashboard's worker button must send `operation=publish_queue`; omitting it selects GitHub's `none` default and skips the job. Before re-enabling public posting, review and approve the queued backlog and establish a cadence. When enabled, the workflow processes one queue item per run and requires both YouTube OAuth and an enabled, connected Facebook Page credential. Facebook credentials are read from the OAuth-managed Supabase row; the readiness check never prints the Page token. Video publishing uses the source/status integrity gate; the Admin `video_automation_auto_publish` switch controls unattended posting. It consumes `social_publish_queue` entries produced by the video worker and does not render videos itself.
 
 YouTube requires:
 
@@ -38,8 +38,9 @@ If a provider credential is missing or expired, that platform is recorded as fai
 
 ```text
 Video generation: 4 runs/day
-Social publishing: every 15 minutes, one item per run (about four queue items/hour)
-Admin Run Now: direct GitHub workflow dispatch from the admin action
+Social publisher schedule: every 15 minutes; currently paused by `SOCIAL_PUBLISH_ENABLED=false`
+Admin social worker button: dispatches `publish-social.yml` with `operation=publish_queue`; no posts are sent while the global flag is false
+Admin video Run Now: direct GitHub workflow dispatch from the admin action
 English content sync: daily, at most 5 article translations and 25 Hadith records by default
 Video length: 20 seconds by default; two bounded free-AI attempts per run, then deterministic FFmpeg fallback
 ```
@@ -48,7 +49,7 @@ The daily English content sync uses one shared runner for one article batch and 
 
 ## Recovery
 
-Use GitHub Actions workflow dispatch for deliberate video generation or social publishing recovery. CircleCI is reserved for application/Android builds, documentation/release artifacts, English-content sync, Supabase gates, and explicit release operations.
+Use GitHub Actions workflow dispatch for deliberate video generation or social publishing recovery. Social recovery remains non-publishing while `SOCIAL_PUBLISH_ENABLED=false`. CircleCI is reserved for application/Android builds, documentation/release artifacts, English-content sync, Supabase gates, and explicit release operations.
 
 The prayer notification path remains separate: Supabase `pg_cron` invokes `prayer-notification-worker` every minute.
 

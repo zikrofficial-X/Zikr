@@ -265,10 +265,12 @@ export async function GET(request: NextRequest) {
 
     let dispatched = "false";
     try {
-      await dispatchGitHubWorkflow("publish-social.yml");
+      await dispatchGitHubWorkflow("publish-social.yml", {
+        operation: "publish_queue",
+      });
       dispatched = "true";
     } catch {
-      // The scheduled GitHub publisher runs every 15 minutes even if the immediate dispatch token is unavailable.
+      // Keep the verified connection; scheduled runs remain fail-closed until public posting is re-enabled.
     }
 
     return redirectResult("connected", {

@@ -78,7 +78,10 @@ const socialPublishingFrozen =
   social.includes("vars.SOCIAL_PUBLISH_ENABLED == 'true'") &&
   social.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
   social.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"');
-assert.ok(socialPublishingActive || socialPublishingFrozen, "Social publisher must be explicitly active or safely frozen with approval required");
+const socialPublishingDisabled =
+  social.includes('SOCIAL_PUBLISH_ENABLED: "false"') &&
+  social.includes('if [[ "$SOCIAL_PUBLISH_ENABLED" != "true" ]]');
+assert.ok(socialPublishingActive || socialPublishingFrozen || socialPublishingDisabled, "Social publisher must be explicitly active, safely frozen, or fail-closed");
 assert.ok(social.includes("environment: production"), "Social publisher must use protected production environment");
 assert.ok(social.includes("github.ref == 'refs/heads/main'"), "Social publisher must be main-only");
 

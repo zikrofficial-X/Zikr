@@ -50,7 +50,7 @@ const socialAdminPage = read("src/app/admin/social/social-client.tsx");
 if (!socialAdminPage.includes("facebookReelsDeferredUntil") || !socialAdminPage.includes("مؤجل تلقائيًا حتى")) failures.push("admin social UI must show scheduled Reels deferrals as waiting, not as errors");
 const adminSocial = read("src/app/api/admin/social/route.ts");
 if (adminSocial.includes("/api/internal/video-processing")) failures.push("admin social retry references a retired noop endpoint");
-if (!adminSocial.includes('dispatchGitHubWorkflow("publish-social.yml")')) failures.push("admin social retry must use the canonical GitHub social workflow");
+if (!adminSocial.includes('dispatchGitHubWorkflow("publish-social.yml", {')) failures.push("admin social retry must use the canonical GitHub social workflow with an explicit operation");
 if (!publisher.includes("&status=eq.${claimStatus}")) failures.push("social queue claims must atomically filter by the current queue status");
 if (publisher.includes("status=eq.${claimStatus}&updated_at=eq.")) failures.push("social queue claims must not strand eligible rows on exact timestamp serialization equality");
 if (!publisher.includes("getFacebookPageCredentials")) failures.push("Facebook publisher must consume the canonical OAuth-managed Page credential");
@@ -99,12 +99,15 @@ const phase0AutomationFreeze =
   workflow.includes("vars.SOCIAL_PUBLISH_ENABLED == 'true'") &&
   workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
   workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"');
+const socialPublishingDisabled =
+  workflow.includes('SOCIAL_PUBLISH_ENABLED: "false"') &&
+  workflow.includes('if [[ "$SOCIAL_PUBLISH_ENABLED" != "true" ]]');
 if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze) failures.push("video generation must keep social queueing enabled unless Phase 0 freeze is explicitly active");
 if (!generationWorkflow.includes('SOCIAL_PUBLISH_ENABLED: "false"')) failures.push("video generation must not execute social publishing directly");
 if (!generationWorkflow.includes('SOCIAL_PUBLISH_FACEBOOK_ENABLED: "false"')) failures.push("video generation must not enable Facebook from legacy GitHub Page-token secrets");
 if (generationWorkflow.includes("secrets.FACEBOOK_PAGE_ACCESS_TOKEN") || generationWorkflow.includes("FACEBOOK_PAGE_ACCESS_TOKEN:")) failures.push("video generation must not duplicate the Facebook Page token in GitHub Actions");
 
-if (!workflow.includes('SOCIAL_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze) failures.push("dedicated GitHub social workflow must explicitly enable publishing unless Phase 0 freeze is active");
+if (!workflow.includes('SOCIAL_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze && !socialPublishingDisabled) failures.push("dedicated GitHub social workflow must be explicitly active or fail-closed");
 if (!workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"')) failures.push("social worker must allow automatically generated videos into the publisher");
 if (!workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"')) failures.push("autonomous publishing must use the validated source/status gate without a manual approval dependency");
 if (!workflow.includes('SOCIAL_PUBLISH_BATCH_SIZE: "1"')) failures.push("scheduled publishing must process one queue item per 15-minute run");
@@ -131,6 +134,11 @@ if (!adminApi.includes("target_platforms: platforms")) failures.push("Admin retr
 if (!adminApi.includes("platformStats")) failures.push("Admin social API must expose platform-level queue statistics");
 if (!adminApi.includes("oldestQueuedAt")) failures.push("Admin social API must expose the oldest queued timestamp");
 if (!adminApi.includes('action === "run_worker"')) failures.push("Admin social API must support manual worker dispatch");
+if (!adminApi.includes('operation: "publish_queue"')) failures.push("Admin manual worker dispatch must explicitly pass the publish_queue operation instead of GitHub's default no-op");
+if (!adminApi.includes("const socialPublishingEnabled = false;")) failures.push("Admin publishing health must mirror the currently fail-closed GitHub workflow");
+
+const facebookCallback = read("src/app/api/admin/social/facebook/callback/route.ts");
+if (!facebookCallback.includes('operation: "publish_queue"')) failures.push("Facebook OAuth callback worker dispatch must pass the explicit publish_queue operation");
 
 const adminUi = read("src/app/admin/social/social-client.tsx");
 if (!adminUi.includes("Facebook Auth Blocks")) failures.push("Admin social UI must show Facebook auth-block count");
@@ -138,6 +146,7 @@ if (!adminUi.includes("سجلات فشل اعتماد Facebook السابقة"))
 if (adminUi.includes("Facebook متوقف حاليًا بسبب اعتماد منتهي")) failures.push("Admin social UI must not claim current Facebook credentials are expired based only on historical queue failures");
 if (!adminUi.includes("هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي")) failures.push("Admin social UI must explicitly distinguish historical auth-blocks from current Facebook health");
 if (!adminUi.includes("تشغيل العامل الآن")) failures.push("Admin social UI must expose the manual worker control");
+if (!adminUi.includes("متوقف بأمان") || !adminUi.includes("لن يُنشر أي عنصر")) failures.push("Admin social UI must show the fail-closed publishing state and safe worker response");
 if (!adminUi.includes("successRate")) failures.push("Admin social UI must show platform success rates");
 
 const migration = read("supabase/migrations/20260929045633_create_social_publish_queue_20260929.sql");
@@ -193,7 +202,7 @@ for (const token of [
   "timingSafeEqual",
   "saveFacebookPageCredential",
   "unblockFacebookAuthBlockedQueue",
-  'dispatchGitHubWorkflow("publish-social.yml")',
+  'dispatchGitHubWorkflow("publish-social.yml", {',
 ]) {
   if (!callbackRoute.includes(token)) failures.push("Facebook reconnect flow missing: " + token);
 }
@@ -228,7 +237,7 @@ if (!adminApi.includes("getFacebookPageConnectionHealth")) failures.push("publis
 if (!adminApi.includes('action === "test_facebook"')) failures.push("publishing center must expose a real Facebook token health test");
 if (!adminUi.includes("facebookConnectionStatus")) failures.push("publishing center must distinguish expired tokens from a disabled feature flag");
 if (!adminUi.includes("/api/admin/social/facebook/connect")) failures.push("publishing center must provide a one-step Facebook reconnect action");
-if (!adminUi.includes("كل 15 دقيقة")) failures.push("publishing center must explain that automatic publishing does not require pressing Run Now");
+if (!adminUi.includes("automation.scheduleMinutes") || !adminUi.includes("النشر متوقف")) failures.push("publishing center must show the configured schedule only when automatic publishing is enabled");
 if (!adminUi.includes("اختبار الاتصال")) failures.push("publishing center must show a live connection test");
 
 const socialWorkflow = workflow;
