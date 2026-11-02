@@ -25,28 +25,23 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-function ownStorageAudioUrl(value: unknown) {
+function ownCloudinaryAudioUrl(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return null;
   try {
     const url = new URL(value);
-    const configuredUrl =
-      process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (!configuredUrl) return null;
-    const configuredOrigin = new URL(configuredUrl).origin;
-    if (
-      url.protocol !== "https:" ||
-      url.origin !== configuredOrigin ||
-      url.username ||
-      url.password ||
-      url.hash
-    )
-      return null;
-    if (
-      !url.pathname.startsWith(
-        "/storage/v1/object/public/videos/human-narration/"
-      )
-    )
-      return null;
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+    if (!cloudName || url.protocol !== "https:" || url.hostname !== "res.cloudinary.com" ||
+        url.username || url.password || url.hash) return null;
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts[0] !== cloudName || parts[1] !== "video" || parts[2] !== "upload") return null;
+    const mediaParts = parts.slice(3);
+    const version = mediaParts[0] ?? "";
+    if (version.startsWith("v") && version.slice(1) && [...version.slice(1)].every(ch => ch >= "0" && ch <= "9")) mediaParts.shift();
+    const fileName = mediaParts.pop() ?? "";
+    const dot = fileName.lastIndexOf(".");
+    const publicId = [...mediaParts, dot > 0 ? fileName.slice(0, dot) : fileName].join("/");
+    const validExtension = [".mp3", ".m4a", ".wav", ".ogg", ".webm"].some(ext => fileName.toLowerCase().endsWith(ext));
+    if (!publicId.startsWith("audio-human-") || !validExtension) return null;
     return url.toString();
   } catch {
     return null;
@@ -208,7 +203,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      humanAudioUrl = ownStorageAudioUrl(body.humanAudioUrl);
+      humanAudioUrl = ownCloudinaryAudioUrl(body.humanAudioUrl);
       if (!humanAudioUrl) {
         return NextResponse.json(
           {
