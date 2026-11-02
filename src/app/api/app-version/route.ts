@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import {
   findApkAsset,
-  getAndroidReleaseSetting,
   findAabAsset,
   getLatestStableAndroidRelease,
   hasGitHubReleaseAccess,
@@ -16,8 +15,6 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const setting = await getAndroidReleaseSetting();
-
     if (!hasGitHubReleaseAccess()) {
       console.error(
         "[app-version] GITHUB_TOKEN is missing; private releases cannot be read."
