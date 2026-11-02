@@ -112,6 +112,15 @@ assert.ok(publish.includes("Verify published GitHub Release contains the exact s
 assert.ok(publish.includes("cmp -s"), "Android publisher must compare the downloaded GitHub assets with the checksum-verified build files");
 assert.ok(publish.includes("Fail fast if a published immutable release is missing APK/AAB"), "Android publisher must not waste an hour waiting for artifacts when the release is already immutable and incomplete");
 assert.ok(publish.includes("keep it in draft until the signed artifacts pass verification"), "Android release must stay in draft until assets are ready");
+const androidApkDownload = read("src/app/api/download/android/route.ts");
+const androidAabDownload = read("src/app/api/download/android/aab/route.ts");
+const androidAppVersion = read("src/app/api/app-version/route.ts");
+for (const [name, source] of [["APK download", androidApkDownload], ["AAB download", androidAabDownload], ["App version metadata", androidAppVersion]]) {
+  assert.ok(!source.includes("verifiedSupabaseUrl"), name + " must never redirect Android binaries to Supabase Storage");
+  assert.ok(!source.includes("storage/v1/object/public/android-releases"), name + " must keep binary delivery on GitHub Releases");
+}
+assert.ok(androidApkDownload.includes("getSignedGitHubAssetUrl") && androidAabDownload.includes("getSignedGitHubAssetUrl"), "APK and AAB download endpoints must resolve assets through GitHub Releases");
+assert.ok(androidAppVersion.includes("RELEASE_DOWNLOAD_ENDPOINT") && androidAppVersion.includes("getLatestStableAndroidRelease"), "Native app update metadata must advertise GitHub-backed release endpoints only");
 const androidReleaseService = read("src/features/releases/services/github-android-release.ts");
 assert.ok(androidReleaseService.includes("function hasAab("), "Android release discovery must explicitly detect AAB assets");
 assert.ok(androidReleaseService.includes("hasApk(release) &&\n        hasAab(release)"), "Latest stable Android release must have both APK and AAB assets");
