@@ -131,9 +131,8 @@ export async function GET() {
       return acc;
     }, {});
     const env = getServerEnv();
-    // Keep the Admin health badge aligned with the fail-closed GitHub workflow.
-    // Re-enable only by an explicit reviewed change to both this value and the worker workflow.
-    const socialPublishingEnabled = false;
+    // Keep the Admin health badge aligned with the GitHub workflow gate.
+    const socialPublishingEnabled = true;
     const facebookHealth = await getFacebookPageConnectionHealth();
     const facebookAuthBlocked = rows.filter(
       item =>

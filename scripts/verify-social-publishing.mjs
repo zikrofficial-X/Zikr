@@ -135,7 +135,7 @@ if (!adminApi.includes("platformStats")) failures.push("Admin social API must ex
 if (!adminApi.includes("oldestQueuedAt")) failures.push("Admin social API must expose the oldest queued timestamp");
 if (!adminApi.includes('action === "run_worker"')) failures.push("Admin social API must support manual worker dispatch");
 if (!adminApi.includes('operation: "publish_queue"')) failures.push("Admin manual worker dispatch must explicitly pass the publish_queue operation instead of GitHub's default no-op");
-if (!adminApi.includes("const socialPublishingEnabled = false;")) failures.push("Admin publishing health must mirror the currently fail-closed GitHub workflow");
+if (!adminApi.includes("const socialPublishingEnabled = true;")) failures.push("Admin publishing health must mirror the active GitHub workflow");
 
 const facebookCallback = read("src/app/api/admin/social/facebook/callback/route.ts");
 if (!facebookCallback.includes('operation: "publish_queue"')) failures.push("Facebook OAuth callback worker dispatch must pass the explicit publish_queue operation");
@@ -146,7 +146,7 @@ if (!adminUi.includes("سجلات فشل اعتماد Facebook السابقة"))
 if (adminUi.includes("Facebook متوقف حاليًا بسبب اعتماد منتهي")) failures.push("Admin social UI must not claim current Facebook credentials are expired based only on historical queue failures");
 if (!adminUi.includes("هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي")) failures.push("Admin social UI must explicitly distinguish historical auth-blocks from current Facebook health");
 if (!adminUi.includes("تشغيل العامل الآن")) failures.push("Admin social UI must expose the manual worker control");
-if (!adminUi.includes("متوقف بأمان") || !adminUi.includes("لن يُنشر أي عنصر")) failures.push("Admin social UI must show the fail-closed publishing state and safe worker response");
+if (!adminUi.includes("النشر التلقائي مفعّل كل 15 دقيقة") || !adminUi.includes("سيعالج العامل العناصر الجاهزة للنشر الآن")) failures.push("Admin social UI must show the active publishing state and worker response");
 if (!adminUi.includes("successRate")) failures.push("Admin social UI must show platform success rates");
 
 const migration = read("supabase/migrations/20260929045633_create_social_publish_queue_20260929.sql");

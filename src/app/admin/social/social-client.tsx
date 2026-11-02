@@ -86,10 +86,10 @@ export default function AdminSocialPage() {
   });
   const [platformStats, setPlatformStats] = useState<PlatformStats>({});
   const [automation, setAutomation] = useState<AutomationStatus>({
-    enabled: false,
+    enabled: true,
     provider: "GitHub Actions",
     scheduleMinutes: 15,
-    note: "النشر العام متوقف بأمان.",
+    note: "النشر التلقائي مفعّل كل 15 دقيقة.",
   });
   const [oldestQueuedAt, setOldestQueuedAt] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | Status>("all");
@@ -255,7 +255,7 @@ export default function AdminSocialPage() {
       if (!response.ok)
         throw new Error(payload.error || "تعذر تشغيل عامل النشر.");
       setMessage(
-        "تم إرسال طلب تشغيل العامل إلى GitHub Actions. النشر العام متوقف بأمان، ولن يُنشر أي عنصر."
+        "تم إرسال طلب تشغيل العامل إلى GitHub Actions. سيعالج العامل العناصر الجاهزة للنشر الآن."
       );
       await load();
     } catch (cause) {

@@ -50,7 +50,7 @@ for (const operation of ["none", "publish_queue", "reset_queued_video_media", "c
   if (!publisher.includes("- " + operation)) failures.push("social workflow operation option missing: " + operation);
 }
 if (!publisher.includes("default: none")) failures.push("manual social workflow must default to a no-op, never publish or delete media implicitly");
-if (!publisher.includes('SOCIAL_PUBLISH_ENABLED: "false"') || !publisher.includes('if [[ "$SOCIAL_PUBLISH_ENABLED" != "true" ]]')) failures.push("social publishing must remain fail-closed until it is explicitly re-enabled");
+if (!publisher.includes('SOCIAL_PUBLISH_ENABLED: "true"') || !publisher.includes('if [[ "$SOCIAL_PUBLISH_ENABLED" != "true" ]]')) failures.push("social publishing must remain explicitly enabled behind its runtime gate");
 if (!publisher.includes("inputs.operation == 'reset_queued_video_media'") || !publisher.includes("inputs.operation == 'cleanup_published_video_media'")) failures.push("media reset/cleanup flags must require explicit operation selection");
 const retentionWorkflow = read(".github/workflows/storage-retention.yml");
 if (retentionWorkflow.includes("\n  push:")) failures.push("Supabase Storage cleanup must not be triggered by source pushes");
