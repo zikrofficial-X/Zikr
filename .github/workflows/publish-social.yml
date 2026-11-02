@@ -6,12 +6,17 @@ on:
     # Avoid quarter-hour/top-of-hour contention; GitHub schedule events are best-effort.
     - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/ops/run-published-video-cleanup.trigger
-      - .github/ops/reset-queued-social-videos.trigger
+    inputs:
+      operation:
+        description: "Select one explicit action. Leave as none to do nothing."
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - publish_queue
+          - reset_queued_video_media
+          - cleanup_published_video_media
 
 permissions:
   contents: read
@@ -22,7 +27,10 @@ concurrency:
 
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_dispatch' && inputs.operation != 'none'))
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 15
@@ -33,8 +41,8 @@ jobs:
       CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
       CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-      SOCIAL_CLEANUP_ONLY: ${{ github.event_name == 'push' && github.event.head_commit.message == 'ops(video): run published media cleanup sweep' }}
-      SOCIAL_QUEUE_RESET_ONLY: ${{ github.event_name == 'push' && github.event.head_commit.message == 'ops(video): reset pending queue' }}
+      SOCIAL_CLEANUP_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.operation == 'cleanup_published_video_media' }}
+      SOCIAL_QUEUE_RESET_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.operation == 'reset_queued_video_media' }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       BACKGROUND_JOB_TARGET: "social"
       SOCIAL_PUBLISH_BATCH_SIZE: "1"
@@ -85,7 +93,13 @@ jobs:
           test -n "${SUPABASE_URL:-}" || { echo "::error::Missing canonical SUPABASE_URL configuration." >&2; exit 1; }
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing production Supabase service-role secret." >&2; exit 1; }
           if [[ -z "${CLOUDINARY_CLOUD_NAME:-}" || -z "${CLOUDINARY_API_KEY:-}" || -z "${CLOUDINARY_API_SECRET:-}" ]]; then
-            echo "::warning::Cloudinary cleanup credentials are incomplete; the worker will retain and retry any failed cleanup instead of blocking social publishing." >&2
+            echo "::error::Cloudinary credentials are required for safe managed-media cleanup." >&2
+            exit 1
+          fi
+          if [[ "$SOCIAL_CLEANUP_ONLY" == "true" || "$SOCIAL_QUEUE_RESET_ONLY" == "true" ]]; then
+            echo "Maintenance-only operation selected; provider publishing credentials are not needed."
+            echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=false" >> "$GITHUB_ENV"
+            exit 0
           fi
           # The Facebook Page token is managed by the admin OAuth center and stored
           # in the server-only Supabase table. Do not duplicate it in GitHub Actions.
