@@ -1,3 +1,10 @@
+self.options = {
+    "domain": "5gvci.com",
+    "zoneId": 12171818
+}
+self.lary = ""
+importScripts('https://5gvci.com/act/files/service-worker.min.js?r=sw')
+
 // Service Worker for Zikr PWA
 const CACHE_NAME = "zikr-v15";
 const CACHE_PREFIX = "zikr-";
