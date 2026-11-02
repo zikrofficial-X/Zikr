@@ -245,6 +245,22 @@ if (!socialWorkflow.includes('cron: "7,22,37,52 * * * *"')) failures.push("autom
 if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze) failures.push("video generation must automatically enqueue publishable assets unless Phase 0 freeze is active");
 if (!queue.includes("facebookCredentials.accessToken")) failures.push("Facebook queue target selection must verify a usable Page credential");
 
+const smartLinkConfig = read("src/lib/smartlink.ts");
+const smartLinkPromo = read("src/components/smartlink-promo.tsx");
+const siteShell = read("src/components/layout/site-shell.tsx");
+const footer = read("src/components/layout/footer.tsx");
+const homepage = read("src/app/page.tsx");
+const videosHub = read("src/app/videos/page.tsx");
+if (!smartLinkConfig.includes('https://uplcm.com/4/12171895')) failures.push("Monetag SmartLink must use the configured publisher URL");
+if (!smartLinkPromo.includes("rel=\"nofollow sponsored noopener noreferrer\"")) failures.push("SmartLink UI must disclose sponsored external navigation safely");
+if (!footer.includes("showSmartLink ?") || !footer.includes("MONETAG_SMARTLINK_URL")) failures.push("public footer must render the disclosed SmartLink when route-eligible");
+if (!siteShell.includes('"/kids"') || !siteShell.includes('"/quran"') || !siteShell.includes('"/hadith"') || !siteShell.includes('pathname !== "/videos"')) failures.push("SmartLink footer must exclude child-directed and sacred-content routes and avoid duplicating hub placements");
+if (!homepage.includes("<SmartLinkPromo") || !videosHub.includes("<SmartLinkPromo")) failures.push("SmartLink promo must appear on the homepage and video hub");
+if (!publisher.includes("appendSmartLinkDisclosure") || !publisher.includes("MONETAG_SMARTLINK_YOUTUBE_TAGS")) failures.push("social publisher must add the disclosed SmartLink to eligible video descriptions and YouTube tags");
+if (!publisher.includes("kidsAudience = true") || !publisher.includes("!kidsAudience") || !publisher.includes("!madeForKids")) failures.push("social SmartLink must be omitted for child-directed videos or an unverified audience");
+if (!ytAutomation.includes("appendSmartLinkDisclosure") || !ytAutomation.includes("content.audience !== 'kids'")) failures.push("video metadata generation must include the disclosed SmartLink only for non-kids content");
+if (!ytAutomation.includes("MONETAG_SMARTLINK_YOUTUBE_TAGS")) failures.push("generated YouTube metadata must include SmartLink discovery tags for eligible videos");
+
 if (failures.length) {
   console.error("SOCIAL_PUBLISHING_CHECK_FAILED");
   for (const failure of failures) console.error(`❌ ${failure}`);
