@@ -36,6 +36,9 @@ jobs:
       SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
       NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       # Free-only production path: no Gemini/custom endpoint billing; public free Spaces may fall back to FFmpeg.
       VIDEO_FREE_ONLY: "true"
@@ -99,6 +102,9 @@ jobs:
           set -euo pipefail
           test -n "${SUPABASE_URL:-}" || { echo "Missing canonical SUPABASE_URL configuration." >&2; exit 1; }
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "Missing production environment secret: SUPABASE_SERVICE_ROLE_KEY" >&2; exit 1; }
+          test -n "${CLOUDINARY_CLOUD_NAME:-}" || { echo "Missing production environment secret: CLOUDINARY_CLOUD_NAME" >&2; exit 1; }
+          test -n "${CLOUDINARY_API_KEY:-}" || { echo "Missing production environment secret: CLOUDINARY_API_KEY" >&2; exit 1; }
+          test -n "${CLOUDINARY_API_SECRET:-}" || { echo "Missing production environment secret: CLOUDINARY_API_SECRET" >&2; exit 1; }
           if [[ -z "${YOUTUBE_CLIENT_ID:-}" || -z "${YOUTUBE_CLIENT_SECRET:-}" || -z "${YOUTUBE_REFRESH_TOKEN:-}" ]]; then
             echo "Warning: YouTube OAuth is incomplete. Facebook publishing is managed separately through the ZIKR admin OAuth publishing center." >&2
           fi
