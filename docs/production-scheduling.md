@@ -6,7 +6,7 @@ ZIKR has one authoritative execution owner per production workload. Quran audio 
 |---|---|---:|---|
 | Prayer Web Push planning and delivery | Supabase `pg_cron` → `prayer-notification-worker` | Every minute | Private scheduler token, per-device uniqueness, atomic claims, bounded retries, invalid-subscription deactivation. |
 | Client-local azan and reminder sounds | Browser / native client | While active | Local/offline fallback; it does not create server delivery rows. |
-| Video generation queue | GitHub Actions `generate-ai-video.yml` → `pnpm background:jobs` → template/FFmpeg/AI worker | Four times daily + manual dispatch | Persisted queue, deterministic renderer, protected production environment, bounded work, no CircleCI execution. |
+| Video generation queue | GitHub Actions `generate-ai-video.yml` → `pnpm background:jobs` → template/FFmpeg/AI worker | Four times daily + manual dispatch | Persisted Supabase queue; generated MP4s upload directly from the worker to Cloudinary; no Supabase video staging or CircleCI execution. |
 | Admin Run Now dispatcher | Admin server action → GitHub Actions `generate-ai-video.yml` dispatch | On demand | Direct dispatch with protected token; request is marked dispatched only after GitHub returns 204. |
 | Social publishing queue | GitHub Actions `publish-social.yml` → `pnpm background:jobs` → social publisher | Every 15 minutes at UTC minutes 7, 22, 37, 52 + manual dispatch | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
 | Quran text/catalog | Local canonical corpus → Supabase fallback | Request time | 114 surahs / 6,236 ayahs are verified; Supabase remains compatibility data. |
