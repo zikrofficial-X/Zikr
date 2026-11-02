@@ -40,7 +40,8 @@ assert.ok(androidStorageLimitMigration.includes("WHERE id = 'android-releases'")
 const siteContentService = read("src/features/site-content/services/site-content.ts");
 assert.ok(siteContentService.includes("supabaseServerAnonRequest"), "Public site settings must use the shared server-side REST cache");
 assert.ok(siteContentService.includes("key=eq.${encodeURIComponent(key)}&limit=1"), "Public site-setting lookup must filter to the requested key and a single row");
-assert.ok(siteContentService.includes("revalidate: 300"), "Public site settings must use the bounded five-minute cache");
+assert.ok(siteContentService.includes('["seo", "social", "homepage"].includes(key) ? 86400 : 300'), "Public editorial settings must use the one-day cache while Android release metadata keeps its short TTL");
+assert.ok(siteContentService.includes("tags: [`site-setting:${key}`]"), "Cached site settings must remain immediately invalidatable by admin writes");
 assert.ok(siteContentService.includes("rows?.[0]?.value"), "Optional site settings must return null when the filtered REST response contains no row");
 
 const publish = read(".github/workflows/publish-android-release-assets.yml");
