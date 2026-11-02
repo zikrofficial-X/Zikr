@@ -1,9 +1,17 @@
 import {
   claimPendingSocialPublishItems,
   processSocialPublishItem,
+  retryPendingPublishedVideoCleanup,
 } from "../../src/features/social/services/social-publishing";
 
 export async function processSocialPublishQueue(limit = 10) {
+  // Retry media cleanup for posts already confirmed on every target before
+  // claiming new work. This removes temporary Supabase/Cloudinary assets
+  // without republishing or deleting the publication/audit records.
+  const cleanup = await retryPendingPublishedVideoCleanup(Math.max(25, Math.min(100, limit * 2)));
+  if (cleanup.attempted > 0) {
+    console.log("[social-worker] Published media cleanup retry:", JSON.stringify(cleanup));
+  }
   const items = await claimPendingSocialPublishItems(limit);
   let succeeded = 0;
   let deferred = 0;
