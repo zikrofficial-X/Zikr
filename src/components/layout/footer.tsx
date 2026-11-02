@@ -6,6 +6,7 @@ import { Container } from "@/components/ui/container";
 import { getCatalogItem } from "@/lib/navigation/catalog";
 import { useLanguage } from "./language-provider";
 import { BookOpen, Scroll, Star } from "lucide-react";
+import { MONETAG_SMARTLINK_DISCLOSURE_AR, MONETAG_SMARTLINK_DISCLOSURE_EN, MONETAG_SMARTLINK_URL } from "@/lib/smartlink";
 
 const FACEBOOK_PAGE_URL = "https://www.facebook.com/zikrmediaofficial1";
 const YOUTUBE_CHANNEL_URL = "https://www.youtube.com/@zikrmediaofficial";
@@ -78,7 +79,7 @@ const legalLinks: FooterLink[] = [
   { href: "/data-deletion", ar: "حذف البيانات", en: "Data deletion" },
 ];
 
-export function Footer({ socialLinks }: { socialLinks?: FooterSocialLinks }) {
+export function Footer({ socialLinks, showSmartLink = false }: { socialLinks?: FooterSocialLinks; showSmartLink?: boolean }) {
   const { isEnglish } = useLanguage();
   const facebookUrl = safeExternalUrl(socialLinks?.facebookPageUrl) ?? FACEBOOK_PAGE_URL;
   const youtubeUrl = safeExternalUrl(socialLinks?.youtubeChannelUrl) ?? YOUTUBE_CHANNEL_URL;
@@ -145,6 +146,34 @@ export function Footer({ socialLinks }: { socialLinks?: FooterSocialLinks }) {
         <FooterColumn title={copy.support} links={supportLinks} isEnglish={isEnglish} />
         <FooterColumn title={copy.legal} links={legalLinks} isEnglish={isEnglish} />
       </Container>
+
+      {showSmartLink ? (
+        <Container className="relative mt-10 border-t border-brand-gold/10 pt-6">
+          <div className="flex flex-col gap-2 text-center sm:flex-row sm:items-center sm:justify-between sm:text-start">
+            <div>
+              <p className="text-xs font-semibold text-brand-gold/70">
+                {isEnglish ? "Advertisement · External link" : "إعلان · رابط خارجي"}
+              </p>
+              <p className="mt-1 text-xs leading-6 text-brand-cream/45">
+                {isEnglish
+                  ? "This sponsored link may open third-party offers or websites."
+                  : "قد يفتح هذا الرابط الإعلاني عروضًا أو مواقع تابعة لجهات خارجية."}
+              </p>
+              <p className="text-[10px] text-brand-cream/30">
+                {isEnglish ? MONETAG_SMARTLINK_DISCLOSURE_EN : MONETAG_SMARTLINK_DISCLOSURE_AR}
+              </p>
+            </div>
+            <a
+              href={MONETAG_SMARTLINK_URL}
+              target="_blank"
+              rel="nofollow sponsored noopener noreferrer"
+              className="inline-flex min-h-9 items-center justify-center self-center rounded-lg border border-brand-gold/25 px-4 py-2 text-xs text-brand-gold hover:bg-brand-gold/10 sm:self-auto"
+            >
+              {isEnglish ? "Open external link" : "فتح الرابط الخارجي"}
+            </a>
+          </div>
+        </Container>
+      ) : null}
 
       <Container className="relative mt-10 border-t border-brand-gold/15 pt-6 text-center text-xs text-brand-cream/60 sm:mt-12 sm:pt-8">
         <p dir={isEnglish ? "ltr" : "rtl"}>{copy.copyright}</p>
