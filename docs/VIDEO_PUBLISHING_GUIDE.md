@@ -52,18 +52,18 @@ Approval is not a scheduler. The existing GitHub Actions social worker checks th
 
 ## Social publishing
 
-Social publishing runs every 15 minutes through `publish-social.yml`.
+The social workflow is scheduled every 15 minutes through `publish-social.yml`, but public posting is currently paused.
 
 It consumes ready rows from `social_publish_queue` and never renders video.
 
 Publishing is explicitly controlled by environment variables:
 
 ```text
-SOCIAL_PUBLISH_ENABLED=true
+SOCIAL_PUBLISH_ENABLED=false
 SOCIAL_PUBLISH_FACEBOOK_ENABLED=false
 ```
 
-YouTube requires the protected server-side YouTube credentials. Facebook additionally requires valid Meta Page credentials and the explicit Facebook enable flag.
+With the global flag false, scheduled and manual runs do not claim or publish queue items. The Admin worker button dispatches `operation=publish_queue`; it must not use GitHub's `none` default. YouTube and Facebook credentials are required only after public posting is explicitly re-enabled.
 
 A provider failure is recorded as a failure for that provider; it must not make video generation appear failed when the generated media itself is valid.
 

@@ -47,7 +47,7 @@ jobs:
       BACKGROUND_JOB_TARGET: "social"
       SOCIAL_PUBLISH_BATCH_SIZE: "1"
       YOUTUBE_UPLOAD_PRIVACY: "public"
-      SOCIAL_PUBLISH_ENABLED: "true"
+      SOCIAL_PUBLISH_ENABLED: "false"
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
@@ -98,6 +98,11 @@ jobs:
               exit 1
             fi
             echo "Maintenance-only operation selected; provider publishing credentials are not needed."
+            echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          if [[ "$SOCIAL_PUBLISH_ENABLED" != "true" ]]; then
+            echo "::notice::Social publishing is disabled; no queue item will be claimed or posted publicly."
             echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=false" >> "$GITHUB_ENV"
             exit 0
           fi

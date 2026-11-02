@@ -41,7 +41,7 @@ if (existsSync("src/app/api/internal/video-processing/route.ts")) failures.push(
 if (existsSync("src/app/api/internal/video-generation/daily/route.ts")) failures.push("retired /api/internal/video-generation/daily endpoint must remain deleted");
 if (existsSync("src/app/api/internal/youtube-sync/route.ts")) failures.push("retired /api/internal/youtube-sync endpoint must remain deleted");
 if (adminSocial.includes("/api/internal/video-processing")) failures.push("admin social must not call the retired video-processing compatibility endpoint");
-if (!adminSocial.includes('dispatchGitHubWorkflow("publish-social.yml")')) failures.push("admin social retry must dispatch the canonical publish-social workflow");
+if (!adminSocial.includes('dispatchGitHubWorkflow("publish-social.yml", {') || !adminSocial.includes('operation: "publish_queue"')) failures.push("admin social retry must dispatch the canonical publish-social workflow with its explicit publish_queue operation");
 if (!publisher.includes('cron: "7,22,37,52 * * * *"')) failures.push("GitHub social publisher must own the recurring off-peak publishing schedule");
 if (!publisher.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("GitHub social publisher must execute only the social target");
 if (publisher.includes("\n  push:")) failures.push("social maintenance operations must never be triggered by source pushes");
@@ -50,6 +50,7 @@ for (const operation of ["none", "publish_queue", "reset_queued_video_media", "c
   if (!publisher.includes("- " + operation)) failures.push("social workflow operation option missing: " + operation);
 }
 if (!publisher.includes("default: none")) failures.push("manual social workflow must default to a no-op, never publish or delete media implicitly");
+if (!publisher.includes('SOCIAL_PUBLISH_ENABLED: "false"') || !publisher.includes('if [[ "$SOCIAL_PUBLISH_ENABLED" != "true" ]]')) failures.push("social publishing must remain fail-closed until it is explicitly re-enabled");
 if (!publisher.includes("inputs.operation == 'reset_queued_video_media'") || !publisher.includes("inputs.operation == 'cleanup_published_video_media'")) failures.push("media reset/cleanup flags must require explicit operation selection");
 const retentionWorkflow = read(".github/workflows/storage-retention.yml");
 if (retentionWorkflow.includes("\n  push:")) failures.push("Supabase Storage cleanup must not be triggered by source pushes");

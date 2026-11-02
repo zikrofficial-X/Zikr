@@ -29,6 +29,12 @@ type PlatformStats = Record<
   string,
   { queued: number; published: number; failed: number }
 >;
+type AutomationStatus = {
+  enabled: boolean;
+  provider: string;
+  scheduleMinutes: number;
+  note: string;
+};
 
 const STATUS_ORDER: readonly Status[] = [
   "queued",
@@ -79,6 +85,12 @@ export default function AdminSocialPage() {
     facebookAuthBlocked: 0,
   });
   const [platformStats, setPlatformStats] = useState<PlatformStats>({});
+  const [automation, setAutomation] = useState<AutomationStatus>({
+    enabled: false,
+    provider: "GitHub Actions",
+    scheduleMinutes: 15,
+    note: "النشر العام متوقف بأمان.",
+  });
   const [oldestQueuedAt, setOldestQueuedAt] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | Status>("all");
   const [selected, setSelected] = useState<string[]>([]);
@@ -97,6 +109,7 @@ export default function AdminSocialPage() {
         items?: QueueItem[];
         health?: Health;
         platformStats?: PlatformStats;
+        automation?: AutomationStatus;
         oldestQueuedAt?: string | null;
         error?: string;
       };
@@ -105,6 +118,12 @@ export default function AdminSocialPage() {
       setItems(Array.isArray(payload.items) ? payload.items : []);
       if (payload.health) setHealth(payload.health);
       setPlatformStats(payload.platformStats ?? {});
+      setAutomation(payload.automation ?? {
+        enabled: false,
+        provider: "GitHub Actions",
+        scheduleMinutes: 15,
+        note: "تعذر التحقق من حالة النشر؛ يظل النشر متوقفًا بأمان.",
+      });
       setOldestQueuedAt(payload.oldestQueuedAt ?? null);
       setSelected([]);
     } catch (cause) {
@@ -236,7 +255,7 @@ export default function AdminSocialPage() {
       if (!response.ok)
         throw new Error(payload.error || "تعذر تشغيل عامل النشر.");
       setMessage(
-        "تم تشغيل عامل النشر الاجتماعي. سيُحدّث الطابور تلقائيًا بعد انتهاء التشغيل."
+        "تم إرسال طلب تشغيل العامل إلى GitHub Actions. النشر العام متوقف بأمان، ولن يُنشر أي عنصر."
       );
       await load();
     } catch (cause) {
@@ -357,13 +376,16 @@ export default function AdminSocialPage() {
         <div className="rounded-2xl border border-brand-gold/15 bg-black/15 p-3 sm:p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-brand-cream">النشر التلقائي</p>
+              <p className="text-sm font-semibold text-brand-cream">حالة النشر التلقائي</p>
+              <p className={`mt-1 text-sm font-semibold ${automation.enabled ? "text-emerald-300" : "text-amber-300"}`}>
+                {automation.enabled ? "مفعّل" : "متوقف بأمان"}
+              </p>
               <p className="mt-1 text-xs leading-5 text-brand-cream/55">
-                GitHub Actions يعالج الطابور كل 15 دقيقة. التشغيل اليدوي للتسريع فقط ولا يغيّر الجدولة.
+                {automation.note}
               </p>
             </div>
             <span className="inline-flex w-fit items-center rounded-full border border-brand-gold/15 px-3 py-1 text-xs text-brand-gold/80">
-              الجدولة: كل 15 دقيقة
+              {automation.enabled ? `الجدولة: كل ${automation.scheduleMinutes} دقيقة` : "النشر متوقف"}
             </span>
           </div>
         </div>

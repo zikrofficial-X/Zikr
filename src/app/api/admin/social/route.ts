@@ -111,7 +111,9 @@ function retryPlatforms(item: QueueItem): string[] {
 }
 
 async function triggerSocialWorker() {
-  return dispatchGitHubWorkflow("publish-social.yml");
+  return dispatchGitHubWorkflow("publish-social.yml", {
+    operation: "publish_queue",
+  });
 }
 
 export async function GET() {
@@ -129,6 +131,9 @@ export async function GET() {
       return acc;
     }, {});
     const env = getServerEnv();
+    // Keep the Admin health badge aligned with the fail-closed GitHub workflow.
+    // Re-enable only by an explicit reviewed change to both this value and the worker workflow.
+    const socialPublishingEnabled = false;
     const facebookHealth = await getFacebookPageConnectionHealth();
     const facebookAuthBlocked = rows.filter(
       item =>
@@ -170,10 +175,12 @@ export async function GET() {
           facebookAuthBlocked,
         },
         automation: {
-          enabled: true,
+          enabled: socialPublishingEnabled,
           provider: "GitHub Actions",
           scheduleMinutes: 15,
-          note: "النشر يعمل تلقائيًا كل 15 دقيقة؛ تشغيل العامل يدويًا خيار للتشغيل الفوري فقط.",
+          note: socialPublishingEnabled
+            ? "النشر يعمل تلقائيًا كل 15 دقيقة؛ تشغيل العامل يدويًا خيار للتشغيل الفوري فقط."
+            : "النشر العام متوقف بأمان؛ تشغيل العامل لا ينشر أي عنصر حتى إعادة تفعيل النشر صراحةً.",
         },
       },
       { headers: { "Cache-Control": "no-store" } }
