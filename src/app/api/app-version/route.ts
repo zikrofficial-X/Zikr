@@ -11,47 +11,12 @@ const RELEASE_DOWNLOAD_ENDPOINT = "/api/download/android";
 const RELEASE_DOWNLOAD_BASE =
   "https://github.com/zikrofficial-X/Zikr/releases/download";
 
-function verifiedSupabaseUrl(value: string | null | undefined) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" && url.hostname.endsWith(".supabase.co")
-      ? url.toString()
-      : null;
-  } catch {
-    return null;
-  }
-}
-
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     const setting = await getAndroidReleaseSetting();
-    const apkUrl = verifiedSupabaseUrl(setting.apkUrl);
-    const aabUrl = verifiedSupabaseUrl(setting.aabUrl);
-    if (apkUrl && aabUrl && setting.releaseTag) {
-      const tag = setting.releaseTag;
-      return NextResponse.json(
-        {
-          version: setting.version ?? tag.replace(/^v/i, ""),
-          tag,
-          apkUrl: RELEASE_DOWNLOAD_ENDPOINT,
-          aabUrl: "/api/download/android/aab",
-          aabName: "app-release.aab",
-          releaseUrl: verifiedSupabaseUrl(setting.releaseUrl) ?? apkUrl,
-          publishedAt: null,
-          name: `ZIKR Android ${tag}`,
-        },
-        {
-          headers: {
-            "Cache-Control": "private, no-store, no-cache, must-revalidate",
-            Pragma: "no-cache",
-          },
-        }
-      );
-    }
 
     if (!hasGitHubReleaseAccess()) {
       console.error(
