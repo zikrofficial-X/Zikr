@@ -43,6 +43,8 @@ if (!publisher.includes("isFacebookReelsCooldownDeferredError")) failures.push("
 if (!publisher.includes("deferredPlatforms: deferredFailures.map")) failures.push("social queue must persist deferred platform metadata separately from errors");
 if (!publisher.includes("operationalFailures")) failures.push("expected Reels pacing must not be written as a publication error");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
+if (!socialWorker.includes("retryPendingPublishedVideoCleanup")) failures.push("scheduled social worker must retry published-media cleanup without a separate manual sweep");
+if (!socialWorker.includes("Published media cleanup retry")) failures.push("scheduled social worker must report media cleanup retry outcomes");
 if (!socialWorker.includes('outcome === "deferred"') || !socialWorker.includes("succeeded, deferred, authBlocked")) failures.push("social worker must count cooldown deferrals separately from failures");
 const socialAdminPage = read("src/app/admin/social/social-client.tsx");
 if (!socialAdminPage.includes("facebookReelsDeferredUntil") || !socialAdminPage.includes("مؤجل تلقائيًا حتى")) failures.push("admin social UI must show scheduled Reels deferrals as waiting, not as errors");
