@@ -516,6 +516,107 @@ async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<bool
   return true;
 }
 
+export async function resetQueuedSocialVideoMedia(limit = 500): Promise<{ attempted: number; cleaned: number; pending: number }> {
+  const maxItems = Math.max(1, Math.min(500, Math.floor(limit)));
+  const queueItems = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
+    "/rest/v1/social_publish_queue?status=eq.queued&video_url=not.is.null&select=id,content_type,content_id,title,body,image_url,video_url,target_platforms,status,scheduled_at,published_at,error_message,metadata,created_at,updated_at&order=created_at.asc&limit=" + maxItems,
+  );
+  const items = queueItems ?? [];
+  if (!items.length) return { attempted: 0, cleaned: 0, pending: 0 };
+
+  const ids = items.map(item => item.content_id).filter((id): id is string => Boolean(id));
+  if (ids.length !== items.length || new Set(ids).size !== items.length ||
+      new Set(items.map(item => item.video_url)).size !== items.length) {
+    throw new Error("Reset stopped: queued media rows must have unique request IDs and video URLs.");
+  }
+
+  const requests = await supabaseServerAdminRequest<QueueResetGeneration[]>(
+    "/rest/v1/video_generation_requests?id=in.(" + ids.join(",") + ")&select=id,status,video_url,content",
+  );
+  const byId = new Map((requests ?? []).map(request => [request.id, request]));
+  const env = getServerEnv();
+  const expectedHost = env.NEXT_PUBLIC_SUPABASE_URL ? new URL(env.NEXT_PUBLIC_SUPABASE_URL).hostname : "";
+  const plan = items.map(item => {
+    if (!isVideoContentType(item.content_type) || !item.content_id || !item.video_url) {
+      throw new Error("Reset stopped: selected queue item is not a video.");
+    }
+    const request = byId.get(item.content_id);
+    if (!request || request.status !== "completed" || request.video_url !== item.video_url) {
+      throw new Error("Reset stopped: generation request mismatch for " + item.id);
+    }
+    const queueBackup = item.metadata?.supabaseOriginalVideoUrl;
+    const requestBackup = request.content?.supabaseOriginalVideoUrl;
+    const backupUrl = typeof queueBackup === "string" ? queueBackup : requestBackup;
+    if (typeof backupUrl !== "string") throw new Error("Reset stopped: missing Supabase backup for " + item.id);
+    const backup = new URL(backupUrl);
+    const delivery = new URL(item.video_url);
+    if (!expectedHost || backup.hostname !== expectedHost ||
+        !backup.pathname.startsWith("/storage/v1/object/public/videos/automated/") ||
+        !backup.pathname.endsWith(".mp4") ||
+        delivery.hostname !== "res.cloudinary.com" ||
+        !delivery.pathname.includes("/video/upload/")) {
+      throw new Error("Reset stopped: unmanaged video URL for " + item.id);
+    }
+    return { item, request, backupUrl };
+  });
+
+  let cleaned = 0;
+  let pending = 0;
+  for (const { item, request, backupUrl } of plan) {
+    const content = request.content ?? {};
+    const resetAt = new Date().toISOString();
+    await markQueueItem(item.id, "failed", {
+      error_message: "Operator reset: pending video discarded before publication.",
+      metadata: { ...(item.metadata ?? {}), supabaseOriginalVideoUrl: backupUrl, queueResetAt: resetAt, queueResetPending: true },
+    });
+    await supabaseServerAdminRequest("/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(request.id), {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        status: "failed",
+        error_message: "Operator reset: pending video discarded before publication.",
+        content: { ...content, supabaseOriginalVideoUrl: backupUrl, queueResetAt: resetAt, queueResetPending: true },
+        updated_at: resetAt,
+      }),
+    });
+
+    try {
+      await deleteManagedVideoUrl(backupUrl, env);
+      await deleteManagedVideoUrl(item.video_url as string, env);
+      const disposedAt = new Date().toISOString();
+      await supabaseServerAdminRequest("/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(request.id), {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          video_url: null,
+          content: { ...content, supabaseOriginalVideoUrl: null, queueResetAt: resetAt, queueResetPending: false, videoDisposedAt: disposedAt },
+          updated_at: disposedAt,
+        }),
+      });
+      await markQueueItem(item.id, "failed", {
+        video_url: null,
+        metadata: { ...(item.metadata ?? {}), supabaseOriginalVideoUrl: null, queueResetAt: resetAt, queueResetPending: false, videoDisposedAt: disposedAt },
+      });
+      cleaned += 1;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await markQueueItem(item.id, "failed", {
+        error_message: "Operator reset started; video cleanup is pending retry.",
+        metadata: { ...(item.metadata ?? {}), supabaseOriginalVideoUrl: backupUrl, queueResetAt: resetAt, queueResetPending: true, queueResetError: message.slice(0, 1000) },
+      });
+      pending += 1;
+    }
+  }
+  return { attempted: plan.length, cleaned, pending };
+}
+
+type QueueResetGeneration = {
+  id: string;
+  status: string;
+  video_url: string | null;
+  content: Record<string, unknown> | null;
+};
+
 export async function retryPendingPublishedVideoCleanup(limit = 25): Promise<{
   attempted: number;
   cleaned: number;
