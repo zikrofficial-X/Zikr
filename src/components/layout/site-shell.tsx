@@ -31,11 +31,18 @@ export async function SiteShell({ children }: { children: React.ReactNode }) {
 
   const smartLinkExcludedPrefixes = [
     "/admin", "/auth", "/kids", "/quran", "/mushaf", "/hadith",
-    "/dua", "/adhkar", "/prayer-times", "/qibla", "/videos/",
+    "/dua", "/adhkar", "/prayer-times", "/qibla", "/tasbeeh",
+    "/wird", "/memorization", "/spiritual-ai", "/prophets", "/stories",
+    "/companions", "/battles", "/conquests", "/tafsir", "/reciters",
+    "/audio", "/radio", "/tawasheeh", "/poetry", "/videos/",
   ];
-  const showSmartLink = !smartLinkExcludedPrefixes.some(
-    prefix => pathname === prefix || pathname.startsWith(prefix),
-  );
+  const showSmartLink =
+    pathname !== "" &&
+    pathname !== "/" &&
+    pathname !== "/videos" &&
+    !smartLinkExcludedPrefixes.some(
+      prefix => pathname === prefix || pathname.startsWith(prefix),
+    );
 
   return (
     <LanguageProvider initialLocale={initialLocale}>
