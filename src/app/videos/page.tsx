@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { getYoutubeChannelFeed } from '@/features/videos/integrations/youtube';
 import { YoutubeFeedCard } from '@/features/videos/components/youtube-feed-card';
 import { getFacebookPageProfile } from '@/features/social/integrations/facebook';
+import { SmartLinkPromo } from '@/components/smartlink-promo';
 
 export const metadata: Metadata = pageMetadata({
   title: 'فيديوهات ذِكر | يوتيوب وفيسبوك',
@@ -150,6 +151,9 @@ export default async function VideosPage() {
           <Badge variant="outline">{feed.stale ? 'آخر نسخة مخزنة' : 'مزامنة نشطة'}</Badge>
         </div>
       </Card>
+
+      <SmartLinkPromo />
+
     </Container>
   );
 }
