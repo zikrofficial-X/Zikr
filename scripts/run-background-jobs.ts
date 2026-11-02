@@ -6,7 +6,7 @@ import {
   seedAutomatedVideoRequests,
 } from "./jobs/template-video-automation";
 import { processSocialPublishQueue } from "./jobs/social-publishing";
-import { retryPendingPublishedVideoCleanup } from "../src/features/social/services/social-publishing";
+import { retryPendingPublishedVideoCleanup, resetQueuedSocialVideoMedia } from "../src/features/social/services/social-publishing";
 import { processScheduledContent } from "./jobs/content-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
@@ -326,6 +326,14 @@ async function main() {
     console.log("[background-jobs] Published media cleanup-only sweep:", JSON.stringify(result));
     if (result.pending > 0 || result.error) {
       throw new Error(result.error || `Published media cleanup left ${result.pending} item(s) pending.`);
+    }
+    return;
+  }
+  if (process.env.SOCIAL_QUEUE_RESET_ONLY === "true") {
+    const result = await resetQueuedSocialVideoMedia(500);
+    console.log("[background-jobs] Pending video queue reset:", JSON.stringify(result));
+    if (result.pending > 0) {
+      throw new Error(`Pending video reset left ${result.pending} media item(s) for retry.`);
     }
     return;
   }
