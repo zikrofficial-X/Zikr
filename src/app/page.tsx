@@ -7,6 +7,7 @@ import { HomeInteractive } from '@/features/home/components/home-interactive';
 import { SITE_CATALOG, CATALOG_ITEMS } from '@/lib/navigation/catalog';
 import * as Icons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { SmartLinkPromo } from '@/components/smartlink-promo';
 
 export const dynamic = 'force-dynamic';
 
@@ -435,6 +436,11 @@ export default async function HomePage() {
                 {isEnglish ? 'Open Adhkar' : 'افتح الأذكار'}
               </Link>
             </div>
+          </Container>
+        </section>
+        <section className="border-t border-brand-gold/10 px-3 py-8 sm:px-4 sm:py-10">
+          <Container>
+            <SmartLinkPromo isEnglish={isEnglish} compact />
           </Container>
         </section>
       </main>
