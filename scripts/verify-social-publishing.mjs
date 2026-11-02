@@ -70,6 +70,12 @@ if (!queue.includes("counted the recovery as an attempt")) failures.push("stale 
 if (!queue.includes("getFacebookPageCredentials()") || !queue.includes("facebookCredentials?.isEnabled")) failures.push("new Facebook targets must use the canonical OAuth connection state");
 if (!queue.includes("findSocialQueueByAutomationKey")) failures.push("social queue idempotency lookup is required");
 if (!queue.includes("desiredTargets = [...new Set([...existingTargets, ...targets])]")) failures.push("existing social targets must be preserved without duplicates");
+if (!queue.includes("uploadGeneratedVideoToCloudinary")) failures.push("generated MP4s must upload directly from the worker to Cloudinary");
+if (queue.includes("/storage/v1/object/videos/")) failures.push("generated MP4s must never be staged in Supabase Storage");
+if (!queue.includes("mediaStorage: {") || !queue.includes("provider: \"cloudinary\"")) failures.push("generated video records must identify Cloudinary as the media source");
+const narrationUpload = read("src/app/api/admin/video-generation/narration-upload/route.ts");
+if (narrationUpload.includes("/storage/v1/object/videos/")) failures.push("human narration uploads must not consume the Supabase videos bucket");
+if (!narrationUpload.includes("/video/upload") || !narrationUpload.includes("audio-human-")) failures.push("human narration must upload directly to the managed Cloudinary media library");
 
 const env = read("src/lib/env.ts");
 if (!env.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED")) failures.push("server env must expose the Facebook feature gate");
@@ -79,6 +85,9 @@ const example = read(".env.example");
 if (!example.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED=false")) failures.push(".env.example must keep Facebook publishing disabled by default");
 
 const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
+for (const name of ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"]) {
+  if (!generationWorkflow.includes(name + ": ${{ secrets." + name + " }}")) failures.push("video worker must receive its protected Cloudinary credential: " + name);
+}
 const workflow = read(".github/workflows/publish-social.yml");
 const phase0AutomationFreeze =
   generationWorkflow.includes('VIDEO_AI_ENABLED: "false"') &&
