@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SmartLinkPromo } from "@/components/smartlink-promo";
 import {
   ExternalLink,
   BookOpen,
@@ -214,6 +215,9 @@ export default async function AboutPage() {
             <Link href="/platform" className="rounded-full border border-brand-gold/30 px-8 py-3 text-brand-gold hover:bg-brand-gold/10 transition-colors">كيف تستخدم المنصة</Link>
           </div>
         </section>
+
+        <SmartLinkPromo compact />
+
       </Container>
     </main>
   );
