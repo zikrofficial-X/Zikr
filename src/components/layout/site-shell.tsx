@@ -33,6 +33,7 @@ export async function SiteShell({ children }: { children: React.ReactNode }) {
     "/admin", "/auth", "/kids", "/quran", "/mushaf", "/hadith",
     "/dua", "/adhkar", "/prayer-times", "/qibla", "/tasbeeh",
     "/wird", "/memorization", "/spiritual-ai", "/prophets", "/stories",
+    "/articles", "/about",
     "/companions", "/battles", "/conquests", "/tafsir", "/reciters",
     "/audio", "/radio", "/tawasheeh", "/poetry", "/videos/",
   ];
