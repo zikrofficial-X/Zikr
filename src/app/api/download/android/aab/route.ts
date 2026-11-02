@@ -12,28 +12,9 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function verifiedSupabaseUrl(value: string | null | undefined) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" && url.hostname.endsWith(".supabase.co")
-      ? url.toString()
-      : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function GET() {
   try {
     const setting = await getAndroidReleaseSetting();
-    const supabaseAabUrl = verifiedSupabaseUrl(setting.aabUrl);
-    if (supabaseAabUrl) {
-      return NextResponse.redirect(supabaseAabUrl, {
-        status: 302,
-        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
-      });
-    }
 
     if (!hasGitHubReleaseAccess()) {
       return NextResponse.json(
