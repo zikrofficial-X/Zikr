@@ -71,12 +71,16 @@ const FALLBACK_MEMORIZATION_PLANS: MemorizationPlan[] = [
 ];
 
 export async function getSiteSetting(key: string): Promise<SiteSettingValue | null> {
+  // Homepage/SEO/social settings are explicitly invalidated by the admin save action,
+  // so a long cache lifetime removes repeated Supabase reads without delaying edits.
+  // Android release metadata remains on a short TTL because CircleCI updates it too.
+  const revalidate = ["seo", "social", "homepage"].includes(key) ? 86400 : 300;
   try {
     const rows = await supabaseServerAnonRequest<Array<{ value?: unknown }>>(
       `/rest/v1/site_settings?select=value&key=eq.${encodeURIComponent(key)}&limit=1`,
       {
         cache: "force-cache",
-        next: { revalidate: 300, tags: [`site-setting:${key}`] },
+        next: { revalidate, tags: [`site-setting:${key}`] },
       },
     );
     return (rows?.[0]?.value as SiteSettingValue) ?? null;
