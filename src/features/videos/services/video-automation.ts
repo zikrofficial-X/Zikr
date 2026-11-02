@@ -59,7 +59,8 @@ function sourceSocialCaption(request: VideoGenerationRequest) {
   const caption = ai && typeof ai === 'object' && typeof (ai as Record<string, unknown>).socialCaption === 'string'
     ? String((ai as Record<string, unknown>).socialCaption).trim()
     : '';
-  return [caption || request.description || '', growthCallToAction()].filter(Boolean).join('\n\n').slice(0, 700);
+  const baseCaption = [caption || request.description || '', growthCallToAction()].filter(Boolean).join('\n\n').slice(0, 800);
+  return appendSmartLinkDisclosure(baseCaption, content.audience !== 'kids');
 }
 
 /** Create a durable video-generation request for the canonical template worker. */
@@ -212,7 +213,7 @@ export function generateYoutubeMetadata(request: VideoGenerationRequest) {
   return {
     title,
     description: [sourceSocialCaption(request), qualityNote, sourceLabel, isShort ? '#Shorts' : '', '#ذكر #تدبر #اسلاميات'].filter(Boolean).join('\n\n'),
-    tags: ['zikr', 'islamic', 'quran', 'hadith', 'dua', 'adhkar', 'تعلم', 'تدبر', 'ذكر', ...(isShort ? ['shorts', 'ريلز'] : [])],
+    tags: ['zikr', 'islamic', 'quran', 'hadith', 'dua', 'adhkar', 'تعلم', 'تدبر', 'ذكر', ...(isShort ? ['shorts', 'ريلز'] : []), ...(content.audience === 'kids' ? [] : [...MONETAG_SMARTLINK_YOUTUBE_TAGS])],
     categoryId: '27',
     isShort,
   };
