@@ -67,6 +67,16 @@ With the global flag false, scheduled and manual runs do not claim or publish qu
 
 A provider failure is recorded as a failure for that provider; it must not make video generation appear failed when the generated media itself is valid.
 
+## Monetag SmartLink
+
+Eligible non-kids social videos append the disclosed Monetag SmartLink to YouTube descriptions and Facebook/Reels captions at publish time. YouTube's tags field receives descriptive keywords; the actual URL remains in the description because tags are not clickable links.
+
+The link is excluded from child-directed videos and is omitted from Facebook video captions when the source audience cannot be verified. The website placement is limited to the homepage, public video hub, and eligible general-public footer routes; it is not shown in children's or sacred-text/worship-tool interfaces.
+
+This integration does not turn on social publishing. The established `SOCIAL_PUBLISH_ENABLED` and provider readiness gates remain authoritative. Already-published posts are not edited or republished.
+
+See `docs/MONETAG_SMARTLINK_PLACEMENT.md` for placement and verification details.
+
 ## Admin Run Now
 
 Admin Run Now does not run a separate poller or second scheduler.
