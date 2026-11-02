@@ -32,7 +32,7 @@ For videos whose source audience is `kids`, the SmartLink and its advertising ta
 
 The integration changes metadata at publish time. It does not edit posts that were already published, and it does not republish old videos.
 
-The social publishing workflow remains controlled by its existing runtime feature flags. This change does not enable public posting or change provider credentials, schedules, queue states, or approvals. When the social workflow is enabled through its established controls, newly published eligible videos receive the disclosure and link automatically.
+The checked-in GitHub social workflow currently sets `SOCIAL_PUBLISH_ENABLED=true` and runs on its 15-minute schedule. Each run still depends on its protected provider preflight and a ready queue item. This change does not modify those flags, credentials, schedules, queue states, or approvals. Newly published eligible videos receive the disclosure and link automatically.
 
 ## Verification
 
