@@ -552,16 +552,21 @@ export async function resetQueuedSocialVideoMedia(limit = 500): Promise<{ attemp
     }
     const queueBackup = item.metadata?.supabaseOriginalVideoUrl;
     const requestBackup = request.content?.supabaseOriginalVideoUrl;
-    const backupUrl = typeof queueBackup === "string" ? queueBackup : requestBackup;
-    if (typeof backupUrl !== "string") throw new Error("Reset stopped: missing Supabase backup for " + item.id);
-    const backup = new URL(backupUrl);
+    const backupUrl = typeof queueBackup === "string"
+      ? queueBackup
+      : typeof requestBackup === "string" ? requestBackup : null;
     const delivery = new URL(item.video_url);
-    if (!expectedHost || backup.hostname !== expectedHost ||
-        !backup.pathname.startsWith("/storage/v1/object/public/videos/automated/") ||
-        !backup.pathname.endsWith(".mp4") ||
-        delivery.hostname !== "res.cloudinary.com" ||
+    if (delivery.protocol !== "https:" || delivery.hostname !== "res.cloudinary.com" ||
         !delivery.pathname.includes("/video/upload/")) {
-      throw new Error("Reset stopped: unmanaged video URL for " + item.id);
+      throw new Error("Reset stopped: unmanaged Cloudinary delivery URL for " + item.id);
+    }
+    if (backupUrl !== null) {
+      const backup = new URL(backupUrl);
+      if (!expectedHost || backup.protocol !== "https:" || backup.hostname !== expectedHost ||
+          !backup.pathname.startsWith("/storage/v1/object/public/videos/automated/") ||
+          !backup.pathname.endsWith(".mp4")) {
+        throw new Error("Reset stopped: unmanaged legacy Supabase backup for " + item.id);
+      }
     }
     return { item, request, backupUrl };
   });
@@ -587,7 +592,7 @@ export async function resetQueuedSocialVideoMedia(limit = 500): Promise<{ attemp
     });
 
     try {
-      await deleteManagedVideoUrl(backupUrl, env);
+      if (backupUrl !== null) await deleteManagedVideoUrl(backupUrl, env);
       await deleteManagedVideoUrl(item.video_url as string, env);
       const disposedAt = new Date().toISOString();
       await supabaseServerAdminRequest("/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(request.id), {
