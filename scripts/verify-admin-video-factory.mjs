@@ -15,7 +15,7 @@ if (!createRoute.includes('requireAdminApi("video.manage")')) failures.push("vid
 if (!createRoute.includes("SOURCE_LOCKED_CATEGORIES")) failures.push("video create API must enforce source-locked categories");
 if (!createRoute.includes("resolveVideoSource")) failures.push("video create API must resolve the canonical source");
 if (!createRoute.includes("sourceVerifiedAtRequest: true")) failures.push("video create API must stamp source verification");
-if (!createRoute.includes("ownStorageAudioUrl")) failures.push("human narration must be restricted to owned storage");
+if (!createRoute.includes("ownCloudinaryAudioUrl")) failures.push("human narration must be restricted to ZIKR-owned Cloudinary uploads");
 if (!createRoute.includes("category === \"quran\"")) failures.push("Quran audio substitution must remain blocked");
 
 const generation = read("src/app/api/admin/video-generation/route.ts");
@@ -30,7 +30,8 @@ const upload = read("src/app/api/admin/video-generation/narration-upload/route.t
 if (!upload.includes('requireAdminApi("video.manage")')) failures.push("narration upload must require video.manage");
 if (!upload.includes("hasValidAudioSignature")) failures.push("narration upload must validate file signatures");
 for (const token of ["ID3", "ftyp", "RIFF", "WAVE", "OggS", "0x1a", "0x45", "0xdf", "0xa3"]) if (!upload.includes(token)) failures.push(`audio signature contract missing: ${token}`);
-if (!upload.includes("human-narration/")) failures.push("narration upload must use the dedicated storage prefix");
+if (!upload.includes("audio-human-") || !upload.includes("/video/upload")) failures.push("narration upload must use the dedicated Cloudinary audio prefix");
+if (upload.includes("/storage/v1/object/videos/")) failures.push("narration upload must not stage audio in Supabase Storage");
 
 const service = read("src/features/videos/services/video-automation.ts");
 if (!service.includes("updated_at=eq.") || !service.includes("request.updated_at")) failures.push("video queue claims must include optimistic updated_at");
