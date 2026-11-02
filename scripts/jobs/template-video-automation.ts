@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -30,6 +31,55 @@ const VIDEO_TEMPLATE_VERSION = "2026-10-26-growth-quality-v5";
 const VIDEO_OUTPUT_CRF = Math.min(23, Math.max(16, Number(process.env.VIDEO_OUTPUT_CRF ?? 18) || 18));
 const VIDEO_AUDIO_BITRATE = process.env.VIDEO_AUDIO_BITRATE?.trim() || "192k";
 const engineConfig = () => getVideoEngineConfig();
+
+/**
+ * Upload completed MP4 bytes directly from the GitHub worker to Cloudinary.
+ * Supabase remains the database/queue only; generated public videos are never
+ * staged in Supabase Storage where Cloudinary and Meta reads consume Egress.
+ */
+async function uploadGeneratedVideoToCloudinary(bytes: Uint8Array, storageKey: string) {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error("Cloudinary video upload is not configured; refusing to use Supabase Storage as a fallback.");
+  }
+  if (bytes.byteLength <= 0 || bytes.byteLength > 50 * 1024 * 1024) {
+    throw new Error("Generated MP4 must be between 1 byte and 50 MiB before Cloudinary upload.");
+  }
+  const safeKey = storageKey.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "video";
+  const digest = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
+  const publicId = "auto-" + safeKey + "-" + digest;
+  const form = new FormData();
+  form.append("file", new Blob([new Uint8Array(bytes)], { type: "video/mp4" }), publicId + ".mp4");
+  form.append("public_id", publicId);
+  form.append("overwrite", "true");
+  form.append("unique_filename", "false");
+  form.append("invalidate", "true");
+  form.append("tags", "zikr-generated,automated");
+  const authorization = "Basic " + Buffer.from(apiKey + ":" + apiSecret).toString("base64");
+  const response = await fetch("https://api.cloudinary.com/v1_1/" + encodeURIComponent(cloudName) + "/video/upload", {
+    method: "POST",
+    headers: { Authorization: authorization },
+    body: form,
+    signal: AbortSignal.timeout(120_000),
+  });
+  const payload = await response.json().catch(() => ({})) as {
+    secure_url?: string;
+    public_id?: string;
+    bytes?: number;
+    error?: { message?: string };
+  };
+  if (!response.ok || !payload.secure_url || payload.public_id !== publicId) {
+    throw new Error(payload.error?.message || "Cloudinary MP4 upload failed (HTTP " + response.status + ").");
+  }
+  const delivery = new URL(payload.secure_url);
+  if (delivery.protocol !== "https:" || delivery.hostname !== "res.cloudinary.com" ||
+      !delivery.pathname.includes("/" + cloudName + "/video/upload/")) {
+    throw new Error("Cloudinary returned an unexpected generated-video delivery URL.");
+  }
+  return { secureUrl: payload.secure_url, publicId, bytes: payload.bytes ?? bytes.byteLength };
+}
 const AI_ATTEMPTS_PER_RUN = Math.max(0, Math.min(4, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 3) || 3));
 let aiAttemptsUsed = 0;
 
@@ -1227,20 +1277,7 @@ async function renderVideo(request: GeneratedRequest) {
 
     const bytes = await readFile(outputPath);
     const storageKey = request.automation_key || request.id;
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !serviceKey) throw new Error("Supabase storage environment is not configured.");
-    const objectPath = "automated/" + storageKey + ".mp4";
-    const upload = await fetch(
-      supabaseUrl.replace(/\/$/, "") + "/storage/v1/object/videos/" + objectPath,
-      {
-        method: "POST",
-        headers: { apikey: serviceKey, Authorization: "Bearer " + serviceKey, "Content-Type": "video/mp4", "Cache-Control": "max-age=86400", "x-upsert": "true" },
-        body: bytes,
-        signal: AbortSignal.timeout(60_000),
-      },
-    );
-    if (!upload.ok) throw new Error("Video storage upload failed (HTTP " + upload.status + "): " + (await upload.text()).slice(0, 300));
+    const uploadedMedia = await uploadGeneratedVideoToCloudinary(bytes, storageKey);
     request.content = {
       ...request.content,
       audio: {
@@ -1253,6 +1290,11 @@ async function renderVideo(request: GeneratedRequest) {
         pitch: narrationProfile.pitch,
         sourceUrl: audioUrl || null,
         generatedAt: new Date().toISOString(),
+      },
+      mediaStorage: {
+        provider: "cloudinary",
+        publicId: uploadedMedia.publicId,
+        bytes: uploadedMedia.bytes,
       },
       render: {
         templateVersion: VIDEO_TEMPLATE_VERSION,
@@ -1267,7 +1309,7 @@ async function renderVideo(request: GeneratedRequest) {
       },
     };
     return {
-      videoUrl: supabaseUrl.replace(/\/$/, "") + "/storage/v1/object/public/videos/" + objectPath,
+      videoUrl: uploadedMedia.secureUrl,
       scene,
       renderDurationMs,
     };
