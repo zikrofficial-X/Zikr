@@ -1,0 +1,71 @@
+name: ZIKR Offline Content Snapshot
+
+on:
+  schedule:
+    - cron: "41 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: zikr-offline-content-snapshot
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+    steps:
+      - name: Checkout canonical main branch
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Validate protected Supabase access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_URL:-}" || { echo "::error::Missing canonical SUPABASE_URL." >&2; exit 1; }
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing protected SUPABASE_SERVICE_ROLE_KEY." >&2; exit 1; }
+
+      - name: Setup pnpm and Node 22
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Refresh all validated public offline datasets
+        run: pnpm offline:export
+
+      - name: Verify complete snapshot and manifest
+        run: pnpm offline:check
+
+      - name: Commit only when the public snapshot changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/offline-content/v1
+          if git diff --cached --quiet; then
+            echo "Offline content snapshot is already current."
+            exit 0
+          fi
+          git commit -m "chore(content): refresh public offline snapshot"
+          git push origin HEAD:main
