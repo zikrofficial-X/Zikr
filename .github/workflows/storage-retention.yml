@@ -68,7 +68,7 @@ jobs:
         run: pnpm storage:cleanup
 
       - name: Apply scheduled or manually approved full storage retention
-        if: ${{ github.event_name == 'schedule' || github.event.inputs.apply == 'true' || github.ref == 'refs/heads/storage-retention-apply-2026-10-30' }}
+        if: ${{ github.event_name == 'schedule' || github.event.inputs.apply == 'true' }}
         run: pnpm storage:cleanup -- --apply
 
       - name: Verify final bucket inventory
