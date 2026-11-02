@@ -5,6 +5,7 @@ import { getServerEnv } from "@/lib/env";
 import { getFacebookPageCredentials } from "@/features/social/services/facebook-credentials";
 import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError } from "@/features/social/services/facebook-reels-rate-limit";
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing } from "@/features/videos/services/video-publish-approval";
+import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 export type SocialQueueStatus =
@@ -294,9 +295,19 @@ async function publishFacebookVideoItem(
   const mediaUrl = assertPublishableVideoUrl(item.video_url, "facebook");
   // Both feed videos and Reels use the verified OAuth-managed Page token stored in Supabase.
   // GitHub Actions must never need a duplicate Facebook Page token secret.
+  let kidsAudience = true;
+  try {
+    kidsAudience = await isMadeForKidsVideo(item);
+  } catch (error) {
+    // Do not add an external advertising link when the audience cannot be verified.
+    console.warn("[social-publishing] SmartLink omitted because video audience could not be verified:", item.id, error);
+  }
   return publishToFacebook(
     item.id,
-    { title: item.title, description: item.body ?? "" },
+    {
+      title: item.title,
+      description: appendSmartLinkDisclosure(item.body ?? "", !kidsAudience),
+    },
     mediaUrl,
     credentials.pageId,
     asReel
@@ -333,8 +344,16 @@ async function publishYoutubeItem(item: SocialPublishQueueItem): Promise<string 
     item.id,
     {
       title: item.title,
-      description: [item.body ?? "", publicUrl(item)].filter(Boolean).join("\n\n"),
-      tags: ["zikr", "islamic", item.content_type],
+      description: appendSmartLinkDisclosure(
+        [item.body ?? "", publicUrl(item)].filter(Boolean).join("\n\n"),
+        !madeForKids,
+      ),
+      tags: [
+        "zikr",
+        "islamic",
+        item.content_type,
+        ...(madeForKids ? [] : [...MONETAG_SMARTLINK_YOUTUBE_TAGS]),
+      ],
       categoryId: "27",
       isShort: item.metadata?.videoFormat !== "horizontal",
     },
