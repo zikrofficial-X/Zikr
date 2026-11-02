@@ -7,13 +7,13 @@ const supabaseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABAS
 const apiKey = (process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLIC_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
 if (!supabaseUrl || !apiKey) {
-  if (process.argv.includes('--required') || process.env.VERCEL === '1') {
-    throw new Error('Offline export requires SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and a Supabase service-role or public anon key.');
+  if (process.argv.includes('--required')) {
+    throw new Error('Offline snapshot refresh requires SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and a protected Supabase key.');
   }
-  // GitHub CI verifies the committed public snapshot without receiving
-  // production credentials. Vercel builds remain strict and must export the
-  // live Supabase catalog before generating a production artifact.
-  console.warn('[offline-export] Supabase credentials are not configured in this non-deployment CI environment; validating the checked-in public snapshot instead.');
+  // Ordinary app builds never refresh the snapshot. The scheduled/manual
+  // GitHub workflow invokes this script with --required and commits a complete,
+  // validated snapshot before a subsequent deployment picks it up.
+  console.warn('[offline-export] No Supabase credentials; keeping the committed public snapshot unchanged.');
   process.exit(0);
 }
 
