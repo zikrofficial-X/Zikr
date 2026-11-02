@@ -23,6 +23,6 @@ export function appendSmartLinkDisclosure(
   const base = description.trim();
   if (!isEligible || base.includes(MONETAG_SMARTLINK_URL)) return base;
 
-  const disclosure = `${MONETAG_SMARTLINK_DISCLOSURE_AR}\n${MONETAG_SMARTLINK_URL}`;
+  const disclosure = `${MONETAG_SMARTLINK_DISCLOSURE_AR}\n#رابط_إعلاني #عروض_خارجية\n${MONETAG_SMARTLINK_URL}`;
   return [base, disclosure].filter(Boolean).join("\n\n");
 }
