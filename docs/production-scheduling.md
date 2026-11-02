@@ -13,6 +13,7 @@ ZIKR has one authoritative execution owner per production workload. Quran audio 
 | Quran audio playback | External HTTPS audio URLs via `quran_audio.audio_url` | On demand | No Supabase Storage dependency; no bulk MP3 import job is permitted. |
 | Repository verification | GitHub Actions `ZIKR Quality Gate` | Pull requests and `main` | `pnpm verify:pr` on PRs; full `pnpm verify` (including mobile, SEO, lint, types, and production build) on `main`. |
 | Production smoke | GitHub Actions `ZIKR Production Release` | Manual post-deploy verification | Public HTTP checks for home, robots, and sitemap. |
+| Public offline-content snapshot | GitHub Actions `refresh-offline-content.yml` | Daily + manual dispatch | One validated public-data export per day; ordinary Vercel builds use the committed snapshot and do not bulk-read Supabase. |
 | Security audit | CircleCI `security-audit` | Manual pipeline parameter | No production publishing credentials required. |
 
 ## Scheduler ownership
@@ -21,7 +22,7 @@ The Supabase migration `20260915004110_retire_vercel_video_processing_cron.sql` 
 
 Supabase owns minute-level prayer scheduling.
 GitHub Actions is the authoritative automatic video generation worker.
-GitHub Actions is the authoritative automatic social publisher. GitHub Actions is the authoritative automatic video generation worker and the authoritative social publisher. Video generation runs four times per day; the social publisher polls every 15 minutes at UTC minutes 7, 22, 37, and 52 to avoid quarter-hour boundaries. Admin Run Now dispatches the canonical GitHub video workflow directly. CircleCI is reserved for the application build/documentation artifact, Android release builds, Supabase release gates, English content sync, and explicit recovery/release operations.
+GitHub Actions is the authoritative automatic social publisher. Video generation runs four times per day; the social publisher polls every 15 minutes at UTC minutes 7, 22, 37, and 52 to avoid quarter-hour boundaries. Admin Run Now dispatches the canonical GitHub video workflow directly. CircleCI is reserved for the application build/documentation artifact, Android release builds, Supabase release gates, English content sync, and explicit recovery/release operations.
 
 ## Quran audio architecture
 
