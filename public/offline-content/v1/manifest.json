@@ -1,8 +1,8 @@
 {
-  "version": "2026-10-30-content-v2",
-  "generatedAt": "2026-10-30T00:00:00Z",
-  "source": "Zikr Supabase public and approved content tables, refreshed 2026-10-30",
-  "licenseNote": "Quran and hadith records retain their source attribution. Editorial records are prepared for Zikr.",
+  "version": "2026-10-30-20261102032509",
+  "generatedAt": "2026-11-02T03:25:09.266Z",
+  "source": "Zikr Supabase published public content tables",
+  "licenseNote": "Quran and hadith records retain source attribution. Editorial records are Zikr content. External audio remains a reference unless the file is explicitly packaged locally.",
   "datasets": {
     "surahs": {
       "path": "/offline-content/v1/surahs.json",
@@ -14,7 +14,7 @@
     },
     "tafsir": {
       "path": "/offline-content/v1/tafsir.json",
-      "count": 2
+      "count": 6236
     },
     "hadith_books": {
       "path": "/offline-content/v1/hadith_books.json",
@@ -30,7 +30,7 @@
     },
     "prophet_sections": {
       "path": "/offline-content/v1/prophet_sections.json",
-      "count": 150
+      "count": 175
     },
     "battles": {
       "path": "/offline-content/v1/battles.json",
@@ -54,23 +54,15 @@
     },
     "duas": {
       "path": "/offline-content/v1/duas.json",
-      "count": 33
+      "count": 43
     },
     "kids": {
       "path": "/offline-content/v1/kids.json",
-      "count": 59
+      "count": 65
     },
     "companions": {
       "path": "/offline-content/v1/companions.json",
       "count": 12
-    },
-    "companion_stories": {
-      "path": "/offline-content/v1/companion_stories.json",
-      "count": 21
-    },
-    "scholars": {
-      "path": "/offline-content/v1/scholars.json",
-      "count": 8
     },
     "stories": {
       "path": "/offline-content/v1/stories.json",
@@ -79,6 +71,38 @@
     "article_categories": {
       "path": "/offline-content/v1/article_categories.json",
       "count": 5
+    },
+    "companion_stories": {
+      "path": "/offline-content/v1/companion_stories.json",
+      "count": 22
+    },
+    "scholars": {
+      "path": "/offline-content/v1/scholars.json",
+      "count": 8
+    },
+    "tawasheeh": {
+      "path": "/offline-content/v1/tawasheeh.json",
+      "count": 12
+    },
+    "quran_reciters": {
+      "path": "/offline-content/v1/quran_reciters.json",
+      "count": 172
+    },
+    "quran_audio": {
+      "path": "/offline-content/v1/quran_audio.json",
+      "count": 19608
+    },
+    "kids_games": {
+      "path": "/offline-content/v1/kids_games.json",
+      "count": 13
+    },
+    "kids_game_levels": {
+      "path": "/offline-content/v1/kids_game_levels.json",
+      "count": 1170
+    },
+    "dua_categories": {
+      "path": "/offline-content/v1/dua_categories.json",
+      "count": 6
     }
   },
   "routes": [
