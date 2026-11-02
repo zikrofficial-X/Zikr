@@ -195,14 +195,15 @@ gtag('config', '${googleAnalyticsId}', { send_page_view: true });`}
         <meta name="monetag" content="8dc00be3e026b336f3aa64f60373941e" />
         {process.env.NODE_ENV === "production" && (
           <>
-            <Script id="monetag-onclick-12171820" strategy="beforeInteractive">
-              {`(function(s){s.dataset.zone='12171820',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`}
-            </Script>
-            <Script
-              id="monetag-push-12171818"
+            <script
+              dangerouslySetInnerHTML={{
+                __html: "(function(s){s.dataset.zone='12171820',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))",
+              }}
+            />
+            <script
               src="https://5gvci.com/act/files/tag.min.js?z=12171818"
               data-cfasync="false"
-              strategy="beforeInteractive"
+              async
             />
           </>
         )}
