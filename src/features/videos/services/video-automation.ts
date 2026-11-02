@@ -1,4 +1,5 @@
 import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
+import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from '@/lib/smartlink';
 import { getServerEnv } from '@/lib/env';
 import {
   getFacebookPageCredentials,
