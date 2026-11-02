@@ -1,11 +1,6 @@
 name: ZIKR Supabase Storage Retention
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/storage-retention.yml"
   schedule:
     - cron: "17 2 * * *"
   workflow_dispatch:
@@ -71,14 +66,6 @@ jobs:
 
       - name: Print deletion plan (dry run)
         run: pnpm storage:cleanup
-
-      - name: Apply verified videos-only cleanup for an explicit main-branch run
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.head_commit.message == 'ops(storage): apply verified 48-hour video cleanup' }}
-        run: pnpm storage:cleanup -- --apply --videos-only
-
-      - name: Apply reviewed full retention for the explicit operation
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.head_commit.message == 'ops(storage): apply verified storage retention' }}
-        run: pnpm storage:cleanup -- --apply
 
       - name: Apply scheduled or manually approved full storage retention
         if: ${{ github.event_name == 'schedule' || github.event.inputs.apply == 'true' || github.ref == 'refs/heads/storage-retention-apply-2026-10-30' }}
