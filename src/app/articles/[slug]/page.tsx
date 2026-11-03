@@ -3,6 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { Container } from "@/components/ui/container";
+import { AdSenseSlot } from "@/components/layout/adsense-slot";
 import { Card } from "@/components/ui/card";
 import { getArticleBySlug } from "@/features/articles/services/articles";
 import type { Article } from "@/features/articles/types/articles";
@@ -252,6 +253,8 @@ export default async function ArticleDetailPage({
           </ol>
         </section>
       )}
+
+      <AdSenseSlot isEnglish={isEnglish} />
 
       {article.tags && article.tags.length > 0 && (
         <div className="flex flex-wrap gap-2 justify-center" aria-label={isEnglish ? "Article tags" : "وسوم المقال"}>

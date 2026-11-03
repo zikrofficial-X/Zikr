@@ -64,6 +64,10 @@ const site = read('src/lib/site.ts');
 const adsTxt = read('public/ads.txt');
 const nextConfig = read('next.config.ts');
 const analytics = read('src/components/layout/analytics.tsx');
+const adsense = read('src/components/layout/adsense.tsx');
+const adsenseSlot = read('src/components/layout/adsense-slot.tsx');
+const articlePage = read('src/app/articles/[slug]/page.tsx');
+const envExample = read('.env.example');
 
 if (!/google-adsense-account/.test(layout)) fail('AdSense publisher meta tag is missing from app/layout.tsx.');
 const layoutPublisher = layout.match(/ca-pub-\d{8,}/)?.[0] ?? null;
@@ -72,6 +76,21 @@ if (!adsTxtPublisher) fail('public/ads.txt does not contain a valid Google direc
 const normalizedAdsTxtPublisher = adsTxtPublisher?.replace(/^pub-/, 'ca-pub-') ?? null;
 if (layoutPublisher && normalizedAdsTxtPublisher && layoutPublisher !== normalizedAdsTxtPublisher) {
   fail(`Publisher mismatch: layout=${layoutPublisher}, ads.txt=${adsTxtPublisher}.`);
+}
+if (!adsense.includes('NEXT_PUBLIC_ADSENSE_ENABLED === "true"') || !envExample.includes('NEXT_PUBLIC_ADSENSE_ENABLED=false')) {
+  fail('AdSense must remain explicitly disabled by default until account review and consent settings are confirmed.');
+}
+if (!adsense.includes('NEXT_PUBLIC_ADSENSE_ARTICLE_SLOT') || !adsense.includes('ADSENSE_CONFIGURED')) {
+  fail('AdSense must require a configured publisher ID and explicit manual ad-unit slot.');
+}
+if (!adsenseSlot.includes('data-ad-slot') || !adsenseSlot.includes('requestNonPersonalizedAds = 1')) {
+  fail('The article ad unit must use an explicit slot and request non-personalized ads.');
+}
+if (!adsenseSlot.includes('Capacitor.isNativePlatform()') || !articlePage.includes('<AdSenseSlot')) {
+  fail('AdSense must be limited to web editorial articles and excluded from native app builds.');
+}
+if (!layout.includes('requestNonPersonalizedAds = 1')) {
+  fail('AdSense requests must default to non-personalized before the Google tag is loaded.');
 }
 
 if (!/sitemap\.xml/.test(read('src/app/robots.ts'))) fail('robots.ts does not advertise sitemap.xml.');
@@ -85,11 +104,8 @@ if (/googletagmanager\.com/.test(analytics)) {
 }
 
 const runtimeEffects = read("src/components/layout/runtime-effects.tsx");
-if (!runtimeEffects.includes('  "/kids",')) {
-  fail("The entire child-directed Kids area must be excluded from AdSense loading.");
-}
-if (runtimeEffects.includes('  "/kids/puzzle",') && !runtimeEffects.includes('  "/kids",')) {
-  fail("Kids ad exclusions must cover every game and content route, not only the puzzle page.");
+if (!runtimeEffects.includes('normalizedPath.startsWith("/articles/")') || !runtimeEffects.includes('ADSENSE_CONFIGURED')) {
+  fail('AdSense script loading must be opt-in and restricted to article detail routes.');
 }
 const noindexPaths = [...site.matchAll(/"\/(?:search|qibla|prayer-times|tasbeeh|memorization|wird|zakat|offline-library|settings|favorites|profile|spiritual-ai|radio|youtube|reciters|tawasheeh)"/g)].length;
 if (noindexPaths < 10) warn('Expected utility/account noindex coverage was not found in lib/site.ts.');
@@ -127,8 +143,8 @@ for (const block of longformBlocks) {
     fail(`Long-form article "${slug}" talks about the product instead of serving the reader.`);
   }
 }
-if (!runtimeEffects.includes('  "/kids",')) {
-  fail('All /kids routes must remain excluded from AdSense until child privacy/legal review is complete.');
+if (/al5sm\.com|5gvci\.com/.test(layout)) {
+  warn('Separate third-party Monetag scripts remain in the production layout; review their ad formats, consent and AdSense policy compatibility in the publisher accounts.');
 }
 
 const productionUrl = site.match(/PRODUCTION_URL\s*=\s*["']([^"']+)["']/)?.[1];

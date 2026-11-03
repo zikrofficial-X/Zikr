@@ -16,6 +16,7 @@ for (const token of [
   "ad_personalization: 'denied'",
   "personalization_storage: 'denied'",
   "ads_data_redaction",
+  "requestNonPersonalizedAds = 1",
 ]) {
   if (!layout.includes(token)) throw new Error("Google Consent Mode default missing: " + token);
 }

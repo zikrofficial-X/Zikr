@@ -22,6 +22,8 @@ assert.ok(androidPublish.includes("github.ref_type == 'tag'"), "Android publishi
 const circle = read(".circleci/config.yml");
 const ownership = read("docs/AUTOMATION_OWNERSHIP_2026-10-08.md");
 const supabaseConfig = read("supabase/config.toml");
+const articleTranslation = read("scripts/translate-published-articles-en.ts");
+const hadithTranslation = read("scripts/sync-hadith-english.ts");
 const androidRecovery = read(".github/workflows/dispatch-android-release-recovery.yml");
 assert.ok(androidRecovery.includes("workflow_dispatch:"), "Android recovery must be explicitly dispatched by the successful CircleCI release pipeline");
 assert.ok(!androidRecovery.includes("\n  status:") && !androidRecovery.includes("\n  push:"), "Android recovery must not subscribe to every repository status or push event");
@@ -52,6 +54,42 @@ assert.ok(video.includes('cron: "17 3,9,15,21 * * *"'), "GitHub must own the rec
 assert.ok(social.includes('cron: "7,22,37,52 * * * *"'), "GitHub must own the recurring off-peak social publishing schedule");
 assert.ok(circle.includes('cron: "17 4 * * *"'), "CircleCI must retain the recurring English content schedule");
 assert.ok(!circle.includes('cron: "17 3,9,15,21 * * *"'), "CircleCI must not own the video generation schedule");
+assert.ok(
+  circle.includes("cat > release-metadata.json " + String.fromCharCode(92) + "<<EOF"),
+  "Literal heredocs in CircleCI commands must escape the config parameter marker.",
+);
+assert.ok(!circle.includes("<<<"), "CircleCI shell commands must not contain unescaped here-string markers.");
+const englishCredentialCheck = circle.slice(
+  circle.indexOf("name: Validate production content-sync credentials"),
+  circle.indexOf("name: Run bounded English content sync"),
+);
+const englishSyncCommand = circle.slice(
+  circle.indexOf("name: Run bounded English content sync"),
+  circle.indexOf("android-rebuild:"),
+);
+assert.ok(
+  !englishCredentialCheck.includes("GEMINI_API_KEY") &&
+    englishSyncCommand.includes('if [[ -n "${GEMINI_API_KEY:-}" ]]') &&
+    englishSyncCommand.includes("pnpm translate:articles:en || article_status=$?") &&
+    englishSyncCommand.includes("pnpm sync:hadith:en || hadith_status=$?") &&
+    englishSyncCommand.includes("English sync incomplete"),
+  "Daily English sync must attempt Hadith even when article translation lacks Gemini or fails.",
+);
+assert.ok(
+  articleTranslation.includes("title_en.eq.") &&
+    articleTranslation.includes("summary_en.eq.") &&
+    articleTranslation.includes("content_en.eq.") &&
+    articleTranslation.includes("if (!article.title_en?.trim())") &&
+    articleTranslation.includes("if (!article.summary_en?.trim())") &&
+    articleTranslation.includes("if (!article.content_en?.trim())") &&
+    articleTranslation.includes("&or=(${field}.is.null,${field}.eq.)"),
+  "English article sync must include empty fields and conditionally preserve concurrent human translations.",
+);
+assert.ok(
+  articleTranslation.includes("Number.isInteger(value)") &&
+    hadithTranslation.includes("Number.isInteger(value)"),
+  "English sync batch inputs must be validated before building Supabase requests.",
+);
 
 assert.ok(quality.includes('name: "ZIKR / Quality Gate"'), "Canonical GitHub quality check name is incorrect");
 assert.ok(
