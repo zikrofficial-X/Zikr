@@ -3,7 +3,15 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const supabaseUrl = process.env.SUPABASE_URL?.trim();
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-const batchSize = Math.max(1, Math.min(10, Number(process.env.TRANSLATION_BATCH_SIZE ?? 5)));
+function parseBatchSize(raw: string | undefined): number {
+  const value = raw?.trim() ? Number(raw) : 5;
+  if (!Number.isInteger(value)) {
+    throw new Error("TRANSLATION_BATCH_SIZE must be a whole number between 1 and 10.");
+  }
+  return Math.max(1, Math.min(10, value));
+}
+
+const batchSize = parseBatchSize(process.env.TRANSLATION_BATCH_SIZE);
 
 async function generateGeminiTextForJob(prompt: string, maxOutputTokens = 6000): Promise<string | null> {
   const key = process.env.GEMINI_API_KEY?.trim();
@@ -50,7 +58,6 @@ type ArticleRow = {
   title_en: string | null;
   summary_en: string | null;
   content_en: string | null;
-  metadata: Record<string, unknown> | null;
 };
 
 async function supabase<T>(
@@ -127,7 +134,7 @@ ${article.content_ar ?? ""}`;
 
 async function main() {
   const rows = await supabase<ArticleRow[]>(
-    "/rest/v1/articles?select=id,title_ar,summary_ar,content_ar,title_en,summary_en,content_en,metadata&published=eq.true&or=(title_en.is.null,summary_en.is.null,content_en.is.null)&order=created_at.asc&limit=" + batchSize,
+    "/rest/v1/articles?select=id,title_ar,summary_ar,content_ar,title_en,summary_en,content_en&published=eq.true&or=(title_en.is.null,title_en.eq.,summary_en.is.null,summary_en.eq.,content_en.is.null,content_en.eq.)&order=created_at.asc&limit=" + batchSize,
   );
 
   console.log(`Found ${rows.length} published articles missing English fields.`);
@@ -186,31 +193,28 @@ async function main() {
       if (!raw) throw new Error("Gemini returned no content.");
       const translation = parseJson(raw);
 
-      const nextMetadata = {
-        ...(article.metadata ?? {}),
-        translation: {
-          provider: "google-gemini",
-          status: "ai_assisted",
-          source_locale: "ar",
-          target_locale: "en",
-          source_hash: sourceHash,
-          translated_at: new Date().toISOString(),
-        },
-      };
+      const fieldsToPatch: Array<"title_en" | "summary_en" | "content_en"> = [];
+      if (!article.title_en?.trim()) fieldsToPatch.push("title_en");
+      if (!article.summary_en?.trim()) fieldsToPatch.push("summary_en");
+      if (!article.content_en?.trim()) fieldsToPatch.push("content_en");
 
-      await supabase(
-        `/rest/v1/articles?id=eq.${encodeURIComponent(article.id)}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            title_en: translation.title_en,
-            summary_en: translation.summary_en,
-            content_en: translation.content_en,
-            metadata: nextMetadata,
-            updated_at: new Date().toISOString(),
-          }),
-        },
-      );
+      for (const field of fieldsToPatch) {
+        const [updated] = await supabase<Array<{ id: string }>>(
+          `/rest/v1/articles?id=eq.${encodeURIComponent(article.id)}&or=(${field}.is.null,${field}.eq.)`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              [field]: translation[field],
+              updated_at: new Date().toISOString(),
+            }),
+          },
+        );
+        if (!updated) {
+          console.warn(
+            `Skipped ${article.id}/${field}; an English value was added after the source row was read.`,
+          );
+        }
+      }
 
       const [queueRow] = await supabase<Array<{ id: string }>>(
         `/rest/v1/content_translation_queue?select=id&content_type=eq.article&content_id=eq.${encodeURIComponent(article.id)}&target_locale=eq.en&source_hash=eq.${sourceHash}&limit=1`,

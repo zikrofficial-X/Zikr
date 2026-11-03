@@ -154,6 +154,8 @@ export default async function RootLayout({
         <Script id="google-consent-mode-default" strategy="beforeInteractive">
           {`window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
+window.adsbygoogle = window.adsbygoogle || [];
+window.adsbygoogle.requestNonPersonalizedAds = 1;
 gtag('consent', 'default', {
   ad_storage: 'denied',
   analytics_storage: 'denied',

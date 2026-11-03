@@ -247,14 +247,29 @@ jobs:
             set -euo pipefail
             test -n "${SUPABASE_URL:-}" || { echo "Missing SUPABASE_URL."; exit 1; }
             test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "Missing SUPABASE_SERVICE_ROLE_KEY."; exit 1; }
-            test -n "${GEMINI_API_KEY:-}" || { echo "Missing GEMINI_API_KEY."; exit 1; }
       - run:
           name: Run bounded English content sync
           shell: /bin/bash
           command: |
-            set -euo pipefail
-            pnpm translate:articles:en
-            pnpm sync:hadith:en
+            set -u
+            article_status=0
+            hadith_status=0
+
+            if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+              echo "Translating at most ${TRANSLATION_BATCH_SIZE} published articles."
+              pnpm translate:articles:en || article_status=$?
+            else
+              echo "Missing GEMINI_API_KEY; article translation cannot run." >&2
+              article_status=1
+            fi
+
+            echo "Synchronizing at most ${HADITH_TRANSLATION_BATCH_SIZE} Hadith records."
+            pnpm sync:hadith:en || hadith_status=$?
+
+            if (( article_status != 0 || hadith_status != 0 )); then
+              echo "English sync incomplete (articles=${article_status}, hadith=${hadith_status})." >&2
+              exit 1
+            fi
           no_output_timeout: 20m
 
   android-rebuild:
@@ -633,4 +648,3 @@ workflows:
   configuration-guard:
     jobs:
       - config-guard
-

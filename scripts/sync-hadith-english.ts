@@ -1,14 +1,32 @@
 const supabaseUrl = process.env.SUPABASE_URL?.trim();
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-const batchSize = Math.max(1, Math.min(100, Number(process.env.HADITH_TRANSLATION_BATCH_SIZE ?? 50)));
-const apiBase = (process.env.HADITH_API_BASE_URL ?? "https://ummahapi.com/api/hadith").replace(/\/$/, "");
+const apiBase = (
+  process.env.HADITH_API_BASE_URL ?? "https://ummahapi.com/api/hadith"
+).replace(/\/$/, "");
+
+function parseBatchSize(raw: string | undefined): number {
+  const value = raw?.trim() ? Number(raw) : 50;
+  if (!Number.isInteger(value)) {
+    throw new Error(
+      "HADITH_TRANSLATION_BATCH_SIZE must be a whole number between 1 and 100."
+    );
+  }
+  return Math.max(1, Math.min(100, value));
+}
+
+const batchSize = parseBatchSize(process.env.HADITH_TRANSLATION_BATCH_SIZE);
 
 if (!supabaseUrl || !serviceRoleKey) {
   throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
 }
 
 type BookRow = { id: string; slug: string; name_en: string | null };
-type HadithRow = { hadith_number: string; text_en: string | null; book_id: string; ref: string | null };
+type HadithRow = {
+  hadith_number: string;
+  text_en: string | null;
+  book_id: string;
+  ref: string | null;
+};
 type UmmahResponse = {
   success?: boolean;
   data?: {
@@ -35,10 +53,13 @@ async function supabase<T>(path: string, init: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function fetchEnglish(bookSlug: string, number: string): Promise<string | null> {
+async function fetchEnglish(
+  bookSlug: string,
+  number: string
+): Promise<string | null> {
   const response = await fetch(
     `${apiBase}/${encodeURIComponent(bookSlug)}/${encodeURIComponent(number)}`,
-    { headers: { Accept: "application/json" } },
+    { headers: { Accept: "application/json" } }
   );
   if (!response.ok) return null;
   const payload = (await response.json()) as UmmahResponse;
@@ -53,12 +74,13 @@ async function fetchEnglish(bookSlug: string, number: string): Promise<string | 
 
 async function main() {
   const books = await supabase<BookRow[]>(
-    "/rest/v1/hadith_books?select=id,slug,name_en&order=slug.asc",
+    "/rest/v1/hadith_books?select=id,slug,name_en&order=slug.asc"
   );
-  const bookById = new Map(books.map((book) => [book.id, book]));
+  const bookById = new Map(books.map(book => [book.id, book]));
 
   const rows = await supabase<HadithRow[]>(
-    "/rest/v1/hadiths?select=hadith_number,text_en,book_id,ref&published=eq.true&or=(text_en.is.null,text_en.eq.)&order=book_id.asc,hadith_number.asc&limit=" + batchSize,
+    "/rest/v1/hadiths?select=hadith_number,text_en,book_id,ref&published=eq.true&or=(text_en.is.null,text_en.eq.)&order=book_id.asc,hadith_number.asc&limit=" +
+      batchSize
   );
 
   console.log(`Found ${rows.length} published Hadith records missing English.`);
@@ -71,7 +93,9 @@ async function main() {
     try {
       const english = await fetchEnglish(book.slug, row.hadith_number);
       if (!english) {
-        console.warn(`No English source returned for ${book.slug}/${row.hadith_number}`);
+        console.warn(
+          `No English source returned for ${book.slug}/${row.hadith_number}`
+        );
         continue;
       }
 
@@ -82,23 +106,28 @@ async function main() {
           body: JSON.stringify({
             text_en: english,
           }),
-        },
+        }
       );
       synced += 1;
       console.log(`Synced ${book.slug}/${row.hadith_number}`);
     } catch (error) {
       failed += 1;
-      console.error(`Hadith sync failed for ${book.slug}/${row.hadith_number}:`, error);
+      console.error(
+        `Hadith sync failed for ${book.slug}/${row.hadith_number}:`,
+        error
+      );
     }
   }
 
   console.log(`Hadith English sync complete: ${synced}/${rows.length} synced.`);
   if (failed > 0) {
-    throw new Error(`${failed} Hadith record(s) failed to sync; inspect the logged item errors before retrying.`);
+    throw new Error(
+      `${failed} Hadith record(s) failed to sync; inspect the logged item errors before retrying.`
+    );
   }
 }
 
-void main().catch((error) => {
+void main().catch(error => {
   console.error(error);
   process.exitCode = 1;
 });

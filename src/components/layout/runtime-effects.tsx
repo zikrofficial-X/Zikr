@@ -2,51 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { AdSense } from "./adsense";
+import { Capacitor } from "@capacitor/core";
+import { AdSense, ADSENSE_CONFIGURED } from "./adsense";
 import { AppUpdateChecker } from "./app-update-checker";
 import { PrayerAlertProvider } from "./prayer-alert-provider";
 import { ServiceWorkerRegister } from "./service-worker-register";
 
-const NON_AD_PATHS = [
-  "/search",
-  "/qibla",
-  "/prayer-times",
-  "/tasbeeh",
-  "/memorization",
-  "/wird",
-  "/zakat",
-  "/offline-library",
-  "/settings",
-  "/favorites",
-  "/profile",
-  "/spiritual-ai",
-  "/competitions",
-  "/radio",
-  "/videos",
-  "/reciters",
-  "/tawasheeh",
-  "/kids",
-  "/admin",
-  "/api",
-  "/auth",
-  "/privacy",
-  "/terms",
-  "/about",
-  "/contact",
-  "/editorial-policy",
-  "/faq",
-  "/platform",
-] as const;
-
 function adsAllowedOnPath(pathname: string | null): boolean {
   if (!pathname) return false;
-  return !NON_AD_PATHS.some(
-    blocked => pathname === blocked || pathname.startsWith(`${blocked}/`),
+  const normalizedPath = pathname.replace(/\/+$/, "");
+  return (
+    normalizedPath.startsWith("/articles/") &&
+    normalizedPath.length > "/articles/".length
   );
 }
 
 function DeferredThirdPartyRuntime() {
   const [ready, setReady] = useState(false);
+  const [isWebRuntime, setIsWebRuntime] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -54,19 +27,16 @@ function DeferredThirdPartyRuntime() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    setIsWebRuntime(!Capacitor.isNativePlatform());
+  }, []);
+
   if (!ready) return null;
 
-  const adsAllowed = adsAllowedOnPath(pathname);
+  const adsAllowed =
+    isWebRuntime && ADSENSE_CONFIGURED && adsAllowedOnPath(pathname);
 
-  return (
-    <>
-      {process.env.NODE_ENV === "production" && adsAllowed && (
-        <>
-          <AdSense />
-        </>
-      )}
-    </>
-  );
+  return <>{adsAllowed && <AdSense />}</>;
 }
 
 export function RuntimeEffects() {
