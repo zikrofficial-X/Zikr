@@ -58,6 +58,7 @@ assert.ok(
   circle.includes("cat > release-metadata.json " + String.fromCharCode(92) + "<<EOF"),
   "Literal heredocs in CircleCI commands must escape the config parameter marker.",
 );
+assert.ok(!circle.includes("<<<"), "CircleCI shell commands must not contain unescaped here-string markers.");
 const englishCredentialCheck = circle.slice(
   circle.indexOf("name: Validate production content-sync credentials"),
   circle.indexOf("name: Run bounded English content sync"),

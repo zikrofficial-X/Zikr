@@ -529,8 +529,8 @@ jobs:
             EOF
 
             RELEASE_STATE="$(GH_TOKEN="$GH_TOKEN" gh release view "$RELEASE_TAG" --repo "$REPOSITORY" --json tagName,isDraft)"
-            test "$(jq -r '.tagName' <<< "$RELEASE_STATE")" = "$RELEASE_TAG"
-            test "$(jq -r '.isDraft' <<< "$RELEASE_STATE")" = "true"
+            test "$(printf '%s' "$RELEASE_STATE" | jq -r '.tagName')" = "$RELEASE_TAG"
+            test "$(printf '%s' "$RELEASE_STATE" | jq -r '.isDraft')" = "true"
             GH_TOKEN="$GH_TOKEN" gh release upload "$RELEASE_TAG" "$APK" "$AAB" "$SHA_FILE" release-metadata.json \
               --repo "$REPOSITORY" \
               --clobber
