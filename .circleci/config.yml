@@ -512,7 +512,7 @@ jobs:
               exit 1
             }
 
-            cat > release-metadata.json <<EOF
+            cat > release-metadata.json \<<EOF
             {
               "tag": "${RELEASE_TAG}",
               "version": "${VERSION_NAME}",

@@ -54,6 +54,10 @@ assert.ok(video.includes('cron: "17 3,9,15,21 * * *"'), "GitHub must own the rec
 assert.ok(social.includes('cron: "7,22,37,52 * * * *"'), "GitHub must own the recurring off-peak social publishing schedule");
 assert.ok(circle.includes('cron: "17 4 * * *"'), "CircleCI must retain the recurring English content schedule");
 assert.ok(!circle.includes('cron: "17 3,9,15,21 * * *"'), "CircleCI must not own the video generation schedule");
+assert.ok(
+  circle.includes("cat > release-metadata.json " + String.fromCharCode(92) + "<<EOF"),
+  "Literal heredocs in CircleCI commands must escape the config parameter marker.",
+);
 const englishCredentialCheck = circle.slice(
   circle.indexOf("name: Validate production content-sync credentials"),
   circle.indexOf("name: Run bounded English content sync"),
