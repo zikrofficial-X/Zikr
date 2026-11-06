@@ -27,8 +27,8 @@ jobs:
     environment: production
     timeout-minutes: 10
     env:
-      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
-      NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
+      SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_MODEL: gemini-3.1-flash-lite
