@@ -363,9 +363,21 @@ export async function POST(request: NextRequest) {
     const catalogRecordsHidden = generatedCatalogRows?.length ?? 0;
     // Historical external platform queue records are never read or modified.
     const socialQueueRowsPreserved = true;
-    const generationRowsDeleted = includeMemory
-      ? await deleteRows("video_generation_requests", "id=not.is.null")
-      : 0;
+    const generatedRequests = includeMemory
+      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/video_generation_requests?automation_key=not.is.null&select=id&limit=1000",
+        )
+      : [];
+    if (includeMemory && (generatedRequests ?? []).length >= 1000) {
+      throw new Error("Automated generation history exceeded the safe purge batch.");
+    }
+    let generationRowsDeleted = 0;
+    for (const generatedRequest of generatedRequests ?? []) {
+      generationRowsDeleted += await deleteRows(
+        "video_generation_requests",
+        "id=eq." + encodeURIComponent(generatedRequest.id),
+      );
+    }
     const automationRunsDeleted = includeMemory
       ? await deleteRows("video_automation_runs", "id=not.is.null")
       : 0;
