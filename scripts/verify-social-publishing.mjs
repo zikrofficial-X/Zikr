@@ -86,7 +86,7 @@ if (!videoCatalogWorker.includes("registerGeneratedVideoOnSite") || !videoCatalo
 if (!videoContentPublisher.includes('"videos"')) {
   failures.push("scheduled internal site publisher must allow generated videos");
 }
-if (!socialPage.includes('redirect("/admin/media")') || !writtenPage.includes('redirect("/admin/media")')) {
+if (!socialPage.includes('redirect("/admin/memory")') || !writtenPage.includes('redirect("/admin/memory")')) {
   failures.push("retired social UI routes must redirect to the protected internal memory/media page");
 }
 if (navigation.includes('key: "publishing"') || navigation.includes('href: "/admin/social"')) {
