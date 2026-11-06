@@ -43,7 +43,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function asCount(value: string | undefined): number | null {
-  if (value == null || !/^\\d+$/.test(value)) return null;
+  if (value == null || !/^\d+$/.test(value)) return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) ? parsed : null;
 }
