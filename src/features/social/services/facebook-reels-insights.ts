@@ -207,3 +207,36 @@ export async function syncFacebookReelsInsights(limit = MAX_BATCH): Promise<Face
 
   return { configured: true, candidates: candidates.length, fetched, updated, failed };
 }
+
+export type FacebookPageAudienceSnapshot = {
+  status: "connected" | "not_connected" | "permission_missing" | "unavailable";
+  pageName: string | null;
+  followers: number | null;
+  likes: number | null;
+  capturedAt: string | null;
+};
+
+/** Read-only Page audience totals. No posts are created or modified. */
+export async function getFacebookPageAudienceSnapshot(): Promise<FacebookPageAudienceSnapshot> {
+  const credential = await readStoredFacebookCredential();
+  if (!credential?.page_id || !credential.page_access_token || credential.connection_status !== "connected") {
+    return { status: "not_connected", pageName: null, followers: null, likes: null, capturedAt: null };
+  }
+  const permissions = new Set(credential.granted_permissions ?? []);
+  if (!permissions.has("pages_read_engagement")) {
+    return { status: "permission_missing", pageName: credential.page_name, followers: null, likes: null, capturedAt: null };
+  }
+  try {
+    const version = getServerEnv().FACEBOOK_GRAPH_API_VERSION?.trim() || "v26.0";
+    const url = new URL("https://graph.facebook.com/" + version + "/" + encodeURIComponent(credential.page_id));
+    url.searchParams.set("fields", "name,followers_count,fan_count");
+    url.searchParams.set("access_token", credential.page_access_token);
+    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(12_000) });
+    const payload = await response.json().catch(() => ({})) as { name?: string; followers_count?: number; fan_count?: number; error?: unknown };
+    if (!response.ok || payload.error) return { status: response.status === 403 ? "permission_missing" : "unavailable", pageName: credential.page_name, followers: null, likes: null, capturedAt: null };
+    const valid = (value: unknown): number | null => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+    return { status: "connected", pageName: payload.name ?? credential.page_name, followers: valid(payload.followers_count), likes: valid(payload.fan_count), capturedAt: new Date().toISOString() };
+  } catch {
+    return { status: "unavailable", pageName: credential.page_name, followers: null, likes: null, capturedAt: null };
+  }
+}
