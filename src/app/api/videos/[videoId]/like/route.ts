@@ -5,42 +5,36 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 type RouteContext = { params: Promise<{ videoId: string }> };
-type LikeStatusRow = { like_count?: number | string; viewer_liked?: boolean };
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function invalidId() {
-  return NextResponse.json({ error: "معرّف الفيديو غير صالح." }, { status: 400 });
-}
-
-async function isPublicVideo(supabase: Awaited<ReturnType<typeof createClient>>, videoId: string) {
-  const { data, error } = await supabase
-    .from("videos")
-    .select("id")
-    .eq("id", videoId)
-    .eq("published", true)
-    .maybeSingle();
-  return { exists: Boolean(data), error };
-}
-
 async function likeStatus(
   supabase: Awaited<ReturnType<typeof createClient>>,
   videoId: string,
   authenticated: boolean,
 ) {
-  const { data, error } = await supabase.rpc("get_video_like_status", {
-    p_video_id: videoId,
-  });
-  if (error) {
+  const countQuery = supabase
+    .from("video_like_counts")
+    .select("like_count")
+    .eq("video_id", videoId)
+    .maybeSingle();
+
+  const viewerQuery = authenticated
+    ? supabase
+        .from("video_likes")
+        .select("video_id")
+        .eq("video_id", videoId)
+        .maybeSingle()
+    : Promise.resolve({ data: null, error: null });
+
+  const [countResult, viewerResult] = await Promise.all([countQuery, viewerQuery]);
+  if (countResult.error || viewerResult.error) {
     return NextResponse.json(
       { error: "تعذر تحميل عدد الإعجابات الآن." },
       { status: 503 },
     );
   }
-  const row = (Array.isArray(data) ? data[0] : data) as LikeStatusRow | null;
+
   return NextResponse.json({
-    likeCount: Number(row?.like_count ?? 0),
-    viewerLiked: row?.viewer_liked === true,
+    likeCount: Number(countResult.data?.like_count ?? 0),
+    viewerLiked: Boolean(viewerResult.data),
     authenticated,
   }, { headers: { "Cache-Control": "no-store" } });
 }
