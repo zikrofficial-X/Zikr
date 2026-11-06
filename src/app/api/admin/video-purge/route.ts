@@ -75,7 +75,7 @@ async function listGeneratedVideos(): Promise<CloudinaryAsset[]> {
       body: JSON.stringify({
         expression: "resource_type:video AND tags=automated",
         max_results: 500,
-        with_field: ["tags", "bytes", "format", "resource_type"],
+        with_field: ["tags"],
         ...(nextCursor ? { next_cursor: nextCursor } : {}),
       }),
       cache: "no-store",
