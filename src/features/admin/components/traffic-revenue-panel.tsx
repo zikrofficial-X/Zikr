@@ -170,9 +170,14 @@ export async function TrafficRevenuePanel() {
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-bold text-brand-cream">تحليلات قناة YouTube</h3>
-          <Badge variant="outline" className={snapshot.integrations.youtubeAnalyticsConnected ? "border-emerald-400/20 text-emerald-200/80" : "border-amber-300/20 text-amber-100/75"}>
-            {snapshot.integrations.youtubeAnalyticsConnected ? "بيانات مالك القناة متصلة" : snapshot.youtubeAnalytics.status === "authorization_required" ? "تحتاج إعادة تفويض" : "غير متصلة"}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className={snapshot.integrations.youtubeAnalyticsConnected ? "border-emerald-400/20 text-emerald-200/80" : "border-amber-300/20 text-amber-100/75"}>
+              {snapshot.integrations.youtubeAnalyticsConnected ? "بيانات مالك القناة متصلة" : snapshot.youtubeAnalytics.status === "authorization_required" ? "تحتاج إعادة تفويض" : "غير متصلة"}
+            </Badge>
+            <Link href="/api/admin/social/youtube/connect" className="rounded-lg border border-brand-gold/20 px-3 py-1.5 text-xs text-brand-gold hover:bg-brand-gold/10">
+              {snapshot.integrations.youtubeAnalyticsConnected ? "إعادة ربط القراءة" : "ربط YouTube — قراءة فقط"}
+            </Link>
+          </div>
         </div>
         {snapshot.youtubeAnalytics.status === "connected" ? (
           <>
