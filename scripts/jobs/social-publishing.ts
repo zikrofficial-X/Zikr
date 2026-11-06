@@ -29,7 +29,7 @@ export async function syncSocialInsights() {
       console.log("[social-worker] Facebook Reels insights sync:", JSON.stringify(facebookInsights));
     }
   
-    const insights = await syncYoutubePublishedPostInsights(Math.max(50, Math.min(250, limit * 10))).catch((error: unknown) => {
+    const insights = await syncYoutubePublishedPostInsights(100).catch((error: unknown) => {
       console.error("[social-worker] YouTube public insights sync unavailable:", error instanceof Error ? error.message : String(error));
       return { configured: false, candidates: 0, fetched: 0, updated: 0 };
     });
