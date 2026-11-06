@@ -17,7 +17,39 @@ CREATE TABLE IF NOT EXISTS public.social_post_insights (
 
 ALTER TABLE public.social_post_insights ENABLE ROW LEVEL SECURITY;
 REVOKE ALL PRIVILEGES ON TABLE public.social_post_insights FROM PUBLIC, anon, authenticated;
+DROP POLICY IF EXISTS social_post_insights_deny_client_access ON public.social_post_insights;
+CREATE POLICY social_post_insights_deny_client_access
+  ON public.social_post_insights FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
 GRANT SELECT, INSERT, UPDATE ON TABLE public.social_post_insights TO service_role;
+
+-- These server-only tables intentionally have no client-facing CRUD surface.
+REVOKE ALL PRIVILEGES ON TABLE
+  public.video_templates,
+  public.video_template_versions,
+  public.youtube_oauth_credentials,
+  public.youtube_sync_state
+FROM PUBLIC, anon, authenticated;
+
+DROP POLICY IF EXISTS video_templates_deny_client_access ON public.video_templates;
+CREATE POLICY video_templates_deny_client_access
+  ON public.video_templates FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
+
+DROP POLICY IF EXISTS video_template_versions_deny_client_access ON public.video_template_versions;
+CREATE POLICY video_template_versions_deny_client_access
+  ON public.video_template_versions FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
+
+DROP POLICY IF EXISTS youtube_oauth_credentials_deny_client_access ON public.youtube_oauth_credentials;
+CREATE POLICY youtube_oauth_credentials_deny_client_access
+  ON public.youtube_oauth_credentials FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
+
+DROP POLICY IF EXISTS youtube_sync_state_deny_client_access ON public.youtube_sync_state;
+CREATE POLICY youtube_sync_state_deny_client_access
+  ON public.youtube_sync_state FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);
 
 CREATE INDEX IF NOT EXISTS social_post_insights_platform_captured_idx
   ON public.social_post_insights(platform, captured_at DESC);
