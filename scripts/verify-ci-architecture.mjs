@@ -122,6 +122,8 @@ const socialPublishingDisabled =
 assert.ok(socialPublishingActive || socialPublishingFrozen || socialPublishingDisabled, "Social publisher must be explicitly active, safely frozen, or fail-closed");
 assert.ok(social.includes("environment: production"), "Social publisher must use protected production environment");
 assert.ok(social.includes("if: false") && social.includes('SOCIAL_PUBLISH_ENABLED: "false"'), "External social publisher must remain explicitly disabled");
+assert.ok(social.includes('FACEBOOK_PUBLISHING_REQUESTED: "false"') && social.includes('YOUTUBE_PUBLISHING_REQUESTED: "false"') && social.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"'), "Retired social workflow must keep both provider targets and all auto-publish paths fail-closed");
+for (const secretName of ["YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN", "YOUTUBE_CHANNEL_ID", "FACEBOOK_GRAPH_API_VERSION"]) assert.ok(!social.includes(secretName), "Retired social workflow must not receive external publishing credentials: " + secretName);
 
 assert.ok(!english.includes("\n  schedule:"), "GitHub English sync must not own an automatic schedule");
 assert.ok(english.includes("environment: production"), "English sync must use protected production environment");
