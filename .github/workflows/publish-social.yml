@@ -48,7 +48,7 @@ jobs:
       BACKGROUND_JOB_TARGET: "social"
       SOCIAL_PUBLISH_ENABLED: "true"
       SOCIAL_SYNC_INSIGHTS: "false"
-      SOCIAL_PUBLISH_BATCH_SIZE: "2"
+      SOCIAL_PUBLISH_BATCH_SIZE: "5"
       # Do not touch the 101 historical queued rows or any pre-launch retries.
       SOCIAL_PUBLISH_AFTER: "2026-11-06T20:00:00Z"
       FACEBOOK_PUBLISHING_REQUESTED: ${{ vars.FACEBOOK_PUBLISHING_ENABLED || 'true' }}
