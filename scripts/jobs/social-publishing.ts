@@ -28,5 +28,14 @@ export async function processSocialPublishQueue(limit = 10) {
     else failed += 1;
   }
 
-  return { processed: items.length, succeeded, deferred, authBlocked, approvalBlocked, failed };
+  const insights = await syncYoutubePublishedPostInsights(Math.max(50, Math.min(250, limit * 10))).catch((error) => {
+    console.error("[social-worker] YouTube public insights sync unavailable:", error instanceof Error ? error.message : String(error));
+    return { configured: false, candidates: 0, fetched: 0, updated: 0 };
+  });
+
+  if (insights.updated > 0) {
+    console.log("[social-worker] YouTube public post statistics synced:", JSON.stringify(insights));
+  }
+
+  return { processed: items.length, succeeded, deferred, authBlocked, approvalBlocked, failed, insights };
 }
