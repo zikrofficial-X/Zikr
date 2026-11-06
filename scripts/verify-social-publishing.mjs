@@ -128,6 +128,14 @@ if (workflow.includes("secrets.FACEBOOK_PAGE_ACCESS_TOKEN") || workflow.includes
 if (!publisher.includes("async function publishFacebookVideoItem")) failures.push("Facebook feed videos and Reels must use the same OAuth-managed Page credential");
 if (publisher.includes('if (!env.FACEBOOK_PAGE_ACCESS_TOKEN) throw new Error("FACEBOOK_PAGE_ACCESS_TOKEN is not configured")')) failures.push("Facebook video publishing must not require a legacy environment token");
 
+const postInsights = read("src/features/social/services/youtube-post-insights.ts");
+for (const token of ["syncYoutubePublishedPostInsights", "youtube-data-api-v3", "views:", "likes:", "comments:", "INSIGHTS_REFRESH_MS"]) {
+  if (!postInsights.includes(token)) failures.push("YouTube public post insights sync missing: " + token);
+}
+const socialWorker = read("scripts/jobs/social-publishing.ts");
+if (!socialWorker.includes("syncYoutubePublishedPostInsights")) failures.push("social worker must periodically sync YouTube post statistics");
+if (!postInsights.includes("scope: \"public-statistics\"")) failures.push("YouTube metrics must be labelled as public statistics, not retention analytics");
+
 const adminApi = read("src/app/api/admin/social/route.ts");
 if (!adminApi.includes("const allTargetsSucceeded") || !adminApi.includes("targets.every(platform => succeeded.has(platform))")) failures.push("Admin retry must not label mixed-success/auth-blocked queue items as published");
 if (!adminApi.includes("authBlockedPlatforms")) failures.push("Admin retry path must understand Facebook auth-blocked platforms");
