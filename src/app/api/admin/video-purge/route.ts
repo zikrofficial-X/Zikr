@@ -205,6 +205,24 @@ async function setPurgeLock(enabled: boolean): Promise<void> {
   );
 }
 
+async function getVideoAutomationEnabled(): Promise<boolean> {
+  const rows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+    "/rest/v1/admin_settings?key=eq.video_automation_enabled&select=value&limit=1",
+  );
+  return rows?.[0]?.value !== false;
+}
+
+async function restoreVideoAutomation(enabled: boolean): Promise<void> {
+  await supabaseServerAdminRequest(
+    "/rest/v1/admin_settings?key=eq.video_automation_enabled",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ value: enabled, updated_at: new Date().toISOString() }),
+    },
+  );
+}
+
 async function pauseVideoAutomation(): Promise<void> {
   await supabaseServerAdminRequest(
     "/rest/v1/admin_settings?key=eq.video_automation_enabled",
@@ -216,10 +234,6 @@ async function pauseVideoAutomation(): Promise<void> {
       },
       body: JSON.stringify({ value: false, updated_at: new Date().toISOString() }),
     },
-  );
-  await supabaseServerAdminRequest(
-    "/rest/v1/admin_settings?key=eq.video_automation_run_now",
-    { method: "DELETE", headers: { Prefer: "return=minimal" } },
   );
 }
 
@@ -263,6 +277,7 @@ export async function POST(request: NextRequest) {
     const includeMemory = scope === "memory" || scope === "both";
 
     if (includeFiles) cloudinaryConfig();
+    const automationWasEnabled = await getVideoAutomationEnabled();
 
     await pauseVideoAutomation();
     await setPurgeLock(true);
@@ -271,13 +286,14 @@ export async function POST(request: NextRequest) {
     if (processing.generation > 0) {
       // Current claims may finish, but the automation settings remain disabled.
       // Release the claim lock so an administrator can resume/settle them safely.
+      await restoreVideoAutomation(automationWasEnabled);
       await setPurgeLock(false);
       return NextResponse.json(
         {
-          error: `يوجد ${processing.generation} طلب توليد قيد التنفيذ. أوقفت التشغيل التلقائي مؤقتًا؛ انتظر انتهاء عامل التوليد ثم أعد التصفير.`,
+          error: `يوجد ${processing.generation} طلب توليد قيد التنفيذ. لم يبدأ الحذف؛ استمر التشغيل التلقائي، وأعد المحاولة بعد انتهاء العامل الحالي.`,
           processing,
-          paused: true,
-          automationMustBeReenabled: true,
+          paused: false,
+          automationMustBeReenabled: false,
           retryRequired: true,
         },
         { status: 409, headers: { "Cache-Control": "no-store" } },
@@ -354,6 +370,7 @@ export async function POST(request: NextRequest) {
       ? await deleteRows("video_automation_runs", "id=not.is.null")
       : 0;
 
+    await restoreVideoAutomation(automationWasEnabled);
     await setPurgeLock(false);
     await recordAdminAuditEvent({
       action: "video.library.purge",
@@ -382,8 +399,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         ok: true,
-        paused: true,
-        automationRemainsDisabled: true,
+        paused: !automationWasEnabled,
+        automationRemainsDisabled: !automationWasEnabled,
+        automationResumed: automationWasEnabled,
         scope,
         cloudinaryAssetsDeleted: assets.length,
         cloudinaryBytesDeleted: assets.reduce((sum, asset) => sum + Number(asset.bytes ?? 0), 0),
