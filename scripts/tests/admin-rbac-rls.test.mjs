@@ -247,7 +247,7 @@ assert.equal(videoManagerPermissions?.[1].includes("'social.manage'"), false);
 
 assert.match(
   rlsEventTriggerMigration,
-  /REVOKE EXECUTE ON FUNCTION public\\.rls_auto_enable\\(\\) FROM PUBLIC, anon, authenticated/i,
+  /to_regprocedure\\('public\\.rls_auto_enable\\(\\)'\\)[\\s\\S]*?REVOKE EXECUTE ON FUNCTION public\\.rls_auto_enable\\(\\) FROM PUBLIC, anon, authenticated/i,
   "RLS event-trigger function must not be callable by browser roles",
 );
 
