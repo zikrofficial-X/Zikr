@@ -103,6 +103,12 @@ export default function AdminVideoStudioClient() {
   const compatibleTemplates = activeTemplates.filter((template) => template.audience === selectedAudience);
 
   useEffect(() => {
+    if (templateVersionId && !compatibleTemplates.some((template) => template.versionId === templateVersionId)) {
+      setTemplateVersionId("");
+    }
+  }, [templateVersionId, compatibleTemplates]);
+
+  useEffect(() => {
     const controller = new AbortController();
     setTemplatesLoading(true);
     void fetch("/api/admin/video/templates", { cache: "no-store", signal: controller.signal })
