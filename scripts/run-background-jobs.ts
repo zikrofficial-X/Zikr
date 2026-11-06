@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { processTemplateVideoQueue, seedAutomatedVideoRequests } from "./jobs/template-video-automation";
+import { processScheduledContent } from "./jobs/content-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
 import { notifyNewQueueFailures } from "./jobs/admin-queue-alerts";
@@ -261,6 +262,7 @@ async function recordAutomationRun(summary: {
   failed: number;
   socialProcessed: number;
   socialSucceeded: number;
+  siteContentPublished: number;
   urgentRunRequestedAt: string | null;
 }) {
   try {
@@ -285,6 +287,7 @@ async function recordAutomationRun(summary: {
           target: summary.target,
           socialProcessed: summary.socialProcessed,
           socialSucceeded: summary.socialSucceeded,
+          siteContentPublished: summary.siteContentPublished,
           generator: "multi-provider-free-ai",
           urgentRunRequestedAt: summary.urgentRunRequestedAt,
         },
@@ -324,9 +327,15 @@ async function main() {
     console.log(`[background-jobs] Cleared completed urgent video run request ${runNowRequestedAt}.`);
   }
 
+  const sitePublishing = await processScheduledContent(20).catch((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[background-jobs] Internal site publishing queue failed:", message);
+    return { claimed: 0, published: 0, error: message };
+  });
+  console.log("[background-jobs] Internal site publishing:", JSON.stringify(sitePublishing));
+
   const social = { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, disabledByProductPolicy: true };
-  const scheduledContent = { claimed: 0, published: 0, disabledByProductPolicy: true };
-  const failed = videos.failed + social.failed;
+  const failed = videos.failed + ("error" in sitePublishing ? 1 : 0);
 
   const queueAlerts = await notifyNewQueueFailures(new Date(startedAt).toISOString()).catch((error) => {
     console.error("[background-jobs] Queue failure alert delivery unavailable:", error instanceof Error ? error.message : String(error));
@@ -341,12 +350,13 @@ async function main() {
     failed,
     socialProcessed: social.processed,
     socialSucceeded: social.succeeded,
+    siteContentPublished: sitePublishing.published,
     urgentRunRequestedAt: runNowRequestedAt,
   });
 
   console.log(
     "[background-jobs] Summary:",
-    JSON.stringify({ target, videos, reconciledSocialQueue, social, scheduledContent, queueAlerts, durationMs: Date.now() - startedAt }, null, 2)
+    JSON.stringify({ target, videos, sitePublishing, reconciledSocialQueue, social, queueAlerts, durationMs: Date.now() - startedAt }, null, 2)
   );
 
   if (failed > 0) {
