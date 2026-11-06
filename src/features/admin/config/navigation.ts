@@ -75,7 +75,8 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
       { href: "/admin/video/qa", label: "ضبط الجودة", permission: "video.manage", icon: "shield-check" },
     ],
   },
-key: "memory",
+  {
+    key: "memory",
     label: "الذاكرة والمكتبة",
     icon: "brain",
     items: [
@@ -83,7 +84,7 @@ key: "memory",
     ],
   },
   {
-  key: "media-audio",
+    key: "media-audio",
     label: "الوسائط والصوت",
     icon: "folder-open",
     items: [
