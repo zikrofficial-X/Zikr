@@ -216,9 +216,7 @@ export async function GET() {
             env.YOUTUBE_CLIENT_SECRET &&
             env.YOUTUBE_REFRESH_TOKEN
           ),
-          youtubeConnectionStatus: env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET && env.YOUTUBE_REFRESH_TOKEN
-            ? "not_tested"
-            : "not_configured",
+          youtubeConnectionStatus: youtubeHealth.status,
           youtubeConnectionMessage: youtubeHealth.message,
           youtubeChannelId: youtubeHealth.channelId,
           youtubeChannelName: youtubeHealth.channelName,
