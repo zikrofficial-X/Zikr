@@ -170,12 +170,8 @@ export async function syncFacebookReelsInsights(limit = MAX_BATCH): Promise<Face
     }));
 
     for (const result of results) {
-      if (result.error) {
-        failed += 1;
-        continue;
-      }
-      fetched += 1;
-      if (!Object.keys(result.metrics).length) continue;
+      if (result.error) failed += 1;
+      else fetched += 1;
       const currentMetadata = result.candidate.row.metadata ?? {};
       const currentInsights = isRecord(currentMetadata.platformInsights)
         ? currentMetadata.platformInsights
@@ -191,6 +187,7 @@ export async function syncFacebookReelsInsights(limit = MAX_BATCH): Promise<Face
             source: "meta-graph-api",
             scope: "page-video-insights",
             period: "lifetime",
+            status: result.error ? "temporarily-unavailable" : Object.keys(result.metrics).length ? "available" : "no-metrics-returned",
           },
         },
       };
