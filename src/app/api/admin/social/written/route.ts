@@ -14,13 +14,17 @@ export async function GET(){
 export async function POST(request:NextRequest){
  const auth=await requireAdminApi("social.manage");
  if(!auth.ok)return NextResponse.json({error:auth.error},{status:auth.status});
+ // Generation queues posts that the existing publisher may publish automatically.
+ // Require explicit publishing permission as well as social queue management.
+ const publishAuth=await requireAdminApi("social.publish");
+ if(!publishAuth.ok)return NextResponse.json({error:publishAuth.error},{status:publishAuth.status});
  try{
   const body=await request.json().catch(()=>({})) as {category?:unknown;batchSize?:unknown};
   const categories=new Set(["auto","quran","hadith","dua","adhkar","story","prophets","companions","knowledge"]);
   const category=typeof body.category==="string"&&categories.has(body.category)?body.category:"auto";
   const batchSize=Math.max(1,Math.min(3,Math.floor(Number(body.batchSize)||1)));
   const dispatch=await dispatchGitHubWorkflow("generate-written-content.yml",{category,batch_size:String(batchSize)});
-  await recordAdminAuditEvent({action:"social.written_content.dispatch",permission:"social.manage",resourceType:"social_publish_queue",metadata:{category,batchSize,workflow:dispatch.workflowFile}});
+  await recordAdminAuditEvent({action:"social.written_content.dispatch",permission:"social.publish",resourceType:"social_publish_queue",metadata:{category,batchSize,workflow:dispatch.workflowFile}});
   return NextResponse.json({ok:true,dispatch});
  }catch(error){console.error("[admin/social/written] dispatch failed",error);return NextResponse.json({error:error instanceof Error?error.message:"تعذر تشغيل مولد المنشورات."},{status:500});}
 }

@@ -101,6 +101,13 @@ for (const file of routeFiles) {
     const match = handlers[i];
     const end = handlers[i + 1]?.index ?? source.length;
     const block = source.slice(match.index, end);
+    if (
+      route === "src/app/api/admin/social/written/route.ts" &&
+      match[1] === "POST" &&
+      !/requireAdminApi\s*\(\s*(["'])social\.publish\1\s*\)/.test(block)
+    ) {
+      failures.push(route + " POST: auto-published written-content generation requires social.publish.");
+    }
     const result = checkGuardedBlock({
       block,
       label: route + " " + match[1],
