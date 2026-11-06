@@ -182,6 +182,12 @@ if (!(adminClient.includes("إعادة تفويض YouTube للرفع والتح�
     adminClient.includes("scheduleMinutes")) {
   failures.push("social center must describe YouTube authorization and the event-driven automated-QA publisher accurately");
 }
+if (adminClient.includes("اعتمد الفيديو أولًا") ||
+    adminClient.includes("موقوف لمراجعة الجودة") ||
+    !adminClient.includes("فحوص الجودة الآلية غير مكتملة") ||
+    !adminClient.includes("تنتقل للنشر تلقائيًا")) {
+  failures.push("social center must show automated QA diagnostics and must not prompt for manual video approval");
+}
 if (!writtenWorker.includes('"articles"') ||
     writtenWorker.includes("social_publish_queue") ||
     !writtenWorker.includes("content_publish_queue")) {
