@@ -1,4 +1,5 @@
 // Deliberately maintained when canonical platform route files are added or retired.
 // Both route discovery and project-integrity checks import this single source of truth.
 export const EXPECTED_PLATFORM_PAGES = 140;
-export const EXPECTED_PLATFORM_APIS = 78;
+// 79 API routes are present in the canonical Next.js App Router inventory on main.
+export const EXPECTED_PLATFORM_APIS = 79;

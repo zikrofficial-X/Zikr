@@ -350,8 +350,8 @@ async function main() {
     ? await processVideos(videoSettings)
     : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
 
-  if (shouldClearRunNowRequest({
-    hasRequest: Boolean(runNowRequestedAt),
+  if (runNowRequestedAt && shouldClearRunNowRequest({
+    hasRequest: true,
     target,
     automationEnabled: videoSettings.enabled,
     videosProcessed: videos.processed,
