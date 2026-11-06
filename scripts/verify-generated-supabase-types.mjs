@@ -18,6 +18,7 @@ const requiredTables = [
   "kids_content",
   "video_generation_requests",
   "social_publish_queue",
+  "social_post_insights",
 ];
 const retiredTables = [
   "admin_actions_audit",
