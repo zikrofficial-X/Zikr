@@ -204,6 +204,13 @@ export async function getPendingSocialPublishItems(
   enabledPlatforms: readonly SocialPlatform[] = getEnabledSocialPlatforms(process.env),
 ): Promise<SocialPublishQueueItem[]> {
   const now = encodeURIComponent(new Date().toISOString());
+  const publishAfterValue = process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z";
+  const publishAfterDate = new Date(publishAfterValue);
+  if (!Number.isFinite(publishAfterDate.getTime())) {
+    console.error("[social-publishing] Invalid SOCIAL_PUBLISH_AFTER cutoff; refusing to read or claim queue rows.");
+    return [];
+  }
+  const createdSince = encodeURIComponent(publishAfterDate.toISOString());
   const effectiveLimit = Math.max(1, Math.min(100, Math.floor(limit) || 1));
   // Read a wider candidate window before applying human-QA eligibility. Held
   // videos must not occupy the small delivery batch and starve written posts.
@@ -213,7 +220,7 @@ export async function getPendingSocialPublishItems(
   try {
     const batches = await Promise.all(statusPriority.map((status) =>
       supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-        `/rest/v1/social_publish_queue?status=eq.${status}&or=(scheduled_at.is.null,scheduled_at.lte.${now})&order=scheduled_at.asc.nullsfirst,created_at.asc&limit=${candidateLimit}`,
+        `/rest/v1/social_publish_queue?status=eq.${status}&or=(scheduled_at.is.null,scheduled_at.lte.${now})&created_at=gte.${createdSince}&order=scheduled_at.asc.nullsfirst,created_at.asc&limit=${candidateLimit}`,
       ),
     ));
     const candidates = batches.flatMap((batch) => Array.isArray(batch) ? batch : []);
@@ -241,9 +248,15 @@ export async function getPendingSocialPublishItems(
 }
 async function recoverStaleSocialPublishItems() {
   const staleBefore = encodeURIComponent(new Date(Date.now() - 20 * 60_000).toISOString());
+  const cutoff = new Date(process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z");
+  if (!Number.isFinite(cutoff.getTime())) {
+    console.error("[social-publishing] Invalid SOCIAL_PUBLISH_AFTER cutoff; stale recovery is disabled.");
+    return;
+  }
+  const createdSince = encodeURIComponent(cutoff.toISOString());
   try {
     const stale = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-      `/rest/v1/social_publish_queue?status=eq.processing&updated_at=lt.${staleBefore}&select=id,metadata&limit=50`,
+      `/rest/v1/social_publish_queue?status=eq.processing&updated_at=lt.${staleBefore}&created_at=gte.${createdSince}&select=id,metadata&limit=50`,
     );
     for (const item of stale ?? []) {
       const metadata = item.metadata ?? {};
@@ -604,13 +617,17 @@ async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<bool
   return true;
 }
 
-export async function resetQueuedSocialVideoMedia(limit = 500): Promise<{ attempted: number; cleaned: number; pending: number }> {
-  const maxItems = Math.max(1, Math.min(500, Math.floor(limit)));
+export async function resetQueuedSocialVideoMedia(limit = 100): Promise<{ attempted: number; cleaned: number; pending: number }> {
+  const maxItems = Math.max(1, Math.min(100, Math.floor(limit)));
+  const cutoff = new Date(process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z");
+  if (!Number.isFinite(cutoff.getTime())) throw new Error("Invalid SOCIAL_PUBLISH_AFTER cutoff.");
+  const createdSince = encodeURIComponent(cutoff.toISOString());
+  const select = "select=id,content_type,content_id,title,body,image_url,video_url,target_platforms,status,scheduled_at,published_at,error_message,metadata,created_at,updated_at&";
   const queueItems = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-    "/rest/v1/social_publish_queue?status=eq.queued&video_url=not.is.null&select=id,content_type,content_id,title,body,image_url,video_url,target_platforms,status,scheduled_at,published_at,error_message,metadata,created_at,updated_at&order=created_at.asc&limit=" + maxItems,
+    "/rest/v1/social_publish_queue?status=eq.queued&created_at=gte." + createdSince + "&video_url=not.is.null&" + select + "order=created_at.asc&limit=" + maxItems,
   );
   const retryItems = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-    "/rest/v1/social_publish_queue?status=eq.failed&metadata->>queueResetPending=eq.true&video_url=not.is.null&select=id,content_type,content_id,title,body,image_url,video_url,target_platforms,status,scheduled_at,published_at,error_message,metadata,created_at,updated_at&order=updated_at.asc&limit=" + maxItems,
+    "/rest/v1/social_publish_queue?status=eq.failed&created_at=gte." + createdSince + "&metadata->>queueResetPending=eq.true&video_url=not.is.null&" + select + "order=updated_at.asc&limit=" + maxItems,
   );
   const items = [...(queueItems ?? []), ...(retryItems ?? [])];
   if (!items.length) return { attempted: 0, cleaned: 0, pending: 0 };
@@ -722,8 +739,12 @@ export async function retryPendingPublishedVideoCleanup(limit = 25): Promise<{
   let attempted = 0;
   let cleaned = 0;
   try {
+    const cutoff = new Date(process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z");
+    if (!Number.isFinite(cutoff.getTime())) throw new Error("Invalid SOCIAL_PUBLISH_AFTER cutoff.");
     const rows = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-      "/rest/v1/social_publish_queue?status=eq.published&video_url=not.is.null&order=updated_at.asc&limit=" + Math.max(1, Math.min(500, Math.floor(limit))),
+      "/rest/v1/social_publish_queue?status=eq.published&video_url=not.is.null&created_at=gte." +
+        encodeURIComponent(cutoff.toISOString()) +
+        "&order=updated_at.asc&limit=" + Math.max(1, Math.min(100, Math.floor(limit))),
     );
     for (const item of rows ?? []) {
       if (!isVideoContentType(item.content_type)) continue;
