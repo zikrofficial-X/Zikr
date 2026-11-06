@@ -636,7 +636,8 @@ export async function POST(request: NextRequest) {
           failed += 1;
           continue;
         }
-        const existingDeletions = asRecord(item.metadata?.platformDeletions) ?? {};\n        deletionLedgerByItem.set(item.id, existingDeletions);
+        const existingDeletions = asRecord(item.metadata?.platformDeletions) ?? {};
+        deletionLedgerByItem.set(item.id, existingDeletions);
         const deletionTargets = requestedPlatforms.length > 0
           ? item.target_platforms.filter(platform => requestedPlatforms.includes(platform))
           : item.target_platforms;
