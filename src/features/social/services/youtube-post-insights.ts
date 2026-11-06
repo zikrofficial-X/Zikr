@@ -4,7 +4,7 @@ import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 type QueueRow = {
   id: string;
   metadata: Record<string, unknown> | null;
-  published_at: string | null;
+  created_at: string;
 };
 
 type ExistingInsightRow = { queue_id: string; captured_at: string };
@@ -70,7 +70,7 @@ async function getCandidates(limit: number): Promise<Array<{ queueId: string; vi
   for (let page = 0; page < MAX_SCAN_PAGES && candidates.length < limit; page += 1) {
     const offset = page * INSIGHTS_PAGE_SIZE;
     const rows = await supabaseServerAdminRequest<QueueRow[]>(
-      "/rest/v1/social_publish_queue?status=eq.published&published_at=not.is.null&content_type=like.*_video&select=id,metadata,published_at&order=published_at.asc,id.asc&limit=" +
+      "/rest/v1/social_publish_queue?content_type=like.*_video&select=id,metadata,created_at&order=created_at.asc,id.asc&limit=" +
         INSIGHTS_PAGE_SIZE + "&offset=" + offset,
     );
     const batch = Array.isArray(rows) ? rows : [];
