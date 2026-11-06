@@ -530,6 +530,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   const allowed = urgent ? Math.min(10, batchSize) : Math.min(10, batchSize, Math.max(0, dueByNow - alreadySeededToday));
 
   for (let i = 0; i < allowed; i += 1) {
+    if (await isVideoGenerationPaused()) break;
     const slot = alreadySeededToday + i;
     const mode = slot % 7;
 
