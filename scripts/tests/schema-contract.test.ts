@@ -44,12 +44,12 @@ const scheduledContent = readFileSync("scripts/jobs/content-publishing.ts", "utf
 
 requireRegex(
   migrations,
-  /create table if not exists pinned_messages[\\s\\S]{0,500}?published boolean not null default false/i,
+  /create table if not exists pinned_messages[\s\S]{0,500}?published boolean not null default false/i,
   "pinned_messages.published migration contract",
 );
 requireRegex(
   types,
-  /pinned_messages\\s*:\\s*\\{[\\s\\S]{0,1000}?published:\\s*boolean/,
+  /pinned_messages\s*:\s*\\{[\s\S]{0,1000}?published:\s*boolean/,
   "pinned_messages.published generated type contract",
 );
 requireText(
