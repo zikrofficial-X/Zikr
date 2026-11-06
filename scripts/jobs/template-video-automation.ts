@@ -386,6 +386,10 @@ function makeAss(
   const captionOutline = composition.captionStyle === "minimal" ? 1 : 3;
   const captionShadow = composition.captionStyle === "minimal" ? 1 : 2;
   const captionBack = composition.captionStyle === "boxed" ? "&H9007110E" : "&H9A07110E";
+  const sourceBorderStyle = composition.sourceCardStyle === "standard" ? 3 : 1;
+  const sourceOutline = composition.sourceCardStyle === "standard" ? 8 : 1;
+  const sourceOutlineColour = composition.sourceCardStyle === "standard" ? "&H7007110E" : "&H00101513";
+  const sourceShadow = composition.sourceCardStyle === "standard" ? 0 : 1;
   const textPages = paginateArabic(text, composition.lineChars, composition.linesPerPage);
   const captionCues = planCaptionTimings(textPages, audioDuration);
   const bodyFont = composition.fontFamily;
@@ -433,7 +437,7 @@ function makeAss(
     "Style: Hook," + baseFont + "," + (composition.isVertical ? 29 : 24) + ",&H00FFFFFF,&H00000000,&H00101513,&H6A07110E,1,0,0,0,100,100,0,0,1,1,1,8,70,70,165,1",
     "Style: Title," + baseFont + "," + titleSize + "," + composition.accentAss + ",&H00000000,&H00101513,&H7007110E,1,0,0,0,100,100,0,0,1,2,2,8,70,70,215,1",
     "Style: Verse," + bodyFont + "," + verseSize + ",&H00FFFFFF,&H00000000,&H00101513," + captionBack + ",0,0,0,0,100,100,0,0," + captionBorderStyle + "," + captionOutline + "," + captionShadow + ",5,100,100,190,1",
-    "Style: Source," + baseFont + "," + sourceSize + ",&H00D8C8A6,&H00000000,&H00101513,&H7007110E,0,0,0,0,100,100,0,0,1,1,1,2,70,70,105,1",
+    "Style: Source," + baseFont + "," + sourceSize + ",&H00D8C8A6,&H00000000," + sourceOutlineColour + ",&H00000000,0,0,0,0,100,100,0,0," + sourceBorderStyle + "," + sourceOutline + "," + sourceShadow + ",2,70,70,105,1",
     "Style: Reflection," + baseFont + "," + reflectionSize + "," + composition.accentAss + ",&H00000000,&H00101513,&H7407110E,0,0,0,0,100,100,0,0,1,2,1,5,85,85,300,1",
     "Style: Brand," + baseFont + "," + brandSize + ",&H00E8D8B4,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,55,55,60,1",
     "Style: CTA," + baseFont + "," + (composition.isVertical ? 27 : 22) + "," + composition.accentAss + ",&H00000000,&H00101513,&H7A07110E,1,0,0,0,100,100,0,0,1,2,1,2,70,70,95,1",
