@@ -191,6 +191,10 @@ if (!worker.includes("registerGeneratedVideoOnSite(request, rendered)") || !work
   failures.push("successfully generated videos must be persisted in the internal ZIKR catalog");
 }
 if (!read("scripts/jobs/content-publishing.ts").includes('"videos"')) failures.push("scheduled site publisher must support videos records");
+const internalVideoQueueMigration = read("supabase/migrations/20261106160000_allow_internal_videos_in_content_publish_queue.sql");
+if (!internalVideoQueueMigration.includes("'videos'") || !internalVideoQueueMigration.includes("content_publish_queue_content_table_check")) {
+  failures.push("Supabase content publication queue constraint must explicitly allow internal videos");
+}
 if (!worker.includes("source_hash: rendered.sourceHash") || !worker.includes("content_hash: rendered.contentHash") || !worker.includes("template_version: rendered.templateVersion")) {
   failures.push("completed manual renders must persist source, content and template integrity fingerprints");
 }
