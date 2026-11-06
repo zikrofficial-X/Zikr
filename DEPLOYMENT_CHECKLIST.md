@@ -20,11 +20,11 @@ This checklist reflects the current production architecture. GitHub Actions owns
 
 ## Production automation
 
-Video production is the scheduled GitHub Actions `generate-ai-video.yml` workflow. It runs four times daily, seeds source-locked requests, renders with AI/FFmpeg, validates the output, and stores the result in Supabase Storage. Social publishing is handled separately by GitHub Actions `publish-social.yml` every 15 minutes. Do not add a Vercel Cron, Supabase video cron, or CircleCI worker for these queues.
+Video production is owned by GitHub Actions `generate-ai-video.yml` at 03:17, 09:17, 15:17, and 21:17 UTC, with an explicit manual dispatch path. It seeds idempotent, source-locked requests, renders with free Hugging Face providers and deterministic FFmpeg fallback, validates the complete automated QA snapshot, and uploads verified MP4 bytes directly to Cloudinary. Supabase stores queue rows, metadata, approvals, and audit records; generated video files are not staged in Supabase Storage. External social publishing is a separate GitHub Actions worker triggered only after a successful video-worker run on `main` or by explicit manual dispatch. There is no 15-minute polling loop. The publisher performs independent Facebook/YouTube OAuth preflight and revalidates video QA immediately before provider calls. Do not add a Vercel Cron, Supabase video cron, or CircleCI worker for these queues.
 
 ## Vercel deployment
 
-Confirm that `vercel.json` uses `pnpm install --frozen-lockfile` and `pnpm build`. Push the intended commit to `main`, then verify that the resulting production deployment is `READY`, points to the intended commit, and serves `zikrmediaofficial.vercel.app` without password protection.
+Confirm that `vercel.json` uses `pnpm install --frozen-lockfile` and `pnpm build`. Production release authorization is handled through `.github/workflows/release-finalization.yml` with protected production credentials and an explicit `RELEASE` confirmation. Verify that the resulting deployment is `READY`, points to the exact approved `main` commit, and serves `zikrmediaofficial.vercel.app`; then run the separate post-deployment smoke workflow.
 
 The custom production domain must remain reachable for OAuth callbacks. Non-custom preview protection may remain enabled. Do not treat a preview deployment as production evidence.
 
@@ -81,4 +81,4 @@ Record the deployed commit SHA, Vercel deployment URL and state, GitHub worker/r
 
 A deployment is not considered fully validated solely because the Vercel state is `READY`; the smoke checks and scheduler evidence are required as well.
 
-**Last updated:** October 8, 2026
+**Last updated:** November 7, 2026

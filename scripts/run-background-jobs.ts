@@ -4,7 +4,7 @@ import { processTemplateVideoQueue, seedAutomatedVideoRequests } from "./jobs/te
 import { processScheduledContent } from "./jobs/content-publishing";
 import { processSocialPublishQueue, syncSocialInsights } from "./jobs/social-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
-import { evaluateBackgroundJobOutcome } from "../src/features/videos/services/background-job-outcome";
+import { evaluateBackgroundJobOutcome, shouldClearRunNowRequest } from "../src/features/videos/services/background-job-outcome";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
 import { notifyNewQueueFailures } from "./jobs/admin-queue-alerts";
 type VideoAutomationRunNow = {
@@ -286,6 +286,7 @@ async function processSocial(settings: VideoAutomationSettings) {
 }
 
 async function recordAutomationRun(summary: {
+  startedAt: number;
   target: string;
   seeded: number;
   processed: number;
@@ -303,6 +304,7 @@ async function recordAutomationRun(summary: {
       headers: { Prefer: "return=minimal", "Content-Type": "application/json" },
       body: JSON.stringify({
         run_type: "github_actions_video_worker",
+        started_at: new Date(summary.startedAt).toISOString(),
         finished_at: new Date().toISOString(),
         created_count: summary.seeded,
         processed_count: summary.processed,
@@ -348,7 +350,12 @@ async function main() {
     ? await processVideos(videoSettings)
     : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
 
-  if (runNowRequestedAt && (target === "all" || target === "videos") && videoSettings.enabled && videos.failed === 0) {
+  if (runNowRequestedAt && shouldClearRunNowRequest({
+    hasRequest: true,
+    target,
+    automationEnabled: videoSettings.enabled,
+    videosProcessed: videos.processed,
+  })) {
     await clearRunNowRequest(runNowRequestedAt);
     console.log(`[background-jobs] Cleared completed urgent video run request ${runNowRequestedAt}.`);
   }
@@ -375,6 +382,7 @@ async function main() {
   // and GitHub Actions logs. Do not add a video_automation_runs row per social run.
   if (target !== "social") {
     await recordAutomationRun({
+      startedAt,
       target,
       seeded: videos.seeded || 0,
       processed: videos.processed + social.processed,

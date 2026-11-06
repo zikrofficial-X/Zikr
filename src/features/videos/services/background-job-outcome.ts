@@ -33,3 +33,24 @@ export function evaluateBackgroundJobOutcome(input: BackgroundJobOutcomeInput): 
     fatalFailureCount,
   };
 }
+
+
+export type RunNowConsumptionInput = {
+  hasRequest: boolean;
+  target: string;
+  automationEnabled: boolean;
+  videosProcessed: number;
+};
+
+/**
+ * Run Now is a one-shot dispatch request, not a retry loop. Once the worker
+ * processes at least one item, consume the request even when another item
+ * failed; failed queue rows retain their own retry schedule.
+ */
+export function shouldClearRunNowRequest(input: RunNowConsumptionInput): boolean {
+  return input.hasRequest &&
+    (input.target === "videos" || input.target === "all") &&
+    input.automationEnabled &&
+    Number.isFinite(input.videosProcessed) &&
+    input.videosProcessed > 0;
+}

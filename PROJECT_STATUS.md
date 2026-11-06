@@ -84,3 +84,18 @@ Older audit documents may still mention retired project references such as `eydx
 - Current database snapshot: 90/90 public tables have RLS enabled; Health Advisor is clear. Security Advisor has only the Free-plan leaked-password-protection warning remaining after revoking public execution of the RLS event-trigger function.
 - Active prayer and source-agent cron jobs were repointed to the new project with `cron.alter_job`; both remain active on their original schedules. The retired social-sync job remains disabled. The live migration ledger has 403 entries, matching this release branch.
 - No video generation requests, social publish queue items, Facebook Page credentials, or YouTube upload credentials exist in the active project's current snapshot. Video automation settings `video_automation_enabled` and `video_automation_ai_enabled` are true. External publishing remains fail-closed until channel OAuth connections are completed.
+
+
+## Production and worker reconciliation — 2026-11-07
+
+This dated snapshot supersedes the queue/credential absence recorded in the 2026-11-06 cutover paragraph above:
+
+- Active Supabase remains `zqtssvlvmkzeeyqghqfk` (eu-west-2, PostgreSQL 17.11, `ACTIVE_HEALTHY`). Vercel Production `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SITE_URL`, and `AUTH_CALLBACK_URL` were compared with the canonical values without revealing or logging any secret; all four matched.
+- The inspected live snapshot contains 42 video-generation request rows, 46 video catalog rows, 7 social publish queue rows, and 3 automation audit rows. Checked worker/queue tables have RLS enabled.
+- The latest recorded 10-item video batch completed 9 videos and left 1 Kids episode in retry state. Its Arabic narration contained decomposed Unicode; the merged PR #232 now validates canonical story snapshots after NFC normalization and lets a partially successful batch complete so valid items can reach the dependent publisher.
+- The current Facebook OAuth-managed Page credential is enabled, connected, has a Page ID, and carries the required publishing/insights scopes. Seven current social queue records target Facebook Reels. The YouTube OAuth credential table has no connected channel, so YouTube publishing remains blocked until the owner connects a channel from Admin with the required upload/read-only/analytics scopes.
+- The latest inspected Vercel Production deployment was `dpl_9d8LhBw1xDjNfWWcnTkv46sfdV3C`, state `READY`, on main commit `a712708004942b99fceab0993592cef6c5112afe`, with the canonical domain alias. PR #232 has since merged to main at `f606dab52996c76c483cf8944e9b218e8c283d70`; the deployment inspected here predates that merge and requires the controlled release workflow before its changes can be called live.
+- Historical Vercel error clusters included a retired Supabase hostname, an old `pinned_messages.is_active` query, and an old video-template route permission error. Current Vercel URL variables match the canonical project, current pinned-message code uses `published`, and no error/fatal runtime logs were returned for the latest 30-minute query.
+- The video-template version-creation RPC was also executed once as `service_role` inside a transaction that was explicitly rolled back; it succeeded. The service role remains intentionally unable to select `auth.users`; do not widen that grant to silence an error from an older deployment.
+- Security Advisor continues to report the Free-plan leaked-password-protection warning. This is an owner-managed plan/security setting, not a source-code change.
+
