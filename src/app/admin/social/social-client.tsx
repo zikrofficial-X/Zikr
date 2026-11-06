@@ -581,6 +581,8 @@ export default function AdminSocialPage() {
         deleted?: number;
         failed?: number;
         missingRemoteId?: number;
+        localMemoryDeleted?: number;
+        localMemoryFailed?: number;
         results?: Array<{ id: string; title: string; platform: string; status: string; error?: string }>;
       };
       if (!response.ok) throw new Error(payload.error || "تعذر حذف المنشور من المنصة.");
@@ -592,13 +594,14 @@ export default function AdminSocialPage() {
         setError(issues.map(result => `${result.title} — ${PLATFORM_LABELS[result.platform] ?? result.platform}: ${result.error || "معرّف المنشور غير متاح."}`).join("\n"));
       }
       setSelectedPublished([]);
+      setDeleteLocalMemory(false);
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر حذف المنشور من المنصة.");
     } finally {
       setBusy(false);
     }
-  }, [load]);
+  }, [deleteLocalMemory, load]);
 
   function toggleVisibleRetryable() {
     const ids = visibleSelectable.map(item => item.id);
