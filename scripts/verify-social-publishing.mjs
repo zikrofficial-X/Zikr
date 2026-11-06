@@ -113,6 +113,7 @@ if (generationWorkflow.includes("secrets.FACEBOOK_PAGE_ACCESS_TOKEN") || generat
 if (!workflow.includes('SOCIAL_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze && !socialPublishingDisabled) failures.push("dedicated GitHub social workflow must be explicitly active or fail-closed");
 if (!workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"')) failures.push("social worker must allow automatically generated videos into the publisher");
 if (!workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"')) failures.push("autonomous publishing must use the validated source/status gate without a manual approval dependency");
+if (!workflow.includes("YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}")) failures.push("social worker must receive the YouTube Data API key for public per-post statistics");
 if (!workflow.includes('SOCIAL_PUBLISH_BATCH_SIZE: "2"')) failures.push("scheduled publishing must process up to two queue items per run to drain an aged backlog");
 if (!generationWorkflow.includes('VIDEO_FREE_ONLY: "true"') || !generationWorkflow.includes('VIDEO_AI_ENABLED: "true"')) failures.push("video generation must use enabled free-only visual AI with deterministic fallback");
 if (!generationWorkflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "true"') || !generationWorkflow.includes('HF_WAN_VIDEO_ENABLED: "true"')) failures.push("both free Hugging Face video providers must be enabled ahead of the FFmpeg fallback");
