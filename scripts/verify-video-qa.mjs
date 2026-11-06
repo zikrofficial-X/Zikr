@@ -42,6 +42,10 @@ for (const token of [
   "resolveDeterministicVideoHook",
   "category === \"quran\" && !audioUrl",
   "QURAN_AYAH_AUDIO_BASE_URL",
+  "resolveVideoComposition",
+  "planCaptionTimings(textPages, audioDuration)",
+  "audioDuration - 0.55",
+  "captionTiming: \"page-weighted-audio-duration\"",
 ]) {
   if (!worker.includes(token)) failures.push(`worker missing narration/video QA contract: ${token}`);
 }
@@ -54,6 +58,12 @@ for (const token of [
 ]) {
   if (!worker.includes(token)) failures.push(`worker missing quality enhancement: ${token}`);
 }
+const composition = read("src/features/videos/services/video-composition.ts");
+for (const token of ["resolveVideoComposition", "planCaptionTimings", "cameraPath", "panelPixelWidth", "minimumPageSeconds"]) {
+  if (!composition.includes(token)) failures.push(`category composition/caption pacing helper missing: ${token}`);
+}
+const compositionTest = read("scripts/tests/video-composition.test.ts");
+if (!compositionTest.includes("Video composition and audio-aware caption timing tests passed")) failures.push("composition/caption pacing regression tests are not registered in source");
 const voiceProfiles = read("src/features/videos/services/voice-profiles.ts");
 if (!voiceProfiles.includes("hadith_male_msa")) failures.push("hadith voice profile missing from canonical voice service");
 const socialPublisher = read("src/features/social/services/social-publishing.ts");
