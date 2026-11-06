@@ -42,6 +42,8 @@ jobs:
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       # Free-only production path: no Gemini/custom endpoint billing; public free Spaces may fall back to FFmpeg.
       VIDEO_FREE_ONLY: "true"
+      # Optional JSON GitHub environment variable: up to five public Gradio Spaces compatible with Wan 2.2 or LTX Fast.
+      HF_VIDEO_CUSTOM_SPACES: ${{ vars.HF_VIDEO_CUSTOM_SPACES }}
       GEMINI_MODEL: gemini-3.1-flash-lite
       GEMINI_AUDIO_SMOKE_TEST: "false"
       AUTO_VIDEO_ENABLED: "true"

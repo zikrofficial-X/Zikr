@@ -260,3 +260,52 @@ export async function markAdminNotificationsReadAction() {
   });
   revalidatePath("/admin/notifications");
 }
+
+
+export async function saveCustomVideoSpacesAction(formData: FormData) {
+  const profile = await requireAdminPermission("video.manage");
+  const entries: Array<{ space: string; variant: "wan2_2_fast" | "ltx_fast"; enabled: true }> = [];
+  const seen = new Set<string>();
+
+  for (let index = 1; index <= 5; index += 1) {
+    const enabled = formData.get("enabled_" + index) === "true";
+    const space = String(formData.get("space_" + index) ?? "").trim();
+    const variant = String(formData.get("variant_" + index) ?? "wan2_2_fast").trim();
+    if (!enabled) continue;
+    if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(space)) {
+      throw new Error("معرّف Hugging Face Space يجب أن يكون بالشكل owner/space.");
+    }
+    if (variant !== "wan2_2_fast" && variant !== "ltx_fast") {
+      throw new Error("نوع محول الفيديو غير مدعوم.");
+    }
+    if (seen.has(space.toLowerCase())) {
+      throw new Error("لا يمكن إضافة Space نفسها أكثر من مرة.");
+    }
+    seen.add(space.toLowerCase());
+    entries.push({ space, variant, enabled: true });
+  }
+
+  await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({
+      key: "video_custom_spaces",
+      value: entries,
+      updated_by: profile.id,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  await recordAdminAuditEvent({
+    action: "admin.video_custom_spaces.update",
+    permission: "video.manage",
+    resourceType: "admin_settings",
+    resourceId: "video_custom_spaces",
+    metadata: {
+      enabledCount: entries.length,
+      providers: entries.map(({ space, variant }) => ({ space, variant })),
+    },
+  });
+
+  revalidatePath("/admin/video/visuals");
+}

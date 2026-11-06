@@ -2,24 +2,40 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { getAdminSettings } from "@/features/admin/services/platform";
+import { saveCustomVideoSpacesAction } from "@/app/admin/system-actions";
 import { AI_VISUAL_POLICY_TEXT, AI_VISUAL_POLICY_VERSION } from "@/features/videos/providers/ai-visual-policy";
 import { getVideoEngineConfig, type VideoProviderName } from "@/features/videos/providers/types";
 
 export const dynamic = "force-dynamic";
 
-const PROVIDER_LABELS: Record<VideoProviderName, string> = {
+const PROVIDER_LABELS: Partial<Record<VideoProviderName, string>> = {
   hf_ltx_fast: "Hugging Face · LTX Fast",
   hf_wan: "Hugging Face · Wan",
   comfyui: "ComfyUI",
   free_api: "Free API",
   template: "FFmpeg Template",
+  hf_custom_1: "Hugging Face · Custom Space 1",
+  hf_custom_2: "Hugging Face · Custom Space 2",
+  hf_custom_3: "Hugging Face · Custom Space 3",
+  hf_custom_4: "Hugging Face · Custom Space 4",
+  hf_custom_5: "Hugging Face · Custom Space 5",
 };
 
 export default async function VideoFactoryVisualsPage() {
   await requireAdminPermission("video.manage");
-  const config = getVideoEngineConfig();
+  const adminSettings = await getAdminSettings();
+  const storedSpaces = Array.isArray(adminSettings.video_custom_spaces)
+    ? adminSettings.video_custom_spaces
+    : null;
+  const config = getVideoEngineConfig(
+    storedSpaces
+      ? { ...process.env, HF_VIDEO_CUSTOM_SPACES: JSON.stringify(storedSpaces) }
+      : process.env,
+  );
 
   const enabled = new Set<VideoProviderName>([
+    ...config.customSpaces.map((entry) => entry.name),
     ...(config.aiEnabled && config.hfLtxFastEnabled ? ["hf_ltx_fast" as const] : []),
     ...(config.aiEnabled && config.hfWanEnabled ? ["hf_wan" as const] : []),
     ...(config.aiEnabled && config.comfyUiEnabled ? ["comfyui" as const] : []),
@@ -27,7 +43,7 @@ export default async function VideoFactoryVisualsPage() {
     "template",
   ]);
   const ordered = [...config.order];
-  const visualProviders = (["hf_ltx_fast", "hf_wan", "comfyui", "free_api", "template"] as VideoProviderName[]);
+  const visualProviders = (["hf_ltx_fast", "hf_wan", "comfyui", "free_api", "template", ...config.customSpaces.map((entry) => entry.name)] as VideoProviderName[]);
 
   return (
     <Container className="space-y-8 py-10 text-right" dir="rtl">
@@ -92,6 +108,57 @@ export default async function VideoFactoryVisualsPage() {
           <div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-brand-cream/35">اعتبار الطلب عالقًا بعد</p><p className="mt-1 text-lg font-semibold text-brand-cream">{config.staleAfterMinutes} دقيقة</p></div>
           <div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-brand-cream/35">مدة الفيديو الافتراضية</p><p className="mt-1 text-lg font-semibold text-brand-cream">{config.defaultDuration} ثانية</p></div>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-brand-gold/15 bg-black/15 p-5">
+        <div className="mb-4 space-y-2">
+          <h2 className="font-semibold text-brand-gold">إدارة مولدات Hugging Face الإضافية</h2>
+          <p className="text-sm leading-6 text-brand-cream/55">
+            أضف حتى خمسة Spaces عامة متوافقة مع محول Wan 2.2 أو LTX Fast. يجب أن يطابق Space عقد Gradio الحالي؛
+            إدخال المعرّف لا يضمن الحصة المجانية أو توفر GPU. لا تدخل أي مفتاح API أو كلمة مرور هنا.
+          </p>
+        </div>
+        <form action={saveCustomVideoSpacesAction} className="space-y-3">
+          {Array.from({ length: 5 }, (_, index) => {
+            const entry = config.customSpaces[index];
+            const number = index + 1;
+            return (
+              <div key={number} className="grid gap-3 rounded-xl border border-brand-gold/10 p-3 md:grid-cols-[1fr_180px_110px] md:items-end">
+                <label className="space-y-1 text-sm text-brand-cream/70">
+                  <span>Space {number} — owner/name</span>
+                  <input
+                    name={"space_" + number}
+                    defaultValue={entry?.space ?? ""}
+                    placeholder="owner/space-name"
+                    dir="ltr"
+                    className="w-full rounded-lg border border-brand-gold/15 bg-black/30 px-3 py-2 text-left text-sm text-brand-cream outline-none focus:border-brand-gold/40"
+                  />
+                </label>
+                <label className="space-y-1 text-sm text-brand-cream/70">
+                  <span>محول التوليد</span>
+                  <select
+                    name={"variant_" + number}
+                    defaultValue={entry?.variant ?? "wan2_2_fast"}
+                    className="w-full rounded-lg border border-brand-gold/15 bg-black/30 px-3 py-2 text-sm text-brand-cream"
+                  >
+                    <option value="wan2_2_fast">Wan 2.2 Fast</option>
+                    <option value="ltx_fast">LTX Fast</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 pb-2 text-sm text-brand-cream/70">
+                  <input type="checkbox" name={"enabled_" + number} value="true" defaultChecked={Boolean(entry)} className="h-4 w-4 accent-brand-gold" />
+                  مفعّل
+                </label>
+              </div>
+            );
+          })}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-brand-cream/40">يتم حفظ القائمة في إعدادات الإدارة، ويقرأها عامل GitHub عند التشغيل التالي.</p>
+            <button type="submit" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/15">
+              حفظ قائمة المولدات
+            </button>
+          </div>
+        </form>
       </section>
 
       <section className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5">

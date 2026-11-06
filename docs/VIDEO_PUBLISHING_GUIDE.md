@@ -107,3 +107,19 @@ pnpm video:engine:check
 
 For the complete ownership matrix, see `docs/AUTOMATION_OWNERSHIP_2026-10-08.md`.
 For queue internals, see `docs/background-jobs.md`.
+
+
+## Written Facebook posts
+
+The written-post factory runs through .github/workflows/generate-written-content.yml, independently from video production. It selects published/reviewed content records, preserves Quran/Hadith/Dua/Adhkar quotations verbatim, and queues the post as content_type=written_post with video_url=null and Facebook as the target. It reuses the existing social_publish_queue and publish-social.yml publisher; there is no second publishing worker. The workflow requires GEMINI_API_KEY as a GitHub Actions secret in the production environment. Vercel environment variables are not automatically available to GitHub Actions.
+
+## Generated media lifecycle
+
+Generated video binaries are temporary publishing assets. The publisher removes eligible source media only after every requested platform has a confirmed remote ID. On partial publication it retains the source for unfinished targets and retries only targets without a confirmed remote ID. Queue records, remote IDs, source references, and audit metadata remain available after media cleanup.
+
+## Optional additional Hugging Face Spaces
+
+The video worker accepts up to five additional public Spaces through the GitHub Actions variable HF_VIDEO_CUSTOM_SPACES, using a JSON array such as:
+[{"space":"owner/space-one","variant":"wan2_2_fast","enabled":true},{"space":"owner/space-two","variant":"ltx_fast","enabled":true}]
+
+Each Space must expose a Gradio API compatible with the existing Wan 2.2 or LTX Fast adapter. Any other input/output signature needs a dedicated adapter before use. Free quotas, queue availability, runtime availability, and commercial terms are controlled by the Space owner and Hugging Face; VIDEO_FREE_ONLY=true does not guarantee unlimited free GPU time.

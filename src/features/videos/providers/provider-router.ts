@@ -22,6 +22,10 @@ export function createVideoProviderRouter(
     free_api: new FreeApiVideoProvider(),
     hf_wan: new HuggingFaceSpaceVideoProvider("wan2_2_fast"),
     hf_ltx_fast: new HuggingFaceSpaceVideoProvider("ltx_fast"),
+    ...Object.fromEntries(config.customSpaces.map((entry) => [
+      entry.name,
+      new HuggingFaceSpaceVideoProvider(entry.variant, { name: entry.name, space: entry.space, enabled: true }),
+    ])),
   };
 
   return {
@@ -40,7 +44,8 @@ export function createVideoProviderRouter(
       for (const name of candidates) {
         // Free-only mode permits public Hugging Face Spaces and the local FFmpeg renderer only.
         // Unknown/custom endpoints may have separate billing, so they require explicit opt-in.
-        if (config.freeOnly && !["hf_ltx_fast", "hf_wan", "template"].includes(name)) continue;
+        const isCustomFreeSpace = config.customSpaces.some((entry) => entry.name === name);
+        if (config.freeOnly && !["hf_ltx_fast", "hf_wan", "template"].includes(name) && !isCustomFreeSpace) continue;
         if (name === "comfyui" && !config.comfyUiEnabled) continue;
         if (name === "free_api" && !config.freeApiEnabled) continue;
         if (name === "hf_wan" && !config.hfWanEnabled) continue;

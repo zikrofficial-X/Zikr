@@ -413,6 +413,9 @@
     },
     {
       "path": "/zakat"
+    },
+    {
+      "path": "/admin/social/written-studio"
     }
   ]
 }

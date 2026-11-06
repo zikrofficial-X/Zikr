@@ -62,10 +62,15 @@ function parseRunNowRequest(value: unknown): VideoAutomationRunNow | null {
 
 async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
   const rows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
-    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled,video_automation_daily_target,video_automation_ai_attempts_per_run,video_automation_video_seconds,video_automation_run_now)&select=key,value",
+    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled,video_automation_daily_target,video_automation_ai_attempts_per_run,video_automation_video_seconds,video_automation_run_now,video_custom_spaces)&select=key,value",
   ).catch(() => []);
 
   const values = Object.fromEntries((rows ?? []).map((row) => [row.key, row.value]));
+  if (Array.isArray(values.video_custom_spaces)) {
+    process.env.HF_VIDEO_CUSTOM_SPACES = JSON.stringify(values.video_custom_spaces);
+  } else if (typeof values.video_custom_spaces === "string" && values.video_custom_spaces.trim()) {
+    process.env.HF_VIDEO_CUSTOM_SPACES = values.video_custom_spaces;
+  }
   return {
     enabled: parseBoolSetting(values.video_automation_enabled, true),
     batchSize: parseBoundedNumberSetting(

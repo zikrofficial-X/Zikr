@@ -123,7 +123,7 @@ export async function GET() {
 
   try {
     const items = await supabaseServerAdminRequest<QueueItem[]>(
-      "/rest/v1/social_publish_queue?select=id,content_type,content_id,title,target_platforms,status,scheduled_at,published_at,error_message,created_at,metadata&order=created_at.desc&limit=250"
+      "/rest/v1/social_publish_queue?select=id,content_type,content_id,title,target_platforms,status,scheduled_at,published_at,error_message,created_at,metadata&order=created_at.desc&limit=1000"
     );
     const rows = items ?? [];
     const counts = rows.reduce<Record<string, number>>((acc, item) => {

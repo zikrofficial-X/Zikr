@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import {buildWrittenPost,createWrittenAutomationKey,normalizeWrittenCategory,validateWrittenPostDraft,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
+const source:WrittenContentSource={kind:"quran",id:"ayah-1",title:"آية",sourceText:"إِنَّ مَعَ الْعُسْرِ يُسْرًا",reference:"سورة الشرح، الآية 6",publicPath:"/quran/ash-sharh",categoryLabel:"القرآن الكريم",sourceVerified:true,quoteRequired:true};
+const draft:WrittenPostDraft={eligible:true,title:"مع كل عسر يسر",hook:"قد تمر بلحظة تظن فيها أن الطريق انتهى، لكن الأمل يظل حاضرًا.",reflection:"تدعونا الآية إلى ألا نستسلم لليأس، وأن نتذكر أن الشدة لا تدوم وأن الأمل باب للعمل والصبر.",question:"ما المعنى الذي تستحضره عندما تمر بوقت صعب؟"};
+assert.equal(normalizeWrittenCategory("hadith"),"hadith");assert.equal(normalizeWrittenCategory("other"),"auto");assert.equal(normalizeWrittenCategory("companions"),"companions");
+assert.notEqual(createWrittenAutomationKey("quran","1"),createWrittenAutomationKey("quran","2"));
+assert.deepEqual(validateWrittenPostDraft(draft),{ok:true});assert.equal(validateWrittenPostDraft({...draft,reflection:"قال رسول الله كذا"}).ok,false);assert.equal(validateWrittenPostDraft({...draft,eligible:false}).ok,false);
+const post=buildWrittenPost(source,draft);assert.ok(post.body.includes(source.sourceText));assert.ok(post.body.includes(source.reference));assert.equal(post.publicPath,source.publicPath);
+assert.ok(buildWrittenPost({...source,kind:"story",quoteRequired:false},draft).body.includes(draft.reflection));
+console.log("Written-content source-lock, quality, category, and idempotency tests passed.");

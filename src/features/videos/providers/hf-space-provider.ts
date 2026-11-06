@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import type { VideoGenerationInput, VideoGenerationResult, VideoProvider } from "./types";
+import type { VideoGenerationInput, VideoGenerationResult, VideoProvider, VideoProviderName } from "./types";
 import { aiVisualPolicyPromptLine } from "./ai-visual-policy";
 
 const execFileAsync = promisify(execFile);
@@ -85,16 +85,23 @@ async function writePromptFile(tempDir: string, input: VideoGenerationInput) {
 }
 
 export class HuggingFaceSpaceVideoProvider implements VideoProvider {
-  readonly name: "hf_wan" | "hf_ltx_fast";
+  readonly name: VideoProviderName;
   private readonly variant: HuggingFaceVariant;
+  private readonly customSpace?: string;
+  private readonly explicitlyEnabled: boolean;
 
-  constructor(variant: HuggingFaceVariant) {
+  constructor(
+    variant: HuggingFaceVariant,
+    options?: { name?: VideoProviderName; space?: string; enabled?: boolean },
+  ) {
     this.variant = variant;
-    this.name = variant === "wan2_2_fast" ? "hf_wan" : "hf_ltx_fast";
+    this.name = options?.name ?? (variant === "wan2_2_fast" ? "hf_wan" : "hf_ltx_fast");
+    this.customSpace = options?.space;
+    this.explicitlyEnabled = options?.enabled ?? false;
   }
 
   async isAvailable() {
-    if (!configuredEnabled(this.variant)) return false;
+    if (this.customSpace ? !this.explicitlyEnabled : !configuredEnabled(this.variant)) return false;
     try {
       await execFileAsync(
         configuredPython(),
@@ -131,7 +138,7 @@ export class HuggingFaceSpaceVideoProvider implements VideoProvider {
         "--provider",
         this.variant,
         "--space",
-        configuredSpace(this.variant),
+        this.customSpace || configuredSpace(this.variant),
         "--prompt-file",
         promptPath,
         "--output",
