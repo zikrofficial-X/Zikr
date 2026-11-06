@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
-import { hasCompleteVideoApprovalChecklist, REQUIRED_VIDEO_APPROVAL_CHECKS } from '@/features/videos/services/video-publish-approval';
+import { buildVideoApprovalSnapshotHash, hasCompleteVideoApprovalChecklist, REQUIRED_VIDEO_APPROVAL_CHECKS } from '@/features/videos/services/video-publish-approval';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,8 +109,8 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: 'لا يمكن الاعتماد قبل إتمام فحوص المصدر والصوت والصورة والترجمة والحقوق.' }, { status: 400 });
       }
       const rows = await supabaseServerAdminRequest<Array<{
-        id: string; status: string; category: string; video_url: string | null; content: unknown; updated_at: string;
-      }>>('/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(id) + '&select=id,status,category,video_url,content,updated_at&limit=1');
+        id: string; status: string; category: string; video_url: string | null; source_hash: string | null; content_hash: string | null; template_version: string | null; content: unknown; updated_at: string;
+      }>>('/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(id) + '&select=id,status,category,video_url,source_hash,content_hash,template_version,content,updated_at&limit=1');
       const current = rows?.[0];
       if (!current) return NextResponse.json({ error: 'عملية الفيديو غير موجودة.' }, { status: 404 });
       if (current.status !== 'completed' || !current.video_url) {
@@ -129,9 +129,25 @@ export async function PATCH(request: NextRequest) {
           return NextResponse.json({ error: 'المصدر أو نصه أو مرجعه غير مكتمل؛ لا يمكن اعتماد فيديو ديني بلا مصدر موثق.' }, { status: 422 });
         }
       }
+      const approvalSnapshotHash = buildVideoApprovalSnapshotHash({
+        category: current.category,
+        sourceHash: current.source_hash,
+        contentHash: current.content_hash,
+        templateVersion: current.template_version,
+        videoUrl: current.video_url,
+      });
+      if (!approvalSnapshotHash) {
+        return NextResponse.json({ error: 'بصمة المصدر أو المحتوى أو ملف الفيديو غير مكتملة؛ أعد تجهيز الفيديو قبل اعتماده.' }, { status: 422 });
+      }
       const reviewedAt = new Date().toISOString();
-      const updatedContent = { ...currentContent, approvalStatus: 'approved', approvalReviewedAt: reviewedAt,
-        qualityReview: { ...Object.fromEntries(REQUIRED_VIDEO_APPROVAL_CHECKS.map((key) => [key, true])), reviewedAt } };
+      const updatedContent = {
+        ...currentContent,
+        approvalStatus: 'approved',
+        approvalReviewerId: auth.profile.id,
+        approvalReviewedAt: reviewedAt,
+        approvalSnapshotHash,
+        qualityReview: { ...Object.fromEntries(REQUIRED_VIDEO_APPROVAL_CHECKS.map((key) => [key, true])), reviewedAt },
+      };
       const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
         '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(id) + '&status=eq.completed&updated_at=eq.' + encodeURIComponent(current.updated_at),
         { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
@@ -143,7 +159,7 @@ export async function PATCH(request: NextRequest) {
         permission: "video.manage",
         resourceType: "video_generation_requests",
         resourceId: id,
-        metadata: { category: current.category, approvalChecks: REQUIRED_VIDEO_APPROVAL_CHECKS.length },
+        metadata: { category: current.category, approvalChecks: REQUIRED_VIDEO_APPROVAL_CHECKS.length, approvalSnapshotHash },
       });
       return NextResponse.json({ ok: true, approvalStatus: 'approved',
         note: 'سيتولى عامل GitHub Actions المجدول مزامنة طابور النشر؛ لم تتم إضافة مجدول جديد.' });
