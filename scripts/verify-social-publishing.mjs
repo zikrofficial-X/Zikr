@@ -171,10 +171,12 @@ if (!videoAutomation.includes("https://www.googleapis.com/upload/youtube/v3/vide
     videoAutomation.includes("EXTERNAL_SOCIAL_PUBLISHING_RETIRED")) {
   failures.push("YouTube and Facebook/Reels upload adapters must be restored and must preserve provider error handling");
 }
-if (!adminClient.includes("إعادة تفويض YouTube للرفع والتحليلات") ||
+if (!adminClient.includes("ربط YouTube لقراءة القناة والإحصاءات") ||
+    !adminClient.includes("ربط YouTube للإحصاءات") ||
+    !adminClient.includes("تقارير Analytics فقط") ||
     !adminClient.includes("لا نطلب صلاحية الحذف") ||
     adminClient.includes("scheduleMinutes")) {
-  failures.push("social center must describe upload-only consent and the event-driven approval-gated schedule accurately");
+  failures.push("social center must distinguish YouTube channel/analytics authorization from the separately gated external publisher");
 }
 if (!writtenWorker.includes('"articles"') ||
     writtenWorker.includes("social_publish_queue") ||
