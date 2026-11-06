@@ -1,0 +1,48 @@
+name: ZIKR Written Content Factory
+on:
+  schedule:
+    - cron: "15 7,13,19 * * *"
+  workflow_dispatch:
+    inputs:
+      category:
+        description: "Content category"
+        required: false
+        default: "auto"
+        type: choice
+        options: [auto, quran, hadith, dua, adhkar, story, prophets, companions, knowledge]
+      batch_size:
+        description: "Number of posts to enqueue (bounded)"
+        required: false
+        default: "1"
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: zikr-written-content-factory
+  cancel-in-progress: false
+jobs:
+  generate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: gemini-3.1-flash-lite
+      WRITTEN_CONTENT_ENABLED: "true"
+      WRITTEN_CONTENT_DAILY_TARGET: "3"
+      WRITTEN_CONTENT_BATCH_SIZE: ${{ inputs.batch_size || '1' }}
+      WRITTEN_CONTENT_CATEGORY: ${{ inputs.category || 'auto' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+¶»§q«^

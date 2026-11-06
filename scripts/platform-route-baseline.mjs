@@ -1,4 +1,4 @@
 // Deliberately maintained when canonical platform route files are added or retired.
 // Both route discovery and project-integrity checks import this single source of truth.
-export const EXPECTED_PLATFORM_PAGES = 138;
-export const EXPECTED_PLATFORM_APIS = 73;
+export const EXPECTED_PLATFORM_PAGES = 139;
+export const EXPECTED_PLATFORM_APIS = 74;
