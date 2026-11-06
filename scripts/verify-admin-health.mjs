@@ -27,27 +27,56 @@ const snapshot = platform.slice(
   platform.indexOf("export async function getAdminSnapshot"),
   platform.indexOf("const OVERVIEW_TABLES"),
 );
-if (!snapshot.includes('getExactStatusCounts("social_publish_queue"')) {
-  throw new Error("Admin video dashboard must use exact social queue counts");
+if (snapshot.includes('getExactStatusCounts("social_publish_queue"')) {
+  throw new Error("Admin dashboard must not query the retired external social queue");
 }
 if (!snapshot.includes('getExactStatusCounts("video_generation_requests"')) {
-  throw new Error("Admin video dashboard must use exact video queue counts");
+  throw new Error("Admin video dashboard must use exact internal generation queue counts");
 }
 if (snapshot.includes("/rest/v1/social_publish_queue?select=status") || snapshot.includes("/rest/v1/video_generation_requests?select=status")) {
-  throw new Error("Admin video dashboard must not estimate queue totals from a 500-row sample");
+  throw new Error("Admin dashboard must not estimate queue totals from a 500-row sample");
 }
-if (!health.includes("getExactStatusCounts")) {
-  throw new Error("Admin health must count all queue rows by exact status");
+const health = platform.slice(
+  platform.indexOf("export async function getAdminHealth"),
+  platform.indexOf("export async function getAdminSettings"),
+);
+if (!health.includes('getExactStatusCounts("video_generation_requests"')) {
+  throw new Error("Admin health must count internal video queue rows by exact status");
 }
-if (health.includes("limit=500")) {
-  throw new Error("Admin health must not truncate queue counts to an arbitrary 500-row sample");
+if (health.includes("social_publish_queue") || health.includes("queuesAvailable: { social")) {
+  throw new Error("Admin health must not read or display retired social queue status");
 }
-if (!health.includes("queuesAvailable: { social: social.available, video: video.available }")) {
-  throw new Error("Admin health must distinguish unavailable queue counts from real zeros");
+if (!health.includes("queuesAvailable: { video: video.available }")) {
+  throw new Error("Admin health must distinguish unavailable video queue counts from real zeros");
 }
-if (!page.includes("health.queuesAvailable.social && health.queuesAvailable.video")) {
-  throw new Error("Admin health attention metric must require both queue sources to be readable");
+if (!page.includes("health.queuesAvailable.video") || page.includes("health.queuesAvailable.social")) {
+  throw new Error("Admin health must report only internal video queue availability");
 }
+if (!platform.includes("getAdminGitHubHealth") || !platform.includes("/commits/main/status") || !platform.includes("/actions/runs?branch=main")) {
+  throw new Error("Admin health must expose read-only GitHub commit and workflow status");
+}
+if (!platform.includes("GITHUB_WORKFLOW_PATHS") || !platform.includes("storage-retention.yml") || platform.includes(".github/workflows/publish-social.yml")) {
+  throw new Error("Admin health must inventory active production workflows only");
+}
+if (!page.includes("حالة النشر والتكاملات") || !page.includes("health.github.statuses") || !page.includes("health.github.workflows")) {
+  throw new Error("Admin health page must render deployment and automation health");
+}
+if (!page.includes('queueAttention === null ? "غير متاح" : queueAttention')) {
+  throw new Error("Admin health must render unavailable queue attention as unknown, not zero");
+}
+if (!page.includes("getAdminSettings") || !page.includes("video_automation_ai_enabled") || !page.includes("video_automation_enabled")) {
+  throw new Error("Admin health must read canonical internal worker settings from admin_settings");
+}
+if (page.includes("video_automation_auto_publish") || page.includes("Facebook") || page.includes("youtube.upload")) {
+  throw new Error("Admin health must not expose retired external publishing flags or providers");
+}
+if (!page.includes("النشر داخل الموقع") || !page.includes("لا يُرسل منشورات إلى منصات خارجية")) {
+  throw new Error("Admin health must state the internal site-only publishing policy");
+}
+if (page.includes("getVideoEngineConfig()") || page.includes("engine.autoPublishEnabled")) {
+  throw new Error("Admin health must not infer GitHub worker state from the Vercel process environment");
+}
+
 if (!platform.includes("getAdminGitHubHealth") || !platform.includes("/commits/main/status") || !platform.includes("/actions/runs?branch=main")) {
   throw new Error("Admin health must expose read-only GitHub commit and workflow status");
 }
