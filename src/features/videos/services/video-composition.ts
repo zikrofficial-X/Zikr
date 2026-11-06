@@ -247,7 +247,7 @@ export function planCaptionTimings(
 export function paginateCaptionText(value: string, lineChars: number, linesPerPage: number): string[] {
   const maxChars = Math.max(12, Math.floor(lineChars));
   const pageLines = Math.max(1, Math.floor(linesPerPage));
-  const words = value.trim().split(/\\s+/).filter(Boolean);
+  const words = value.trim().split(/\s+/).filter(Boolean);
   if (!words.length) return [""];
   const lines: string[] = [];
   let line = "";
