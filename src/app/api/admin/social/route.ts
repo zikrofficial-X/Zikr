@@ -10,6 +10,8 @@ import {
   unblockFacebookAuthBlockedQueue,
 } from "@/features/social/services/facebook-credentials";
 import { getYouTubePublishingConnectionHealth } from "@/features/social/services/youtube-publishing-health";
+import { getFacebookPageAudienceSnapshot } from "@/features/social/services/facebook-reels-insights";
+import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
 
 export const dynamic = "force-dynamic";
 
@@ -134,7 +136,9 @@ export async function GET() {
     const env = getServerEnv();
     // Keep the Admin health badge aligned with the GitHub workflow gate.
     const socialPublishingEnabled = true;
-    const facebookHealth = await getFacebookPageConnectionHealth();
+    const [facebookHealth, facebookAudience, youtubeHealth, trafficSnapshot] = await Promise.all([
+      getFacebookPageConnectionHealth(), getFacebookPageAudienceSnapshot(), getYouTubePublishingConnectionHealth(), getTrafficRevenueSnapshot(),
+    ]);
     const facebookAuthBlocked = rows.filter(
       item =>
         retryableStatuses.has(item.status) &&
@@ -164,6 +168,32 @@ export async function GET() {
       }
       return acc;
     }, {});
+    const numberValue = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+    const add = (target: Record<string, number>, key: string, value: unknown) => { const count = numberValue(value); if (count !== null) target[key] = (target[key] ?? 0) + count; };
+    const publishedPosts = rows.filter(item => item.status === "published" && item.published_at);
+    const platformAnalytics = { youtube: { posts: 0, views: 0, likes: 0, comments: 0, shares: 0 }, facebook: { posts: 0, views: 0, likes: 0, comments: 0, shares: 0 }, facebook_reels: { posts: 0, views: 0, likes: 0, comments: 0, shares: 0 } };
+    const recentPosts = publishedPosts.flatMap(item => {
+      const insights = item.metadata?.platformInsights && typeof item.metadata.platformInsights === "object" && !Array.isArray(item.metadata.platformInsights) ? item.metadata.platformInsights as Record<string, unknown> : {};
+      const results = item.metadata?.platformResults && typeof item.metadata.platformResults === "object" && !Array.isArray(item.metadata.platformResults) ? item.metadata.platformResults as Record<string, unknown> : {};
+      return item.target_platforms.flatMap(platform => {
+        const delivery = results[platform] && typeof results[platform] === "object" ? results[platform] as Record<string, unknown> : {};
+        const raw = insights[platform === "facebook_reels" ? "facebookReels" : platform];
+        const metric = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+        const nested = metric.metrics && typeof metric.metrics === "object" && !Array.isArray(metric.metrics) ? metric.metrics as Record<string, unknown> : metric;
+        const actions = nested.post_video_social_actions && typeof nested.post_video_social_actions === "object" ? nested.post_video_social_actions as Record<string, unknown> : {};
+        const reactions = nested.post_video_likes_by_reaction_type && typeof nested.post_video_likes_by_reaction_type === "object" ? nested.post_video_likes_by_reaction_type as Record<string, unknown> : {};
+        const likes = numberValue(nested.likes) ?? Object.values(reactions).reduce<number>((sum,value) => sum + (numberValue(value) ?? 0),0);
+        const views = numberValue(nested.views) ?? numberValue(nested.fb_reels_total_plays) ?? numberValue(nested.blue_reels_play_count);
+        const comments = numberValue(nested.comments) ?? numberValue(actions.comments);
+        const shares = numberValue(nested.shares) ?? numberValue(actions.shares);
+        const bucket = platformAnalytics[platform as keyof typeof platformAnalytics];
+        if (!bucket) return [];
+        bucket.posts += 1; add(bucket,"views",views); add(bucket,"likes",likes); add(bucket,"comments",comments); add(bucket,"shares",shares);
+        return [{ id:item.id,title:item.title,contentType:item.content_type,platform,publishedAt:item.published_at,remoteId:typeof delivery.remoteId==="string"?delivery.remoteId:null,url:typeof delivery.url==="string"?delivery.url:null,views,likes,comments,shares,metricsCapturedAt:typeof metric.capturedAt==="string"?metric.capturedAt:null,metricsStatus:typeof metric.status==="string"?metric.status:(Object.keys(metric).length?"available":"awaiting_sync") }];
+      });
+    }).sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)).slice(0,100);
+    const youtubeAnalytics = trafficSnapshot.youtubeAnalytics;
+    const socialAnalytics = { platform:platformAnalytics, audience: { youtube:{status:youtubeHealth.status,channelName:youtubeHealth.channelName,subscribers:youtubeHealth.subscribers,totalViews:youtubeHealth.totalViews,videoCount:youtubeHealth.videoCount,subscribersGained:youtubeAnalytics.subscribersGained,subscribersLost:youtubeAnalytics.subscribersLost,views28d:youtubeAnalytics.views,likes28d:youtubeAnalytics.likes,comments28d:youtubeAnalytics.comments,shares28d:youtubeAnalytics.shares,watchMinutes28d:youtubeAnalytics.estimatedMinutesWatched}, facebook:{status:facebookAudience.status,pageName:facebookAudience.pageName,followers:facebookAudience.followers,pageLikes:facebookAudience.likes} }, posts:recentPosts,capturedAt:new Date().toISOString() };
     const oldestQueuedAt =
       rows
         .filter(
@@ -176,6 +206,7 @@ export async function GET() {
         items: rows,
         counts,
         platformStats,
+        socialAnalytics,
         oldestQueuedAt,
         health: {
           youtubeConfigured: Boolean(
@@ -186,9 +217,13 @@ export async function GET() {
           youtubeConnectionStatus: env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET && env.YOUTUBE_REFRESH_TOKEN
             ? "not_tested"
             : "not_configured",
-          youtubeConnectionMessage: env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET && env.YOUTUBE_REFRESH_TOKEN
-            ? "تم العثور على بيانات OAuth؛ نفّذ اختبار الاتصال للتحقق من صلاحية القناة."
-            : "بيانات OAuth الخاصة بـYouTube غير مكتملة.",
+          youtubeConnectionMessage: youtubeHealth.message,
+          youtubeChannelId: youtubeHealth.channelId,
+          youtubeChannelName: youtubeHealth.channelName,
+          youtubeSubscribers: youtubeHealth.subscribers,
+          youtubeTotalViews: youtubeHealth.totalViews,
+          youtubeVideoCount: youtubeHealth.videoCount,
+          youtubeLastCheckedAt: youtubeHealth.checkedAt,
           ...facebookHealth,
           facebookAuthBlocked,
         },
