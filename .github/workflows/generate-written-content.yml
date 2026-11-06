@@ -22,7 +22,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   generate:
-    if: github.ref == 'refs/heads/main'
+    # Retired: this generator enqueues Facebook-only written posts. New automation is site-internal.
+    if: false
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 10
