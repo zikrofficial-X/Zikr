@@ -104,7 +104,7 @@ for (const file of routeFiles) {
     if (
       route === "src/app/api/admin/social/written/route.ts" &&
       match[1] === "POST" &&
-      !/requireAdminApi\\s*\\(\\s*([\\'"])social\\.publish\\1\\s*\\)/.test(block)
+      !/requireAdminApi\s*\(\s*(["'])social\.publish\1\s*\)/.test(block)
     ) {
       failures.push(route + " POST: auto-published written-content generation requires social.publish.");
     }
