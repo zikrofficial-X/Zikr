@@ -37,15 +37,15 @@ const groups = [...navigation.matchAll(/key:\s*"([^"]+)",\s*label:\s*"([^"]+)",\
       .map((item) => ({ href: item[1], label: item[2], permission: item[3] })),
   }));
 const items = groups.flatMap((group) => group.items);
-if (groups.length !== 5) failures.push("expected exactly five canonical admin navigation zones");
-for (const label of ["التشغيل والمراقبة", "المحتوى والمعرفة", "الوسائط والإنتاج والنشر", "مركز الأطفال", "النمو والنظام"]) {
+if (groups.length !== 9) failures.push("expected exactly nine canonical admin navigation zones");
+for (const label of ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "النشر والتوزيع", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"]) {
   if (!groups.some((group) => group.label === label)) failures.push("missing canonical admin navigation zone: " + label);
 }
 const routeInventorySection = docs.split("## 1. جرد المسارات والصلاحيات")[1]?.split("## 2. نطاق الأدوار")[0] ?? "";
 const documentedGroups = [...routeInventorySection.matchAll(/^### (.+)$/gm)].map((match) => match[1].trim());
-const canonicalGroupLabels = ["التشغيل والمراقبة", "المحتوى والمعرفة", "الوسائط والإنتاج والنشر", "مركز الأطفال", "النمو والنظام"];
+const canonicalGroupLabels = ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "النشر والتوزيع", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"];
 if (documentedGroups.join("|") !== canonicalGroupLabels.join("|")) {
-  failures.push("admin governance headings must match the five canonical navigation zones in the same order");
+  failures.push("admin governance headings must match the nine canonical navigation zones in the same order");
 }
 if (!items.length) failures.push("no canonical navigation items were parsed");
 if (items.some((item) => !item.label.trim() || !item.permission.trim())) failures.push("navigation item has an empty label or permission");
