@@ -37,7 +37,8 @@ const worker = read("scripts/jobs/template-video-automation.ts");
 for (const token of [
   "assertNarrationQuality",
   "evaluateArabicNarrationText",
-  "VIDEO_TEMPLATE_VERSION = \"2026-11-06-composition-sync-v8\"",
+  "CURRENT_VIDEO_RENDERER_VERSION",
+  "VIDEO_TEMPLATE_VERSION = CURRENT_VIDEO_RENDERER_VERSION",
   "تابع ذِكر للمزيد",
   "resolveDeterministicVideoHook",
   "category === \"quran\" && !audioUrl",
@@ -59,6 +60,11 @@ for (const token of [
 ]) {
   if (!worker.includes(token)) failures.push(`worker missing quality enhancement: ${token}`);
 }
+const rendererVersion = read("src/features/videos/services/video-template-version.ts");
+if (!rendererVersion.includes('CURRENT_VIDEO_RENDERER_VERSION = "2026-11-06-composition-sync-v8"')) {
+  failures.push("central video renderer version must match the validated template worker version");
+}
+
 const composition = read("src/features/videos/services/video-composition.ts");
 for (const token of ["resolveVideoComposition", "paginateCaptionText", "planCaptionTimings", "cameraPath", "panelPixelWidth", "minimumPageSeconds"]) {
   if (!composition.includes(token)) failures.push(`category composition/caption pacing helper missing: ${token}`);
