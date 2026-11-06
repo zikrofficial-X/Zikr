@@ -49,7 +49,7 @@ requireRegex(
 );
 requireRegex(
   types,
-  /pinned_messages\s*:\s*\\{[\s\S]{0,1000}?published:\s*boolean/,
+  /pinned_messages\s*:\s*\{[\s\S]{0,1000}?published:\s*boolean/,
   "pinned_messages.published generated type contract",
 );
 requireText(
