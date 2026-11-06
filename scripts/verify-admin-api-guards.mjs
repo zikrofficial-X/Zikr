@@ -110,12 +110,75 @@ for (const file of routeFiles) {
   }
 }
 
+function functionBlockEnd(source, startIndex) {
+  const openIndex = source.indexOf("{", startIndex);
+  if (openIndex < 0) return source.length;
+  let depth = 0;
+  let quote = "";
+  let escaped = false;
+  let lineComment = false;
+  let blockComment = false;
+
+  for (let index = openIndex; index < source.length; index++) {
+    const character = source[index];
+    const next = source[index + 1];
+
+    if (lineComment) {
+      if (character === "\n") lineComment = false;
+      continue;
+    }
+    if (blockComment) {
+      if (character === "*" && next === "/") {
+        blockComment = false;
+        index++;
+      }
+      continue;
+    }
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (character === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (character === quote) quote = "";
+      continue;
+    }
+    if (character === "/" && next === "/") {
+      lineComment = true;
+      index++;
+      continue;
+    }
+    if (character === "/" && next === "*") {
+      blockComment = true;
+      index++;
+      continue;
+    }
+    if (character === "'" || character === '"' || character === "`") {
+      quote = character;
+      continue;
+    }
+    if (character === "{") depth++;
+    if (character === "}") {
+      depth--;
+      if (depth === 0) return index + 1;
+    }
+  }
+  return source.length;
+}
+
 const actionFiles = [...new Set(
   actionRoots.flatMap((actionRoot) => walk(actionRoot))
     .filter((file) => /\.(?:ts|tsx)$/.test(file))
     .filter((file) => {
       const source = readFileSync(file, "utf8").trimStart();
-      return source.startsWith('"use server"') || source.startsWith("'use server'");
+      return (
+        source.startsWith('"use server"') ||
+        source.startsWith("'use server'") ||
+        /(?:export\\s+)?async\\s+function\\s+[A-Za-z0-9_]+\\s*\\([^)]*\\)\\s*\\{\\s*(['"])use server\\1\\s*;/.test(source)
+      );
     }),
 )].sort();
 
@@ -126,20 +189,22 @@ if (!actionFiles.length) failures.push("no admin server-action files were discov
 for (const file of actionFiles) {
   const source = readFileSync(file, "utf8");
   const relativePath = relative(root, file).split(sep).join("/");
-  const actions = [
-    ...source.matchAll(/export\s+async\s+function\s+([A-Za-z0-9_]+)\s*\(/g),
-  ];
+  const isModuleActionFile =
+    source.trimStart().startsWith('"use server"') ||
+    source.trimStart().startsWith("'use server'");
+  const actions = isModuleActionFile
+    ? [...source.matchAll(/export\\s+async\\s+function\\s+([A-Za-z0-9_]+)\\s*\\(/g)]
+    : [...source.matchAll(/(?:export\\s+)?async\\s+function\\s+([A-Za-z0-9_]+)\\s*\\([^)]*\\)\\s*\\{\\s*(['"])use server\\2\\s*;/g)];
 
   if (!actions.length) {
-    failures.push(relativePath + ": server-action module exports no async action");
+    failures.push(relativePath + ": server-action module/page contains no discoverable async action");
     continue;
   }
 
-  for (let i = 0; i < actions.length; i++) {
+  for (const match of actions) {
     actionCount++;
-    const match = actions[i];
-    const end = actions[i + 1]?.index ?? source.length;
-    const block = source.slice(match.index, end);
+    const blockEnd = functionBlockEnd(source, match.index);
+    const block = source.slice(match.index, blockEnd);
     const outcome = checkGuardedBlock({
       block,
       label: relativePath + " :: " + match[1],
