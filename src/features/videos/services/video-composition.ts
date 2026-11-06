@@ -263,7 +263,7 @@ export function paginateCaptionText(value: string, lineChars: number, linesPerPa
   if (line) lines.push(line);
   const pages: string[] = [];
   for (let index = 0; index < lines.length; index += pageLines) {
-    pages.push(lines.slice(index, index + pageLines).join("\\\\N"));
+    pages.push(lines.slice(index, index + pageLines).join("\\N"));
   }
   return pages.length ? pages : [value.trim()];
 }
