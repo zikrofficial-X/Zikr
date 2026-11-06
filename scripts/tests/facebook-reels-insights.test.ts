@@ -46,21 +46,17 @@ console.log("Facebook Reels insights permission and metric tests passed.");
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-function requiredPermissions(source: string): string[] {
-  const match = source.match(/const REQUIRED_PERMISSIONS = \[([\s\S]*?)\](?: as const)?;/);
-  assert.ok(match, "OAuth route must declare its required Meta permissions");
-  return [...match[1].matchAll(/"([^"]+)"/g)].map((entry) => entry[1]);
-}
+const facebookConnect = readFileSync(
+  resolve("src/app/api/admin/social/facebook/connect/route.ts"),
+  "utf8",
+);
+const facebookCallback = readFileSync(
+  resolve("src/app/api/admin/social/facebook/callback/route.ts"),
+  "utf8",
+);
+assert.match(facebookConnect, /FACEBOOK_INTEGRATION_RETIRED/);
+assert.match(facebookConnect, /status: 410/);
+assert.match(facebookCallback, /FACEBOOK_INTEGRATION_RETIRED/);
+assert.match(facebookCallback, /status: 410/);
 
-const connectPermissions = requiredPermissions(
-  readFileSync(resolve("src/app/api/admin/social/facebook/connect/route.ts"), "utf8"),
-);
-const callbackPermissions = requiredPermissions(
-  readFileSync(resolve("src/app/api/admin/social/facebook/callback/route.ts"), "utf8"),
-);
-assert.deepEqual(callbackPermissions, connectPermissions, "OAuth callback must validate every permission requested by the connect route");
-assert.ok(callbackPermissions.includes("read_insights"), "Facebook insights requires explicit read_insights authorization");
-assert.ok(callbackPermissions.includes("pages_manage_engagement"), "Facebook video insights requires Page engagement management authorization");
-const facebookCredentialService = readFileSync(resolve("src/features/social/services/facebook-credentials.ts"), "utf8");
-assert.ok(facebookCredentialService.includes('"read_insights"'), "stored credential validation must require read_insights");
-assert.ok(facebookCredentialService.includes('"pages_manage_engagement"'), "stored credential validation must require pages_manage_engagement");
+console.log("Facebook Reels historical metric parsing and external integration retirement tests passed.");
