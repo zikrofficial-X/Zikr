@@ -8,6 +8,8 @@ import {
   supabaseServerAdminCount,
   supabaseServerAdminRequest,
 } from "../../src/lib/supabase/admin-rest";
+import { getFacebookPageCredentials } from "../../src/features/social/services/facebook-credentials";
+import { getYouTubeUploadRefreshToken } from "../../src/features/social/services/youtube-oauth-credentials";
 import { listVideoSources, resolveVideoSource } from "../../src/features/videos/services/video-sources";
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
 import { buildKidsSeriesEpisode, validateGeneratedKidsEpisode } from "../../src/features/videos/data/kids-story-factory";
@@ -145,6 +147,12 @@ type DuaRow = {
 };
 
 type ExistingRow = { id: string; status: string; automation_key: string | null };
+type SocialQueueRow = {
+  id: string;
+  status: string;
+  target_platforms: string[] | null;
+  metadata: Record<string, unknown> | null;
+};
 type GeneratedRequest = {
   id: string;
   title: string;
@@ -1643,6 +1651,132 @@ async function registerGeneratedVideoOnSite(
   return { videoId, published: false, queued: true };
 }
 
+async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueRow | null> {
+  const rows = await supabaseServerAdminRequest<SocialQueueRow[]>(
+    `/rest/v1/social_publish_queue?automation_key=eq.${encodeURIComponent(key)}&select=id,status,target_platforms,metadata&limit=1`,
+  );
+  return rows?.[0] ?? null;
+}
+
+async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
+  if (!engineConfig().autoPublishEnabled) {
+    console.log(`[template-video] Social draft retained for ${request.id}; public publishing is disabled or approval is required.`);
+    return;
+  }
+  const content = request.content;
+  if (content.skipSocialPublish === true) {
+    console.log(`[template-video] Social publishing skipped for test request ${request.id}`);
+    return;
+  }
+  const key = request.automation_key || request.id;
+  const publicPath =
+    typeof content.publicPath === "string" && content.publicPath.startsWith("/")
+      ? content.publicPath
+      : "/quran";
+  const targets: string[] = [];
+  if (
+    process.env.YOUTUBE_PUBLISHING_REQUESTED !== "false" &&
+    process.env.YOUTUBE_CLIENT_ID &&
+    process.env.YOUTUBE_CLIENT_SECRET &&
+    await getYouTubeUploadRefreshToken()
+  ) {
+    targets.push("youtube");
+  }
+  // Only an OAuth-managed Page credential in Supabase may create Facebook publishing targets.
+  const facebookCredentials = await getFacebookPageCredentials().catch(() => null);
+  if (process.env.FACEBOOK_PUBLISHING_REQUESTED !== "false" && facebookCredentials?.isEnabled && facebookCredentials.pageId && facebookCredentials.accessToken) {
+    targets.push(content.videoFormat === "horizontal" ? "facebook" : "facebook_reels");
+  }
+  if (!targets.length) return;
+
+  const socialKey = `${key}:social-video`;
+  const existing = await findSocialQueueByAutomationKey(socialKey);
+
+  if (!existing) {
+    await supabaseServerAdminRequest("/rest/v1/social_publish_queue", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        content_type: `${request.category || "content"}_video`,
+        content_id: request.id,
+        title: request.title,
+        body: [
+          request.description || "",
+          typeof content.ai === "object" && content.ai && typeof (content.ai as Record<string, unknown>).socialCaption === "string"
+            ? String((content.ai as Record<string, unknown>).socialCaption)
+            : "",
+          "إذا نفعك المقطع، تابع ذِكر واحفظه وشاركه مع من تحب.",
+          content.audience === "kids" && typeof content.seriesTitle === "string"
+            ? `سلسلة أطفال: ${content.seriesTitle} — الموسم ${Number(content.seasonNumber) || 1}، الحلقة ${Number(content.episodeNumber) || 1}. الهدف: ${String(content.learningObjective || "قيمة تربوية")}`
+            : "",
+          `المصدر: ${contentSourceUrl(request)}`,
+          `${siteUrl()}${publicPath}`,
+        ].filter(Boolean).join("\n\n"),
+        video_url: videoUrl,
+        target_platforms: targets,
+        status: "queued",
+        metadata: {
+          automationKey: socialKey,
+          publicPath,
+          videoFormat: content.videoFormat === "horizontal" ? "horizontal" : "vertical",
+          sourceUrl: contentSourceUrl(request),
+          authBlocked: false,
+          attempts: 0,
+          maxAttempts: 5,
+          nextRetryAt: null,
+          ai: content.ai && typeof content.ai === "object" ? content.ai : null,
+        },
+        automation_key: socialKey,
+      }),
+    });
+    return;
+  }
+
+  const existingTargets = Array.isArray(existing.target_platforms)
+    ? existing.target_platforms.filter(Boolean)
+    : [];
+  const desiredTargets = [...new Set([...existingTargets, ...targets])];
+  const platformResults =
+    existing.metadata?.platformResults && typeof existing.metadata.platformResults === "object"
+      ? (existing.metadata.platformResults as Record<string, unknown>)
+      : {};
+
+  const newlyEnabledTargets = desiredTargets.filter(
+    target =>
+      targets.includes(target) &&
+      !existingTargets.includes(target) &&
+      !(
+        platformResults[target] &&
+        typeof platformResults[target] === "object" &&
+        (platformResults[target] as { ok?: unknown }).ok === true
+      ),
+  );
+
+  if (desiredTargets.length !== existingTargets.length || newlyEnabledTargets.length > 0) {
+    await supabaseServerAdminRequest(
+      `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(existing.id)}`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          video_url: videoUrl,
+          target_platforms: desiredTargets,
+          status: "queued",
+          scheduled_at: new Date().toISOString(),
+          error_message: null,
+          updated_at: new Date().toISOString(),
+          metadata: {
+            ...(existing.metadata ?? {}),
+            authBlocked: false,
+            nextRetryAt: null,
+          },
+        }),
+      },
+    );
+  }
+}
+
+
 export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?: number) {
   if (engineConfig().dryRun) {
     console.log(`[template-video] dry-run enabled; no video generation, upload, or publishing will occur (limit=${limit}).`);
@@ -1739,6 +1873,14 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           error_details: null,
         }),
       });
+      try {
+        await queueSocialItems(request, rendered.videoUrl);
+      } catch (socialError) {
+        console.error(
+          `[template-video] Internal video succeeded but social queue enqueue failed for ${request.id}:`,
+          socialError instanceof Error ? socialError.message : String(socialError),
+        );
+      }
       succeeded += 1;
       console.log(`[template-video] Completed ${request.id}`);
     } catch (error) {
