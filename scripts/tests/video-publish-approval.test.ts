@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildVideoApprovalSnapshotHash, hasCompleteVideoApprovalChecklist, isVideoApprovalRecorded, isVideoQueueItemApprovedForPublishing, REQUIRED_VIDEO_APPROVAL_CHECKS } from "../../src/features/videos/services/video-publish-approval";
+import { buildVideoApprovalSnapshotHash, hasCompleteVideoApprovalChecklist, inspectVideoQueueItemApproval, isVideoApprovalRecorded, isVideoQueueItemApprovedForPublishing, REQUIRED_VIDEO_APPROVAL_CHECKS } from "../../src/features/videos/services/video-publish-approval";
 const checks = Object.fromEntries(REQUIRED_VIDEO_APPROVAL_CHECKS.map((key) => [key, true]));
 const now = "2026-10-21T12:00:00.000Z";
 const snapshot = {
@@ -37,6 +37,33 @@ assert.equal(isVideoApprovalRecorded({ ...content, approvalReviewerId: null }, s
 assert.equal(isVideoApprovalRecorded(content, "different-snapshot-hash"), false);
 assert.equal(buildVideoApprovalSnapshotHash({ ...snapshot, sourceHash: null }), null);
 assert.equal(isVideoQueueItemApprovedForPublishing(queueItem), true);
+assert.equal(inspectVideoQueueItemApproval(queueItem).approved, true);
+assert.deepEqual(inspectVideoQueueItemApproval(queueItem).missingChecks, []);
+
+const awaitingReview = inspectVideoQueueItemApproval({
+  ...queueItem,
+  request: { ...request, content: { ...content, approvalStatus: "awaiting_human_review", qualityReview: null } },
+});
+assert.equal(awaitingReview.approved, false);
+assert.equal(awaitingReview.approvalStatus, "awaiting_human_review");
+assert.match(awaitingReview.reason ?? "", /المراجعة البشرية/);
+assert.equal(awaitingReview.missingChecks.length, 5);
+
+const missingRights = inspectVideoQueueItemApproval({
+  ...queueItem,
+  request: { ...request, content: { ...content, qualityReview: { ...checks, rightsReviewed: false, reviewedAt: now } } },
+});
+assert.equal(missingRights.approved, false);
+assert.deepEqual(missingRights.missingChecks, ["rightsReviewed"]);
+assert.match(missingRights.reason ?? "", /غير مكتملة/);
+
+const changedMedia = inspectVideoQueueItemApproval({
+  ...queueItem,
+  queuedVideoUrl: "https://media.example.test/new.mp4",
+});
+assert.equal(changedMedia.approved, false);
+assert.match(changedMedia.reason ?? "", /مختلف/);
+
 assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, contentType: "article" }), true);
 assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, request: { ...request, status: "processing" } }), false);
 assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, queuedVideoUrl: "https://media.example.test/old.mp4" }), false);
