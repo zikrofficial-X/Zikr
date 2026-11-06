@@ -80,7 +80,7 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     label: "الذاكرة والمكتبة",
     icon: "brain",
     items: [
-      { href: "/admin/media", label: "ذاكرة الوسائط", permission: "media.manage", icon: "database" },
+      { href: "/admin/memory", label: "ذاكرة المشروع", permission: "media.manage", icon: "database" },
     ],
   },
   {
