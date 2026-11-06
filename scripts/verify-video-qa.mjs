@@ -41,6 +41,9 @@ for (const token of [
   "VIDEO_TEMPLATE_VERSION = CURRENT_VIDEO_RENDERER_VERSION",
   "تابع ذِكر للمزيد",
   "resolveDeterministicVideoHook",
+  "function audienceCta",
+  "اكتشفوا الحلقة القادمة معًا",
+  "تدبّر الآية واحفظها وشاركها",
   "category === \"quran\" && !audioUrl",
   "QURAN_AYAH_AUDIO_BASE_URL",
   "resolveVideoComposition",
@@ -53,6 +56,7 @@ for (const token of [
   "automatedQa.status !== \"passed\"",
   "rightsReviewed",
   "automatedVideoQa: request.content.automatedVideoQa ?? null",
+  "gemini-3.8-flash",
 ]) {
   if (!worker.includes(token)) failures.push(`worker missing narration/video QA contract: ${token}`);
 }
@@ -66,7 +70,7 @@ for (const token of [
   if (!worker.includes(token)) failures.push(`worker missing quality enhancement: ${token}`);
 }
 const rendererVersion = read("src/features/videos/services/video-template-version.ts");
-if (!rendererVersion.includes('CURRENT_VIDEO_RENDERER_VERSION = "2026-11-06-template-controls-v9"')) {
+if (!rendererVersion.includes('CURRENT_VIDEO_RENDERER_VERSION = "2026-11-07-template-controls-v10"')) {
   failures.push("central video renderer version must match the validated template worker version");
 }
 
