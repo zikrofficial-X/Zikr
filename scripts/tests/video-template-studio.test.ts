@@ -64,7 +64,7 @@ assert.ok(customComposition.panelLeft > standardComposition.panelLeft);
 assert.ok(customComposition.lineChars < standardComposition.lineChars);
 assert.equal(customComposition.captionStyle, "boxed");
 assert.equal(customComposition.sourceCardStyle, "compact");
-assert.equal(CURRENT_VIDEO_RENDERER_VERSION, "2026-11-06-template-controls-v9");
+assert.equal(CURRENT_VIDEO_RENDERER_VERSION, "2026-11-07-template-controls-v10");
 assert.equal(parseVideoTemplateConfig({ assetKey: "../../secrets", defaultFormat: "vertical", motion: "slow" }), null);
 assert.equal(parseVideoTemplateConfig({ assetKey: "gold", defaultFormat: "square", motion: "slow" }), null);
 assert.equal(isVideoTemplateAssetAllowedForAudience("kids-garden", "kids"), true);

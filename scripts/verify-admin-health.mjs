@@ -70,11 +70,12 @@ if (!page.includes("video_automation_auto_publish") || !page.includes("socialAut
   throw new Error("Admin health must expose the canonical social auto-publish setting from admin_settings");
 }
 if (!page.includes("النشر داخل الموقع") || !page.includes("النشر الاجتماعي الخارجي") ||
-    !page.includes("اعتماد الجودة") || !page.includes("صلاحيات القنوات")) {
-  throw new Error("Admin health must explain the separate internal-site and approval-gated social publishing paths");
+    !page.includes("فحوص الجودة الآلية") || !page.includes("صلاحيات القنوات") ||
+    !page.includes("لا توجد خطوة موافقة بشرية") || page.includes("موافقة مسؤول الفيديو")) {
+  throw new Error("Admin health must explain automatic publishing after source-locked QA without manual approval");
 }
 if (page.includes("getVideoEngineConfig()") || page.includes("engine.autoPublishEnabled")) {
   throw new Error("Admin health must not infer GitHub worker state from the Vercel process environment");
 }
 
-console.log("Admin health internal and approval-gated social publishing contract passed.");
+console.log("Admin health automated video QA publishing contract passed.");

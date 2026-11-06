@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 export const REQUIRED_VIDEO_APPROVAL_CHECKS = ["sourceVerified", "audioReviewed", "visualsReviewed", "captionsReviewed", "rightsReviewed"] as const;
 export type VideoApprovalCheck = (typeof REQUIRED_VIDEO_APPROVAL_CHECKS)[number];
 export type VideoApprovalChecklist = Record<VideoApprovalCheck, boolean>;
+
+export const AUTOMATED_VIDEO_QA_ENGINE = "zikr_video_factory";
+export const AUTOMATED_VIDEO_QA_VERSION = "2026-11-07-auto-qa-v1";
+export const AUTOMATED_VIDEO_QA_REVIEWER_ID = "system:zikr-video-factory";
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
@@ -38,6 +42,45 @@ export function buildVideoApprovalSnapshotHash(snapshot: VideoApprovalSnapshot):
   return createHash("sha256").update(canonical, "utf8").digest("hex");
 }
 
+export function createAutomatedVideoQaApproval(input: {
+  snapshot: VideoApprovalSnapshot;
+  checks: VideoApprovalChecklist;
+  reviewedAt?: string;
+}): Record<string, unknown> | null {
+  const snapshotHash = buildVideoApprovalSnapshotHash(input.snapshot);
+  const reviewedAt = input.reviewedAt ?? new Date().toISOString();
+  if (
+    !snapshotHash ||
+    !hasCompleteVideoApprovalChecklist(input.checks) ||
+    !Number.isFinite(Date.parse(reviewedAt))
+  ) return null;
+
+  const qualityReview = {
+    ...input.checks,
+    reviewedAt,
+    mode: "automated",
+    engine: AUTOMATED_VIDEO_QA_ENGINE,
+    engineVersion: AUTOMATED_VIDEO_QA_VERSION,
+    snapshotHash,
+  };
+  return {
+    approvalStatus: "approved",
+    approvalReviewerId: AUTOMATED_VIDEO_QA_REVIEWER_ID,
+    approvalReviewedAt: reviewedAt,
+    approvalSnapshotHash: snapshotHash,
+    qualityReview,
+    automatedVideoQa: {
+      status: "passed",
+      engine: AUTOMATED_VIDEO_QA_ENGINE,
+      engineVersion: AUTOMATED_VIDEO_QA_VERSION,
+      reviewedAt,
+      snapshotHash,
+      checks: input.checks,
+      missingChecks: [],
+    },
+  };
+}
+
 export function isVideoApprovalRecorded(content: unknown, expectedSnapshotHash: string | null): boolean {
   const data = record(content);
   if (data?.approvalStatus !== "approved") return false;
@@ -45,10 +88,27 @@ export function isVideoApprovalRecorded(content: unknown, expectedSnapshotHash: 
   if (!expectedSnapshotHash || data.approvalSnapshotHash !== expectedSnapshotHash) return false;
   const reviewedAt = typeof data.approvalReviewedAt === "string" ? Date.parse(data.approvalReviewedAt) : Number.NaN;
   if (!Number.isFinite(reviewedAt)) return false;
-  const review = record(data.qualityReview);
-  if (!hasCompleteVideoApprovalChecklist(review)) return false;
-  const reviewTimestamp = (review as Record<string, unknown>).reviewedAt;
-  return typeof reviewTimestamp === "string" && Number.isFinite(Date.parse(reviewTimestamp));
+  const reviewData = record(data.qualityReview);
+  if (!hasCompleteVideoApprovalChecklist(reviewData)) return false;
+  const review = reviewData as Record<string, unknown>;
+  const reviewTimestamp = review.reviewedAt;
+  if (typeof reviewTimestamp !== "string" || !Number.isFinite(Date.parse(reviewTimestamp))) return false;
+
+  if (data.approvalReviewerId === AUTOMATED_VIDEO_QA_REVIEWER_ID) {
+    const automated = record(data.automatedVideoQa);
+    return review.mode === "automated" &&
+      review.engine === AUTOMATED_VIDEO_QA_ENGINE &&
+      review.engineVersion === AUTOMATED_VIDEO_QA_VERSION &&
+      review.snapshotHash === expectedSnapshotHash &&
+      automated?.status === "passed" &&
+      automated.engine === AUTOMATED_VIDEO_QA_ENGINE &&
+      automated.engineVersion === AUTOMATED_VIDEO_QA_VERSION &&
+      automated.snapshotHash === expectedSnapshotHash &&
+      hasCompleteVideoApprovalChecklist(automated.checks);
+  }
+
+  // Existing administrator approvals remain valid for historical records.
+  return true;
 }
 export type VideoPublishRequestSnapshot = {
   status: string;
@@ -86,8 +146,8 @@ export function inspectVideoQueueItemApproval(input: {
   }
 
   const content = record(input.request.content);
-  const review = record(content?.qualityReview);
-  const missingChecks = REQUIRED_VIDEO_APPROVAL_CHECKS.filter((key) => review?.[key] !== true);
+  const reviewData = record(content?.qualityReview);
+  const missingChecks = REQUIRED_VIDEO_APPROVAL_CHECKS.filter((key) => reviewData?.[key] !== true);
   const approvalStatus = typeof content?.approvalStatus === "string" ? content.approvalStatus : null;
   const snapshotHash = buildVideoApprovalSnapshotHash({
     category: input.request.category,
@@ -101,13 +161,13 @@ export function inspectVideoQueueItemApproval(input: {
 
   let reason: string;
   if (approvalStatus !== "approved") {
-    reason = "بانتظار اعتماد المراجعة البشرية من صفحة طابور الفيديو.";
+    reason = "بانتظار اكتمال فحص الجودة الآلي.";
   } else if (missingChecks.length > 0) {
-    reason = "قائمة مراجعة الجودة غير مكتملة؛ راجع البنود الناقصة قبل النشر.";
+    reason = "فحوص الجودة الآلية غير مكتملة؛ تم إيقاف النشر الخارجي."
   } else if (!snapshotHash || content?.approvalSnapshotHash !== snapshotHash) {
-    reason = "اعتماد المراجعة قديم أو تغيّر المصدر/المحتوى/القالب/ملف الفيديو؛ أعد المراجعة.";
+    reason = "بصمة المصدر أو المحتوى أو القالب أو ملف الفيديو تغيّرت؛ يلزم فحص آلي جديد."
   } else if (typeof content?.approvalReviewerId !== "string" || !content.approvalReviewerId.trim() || typeof content?.approvalReviewedAt !== "string") {
-    reason = "سجل اعتماد المراجعة غير مكتمل؛ أعد اعتماد الفيديو من حساب إداري مخوّل.";
+    reason = "سجل فحص الجودة الآلي غير مكتمل؛ تم إيقاف النشر الخارجي."
   } else {
     reason = "لم يجتز الفيديو شروط الاعتماد النهائي للنشر.";
   }

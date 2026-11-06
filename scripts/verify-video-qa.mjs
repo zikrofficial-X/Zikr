@@ -41,6 +41,9 @@ for (const token of [
   "VIDEO_TEMPLATE_VERSION = CURRENT_VIDEO_RENDERER_VERSION",
   "تابع ذِكر للمزيد",
   "resolveDeterministicVideoHook",
+  "function audienceCta",
+  "اكتشفوا الحلقة القادمة معًا",
+  "تدبّر الآية واحفظها وشاركها",
   "category === \"quran\" && !audioUrl",
   "QURAN_AYAH_AUDIO_BASE_URL",
   "resolveVideoComposition",
@@ -48,6 +51,12 @@ for (const token of [
   "planCaptionTimings(textPages, audioDuration)",
   "audioDuration - 0.55",
   "captionTiming: \"page-weighted-audio-duration\"",
+  "buildAutomatedVideoQaChecklist",
+  "createAutomatedVideoQaApproval",
+  "automatedQa.status !== \"passed\"",
+  "rightsReviewed",
+  "automatedVideoQa: request.content.automatedVideoQa ?? null",
+  "gemini-3.8-flash",
 ]) {
   if (!worker.includes(token)) failures.push(`worker missing narration/video QA contract: ${token}`);
 }
@@ -61,7 +70,7 @@ for (const token of [
   if (!worker.includes(token)) failures.push(`worker missing quality enhancement: ${token}`);
 }
 const rendererVersion = read("src/features/videos/services/video-template-version.ts");
-if (!rendererVersion.includes('CURRENT_VIDEO_RENDERER_VERSION = "2026-11-06-template-controls-v9"')) {
+if (!rendererVersion.includes('CURRENT_VIDEO_RENDERER_VERSION = "2026-11-07-template-controls-v10"')) {
   failures.push("central video renderer version must match the validated template worker version");
 }
 
@@ -74,8 +83,31 @@ if (!compositionTest.includes("Video composition and audio-aware caption timing 
 const voiceProfiles = read("src/features/videos/services/voice-profiles.ts");
 if (!voiceProfiles.includes("hadith_male_msa")) failures.push("hadith voice profile missing from canonical voice service");
 const socialPublisher = read("src/features/social/services/social-publishing.ts");
-for (const token of ["recoverStaleSocialPublishItems", "hasTransientFailure", "updated_at=lt."]) {
-  if (!socialPublisher.includes(token)) failures.push(`social publisher missing recovery contract: ${token}`);
+for (const token of [
+  "recoverStaleSocialPublishItems",
+  "hasTransientFailure",
+  "updated_at=lt.",
+  "Video held because automated QA is missing, incomplete or stale.",
+  "getYouTubeVideoDisclosure",
+]) {
+  if (!socialPublisher.includes(token)) failures.push(`social publisher missing automated delivery contract: ${token}`);
+}
+const approvalService = read("src/features/videos/services/video-publish-approval.ts");
+for (const token of [
+  "AUTOMATED_VIDEO_QA_ENGINE",
+  "AUTOMATED_VIDEO_QA_VERSION",
+  "AUTOMATED_VIDEO_QA_REVIEWER_ID",
+  "createAutomatedVideoQaApproval",
+  "buildVideoApprovalSnapshotHash",
+]) {
+  if (!approvalService.includes(token)) failures.push(`automated QA approval service missing integrity contract: ${token}`);
+}
+const youtubePublisher = read("src/features/videos/services/video-automation.ts");
+if (!youtubePublisher.includes("containsSyntheticMedia: options.containsSyntheticMedia === true")) {
+  failures.push("YouTube upload must carry the synthetic-media disclosure flag when realistic AI video is used");
+}
+if (worker.toLowerCase().includes("human qa approval")) {
+  failures.push("video generation must not retain a manual human QA gate");
 }
 
 const pkg = JSON.parse(read("package.json"));

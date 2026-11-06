@@ -233,7 +233,7 @@ export default function AdminSocialPage() {
     provider: "GitHub Actions",
     trigger: "after_video_generation_or_manual",
     approvalRequired: true,
-    note: "النشر بعد توليد الفيديو، وبموافقة الجودة البشرية.",
+    note: "النشر التلقائي بعد توليد الفيديو واجتياز فحوص الجودة الآلية.",
   });
   const [oldestQueuedAt, setOldestQueuedAt] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | Status>("all");
@@ -525,7 +525,7 @@ export default function AdminSocialPage() {
         return;
       }
       if (action === "publish_now" && selectedPublishNowCount === 0) {
-        setError("حدد عناصر جاهزة للنشر الفوري أولًا. الفيديوهات غير المعتمدة تظهر بسبب التأجيل ورابط المراجعة.");
+        setError("حدد عناصر جاهزة للنشر الفوري أولًا. الفيديوهات التي لم تجتز فحوص الجودة تظهر مع سبب الإيقاف الآلي.");
         return;
       }
       setBusy(true);
@@ -686,7 +686,7 @@ export default function AdminSocialPage() {
             <span className="mt-1 block text-xs text-brand-cream/40">الطابور الذي يمكن للعامل معالجته</span>
           </button>
           <button type="button" onClick={() => setActiveView("queue")} className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-right transition hover:bg-amber-400/10">
-            <span className="text-xs text-brand-cream/55">موقوف لمراجعة الجودة</span>
+            <span className="text-xs text-brand-cream/55">موقوف — فحوص الجودة الآلية غير مكتملة</span>
             <span className="mt-1 block text-2xl font-bold text-amber-200">{readiness.approvalPending}</span>
             <span className="mt-1 block text-xs text-brand-cream/40">اعتماد بشري مطلوب قبل النشر</span>
           </button>
@@ -978,7 +978,7 @@ export default function AdminSocialPage() {
               الإجراءات السريعة
             </h2>
             <p className="text-xs text-brand-cream/40">
-              العناصر التي تنتظر مراجعة الجودة لا تُنشر تلقائيًا. اعتمد الفيديو أولًا من طابور الفيديو، ثم استخدم «نشر المحدد الآن». تبقى نتائج القنوات الناجحة محفوظة لمنع التكرار.
+              العناصر التي لم تجتز فحوص الجودة الآلية لا تُنشر. أصلح سبب الفشل وأعد التوليد؛ الفيديوهات التي تجتاز الفحص تنتقل للنشر تلقائيًا. تبقى نتائج القنوات الناجحة محفوظة لمنع التكرار.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1079,12 +1079,12 @@ export default function AdminSocialPage() {
                     <td className="p-3 text-xs">
                       {item.videoApproval && !item.videoApproval.approved && (
                         <div className="mb-2 space-y-1 rounded-lg border border-amber-400/20 bg-amber-400/5 p-2 text-amber-200">
-                          <p className="font-semibold">موقوف لحين مراجعة الجودة</p>
+                          <p className="font-semibold">موقوف — فحوص الجودة الآلية غير مكتملة</p>
                           <p className="leading-5">{item.videoApproval.reason}</p>
                           {!!item.videoApproval.missingChecks.length && (
                             <p className="text-[11px] text-amber-100/70">الناقص: {item.videoApproval.missingChecks.map(key => QA_CHECK_LABELS[key] ?? key).join("، ")}</p>
                           )}
-                          <Link href="/admin/video-requests" className="inline-flex font-semibold text-brand-gold underline underline-offset-2">فتح تفاصيل الفيديو واعتماده</Link>
+                          <Link href="/admin/video-requests" className="inline-flex font-semibold text-brand-gold underline underline-offset-2">عرض تشخيص فحوص الفيديو</Link>
                         </div>
                       )}
                       {deferredAt && (
@@ -1150,10 +1150,10 @@ export default function AdminSocialPage() {
                   <p className="text-brand-cream/45">الموعد: <span dir="ltr">{item.scheduled_at ?? "فوري"}</span></p>
                   {item.videoApproval && !item.videoApproval.approved && (
                     <div className="space-y-1 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-amber-200">
-                      <p className="font-semibold">موقوف لحين مراجعة الجودة</p>
+                      <p className="font-semibold">موقوف — فحوص الجودة الآلية غير مكتملة</p>
                       <p>{item.videoApproval.reason}</p>
                       {!!item.videoApproval.missingChecks.length && <p className="text-[11px]">الناقص: {item.videoApproval.missingChecks.map(key => QA_CHECK_LABELS[key] ?? key).join("، ")}</p>}
-                      <Link href="/admin/video-requests" className="inline-flex font-semibold text-brand-gold underline underline-offset-2">فتح تفاصيل الفيديو واعتماده</Link>
+                      <Link href="/admin/video-requests" className="inline-flex font-semibold text-brand-gold underline underline-offset-2">عرض تشخيص فحوص الفيديو</Link>
                     </div>
                   )}
                   {deferredAt && <p className="break-words text-amber-300/80">مؤجل تلقائيًا حتى {formatDeferredAt(deferredAt)}</p>}

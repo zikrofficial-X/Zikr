@@ -1,6 +1,6 @@
 # Background jobs runbook
 
-ZIKR's recurring production video queue is executed by GitHub Actions `generate-ai-video.yml`. External social publishing is a separate, approval-gated worker in `publish-social.yml`, triggered only after successful video generation or explicit manual dispatch. `scripts/run-background-jobs.ts` is the shared worker entrypoint; CircleCI does not execute it for production video/social work.
+ZIKR's recurring production video queue is executed by GitHub Actions `generate-ai-video.yml`. External social publishing is a separate, automated-QA-gated worker in `publish-social.yml`, triggered only after successful video generation or explicit manual dispatch. `scripts/run-background-jobs.ts` is the shared worker entrypoint; CircleCI does not execute it for production video/social work.
 
 ## Production video generation
 
@@ -10,11 +10,11 @@ GitHub Actions invokes `pnpm background:jobs` with free Hugging Face video provi
 
 The queue is idempotent through `video_generation_requests.automation_key` and conditional pending claims, so scheduled reruns do not create duplicate automated jobs.
 
-## Approval-gated external social publishing
+## Automated-QA external social publishing
 
 The social publisher runs separately from rendering. A successful `generate-ai-video.yml` run may trigger `publish-social.yml`; an administrator may also dispatch the social workflow manually. It is not a 15-minute poller and has no push trigger. The workflow validates stored Facebook Page credentials and the stored YouTube OAuth scopes before enabling each provider. YouTube requires `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly`; no channel-delete scope is requested. If neither provider is verified, no queue row is claimed.
 
-Only rows created on or after `SOCIAL_PUBLISH_AFTER` are eligible. Historical social queue records are not replayed. Videos are held until human QA approval is present in the generation request and the approval is rechecked immediately before each provider call. Published provider IDs are persisted per platform, so a retry may only target unfinished platforms. Insights sync is opt-in and remains off during publishing runs to limit database reads.
+Only rows created on or after `SOCIAL_PUBLISH_AFTER` are eligible. Historical social queue records are not replayed. Videos require a complete automated five-part QA result (source, audio, visuals, captions, rights) bound to the exact source/content/template/MP4 fingerprint. The social worker rechecks this approval immediately before every provider call; no manual review or click is required. Published provider IDs are persisted per platform, so a retry may only target unfinished platforms. Insights sync is opt-in and remains off during publishing runs to limit database reads.
 
 The video generation worker stores verified MP4 files in Cloudinary and registers them in the ZIKR `videos` catalog. Internal site publication uses `content_publish_queue` with `content_table=videos`; external social delivery uses a separate `social_publish_queue` worker. Both paths are independent.
 
@@ -32,18 +32,18 @@ The workflow expects a GitHub Actions secret `GEMINI_API_KEY` in the production 
 
 ```text
 Video generation: 4 runs/day
-Social publisher: after successful video generation or manual dispatch; no recurring polling schedule
-Admin social worker button: dispatches `publish-social.yml` with `operation=publish_queue`; provider preflight + admin auto-publish setting + per-video QA approval are all required
+Social publisher: after successful video generation or manual dispatch; up to 5 eligible videos per dispatch, no recurring polling schedule
+Admin social worker button: dispatches `publish-social.yml` with `operation=publish_queue`; provider preflight + admin auto-publish setting + per-video automated QA approval are all required
 Admin video Run Now: direct GitHub workflow dispatch from the admin action
 English content sync: daily, at most 5 article translations and 25 Hadith records by default
-Video length: 20 seconds by default; two bounded free-AI attempts per run, then deterministic FFmpeg fallback
+Video length: 25 seconds by default; two bounded free-AI attempts per run, then deterministic FFmpeg fallback
 ```
 
 The daily English content sync uses one shared runner for one article batch and one Hadith batch. Article work is capped at five by default and uses one configured Gemini key/model request per article; it does not retry the same batch ten times or rotate through API keys/models. Hadith work is capped at 25 records by default. Manual dispatch remains available, with script-level upper bounds.
 
 ## Recovery
 
-Use GitHub Actions workflow dispatch for deliberate video generation, written-content generation, or social publishing recovery. Social recovery is active only when the protected workflow preflight passes, `SOCIAL_PUBLISH_ENABLED=true`, the administrator has enabled auto-publish, and each video has passed human QA. CircleCI is reserved for application/Android builds, documentation/release artifacts, English-content sync, Supabase gates, and explicit release operations.
+Use GitHub Actions workflow dispatch for deliberate video generation, written-content generation, or social publishing recovery. Social recovery is active only when the protected workflow preflight passes, `SOCIAL_PUBLISH_ENABLED=true`, the administrator has enabled auto-publish, and each video has a current, complete automated QA fingerprint. No manual review is required for passing videos. CircleCI is reserved for application/Android builds, documentation/release artifacts, English-content sync, Supabase gates, and explicit release operations.
 
 The prayer notification path remains separate: Supabase `pg_cron` invokes `prayer-notification-worker` every minute.
 
@@ -55,4 +55,4 @@ Queue claiming is conditional on `status=pending`, and automation keys prevent d
 
 A generated video is only considered published when the provider returns its publication identifier and the queue records the provider result.
 
-**Last updated:** November 6, 2026
+**Last updated:** November 7, 2026

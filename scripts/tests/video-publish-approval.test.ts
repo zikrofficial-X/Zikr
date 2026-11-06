@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { buildVideoApprovalSnapshotHash, hasCompleteVideoApprovalChecklist, inspectVideoQueueItemApproval, isVideoApprovalRecorded, isVideoQueueItemApprovedForPublishing, REQUIRED_VIDEO_APPROVAL_CHECKS } from "../../src/features/videos/services/video-publish-approval";
-const checks = Object.fromEntries(REQUIRED_VIDEO_APPROVAL_CHECKS.map((key) => [key, true]));
+import { AUTOMATED_VIDEO_QA_ENGINE, AUTOMATED_VIDEO_QA_VERSION, buildVideoApprovalSnapshotHash, createAutomatedVideoQaApproval, hasCompleteVideoApprovalChecklist, inspectVideoQueueItemApproval, isVideoApprovalRecorded, isVideoQueueItemApprovedForPublishing, REQUIRED_VIDEO_APPROVAL_CHECKS, type VideoApprovalChecklist } from "../../src/features/videos/services/video-publish-approval";
+const checks: VideoApprovalChecklist = { sourceVerified: true, audioReviewed: true, visualsReviewed: true, captionsReviewed: true, rightsReviewed: true };
 const now = "2026-10-21T12:00:00.000Z";
 const snapshot = {
   category: "quran",
@@ -42,11 +42,11 @@ assert.deepEqual(inspectVideoQueueItemApproval(queueItem).missingChecks, []);
 
 const awaitingReview = inspectVideoQueueItemApproval({
   ...queueItem,
-  request: { ...request, content: { ...content, approvalStatus: "awaiting_human_review", qualityReview: null } },
+  request: { ...request, content: { ...content, approvalStatus: "awaiting_automated_qa", qualityReview: null } },
 });
 assert.equal(awaitingReview.approved, false);
-assert.equal(awaitingReview.approvalStatus, "awaiting_human_review");
-assert.match(awaitingReview.reason ?? "", /المراجعة البشرية/);
+assert.equal(awaitingReview.approvalStatus, "awaiting_automated_qa");
+assert.match(awaitingReview.reason ?? "", /فحص الجودة الآلي/);
 assert.equal(awaitingReview.missingChecks.length, 5);
 
 const missingRights = inspectVideoQueueItemApproval({
@@ -73,7 +73,7 @@ assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, request: { ..
 assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, request: { ...request, content_hash: "changed-content-hash" } }), false);
 assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, request: null }), false);
 
-// Unattended worker scheduling never bypasses persisted human approval.
+// Unattended publishing still requires a passed, immutable automated QA record.
 const unreviewedRequest = {
   status: "completed",
   category: "quran",
@@ -96,4 +96,68 @@ assert.equal(isVideoQueueItemApprovedForPublishing({
   request: unreviewedRequest,
   requireApproval: false,
 } as Parameters<typeof isVideoQueueItemApprovedForPublishing>[0]), false);
+
+// Automated approval is issued only from a complete source/media fingerprint and all QA checks.
+const automatedApproval = createAutomatedVideoQaApproval({
+  snapshot,
+  checks,
+  reviewedAt: now,
+});
+assert.ok(automatedApproval);
+assert.equal(automatedApproval?.approvalStatus, "approved");
+assert.equal(automatedApproval?.approvalReviewerId, "system:zikr-video-factory");
+assert.equal(
+  (automatedApproval?.automatedVideoQa as Record<string, unknown>)?.engine,
+  AUTOMATED_VIDEO_QA_ENGINE,
+);
+assert.equal(
+  (automatedApproval?.automatedVideoQa as Record<string, unknown>)?.engineVersion,
+  AUTOMATED_VIDEO_QA_VERSION,
+);
+const automatedRequest = {
+  ...request,
+  content: automatedApproval,
+};
+assert.equal(isVideoApprovalRecorded(automatedApproval, snapshotHash), true);
+assert.equal(isVideoQueueItemApprovedForPublishing({
+  ...queueItem,
+  request: automatedRequest,
+}), true);
+assert.equal(isVideoQueueItemApprovedForPublishing({
+  ...queueItem,
+  request: {
+    ...automatedRequest,
+    content: {
+      ...automatedApproval,
+      automatedVideoQa: {
+        ...(automatedApproval?.automatedVideoQa as Record<string, unknown>),
+        status: "blocked",
+      },
+    },
+  },
+}), false);
+assert.equal(isVideoQueueItemApprovedForPublishing({
+  ...queueItem,
+  request: {
+    ...automatedRequest,
+    content: {
+      ...automatedApproval,
+      qualityReview: {
+        ...(automatedApproval?.qualityReview as Record<string, unknown>),
+        engineVersion: "old-version",
+      },
+    },
+  },
+}), false);
+assert.equal(createAutomatedVideoQaApproval({
+  snapshot,
+  checks: { ...checks, rightsReviewed: false },
+  reviewedAt: now,
+}), null);
+assert.equal(createAutomatedVideoQaApproval({
+  snapshot,
+  checks,
+  reviewedAt: "not-a-date",
+}), null);
+
 console.log("Video publishing approval contract passed.");

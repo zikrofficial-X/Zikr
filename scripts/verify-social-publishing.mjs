@@ -17,7 +17,6 @@ const writtenPage = read("src/app/admin/social/written-studio/page.tsx");
 const navigation = read("src/features/admin/config/navigation.ts");
 const runner = read("scripts/run-background-jobs.ts");
 const videoGenerator = read("scripts/jobs/template-video-automation.ts");
-const socialWorker = read("scripts/jobs/social-publishing.ts");
 const socialPublishingService = read("src/features/social/services/social-publishing.ts");
 const youtubeCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
 const videoAutomation = read("src/features/videos/services/video-automation.ts");
@@ -66,9 +65,9 @@ if (!runner.includes('"social"') || runner.includes("reconcileCompletedVideoSoci
   failures.push("social execution must remain a separate target and never reconcile historical completed videos");
 }
 if (!videoWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') ||
-    !videoWorkflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"') ||
+    !videoWorkflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"') ||
     !videoWorkflow.includes('BACKGROUND_JOB_TARGET: "videos"')) {
-  failures.push("video generation must enqueue new social candidates with human QA approval, without mixing social execution into the video worker");
+  failures.push("video generation must enqueue only automated-QA-approved social candidates without a manual review gate");
 }
 if (!videoGenerator.includes("async function queueSocialItems") ||
     !videoGenerator.includes("await queueSocialItems(request, rendered.videoUrl)") ||
@@ -77,12 +76,15 @@ if (!videoGenerator.includes("async function queueSocialItems") ||
 }
 if (!videoGenerator.includes("getYouTubeUploadRefreshToken") ||
     !videoGenerator.includes("getFacebookPageCredentials") ||
-    !videoGenerator.includes("FACEBOOK_PUBLISHING_REQUESTED")) {
-  failures.push("video social queue targets must be gated by verified provider credentials and explicit provider switches");
+    !videoGenerator.includes("FACEBOOK_PUBLISHING_REQUESTED") ||
+    !videoGenerator.includes("buildAutomatedVideoQaChecklist") ||
+    !videoGenerator.includes("createAutomatedVideoQaApproval")) {
+  failures.push("video social queue targets must be gated by verified provider credentials and a complete automated QA snapshot");
 }
 if (!socialPublishingService.includes("hasVideoApprovalForQueueItem") ||
-    !socialPublishingService.includes("Video held for human QA approval")) {
-  failures.push("a video must remain blocked until human QA approval is verified by the worker");
+    !socialPublishingService.includes("Video held because automated QA is missing") ||
+    !socialPublishingService.includes("Automated QA lookup failed; holding video item")) {
+  failures.push("the social worker must fail closed and revalidate the automated QA snapshot before provider calls");
 }
 if (!socialPublishingService.includes("created_at=gte.${createdSince}") ||
     !socialPublishingService.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff") ||
@@ -116,6 +118,9 @@ for (const expected of [
 }
 if (socialWorkflow.includes("pages_manage_engagement")) {
   failures.push("Facebook publish workflow must not block publishing on comment-moderation scope");
+}
+if (!socialWorkflow.includes('SOCIAL_PUBLISH_BATCH_SIZE: "5"')) {
+  failures.push("social publisher must drain five verified items per generation run within the bounded worker cap");
 }
 if (socialWorkflow.includes("YOUTUBE_REFRESH_TOKEN") ||
     socialWorkflow.includes("SOCIAL_PUBLISH_BATCH_SIZE: \"10\"")) {
@@ -171,10 +176,17 @@ if (!videoAutomation.includes("https://www.googleapis.com/upload/youtube/v3/vide
     videoAutomation.includes("EXTERNAL_SOCIAL_PUBLISHING_RETIRED")) {
   failures.push("YouTube and Facebook/Reels upload adapters must be restored and must preserve provider error handling");
 }
-if (!adminClient.includes("إعادة تفويض YouTube للرفع والتحليلات") ||
+if (!(adminClient.includes("إعادة تفويض YouTube للرفع والتحليلات") ||
+      adminClient.includes("ربط YouTube لقراءة القناة والإحصاءات")) ||
     !adminClient.includes("لا نطلب صلاحية الحذف") ||
     adminClient.includes("scheduleMinutes")) {
-  failures.push("social center must describe upload-only consent and the event-driven approval-gated schedule accurately");
+  failures.push("social center must describe YouTube authorization and the event-driven automated-QA publisher accurately");
+}
+if (adminClient.includes("اعتمد الفيديو أولًا") ||
+    adminClient.includes("موقوف لمراجعة الجودة") ||
+    !adminClient.includes("فحوص الجودة الآلية غير مكتملة") ||
+    !adminClient.includes("تنتقل للنشر تلقائيًا")) {
+  failures.push("social center must show automated QA diagnostics and must not prompt for manual video approval");
 }
 if (!writtenWorker.includes('"articles"') ||
     writtenWorker.includes("social_publish_queue") ||
@@ -192,4 +204,4 @@ if (failures.length) {
   for (const failure of failures) console.error("❌ " + failure);
   process.exit(1);
 }
-console.log("✅ Approval-gated event-driven social publishing and internal video generation contracts passed.");
+console.log("✅ Automated-QA event-driven social publishing and internal video generation contracts passed.");

@@ -1,8 +1,9 @@
-name: ZIKR Approval-Gated Social Publisher
+name: ZIKR Automated Social Publisher
 
 on:
   # A publish run follows a successful video-generation run; there is no 15-minute
-  # polling loop and no automatic resubmission of the pre-activation queue.
+  # polling loop and no automatic resubmission of the pre-activation queue. Video
+  # rows must carry a current, complete automated QA snapshot before any provider call.
   workflow_run:
     workflows: ["ZIKR Autonomous AI Video Worker"]
     types: [completed]
@@ -47,7 +48,7 @@ jobs:
       BACKGROUND_JOB_TARGET: "social"
       SOCIAL_PUBLISH_ENABLED: "true"
       SOCIAL_SYNC_INSIGHTS: "false"
-      SOCIAL_PUBLISH_BATCH_SIZE: "2"
+      SOCIAL_PUBLISH_BATCH_SIZE: "5"
       # Do not touch the 101 historical queued rows or any pre-launch retries.
       SOCIAL_PUBLISH_AFTER: "2026-11-06T20:00:00Z"
       FACEBOOK_PUBLISHING_REQUESTED: ${{ vars.FACEBOOK_PUBLISHING_ENABLED || 'true' }}
@@ -150,7 +151,7 @@ jobs:
           pnpm scheduler:check
           pnpm social:publish:check
 
-      - name: Run approval-gated social queue
+      - name: Run automated-QA social queue
         run: pnpm background:jobs
 
       - name: Report completion
@@ -158,4 +159,4 @@ jobs:
         shell: bash
         run: |
           echo "Social worker finished. Only rows created on/after ${SOCIAL_PUBLISH_AFTER} are eligible."
-          echo "Human video QA approval remains mandatory."
+          echo "Manual video approval is not required; each video is revalidated against its automated QA snapshot immediately before publishing."
