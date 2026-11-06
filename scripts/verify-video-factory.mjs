@@ -34,6 +34,13 @@ if (!template.includes("Rendered output video bitrate is too low")) failures.pus
 if (!template.includes("deterministicScene(request)")) failures.push("template selection must provide deterministic visual variety");
 if (!template.includes("resolveDeterministicVideoHook") || !template.includes("resolveDeterministicVideoScene")) failures.push("template fallback must vary scene and opening hook deterministically by content ID");
 if (!template.includes('persistedAi?.provider === "google-gemini"')) failures.push("deterministic fallback must not override per-content visual variation with the default calm Gemini placeholder");
+const composition = read("src/features/videos/services/video-composition.ts");
+for (const token of ["resolveVideoComposition", "quran:", "hadith:", "dua:", "adhkar:", "story:", "kids:", "cameraPath"]) {
+  if (!composition.includes(token)) failures.push(`category-led video composition preset missing: ${token}`);
+}
+for (const token of ["resolveVideoComposition({", "composition.panelLeft", "composition.cameraPath", "composition.bodyAnchorY"]) {
+  if (!template.includes(token)) failures.push(`video renderer does not apply composition setting: ${token}`);
+}
 const creativeVariation = read("src/features/videos/services/video-creative-variation.ts");
 for (const token of ["resolveDeterministicVideoScene", "resolveDeterministicVideoHook", "resolveDeterministicVideoMotion"]) {
   if (!creativeVariation.includes("export function " + token)) failures.push("deterministic video creative variation helper missing: " + token);
