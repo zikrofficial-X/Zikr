@@ -17,7 +17,7 @@ const writtenPage = read("src/app/admin/social/written-studio/page.tsx");
 const navigation = read("src/features/admin/config/navigation.ts");
 const runner = read("scripts/run-background-jobs.ts");
 const videoGenerator = read("scripts/jobs/template-video-automation.ts");
-const memoryPage = read("src/app/admin/media/page.tsx");
+const memoryPage = read("src/app/admin/memory/page.tsx");
 const youtubeOAuthCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
 const videoAutomation = read("src/features/videos/services/video-automation.ts");
 const videoCatalog = read("src/features/videos/services/videos.ts");
@@ -54,7 +54,7 @@ if (!videoWorkflow.includes("BACKGROUND_JOB_TARGET: \"videos\"")) failures.push(
 for (const token of ["YOUTUBE_CLIENT_ID", "YOUTUBE_REFRESH_TOKEN", "FACEBOOK_GRAPH_API_VERSION", "SOCIAL_PUBLISH_ENABLED"]) {
   if (videoWorkflow.includes(token)) failures.push("internal video workflow must not depend on external social credential/config: " + token);
 }
-if (!socialPage.includes('redirect("/admin/media")')) failures.push("retired social center must redirect to internal project memory");
+if (!socialPage.includes('redirect("/admin/memory")')) failures.push("retired social center must redirect to internal project memory");
 if (!writtenPage.includes('redirect("/admin/media")')) failures.push("retired written-social studio must redirect to internal project memory");
 if (!memoryPage.includes("requireAdminPermission(\"media.manage\")")) failures.push("internal memory route must have a server-side permission gate");
 if (videoGenerator.includes("social_publish_queue") || videoGenerator.includes("getFacebookPageCredentials") || videoGenerator.includes("queueSocialItems")) {
