@@ -9,9 +9,9 @@ assert.equal(classifyYouTubeHealthHttpStatus(503, "channel"), "unavailable");
 const missing = await getYouTubePublishingConnectionHealth({});
 assert.equal(missing.status, "not_configured");
 
-let requests = 0;
+let oauthRequests = 0;
 const fakeFetch: typeof fetch = async (input, init) => {
-  requests += 1;
+  oauthRequests += 1;
   const url = String(input);
   if (url.includes("oauth2.googleapis.com/token")) {
     assert.equal(new URLSearchParams(String(init?.body)).get("grant_type"), "refresh_token");
@@ -19,7 +19,13 @@ const fakeFetch: typeof fetch = async (input, init) => {
   }
   assert.ok(url.includes("youtube/v3/channels"));
   assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer private-access-token");
-  return new Response(JSON.stringify({ items: [{ id: "UC123456789", snippet: { title: "ZIKR Channel" } }] }), { status: 200 });
+  return new Response(JSON.stringify({
+    items: [{
+      id: "UC123456789",
+      snippet: { title: "ZIKR Channel" },
+      statistics: { subscriberCount: "1234", viewCount: "98765", videoCount: "42" },
+    }],
+  }), { status: 200 });
 };
 const connected = await getYouTubePublishingConnectionHealth({
   YOUTUBE_CLIENT_ID: "client-id",
@@ -27,11 +33,73 @@ const connected = await getYouTubePublishingConnectionHealth({
   YOUTUBE_REFRESH_TOKEN: "private-refresh-token",
 }, fakeFetch);
 assert.equal(connected.status, "connected");
+assert.equal(connected.readSource, "oauth");
 assert.equal(connected.channelId, "UC123456789");
 assert.equal(connected.channelName, "ZIKR Channel");
-assert.equal(requests, 2);
+assert.equal(connected.subscribers, 1234);
+assert.equal(connected.totalViews, 98765);
+assert.equal(connected.videoCount, 42);
+assert.equal(oauthRequests, 2);
 assert.equal(JSON.stringify(connected).includes("private-access-token"), false);
 assert.equal(JSON.stringify(connected).includes("private-refresh-token"), false);
+
+let publicReadRequests = 0;
+const publicFallbackFetch: typeof fetch = async (input, init) => {
+  const url = String(input);
+  if (url.includes("oauth2.googleapis.com/token")) {
+    return new Response(JSON.stringify({ access_token: "private-access-token" }), { status: 200 });
+  }
+  if (url.includes("youtube/v3/channels") && new Headers(init?.headers).has("Authorization")) {
+    return new Response(JSON.stringify({ error: { message: "insufficientPermissions" } }), { status: 403 });
+  }
+  const publicUrl = new URL(url);
+  assert.equal(publicUrl.searchParams.get("id"), "UC123456789");
+  assert.equal(publicUrl.searchParams.get("key"), "private-api-key");
+  assert.equal(publicUrl.searchParams.get("part"), "id,snippet,statistics");
+  assert.equal(new Headers(init?.headers).has("Authorization"), false);
+  publicReadRequests += 1;
+  return new Response(JSON.stringify({
+    items: [{
+      id: "UC123456789",
+      snippet: { title: "ZIKR Public Channel" },
+      statistics: { subscriberCount: "3210", viewCount: "456789", videoCount: "87" },
+    }],
+  }), { status: 200 });
+};
+const publicOnly = await getYouTubePublishingConnectionHealth({
+  YOUTUBE_CLIENT_ID: "client-id",
+  YOUTUBE_CLIENT_SECRET: "client-secret",
+  YOUTUBE_REFRESH_TOKEN: "private-refresh-token",
+  YOUTUBE_API_KEY: "private-api-key",
+  YOUTUBE_CHANNEL_ID: "UC123456789",
+}, publicFallbackFetch);
+assert.equal(publicOnly.status, "public_data_only");
+assert.equal(publicOnly.readSource, "api_key");
+assert.equal(publicOnly.channelName, "ZIKR Public Channel");
+assert.equal(publicOnly.subscribers, 3210);
+assert.equal(publicOnly.totalViews, 456789);
+assert.equal(publicOnly.videoCount, 87);
+assert.equal(publicReadRequests, 1);
+assert.match(publicOnly.message, /القراءة العامة/);
+assert.equal(JSON.stringify(publicOnly).includes("private-api-key"), false);
+assert.equal(JSON.stringify(publicOnly).includes("private-access-token"), false);
+assert.equal(JSON.stringify(publicOnly).includes("private-refresh-token"), false);
+
+const oauthMissingPublicFetch: typeof fetch = async (input) => {
+  const url = new URL(String(input));
+  assert.equal(url.searchParams.get("id"), "UC123456789");
+  return new Response(JSON.stringify({
+    items: [{ id: "UC123456789", snippet: { title: "Public Only" }, statistics: { viewCount: "77" } }],
+  }), { status: 200 });
+};
+const oauthMissingPublic = await getYouTubePublishingConnectionHealth({
+  YOUTUBE_API_KEY: "private-api-key",
+  YOUTUBE_CHANNEL_ID: "UC123456789",
+}, oauthMissingPublicFetch);
+assert.equal(oauthMissingPublic.status, "public_data_only");
+assert.equal(oauthMissingPublic.readSource, "api_key");
+assert.equal(oauthMissingPublic.totalViews, 77);
+assert.equal(oauthMissingPublic.subscribers, null);
 
 const permissionFailureFetch: typeof fetch = async (input) => {
   if (String(input).includes("oauth2.googleapis.com/token")) {
