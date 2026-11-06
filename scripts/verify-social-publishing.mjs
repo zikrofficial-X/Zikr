@@ -52,7 +52,7 @@ if (!socialPage.includes('requireAdminPermission("social.manage")') ||
 if (!writtenPage.includes('redirect("/admin/memory")')) {
   failures.push("external written studio must remain retired and redirect to internal memory");
 }
-if (!navigation.includes('key: "publishing"') || !navigation.includes('href: "/admin/social"')) {
+if (!navigation.includes('key: "media-audio"') || !navigation.includes('href: "/admin/social"')) {
   failures.push("permission-gated social publishing center must be present in admin navigation");
 }
 if (!runner.includes("processSocialPublishQueue") ||
