@@ -119,6 +119,40 @@ export function buildKidsSeriesEpisode(sequence: number): GeneratedKidsEpisode {
   };
 }
 
+
+export function validateCanonicalKidsEpisodeSnapshot(input: {
+  factorySequence: unknown;
+  sourceId: unknown;
+  text: unknown;
+  seriesId: unknown;
+  seasonNumber: unknown;
+  episodeNumber: unknown;
+  learningObjective: unknown;
+}) {
+  const errors: string[] = [];
+  const sequence = Number(input.factorySequence);
+  if (!Number.isSafeInteger(sequence) || sequence < 1) {
+    return { ok: false, errors: ["Deterministic kids episode is missing a valid factory sequence."] };
+  }
+
+  const canonical = buildKidsSeriesEpisode(sequence);
+  const validation = validateGeneratedKidsEpisode(canonical);
+  errors.push(...validation.errors);
+
+  const normalizeLabel = (value: unknown) => String(value ?? "").normalize("NFC").trim();
+  const normalizeText = (value: unknown) => normalizeLabel(value).replace(/\s+/gu, " ");
+
+  if (normalizeLabel(input.sourceId) !== canonical.sourceId) errors.push("Kids episode source ID does not match its canonical factory sequence.");
+  if (normalizeText(input.text) !== normalizeText(canonical.text)) errors.push("Kids episode narration does not match its canonical factory sequence.");
+  if (normalizeLabel(input.seriesId) !== canonical.seriesId) errors.push("Kids episode series ID does not match its canonical factory sequence.");
+  if (Number(input.seasonNumber) !== canonical.seasonNumber) errors.push("Kids episode season number does not match its canonical factory sequence.");
+  if (Number(input.episodeNumber) !== canonical.episodeNumber) errors.push("Kids episode number does not match its canonical factory sequence.");
+  if (normalizeLabel(input.learningObjective) !== normalizeLabel(canonical.learningObjective)) {
+    errors.push("Kids episode learning objective does not match its canonical factory sequence.");
+  }
+
+  return { ok: errors.length === 0, errors };
+}
 export function validateGeneratedKidsEpisode(episode: GeneratedKidsEpisode) {
   const errors: string[] = [];
   if (episode.text.length < 180 || episode.text.length > 1500) errors.push("Kids episode narration must be between 180 and 1500 characters.");

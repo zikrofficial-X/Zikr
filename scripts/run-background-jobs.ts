@@ -4,6 +4,7 @@ import { processTemplateVideoQueue, seedAutomatedVideoRequests } from "./jobs/te
 import { processScheduledContent } from "./jobs/content-publishing";
 import { processSocialPublishQueue, syncSocialInsights } from "./jobs/social-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
+import { evaluateBackgroundJobOutcome } from "../src/features/videos/services/background-job-outcome";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
 import { notifyNewQueueFailures } from "./jobs/admin-queue-alerts";
 type VideoAutomationRunNow = {
@@ -395,7 +396,20 @@ async function main() {
     durationMs: Date.now() - startedAt,
   }, null, 2));
 
-  if (failed > 0) throw new Error(`Background jobs completed with ${failed} failed item(s).`);
+  const outcome = evaluateBackgroundJobOutcome({
+    videoSucceeded: videos.succeeded,
+    videoFailed: videos.failed,
+    socialFailed: social.failed,
+    sitePublishingFailed: "error" in sitePublishing,
+  });
+  if (outcome.hasPartialVideoFailures) {
+    console.warn(
+      `[background-jobs] ${videos.failed} video item(s) failed but ${videos.succeeded} passed QA and completed; preserving successful delivery and allowing the dependent social publisher to run.`,
+    );
+  }
+  if (outcome.shouldFailRun) {
+    throw new Error(`Background jobs completed with ${outcome.fatalFailureCount} fatal failure(s); per-item video failures remain recorded in the run audit.`);
+  }
 }
 
 main().catch(error => {

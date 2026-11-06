@@ -3,6 +3,7 @@ import {
   buildKidsSeriesEpisode,
   KIDS_SERIES_EPISODES_PER_SEASON,
   KIDS_VIDEO_SERIES,
+  validateCanonicalKidsEpisodeSnapshot,
   validateGeneratedKidsEpisode,
 } from "../../src/features/videos/data/kids-story-factory";
 
@@ -22,6 +23,16 @@ for (let sequence = 1; sequence <= 1000; sequence += 1) {
   const episode = buildKidsSeriesEpisode(sequence);
   const result = validateGeneratedKidsEpisode(episode);
   assert.equal(result.ok, true, "episode " + sequence + " failed: " + result.errors.join(" | "));
+  const canonicalSnapshot = validateCanonicalKidsEpisodeSnapshot({
+    factorySequence: sequence,
+    sourceId: episode.sourceId,
+    text: episode.text.normalize("NFD"),
+    seriesId: episode.seriesId,
+    seasonNumber: episode.seasonNumber,
+    episodeNumber: episode.episodeNumber,
+    learningObjective: episode.learningObjective,
+  });
+  assert.equal(canonicalSnapshot.ok, true, "normalized canonical snapshot " + sequence + " failed: " + canonicalSnapshot.errors.join(" | "));
   assert.ok(episode.text.length >= 180 && episode.text.length <= 1500, "episode narration must be short enough for QA");
   assert.ok(episode.learningObjective.trim(), "every episode must have an explicit learning objective");
   assert.ok(episode.title.includes("الموسم " + episode.seasonNumber), "titles must expose season numbers");
@@ -30,6 +41,18 @@ for (let sequence = 1; sequence <= 1000; sequence += 1) {
 }
 assert.notEqual(buildKidsSeriesEpisode(1).text, buildKidsSeriesEpisode(25).text, "later seasons must vary the story narration");
 assert.notEqual(buildKidsSeriesEpisode(1).sourceId, buildKidsSeriesEpisode(25).sourceId, "later seasons must not reuse episode IDs");
+const invalidEpisode = buildKidsSeriesEpisode(1);
+const invalidSnapshot = validateCanonicalKidsEpisodeSnapshot({
+  factorySequence: 1,
+  sourceId: invalidEpisode.sourceId,
+  text: invalidEpisode.text + " نص مضاف",
+  seriesId: invalidEpisode.seriesId,
+  seasonNumber: invalidEpisode.seasonNumber,
+  episodeNumber: invalidEpisode.episodeNumber,
+  learningObjective: invalidEpisode.learningObjective,
+});
+assert.equal(invalidSnapshot.ok, false, "mutated stored story text must be rejected");
+assert.ok(invalidSnapshot.errors.some((error) => error.includes("narration")), "the mismatch must identify the story field");
 for (const [hour, expected] of [[3, 3], [9, 6], [15, 9], [21, 12]] as const) {
   const window = Math.min(4, Math.max(1, Math.floor(hour / 6) + 1));
   assert.equal(Math.ceil((12 * window) / 4), expected, "the six-hour schedule must release its expected quota at " + hour + " UTC");

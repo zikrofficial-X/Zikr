@@ -16,7 +16,7 @@ The social publisher runs separately from rendering. A successful `generate-ai-v
 
 Only rows created on or after `SOCIAL_PUBLISH_AFTER` are eligible. Historical social queue records are not replayed. Videos require a complete automated five-part QA result (source, audio, visuals, captions, rights) bound to the exact source/content/template/MP4 fingerprint. The social worker rechecks this approval immediately before every provider call; no manual review or click is required. Published provider IDs are persisted per platform, so a retry may only target unfinished platforms. Insights sync is opt-in and remains off during publishing runs to limit database reads.
 
-The video generation worker stores verified MP4 files in Cloudinary and registers them in the ZIKR `videos` catalog. Internal site publication uses `content_publish_queue` with `content_table=videos`; external social delivery uses a separate `social_publish_queue` worker. Both paths are independent.
+A partial video batch is not a workflow-wide failure when at least one video passes all QA checks: failed items remain failed in the audit, while the successful rows stay eligible for the dependent social publisher. A wholly failed generation batch, a social provider failure, or an internal site-publishing failure still fails the workflow. The video generation worker stores verified MP4 files in Cloudinary and registers them in the ZIKR `videos` catalog. Internal site publication uses `content_publish_queue` with `content_table=videos`; external social delivery uses a separate `social_publish_queue` worker. Both paths are independent.
 
 ## Written internal site content generator
 

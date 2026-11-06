@@ -12,7 +12,7 @@ import { getFacebookPageCredentials } from "../../src/features/social/services/f
 import { getYouTubeUploadRefreshToken } from "../../src/features/social/services/youtube-oauth-credentials";
 import { listVideoSources, resolveVideoSource } from "../../src/features/videos/services/video-sources";
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
-import { buildKidsSeriesEpisode, validateGeneratedKidsEpisode } from "../../src/features/videos/data/kids-story-factory";
+import { buildKidsSeriesEpisode, validateCanonicalKidsEpisodeSnapshot, validateGeneratedKidsEpisode } from "../../src/features/videos/data/kids-story-factory";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
@@ -992,23 +992,24 @@ function assertKidsStoryContract(request: GeneratedRequest) {
   if (normalizedText.length < 180 || normalizedText.length > 1500 || !normalizedText.includes("؟")) {
     throw new Error("Child-directed narration must be a short complete story ending with a question.");
   }
-  if (/https?:\/\/|قال الله|قال رسول الله|حديث قدسي|حديث نبوي/u.test(normalizedText)) {
+  if (normalizedText.includes("http://") || normalizedText.includes("https://") || /قال الله|قال رسول الله|حديث قدسي|حديث نبوي/u.test(normalizedText)) {
     throw new Error("Child-directed fiction must not contain raw URLs or unsupported religious attributions.");
   }
   if (String(content.sourceType ?? "") === "original_kids_fiction" && !String(content.sourceLabel ?? "").includes("آية أو حديث")) {
     throw new Error("Original kids fiction must carry a clear non-religious attribution label.");
   }
   if (content.generationMode === "free_deterministic_story_factory") {
-    const sequence = Number(content.factorySequence);
-    if (!Number.isSafeInteger(sequence) || sequence < 1) {
-      throw new Error("Deterministic kids episodes require their factory sequence.");
-    }
-    const canonical = buildKidsSeriesEpisode(sequence);
-    const validation = validateGeneratedKidsEpisode(canonical);
-    if (!validation.ok || canonical.sourceId !== content.sourceId || canonical.text !== normalizedText ||
-      canonical.seriesId !== content.seriesId || canonical.seasonNumber !== seasonNumber ||
-      canonical.episodeNumber !== episodeNumber || canonical.learningObjective !== content.learningObjective) {
-      throw new Error("Kids episode content does not match its canonical deterministic source.");
+    const validation = validateCanonicalKidsEpisodeSnapshot({
+      factorySequence: content.factorySequence,
+      sourceId: content.sourceId,
+      text: normalizedText,
+      seriesId: content.seriesId,
+      seasonNumber,
+      episodeNumber,
+      learningObjective: content.learningObjective,
+    });
+    if (!validation.ok) {
+      throw new Error("Kids episode content does not match its canonical deterministic source: " + validation.errors.join(" | "));
     }
   }
 }
