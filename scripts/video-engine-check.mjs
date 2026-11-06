@@ -50,7 +50,7 @@ if (!internalGenerationMode ||
     !workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"') ||
     !worker.includes("buildAutomatedVideoQaChecklist") ||
     !worker.includes("createAutomatedVideoQaApproval") ||
-    !worker.includes("automatedVideoQa.status !== \"passed\"") ||
+    !worker.includes("automatedQa.status !== \"passed\"") ||
     !approval.includes("AUTOMATED_VIDEO_QA_VERSION") ||
     !approval.includes("buildVideoApprovalSnapshotHash")) {
   throw new Error("Video worker must use automatic source-locked QA before enabling unattended delivery");
