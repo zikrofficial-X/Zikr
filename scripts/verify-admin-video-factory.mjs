@@ -19,6 +19,24 @@ if (!createRoute.includes("sourceVerifiedAtRequest: true")) failures.push("video
 if (!createRoute.includes("ownCloudinaryAudioUrl")) failures.push("human narration must be restricted to ZIKR-owned Cloudinary uploads");
 if (!createRoute.includes("category === \"quran\"")) failures.push("Quran audio substitution must remain blocked");
 
+const approvalHelper = read("src/features/videos/services/video-publish-approval.ts");
+const socialPublishing = read("src/features/social/services/social-publishing.ts");
+if (!approvalHelper.includes("approvalReviewerId") || !approvalHelper.includes("approvalSnapshotHash")) {
+  failures.push("video approval must be attributed to a reviewer and bound to a snapshot hash");
+}
+if (!approvalHelper.includes("sourceHash") || !approvalHelper.includes("contentHash") || !approvalHelper.includes("templateVersion")) {
+  failures.push("video approval snapshot must bind source, content and template versions");
+}
+if (!approvalHelper.includes("buildVideoApprovalSnapshotHash")) {
+  failures.push("video approval snapshot hashing helper is missing");
+}
+if (!socialPublishing.includes("source_hash,content_hash,template_version")) {
+  failures.push("social publisher must fetch current video source/content/template hashes before sending");
+}
+if (!socialPublishing.includes("hasVideoApprovalForQueueItem(item)")) {
+  failures.push("social publisher must revalidate approval after queue claim and before provider calls");
+}
+
 const generation = read("src/app/api/admin/video-generation/route.ts");
 if (!generation.includes("requireAdminApi('video.manage')")) failures.push("video generation GET/PATCH must require video.manage");
 if (!generation.includes("requireAdminApi('video.delete')")) failures.push("video generation DELETE must require video.delete");
