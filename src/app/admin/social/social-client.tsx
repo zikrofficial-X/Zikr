@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PurgeGeneratedVideosControl } from "@/features/admin/components/purge-generated-videos-control";
 import type {
   SocialPublishQueueItem,
   SocialQueueStatus,
@@ -515,6 +516,7 @@ export default function AdminSocialPage() {
           </div>
         </div>
       </section>
+      <PurgeGeneratedVideosControl onCompleted={load} />
       <div
         role="tablist"
         aria-label="أقسام مركز النشر"
