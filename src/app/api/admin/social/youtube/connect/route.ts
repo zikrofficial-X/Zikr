@@ -17,7 +17,7 @@ const REQUIRED_SCOPES = [
 ];
 
 function siteUrl() {
-  return getServerEnv().NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  return CANONICAL_SITE_ORIGIN;
 }
 
 function adminStatusRedirect(status: string) {
@@ -37,10 +37,7 @@ export async function GET() {
   if (!clientId) return adminStatusRedirect("configuration_missing");
 
   const state = randomBytes(32).toString("hex");
-  const redirectUri = new URL(
-    "/api/admin/social/youtube/callback",
-    siteUrl(),
-  ).toString();
+  const redirectUri = YOUTUBE_REDIRECT_URI;
   const authorizeUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   authorizeUrl.searchParams.set("client_id", clientId);
   authorizeUrl.searchParams.set("redirect_uri", redirectUri);
