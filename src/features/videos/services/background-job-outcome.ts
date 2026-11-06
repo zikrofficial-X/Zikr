@@ -24,7 +24,8 @@ export function evaluateBackgroundJobOutcome(input: BackgroundJobOutcomeInput): 
   const socialFailed = Math.max(0, Math.floor(input.socialFailed));
   const hasPartialVideoFailures = videoFailed > 0 && videoSucceeded > 0;
   const fatalVideoFailures = videoFailed > 0 && videoSucceeded === 0 ? videoFailed : 0;
-  const fatalFailureCount = fatalVideoFailures + socialFailed + (input.sitePublishingFailed ? 1 : 0);
+  const hasSocialFailures = socialFailed > 0;
+  const fatalFailureCount = fatalVideoFailures + (hasSocialFailures ? socialFailed : 0) + (input.sitePublishingFailed ? 1 : 0);
 
   return {
     hasPartialVideoFailures,
