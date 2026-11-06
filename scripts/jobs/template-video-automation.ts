@@ -1651,7 +1651,7 @@ function buildAutomatedSocialCaption(request: GeneratedRequest, publicUrl: strin
   return [
     hook,
     request.title.trim(),
-    generatedCaption || request.description.trim(),
+    generatedCaption || request.description?.trim() || "",
     callToAction[request.category] ?? callToAction.other,
     visualDisclosure,
     tags[request.category] ?? tags.other,
