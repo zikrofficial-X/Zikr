@@ -165,44 +165,15 @@ export async function PATCH(request: NextRequest) {
         note: 'سيتولى عامل GitHub Actions المجدول مزامنة طابور النشر؛ لم تتم إضافة مجدول جديد.' });
     }
 
-    if (action === 'retry_publish') {
-      const publishAuth = await requireAdminApi('social.publish');
-      if (!publishAuth.ok) return NextResponse.json({ error: publishAuth.error }, { status: publishAuth.status });
-
-      const rows = await supabaseServerAdminRequest<Array<{
-        id: string;
-        status: string;
-        heygen_video_id: string | null;
-        youtube_id: string | null;
-        facebook_id: string | null;
-        video_url: string | null;
-        updated_at: string;
-      }>>(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}&select=id,status,heygen_video_id,youtube_id,facebook_id,video_url,updated_at&limit=1`);
-      const current = rows?.[0];
-      if (!current) return NextResponse.json({ error: 'عملية الفيديو غير موجودة.' }, { status: 404 });
-      if (!current.heygen_video_id && !current.video_url) {
-        return NextResponse.json({ error: 'لا توجد مهمة توليد مكتملة يمكن إعادة نشرها.' }, { status: 409 });
-      }
-
-      const retried = await supabaseServerAdminRequest<Array<{ id: string }>>(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}&status=eq.${encodeURIComponent(current.status)}&updated_at=eq.${encodeURIComponent(current.updated_at)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
-        body: JSON.stringify({
-          status: 'processing',
-          error_message: null,
-          error_details: null,
-          updated_at: new Date().toISOString(),
-        }),
-      });
-      if (!retried.length) return NextResponse.json({ error: 'تغيرت حالة العملية؛ حدّث الصفحة ثم أعد المحاولة.' }, { status: 409 });
-      await recordAdminAuditEvent({
-        action: "video_generation.publish.retry",
-        permission: "video.manage",
-        resourceType: "video_generation_requests",
-        resourceId: id,
-        metadata: { preservedYoutube: Boolean(current.youtube_id), preservedFacebook: Boolean(current.facebook_id) },
-      });
-      return NextResponse.json({ ok: true, mode: 'retry_publish', preserved: { youtube: Boolean(current.youtube_id), facebook: Boolean(current.facebook_id) } });
+    if (action === "retry_publish") {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "EXTERNAL_VIDEO_PUBLISHING_RETIRED",
+          error: "إعادة النشر على المنصات الخارجية متوقفة. إعادة توليد الفيديو الداخلي متاحة من طابور ZIKR.",
+        },
+        { status: 410, headers: { "Cache-Control": "no-store" } },
+      );
     }
 
     if (!ALLOWED_STATUSES.has(status)) {
