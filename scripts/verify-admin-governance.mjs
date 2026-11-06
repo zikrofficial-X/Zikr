@@ -36,8 +36,8 @@ const groups = [...navigation.matchAll(/key:\s*"([^"]+)",\s*label:\s*"([^"]+)",\
     items: [...group[3].matchAll(/href:\s*"([^"]+)",\s*label:\s*"([^"]+)",\s*permission:\s*"([^"]+)"/g)]
       .map((item) => ({ href: item[1], label: item[2], permission: item[3] })),
   }));
-const socialManagerRole = permissions.match(/social_manager:\\s*\\[([\\s\\S]*?)\\],/);
-const videoManagerRole = permissions.match(/video_manager:\\s*\\[([\\s\\S]*?)\\],/);
+const socialManagerRole = permissions.match(/social_manager:\s*\[([\s\S]*?)\],/);
+const videoManagerRole = permissions.match(/video_manager:\s*\[([\s\S]*?)\],/);
 if (!socialManagerRole || !socialManagerRole[1].includes("'social.manage'") || !socialManagerRole[1].includes("'social.publish'")) {
   failures.push("social_manager must retain social management and publishing permissions");
 }
