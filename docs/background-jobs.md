@@ -16,15 +16,15 @@ External publishing to Facebook, Instagram, TikTok, Pinterest, WhatsApp, and You
 
 The video generation worker stores verified MP4 files in Cloudinary and registers them in the ZIKR `videos` catalog. Internal site publication uses `content_publish_queue` with `content_table=videos`; this is website publication only and does not invoke external providers. The production video workflow remains generation-only.
 
-## Written Facebook content factory
+## Written internal site content generator
 
-GitHub Actions .github/workflows/generate-written-content.yml is the sole scheduled written-post generator. It runs three times per day and is deliberately separate from video generation. It uses GEMINI_API_KEY and the Supabase service-role secret in the protected production environment, selects only published/reviewed Quran, Hadith, Dua, story, prophet-section, and approved content-library records, and writes written_post rows into the existing social_publish_queue with video_url=null and target_platforms=[facebook]. The existing publish-social.yml workflow publishes these items; no second publisher or scheduler is created.
+GitHub Actions `.github/workflows/generate-written-content.yml` creates draft ZIKR website articles from approved source records. It runs three times per day and is separate from video generation. It uses `GEMINI_API_KEY` and the Supabase service-role secret in the protected production environment. Generated articles are inserted into `articles` as unpublished records and scheduled through `content_publish_queue` with `content_table=articles`. It does not write to `social_publish_queue` and does not publish to external platforms.
 
-The written-content generator has a bounded daily target and per-run batch size. It stores source ID/reference, category, model/version, content hash, and quality checks. Quran, Hadith, Dua, and Adhkar source text is inserted from the source record without AI rewriting; AI may only write the surrounding hook/reflection. A rejected, malformed, insufficient, or unreviewed source is skipped and never queued. Queue duplicate checks and daily-count reads fail closed.
+The generator has a bounded daily target and per-run batch size. It stores source ID/reference, category, model/version, content hash, and quality checks. Quran, Hadith, Dua, and Adhkar source text is inserted from the source record without AI rewriting; AI may only write the surrounding hook/reflection. A rejected, malformed, insufficient, or unreviewed source is skipped and never queued. Queue duplicate checks and daily-count reads fail closed.
 
 Published Adhkar source records are currently unavailable in the production content tables; the category remains supported in code but is disabled in the Admin selector until reviewed, published source material is seeded. The generator does not invent or reconstruct devotional formulas.
 
-The workflow expects a GitHub Actions secret GEMINI_API_KEY in the production environment. Vercel environment variables do not automatically become GitHub Actions secrets. Configure the GitHub secret separately before expecting scheduled written content generation to run. The worker does not require or store generated video files.
+The workflow expects a GitHub Actions secret `GEMINI_API_KEY` in the production environment. Vercel environment variables do not automatically become GitHub Actions secrets. Configure the GitHub secret separately before expecting scheduled written content generation to run. The worker does not require or store generated video files.
 
 ## Current schedules and bounded work
 
