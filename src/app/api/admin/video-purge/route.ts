@@ -290,9 +290,9 @@ function hasSuccessfulRemotePublication(metadata: Record<string, unknown> | null
 }
 
 /**
- * Remove only video queue rows that have never been published. Published,
- * partially delivered, failed, or remotely identified items remain as the
- * delivery ledger so YouTube/Facebook IDs and analytics are not lost.
+ * Remove only never-published queued/failed video items. Published, partial,
+ * or remotely identified items remain as the delivery ledger so external IDs
+ * and analytics are not lost; partial work blocks the purge preflight.
  */
 async function deleteUnpublishedVideoQueueRows(): Promise<number> {
   const candidates: SocialQueuePurgeCandidate[] = [];
