@@ -11,6 +11,7 @@ export const runtime = "nodejs";
 const STATE_COOKIE = "zikr-youtube-oauth-state";
 const CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";
 const YOUTUBE_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/youtube/callback";
+const YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload";
 const YOUTUBE_READ_SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
 const ANALYTICS_SCOPE = "https://www.googleapis.com/auth/yt-analytics.readonly";
 
@@ -44,7 +45,7 @@ function siteUrl() {
 }
 
 function redirectResult(status: string, extra: Record<string, string> = {}) {
-  const url = new URL("/admin/analytics", siteUrl());
+  const url = new URL("/admin/social", siteUrl());
   url.searchParams.set("youtube", status);
   for (const [key, value] of Object.entries(extra)) {
     url.searchParams.set(key, value);
@@ -70,13 +71,14 @@ function matchesState(expected: string, actual: string) {
 function scopeFlags(scopes: string[]) {
   const set = new Set(scopes);
   return {
+    canUpload: set.has(YOUTUBE_UPLOAD_SCOPE),
     canReadChannel: set.has(YOUTUBE_READ_SCOPE),
     canReadAnalytics: set.has(ANALYTICS_SCOPE),
   };
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdminApi("analytics.read");
+  const auth = await requireAdminApi("social.manage");
   if (!auth.ok) return redirectResult("admin_session_missing");
 
   const state = request.nextUrl.searchParams.get("state") ?? "";
@@ -138,8 +140,9 @@ export async function GET(request: NextRequest) {
         ? token.scope.split(/\s+/).filter(Boolean)
         : [];
     const flags = scopeFlags(grantedScopes);
-    if (!flags.canReadChannel || !flags.canReadAnalytics) {
+    if (!flags.canUpload || !flags.canReadChannel || !flags.canReadAnalytics) {
       return redirectResult("permission_missing", {
+        upload: flags.canUpload ? "ready" : "missing",
         read: flags.canReadChannel ? "ready" : "missing",
         analytics: flags.canReadAnalytics ? "ready" : "missing",
       });
@@ -180,8 +183,8 @@ export async function GET(request: NextRequest) {
 
     try {
       await recordAdminAuditEvent({
-        action: "analytics.youtube.oauth.connect",
-        permission: "analytics.read",
+        action: "social.youtube.oauth.connect",
+        permission: "social.manage",
         resourceType: "youtube_channel",
         resourceId: channel.id,
         metadata: {
@@ -189,7 +192,7 @@ export async function GET(request: NextRequest) {
           grantedScopes: grantedScopes.map((scope) => scope.split("/").at(-1)),
           channelRead: true,
           analyticsRead: true,
-          upload: false,
+          upload: true,
           delete: false,
         },
       });
@@ -199,6 +202,7 @@ export async function GET(request: NextRequest) {
     }
 
     return redirectResult("connected", {
+      upload: "ready",
       channel: channel.snippet?.title ?? "YouTube",
     });
   } catch {
