@@ -10,6 +10,8 @@ GitHub Actions invokes `pnpm background:jobs` with free Hugging Face video provi
 
 The queue is idempotent through `video_generation_requests.automation_key` and conditional pending claims, so scheduled reruns do not create duplicate automated jobs.
 
+Admin **Run Now** is a one-shot dispatch signal stored in `admin_settings.video_automation_run_now`. The video worker consumes it after it has processed at least one request, even when the batch contains both successful and failed items. Failed rows retain their own queue retry state and are not retried by repeatedly replaying the same Run Now signal. A disabled worker, social-only run, or run that processed zero video rows does not consume the request. Each `video_automation_runs` audit row records the actual worker start timestamp and completion timestamp explicitly.
+
 ## Automated-QA external social publishing
 
 The social publisher runs separately from rendering. A successful `generate-ai-video.yml` run may trigger `publish-social.yml`; an administrator may also dispatch the social workflow manually. It is not a 15-minute poller and has no push trigger. The workflow validates stored Facebook Page credentials and the stored YouTube OAuth scopes before enabling each provider. YouTube requires `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly`; no channel-delete scope is requested. If neither provider is verified, no queue row is claimed.
