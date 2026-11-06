@@ -94,6 +94,9 @@
       "path": "/admin/media"
     },
     {
+      "path": "/admin/memory"
+    },
+    {
       "path": "/admin/notifications"
     },
     {
@@ -128,6 +131,9 @@
     },
     {
       "path": "/admin/social"
+    },
+    {
+      "path": "/admin/social/written-studio"
     },
     {
       "path": "/admin/social/youtube-import"
@@ -413,9 +419,6 @@
     },
     {
       "path": "/zakat"
-    },
-    {
-      "path": "/admin/social/written-studio"
     }
   ]
 }
