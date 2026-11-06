@@ -64,8 +64,14 @@ const pendingSelector = pendingSelectorStart >= 0 && pendingSelectorEnd > pendin
 if (!pendingSelector.includes('const statusPriority: SocialQueueStatus[] = ["partial", "queued", "failed"]')) {
   failures.push("eligible partial social retries must be selected before new queued/failed rows so NULL scheduled_at items cannot starve them");
 }
-if (!pendingSelector.includes("for (const status of statusPriority)")) {
-  failures.push("social queue selection must fetch each status in explicit priority order within the worker batch limit");
+if (!pendingSelector.includes("statusPriority.map((status)") || !pendingSelector.includes("candidateLimit")) {
+  failures.push("social queue selection must fetch a bounded candidate window for every status before eligibility filtering");
+}
+if (!publisher.includes("getApprovedVideoQueueItemIds") || !publisher.includes("video_generation_requests?id=in.")) {
+  failures.push("video approval snapshots must be batch-loaded so held videos cannot starve other eligible queue items");
+}
+if (!pendingSelector.includes("selectEligibleSocialPublishItems")) {
+  failures.push("social queue selection must apply eligibility and the delivery limit after filtering held items");
 }
 const ytAutomation = read("src/features/videos/services/video-automation.ts");
 if (!publisher.includes("extractFacebookReelsNextAllowedAt")) failures.push("social queue must defer rate-limited Reels to the shared next-allowed time");
