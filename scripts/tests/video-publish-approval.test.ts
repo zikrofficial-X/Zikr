@@ -46,8 +46,7 @@ assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, request: { ..
 assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, request: { ...request, content_hash: "changed-content-hash" } }), false);
 assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, request: null }), false);
 
-// The configured autonomous-publishing mode can skip the human checklist, but must
-// still require a completed source record and an exact source/media URL match.
+// Unattended worker scheduling never bypasses persisted human approval.
 const unreviewedRequest = {
   status: "completed",
   category: "quran",
@@ -60,17 +59,14 @@ const unreviewedRequest = {
 assert.equal(isVideoQueueItemApprovedForPublishing({
   ...queueItem,
   request: unreviewedRequest,
-  requireApproval: false,
-}), true);
+}), false);
 assert.equal(isVideoQueueItemApprovedForPublishing({
   ...queueItem,
   request: { ...unreviewedRequest, status: "processing" },
-  requireApproval: false,
 }), false);
 assert.equal(isVideoQueueItemApprovedForPublishing({
   ...queueItem,
-  queuedVideoUrl: "https://media.example.test/different.mp4",
   request: unreviewedRequest,
   requireApproval: false,
-}), false);
+} as Parameters<typeof isVideoQueueItemApprovedForPublishing>[0]), false);
 console.log("Video publishing approval contract passed.");
