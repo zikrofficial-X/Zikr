@@ -2,7 +2,7 @@
 -- and redact the previously persisted YouTube request URL. Queue rows are not modified.
 
 CREATE TABLE IF NOT EXISTS public.social_post_insights (
-  queue_id uuid NOT NULL REFERENCES public.social_publish_queue(id) ON DELETE CASCADE,
+  queue_id uuid NOT NULL,
   platform text NOT NULL CHECK (platform IN ('youtube', 'facebook', 'facebook_reels')),
   video_id text,
   metrics jsonb NOT NULL DEFAULT '{}'::jsonb,
