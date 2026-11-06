@@ -121,7 +121,7 @@ const socialPublishingDisabled =
   social.includes('if [[ "$SOCIAL_PUBLISH_ENABLED" != "true" ]]');
 assert.ok(socialPublishingActive || socialPublishingFrozen || socialPublishingDisabled, "Social publisher must be explicitly active, safely frozen, or fail-closed");
 assert.ok(social.includes("environment: production"), "Social publisher must use protected production environment");
-assert.ok(social.includes("github.ref == 'refs/heads/main'"), "Social publisher must be main-only");
+assert.ok(social.includes("if: false") && social.includes('SOCIAL_PUBLISH_ENABLED: "false"'), "External social publisher must remain explicitly disabled");
 
 assert.ok(!english.includes("\n  schedule:"), "GitHub English sync must not own an automatic schedule");
 assert.ok(english.includes("environment: production"), "English sync must use protected production environment");
