@@ -6,7 +6,7 @@ type QueueRow = {
   id: string;
   title: string;
   metadata: Record<string, unknown> | null;
-  published_at: string | null;
+  created_at: string;
 };
 
 type GraphInsight = {
@@ -117,14 +117,65 @@ async function fetchReelInsights(videoId: string, pageAccessToken: string): Prom
  * It never republishes content, and it will not call Meta until the connected
  * Page token explicitly includes read_insights and pages_read_engagement.
  */
+type ExistingFacebookInsightRow = { queue_id: string; captured_at: string };
+
+async function getFacebookReelCandidates(limit: number): Promise<Array<{ queueId: string; videoId: string }>> {
+  const candidates: Array<{ queueId: string; videoId: string }> = [];
+  const now = Date.now();
+  const pageSize = 250;
+  const maxPages = 20;
+
+  for (let page = 0; page < maxPages && candidates.length < limit; page += 1) {
+    const rows = await supabaseServerAdminRequest<QueueRow[]>(
+      "/rest/v1/social_publish_queue?content_type=like.*_video&select=id,title,metadata,created_at&order=created_at.asc,id.asc&limit=" +
+        pageSize + "&offset=" + page * pageSize,
+    );
+    const batch = Array.isArray(rows) ? rows : [];
+    if (batch.length === 0) break;
+
+    const withVideoIds = batch.flatMap((row) => {
+      const videoId = facebookReelId(row.metadata);
+      return videoId ? [{ row, videoId }] : [];
+    });
+    if (withVideoIds.length > 0) {
+      const queueIds = withVideoIds.map((item) => item.row.id);
+      const existing = await supabaseServerAdminRequest<ExistingFacebookInsightRow[]>(
+        "/rest/v1/social_post_insights?platform=eq.facebook_reels&queue_id=in.(" +
+          queueIds.join(",") + ")&select=queue_id,captured_at",
+      ).catch(() => []);
+      const capturedAtByQueueId = new Map(
+        (existing ?? []).map((row) => [row.queue_id, row.captured_at]),
+      );
+
+      for (const item of withVideoIds) {
+        const capturedAt = capturedAtByQueueId.get(item.row.id);
+        const timestamp = capturedAt ? Date.parse(capturedAt) : Number.NaN;
+        if (Number.isFinite(timestamp) && now - timestamp < REFRESH_INTERVAL_MS) continue;
+        candidates.push({ queueId: item.row.id, videoId: item.videoId });
+        if (candidates.length >= limit) break;
+      }
+    }
+    if (batch.length < pageSize) break;
+  }
+  return candidates;
+}
+
+/**
+ * Reads lifetime statistics for ZIKR's own published Facebook Page Reels.
+ * It never republishes content and stores metrics outside social_publish_queue.
+ * Meta is called only when the OAuth-managed Page token explicitly includes
+ * read_insights and pages_read_engagement.
+ */
 export async function syncFacebookReelsInsights(limit = MAX_BATCH): Promise<FacebookReelsInsightsSyncResult> {
   const credential = await readStoredFacebookCredential();
   if (!credential?.page_id || !credential.page_access_token) {
     return { configured: false, reason: "not_connected", candidates: 0, fetched: 0, updated: 0, failed: 0 };
   }
-  const expiry = credential.expires_at ? Date.parse(credential.expires_at) : NaN;
-  if (credential.connection_status !== "connected" ||
-      (credential.expires_at && Number.isFinite(expiry) && expiry <= Date.now())) {
+  const expiry = credential.expires_at ? Date.parse(credential.expires_at) : Number.NaN;
+  if (
+    credential.connection_status !== "connected" ||
+    (credential.expires_at && Number.isFinite(expiry) && expiry <= Date.now())
+  ) {
     return { configured: false, reason: "connection_unavailable", candidates: 0, fetched: 0, updated: 0, failed: 0 };
   }
   const permissions = new Set(credential.granted_permissions ?? []);
@@ -132,19 +183,8 @@ export async function syncFacebookReelsInsights(limit = MAX_BATCH): Promise<Face
     return { configured: false, reason: "permission_missing", candidates: 0, fetched: 0, updated: 0, failed: 0 };
   }
 
-  const boundedLimit = Math.max(1, Math.min(MAX_BATCH, Math.floor(limit)));
-  const rows = await supabaseServerAdminRequest<QueueRow[]>(
-    "/rest/v1/social_publish_queue?status=eq.published&published_at=not.is.null&content_type=like.*_video&select=id,title,metadata,published_at&order=published_at.desc&limit=250",
-  );
-  const now = Date.now();
-  const candidates = (rows ?? [])
-    .flatMap((row) => {
-      const videoId = facebookReelId(row.metadata);
-      if (!videoId || !shouldRefreshFacebookReelsInsights(row.metadata, now)) return [];
-      return [{ row, videoId }];
-    })
-    .slice(0, boundedLimit);
-
+  const boundedLimit = Math.max(1, Math.min(100, Math.floor(limit) || 1));
+  const candidates = await getFacebookReelCandidates(boundedLimit);
   if (!candidates.length) {
     return { configured: true, candidates: 0, fetched: 0, updated: 0, failed: 0 };
   }
@@ -152,7 +192,6 @@ export async function syncFacebookReelsInsights(limit = MAX_BATCH): Promise<Face
   let fetched = 0;
   let updated = 0;
   let failed = 0;
-  const capturedAt = new Date().toISOString();
 
   for (let index = 0; index < candidates.length; index += 4) {
     const group = candidates.slice(index, index + 4);
@@ -169,39 +208,40 @@ export async function syncFacebookReelsInsights(limit = MAX_BATCH): Promise<Face
       }
     }));
 
-    for (const result of results) {
-      if (result.error) failed += 1;
-      else fetched += 1;
-      const currentMetadata = result.candidate.row.metadata ?? {};
-      const currentInsights = isRecord(currentMetadata.platformInsights)
-        ? currentMetadata.platformInsights
-        : {};
-      const nextMetadata = {
-        ...currentMetadata,
-        platformInsights: {
-          ...currentInsights,
-          facebookReels: {
-            videoId: result.candidate.videoId,
-            metrics: result.metrics,
-            capturedAt,
-            source: "meta-graph-api",
-            scope: "page-video-insights",
-            period: "lifetime",
-            status: result.error ? "temporarily-unavailable" : Object.keys(result.metrics).length ? "available" : "no-metrics-returned",
-          },
-        },
-      };
+    const capturedAt = new Date().toISOString();
+    const upserts = results.flatMap((result) => {
+      if (result.error) {
+        failed += 1;
+        return [];
+      }
+      fetched += 1;
+      return [{
+        queue_id: result.candidate.queueId,
+        platform: "facebook_reels",
+        video_id: result.candidate.videoId,
+        metrics: result.metrics,
+        captured_at: capturedAt,
+        source: "meta-graph-api",
+        scope: "page-video-insights",
+        period: "lifetime",
+        status: Object.keys(result.metrics).length ? "available" : "no-metrics-returned",
+        updated_at: capturedAt,
+      }];
+    });
+
+    if (upserts.length > 0) {
       await supabaseServerAdminRequest(
-        "/rest/v1/social_publish_queue?id=eq." +
-          encodeURIComponent(result.candidate.row.id) +
-          "&status=eq.published",
+        "/rest/v1/social_post_insights?on_conflict=queue_id,platform",
         {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-          body: JSON.stringify({ metadata: nextMetadata, updated_at: capturedAt }),
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Prefer: "resolution=merge-duplicates,return=minimal",
+          },
+          body: JSON.stringify(upserts),
         },
       );
-      updated += 1;
+      updated += upserts.length;
     }
   }
 
