@@ -9,11 +9,10 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const STATE_COOKIE = "zikr-youtube-oauth-state";
+const CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";
+const YOUTUBE_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/youtube/callback";
 const YOUTUBE_READ_SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
-const YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload";
-const YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube";
 const ANALYTICS_SCOPE = "https://www.googleapis.com/auth/yt-analytics.readonly";
-const YOUTUBE_DELETE_SCOPE = "https://www.googleapis.com/auth/youtube.force-ssl";
 
 type GoogleOAuthToken = {
   access_token?: string;
@@ -41,11 +40,11 @@ type YouTubeChannelResponse = {
 };
 
 function siteUrl() {
-  return getServerEnv().NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  return CANONICAL_SITE_ORIGIN;
 }
 
 function redirectResult(status: string, extra: Record<string, string> = {}) {
-  const url = new URL("/admin/social", siteUrl());
+  const url = new URL("/admin/analytics", siteUrl());
   url.searchParams.set("youtube", status);
   for (const [key, value] of Object.entries(extra)) {
     url.searchParams.set(key, value);
@@ -70,17 +69,14 @@ function matchesState(expected: string, actual: string) {
 
 function scopeFlags(scopes: string[]) {
   const set = new Set(scopes);
-  const broadYoutube = set.has(YOUTUBE_SCOPE);
   return {
-    canReadChannel: broadYoutube || set.has(YOUTUBE_READ_SCOPE),
-    canUpload: broadYoutube || set.has(YOUTUBE_UPLOAD_SCOPE),
+    canReadChannel: set.has(YOUTUBE_READ_SCOPE),
     canReadAnalytics: set.has(ANALYTICS_SCOPE),
-    canDeleteVideos: broadYoutube || set.has(YOUTUBE_DELETE_SCOPE),
   };
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdminApi("social.manage");
+  const auth = await requireAdminApi("analytics.read");
   if (!auth.ok) return redirectResult("admin_session_missing");
 
   const state = request.nextUrl.searchParams.get("state") ?? "";
@@ -108,7 +104,7 @@ export async function GET(request: NextRequest) {
   const clientSecret = env.YOUTUBE_CLIENT_SECRET?.trim() ?? "";
   if (!clientId || !clientSecret) return redirectResult("configuration_missing");
 
-  const redirectUri = new URL("/api/admin/social/youtube/callback", siteUrl()).toString();
+  const redirectUri = YOUTUBE_REDIRECT_URI;
   try {
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -142,12 +138,10 @@ export async function GET(request: NextRequest) {
         ? token.scope.split(/\s+/).filter(Boolean)
         : [];
     const flags = scopeFlags(grantedScopes);
-    if (!flags.canReadChannel || !flags.canUpload || !flags.canReadAnalytics || !flags.canDeleteVideos) {
+    if (!flags.canReadChannel || !flags.canReadAnalytics) {
       return redirectResult("permission_missing", {
         read: flags.canReadChannel ? "ready" : "missing",
-        upload: flags.canUpload ? "ready" : "missing",
         analytics: flags.canReadAnalytics ? "ready" : "missing",
-        delete: flags.canDeleteVideos ? "ready" : "missing",
       });
     }
 
@@ -186,8 +180,8 @@ export async function GET(request: NextRequest) {
 
     try {
       await recordAdminAuditEvent({
-        action: "social.youtube.oauth.connect",
-        permission: "social.manage",
+        action: "analytics.youtube.oauth.connect",
+        permission: "analytics.read",
         resourceType: "youtube_channel",
         resourceId: channel.id,
         metadata: {
@@ -195,7 +189,8 @@ export async function GET(request: NextRequest) {
           grantedScopes: grantedScopes.map((scope) => scope.split("/").at(-1)),
           channelRead: true,
           analyticsRead: true,
-          upload: true,
+          upload: false,
+          delete: false,
         },
       });
     } catch {
