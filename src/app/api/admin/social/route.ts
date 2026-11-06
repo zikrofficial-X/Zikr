@@ -9,6 +9,7 @@ import {
   getFacebookPageConnectionHealth,
   unblockFacebookAuthBlockedQueue,
 } from "@/features/social/services/facebook-credentials";
+import { getYouTubePublishingConnectionHealth } from "@/features/social/services/youtube-publishing-health";
 
 export const dynamic = "force-dynamic";
 
@@ -179,6 +180,12 @@ export async function GET() {
             env.YOUTUBE_CLIENT_SECRET &&
             env.YOUTUBE_REFRESH_TOKEN
           ),
+          youtubeConnectionStatus: env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET && env.YOUTUBE_REFRESH_TOKEN
+            ? "not_tested"
+            : "not_configured",
+          youtubeConnectionMessage: env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET && env.YOUTUBE_REFRESH_TOKEN
+            ? "تم العثور على بيانات OAuth؛ نفّذ اختبار الاتصال للتحقق من صلاحية القناة."
+            : "بيانات OAuth الخاصة بـYouTube غير مكتملة.",
           ...facebookHealth,
           facebookAuthBlocked,
         },
@@ -233,6 +240,15 @@ export async function POST(request: NextRequest) {
       : [];
     if (action === "test_facebook") {
       const health = await getFacebookPageConnectionHealth();
+      return NextResponse.json({ ok: true, health }, { headers: { "Cache-Control": "no-store" } });
+    }    if (action === "test_youtube") {
+      const health = await getYouTubePublishingConnectionHealth();
+      await recordAdminAuditEvent({
+        action: "social.youtube.connection_test",
+        permission: "social.manage",
+        resourceType: "youtube_channel",
+        metadata: { status: health.status, channelId: health.channelId },
+      });
       return NextResponse.json({ ok: true, health }, { headers: { "Cache-Control": "no-store" } });
     }
     if (action === "adopt_server_facebook_token") {
