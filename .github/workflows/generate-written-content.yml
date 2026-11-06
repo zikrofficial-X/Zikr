@@ -1,4 +1,4 @@
-name: ZIKR Written Content Factory
+name: ZIKR Internal Site Content Generator
 on:
   schedule:
     - cron: "15 7,13,19 * * *"
@@ -11,7 +11,7 @@ on:
         type: choice
         options: [auto, quran, hadith, dua, story, prophets, companions, knowledge]
       batch_size:
-        description: "Number of posts to enqueue (bounded)"
+        description: "Number of ZIKR website articles to schedule (bounded)"
         required: false
         default: "1"
         type: string
@@ -22,8 +22,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   generate:
-    # Retired: this generator enqueues Facebook-only written posts. New automation is site-internal.
-    if: false
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 10
