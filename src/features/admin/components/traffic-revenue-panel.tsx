@@ -11,6 +11,9 @@ import {
   Send,
   Share2,
   Wallet,
+  Clock3,
+  Users,
+  Eye,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -102,6 +105,57 @@ export async function TrafficRevenuePanel() {
           <MetricCard label="منشورات فاشلة" value={metrics.socialFailed} note="تحتاج مراجعة قبل إعادة المحاولة" icon={CircleHelp} />
         </div>
       </div>
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-bold text-brand-cream">تحليلات قناة YouTube</h3>
+          <Badge variant="outline" className={snapshot.integrations.youtubeAnalyticsConnected ? "border-emerald-400/20 text-emerald-200/80" : "border-amber-300/20 text-amber-100/75"}>
+            {snapshot.integrations.youtubeAnalyticsConnected ? "بيانات مالك القناة متصلة" : snapshot.youtubeAnalytics.status === "authorization_required" ? "تحتاج إعادة تفويض" : "غير متصلة"}
+          </Badge>
+        </div>
+        {snapshot.youtubeAnalytics.status === "connected" ? (
+          <>
+            <p className="text-xs leading-5 text-brand-cream/45">
+              الفترة: {snapshot.youtubeAnalytics.startDate} إلى {snapshot.youtubeAnalytics.endDate}. تُحدّث البيانات كل ساعة.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard label="مشاهدات YouTube" value={snapshot.youtubeAnalytics.views} note="تقارير مالك القناة" icon={Eye} />
+              <MetricCard label="ساعات المشاهدة" value={snapshot.youtubeAnalytics.estimatedMinutesWatched === null ? null : Math.round(snapshot.youtubeAnalytics.estimatedMinutesWatched / 60)} note="من إجمالي دقائق المشاهدة" icon={Clock3} />
+              <MetricCard label="متوسط مدة المشاهدة (ث)" value={snapshot.youtubeAnalytics.averageViewDurationSeconds} note="متوسط القناة خلال الفترة" icon={Activity} />
+              <MetricCard label="نسبة المشاهدة المتوسطة (%)" value={snapshot.youtubeAnalytics.averageViewPercentage} note="متوسط نسبة الفيديو المشاهدة" icon={BarChart3} />
+              <MetricCard label="المشتركون المكتسبون" value={snapshot.youtubeAnalytics.subscribersGained} note="خلال الفترة المحددة" icon={Users} />
+              <MetricCard label="المشتركون المفقودون" value={snapshot.youtubeAnalytics.subscribersLost} note="خلال الفترة المحددة" icon={Users} />
+              <MetricCard label="الإعجابات" value={snapshot.youtubeAnalytics.likes} note="تفاعل على فيديوهات القناة" icon={CheckCircle2} />
+              <MetricCard label="المشاركات" value={snapshot.youtubeAnalytics.shares} note="مشاركة فيديوهات القناة" icon={Share2} />
+            </div>
+            {snapshot.youtubeAnalytics.trafficSources ? (
+              <Card className="p-5">
+                <h4 className="font-semibold text-brand-gold">مصادر الزيارات إلى فيديوهات القناة</h4>
+                {snapshot.youtubeAnalytics.trafficSources.length ? (
+                  <div className="mt-3 divide-y divide-brand-gold/10">
+                    {snapshot.youtubeAnalytics.trafficSources.map((source) => (
+                      <div key={source.source} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                        <span className="text-brand-cream/80">{source.source}</span>
+                        <span className="tabular-nums text-brand-cream/65">{format(source.views)} مشاهدة · {format(Math.round(source.watchMinutes / 60))} ساعة مشاهدة</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="mt-3 text-xs text-brand-cream/45">لم تُرجع المنصة مصادر زيارات لهذه الفترة.</p>}
+              </Card>
+            ) : null}
+          </>
+        ) : (
+          <Card className="p-5">
+            <p className="text-sm leading-7 text-brand-cream/65">
+              {snapshot.youtubeAnalytics.status === "authorization_required"
+                ? "بيانات YouTube العامة تعمل، لكن رمز OAuth الحالي لا يملك صلاحية تقارير Analytics. يلزم إعادة تفويض القناة بصلاحية yt-analytics.readonly ثم تحديث YOUTUBE_REFRESH_TOKEN في إعدادات Vercel."
+                : snapshot.youtubeAnalytics.status === "not_configured"
+                  ? "يلزم ضبط YOUTUBE_CLIENT_ID وYOUTUBE_CLIENT_SECRET وYOUTUBE_REFRESH_TOKEN على بيئة الإنتاج."
+                  : "تعذر الوصول إلى تقارير YouTube Analytics حاليًا. لم يتم استبدال البيانات المفقودة بأصفار."}
+            </p>
+          </Card>
+        )}
+      </section>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <Card className="p-5">
