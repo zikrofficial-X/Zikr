@@ -388,6 +388,10 @@ export async function publishToYoutube(
   options: { selfDeclaredMadeForKids?: boolean } = {},
 ): Promise<string> {
   void videoId;
+  void metadata;
+  void videoUrl;
+  void options;
+  throw new Error("EXTERNAL_SOCIAL_PUBLISHING_RETIRED");
   const accessToken = await getYoutubeAccessToken();
   const source = assertRemoteVideoUrl(videoUrl, 'YouTube');
   const videoResponse = await fetch(source, { signal: AbortSignal.timeout(60_000) });
@@ -504,6 +508,11 @@ export async function publishToFacebook(
   asReel = false,
 ): Promise<string | null> {
   void videoId;
+  void metadata;
+  void videoUrl;
+  void pageId;
+  void asReel;
+  throw new Error("EXTERNAL_SOCIAL_PUBLISHING_RETIRED");
   try {
     const env = getServerEnv();
     const credentials = await getFacebookPageCredentials();
