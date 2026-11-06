@@ -190,7 +190,7 @@ if (!worker.includes("if (!isTemplatePreview) aiPlan = await generateAiVideoPlan
 if (!worker.includes("source_hash: rendered.sourceHash") || !worker.includes("content_hash: rendered.contentHash") || !worker.includes("template_version: rendered.templateVersion")) {
   failures.push("completed manual renders must persist source, content and template integrity fingerprints");
 }
-if (!worker.includes("content.skipSocialPublish === true")) failures.push("template preview requests must never enter public social queues");
+if (worker.includes("social_publish_queue") || worker.includes("getFacebookPageCredentials") || worker.includes("queueSocialItems")) failures.push("video generation must never enqueue or query external social platforms");
 if (!worker.includes("!isTemplatePreview &&") || !worker.includes("!boundTemplate &&")) failures.push("pinned template renders must not be handed to external video providers");
 for (const [path, destinations] of [
   ["src/app/admin/audio/tts/page.tsx", ["/admin/video/voices", "/admin/video/scripts"]],
