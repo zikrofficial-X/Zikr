@@ -774,6 +774,18 @@ export async function processSocialPublishItem(
       ? "partial"
       : nextStatus;
 
+  const publishMetadata = {
+    ...(item.metadata ?? {}),
+    attempts,
+    maxAttempts,
+    nextRetryAt,
+    authBlocked: hasAuthFailure,
+    permanentFailure: hasPermanentFailure,
+    facebookReelsNextAllowedAt,
+    deferredPlatforms: deferredFailures.map(failure => failure.platform),
+    platformResults: mergedResults,
+  };
+
   await markQueueItem(item.id, persistedStatus, {
     scheduled_at: nextRetryAt,
     published_at: successes.length > 0 ? new Date().toISOString() : null,
@@ -781,21 +793,15 @@ export async function processSocialPublishItem(
       operationalFailures
         .map(failure => `${failure.platform}: ${failure.error ?? "unknown error"}`)
         .join("; ") || null,
-    metadata: {
-      ...(item.metadata ?? {}),
-      attempts,
-      maxAttempts,
-      nextRetryAt,
-      authBlocked: hasAuthFailure,
-      permanentFailure: hasPermanentFailure,
-      facebookReelsNextAllowedAt,
-      deferredPlatforms: deferredFailures.map(failure => failure.platform),
-      platformResults: mergedResults,
-    },
+    metadata: publishMetadata,
   });
 
   if (nextStatus === "published") {
-    if (isVideoContentType(item.content_type)) await disposePublishedVideo(item);
+    // Cleanup writes metadata too. Pass the newly merged platform results so
+    // disposal does not overwrite and erase the provider post IDs we just saved.
+    if (isVideoContentType(item.content_type)) {
+      await disposePublishedVideo({ ...item, metadata: publishMetadata });
+    }
     return "published";
   }
   if (deferredFailures.length > 0 && operationalFailures.length === 0) return "deferred";
