@@ -362,6 +362,7 @@ export async function POST(request: NextRequest) {
         storageObjectsDeleted,
         socialQueueRowsPreserved,
         publicVideoCatalogPreserved: true,
+        catalogRecordsHidden,
         generationRowsDeleted,
         automationRunsDeleted,
         externalSocialPostsDeleted: false,
