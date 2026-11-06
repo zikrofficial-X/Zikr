@@ -23,13 +23,15 @@ for (const token of [
   "VIDEO_CONTENT_TYPES",
   "video_generation_requests",
   "video_automation_runs",
-  "siteVideoRowsDeleted",
+  "publicVideoCatalogPreserved: true",
   'action: "video.library.purge"',
   "externalSocialPostsDeleted: false",
 ]) {
   assert.ok(route.includes(token), "Missing purge route safety contract: " + token);
 }
 assert.ok(!/drop\s+table|supabase_migrations|android-releases/i.test(route), "Purge must not alter schema, migration history, or Android releases.");
+assert.ok(!route.includes('deleteRows("videos", "id=not.is.null")'), "Purge must preserve the public video catalogue.");
+assert.ok(route.includes("published_at=is.null") && route.includes("hasSuccessfulRemotePublication"), "Purge may remove only queued video items without publication evidence.");
 assert.ok(socialWorker.includes("isVideoPurgeInProgress"));
 assert.ok(socialWorker.includes("video_purge_in_progress"));
 assert.ok(videoWorker.includes("isVideoGenerationPaused"));
@@ -37,7 +39,7 @@ assert.ok(videoWorker.includes("video_automation_enabled,video_purge_in_progress
 assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
 assert.ok(generationStudio.includes("PurgeGeneratedVideosControl"));
 assert.ok(socialPage.includes("PurgeGeneratedVideosControl"));
-assert.ok(control.includes("امسح كل الفيديوهات"));
+assert.ok(control.includes("امسح الفيديوهات المولّدة فقط"));
 assert.ok(control.includes('fetch("/api/admin/video-purge"'));
 assert.ok(control.includes("setAuthorized(allowed)"));
 assert.ok(control.includes("YouTube وFacebook"));
