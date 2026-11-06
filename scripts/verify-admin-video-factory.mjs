@@ -114,7 +114,7 @@ for (const [legacyPath, destination] of [
   ["src/app/admin/video-factory/qa/page.tsx", "/admin/video/qa"],
   ["src/app/admin/video-factory/queue/page.tsx", "/admin/video/requests"],
   ["src/app/admin/video-factory/scheduler/page.tsx", "/admin/automation"],
-  ["src/app/admin/video-factory/publishing/page.tsx", "/admin/media"],
+  ["src/app/admin/video-factory/publishing/page.tsx", "/admin/memory"],
 ]) {
   const legacy = read(legacyPath);
   if (!legacy.includes(`redirect("${destination}")`)) failures.push(`Legacy Video Factory route must redirect to ${destination}: ${legacyPath}`);
