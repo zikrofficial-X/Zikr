@@ -247,6 +247,25 @@ async function getActiveVideoWork(): Promise<{ queue: number; generation: number
   };
 }
 
+async function getUnresolvedVideoDeliveries(): Promise<number> {
+  const rows = await supabaseServerAdminRequest<Array<{
+    status: string;
+    published_at: string | null;
+    metadata?: Record<string, unknown> | null;
+  }>>(
+    "/rest/v1/social_publish_queue?content_type=in.(" +
+      VIDEO_CONTENT_TYPES.join(",") +
+      ")&status=in.(queued,partial,failed)&select=status,published_at,metadata&limit=1000",
+  );
+  const candidates = rows ?? [];
+  if (candidates.length >= 1000) {
+    throw new Error("Unresolved video delivery inventory exceeded the safe preflight limit.");
+  }
+  return candidates.filter(row =>
+    Boolean(row.published_at) || hasSuccessfulRemotePublication(row.metadata),
+  ).length;
+}
+
 type SocialQueuePurgeCandidate = {
   id: string;
   published_at: string | null;
@@ -334,6 +353,22 @@ export async function POST(request: NextRequest) {
     }
 
     cloudinaryConfig();
+
+    // Do not delete source media while a social item still needs another
+    // platform delivery. This read-only preflight leaves automation untouched.
+    const unresolvedDeliveries = await getUnresolvedVideoDeliveries();
+    if (unresolvedDeliveries > 0) {
+      return NextResponse.json(
+        {
+          error: `يوجد ${unresolvedDeliveries} عنصر فيديو له نشر جزئي أو معرّف نشر خارجي ولم يكتمل بعد. أكمل النشر أو عالج هذه العناصر أولًا، ثم أعد التصفير. لم يتم إيقاف التشغيل أو حذف أي ملف.`,
+          unresolvedDeliveries,
+          paused: false,
+          retryRequired: true,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
     await pauseVideoAutomation();
     await setPurgeLock(true);
 
@@ -344,6 +379,23 @@ export async function POST(request: NextRequest) {
           error: `يوجد ${processing.generation} طلب توليد و${processing.queue} عملية نشر فيديو قيد التنفيذ. أوقفت التوليد وحجزت النشر مؤقتًا؛ أعد تنفيذ التصفير بعد انتهاء العامل.`,
           processing,
           paused: true,
+          retryRequired: true,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
+    // Close the race where a worker completed a first-platform delivery after
+    // preflight but before the purge lock became visible.
+    const unresolvedAfterLock = await getUnresolvedVideoDeliveries();
+    if (unresolvedAfterLock > 0) {
+      await setPurgeLock(false);
+      return NextResponse.json(
+        {
+          error: `ظهر ${unresolvedAfterLock} عنصر نشر جزئي أثناء تفعيل الحماية. لم يبدأ الحذف؛ إعدادات الفيديو التلقائية متوقفة، ويمكن إعادة تفعيل النشر لمعالجة العناصر ثم إعادة المحاولة.`,
+          unresolvedDeliveries: unresolvedAfterLock,
+          paused: true,
+          automationMustBeReenabled: true,
           retryRequired: true,
         },
         { status: 409, headers: { "Cache-Control": "no-store" } },
