@@ -99,11 +99,13 @@ jobs:
             fi
             echo "Maintenance-only operation selected; provider publishing credentials are not needed."
             echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=false" >> "$GITHUB_ENV"
+            echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=false" >> "$GITHUB_ENV"
             exit 0
           fi
           if [[ "$SOCIAL_PUBLISH_ENABLED" != "true" ]]; then
             echo "::notice::Social publishing is disabled; no queue item will be claimed or posted publicly."
             echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=false" >> "$GITHUB_ENV"
+            echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=false" >> "$GITHUB_ENV"
             exit 0
           fi
           if [[ -z "${CLOUDINARY_CLOUD_NAME:-}" || -z "${CLOUDINARY_API_KEY:-}" || -z "${CLOUDINARY_API_SECRET:-}" ]]; then
@@ -144,16 +146,20 @@ jobs:
           if [[ -n "${YOUTUBE_CLIENT_ID:-}" && -n "${YOUTUBE_CLIENT_SECRET:-}" && -n "${YOUTUBE_REFRESH_TOKEN:-}" ]]; then
             youtube_configured="true"
           fi
-          if [[ "$youtube_configured" != "true" ]]; then
-            echo "::error::YouTube OAuth is required for the active two-platform publishing queue." >&2
-            exit 1
-          fi
-          if [[ "$facebook_enabled" != "true" ]]; then
-            echo "::error::The OAuth-managed Facebook Page connection is not enabled, connected, and complete." >&2
-            exit 1
-          fi
+          echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=$youtube_configured" >> "$GITHUB_ENV"
           rm -f "$facebook_response"
-          echo "Social publisher runtime configuration: OK (Facebook OAuth-managed=$facebook_enabled, YouTube configured=$youtube_configured)"
+          if [[ "$facebook_enabled" != "true" ]]; then
+            echo "::warning::Facebook is not ready; Facebook targets will remain queued while YouTube continues independently." >&2
+          fi
+          if [[ "$youtube_configured" != "true" ]]; then
+            echo "::warning::YouTube OAuth is not ready; YouTube targets will remain queued while Facebook continues independently." >&2
+          fi
+          if [[ "$facebook_enabled" != "true" && "$youtube_configured" != "true" ]]; then
+            echo "::notice::Neither publishing channel is ready. The worker will not claim queue items; the next scheduled check will retry readiness."
+            echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=false" >> "$GITHUB_ENV"
+            echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=false" >> "$GITHUB_ENV"
+          fi
+          echo "Social publisher readiness: Facebook=$facebook_enabled, YouTube=$youtube_configured. Each channel runs independently."
 
       - name: Verify scheduler and social publishing contracts
         run: |
@@ -173,7 +179,12 @@ jobs:
           fi
 
       - name: Process social publishing queue
+        if: env.SOCIAL_PUBLISH_FACEBOOK_ENABLED == 'true' || env.SOCIAL_PUBLISH_YOUTUBE_ENABLED == 'true'
         run: pnpm background:jobs
+
+      - name: Skip queue claim when both social channels are unavailable
+        if: env.SOCIAL_PUBLISH_FACEBOOK_ENABLED != 'true' && env.SOCIAL_PUBLISH_YOUTUBE_ENABLED != 'true'
+        run: echo "No queue item was claimed. The next scheduled run will retry Facebook and YouTube readiness independently."
 
       - name: Publish summary
         if: always()
