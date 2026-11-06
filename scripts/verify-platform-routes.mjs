@@ -41,6 +41,7 @@ const requiredRoutes = [
   'src/app/auth/reset/page.tsx',
   'src/app/auth/callback/route.ts',
   'src/app/api/download/android/aab/route.ts',
+  'src/app/api/admin/video/templates/route.ts',
   'src/app/admin/page.tsx',
   'src/app/admin/analytics/page.tsx',
   'src/app/admin/battles/page.tsx',
