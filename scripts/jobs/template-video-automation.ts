@@ -25,6 +25,7 @@ import { evaluateArabicNarrationText } from "../../src/features/videos/services/
 import { resolveDeterministicVideoHook, resolveDeterministicVideoMotion, resolveDeterministicVideoScene } from "../../src/features/videos/services/video-creative-variation";
 import { paginateCaptionText, planCaptionTimings, resolveVideoComposition, type VideoCompositionProfile } from "../../src/features/videos/services/video-composition";
 import { resolveRenderDuration } from "../../src/features/videos/services/render-duration";
+import { AUTOMATED_VIDEO_QA_ENGINE, AUTOMATED_VIDEO_QA_VERSION, REQUIRED_VIDEO_APPROVAL_CHECKS, createAutomatedVideoQaApproval, type VideoApprovalChecklist } from "../../src/features/videos/services/video-publish-approval";
 
 const execFileAsync = promisify(execFile);
 const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? process.env.DAILY_VIDEO_TARGET ?? 10));
@@ -1498,6 +1499,156 @@ async function renderVideo(request: GeneratedRequest) {
   }
 }
 
+function buildAutomatedVideoQaChecklist(
+  request: GeneratedRequest,
+  rendered: {
+    videoUrl: string;
+    scene: string;
+    renderDurationMs: number;
+    sourceHash: string;
+    contentHash: string;
+    templateVersion: string;
+  },
+): VideoApprovalChecklist {
+  const content = request.content ?? {};
+  const audio = content.audio && typeof content.audio === "object"
+    ? content.audio as Record<string, unknown>
+    : {};
+  const render = content.render && typeof content.render === "object"
+    ? content.render as Record<string, unknown>
+    : {};
+  const media = content.mediaStorage && typeof content.mediaStorage === "object"
+    ? content.mediaStorage as Record<string, unknown>
+    : {};
+  const category = request.category.trim().toLowerCase();
+  const sourceId = typeof content.sourceId === "string" && content.sourceId.trim()
+    ? content.sourceId.trim()
+    : typeof content.curatedSourceId === "string" && content.curatedSourceId.trim()
+      ? content.curatedSourceId.trim()
+      : "";
+  const sourceUrl = typeof content.sourceUrl === "string" ? content.sourceUrl : "";
+  const sourceLabel = typeof content.sourceLabel === "string" ? content.sourceLabel : "";
+  const sourceCategories = new Set(["quran", "hadith", "dua", "adhkar", "story"]);
+  const isKidsSeries = content.audience === "kids" &&
+    content.aiMode === "original_kids_story" &&
+    content.sourceType === "original_kids_fiction" &&
+    typeof content.seriesId === "string" && Boolean(content.seriesId.trim()) &&
+    typeof content.seriesTitle === "string" && Boolean(content.seriesTitle.trim()) &&
+    typeof content.learningObjective === "string" && Boolean(content.learningObjective.trim()) &&
+    Number.isInteger(Number(content.seasonNumber)) && Number(content.seasonNumber) > 0 &&
+    Number.isInteger(Number(content.episodeNumber)) && Number(content.episodeNumber) > 0;
+  const isOriginalEditorial = content.audience !== "kids" &&
+    category === "other" &&
+    content.aiMode === "general_reminder" &&
+    content.sourceType === "editorial" &&
+    sourceLabel === "محتوى تحريري أصلي من منصة ذِكر" &&
+    !/(قال الله|قال رسول الله|رسول الله|حديث قدسي|حديث نبوي)/u.test(contentText(request));
+  const sourceVerified = sourceCategories.has(category)
+    ? Boolean(sourceId && /^https:\/\//i.test(sourceUrl) && sourceLabel.trim() && render.sourceLocked === true)
+    : isKidsSeries || isOriginalEditorial;
+
+  const audioKind = typeof audio.kind === "string" ? audio.kind : "";
+  const voiceProfile = typeof audio.voiceProfile === "string" ? audio.voiceProfile : "";
+  const approvedVoiceProfiles = new Set(["quran_reciter", "hadith_male_msa", "documentary_male_msa", "kids_friendly"]);
+  const audioReviewed = approvedVoiceProfiles.has(voiceProfile) &&
+    (category === "quran"
+      ? audioKind === "verified_quran_recitation"
+      : audioKind === "arabic_tts_narration" ||
+        (audioKind === "source_audio" && content.audioRightsVerified === true));
+
+  const allowedProviders = new Set(["hf_ltx_fast", "hf_wan"]);
+  const aiProvider = typeof content.aiProvider === "string" ? content.aiProvider : "";
+  const providerAllowed = !aiProvider || allowedProviders.has(aiProvider);
+  const allowedScenes = new Set(["calm", "dawn", "night", "gold", "emerald", "paper", "rose"]);
+  const allowedMotions = new Set(["fade", "slow"]);
+  const parsedMediaUrl = (() => {
+    try { return new URL(rendered.videoUrl); } catch { return null; }
+  })();
+  const cloudinaryVerified = parsedMediaUrl?.protocol === "https:" &&
+    parsedMediaUrl.hostname === "res.cloudinary.com" &&
+    parsedMediaUrl.pathname.includes("/video/upload/") &&
+    media.provider === "cloudinary" &&
+    typeof media.publicId === "string" && Boolean(media.publicId.trim()) &&
+    Number(media.bytes) >= 1024;
+  const renderDuration = Number(render.durationSeconds);
+  const resolutionValid = render.resolution === "1080x1920" || render.resolution === "1920x1080";
+  const visualsReviewed = allowedScenes.has(rendered.scene) &&
+    allowedMotions.has(String(render.motion)) &&
+    render.aiVisualPolicyVersion === AI_VISUAL_POLICY_VERSION &&
+    typeof render.composition === "string" && Boolean(render.composition.trim()) &&
+    providerAllowed && cloudinaryVerified && resolutionValid &&
+    Number.isFinite(renderDuration) && renderDuration >= 1 && renderDuration <= 60 &&
+    rendered.templateVersion === render.templateVersion;
+
+  const narration = contentText(request);
+  const narrationQuality = evaluateArabicNarrationText(narration, category);
+  const captionsReviewed = narrationQuality.ok &&
+    narration.length >= 8 &&
+    render.captionTiming === "page-weighted-audio-duration" &&
+    typeof render.composition === "string" && Boolean(render.composition.trim()) &&
+    !/https?:\/\//i.test(narration);
+
+  // No user-uploaded audio or custom video endpoints are auto-published.
+  // Quran recitation must be the verified recitation track; other categories
+  // use the approved ZIKR TTS profiles unless a source explicitly carries rights clearance.
+  const rightsReviewed = sourceVerified &&
+    audioReviewed &&
+    providerAllowed &&
+    (audioKind !== "source_audio" || content.audioRightsVerified === true) &&
+    audioKind !== "user_supplied_human_recording" &&
+    cloudinaryVerified;
+
+  return {
+    sourceVerified,
+    audioReviewed,
+    visualsReviewed,
+    captionsReviewed,
+    rightsReviewed,
+  };
+}
+
+function buildAutomatedSocialCaption(request: GeneratedRequest, publicUrl: string) {
+  const content = request.content ?? {};
+  const ai = content.ai && typeof content.ai === "object" ? content.ai as Record<string, unknown> : {};
+  const generatedCaption = typeof ai.socialCaption === "string" ? ai.socialCaption.trim() : "";
+  const hook = resolveDeterministicVideoHook({
+    id: request.id,
+    category: request.category,
+    audience: content.audience,
+  });
+  const callToAction: Record<string, string> = {
+    quran: "احفظ الآية وشاركها مع من تحب.",
+    hadith: "تأمل المعنى وجرّب تطبيقه اليوم.",
+    dua: "احفظ الدعاء وارجع إليه وقت الحاجة.",
+    adhkar: "اجعل الذكر جزءًا ثابتًا من يومك.",
+    story: "تابع القصة وشارك العبرة.",
+    other: content.audience === "kids" ? "شارك الحلقة مع الأسرة وتحدثوا عن فكرتها." : "احفظ الرسالة وشاركها لمن قد تنفعه.",
+  };
+  const tags: Record<string, string> = {
+    quran: "#القرآن_الكريم #تدبر",
+    hadith: "#السنة_النبوية #حديث",
+    dua: "#دعاء #أدعية",
+    adhkar: "#أذكار #ذكر",
+    story: "#قصص_وعبر",
+    other: content.audience === "kids" ? "#قصص_أطفال #تعليم" : "#رسالة_اليوم",
+  };
+  const visualDisclosure = content.aiProvider && ["hf_ltx_fast", "hf_wan"].includes(String(content.aiProvider))
+    ? "المشاهد البصرية مولّدة بأدوات الذكاء الاصطناعي، والنص الديني مرتبط بمصدره الموضح."
+    : "";
+  return [
+    hook,
+    request.title.trim(),
+    generatedCaption || request.description.trim(),
+    callToAction[request.category] ?? callToAction.other,
+    visualDisclosure,
+    tags[request.category] ?? tags.other,
+    "المصدر: " + contentSourceUrl(request),
+    publicUrl,
+  ].filter((value, index, values): value is string =>
+    typeof value === "string" && value.trim().length > 0 && values.indexOf(value) === index
+  ).join("\n\n").slice(0, 4500);
+}
+
 const INTERNAL_VIDEO_CATEGORY_SLUG: Record<string, string> = {
   quran: "quran-verified",
   hadith: "sunnah-verified",
@@ -1660,10 +1811,21 @@ async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueR
 
 async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
   if (!engineConfig().autoPublishEnabled) {
-    console.log(`[template-video] Social draft retained for ${request.id}; public publishing is disabled or approval is required.`);
+    console.log(`[template-video] External publishing is disabled for ${request.id}; internal video remains available.`);
+    return;
+  }
+  if (engineConfig().requiresApproval) {
+    console.log(`[template-video] External publishing remains held by the explicit approval setting for ${request.id}.`);
     return;
   }
   const content = request.content;
+  const automatedQa = content.automatedVideoQa && typeof content.automatedVideoQa === "object"
+    ? content.automatedVideoQa as Record<string, unknown>
+    : {};
+  if (automatedQa.status !== "passed" || content.approvalStatus !== "approved") {
+    console.log(`[template-video] Automated QA did not pass for ${request.id}; no external queue item was created.`);
+    return;
+  }
   if (content.skipSocialPublish === true) {
     console.log(`[template-video] Social publishing skipped for test request ${request.id}`);
     return;
@@ -1672,7 +1834,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
   const publicPath =
     typeof content.publicPath === "string" && content.publicPath.startsWith("/")
       ? content.publicPath
-      : "/quran";
+      : "/videos";
   const targets: string[] = [];
   if (
     process.env.YOUTUBE_PUBLISHING_REQUESTED !== "false" &&
@@ -1701,16 +1863,10 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
         content_id: request.id,
         title: request.title,
         body: [
-          request.description || "",
-          typeof content.ai === "object" && content.ai && typeof (content.ai as Record<string, unknown>).socialCaption === "string"
-            ? String((content.ai as Record<string, unknown>).socialCaption)
-            : "",
-          "إذا نفعك المقطع، تابع ذِكر واحفظه وشاركه مع من تحب.",
+          buildAutomatedSocialCaption(request, `${siteUrl()}${publicPath}`),
           content.audience === "kids" && typeof content.seriesTitle === "string"
             ? `سلسلة أطفال: ${content.seriesTitle} — الموسم ${Number(content.seasonNumber) || 1}، الحلقة ${Number(content.episodeNumber) || 1}. الهدف: ${String(content.learningObjective || "قيمة تربوية")}`
             : "",
-          `المصدر: ${contentSourceUrl(request)}`,
-          `${siteUrl()}${publicPath}`,
         ].filter(Boolean).join("\n\n"),
         video_url: videoUrl,
         target_platforms: targets,
@@ -1725,6 +1881,8 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
           maxAttempts: 5,
           nextRetryAt: null,
           ai: content.ai && typeof content.ai === "object" ? content.ai : null,
+          automatedVideoQa: content.automatedVideoQa,
+          automatedVideoQaVersion: AUTOMATED_VIDEO_QA_VERSION,
         },
         automation_key: socialKey,
       }),
@@ -1847,6 +2005,65 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
     const attemptStartedAt = Date.now();
     try {
       const rendered = await renderVideo(request);
+      const qaChecks = buildAutomatedVideoQaChecklist(request, rendered);
+      const qaReviewedAt = new Date().toISOString();
+      const qaApproval = createAutomatedVideoQaApproval({
+        snapshot: {
+          category: request.category,
+          sourceHash: rendered.sourceHash,
+          contentHash: rendered.contentHash,
+          templateVersion: rendered.templateVersion,
+          videoUrl: rendered.videoUrl,
+        },
+        checks: qaChecks,
+        reviewedAt: qaReviewedAt,
+      });
+      const missingQaChecks = REQUIRED_VIDEO_APPROVAL_CHECKS.filter((key) => qaChecks[key] !== true);
+      const engagement = {
+        openingHook: resolveDeterministicVideoHook({ id: request.id, category: request.category, audience: request.content.audience }),
+        scene: rendered.scene,
+        composition: request.content.render && typeof request.content.render === "object"
+          ? (request.content.render as Record<string, unknown>).composition ?? null
+          : null,
+        durationSeconds: request.content.render && typeof request.content.render === "object"
+          ? (request.content.render as Record<string, unknown>).durationSeconds ?? null
+          : null,
+      };
+      request.content = qaApproval
+        ? {
+            ...request.content,
+            ...qaApproval,
+            automatedVideoQa: {
+              ...(qaApproval.automatedVideoQa as Record<string, unknown>),
+              engagement,
+            },
+          }
+        : {
+            ...request.content,
+            approvalStatus: "qa_failed",
+            approvalReviewerId: null,
+            approvalReviewedAt: null,
+            approvalSnapshotHash: null,
+            qualityReview: {
+              ...qaChecks,
+              reviewedAt: qaReviewedAt,
+              mode: "automated",
+              engine: AUTOMATED_VIDEO_QA_ENGINE,
+              engineVersion: AUTOMATED_VIDEO_QA_VERSION,
+            },
+            automatedVideoQa: {
+              status: "blocked",
+              engine: AUTOMATED_VIDEO_QA_ENGINE,
+              engineVersion: AUTOMATED_VIDEO_QA_VERSION,
+              reviewedAt: qaReviewedAt,
+              checks: qaChecks,
+              missingChecks: missingQaChecks,
+              engagement,
+            },
+          };
+      if (!qaApproval) {
+        console.warn(`[template-video] Automated QA blocked external distribution for ${request.id}: ${missingQaChecks.join(", ")}`);
+      }
       await registerGeneratedVideoOnSite(request, rendered);
       await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
         method: "PATCH",
