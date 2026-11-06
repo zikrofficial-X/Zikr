@@ -44,6 +44,32 @@ export async function getYouTubeRefreshToken(
   return readStored().catch(() => null);
 }
 
+
+/**
+ * Publishing uses a separately verified credential that explicitly includes
+ * youtube.upload as well as channel/analytics read scopes. Analytics continues
+ * using the read-only getter above; no video-delete scope is ever accepted.
+ */
+export async function getYouTubeUploadRefreshToken(): Promise<string | null> {
+  try {
+    const rows = await supabaseServerAdminRequest<StoredYouTubeOAuthCredential[]>(
+      "/rest/v1/youtube_oauth_credentials?provider=eq.youtube&select=refresh_token,granted_scopes&limit=1",
+    );
+    const row = Array.isArray(rows) ? rows[0] : null;
+    const scopes = Array.isArray(row?.granted_scopes) ? row.granted_scopes : [];
+    const required = [
+      "https://www.googleapis.com/auth/youtube.upload",
+      "https://www.googleapis.com/auth/youtube.readonly",
+      "https://www.googleapis.com/auth/yt-analytics.readonly",
+    ];
+    if (!required.every((scope) => scopes.includes(scope))) return null;
+    const token = row?.refresh_token;
+    return typeof token === "string" && token.trim() ? token.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function saveYouTubeOAuthCredential(
   credential: YouTubeOAuthCredentialInput,
   connectedBy?: string | null,
