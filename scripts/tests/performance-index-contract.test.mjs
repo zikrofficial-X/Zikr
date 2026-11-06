@@ -36,3 +36,11 @@ for (const column of ["created_by", "reviewed_by", "activated_by"]) {
     `Missing video_template_versions foreign-key index for ${column}`,
   );
 }
+
+const reconciledTemplateVersionIndexes = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261106061131_video_template_version_fk_indexes_reconcile.sql"),
+  "utf8",
+);
+for (const column of ["created_by", "reviewed_by", "activated_by"]) {
+  assert.match(reconciledTemplateVersionIndexes, new RegExp(`CREATE INDEX IF NOT EXISTS video_template_versions_${column}_idx\\s+ON public\\.video_template_versions \\(${column}\\)`, "i"));
+}
