@@ -127,8 +127,14 @@ if (!youtubeCredentials.includes("getYouTubeUploadRefreshToken") ||
     !youtubeCredentials.includes("https://www.googleapis.com/auth/yt-analytics.readonly")) {
   failures.push("YouTube upload credential must require explicit upload, channel-read and analytics scopes");
 }
-const expectedYouTubeRedirect = "https://zikrmediaofficial.vercel.app/api/admin/social/youtube/callback";
-if (!youtubeConnect.includes(expectedYouTubeRedirect) || !youtubeCallback.includes(expectedYouTubeRedirect)) {
+const expectedYouTubeOrigin = 'const CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";';
+const expectedYouTubeRedirect = 'const YOUTUBE_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/youtube/callback";';
+if (
+  !youtubeConnect.includes(expectedYouTubeOrigin) ||
+  !youtubeCallback.includes(expectedYouTubeOrigin) ||
+  !youtubeConnect.includes(expectedYouTubeRedirect) ||
+  !youtubeCallback.includes(expectedYouTubeRedirect)
+) {
   failures.push("YouTube OAuth authorize and token exchange must use the same canonical Google redirect URI");
 }
 if (!youtubeConnect.includes('requireAdminApi("social.manage")') ||
