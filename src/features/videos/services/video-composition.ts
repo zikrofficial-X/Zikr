@@ -42,6 +42,9 @@ export type VideoCompositionProfile = CompositionPreset & {
   bodyFontSize: number;
   cameraPath: VideoCameraPath;
   zoomIncrement: number;
+  fontFamily: "Noto Naskh Arabic" | "Noto Sans Arabic";
+  captionStyle: "classic" | "minimal" | "boxed";
+  sourceCardStyle: "standard" | "compact";
 };
 
 const PRESETS: Record<VideoCompositionKey, CompositionPreset> = {
@@ -164,11 +167,42 @@ export function resolveVideoComposition(input: {
   seed: string;
   width: number;
   height: number;
+  template?: {
+    fontPreset?: "auto" | "naskh" | "sans";
+    palette?: "template" | "gold" | "emerald" | "monochrome";
+    safeArea?: "standard" | "wide";
+    captionStyle?: "classic" | "minimal" | "boxed";
+    sourceCardStyle?: "standard" | "compact";
+  };
 }): VideoCompositionProfile {
   const isVertical = input.height >= input.width;
   const width = Math.max(1, Math.floor(input.width));
   const height = Math.max(1, Math.floor(input.height));
-  const preset = PRESETS[compositionKey(input.category, input.audience)];
+  const preset = { ...PRESETS[compositionKey(input.category, input.audience)] };
+  const template = input.template ?? {};
+  const palette = template.palette ?? "template";
+  if (palette === "gold") {
+    preset.accentHex = "EFD39A";
+    preset.accentAss = "&H009AD3EF";
+    preset.panelHex = "0A1411";
+  } else if (palette === "emerald") {
+    preset.accentHex = "B8E7C6";
+    preset.accentAss = "&H00C6E7B8";
+    preset.panelHex = "071A18";
+  } else if (palette === "monochrome") {
+    preset.accentHex = "E8E8E8";
+    preset.accentAss = "&H00E8E8E8";
+    preset.panelHex = "11151A";
+  }
+
+  const safeArea = template.safeArea ?? "standard";
+  if (safeArea === "wide") {
+    preset.panelX = Math.min(0.15, preset.panelX + 0.025);
+    preset.panelWidth = Math.max(0.70, preset.panelWidth - 0.05);
+    preset.panelY = Math.min(0.39, preset.panelY + 0.015);
+    preset.panelHeight = Math.max(0.32, preset.panelHeight - 0.03);
+  }
+
   const cameraPaths: VideoCameraPath[] = [
     "center",
     "left-to-right",
@@ -177,6 +211,11 @@ export function resolveVideoComposition(input: {
     "bottom-to-top",
   ];
   const cameraPath = cameraPaths[stableIndex(input.seed, cameraPaths.length)];
+  const fontPreset = template.fontPreset ?? "auto";
+  const fontFamily = fontPreset === "naskh" || (fontPreset === "auto" && input.audience !== "kids")
+    ? "Noto Naskh Arabic"
+    : "Noto Sans Arabic";
+
   return {
     ...preset,
     width,
@@ -190,12 +229,15 @@ export function resolveVideoComposition(input: {
     bodyAnchorY: Math.round(height * preset.bodyY),
     titleY: Math.round(height * 0.185),
     accentThickness: Math.max(5, Math.round(height * 0.004)),
-    lineChars: isVertical ? preset.lineCharsVertical : preset.lineCharsHorizontal,
+    lineChars: Math.max(18, Math.floor((isVertical ? preset.lineCharsVertical : preset.lineCharsHorizontal) * (safeArea === "wide" ? 0.9 : 1))),
     linesPerPage: isVertical ? preset.linesPerPageVertical : preset.linesPerPageHorizontal,
     titleFontSize: isVertical ? preset.titleSizeVertical : preset.titleSizeHorizontal,
     bodyFontSize: isVertical ? preset.bodySizeVertical : preset.bodySizeHorizontal,
     cameraPath,
     zoomIncrement: cameraPath === "center" ? 0.00016 : 0.0002,
+    fontFamily,
+    captionStyle: template.captionStyle ?? "classic",
+    sourceCardStyle: template.sourceCardStyle ?? "standard",
   };
 }
 
