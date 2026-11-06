@@ -27,6 +27,16 @@ if (template.includes("https://zikrmediaofficial.vercel.app")) failures.push("vi
 if (!template.includes("getServerEnv().NEXT_PUBLIC_SITE_URL")) failures.push("video worker must use the canonical site environment");
 if (!template.includes("sourceId") || !template.includes("published source is required")) failures.push("source-locked content gate is missing");
 if (!template.includes("narration does not exactly match the current published source text")) failures.push("source text must be exact before rendering");
+if (!template.includes("buildAutomatedVideoQaChecklist") ||
+    !template.includes("createAutomatedVideoQaApproval") ||
+    !template.includes("automatedQa.status !== \"passed\"")) {
+  failures.push("external publishing must require a complete source-locked automated QA approval");
+}
+if (!template.includes("if (qaApproval)") ||
+    !template.includes("Render retained in the generation audit only") ||
+    !template.includes("automatedVideoQa: request.content.automatedVideoQa ?? null")) {
+  failures.push("failed automated QA renders must remain in the generation audit and must not be published to site or social queues");
+}
 if (!template.includes("assertPlayableOutput")) failures.push("rendered videos must pass media integrity QA");
 if (!template.includes("assertAudibleAudio")) failures.push("rendered videos must pass audible-audio QA");
 if (!template.includes("Rendered output resolution mismatch")) failures.push("rendered video resolution must be validated");
