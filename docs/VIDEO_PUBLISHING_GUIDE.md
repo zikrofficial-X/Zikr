@@ -72,7 +72,7 @@ Eligible non-kids social videos append the disclosed Monetag SmartLink to YouTub
 
 The link is excluded from child-directed videos and is omitted from Facebook video captions when the source audience cannot be verified. The website placement is limited to the homepage, public video hub, and eligible general-public footer routes; it is not shown in children's or sacred-text/worship-tool interfaces.
 
-This integration does not turn on social publishing. The established `SOCIAL_PUBLISH_ENABLED` and provider readiness gates remain authoritative. Already-published posts are not edited or republished.
+This integration does not bypass social publishing controls. Production currently sets `SOCIAL_PUBLISH_ENABLED=true`; the Admin `video_automation_auto_publish` setting and provider readiness gates remain authoritative. Already-published posts are not edited or republished.
 
 See `docs/MONETAG_SMARTLINK_PLACEMENT.md` for placement and verification details.
 
