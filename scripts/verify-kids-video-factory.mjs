@@ -21,7 +21,9 @@ for (const token of ['const mode = slot % 7', "buildKidsSeriesEpisode", "validat
 }
 if (!worker.includes("KIDS_SERIES_START_DAY_INDEX")) failures.push("kids series schedule must have a stable launch reference");
 if (!worker.includes("Math.ceil((dailyTarget * scheduleWindow) / 4)")) failures.push("daily target must be spread across four six-hour workflow windows");
-if (!worker.includes("سلسلة أطفال:")) failures.push("social captions must identify series, season, episode and educational objective");
+for (const field of ["seriesId:", "seriesTitle:", "seasonNumber:", "episodeNumber:", "learningObjective:", "factorySequence:"]) {
+  if (!worker.includes(field)) failures.push("internal video catalog must retain kids series metadata: " + field);
+}
 
 const router = read("src/features/videos/providers/provider-router.ts");
 if (!router.includes('!["hf_ltx_fast", "hf_wan", "template"].includes(name)')) failures.push("free-only mode must reject potentially billable/custom providers");
