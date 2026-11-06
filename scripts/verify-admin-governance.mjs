@@ -127,6 +127,35 @@ for (const command of ["verify", "verify:pr"]) {
   }
 }
 
+
+const pinnedSiteContent = read("src/features/site-content/services/site-content.ts");
+const managedContentService = read("src/features/admin/services/content.ts");
+const contentPublisher = read("scripts/jobs/content-publishing.ts");
+const supabaseTypes = read("src/lib/types/supabase.ts");
+const pinnedTypeStart = supabaseTypes.indexOf("pinned_messages: {");
+const pinnedTypeEnd = supabaseTypes.indexOf("prayer_locations: {", pinnedTypeStart);
+const pinnedType = pinnedTypeStart >= 0 && pinnedTypeEnd > pinnedTypeStart
+  ? supabaseTypes.slice(pinnedTypeStart, pinnedTypeEnd)
+  : "";
+if (!pinnedType.includes("published: boolean") || pinnedType.includes("is_active") || pinnedType.includes("priority") || pinnedType.includes("type: string")) {
+  failures.push("pinned_messages generated type must match the live published/CTA schema");
+}
+if (!pinnedSiteContent.includes(".select('id, title, body, cta_label, cta_href, published, created_at, updated_at')") ||
+    !pinnedSiteContent.includes(".eq('published', true)") ||
+    pinnedSiteContent.includes("is_active") ||
+    pinnedSiteContent.includes("priority")) {
+  failures.push("public pinned-message reader must use the canonical published schema");
+}
+if (!managedContentService.includes('.select("id, title, published, created_at, updated_at")') ||
+    !managedContentService.includes("published: item.published ?? false") ||
+    managedContentService.includes('table === "pinned_messages" ? "is_active"')) {
+  failures.push("admin content manager must read and mutate pinned_messages through published");
+}
+if (!contentPublisher.includes("body: JSON.stringify({ published: true, updated_at: now })") ||
+    contentPublisher.includes('item.content_table === "pinned_messages" ? "is_active"')) {
+  failures.push("scheduled content publisher must publish pinned_messages through published");
+}
+
 if (failures.length) {
   console.error("ADMIN_GOVERNANCE_CHECK_FAILED");
   for (const failure of failures) console.error("❌ " + failure);

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import * as ts from "typescript";
 
 const root = process.cwd();
 const apiRoot = join(root, "src/app/api/admin");
@@ -110,39 +111,65 @@ for (const file of routeFiles) {
   }
 }
 
-const actionFiles = [...new Set(
-  actionRoots.flatMap((actionRoot) => walk(actionRoot))
-    .filter((file) => /\.(?:ts|tsx)$/.test(file))
-    .filter((file) => {
-      const source = readFileSync(file, "utf8").trimStart();
-      return source.startsWith('"use server"') || source.startsWith("'use server'");
-    }),
-)].sort();
+function isUseServerDirective(statement) {
+  return (
+    ts.isExpressionStatement(statement) &&
+    (ts.isStringLiteral(statement.expression) ||
+      ts.isNoSubstitutionTemplateLiteral(statement.expression)) &&
+    statement.expression.text === "use server"
+  );
+}
+
+function discoverServerActions(file, source) {
+  const scriptKind = file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, scriptKind);
+  const trimmed = source.trimStart();
+  const isModuleActionFile =
+    trimmed.startsWith('"use server"') || trimmed.startsWith("'use server'");
+  const actions = [];
+
+  const visit = (node) => {
+    if (ts.isFunctionDeclaration(node) && node.body) {
+      const modifiers = node.modifiers ?? [];
+      const isAsync = modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword);
+      const isExported = modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+      const isInlineAction = isUseServerDirective(node.body.statements[0]);
+
+      if (isAsync && (isModuleActionFile ? isExported : isInlineAction)) {
+        actions.push(node);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+
+  return { sourceFile, actions };
+}
+
+const actionFiles = actionRoots
+  .flatMap((actionRoot) => walk(actionRoot))
+  .filter((file) => /\.(?:ts|tsx)$/.test(file))
+  .map((file) => {
+    const source = readFileSync(file, "utf8");
+    const discovered = discoverServerActions(file, source);
+    return { file, source, ...discovered };
+  })
+  .filter((entry) => entry.actions.length > 0)
+  .sort((a, b) => a.file.localeCompare(b.file));
 
 let actionCount = 0;
 let actionGuardedCount = 0;
 if (!actionFiles.length) failures.push("no admin server-action files were discovered");
 
-for (const file of actionFiles) {
-  const source = readFileSync(file, "utf8");
-  const relativePath = relative(root, file).split(sep).join("/");
-  const actions = [
-    ...source.matchAll(/export\s+async\s+function\s+([A-Za-z0-9_]+)\s*\(/g),
-  ];
-
-  if (!actions.length) {
-    failures.push(relativePath + ": server-action module exports no async action");
-    continue;
-  }
-
-  for (let i = 0; i < actions.length; i++) {
+for (const entry of actionFiles) {
+  const relativePath = relative(root, entry.file).split(sep).join("/");
+  for (const action of entry.actions) {
     actionCount++;
-    const match = actions[i];
-    const end = actions[i + 1]?.index ?? source.length;
-    const block = source.slice(match.index, end);
+    const block = entry.source.slice(action.getStart(entry.sourceFile), action.end);
+    const label = action.name?.text ?? "anonymous";
     const outcome = checkGuardedBlock({
       block,
-      label: relativePath + " :: " + match[1],
+      label: relativePath + " :: " + label,
     });
     if (outcome === "guarded") actionGuardedCount++;
   }

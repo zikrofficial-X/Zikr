@@ -10,6 +10,7 @@ const read = (path) => {
   return readFileSync(path, "utf8");
 };
 
+const permissions = read("src/features/admin/services/permissions.ts");
 const createRoute = read("src/app/api/admin/videos/create/route.ts");
 if (!createRoute.includes('requireAdminApi("video.manage")')) failures.push("video create API must require video.manage");
 if (!createRoute.includes("SOURCE_LOCKED_CATEGORIES")) failures.push("video create API must enforce source-locked categories");
@@ -18,10 +19,45 @@ if (!createRoute.includes("sourceVerifiedAtRequest: true")) failures.push("video
 if (!createRoute.includes("ownCloudinaryAudioUrl")) failures.push("human narration must be restricted to ZIKR-owned Cloudinary uploads");
 if (!createRoute.includes("category === \"quran\"")) failures.push("Quran audio substitution must remain blocked");
 
+const approvalHelper = read("src/features/videos/services/video-publish-approval.ts");
+const socialPublishing = read("src/features/social/services/social-publishing.ts");
+if (!approvalHelper.includes("approvalReviewerId") || !approvalHelper.includes("approvalSnapshotHash")) {
+  failures.push("video approval must be attributed to a reviewer and bound to a snapshot hash");
+}
+if (!approvalHelper.includes("sourceHash") || !approvalHelper.includes("contentHash") || !approvalHelper.includes("templateVersion")) {
+  failures.push("video approval snapshot must bind source, content and template versions");
+}
+if (!approvalHelper.includes("buildVideoApprovalSnapshotHash")) {
+  failures.push("video approval snapshot hashing helper is missing");
+}
+if (!socialPublishing.includes("source_hash,content_hash,template_version")) {
+  failures.push("social publisher must fetch current video source/content/template hashes before sending");
+}
+if (!socialPublishing.includes("hasVideoApprovalForQueueItem(item)")) {
+  failures.push("social publisher must revalidate approval after queue claim and before provider calls");
+}
+
 const generation = read("src/app/api/admin/video-generation/route.ts");
 if (!generation.includes("requireAdminApi('video.manage')")) failures.push("video generation GET/PATCH must require video.manage");
 if (!generation.includes("requireAdminApi('video.delete')")) failures.push("video generation DELETE must require video.delete");
 if (!generation.includes("updated_at=eq.") || !generation.includes("current.updated_at")) failures.push("admin publish retry must use optimistic concurrency");
+
+const retryPublishStart = generation.indexOf("if (action === 'retry_publish')");
+const retryPublishEnd = generation.indexOf("if (!ALLOWED_STATUSES.has(status))", retryPublishStart);
+const retryPublishBlock = retryPublishStart >= 0 && retryPublishEnd > retryPublishStart
+  ? generation.slice(retryPublishStart, retryPublishEnd)
+  : "";
+if (!retryPublishBlock.includes("requireAdminApi('social.publish')")) {
+  failures.push("video publish retry must require social.publish independently from video.manage");
+}
+const videoManagerRole = permissions.match(/video_manager:\s*\[([\s\S]*?)\]/)?.[1] ?? "";
+const socialManagerRole = permissions.match(/social_manager:\s*\[([\s\S]*?)\]/)?.[1] ?? "";
+if (videoManagerRole.includes("'social.publish'")) {
+  failures.push("video_manager must not receive social.publish through the role matrix");
+}
+if (!socialManagerRole.includes("'social.publish'")) {
+  failures.push("social_manager must retain the explicit social.publish permission");
+}
 
 const sources = read("src/app/api/admin/video-generation/sources/route.ts");
 if (!sources.includes('requireAdminApi("video.manage")')) failures.push("video source API must require video.manage");
@@ -36,7 +72,6 @@ if (upload.includes("/storage/v1/object/videos/")) failures.push("narration uplo
 const service = read("src/features/videos/services/video-automation.ts");
 if (!service.includes("updated_at=eq.") || !service.includes("request.updated_at")) failures.push("video queue claims must include optimistic updated_at");
 
-const permissions = read("src/features/admin/services/permissions.ts");
 if (!permissions.includes("'video.manage'")) failures.push("video.manage permission missing");
 if (!permissions.includes("'video.delete'")) failures.push("video.delete permission missing");
 if (!permissions.includes("'video.manage', 'video.delete'")) failures.push("video_manager role must own video permissions");
