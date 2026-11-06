@@ -239,3 +239,31 @@ export function planCaptionTimings(
     return { start: pageStart, end: pageEnd, text: page };
   });
 }
+
+/**
+ * Wraps and paginates the full approved narration without dropping trailing lines.
+ * ASS line-break markers are emitted only after the original words are retained.
+ */
+export function paginateCaptionText(value: string, lineChars: number, linesPerPage: number): string[] {
+  const maxChars = Math.max(12, Math.floor(lineChars));
+  const pageLines = Math.max(1, Math.floor(linesPerPage));
+  const words = value.trim().split(/\\s+/).filter(Boolean);
+  if (!words.length) return [""];
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const candidate = line ? line + " " + word : word;
+    if (candidate.length > maxChars && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) lines.push(line);
+  const pages: string[] = [];
+  for (let index = 0; index < lines.length; index += pageLines) {
+    pages.push(lines.slice(index, index + pageLines).join("\\\\N"));
+  }
+  return pages.length ? pages : [value.trim()];
+}
