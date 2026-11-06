@@ -12,7 +12,7 @@ This checkpoint supersedes the older deployment and schema snapshots below.
 - Latest verified production deployment: `dpl_6A7XdBAjUWrMrp6KSxKKYtuTHSpw`, state `READY`, production commit `0adf4c3b701bbb18ec9d3bf674d972b7e0af5c39` (branding PR #149).
 - Production aliases verified on that deployment: `zikrmediaofficial.vercel.app`, `zikr-zikr3.vercel.app`, and `zikr-git-main-zikr3.vercel.app`.
 - Main Quality Gate run `41041147885` passed the full `pnpm verify` suite. CircleCI application-build/docs and config-guard statuses for the main commit also passed.
-- Supabase project `ymxdswkaxafakugktsim` is `ACTIVE_HEALTHY`; live migration ledger contains **384** versions, latest `20261030110000`.
+- Supabase project `zqtssvlvmkzeeyqghqfk` is `ACTIVE_HEALTHY`; live migration ledger contains **384** versions, latest `20261030110000`.
 - Supabase Security Advisor still reports **Leaked Password Protection Disabled**. The Supabase organization is on the **Free** plan; this Auth feature requires Pro or above, so enabling it needs an owner-approved upgrade or formal acceptance as an exception. Live database size is **80.37 MiB**, below the 500 MB Free database-size quota. A live `storage.objects` inventory contains 409 objects / **1,874,392,887 bytes (~1.874 GB)** in `videos` and `android-releases`, above the 1 GB Free storage allowance snapshot. Check billed Storage Size GB-Hours and grace-period state in the Supabase Usage page; the owner must choose Pro or approve reference-safe retention cleanup. No assets were deleted. Performance Advisor reports **68 unused-index observations**, INFO; do not bulk-delete.
 - Production counters at the latest live SQL check: video requests 375 completed, 9 pending, 1 processing, 1 retry-wait; social queue 286 published and 5 partial. The 5 partial rows are YouTube-success / Facebook Reels cooldown deferrals; do not retry or enable social automation without owner approval.
 - Current Kids registry is **13 games**, superseding the older 12-game inventory. Automated registry/game/content contracts exist; educator/religious review and physical/browser acceptance remain separate gates.
@@ -36,12 +36,12 @@ This checkpoint supersedes the older deployment and schema snapshots below.
 
 ## Current Vercel/Supabase binding
 
-The production Vercel project `zikr` is configured against Supabase project `ymxdswkaxafakugktsim` and the repository's active runtime validation files use the same canonical Supabase URL.
+The production Vercel project `zikr` is configured against Supabase project `zqtssvlvmkzeeyqghqfk` and the repository's active runtime validation files use the same canonical Supabase URL.
 
 The repository's active production configuration was rechecked during the 2026-10-08 reconciliation:
 
-- `supabase/config.toml` points to `ymxdswkaxafakugktsim`.
-- `scripts/validate-deployment-env.mjs` enforces `https://ymxdswkaxafakugktsim.supabase.co`.
+- `supabase/config.toml` points to `zqtssvlvmkzeeyqghqfk`.
+- `scripts/validate-deployment-env.mjs` enforces `https://zqtssvlvmkzeeyqghqfk.supabase.co`.
 - `scripts/verify-auth-config.mjs` uses the same Supabase Auth provider callback.
 - `scripts/verify-hygiene.mjs` treats obsolete Supabase/repository URLs as forbidden runtime references rather than active configuration.
 
@@ -51,7 +51,7 @@ The repository contains the previously verified application route, API, content,
 
 ## Supabase production state
 
-The selected production target is `ymxdswkaxafakugktsim`.
+The selected production target is `zqtssvlvmkzeeyqghqfk`.
 
 The live reconciliation previously confirmed that the production database has the newer migration chain through the October 2026 changes, including the background reminder Quran fields that were missing from an older deployment's runtime error.
 
@@ -60,7 +60,7 @@ Security-advisor findings still require deliberate review of permissive/public p
 ## CI / deployment
 
 - GitHub repository access is now confirmed with admin/maintain/push permissions.
-- The active `.github/workflows/supabase-production-health.yml` is already pinned to the canonical Supabase project `ymxdswkaxafakugktsim`.
+- The active `.github/workflows/supabase-production-health.yml` is already pinned to the canonical Supabase project `zqtssvlvmkzeeyqghqfk`.
 - Vercel remains the production deployment platform for the linked `main` branch.
 - GitHub Actions is the production owner for recurring video generation and social publishing.
 - CircleCI is the application build/documentation, Android release, Supabase gate, and English-content lane; it does not run the production video/social worker.
@@ -75,3 +75,12 @@ Older audit documents may still mention retired project references such as `eydx
 1. Keep the production deployment and canonical alias under controlled-release ownership.
 2. Monitor post-release runtime errors and worker queues.
 3. Keep Supabase security-advisor cleanup and Auth security settings as separate, reviewed changes.
+
+
+## Production Supabase cutover — 2026-11-06
+
+- Active production project: `zqtssvlvmkzeeyqghqfk` (Zikrofficial, eu-west-2, PostgreSQL 17.11, ACTIVE_HEALTHY).
+- The Vercel Production `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and public anon key were verified against this project.
+- Current database snapshot: 90/90 public tables have RLS enabled; Health Advisor is clear. Security Advisor has only the Free-plan leaked-password-protection warning remaining after revoking public execution of the RLS event-trigger function.
+- Active prayer and source-agent cron jobs still require the new repository migration `20261106210000_repoint_active_cron_jobs_to_current_project.sql` to be applied via the dedicated PostgreSQL release connection; the Supabase connector itself denied UPDATE on `cron.job`.
+- No video generation requests, social publish queue items, Facebook Page credentials, or YouTube upload credentials exist in the active project's current snapshot. Video automation settings `video_automation_enabled` and `video_automation_ai_enabled` are true. External publishing remains fail-closed until channel OAuth connections are completed.
