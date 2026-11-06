@@ -140,6 +140,22 @@ if (!socialWorker.includes("syncYoutubePublishedPostInsights")) failures.push("s
 if (!/import\s*\{\s*syncYoutubePublishedPostInsights\s*\}\s*from\s*["\']\.\.\/\.\.\/src\/features\/social\/services\/youtube-post-insights["\']/.test(socialWorker)) failures.push("social worker must import the YouTube insights sync implementation");
 if (!postInsights.includes("scope: \"public-statistics\"")) failures.push("YouTube metrics must be labelled as public statistics, not retention analytics");
 
+const facebookInsights = read("src/features/social/services/facebook-reels-insights.ts");
+for (const token of ["syncFacebookReelsInsights", "video_insights", "fb_reels_total_plays", "post_video_avg_time_watched", "read_insights", "pages_read_engagement", "page-video-insights"]) {
+  if (!facebookInsights.includes(token)) failures.push("Facebook Reels insights sync missing contract: " + token);
+}
+if (facebookInsights.includes("post_impressions_unique")) failures.push("Facebook Reels insights must not request deprecated post_impressions_unique");
+if (!socialWorker.includes("syncFacebookReelsInsights")) failures.push("social worker must periodically sync Facebook Reels insights");
+const facebookConnect = read("src/app/api/admin/social/facebook/connect/route.ts");
+if (!facebookConnect.includes('"read_insights"')) failures.push("Facebook OAuth must request read_insights for Reels analytics");
+const facebookCredentialHealth = read("src/features/social/services/facebook-credentials.ts");
+if (!facebookCredentialHealth.includes("facebookInsightsPermissionGranted")) failures.push("Facebook health must expose read_insights grant state");
+const socialAdminUi = read("src/app/admin/social/social-client.tsx");
+if (!socialAdminUi.includes("facebookReelsInsightsSummary") || !socialAdminUi.includes("إحصاءات Facebook Reels")) failures.push("Admin social queue must display Facebook Reels insights and permission state");
+const facebookInsightsTest = read("scripts/tests/facebook-reels-insights.test.ts");
+if (!facebookInsightsTest.includes("Facebook Reels insights permission and metric tests passed")) failures.push("Facebook Reels insights regression tests are missing");
+const packageJson = JSON.parse(read("package.json"));
+if (!packageJson.scripts.test.includes("facebook-reels-insights.test.ts")) failures.push("Facebook Reels insights tests must be registered in the main test suite");
 const adminApi = read("src/app/api/admin/social/route.ts");
 if (!adminApi.includes("const allTargetsSucceeded") || !adminApi.includes("targets.every(platform => succeeded.has(platform))")) failures.push("Admin retry must not label mixed-success/auth-blocked queue items as published");
 if (!adminApi.includes("authBlockedPlatforms")) failures.push("Admin retry path must understand Facebook auth-blocked platforms");
