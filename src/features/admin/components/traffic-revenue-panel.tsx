@@ -96,7 +96,7 @@ export async function TrafficRevenuePanel() {
           <MetricCard label="مرات ظهور Monetag" value={null} note="يلزم استيراد تقرير الناشر" icon={BarChart3} />
           <MetricCard label="أرباح Monetag" value={null} note="لا توجد مزامنة أرباح متصلة بعد" icon={Wallet} />
           <MetricCard label="مقالات منشورة" value={metrics.publishedArticles} note="عدد دقيق من قاعدة البيانات" icon={Search} />
-          <MetricCard label="فيديوهات منشورة" value={metrics.publishedVideos} note="عدد دقيق من قاعدة البيانات" icon={Youtube} />
+          <MetricCard label="فيديوهات منشورة" value={metrics.publishedVideos} note="عدد دقيق من قاعدة البيانات" icon={Share2} />
           <MetricCard label="منشورات منشورة" value={metrics.socialPublished} note="سجل طابور النشر الاجتماعي" icon={CheckCircle2} />
           <MetricCard label="منشورات في الانتظار" value={metrics.socialQueued} note="تُعالج بواسطة الناشر الحالي" icon={Send} />
           <MetricCard label="منشورات فاشلة" value={metrics.socialFailed} note="تحتاج مراجعة قبل إعادة المحاولة" icon={CircleHelp} />
