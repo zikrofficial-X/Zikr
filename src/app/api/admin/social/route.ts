@@ -212,11 +212,11 @@ export async function GET() {
         oldestQueuedAt,
         health: {
           youtubeConfigured: Boolean(
-            env.YOUTUBE_CLIENT_ID &&
-            env.YOUTUBE_CLIENT_SECRET &&
-            env.YOUTUBE_REFRESH_TOKEN
+            (env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET && env.YOUTUBE_REFRESH_TOKEN) ||
+            (env.YOUTUBE_API_KEY && env.YOUTUBE_CHANNEL_ID)
           ),
           youtubeConnectionStatus: youtubeHealth.status,
+          youtubeReadSource: youtubeHealth.readSource,
           youtubeConnectionMessage: youtubeHealth.message,
           youtubeChannelId: youtubeHealth.channelId,
           youtubeChannelName: youtubeHealth.channelName,
@@ -290,7 +290,7 @@ export async function POST(request: NextRequest) {
         action: "social.youtube.connection_test",
         permission: "social.manage",
         resourceType: "youtube_channel",
-        metadata: { status: health.status, channelId: health.channelId },
+        metadata: { status: health.status, channelId: health.channelId, readSource: health.readSource },
       });
       return NextResponse.json({ ok: true, health }, { headers: { "Cache-Control": "no-store" } });
     }
