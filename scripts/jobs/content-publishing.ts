@@ -18,7 +18,7 @@ export async function processScheduledContent(limit = 20) {
     );
     if (!claimed.length) continue;
     try {
-      const column = item.content_table === "pinned_messages" ? "is_active" : "published";
+      const column = "published";
       await supabaseServerAdminRequest(`/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
