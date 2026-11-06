@@ -55,7 +55,7 @@ const facebookCallback = readFileSync(
   "utf8",
 );
 assert.match(facebookConnect, /requireAdminApi\("social.manage"\)/);
-assert.match(facebookConnect, /dialog\\/oauth/);
+assert.ok(facebookConnect.includes("dialog/oauth"));
 assert.match(facebookConnect, /pages_manage_posts/);
 assert.doesNotMatch(facebookConnect, /FACEBOOK_INTEGRATION_RETIRED/);
 assert.match(facebookCallback, /requireAdminApi\("social.manage"\)/);
