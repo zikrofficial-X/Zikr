@@ -32,4 +32,23 @@ assert.match(panel, /لا يستخدم هذا المحرك تحديث الصفح
 assert.match(page, /requireAdminPermission\("analytics\.read"\)/);
 assert.match(page, /<TrafficRevenuePanel\s*\/>/);
 
+
+assert.match(service, /socialProcessing/);
+assert.match(service, /socialPartial/);
+assert.match(service, /videoRetryPending/);
+assert.match(service, /socialCreated24h/);
+assert.match(service, /socialPublished7d/);
+assert.match(service, /videoRequested24h/);
+assert.match(service, /videoCompleted7d/);
+assert.match(service, /averageRenderDurationMs7d/);
+assert.match(service, /timezone: "UTC"/);
+assert.match(service, /metadata\.platformResults/);
+assert.match(service, /remoteIds \+= 1/);
+assert.match(service, /platformRowsComplete/);
+assert.match(service, /total !== rows\.length/);
+assert.doesNotMatch(panel, /remoteId\s*:/i);
+assert.match(panel, /نتائج النشر لكل منصة/);
+assert.match(panel, /آخر 24 ساعة و7 أيام/);
+assert.match(panel, /المعرّفات البعيدة/);
+
 console.log("✅ Traffic & Revenue contracts passed.");
