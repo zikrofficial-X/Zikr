@@ -13,7 +13,8 @@ type Status = SocialQueueStatus;
 type QueueItem = SocialPublishQueueItem;
 type Health = {
   youtubeConfigured: boolean;
-  youtubeConnectionStatus?: "not_configured" | "not_tested" | "connected" | "reauthorization_required" | "permission_missing" | "channel_not_found" | "unavailable";
+  youtubeConnectionStatus?: "not_configured" | "not_tested" | "connected" | "public_data_only" | "reauthorization_required" | "permission_missing" | "channel_not_found" | "unavailable";
+  youtubeReadSource?: "oauth" | "api_key" | null;
   youtubeChannelId?: string | null;
   youtubeChannelName?: string | null;
   youtubeLastCheckedAt?: string | null;
@@ -298,18 +299,23 @@ export default function AdminSocialPage() {
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
-        health?: { status?: Health["youtubeConnectionStatus"]; channelId?: string | null; channelName?: string | null; checkedAt?: string; message?: string };
+        health?: { status?: Health["youtubeConnectionStatus"]; readSource?: Health["youtubeReadSource"]; channelId?: string | null; channelName?: string | null; subscribers?: number | null; totalViews?: number | null; videoCount?: number | null; checkedAt?: string; message?: string };
       };
       if (!response.ok || !payload.health) throw new Error(payload.error || "تعذر اختبار اتصال YouTube.");
       setHealth(current => ({
         ...current,
         youtubeConnectionStatus: payload.health?.status,
+        youtubeReadSource: payload.health?.readSource ?? null,
         youtubeChannelId: payload.health?.channelId ?? null,
+        youtubeSubscribers: payload.health?.subscribers ?? null,
+        youtubeTotalViews: payload.health?.totalViews ?? null,
+        youtubeVideoCount: payload.health?.videoCount ?? null,
         youtubeChannelName: payload.health?.channelName ?? null,
         youtubeLastCheckedAt: payload.health?.checkedAt ?? null,
         youtubeConnectionMessage: payload.health?.message ?? "انتهى اختبار YouTube.",
       }));
       if (payload.health.status === "connected") setMessage("اختبار YouTube ناجح. تم التحقق من قناة النشر.");
+      else if (payload.health.status === "public_data_only") setMessage(payload.health.message || "تمت قراءة بيانات القناة العامة.");
       else setError(payload.health.message || "لم يجتز اتصال YouTube الاختبار.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر اختبار اتصال YouTube.");
@@ -567,10 +573,10 @@ export default function AdminSocialPage() {
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs text-brand-cream/50">YouTube</div>
             <span className={`text-xs ${health.youtubeConnectionStatus === "connected" ? "text-emerald-300" : "text-amber-200/80"}`}>
-              {health.youtubeConnectionStatus === "connected" ? "متصل" : health.youtubeConnectionStatus === "reauthorization_required" ? "يحتاج إعادة تفويض" : health.youtubeConnectionStatus === "permission_missing" ? "صلاحية قراءة القناة ناقصة" : health.youtubeConfigured ? "لم يُختبر الاتصال" : "غير مضبوط"}
+              {health.youtubeConnectionStatus === "connected" ? "متصل" : health.youtubeConnectionStatus === "public_data_only" ? "قراءة عامة فقط" : health.youtubeConnectionStatus === "reauthorization_required" ? "يحتاج إعادة تفويض" : health.youtubeConnectionStatus === "permission_missing" ? "صلاحية قراءة القناة ناقصة" : health.youtubeConfigured ? "لم يُختبر الاتصال" : "غير مضبوط"}
             </span>
           </div>
-          <p className="text-sm font-semibold text-brand-cream/85">{health.youtubeChannelName || (health.youtubeConfigured ? "OAuth موجود — يلزم اختبار القناة" : "بيانات OAuth غير مكتملة")}</p>
+          <p className="text-sm font-semibold text-brand-cream/85">{health.youtubeChannelName || (health.youtubeConfigured ? "قناة YouTube — يلزم الاختبار" : "بيانات YouTube غير مكتملة")}</p>
           {health.youtubeConnectionMessage && <p className="text-xs leading-5 text-brand-cream/55">{health.youtubeConnectionMessage}</p>}
           <Button variant="outline" size="sm" disabled={busy || !health.youtubeConfigured} onClick={() => void testYouTube()}>
             اختبار اتصال YouTube
