@@ -36,7 +36,7 @@ assert.doesNotMatch(panel, /facebook|instagram|tiktok|pinterest|whatsapp|مرك�
 assert.match(panel, /api\/admin\/social\/youtube\/connect/);
 assert.match(page, /requireAdminPermission\("analytics\.read"\)/);
 assert.match(page, /<TrafficRevenuePanel\s*\/>/);
-assert.match(page, /YOUTUBE_REDIRECT|api\/admin\/social\/youtube\/connect/);
+assert.doesNotMatch(page, /YOUTUBE_REDIRECT|api\/admin\/social\/youtube\/connect/);
 
 assert.match(service, /videoRetryPending/);
 assert.match(service, /videoRequested24h/);
