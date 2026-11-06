@@ -11,6 +11,9 @@ import {
   Send,
   Share2,
   Wallet,
+  Clock3,
+  Users,
+  Eye,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
