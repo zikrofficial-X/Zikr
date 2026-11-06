@@ -89,7 +89,13 @@ export async function GET(request: NextRequest) {
 
   const providerError = request.nextUrl.searchParams.get("error");
   if (providerError) {
-    return redirectResult(providerError === "access_denied" ? "authorization_denied" : "oauth_failed");
+    return redirectResult(
+      providerError === "access_denied"
+        ? "authorization_denied"
+        : providerError === "redirect_uri_mismatch"
+          ? "redirect_uri_mismatch"
+          : "oauth_failed",
+    );
   }
 
   const code = request.nextUrl.searchParams.get("code");
