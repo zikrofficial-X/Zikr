@@ -7,7 +7,7 @@ Production configuration is owned by:
 - GitHub repository: `zikrofficial-X/Zikr`
 - Branch: `main`
 - Vercel project: `zikr`
-- Supabase production project: `ymxdswkaxafakugktsim`
+- Supabase production project: `zqtssvlvmkzeeyqghqfk`
 - Production origin: `https://zikrmediaofficial.vercel.app`
 
 The repository must reference only canonical environment variable names. Legacy duplicate names such as `*_2` are forbidden in runtime/configuration source.
