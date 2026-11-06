@@ -50,7 +50,7 @@ for (const token of [
   "captionTiming: \"page-weighted-audio-duration\"",
   "buildAutomatedVideoQaChecklist",
   "createAutomatedVideoQaApproval",
-  "automatedVideoQa.status !== \"passed\"",
+  "automatedQa.status !== \"passed\"",
   "rightsReviewed",
   "automatedVideoQa: request.content.automatedVideoQa ?? null",
 ]) {
