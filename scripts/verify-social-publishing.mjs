@@ -18,6 +18,7 @@ const navigation = read("src/features/admin/config/navigation.ts");
 const runner = read("scripts/run-background-jobs.ts");
 const videoGenerator = read("scripts/jobs/template-video-automation.ts");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
+const socialPublishingService = read("src/features/social/services/social-publishing.ts");
 const youtubeCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
 const videoAutomation = read("src/features/videos/services/video-automation.ts");
 const socialWorkflow = read(".github/workflows/publish-social.yml");
@@ -77,13 +78,13 @@ if (!videoGenerator.includes("getYouTubeUploadRefreshToken") ||
     !videoGenerator.includes("FACEBOOK_PUBLISHING_REQUESTED")) {
   failures.push("video social queue targets must be gated by verified provider credentials and explicit provider switches");
 }
-if (!socialWorker.includes("hasVideoApprovalForQueueItem") ||
-    !socialWorker.includes("Video held for human QA approval")) {
+if (!socialPublishingService.includes("hasVideoApprovalForQueueItem") ||
+    !socialPublishingService.includes("Video held for human QA approval")) {
   failures.push("a video must remain blocked until human QA approval is verified by the worker");
 }
-if (!socialWorker.includes("created_at=gte.${createdSince}") ||
-    !socialWorker.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff") ||
-    !socialWorker.includes("stale recovery is disabled")) {
+if (!socialPublishingService.includes("created_at=gte.${createdSince}") ||
+    !socialPublishingService.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff") ||
+    !socialPublishingService.includes("stale recovery is disabled")) {
   failures.push("social queue reads, stale recovery, and cleanup must be restricted to the explicit post-launch cutoff");
 }
 if (!socialWorkflow.includes("workflow_run:") ||
