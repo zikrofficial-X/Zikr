@@ -33,6 +33,10 @@ const siteAudioRoute = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/site-audio/route.ts"),
   "utf8",
 );
+const rlsEventTriggerMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261106205519_revoke_public_execution_on_rls_auto_enable.sql"),
+  "utf8",
+);
 const editorialActions = readFileSync(
   resolve(process.cwd(), "src/app/admin/editorial-actions.ts"),
   "utf8",
@@ -240,5 +244,11 @@ assert.equal(socialManagerPermissions?.[1].includes("'video.delete'"), false);
 assert.ok(videoManagerPermissions?.[1].includes("'video.manage'"));
 assert.equal(videoManagerPermissions?.[1].includes("'social.publish'"), false);
 assert.equal(videoManagerPermissions?.[1].includes("'social.manage'"), false);
+
+assert.match(
+  rlsEventTriggerMigration,
+  /REVOKE EXECUTE ON FUNCTION public\\.rls_auto_enable\\(\\) FROM PUBLIC, anon, authenticated/i,
+  "RLS event-trigger function must not be callable by browser roles",
+);
 
 console.log("Admin RBAC/RLS migration contract passed.");
