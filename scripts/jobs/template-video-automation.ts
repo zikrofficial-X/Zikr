@@ -36,12 +36,26 @@ const VIDEO_OUTPUT_CRF = Math.min(23, Math.max(16, Number(process.env.VIDEO_OUTP
 const VIDEO_AUDIO_BITRATE = process.env.VIDEO_AUDIO_BITRATE?.trim() || "192k";
 const engineConfig = () => getVideoEngineConfig();
 
+async function isVideoGenerationPaused(): Promise<boolean> {
+  try {
+    const rows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
+      "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_purge_in_progress)&select=key,value",
+    );
+    const settings = Object.fromEntries((rows ?? []).map(row => [row.key, row.value]));
+    return settings.video_purge_in_progress === true || settings.video_automation_enabled === false;
+  } catch (error) {
+    console.error("[video-worker] Could not verify the production video-generation lock:", error);
+    return true;
+  }
+}
+
 /**
  * Upload completed MP4 bytes directly from the GitHub worker to Cloudinary.
  * Supabase remains the database/queue only; generated public videos are never
  * staged in Supabase Storage where Cloudinary and Meta reads consume Egress.
  */
 async function uploadGeneratedVideoToCloudinary(bytes: Uint8Array, storageKey: string) {
+  if (await isVideoGenerationPaused()) throw new Error("Video generation is paused by the administrator; upload was blocked before storage.");
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
   const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
   const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
@@ -496,6 +510,7 @@ export const KIDS_SERIES_START_DAY_INDEX = dayIndex(new Date("2026-10-21T00:00:0
 
 export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   if (process.env.AUTO_VIDEO_ENABLED?.toLowerCase() === "false") return 0;
+  if (await isVideoGenerationPaused()) return 0;
   const now = new Date();
   const day = dayIndex(now);
   let created = 0;
@@ -515,6 +530,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   const allowed = urgent ? Math.min(10, batchSize) : Math.min(10, batchSize, Math.max(0, dueByNow - alreadySeededToday));
 
   for (let i = 0; i < allowed; i += 1) {
+    if (await isVideoGenerationPaused()) break;
     const slot = alreadySeededToday + i;
     const mode = slot % 7;
 

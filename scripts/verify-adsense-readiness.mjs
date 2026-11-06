@@ -54,7 +54,9 @@ for (const file of appCode) {
   const source = read(file);
   if (/<img\b/i.test(source)) fail(`Raw <img> usage found in application code: ${file}`);
   if (/@next\/next\/no-img-element/.test(source)) fail(`Image lint suppression found in application code: ${file}`);
-  if (/\b(?:lorem ipsum|todo|fixme|coming soon|under construction|example\.com)\b/i.test(source)) {
+  // Treat hyphenated identifiers such as the Lucide icon key "list-todo"
+  // as one token; they are not TODO placeholders in user-facing source.
+  if (/(?:^|[^a-z0-9_-])(?:lorem ipsum|todo|fixme|coming soon|under construction|example\.com)(?:$|[^a-z0-9_-])/i.test(source)) {
     fail(`Placeholder/development text found in application code: ${file}`);
   }
 }

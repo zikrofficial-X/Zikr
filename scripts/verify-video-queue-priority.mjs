@@ -14,9 +14,14 @@ function assert(condition, message) {
   }
 }
 
-const seedCall = worker.indexOf("const seeded = await seedAutomatedVideoRequests(settings.batchSize);");
+const seedStart = worker.indexOf("seedAutomatedVideoRequests(settings.batchSize)");
+const seedEnd = seedStart >= 0 ? worker.indexOf(";", seedStart) : -1;
 const drainCall = worker.indexOf("const result = await drainQueue(settings.batchSize);");
-assert(seedCall >= 0 && drainCall > seedCall, "seed scheduled requests before draining queue backlog");
+assert(seedStart >= 0 && seedEnd > seedStart && drainCall > seedEnd, "seed scheduled requests before draining queue backlog");
+assert(
+  worker.includes("isVideoGenerationPaused() ? 0 : await seedAutomatedVideoRequests(settings.batchSize)"),
+  "video purge lock is checked before scheduled requests are seeded",
+);
 
 assert(
   worker.includes("const priorityDay = Math.floor(Date.now() / 86_400_000);"),

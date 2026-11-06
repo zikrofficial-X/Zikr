@@ -67,7 +67,7 @@
     "content:canonical:check": "node scripts/verify-content-canonicalization.mjs",
     "quran:canonical:check": "node scripts/verify-quran-canonicalization.mjs",
     "voice:factory:check": "node scripts/verify-voice-factory.mjs",
-    "video:factory:check": "node scripts/verify-video-factory.mjs",
+    "video:factory:check": "node scripts/verify-video-factory.mjs && pnpm video:purge:check",
     "ai:visual:check": "node scripts/verify-ai-visual-factory.mjs",
     "video:qa:check": "node scripts/verify-video-qa.mjs",
     "scheduler:check": "node scripts/verify-scheduler.mjs",
@@ -103,7 +103,8 @@
     "written-content:generate": "tsx scripts/jobs/written-content-automation.ts",
     "written-content:check": "tsx scripts/tests/written-content-automation.test.ts",
     "video:providers:check": "tsx scripts/tests/video-custom-provider-registry.test.ts",
-    "error:boundaries:check": "node scripts/verify-error-boundaries.mjs"
+    "error:boundaries:check": "node scripts/verify-error-boundaries.mjs",
+    "video:purge:check": "node scripts/tests/video-purge-contract.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "7.6.9",

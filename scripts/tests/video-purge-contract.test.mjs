@@ -1,0 +1,55 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const read = (path) => readFileSync(path, "utf8");
+const route = read("src/app/api/admin/video-purge/route.ts");
+const socialWorker = read("scripts/jobs/social-publishing.ts");
+const videoWorker = read("scripts/jobs/template-video-automation.ts");
+const videoQueuePage = read("src/features/admin/video-requests/components/admin-video-requests-client.tsx");
+const socialPage = read("src/app/admin/social/social-client.tsx");
+const generationStudio = read("src/app/admin/video/studio/page.tsx");
+const control = read("src/features/admin/components/purge-generated-videos-control.tsx");
+const apiGuards = read("scripts/verify-admin-api-guards.mjs");
+
+for (const token of [
+  'requireAdminApi("video.delete")',
+  'CONFIRMATION_PHRASE = "امسح الفيديوهات المولّدة فقط"',
+  "resource_type:video AND tags=automated",
+  'asset.public_id.startsWith("auto-")',
+  'tags.has("zikr-generated")',
+  'tags.has("automated")',
+  'tags.has("cloudinary-migration")',
+  'asset.format === "mp4"',
+  "VIDEO_CONTENT_TYPES",
+  "video_generation_requests",
+  "video_automation_runs",
+  "publicVideoCatalogPreserved: true",
+  'action: "video.library.purge"',
+  "externalSocialPostsDeleted: false",
+]) {
+  assert.ok(route.includes(token), "Missing purge route safety contract: " + token);
+}
+assert.ok(!/drop\s+table|supabase_migrations|android-releases/i.test(route), "Purge must not alter schema, migration history, or Android releases.");
+assert.ok(!route.includes('deleteRows("videos", "id=not.is.null")'), "Purge must preserve the public video catalogue.");
+assert.ok(route.includes("published_at=is.null") && route.includes("hasSuccessfulRemotePublication"), "Purge may remove only queued video items without publication evidence.");
+const unresolvedPreflight = route.indexOf("const unresolvedDeliveries = await getUnresolvedVideoDeliveries();");
+const pauseAutomation = route.indexOf("await pauseVideoAutomation();");
+assert.ok(unresolvedPreflight >= 0 && pauseAutomation > unresolvedPreflight, "unresolved social deliveries must block purge before pausing automation");
+assert.ok(route.includes('row.status === "partial"'), "partial video deliveries must block purge");
+assert.ok(route.includes('status=in.(queued,failed)'), "only queued/failed video queue rows may be purged");
+assert.ok(route.includes("automationMustBeReenabled: true"), "a purge blocked after the worker lock must expose the required recovery state");
+assert.ok(socialWorker.includes("isVideoPurgeInProgress"));
+assert.ok(socialWorker.includes("video_purge_in_progress"));
+assert.ok(videoWorker.includes("isVideoGenerationPaused"));
+assert.ok(videoWorker.includes("video_automation_enabled,video_purge_in_progress"));
+assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
+assert.ok(generationStudio.includes("PurgeGeneratedVideosControl"));
+assert.ok(socialPage.includes("PurgeGeneratedVideosControl"));
+assert.ok(control.includes("امسح الفيديوهات المولّدة فقط"));
+assert.ok(control.includes('fetch("/api/admin/video-purge"'));
+assert.ok(control.includes("setAuthorized(allowed)"));
+assert.ok(control.includes("YouTube وFacebook"));
+assert.ok(apiGuards.includes('src/app/api/admin/video-purge/route.ts GET'));
+assert.ok(apiGuards.includes('src/app/api/admin/video-purge/route.ts POST'));
+
+console.log("Generated-video purge contracts passed.");

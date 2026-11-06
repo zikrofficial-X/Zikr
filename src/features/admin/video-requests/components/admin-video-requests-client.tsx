@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PurgeGeneratedVideosControl } from "@/features/admin/components/purge-generated-videos-control";
 import type { VideoGenerationRequest } from "@/features/videos/services/video-automation";
 
 type Status = "pending" | "processing" | "retry_wait" | "completed" | "failed";
@@ -161,6 +162,8 @@ export default function AdminVideoRequestsClient() {
           <Button variant="outline" onClick={() => void load()} disabled={loading}>تحديث</Button>
         </div>
       </header>
+
+      <PurgeGeneratedVideosControl onCompleted={load} />
 
       {error && <div role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
       {message && <div role="status" className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm text-emerald-200">{message}</div>}

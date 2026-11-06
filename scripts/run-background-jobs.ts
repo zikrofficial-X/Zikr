@@ -141,6 +141,19 @@ function applyVideoAutomationSettings(settings: VideoAutomationSettings) {
 const SOCIAL_PUBLISH_ENABLED = process.env.SOCIAL_PUBLISH_ENABLED !== "false";
 const VIDEO_DRY_RUN = (process.env.VIDEO_AUTOMATION_DRY_RUN ?? "true").toLowerCase() === "true";
 
+async function isVideoGenerationPaused(): Promise<boolean> {
+  try {
+    const rows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
+      "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_purge_in_progress)&select=key,value",
+    );
+    const values = Object.fromEntries((rows ?? []).map(row => [row.key, row.value]));
+    return values.video_purge_in_progress === true || values.video_automation_enabled === false;
+  } catch (error) {
+    console.error("[background-jobs] Could not verify the live video-generation lock; failing closed:", error);
+    return true;
+  }
+}
+
 const EDGE_TTS_VERSION = "7.3.1";
 const TTS_VENV_DIR = process.env.ARABIC_TTS_VENV?.trim() || join(process.cwd(), ".tts-venv");
 
@@ -186,7 +199,7 @@ function validateRequiredEnv() {
 }
 
 async function processVideos(settings: VideoAutomationSettings) {
-  if (!settings.enabled) {
+  if (!settings.enabled || await isVideoGenerationPaused()) {
     console.log("[background-jobs] Video automation disabled from Admin settings.");
     return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
   }
@@ -216,6 +229,10 @@ async function processVideos(settings: VideoAutomationSettings) {
     let remaining = Math.max(0, capacity);
 
     while (remaining > 0) {
+      if (await isVideoGenerationPaused()) {
+        console.log("[background-jobs] Video generation lock activated during the run; stopping before the next batch.");
+        break;
+      }
       const waveSize = Math.min(processingBatchSize, remaining);
       // Process a bounded candidate batch in one worker invocation. Independent
       // concurrent reads selected the same oldest row and wasted capacity.
@@ -238,7 +255,7 @@ async function processVideos(settings: VideoAutomationSettings) {
 
   // Seed first so an old backlog cannot indefinitely starve today's scheduled requests.
   // Queue claiming remains atomic inside processTemplateVideoQueue().
-  const seeded = await seedAutomatedVideoRequests(settings.batchSize);
+  const seeded = await isVideoGenerationPaused() ? 0 : await seedAutomatedVideoRequests(settings.batchSize);
   console.log(`[background-jobs] Seeded ${seeded} new video request(s) before queue processing.`);
 
   const result = await drainQueue(settings.batchSize);
