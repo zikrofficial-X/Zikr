@@ -39,4 +39,154 @@ function configuredPython() {
 
 function styleAsset(style: VideoGenerationInput["style"]) {
   const normalized =
-    style === "dawn" || style === "night" || style === "gold" || style === "em¶»§q«^
+    style === "dawn" || style === "night" || style === "gold" || style === "emerald" || style === "paper" || style === "rose" ? style : "calm";
+  return path.join(process.cwd(), "public", "video", "templates", normalized + ".svg");
+}
+
+async function makeWanConditioningImage(tempDir: string, style?: VideoGenerationInput["style"]) {
+  const output = path.join(tempDir, "wan-conditioning.png");
+  await execFileAsync(
+    "rsvg-convert",
+    ["-w", "832", "-h", "480", styleAsset(style), "-o", output],
+    { timeout: 30_000, maxBuffer: 2 * 1024 * 1024 },
+  );
+  return output;
+}
+
+async function writePromptFile(tempDir: string, input: VideoGenerationInput) {
+  const kidsBrief = input.audience === "kids"
+    ? [
+        "Audience: children and families.",
+        "Visual style: polished, warm, playful 2D storybook animation, clear silhouettes, friendly colors, readable composition.",
+        "Show safe everyday environments and helpful behavior; no frightening scenes, injuries, weapons, dangerous imitation, or unsafe stunts.",
+        "Do not depict prophets or sacred figures; do not add religious text, subtitles, lettering, logos, or recognizable copyrighted characters to the image.",
+        input.seriesTitle ? "Series: " + input.seriesTitle + "." : "",
+        Number.isInteger(input.episodeNumber) ? "Episode: " + input.episodeNumber + "." : "",
+        input.learningObjective ? "Learning objective: " + input.learningObjective + "." : "",
+      ]
+    : [];
+  const prompt = [
+    input.audience === "kids"
+      ? "Create a polished, child-safe animated story scene for the ZIKR family learning platform."
+      : "Create a premium cinematic Arabic Islamic short video for the ZIKR platform.",
+    ...kidsBrief,
+    "Title: " + input.title + ".",
+    "Section: " + input.category + ".",
+    "Verified source text: " + input.text.slice(0, 1800) + ".",
+    input.sourceUrl ? "Reference URL: " + input.sourceUrl + "." : "",
+    aiVisualPolicyPromptLine(),
+    "Treat the supplied source text as factual content context, not as a license to invent religious quotations.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const promptPath = path.join(tempDir, "prompt.txt");
+  await writeFile(promptPath, prompt, "utf8");
+  return promptPath;
+}
+
+export class HuggingFaceSpaceVideoProvider implements VideoProvider {
+  readonly name: VideoProviderName;
+  private readonly variant: HuggingFaceVariant;
+  private readonly customSpace?: string;
+  private readonly explicitlyEnabled: boolean;
+
+  constructor(
+    variant: HuggingFaceVariant,
+    options?: { name?: VideoProviderName; space?: string; enabled?: boolean },
+  ) {
+    this.variant = variant;
+    this.name = options?.name ?? (variant === "wan2_2_fast" ? "hf_wan" : "hf_ltx_fast");
+    this.customSpace = options?.space;
+    this.explicitlyEnabled = options?.enabled ?? false;
+  }
+
+  async isAvailable() {
+    if (this.customSpace ? !this.explicitlyEnabled : !configuredEnabled(this.variant)) return false;
+    try {
+      await execFileAsync(
+        configuredPython(),
+        ["-c", "import gradio_client; print('gradio_client:ok')"],
+        { timeout: 20_000, maxBuffer: 512_000 },
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async generate(input: VideoGenerationInput): Promise<VideoGenerationResult> {
+    if (!(await this.isAvailable())) {
+      return {
+        ok: false,
+        provider: this.name,
+        error: this.name + " is disabled or gradio_client is unavailable.",
+      };
+    }
+
+    const tempDir = await mkdtemp(path.join(tmpdir(), "zikr-" + this.name + "-"));
+    const outputPath = path.join(tempDir, input.requestId + ".mp4");
+    const promptPath = await writePromptFile(tempDir, input);
+    let conditioningImage: string | null = null;
+
+    try {
+      if (this.variant === "wan2_2_fast") {
+        conditioningImage = await makeWanConditioningImage(tempDir, input.style);
+      }
+
+      const args = [
+        "scripts/jobs/hf-space-video.py",
+        "--provider",
+        this.variant,
+        "--space",
+        this.customSpace || configuredSpace(this.variant),
+        "--prompt-file",
+        promptPath,
+        "--output",
+        outputPath,
+        "--duration",
+        String(Math.min(8, Math.max(2, Math.round(input.durationSeconds ?? 6)))),
+        "--seed",
+        String(Math.abs(hashCode(input.requestId))),
+      ];
+
+      if (conditioningImage) args.push("--image", conditioningImage);
+
+      const token = process.env.HF_TOKEN?.trim();
+      if (token) args.push("--hf-token", token);
+
+      const { stdout, stderr } = await execFileAsync(configuredPython(), args, {
+        timeout: PYTHON_TIMEOUT_MS,
+        maxBuffer: 4 * 1024 * 1024,
+      });
+
+      if (stdout.trim()) console.log("[" + this.name + "] " + stdout.trim());
+      if (stderr.trim()) console.warn("[" + this.name + "] " + stderr.trim());
+
+      return {
+        ok: true,
+        provider: this.name,
+        localPath: outputPath,
+        durationSeconds: input.durationSeconds,
+        audioPresent: false,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        provider: this.name,
+        error: (error instanceof Error ? error.message : String(error)).slice(0, 2000),
+      };
+    } finally {
+      await rm(promptPath, { force: true }).catch(() => undefined);
+      if (conditioningImage) await rm(conditioningImage, { force: true }).catch(() => undefined);
+    }
+  }
+}
+
+function hashCode(value: string) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return hash;
+}

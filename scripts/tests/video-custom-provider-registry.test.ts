@@ -26,4 +26,4 @@ assert.ok(config.order.includes("hf_custom_1"));
 assert.deepEqual(config.customSpaces.map((entry) => entry.name), ["hf_custom_1"]);
 const missingConfig = getVideoEngineConfig({ ...process.env, ...process.env, VIDEO_FREE_ONLY: "true", VIDEO_PROVIDER_ORDER: "hf_custom_2,hf_wan" });
 assert.ok(!missingConfig.order.includes("hf_custom_2"));
-console.log("Custom Hugging Face provid¶»§q«^
+console.log("Custom Hugging Face provider registry tests passed.");

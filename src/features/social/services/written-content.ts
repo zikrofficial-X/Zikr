@@ -9,4 +9,12 @@ export function validateWrittenPostDraft(d:WrittenPostDraft):{ok:boolean;reason?
  if(title.length<8||title.length>90)return {ok:false,reason:"title_length"};
  if(hook.length<12||hook.length>260)return {ok:false,reason:"hook_length"};
  if(reflection.length<70||reflection.length>900)return {ok:false,reason:"reflection_length"};
- if(!/[\u0600-\u06FF]/u.test(title+hook+reflection))return {ok:false,reason:"arabic_re���q�^
+ if(!/[\u0600-\u06FF]/u.test(title+hook+reflection))return {ok:false,reason:"arabic_required"};
+ if(/(قال رسول الله|قال النبي|قال تعالى|رواه|حديث قدسي|فتوى قاطعة)/u.test(reflection))return {ok:false,reason:"unattributed_religious_quote"};
+ return {ok:true};
+}
+export function buildWrittenPost(source:WrittenContentSource,draft:WrittenPostDraft){
+ const quote=source.quoteRequired?`«${source.sourceText.trim()}»`:draft.reflection.trim();
+ const reflection=source.quoteRequired?draft.reflection.trim():"";
+ return {title:draft.title.trim(),body:[draft.hook.trim(),quote,reflection,draft.question?.trim()||"",source.reference.trim()].filter(Boolean).join("\n\n"),publicPath:source.publicPath};
+}

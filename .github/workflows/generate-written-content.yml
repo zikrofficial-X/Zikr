@@ -9,7 +9,7 @@ on:
         required: false
         default: "auto"
         type: choice
-        options: [auto, quran, hadith, dua, adhkar, story, prophets, companions, knowledge]
+        options: [auto, quran, hadith, dua, story, prophets, companions, knowledge]
       batch_size:
         description: "Number of posts to enqueue (bounded)"
         required: false
@@ -45,4 +45,16 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-¶»§q«^
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Validate runtime secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing Supabase service-role secret." >&2; exit 1; }
+          test -n "${GEMINI_API_KEY:-}" || { echo "::error::Missing GEMINI_API_KEY Actions secret in the production environment." >&2; exit 1; }
+      - run: pnpm install --frozen-lockfile
+      - name: Verify written-content contracts
+        run: pnpm written-content:check
+      - name: Generate and enqueue
+        run: pnpm written-content:generate -- --category "${WRITTEN_CONTENT_CATEGORY}" --batch-size "${WRITTEN_CONTENT_BATCH_SIZE}"
