@@ -55,4 +55,4 @@ Queue claiming is conditional on `status=pending`, and automation keys prevent d
 
 A generated video is only considered published when the provider returns its publication identifier and the queue records the provider result.
 
-**Last updated:** November 6, 2026
+**Last updated:** November 7, 2026
