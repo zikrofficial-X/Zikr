@@ -10,6 +10,12 @@ type Template = {
 type Version = {
   id: string; template_id: string; version: number; config: {
     assetKey?: string; defaultFormat?: "vertical" | "horizontal"; motion?: "slow" | "fade";
+    fontPreset?: "auto" | "naskh" | "sans";
+    palette?: "template" | "gold" | "emerald" | "monochrome";
+    safeArea?: "standard" | "wide";
+    captionStyle?: "classic" | "minimal" | "boxed";
+    sourceCardStyle?: "standard" | "compact";
+    audioPolicy?: "allow-tts" | "verified-audio-only";
   };
   status: "draft" | "approved" | "active" | "retired";
   is_system_seed: boolean; created_by: string | null; reviewed_by: string | null;
@@ -47,6 +53,12 @@ export default function TemplateStudioClient() {
   const [assetKey, setAssetKey] = useState("calm");
   const [defaultFormat, setDefaultFormat] = useState<"vertical" | "horizontal">("vertical");
   const [motion, setMotion] = useState<"slow" | "fade">("slow");
+  const [fontPreset, setFontPreset] = useState<"auto" | "naskh" | "sans">("auto");
+  const [palette, setPalette] = useState<"template" | "gold" | "emerald" | "monochrome">("template");
+  const [safeArea, setSafeArea] = useState<"standard" | "wide">("standard");
+  const [captionStyle, setCaptionStyle] = useState<"classic" | "minimal" | "boxed">("classic");
+  const [sourceCardStyle, setSourceCardStyle] = useState<"standard" | "compact">("standard");
+  const [audioPolicy, setAudioPolicy] = useState<"allow-tts" | "verified-audio-only">("allow-tts");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -94,6 +106,12 @@ export default function TemplateStudioClient() {
     setAssetKey(configAsset && availableAssets.includes(configAsset) ? configAsset : selectedTemplate.asset_key);
     setDefaultFormat(active?.config?.defaultFormat === "horizontal" ? "horizontal" : "vertical");
     setMotion(active?.config?.motion === "fade" ? "fade" : "slow");
+    setFontPreset(active?.config?.fontPreset === "naskh" || active?.config?.fontPreset === "sans" ? active.config.fontPreset : "auto");
+    setPalette(active?.config?.palette === "gold" || active?.config?.palette === "emerald" || active?.config?.palette === "monochrome" ? active.config.palette : "template");
+    setSafeArea(active?.config?.safeArea === "wide" ? "wide" : "standard");
+    setCaptionStyle(active?.config?.captionStyle === "minimal" || active?.config?.captionStyle === "boxed" ? active.config.captionStyle : "classic");
+    setSourceCardStyle(active?.config?.sourceCardStyle === "compact" ? "compact" : "standard");
+    setAudioPolicy(active?.config?.audioPolicy === "verified-audio-only" ? "verified-audio-only" : "allow-tts");
   }, [selectedTemplate, versionsByTemplate, availableAssets]);
 
   const mutate = useCallback(async (action: string, values: Record<string, unknown> = {}) => {
@@ -126,7 +144,7 @@ export default function TemplateStudioClient() {
     if (!selectedTemplate) return;
     void mutate("create-version", {
       templateId: selectedTemplate.id,
-      config: { assetKey, defaultFormat, motion },
+      config: { assetKey, defaultFormat, motion, fontPreset, palette, safeArea, captionStyle, sourceCardStyle, audioPolicy },
     });
   };
 
@@ -187,6 +205,60 @@ export default function TemplateStudioClient() {
                   <option value="fade">تلاشي تدريجي</option>
                 </select>
               </label>
+            </div>
+            <div className="space-y-3 rounded-xl border border-brand-gold/10 bg-black/15 p-3">
+              <h3 className="text-sm font-semibold text-brand-gold">التحكم في الإخراج البصري</h3>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <label className="block text-sm text-brand-cream/75">
+                  الخط العربي
+                  <select value={fontPreset} onChange={(event) => setFontPreset(event.target.value as typeof fontPreset)} className="mt-2 w-full rounded-xl border border-brand-gold/15 bg-black/30 p-3">
+                    <option value="auto">تلقائي حسب الجمهور</option>
+                    <option value="naskh">نسخ واضح</option>
+                    <option value="sans">Sans حديث</option>
+                  </select>
+                </label>
+                <label className="block text-sm text-brand-cream/75">
+                  لوحة الألوان
+                  <select value={palette} onChange={(event) => setPalette(event.target.value as typeof palette)} className="mt-2 w-full rounded-xl border border-brand-gold/15 bg-black/30 p-3">
+                    <option value="template">ألوان القالب الأساسية</option>
+                    <option value="gold">ذهبي دافئ</option>
+                    <option value="emerald">زمردي</option>
+                    <option value="monochrome">أحادي هادئ</option>
+                  </select>
+                </label>
+                <label className="block text-sm text-brand-cream/75">
+                  المنطقة الآمنة
+                  <select value={safeArea} onChange={(event) => setSafeArea(event.target.value as typeof safeArea)} className="mt-2 w-full rounded-xl border border-brand-gold/15 bg-black/30 p-3">
+                    <option value="standard">قياسية</option>
+                    <option value="wide">هوامش أوسع للنص والمنصات</option>
+                  </select>
+                </label>
+                <label className="block text-sm text-brand-cream/75">
+                  شكل الترجمة
+                  <select value={captionStyle} onChange={(event) => setCaptionStyle(event.target.value as typeof captionStyle)} className="mt-2 w-full rounded-xl border border-brand-gold/15 bg-black/30 p-3">
+                    <option value="classic">كلاسيكي بحد خفيف</option>
+                    <option value="minimal">بسيط قليل الظل</option>
+                    <option value="boxed">بطاقة خلفية للنص</option>
+                  </select>
+                </label>
+                <label className="block text-sm text-brand-cream/75">
+                  بطاقة المصدر
+                  <select value={sourceCardStyle} onChange={(event) => setSourceCardStyle(event.target.value as typeof sourceCardStyle)} className="mt-2 w-full rounded-xl border border-brand-gold/15 bg-black/30 p-3">
+                    <option value="standard">قياسية وواضحة</option>
+                    <option value="compact">مختصرة لتوفير المساحة</option>
+                  </select>
+                </label>
+                <label className="block text-sm text-brand-cream/75">
+                  سياسة الصوت
+                  <select value={audioPolicy} onChange={(event) => setAudioPolicy(event.target.value as typeof audioPolicy)} className="mt-2 w-full rounded-xl border border-brand-gold/15 bg-black/30 p-3">
+                    <option value="allow-tts">السماح بالتعليق العربي عند غياب تسجيل المصدر</option>
+                    <option value="verified-audio-only">صوت مصدر موثق أو تسجيل بشري فقط</option>
+                  </select>
+                </label>
+              </div>
+              <p className="text-xs leading-6 text-brand-cream/45">
+                بطاقة المصدر لا يمكن إخفاؤها. وضع الصوت الموثق يمنع التعليق الصناعي في الإنتاج عند غياب تسجيل المصدر؛ المعاينة الداخلية تستخدم صوتًا تجريبيًا ولا تُنشر.
+              </p>
             </div>
             <button type="button" onClick={createVersion} disabled={!selectedTemplate || Boolean(busy)} className="rounded-xl bg-brand-gold px-5 py-3 text-sm font-bold text-black disabled:opacity-50">
               {busy.startsWith("create-version:") ? "جارٍ إنشاء المسودة…" : "إنشاء مسودة إصدار"}
