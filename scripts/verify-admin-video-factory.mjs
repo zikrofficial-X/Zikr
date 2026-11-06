@@ -191,6 +191,7 @@ if (!worker.includes("source_hash: rendered.sourceHash") || !worker.includes("co
   failures.push("completed manual renders must persist source, content and template integrity fingerprints");
 }
 if (!worker.includes("content.skipSocialPublish === true")) failures.push("template preview requests must never enter public social queues");
+if (!worker.includes("!isTemplatePreview &&") || !worker.includes("!boundTemplate &&")) failures.push("pinned template renders must not be handed to external video providers");
 for (const [path, destinations] of [
   ["src/app/admin/audio/tts/page.tsx", ["/admin/video/voices", "/admin/video/scripts"]],
   ["src/app/admin/audio/quran/page.tsx", ["/admin/video/voices"]],
