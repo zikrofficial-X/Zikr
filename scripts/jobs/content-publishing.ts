@@ -10,13 +10,19 @@ export async function processScheduledContent(limit = 20) {
     { method: "GET" },
   );
   let published = 0;
-  for (const item of rows) {
-    if (!CONTENT_TABLES.has(item.content_table)) continue;
+  for (const item of rows ?? []) {
+    if (!CONTENT_TABLES.has(item.content_table)) {
+      await supabaseServerAdminRequest(`/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.queued`, {
+        method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({ status: "failed", error_message: "Unsupported internal content table.", updated_at: now }),
+      });
+      continue;
+    }
     const claimed = await supabaseServerAdminRequest<QueueItem[]>(
       `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.queued`,
       { method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ status: "processing", updated_at: now }) },
     );
-    if (!claimed.length) continue;
+    if (!claimed?.length) continue;
     try {
       await supabaseServerAdminRequest(`/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}`, {
         method: "PATCH",
