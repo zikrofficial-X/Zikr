@@ -199,4 +199,4 @@ if (failures.length) {
   for (const failure of failures) console.error("❌ " + failure);
   process.exit(1);
 }
-console.log("✅ Approval-gated event-driven social publishing and internal video generation contracts passed.");
+console.log("✅ Automated-QA event-driven social publishing and internal video generation contracts passed.");
