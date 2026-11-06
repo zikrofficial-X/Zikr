@@ -106,7 +106,7 @@ export async function TrafficRevenuePanel() {
           <MetricCard label="منشورات فاشلة" value={metrics.socialFailed} note="تحتاج مراجعة قبل إعادة المحاولة" icon={CircleHelp} />
           <MetricCard label="منشورات جزئية" value={metrics.socialPartial} note="لم تكتمل على كل المنصات المستهدفة" icon={CircleHelp} />
           <MetricCard label="منشورات قيد المعالجة" value={metrics.socialProcessing} note="ممسوكة بواسطة عامل النشر" icon={Activity} />
-          <MetricCard label="محاولات فيديو معادة" value={metrics.videoRetryPending} note="لها موعد إعادة محاولة مسجل" icon={Clock3} />
+          <MetricCard label="فيديوهات بانتظار إعادة المحاولة" value={metrics.videoRetryPending} note="لها موعد إعادة محاولة مسجل" icon={Clock3} />
           <MetricCard label="متوسط رندر الفيديو (ث)" value={metrics.averageRenderDurationMs7d === null ? null : Math.round(metrics.averageRenderDurationMs7d / 1000)} note="متوسط آخر 7 أيام UTC" icon={Clock3} />
         </div>
       </div>
@@ -136,11 +136,11 @@ export async function TrafficRevenuePanel() {
         </div>
         {snapshot.socialPlatformStatsComplete && snapshot.socialPlatformStats ? (
           <Card className="overflow-hidden p-0">
-            <div className="grid grid-cols-2 sm:grid-cols-2 sm:grid-cols-5 gap-2 border-b border-brand-gold/10 px-4 py-3 text-[11px] text-brand-cream/40">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 border-b border-brand-gold/10 px-4 py-3 text-[11px] text-brand-cream/40">
               <span>المنصة</span><span className="text-center">عمليات تسليم</span><span className="text-center">نجاح</span><span className="text-center">فشل</span><span className="text-center">معرّفات بعيدة</span>
             </div>
             {snapshot.socialPlatformStats.map((item) => (
-              <div key={item.platform} className="grid grid-cols-2 sm:grid-cols-2 sm:grid-cols-5 gap-2 border-b border-brand-gold/5 px-4 py-3 text-xs last:border-0">
+              <div key={item.platform} className="grid grid-cols-2 sm:grid-cols-5 gap-2 border-b border-brand-gold/5 px-4 py-3 text-xs last:border-0">
                 <span className="font-semibold text-brand-cream/80">{platformLabels[item.platform] ?? item.platform}</span>
                 <span className="text-center tabular-nums text-brand-cream/65">{format(item.deliveries)}</span>
                 <span className="text-center tabular-nums text-emerald-200/80">{format(item.successful)}</span>
