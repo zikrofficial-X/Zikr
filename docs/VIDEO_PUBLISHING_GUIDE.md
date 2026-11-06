@@ -5,13 +5,14 @@
 | Responsibility | Owner | Workflow |
 |---|---|---|
 | Video generation | GitHub Actions | `.github/workflows/generate-ai-video.yml` |
-| Social publishing | GitHub Actions | `.github/workflows/publish-social.yml` |
+| Internal website video publication | GitHub Actions + Supabase | `content_publish_queue` |
+| External social publishing | Retired | Guarded legacy workflow (`if: false`) |
 | Application build/documentation | CircleCI | `application-build-docs` |
 | Android build/signing | CircleCI | `android-rebuild` |
 | Prayer notifications | Supabase | `prayer-notification-worker` + pg_cron |
 | Source-verified content ingestion | Supabase | `source-verified-content-agent` + pg_cron |
 
-There is no CircleCI production video/social worker and no Vercel Cron for video or social publishing.
+There is no CircleCI production video worker and no Vercel Cron for video publication. External social publishing is disabled.
 
 ## Video pipeline
 
@@ -54,13 +55,9 @@ Do not restore the old social publishing workflow or its provider credentials as
 
 ## Monetag SmartLink
 
-Eligible non-kids social videos append the disclosed Monetag SmartLink to YouTube descriptions and Facebook/Reels captions at publish time. YouTube's tags field receives descriptive keywords; the actual URL remains in the description because tags are not clickable links.
+Monetag SmartLink placement is limited to approved general-audience website placements: the homepage, public video hub, and eligible general-public footer routes. It is not shown in children's sections or sacred-text/worship-tool interfaces.
 
-The link is excluded from child-directed videos and is omitted from Facebook video captions when the source audience cannot be verified. The website placement is limited to the homepage, public video hub, and eligible general-public footer routes; it is not shown in children's or sacred-text/worship-tool interfaces.
-
-This integration does not turn on social publishing. The established `SOCIAL_PUBLISH_ENABLED` and provider readiness gates remain authoritative. Already-published posts are not edited or republished.
-
-See `docs/MONETAG_SMARTLINK_PLACEMENT.md` for placement and verification details.
+No Monetag links are appended to YouTube or Facebook descriptions/captions because external social publishing is retired. See `docs/MONETAG_SMARTLINK_PLACEMENT.md` for website placement and verification details.
 
 ## Admin Run Now
 
@@ -95,9 +92,9 @@ For the complete ownership matrix, see `docs/AUTOMATION_OWNERSHIP_2026-10-08.md`
 For queue internals, see `docs/background-jobs.md`.
 
 
-## Written Facebook posts
+## Internal written website content
 
-The written-post factory runs through .github/workflows/generate-written-content.yml, independently from video production. It selects published/reviewed content records, preserves Quran/Hadith/Dua/Adhkar quotations verbatim, and queues the post as content_type=written_post with video_url=null and Facebook as the target. It reuses the existing social_publish_queue and publish-social.yml publisher; there is no second publishing worker. The workflow requires GEMINI_API_KEY as a GitHub Actions secret in the production environment. Vercel environment variables are not automatically available to GitHub Actions.
+The written-content factory runs through `.github/workflows/generate-written-content.yml`, independently from video production. It selects published/reviewed source records, preserves Quran/Hadith/Dua/Adhkar quotations verbatim, and creates unpublished ZIKR website articles. It schedules those articles through `content_publish_queue` with `content_table=articles`; it does not create social posts or use `social_publish_queue`. The workflow requires `GEMINI_API_KEY` as a GitHub Actions secret in the production environment. Vercel environment variables are not automatically available to GitHub Actions.
 
 ## Generated media lifecycle
 
