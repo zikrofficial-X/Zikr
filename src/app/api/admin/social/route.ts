@@ -17,6 +17,18 @@ import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/feature
 
 export const dynamic = "force-dynamic";
 
+type SocialPostInsightRow = {
+  queue_id: string;
+  platform: "youtube" | "facebook" | "facebook_reels";
+  video_id: string | null;
+  metrics: Record<string, unknown> | null;
+  captured_at: string;
+  source: string;
+  scope: string;
+  period: string | null;
+  status: string | null;
+};
+
 type QueueItem = {
   id: string;
   content_type: string;
@@ -173,7 +185,37 @@ export async function GET() {
     const fetchedItems = await supabaseServerAdminRequest<QueueItem[]>(
       "/rest/v1/social_publish_queue?select=id,content_type,content_id,title,video_url,target_platforms,status,scheduled_at,published_at,error_message,created_at,metadata&order=created_at.desc&limit=1000"
     );
-    const rows = await attachVideoApprovalDiagnostics(fetchedItems ?? []);
+    const queueRows = fetchedItems ?? [];
+    // Insights live in a private table so queue cleanup cannot erase analytics history.
+    const insightRows = await supabaseServerAdminRequest<SocialPostInsightRow[]>(
+      "/rest/v1/social_post_insights?select=queue_id,platform,video_id,metrics,captured_at,source,scope,period,status&order=captured_at.desc&limit=5000",
+    ).catch((error) => {
+      console.warn("[api/admin/social] post insights unavailable:", error instanceof Error ? error.message : "unknown error");
+      return [];
+    });
+    const insightsByQueueId = new Map<string, Record<string, unknown>>();
+    for (const insight of insightRows ?? []) {
+      const platformKey = insight.platform === "facebook_reels" ? "facebookReels" : insight.platform;
+      const value = insight.platform === "youtube"
+        ? { ...(insight.metrics ?? {}), videoId: insight.video_id, capturedAt: insight.captured_at, source: insight.source, scope: insight.scope }
+        : { videoId: insight.video_id, metrics: insight.metrics ?? {}, capturedAt: insight.captured_at, source: insight.source, scope: insight.scope, period: insight.period, status: insight.status };
+      const current = insightsByQueueId.get(insight.queue_id) ?? {};
+      current[platformKey] = value;
+      insightsByQueueId.set(insight.queue_id, current);
+    }
+    const rows = await attachVideoApprovalDiagnostics(queueRows.map((item): QueueItem => {
+      const stored = item.metadata?.platformInsights;
+      const storedInsights = stored && typeof stored === "object" && !Array.isArray(stored)
+        ? stored as Record<string, unknown>
+        : {};
+      return {
+        ...item,
+        metadata: {
+          ...(item.metadata ?? {}),
+          platformInsights: { ...storedInsights, ...(insightsByQueueId.get(item.id) ?? {}) },
+        },
+      };
+    }));
     const approvalPending = rows.filter(item =>
       isVideoContentType(item.content_type) && item.videoApproval?.approved !== true &&
       (item.status === "queued" || item.status === "partial" || item.status === "failed")
@@ -187,8 +229,11 @@ export async function GET() {
       return acc;
     }, {});
     const env = getServerEnv();
-    // Keep the Admin health badge aligned with the GitHub workflow gate.
-    const socialPublishingEnabled = true;
+    const autoPublishSettings = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
+      "/rest/v1/admin_settings?key=eq.video_automation_auto_publish&select=key,value&limit=1",
+    ).catch(() => []);
+    const autoPublishValue = autoPublishSettings?.[0]?.value;
+    const socialPublishingEnabled = autoPublishValue === true || autoPublishValue === "true";
     const [facebookHealth, facebookAudience, youtubeHealth, trafficSnapshot] = await Promise.all([
       getFacebookPageConnectionHealth(), getFacebookPageAudienceSnapshot(), getYouTubePublishingConnectionHealth(), getTrafficRevenueSnapshot(),
     ]);

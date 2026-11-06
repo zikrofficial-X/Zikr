@@ -11,7 +11,7 @@ import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';
 import { PUBLIC_CONTENT_THRESHOLDS } from '@/lib/content-quality';
 
-export const revalidate = 1800;
+export const dynamic = 'force-dynamic';
 
 const MIN_PUBLIC_STORY_CHARS = PUBLIC_CONTENT_THRESHOLDS.story;
 

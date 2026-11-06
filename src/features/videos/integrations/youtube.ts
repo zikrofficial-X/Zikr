@@ -91,10 +91,18 @@ export function normalizeYoutubeChannelInput(value: string): string {
   return trimmed.replace(/^@?/, match => (trimmed.startsWith('@') ? match : ''));
 }
 
+function safeYoutubeErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? "Unknown YouTube API error.");
+  return message
+    .replace(/https?:\/\/[^\s"'<>]+/gi, "[provider request redacted]")
+    .replace(/([?&](?:key|access_token)=)[^&\s]+/gi, "$1[REDACTED]")
+    .slice(0, 300);
+}
+
 function getYoutubeErrorCode(error: unknown): YoutubeChannelFeed['errorCode'] {
   const message = error instanceof Error ? error.message : String(error ?? '');
-  if (/\b429\b|quota exceeded|quotaExceeded|dailyLimitExceeded|forbidden.*quota/i.test(message)) return 'quota_exceeded';
-  if (/YouTube API failed \(\d{3}\)/i.test(message)) return 'http_error';
+  if (/\b429\b|quota exceeded|quotaExceeded|dailyLimitExceeded|rateLimitExceeded|userRateLimitExceeded/i.test(message)) return 'quota_exceeded';
+  if (/YouTube API failed \(HTTP \d{3}\)/i.test(message)) return 'http_error';
   return 'unknown';
 }
 
@@ -118,8 +126,21 @@ async function youtubeFetch<T>(path: string, params: Record<string, string | num
   try {
     const response = await fetch(`https://www.googleapis.com/youtube/v3/${path}?${searchParams.toString()}`, { cache: 'no-store', signal: controller.signal });
     if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`YouTube API failed (${response.status}): ${body.slice(0, 220)}`);
+      const payload = await response.json().catch(() => null) as
+        | { error?: { errors?: Array<{ reason?: string }> } }
+        | null;
+      const allowedReasons = new Set([
+        "quotaExceeded",
+        "dailyLimitExceeded",
+        "rateLimitExceeded",
+        "userRateLimitExceeded",
+      ]);
+      const reason = payload?.error?.errors
+        ?.map((entry) => entry.reason)
+        .find((entry): entry is string => typeof entry === "string" && allowedReasons.has(entry));
+      throw new Error(
+        `YouTube API failed (HTTP ${response.status}${reason ? `; reason=${reason}` : ""}).`,
+      );
     }
     return response.json() as Promise<T>;
   } finally { clearTimeout(timeoutId); }
@@ -179,14 +200,14 @@ async function readSyncHealth(channelId: string): Promise<YoutubeSyncHealth> {
   const { data, error } = await supabase.from('youtube_sync_state').select('id,channel_id,status,last_attempted_at,last_success_at,next_allowed_sync_at,last_error,updated_at').eq('id', 1).maybeSingle();
   if (error) throw error;
   const row = data as YoutubeSyncStateRow | null;
-  return { configured: true, status: row?.channel_id === channelId ? row.status : 'never_synced', lastAttemptedAt: row?.last_attempted_at ?? null, lastSuccessAt: row?.last_success_at ?? null, nextAllowedSyncAt: row?.next_allowed_sync_at ?? null, lastError: row?.last_error ?? null };
+  return { configured: true, status: row?.channel_id === channelId ? row.status : 'never_synced', lastAttemptedAt: row?.last_attempted_at ?? null, lastSuccessAt: row?.last_success_at ?? null, nextAllowedSyncAt: row?.next_allowed_sync_at ?? null, lastError: row?.last_error ? safeYoutubeErrorMessage(row.last_error) : null };
 }
 
 export async function getYoutubeSyncHealth(): Promise<YoutubeSyncHealth> {
   const { YOUTUBE_API_KEY, YOUTUBE_CHANNEL_ID } = getServerEnv();
   if (!YOUTUBE_API_KEY || !YOUTUBE_CHANNEL_ID) return { configured: false, status: 'never_synced', lastAttemptedAt: null, lastSuccessAt: null, nextAllowedSyncAt: null, lastError: null };
   try { return await readSyncHealth(YOUTUBE_CHANNEL_ID); }
-  catch (error) { return { configured: true, status: 'error', lastAttemptedAt: null, lastSuccessAt: null, nextAllowedSyncAt: null, lastError: error instanceof Error ? error.message : 'Failed to read YouTube sync state.' }; }
+  catch (error) { return { configured: true, status: 'error', lastAttemptedAt: null, lastSuccessAt: null, nextAllowedSyncAt: null, lastError: safeYoutubeErrorMessage(error instanceof Error ? error.message : 'Failed to read YouTube sync state.') }; }
 }
 
 export async function getYoutubeChannelFeed(maxResults = 24): Promise<YoutubeChannelFeed> {
@@ -202,7 +223,7 @@ export async function getYoutubeChannelFeed(maxResults = 24): Promise<YoutubeCha
     if (videos.length === 0 || nextAllowed <= Date.now()) return await syncYoutubeFeed(maxResults);
     return { configured: true, channelId: YOUTUBE_CHANNEL_ID, channel, videos: videos.slice(0, maxResults), playlists: [] };
   } catch (error) {
-    return { configured: true, channelId: YOUTUBE_CHANNEL_ID, channel: null, videos: [], playlists: [], error: error instanceof Error ? error.message : 'Unable to read cached YouTube feed.', errorCode: 'unknown' };
+    return { configured: true, channelId: YOUTUBE_CHANNEL_ID, channel: null, videos: [], playlists: [], error: safeYoutubeErrorMessage(error), errorCode: 'unknown' };
   }
 }
 
@@ -279,7 +300,7 @@ export async function syncYoutubeFeed(maxResults = 24): Promise<YoutubeChannelFe
   } catch (error) {
     const errorCode = getYoutubeErrorCode(error);
     const cooldown = errorCode === 'quota_exceeded' ? QUOTA_COOLDOWN_MS : ERROR_COOLDOWN_MS;
-    const message = error instanceof Error ? error.message : 'Unknown YouTube API error.';
+    const message = safeYoutubeErrorMessage(error);
     await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: channelId, status: errorCode === 'quota_exceeded' ? 'quota_exceeded' : 'error', last_attempted_at: new Date().toISOString(), next_allowed_sync_at: new Date(Date.now() + cooldown).toISOString(), last_error: errorCode === 'quota_exceeded' ? 'YouTube API quota is temporarily exhausted.' : message.slice(0, 500) });
     const [cached, channel] = await Promise.all([readCachedVideos(channelId), readCachedChannel()]);
     return { configured: true, channelId, channel, videos: cached.slice(0, maxResults), playlists: [], stale: cached.length > 0, error: errorCode === 'quota_exceeded' ? 'YouTube API quota is temporarily exhausted; cached content remains available.' : message, errorCode };
