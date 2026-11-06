@@ -64,7 +64,7 @@ assert.equal(missingScopeDeleteRequests, 0, "A token response without explicit s
 
 const deniedYoutubeFetch: typeof fetch = async (input) => {
   if (String(input).includes("oauth2.googleapis.com/token")) {
-    return new Response(JSON.stringify({ access_token: "private-access-token" }), { status: 200 });
+    return new Response(JSON.stringify({ access_token: "private-access-token", scope: "https://www.googleapis.com/auth/youtube.force-ssl" }), { status: 200 });
   }
   return new Response(JSON.stringify({ error: { code: 403 } }), { status: 403 });
 };
