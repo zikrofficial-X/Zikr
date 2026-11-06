@@ -24,7 +24,7 @@ const parsed = parseFacebookReelsInsights([
   { name: "post_video_avg_time_watched", period: "lifetime", values: [{ value: 4200 }] },
   { name: "post_video_social_actions", period: "lifetime", values: [{ value: { reactions: 12, comments: 3, shares: 2 } }] },
   { name: "post_video_likes_by_reaction_type", period: "lifetime", values: [{ value: { like: 9, love: 3 } }] },
-  { name: "post_impressions_unique", period: "lifetime", values: [{ value: 900 } }],
+  { name: "post_impressions_unique", period: "lifetime", values: [{ value: 900 }] },
   { name: "unknown_metric", period: "lifetime", values: [{ value: 500 }] },
   { name: "fb_reels_replay_count", period: "lifetime", values: [{ value: -1 }] },
 ]);
