@@ -39,7 +39,8 @@ CREATE INDEX IF NOT EXISTS video_template_versions_template_version_idx
 ALTER TABLE public.video_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.video_template_versions ENABLE ROW LEVEL SECURITY;
 REVOKE ALL PRIVILEGES ON public.video_templates, public.video_template_versions FROM PUBLIC, anon, authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.video_templates, public.video_template_versions TO service_role;
+GRANT SELECT ON public.video_templates TO service_role;
+GRANT SELECT, INSERT, UPDATE ON public.video_template_versions TO service_role;
 
 CREATE OR REPLACE FUNCTION public.prevent_video_template_version_mutation()
 RETURNS trigger
