@@ -4279,6 +4279,58 @@ export type Database = {
         }
         Relationships: []
       }
+      video_likes: {
+        Row: {
+          video_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          video_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          video_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_likes_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_like_counts: {
+        Row: {
+          video_id: string
+          like_count: number
+          updated_at: string
+        }
+        Insert: {
+          video_id: string
+          like_count?: number
+          updated_at?: string
+        }
+        Update: {
+          video_id?: string
+          like_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_like_counts_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: true
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_templates: {
         Row: {
           id: string
