@@ -1,12 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import {
-  processTemplateVideoQueue,
-  reconcileCompletedVideoSocialQueue,
-  seedAutomatedVideoRequests,
-} from "./jobs/template-video-automation";
-import { processSocialPublishQueue, syncSocialInsights } from "./jobs/social-publishing";
-import { retryPendingPublishedVideoCleanup, resetQueuedSocialVideoMedia } from "../src/features/social/services/social-publishing";
+import { processTemplateVideoQueue, seedAutomatedVideoRequests } from "./jobs/template-video-automation";
 import { processScheduledContent } from "./jobs/content-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
@@ -21,8 +15,6 @@ type VideoAutomationSettings = {
   enabled: boolean;
   batchSize: number;
   aiEnabled: boolean;
-  autoPublish: boolean;
-  facebookEnabled: boolean;
   dailyTarget: number;
   aiAttemptsPerRun: number;
   videoSeconds: number;
@@ -62,7 +54,7 @@ function parseRunNowRequest(value: unknown): VideoAutomationRunNow | null {
 
 async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
   const rows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
-    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled,video_automation_daily_target,video_automation_ai_attempts_per_run,video_automation_video_seconds,video_automation_run_now,video_custom_spaces)&select=key,value",
+    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_daily_target,video_automation_ai_attempts_per_run,video_automation_video_seconds,video_automation_run_now,video_custom_spaces)&select=key,value",
   ).catch(() => []);
 
   const values = Object.fromEntries((rows ?? []).map((row) => [row.key, row.value]));
@@ -98,14 +90,6 @@ async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
       10,
       45,
     ),
-    autoPublish: parseBoolSetting(
-      values.video_automation_auto_publish,
-      process.env.AUTO_VIDEO_PUBLISH_ENABLED !== "false",
-    ),
-    facebookEnabled: parseBoolSetting(
-      values.video_automation_facebook_enabled,
-      process.env.SOCIAL_PUBLISH_FACEBOOK_ENABLED === "true",
-    ),
     runNowRequest: parseRunNowRequest(values.video_automation_run_now),
   };
 }
@@ -132,13 +116,9 @@ function applyVideoAutomationSettings(settings: VideoAutomationSettings) {
   process.env.DAILY_VIDEO_TARGET = String(settings.dailyTarget);
   process.env.VIDEO_AI_ATTEMPTS_PER_RUN = String(settings.aiAttemptsPerRun);
   process.env.AUTO_VIDEO_SECONDS = String(settings.videoSeconds);
-  process.env.AUTO_VIDEO_PUBLISH_ENABLED = String(settings.autoPublish);
-  process.env.AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL = String(!settings.autoPublish);
-  process.env.SOCIAL_PUBLISH_FACEBOOK_ENABLED = String(settings.facebookEnabled);
 }
 
 
-const SOCIAL_PUBLISH_ENABLED = process.env.SOCIAL_PUBLISH_ENABLED !== "false";
 const VIDEO_DRY_RUN = (process.env.VIDEO_AUTOMATION_DRY_RUN ?? "true").toLowerCase() === "true";
 
 async function isVideoGenerationPaused(): Promise<boolean> {
@@ -272,30 +252,6 @@ async function processVideos(settings: VideoAutomationSettings) {
   };
 }
 
-async function processSocial(settings: VideoAutomationSettings) {
-  const insights = await syncSocialInsights();
-  console.log("[background-jobs] insights sync completed independently of public publishing:", JSON.stringify(insights));
-  if (!settings.autoPublish) {
-    console.log("[background-jobs] Automatic social publishing is paused from Admin settings.");
-    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, insights };
-  }
-  if (!SOCIAL_PUBLISH_ENABLED) {
-    console.log("[background-jobs] Social publishing disabled.");
-    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, insights };
-  }
-
-  const configuredBatchSize = Number(process.env.SOCIAL_PUBLISH_BATCH_SIZE ?? 1);
-  const batchSize = Math.max(
-    1,
-    Math.min(10, Number.isFinite(configuredBatchSize) ? Math.floor(configuredBatchSize) : 1),
-  );
-  console.log(`[background-jobs] Claiming up to ${batchSize} queued social publish item(s).`);
-  const result = await processSocialPublishQueue(batchSize);
-  if (result.processed === 0) {
-    console.log("[background-jobs] No queued social publish items claimed.");
-  }
-  return { ...result, insights };
-}
 
 
 async function recordAutomationRun(summary: {
@@ -306,6 +262,7 @@ async function recordAutomationRun(summary: {
   failed: number;
   socialProcessed: number;
   socialSucceeded: number;
+  siteContentPublished: number;
   urgentRunRequestedAt: string | null;
 }) {
   try {
@@ -330,6 +287,7 @@ async function recordAutomationRun(summary: {
           target: summary.target,
           socialProcessed: summary.socialProcessed,
           socialSucceeded: summary.socialSucceeded,
+          siteContentPublished: summary.siteContentPublished,
           generator: "multi-provider-free-ai",
           urgentRunRequestedAt: summary.urgentRunRequestedAt,
         },
@@ -344,71 +302,40 @@ async function recordAutomationRun(summary: {
 }
 async function main() {
   validateRequiredEnv();
-  // A cleanup-only run must not reconcile or publish new queue items.
-  if (process.env.SOCIAL_CLEANUP_ONLY === "true") {
-    const result = await retryPendingPublishedVideoCleanup(250);
-    console.log("[background-jobs] Published media cleanup-only sweep:", JSON.stringify(result));
-    if (result.pending > 0 || result.error) {
-      throw new Error(result.error || `Published media cleanup left ${result.pending} item(s) pending.`);
-    }
-    return;
-  }
-  if (process.env.SOCIAL_QUEUE_RESET_ONLY === "true") {
-    const result = await resetQueuedSocialVideoMedia(500);
-    console.log("[background-jobs] Pending video queue reset:", JSON.stringify(result));
-    if (result.pending > 0) {
-      throw new Error(`Pending video reset left ${result.pending} media item(s) for retry.`);
-    }
-    return;
-  }
-  const target = process.env.BACKGROUND_JOB_TARGET ?? "all";
+  const target = process.env.BACKGROUND_JOB_TARGET ?? "videos";
   const videoSettings = await getVideoAutomationSettings();
   const runNowRequestedAt = videoSettings.runNowRequest?.requestedAt ?? null;
   applyVideoAutomationSettings(videoSettings);
   console.log("[background-jobs] Admin video settings:", JSON.stringify(videoSettings));
-  if (!["all", "videos", "social"].includes(target)) {
+  if (!["all", "videos"].includes(target)) {
     throw new Error(`Invalid BACKGROUND_JOB_TARGET: ${target}`);
   }
 
-  console.log(
-    `[background-jobs] Starting autonomous background job runner (target=${target}, generator=multi-provider-free-ai, social=${SOCIAL_PUBLISH_ENABLED ? "enabled" : "disabled"}).`
-  );
+  console.log(`[background-jobs] Starting internal ZIKR video generator (target=${target}, external social delivery disabled).`);
   const startedAt = Date.now();
 
   const videos = target === "all" || target === "videos"
     ? await processVideos(videoSettings)
     : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
 
-  const reconcilePublishingEnabled =
-    (target === "all" || target === "social") &&
-    videoSettings.autoPublish &&
-    SOCIAL_PUBLISH_ENABLED;
-  const reconciledSocialQueue = reconcilePublishingEnabled
-    ? await reconcileCompletedVideoSocialQueue(100)
-    : 0;
-  if (reconcilePublishingEnabled) {
-    console.log(
-      `[background-jobs] Reconciled ${reconciledSocialQueue} completed video(s) with the current social publishing targets.`
-    );
-  } else if (target === "all" || target === "social") {
-    console.log("[background-jobs] Social queue reconciliation skipped while public publishing is paused; queue rows were not changed.");
-  }
+  // Internal generation is intentionally decoupled from all external social providers.
+  // The historic social queue remains untouched and is never reconciled by the video worker.
+  const reconciledSocialQueue = 0;
 
   if (runNowRequestedAt && (target === "all" || target === "videos") && videoSettings.enabled && videos.failed === 0) {
     await clearRunNowRequest(runNowRequestedAt);
     console.log(`[background-jobs] Cleared completed urgent video run request ${runNowRequestedAt}.`);
   }
 
-  const social = target === "all" || target === "social"
-    ? await processSocial(videoSettings)
-    : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
-  const scheduledContent = target === "all"
-    ? await processScheduledContent(20).catch((error) => {
-        console.error("[background-jobs] Scheduled content publishing unavailable:", error instanceof Error ? error.message : String(error));
-        return { claimed: 0, published: 0 };
-      })
-    : { claimed: 0, published: 0 };
-  const failed = videos.failed + social.failed;
+  const sitePublishing = await processScheduledContent(20).catch((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[background-jobs] Internal site publishing queue failed:", message);
+    return { claimed: 0, published: 0, error: message };
+  });
+  console.log("[background-jobs] Internal site publishing:", JSON.stringify(sitePublishing));
+
+  const social = { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, disabledByProductPolicy: true };
+  const failed = videos.failed + ("error" in sitePublishing ? 1 : 0);
 
   const queueAlerts = await notifyNewQueueFailures(new Date(startedAt).toISOString()).catch((error) => {
     console.error("[background-jobs] Queue failure alert delivery unavailable:", error instanceof Error ? error.message : String(error));
@@ -423,12 +350,13 @@ async function main() {
     failed,
     socialProcessed: social.processed,
     socialSucceeded: social.succeeded,
+    siteContentPublished: sitePublishing.published,
     urgentRunRequestedAt: runNowRequestedAt,
   });
 
   console.log(
     "[background-jobs] Summary:",
-    JSON.stringify({ target, videos, reconciledSocialQueue, social, scheduledContent, queueAlerts, durationMs: Date.now() - startedAt }, null, 2)
+    JSON.stringify({ target, videos, sitePublishing, reconciledSocialQueue, social, queueAlerts, durationMs: Date.now() - startedAt }, null, 2)
   );
 
   if (failed > 0) {
