@@ -9,6 +9,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { getInternalGeneratedVideos } from "@/features/videos/services/videos";
 import { getYoutubeChannelFeed } from "@/features/videos/integrations/youtube";
 import { YoutubeFeedCard } from "@/features/videos/components/youtube-feed-card";
+import { getFacebookPublicProfile } from "@/features/social/services/facebook-credentials";
 import { getServerEnv } from "@/lib/env";
 import { pageMetadata } from "@/lib/site";
 import { getRequestLocale } from "@/lib/i18n/server";
@@ -33,8 +34,24 @@ function formatDate(value?: string | null): string {
   catch { return ""; }
 }
 
-function resolveFacebookPageUrl(value: string | undefined): string | null {
-  const pageId = value?.trim() ?? "";
+function resolveFacebookPageUrl(profileUrl: string | null, pageIdValue: string | undefined): string | null {
+  if (profileUrl) {
+    try {
+      const parsed = new URL(profileUrl);
+      const host = parsed.hostname.toLowerCase();
+      if (
+        parsed.protocol === "https:" &&
+        (host === "facebook.com" || host.endsWith(".facebook.com")) &&
+        !parsed.username &&
+        !parsed.password
+      ) {
+        return parsed.toString();
+      }
+    } catch {
+      // Fall back to the separately configured Page identifier.
+    }
+  }
+  const pageId = pageIdValue?.trim() ?? "";
   return /^[A-Za-z0-9._-]{5,128}$/.test(pageId)
     ? "https://www.facebook.com/" + encodeURIComponent(pageId)
     : null;
@@ -43,11 +60,12 @@ function resolveFacebookPageUrl(value: string | undefined): string | null {
 export default async function VideosPage() {
   const locale = await getRequestLocale();
   const isEnglish = locale === "en";
-  const [videos, youtubeFeed] = await Promise.all([
+  const [videos, youtubeFeed, facebookProfile] = await Promise.all([
     getInternalGeneratedVideos(60),
     getYoutubeChannelFeed(24),
+    getFacebookPublicProfile(),
   ]);
-  const facebookPageUrl = resolveFacebookPageUrl(getServerEnv().FACEBOOK_PAGE_ID);
+  const facebookPageUrl = resolveFacebookPageUrl(facebookProfile?.pageUrl ?? null, getServerEnv().FACEBOOK_PAGE_ID);
   const youtubeChannelUrl = youtubeFeed.channel?.pageUrl
     ?? (youtubeFeed.channelId ? "https://www.youtube.com/channel/" + encodeURIComponent(youtubeFeed.channelId) : null);
   const facebookPluginUrl = facebookPageUrl
@@ -97,10 +115,18 @@ export default async function VideosPage() {
             {facebookPageUrl ? (
               <Card className="space-y-3 p-5">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-500/15 text-2xl font-bold text-blue-400">f</span>
-                  <div>
-                    <h2 className="font-bold text-brand-cream">{isEnglish ? "ZIKR on Facebook" : "صفحة ذِكر على Facebook"}</h2>
-                    <p className="text-xs text-brand-cream/50">{isEnglish ? "Official Facebook Page" : "الصفحة الرسمية لذِكر"}</p>
+                  {facebookProfile?.avatarUrl ? (
+                    <Image src={facebookProfile.avatarUrl} alt={facebookProfile.name} width={56} height={56} className="rounded-full" unoptimized />
+                  ) : (
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-500/15 text-2xl font-bold text-blue-400">f</span>
+                  )}
+                  <div className="min-w-0">
+                    <h2 className="font-bold text-brand-cream">{facebookProfile?.name || (isEnglish ? "ZIKR on Facebook" : "صفحة ذِكر على Facebook")}</h2>
+                    <p className="text-xs text-brand-cream/50">
+                      {facebookProfile?.followersCount != null
+                        ? facebookProfile.followersCount.toLocaleString(isEnglish ? "en" : "ar") + (isEnglish ? " followers" : " متابع")
+                        : (isEnglish ? "Official Facebook Page" : "الصفحة الرسمية لذِكر")}
+                    </p>
                   </div>
                 </div>
                 <a href={facebookPageUrl} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-lg border border-brand-gold/40 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/10">
