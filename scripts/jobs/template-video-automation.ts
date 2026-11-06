@@ -19,6 +19,7 @@ import { createVideoProviderRouter } from "../../src/features/videos/providers/p
 import { getDefaultVideoVoiceProfile, getVideoVoiceProfile } from "../../src/features/videos/services/voice-profiles";
 import { evaluateArabicNarrationText } from "../../src/features/videos/services/narration-quality";
 import { resolveDeterministicVideoHook, resolveDeterministicVideoMotion, resolveDeterministicVideoScene } from "../../src/features/videos/services/video-creative-variation";
+import { planCaptionTimings, resolveVideoComposition, type VideoCompositionProfile } from "../../src/features/videos/services/video-composition";
 import { resolveRenderDuration } from "../../src/features/videos/services/render-duration";
 import { getFacebookPageCredentials } from "../../src/features/social/services/facebook-credentials";
 
@@ -28,7 +29,7 @@ const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_V
 const VIDEO_DEFAULT_TTS_PROFILE = process.env.ARABIC_TTS_PROFILE?.trim() || "hadith_male_msa";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
-const VIDEO_TEMPLATE_VERSION = "2026-11-06-creative-variety-v6";
+const VIDEO_TEMPLATE_VERSION = "2026-11-06-composition-sync-v7";
 const VIDEO_OUTPUT_CRF = Math.min(23, Math.max(16, Number(process.env.VIDEO_OUTPUT_CRF ?? 18) || 18));
 const VIDEO_AUDIO_BITRATE = process.env.VIDEO_AUDIO_BITRATE?.trim() || "192k";
 const engineConfig = () => getVideoEngineConfig();
@@ -294,55 +295,69 @@ function paginateArabic(value: string, lineChars: number, linesPerPage: number) 
   return pages.length ? pages : [value.trim()];
 }
 
+function assTimestamp(seconds: number) {
+  const totalCentiseconds = Math.max(0, Math.round(seconds * 100));
+  const centiseconds = totalCentiseconds % 100;
+  const totalSeconds = Math.floor(totalCentiseconds / 100);
+  const wholeSeconds = totalSeconds % 60;
+  const minutes = Math.floor(totalSeconds / 60) % 60;
+  const hours = Math.floor(totalSeconds / 3600);
+  return hours + ":" + String(minutes).padStart(2, "0") + ":" +
+    String(wholeSeconds).padStart(2, "0") + "." + String(centiseconds).padStart(2, "0");
+}
+
 function makeAss(
   text: string,
   title: string,
   sourceUrl: string,
   reflection: string | null | undefined,
   duration: number,
+  audioDuration: number,
+  composition: VideoCompositionProfile,
   category: string,
-  isVertical: boolean,
   audience?: unknown,
   openingSeed = "",
 ) {
-  const playResX = isVertical ? 1080 : 1920;
-  const playResY = isVertical ? 1920 : 1080;
-  const lineChars = isVertical ? 30 : 52;
-  const titleSize = isVertical ? 54 : 46;
-  const verseSize = isVertical ? 66 : 56;
-  const sourceSize = isVertical ? 23 : 20;
-  const brandSize = isVertical ? 27 : 23;
-  const reflectionSize = isVertical ? 31 : 27;
-  const textPages = paginateArabic(text, lineChars, isVertical ? 3 : 2);
-  const start = Math.min(1.2, duration * 0.08);
-  const end = Math.max(start + 2, duration - 2);
-  const totalChars = textPages.reduce((sum, page) => sum + page.replace(/\\N/g, "").length, 0) || 1;
-  let cursor = start;
-  const textEvents = textPages.map((page, index) => {
-    const weight = (page.replace(/\\N/g, "").length || 1) / totalChars;
-    const remaining = textPages.length - index - 1;
-    const slice = remaining === 0 ? end - cursor : Math.max(2.2, weight * (end - start));
-    const pageEnd = index === textPages.length - 1 ? end : Math.min(end, cursor + slice);
-    const event = "Dialogue: 1,0:00:" + cursor.toFixed(2).padStart(5, "0") + ",0:00:" + pageEnd.toFixed(2).padStart(5, "0") + ",Verse,,0,0,0,,{\\fad(350,350)}" + assEscape(page);
-    cursor = pageEnd;
-    return event;
-  });
+  const { width, height } = composition;
+  const playResX = width;
+  const playResY = height;
+  const titleSize = composition.titleFontSize;
+  const verseSize = composition.bodyFontSize;
+  const sourceSize = composition.isVertical ? 23 : 20;
+  const brandSize = composition.isVertical ? 27 : 23;
+  const reflectionSize = composition.isVertical ? 31 : 27;
+  const textPages = paginateArabic(text, composition.lineChars, composition.linesPerPage);
+  const captionCues = planCaptionTimings(textPages, audioDuration);
+  const bodyFont = composition.key === "kids" ? "Noto Sans Arabic" : "Noto Naskh Arabic";
+  const textEvents = captionCues.map((cue) =>
+    "Dialogue: 1," + assTimestamp(cue.start) + "," + assTimestamp(cue.end) +
+    ",Verse,,0,0,0,,{\\fad(180,180)\\an5\\pos(" +
+    composition.bodyX + "," + composition.bodyAnchorY + ")}" + assEscape(cue.text),
+  );
   const badge = assEscape(categoryLabel(category, audience));
   const source = assEscape(RLM + "المصدر: " + displaySource(sourceUrl));
   const reflectionText = reflection ? assEscape(RLM + normalizeArabicText(reflection)) : "";
-  title = normalizeArabicText(title);
+  const normalizedTitle = normalizeArabicText(title);
+  const hookEnd = Math.min(2.4, Math.max(0.8, duration * 0.16));
   const events = [
-    "Dialogue: 5,0:00:00.00,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Badge,,0,0,0,," + badge,
-    "Dialogue: 6,0:00:00.20,0:00:02.40,Hook,,0,0,0,,{\\fad(180,260)}" + assEscape(audienceHook(category, audience, openingSeed)),
-    "Dialogue: 0,0:00:00.12,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Title,,0,0,0,,{\\fad(220,420)}" + assEscape(title),
-    "Dialogue: 3,0:00:00.00,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Brand,,0,0,0,,ZIKR • ذِكرٌ",
+    "Dialogue: 5,0:00:00.00," + assTimestamp(duration) + ",Badge,,0,0,0,," + badge,
+    "Dialogue: 6,0:00:00.20," + assTimestamp(hookEnd) + ",Hook,,0,0,0,,{\\fad(180,260)}" + assEscape(audienceHook(category, audience, openingSeed)),
+    "Dialogue: 0,0:00:00.12," + assTimestamp(duration) + ",Title,,0,0,0,,{\\fad(220,420)\\an8\\pos(" + composition.bodyX + "," + composition.titleY + ")}" + assEscape(normalizedTitle),
+    "Dialogue: 3,0:00:00.00," + assTimestamp(duration) + ",Brand,,0,0,0,,ZIKR • ذِكرٌ",
     ...textEvents,
-    "Dialogue: 2,0:00:" + Math.max(0.6, duration - 3).toFixed(2).padStart(5, "0") + ",0:00:" + duration.toFixed(2).padStart(5, "0") + ",Source,,0,0,0,," + source,
+    "Dialogue: 2," + assTimestamp(Math.max(0.6, duration - 3)) + "," + assTimestamp(duration) + ",Source,,0,0,0,," + source,
   ];
   if (reflectionText) {
-    events.push("Dialogue: 4,0:00:" + Math.max(0.9, duration - 4.5).toFixed(2).padStart(5, "0") + ",0:00:" + Math.max(1.4, duration - 1.8).toFixed(2).padStart(5, "0") + ",Reflection,,0,0,0,," + reflectionText);
+    events.push(
+      "Dialogue: 4," + assTimestamp(Math.max(0.9, duration - 4.5)) + "," +
+      assTimestamp(Math.max(1.4, duration - 1.8)) +
+      ",Reflection,,0,0,0,,{\\an5\\pos(" + composition.bodyX + "," + Math.round(height * 0.77) + ")}" + reflectionText,
+    );
   }
-  events.push("Dialogue: 7,0:00:" + Math.max(0.8, duration - 3.2).toFixed(2).padStart(5, "0") + ",0:00:" + duration.toFixed(2).padStart(5, "0") + ",CTA,,0,0,0,,{\\fad(220,300)}" + assEscape("تابع ذِكر للمزيد • احفظها وشاركها"));
+  events.push(
+    "Dialogue: 7," + assTimestamp(Math.max(0.8, duration - 3.2)) + "," + assTimestamp(duration) +
+    ",CTA,,0,0,0,,{\\fad(220,300)}" + assEscape("تابع ذِكر للمزيد • احفظها وشاركها"),
+  );
   return [
     "[Script Info]",
     "ScriptType: v4.00+",
@@ -354,14 +369,14 @@ function makeAss(
     "",
     "[V4+ Styles]",
     "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-    "Style: Badge,Noto Sans Arabic,24,&H00F4D78A,&H00000000,&H00101513,&H9807110E,1,0,0,0,100,100,0,0,1,2,2,8,60,60,120,1",
-    "Style: Hook,Noto Sans Arabic," + (isVertical ? 29 : 24) + ",&H00FFFFFF,&H00000000,&H00101513,&H6A07110E,1,0,0,0,100,100,0,0,1,1,1,8,70,70,165,1",
-    "Style: Title,Noto Naskh Arabic," + titleSize + ",&H00EFD39A,&H00000000,&H00101513,&H7007110E,1,0,0,0,100,100,0,0,1,2,2,8,70,70,215,1",
-    "Style: Verse,Noto Naskh Arabic," + verseSize + ",&H00FFFFFF,&H00000000,&H00101513,&H9A07110E,0,0,0,0,100,100,0,0,1,3,3,5,100,100,190,1",
+    "Style: Badge,Noto Sans Arabic,24," + composition.accentAss + ",&H00000000,&H00101513,&H9807110E,1,0,0,0,100,100,0,0,1,2,2,8,60,60,120,1",
+    "Style: Hook,Noto Sans Arabic," + (composition.isVertical ? 29 : 24) + ",&H00FFFFFF,&H00000000,&H00101513,&H6A07110E,1,0,0,0,100,100,0,0,1,1,1,8,70,70,165,1",
+    "Style: Title,Noto Sans Arabic," + titleSize + "," + composition.accentAss + ",&H00000000,&H00101513,&H7007110E,1,0,0,0,100,100,0,0,1,2,2,8,70,70,215,1",
+    "Style: Verse," + bodyFont + "," + verseSize + ",&H00FFFFFF,&H00000000,&H00101513,&H9A07110E,0,0,0,0,100,100,0,0,1,3,3,5,100,100,190,1",
     "Style: Source,Noto Sans Arabic," + sourceSize + ",&H00D8C8A6,&H00000000,&H00101513,&H7007110E,0,0,0,0,100,100,0,0,1,1,1,2,70,70,105,1",
-    "Style: Reflection,Noto Naskh Arabic," + reflectionSize + ",&H00EFD39A,&H00000000,&H00101513,&H7407110E,0,0,0,0,100,100,0,0,1,2,1,5,85,85,300,1",
+    "Style: Reflection,Noto Naskh Arabic," + reflectionSize + "," + composition.accentAss + ",&H00000000,&H00101513,&H7407110E,0,0,0,0,100,100,0,0,1,2,1,5,85,85,300,1",
     "Style: Brand,Noto Naskh Arabic," + brandSize + ",&H00E8D8B4,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,55,55,60,1",
-    "Style: CTA,Noto Sans Arabic," + (isVertical ? 27 : 22) + ",&H00F4D78A,&H00000000,&H00101513,&H7A07110E,1,0,0,0,100,100,0,0,1,2,1,2,70,70,95,1",
+    "Style: CTA,Noto Sans Arabic," + (composition.isVertical ? 27 : 22) + "," + composition.accentAss + ",&H00000000,&H00101513,&H7A07110E,1,0,0,0,100,100,0,0,1,2,1,2,70,70,95,1",
     "",
     "[Events]",
     "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
@@ -1220,30 +1235,65 @@ async function renderVideo(request: GeneratedRequest) {
     const audioProbe = await probeMedia(audioPath);
     const audioDuration = Number(audioProbe.format?.duration ?? 0);
     const duration = resolveRenderDuration(audioDuration, TARGET_VIDEO_SECONDS);
-    await writeFile(assPath, makeAss(text, request.title, typeof request.content?.sourceLabel === "string" && request.content.sourceLabel.trim() ? request.content.sourceLabel : sourceUrl, aiPlan.reflection || null, duration, request.category, isVertical, request.content?.audience, request.id), "utf8");
+    const composition = resolveVideoComposition({
+      category: request.category,
+      audience: request.content?.audience,
+      seed: request.id,
+      width,
+      height,
+    });
+    await writeFile(
+      assPath,
+      makeAss(
+        text,
+        request.title,
+        typeof request.content?.sourceLabel === "string" && request.content.sourceLabel.trim() ? request.content.sourceLabel : sourceUrl,
+        aiPlan.reflection || null,
+        duration,
+        audioDuration,
+        composition,
+        request.category,
+        request.content?.audience,
+        request.id,
+      ),
+      "utf8",
+    );
 
     const fadeOutStart = Math.max(0, duration - 0.8);
     const motionFilters = motion === "fade"
       ? ["fade=t=in:st=0:d=0.7", "fade=t=out:st=" + fadeOutStart.toFixed(2) + ":d=0.8"]
       : ["fade=t=in:st=0:d=0.5"];
-    const cardX = Math.round(width * 0.07);
-    const cardY = Math.round(height * 0.245);
-    const cardW = width - cardX * 2;
-    const cardH = Math.round(height * 0.46);
+    const panelX = composition.panelLeft;
+    const panelY = composition.panelTop;
+    const panelW = composition.panelPixelWidth;
+    const panelH = composition.panelPixelHeight;
+    const accentX = panelX + Math.round(panelW * 0.055);
+    const accentY = panelY + Math.round(panelH * 0.075);
+    const accentW = Math.max(24, Math.round(panelW * 0.28));
+    const cameraX = composition.cameraPath === "left-to-right" ? "0.38"
+      : composition.cameraPath === "right-to-left" ? "0.62" : "0.50";
+    const cameraY = composition.cameraPath === "top-to-bottom" ? "0.38"
+      : composition.cameraPath === "bottom-to-top" ? "0.62" : "0.50";
+    const cameraFilter =
+      "zoompan=z='min(zoom+" + composition.zoomIncrement + ",1.06)':x='(iw-iw/zoom)*" +
+      cameraX + "':y='(ih-ih/zoom)*" + cameraY +
+      "':d=1:s=" + width + "x" + height + ":fps=30";
+    const sourceFilter = aiVideoPath
+      ? `fps=30,scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1,${cameraFilter}`
+      : cameraFilter;
     const filter = [
-      aiVideoPath
-        ? `fps=30,scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1`
-        : `zoompan=z='min(zoom+0.00035,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${width}x${height}:fps=30`,
-      "drawbox=x=" + cardX + ":y=" + cardY + ":w=" + cardW + ":h=" + cardH + ":color=0x06110D@0.58:t=fill",
-      "drawbox=x=" + cardX + ":y=" + cardY + ":w=" + cardW + ":h=" + cardH + ":color=0xEFD39A@0.18:t=2",
-      "eq=contrast=1.08:saturation=1.02:brightness=0.00",
+      sourceFilter,
+      `drawbox=x=${panelX}:y=${panelY}:w=${panelW}:h=${panelH}:color=0x${composition.panelHex}@${composition.panelOpacity}:t=fill`,
+      `drawbox=x=${panelX}:y=${panelY}:w=${panelW}:h=${panelH}:color=0x${composition.accentHex}@0.38:t=2`,
+      `drawbox=x=${accentX}:y=${accentY}:w=${accentW}:h=${composition.accentThickness}:color=0x${composition.accentHex}@0.92:t=fill`,
+      `drawbox=x=${panelX + panelW - composition.accentThickness - Math.round(panelW * 0.055)}:y=${panelY + Math.round(panelH * 0.075)}:w=${composition.accentThickness}:h=${Math.round(panelH * 0.28)}:color=0x${composition.accentHex}@0.62:t=fill`,
+      "eq=contrast=" + composition.contrast + ":saturation=" + composition.saturation + ":brightness=0.00",
       "unsharp=5:5:0.25:5:5:0.0",
       "vignette=PI/5",
       ...motionFilters,
       "subtitles=" + assPath + ":fontsdir=/usr/share/fonts/truetype/noto",
       "format=yuv420p",
     ].join(",");
-
     const args = [
       "-y", ...(aiVideoPath ? ["-stream_loop", "-1", "-i", backgroundPath] : ["-loop", "1", "-framerate", "30", "-i", backgroundPath]), "-i", audioPath,
       "-map", "0:v:0",
@@ -1260,7 +1310,7 @@ async function renderVideo(request: GeneratedRequest) {
         "lowpass=f=16000",
         "acompressor=threshold=-18dB:ratio=2.5:attack=20:release=250:makeup=2",
         "loudnorm=I=-16:TP=-1.5:LRA=11",
-        `afade=t=out:st=${Math.max(0, duration - 0.7).toFixed(2)}:d=0.7`,
+        `afade=t=out:st=${Math.max(0, audioDuration - 0.55).toFixed(2)}:d=${Math.min(0.55, Math.max(0.15, audioDuration)).toFixed(2)}`,
         `apad=whole_dur=${duration.toFixed(2)}s`,
       ].join(","),
       "-metadata:s:a:0", "language=ara",
@@ -1304,12 +1354,16 @@ async function renderVideo(request: GeneratedRequest) {
         aiVisualPolicyVersion: AI_VISUAL_POLICY_VERSION,
         generatedAt: new Date().toISOString(),
         renderDurationMs,
+        composition: composition.key,
+        cameraPath: composition.cameraPath,
+        captionTiming: "page-weighted-audio-duration",
       },
     };
     return {
       videoUrl: uploadedMedia.secureUrl,
       scene,
       renderDurationMs,
+      composition: composition.key,
     };
   } finally {
     await rm(temp, { recursive: true, force: true });
