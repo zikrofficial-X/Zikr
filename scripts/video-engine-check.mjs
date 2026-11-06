@@ -29,8 +29,8 @@ for (const token of ["content_hash", "source_hash", "video_automation_runs", "IF
 
 const workflow = readFileSync(".github/workflows/generate-ai-video.yml", "utf8");
 const adminHealth = readFileSync("src/app/admin/health/page.tsx", "utf8");
-if (!adminHealth.includes("getAdminSettings") || !adminHealth.includes("video_automation_ai_enabled") || !adminHealth.includes("video_automation_enabled") || !adminHealth.includes("النشر داخل الموقع") || !adminHealth.includes("النشر الاجتماعي الخارجي") || !adminHealth.includes("video_automation_auto_publish") || !adminHealth.includes("اعتماد الجودة")) {
-  throw new Error("Admin health must report canonical internal worker settings and enforce site-only publishing");
+if (!adminHealth.includes("getAdminSettings") || !adminHealth.includes("video_automation_ai_enabled") || !adminHealth.includes("video_automation_enabled") || !adminHealth.includes("النشر داخل الموقع") || !adminHealth.includes("النشر الاجتماعي الخارجي") || !adminHealth.includes("video_automation_auto_publish") || !adminHealth.includes("فحوص الجودة الآلية")) {
+  throw new Error("Admin health must report canonical worker settings and automated QA publishing accurately");
 }
 if (!workflow.includes("VIDEO_PROVIDER_ORDER")) {
   throw new Error("Workflow must preserve the canonical provider priority contract");
@@ -41,12 +41,19 @@ const internalGenerationMode =
   workflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "true"') &&
   workflow.includes('VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,template"') &&
   workflow.includes('BACKGROUND_JOB_TARGET: "videos"');
-// Rendering stays separate; generated media may be queued for external delivery,
-// but every external post must pass a fresh human QA approval check.
+const worker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+const approval = readFileSync("src/features/videos/services/video-publish-approval.ts", "utf8");
+// Rendering stays separate. External delivery is unattended only after all five automated
+// source/audio/visual/caption/rights checks pass and the immutable media fingerprint matches.
 if (!internalGenerationMode ||
     !workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') ||
-    !workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"')) {
-  throw new Error("Video worker must enable internal AI generation and queue external delivery behind human QA approval");
+    !workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"') ||
+    !worker.includes("buildAutomatedVideoQaChecklist") ||
+    !worker.includes("createAutomatedVideoQaApproval") ||
+    !worker.includes("automatedVideoQa.status !== \"passed\"") ||
+    !approval.includes("AUTOMATED_VIDEO_QA_VERSION") ||
+    !approval.includes("buildVideoApprovalSnapshotHash")) {
+  throw new Error("Video worker must use automatic source-locked QA before enabling unattended delivery");
 }
 if ((process.env.VERIFY_VIDEO_RUNTIME_TOOLS ?? "false").toLowerCase() === "true") {
   execFileSync("ffprobe", ["-version"], { stdio: "ignore" });
