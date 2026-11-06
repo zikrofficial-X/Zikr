@@ -66,7 +66,8 @@ assert.match(worker, /!isTemplatePreview &&\s*!boundTemplate &&\s*engineConfig\(
 assert.match(worker, /content\.skipSocialPublish === true/);
 assert.match(worker, /source_hash: rendered\.sourceHash/);
 assert.match(worker, /content_hash: rendered\.contentHash/);
-assert.match(worker, /template_version: rendered\.templateVersion/);\nassert.match(worker, /templateVersion,\\s*\\n\\s*resolution: width \\+ "x" \\+ height/);
+assert.match(worker, /template_version: rendered\.templateVersion/);
+assert.match(worker, /templateVersion,\s*resolution: width \+ "x" \+ height/);
 
 assert.match(automation, /source_hash: sourceHashValue/);
 assert.match(automation, /content_hash: contentHashValue/);
