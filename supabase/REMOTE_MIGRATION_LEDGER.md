@@ -111,7 +111,7 @@ The canonical constraint change remains in the existing `20261106160000` migrati
 
 This reconciliation is based on the live production migration list captured on 2026-11-06. The active project reports 403 migration entries, matching the repository chain in this release branch. The project has one default `main` branch and no preview branches.
 
-Last reconciled in repository: 2026-11-06 (including the video likes migration).
+Last reconciled in repository: 2026-11-06 (including private likes and trigger-maintained public aggregates).
 
 
 ## Active project cutover — 2026-11-06
@@ -123,8 +123,9 @@ The production binding has moved to Supabase project `zqtssvlvmkzeeyqghqfk` (org
 | 20261106205519 | `revoke_public_execution_on_rls_auto_enable` | Applied to active project; anon/authenticated execution revoked, postgres-owned `ensure_rls` event trigger remains enabled. |
 | 20261106210440 | `repoint_active_cron_jobs_to_current_project` | Applied to active project; active prayer/source-agent cron jobs target the canonical Supabase host. |
 | 20261106210520 | `repoint_active_cron_jobs_to_current_project` | Applied as a no-op reconciliation marker for the exact remote migration ledger. |
-| 20261106214000 | `video_likes` | Applied to active project; authenticated users can add/remove their own likes, while a safe aggregate RPC exposes only the count and the viewer's own state. |
+| 20261106213918 | `video_likes` | Applied to active project; authenticated users can add/remove their own likes. Public totals are exposed only through an RLS-protected count table. |
+| 20261106214309 | `secure_video_like_count_summary` | Applied to active project; like totals are maintained by a trigger-only function whose EXECUTE privilege is revoked from public roles. |
 
-The active project snapshot contained 400 migrations before this cutover; the security migration, both cron migration versions, and the video likes migration are now applied, bringing the live ledger to 404 entries. Public schema RLS was enabled on all 90 inspected tables. Health Advisor had no findings. The remaining Security Advisor warning is the Supabase Auth leaked-password protection setting, which is unavailable on the current Free plan.
+The active project snapshot contained 400 migrations before this cutover; the security migration, both cron migration versions, and the video likes migration are now applied, bringing the live ledger to 405 entries. Public schema RLS was enabled on all 90 inspected tables. Health Advisor had no findings. The remaining Security Advisor warning is the Supabase Auth leaked-password protection setting, which is unavailable on the current Free plan.
 
 Do not rewrite old migration SQL or historical snapshots to make their former project URLs appear current. New forward migrations and current runtime configuration must use the active project reference.
