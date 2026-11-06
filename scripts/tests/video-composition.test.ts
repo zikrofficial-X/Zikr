@@ -10,7 +10,7 @@ const profiles = categories.map((category) =>
   resolveVideoComposition({ category, seed: "same-seed", ...dimensions }),
 );
 
-assert.equal(new Set(profiles.map((profile) => profile.key)).size, categories.length - 1);
+assert.equal(new Set(profiles.map((profile) => profile.key)).size, categories.length);
 assert.notEqual(profiles.find((profile) => profile.key === "quran")?.panelHeight, profiles.find((profile) => profile.key === "story")?.panelHeight);
 assert.notEqual(profiles.find((profile) => profile.key === "hadith")?.bodyFontSize, profiles.find((profile) => profile.key === "dua")?.bodyFontSize);
 
