@@ -20,7 +20,18 @@ function resolveVideoMediaUrl(row: Record<string, unknown>): string | null {
   ];
 
   for (const value of candidates) {
-    if (typeof value === "string" && /^https?:\/\//i.test(value.trim())) return value.trim();
+    if (typeof value !== "string") continue;
+    try {
+      const parsed = new URL(value.trim());
+      if (metadata.generator === "zikr_internal_video_factory") {
+        if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com") continue;
+      } else if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+        continue;
+      }
+      return parsed.toString();
+    } catch {
+      continue;
+    }
   }
 
   const youtubeId = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
