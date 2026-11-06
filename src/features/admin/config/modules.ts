@@ -115,7 +115,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     routes: routesFor("growth"),
     permission: "analytics.read",
     permissions: ["analytics.read", "settings.manage"],
-    sourceTables: ["articles", "videos", "video_generation_requests", "social_publish_queue"],
+    sourceTables: ["articles", "videos", "video_generation_requests", "content_publish_queue"],
     ownerRole: "analyst",
     status: "active",
   },
