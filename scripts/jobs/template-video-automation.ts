@@ -1713,6 +1713,7 @@ async function registerGeneratedVideoOnSite(
     learningObjective: typeof request.content.learningObjective === "string" ? request.content.learningObjective : null,
     factorySequence: Number.isInteger(Number(request.content.factorySequence)) ? Number(request.content.factorySequence) : null,
     aiDisclosure: request.content.aiDisclosure ?? null,
+    automatedVideoQa: request.content.automatedVideoQa ?? null,
     quality: {
       passed: true,
       checks: [
@@ -2064,7 +2065,11 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       if (!qaApproval) {
         console.warn(`[template-video] Automated QA blocked external distribution for ${request.id}: ${missingQaChecks.join(", ")}`);
       }
-      await registerGeneratedVideoOnSite(request, rendered);
+      if (qaApproval) {
+        await registerGeneratedVideoOnSite(request, rendered);
+      } else {
+        console.warn(`[template-video] Render retained in the generation audit only; automated QA blocked site and social publication for ${request.id}.`);
+      }
       await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
