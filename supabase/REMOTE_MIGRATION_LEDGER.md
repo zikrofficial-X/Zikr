@@ -96,3 +96,19 @@ The five new files under supabase/migrations/ are schema-neutral SELECT 1 marker
 The remaining repository-only migrations are intentionally preserved as forward migrations and are not deleted or renamed in this reconciliation.
 
 Last reconciled: 2026-10-08.
+
+
+## Phase 6 migration-history reconciliation — 2026-11-06
+
+The Supabase production migration history returned two additional versions for the internal video queue constraint update. The repository already contains the canonical schema-changing migration at `20261106160000_allow_internal_videos_in_content_publish_queue.sql`. These two remote versions are represented locally by schema-neutral markers so preview/development branches can reproduce the exact migration ledger without replaying extra production DDL.
+
+| Remote version | Remote name | Local reconciliation file | Operation |
+|---|---|---|---|
+| 20261106184415 | allow_internal_videos_in_content_publish_queue | `20261106184415_allow_internal_videos_in_content_publish_queue.sql` | `SELECT 1` marker only |
+| 20261106184600 | allow_internal_videos_in_content_publish_queue | `20261106184600_allow_internal_videos_in_content_publish_queue.sql` | `SELECT 1` marker only |
+
+The canonical constraint change remains in the existing `20261106160000` migration. These markers do not change schema, rows, queue contents, or external publishing behavior. Do not delete or rewrite the existing migration files.
+
+This reconciliation is based on the production migration-list snapshot captured on 2026-11-06. A fresh Supabase branch listing and post-merge migration comparison are still required because current Supabase branch management access was denied during this repair session.
+
+Last reconciled in repository: 2026-11-06.
