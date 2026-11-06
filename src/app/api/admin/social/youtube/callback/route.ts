@@ -8,7 +8,7 @@ import { saveYouTubeOAuthCredential } from "@/features/social/services/youtube-o
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const STATE_COOKIE = "zikr-youtube-oauth-state";
+const STATE_COOKIE = "zikr-youtube-oauth-state";\nconst CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";\nconst YOUTUBE_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/youtube/callback";
 const YOUTUBE_READ_SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
 const YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload";
 const YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube";
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
   const clientSecret = env.YOUTUBE_CLIENT_SECRET?.trim() ?? "";
   if (!clientId || !clientSecret) return redirectResult("configuration_missing");
 
-  const redirectUri = new URL("/api/admin/social/youtube/callback", siteUrl()).toString();
+  const redirectUri = YOUTUBE_REDIRECT_URI;
   try {
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
