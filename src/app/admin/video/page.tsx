@@ -34,7 +34,7 @@ export default async function VideoFactoryDashboardPage() {
         <p className="text-xs tracking-[0.22em] text-brand-cream/30">ZIKR VIDEO OPERATIONS</p>
         <h1 className="text-3xl font-bold text-brand-gold md:text-4xl">مركز الفيديو والإنتاج</h1>
         <p className="max-w-4xl text-sm leading-7 text-brand-cream/55">
-          لوحة إنتاج موحدة تربط المصدر الموثق بالنص والصوت والمشهد والرندر وضبط الجودة والنشر، بدون مسارات متنافسة أو جدولة مكررة.
+          لوحة إنتاج موحدة تربط المصدر الموثق بالنص والصوت والمشهد والرندر وضبط الجودة والحفظ داخل ZIKR، بدون مسارات متنافسة أو جدولة مكررة.
         </p>
       </header>
 
@@ -89,7 +89,7 @@ export default async function VideoFactoryDashboardPage() {
         <Link href="/admin/automation" className="rounded-2xl border border-brand-gold/10 bg-black/10 p-5 hover:border-brand-gold/25">
           <p className="text-xs text-brand-cream/30">Operations</p>
           <h2 className="mt-1 font-semibold text-brand-gold">مركز الأتمتة</h2>
-          <p className="mt-2 text-sm leading-6 text-brand-cream/50">الهدف اليومي، محاولات AI، مدة الفيديو، Run Now والنشر.</p>
+          <p className="mt-2 text-sm leading-6 text-brand-cream/50">الهدف اليومي، محاولات AI، مدة الفيديو، Run Now والنشر الداخلي للموقع.</p>
         </Link>
       </section>
 
