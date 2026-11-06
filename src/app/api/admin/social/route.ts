@@ -212,7 +212,7 @@ export async function GET() {
         oldestQueuedAt,
         health: {
           youtubeConfigured: Boolean(
-            (env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET && env.YOUTUBE_REFRESH_TOKEN) ||
+            (env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET && youtubeHealth.status !== "not_configured") ||
             (env.YOUTUBE_API_KEY && env.YOUTUBE_CHANNEL_ID)
           ),
           youtubeConnectionStatus: youtubeHealth.status,
