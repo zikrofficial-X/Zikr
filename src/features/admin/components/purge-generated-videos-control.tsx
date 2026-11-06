@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const CONFIRMATION_PHRASE = "امسح كل الفيديوهات";
+const CONFIRMATION_PHRASE = "امسح الفيديوهات المولّدة فقط";
 
 type PurgeResult = {
   ok: true;
@@ -10,7 +10,7 @@ type PurgeResult = {
   cloudinaryBytesDeleted: number;
   storageObjectsDeleted: number;
   queueRowsDeleted: number;
-  siteVideoRowsDeleted: number;
+  publicVideoCatalogPreserved: boolean;
   generationRowsDeleted: number;
   automationRunsDeleted: number;
   externalSocialPostsDeleted: false;
@@ -61,7 +61,7 @@ export function PurgeGeneratedVideosControl({
         cloudinaryBytesDeleted?: number;
         storageObjectsDeleted?: number;
         queueRowsDeleted?: number;
-        siteVideoRowsDeleted?: number;
+        publicVideoCatalogPreserved?: boolean;
         generationRowsDeleted?: number;
         automationRunsDeleted?: number;
         externalSocialPostsDeleted?: false;
@@ -80,7 +80,7 @@ export function PurgeGeneratedVideosControl({
         cloudinaryBytesDeleted: payload.cloudinaryBytesDeleted ?? 0,
         storageObjectsDeleted: payload.storageObjectsDeleted ?? 0,
         queueRowsDeleted: payload.queueRowsDeleted ?? 0,
-        siteVideoRowsDeleted: payload.siteVideoRowsDeleted ?? 0,
+        publicVideoCatalogPreserved: payload.publicVideoCatalogPreserved === true,
         generationRowsDeleted: payload.generationRowsDeleted ?? 0,
         automationRunsDeleted: payload.automationRunsDeleted ?? 0,
         externalSocialPostsDeleted: false,
@@ -88,7 +88,7 @@ export function PurgeGeneratedVideosControl({
       setResult(completed);
       setConfirmation("");
       setExpanded(false);
-      setMessage("تم حذف مخرجات الفيديو المحلية وسجلاتها. التوليد التلقائي ما زال متوقفًا.");
+      setMessage("تم حذف مخرجات الفيديو المولّدة وسجلات التوليد. كتالوج الفيديوهات العامة وسجل النشر السابق محفوظان، والتوليد التلقائي ما زال متوقفًا.");
       await onCompleted?.();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر تصفير مكتبة الفيديو.");
@@ -105,7 +105,7 @@ export function PurgeGeneratedVideosControl({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-red-200">تصفير مكتبة الفيديوهات</p>
           <p className="mt-1 text-xs leading-6 text-brand-cream/55">
-            حذف ملفات الفيديو المولّدة من Cloudinary وSupabase Storage، ومسح سجلات التوليد وطابور الفيديو وصفحة الفيديوهات.
+            حذف ملفات الفيديو المولّدة من Cloudinary وSupabase Storage وسجلات التوليد. كتالوج الفيديوهات العامة وسجل المنشورات الناجحة أو ذات معرّفات النشر محفوظان.
           </p>
         </div>
         <button
@@ -125,7 +125,7 @@ export function PurgeGeneratedVideosControl({
       {expanded && (
         <div className="mt-4 space-y-3 border-t border-red-400/15 pt-4">
           <p className="text-sm leading-7 text-brand-cream/80">
-            هذا الإجراء نهائي ولا يمكن التراجع عنه. سيحذف كل فيديو مولّد يحمل علامات ZIKR الخاصة بالتوليد، وكل عمليات التوليد وطابور الفيديو وسجلات تشغيله، وسيترك المنشورات النصية والأصوات والقوالب وإعدادات الاتصال كما هي.
+            هذا الإجراء نهائي ولا يمكن التراجع عنه. سيحذف ملفات ZIKR المولّدة محليًا والطلبات غير المنشورة وسجلات تشغيل التوليد. سيحتفظ بسجلات النشر التي تحتوي على نجاح أو معرّف خارجي، ولن يحذف صفوف جدول الفيديوهات العامة أو القوالب أو الأصوات أو الحسابات.
           </p>
           <p className="text-xs leading-6 text-amber-200/90">
             ملاحظة: هذا يمسح النسخ المحلية من ZIKR فقط. الفيديوهات المنشورة بالفعل داخل حسابات YouTube وFacebook ستظل منشورة هناك؛ حذفها من الحسابات الخارجية ليس ضمن هذه العملية.
@@ -185,7 +185,7 @@ export function PurgeGeneratedVideosControl({
             ملفات Cloudinary: {result.cloudinaryAssetsDeleted} · المساحة المحررة: {(result.cloudinaryBytesDeleted / (1024 * 1024)).toFixed(1)} MiB · عناصر Storage: {result.storageObjectsDeleted}
           </p>
           <p>
-            طلبات التوليد: {result.generationRowsDeleted} · عناصر طابور الفيديو: {result.queueRowsDeleted} · فيديوهات الصفحة: {result.siteVideoRowsDeleted} · سجلات التشغيل: {result.automationRunsDeleted}
+            طلبات التوليد: {result.generationRowsDeleted} · عناصر الطابور غير المنشورة: {result.queueRowsDeleted} · كتالوج الفيديوهات العامة: {result.publicVideoCatalogPreserved ? "محفوظ" : "غير مؤكد"} · سجلات التشغيل: {result.automationRunsDeleted}
           </p>
           <p className="mt-1 text-amber-100/90">
             لم يتم حذف المنشورات من حسابات YouTube أو Facebook نفسها.
