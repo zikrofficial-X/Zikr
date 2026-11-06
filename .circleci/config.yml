@@ -582,6 +582,7 @@ workflows:
             branches:
               only:
                 - /^android-release-v[0-9]+\.[0-9]+\.[0-9]+$/
+                - /^feat\/autonomous-video-qa-publishing-20261107$/
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
       - application-build-docs:
@@ -589,6 +590,7 @@ workflows:
             branches:
               only:
                 - main
+                - /^feat\/autonomous-video-qa-publishing-20261107$/
             tags:
               ignore: /.*/
       - supabase-production-gate:
