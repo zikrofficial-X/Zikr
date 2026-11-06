@@ -126,7 +126,6 @@ async function youtubeFetch<T>(path: string, params: Record<string, string | num
   try {
     const response = await fetch(`https://www.googleapis.com/youtube/v3/${path}?${searchParams.toString()}`, { cache: 'no-store', signal: controller.signal });
     if (!response.ok) {
-      const body = await response.text();
       throw new Error(`YouTube API failed (HTTP ${response.status}).`);
     }
     return response.json() as Promise<T>;
