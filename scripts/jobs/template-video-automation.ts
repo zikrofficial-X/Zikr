@@ -229,12 +229,12 @@ async function bindTemplateVersion(request: GeneratedRequest): Promise<BoundTemp
 }
 
 function backgroundAsset(scene: AiVideoPlan["scene"], content?: Record<string, unknown>) {
-  const pinnedAsset = typeof content?.templateAssetKey === "string" ? content.templateAssetKey : "";
+  const pinnedConfig = parseVideoTemplateConfig(content?.templateConfigSnapshot);
   const pinnedAudience: VideoTemplateAudience | null =
     content?.templateAudience === "kids" ? "kids" :
     content?.templateAudience === "general" ? "general" : null;
-  if (pinnedAudience && pinnedAsset && isVideoTemplateAssetAllowedForAudience(pinnedAsset as Parameters<typeof isVideoTemplateAssetAllowedForAudience>[0], pinnedAudience)) {
-    const assetPath = videoTemplateAssetPath(pinnedAsset as Parameters<typeof isVideoTemplateAssetPath>[0], pinnedAudience);
+  if (pinnedConfig && pinnedAudience && isVideoTemplateAssetAllowedForAudience(pinnedConfig.assetKey, pinnedAudience)) {
+    const assetPath = videoTemplateAssetPath(pinnedConfig.assetKey, pinnedAudience);
     if (assetPath) return assetPath;
   }
   if (content?.audience === "kids") {
