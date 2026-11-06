@@ -323,7 +323,7 @@ function makeAss(
     "Dialogue: 0,0:00:00.12," + assTimestamp(duration) + ",Title,,0,0,0,,{\\fad(220,420)\\an8\\pos(" + composition.bodyX + "," + composition.titleY + ")}" + assEscape(normalizedTitle),
     "Dialogue: 3,0:00:00.00," + assTimestamp(duration) + ",Brand,,0,0,0,,ZIKR • ذِكرٌ",
     ...textEvents,
-    "Dialogue: 2," + assTimestamp(Math.max(0.6, duration - 3)) + "," + assTimestamp(duration) + ",Source,,0,0,0,," + source,
+    "Dialogue: 2," + assTimestamp(Math.max(0.6, duration - 3)) + "," + assTimestamp(duration) + ",Source,,0,0,0,,{\\an2\\pos(" + composition.bodyX + "," + Math.round(height * 0.84) + ")}" + source,
   ];
   if (reflectionText) {
     events.push(
@@ -334,7 +334,7 @@ function makeAss(
   }
   events.push(
     "Dialogue: 7," + assTimestamp(Math.max(0.8, duration - 3.2)) + "," + assTimestamp(duration) +
-    ",CTA,,0,0,0,,{\\fad(220,300)}" + assEscape("تابع ذِكر للمزيد • احفظها وشاركها"),
+    ",CTA,,0,0,0,,{\\fad(220,300)\\an2\\pos(" + composition.bodyX + "," + Math.round(height * 0.92) + ")}" + assEscape("تابع ذِكر للمزيد • احفظها وشاركها"),
   );
   return [
     "[Script Info]",
