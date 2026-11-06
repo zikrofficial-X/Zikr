@@ -10,6 +10,7 @@ const read = (path) => {
   return readFileSync(path, "utf8");
 };
 
+const permissions = read("src/features/admin/services/permissions.ts");
 const createRoute = read("src/app/api/admin/videos/create/route.ts");
 if (!createRoute.includes('requireAdminApi("video.manage")')) failures.push("video create API must require video.manage");
 if (!createRoute.includes("SOURCE_LOCKED_CATEGORIES")) failures.push("video create API must enforce source-locked categories");
@@ -53,7 +54,6 @@ if (upload.includes("/storage/v1/object/videos/")) failures.push("narration uplo
 const service = read("src/features/videos/services/video-automation.ts");
 if (!service.includes("updated_at=eq.") || !service.includes("request.updated_at")) failures.push("video queue claims must include optimistic updated_at");
 
-const permissions = read("src/features/admin/services/permissions.ts");
 if (!permissions.includes("'video.manage'")) failures.push("video.manage permission missing");
 if (!permissions.includes("'video.delete'")) failures.push("video.delete permission missing");
 if (!permissions.includes("'video.manage', 'video.delete'")) failures.push("video_manager role must own video permissions");
