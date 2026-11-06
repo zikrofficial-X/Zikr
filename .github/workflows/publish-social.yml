@@ -1,7 +1,7 @@
 name: ZIKR Autonomous Social Publisher
 
 on:
-  # GitHub Actions is the sole production owner for social/video publishing.
+  # Legacy social publishing is held disabled; this workflow remains only for audited historical maintenance.
   schedule:
     # Avoid quarter-hour/top-of-hour contention; GitHub schedule events are best-effort.
     - cron: "7,22,37,52 * * * *"
@@ -47,7 +47,7 @@ jobs:
       BACKGROUND_JOB_TARGET: "social"
       SOCIAL_PUBLISH_BATCH_SIZE: "2"
       YOUTUBE_UPLOAD_PRIVACY: "public"
-      SOCIAL_PUBLISH_ENABLED: "true"
+      SOCIAL_PUBLISH_ENABLED: "false"
       FACEBOOK_PUBLISHING_REQUESTED: ${{ vars.FACEBOOK_PUBLISHING_ENABLED || 'true' }}
       YOUTUBE_PUBLISHING_REQUESTED: ${{ vars.YOUTUBE_PUBLISHING_ENABLED || 'true' }}
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
