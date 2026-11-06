@@ -8,7 +8,9 @@ import { saveYouTubeOAuthCredential } from "@/features/social/services/youtube-o
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const STATE_COOKIE = "zikr-youtube-oauth-state";\nconst CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";\nconst YOUTUBE_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/youtube/callback";
+const STATE_COOKIE = "zikr-youtube-oauth-state";
+const CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";
+const YOUTUBE_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/youtube/callback";
 const YOUTUBE_READ_SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
 const YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload";
 const YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube";
