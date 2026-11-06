@@ -1,6 +1,6 @@
 export type SocialPlatformDeliveryStats = {
   platform: string;
-  attempts: number;
+  deliveries: number;
   successful: number;
   failed: number;
   remoteIds: number;
@@ -17,8 +17,8 @@ export function summarizePlatformResults(rows: Array<{ metadata: unknown }>): So
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
       const result = raw as Record<string, unknown>;
       const platform = typeof result.platform === "string" ? result.platform : key;
-      const item = summary.get(platform) ?? { platform, attempts: 0, successful: 0, failed: 0, remoteIds: 0 };
-      item.attempts += 1;
+      const item = summary.get(platform) ?? { platform, deliveries: 0, successful: 0, failed: 0, remoteIds: 0 };
+      item.deliveries += 1;
       if (result.ok === true) item.successful += 1;
       if (result.ok === false || (typeof result.error === "string" && result.error.trim())) item.failed += 1;
       if (typeof result.remoteId === "string" && result.remoteId.trim()) item.remoteIds += 1;
