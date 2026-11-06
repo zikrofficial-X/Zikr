@@ -1,0 +1,198 @@
+import Link from "next/link";
+import {
+  Activity,
+  ArrowUpLeft,
+  BarChart3,
+  CheckCircle2,
+  CircleHelp,
+  ExternalLink,
+  Globe2,
+  Search,
+  Send,
+  Share2,
+  Wallet,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
+
+const format = (value: number | null) =>
+  value === null ? "غير متاح" : value.toLocaleString("ar-EG-u-nu-latn");
+
+const platformLabels: Record<string, string> = {
+  facebook: "Facebook",
+  youtube: "YouTube",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  telegram: "Telegram",
+  pinterest: "Pinterest",
+  x: "X",
+  whatsapp: "WhatsApp",
+};
+
+function MetricCard({
+  label,
+  value,
+  note,
+  icon: Icon,
+}: {
+  label: string;
+  value: number | null;
+  note: string;
+  icon: typeof Activity;
+}) {
+  return (
+    <Card className="p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-brand-cream/55">{label}</p>
+          <p className="mt-3 text-2xl font-bold tabular-nums text-brand-cream">{format(value)}</p>
+          <p className="mt-1 text-xs leading-5 text-brand-cream/40">{note}</p>
+        </div>
+        <span className="rounded-xl border border-brand-gold/15 bg-brand-gold/10 p-2 text-brand-gold">
+          <Icon size={18} />
+        </span>
+      </div>
+    </Card>
+  );
+}
+
+export async function TrafficRevenuePanel() {
+  const snapshot = await getTrafficRevenueSnapshot();
+  const metrics = snapshot.metrics;
+  const platforms = snapshot.socialProfiles ?? [];
+
+  return (
+    <section className="mt-8 space-y-6" dir="rtl" aria-labelledby="traffic-revenue-heading">
+      <header className="rounded-3xl border border-brand-gold/15 bg-gradient-to-br from-brand-gold/10 via-black/20 to-black/5 p-5 sm:p-7">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs tracking-[0.16em] text-brand-cream/35">GROWTH / TRAFFIC / MONETIZATION</p>
+            <h2 id="traffic-revenue-heading" className="mt-2 text-2xl font-bold text-brand-gold">
+              محرك الزيارات والإيرادات
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-7 text-brand-cream/55">
+              مركز موحّد لجذب جمهور حقيقي، ومتابعة قنوات التوزيع، وقياس أداء المحتوى وتحقيق الدخل دون تكرار أنظمة النشر الحالية.
+            </p>
+          </div>
+          <Badge variant="outline" className="border-emerald-400/25 text-emerald-200/80">
+            <Activity size={13} className="ml-1" /> قراءة تشغيلية مباشرة
+          </Badge>
+        </div>
+        <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-300/[0.06] p-4 text-sm leading-7 text-amber-100/80">
+          الزيارات والأرباح لا تُحسب من فتح الموقع آليًا. أرقام الزيارات وظهور Monetag والأرباح لن تظهر إلا بعد ربط تقارير المصدر الحقيقي. لا يستخدم هذا المحرك تحديث الصفحات أو النقرات الاصطناعية.
+        </div>
+      </header>
+
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-bold text-brand-cream">مؤشرات النمو وتحقيق الدخل</h3>
+          <span className="text-xs text-brand-cream/35">
+            آخر قراءة: {new Date(snapshot.generatedAt).toLocaleString("ar-EG-u-nu-latn")}
+          </span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard label="زيارات الموقع الحقيقية" value={null} note="يلزم اتصال تقارير GA4" icon={Globe2} />
+          <MetricCard label="مرات ظهور Monetag" value={null} note="يلزم استيراد تقرير الناشر" icon={BarChart3} />
+          <MetricCard label="أرباح Monetag" value={null} note="لا توجد مزامنة أرباح متصلة بعد" icon={Wallet} />
+          <MetricCard label="مقالات منشورة" value={metrics.publishedArticles} note="عدد دقيق من قاعدة البيانات" icon={Search} />
+          <MetricCard label="فيديوهات منشورة" value={metrics.publishedVideos} note="عدد دقيق من قاعدة البيانات" icon={Share2} />
+          <MetricCard label="منشورات منشورة" value={metrics.socialPublished} note="سجل طابور النشر الاجتماعي" icon={CheckCircle2} />
+          <MetricCard label="منشورات في الانتظار" value={metrics.socialQueued} note="تُعالج بواسطة الناشر الحالي" icon={Send} />
+          <MetricCard label="منشورات فاشلة" value={metrics.socialFailed} note="تحتاج مراجعة قبل إعادة المحاولة" icon={CircleHelp} />
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card className="p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-bold text-brand-gold">حالة مصادر البيانات</h3>
+            <Badge variant="outline">التكاملات</Badge>
+          </div>
+          <div className="mt-4 divide-y divide-brand-gold/10">
+            <div className="flex items-start justify-between gap-3 py-3">
+              <div>
+                <p className="font-semibold text-brand-cream">Google Analytics 4</p>
+                <p className="mt-1 text-xs leading-5 text-brand-cream/45">
+                  {snapshot.integrations.ga4MeasurementConfigured
+                    ? "معرّف القياس متاح في إعدادات تشغيل التطبيق؛ واجهة التقارير البرمجية لم تُربط بعد."
+                    : "معرّف القياس غير متاح في بيئة تشغيل التطبيق الحالية."}
+                </p>
+              </div>
+              <Badge variant="outline" className="shrink-0 border-amber-300/20 text-amber-100/75">التقارير غير متصلة</Badge>
+            </div>
+            <div className="flex items-start justify-between gap-3 py-3">
+              <div>
+                <p className="font-semibold text-brand-cream">Monetag</p>
+                <p className="mt-1 text-xs leading-5 text-brand-cream/45">
+                  وسم التحقق ورابط SmartLink موجودان في الكود. مزامنة مرات الظهور والأرباح غير متصلة.
+                </p>
+                <a
+                  href="https://publishers.monetag.com"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="mt-2 inline-flex items-center gap-1 text-xs text-brand-gold hover:underline"
+                >
+                  فتح لوحة Monetag <ExternalLink size={12} />
+                </a>
+              </div>
+              <Badge variant="outline" className="shrink-0 border-amber-300/20 text-amber-100/75">التقارير غير متصلة</Badge>
+            </div>
+          </div>
+          {snapshot.unavailable.length > 0 ? (
+            <p role="status" className="mt-3 text-xs leading-6 text-amber-100/65">
+              تعذر قراءة: {snapshot.unavailable.join("، ")}. عُرضت كبيانات غير متاحة بدلًا من أصفار غير مؤكدة.
+            </p>
+          ) : null}
+        </Card>
+
+        <Card className="p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-bold text-brand-gold">قنوات التوزيع</h3>
+            <Badge variant="outline">{platforms.length} ملفات تعريف مسجلة</Badge>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {["facebook", "youtube", "instagram", "tiktok", "telegram", "whatsapp", "pinterest", "x"].map((platform) => {
+              const profile = platforms.find((item) => item.platform.toLowerCase() === platform);
+              const connected = Boolean(profile);
+              const label = platformLabels[platform] ?? platform;
+              const Icon = platform === "telegram" ? Send : platform === "youtube" ? Share2 : platform === "instagram" ? Globe2 : Share2;
+              return (
+                <div key={platform} className="flex items-center justify-between gap-2 rounded-xl border border-brand-gold/10 bg-black/10 p-3">
+                  <span className="flex min-w-0 items-center gap-2 text-sm text-brand-cream/80">
+                    <Icon size={16} className="shrink-0 text-brand-gold/70" />
+                    <span className="truncate">{label}</span>
+                  </span>
+                  <Badge variant="outline" className={connected ? "shrink-0 border-emerald-400/20 text-emerald-200/80" : "shrink-0 border-white/10 text-brand-cream/35"}>
+                    {connected ? (profile?.status === "ok" ? "تمت المزامنة" : "ملف موجود") : "غير مربوط"}
+                  </Badge>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-xs leading-6 text-brand-cream/40">
+            وجود ملف منصة لا يعني أن صلاحية النشر أو الرمز ما زالا صالحين؛ تُفحص صلاحية النشر داخل مركز النشر قبل أي عملية.
+          </p>
+        </Card>
+      </div>
+
+      <Card className="p-5">
+        <h3 className="font-bold text-brand-gold">مراكز التشغيل الحالية</h3>
+        <p className="mt-1 text-xs leading-6 text-brand-cream/45">
+          إعادة استخدام الأنظمة الموجودة بدل تشغيل مجدولات متعارضة أو إنشاء طوابير مكررة.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <Link href="/admin/social" className="flex items-center justify-between gap-3 rounded-xl border border-brand-gold/10 p-3 text-sm text-brand-cream/80 transition hover:border-brand-gold/30 hover:bg-brand-gold/5">
+            مركز النشر الاجتماعي <ArrowUpLeft size={16} className="text-brand-gold" />
+          </Link>
+          <Link href="/admin/seo" className="flex items-center justify-between gap-3 rounded-xl border border-brand-gold/10 p-3 text-sm text-brand-cream/80 transition hover:border-brand-gold/30 hover:bg-brand-gold/5">
+            إعدادات SEO <ArrowUpLeft size={16} className="text-brand-gold" />
+          </Link>
+          <Link href="/admin/automation" className="flex items-center justify-between gap-3 rounded-xl border border-brand-gold/10 p-3 text-sm text-brand-cream/80 transition hover:border-brand-gold/30 hover:bg-brand-gold/5">
+            مركز الأتمتة <ArrowUpLeft size={16} className="text-brand-gold" />
+          </Link>
+        </div>
+      </Card>
+    </section>
+  );
+}
