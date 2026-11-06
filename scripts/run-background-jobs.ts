@@ -259,30 +259,6 @@ async function processVideos(settings: VideoAutomationSettings) {
   };
 }
 
-async function processSocial(settings: VideoAutomationSettings) {
-  const insights = await syncSocialInsights();
-  console.log("[background-jobs] insights sync completed independently of public publishing:", JSON.stringify(insights));
-  if (!settings.autoPublish) {
-    console.log("[background-jobs] Automatic social publishing is paused from Admin settings.");
-    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, insights };
-  }
-  if (!SOCIAL_PUBLISH_ENABLED) {
-    console.log("[background-jobs] Social publishing disabled.");
-    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, insights };
-  }
-
-  const configuredBatchSize = Number(process.env.SOCIAL_PUBLISH_BATCH_SIZE ?? 1);
-  const batchSize = Math.max(
-    1,
-    Math.min(10, Number.isFinite(configuredBatchSize) ? Math.floor(configuredBatchSize) : 1),
-  );
-  console.log(`[background-jobs] Claiming up to ${batchSize} queued social publish item(s).`);
-  const result = await processSocialPublishQueue(batchSize);
-  if (result.processed === 0) {
-    console.log("[background-jobs] No queued social publish items claimed.");
-  }
-  return { ...result, insights };
-}
 
 
 async function recordAutomationRun(summary: {
@@ -331,29 +307,12 @@ async function recordAutomationRun(summary: {
 }
 async function main() {
   validateRequiredEnv();
-  // A cleanup-only run must not reconcile or publish new queue items.
-  if (process.env.SOCIAL_CLEANUP_ONLY === "true") {
-    const result = await retryPendingPublishedVideoCleanup(250);
-    console.log("[background-jobs] Published media cleanup-only sweep:", JSON.stringify(result));
-    if (result.pending > 0 || result.error) {
-      throw new Error(result.error || `Published media cleanup left ${result.pending} item(s) pending.`);
-    }
-    return;
-  }
-  if (process.env.SOCIAL_QUEUE_RESET_ONLY === "true") {
-    const result = await resetQueuedSocialVideoMedia(500);
-    console.log("[background-jobs] Pending video queue reset:", JSON.stringify(result));
-    if (result.pending > 0) {
-      throw new Error(`Pending video reset left ${result.pending} media item(s) for retry.`);
-    }
-    return;
-  }
-  const target = process.env.BACKGROUND_JOB_TARGET ?? "all";
+  const target = process.env.BACKGROUND_JOB_TARGET ?? "videos";
   const videoSettings = await getVideoAutomationSettings();
   const runNowRequestedAt = videoSettings.runNowRequest?.requestedAt ?? null;
   applyVideoAutomationSettings(videoSettings);
   console.log("[background-jobs] Admin video settings:", JSON.stringify(videoSettings));
-  if (!["all", "videos", "social"].includes(target)) {
+  if (!["all", "videos"].includes(target)) {
     throw new Error(`Invalid BACKGROUND_JOB_TARGET: ${target}`);
   }
 
