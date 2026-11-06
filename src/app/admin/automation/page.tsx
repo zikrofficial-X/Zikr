@@ -13,7 +13,7 @@ const JOB_TABLES = [
   ["content_agent_queue", "طابور وكيل المحتوى"],
   ["content_agent_runs", "تشغيلات وكيل المحتوى"],
   ["video_generation_requests", "طلبات توليد الفيديو"],
-  ["social_publish_queue", "طابور النشر الاجتماعي"],
+  ["content_publish_queue", "طابور النشر داخل الموقع"],
 ] as const;
 
 type QueueStatus = { status: string };
@@ -27,11 +27,9 @@ type VideoAutomationRun = {
 };
 
 const VIDEO_SETTINGS = [
-  ["video_automation_enabled", "التشغيل التلقائي", "boolean"],
+  ["video_automation_enabled", "توليد الفيديوهات تلقائيًا داخل الموقع", "boolean"],
   ["video_automation_batch_size", "عدد الطلبات في كل دورة", "number"],
   ["video_automation_ai_enabled", "توليد المشاهد بالـAI", "boolean"],
-  ["video_automation_auto_publish", "النشر التلقائي", "boolean"],
-  ["video_automation_facebook_enabled", "فيسبوك وريلز", "boolean"],
   ["video_automation_daily_target", "الهدف اليومي للفيديوهات", "number"],
   ["video_automation_ai_attempts_per_run", "محاولات مزودات الفيديو الذكية لكل دورة", "number"],
   ["video_automation_video_seconds", "مدة الفيديو الافتراضية بالثواني", "number"],
@@ -66,22 +64,24 @@ export default async function AdminAutomationPage() {
   );
 
   const settingsRes = await readRows<{ key: string; value: unknown }>(
-    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled,video_automation_daily_target,video_automation_ai_attempts_per_run,video_automation_video_seconds,video_automation_run_now)&select=key,value",
+    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_daily_target,video_automation_ai_attempts_per_run,video_automation_video_seconds,video_automation_run_now)&select=key,value",
   );
   const settings = Object.fromEntries(settingsRes.rows.map((row) => [row.key, row.value]));
   const latestRes = await readRows<VideoAutomationRun>(
     "/rest/v1/video_automation_runs?select=finished_at,created_count,processed_count,completed_count,failed_count,error_summary&order=finished_at.desc&limit=1",
   );
-  const [videoRes, socialRes] = await Promise.all([
-    readRows<QueueStatus>("/rest/v1/video_generation_requests?select=status&order=created_at.desc&limit=500"),
-    readRows<QueueStatus>("/rest/v1/social_publish_queue?select=status&order=created_at.desc&limit=500"),
-  ]);
+  const videoRes = await readRows<QueueStatus>(
+    "/rest/v1/video_generation_requests?select=status&order=created_at.desc&limit=500",
+  );
+  const sitePublishRes = await readRows<QueueStatus>(
+    "/rest/v1/content_publish_queue?select=status&order=scheduled_at.asc&limit=500",
+  );
 
   const unavailable = [
     !settingsRes.ok && "إعدادات التشغيل",
     !latestRes.ok && "آخر تشغيل للعامل",
-    !videoRes.ok && "طابور الفيديو",
-    !socialRes.ok && "طابور النشر الاجتماعي",
+    !videoRes.ok && "طابور التوليد الداخلي",
+    !sitePublishRes.ok && "طابور النشر داخل الموقع",
   ].filter(Boolean) as string[];
 
   const countStatus = (rows: QueueStatus[], status: string) => rows.filter((row) => row.status === status).length;
@@ -185,7 +185,7 @@ export default async function AdminAutomationPage() {
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded-xl border border-sky-500/15 bg-sky-500/5 p-4 text-sm leading-7 text-sky-100/75">
-            التشغيل المتكرر للفيديو والنشر الاجتماعي ملك لـGitHub Actions. زر «تشغيل التوليد الآن» يستخدم dispatch يدويًا مباشرًا ولا يضيف Cron جديدًا.
+            التوليد الداخلي يعمل عبر GitHub Actions وفق الجدول المحدد. لا يتم إرسال أي فيديو أو محتوى إلى منصات التواصل؛ النشر داخل صفحات ZIKR فقط.
           </div>
           <div className="rounded-xl border border-brand-gold/10 bg-black/10 p-4 text-sm leading-7 text-brand-cream/55">
             جودة الصوت: <Link href="/admin/video/voices" className="text-brand-gold hover:underline">ملفات الأصوات</Link> · ضبط النص: <Link href="/admin/video/scripts" className="text-brand-gold hover:underline">النصوص</Link> · فحوصات ما قبل النشر: <Link href="/admin/video/qa" className="text-brand-gold hover:underline">QA</Link>
@@ -201,29 +201,14 @@ export default async function AdminAutomationPage() {
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-6">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-brand-gold">طابور توليد الفيديو</h2>
-            <Link href="/admin/video/requests" className="text-xs text-brand-gold/70 hover:text-brand-gold">فتح الطابور</Link>
+            <h2 className="font-semibold text-brand-gold">النشر داخل ZIKR</h2>
+            <span className="text-xs text-brand-cream/35">لا يعتمد على منصات خارجية</span>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[[ "pending", "قيد الانتظار" ], [ "processing", "قيد التنفيذ" ], [ "completed", "مكتمل" ], [ "failed", "فشل" ]].map(([status, label]) => (
+            {[[ "queued", "في الانتظار" ], [ "processing", "قيد التنفيذ" ], [ "published", "نُشر بالموقع" ], [ "failed", "فشل" ]].map(([status, label]) => (
               <div key={status} className="rounded-xl border border-brand-gold/8 bg-black/10 p-3">
                 <p className="text-xs text-brand-cream/35">{label}</p>
-                <p className="mt-1 text-xl font-bold text-brand-cream">{videoRes.ok ? countStatus(videoRes.rows, status) : "غير متاح"}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-6">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-brand-gold">طابور النشر الاجتماعي</h2>
-            <Link href="/admin/social" className="text-xs text-brand-gold/70 hover:text-brand-gold">فتح مركز النشر</Link>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[[ "queued", "في الانتظار" ], [ "processing", "قيد التنفيذ" ], [ "published", "نُشر" ], [ "failed", "فشل" ]].map(([status, label]) => (
-              <div key={status} className="rounded-xl border border-brand-gold/8 bg-black/10 p-3">
-                <p className="text-xs text-brand-cream/35">{label}</p>
-                <p className="mt-1 text-xl font-bold text-brand-cream">{socialRes.ok ? countStatus(socialRes.rows, status) : "غير متاح"}</p>
+                <p className="mt-1 text-xl font-bold text-brand-cream">{sitePublishRes.ok ? countStatus(sitePublishRes.rows, status) : "غير متاح"}</p>
               </div>
             ))}
           </div>

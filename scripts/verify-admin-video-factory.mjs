@@ -10,6 +10,10 @@ const read = (path) => {
   return readFileSync(path, "utf8");
 };
 
+const systemActions = read("src/app/admin/system-actions.ts");
+if (/video_automation_ai_enabled"\s*\|\|\s*\)/.test(systemActions)) {
+  failures.push("video automation boolean setting guard must not contain a trailing logical OR");
+}
 const permissions = read("src/features/admin/services/permissions.ts");
 const createRoute = read("src/app/api/admin/videos/create/route.ts");
 if (!createRoute.includes('requireAdminApi("video.manage")')) failures.push("video create API must require video.manage");
@@ -42,13 +46,16 @@ if (!generation.includes("requireAdminApi('video.manage')")) failures.push("vide
 if (!generation.includes("requireAdminApi('video.delete')")) failures.push("video generation DELETE must require video.delete");
 if (!generation.includes("updated_at=eq.") || !generation.includes("current.updated_at")) failures.push("admin publish retry must use optimistic concurrency");
 
-const retryPublishStart = generation.indexOf("if (action === 'retry_publish')");
+const retryPublishStart = generation.search(/if\s*\(\s*action\s*===\s*["']retry_publish["']\s*\)/);
 const retryPublishEnd = generation.indexOf("if (!ALLOWED_STATUSES.has(status))", retryPublishStart);
 const retryPublishBlock = retryPublishStart >= 0 && retryPublishEnd > retryPublishStart
   ? generation.slice(retryPublishStart, retryPublishEnd)
   : "";
 if (!retryPublishBlock.includes("EXTERNAL_VIDEO_PUBLISHING_RETIRED") || !retryPublishBlock.includes("status: 410")) {
   failures.push("external video publish retry must be retired; internal generation remains available");
+}
+if (retryPublishBlock.includes("publishToYoutube") || retryPublishBlock.includes("publishToFacebook")) {
+  failures.push("retired external publish retry must not call provider upload functions");
 }
 const videoManagerRole = permissions.match(/video_manager:\s*\[([\s\S]*?)\]/)?.[1] ?? "";
 const socialManagerRole = permissions.match(/social_manager:\s*\[([\s\S]*?)\]/)?.[1] ?? "";
@@ -187,10 +194,18 @@ const worker = read("scripts/jobs/template-video-automation.ts");
 if (!worker.includes("async function bindTemplateVersion")) failures.push("video worker must bind requests to an immutable template version");
 if (!worker.includes("request.content.templatePreview === true")) failures.push("template preview mode must be recognized by the renderer");
 if (!worker.includes("if (!isTemplatePreview) aiPlan = await generateAiVideoPlan(request)")) failures.push("internal template previews must avoid external generative planning");
+if (!worker.includes("registerGeneratedVideoOnSite(request, rendered)") || !worker.includes('generator: "zikr_internal_video_factory"')) {
+  failures.push("successfully generated videos must be persisted in the internal ZIKR catalog");
+}
+if (!read("scripts/jobs/content-publishing.ts").includes('"videos"')) failures.push("scheduled site publisher must support videos records");
+const internalVideoQueueMigration = read("supabase/migrations/20261106160000_allow_internal_videos_in_content_publish_queue.sql");
+if (!internalVideoQueueMigration.includes("'videos'") || !internalVideoQueueMigration.includes("content_publish_queue_content_table_check")) {
+  failures.push("Supabase content publication queue constraint must explicitly allow internal videos");
+}
 if (!worker.includes("source_hash: rendered.sourceHash") || !worker.includes("content_hash: rendered.contentHash") || !worker.includes("template_version: rendered.templateVersion")) {
   failures.push("completed manual renders must persist source, content and template integrity fingerprints");
 }
-if (!worker.includes("content.skipSocialPublish === true")) failures.push("template preview requests must never enter public social queues");
+if (worker.includes("social_publish_queue") || worker.includes("getFacebookPageCredentials") || worker.includes("queueSocialItems")) failures.push("video generation must never enqueue or query external social platforms");
 if (!worker.includes("!isTemplatePreview &&") || !worker.includes("!boundTemplate &&")) failures.push("pinned template renders must not be handed to external video providers");
 for (const [path, destinations] of [
   ["src/app/admin/audio/tts/page.tsx", ["/admin/video/voices", "/admin/video/scripts"]],

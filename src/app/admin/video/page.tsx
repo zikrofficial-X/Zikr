@@ -13,7 +13,7 @@ const modules = [
   { href: "/admin/video/templates", label: "القوالب", description: "إصدارات FFmpeg ودقات الإخراج." },
   { href: "/admin/video/qa", label: "الجودة", description: "فحص المصدر، الصوت، المدة، الترميز والنتيجة النهائية." },
   { href: "/admin/video/requests", label: "الطابور", description: "طلبات الانتظار والمعالجة وإعادة المحاولة." },
-  { href: "/admin/social", label: "النشر", description: "YouTube وFacebook/Reels والطابور الاجتماعي." },
+  { href: "/admin/memory", label: "الذاكرة", description: "ملفات الفيديو المولّدة وذاكرة ملفات الموقع." },
   { href: "/admin/automation", label: "الأتمتة", description: "الهدف اليومي، AI، المدة، التشغيل العاجل والجدولة." },
 ] as const;
 
@@ -27,8 +27,6 @@ export default async function VideoFactoryDashboardPage() {
       : snapshot.queues.videoPending + snapshot.queues.videoProcessing;
   const videoFailures = snapshot.queues.videoFailed;
   const metricValue = (key: string) => snapshot.metrics.find((metric) => metric.key === key)?.value ?? null;
-  const socialPending = snapshot.queues.socialQueued;
-  const socialFailures = snapshot.queues.socialFailed;
 
   return (
     <Container className="space-y-8 py-10 text-right" dir="rtl">
@@ -36,14 +34,14 @@ export default async function VideoFactoryDashboardPage() {
         <p className="text-xs tracking-[0.22em] text-brand-cream/30">ZIKR VIDEO OPERATIONS</p>
         <h1 className="text-3xl font-bold text-brand-gold md:text-4xl">مركز الفيديو والإنتاج</h1>
         <p className="max-w-4xl text-sm leading-7 text-brand-cream/55">
-          لوحة إنتاج موحدة تربط المصدر الموثق بالنص والصوت والمشهد والرندر وضبط الجودة والنشر، بدون مسارات متنافسة أو جدولة مكررة.
+          لوحة إنتاج موحدة تربط المصدر الموثق بالنص والصوت والمشهد والرندر وضبط الجودة والحفظ داخل ZIKR، بدون مسارات متنافسة أو جدولة مكررة.
         </p>
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           ["طلبات الفيديو النشطة", videoPending, videoFailures === null ? "تعذر قراءة الطابور" : videoFailures ? "يوجد فشل يحتاج مراجعة" : "لا يوجد فشل مرئي", videoFailures ? "danger" : videoFailures === null ? "neutral" : "success"],
-          ["النشر الاجتماعي", socialPending, socialFailures === null ? "تعذر قراءة الطابور" : socialFailures ? "يوجد فشل نشر" : "الطابور منضبط", socialFailures ? "danger" : "neutral"],
+          ["التشغيل الداخلي", "نشط", "التوليد والحفظ داخل ZIKR فقط", "neutral"],
           ["المسودات والمراجعة", metricValue("drafts"), "محتوى يحتاج قرارًا تحريريًا", "warning"],
           ["تدقيق الإدارة", metricValue("auditFailures"), "آخر 12 عملية مدققة", "neutral"],
         ].map(([label, value, note, tone]) => (
@@ -91,7 +89,7 @@ export default async function VideoFactoryDashboardPage() {
         <Link href="/admin/automation" className="rounded-2xl border border-brand-gold/10 bg-black/10 p-5 hover:border-brand-gold/25">
           <p className="text-xs text-brand-cream/30">Operations</p>
           <h2 className="mt-1 font-semibold text-brand-gold">مركز الأتمتة</h2>
-          <p className="mt-2 text-sm leading-6 text-brand-cream/50">الهدف اليومي، محاولات AI، مدة الفيديو، Run Now والنشر.</p>
+          <p className="mt-2 text-sm leading-6 text-brand-cream/50">الهدف اليومي، محاولات AI، مدة الفيديو، Run Now والنشر الداخلي للموقع.</p>
         </Link>
       </section>
 

@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 const failures = [];
 const read = (path) => {
   if (!existsSync(path)) {
-    failures.push("missing required internal-only policy file: " + path);
+    failures.push("missing required retired-social contract file: " + path);
     return "";
   }
   return readFileSync(path, "utf8");
@@ -12,64 +12,116 @@ const read = (path) => {
 
 const socialApi = read("src/app/api/admin/social/route.ts");
 const writtenApi = read("src/app/api/admin/social/written/route.ts");
-const facebookConnect = read("src/app/api/admin/social/facebook/connect/route.ts");
-const facebookCallback = read("src/app/api/admin/social/facebook/callback/route.ts");
+const socialPage = read("src/app/admin/social/page.tsx");
+const writtenPage = read("src/app/admin/social/written-studio/page.tsx");
+const navigation = read("src/features/admin/config/navigation.ts");
+const runner = read("scripts/run-background-jobs.ts");
+const videoGenerator = read("scripts/jobs/template-video-automation.ts");
+const memoryPage = read("src/app/admin/memory/page.tsx");
+const youtubeOAuthCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
+const videoAutomation = read("src/features/videos/services/video-automation.ts");
+const videoCatalog = read("src/features/videos/services/videos.ts");
+const videoContentPublisher = read("scripts/jobs/content-publishing.ts");
+const videoCatalogWorker = read("scripts/jobs/template-video-automation.ts");
+const legacyImportRegister = read("src/app/api/admin/youtube-facebook/register-media/route.ts");
+const legacyImportUrl = read("src/app/api/admin/youtube-facebook/upload-url/route.ts");
+const socialWorkflow = read(".github/workflows/publish-social.yml");
+const writtenWorkflow = read(".github/workflows/generate-written-content.yml");
+const videoWorkflow = read(".github/workflows/generate-ai-video.yml");
 const youtubeConnect = read("src/app/api/admin/social/youtube/connect/route.ts");
 const youtubeCallback = read("src/app/api/admin/social/youtube/callback/route.ts");
-const youtubeCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
-const videoAutomation = read("src/features/videos/services/video-automation.ts");
-const videoWorker = read("scripts/jobs/template-video-automation.ts");
-const runner = read("scripts/run-background-jobs.ts");
-const socialWorkflow = read(".github/workflows/publish-social.yml");
+const analyticsPanel = read("src/features/admin/components/traffic-revenue-panel.tsx");
 
-for (const [name, source] of [
-  ["social control API", socialApi],
-  ["written social API", writtenApi],
-  ["Facebook connect API", facebookConnect],
-  ["Facebook callback API", facebookCallback],
-]) {
-  if (!source.includes("status: 410") || !/RETIRED/.test(source)) {
-    failures.push(name + " must be retired and return HTTP 410");
+if (!socialApi.includes('code: "SOCIAL_PUBLISHING_RETIRED"') || !socialApi.includes("{ status: 410")) {
+  failures.push("social API mutations must fail closed with HTTP 410");
+}
+if (!writtenApi.includes('code: "EXTERNAL_WRITTEN_PUBLISHING_RETIRED"') || !writtenApi.includes("status: 410")) {
+  failures.push("Facebook-only written-content generation must fail closed with HTTP 410");
+}
+if (!socialWorkflow.includes("if: false")) failures.push("legacy external social publisher workflow must be disabled");
+if (!socialWorkflow.includes('FACEBOOK_PUBLISHING_REQUESTED: "false"') || !socialWorkflow.includes('YOUTUBE_PUBLISHING_REQUESTED: "false"') || !socialWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"')) failures.push("retired external social workflow must keep all publishing flags explicitly false");
+const socialWorkflowEnvironment = socialWorkflow.slice(socialWorkflow.indexOf("    env:"), socialWorkflow.indexOf("    steps:"));
+for (const secretName of ["YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN", "YOUTUBE_CHANNEL_ID", "FACEBOOK_GRAPH_API_VERSION"]) if (socialWorkflowEnvironment.split("\n").some((line) => line.trimStart().startsWith(secretName + ":"))) failures.push("retired social workflow must not receive external provider credentials: " + secretName);
+if (writtenWorkflow.includes("if: false") || !writtenWorkflow.includes('WRITTEN_CONTENT_ENABLED: "true"')) failures.push("internal written-content generator workflow must be enabled for ZIKR website articles");
+const writtenWorker = read("scripts/jobs/written-content-automation.ts");
+if (writtenWorker.includes("social_publish_queue") || !writtenWorker.includes('"/rest/v1/articles"') || !writtenWorker.includes('"/rest/v1/content_publish_queue"')) {
+  failures.push("written-content generator must write only to internal article and content publishing tables");
+}
+if (/processSocialPublishQueue|syncSocialInsights|reconcileCompletedVideoSocialQueue/.test(runner)) {
+  failures.push("internal video worker must not import or execute external social publishers");
+}
+if (!runner.includes('processScheduledContent(20)')) {
+  failures.push("background worker must publish only content already scheduled for the ZIKR website");
+}
+if (!videoWorkflow.includes("BACKGROUND_JOB_TARGET: \"videos\"")) failures.push("video worker must target internal video generation only");
+for (const token of ["YOUTUBE_CLIENT_ID", "YOUTUBE_REFRESH_TOKEN", "FACEBOOK_GRAPH_API_VERSION", "SOCIAL_PUBLISH_ENABLED"]) {
+  if (videoWorkflow.includes(token)) failures.push("internal video workflow must not depend on external social credential/config: " + token);
+}
+if (!socialPage.includes('redirect("/admin/memory")')) failures.push("retired social center must redirect to internal project memory");
+if (!writtenPage.includes('redirect("/admin/memory")')) failures.push("retired written-social studio must redirect to internal project memory");
+if (!memoryPage.includes("requireAdminPermission(\"media.manage\")")) failures.push("internal memory route must have a server-side permission gate");
+if (videoGenerator.includes("social_publish_queue") || videoGenerator.includes("getFacebookPageCredentials") || videoGenerator.includes("queueSocialItems")) {
+  failures.push("video generator must not enqueue or query any external social provider");
+}
+if (!youtubeOAuthCredentials.includes("granted_scopes") || !youtubeOAuthCredentials.includes("yt-analytics.readonly") || youtubeOAuthCredentials.includes("getServerEnv")) {
+  failures.push("YouTube analytics must use a stored, explicitly read-only OAuth credential without an unknown-scope environment fallback");
+}
+if (youtubeCallback.includes('const YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube"') || !youtubeCallback.includes("canReadChannel: set.has(YOUTUBE_READ_SCOPE)")) {
+  failures.push("YouTube OAuth callback must not accept the broad upload-capable youtube scope");
+}
+if (!youtubeConnect.includes('include_granted_scopes", "false"')) {
+  failures.push("YouTube read-only OAuth must not carry forward legacy write scopes");
+}
+if (!videoAutomation.includes('throw new Error("EXTERNAL_SOCIAL_PUBLISHING_RETIRED")')) {
+  failures.push("YouTube/Facebook upload service functions must fail closed before making external requests");
+}
+for (const legacyRoute of [legacyImportRegister, legacyImportUrl]) {
+  if (!legacyRoute.includes('code: "EXTERNAL_VIDEO_IMPORT_RETIRED"') || !legacyRoute.includes("status: 410")) {
+    failures.push("legacy YouTube-Facebook media import endpoints must return HTTP 410");
   }
 }
-if (socialApi.includes("social_publish_queue") || socialApi.includes("dispatchGitHubWorkflow") || socialApi.includes("fetch(")) {
-  failures.push("retired social control API must not read, mutate, or dispatch external publishing");
+if (!videoCatalog.includes("metadata.generatedVideoUrl") || !videoCatalog.includes("isPubliclyRenderableVideo")) {
+  failures.push("internal MP4 URLs must be renderable by the public ZIKR video catalog");
 }
-if (!youtubeConnect.includes("youtube.readonly") || !youtubeConnect.includes("yt-analytics.readonly")) {
-  failures.push("YouTube OAuth must request only channel and analytics read scopes");
+if (!videoCatalogWorker.includes("registerGeneratedVideoOnSite") || !videoCatalogWorker.includes('generator: "zikr_internal_video_factory"')) {
+  failures.push("completed MP4s must be registered in the internal ZIKR video catalog");
 }
-if (youtubeConnect.includes("youtube.upload") || youtubeConnect.includes("youtube.force-ssl") || youtubeConnect.includes("youtube") && youtubeConnect.includes("include_granted_scopes\", \"true\"")) {
-  failures.push("YouTube OAuth must not request or inherit upload/write scopes");
+if (!videoContentPublisher.includes('"videos"')) {
+  failures.push("scheduled internal site publisher must allow generated videos");
 }
-if (youtubeCallback.includes('canReadChannel: set.has(YOUTUBE_READ_SCOPE)') === false ||
-    youtubeCallback.includes('const YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube"')) {
-  failures.push("YouTube OAuth callback must reject broad upload-capable grants");
+if (!socialPage.includes('redirect("/admin/memory")') || !writtenPage.includes('redirect("/admin/memory")')) {
+  failures.push("retired social UI routes must redirect to the protected internal memory/media page");
 }
-if (!youtubeCredentials.includes("granted_scopes") || !youtubeCredentials.includes("yt-analytics.readonly") || youtubeCredentials.includes("getServerEnv")) {
-  failures.push("YouTube analytics must require a stored credential with explicit read-only scopes and no unknown-scope fallback");
-}
-if (!videoAutomation.includes('throw new Error("EXTERNAL_SOCIAL_PUBLISHING_RETIRED")') ||
-    videoAutomation.includes("https://www.googleapis.com/upload/youtube/v3/videos") ||
-    videoAutomation.includes("graph.facebook.com")) {
-  failures.push("video provider upload functions must fail closed without external network calls");
-}
-if (videoWorker.includes("social_publish_queue") || videoWorker.includes("queueSocialItems") || videoWorker.includes("reconcileCompletedVideoSocialQueue")) {
-  failures.push("video generation worker must not create or reconcile external social queue records");
-}
-if (runner.includes("social_publish_queue") || runner.includes("reconcileCompletedVideoSocialQueue")) {
-  failures.push("background runner must not process historical external social queue records");
-}
-if (socialWorkflow.includes("\n  schedule:") || !socialWorkflow.includes("if: false") || !socialWorkflow.includes('SOCIAL_PUBLISH_ENABLED: "false"')) {
-  failures.push("external social workflow must have no automatic schedule and remain explicitly disabled");
+if (navigation.includes('key: "publishing"') || navigation.includes('href: "/admin/social"')) {
+  failures.push("external social publishing must not be part of admin navigation");
 }
 
-const migration = read("supabase/migrations/20261106090800_production_blockers_and_social_insights.sql");
-if (!migration.includes("CREATE TABLE IF NOT EXISTS public.social_post_insights")) {
-  failures.push("historical social insight storage must be retained for audit");
+const requiredReadScopes = [
+  "https://www.googleapis.com/auth/youtube.readonly",
+  "https://www.googleapis.com/auth/yt-analytics.readonly",
+];
+for (const scope of requiredReadScopes) {
+  if (!youtubeConnect.includes(scope)) failures.push("YouTube analytics OAuth is missing required read-only scope: " + scope);
 }
+for (const scope of ["youtube.upload", "youtube.force-ssl"]) {
+  if (youtubeConnect.includes(scope) || youtubeCallback.includes(scope)) {
+    failures.push("YouTube analytics OAuth must not request publish/delete scope: " + scope);
+  }
+}
+if (!youtubeConnect.includes('requireAdminApi("analytics.read")') || !youtubeCallback.includes('requireAdminApi("analytics.read")')) {
+  failures.push("YouTube OAuth connection must be protected by analytics.read, not social publishing permission");
+}
+if (!youtubeConnect.includes("YOUTUBE_REDIRECT_URI") || !youtubeCallback.includes("YOUTUBE_REDIRECT_URI")) {
+  failures.push("YouTube OAuth authorize and token exchange must use one canonical redirect URI");
+}
+if (!youtubeCallback.includes('permission: "analytics.read"')) failures.push("YouTube OAuth audit event must use analytics.read permission");
+if (!analyticsPanel.includes("/api/admin/social/youtube/connect") || !analyticsPanel.includes("قراءة فقط")) {
+  failures.push("read-only YouTube account connection must be available from the analytics dashboard");
+}
+
 if (failures.length) {
-  console.error("INTERNAL_ONLY_SOCIAL_POLICY_CHECK_FAILED");
+  console.error("EXTERNAL_SOCIAL_RETIREMENT_CHECK_FAILED");
   for (const failure of failures) console.error("❌ " + failure);
   process.exit(1);
 }
-console.log("✅ Internal-only video delivery, retired social publishing, and read-only YouTube analytics contracts passed.");
+console.log("✅ External social publishing is retired; YouTube remains read-only analytics only.");

@@ -99,25 +99,104 @@ async function makeDraft(source:WrittenContentSource,key:string):Promise<Written
  const valid=validateWrittenPostDraft(draft);if(!valid.ok)throw new Error("Quality gate: "+valid.reason);
  return draft;
 }
-async function enqueue(source:WrittenContentSource,draft:WrittenPostDraft){
+function writtenArticleSlug(automationKey: string) {
+ return "zikr-auto-" + createHash("sha256").update(automationKey).digest("hex").slice(0,24);
+}
+
+export function buildWrittenArticlePayload(
+ source: WrittenContentSource,
+ draft: WrittenPostDraft,
+ automationKey: string,
+ slug: string,
+ now: string,
+) {
+ const post=buildWrittenPost(source,draft);
+ const body=post.body.trim();
+ return {
+  title: post.title,
+  title_ar: post.title,
+  slug,
+  content: body,
+  content_ar: body,
+  summary: draft.hook.trim(),
+  summary_ar: draft.hook.trim(),
+  author: "فريق تحرير ZIKR",
+  published: false,
+  featured: false,
+  tags: [source.kind, "ذِكر", "محتوى موثق"],
+  metadata: {
+   automation: "written-content-v2",
+   automationKey,
+   publicPath: source.publicPath,
+   generation: {
+    provider: "gemini",
+    model: process.env.GEMINI_MODEL || "gemini-3.1-flash-lite",
+    version: "written-site-v2",
+    generatedAt: now,
+    contentHash: createHash("sha256").update(body).digest("hex"),
+   },
+   quality: {
+    passed: true,
+    checks: ["reviewed_source", "arabic_text", "bounded_length", "no_unattributed_religious_quote", "site_only"],
+   },
+   source: {
+    type: source.kind,
+    id: source.id,
+    title: source.title,
+    reference: source.reference,
+    verified: source.sourceVerified,
+   },
+  },
+  created_at: now,
+  updated_at: now,
+ };
+}
+
+async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
  const automationKey=createWrittenAutomationKey(source.kind,source.id);
- const duplicate=await readRequired<Row>(`/rest/v1/social_publish_queue?automation_key=eq.${encodeURIComponent(automationKey)}&select=id&limit=1`);
- if(duplicate[0])return {status:"duplicate",id:String(duplicate[0].id)};
- const post=buildWrittenPost(source,draft),now=new Date().toISOString(),contentHash=createHash("sha256").update(post.body).digest("hex");
- const saved=await supabaseServerAdminRequest<Array<{id:string}>>("/rest/v1/social_publish_queue",{method:"POST",headers:{"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify({
-  content_type:"written_post",content_id:source.id,title:post.title,body:post.body,image_url:null,video_url:null,target_platforms:["facebook"],status:"queued",scheduled_at:now,
-  metadata:{contentKind:"written_post",category:source.kind,categoryLabel:source.categoryLabel,source:{type:source.kind,id:source.id,title:source.title,reference:source.reference,verified:source.sourceVerified},publicPath:source.publicPath,generation:{provider:"gemini",model:process.env.GEMINI_MODEL||"gemini-3.1-flash-lite",version:"written-v1",generatedAt:now,contentHash},quality:{passed:true,checks:["reviewed_source","arabic_text","bounded_length","no_unattributed_religious_quote"]}},
-  automation_key:automationKey,created_at:now,updated_at:now
- })});
- if(!Array.isArray(saved)||!saved[0]?.id)throw new Error("Queue insert returned no record.");
- return {status:"queued",id:saved[0].id};
+ const slug=writtenArticleSlug(automationKey);
+ const existing=await readRequired<Row>(
+  "/rest/v1/articles?slug=eq."+encodeURIComponent(slug)+"&select=id,published,metadata&limit=1",
+ );
+ let articleId=existing[0]?str(existing[0].id):"";
+ const now=new Date();
+ const nowIso=now.toISOString();
+ if(!articleId){
+  const payload=buildWrittenArticlePayload(source,draft,automationKey,slug,nowIso);
+  const saved=await supabaseServerAdminRequest<Array<{id:string}>>("/rest/v1/articles",{
+   method:"POST",
+   headers:{"Content-Type":"application/json",Prefer:"return=representation"},
+   body:JSON.stringify(payload),
+  });
+  articleId=Array.isArray(saved)?str(saved[0]?.id):"";
+  if(!articleId)throw new Error("Article insert returned no record.");
+ }
+ if(existing[0] && existing[0].published===true) return {status:"already_published",id:articleId};
+ const queue=await readRequired<Row>(
+  "/rest/v1/content_publish_queue?content_table=eq.articles&content_id=eq."+encodeURIComponent(articleId)+"&select=id,status&limit=1",
+ );
+ if(queue[0]) return {status:"duplicate",id:articleId};
+ const scheduledAt=new Date(now.getTime()+5*60*1000).toISOString();
+ await supabaseServerAdminRequest("/rest/v1/content_publish_queue",{
+  method:"POST",
+  headers:{"Content-Type":"application/json",Prefer:"return=minimal"},
+  body:JSON.stringify({
+   content_table:"articles",
+   content_id:articleId,
+   scheduled_at:scheduledAt,
+   status:"queued",
+   created_at:nowIso,
+   updated_at:nowIso,
+  }),
+ });
+ return {status:"queued",id:articleId};
 }
 export async function runWrittenContentAutomation(options:{category?:string;batchSize?:number}={}){
  if(process.env.WRITTEN_CONTENT_ENABLED?.toLowerCase()==="false")return {enabled:false,created:0,duplicates:0,skipped:0};
  const apiKey=process.env.GEMINI_API_KEY?.trim();if(!apiKey)throw new Error("GEMINI_API_KEY is required.");
  const dailyTarget=clamp(process.env.WRITTEN_CONTENT_DAILY_TARGET,3,1,10),batchSize=clamp(options.batchSize??process.env.WRITTEN_CONTENT_BATCH_SIZE,1,1,3);
  const today=new Date();today.setUTCHours(0,0,0,0);
- const todays=await readRequired<Row>(`/rest/v1/social_publish_queue?content_type=eq.written_post&created_at=gte.${encodeURIComponent(today.toISOString())}&select=id&limit=100`);
+ const todays=await readRequired<Row>(`/rest/v1/articles?metadata->>automation=eq.written-content-v2&created_at=gte.${encodeURIComponent(today.toISOString())}&select=id&limit=100`);
  const remaining=Math.max(0,dailyTarget-todays.length);if(!remaining)return {enabled:true,created:0,duplicates:0,skipped:0,dailyTarget,dailyUsed:todays.length};
  const category=normalizeWrittenCategory(options.category||process.env.WRITTEN_CONTENT_CATEGORY||"auto"),all=await loadSources(),pool=category==="auto"?[...all]:all.filter(x=>x.kind===category);
  if(!pool.length)throw new Error("No approved and published source for category "+category);

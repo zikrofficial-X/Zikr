@@ -1,14 +1,9 @@
-import { Container } from "@/components/ui/container";
+import { redirect } from "next/navigation";
 import { requireAdminPermission } from "@/features/admin/services/admin";
-import AdminMediaClient from "./media-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminMediaPage() {
+export default async function LegacyMediaPage() {
   await requireAdminPermission("media.manage");
-  return (
-    <Container className="py-8">
-      <AdminMediaClient />
-    </Container>
-  );
+  redirect("/admin/memory");
 }

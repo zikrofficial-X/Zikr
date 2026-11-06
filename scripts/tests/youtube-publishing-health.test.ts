@@ -31,7 +31,7 @@ const connected = await getYouTubePublishingConnectionHealth({
   YOUTUBE_CLIENT_ID: "client-id",
   YOUTUBE_CLIENT_SECRET: "client-secret",
   YOUTUBE_REFRESH_TOKEN: "private-refresh-token",
-}, fakeFetch);
+}, fakeFetch, async () => "verified-read-only-refresh-token");
 assert.equal(connected.status, "connected");
 assert.equal(connected.readSource, "oauth");
 assert.equal(connected.channelId, "UC123456789");
@@ -72,7 +72,7 @@ const publicOnly = await getYouTubePublishingConnectionHealth({
   YOUTUBE_REFRESH_TOKEN: "private-refresh-token",
   YOUTUBE_API_KEY: "private-api-key",
   YOUTUBE_CHANNEL_ID: "UC123456789",
-}, publicFallbackFetch);
+}, publicFallbackFetch, async () => "verified-read-only-refresh-token");
 assert.equal(publicOnly.status, "public_data_only");
 assert.equal(publicOnly.readSource, "api_key");
 assert.equal(publicOnly.channelName, "ZIKR Public Channel");
@@ -95,7 +95,7 @@ const oauthMissingPublicFetch: typeof fetch = async (input) => {
 const oauthMissingPublic = await getYouTubePublishingConnectionHealth({
   YOUTUBE_API_KEY: "private-api-key",
   YOUTUBE_CHANNEL_ID: "UC123456789",
-}, oauthMissingPublicFetch);
+}, oauthMissingPublicFetch, async () => null);
 assert.equal(oauthMissingPublic.status, "public_data_only");
 assert.equal(oauthMissingPublic.readSource, "api_key");
 assert.equal(oauthMissingPublic.totalViews, 77);
@@ -111,7 +111,7 @@ const permissionFailure = await getYouTubePublishingConnectionHealth({
   YOUTUBE_CLIENT_ID: "client-id",
   YOUTUBE_CLIENT_SECRET: "client-secret",
   YOUTUBE_REFRESH_TOKEN: "private-refresh-token",
-}, permissionFailureFetch);
+}, permissionFailureFetch, async () => "verified-read-only-refresh-token");
 assert.equal(permissionFailure.status, "permission_missing");
 
 console.log("YouTube publishing connection health tests passed.");

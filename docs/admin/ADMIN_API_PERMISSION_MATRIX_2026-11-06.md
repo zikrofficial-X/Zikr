@@ -20,17 +20,19 @@
 | PATCH | `/api/admin/site-audio` | `audio.manage` |
 | DELETE | `/api/admin/site-audio` | `audio.manage` |
 | POST | `/api/admin/site-audio/upload` | `audio.manage` |
-| GET | `/api/admin/social/facebook/callback` | `social.manage` |
-| GET | `/api/admin/social/facebook/connect` | `social.manage` |
-| GET | `/api/admin/social` | `social.manage` |
-| POST | `/api/admin/social` | `social.manage` + `social.publish` |
-| GET | `/api/admin/social/written` | `social.manage` |
-| POST | `/api/admin/social/written` | `social.manage` + `social.publish` |
+| GET | `/api/admin/social/facebook/callback` | `social.manage` — retired, HTTP 410 |
+| GET | `/api/admin/social/facebook/connect` | `social.manage` — retired, HTTP 410 |
+| GET | `/api/admin/social` | `social.manage` — retired, HTTP 410 |
+| POST | `/api/admin/social` | `social.manage` + `social.publish` — retired, HTTP 410 |
+| GET | `/api/admin/social/written` | `social.manage` — retired, HTTP 410 |
+| POST | `/api/admin/social/written` | `social.manage` + `social.publish` — retired, HTTP 410 |
 | POST | `/api/admin/video-generation/narration-upload` | `video.manage` |
 | GET | `/api/admin/video-generation` | `video.manage` |
 | DELETE | `/api/admin/video-generation` | `video.delete` |
-| PATCH | `/api/admin/video-generation` | `video.manage` + `social.publish` |
+| PATCH | `/api/admin/video-generation` | `video.manage` — external publish retry returns HTTP 410 |
 | GET | `/api/admin/video-generation/sources` | `video.manage` |
+| GET | `/api/admin/social/youtube/connect` | `analytics.read` — read-only OAuth |
+| GET | `/api/admin/social/youtube/callback` | `analytics.read` — read-only OAuth |
 | GET | `/api/admin/video/templates` | `video.manage` |
 | POST | `/api/admin/video/templates` | `video.manage` |
 | POST | `/api/admin/videos/[id]/retry` | `video.manage` |
@@ -41,13 +43,15 @@
 | GET | `/api/admin/videos` | `video.manage` |
 | POST | `/api/admin/videos/upload` | `video.manage` |
 | GET | `/api/admin/videos/upload` | رفض صريح 405 دون صلاحية أو أثر جانبي |
-| POST | `/api/admin/youtube-facebook/register-media` | `media.manage` |
-| POST | `/api/admin/youtube-facebook/upload-url` | `media.manage` |
+| POST | `/api/admin/youtube-facebook/register-media` | `media.manage` — retired, HTTP 410 |
+| POST | `/api/admin/youtube-facebook/upload-url` | `media.manage` — retired, HTTP 410 |
 
 ## ثوابت إضافية
 
-- إنشاء محتوى يدخل طابور النشر الفعلي يحتاج `social.manage` و`social.publish` معًا.
-- إعادة محاولة نشر فيديو تحتاج `social.publish` مستقلًا عن إدارة الفيديو.
+- واجهات النشر الاجتماعي القديمة مغلقة وتعيد HTTP 410 بعد التحقق من الصلاحيات؛ لا تُنشئ عمليات نشر أو تعدّل الطابور التاريخي.
+- OAuth الخاص بـYouTube محصور في `analytics.read` ويطلب `youtube.readonly` و`yt-analytics.readonly` فقط.
+- نشر الفيديو داخل موقع ZIKR يستخدم `content_publish_queue` و`video.manage`، ولا يحتاج صلاحيات النشر الاجتماعي.
+- إعادة محاولة النشر الخارجي للفيديو متوقفة وتعيد HTTP 410.
 - حذف طلب فيديو أو سجل فيديو يحتاج `video.delete`، وليس `video.manage` وحدها.
 - رفع الوسائط أو طلب رابط رفع يحتاج صلاحية مجال الوسائط أو الفيديو بحسب نوع الأصل.
 - جميع عمليات التعديل والإرسال الحساسة تسجل Audit وفق عقود الخدمة؛ استثناءات القراءة و405 لا تنشئ أحداثًا وهمية.

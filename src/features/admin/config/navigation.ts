@@ -76,12 +76,11 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     ],
   },
   {
-    key: "publishing",
-    label: "النشر والتوزيع",
-    icon: "send",
+    key: "memory",
+    label: "الذاكرة والمكتبة",
+    icon: "brain",
     items: [
-      { href: "/admin/social", label: "مركز النشر الاجتماعي", permission: "social.manage", icon: "share-2" },
-      { href: "/admin/social/written-studio", label: "مصنع المنشورات المكتوبة", permission: "social.manage", icon: "file-pen-line" },
+      { href: "/admin/memory", label: "ذاكرة المشروع", permission: "media.manage", icon: "database" },
     ],
   },
   {
@@ -89,7 +88,6 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     label: "الوسائط والصوت",
     icon: "folder-open",
     items: [
-      { href: "/admin/media", label: "مكتبة الوسائط", permission: "media.manage", icon: "folder-open" },
       { href: "/admin/audio", label: "مركز الصوت", permission: "audio.manage", icon: "volume-2" },
       { href: "/admin/audio/quran", label: "تلاوات القرآن", permission: "audio.manage", icon: "headphones" },
       { href: "/admin/audio/adhan", label: "الأذان", permission: "audio.manage", icon: "radio" },

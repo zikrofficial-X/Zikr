@@ -22,7 +22,7 @@ async function loadAdminSnapshotSafely(): Promise<AdminSnapshot> {
       ["site_audio_assets", "مكتبة صوت الموقع"], ["kids_content", "محتوى الأطفال"],
       ["kids_games", "الألعاب"], ["kids_game_levels", "مستويات الألعاب"],
       ["videos", "الفيديوهات"], ["media_assets", "أصول الوسائط"], ["profiles", "المستخدمون"],
-      ["video_generation_requests", "طلبات الفيديو"], ["social_publish_queue", "عناصر النشر الاجتماعي"],
+      ["video_generation_requests", "طلبات الفيديو"],
       ["admin_audit_events", "سجلات التدقيق"],
     ] as const;
     return {
@@ -30,14 +30,10 @@ async function loadAdminSnapshotSafely(): Promise<AdminSnapshot> {
       unavailable: ["ملخص لوحة الإدارة", "طوابير التشغيل وسجل التدقيق"],
       metrics: [
         { key: "drafts", label: "مسودات/مراجعة", value: null, tone: "neutral" as const },
-        { key: "social", label: "طابور النشر", value: null, tone: "neutral" as const },
         { key: "video", label: "توليد الفيديو", value: null, tone: "neutral" as const },
         { key: "auditFailures", label: "عمليات إدارية فاشلة", value: null, tone: "neutral" as const },
       ],
       queues: {
-        socialQueued: null,
-        socialProcessing: null,
-        socialFailed: null,
         videoPending: null,
         videoProcessing: null,
         videoFailed: null,
@@ -73,7 +69,7 @@ export async function AdminPlatformCommandCenter() {
   const canReadVideoQueue = hasAdminPermission(role, "video.manage");
   const visibleMetrics = snapshot.metrics.filter((metric) => {
     if (metric.key === "auditFailures") return canReadAudit;
-    if (metric.key === "social") return canReadSocialQueue;
+    if (metric.key === "social") return false;
     if (metric.key === "video") return canReadVideoQueue;
     if (metric.key === "drafts") {
       return hasAdminPermission(role, "content.manage") ||
@@ -87,7 +83,6 @@ export async function AdminPlatformCommandCenter() {
   type AttentionItem = { key: string; title: string; description: string; count: number | null; href: string | undefined; tone: "warning" | "danger" };
   const attentionCandidates: AttentionItem[] = [
     { key: "drafts", title: "محتوى ينتظر المراجعة", description: "راجع المسودات والعناصر التي لم تكتمل موافقتها.", count: metricValue("drafts"), href: availableRoute("/admin/editorial", "/admin/library", "/admin/content"), tone: "warning" },
-    { key: "social", title: "منشورات فاشلة", description: "تحقق من سبب الفشل قبل إعادة محاولة النشر.", count: canReadSocialQueue ? snapshot.queues.socialFailed : null, href: availableRoute("/admin/social"), tone: "danger" },
     { key: "video", title: "طلبات فيديو فاشلة", description: "افحص الطلبات قبل إعادة المحاولة أو تنظيفها.", count: canReadVideoQueue ? snapshot.queues.videoFailed : null, href: availableRoute("/admin/video/requests", "/admin/video", "/admin/video/studio"), tone: "danger" },
     { key: "audit", title: "عمليات إدارية فاشلة", description: "راجع حالات الفشل الظاهرة ضمن أحدث أحداث التدقيق.", count: canReadAudit ? metricValue("auditFailures") : null, href: canReadAudit ? availableRoute("/admin/audit") : undefined, tone: "warning" },
   ];
@@ -96,7 +91,7 @@ export async function AdminPlatformCommandCenter() {
       typeof item.count === "number" && item.count > 0 && typeof item.href === "string",
   );
   const queueEntries = Object.entries(snapshot.queues).filter(([key]) =>
-    key.startsWith("social") ? canReadSocialQueue : canReadVideoQueue,
+    (key.startsWith("video") && canReadVideoQueue) || (key.startsWith("social") && canReadSocialQueue),
   );
   const quickActionCandidates: Array<[string, string, string]> = [
     ["إدارة المحتوى", "/admin/content", "راجع المحتوى والمسودات"],
@@ -109,13 +104,11 @@ export async function AdminPlatformCommandCenter() {
     content_agent_queue: "طابور وكيل المحتوى",
     content_agent_runs: "تشغيلات وكيل المحتوى",
     video: "طابور توليد الفيديو",
-    social: "طابور النشر الاجتماعي",
     videoGeneration: "طلبات توليد الفيديو",
-    socialPublish: "طابور النشر الاجتماعي",
   };
   const outcomeLabels: Record<string, string> = { success: "ناجح", denied: "مرفوض", failed: "فشل" };
   const queueTotal = queueEntries.reduce((sum, [, value]) => sum + (typeof value === "number" ? value : 0), 0);
-  const failedQueueTotal = (canReadSocialQueue ? snapshot.queues.socialFailed ?? 0 : 0) + (canReadVideoQueue ? snapshot.queues.videoFailed ?? 0 : 0);
+  const failedQueueTotal = canReadVideoQueue ? snapshot.queues.videoFailed ?? 0 : 0;
   const dataStatus = snapshot.unavailable.length ? "جزئية" : "مباشرة";
   const queueAlerts = [
     canReadVideoQueue && snapshot.queues.videoFailed !== null && snapshot.queues.videoFailed > 0
@@ -125,15 +118,6 @@ export async function AdminPlatformCommandCenter() {
           description: "توجد طلبات فيديو فاشلة تحتاج إلى فحص السجل أو إعادة المحاولة.",
           count: snapshot.queues.videoFailed,
           href: availableRoute("/admin/video/requests", "/admin/video", "/admin/video/studio") ?? "/admin",
-        }
-      : null,
-    canReadSocialQueue && snapshot.queues.socialFailed !== null && snapshot.queues.socialFailed > 0
-      ? {
-          key: "social",
-          title: "فشل في طابور النشر الاجتماعي",
-          description: "توجد منشورات لم تكتمل. راجع سبب الفشل قبل إعادة تنفيذ النشر.",
-          count: snapshot.queues.socialFailed,
-          href: availableRoute("/admin/social") ?? "/admin",
         }
       : null,
   ].filter((item): item is NonNullable<typeof item> => Boolean(item));
@@ -166,8 +150,8 @@ export async function AdminPlatformCommandCenter() {
     {
       key: "operations",
       title: "المستخدمون والتشغيل",
-      description: "الحسابات، طلبات التوليد، النشر الاجتماعي، وسجل التدقيق.",
-      tables: ["profiles", "video_generation_requests", "social_publish_queue", "admin_audit_events"],
+      description: "الحسابات، طلبات التوليد، وعمليات التدقيق.",
+      tables: ["profiles", "video_generation_requests", "admin_audit_events"],
     },
   ];
 
@@ -179,7 +163,7 @@ export async function AdminPlatformCommandCenter() {
             <p className="text-xs tracking-[0.18em] text-brand-cream/30">مركز إدارة وتشغيل ذِكر</p>
             <h1 className="mt-2 text-3xl font-bold text-brand-gold">لوحة العمليات الرئيسية</h1>
             <p className="mt-2 max-w-4xl text-sm leading-7 text-brand-cream/50">
-              مركز واحد لمراقبة التشغيل، المحتوى، الوسائط، النشر، المستخدمين، والأمن بدون تكرار صفحات أو مؤشرات غير حقيقية.
+              مركز واحد لمراقبة التشغيل الداخلي، المحتوى، الذاكرة، المستخدمين، والأمن دون روابط أو مؤشرات للنشر الخارجي.
             </p>
           </div>
           <Link href="/" className="rounded-xl border border-brand-gold/20 px-4 py-2 text-sm text-brand-gold hover:bg-brand-gold/10">

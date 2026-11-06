@@ -65,12 +65,12 @@ for (const group of groups) {
 }
 const items = groups.flatMap((group) => group.items);
 if (groups.length !== 9) failures.push("expected exactly nine canonical admin navigation zones");
-for (const label of ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "النشر والتوزيع", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"]) {
+for (const label of ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الذاكرة والمكتبة", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"]) {
   if (!groups.some((group) => group.label === label)) failures.push("missing canonical admin navigation zone: " + label);
 }
 const routeInventorySection = docs.split("## 1. جرد المسارات والصلاحيات")[1]?.split("## 2. نطاق الأدوار")[0] ?? "";
 const documentedGroups = [...routeInventorySection.matchAll(/^### (.+)$/gm)].map((match) => match[1].trim());
-const canonicalGroupLabels = ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "النشر والتوزيع", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"];
+const canonicalGroupLabels = ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الذاكرة والمكتبة", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"];
 if (documentedGroups.join("|") !== canonicalGroupLabels.join("|")) {
   failures.push("admin governance headings must match the nine canonical navigation zones in the same order");
 }
@@ -125,7 +125,13 @@ if (!sidebar.includes('aria-label="اختيار مجموعة الإدارة"') |
 if (!dashboard.includes("hasAdminPermission") || !dashboard.includes("availableHrefs")) failures.push("dashboard quick links and section cards must be filtered by the signed-in role");
 if (!dashboard.includes("AdminModuleDirectory groups={availableGroups}")) failures.push("dashboard must use the permission-filtered interactive module directory");
 if (!moduleDirectory.includes("FAVORITES_KEY") || !moduleDirectory.includes("RECENTS_KEY") || !moduleDirectory.includes("visibleGroups")) failures.push("admin directory must provide favorites, recent pages, and searchable group filtering");
-if (!dashboard.includes('hasAdminPermission(role, "audit.read")') || !dashboard.includes('hasAdminPermission(role, "social.manage")') || !dashboard.includes('hasAdminPermission(role, "video.manage")')) failures.push("audit and queue operational details must respect admin role permissions");
+if (
+  !dashboard.includes('hasAdminPermission(role, "audit.read")') ||
+  !dashboard.includes('hasAdminPermission(role, "video.manage")') ||
+  !dashboard.includes('if (metric.key === "social") return false;')
+) {
+  failures.push("audit and internal video queue details must respect admin role permissions; retired social metrics must remain hidden");
+}
 if (!dashboard.includes("attentionItems.length > 0")) failures.push("dashboard must display actionable attention items based on operational counts");
 if (!editorialActions.includes("enforceEditorialRateLimit") || !editorialActions.includes("EDITORIAL_RATE_LIMIT_MESSAGE") || !editorialActions.includes("editorialError(EDITORIAL_RATE_LIMIT_MESSAGE)")) failures.push("expected editorial rate-limit denials must redirect to a visible message instead of surfacing as runtime exceptions");
 if (editorialActions.includes('await enforceAdminRateLimit(admin, "editorial.')) failures.push("editorial actions must not expose expected rate-limit denials as unhandled exceptions");

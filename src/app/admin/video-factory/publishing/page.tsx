@@ -4,6 +4,6 @@ import { requireAdminPermission } from "@/features/admin/services/admin";
 export const dynamic = "force-dynamic";
 
 export default async function VideoFactoryPublishingRedirectPage() {
-  await requireAdminPermission("social.manage");
-  redirect("/admin/social");
+  await requireAdminPermission("media.manage");
+  redirect("/admin/memory");
 }

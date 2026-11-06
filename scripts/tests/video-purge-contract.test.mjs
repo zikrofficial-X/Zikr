@@ -20,35 +20,43 @@ for (const token of [
   'tags.has("automated")',
   'tags.has("cloudinary-migration")',
   'asset.format === "mp4"',
-  "VIDEO_CONTENT_TYPES",
   "video_generation_requests",
   "video_automation_runs",
   "publicVideoCatalogPreserved: true",
+  "socialQueueRowsPreserved,",
   'action: "video.library.purge"',
   "externalSocialPostsDeleted: false",
 ]) {
   assert.ok(route.includes(token), "Missing purge route safety contract: " + token);
 }
 assert.ok(!/drop\s+table|supabase_migrations|android-releases/i.test(route), "Purge must not alter schema, migration history, or Android releases.");
-assert.ok(!route.includes('deleteRows("videos", "id=not.is.null")'), "Purge must preserve the public video catalogue.");
-assert.ok(route.includes("published_at=is.null") && route.includes("hasSuccessfulRemotePublication"), "Purge may remove only queued video items without publication evidence.");
-const unresolvedPreflight = route.indexOf("const unresolvedDeliveries = await getUnresolvedVideoDeliveries();");
-const pauseAutomation = route.indexOf("await pauseVideoAutomation();");
-assert.ok(unresolvedPreflight >= 0 && pauseAutomation > unresolvedPreflight, "unresolved social deliveries must block purge before pausing automation");
-assert.ok(route.includes('row.status === "partial"'), "partial video deliveries must block purge");
-assert.ok(route.includes('status=in.(queued,failed)'), "only queued/failed video queue rows may be purged");
-assert.ok(route.includes("automationMustBeReenabled: true"), "a purge blocked after the worker lock must expose the required recovery state");
+assert.ok(!route.includes('deleteRows("videos", "id=not.is.null")'), "Purge must preserve unrelated/manual video records.");
+assert.ok(route.includes('metadata->>generator=eq.zikr_internal_video_factory'), "Purge must select only internally generated video catalog rows.");
+assert.ok(route.includes('mediaState: "purged"'), "Purge must mark removed generated media records.");
+assert.ok(route.includes('published: false'), "Purge must hide generated records whose Cloudinary media was deleted.");
+assert.ok(route.includes('generatedVideoUrl: null') && route.includes('videoUrl: null'), "Purge must clear dead media URLs.");
+assert.ok(!route.includes("social_publish_queue"), "memory purge must not query or mutate the retired social queue.");
+assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical social queue records must be explicitly preserved.");
+assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active internal generation before deleting media.");
+assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");
+assert.ok(route.includes("getVideoAutomationEnabled") && route.includes("restoreVideoAutomation(automationWasEnabled)"), "cleanup must restore the previous automation state after the temporary lock");
+assert.ok(route.includes('body.scope === "files"') && route.includes('body.scope === "memory"') && route.includes('body.scope === "both"'), "the cleanup endpoint must expose distinct files, memory, and combined scopes");
+assert.ok(route.includes("includeFiles") && route.includes("includeMemory"), "the cleanup endpoint must honor the selected scope");
+assert.ok(route.includes("automation_key=not.is.null"), "project-memory cleanup must only delete automated generation requests");
 assert.ok(socialWorker.includes("isVideoPurgeInProgress"));
 assert.ok(socialWorker.includes("video_purge_in_progress"));
 assert.ok(videoWorker.includes("isVideoGenerationPaused"));
 assert.ok(videoWorker.includes("video_automation_enabled,video_purge_in_progress"));
 assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
 assert.ok(generationStudio.includes("PurgeGeneratedVideosControl"));
-assert.ok(socialPage.includes("PurgeGeneratedVideosControl"));
+assert.ok(read("src/app/admin/media/media-client.tsx").includes("PurgeGeneratedVideosControl"));
+assert.ok(read("src/app/admin/memory/page.tsx").includes("AdminMediaClient"));
 assert.ok(control.includes("امسح الفيديوهات المولّدة فقط"));
 assert.ok(control.includes('fetch("/api/admin/video-purge"'));
 assert.ok(control.includes("setAuthorized(allowed)"));
-assert.ok(control.includes("YouTube وFacebook"));
+assert.ok(control.includes('value="files"') && control.includes('value="memory"') && control.includes('value="both"'));
+assert.ok(control.includes('JSON.stringify({ confirmation, scope })'));
+assert.ok(control.includes("سجلات النشر الاجتماعي التاريخية"));
 assert.ok(apiGuards.includes('src/app/api/admin/video-purge/route.ts GET'));
 assert.ok(apiGuards.includes('src/app/api/admin/video-purge/route.ts POST'));
 

@@ -10,14 +10,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const CONFIRMATION_PHRASE = "امسح الفيديوهات المولّدة فقط";
-const VIDEO_CONTENT_TYPES = [
-  "adhkar_video",
-  "dua_video",
-  "hadith_video",
-  "other_video",
-  "quran_video",
-  "story_video",
-] as const;
+
 
 type CloudinaryAsset = {
   asset_id?: string;
@@ -205,16 +198,34 @@ async function setPurgeLock(enabled: boolean): Promise<void> {
       body: JSON.stringify({
         key: "video_purge_in_progress",
         value: enabled,
-        description: "Temporary lock preventing workers from publishing video queue items during a full generated-video purge.",
+        description: "Temporary lock preventing internal video generation while ZIKR-owned generated media is being purged.",
         updated_at: new Date().toISOString(),
       }),
     },
   );
 }
 
+async function getVideoAutomationEnabled(): Promise<boolean> {
+  const rows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+    "/rest/v1/admin_settings?key=eq.video_automation_enabled&select=value&limit=1",
+  );
+  return rows?.[0]?.value !== false;
+}
+
+async function restoreVideoAutomation(enabled: boolean): Promise<void> {
+  await supabaseServerAdminRequest(
+    "/rest/v1/admin_settings?key=eq.video_automation_enabled",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ value: enabled, updated_at: new Date().toISOString() }),
+    },
+  );
+}
+
 async function pauseVideoAutomation(): Promise<void> {
   await supabaseServerAdminRequest(
-    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_auto_publish)",
+    "/rest/v1/admin_settings?key=eq.video_automation_enabled",
     {
       method: "PATCH",
       headers: {
@@ -224,113 +235,13 @@ async function pauseVideoAutomation(): Promise<void> {
       body: JSON.stringify({ value: false, updated_at: new Date().toISOString() }),
     },
   );
-  await supabaseServerAdminRequest(
-    "/rest/v1/admin_settings?key=eq.video_automation_run_now",
-    { method: "DELETE", headers: { Prefer: "return=minimal" } },
+}
+
+async function getActiveVideoWork(): Promise<{ generation: number }> {
+  const generationRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    "/rest/v1/video_generation_requests?status=eq.processing&select=id&limit=100",
   );
-}
-
-async function getActiveVideoWork(): Promise<{ queue: number; generation: number }> {
-  const [queueRows, generationRows] = await Promise.all([
-    supabaseServerAdminRequest<Array<{ id: string }>>(
-      "/rest/v1/social_publish_queue?content_type=in.(" +
-        VIDEO_CONTENT_TYPES.join(",") +
-        ")&status=eq.processing&select=id&limit=100",
-    ),
-    supabaseServerAdminRequest<Array<{ id: string }>>(
-      "/rest/v1/video_generation_requests?status=eq.processing&select=id&limit=100",
-    ),
-  ]);
-  return {
-    queue: queueRows?.length ?? 0,
-    generation: generationRows?.length ?? 0,
-  };
-}
-
-async function getUnresolvedVideoDeliveries(): Promise<number> {
-  const rows = await supabaseServerAdminRequest<Array<{
-    status: string;
-    published_at: string | null;
-    metadata?: Record<string, unknown> | null;
-  }>>(
-    "/rest/v1/social_publish_queue?content_type=in.(" +
-      VIDEO_CONTENT_TYPES.join(",") +
-      ")&status=in.(queued,partial,failed)&select=status,published_at,metadata&limit=1000",
-  );
-  const candidates = rows ?? [];
-  if (candidates.length >= 1000) {
-    throw new Error("Unresolved video delivery inventory exceeded the safe preflight limit.");
-  }
-  return candidates.filter(row =>
-    row.status === "partial" ||
-    Boolean(row.published_at) ||
-    hasSuccessfulRemotePublication(row.metadata),
-  ).length;
-}
-
-type SocialQueuePurgeCandidate = {
-  id: string;
-  status: string;
-  published_at: string | null;
-  metadata?: Record<string, unknown> | null;
-};
-
-function hasSuccessfulRemotePublication(metadata: Record<string, unknown> | null | undefined): boolean {
-  const raw = metadata?.platformResults;
-  const results = Array.isArray(raw)
-    ? raw
-    : raw && typeof raw === "object"
-      ? Object.values(raw)
-      : [];
-  return results.some(value => {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-    const row = value as Record<string, unknown>;
-    return row.ok === true && typeof row.remoteId === "string" && row.remoteId.trim().length > 0;
-  });
-}
-
-/**
- * Remove only never-published queued/failed video items. Published, partial,
- * or remotely identified items remain as the delivery ledger so external IDs
- * and analytics are not lost; partial work blocks the purge preflight.
- */
-async function deleteUnpublishedVideoQueueRows(): Promise<number> {
-  const candidates: SocialQueuePurgeCandidate[] = [];
-  for (let offset = 0; offset < 5000; offset += 1000) {
-    const rows = await supabaseServerAdminRequest<SocialQueuePurgeCandidate[]>(
-      "/rest/v1/social_publish_queue?content_type=in.(" +
-        VIDEO_CONTENT_TYPES.join(",") +
-        ")&status=in.(queued,failed)&published_at=is.null&select=id,status,published_at,metadata&order=created_at.asc&limit=1000&offset=" +
-        offset,
-    );
-    const page = rows ?? [];
-    candidates.push(...page);
-    if (page.length < 1000) break;
-    if (offset === 4000) {
-      throw new Error("Video publish queue inventory exceeded the safe purge pagination limit.");
-    }
-  }
-
-  const safeRows = candidates.filter(row =>
-    (row.status === "queued" || row.status === "failed") &&
-    !row.published_at &&
-    !hasSuccessfulRemotePublication(row.metadata),
-  );
-
-  let deleted = 0;
-  for (const status of ["queued", "failed"] as const) {
-    const statusIds = safeRows.filter(row => row.status === status).map(row => row.id);
-    for (let offset = 0; offset < statusIds.length; offset += 100) {
-      const batch = statusIds.slice(offset, offset + 100);
-      const ids = batch.map(encodeURIComponent).join(",");
-      const rows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-        "/rest/v1/social_publish_queue?id=in.(" + ids + ")&status=eq." + status + "&published_at=is.null&select=id",
-        { method: "DELETE", headers: { Prefer: "return=representation" } },
-      );
-      deleted += rows?.length ?? 0;
-    }
-  }
-  return deleted;
+  return { generation: generationRows?.length ?? 0 };
 }
 
 async function deleteRows(table: string, filter: string): Promise<number> {
@@ -352,123 +263,174 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const body = await request.json().catch(() => ({})) as { confirmation?: unknown };
+    const body = await request.json().catch(() => ({})) as { confirmation?: unknown; scope?: unknown };
     if (body.confirmation !== CONFIRMATION_PHRASE) {
       return NextResponse.json(
         { error: `اكتب العبارة التالية حرفيًا للتأكيد: ${CONFIRMATION_PHRASE}` },
         { status: 400 },
       );
     }
+    const scope = body.scope === "files" || body.scope === "memory" || body.scope === "both"
+      ? body.scope
+      : "both";
+    const includeFiles = scope === "files" || scope === "both";
+    const includeMemory = scope === "memory" || scope === "both";
 
-    cloudinaryConfig();
-
-    // Do not delete source media while a social item still needs another
-    // platform delivery. This read-only preflight leaves automation untouched.
-    const unresolvedDeliveries = await getUnresolvedVideoDeliveries();
-    if (unresolvedDeliveries > 0) {
-      return NextResponse.json(
-        {
-          error: `يوجد ${unresolvedDeliveries} عنصر فيديو له نشر جزئي أو معرّف نشر خارجي ولم يكتمل بعد. أكمل النشر أو عالج هذه العناصر أولًا، ثم أعد التصفير. لم يتم إيقاف التشغيل أو حذف أي ملف.`,
-          unresolvedDeliveries,
-          paused: false,
-          retryRequired: true,
-        },
-        { status: 409, headers: { "Cache-Control": "no-store" } },
-      );
-    }
+    if (includeFiles) cloudinaryConfig();
+    const automationWasEnabled = await getVideoAutomationEnabled();
 
     await pauseVideoAutomation();
     await setPurgeLock(true);
 
     const processing = await getActiveVideoWork();
-    if (processing.queue > 0 || processing.generation > 0) {
+    if (processing.generation > 0) {
       // Current claims may finish, but the automation settings remain disabled.
       // Release the claim lock so an administrator can resume/settle them safely.
+      await restoreVideoAutomation(automationWasEnabled);
       await setPurgeLock(false);
       return NextResponse.json(
         {
-          error: `يوجد ${processing.generation} طلب توليد و${processing.queue} عملية نشر فيديو قيد التنفيذ. أوقفت التشغيل التلقائي مؤقتًا؛ انتظر انتهاء العامل ثم عالج أي نشر جزئي وأعد التصفير.`,
+          error: `يوجد ${processing.generation} طلب توليد قيد التنفيذ. لم يبدأ الحذف؛ استمر التشغيل التلقائي، وأعد المحاولة بعد انتهاء العامل الحالي.`,
           processing,
-          paused: true,
-          automationMustBeReenabled: true,
+          paused: false,
+          automationMustBeReenabled: false,
           retryRequired: true,
         },
         { status: 409, headers: { "Cache-Control": "no-store" } },
       );
     }
 
-    // Close the race where a worker completed a first-platform delivery after
-    // preflight but before the purge lock became visible.
-    const unresolvedAfterLock = await getUnresolvedVideoDeliveries();
-    if (unresolvedAfterLock > 0) {
-      await setPurgeLock(false);
-      return NextResponse.json(
-        {
-          error: `ظهر ${unresolvedAfterLock} عنصر نشر جزئي أثناء تفعيل الحماية. لم يبدأ الحذف؛ إعدادات الفيديو التلقائية متوقفة، ويمكن إعادة تفعيل النشر لمعالجة العناصر ثم إعادة المحاولة.`,
-          unresolvedDeliveries: unresolvedAfterLock,
-          paused: true,
-          automationMustBeReenabled: true,
-          retryRequired: true,
-        },
-        { status: 409, headers: { "Cache-Control": "no-store" } },
-      );
-    }
-
-    const assets = await listGeneratedVideos();
-    const storagePaths = await listAutomatedStorageObjects();
-    const cloudinaryErrors = await mapWithConcurrency(assets, 6, async asset => {
-      if (!asset.public_id) throw new Error("Generated video asset is missing its public ID.");
-      await deleteCloudinaryVideo(asset.public_id);
-    });
+    const assets = includeFiles ? await listGeneratedVideos() : [];
+    const storagePaths = includeFiles ? await listAutomatedStorageObjects() : [];
+    const cloudinaryErrors = includeFiles
+      ? await mapWithConcurrency(assets, 6, async asset => {
+          if (!asset.public_id) throw new Error("Generated video asset is missing its public ID.");
+          await deleteCloudinaryVideo(asset.public_id);
+        })
+      : [];
     if (cloudinaryErrors.length > 0) {
       throw new Error(
         `تعذر حذف ${cloudinaryErrors.length} ملفًا من Cloudinary. لم تُحذف سجلات الفيديو من قاعدة البيانات حتى يمكن إعادة المحاولة بأمان. ${cloudinaryErrors.slice(0, 3).join(" | ")}`,
       );
     }
 
-    const storageObjectsDeleted = await deleteAutomatedStorageObjects(storagePaths);
-    const queueRowsDeleted = await deleteUnpublishedVideoQueueRows();
-    // public.videos is the site's external/manual video catalogue, not the
-    // generated-video store. Preserve every row because it has no reliable
-    // generated-source discriminator.
-    const generationRowsDeleted = await deleteRows("video_generation_requests", "id=not.is.null");
-    const automationRunsDeleted = await deleteRows("video_automation_runs", "id=not.is.null");
+    const storageObjectsDeleted = includeFiles ? await deleteAutomatedStorageObjects(storagePaths) : 0;
+    // The site catalog is treated as project memory. It is always hidden during
+    // a purge; links are cleared only when the physical generated files are removed.
+    const generatedCatalogRows = await supabaseServerAdminRequest<Array<{
+      id: string;
+      metadata: Record<string, unknown> | null;
+    }>>(
+      "/rest/v1/videos?metadata->>generator=eq.zikr_internal_video_factory&select=id,metadata&limit=1000",
+    );
+    if ((generatedCatalogRows ?? []).length >= 1000) {
+      throw new Error("Generated video catalog exceeded the safe purge batch; no catalog rows were changed.");
+    }
+    const catalogUpdateErrors = await mapWithConcurrency(generatedCatalogRows ?? [], 6, async row => {
+      const previousMetadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+      const nextMetadata = {
+        ...previousMetadata,
+        ...(includeFiles ? { generatedVideoUrl: null, videoUrl: null, mediaState: "purged" } : { mediaState: "unlinked" }),
+        mediaPurgedAt: includeFiles ? new Date().toISOString() : previousMetadata.mediaPurgedAt ?? null,
+        memoryUnlinkedAt: new Date().toISOString(),
+      };
+      await supabaseServerAdminRequest("/rest/v1/videos?id=eq." + encodeURIComponent(row.id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({
+          published: false,
+          metadata: nextMetadata,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      await supabaseServerAdminRequest(
+        "/rest/v1/content_publish_queue?content_table=eq.videos&content_id=eq." +
+          encodeURIComponent(row.id) + "&status=in.(queued,processing)",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({
+            status: "failed",
+            error_message: "Internal video publication was stopped by the administrator's project-memory cleanup.",
+            updated_at: new Date().toISOString(),
+          }),
+        },
+      );
+    });
+    if (catalogUpdateErrors.length) {
+      throw new Error("Some internal catalog records or scheduled publication entries could not be safely unlinked: " + catalogUpdateErrors.slice(0, 3).join(" | "));
+    }
+    const catalogRecordsHidden = generatedCatalogRows?.length ?? 0;
+    // Historical external platform queue records are never read or modified.
+    const socialQueueRowsPreserved = true;
+    const generatedRequests = includeMemory
+      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/video_generation_requests?automation_key=not.is.null&select=id&limit=1000",
+        )
+      : [];
+    if (includeMemory && (generatedRequests ?? []).length >= 1000) {
+      throw new Error("Automated generation history exceeded the safe purge batch.");
+    }
+    let generationRowsDeleted = 0;
+    for (const generatedRequest of generatedRequests ?? []) {
+      generationRowsDeleted += await deleteRows(
+        "video_generation_requests",
+        "id=eq." + encodeURIComponent(generatedRequest.id),
+      );
+    }
+    const automationRunsDeleted = includeMemory
+      ? await deleteRows("video_automation_runs", "id=not.is.null")
+      : 0;
 
+    await restoreVideoAutomation(automationWasEnabled);
     await setPurgeLock(false);
     await recordAdminAuditEvent({
       action: "video.library.purge",
       permission: "video.delete",
       resourceType: "generated_video_library",
       metadata: {
+        scope,
         cloudinaryAssetsDeleted: assets.length,
         cloudinaryBytesDeleted: assets.reduce((sum, asset) => sum + Number(asset.bytes ?? 0), 0),
         storageObjectsDeleted,
-        queueRowsDeleted,
+        socialQueueRowsPreserved,
         publicVideoCatalogPreserved: true,
+        catalogRecordsHidden,
+        generationMemoryDeleted: includeMemory,
+        physicalFilesDeleted: includeFiles,
         generationRowsDeleted,
         automationRunsDeleted,
         externalSocialPostsDeleted: false,
       },
     });
 
-    for (const path of ["/videos", "/admin/social", "/admin/video/requests", "/admin/videos"]) {
+    for (const path of ["/videos", "/admin/media", "/admin/memory", "/admin/video/requests", "/admin/videos"]) {
       revalidatePath(path);
     }
 
     return NextResponse.json(
       {
         ok: true,
-        paused: true,
-        automationRemainsDisabled: true,
+        paused: !automationWasEnabled,
+        automationRemainsDisabled: !automationWasEnabled,
+        automationResumed: automationWasEnabled,
+        scope,
         cloudinaryAssetsDeleted: assets.length,
         cloudinaryBytesDeleted: assets.reduce((sum, asset) => sum + Number(asset.bytes ?? 0), 0),
         storageObjectsDeleted,
-        queueRowsDeleted,
+        socialQueueRowsPreserved,
         publicVideoCatalogPreserved: true,
+        catalogRecordsHidden,
+        generationMemoryDeleted: includeMemory,
+        physicalFilesDeleted: includeFiles,
         generationRowsDeleted,
         automationRunsDeleted,
         externalSocialPostsDeleted: false,
-        note: "تم حذف مخرجات الفيديو المولّدة غير المنشورة وسجلات التوليد. كتالوج الفيديوهات العامة وسجل النشر ذي المعرّفات الخارجية محفوظان؛ المنشورات الموجودة داخل YouTube وFacebook لم تُحذف.",
+        note: includeFiles && includeMemory
+          ? "تم حذف ملفات التوليد ورفعها من الذاكرة الداخلية، مع إبقاء سجل التدقيق والعناوين الأساسية. سجلات المنصات الخارجية لم تُعدّل."
+          : includeFiles
+            ? "تم حذف ملفات الفيديو فقط، مع إبقاء سجل التوليد ومعلومات المصادر كذاكرة تاريخية. سجلات المنصات الخارجية لم تُعدّل."
+            : "تم فك ربط ذاكرة الفيديوهات وإخفاؤها من الموقع مع إبقاء ملفات Cloudinary كما هي. سجلات المنصات الخارجية لم تُعدّل.",
       },
       { headers: { "Cache-Control": "no-store" } },
     );

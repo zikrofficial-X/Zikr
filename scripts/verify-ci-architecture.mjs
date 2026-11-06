@@ -110,18 +110,14 @@ assert.ok(video.includes("environment: production"), "Video worker must use prot
 assert.ok(video.includes("github.ref == 'refs/heads/main'"), "Video worker must be main-only");
 
 assert.ok(social.includes('BACKGROUND_JOB_TARGET: "social"'), "Social publisher must target the social queue only");
-const socialPublishingActive = social.includes('SOCIAL_PUBLISH_ENABLED: "true"');
-const socialPublishingFrozen =
-  social.includes("SOCIAL_PUBLISH_ENABLED: ${{ vars.SOCIAL_PUBLISH_ENABLED || 'false' }}") &&
-  social.includes("vars.SOCIAL_PUBLISH_ENABLED == 'true'") &&
-  social.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
-  social.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"');
-const socialPublishingDisabled =
-  social.includes('SOCIAL_PUBLISH_ENABLED: "false"') &&
-  social.includes('if [[ "$SOCIAL_PUBLISH_ENABLED" != "true" ]]');
-assert.ok(socialPublishingActive || socialPublishingFrozen || socialPublishingDisabled, "Social publisher must be explicitly active, safely frozen, or fail-closed");
+assert.ok(social.includes('SOCIAL_PUBLISH_ENABLED: "false"'), "Retired social publisher must set SOCIAL_PUBLISH_ENABLED=false");
+assert.ok(social.includes('FACEBOOK_PUBLISHING_REQUESTED: "false"') && social.includes('YOUTUBE_PUBLISHING_REQUESTED: "false"'), "Retired social workflow must keep every provider target disabled");
+assert.ok(social.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"'), "Retired social workflow must not enable legacy automatic video publishing");
 assert.ok(social.includes("environment: production"), "Social publisher must use protected production environment");
 assert.ok(social.includes("if: false") && social.includes('SOCIAL_PUBLISH_ENABLED: "false"'), "External social publisher must remain explicitly disabled");
+assert.ok(social.includes('FACEBOOK_PUBLISHING_REQUESTED: "false"') && social.includes('YOUTUBE_PUBLISHING_REQUESTED: "false"') && social.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"'), "Retired social workflow must keep both provider targets and all auto-publish paths fail-closed");
+const socialEnvironment = social.slice(social.indexOf("    env:"), social.indexOf("    steps:"));
+for (const secretName of ["YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN", "YOUTUBE_CHANNEL_ID", "FACEBOOK_GRAPH_API_VERSION"]) assert.ok(!socialEnvironment.split("\n").some((line) => line.trimStart().startsWith(secretName + ":")), "Retired social workflow must not inject external publishing credentials: " + secretName);
 
 assert.ok(!english.includes("\n  schedule:"), "GitHub English sync must not own an automatic schedule");
 assert.ok(english.includes("environment: production"), "English sync must use protected production environment");
