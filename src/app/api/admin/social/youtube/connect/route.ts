@@ -10,9 +10,7 @@ const STATE_COOKIE = "zikr-youtube-oauth-state";
 const CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";
 const YOUTUBE_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/youtube/callback";
 const REQUIRED_SCOPES = [
-  "https://www.googleapis.com/auth/youtube.upload",
   "https://www.googleapis.com/auth/youtube.readonly",
-  "https://www.googleapis.com/auth/youtube.force-ssl",
   "https://www.googleapis.com/auth/yt-analytics.readonly",
 ];
 
@@ -22,12 +20,12 @@ function siteUrl() {
 
 function adminStatusRedirect(status: string) {
   return NextResponse.redirect(
-    new URL(`/admin/social?youtube=${encodeURIComponent(status)}`, siteUrl()),
+    new URL(`/admin/analytics?youtube=${encodeURIComponent(status)}`, siteUrl()),
   );
 }
 
 export async function GET() {
-  const auth = await requireAdminApi("social.manage");
+  const auth = await requireAdminApi("analytics.read");
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
