@@ -47,8 +47,8 @@ const retryPublishEnd = generation.indexOf("if (!ALLOWED_STATUSES.has(status))",
 const retryPublishBlock = retryPublishStart >= 0 && retryPublishEnd > retryPublishStart
   ? generation.slice(retryPublishStart, retryPublishEnd)
   : "";
-if (!retryPublishBlock.includes("requireAdminApi('social.publish')")) {
-  failures.push("video publish retry must require social.publish independently from video.manage");
+if (!retryPublishBlock.includes("EXTERNAL_VIDEO_PUBLISHING_RETIRED") || !retryPublishBlock.includes("status: 410")) {
+  failures.push("external video publish retry must be retired; internal generation remains available");
 }
 const videoManagerRole = permissions.match(/video_manager:\s*\[([\s\S]*?)\]/)?.[1] ?? "";
 const socialManagerRole = permissions.match(/social_manager:\s*\[([\s\S]*?)\]/)?.[1] ?? "";
@@ -100,8 +100,8 @@ if (!legacyScheduler.includes('requireAdminPermission("system.manage")')) {
   failures.push("Legacy video scheduler redirect must preserve the destination system.manage permission");
 }
 const legacyPublishing = read("src/app/admin/video-factory/publishing/page.tsx");
-if (!legacyPublishing.includes('requireAdminPermission("social.manage")')) {
-  failures.push("Legacy publishing redirect must preserve the destination social.manage permission");
+if (!legacyPublishing.includes('requireAdminPermission("media.manage")')) {
+  failures.push("Legacy video publishing route must redirect to the protected internal media library");
 }
 
 for (const [legacyPath, destination] of [
@@ -114,7 +114,7 @@ for (const [legacyPath, destination] of [
   ["src/app/admin/video-factory/qa/page.tsx", "/admin/video/qa"],
   ["src/app/admin/video-factory/queue/page.tsx", "/admin/video/requests"],
   ["src/app/admin/video-factory/scheduler/page.tsx", "/admin/automation"],
-  ["src/app/admin/video-factory/publishing/page.tsx", "/admin/social"],
+  ["src/app/admin/video-factory/publishing/page.tsx", "/admin/media"],
 ]) {
   const legacy = read(legacyPath);
   if (!legacy.includes(`redirect("${destination}")`)) failures.push(`Legacy Video Factory route must redirect to ${destination}: ${legacyPath}`);
@@ -187,6 +187,10 @@ const worker = read("scripts/jobs/template-video-automation.ts");
 if (!worker.includes("async function bindTemplateVersion")) failures.push("video worker must bind requests to an immutable template version");
 if (!worker.includes("request.content.templatePreview === true")) failures.push("template preview mode must be recognized by the renderer");
 if (!worker.includes("if (!isTemplatePreview) aiPlan = await generateAiVideoPlan(request)")) failures.push("internal template previews must avoid external generative planning");
+if (!worker.includes("registerGeneratedVideoOnSite(request, rendered)") || !worker.includes('generator: "zikr_internal_video_factory"')) {
+  failures.push("successfully generated videos must be persisted in the internal ZIKR catalog");
+}
+if (!read("scripts/jobs/content-publishing.ts").includes('"videos"')) failures.push("scheduled site publisher must support videos records");
 if (!worker.includes("source_hash: rendered.sourceHash") || !worker.includes("content_hash: rendered.contentHash") || !worker.includes("template_version: rendered.templateVersion")) {
   failures.push("completed manual renders must persist source, content and template integrity fingerprints");
 }
