@@ -159,3 +159,12 @@ export async function getVideoBySlug(slug: string): Promise<Video | null> {
   };
 }
 
+
+export async function getInternalGeneratedVideos(limit = 24): Promise<Video[]> {
+  const rows = await getVideos(undefined, Math.max(1, Math.min(100, Math.trunc(limit))));
+  return rows.filter((video) => {
+    const metadata = video.metadata ?? {};
+    return metadata.generator === "zikr_internal_video_factory" &&
+      (typeof metadata.generatedVideoUrl === "string" || typeof metadata.sourceVideoUrl === "string");
+  });
+}
