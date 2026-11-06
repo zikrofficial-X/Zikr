@@ -49,6 +49,7 @@ export type FacebookConnectionHealth = {
   facebookLastCheckedAt: string | null;
   facebookTokenExpiresAt: string | null;
   facebookConnectionMessage: string;
+  facebookInsightsPermissionGranted: boolean;
 };
 
 const LEGACY_CREDENTIAL_FIELDS =
@@ -214,6 +215,7 @@ export async function getFacebookPageConnectionHealth(): Promise<FacebookConnect
       facebookTokenSource: hasEnvironmentToken ? "environment" : "missing",
       facebookLastCheckedAt: null,
       facebookTokenExpiresAt: null,
+      facebookInsightsPermissionGranted: false,
       facebookConnectionMessage: hasEnvironmentToken
         ? "يوجد توكن في إعدادات الخادم، لكنه غير محفوظ ضمن اعتماد النشر النشط. اضغط «اعتماد توكن الخادم» للتحقق من التطبيق والصفحة والصلاحيات ثم تفعيله دون كشف التوكن."
         : "لا يوجد اعتماد Facebook نشط. اربط الصفحة عبر OAuth أو أضف توكن صفحة إلى إعدادات الخادم ثم اضغط «اعتماد توكن الخادم».",
@@ -230,6 +232,7 @@ export async function getFacebookPageConnectionHealth(): Promise<FacebookConnect
     facebookTokenSource: "database",
     facebookLastCheckedAt: stored.last_validated_at,
     facebookTokenExpiresAt: stored.expires_at,
+    facebookInsightsPermissionGranted: (stored.granted_permissions ?? []).includes("read_insights"),
     facebookConnectionMessage: enabled
       ? "يتم اختبار اعتماد Facebook النشط."
       : "اعتماد الصفحة موجود، لكن النشر معطّل.",

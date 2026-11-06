@@ -277,6 +277,7 @@ export async function GET(request: NextRequest) {
       released: String(released),
       dispatched,
       page: String(verifiedPage.name ?? selectedPage.name ?? "Facebook Page"),
+      insights: granted.includes("read_insights") ? "ready" : "missing",
     });
   } catch (error) {
     // Never log the OAuth code, access tokens, callback URL, or raw provider response.

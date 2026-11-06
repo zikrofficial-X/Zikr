@@ -11,6 +11,7 @@ const REQUIRED_PERMISSIONS = [
   "pages_show_list",
   "pages_read_engagement",
   "pages_manage_posts",
+  "read_insights",
 ];
 
 function siteUrl() {

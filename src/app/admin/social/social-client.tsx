@@ -23,6 +23,7 @@ type Health = {
   facebookLastCheckedAt?: string | null;
   facebookTokenExpiresAt?: string | null;
   facebookConnectionMessage?: string;
+  facebookInsightsPermissionGranted?: boolean;
 };
 type SocialView = "overview" | "queue";
 type PlatformStats = Record<
@@ -104,6 +105,38 @@ function youtubeInsightsSummary(item: QueueItem): string {
   ].filter(Boolean).join(" · ");
 }
 
+function facebookReelsInsightsSummary(item: QueueItem, permissionGranted: boolean): string {
+  const raw = item.metadata?.platformInsights;
+  const reels = raw && typeof raw === "object" && !Array.isArray(raw)
+    ? (raw as Record<string, unknown>).facebookReels
+    : null;
+  if (!reels || typeof reels !== "object" || Array.isArray(reels)) {
+    return item.target_platforms.includes("facebook_reels") && item.status === "published"
+      ? permissionGranted ? "إحصاءات Reels تنتظر أول مزامنة" : "إحصاءات Reels تنتظر صلاحية read_insights"
+      : "—";
+  }
+  const metrics = (reels as Record<string, unknown>).metrics;
+  if (!metrics || typeof metrics !== "object" || Array.isArray(metrics)) return "لا توجد إحصاءات Reels متاحة";
+  const values = metrics as Record<string, unknown>;
+  const count = (value: unknown) =>
+    typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+      ? new Intl.NumberFormat("ar-EG").format(value)
+      : null;
+  const plays = count(values.fb_reels_total_plays);
+  const averageMs = typeof values.post_video_avg_time_watched === "number"
+    ? values.post_video_avg_time_watched
+    : null;
+  const averageSeconds = averageMs !== null && Number.isFinite(averageMs) && averageMs >= 0
+    ? (averageMs / 1000).toFixed(1) + " ث مشاهدة/متوسط"
+    : null;
+  const replays = count(values.fb_reels_replay_count);
+  return [
+    plays === null ? null : plays + " تشغيل Reels",
+    averageSeconds,
+    replays === null ? null : replays + " إعادة تشغيل",
+  ].filter(Boolean).join(" · ") || "لا توجد إحصاءات Reels متاحة";
+}
+
 export default function AdminSocialPage() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [health, setHealth] = useState<Health>({
@@ -173,13 +206,16 @@ export default function AdminSocialPage() {
     const status = query.get("facebook");
     if (!status) return;
     if (status === "connected") {
-      setMessage("تم تجديد اتصال Facebook بنجاح. سيستأنف النشر التلقائي، وأُعيدت العناصر المحجوبة إلى الطابور.");
+      const insights = query.get("insights");
+      setMessage(insights === "missing"
+        ? "تم تجديد اتصال Facebook للنشر، لكن read_insights لم تُمنح بعد؛ إحصاءات Reels ستظل معلّقة حتى اعتماد الصلاحية وإعادة الربط."
+        : "تم تجديد اتصال Facebook بنجاح. سيستأنف النشر التلقائي، وأُعيدت العناصر المحجوبة إلى الطابور.");
       return;
     }
     const messages: Record<string, string> = {
       configuration_missing: "إعداد تطبيق Meta غير مكتمل. تحقق من FACEBOOK_APP_ID وFACEBOOK_APP_SECRET.",
       redirect_uri_mismatch: "عنوان العودة غير مسجل في إعدادات تطبيق Meta. أضف /api/admin/social/facebook/callback إلى Valid OAuth Redirect URIs.",
-      permission_missing: "لم تُمنح جميع صلاحيات صفحة Facebook المطلوبة. وافق على pages_show_list وpages_read_engagement وpages_manage_posts ثم أعد الربط.",
+      permission_missing: "لم تُمنح جميع صلاحيات صفحة Facebook المطلوبة. وافق على pages_show_list وpages_read_engagement وpages_manage_posts، وread_insights لإحصاءات Reels، ثم أعد الربط.",
       authorization_denied: "تم إلغاء تفويض Facebook. لن يتم تشغيل النشر قبل ربط الصفحة.",
       state_mismatch: "انتهت جلسة الربط لأسباب أمنية. ابدأ الربط من جديد.",
       page_not_found: "الحساب الذي تم تفويضه لا يدير صفحة Facebook المحددة في إعدادات ZIKR.",
@@ -495,7 +531,10 @@ export default function AdminSocialPage() {
             <p className="text-xs text-brand-cream/55">الصفحة: {health.facebookPageName}</p>
           )}
           {health.facebookConnectionMessage && (
-            <p className="text-xs leading-5 text-brand-cream/55">{health.facebookConnectionMessage}</p>
+            <div className="space-y-1">
+              <p className="text-xs leading-5 text-brand-cream/55">{health.facebookConnectionMessage}</p>
+              <p className="text-xs leading-5 text-brand-cream/55">إحصاءات Facebook Reels: {health.facebookInsightsPermissionGranted ? "صلاحية read_insights متاحة." : "تحتاج read_insights من Meta ثم إعادة ربط الصفحة؛ النشر الحالي لا يتأثر."}</p>
+            </div>
           )}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void connectFacebook()}>
@@ -660,7 +699,7 @@ export default function AdminSocialPage() {
                 <th className="p-3 text-right">العنوان</th>
                 <th className="p-3 text-right">النوع</th>
                 <th className="p-3 text-right">المنصات</th>
-                <th className="p-3 text-right">إحصاءات YouTube</th>
+                <th className="p-3 text-right">إحصاءات YouTube / Facebook Reels</th>
                 <th className="p-3 text-right">الحالة</th>
                 <th className="p-3 text-right">الموعد</th>
                 <th className="p-3 text-right">الخطأ</th>
@@ -697,7 +736,7 @@ export default function AdminSocialPage() {
                     <td className="p-3 text-brand-cream/55">
                       {item.target_platforms.join("، ")}
                     </td>
-                    <td className="p-3 text-xs text-brand-cream/60">{youtubeInsightsSummary(item)}</td>
+                    <td className="p-3 text-xs text-brand-cream/60">{[youtubeInsightsSummary(item), facebookReelsInsightsSummary(item, health.facebookInsightsPermissionGranted === true)].filter(value => value !== "—").join(" · ")}</td>
                     <td className="p-3">
                       <span
                         className={`rounded-full border px-2 py-1 text-xs ${STATUS_CLASSES[status]}`}
@@ -762,7 +801,7 @@ export default function AdminSocialPage() {
                   <div className="min-w-0 flex-1">
                     <h3 className="break-words text-sm font-semibold leading-6 text-brand-cream">{item.title}</h3>
                     <p className="mt-1 text-xs text-brand-cream/50">{item.content_type} · {item.target_platforms.join("، ")}</p>
-                    <p className="mt-1 text-xs text-brand-cream/55">{youtubeInsightsSummary(item)}</p>
+                    <p className="mt-1 text-xs text-brand-cream/55">{[youtubeInsightsSummary(item), facebookReelsInsightsSummary(item, health.facebookInsightsPermissionGranted === true)].filter(value => value !== "—").join(" · ")}</p>
                   </div>
                   <span className={`shrink-0 rounded-full border px-2 py-1 text-[11px] ${STATUS_CLASSES[status]}`}>
                     {deferredAt && status === "partial" ? "نشر جزئي — Reels مؤجل" : STATUS_LABELS[status]}
