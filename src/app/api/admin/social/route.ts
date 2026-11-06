@@ -623,7 +623,7 @@ export async function POST(request: NextRequest) {
       let deleted = 0;
       let failed = 0;
       let missingRemoteId = 0;\n      let localMemoryDeleted = 0;\n      let localMemoryFailed = 0;
-      const results: Array<{ id: string; title: string; platform: string; status: "deleted" | "failed" | "missing_remote_id" | "already_deleted"; error?: string }> = [];
+      const deletionLedgerByItem = new Map<string, Record<string, unknown>>();\n      const results: Array<{ id: string; title: string; platform: string; status: "deleted" | "failed" | "missing_remote_id" | "already_deleted"; error?: string }> = [];
 
       for (const item of selectedItems ?? []) {
         if (!isVideoContentType(item.content_type)) {
@@ -631,7 +631,7 @@ export async function POST(request: NextRequest) {
           failed += 1;
           continue;
         }
-        const existingDeletions = asRecord(item.metadata?.platformDeletions) ?? {};
+        const existingDeletions = asRecord(item.metadata?.platformDeletions) ?? {};\n        deletionLedgerByItem.set(item.id, existingDeletions);
         const deletionTargets = requestedPlatforms.length > 0
           ? item.target_platforms.filter(platform => requestedPlatforms.includes(platform))
           : item.target_platforms;
@@ -688,7 +688,7 @@ export async function POST(request: NextRequest) {
         // Remove only verified ZIKR-generated Cloudinary media after remote
         // deletion was confirmed. Keep audit/social queue ledgers intact.
         for (const item of selectedItems ?? []) {
-          const deletionLedger = asRecord(item.metadata?.platformDeletions) ?? {};
+          const deletionLedger = deletionLedgerByItem.get(item.id) ?? asRecord(item.metadata?.platformDeletions) ?? {};
           const remoteDeletionConfirmed = Object.values(deletionLedger).some(
             value => asRecord(value)?.status === "deleted",
           );
