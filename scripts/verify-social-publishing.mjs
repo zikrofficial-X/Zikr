@@ -91,13 +91,13 @@ if (publisher.includes("status=eq.${claimStatus}&updated_at=eq.")) failures.push
 if (!publisher.includes("getFacebookPageCredentials")) failures.push("Facebook publisher must consume the canonical OAuth-managed Page credential");
 if (!publisher.includes("credentials.isEnabled")) failures.push("Facebook publisher must honor the explicit OAuth connection enable switch");
 if (!publisher.includes("isFacebookAuthFailure")) failures.push("Facebook auth failures must be classified separately");
-if (!publisher.includes("authBlocked: hasAuthFailure")) failures.push("Facebook auth failures must block repeated automatic retries");
+if (!publisher.includes("authBlockedPlatforms") || !publisher.includes("isFacebookAuthFailure")) failures.push("Facebook auth failures must be persisted and excluded from Facebook-only retries");
 if (!pendingSelector.includes('const statusPriority: SocialQueueStatus[] = ["partial", "queued", "failed"]') || !pendingSelector.includes("status=eq.${status}")) failures.push("failed social queue items must remain eligible in bounded scheduled auto-retry priority");
-if (!publisher.includes("permanentFailure === true")) failures.push("permanent social failures must be excluded from automatic retry");
+if (!publisher.includes("isPermanentSocialFailure") || !publisher.includes("permanentFailurePlatforms")) failures.push("permanent social failures must be excluded from automatic retry per platform");
 if (!publisher.includes("socialRetryDelayMinutes")) failures.push("social retries must use bounded exponential backoff");
 if (!publisher.includes("staleRecovery: true")) failures.push("stale social processing recovery must be recorded");
 if (!publisher.includes("platformResults")) failures.push("platform-level results must be persisted");
-if (!publisher.includes("pendingPlatforms")) failures.push("already-successful platforms must be excluded from retries");
+if (!publisher.includes("canAttemptSocialPlatform") || !publisher.includes("hasSuccessfulDelivery")) failures.push("already-successful platforms must be excluded from retries");
 if (!publisher.includes("remoteId")) failures.push("successful providers must persist their remote platform IDs");
 if (publisher.includes("console.log(pageAccessToken") || publisher.includes("console.log(env.FACEBOOK_PAGE_ACCESS_TOKEN")) failures.push("Facebook access tokens must never be logged");
 
@@ -191,7 +191,7 @@ if (!adminApi.includes("const allTargetsSucceeded") || !adminApi.includes("targe
 if (!adminApi.includes("authBlockedPlatforms")) failures.push("Admin retry path must understand Facebook auth-blocked platforms");
 if (!adminApi.includes("youtubeConfigured")) failures.push("Admin social health must expose YouTube configuration");
 if (!adminApi.includes("facebookAuthBlocked")) failures.push("Admin social health must expose Facebook auth-block count");
-if (!adminApi.includes("target_platforms: platforms")) failures.push("Admin retry must narrow targets to actually retryable platforms");
+if (adminApi.includes("target_platforms: platforms") || !adminApi.includes("requestedPlatforms.includes(platform)")) failures.push("Admin retry must preserve original targets and scope retry work to the selected platform");
 if (!adminApi.includes("platformStats")) failures.push("Admin social API must expose platform-level queue statistics");
 if (!adminApi.includes("oldestQueuedAt")) failures.push("Admin social API must expose the oldest queued timestamp");
 if (!adminApi.includes('action === "run_worker"')) failures.push("Admin social API must support manual worker dispatch");
