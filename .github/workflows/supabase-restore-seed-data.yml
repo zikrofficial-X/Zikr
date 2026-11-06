@@ -32,7 +32,7 @@ jobs:
     environment: production
     env:
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      EXPECTED_PROJECT_REF: ymxdswkaxafakugktsim
+      EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
