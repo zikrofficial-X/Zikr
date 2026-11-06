@@ -37,9 +37,9 @@ const worker = read("scripts/jobs/template-video-automation.ts");
 for (const token of [
   "assertNarrationQuality",
   "evaluateArabicNarrationText",
-  "VIDEO_TEMPLATE_VERSION = \"2026-10-26-growth-quality-v5\"",
+  "VIDEO_TEMPLATE_VERSION = \"2026-11-06-creative-variety-v6\"",
   "تابع ذِكر للمزيد",
-  "آية قصيرة • تدبّرها اليوم",
+  "resolveDeterministicVideoHook",
   "category === \"quran\" && !audioUrl",
   "QURAN_AYAH_AUDIO_BASE_URL",
 ]) {
