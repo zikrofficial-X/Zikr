@@ -65,7 +65,7 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
 
   if (
     key === "video_automation_enabled" ||
-    key === "video_automation_ai_enabled" ||
+    key === "video_automation_ai_enabled"
   ) {
     if (rawValue !== "true" && rawValue !== "false") {
       throw new Error("قيمة منطقية غير صالحة لإعداد أتمتة الفيديو.");
