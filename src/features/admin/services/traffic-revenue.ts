@@ -2,7 +2,7 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/server";
-import { averageRenderDuration, isCompleteBoundedRead, summarizePlatformResults } from "@/features/admin/services/traffic-revenue-metrics";
+import { averageRenderDuration, isCompleteBoundedRead, summarizePlatformResults, type SocialPlatformDeliveryStats } from "@/features/admin/services/traffic-revenue-metrics";
 
 type CountResult = { count: number | null; error: { message: string } | null };
 
