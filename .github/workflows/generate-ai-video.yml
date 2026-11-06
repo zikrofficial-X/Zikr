@@ -76,8 +76,6 @@ jobs:
       VIDEO_OUTPUT_CRF: "17"
       VIDEO_AUDIO_BITRATE: "192k"
       VERIFY_VIDEO_RUNTIME_TOOLS: "true"
-      # Public social publishing is intentionally disabled for this product. Keep historical social workflows fail-closed.
-      SOCIAL_PUBLISH_ENABLED: "false"
       ADMIN_QUEUE_ALERT_WEBHOOK_URL: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_URL }}
       ADMIN_QUEUE_ALERT_WEBHOOK_SECRET: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_SECRET || secrets.WEBHOOK_SECRET }}
       ADMIN_QUEUE_ALERT_EMAIL_TO: ${{ vars.ADMIN_QUEUE_ALERT_EMAIL_TO || secrets.ADMIN_QUEUE_ALERT_EMAIL_TO }}
