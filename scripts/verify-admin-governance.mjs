@@ -46,13 +46,13 @@ if (catalog.map((module) => module.key).join("|") !== groups.map((group) => grou
   failures.push("ADMIN_MODULES must mirror the nine canonical navigation keys and order");
 }
 for (const group of groups) {
-  const module = catalog.find((entry) => entry.key === group.key);
-  if (!module) {
+  const catalogEntry = catalog.find((entry) => entry.key === group.key);
+  if (!catalogEntry) {
     failures.push("module catalog is missing navigation group: " + group.key);
     continue;
   }
   for (const item of group.items) {
-    if (!module.routes.includes(item.href)) {
+    if (!catalogEntry.routes.includes(item.href)) {
       failures.push("module catalog is missing canonical route " + item.href + " in " + group.key);
     }
   }
