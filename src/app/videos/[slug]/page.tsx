@@ -58,7 +58,7 @@ export default async function VideoDetailPage({ params }: VideoDetailPageProps) 
     );
   }
 
-  const directVideoUrl =
+  const directVideoCandidate =
     typeof video.metadata?.generatedVideoUrl === "string"
       ? video.metadata.generatedVideoUrl
       : typeof video.metadata?.videoUrl === "string"
@@ -68,6 +68,21 @@ export default async function VideoDetailPage({ params }: VideoDetailPageProps) 
           : typeof video.metadata?.sourceVideoUrl === "string"
             ? video.metadata.sourceVideoUrl
             : null;
+  let directVideoUrl: string | null = null;
+  if (directVideoCandidate) {
+    try {
+      const parsed = new URL(directVideoCandidate);
+      const internalGenerated = video.metadata?.generator === "zikr_internal_video_factory";
+      if (
+        parsed.protocol === "https:" &&
+        (!internalGenerated || parsed.hostname === "res.cloudinary.com")
+      ) {
+        directVideoUrl = parsed.toString();
+      }
+    } catch {
+      directVideoUrl = null;
+    }
+  }
   const publicCaption = typeof video.metadata?.caption === 'string' ? video.metadata.caption : null;
 
   return (
