@@ -43,7 +43,7 @@ The daily English content sync uses one shared runner for one article batch and 
 
 ## Recovery
 
-Use GitHub Actions workflow dispatch for deliberate video generation, written-content generation, or social publishing recovery. Social recovery is active only when the protected workflow preflight passes, `SOCIAL_PUBLISH_ENABLED=true`, the administrator has enabled auto-publish, and each video has passed human QA. CircleCI is reserved for application/Android builds, documentation/release artifacts, English-content sync, Supabase gates, and explicit release operations.
+Use GitHub Actions workflow dispatch for deliberate video generation, written-content generation, or social publishing recovery. Social recovery is active only when the protected workflow preflight passes, `SOCIAL_PUBLISH_ENABLED=true`, the administrator has enabled auto-publish, and each video has a current, complete automated QA fingerprint. No manual review is required for passing videos. CircleCI is reserved for application/Android builds, documentation/release artifacts, English-content sync, Supabase gates, and explicit release operations.
 
 The prayer notification path remains separate: Supabase `pg_cron` invokes `prayer-notification-worker` every minute.
 
