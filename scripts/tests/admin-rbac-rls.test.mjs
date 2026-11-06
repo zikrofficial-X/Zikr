@@ -8,6 +8,7 @@ const migrationPath = resolve(
   "supabase/migrations/20261030050000_admin_rbac_permission_scope.sql",
 );
 const migration = readFileSync(migrationPath, "utf8");
+const permissionService = readFileSync(resolve(process.cwd(), "src/features/admin/services/permissions.ts"), "utf8");
 const publicRpcMigration = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20261030100000_admin_public_rpc_invoker.sql"),
   "utf8",
@@ -224,5 +225,15 @@ assert.doesNotMatch(
   /update\(\{ is_primary: false \}\)/,
   "the API route must not clear primary audio in a separate non-atomic request",
 );
+
+const socialManagerPermissions = permissionService.match(/social_manager:\s*\[([\s\S]*?)\],/);
+const videoManagerPermissions = permissionService.match(/video_manager:\s*\[([\s\S]*?)\],/);
+assert.ok(socialManagerPermissions?.[1].includes("'social.manage'"));
+assert.ok(socialManagerPermissions?.[1].includes("'social.publish'"));
+assert.equal(socialManagerPermissions?.[1].includes("'video.manage'"), false);
+assert.equal(socialManagerPermissions?.[1].includes("'video.delete'"), false);
+assert.ok(videoManagerPermissions?.[1].includes("'video.manage'"));
+assert.equal(videoManagerPermissions?.[1].includes("'social.publish'"), false);
+assert.equal(videoManagerPermissions?.[1].includes("'social.manage'"), false);
 
 console.log("Admin RBAC/RLS migration contract passed.");

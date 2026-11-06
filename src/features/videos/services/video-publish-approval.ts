@@ -64,16 +64,14 @@ export function isVideoQueueItemApprovedForPublishing(input: {
   contentId: string | null;
   queuedVideoUrl: string | null;
   request: VideoPublishRequestSnapshot | null;
-  requireApproval?: boolean;
 }): boolean {
   if (!isVideoContentType(input.contentType)) return true;
   if (!input.contentId || !input.queuedVideoUrl || !input.request) return false;
   if (input.request.status !== "completed" || !input.request.video_url) return false;
 
-  // Always preserve source/status integrity, even when the owner explicitly disables
-  // the human QA approval gate for autonomous publishing.
+  // Every public video publication requires a persisted human approval tied to
+  // the exact source, content, template version, and media URL snapshot.
   if (input.request.video_url.trim() !== input.queuedVideoUrl.trim()) return false;
-  if (input.requireApproval === false) return true;
   const approvalSnapshotHash = buildVideoApprovalSnapshotHash({
     category: input.request.category,
     sourceHash: input.request.source_hash,

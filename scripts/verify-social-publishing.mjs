@@ -38,6 +38,22 @@ if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_ne
 
 
 const publisher = read("src/features/social/services/social-publishing.ts");
+const videoApproval = read("src/features/videos/services/video-publish-approval.ts");
+const socialWorkflowConfig = read(".github/workflows/publish-social.yml");
+if (videoApproval.includes("requireApproval === false") || socialWorkflowConfig.includes("AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL")) {
+  failures.push("public video publishing must not allow workflow/environment flags to bypass persisted human approval");
+}
+const processPublishStart = publisher.indexOf("export async function processSocialPublishItem");
+const processPublishBody = processPublishStart >= 0 ? publisher.slice(processPublishStart) : "";
+const processApprovalGate = processPublishBody.indexOf("hasVideoApprovalForQueueItem(item)");
+const firstPlatformPublish = processPublishBody.indexOf("publishPlatform(item, platform)");
+if (processApprovalGate < 0 || firstPlatformPublish < 0 || processApprovalGate > firstPlatformPublish) {
+  failures.push("the publisher must re-check persisted video approval after claim and before any platform call");
+}
+if (!publisher.includes("if (!(await hasVideoApprovalForQueueItem(item)))")) {
+  failures.push("the publisher must hold unapproved or changed video snapshots before platform calls");
+}
+
 
 const pendingSelectorStart = publisher.indexOf("export async function getPendingSocialPublishItems");
 const pendingSelectorEnd = publisher.indexOf("async function recoverStaleSocialPublishItems", pendingSelectorStart);
@@ -128,7 +144,7 @@ if (generationWorkflow.includes("secrets.FACEBOOK_PAGE_ACCESS_TOKEN") || generat
 
 if (!workflow.includes('SOCIAL_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze && !socialPublishingDisabled) failures.push("dedicated GitHub social workflow must be explicitly active or fail-closed");
 if (!workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"')) failures.push("social worker must allow automatically generated videos into the publisher");
-if (!workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"')) failures.push("autonomous publishing must use the validated source/status gate without a manual approval dependency");
+// Public video publishing now requires persisted human approval, regardless of unattended worker mode.
 if (!workflow.includes("YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}")) failures.push("social worker must receive the YouTube Data API key for public per-post statistics");
 if (!workflow.includes('SOCIAL_PUBLISH_BATCH_SIZE: "2"')) failures.push("scheduled publishing must process up to two queue items per run to drain an aged backlog");
 if (!generationWorkflow.includes('VIDEO_FREE_ONLY: "true"') || !generationWorkflow.includes('VIDEO_AI_ENABLED: "true"')) failures.push("video generation must use enabled free-only visual AI with deterministic fallback");

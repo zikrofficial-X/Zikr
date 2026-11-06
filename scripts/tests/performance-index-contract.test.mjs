@@ -24,3 +24,15 @@ for (const [table, column, index] of indexes) {
   assert.match(migration, pattern, `Missing FK-support index ${index} on ${table}(${column})`);
 }
 console.log("Foreign-key supporting index contract passed.");
+
+const templateVersionIndexes = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261106020000_video_template_version_fk_indexes.sql"),
+  "utf8",
+);
+for (const column of ["created_by", "reviewed_by", "activated_by"]) {
+  assert.match(
+    templateVersionIndexes,
+    new RegExp(`CREATE INDEX IF NOT EXISTS video_template_versions_${column}_idx\\s+ON public\\.video_template_versions \\(${column}\\)`, "i"),
+    `Missing video_template_versions foreign-key index for ${column}`,
+  );
+}

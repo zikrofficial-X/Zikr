@@ -147,7 +147,6 @@ async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promi
       contentId: item.content_id,
       queuedVideoUrl: item.video_url,
       request: rows?.[0] ?? null,
-      requireApproval: process.env.AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL?.trim().toLowerCase() !== "false",
     });
   } catch (error) {
     console.error("[social-publishing] Approval lookup failed; holding video item:", item.id, error);
