@@ -4,7 +4,7 @@ ZIKR's recurring production video queue is executed by GitHub Actions `generate-
 
 ## Production video generation
 
-GitHub Actions runs video generation four times per day at 03:17, 09:17, 15:17, and 21:17 UTC, with a manual dispatch path for Run Now/recovery. The legacy social workflow may receive schedule events, but its job is permanently guarded by `if: false`; it performs no queue work. Commits and merges do not start production video generation.
+GitHub Actions runs video generation four times per day at 03:17, 09:17, 15:17, and 21:17 UTC, with a manual dispatch path for Run Now/recovery. The legacy social workflow has no automatic schedule and its manually dispatched job is permanently guarded by `if: false`; it performs no queue work. Commits and merges do not start production video generation.
 
 GitHub Actions invokes `pnpm background:jobs` with free Hugging Face video providers (`LTX Fast` and `Wan`) enabled first and the deterministic FFmpeg template renderer as the automatic fallback. `VIDEO_FREE_ONLY=true` excludes paid/custom providers and keeps Gemini text generation off. Production generation uses trusted Quran/Hadith/Dua content, Arabic fonts, verified HTTPS Quran recitation audio, and Arabic TTS where allowed. Completed MP4 bytes are uploaded directly from the GitHub runner to Cloudinary; generated videos and human narration files must not be staged in Supabase Storage. Supabase stores only the generation queue, content metadata, and audit records. Source religious text remains locked and is never rewritten.
 
