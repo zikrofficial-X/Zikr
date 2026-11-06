@@ -61,8 +61,10 @@ Sensitive actions use step-up authorization where currently implemented (includi
 2. Admin content listing, publish/unpublish and delete guards now use published for pinned messages.
 3. Scheduled content publishing now sets published = true for pinned messages.
 4. Admin Video Factory publish retry now performs a second server-side social.publish check. video.manage alone cannot retry a social publish.
-5. Admin governance checks now assert the canonical pinned-message schema/query contract and the video-manager/social-manager permission boundary.
-6. Admin API guard verification now discovers inline server actions embedded in Admin pages as well as module-level server actions.
+5. Human approval records the reviewer ID and a SHA-256 snapshot binding category, source_hash, content_hash, template_version and the exact video URL. Incomplete snapshots are rejected.
+6. The social publisher fetches these current fields and validates the approval snapshot again after claim and before provider calls; changed source/content/media invalidates approval.
+7. Admin governance checks assert the canonical pinned-message schema/query contract and the video-manager/social-manager permission boundary.
+8. Admin API guard verification discovers inline server actions embedded in Admin pages as well as module-level server actions.
 
 No production DDL, migration, queue mutation, post deletion, credential update, auto-publishing toggle or production deployment was performed as part of this PR.
 
@@ -82,7 +84,7 @@ The audit plan and older runbook/closeout material are not fully consistent abou
 | 0 — Baseline freeze | **Captured** | Re-capture if main advances before final merge/release. |
 | 1 — Routes, APIs, database, permissions | **In progress** | Run enhanced guard verifier; complete per-action/RPC/table/RLS mapping and role-by-role negative tests. |
 | 2 — Navigation and organization | **Existing foundation verified** | Complete legacy-route usage classification, ownership cleanup, breadcrumb and mobile acceptance. Do not delete compatibility routes without usage evidence. |
-| 3 — Approval / worker boundaries | **Partially implemented** | social.publish permission boundary fixed for publish retry. Resolve approval policy; add reviewer/source/media snapshot binding and enforce before claim and before provider calls. |
+| 3 — Approval / worker boundaries | **Partially implemented** | social.publish permission boundary fixed for publish retry. Reviewer and source/content/template/media URL snapshot binding now exists and is revalidated before provider calls. Resolve whether the owner wants human approval required in production; current env remains false. Byte-level rendered-media hashing and a live provider smoke test remain. |
 | 4 — Video Factory Studio | **Not implemented** | No template tables exist in production. Build immutable templates/versions, preview, QA, human approval, activation and audited rollback. |
 | 5 — Analytics / observability | **Partially present** | Reconcile per-platform queue states, template/provider metrics, freshness and remote IDs; prove figures against source rows/provider reports. |
 | 6 — Full QA | **Running / pending** | Full pnpm verify, browser tests for every role, mobile acceptance, controlled worker tests and migration replay evidence. |
@@ -93,7 +95,7 @@ The audit plan and older runbook/closeout material are not fully consistent abou
 - The pinned-message and permission fixes must pass full CI, then be merged and deployed through the controlled release workflow.
 - /admin/content must be smoke-tested with an authenticated Admin session after deployment; verify listing, toggle, schedule and delete protections without deleting production content.
 - Complete negative authorization tests for every role and sensitive action, especially OAuth, upload, role changes, deletion and publish retries.
-- Resolve whether the owner intends unattended video publishing or mandatory human QA approval. Current production settings are intentionally unchanged.
+- Resolve whether the owner intends unattended video publishing or mandatory human QA approval. Current production settings are intentionally unchanged. When approval is required, legacy requests without source/content hashes will fail closed and need re-generation/re-review.
 - Enable Supabase leaked-password protection through the Auth dashboard, then rerun Security Advisor.
 - Design and implement the data-backed Template Studio; the current page is only a static SVG library.
 - Reconcile and surface the 3 cooldown-deferred partial posts; do not retry already-successful YouTube targets.
