@@ -45,6 +45,8 @@ if (!publisher.includes("const publishMetadata = {")) failures.push("social publ
 if (!publisher.includes("disposePublishedVideo({ ...item, metadata: publishMetadata })")) failures.push("published-video cleanup must preserve YouTube/Facebook remote post IDs written by the publisher");
 
 if (!publisher.includes("operationalFailures")) failures.push("expected Reels pacing must not be written as a publication error");
+const socialAdminClient = read("src/app/admin/social/social-client.tsx");
+if (!socialAdminClient.includes("youtubeInsightsSummary")) failures.push("Admin social queue must display synchronized YouTube post statistics");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
 if (!socialWorker.includes("retryPendingPublishedVideoCleanup")) failures.push("scheduled social worker must retry published-media cleanup without a separate manual sweep");
 if (!socialWorker.includes("Published media cleanup retry")) failures.push("scheduled social worker must report media cleanup retry outcomes");
