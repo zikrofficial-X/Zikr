@@ -217,13 +217,16 @@ if (worker.includes("publishToYoutube(") || worker.includes("publishToFacebook("
     worker.includes("graph.facebook.com")) {
   failures.push("video generation must never call external platform publishing APIs directly");
 }
-if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"')) {
-  failures.push("social candidates from video generation must require human QA approval");
+if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"') ||
+    !worker.includes("buildAutomatedVideoQaChecklist") ||
+    !worker.includes("createAutomatedVideoQaApproval") ||
+    !worker.includes("automatedVideoQa.status !== \"passed\"")) {
+  failures.push("new video candidates must use a complete automated QA snapshot instead of a manual approval gate");
 }
 if (!socialPublishing.includes("hasVideoApprovalForQueueItem(item)") ||
-    !socialPublishing.includes("Video held for human QA approval before public publishing.") ||
-    !socialPublishing.includes("Approval lookup failed; holding video item")) {
-  failures.push("the separate social worker must fail closed and revalidate human QA approval before provider calls");
+    !socialPublishing.includes("Video held because automated QA is missing, incomplete or stale.") ||
+    !socialPublishing.includes("Automated QA lookup failed; holding video item")) {
+  failures.push("the separate social worker must fail closed and revalidate automated QA immediately before provider calls");
 }
 if (!worker.includes("!isTemplatePreview &&") || !worker.includes("!boundTemplate &&")) failures.push("pinned template renders must not be handed to external video providers");
 for (const [path, destinations] of [
