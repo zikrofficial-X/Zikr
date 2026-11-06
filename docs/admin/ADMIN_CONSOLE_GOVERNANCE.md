@@ -28,40 +28,39 @@
 
 ## 1. جرد المسارات والصلاحيات
 
-هذا الجرد يعكس عناصر التنقل المعرّفة في الفرع وقت المراجعة. يفحص `pnpm admin:governance:check` وجود كل مسار، والصلاحية المناظرة، وظهور كل زوج (مسار/صلاحية) هنا كي لا ينفصل التوثيق عن الكود.
-
+هذا الجرد يطابق مجموعات التنقل التسع في لوحة الإدارة. يفحص `pnpm admin:governance:check` وجود كل مسار وصلاحيته، ويمنع انفصال التوثيق عن الكود.
 
 ### التشغيل والمراقبة
 
 | المسار | الصفحة | الصلاحية المطلوبة |
 |---|---|---|
 | `/admin` | لوحة التحكم | `dashboard.view` |
+| `/admin/queues` | مركز الطوابير | `dashboard.view` |
 | `/admin/automation` | التشغيل الآلي | `system.manage` |
 | `/admin/health` | صحة النظام | `system.manage` |
 | `/admin/notifications` | التنبيهات | `notifications.manage` |
-| `/admin/audit` | سجل التدقيق | `audit.read` |
-| `/admin/release` | مركز الإصدار | `release.manage` |
 
-
-### المحتوى والمعرفة
+### إدارة المحتوى
 
 | المسار | الصفحة | الصلاحية المطلوبة |
 |---|---|---|
 | `/admin/content` | إدارة المحتوى | `content.manage` |
 | `/admin/library` | مكتبة المحتوى | `library.manage` |
-| `/admin/sources` | مصادر المحتوى | `sources.manage` |
 | `/admin/editorial` | التحرير والنشر | `knowledge.manage` |
-| `/admin/knowledge` | المعرفة الإسلامية | `knowledge.manage` |
-| `/admin/prophets` | الأنبياء | `prophets.manage` |
-| `/admin/battles` | الغزوات | `battles.manage` |
 | `/admin/categories` | التصنيفات | `content.manage` |
 | `/admin/sections` | الأقسام وترتيبها | `sections.manage` |
 | `/admin/search` | البحث والفهرسة | `content.manage` |
 
+### المصادر والمعرفة
 
-### الوسائط والإنتاج والنشر
+| المسار | الصفحة | الصلاحية المطلوبة |
+|---|---|---|
+| `/admin/sources` | مصادر المحتوى | `sources.manage` |
+| `/admin/knowledge` | المعرفة الإسلامية | `knowledge.manage` |
+| `/admin/prophets` | الأنبياء | `prophets.manage` |
+| `/admin/battles` | الغزوات | `battles.manage` |
 
-#### الفيديو
+### مصنع الفيديوهات
 
 | المسار | الصفحة | الصلاحية المطلوبة |
 |---|---|---|
@@ -73,32 +72,28 @@
 | `/admin/video/scripts` | نصوص السرد | `video.manage` |
 | `/admin/video/voices` | الأصوات | `video.manage` |
 | `/admin/video/visuals` | العناصر المرئية | `video.manage` |
-| `/admin/video/templates` | القوالب | `video.manage` |
+| `/admin/video/templates` | استوديو القوالب | `video.manage` |
 | `/admin/video/qa` | ضبط الجودة | `video.manage` |
-| `/admin/media` | مكتبة الوسائط | `media.manage` |
 
-**التوافق:** المسارات القديمة `/admin/video-factory/*` و`/admin/ai-video*` لا تظهر في القائمة الرسمية، وتحوّل إلى المسارات أعلاه أو إلى مركز الاستوديو/النشر/الأتمتة المعني. لا تضف روابط جديدة إلى شجرة المسارات القديمة.
-
-#### الصوت
-
-| المسار | الصفحة | الصلاحية المطلوبة |
-|---|---|---|
-| `/admin/audio` | مركز الصوت | `audio.manage` |
-| `/admin/audio/quran` | تلاوات القرآن | `audio.manage` |
-| `/admin/audio/adhan` | الأذان | `audio.manage` |
-| `/admin/audio/tts` | تحويل النص إلى صوت | `audio.manage` |
-| `/admin/site-audio` | صوت الموقع والتذكيرات | `audio.manage` |
-
-
-#### النشر الاجتماعي
+### النشر والتوزيع
 
 | المسار | الصفحة | الصلاحية المطلوبة |
 |---|---|---|
 | `/admin/social` | مركز النشر الاجتماعي | `social.manage` |
 | `/admin/social/written-studio` | مصنع المنشورات المكتوبة | `social.manage` |
 
+### الوسائط والصوت
 
-### مركز الأطفال
+| المسار | الصفحة | الصلاحية المطلوبة |
+|---|---|---|
+| `/admin/media` | مكتبة الوسائط | `media.manage` |
+| `/admin/audio` | مركز الصوت | `audio.manage` |
+| `/admin/audio/quran` | تلاوات القرآن | `audio.manage` |
+| `/admin/audio/adhan` | الأذان | `audio.manage` |
+| `/admin/audio/tts` | تحويل النص إلى صوت | `audio.manage` |
+| `/admin/site-audio` | صوت الموقع والتذكيرات | `audio.manage` |
+
+### عالم الأطفال
 
 | المسار | الصفحة | الصلاحية المطلوبة |
 |---|---|---|
@@ -109,24 +104,23 @@
 | `/admin/kids/assets` | الأصول | `kids.manage` |
 | `/admin/kids/analytics` | تحليلات الأطفال | `kids.manage` |
 
-
-### النمو والنظام
+### النمو والتحليلات
 
 | المسار | الصفحة | الصلاحية المطلوبة |
 |---|---|---|
-| `/admin/users` | المستخدمون والأدوار | `users.read` |
 | `/admin/analytics` | تحليلات المنصة | `analytics.read` |
+| `/admin/seo` | تحسين الظهور | `settings.manage` |
 
-
-#### الأمن والإعدادات
+### النظام والأمان
 
 | المسار | الصفحة | الصلاحية المطلوبة |
 |---|---|---|
+| `/admin/audit` | سجل التدقيق | `audit.read` |
+| `/admin/release` | مركز الإصدار | `release.manage` |
+| `/admin/users` | المستخدمون والأدوار | `users.read` |
 | `/admin/security` | أمن لوحة الإدارة | `security.manage` |
-| `/admin/seo` | تحسين الظهور | `settings.manage` |
 | `/admin/android` | إصدار أندرويد | `android.manage` |
 | `/admin/settings` | إعدادات الإدارة | `settings.manage` |
-
 
 ## 2. نطاق الأدوار
 
