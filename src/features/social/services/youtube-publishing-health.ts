@@ -86,7 +86,7 @@ async function readPublicChannel(
     if (!response.ok) return null;
 
     const channels = await response.json() as ChannelResponse;
-    const channel = channels.items?.find((item) => item.id === channelId) ?? channels.items?.[0];
+    const channel = channels.items?.find((item) => item.id === channelId);
     if (!channel?.id) {
       return result("channel_not_found", "مفتاح YouTube API يعمل، لكن رقم القناة المحدد لم يُرجع قناة عامة.", channelId);
     }
