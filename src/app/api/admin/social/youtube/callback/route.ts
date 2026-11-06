@@ -17,6 +17,7 @@ const ANALYTICS_SCOPE = "https://www.googleapis.com/auth/yt-analytics.readonly";
 type GoogleOAuthToken = {
   access_token?: string;
   refresh_token?: string;
+  scope?: string;
   error?: string;
 };
 
