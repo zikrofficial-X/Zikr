@@ -26,6 +26,7 @@ Successful provider post IDs are retained and never republished. An unavailable 
 ## Monitoring
 
 - Admin → Social Publishing shows independent connection health cards, a read-only YouTube channel test, Facebook Page test/reconnect, per-channel status totals, and queue filters for YouTube, Facebook, and Facebook Reels.
+- YouTube channel profile reads prefer OAuth. When the OAuth token lacks channel-read scope, the health check falls back to the server-only `YOUTUBE_API_KEY` + exact `YOUTUBE_CHANNEL_ID` and reports `public_data_only`; it only displays fields that YouTube exposes publicly. This does not grant private Analytics reports. For owner metrics, reauthorize with `youtube.readonly` and `yt-analytics.readonly`, then rotate the refresh token in Vercel and GitHub Actions.
 - The scheduled GitHub Actions worker runs every 15 minutes and syncs YouTube public post metrics and Facebook Reels Insights independently.
 - Admin analytics reports GA4 site traffic separately from owner-authorized YouTube Analytics and Facebook Reels post insights. Missing provider data is shown as unavailable, not zero.
 - A read-only connection test never uploads, edits, or publishes a post.
