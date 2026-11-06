@@ -16,10 +16,10 @@ const stats = summarizePlatformResults([
   { metadata: { platformResults: "invalid" } },
 ]);
 assert.deepEqual(stats, [
-  { platform: "facebook", attempts: 2, successful: 2, failed: 0, remoteIds: 2 },
-  { platform: "youtube", attempts: 1, successful: 0, failed: 1, remoteIds: 0 },
+  { platform: "facebook", deliveries: 2, successful: 2, failed: 0, remoteIds: 2 },
+  { platform: "youtube", deliveries: 1, successful: 0, failed: 1, remoteIds: 0 },
 ]);
-assert.deepEqual(Object.keys(stats[0]).sort(), ["attempts", "failed", "platform", "remoteIds", "successful"]);
+assert.deepEqual(Object.keys(stats[0]).sort(), ["deliveries", "failed", "platform", "remoteIds", "successful"]);
 
 assert.equal(averageRenderDuration([{ render_duration_ms: 1000 }, { render_duration_ms: 3000 }], 2), 2000);
 assert.equal(averageRenderDuration([{ render_duration_ms: 1000 }, { render_duration_ms: null }], 2), null);
