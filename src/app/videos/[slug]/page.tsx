@@ -4,6 +4,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getVideoBySlug } from '@/features/videos/services/videos';
+import { VideoLikeButton } from '@/features/videos/components/video-like-button';
 import { pageMetadata } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
@@ -119,6 +120,10 @@ export default async function VideoDetailPage({ params }: VideoDetailPageProps) 
           </video>
         </div>
       ) : null}
+
+      <div className="flex justify-center">
+        <VideoLikeButton videoId={video.id} />
+      </div>
 
       <Card className="p-6 space-y-4 bg-black/30 border-brand-gold/30">
         <div className="flex justify-between items-center text-sm text-brand-cream/70">
