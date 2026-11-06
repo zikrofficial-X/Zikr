@@ -9,7 +9,7 @@ type PurgeResult = {
   cloudinaryAssetsDeleted: number;
   cloudinaryBytesDeleted: number;
   storageObjectsDeleted: number;
-  queueRowsDeleted: number;
+  socialQueueRowsPreserved: boolean;
   publicVideoCatalogPreserved: boolean;
   generationRowsDeleted: number;
   automationRunsDeleted: number;
@@ -60,7 +60,7 @@ export function PurgeGeneratedVideosControl({
         cloudinaryAssetsDeleted?: number;
         cloudinaryBytesDeleted?: number;
         storageObjectsDeleted?: number;
-        queueRowsDeleted?: number;
+        socialQueueRowsPreserved?: boolean;
         publicVideoCatalogPreserved?: boolean;
         generationRowsDeleted?: number;
         automationRunsDeleted?: number;
@@ -79,7 +79,7 @@ export function PurgeGeneratedVideosControl({
         cloudinaryAssetsDeleted: payload.cloudinaryAssetsDeleted ?? 0,
         cloudinaryBytesDeleted: payload.cloudinaryBytesDeleted ?? 0,
         storageObjectsDeleted: payload.storageObjectsDeleted ?? 0,
-        queueRowsDeleted: payload.queueRowsDeleted ?? 0,
+        socialQueueRowsPreserved: payload.socialQueueRowsPreserved === true,
         publicVideoCatalogPreserved: payload.publicVideoCatalogPreserved === true,
         generationRowsDeleted: payload.generationRowsDeleted ?? 0,
         automationRunsDeleted: payload.automationRunsDeleted ?? 0,
@@ -88,7 +88,7 @@ export function PurgeGeneratedVideosControl({
       setResult(completed);
       setConfirmation("");
       setExpanded(false);
-      setMessage("تم حذف مخرجات الفيديو المولّدة وسجلات التوليد. كتالوج الفيديوهات العامة وسجل النشر السابق محفوظان، والتوليد التلقائي ما زال متوقفًا.");
+      setMessage("تم حذف مخرجات الفيديو المولّدة وسجلات التوليد الداخلية. كتالوج الفيديوهات العامة وسجل التدقيق محفوظان، وسجلات المنصات القديمة لم تتغير.");
       await onCompleted?.();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر تصفير مكتبة الفيديو.");
@@ -105,7 +105,7 @@ export function PurgeGeneratedVideosControl({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-red-200">تصفير مكتبة الفيديوهات</p>
           <p className="mt-1 text-xs leading-6 text-brand-cream/55">
-            حذف ملفات الفيديو المولّدة من Cloudinary وSupabase Storage وسجلات التوليد. كتالوج الفيديوهات العامة وسجل المنشورات الناجحة أو ذات معرّفات النشر محفوظان.
+            حذف ملفات الفيديو التي ولّدها ZIKR من Cloudinary وSupabase Storage وسجلات التوليد فقط. كتالوج الموقع وسجلات المنصات القديمة لا تتغير.
           </p>
         </div>
         <button
@@ -125,10 +125,10 @@ export function PurgeGeneratedVideosControl({
       {expanded && (
         <div className="mt-4 space-y-3 border-t border-red-400/15 pt-4">
           <p className="text-sm leading-7 text-brand-cream/80">
-            هذا الإجراء نهائي ولا يمكن التراجع عنه. سيحذف ملفات ZIKR المولّدة محليًا والطلبات غير المنشورة وسجلات تشغيل التوليد. سيحتفظ بسجلات النشر التي تحتوي على نجاح أو معرّف خارجي، ولن يحذف صفوف جدول الفيديوهات العامة أو القوالب أو الأصوات أو الحسابات.
+            هذا الإجراء نهائي ولا يمكن التراجع عنه. سيحذف ملفات ZIKR المولّدة محليًا والطلبات غير المنشورة وسجلات تشغيل التوليد. سيحتفظ بكتالوج الفيديوهات العامة والقوالب والأصوات والحسابات. كما سيترك سجل الطابور الاجتماعي التاريخي دون تعديل.
           </p>
           <p className="text-xs leading-6 text-amber-200/90">
-            ملاحظة: هذا يمسح النسخ المحلية من ZIKR فقط. الفيديوهات المنشورة بالفعل داخل حسابات YouTube وFacebook ستظل منشورة هناك؛ حذفها من الحسابات الخارجية ليس ضمن هذه العملية.
+            ملاحظة: هذا الإجراء يمسح ذاكرة ملفات الفيديو المولّدة داخل ZIKR فقط. لا يرسل طلبات إلى أي منصة خارجية ولا يغيّر أي سجل نشر تاريخي.
           </p>
           <label className="block space-y-2">
             <span className="text-xs text-brand-cream/60">
@@ -170,7 +170,7 @@ export function PurgeGeneratedVideosControl({
 
       {busy && (
         <p role="status" className="mt-3 text-xs text-amber-200">
-          التوليد والنشر محجوزان أثناء التصفير. لا تغلق الصفحة قبل ظهور نتيجة العملية.
+          التوليد الداخلي محجوز أثناء التصفير. لا تغلق الصفحة قبل ظهور نتيجة العملية.
         </p>
       )}
       {error && (
@@ -185,10 +185,10 @@ export function PurgeGeneratedVideosControl({
             ملفات Cloudinary: {result.cloudinaryAssetsDeleted} · المساحة المحررة: {(result.cloudinaryBytesDeleted / (1024 * 1024)).toFixed(1)} MiB · عناصر Storage: {result.storageObjectsDeleted}
           </p>
           <p>
-            طلبات التوليد: {result.generationRowsDeleted} · عناصر الطابور غير المنشورة: {result.queueRowsDeleted} · كتالوج الفيديوهات العامة: {result.publicVideoCatalogPreserved ? "محفوظ" : "غير مؤكد"} · سجلات التشغيل: {result.automationRunsDeleted}
+            طلبات التوليد: {result.generationRowsDeleted} · سجل المنصات التاريخي: {result.socialQueueRowsPreserved ? "محفوظ" : "غير مؤكد"} · كتالوج الفيديوهات العامة: {result.publicVideoCatalogPreserved ? "محفوظ" : "غير مؤكد"} · سجلات التشغيل: {result.automationRunsDeleted}
           </p>
           <p className="mt-1 text-amber-100/90">
-            لم يتم حذف المنشورات من حسابات YouTube أو Facebook نفسها.
+            لم يتم إرسال أي طلب حذف إلى منصات خارجية.
           </p>
         </div>
       )}
