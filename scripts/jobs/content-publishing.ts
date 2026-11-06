@@ -21,7 +21,8 @@ async function validateInternalVideoForPublication(videoId: string): Promise<voi
       parsed.protocol === "https:" &&
       parsed.hostname === "res.cloudinary.com" &&
       metadata.generator === "zikr_internal_video_factory" &&
-      metadata.mediaState !== "purged";
+      metadata.mediaState !== "purged" &&
+      metadata.mediaState !== "unlinked";
   } catch {
     approvedCloudinaryMedia = false;
   }
