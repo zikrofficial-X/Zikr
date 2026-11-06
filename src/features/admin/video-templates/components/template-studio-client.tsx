@@ -76,7 +76,7 @@ export default function TemplateStudioClient() {
     () => data.templates.find((item) => item.id === selectedTemplateId) ?? null,
     [data.templates, selectedTemplateId],
   );
-  const availableAssets = selectedTemplate?.audience === "kids" ? KIDS_ASSETS : GENERAL_ASSETS;
+  const availableAssets = useMemo(() => selectedTemplate?.audience === "kids" ? KIDS_ASSETS : GENERAL_ASSETS, [selectedTemplate?.audience]);
   const versionsByTemplate = useMemo(() => {
     const grouped = new Map<string, Version[]>();
     for (const version of data.versions) {
@@ -97,7 +97,7 @@ export default function TemplateStudioClient() {
   }, [selectedTemplate, versionsByTemplate, availableAssets]);
 
   const mutate = useCallback(async (action: string, values: Record<string, unknown> = {}) => {
-    setBusy(action + String(values.versionId ?? ""));
+    setBusy(action + ":" + String(values.versionId ?? ""));
     setError("");
     setMessage("");
     try {
@@ -189,7 +189,7 @@ export default function TemplateStudioClient() {
               </label>
             </div>
             <button type="button" onClick={createVersion} disabled={!selectedTemplate || Boolean(busy)} className="rounded-xl bg-brand-gold px-5 py-3 text-sm font-bold text-black disabled:opacity-50">
-              {busy === "create-version" ? "جارٍ إنشاء المسودة…" : "إنشاء مسودة إصدار"}
+              {busy.startsWith("create-version:") ? "جارٍ إنشاء المسودة…" : "إنشاء مسودة إصدار"}
             </button>
           </div>
         </div>
