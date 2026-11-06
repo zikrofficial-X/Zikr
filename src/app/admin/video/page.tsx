@@ -27,8 +27,6 @@ export default async function VideoFactoryDashboardPage() {
       : snapshot.queues.videoPending + snapshot.queues.videoProcessing;
   const videoFailures = snapshot.queues.videoFailed;
   const metricValue = (key: string) => snapshot.metrics.find((metric) => metric.key === key)?.value ?? null;
-  const socialPending = snapshot.queues.socialQueued;
-  const socialFailures = snapshot.queues.socialFailed;
 
   return (
     <Container className="space-y-8 py-10 text-right" dir="rtl">
@@ -43,7 +41,7 @@ export default async function VideoFactoryDashboardPage() {
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           ["طلبات الفيديو النشطة", videoPending, videoFailures === null ? "تعذر قراءة الطابور" : videoFailures ? "يوجد فشل يحتاج مراجعة" : "لا يوجد فشل مرئي", videoFailures ? "danger" : videoFailures === null ? "neutral" : "success"],
-          ["النشر الاجتماعي", socialPending, socialFailures === null ? "تعذر قراءة الطابور" : socialFailures ? "يوجد فشل نشر" : "الطابور منضبط", socialFailures ? "danger" : "neutral"],
+          ["التشغيل الداخلي", "نشط", "التوليد والحفظ داخل ZIKR فقط", "neutral"],
           ["المسودات والمراجعة", metricValue("drafts"), "محتوى يحتاج قرارًا تحريريًا", "warning"],
           ["تدقيق الإدارة", metricValue("auditFailures"), "آخر 12 عملية مدققة", "neutral"],
         ].map(([label, value, note, tone]) => (
