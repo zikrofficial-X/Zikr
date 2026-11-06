@@ -38,7 +38,10 @@ assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
 assert.ok(generationStudio.includes("PurgeGeneratedVideosControl"));
 assert.ok(socialPage.includes("PurgeGeneratedVideosControl"));
 assert.ok(control.includes("امسح كل الفيديوهات"));
+assert.ok(control.includes('fetch("/api/admin/video-purge"'));
+assert.ok(control.includes("setAuthorized(allowed)"));
 assert.ok(control.includes("YouTube وFacebook"));
+assert.ok(apiGuards.includes('src/app/api/admin/video-purge/route.ts GET'));
 assert.ok(apiGuards.includes('src/app/api/admin/video-purge/route.ts POST'));
 
 console.log("Generated-video purge contracts passed.");
