@@ -5,6 +5,22 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 type RouteContext = { params: Promise<{ videoId: string }> };
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function invalidId() {
+  return NextResponse.json({ error: "معرّف الفيديو غير صالح." }, { status: 400 });
+}
+
+async function isPublicVideo(supabase: Awaited<ReturnType<typeof createClient>>, videoId: string) {
+  const { data, error } = await supabase
+    .from("videos")
+    .select("id")
+    .eq("id", videoId)
+    .eq("published", true)
+    .maybeSingle();
+  return { exists: Boolean(data), error };
+}
+
 async function likeStatus(
   supabase: Awaited<ReturnType<typeof createClient>>,
   videoId: string,
