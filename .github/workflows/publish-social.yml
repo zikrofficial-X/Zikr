@@ -45,7 +45,7 @@ jobs:
       SOCIAL_QUEUE_RESET_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.operation == 'reset_queued_video_media' }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       BACKGROUND_JOB_TARGET: "social"
-      SOCIAL_PUBLISH_BATCH_SIZE: "1"
+      SOCIAL_PUBLISH_BATCH_SIZE: "2"
       YOUTUBE_UPLOAD_PRIVACY: "public"
       SOCIAL_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
@@ -54,6 +54,7 @@ jobs:
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
       YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
       FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
       ADMIN_QUEUE_ALERT_WEBHOOK_URL: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_URL }}
       ADMIN_QUEUE_ALERT_WEBHOOK_SECRET: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_SECRET || secrets.WEBHOOK_SECRET }}

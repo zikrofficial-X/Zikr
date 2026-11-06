@@ -72,7 +72,7 @@ jobs:
       AUTO_VIDEO_SECONDS: "20"
       # Generation only. Queue reconciliation and public posting belong to publish-social.yml (every 15 minutes).
       BACKGROUND_JOB_TARGET: "videos"
-      VIDEO_TEMPLATE_VERSION: "2026-10-26-growth-quality-v5"
+      VIDEO_TEMPLATE_VERSION: "2026-11-06-composition-sync-v8"
       VIDEO_OUTPUT_CRF: "17"
       VIDEO_AUDIO_BITRATE: "192k"
       VERIFY_VIDEO_RUNTIME_TOOLS: "true"
@@ -141,7 +141,7 @@ jobs:
           test -f /usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf
           test -f /usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf
 
-          for asset in public/video/templates/calm.svg public/video/templates/dawn.svg public/video/templates/night.svg public/video/templates/gold.svg public/video/templates/kids-garden.svg public/video/templates/kids-neighborhood.svg public/video/templates/kids-workshop.svg public/video/templates/kids-nature.svg; do
+          for asset in public/video/templates/calm.svg public/video/templates/dawn.svg public/video/templates/night.svg public/video/templates/gold.svg public/video/templates/emerald.svg public/video/templates/paper.svg public/video/templates/rose.svg public/video/templates/kids-garden.svg public/video/templates/kids-neighborhood.svg public/video/templates/kids-workshop.svg public/video/templates/kids-nature.svg; do
             test -s "$asset"
             out="/tmp/$(basename "$asset" .svg).png"
             rsvg-convert -w 1080 -h 1920 "$asset" -o "$out"
@@ -166,7 +166,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm video:engine:check
-          pnpm exec tsx -e 'Promise.all([import("./scripts/jobs/template-video-automation.ts"), import("./src/features/social/services/social-publishing.ts")]).then(() => console.log("Video worker module smoke test: OK")).catch((error) => { console.error(error); process.exitCode = 1 })'
+          pnpm exec tsx -e 'Promise.all([import("./scripts/jobs/template-video-automation.ts"), import("./scripts/jobs/social-publishing.ts"), import("./src/features/social/services/social-publishing.ts")]).then(() => console.log("Video and social worker module smoke test: OK")).catch((error) => { console.error(error); process.exitCode = 1 })'
           "$GITHUB_WORKSPACE/.automation-venv/bin/python" -m py_compile scripts/jobs/hf-space-video.py
           "$GITHUB_WORKSPACE/.automation-venv/bin/python" -m py_compile scripts/generate-arabic-voice.py
           # Fail before touching the production queue if neither Arabic TTS provider can synthesize audio.

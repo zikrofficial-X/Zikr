@@ -41,7 +41,12 @@ if (!publisher.includes("extractFacebookReelsNextAllowedAt")) failures.push("soc
 if (!publisher.includes("facebookReelsNextAllowedAt")) failures.push("social queue must persist the Reels cooldown deadline per item");
 if (!publisher.includes("isFacebookReelsCooldownDeferredError")) failures.push("expected local Reels cooldown must be classified as a deferral");
 if (!publisher.includes("deferredPlatforms: deferredFailures.map")) failures.push("social queue must persist deferred platform metadata separately from errors");
+if (!publisher.includes("const publishMetadata = {")) failures.push("social publish results must be merged into one durable metadata snapshot before cleanup");
+if (!publisher.includes("disposePublishedVideo({ ...item, metadata: publishMetadata })")) failures.push("published-video cleanup must preserve YouTube/Facebook remote post IDs written by the publisher");
+
 if (!publisher.includes("operationalFailures")) failures.push("expected Reels pacing must not be written as a publication error");
+const socialAdminClient = read("src/app/admin/social/social-client.tsx");
+if (!socialAdminClient.includes("youtubeInsightsSummary")) failures.push("Admin social queue must display synchronized YouTube post statistics");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
 if (!socialWorker.includes("retryPendingPublishedVideoCleanup")) failures.push("scheduled social worker must retry published-media cleanup without a separate manual sweep");
 if (!socialWorker.includes("Published media cleanup retry")) failures.push("scheduled social worker must report media cleanup retry outcomes");
@@ -110,7 +115,8 @@ if (generationWorkflow.includes("secrets.FACEBOOK_PAGE_ACCESS_TOKEN") || generat
 if (!workflow.includes('SOCIAL_PUBLISH_ENABLED: "true"') && !phase0AutomationFreeze && !socialPublishingDisabled) failures.push("dedicated GitHub social workflow must be explicitly active or fail-closed");
 if (!workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"')) failures.push("social worker must allow automatically generated videos into the publisher");
 if (!workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"')) failures.push("autonomous publishing must use the validated source/status gate without a manual approval dependency");
-if (!workflow.includes('SOCIAL_PUBLISH_BATCH_SIZE: "1"')) failures.push("scheduled publishing must process one queue item per 15-minute run");
+if (!workflow.includes("YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}")) failures.push("social worker must receive the YouTube Data API key for public per-post statistics");
+if (!workflow.includes('SOCIAL_PUBLISH_BATCH_SIZE: "2"')) failures.push("scheduled publishing must process up to two queue items per run to drain an aged backlog");
 if (!generationWorkflow.includes('VIDEO_FREE_ONLY: "true"') || !generationWorkflow.includes('VIDEO_AI_ENABLED: "true"')) failures.push("video generation must use enabled free-only visual AI with deterministic fallback");
 if (!generationWorkflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "true"') || !generationWorkflow.includes('HF_WAN_VIDEO_ENABLED: "true"')) failures.push("both free Hugging Face video providers must be enabled ahead of the FFmpeg fallback");
 if (!generationWorkflow.includes('HF_VIDEO_PROVIDER_TIMEOUT_MS: "150000"') || !generationWorkflow.includes('VIDEO_AI_ATTEMPTS_PER_RUN: "2"') || !generationWorkflow.includes('VIDEO_WORKER_BATCH_SIZE: "2"')) failures.push("free video provider attempts and worker batches must remain bounded for the scheduled job timeout");
@@ -124,6 +130,15 @@ if (!workflow.includes('echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_enabled"
 if (workflow.includes("secrets.FACEBOOK_PAGE_ACCESS_TOKEN") || workflow.includes("FACEBOOK_PAGE_ACCESS_TOKEN:")) failures.push("GitHub social workflow must not duplicate the Facebook Page token outside Supabase");
 if (!publisher.includes("async function publishFacebookVideoItem")) failures.push("Facebook feed videos and Reels must use the same OAuth-managed Page credential");
 if (publisher.includes('if (!env.FACEBOOK_PAGE_ACCESS_TOKEN) throw new Error("FACEBOOK_PAGE_ACCESS_TOKEN is not configured")')) failures.push("Facebook video publishing must not require a legacy environment token");
+
+const postInsights = read("src/features/social/services/youtube-post-insights.ts");
+for (const token of ["syncYoutubePublishedPostInsights", "youtube-data-api-v3", "views:", "likes:", "comments:", "INSIGHTS_REFRESH_MS"]) {
+  if (!postInsights.includes(token)) failures.push("YouTube public post insights sync missing: " + token);
+}
+
+if (!socialWorker.includes("syncYoutubePublishedPostInsights")) failures.push("social worker must periodically sync YouTube post statistics");
+if (!/import\s*\{\s*syncYoutubePublishedPostInsights\s*\}\s*from\s*["\']\.\.\/\.\.\/src\/features\/social\/services\/youtube-post-insights["\']/.test(socialWorker)) failures.push("social worker must import the YouTube insights sync implementation");
+if (!postInsights.includes("scope: \"public-statistics\"")) failures.push("YouTube metrics must be labelled as public statistics, not retention analytics");
 
 const adminApi = read("src/app/api/admin/social/route.ts");
 if (!adminApi.includes("const allTargetsSucceeded") || !adminApi.includes("targets.every(platform => succeeded.has(platform))")) failures.push("Admin retry must not label mixed-success/auth-blocked queue items as published");
