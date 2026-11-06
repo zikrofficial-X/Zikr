@@ -32,6 +32,13 @@ if (!template.includes("assertAudibleAudio")) failures.push("rendered videos mus
 if (!template.includes("Rendered output resolution mismatch")) failures.push("rendered video resolution must be validated");
 if (!template.includes("Rendered output video bitrate is too low")) failures.push("rendered video bitrate must be validated");
 if (!template.includes("deterministicScene(request)")) failures.push("template selection must provide deterministic visual variety");
+if (!template.includes("resolveDeterministicVideoHook") || !template.includes("resolveDeterministicVideoScene")) failures.push("template fallback must vary scene and opening hook deterministically by content ID");
+if (!template.includes('persistedAi?.provider === "google-gemini"')) failures.push("deterministic fallback must not override per-content visual variation with the default calm Gemini placeholder");
+const creativeVariation = read("src/features/videos/services/video-creative-variation.ts");
+for (const token of ["resolveDeterministicVideoScene", "resolveDeterministicVideoHook", "resolveDeterministicVideoMotion"]) {
+  if (!creativeVariation.includes("export function " + token)) failures.push("deterministic video creative variation helper missing: " + token);
+}
+
 if (!template.includes("render_duration_ms: rendered.renderDurationMs") || !template.includes("scene: rendered.scene")) failures.push("completed renders must persist scene and render duration metrics");
 if (!template.includes("render_duration_ms: Date.now() - attemptStartedAt")) failures.push("failed attempts must persist render duration metrics");
 const metricsMigration = read("supabase/migrations/20261027200748_video_render_metrics.sql");
