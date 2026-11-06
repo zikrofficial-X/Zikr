@@ -70,16 +70,15 @@ export default async function AdminAutomationPage() {
   const latestRes = await readRows<VideoAutomationRun>(
     "/rest/v1/video_automation_runs?select=finished_at,created_count,processed_count,completed_count,failed_count,error_summary&order=finished_at.desc&limit=1",
   );
-  const [videoRes, socialRes] = await Promise.all([
-    readRows<QueueStatus>("/rest/v1/video_generation_requests?select=status&order=created_at.desc&limit=500"),
-    readRows<QueueStatus>("/rest/v1/social_publish_queue?select=status&order=created_at.desc&limit=500"),
-  ]);
+  const videoRes = await readRows<QueueStatus>(
+    "/rest/v1/video_generation_requests?select=status&order=created_at.desc&limit=500",
+  );
 
   const unavailable = [
     !settingsRes.ok && "إعدادات التشغيل",
     !latestRes.ok && "آخر تشغيل للعامل",
-    !videoRes.ok && "طابور الفيديو",
-    !socialRes.ok && "طابور النشر الاجتماعي",
+    !videoRes.ok && "طابور التوليد الداخلي",
+    
   ].filter(Boolean) as string[];
 
   const countStatus = (rows: QueueStatus[], status: string) => rows.filter((row) => row.status === status).length;
@@ -214,14 +213,14 @@ export default async function AdminAutomationPage() {
 
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-6">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-brand-gold">طابور النشر الاجتماعي</h2>
+            <h2 className="font-semibold text-brand-gold">سجل المنصات الخارجية التاريخي</h2>
             <span className="text-xs text-brand-cream/35">سجل تاريخي محفوظ</span>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             {[[ "queued", "في الانتظار" ], [ "processing", "قيد التنفيذ" ], [ "published", "نُشر" ], [ "failed", "فشل" ]].map(([status, label]) => (
               <div key={status} className="rounded-xl border border-brand-gold/8 bg-black/10 p-3">
                 <p className="text-xs text-brand-cream/35">{label}</p>
-                <p className="mt-1 text-xl font-bold text-brand-cream">{socialRes.ok ? countStatus(socialRes.rows, status) : "غير متاح"}</p>
+                <p className="mt-1 text-xl font-bold text-brand-cream">{socialRes.ok ? countStatus([], status) : "غير متاح"}</p>
               </div>
             ))}
           </div>
