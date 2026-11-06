@@ -57,11 +57,13 @@ const facebookCallback = readFileSync(
 assert.match(facebookConnect, /requireAdminApi\("social.manage"\)/);
 assert.ok(facebookConnect.includes("dialog/oauth"));
 assert.match(facebookConnect, /pages_manage_posts/);
+assert.doesNotMatch(facebookConnect, /pages_manage_engagement/);
 assert.doesNotMatch(facebookConnect, /FACEBOOK_INTEGRATION_RETIRED/);
 assert.match(facebookCallback, /requireAdminApi\("social.manage"\)/);
 assert.match(facebookCallback, /timingSafeEqual/);
 assert.match(facebookCallback, /saveFacebookPageCredential/);
 assert.match(facebookCallback, /pages_show_list/);
+assert.doesNotMatch(facebookCallback, /pages_manage_engagement/);
 assert.match(facebookCallback, /page_selection_required/);
 assert.doesNotMatch(facebookCallback, /FACEBOOK_INTEGRATION_RETIRED/);
 
