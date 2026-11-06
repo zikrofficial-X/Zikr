@@ -38,6 +38,22 @@ if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_ne
 
 
 const publisher = read("src/features/social/services/social-publishing.ts");
+const videoApproval = read("src/features/videos/services/video-publish-approval.ts");
+const socialWorkflowConfig = read(".github/workflows/publish-social.yml");
+if (videoApproval.includes("requireApproval === false") || socialWorkflowConfig.includes("AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL")) {
+  failures.push("public video publishing must not allow workflow/environment flags to bypass persisted human approval");
+}
+const processPublishStart = publisher.indexOf("export async function processSocialPublishItem");
+const processPublishBody = processPublishStart >= 0 ? publisher.slice(processPublishStart) : "";
+const processApprovalGate = processPublishBody.indexOf("hasVideoApprovalForQueueItem(item)");
+const firstPlatformPublish = processPublishBody.indexOf("publishPlatform(item, platform)");
+if (processApprovalGate < 0 || firstPlatformPublish < 0 || processApprovalGate > firstPlatformPublish) {
+  failures.push("the publisher must re-check persisted video approval after claim and before any platform call");
+}
+if (!publisher.includes("if (!(await hasVideoApprovalForQueueItem(item)))")) {
+  failures.push("the publisher must hold unapproved or changed video snapshots before platform calls");
+}
+
 
 const pendingSelectorStart = publisher.indexOf("export async function getPendingSocialPublishItems");
 const pendingSelectorEnd = publisher.indexOf("async function recoverStaleSocialPublishItems", pendingSelectorStart);
