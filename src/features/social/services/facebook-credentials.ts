@@ -474,7 +474,7 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
     const targets = item.target_platforms ?? [];
     if (metadata.authBlocked !== true || !targets.some(p => p === "facebook" || p === "facebook_reels")) continue;
     const now = new Date().toISOString();
-    const facebookTargets = targets.filter(p => p === "facebook" || p === "facebook_reels");
+    const facebookTargets = targets.filter((p): p is "facebook" | "facebook_reels" => p === "facebook" || p === "facebook_reels");
     const oldResults = metadata.platformResults && typeof metadata.platformResults === "object" && !Array.isArray(metadata.platformResults)
       ? metadata.platformResults as Record<string, unknown>
       : {};
