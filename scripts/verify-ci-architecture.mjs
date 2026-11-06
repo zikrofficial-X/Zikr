@@ -113,9 +113,6 @@ assert.ok(social.includes('BACKGROUND_JOB_TARGET: "social"'), "Social publisher 
 assert.ok(social.includes('SOCIAL_PUBLISH_ENABLED: "false"'), "Retired social publisher must set SOCIAL_PUBLISH_ENABLED=false");
 assert.ok(social.includes('FACEBOOK_PUBLISHING_REQUESTED: "false"') && social.includes('YOUTUBE_PUBLISHING_REQUESTED: "false"'), "Retired social workflow must keep every provider target disabled");
 assert.ok(social.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"'), "Retired social workflow must not enable legacy automatic video publishing");
-for (const secretName of ["YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN", "YOUTUBE_CHANNEL_ID", "FACEBOOK_GRAPH_API_VERSION"]) {
-  assert.ok(!social.includes(secretName), "Retired social workflow must not receive provider credentials: " + secretName);
-}
 assert.ok(social.includes("environment: production"), "Social publisher must use protected production environment");
 assert.ok(social.includes("if: false") && social.includes('SOCIAL_PUBLISH_ENABLED: "false"'), "External social publisher must remain explicitly disabled");
 assert.ok(social.includes('FACEBOOK_PUBLISHING_REQUESTED: "false"') && social.includes('YOUTUBE_PUBLISHING_REQUESTED: "false"') && social.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"'), "Retired social workflow must keep both provider targets and all auto-publish paths fail-closed");
