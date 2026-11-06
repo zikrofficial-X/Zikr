@@ -105,14 +105,14 @@ function youtubeInsightsSummary(item: QueueItem): string {
   ].filter(Boolean).join(" · ");
 }
 
-function facebookReelsInsightsSummary(item: QueueItem): string {
+function facebookReelsInsightsSummary(item: QueueItem, permissionGranted: boolean): string {
   const raw = item.metadata?.platformInsights;
   const reels = raw && typeof raw === "object" && !Array.isArray(raw)
     ? (raw as Record<string, unknown>).facebookReels
     : null;
   if (!reels || typeof reels !== "object" || Array.isArray(reels)) {
     return item.target_platforms.includes("facebook_reels") && item.status === "published"
-      ? "إحصاءات Reels تنتظر صلاحية read_insights"
+      ? permissionGranted ? "إحصاءات Reels تنتظر أول مزامنة" : "إحصاءات Reels تنتظر صلاحية read_insights"
       : "—";
   }
   const metrics = (reels as Record<string, unknown>).metrics;
