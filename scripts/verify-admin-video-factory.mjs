@@ -11,7 +11,7 @@ const read = (path) => {
 };
 
 const systemActions = read("src/app/admin/system-actions.ts");
-if (/video_automation_ai_enabled"\\s*\\|\\|\\s*\\)/.test(systemActions)) {
+if (/video_automation_ai_enabled"\s*\|\|\s*\)/.test(systemActions)) {
   failures.push("video automation boolean setting guard must not contain a trailing logical OR");
 }
 const permissions = read("src/features/admin/services/permissions.ts");
