@@ -185,18 +185,18 @@ assert.match(
 );
 assert.match(
   socialRoute,
-  /requireAdminApi\("social\.manage"\)[\s\S]*?requireAdminApi\("social\.publish"\)/,
-  "social execution must require a separate publishing permission",
+  /requireAdminApi\("social\\.manage"\)[\\s\\S]*?requireAdminApi\("social\\.publish"\)/,
+  "social execution must require separate management and publishing permissions",
 );
 assert.match(
   socialRoute,
-  /SOCIAL_PUBLISHING_RETIRED[\s\S]*?status: 410/,
-  "retired social queue API must return HTTP 410 without mutating historical queue records",
+  /dispatchGitHubWorkflow\("publish-social\\.yml"/,
+  "social API must dispatch the controlled GitHub publisher",
 );
 assert.doesNotMatch(
   socialRoute,
-  /social_publish_queue|dispatchGitHubWorkflow|fetch\(/,
-  "retired social API must not read, mutate, or dispatch external social work",
+  /SOCIAL_PUBLISHING_RETIRED|status: 410/,
+  "social API must not remain in its retired state",
 );
 assert.match(
   videoRoute,
