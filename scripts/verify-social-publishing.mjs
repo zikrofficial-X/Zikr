@@ -23,7 +23,7 @@ const writtenWorkflow = read(".github/workflows/generate-written-content.yml");
 const videoWorkflow = read(".github/workflows/generate-ai-video.yml");
 const youtubeConnect = read("src/app/api/admin/social/youtube/connect/route.ts");
 const youtubeCallback = read("src/app/api/admin/social/youtube/callback/route.ts");
-const analyticsPage = read("src/app/admin/analytics/page.tsx");
+const analyticsPanel = read("src/features/admin/components/traffic-revenue-panel.tsx");
 
 if (!socialApi.includes('code: "SOCIAL_PUBLISHING_RETIRED"') || !socialApi.includes("{ status: 410")) {
   failures.push("social API mutations must fail closed with HTTP 410");
@@ -76,7 +76,7 @@ if (!youtubeConnect.includes("YOUTUBE_REDIRECT_URI") || !youtubeCallback.include
   failures.push("YouTube OAuth authorize and token exchange must use one canonical redirect URI");
 }
 if (!youtubeCallback.includes('permission: "analytics.read"')) failures.push("YouTube OAuth audit event must use analytics.read permission");
-if (!analyticsPage.includes("/api/admin/social/youtube/connect") || !analyticsPage.includes("قراءة فقط")) {
+if (!analyticsPanel.includes("/api/admin/social/youtube/connect") || !analyticsPanel.includes("قراءة فقط")) {
   failures.push("read-only YouTube account connection must be available from the analytics dashboard");
 }
 
