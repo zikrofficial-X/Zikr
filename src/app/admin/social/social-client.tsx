@@ -799,7 +799,7 @@ export default function AdminSocialPage() {
                   <div className="min-w-0 flex-1">
                     <h3 className="break-words text-sm font-semibold leading-6 text-brand-cream">{item.title}</h3>
                     <p className="mt-1 text-xs text-brand-cream/50">{item.content_type} · {item.target_platforms.join("، ")}</p>
-                    <p className="mt-1 text-xs text-brand-cream/55">{youtubeInsightsSummary(item)}</p>
+                    <p className="mt-1 text-xs text-brand-cream/55">{[youtubeInsightsSummary(item), facebookReelsInsightsSummary(item, health.facebookInsightsPermissionGranted === true)].filter(value => value !== "—").join(" · ")}</p>
                   </div>
                   <span className={`shrink-0 rounded-full border px-2 py-1 text-[11px] ${STATUS_CLASSES[status]}`}>
                     {deferredAt && status === "partial" ? "نشر جزئي — Reels مؤجل" : STATUS_LABELS[status]}
