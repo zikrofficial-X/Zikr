@@ -10,28 +10,32 @@ const socialPage = read("src/app/admin/social/social-client.tsx");
 const control = read("src/features/admin/components/purge-generated-videos-control.tsx");
 const apiGuards = read("scripts/verify-admin-api-guards.mjs");
 
-assert.match(route, /requireAdminApi\("video\.delete"\)/);
-assert.match(route, /CONFIRMATION_PHRASE = "امسح كل الفيديوهات"/);
-assert.match(route, /resource_type:video AND tags=automated/);
-assert.match(route, /asset\.public_id\.startsWith\("auto-"\)/);
-assert.match(route, /tags\.has\("zikr-generated"\)/);
-assert.match(route, /tags\.has\("automated"\)/);
-assert.match(route, /asset\.format === "mp4"/);
-assert.match(route, /VIDEO_CONTENT_TYPES/);
-assert.match(route, /video_generation_requests/);
-assert.match(route, /video_automation_runs/);
-assert.match(route, /siteVideoRowsDeleted/);
-assert.match(route, /externalSocialPostsDeleted: false/);
-assert.match(route, /admin_audit_events/ === false ? /never/ : /video\.library\.purge/); // keep the audit record
-assert.doesNotMatch(route, /drop\s+table|supabase_migrations|android-releases/i);
-assert.match(socialWorker, /isVideoPurgeInProgress/);
-assert.match(socialWorker, /video_purge_in_progress/);
-assert.match(videoWorker, /isVideoGenerationPaused/);
-assert.match(videoWorker, /video_automation_enabled,video_purge_in_progress/);
-assert.match(videoQueuePage, /PurgeGeneratedVideosControl/);
-assert.match(socialPage, /PurgeGeneratedVideosControl/);
-assert.match(control, /امسح كل الفيديوهات/);
-assert.match(control, /YouTube وFacebook/);
-assert.match(apiGuards, /src\/app\/api\/admin\/video-purge\/route\.ts POST/);
+for (const token of [
+  'requireAdminApi("video.delete")',
+  'CONFIRMATION_PHRASE = "امسح كل الفيديوهات"',
+  "resource_type:video AND tags=automated",
+  'asset.public_id.startsWith("auto-")',
+  'tags.has("zikr-generated")',
+  'tags.has("automated")',
+  'asset.format === "mp4"',
+  "VIDEO_CONTENT_TYPES",
+  "video_generation_requests",
+  "video_automation_runs",
+  "siteVideoRowsDeleted",
+  'action: "video.library.purge"',
+  "externalSocialPostsDeleted: false",
+]) {
+  assert.ok(route.includes(token), "Missing purge route safety contract: " + token);
+}
+assert.ok(!/drop\s+table|supabase_migrations|android-releases/i.test(route), "Purge must not alter schema, migration history, or Android releases.");
+assert.ok(socialWorker.includes("isVideoPurgeInProgress"));
+assert.ok(socialWorker.includes("video_purge_in_progress"));
+assert.ok(videoWorker.includes("isVideoGenerationPaused"));
+assert.ok(videoWorker.includes("video_automation_enabled,video_purge_in_progress"));
+assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
+assert.ok(socialPage.includes("PurgeGeneratedVideosControl"));
+assert.ok(control.includes("امسح كل الفيديوهات"));
+assert.ok(control.includes("YouTube وFacebook"));
+assert.ok(apiGuards.includes('src/app/api/admin/video-purge/route.ts POST'));
 
 console.log("Generated-video purge contracts passed.");
