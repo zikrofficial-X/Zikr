@@ -7,6 +7,7 @@ const socialWorker = read("scripts/jobs/social-publishing.ts");
 const videoWorker = read("scripts/jobs/template-video-automation.ts");
 const videoQueuePage = read("src/features/admin/video-requests/components/admin-video-requests-client.tsx");
 const socialPage = read("src/app/admin/social/social-client.tsx");
+const generationStudio = read("src/app/admin/video/studio/page.tsx");
 const control = read("src/features/admin/components/purge-generated-videos-control.tsx");
 const apiGuards = read("scripts/verify-admin-api-guards.mjs");
 
@@ -34,6 +35,7 @@ assert.ok(socialWorker.includes("video_purge_in_progress"));
 assert.ok(videoWorker.includes("isVideoGenerationPaused"));
 assert.ok(videoWorker.includes("video_automation_enabled,video_purge_in_progress"));
 assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
+assert.ok(generationStudio.includes("PurgeGeneratedVideosControl"));
 assert.ok(socialPage.includes("PurgeGeneratedVideosControl"));
 assert.ok(control.includes("امسح كل الفيديوهات"));
 assert.ok(control.includes("YouTube وFacebook"));
