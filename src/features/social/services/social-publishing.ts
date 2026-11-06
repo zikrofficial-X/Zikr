@@ -139,8 +139,8 @@ async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promi
   if (!isVideoContentType(item.content_type)) return true;
   if (!item.content_id || !item.video_url) return false;
   try {
-    const rows = await supabaseServerAdminRequest<Array<{ status: string; video_url: string | null; content: unknown }>>(
-      '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(item.content_id) + '&select=status,video_url,content&limit=1',
+    const rows = await supabaseServerAdminRequest<Array<{ status: string; category: string; video_url: string | null; source_hash: string | null; content_hash: string | null; template_version: string | null; content: unknown }>>(
+      '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(item.content_id) + '&select=status,category,video_url,source_hash,content_hash,template_version,content&limit=1',
     );
     return isVideoQueueItemApprovedForPublishing({
       contentType: item.content_type,
