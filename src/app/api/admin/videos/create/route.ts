@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
       permission: "video.manage",
       resourceType: "video_generation_requests",
       resourceId: result.id,
-      metadata: { category, sourceVerified: Boolean(source), hasHumanAudio: Boolean(humanAudioUrl) },
+      metadata: { category, sourceVerified: Boolean(source), hasHumanAudio: Boolean(humanAudioUrl), templateVersionId: typeof content.templateVersionId === "string" ? content.templateVersionId : null, templateVersion: typeof content.templateVersion === "string" ? content.templateVersion : null },
     });
 
     return NextResponse.json(
