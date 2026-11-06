@@ -226,8 +226,8 @@ assert.doesNotMatch(
   "the API route must not clear primary audio in a separate non-atomic request",
 );
 
-const socialManagerPermissions = permissionService.match(/social_manager:\\s*\\[([\\s\\S]*?)\\],/);
-const videoManagerPermissions = permissionService.match(/video_manager:\\s*\\[([\\s\\S]*?)\\],/);
+const socialManagerPermissions = permissionService.match(/social_manager:\s*\[([\s\S]*?)\],/);
+const videoManagerPermissions = permissionService.match(/video_manager:\s*\[([\s\S]*?)\],/);
 assert.ok(socialManagerPermissions?.[1].includes("'social.manage'"));
 assert.ok(socialManagerPermissions?.[1].includes("'social.publish'"));
 assert.equal(socialManagerPermissions?.[1].includes("'video.manage'"), false);
