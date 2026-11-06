@@ -23,6 +23,23 @@ if (!generation.includes("requireAdminApi('video.manage')")) failures.push("vide
 if (!generation.includes("requireAdminApi('video.delete')")) failures.push("video generation DELETE must require video.delete");
 if (!generation.includes("updated_at=eq.") || !generation.includes("current.updated_at")) failures.push("admin publish retry must use optimistic concurrency");
 
+const retryPublishStart = generation.indexOf("if (action === 'retry_publish')");
+const retryPublishEnd = generation.indexOf("if (!ALLOWED_STATUSES.has(status))", retryPublishStart);
+const retryPublishBlock = retryPublishStart >= 0 && retryPublishEnd > retryPublishStart
+  ? generation.slice(retryPublishStart, retryPublishEnd)
+  : "";
+if (!retryPublishBlock.includes("requireAdminApi('social.publish')")) {
+  failures.push("video publish retry must require social.publish independently from video.manage");
+}
+const videoManagerRole = permissions.match(/video_manager:\s*\[([\\s\\S]*?)\]/)?.[1] ?? "";
+const socialManagerRole = permissions.match(/social_manager:\s*\[([\\s\\S]*?)\]/)?.[1] ?? "";
+if (videoManagerRole.includes("'social.publish'")) {
+  failures.push("video_manager must not receive social.publish through the role matrix");
+}
+if (!socialManagerRole.includes("'social.publish'")) {
+  failures.push("social_manager must retain the explicit social.publish permission");
+}
+
 const sources = read("src/app/api/admin/video-generation/sources/route.ts");
 if (!sources.includes('requireAdminApi("video.manage")')) failures.push("video source API must require video.manage");
 
