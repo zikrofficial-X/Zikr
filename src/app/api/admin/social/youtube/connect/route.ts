@@ -6,7 +6,7 @@ import { getServerEnv } from "@/lib/env";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const STATE_COOKIE = "zikr-youtube-oauth-state";
+const STATE_COOKIE = "zikr-youtube-oauth-state";\nconst CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";\nconst YOUTUBE_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/youtube/callback";
 const REQUIRED_SCOPES = [
   "https://www.googleapis.com/auth/youtube.upload",
   "https://www.googleapis.com/auth/youtube.readonly",
@@ -32,7 +32,7 @@ export async function GET() {
 
   const env = getServerEnv();
   const clientId = env.YOUTUBE_CLIENT_ID?.trim();
-  if (!clientId || !siteUrl()) return adminStatusRedirect("configuration_missing");
+  if (!clientId) return adminStatusRedirect("configuration_missing");
 
   const state = randomBytes(32).toString("hex");
   const redirectUri = new URL(
