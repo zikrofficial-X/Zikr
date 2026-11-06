@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import * as ts from "typescript";
 
 const root = process.cwd();
 const apiRoot = join(root, "src/app/api/admin");
@@ -110,104 +111,65 @@ for (const file of routeFiles) {
   }
 }
 
-function functionBlockEnd(source, startIndex) {
-  const openIndex = source.indexOf("{", startIndex);
-  if (openIndex < 0) return source.length;
-  let depth = 0;
-  let quote = "";
-  let escaped = false;
-  let lineComment = false;
-  let blockComment = false;
-
-  for (let index = openIndex; index < source.length; index++) {
-    const character = source[index];
-    const next = source[index + 1];
-
-    if (lineComment) {
-      if (character === "\n") lineComment = false;
-      continue;
-    }
-    if (blockComment) {
-      if (character === "*" && next === "/") {
-        blockComment = false;
-        index++;
-      }
-      continue;
-    }
-    if (quote) {
-      if (escaped) {
-        escaped = false;
-        continue;
-      }
-      if (character === "\\") {
-        escaped = true;
-        continue;
-      }
-      if (character === quote) quote = "";
-      continue;
-    }
-    if (character === "/" && next === "/") {
-      lineComment = true;
-      index++;
-      continue;
-    }
-    if (character === "/" && next === "*") {
-      blockComment = true;
-      index++;
-      continue;
-    }
-    if (character === "'" || character === '"' || character === "`") {
-      quote = character;
-      continue;
-    }
-    if (character === "{") depth++;
-    if (character === "}") {
-      depth--;
-      if (depth === 0) return index + 1;
-    }
-  }
-  return source.length;
+function isUseServerDirective(statement) {
+  return (
+    ts.isExpressionStatement(statement) &&
+    (ts.isStringLiteral(statement.expression) ||
+      ts.isNoSubstitutionTemplateLiteral(statement.expression)) &&
+    statement.expression.text === "use server"
+  );
 }
 
-const actionFiles = [...new Set(
-  actionRoots.flatMap((actionRoot) => walk(actionRoot))
-    .filter((file) => /\.(?:ts|tsx)$/.test(file))
-    .filter((file) => {
-      const source = readFileSync(file, "utf8").trimStart();
-      return (
-        source.startsWith('"use server"') ||
-        source.startsWith("'use server'") ||
-        /(?:export\s+)?async\s+function\s+[A-Za-z0-9_]+\s*\([^)]*\)\s*\{\s*(['"])use server\1\s*;/.test(source)
-      );
-    }),
-)].sort();
+function discoverServerActions(file, source) {
+  const scriptKind = file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, scriptKind);
+  const trimmed = source.trimStart();
+  const isModuleActionFile =
+    trimmed.startsWith('"use server"') || trimmed.startsWith("'use server'");
+  const actions = [];
+
+  const visit = (node) => {
+    if (ts.isFunctionDeclaration(node) && node.body) {
+      const modifiers = node.modifiers ?? [];
+      const isAsync = modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword);
+      const isExported = modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+      const isInlineAction = isUseServerDirective(node.body.statements[0]);
+
+      if (isAsync && (isModuleActionFile ? isExported : isInlineAction)) {
+        actions.push(node);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+
+  return { sourceFile, actions };
+}
+
+const actionFiles = actionRoots
+  .flatMap((actionRoot) => walk(actionRoot))
+  .filter((file) => /\.(?:ts|tsx)$/.test(file))
+  .map((file) => {
+    const source = readFileSync(file, "utf8");
+    const discovered = discoverServerActions(file, source);
+    return { file, source, ...discovered };
+  })
+  .filter((entry) => entry.actions.length > 0)
+  .sort((a, b) => a.file.localeCompare(b.file));
 
 let actionCount = 0;
 let actionGuardedCount = 0;
 if (!actionFiles.length) failures.push("no admin server-action files were discovered");
 
-for (const file of actionFiles) {
-  const source = readFileSync(file, "utf8");
-  const relativePath = relative(root, file).split(sep).join("/");
-  const isModuleActionFile =
-    source.trimStart().startsWith('"use server"') ||
-    source.trimStart().startsWith("'use server'");
-  const actions = isModuleActionFile
-    ? [...source.matchAll(/export\s+async\s+function\s+([A-Za-z0-9_]+)\s*\(/g)]
-    : [...source.matchAll(/(?:export\s+)?async\s+function\s+([A-Za-z0-9_]+)\s*\([^)]*\)\s*\{\s*(['"])use server\2\s*;/g)];
-
-  if (!actions.length) {
-    failures.push(relativePath + ": server-action module/page contains no discoverable async action");
-    continue;
-  }
-
-  for (const match of actions) {
+for (const entry of actionFiles) {
+  const relativePath = relative(root, entry.file).split(sep).join("/");
+  for (const action of entry.actions) {
     actionCount++;
-    const blockEnd = functionBlockEnd(source, match.index);
-    const block = source.slice(match.index, blockEnd);
+    const block = entry.source.slice(action.getStart(entry.sourceFile), action.end);
+    const label = action.name?.text ?? "anonymous";
     const outcome = checkGuardedBlock({
       block,
-      label: relativePath + " :: " + match[1],
+      label: relativePath + " :: " + label,
     });
     if (outcome === "guarded") actionGuardedCount++;
   }
