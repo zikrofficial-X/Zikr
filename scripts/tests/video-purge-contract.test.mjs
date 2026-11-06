@@ -17,6 +17,7 @@ for (const token of [
   'asset.public_id.startsWith("auto-")',
   'tags.has("zikr-generated")',
   'tags.has("automated")',
+  'tags.has("cloudinary-migration")',
   'asset.format === "mp4"',
   "VIDEO_CONTENT_TYPES",
   "video_generation_requests",
