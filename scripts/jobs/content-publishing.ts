@@ -1,7 +1,7 @@
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 
 type QueueItem = { id: string; content_table: string; content_id: string; scheduled_at: string };
-const CONTENT_TABLES = new Set(["articles", "stories", "competitions", "memorization_plans", "pinned_messages"]);
+const CONTENT_TABLES = new Set(["articles", "stories", "competitions", "memorization_plans", "pinned_messages", "videos"]);
 
 export async function processScheduledContent(limit = 20) {
   const now = new Date().toISOString();
