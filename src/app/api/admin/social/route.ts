@@ -170,13 +170,15 @@ export async function GET() {
     }, {});
     const numberValue = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
     const add = (target: Record<string, number>, key: string, value: unknown) => { const count = numberValue(value); if (count !== null) target[key] = (target[key] ?? 0) + count; };
-    const publishedPosts = rows.filter(item => item.status === "published" && item.published_at);
+    const publishedPosts = rows.filter(item => item.published_at && (item.status === "published" || successfulPlatforms(item.metadata).size > 0));
     const platformAnalytics = { youtube: { posts: 0, views: 0, likes: 0, comments: 0, shares: 0 }, facebook: { posts: 0, views: 0, likes: 0, comments: 0, shares: 0 }, facebook_reels: { posts: 0, views: 0, likes: 0, comments: 0, shares: 0 } };
     const recentPosts = publishedPosts.flatMap(item => {
       const insights = item.metadata?.platformInsights && typeof item.metadata.platformInsights === "object" && !Array.isArray(item.metadata.platformInsights) ? item.metadata.platformInsights as Record<string, unknown> : {};
       const results = item.metadata?.platformResults && typeof item.metadata.platformResults === "object" && !Array.isArray(item.metadata.platformResults) ? item.metadata.platformResults as Record<string, unknown> : {};
       return item.target_platforms.flatMap(platform => {
         const delivery = results[platform] && typeof results[platform] === "object" ? results[platform] as Record<string, unknown> : {};
+        const delivered = delivery.ok === true && typeof delivery.remoteId === "string" && delivery.remoteId.trim().length > 0;
+        if (!delivered && !(item.status === "published" && Object.keys(results).length === 0)) return [];
         const raw = insights[platform === "facebook_reels" ? "facebookReels" : platform];
         const metric = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
         const nested = metric.metrics && typeof metric.metrics === "object" && !Array.isArray(metric.metrics) ? metric.metrics as Record<string, unknown> : metric;
