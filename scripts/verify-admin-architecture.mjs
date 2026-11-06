@@ -158,17 +158,16 @@ for (const [path, target] of Object.entries(legacyRedirects)) {
     failures.push(`legacy admin route must redirect to canonical path: ${path} -> ${target}`);
   }
 }
-for (const path of [
-  "src/app/admin/social/page.tsx",
-  "src/app/admin/social/written-studio/page.tsx",
-]) {
-  const page = read(path);
-  if (!page.includes('redirect("/admin/memory")')) {
-    failures.push("retired external social admin route must redirect to internal project memory: " + path);
-  }
+const socialPage = read("src/app/admin/social/page.tsx");
+const writtenSocialPage = read("src/app/admin/social/written-studio/page.tsx");
+if (!socialPage.includes('requireAdminPermission("social.manage")') || !socialPage.includes("AdminSocialClient")) {
+  failures.push("social publishing center must remain protected by social.manage");
 }
-if (navigation.includes('href: "/admin/social"') || navigation.includes('key: "publishing"')) {
-  failures.push("retired external social publishing must not reappear in canonical Admin navigation");
+if (!writtenSocialPage.includes('redirect("/admin/memory")')) {
+  failures.push("retired external written-social studio must redirect to internal project memory");
+}
+if (!navigation.includes('href: "/admin/social"') || !navigation.includes('key: "publishing"')) {
+  failures.push("social publishing navigation must be available to explicitly authorized admins");
 }
 for (const canonicalPath of [
   "src/app/admin/video/page.tsx",
