@@ -17,7 +17,6 @@ const writtenPage = read("src/app/admin/social/written-studio/page.tsx");
 const navigation = read("src/features/admin/config/navigation.ts");
 const runner = read("scripts/run-background-jobs.ts");
 const videoGenerator = read("scripts/jobs/template-video-automation.ts");
-const socialWorker = read("scripts/jobs/social-publishing.ts");
 const socialPublishingService = read("src/features/social/services/social-publishing.ts");
 const youtubeCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
 const videoAutomation = read("src/features/videos/services/video-automation.ts");
