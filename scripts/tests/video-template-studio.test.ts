@@ -6,13 +6,65 @@ import {
   videoTemplateAssetPath,
   videoTemplateScene,
 } from "../../src/features/videos/services/template-config";
+import { resolveVideoComposition } from "../../src/features/videos/services/video-composition";
+import { CURRENT_VIDEO_RENDERER_VERSION } from "../../src/features/videos/services/video-template-version";
 
 const general = parseVideoTemplateConfig({
   assetKey: "emerald",
   defaultFormat: "vertical",
   motion: "slow",
 });
-assert.deepEqual(general, { assetKey: "emerald", defaultFormat: "vertical", motion: "slow" });
+assert.deepEqual(general, {
+  assetKey: "emerald",
+  defaultFormat: "vertical",
+  motion: "slow",
+  fontPreset: "auto",
+  palette: "template",
+  safeArea: "standard",
+  captionStyle: "classic",
+  sourceCardStyle: "standard",
+  audioPolicy: "allow-tts",
+});
+const customized = parseVideoTemplateConfig({
+  assetKey: "emerald",
+  defaultFormat: "horizontal",
+  motion: "fade",
+  fontPreset: "naskh",
+  palette: "monochrome",
+  safeArea: "wide",
+  captionStyle: "boxed",
+  sourceCardStyle: "compact",
+  audioPolicy: "verified-audio-only",
+});
+assert.equal(customized?.fontPreset, "naskh");
+assert.equal(customized?.palette, "monochrome");
+assert.equal(customized?.safeArea, "wide");
+assert.equal(customized?.captionStyle, "boxed");
+assert.equal(customized?.sourceCardStyle, "compact");
+assert.equal(customized?.audioPolicy, "verified-audio-only");
+assert.equal(parseVideoTemplateConfig({ assetKey: "gold", defaultFormat: "vertical", motion: "slow", palette: "remote-css" }), null);
+assert.equal(parseVideoTemplateConfig({ assetKey: "gold", defaultFormat: "vertical", motion: "slow", audioPolicy: "mute-source" }), null);
+const standardComposition = resolveVideoComposition({
+  category: "quran", seed: "template-test", width: 1080, height: 1920,
+});
+const customComposition = resolveVideoComposition({
+  category: "quran", seed: "template-test", width: 1080, height: 1920,
+  template: {
+    fontPreset: "sans",
+    palette: "emerald",
+    safeArea: "wide",
+    captionStyle: "boxed",
+    sourceCardStyle: "compact",
+  },
+});
+assert.equal(standardComposition.fontFamily, "Noto Naskh Arabic");
+assert.equal(customComposition.fontFamily, "Noto Sans Arabic");
+assert.notEqual(customComposition.accentHex, standardComposition.accentHex);
+assert.ok(customComposition.panelLeft > standardComposition.panelLeft);
+assert.ok(customComposition.lineChars < standardComposition.lineChars);
+assert.equal(customComposition.captionStyle, "boxed");
+assert.equal(customComposition.sourceCardStyle, "compact");
+assert.equal(CURRENT_VIDEO_RENDERER_VERSION, "2026-11-06-template-controls-v9");
 assert.equal(parseVideoTemplateConfig({ assetKey: "../../secrets", defaultFormat: "vertical", motion: "slow" }), null);
 assert.equal(parseVideoTemplateConfig({ assetKey: "gold", defaultFormat: "square", motion: "slow" }), null);
 assert.equal(isVideoTemplateAssetAllowedForAudience("kids-garden", "kids"), true);
@@ -68,6 +120,21 @@ assert.match(worker, /source_hash: rendered\.sourceHash/);
 assert.match(worker, /content_hash: rendered\.contentHash/);
 assert.match(worker, /template_version: rendered\.templateVersion/);
 assert.match(worker, /templateVersion,\s*resolution: width \+ "x" \+ height/);
+assert.match(worker, /template: boundTemplate\?\.config/);
+assert.match(worker, /boundTemplate\?\.config\.audioPolicy === "verified-audio-only"/);
+assert.match(worker, /!isTemplatePreview[\s\S]*verified-audio-only/);
+assert.match(worker, /templateIdentity = `\$\{template\.slug\}@\$\{version\.version\}`/);
+assert.match(worker, /composition\.fontFamily/);
+assert.match(worker, /composition\.captionStyle/);
+assert.match(worker, /composition\.sourceCardStyle/);
+assert.match(studioClient, /fontPreset/);
+assert.match(studioClient, /palette/);
+assert.match(studioClient, /safeArea/);
+assert.match(studioClient, /captionStyle/);
+assert.match(studioClient, /sourceCardStyle/);
+assert.match(studioClient, /audioPolicy/);
+assert.match(studioClient, /بطاقة المصدر لا يمكن إخفاؤها/);
+
 
 assert.match(automation, /source_hash: sourceHashValue/);
 assert.match(automation, /content_hash: contentHashValue/);
