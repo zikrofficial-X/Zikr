@@ -4239,6 +4239,89 @@ export type Database = {
         }
         Relationships: []
       }
+      video_templates: {
+        Row: {
+          id: string
+          slug: string
+          title: string
+          description: string
+          audience: string
+          asset_key: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          title: string
+          description?: string
+          audience: string
+          asset_key: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          title?: string
+          description?: string
+          audience?: string
+          asset_key?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      video_template_versions: {
+        Row: {
+          id: string
+          template_id: string
+          version: number
+          config: Json
+          status: string
+          is_system_seed: boolean
+          created_by: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          activated_by: string | null
+          activated_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          template_id: string
+          version: number
+          config: Json
+          status?: string
+          is_system_seed?: boolean
+          created_by?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          activated_by?: string | null
+          activated_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          template_id?: string
+          version?: number
+          config?: Json
+          status?: string
+          is_system_seed?: boolean
+          created_by?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          activated_by?: string | null
+          activated_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "video_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       videos: {
         Row: {
           category_id: string | null
@@ -4391,6 +4474,14 @@ export type Database = {
           shares: number
           slug: string
         }[]
+      }
+      admin_create_video_template_version: {
+        Args: { p_actor_user_id: string; p_config: Json; p_template_id: string }
+        Returns: { id: string; version: number }[]
+      }
+      activate_video_template_version: {
+        Args: { p_actor_user_id: string; p_version_id: string }
+        Returns: string
       }
       is_admin_user: { Args: never; Returns: boolean }
       kids_record_game_result: {
