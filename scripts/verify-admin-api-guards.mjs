@@ -177,7 +177,7 @@ const actionFiles = [...new Set(
       return (
         source.startsWith('"use server"') ||
         source.startsWith("'use server'") ||
-        /(?:export\s+)?async\s+function\s+[A-Za-z0-9_]+\s*\([^)]*\\)\s*\{\s*(['"])use server\1\s*;/.test(source)
+        /(?:export\s+)?async\s+function\s+[A-Za-z0-9_]+\s*\([^)]*\)\s*\{\s*(['"])use server\1\s*;/.test(source)
       );
     }),
 )].sort();
@@ -194,7 +194,7 @@ for (const file of actionFiles) {
     source.trimStart().startsWith("'use server'");
   const actions = isModuleActionFile
     ? [...source.matchAll(/export\s+async\s+function\s+([A-Za-z0-9_]+)\s*\(/g)]
-    : [...source.matchAll(/(?:export\s+)?async\s+function\s+([A-Za-z0-9_]+)\s*\([^)]*\\)\s*\{\s*(['"])use server\2\s*;/g)];
+    : [...source.matchAll(/(?:export\s+)?async\s+function\s+([A-Za-z0-9_]+)\s*\([^)]*\)\s*\{\s*(['"])use server\2\s*;/g)];
 
   if (!actions.length) {
     failures.push(relativePath + ": server-action module/page contains no discoverable async action");
