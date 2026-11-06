@@ -23,6 +23,7 @@ type Health = {
   facebookLastCheckedAt?: string | null;
   facebookTokenExpiresAt?: string | null;
   facebookConnectionMessage?: string;
+  facebookInsightsPermissionGranted?: boolean;
 };
 type SocialView = "overview" | "queue";
 type PlatformStats = Record<
@@ -173,13 +174,16 @@ export default function AdminSocialPage() {
     const status = query.get("facebook");
     if (!status) return;
     if (status === "connected") {
-      setMessage("تم تجديد اتصال Facebook بنجاح. سيستأنف النشر التلقائي، وأُعيدت العناصر المحجوبة إلى الطابور.");
+      const insights = query.get("insights");
+      setMessage(insights === "missing"
+        ? "تم تجديد اتصال Facebook للنشر، لكن read_insights لم تُمنح بعد؛ إحصاءات Reels ستظل معلّقة حتى اعتماد الصلاحية وإعادة الربط."
+        : "تم تجديد اتصال Facebook بنجاح. سيستأنف النشر التلقائي، وأُعيدت العناصر المحجوبة إلى الطابور.");
       return;
     }
     const messages: Record<string, string> = {
       configuration_missing: "إعداد تطبيق Meta غير مكتمل. تحقق من FACEBOOK_APP_ID وFACEBOOK_APP_SECRET.",
       redirect_uri_mismatch: "عنوان العودة غير مسجل في إعدادات تطبيق Meta. أضف /api/admin/social/facebook/callback إلى Valid OAuth Redirect URIs.",
-      permission_missing: "لم تُمنح جميع صلاحيات صفحة Facebook المطلوبة. وافق على pages_show_list وpages_read_engagement وpages_manage_posts ثم أعد الربط.",
+      permission_missing: "لم تُمنح جميع صلاحيات صفحة Facebook المطلوبة. وافق على pages_show_list وpages_read_engagement وpages_manage_posts، وread_insights لإحصاءات Reels، ثم أعد الربط.",
       authorization_denied: "تم إلغاء تفويض Facebook. لن يتم تشغيل النشر قبل ربط الصفحة.",
       state_mismatch: "انتهت جلسة الربط لأسباب أمنية. ابدأ الربط من جديد.",
       page_not_found: "الحساب الذي تم تفويضه لا يدير صفحة Facebook المحددة في إعدادات ZIKR.",
