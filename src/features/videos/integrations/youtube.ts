@@ -101,7 +101,7 @@ function safeYoutubeErrorMessage(error: unknown): string {
 
 function getYoutubeErrorCode(error: unknown): YoutubeChannelFeed['errorCode'] {
   const message = error instanceof Error ? error.message : String(error ?? '');
-  if (/\b429\b|quota exceeded|quotaExceeded|dailyLimitExceeded|forbidden.*quota/i.test(message)) return 'quota_exceeded';
+  if (/\b429\b|quota exceeded|quotaExceeded|dailyLimitExceeded|rateLimitExceeded|userRateLimitExceeded/i.test(message)) return 'quota_exceeded';
   if (/YouTube API failed \(HTTP \d{3}\)/i.test(message)) return 'http_error';
   return 'unknown';
 }
@@ -126,7 +126,21 @@ async function youtubeFetch<T>(path: string, params: Record<string, string | num
   try {
     const response = await fetch(`https://www.googleapis.com/youtube/v3/${path}?${searchParams.toString()}`, { cache: 'no-store', signal: controller.signal });
     if (!response.ok) {
-      throw new Error(`YouTube API failed (HTTP ${response.status}).`);
+      const payload = await response.json().catch(() => null) as
+        | { error?: { errors?: Array<{ reason?: string }> } }
+        | null;
+      const allowedReasons = new Set([
+        "quotaExceeded",
+        "dailyLimitExceeded",
+        "rateLimitExceeded",
+        "userRateLimitExceeded",
+      ]);
+      const reason = payload?.error?.errors
+        ?.map((entry) => entry.reason)
+        .find((entry): entry is string => typeof entry === "string" && allowedReasons.has(entry));
+      throw new Error(
+        `YouTube API failed (HTTP ${response.status}${reason ? `; reason=${reason}` : ""}).`,
+      );
     }
     return response.json() as Promise<T>;
   } finally { clearTimeout(timeoutId); }
