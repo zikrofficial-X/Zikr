@@ -9,7 +9,7 @@ The canonical application source for ZIKR is:
 - Vercel project: `zikr`
 - Production project ID: `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`
 - Production Vercel team: `team_RxPjmgZoSFmKGjScefYmwIVv`
-- Supabase production project: `ymxdswkaxafakugktsim`
+- Supabase production project: `zqtssvlvmkzeeyqghqfk`
 - Production domain: `https://zikrmediaofficial.vercel.app`
 
 ## Deployment rule
@@ -46,3 +46,8 @@ An uploaded or exported ZIP may contain an older snapshot of the project. It mus
 - Do not use an old Vercel deployment as the new source.
 - Do not maintain separate production codebases for GitHub and Vercel.
 - Do not hard-code obsolete Vercel or Supabase project IDs in release/configuration files.
+
+
+## Supabase project cutover (2026-11-06)
+
+The active production Supabase project is `zqtssvlvmkzeeyqghqfk` in the `Zikrofficial` organization. This is the only active application project; older IDs in dated audits and historical migration bodies are not runtime targets.
