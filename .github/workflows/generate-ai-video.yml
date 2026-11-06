@@ -44,11 +44,11 @@ jobs:
       VIDEO_FREE_ONLY: "true"
       # Optional JSON GitHub environment variable: up to five public Gradio Spaces compatible with Wan 2.2 or LTX Fast.
       HF_VIDEO_CUSTOM_SPACES: ${{ vars.HF_VIDEO_CUSTOM_SPACES }}
-      GEMINI_MODEL: gemini-3.1-flash-lite
+      GEMINI_MODEL: gemini-3.8-flash
       GEMINI_AUDIO_SMOKE_TEST: "false"
       AUTO_VIDEO_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
-      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"
+      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       FACEBOOK_PUBLISHING_REQUESTED: ${{ vars.FACEBOOK_PUBLISHING_ENABLED || 'true' }}
@@ -74,9 +74,9 @@ jobs:
       ARABIC_TTS_PROFILE: "hadith_male_msa"
       ARABIC_TTS_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
       HF_VIDEO_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
-      # Generate on free visual AI providers with deterministic FFmpeg fallback; keep completed media in ZIKR only.
-      AUTO_VIDEO_SECONDS: "20"
-      # Video assets are registered internally; social distribution is queued only for fresh jobs and held for human QA approval.
+      # Generate on free visual AI providers with deterministic FFmpeg fallback; the canonical video record stays in ZIKR.
+      AUTO_VIDEO_SECONDS: "25"
+      # New social candidates are queued only after the source-locked automated QA snapshot passes. No manual approval step is required.
       BACKGROUND_JOB_TARGET: "videos"
       VIDEO_TEMPLATE_VERSION: "2026-11-06-composition-sync-v8"
       VIDEO_OUTPUT_CRF: "17"
@@ -198,6 +198,6 @@ jobs:
         run: |
           echo "ZIKR autonomous video worker completed."
           echo "The queue seeds Quran/Hadith/Dua/Adhkar, verified stories, serialized child-safe story episodes, and general reminders."
-          echo "Free-only mode skips Gemini and custom endpoints; public free Hugging Face Spaces are optional and FFmpeg templates are the fallback."
-          echo "No paid AI API is required for script generation, Arabic narration, rendering, storage, or queue creation."
+          echo "Free-only mode skips paid Gemini and custom endpoints; approved public Hugging Face Spaces are optional and FFmpeg templates are the fallback."
+          echo "No paid AI API is required for source selection, Arabic narration, rendering, automated QA, storage, or queue creation."
           echo "Worker validation includes Node import, FFmpeg, and Supabase data-plane smoke tests."
