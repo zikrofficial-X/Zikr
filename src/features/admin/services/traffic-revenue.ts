@@ -2,6 +2,7 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/server";
+import { getYouTubeRefreshToken } from "@/features/social/services/youtube-oauth-credentials";
 import { averageRenderDuration, isCompleteBoundedRead, summarizePlatformResults, type SocialPlatformDeliveryStats } from "@/features/admin/services/traffic-revenue-metrics";
 
 type CountResult = { count: number | null; error: { message: string } | null };
@@ -295,7 +296,7 @@ function trafficSourceLabel(source: string): string {
 async function fetchYoutubeAnalyticsSnapshot(): Promise<YoutubeAnalyticsSnapshot> {
   const clientId = process.env.YOUTUBE_CLIENT_ID?.trim();
   const clientSecret = process.env.YOUTUBE_CLIENT_SECRET?.trim();
-  const refreshToken = process.env.YOUTUBE_REFRESH_TOKEN?.trim();
+  const refreshToken = await getYouTubeRefreshToken();
   const unavailable = (status: YoutubeAnalyticsSnapshot["status"]): YoutubeAnalyticsSnapshot => ({
     status, startDate: null, endDate: null, views: null, estimatedMinutesWatched: null,
     averageViewDurationSeconds: null, averageViewPercentage: null, subscribersGained: null,
@@ -487,7 +488,7 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
   const hasYoutubeAnalyticsCredentials = Boolean(
     process.env.YOUTUBE_CLIENT_ID?.trim() &&
     process.env.YOUTUBE_CLIENT_SECRET?.trim() &&
-    process.env.YOUTUBE_REFRESH_TOKEN?.trim(),
+    await getYouTubeRefreshToken(),
   );
 
   return {
