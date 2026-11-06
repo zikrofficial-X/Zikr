@@ -72,7 +72,8 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     status: "active",
   },
   {
-key: "memory",
+  {
+    key: "memory",
     label: "الذاكرة والمكتبة",
     description: "ملفات الوسائط وذاكرة المحتوى الداخلية ومخرجات التوليد.",
     basePath: "/admin/media",
@@ -84,7 +85,7 @@ key: "memory",
     status: "active",
   },
   {
-  key: "media-audio",
+    key: "media-audio",
     label: "الوسائط والصوت",
     description: "مكتبة الوسائط والتلاوات والأذان وتحويل النص إلى صوت والتذكيرات.",
     basePath: "/admin/media",
