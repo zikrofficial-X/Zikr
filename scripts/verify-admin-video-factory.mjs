@@ -10,6 +10,10 @@ const read = (path) => {
   return readFileSync(path, "utf8");
 };
 
+const systemActions = read("src/app/admin/system-actions.ts");
+if (/video_automation_ai_enabled"\\s*\\|\\|\\s*\\)/.test(systemActions)) {
+  failures.push("video automation boolean setting guard must not contain a trailing logical OR");
+}
 const permissions = read("src/features/admin/services/permissions.ts");
 const createRoute = read("src/app/api/admin/videos/create/route.ts");
 if (!createRoute.includes('requireAdminApi("video.manage")')) failures.push("video create API must require video.manage");
