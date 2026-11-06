@@ -6,13 +6,13 @@
 |---|---|---|
 | Video generation | GitHub Actions | `.github/workflows/generate-ai-video.yml` |
 | Internal website video publication | GitHub Actions + Supabase | `content_publish_queue` |
-| External social publishing | Retired | Guarded legacy workflow (`if: false`) |
+| External social publishing | Approval-gated | `.github/workflows/publish-social.yml` after video generation or manual dispatch |
 | Application build/documentation | CircleCI | `application-build-docs` |
 | Android build/signing | CircleCI | `android-rebuild` |
 | Prayer notifications | Supabase | `prayer-notification-worker` + pg_cron |
 | Source-verified content ingestion | Supabase | `source-verified-content-agent` + pg_cron |
 
-There is no CircleCI production video worker and no Vercel Cron for video publication. External social publishing is disabled.
+There is no CircleCI production video worker and no Vercel Cron for video publication. External social publishing is separate from rendering and requires provider preflight, administrator enablement, and human QA approval.
 
 ## Video pipeline
 
@@ -39,7 +39,7 @@ Queue safety is enforced through:
 - bounded retry attempts;
 - separate generation and publication responsibilities.
 
-Video generation may enqueue a row in `social_publish_queue`, but it must not publish directly.
+Video generation may enqueue a new row in `social_publish_queue`, but it must not publish directly. The social worker is triggered after a successful video workflow or by an explicit manual dispatch; it does not poll every 15 minutes.
 
 ## Internal ZIKR video publication
 
@@ -47,17 +47,19 @@ Completed MP4s are uploaded to Cloudinary and registered in the ZIKR `videos` ta
 
 This queue is not a social queue. No video-generation step may enqueue `social_publish_queue`, call a provider upload endpoint, or require a social publishing permission. Template previews are explicitly excluded from public publication.
 
-## External social publishing — retired
+## Approval-gated external social publishing
 
-External social publishing and external written-post distribution are disabled. The legacy social workflow is guarded by `if: false`; old Facebook and social control APIs return HTTP 410. Legacy YouTube/Facebook media-import endpoints and external video retry actions are also retired. The YouTube OAuth connection remains available only for read-only channel and analytics reporting using `youtube.readonly` and `yt-analytics.readonly`; upload and delete scopes are neither requested nor accepted.
+Social delivery is a separate worker, never part of the renderer. After a successful video-generation run, GitHub Actions may invoke `.github/workflows/publish-social.yml`; an administrator can also dispatch it manually. There is no periodic polling. The workflow validates the connected Facebook Page and a YouTube OAuth refresh credential with `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly` before enabling each provider. No delete scope is requested. If provider readiness fails, that provider remains disabled and no rows are claimed for it.
 
-Do not restore the old social publishing workflow or its provider credentials as part of video generation. Historical social queue and insight records remain retained for audit and are not processed.
+Only newly created rows at or after `SOCIAL_PUBLISH_AFTER` are eligible. The historic queue is excluded from automatic replay. Each video must pass the human QA review recorded on its generation request. The worker rechecks approval immediately before every provider call; a failed lookup holds the video. Provider results and remote IDs are stored per platform to prevent duplicate publishing. Social insights synchronization is opt-in and disabled during publishing runs to reduce Supabase reads.
+
+The internal website video catalog and `content_publish_queue` remain independent from external social delivery. A video may appear on the ZIKR website without being posted publicly to a social platform.
 
 ## Monetag SmartLink
 
 Monetag SmartLink placement is limited to approved general-audience website placements: the homepage, public video hub, and eligible general-public footer routes. It is not shown in children's sections or sacred-text/worship-tool interfaces.
 
-No Monetag links are appended to YouTube or Facebook descriptions/captions because external social publishing is retired. See `docs/MONETAG_SMARTLINK_PLACEMENT.md` for website placement and verification details.
+Monetag links are not appended to YouTube or Facebook descriptions/captions; provider captions use the approved social metadata contract. See `docs/MONETAG_SMARTLINK_PLACEMENT.md` for website placement and verification details.
 
 ## Admin Run Now
 
