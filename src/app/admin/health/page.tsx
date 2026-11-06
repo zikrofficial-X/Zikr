@@ -62,7 +62,7 @@ export default async function AdminHealthPage() {
           تشغيل مصنع الفيديو معطّل من إعدادات الإدارة؛ لن ينشئ العامل طلبات جديدة حتى إعادة تفعيله.
         </div>
       )}
-      {automationEnabled === true && aiEnabled === true && autoPublishEnabled === true && (
+      {automationEnabled === true && aiEnabled === true && (
         <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-emerald-100/80">
           التوليد الآلي الداخلي مفعّل. تُحفظ الفيديوهات والمواد داخل ZIKR، ويُعالج المحتوى المجدول داخل صفحات الموقع فقط.
         </div>
