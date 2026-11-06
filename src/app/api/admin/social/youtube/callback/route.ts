@@ -43,7 +43,7 @@ type YouTubeChannelResponse = {
 };
 
 function siteUrl() {
-  return getServerEnv().NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  return CANONICAL_SITE_ORIGIN;
 }
 
 function redirectResult(status: string, extra: Record<string, string> = {}) {
