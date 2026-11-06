@@ -103,9 +103,60 @@ export async function TrafficRevenuePanel() {
           <MetricCard label="منشورات منشورة" value={metrics.socialPublished} note="سجل طابور النشر الاجتماعي" icon={CheckCircle2} />
           <MetricCard label="منشورات في الانتظار" value={metrics.socialQueued} note="تُعالج بواسطة الناشر الحالي" icon={Send} />
           <MetricCard label="منشورات فاشلة" value={metrics.socialFailed} note="تحتاج مراجعة قبل إعادة المحاولة" icon={CircleHelp} />
+          <MetricCard label="منشورات جزئية" value={metrics.socialPartial} note="لم تكتمل على كل المنصات المستهدفة" icon={CircleHelp} />
+          <MetricCard label="منشورات قيد المعالجة" value={metrics.socialProcessing} note="ممسوكة بواسطة عامل النشر" icon={Activity} />
+          <MetricCard label="محاولات فيديو معادة" value={metrics.videoRetryPending} note="لها موعد إعادة محاولة مسجل" icon={Clock3} />
+          <MetricCard label="متوسط رندر الفيديو (ث)" value={metrics.averageRenderDurationMs7d === null ? null : Math.round(metrics.averageRenderDurationMs7d / 1000)} note="متوسط آخر 7 أيام UTC" icon={Clock3} />
         </div>
       </div>
 
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-bold text-brand-cream">اتجاهات التشغيل — آخر 24 ساعة و7 أيام</h3>
+          <span className="text-[11px] text-brand-cream/35">كل الفترات محسوبة بتوقيت UTC حتى {snapshot.period.end}</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard label="منشورات أُنشئت خلال 24 ساعة" value={metrics.socialCreated24h} note="تاريخ إنشاء عناصر الطابور" icon={Send} />
+          <MetricCard label="منشورات نُشرت خلال 24 ساعة" value={metrics.socialPublished24h} note="من تاريخ النشر الفعلي" icon={CheckCircle2} />
+          <MetricCard label="منشورات أُنشئت خلال 7 أيام" value={metrics.socialCreated7d} note="تاريخ إنشاء عناصر الطابور" icon={Send} />
+          <MetricCard label="منشورات نُشرت خلال 7 أيام" value={metrics.socialPublished7d} note="من تاريخ النشر الفعلي" icon={CheckCircle2} />
+          <MetricCard label="طلبات فيديو خلال 24 ساعة" value={metrics.videoRequested24h} note="تاريخ إنشاء الطلب" icon={Activity} />
+          <MetricCard label="فيديوهات اكتملت خلال 24 ساعة" value={metrics.videoCompleted24h} note="من تاريخ آخر تحديث لطلب مكتمل" icon={CheckCircle2} />
+          <MetricCard label="طلبات فيديو خلال 7 أيام" value={metrics.videoRequested7d} note="تاريخ إنشاء الطلب" icon={Activity} />
+          <MetricCard label="فيديوهات اكتملت خلال 7 أيام" value={metrics.videoCompleted7d} note="من تاريخ آخر تحديث لطلب مكتمل" icon={CheckCircle2} />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-bold text-brand-cream">نتائج النشر لكل منصة</h3>
+          <Badge variant="outline">{snapshot.socialPlatformStatsComplete ? "قراءة مكتملة" : "بيانات غير مكتملة"}</Badge>
+        </div>
+        {snapshot.socialPlatformStatsComplete && snapshot.socialPlatformStats ? (
+          <Card className="overflow-hidden p-0">
+            <div className="grid grid-cols-5 gap-2 border-b border-brand-gold/10 px-4 py-3 text-[11px] text-brand-cream/40">
+              <span>المنصة</span><span className="text-center">محاولات</span><span className="text-center">نجاح</span><span className="text-center">فشل</span><span className="text-center">معرّفات بعيدة</span>
+            </div>
+            {snapshot.socialPlatformStats.map((item) => (
+              <div key={item.platform} className="grid grid-cols-5 gap-2 border-b border-brand-gold/5 px-4 py-3 text-xs last:border-0">
+                <span className="font-semibold text-brand-cream/80">{platformLabels[item.platform] ?? item.platform}</span>
+                <span className="text-center tabular-nums text-brand-cream/65">{format(item.attempts)}</span>
+                <span className="text-center tabular-nums text-emerald-200/80">{format(item.successful)}</span>
+                <span className="text-center tabular-nums text-amber-100/75">{format(item.failed)}</span>
+                <span className="text-center tabular-nums text-brand-cream/65">{format(item.remoteIds)}</span>
+              </div>
+            ))}
+            <p className="px-4 pb-3 text-[10px] leading-5 text-brand-cream/35">
+              المعرّفات البعيدة تُحتسب فقط؛ لا تعرض اللوحة معرّفات النشر أو رموز الوصول نفسها.
+            </p>
+          </Card>
+        ) : (
+          <Card className="p-4 text-xs leading-6 text-brand-cream/45">
+            تعذر تحميل سجل نتائج المنصات كاملًا. لن تُعرض مجاميع جزئية على أنها إجماليات نهائية.
+          </Card>
+        )}
+      </section>
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
