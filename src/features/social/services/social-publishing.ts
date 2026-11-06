@@ -809,7 +809,6 @@ export async function processSocialPublishItem(
   const attempts = facebookReelsNextAllowedAt
     ? Number(previousMetadata.attempts ?? 0)
     : Number(previousMetadata.attempts ?? 0) + (attemptedProviderCalls > 0 ? 1 : 0);
-  const hasPermanentFailure = operationalFailures.some(failure => isPermanentSocialFailure(failure.error));
   const retryableOperationalFailures = operationalFailures.some(failure => {
     const currentPlatformAttempts = Number(maxAttemptsByPlatform[failure.platform] ?? 0);
     return currentPlatformAttempts < maxAttempts && !isFacebookAuthFailure(failure.error) && !isPermanentSocialFailure(failure.error);
