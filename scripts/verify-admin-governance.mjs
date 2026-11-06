@@ -29,7 +29,7 @@ const editorialActions = read("src/app/admin/editorial-actions.ts");
 const docs = read("docs/admin/ADMIN_CONSOLE_GOVERNANCE.md");
 const packageJson = JSON.parse(read("package.json"));
 
-const groups = [...navigation.matchAll(/key:\s*"([^"]+)",\s*label:\s*"([^"]+)",\s*items:\s*\[([\s\S]*?)\]\s*,?/g)]
+const groups = [...navigation.matchAll(/key:\s*"([^"]+)",\s*label:\s*"([^"]+)"[\s\S]*?items:\s*\[([\s\S]*?)\]\s*,?/g)]
   .map((group) => ({
     key: group[1],
     label: group[2],
@@ -48,11 +48,8 @@ if (!videoManagerRole || !videoManagerRole[1].includes("'video.manage'") || vide
   failures.push("video_manager must manage production without social publishing permissions");
 }
 const moduleCatalog = read("src/features/admin/config/modules.ts");
-const moduleBlocks = [...moduleCatalog.matchAll(/\{\s*key:\s*"([^"]+)"[\s\S]*?routes:\s*\[([\s\S]*?)\][\s\S]*?status:\s*"[^"]+"\s*,?\s*\}/g)];
-const catalog = moduleBlocks.map((match) => ({
-  key: match[1],
-  routes: [...match[2].matchAll(/"([^"]+)"/g)].map((route) => route[1]),
-}));
+const moduleKeys = [...moduleCatalog.matchAll(/\{\s*key:\s*"([^"]+)"/g)].map((match) => match[1]);
+const catalog = moduleKeys.map((key) => ({ key }));
 if (catalog.map((module) => module.key).join("|") !== groups.map((group) => group.key).join("|")) {
   failures.push("ADMIN_MODULES must mirror the nine canonical navigation keys and order");
 }
@@ -62,10 +59,8 @@ for (const group of groups) {
     failures.push("module catalog is missing navigation group: " + group.key);
     continue;
   }
-  for (const item of group.items) {
-    if (!catalogEntry.routes.includes(item.href)) {
-      failures.push("module catalog is missing canonical route " + item.href + " in " + group.key);
-    }
+  if (!moduleCatalog.includes(`routes: routesFor("${group.key}")`)) {
+    failures.push("module catalog must derive routes from ADMIN_NAVIGATION for " + group.key);
   }
 }
 const items = groups.flatMap((group) => group.items);

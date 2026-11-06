@@ -19,10 +19,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const visibleGroups: AdminNavGroup[] = ADMIN_NAVIGATION
     .map((group) => ({
+      key: group.key,
       group: group.label,
+      icon: group.icon,
       items: group.items
         .filter((item) => hasAdminPermission(role, item.permission as AdminPermission))
-        .map(({ href, label }) => ({ href, label })),
+        .map(({ href, label, icon }) => ({ href, label, icon })),
     }))
     .filter((group) => group.items.length > 0);
 

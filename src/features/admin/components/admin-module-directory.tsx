@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Clock3, Search, Star, X } from "lucide-react";
-
-type NavigationItem = { href: string; label: string };
+import { AdminIcon } from "@/features/admin/components/admin-sidebar";
+type NavigationItem = { href: string; label: string; icon?: string };
 type NavigationGroup = { key: string; label: string; items: readonly NavigationItem[] };
 type DirectoryModule = NavigationItem & { groupKey: string; groupLabel: string };
 
@@ -116,7 +116,7 @@ export function AdminModuleDirectory({ groups }: { groups: readonly NavigationGr
         return (
           <div key={item.href} className="flex min-w-0 items-stretch gap-1 rounded-xl border border-brand-gold/10 bg-black/15 transition hover:border-brand-gold/25 hover:bg-brand-gold/5">
             <Link href={item.href} onClick={() => recordRecent(item.href)} className="min-w-0 flex-1 rounded-xl px-3 py-3 text-right outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60" dir="rtl">
-              <span className="block break-words text-sm font-semibold text-brand-cream/80">{item.label}</span>
+              <span className="flex items-center gap-2 break-words text-sm font-semibold text-brand-cream/80"><AdminIcon name={item.icon} size={15} className="shrink-0 text-brand-gold/70" />{item.label}</span>
               <span className="mt-1 block truncate font-mono text-[10px] text-brand-cream/30" dir="ltr">{item.href}</span>
               <span className="mt-1 block text-[10px] text-brand-gold/50">{item.groupLabel}</span>
             </Link>

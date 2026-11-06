@@ -1,7 +1,7 @@
+import { ADMIN_NAVIGATION } from "@/features/admin/config/navigation";
 import type { AdminPermission } from "@/features/admin/services/permissions";
 
 export type AdminModuleStatus = "active" | "transition" | "retired";
-
 export type AdminModuleDefinition = {
   key: string;
   label: string;
@@ -15,13 +15,20 @@ export type AdminModuleDefinition = {
   status: AdminModuleStatus;
 };
 
+const routesFor = (key: string) =>
+  ADMIN_NAVIGATION.find((group) => group.key === key)?.items.map((item) => item.href) ?? [];
+
+/**
+ * بيانات ملكية الوحدات ومصادرها. المسارات نفسها لا تُنسخ هنا؛ تُقرأ من
+ * ADMIN_NAVIGATION حتى لا ينفصل سجل الوحدات عن القائمة أو تتكرر المسارات.
+ */
 export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
   {
     key: "operations",
     label: "التشغيل والمراقبة",
     description: "لوحة التحكم والطوابير والأتمتة والتنبيهات ومتابعة صحة النظام.",
     basePath: "/admin",
-    routes: ["/admin", "/admin/queues", "/admin/automation", "/admin/health", "/admin/notifications"],
+    routes: routesFor("operations"),
     permission: "dashboard.view",
     permissions: ["dashboard.view", "system.manage", "notifications.manage"],
     sourceTables: ["admin_audit_events", "admin_queue_alert_deliveries", "admin_queue_alert_rules"],
@@ -33,7 +40,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     label: "إدارة المحتوى",
     description: "المكتبة والتحرير والتصنيفات والأقسام والبحث.",
     basePath: "/admin/content",
-    routes: ["/admin/content", "/admin/library", "/admin/editorial", "/admin/categories", "/admin/sections", "/admin/search"],
+    routes: routesFor("content"),
     permission: "content.manage",
     permissions: ["content.manage", "library.manage", "knowledge.manage", "sections.manage"],
     sourceTables: ["content_library", "articles", "stories", "content_publish_queue", "content_translation_queue"],
@@ -45,7 +52,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     label: "المصادر والمعرفة",
     description: "مصادر المحتوى والمعرفة الإسلامية والأنبياء والغزوات.",
     basePath: "/admin/sources",
-    routes: ["/admin/sources", "/admin/knowledge", "/admin/prophets", "/admin/battles"],
+    routes: routesFor("knowledge"),
     permission: "sources.manage",
     permissions: ["sources.manage", "knowledge.manage", "prophets.manage", "battles.manage"],
     sourceTables: ["content_sources", "hadiths", "duas", "prophets", "companions", "scholars"],
@@ -57,7 +64,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     label: "مصنع الفيديوهات",
     description: "الطلبات والاستوديو والمصادر والنصوص والأصوات والقوالب والجودة.",
     basePath: "/admin/video",
-    routes: ["/admin/video", "/admin/video/requests", "/admin/video/studio", "/admin/video/studio/curated", "/admin/video/sources", "/admin/video/scripts", "/admin/video/voices", "/admin/video/visuals", "/admin/video/templates", "/admin/video/qa"],
+    routes: routesFor("video-production"),
     permission: "video.manage",
     permissions: ["video.manage"],
     sourceTables: ["video_generation_requests", "videos", "video_templates", "video_template_versions"],
@@ -69,7 +76,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     label: "النشر والتوزيع",
     description: "مركز النشر الاجتماعي ومصنع المنشورات المكتوبة.",
     basePath: "/admin/social",
-    routes: ["/admin/social", "/admin/social/written-studio"],
+    routes: routesFor("publishing"),
     permission: "social.manage",
     permissions: ["social.manage", "social.publish"],
     sourceTables: ["social_publish_queue", "social_platform_credentials", "social_platform_profiles"],
@@ -81,7 +88,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     label: "الوسائط والصوت",
     description: "مكتبة الوسائط والتلاوات والأذان وتحويل النص إلى صوت والتذكيرات.",
     basePath: "/admin/media",
-    routes: ["/admin/media", "/admin/audio", "/admin/audio/quran", "/admin/audio/adhan", "/admin/audio/tts", "/admin/site-audio"],
+    routes: routesFor("media-audio"),
     permission: "media.manage",
     permissions: ["media.manage", "audio.manage"],
     sourceTables: ["media_assets", "quran_audio", "site_audio_assets", "tawasheeh"],
@@ -93,7 +100,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     label: "عالم الأطفال",
     description: "محتوى الأطفال والألعاب والمستويات والأصول والتحليلات.",
     basePath: "/admin/kids",
-    routes: ["/admin/kids", "/admin/kids/content", "/admin/kids/games", "/admin/kids/levels", "/admin/kids/assets", "/admin/kids/analytics"],
+    routes: routesFor("kids"),
     permission: "kids.manage",
     permissions: ["kids.manage"],
     sourceTables: ["kids_content", "kids_games", "kids_game_levels", "kids_game_results"],
@@ -105,7 +112,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     label: "النمو والتحليلات",
     description: "تحليلات المنصة وتحسين الظهور.",
     basePath: "/admin/analytics",
-    routes: ["/admin/analytics", "/admin/seo"],
+    routes: routesFor("growth"),
     permission: "analytics.read",
     permissions: ["analytics.read", "settings.manage"],
     sourceTables: ["articles", "videos", "video_generation_requests", "social_publish_queue"],
@@ -117,7 +124,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     label: "النظام والأمان",
     description: "التدقيق والإصدار والمستخدمون والأمن وإعدادات النظام وأندرويد.",
     basePath: "/admin/audit",
-    routes: ["/admin/audit", "/admin/release", "/admin/users", "/admin/security", "/admin/android", "/admin/settings"],
+    routes: routesFor("system-security"),
     permission: "audit.read",
     permissions: ["audit.read", "release.manage", "users.read", "users.roles", "security.manage", "android.manage", "settings.manage"],
     sourceTables: ["profiles", "admin_role_assignments", "admin_settings", "admin_audit_events"],
@@ -126,6 +133,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
   },
 ] as const;
 
+/** المسارات القديمة محفوظة كتحويلات فقط؛ لا توجد لها نسخ تشغيلية ثانية. */
 export const ADMIN_ROUTE_ALIASES = [
   { from: "/admin/videos", to: "/admin/video/requests", reason: "مسار فيديو رسمي موحد" },
   { from: "/admin/video-factory", to: "/admin/video", reason: "دمج مصنع الفيديو في مركز واحد" },
@@ -152,6 +160,5 @@ export function getAdminModule(pathname: string) {
       .filter((route) => pathname === route || pathname.startsWith(`${route}/`))
       .sort((a, b) => b.length - a.length)[0],
   })).filter((entry): entry is { module: AdminModuleDefinition; route: string } => Boolean(entry.route));
-
   return matches.sort((a, b) => b.route.length - a.route.length)[0]?.module ?? null;
 }

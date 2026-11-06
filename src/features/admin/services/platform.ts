@@ -199,25 +199,17 @@ export async function getAdminOverview() {
     ] as const),
   );
 
-  const [videoRes, socialRes, sectionsRes] = await Promise.all([
-    readAdminRows<{ status: string }>("/rest/v1/video_generation_requests?select=status&limit=500"),
-    readAdminRows<{ status: string }>("/rest/v1/social_publish_queue?select=status&limit=500"),
+  const [videoCounts, socialCounts, sectionsRes] = await Promise.all([
+    getExactStatusCounts("video_generation_requests", ["pending", "processing", "retry_wait", "failed"]),
+    getExactStatusCounts("social_publish_queue", ["queued", "processing", "partial", "failed"]),
     readAdminRows<{ value?: unknown }>("/rest/v1/site_settings?key=eq.section_visibility&select=value&limit=1"),
   ]);
-  const videoRequests = videoRes.rows;
-  const socialQueue = socialRes.rows;
   const sections = sectionsRes.rows;
   const unavailable = [
-    !videoRes.ok && "video_generation_requests",
-    !socialRes.ok && "social_publish_queue",
+    !videoCounts.available && "video_generation_requests",
+    !socialCounts.available && "social_publish_queue",
     !sectionsRes.ok && "site_settings",
   ].filter(Boolean) as string[];
-
-  const countStatuses = (items: Array<{ status: string }>) =>
-    items.reduce<Record<string, number>>((acc, item) => {
-      acc[item.status] = (acc[item.status] ?? 0) + 1;
-      return acc;
-    }, {});
 
   const visibility =
     sections[0]?.value && typeof sections[0].value === "object"
@@ -227,8 +219,8 @@ export async function getAdminOverview() {
   return {
     counts: Object.fromEntries(counts),
     unavailable,
-    videoGeneration: countStatuses(videoRequests),
-    socialQueue: countStatuses(socialQueue),
+    videoGeneration: videoCounts.counts,
+    socialQueue: socialCounts.counts,
     sections: {
       total: Object.keys(visibility).length,
       enabled: Object.values(visibility).filter(Boolean).length,
