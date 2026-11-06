@@ -131,8 +131,13 @@ export async function GET() {
       return acc;
     }, {});
     const env = getServerEnv();
-    // Keep the Admin health badge aligned with the GitHub workflow gate.
-    const socialPublishingEnabled = true;
+    // The Admin health badge must reflect the same authoritative switch read by
+    // scripts/run-background-jobs.ts. Fail closed if the setting is unavailable.
+    const publishingSettings = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+      "/rest/v1/admin_settings?key=eq.video_automation_auto_publish&select=value&limit=1",
+    ).catch(() => []);
+    const publishingValue = publishingSettings?.[0]?.value;
+    const socialPublishingEnabled = publishingValue === true || publishingValue === "true";
     const facebookHealth = await getFacebookPageConnectionHealth();
     const facebookAuthBlocked = rows.filter(
       item =>
