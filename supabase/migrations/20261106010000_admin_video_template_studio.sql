@@ -112,7 +112,10 @@ BEGIN
   END IF;
 
   v_asset := p_config ->> 'assetKey';
-  IF p_config ->> 'defaultFormat' NOT IN ('vertical', 'horizontal')
+  IF p_config ->> 'assetKey' IS NULL
+     OR p_config ->> 'defaultFormat' IS NULL
+     OR p_config ->> 'motion' IS NULL
+     OR p_config ->> 'defaultFormat' NOT IN ('vertical', 'horizontal')
      OR p_config ->> 'motion' NOT IN ('slow', 'fade') THEN
     RAISE EXCEPTION 'unsupported template format or motion' USING ERRCODE = '22023';
   END IF;
@@ -125,8 +128,8 @@ BEGIN
     RAISE EXCEPTION 'video template not found' USING ERRCODE = 'P0002';
   END IF;
 
-  IF (v_audience = 'kids' AND v_asset NOT IN ('kids-garden', 'kids-nature', 'kids-neighborhood', 'kids-workshop'))
-     OR (v_audience = 'general' AND v_asset NOT IN ('calm', 'dawn', 'emerald', 'gold', 'night', 'paper', 'rose')) THEN
+  IF (v_audience = 'kids' AND NOT (v_asset = ANY (ARRAY['kids-garden', 'kids-nature', 'kids-neighborhood', 'kids-workshop']::text[])))
+     OR (v_audience = 'general' AND NOT (v_asset = ANY (ARRAY['calm', 'dawn', 'emerald', 'gold', 'night', 'paper', 'rose']::text[]))) THEN
     RAISE EXCEPTION 'asset does not match template audience' USING ERRCODE = '22023';
   END IF;
 
