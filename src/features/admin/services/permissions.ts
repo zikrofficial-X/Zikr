@@ -63,7 +63,7 @@ export const ADMIN_ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[
     'analytics.read', 'audit.read',
   ],
   social_manager: [
-    'admin.access', 'dashboard.view', 'media.manage', 'video.manage', 'social.manage',
+    'admin.access', 'dashboard.view', 'media.manage', 'social.manage',
     'social.publish', 'analytics.read', 'audit.read', 'notifications.manage',
   ],
   moderator: [
