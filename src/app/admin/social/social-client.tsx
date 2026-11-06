@@ -639,7 +639,7 @@ export default function AdminSocialPage() {
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <Button variant="outline" disabled={busy} onClick={() => void connectYouTube()}>
-              إعادة تفويض YouTube للرفع والتحليلات
+              ربط YouTube لقراءة القناة والإحصاءات
             </Button>
             <Button variant="outline" disabled={busy} onClick={() => void connectFacebook()}>
               ربط Facebook عبر OAuth
@@ -751,9 +751,10 @@ export default function AdminSocialPage() {
           </div>
           <p className="text-sm font-semibold text-brand-cream/85">{health.youtubeChannelName || (health.youtubeConfigured ? "قناة YouTube — يلزم الاختبار" : "بيانات YouTube غير مكتملة")}</p>
           {health.youtubeConnectionMessage && <p className="text-xs leading-5 text-brand-cream/55">{health.youtubeConnectionMessage}</p>}
+          <p className="text-xs leading-5 text-brand-cream/45">هذا الربط يختبر قراءة بيانات القناة وتقارير Analytics فقط. نشر الفيديوهات الخارجية يخضع لإعدادات العامل المستقل ولا يتفعّل بمجرد ربط OAuth.</p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void connectYouTube()}>
-              ربط YouTube للنشر والإحصاءات
+              ربط YouTube للإحصاءات
             </Button>
             <Button variant="outline" size="sm" disabled={busy || !health.youtubeConfigured} onClick={() => void testYouTube()}>
               اختبار اتصال YouTube
