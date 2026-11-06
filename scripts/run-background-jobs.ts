@@ -280,7 +280,7 @@ async function processSocial(settings: VideoAutomationSettings) {
   }
   if (!SOCIAL_PUBLISH_ENABLED) {
     console.log("[background-jobs] Social publishing disabled.");
-    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
+    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, insights };
   }
 
   const configuredBatchSize = Number(process.env.SOCIAL_PUBLISH_BATCH_SIZE ?? 1);
