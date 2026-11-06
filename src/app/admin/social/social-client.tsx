@@ -531,8 +531,10 @@ export default function AdminSocialPage() {
             <p className="text-xs text-brand-cream/55">الصفحة: {health.facebookPageName}</p>
           )}
           {health.facebookConnectionMessage && (
-            <p className="text-xs leading-5 text-brand-cream/55">{health.facebookConnectionMessage}</p>
-            <p className="text-xs leading-5 text-brand-cream/55">إحصاءات Facebook Reels: {health.facebookInsightsPermissionGranted ? "صلاحية read_insights متاحة." : "تحتاج read_insights من Meta ثم إعادة ربط الصفحة؛ النشر الحالي لا يتأثر."}</p>
+            <div className="space-y-1">
+              <p className="text-xs leading-5 text-brand-cream/55">{health.facebookConnectionMessage}</p>
+              <p className="text-xs leading-5 text-brand-cream/55">إحصاءات Facebook Reels: {health.facebookInsightsPermissionGranted ? "صلاحية read_insights متاحة." : "تحتاج read_insights من Meta ثم إعادة ربط الصفحة؛ النشر الحالي لا يتأثر."}</p>
+            </div>
           )}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void connectFacebook()}>
