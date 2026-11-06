@@ -118,7 +118,7 @@ export function PurgeGeneratedVideosControl({
           }}
           className="shrink-0 rounded-xl border border-red-400/35 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {expanded ? "إغلاق التصفير" : "مسح كل الفيديوهات"}
+          {expanded ? "إغلاق التصفير" : "مسح الفيديوهات المولّدة"}
         </button>
       </div>
 
