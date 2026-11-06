@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const CONFIRMATION_PHRASE = "امسح كل الفيديوهات";
 
@@ -27,6 +27,7 @@ export function PurgeGeneratedVideosControl({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<PurgeResult | null>(null);
+  const [authorized, setAuthorized] = useState(false);
 
   async function purge() {
     if (confirmation !== CONFIRMATION_PHRASE || busy) return;
