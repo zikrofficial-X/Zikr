@@ -43,6 +43,7 @@ for (const token of [
   "category === \"quran\" && !audioUrl",
   "QURAN_AYAH_AUDIO_BASE_URL",
   "resolveVideoComposition",
+  "paginateCaptionText(normalizeArabicText(value), lineChars, linesPerPage)",
   "planCaptionTimings(textPages, audioDuration)",
   "audioDuration - 0.55",
   "captionTiming: \"page-weighted-audio-duration\"",
@@ -59,7 +60,7 @@ for (const token of [
   if (!worker.includes(token)) failures.push(`worker missing quality enhancement: ${token}`);
 }
 const composition = read("src/features/videos/services/video-composition.ts");
-for (const token of ["resolveVideoComposition", "planCaptionTimings", "cameraPath", "panelPixelWidth", "minimumPageSeconds"]) {
+for (const token of ["resolveVideoComposition", "paginateCaptionText", "planCaptionTimings", "cameraPath", "panelPixelWidth", "minimumPageSeconds"]) {
   if (!composition.includes(token)) failures.push(`category composition/caption pacing helper missing: ${token}`);
 }
 const compositionTest = read("scripts/tests/video-composition.test.ts");
