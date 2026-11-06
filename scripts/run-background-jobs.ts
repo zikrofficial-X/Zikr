@@ -274,7 +274,7 @@ async function processVideos(settings: VideoAutomationSettings) {
 
 async function processSocial(settings: VideoAutomationSettings) {
   const insights = await syncSocialInsights();
-  console.log("[background-jobs] Insights sync completed independently of public publishing:", JSON.stringify(insights));
+  console.log("[background-jobs] insights sync completed independently of public publishing:", JSON.stringify(insights));
   if (!settings.autoPublish) {
     console.log("[background-jobs] Automatic social publishing is paused from Admin settings.");
     return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, insights };
