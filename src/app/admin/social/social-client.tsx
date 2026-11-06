@@ -543,8 +543,7 @@ export default function AdminSocialPage() {
         if (action === "publish_now") {
           setMessage(`تم تجهيز ${payload.affected ?? 0} عنصرًا للتشغيل الفوري عبر GitHub Actions.`);
           if (payload.blocked?.length) {
-            setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("
-"));
+            setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
           }
         } else {
           setMessage(`تم تنفيذ الإجراء بنجاح${typeof payload.affected === "number" ? ` (${payload.affected})` : ""}.`);
@@ -594,8 +593,7 @@ export default function AdminSocialPage() {
         result.status === "failed" || result.status === "missing_remote_id"
       );
       if (issues.length) {
-        setError(issues.map(result => `${result.title} — ${PLATFORM_LABELS[result.platform] ?? result.platform}: ${result.error || "معرّف المنشور غير متاح."}`).join("
-"));
+        setError(issues.map(result => `${result.title} — ${PLATFORM_LABELS[result.platform] ?? result.platform}: ${result.error || "معرّف المنشور غير متاح."}`).join("\n"));
       }
       setSelectedPublished([]);
       setDeleteLocalMemory(false);
