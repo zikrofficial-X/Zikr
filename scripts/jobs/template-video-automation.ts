@@ -1143,9 +1143,10 @@ async function renderVideo(request: GeneratedRequest) {
   const audioPath = temp + "/narration.mp3";
   let aiVideoPath: string | null = null;
   try {
+    const isTemplatePreview = request.content.templatePreview === true;
     let aiPlan: AiVideoPlan = { ...DEFAULT_AI_VIDEO_PLAN };
     try {
-      aiPlan = await generateAiVideoPlan(request);
+      if (!isTemplatePreview) aiPlan = await generateAiVideoPlan(request);
       request.content = {
         ...request.content,
         ai: {
@@ -1215,6 +1216,7 @@ async function renderVideo(request: GeneratedRequest) {
         : undefined;
 
     if (
+      !isTemplatePreview &&
       engineConfig().aiEnabled &&
       engineConfig().order.some((provider) => provider !== "template") &&
       aiAttemptsUsed < AI_ATTEMPTS_PER_RUN
@@ -1268,7 +1270,7 @@ async function renderVideo(request: GeneratedRequest) {
           ? null
           : aiResult.error || "AI providers unavailable",
       };
-    } else if (engineConfig().aiEnabled && aiAttemptsUsed >= AI_ATTEMPTS_PER_RUN) {
+    } else if (!isTemplatePreview && engineConfig().aiEnabled && aiAttemptsUsed >= AI_ATTEMPTS_PER_RUN) {
       request.content = {
         ...request.content,
         aiProvider: null,
