@@ -362,6 +362,20 @@ if (!retryActionBody || retryActionBody.includes("target_platforms: platforms"))
 if (!retryActionBody.includes("platformAttempts") || !retryActionBody.includes("platformResults")) failures.push("selective retries must reset only the selected channels while retaining successful channel results");
 if (!adminUi.includes("PlatformFilter") || !adminUi.includes("facebook_reels") || !adminUi.includes("setPlatformFilter")) failures.push("Admin social queue must provide independent channel filters");
 
+const socialDeletion = read("src/features/social/services/social-deletion.ts");
+if (!videoApproval.includes("inspectVideoQueueItemApproval") || !videoApproval.includes("missingChecks")) failures.push("Admin social queue must explain persisted video QA approval holds without bypassing approval");
+if (!adminApi.includes("attachVideoApprovalDiagnostics") || !adminApi.includes("approvalPending") || !adminApi.includes("queuedEligible")) failures.push("social GET must report queue readiness and per-video approval diagnostics");
+if (!adminApi.includes('action === "publish_now"') || !adminApi.includes("approvalBlocked: blocked.length")) failures.push("manual publish-now action must preflight persisted approval and report blocked videos");
+if (!adminApi.includes('action === "delete_published"') || !adminApi.includes("status=eq.published") || !adminApi.includes("platformDeletions")) failures.push("published video deletion must use recorded remote IDs and persist each platform result");
+if (!adminApi.includes("deleteSocialPlatformPost") || !socialDeletion.includes("youtube/v3/videos") || !socialDeletion.includes("graph.facebook.com")) failures.push("remote deletion must call the owning provider API for YouTube and Facebook");
+if (!socialDeletion.includes("getYouTubeRefreshToken") || !socialDeletion.includes("resolveYouTubeRefreshToken")) failures.push("YouTube remote deletion must use the current server-stored OAuth credential before an environment fallback");
+if (!adminApi.includes("status: \"deleted\"") || !adminApi.includes("status: \"failed\"")) failures.push("remote deletion state must be persisted separately per provider");
+if (!adminApi.includes("معرّف المنشور الناجح غير محفوظ")) failures.push("published rows without a recorded provider ID must never guess an ID for deletion");
+if (!adminUi.includes("الفيديوهات المنشورة") || !adminUi.includes("deletePublished") || !adminUi.includes("موقوف لحين مراجعة الجودة")) failures.push("Admin social UI must separate published video management and show QA-block reasons");
+if (!adminUi.includes("نشر المحدد الآن") || !adminUi.includes("مراجعة الفيديوهات")) failures.push("Admin social UI must expose immediate publish and video QA navigation");
+
+
+
 if (failures.length) {
   console.error("SOCIAL_PUBLISHING_CHECK_FAILED");
   for (const failure of failures) console.error(`❌ ${failure}`);

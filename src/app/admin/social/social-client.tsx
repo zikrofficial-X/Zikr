@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,15 @@ import type {
 } from "@/features/social/services/social-publishing";
 
 type Status = SocialQueueStatus;
-type QueueItem = SocialPublishQueueItem;
+type QueueItem = SocialPublishQueueItem & {
+  videoApproval?: {
+    approved: boolean;
+    reason: string | null;
+    missingChecks: string[];
+    approvalStatus: string | null;
+  };
+};
+type QueueReadiness = { approvalPending: number; queuedEligible: number };
 type Health = {
   youtubeConfigured: boolean;
   youtubeConnectionStatus?: "not_configured" | "not_tested" | "connected" | "public_data_only" | "reauthorization_required" | "permission_missing" | "channel_not_found" | "unavailable";
@@ -35,7 +44,7 @@ type Health = {
   facebookConnectionMessage?: string;
   facebookInsightsPermissionGranted?: boolean;
 };
-type SocialView = "overview" | "queue" | "analytics";
+type SocialView = "overview" | "queue" | "published" | "analytics";
 type PlatformFilter = "all" | "youtube" | "facebook" | "facebook_reels";
 type PlatformStats = Record<
   string,
@@ -64,6 +73,56 @@ const STATUS_ORDER: readonly Status[] = [
   "partial",
   "failed",
 ];
+
+const QA_CHECK_LABELS: Record<string, string> = {
+  sourceVerified: "مراجعة المصدر",
+  audioReviewed: "مراجعة الصوت",
+  visualsReviewed: "مراجعة الصورة",
+  captionsReviewed: "مراجعة الترجمة",
+  rightsReviewed: "مراجعة الحقوق",
+};
+const PLATFORM_LABELS: Record<string, string> = {
+  youtube: "YouTube",
+  facebook: "Facebook",
+  facebook_reels: "Facebook Reels",
+};
+
+function isVideoQueueItem(item: QueueItem) {
+  const value = item.content_type.trim().toLowerCase();
+  return value === "video" || value.endsWith("_video") || value === "video_generation";
+}
+
+function recordValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function platformDelivery(item: QueueItem, platform: string): Record<string, unknown> | null {
+  const results = item.metadata?.platformResults;
+  if (Array.isArray(results)) {
+    return recordValue(results.find(value => recordValue(value)?.platform === platform));
+  }
+  return recordValue(recordValue(results)?.[platform]);
+}
+
+function platformDeletion(item: QueueItem, platform: string): Record<string, unknown> | null {
+  return recordValue(recordValue(item.metadata?.platformDeletions)?.[platform]);
+}
+
+function publishedPlatformUrl(item: QueueItem, platform: string): string | null {
+  const delivery = platformDelivery(item, platform);
+  if (typeof delivery?.url === "string" && /^https:\/\//i.test(delivery.url)) return delivery.url;
+  const remoteId = typeof delivery?.remoteId === "string" ? delivery.remoteId : "";
+  if (platform === "youtube" && /^[A-Za-z0-9_-]{11}$/.test(remoteId)) {
+    return "https://www.youtube.com/watch?v=" + remoteId;
+  }
+  if ((platform === "facebook" || platform === "facebook_reels") && /^[0-9_]{8,128}$/.test(remoteId)) {
+    return "https://www.facebook.com/" + remoteId;
+  }
+  return null;
+}
+
 const STATUS_LABELS: Record<Status, string> = {
   queued: "في الانتظار",
   processing: "قيد المعالجة",
@@ -178,6 +237,8 @@ export default function AdminSocialPage() {
   const [filter, setFilter] = useState<"all" | Status>("all");
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [selected, setSelected] = useState<string[]>([]);
+  const [selectedPublished, setSelectedPublished] = useState<string[]>([]);
+  const [readiness, setReadiness] = useState<QueueReadiness>({ approvalPending: 0, queuedEligible: 0 });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -196,6 +257,7 @@ export default function AdminSocialPage() {
         socialAnalytics?: SocialAnalytics;
         automation?: AutomationStatus;
         oldestQueuedAt?: string | null;
+        readiness?: QueueReadiness;
         error?: string;
       };
       if (!response.ok)
@@ -211,7 +273,9 @@ export default function AdminSocialPage() {
         note: "تعذر التحقق من حالة النشر؛ يظل النشر متوقفًا بأمان.",
       });
       setOldestQueuedAt(payload.oldestQueuedAt ?? null);
+      setReadiness(payload.readiness ?? { approvalPending: 0, queuedEligible: 0 });
       setSelected([]);
+      setSelectedPublished([]);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "تعذر تحميل طابور النشر."
@@ -420,43 +484,44 @@ export default function AdminSocialPage() {
     }
   }, [load]);
 
-  const filtered = useMemo(() => items.filter(item => {
+  const queueOpenItems = useMemo(() => items.filter(item => item.status !== "published"), [items]);
+  const filtered = useMemo(() => queueOpenItems.filter(item => {
     const matchesStatus = filter === "all" || item.status === filter;
     const matchesPlatform = platformFilter === "all" || item.target_platforms.includes(platformFilter);
     return matchesStatus && matchesPlatform;
-  }), [filter, items, platformFilter]);
-  const retryable = items.filter(
-    item => item.status === "failed" || item.status === "partial"
+  }), [filter, queueOpenItems, platformFilter]);
+  const retryable = items.filter(item => item.status === "failed" || item.status === "partial");
+  const selectedRetryableCount = selected.filter(id => retryable.some(item => item.id === id)).length;
+  const visibleSelectable = filtered.filter(item =>
+    item.status === "failed" || item.status === "partial" ||
+    (item.status === "queued" && (!isVideoQueueItem(item) || item.videoApproval?.approved === true))
   );
-  const selectedRetryableCount = selected.filter(id =>
-    retryable.some(item => item.id === id)
+  const allVisibleRetryableSelected = visibleSelectable.length > 0 &&
+    visibleSelectable.every(item => selected.includes(item.id));
+  const selectedPublishNowCount = selected.filter(id =>
+    visibleSelectable.some(item => item.id === id)
   ).length;
-  const visibleRetryable = filtered.filter(
-    item => item.status === "failed" || item.status === "partial"
-  );
-  const allVisibleRetryableSelected =
-    visibleRetryable.length > 0 &&
-    visibleRetryable.every(item => selected.includes(item.id));
+  const publishedVideos = items.filter(item => item.status === "published" && isVideoQueueItem(item));
+  const allPublishedSelected = publishedVideos.length > 0 &&
+    publishedVideos.every(item => selectedPublished.includes(item.id));
 
   const runAction = useCallback(
-    async (
-      action: "retry" | "retry_all_failed" | "delete" | "delete_failed"
-    ) => {
-      if (
-        action !== "retry" &&
-        !window.confirm(
-          action === "delete_failed"
-            ? `سيتم حذف ${retryable.length} عملية فاشلة أو نشر جزئي نهائيًا.`
-            : "سيتم حذف العمليات الفاشلة أو الجزئية المحددة نهائيًا."
-        )
-      )
-        return;
-      const ids =
-        action === "retry_all_failed" || action === "delete_failed"
-          ? []
-          : selected;
+    async (action: "retry" | "retry_all_failed" | "delete" | "delete_failed" | "publish_now") => {
+      if (action !== "retry") {
+        const confirmation = action === "publish_now"
+          ? "سيتم إرسال العناصر المؤهلة للنشر فورًا. الفيديو غير المعتمد سيظل محجوبًا ولن يتم تجاوز فحص الجودة."
+          : action === "delete_failed"
+            ? `سيتم حذف ${retryable.length} عملية فاشلة أو نشر جزئي من سجل الطابور.`
+            : "سيتم حذف العمليات الفاشلة أو الجزئية المحددة من سجل الطابور.";
+        if (!window.confirm(confirmation)) return;
+      }
+      const ids = action === "retry_all_failed" || action === "delete_failed" ? [] : selected;
       if ((action === "retry" || action === "delete") && ids.length === 0) {
         setError("حدد عملية فاشلة أو نشرًا جزئيًا أولًا.");
+        return;
+      }
+      if (action === "publish_now" && selectedPublishNowCount === 0) {
+        setError("حدد عناصر جاهزة للنشر الفوري أولًا. الفيديوهات غير المعتمدة تظهر بسبب التأجيل ورابط المراجعة.");
         return;
       }
       setBusy(true);
@@ -471,28 +536,82 @@ export default function AdminSocialPage() {
         const payload = (await response.json().catch(() => ({}))) as {
           error?: string;
           affected?: number;
+          blocked?: Array<{ id: string; title?: string | null; reason: string }>;
         };
-        if (!response.ok)
-          throw new Error(payload.error || "تعذر تنفيذ الإجراء.");
-        setMessage(
-          `تم تنفيذ الإجراء بنجاح${typeof payload.affected === "number" ? ` (${payload.affected})` : ""}.`
-        );
+        if (!response.ok) throw new Error(payload.error || "تعذر تنفيذ الإجراء.");
+        if (action === "publish_now") {
+          setMessage(`تم تجهيز ${payload.affected ?? 0} عنصرًا للتشغيل الفوري عبر GitHub Actions.`);
+          if (payload.blocked?.length) {
+            setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
+          }
+        } else {
+          setMessage(`تم تنفيذ الإجراء بنجاح${typeof payload.affected === "number" ? ` (${payload.affected})` : ""}.`);
+        }
         await load();
       } catch (cause) {
-        setError(
-          cause instanceof Error ? cause.message : "تعذر تنفيذ الإجراء."
-        );
+        setError(cause instanceof Error ? cause.message : "تعذر تنفيذ الإجراء.");
       } finally {
         setBusy(false);
       }
     },
-    [load, retryable.length, selected]
+    [load, retryable.length, selected, selectedPublishNowCount]
   );
 
+  const deletePublished = useCallback(async (ids: string[], platforms?: string[]) => {
+    if (!ids.length) {
+      setError("حدد فيديو منشورًا أولًا.");
+      return;
+    }
+    const targetText = platforms?.length ? platforms.map(value => PLATFORM_LABELS[value] ?? value).join(" و") : "كل المنصات التي نُشر عليها الفيديو";
+    const confirmation = `تأكيد الحذف النهائي من ${targetText}؟\n\nسيتم حذف المنشور الفعلي من المنصة. سيظل سجل النشر والتدقيق محفوظًا داخل ZIKR، ولن يُحذف ملف المصدر الداخلي بهذه العملية.`;
+    if (!window.confirm(confirmation)) return;
+
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_published", ids, platforms }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        deleted?: number;
+        failed?: number;
+        missingRemoteId?: number;
+        results?: Array<{ id: string; title: string; platform: string; status: string; error?: string }>;
+      };
+      if (!response.ok) throw new Error(payload.error || "تعذر حذف المنشور من المنصة.");
+      setMessage(`تم حذف ${payload.deleted ?? 0} منشورًا فعليًا. الفشل: ${payload.failed ?? 0}، ومعرّفات غير محفوظة: ${payload.missingRemoteId ?? 0}. سجل ZIKR ما زال محفوظًا.`);
+      const issues = (payload.results ?? []).filter(result =>
+        result.status === "failed" || result.status === "missing_remote_id"
+      );
+      if (issues.length) {
+        setError(issues.map(result => `${result.title} — ${PLATFORM_LABELS[result.platform] ?? result.platform}: ${result.error || "معرّف المنشور غير متاح."}`).join("\n"));
+      }
+      setSelectedPublished([]);
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر حذف المنشور من المنصة.");
+    } finally {
+      setBusy(false);
+    }
+  }, [load]);
+
   function toggleVisibleRetryable() {
-    const ids = visibleRetryable.map(item => item.id);
+    const ids = visibleSelectable.map(item => item.id);
     setSelected(current =>
       allVisibleRetryableSelected
+        ? current.filter(id => !ids.includes(id))
+        : [...new Set([...current, ...ids])]
+    );
+  }
+
+  function togglePublishedSelection() {
+    const ids = publishedVideos.map(item => item.id);
+    setSelectedPublished(current =>
+      allPublishedSelected
         ? current.filter(id => !ids.includes(id))
         : [...new Set([...current, ...ids])]
     );
@@ -521,6 +640,12 @@ export default function AdminSocialPage() {
                 اعتماد توكن الخادم
               </Button>
             )}
+            <Link
+              href="/admin/video-requests"
+              className="inline-flex items-center justify-center rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-400/15"
+            >
+              مراجعة الفيديوهات ({readiness.approvalPending})
+            </Link>
             <Button variant="outline" disabled={busy || loading} onClick={() => void load()}>
               تحديث البيانات
             </Button>
@@ -545,40 +670,47 @@ export default function AdminSocialPage() {
             </span>
           </div>
         </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <button type="button" onClick={() => setActiveView("queue")} className="rounded-2xl border border-sky-400/20 bg-sky-400/5 p-4 text-right transition hover:bg-sky-400/10">
+            <span className="text-xs text-brand-cream/55">جاهز أو قابل للمحاولة</span>
+            <span className="mt-1 block text-2xl font-bold text-sky-200">{readiness.queuedEligible}</span>
+            <span className="mt-1 block text-xs text-brand-cream/40">الطابور الذي يمكن للعامل معالجته</span>
+          </button>
+          <button type="button" onClick={() => setActiveView("queue")} className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-right transition hover:bg-amber-400/10">
+            <span className="text-xs text-brand-cream/55">موقوف لمراجعة الجودة</span>
+            <span className="mt-1 block text-2xl font-bold text-amber-200">{readiness.approvalPending}</span>
+            <span className="mt-1 block text-xs text-brand-cream/40">اعتماد بشري مطلوب قبل النشر</span>
+          </button>
+          <button type="button" onClick={() => setActiveView("published")} className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4 text-right transition hover:bg-emerald-400/10">
+            <span className="text-xs text-brand-cream/55">فيديوهات منشورة</span>
+            <span className="mt-1 block text-2xl font-bold text-emerald-200">{publishedVideos.length}</span>
+            <span className="mt-1 block text-xs text-brand-cream/40">سجل المنشورات والإزالة الفعلية</span>
+          </button>
+        </div>
       </section>
       <PurgeGeneratedVideosControl onCompleted={load} />
       <div
         role="tablist"
         aria-label="أقسام مركز النشر"
-        className="grid grid-cols-3 gap-2 rounded-2xl border border-brand-gold/10 bg-black/20 p-1.5"
+        className="grid grid-cols-2 gap-2 rounded-2xl border border-brand-gold/10 bg-black/20 p-1.5 sm:grid-cols-4"
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeView === "overview"}
-          onClick={() => setActiveView("overview")}
-          className={`rounded-xl px-3 py-3 text-sm font-semibold transition ${activeView === "overview" ? "bg-brand-gold text-brand-emeraldDeep" : "text-brand-cream/60 hover:bg-white/5"}`}
-        >
-          الملخص والاتصالات
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeView === "queue"}
-          onClick={() => setActiveView("queue")}
-          className={`rounded-xl px-3 py-3 text-sm font-semibold transition ${activeView === "queue" ? "bg-brand-gold text-brand-emeraldDeep" : "text-brand-cream/60 hover:bg-white/5"}`}
-        >
-          طابور النشر ({items.length})
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeView === "analytics"}
-          onClick={() => setActiveView("analytics")}
-          className={`rounded-xl px-3 py-3 text-sm font-semibold transition ${activeView === "analytics" ? "bg-brand-gold text-brand-emeraldDeep" : "text-brand-cream/60 hover:bg-white/5"}`}
-        >
-          تحليلات المنصات والتفاعل
-        </button>
+        {([
+          ["overview", "الاتصالات والملخص"],
+          ["queue", `قيد النشر (${items.filter(item => item.status !== "published").length})`],
+          ["published", `الفيديوهات المنشورة (${publishedVideos.length})`],
+          ["analytics", "التحليلات والتفاعل"],
+        ] as const).map(([view, label]) => (
+          <button
+            key={view}
+            type="button"
+            role="tab"
+            aria-selected={activeView === view}
+            onClick={() => setActiveView(view)}
+            className={`rounded-xl px-3 py-3 text-sm font-semibold transition ${activeView === view ? "bg-brand-gold text-brand-emeraldDeep" : "text-brand-cream/60 hover:bg-white/5"}`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {error && (
@@ -827,7 +959,7 @@ export default function AdminSocialPage() {
               onClick={() => setPlatformFilter(value)}
               className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${platformFilter === value ? "border-brand-gold/40 bg-brand-gold/10 text-brand-gold" : "border-brand-gold/10 text-brand-cream/55 hover:border-brand-gold/25"}`}
             >
-              {label} ({value === "all" ? items.length : items.filter(item => item.target_platforms.includes(value)).length})
+              {label} ({value === "all" ? queueOpenItems.length : queueOpenItems.filter(item => item.target_platforms.includes(value)).length})
             </button>
           ))}
         </div>
@@ -837,10 +969,17 @@ export default function AdminSocialPage() {
               الإجراءات السريعة
             </h2>
             <p className="text-xs text-brand-cream/40">
-              لن تعود العناصر المحجوبة إلى الطابور إلا بعد اعتماد اتصال صالح؛ وتُحفظ نتائج النشر الناجحة لمنع التكرار.
+              العناصر التي تنتظر مراجعة الجودة لا تُنشر تلقائيًا. اعتمد الفيديو أولًا من طابور الفيديو، ثم استخدم «نشر المحدد الآن». تبقى نتائج القنوات الناجحة محفوظة لمنع التكرار.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              variant="primary"
+              disabled={!selectedPublishNowCount || busy}
+              onClick={() => void runAction("publish_now")}
+            >
+              نشر المحدد الآن ({selectedPublishNowCount})
+            </Button>
             <Button
               variant="outline"
               disabled={!retryable.length || busy}
@@ -873,8 +1012,8 @@ export default function AdminSocialPage() {
                     type="checkbox"
                     checked={allVisibleRetryableSelected}
                     onChange={toggleVisibleRetryable}
-                    disabled={!visibleRetryable.length || busy}
-                    aria-label="تحديد الفاشلة والنشر الجزئي الظاهر"
+                    disabled={!visibleSelectable.length || busy}
+                    aria-label="تحديد العناصر القابلة للنشر الظاهرة"
                   />
                 </th>
                 <th className="p-3 text-right">العنوان</th>
@@ -892,7 +1031,7 @@ export default function AdminSocialPage() {
                   ? (item.status as Status)
                   : "failed";
                 const deferredAt = facebookReelsDeferredUntil(item);
-                const selectable = status === "failed" || status === "partial";
+                const selectable = status === "failed" || status === "partial" || (status === "queued" && (!isVideoQueueItem(item) || item.videoApproval?.approved === true));
                 return (
                   <tr key={item.id} className="align-top hover:bg-black/10">
                     <td className="p-3">
@@ -929,6 +1068,16 @@ export default function AdminSocialPage() {
                       {item.scheduled_at ?? "فوري"}
                     </td>
                     <td className="p-3 text-xs">
+                      {item.videoApproval && !item.videoApproval.approved && (
+                        <div className="mb-2 space-y-1 rounded-lg border border-amber-400/20 bg-amber-400/5 p-2 text-amber-200">
+                          <p className="font-semibold">موقوف لحين مراجعة الجودة</p>
+                          <p className="leading-5">{item.videoApproval.reason}</p>
+                          {!!item.videoApproval.missingChecks.length && (
+                            <p className="text-[11px] text-amber-100/70">الناقص: {item.videoApproval.missingChecks.map(key => QA_CHECK_LABELS[key] ?? key).join("، ")}</p>
+                          )}
+                          <Link href="/admin/video-requests" className="inline-flex font-semibold text-brand-gold underline underline-offset-2">فتح تفاصيل الفيديو واعتماده</Link>
+                        </div>
+                      )}
                       {deferredAt && (
                         <p className="mb-1 text-amber-300/80">
                           مؤجل تلقائيًا حتى {formatDeferredAt(deferredAt)}
@@ -945,7 +1094,7 @@ export default function AdminSocialPage() {
               {!loading && filtered.length === 0 && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="p-8 text-center text-brand-cream/40"
                   >
                     لا توجد عناصر مطابقة.
@@ -961,7 +1110,7 @@ export default function AdminSocialPage() {
               ? (item.status as Status)
               : "failed";
             const deferredAt = facebookReelsDeferredUntil(item);
-            const selectable = status === "failed" || status === "partial";
+            const selectable = status === "failed" || status === "partial" || (status === "queued" && (!isVideoQueueItem(item) || item.videoApproval?.approved === true));
             return (
               <article key={item.id} className="space-y-3 rounded-2xl border border-brand-gold/10 bg-black/15 p-3">
                 <div className="flex items-start gap-3">
@@ -990,6 +1139,14 @@ export default function AdminSocialPage() {
                 </div>
                 <div className="space-y-1 border-t border-brand-gold/10 pt-2 text-xs leading-5">
                   <p className="text-brand-cream/45">الموعد: <span dir="ltr">{item.scheduled_at ?? "فوري"}</span></p>
+                  {item.videoApproval && !item.videoApproval.approved && (
+                    <div className="space-y-1 rounded-lg border border-amber-400/20 bg-amber-400/5 p-3 text-amber-200">
+                      <p className="font-semibold">موقوف لحين مراجعة الجودة</p>
+                      <p>{item.videoApproval.reason}</p>
+                      {!!item.videoApproval.missingChecks.length && <p className="text-[11px]">الناقص: {item.videoApproval.missingChecks.map(key => QA_CHECK_LABELS[key] ?? key).join("، ")}</p>}
+                      <Link href="/admin/video-requests" className="inline-flex font-semibold text-brand-gold underline underline-offset-2">فتح تفاصيل الفيديو واعتماده</Link>
+                    </div>
+                  )}
                   {deferredAt && <p className="break-words text-amber-300/80">مؤجل تلقائيًا حتى {formatDeferredAt(deferredAt)}</p>}
                   {item.error_message && !(/Facebook Reels publishing paused by provider cooldown until/i.test(item.error_message)) && <p className="break-words text-red-300/80">الخطأ: {item.error_message}</p>}
                 </div>
@@ -1003,6 +1160,113 @@ export default function AdminSocialPage() {
           )}
         </div>
       </Card>
+      )}
+
+      {activeView === "published" && (
+        <section className="space-y-4">
+          <Card className="space-y-3 border-brand-gold/15">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-brand-gold">الفيديوهات المنشورة</h2>
+                <p className="mt-1 text-xs leading-6 text-brand-cream/55">
+                  الحذف هنا يزيل المنشور من المنصة نفسها. سجل ZIKR ونتائج النشر يظلان محفوظين للمراجعة والتدقيق.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" disabled={!publishedVideos.length || busy} onClick={togglePublishedSelection}>
+                  {allPublishedSelected ? "إلغاء تحديد الكل" : "تحديد كل المنشورات"}
+                </Button>
+                <Button variant="outline" className="border-red-400/30 text-red-200 hover:bg-red-400/10" size="sm" disabled={!selectedPublished.length || busy} onClick={() => void deletePublished(selectedPublished)}>
+                  حذف المحدد من المنصات ({selectedPublished.length})
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/5 p-3">
+                <p className="text-xs text-brand-cream/50">إجمالي المنشور</p>
+                <p className="mt-1 text-2xl font-bold text-emerald-200">{publishedVideos.length}</p>
+              </div>
+              <div className="rounded-xl border border-brand-gold/10 bg-black/15 p-3">
+                <p className="text-xs text-brand-cream/50">محدد للحذف</p>
+                <p className="mt-1 text-2xl font-bold text-brand-gold">{selectedPublished.length}</p>
+              </div>
+              <div className="col-span-2 rounded-xl border border-amber-400/15 bg-amber-400/5 p-3 sm:col-span-1">
+                <p className="text-xs leading-5 text-amber-100/75">المنشور القديم الذي لا يحتفظ بمعرّف المنصة لن يظهر له زر حذف فعال؛ لن نخمن المعرّف.</p>
+              </div>
+            </div>
+          </Card>
+
+          {loading && <Card className="p-8 text-center text-sm text-brand-cream/45">جاري تحميل سجل المنشورات…</Card>}
+          {!loading && publishedVideos.length === 0 && (
+            <Card className="space-y-2 p-10 text-center">
+              <p className="font-semibold text-brand-cream/75">لا توجد فيديوهات منشورة في سجل الطابور.</p>
+              <p className="text-sm text-brand-cream/45">بعد تأكيد نشر فيديو على منصة، سيظهر هنا مع معرفه وأدوات إدارة كل منصة.</p>
+            </Card>
+          )}
+
+          <div className="grid gap-3">
+            {publishedVideos.map(item => (
+              <Card key={item.id} className="space-y-4 border-brand-gold/10 p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedPublished.includes(item.id)}
+                    disabled={busy}
+                    onChange={() => setSelectedPublished(current =>
+                      current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id]
+                    )}
+                    aria-label={`تحديد الفيديو المنشور ${item.title}`}
+                    className="mt-1"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="break-words font-bold text-brand-cream">{item.title}</h3>
+                      <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[11px] text-emerald-200">نُشر</span>
+                    </div>
+                    <p className="mt-1 text-xs text-brand-cream/45">{item.content_type} · {new Date(item.published_at ?? item.created_at).toLocaleString("ar-EG")}</p>
+                  </div>
+                  <Button variant="outline" size="sm" disabled={busy} onClick={() => void load()}>تحديث</Button>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {item.target_platforms.map(platform => {
+                    const delivery = platformDelivery(item, platform);
+                    const deletion = platformDeletion(item, platform);
+                    const remoteId = typeof delivery?.remoteId === "string" ? delivery.remoteId : "";
+                    const delivered = delivery?.ok === true && Boolean(remoteId);
+                    const deleted = deletion?.status === "deleted";
+                    const href = publishedPlatformUrl(item, platform);
+                    const hasSafeDeleteId = delivered && !deleted;
+                    return (
+                      <div key={platform} className="space-y-2 rounded-xl border border-brand-gold/10 bg-black/15 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-semibold text-brand-cream">{PLATFORM_LABELS[platform] ?? platform}</span>
+                          <span className={`rounded-full border px-2 py-1 text-[11px] ${deleted ? "border-slate-400/20 bg-slate-400/10 text-slate-300" : delivered ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" : "border-amber-400/20 bg-amber-400/10 text-amber-200"}`}>
+                            {deleted ? "محذوف من المنصة" : delivered ? "منشور على المنصة" : "معرّف النشر غير متاح"}
+                          </span>
+                        </div>
+                        {remoteId ? <p className="break-all font-mono text-[11px] text-brand-cream/40" dir="ltr">{remoteId}</p> : <p className="text-xs leading-5 text-amber-100/65">لا يوجد معرّف منشور محفوظ لهذا السجل؛ لا يمكن تنفيذ حذف آمن.</p>}
+                        {deletion?.status === "failed" && typeof deletion.error === "string" && <p className="text-xs leading-5 text-red-300/80">{deletion.error}</p>}
+                        {deleted && typeof deletion.deletedAt === "string" && <p className="text-[11px] text-brand-cream/40">تاريخ الحذف: {new Date(deletion.deletedAt).toLocaleString("ar-EG")}</p>}
+                        <div className="flex flex-wrap gap-2">
+                          {href && !deleted && <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-lg border border-brand-gold/15 px-3 py-2 text-xs text-brand-gold underline underline-offset-2">فتح المنشور</a>}
+                          <Button
+                            size="sm"
+                            variant="outline" className="border-red-400/30 text-red-200 hover:bg-red-400/10"
+                            disabled={!hasSafeDeleteId || busy}
+                            onClick={() => void deletePublished([item.id], [platform])}
+                          >
+                            حذف من {PLATFORM_LABELS[platform] ?? platform}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
       )}
     </Container>
   );

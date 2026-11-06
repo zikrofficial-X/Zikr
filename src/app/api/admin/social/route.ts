@@ -12,6 +12,8 @@ import {
 import { getYouTubePublishingConnectionHealth } from "@/features/social/services/youtube-publishing-health";
 import { getFacebookPageAudienceSnapshot } from "@/features/social/services/facebook-reels-insights";
 import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
+import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
+import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +40,9 @@ type QueueItem = {
   published_at: string | null;
   error_message: string | null;
   created_at: string;
+  video_url: string | null;
   metadata?: Record<string, unknown> | null;
+  videoApproval?: { approved: boolean; reason: string | null; missingChecks: string[]; approvalStatus: string | null };
 };
 
 const retryableStatuses = new Set(["failed", "partial"]);
@@ -125,6 +129,47 @@ function retryPlatforms(item: QueueItem): string[] {
   );
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+async function attachVideoApprovalDiagnostics(items: QueueItem[]): Promise<QueueItem[]> {
+  const videos = items.filter(item => isVideoContentType(item.content_type));
+  const contentIds = [...new Set(videos.map(item => item.content_id).filter((id): id is string => Boolean(id)))];
+  const requests = contentIds.length
+    ? await supabaseServerAdminRequest<Array<VideoPublishRequestSnapshot & { id: string }>>(
+        "/rest/v1/video_generation_requests?id=in.(" +
+          contentIds.map(id => encodeURIComponent(id)).join(",") +
+          ")&select=id,status,category,video_url,source_hash,content_hash,template_version,content",
+      )
+    : [];
+  const byId = new Map((requests ?? []).map(request => [request.id, request]));
+  return items.map(item => {
+    if (!isVideoContentType(item.content_type)) return item;
+    const diagnostics = inspectVideoQueueItemApproval({
+      contentType: item.content_type,
+      contentId: item.content_id,
+      queuedVideoUrl: item.video_url,
+      request: item.content_id ? byId.get(item.content_id) ?? null : null,
+    });
+    return { ...item, videoApproval: diagnostics };
+  });
+}
+
+function deliveryForPlatform(metadata: Record<string, unknown> | null | undefined, platform: string): Record<string, unknown> | null {
+  const results = metadata?.platformResults;
+  if (Array.isArray(results)) {
+    const item = results.find(value => {
+      const row = asRecord(value);
+      return row?.platform === platform;
+    });
+    return asRecord(item);
+  }
+  return asRecord(asRecord(results)?.[platform]);
+}
+
 async function triggerSocialWorker() {
   return dispatchGitHubWorkflow("publish-social.yml", {
     operation: "publish_queue",
@@ -137,11 +182,11 @@ export async function GET() {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const items = await supabaseServerAdminRequest<QueueItem[]>(
-      "/rest/v1/social_publish_queue?select=id,content_type,content_id,title,target_platforms,status,scheduled_at,published_at,error_message,created_at,metadata&order=created_at.desc&limit=1000"
+    const fetchedItems = await supabaseServerAdminRequest<QueueItem[]>(
+      "/rest/v1/social_publish_queue?select=id,content_type,content_id,title,video_url,target_platforms,status,scheduled_at,published_at,error_message,created_at,metadata&order=created_at.desc&limit=1000"
     );
-    const queueRows = items ?? [];
-    // Metrics are held in a separate private table; the publish queue remains unchanged.
+    const queueRows = fetchedItems ?? [];
+    // Insights live in a private table so queue cleanup cannot erase analytics history.
     const insightRows = await supabaseServerAdminRequest<SocialPostInsightRow[]>(
       "/rest/v1/social_post_insights?select=queue_id,platform,video_id,metrics,captured_at,source,scope,period,status&order=captured_at.desc&limit=5000",
     ).catch((error) => {
@@ -152,38 +197,33 @@ export async function GET() {
     for (const insight of insightRows ?? []) {
       const platformKey = insight.platform === "facebook_reels" ? "facebookReels" : insight.platform;
       const value = insight.platform === "youtube"
-        ? {
-            ...(insight.metrics ?? {}),
-            videoId: insight.video_id,
-            capturedAt: insight.captured_at,
-            source: insight.source,
-            scope: insight.scope,
-          }
-        : {
-            videoId: insight.video_id,
-            metrics: insight.metrics ?? {},
-            capturedAt: insight.captured_at,
-            source: insight.source,
-            scope: insight.scope,
-            period: insight.period,
-            status: insight.status,
-          };
+        ? { ...(insight.metrics ?? {}), videoId: insight.video_id, capturedAt: insight.captured_at, source: insight.source, scope: insight.scope }
+        : { videoId: insight.video_id, metrics: insight.metrics ?? {}, capturedAt: insight.captured_at, source: insight.source, scope: insight.scope, period: insight.period, status: insight.status };
       const current = insightsByQueueId.get(insight.queue_id) ?? {};
       current[platformKey] = value;
       insightsByQueueId.set(insight.queue_id, current);
     }
-    const rows: QueueItem[] = queueRows.map((item): QueueItem => {
+    const rows = await attachVideoApprovalDiagnostics(queueRows.map((item): QueueItem => {
       const stored = item.metadata?.platformInsights;
       const storedInsights = stored && typeof stored === "object" && !Array.isArray(stored)
         ? stored as Record<string, unknown>
         : {};
-      const externalInsights = insightsByQueueId.get(item.id) ?? {};
-      const metadata: Record<string, unknown> = {
-        ...(item.metadata ?? {}),
-        platformInsights: { ...storedInsights, ...externalInsights },
+      return {
+        ...item,
+        metadata: {
+          ...(item.metadata ?? {}),
+          platformInsights: { ...storedInsights, ...(insightsByQueueId.get(item.id) ?? {}) },
+        },
       };
-      return { ...item, metadata };
-    });
+    }));
+    const approvalPending = rows.filter(item =>
+      isVideoContentType(item.content_type) && item.videoApproval?.approved !== true &&
+      (item.status === "queued" || item.status === "partial" || item.status === "failed")
+    ).length;
+    const queuedEligible = rows.filter(item =>
+      (item.status === "queued" || item.status === "partial" || item.status === "failed") &&
+      (!isVideoContentType(item.content_type) || item.videoApproval?.approved === true)
+    ).length;
     const counts = rows.reduce<Record<string, number>>((acc, item) => {
       acc[item.status] = (acc[item.status] ?? 0) + 1;
       return acc;
@@ -265,6 +305,7 @@ export async function GET() {
       {
         items: rows,
         counts,
+        readiness: { approvalPending, queuedEligible },
         platformStats,
         socialAnalytics,
         oldestQueuedAt,
@@ -317,7 +358,7 @@ export async function POST(request: NextRequest) {
       platforms?: unknown;
     };
     const action = typeof body.action === "string" ? body.action : "";
-    if (["retry", "retry_all_failed", "run_worker"].includes(action)) {
+    if (["retry", "retry_all_failed", "run_worker", "publish_now", "delete_published"].includes(action)) {
       const executionAuth = await requireAdminApi("social.publish");
       if (!executionAuth.ok) {
         return NextResponse.json(
@@ -403,22 +444,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, worker });
     }
     if (
-      !["retry", "retry_all_failed", "delete", "delete_failed"].includes(action)
+      !["retry", "retry_all_failed", "delete", "delete_failed", "publish_now", "delete_published"].includes(action)
     )
       return NextResponse.json({ error: "إجراء غير صالح." }, { status: 400 });
-    if ((action === "retry" || action === "delete") && ids.length === 0)
+    if ((action === "retry" || action === "delete" || action === "publish_now" || action === "delete_published") && ids.length === 0)
       return NextResponse.json(
         { error: "حدد عملية فاشلة أولًا." },
         { status: 400 }
       );
 
-    const retryItems = async (filter: string) => {
+    const retryItems = async (filter: string, includeQueued = false) => {
       const items = await supabaseServerAdminRequest<QueueItem[]>(
         `/rest/v1/social_publish_queue?${filter}&select=id,target_platforms,metadata,status`
       );
       let affected = 0;
       for (const item of items ?? []) {
-        if (!retryableStatuses.has(item.status)) continue;
+        if (!retryableStatuses.has(item.status) && !(includeQueued && item.status === "queued")) continue;
         const eligiblePlatforms = retryPlatforms(item);
         const platforms = requestedPlatforms.length > 0
           ? eligiblePlatforms.filter(platform => requestedPlatforms.includes(platform))
@@ -503,6 +544,36 @@ export async function POST(request: NextRequest) {
       return affected;
     };
 
+    if (action === "publish_now") {
+      const selectedFilter = ids.map(encodeURIComponent).join(",");
+      const selectedItems = await supabaseServerAdminRequest<QueueItem[]>(
+        "/rest/v1/social_publish_queue?id=in.(" + selectedFilter + ")&status=in.(queued,partial,failed)&select=id,content_type,content_id,title,video_url,target_platforms,status,scheduled_at,published_at,error_message,created_at,metadata",
+      );
+      const diagnosedItems = await attachVideoApprovalDiagnostics(selectedItems ?? []);
+      const approvedIds = diagnosedItems
+        .filter(item => !isVideoContentType(item.content_type) || item.videoApproval?.approved === true)
+        .map(item => item.id);
+      const blocked = [
+        ...diagnosedItems
+          .filter(item => isVideoContentType(item.content_type) && item.videoApproval?.approved !== true)
+          .map(item => ({ id: item.id, title: item.title, reason: item.videoApproval?.reason ?? "الفيديو يحتاج اعتماد مراجعة الجودة." })),
+        ...ids.filter(id => !diagnosedItems.some(item => item.id === id)).map(id => ({
+          id, title: null, reason: "العنصر غير موجود في الطابور أو لم يعد في حالة تسمح بالنشر الفوري.",
+        })),
+      ];
+      const affected = approvedIds.length
+        ? await retryItems("id=in.(" + approvedIds.map(encodeURIComponent).join(",") + ")&status=in.(queued,partial,failed)", true)
+        : 0;
+      const worker = affected > 0 ? await triggerSocialWorker() : null;
+      await recordAdminAuditEvent({
+        action: "social.queue.publish_now",
+        permission: "social.publish",
+        resourceType: "social_publish_queue",
+        metadata: { requestedIds: ids.length, affected, approvalBlocked: blocked.length, workerDispatched: affected > 0 },
+      });
+      return NextResponse.json({ ok: true, affected, blocked, worker });
+    }
+
     if (action === "retry_all_failed") {
       const affected = await retryItems("status=in.(failed,partial)");
       const worker = affected > 0 ? await triggerSocialWorker() : null;
@@ -542,6 +613,84 @@ export async function POST(request: NextRequest) {
         metadata: { requestedIds: ids.length, affected: affected?.length ?? 0 },
       });
       return NextResponse.json({ ok: true, affected: affected?.length ?? 0 });
+    }
+
+    if (action === "delete_published") {
+      const selectedFilter = ids.map(encodeURIComponent).join(",");
+      const selectedItems = await supabaseServerAdminRequest<QueueItem[]>(
+        "/rest/v1/social_publish_queue?id=in.(" + selectedFilter + ")&status=eq.published&select=id,content_type,content_id,title,video_url,target_platforms,status,scheduled_at,published_at,error_message,created_at,metadata",
+      );
+      let deleted = 0;
+      let failed = 0;
+      let missingRemoteId = 0;
+      const results: Array<{ id: string; title: string; platform: string; status: "deleted" | "failed" | "missing_remote_id" | "already_deleted"; error?: string }> = [];
+
+      for (const item of selectedItems ?? []) {
+        if (!isVideoContentType(item.content_type)) {
+          results.push({ id: item.id, title: item.title, platform: "all", status: "failed", error: "الحذف من هذا القسم متاح لفيديوهات الطابور المنشورة فقط." });
+          failed += 1;
+          continue;
+        }
+        const existingDeletions = asRecord(item.metadata?.platformDeletions) ?? {};
+        const deletionTargets = requestedPlatforms.length > 0
+          ? item.target_platforms.filter(platform => requestedPlatforms.includes(platform))
+          : item.target_platforms;
+        for (const platform of deletionTargets) {
+          if (platform !== "youtube" && platform !== "facebook" && platform !== "facebook_reels") continue;
+          const previousDeletion = asRecord(existingDeletions[platform]);
+          if (previousDeletion?.status === "deleted") {
+            results.push({ id: item.id, title: item.title, platform, status: "already_deleted" });
+            continue;
+          }
+          const delivery = deliveryForPlatform(item.metadata, platform);
+          const remoteId = typeof delivery?.remoteId === "string" ? delivery.remoteId.trim() : "";
+          if (delivery?.ok !== true || !remoteId) {
+            results.push({ id: item.id, title: item.title, platform, status: "missing_remote_id", error: "معرّف المنشور الناجح غير محفوظ؛ لم يتم تخمينه أو إرسال طلب حذف." });
+            missingRemoteId += 1;
+            existingDeletions[platform] = { status: "missing_remote_id", attemptedAt: new Date().toISOString() };
+            await supabaseServerAdminRequest(
+              "/rest/v1/social_publish_queue?id=eq." + encodeURIComponent(item.id),
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+                body: JSON.stringify({ metadata: { ...(item.metadata ?? {}), platformDeletions: existingDeletions }, updated_at: new Date().toISOString() }),
+              },
+            );
+            continue;
+          }
+
+          try {
+            const deletion = await deleteSocialPlatformPost(platform as SocialDeletionPlatform, remoteId);
+            existingDeletions[platform] = { status: "deleted", remoteId: deletion.remoteId, deletedAt: deletion.deletedAt };
+            results.push({ id: item.id, title: item.title, platform, status: "deleted" });
+            deleted += 1;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "تعذر حذف المنشور من المنصة.";
+            existingDeletions[platform] = { status: "failed", remoteId, attemptedAt: new Date().toISOString(), error: message };
+            results.push({ id: item.id, title: item.title, platform, status: "failed", error: message });
+            failed += 1;
+          }
+
+          // Persist after each platform so a partial delete never causes a second
+          // provider delete for a channel that already confirmed success.
+          await supabaseServerAdminRequest(
+            "/rest/v1/social_publish_queue?id=eq." + encodeURIComponent(item.id),
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+              body: JSON.stringify({ metadata: { ...(item.metadata ?? {}), platformDeletions: existingDeletions }, updated_at: new Date().toISOString() }),
+            },
+          );
+        }
+      }
+
+      await recordAdminAuditEvent({
+        action: "social.queue.delete_published_remote",
+        permission: "social.publish",
+        resourceType: "social_publish_queue",
+        metadata: { requestedIds: ids.length, deleted, failed, missingRemoteId },
+      });
+      return NextResponse.json({ ok: true, deleted, failed, missingRemoteId, results });
     }
 
     const affected = await supabaseServerAdminRequest<QueueItem[]>(

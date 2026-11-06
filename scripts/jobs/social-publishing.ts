@@ -28,16 +28,16 @@ export async function syncSocialInsights() {
     if (!facebookInsights.configured || facebookInsights.updated > 0 || facebookInsights.failed > 0) {
       console.log("[social-worker] Facebook Reels insights sync:", JSON.stringify(facebookInsights));
     }
-  
+
     const insights = await syncYoutubePublishedPostInsights(100).catch((error: unknown) => {
       console.error("[social-worker] YouTube public insights sync unavailable:", error instanceof Error ? error.message : String(error));
       return { configured: false, candidates: 0, fetched: 0, updated: 0 };
     });
-  
+
     if (insights.updated > 0) {
       console.log("[social-worker] YouTube public post statistics synced:", JSON.stringify(insights));
     }
-  
+
   return { facebookInsights, youtubeInsights: insights };
 }
 

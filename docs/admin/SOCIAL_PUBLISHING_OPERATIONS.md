@@ -34,3 +34,13 @@ Successful provider post IDs are retained and never republished. An unavailable 
 ## Safe recovery
 
 Use the channel-specific connection test and reconnect that provider. The retry action preserves the original target set and skips targets that already have a successful remote ID. Do not bulk-approve videos or retry a large backlog until the provider connection and queue preview have been reviewed.
+## Queue readiness, immediate publishing, and remote deletion
+
+- Admin → Social Publishing separates the active queue from the published-video ledger. The queue shows the exact persisted QA approval state for every generated video, including missing checklist items and a direct route to Admin → Video Requests for human review.
+- A video remains blocked until the authorized reviewer completes source, audio, visuals, captions, and rights checks. Immediate publishing only advances already eligible queue rows; it never approves or bypasses the review gate.
+- The “Publish selected now” action moves selected eligible items to the front of the next GitHub Actions run. Facebook Reels provider cooldowns and platform authentication limits still apply; the action does not override provider restrictions.
+- The Published Videos view uses only successful per-platform remote IDs saved in `metadata.platformResults`. “Delete from platform” calls the provider API and records each outcome in `metadata.platformDeletions`. It does not remove the ZIKR queue/audit row or the original media object.
+- Deletion is independent per platform: a successful YouTube removal stays recorded even if Facebook deletion fails. Rows without a verified remote ID are marked unavailable for safe deletion rather than guessing from titles or timestamps.
+- YouTube permanent deletion requires an OAuth grant that includes `youtube.force-ssl`, `youtube`, or `youtubepartner`. If the current upload token lacks that scope, the operator must reauthorize and update the YouTube refresh token in both Vercel and GitHub Actions. An API key cannot delete a video.
+- Facebook removal requires the connected Page credential to authorize deletion (normally `pages_manage_posts`). Provider permission/ownership responses are shown per post and are not silently marked as deleted.
+- Remote deletion is irreversible on the provider. The UI asks for confirmation on every individual or bulk deletion; queue records and delivery IDs remain for audit.
