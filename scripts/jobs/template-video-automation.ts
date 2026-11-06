@@ -18,6 +18,7 @@ import { AI_VISUAL_POLICY_VERSION, aiVisualPolicyPromptLine } from "../../src/fe
 import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
 import { getDefaultVideoVoiceProfile, getVideoVoiceProfile } from "../../src/features/videos/services/voice-profiles";
 import { evaluateArabicNarrationText } from "../../src/features/videos/services/narration-quality";
+import { resolveDeterministicVideoHook, resolveDeterministicVideoMotion, resolveDeterministicVideoScene } from "../../src/features/videos/services/video-creative-variation";
 import { resolveRenderDuration } from "../../src/features/videos/services/render-duration";
 import { getFacebookPageCredentials } from "../../src/features/social/services/facebook-credentials";
 
@@ -27,7 +28,7 @@ const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_V
 const VIDEO_DEFAULT_TTS_PROFILE = process.env.ARABIC_TTS_PROFILE?.trim() || "hadith_male_msa";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
-const VIDEO_TEMPLATE_VERSION = "2026-10-26-growth-quality-v5";
+const VIDEO_TEMPLATE_VERSION = "2026-11-06-creative-variety-v6";
 const VIDEO_OUTPUT_CRF = Math.min(23, Math.max(16, Number(process.env.VIDEO_OUTPUT_CRF ?? 18) || 18));
 const VIDEO_AUDIO_BITRATE = process.env.VIDEO_AUDIO_BITRATE?.trim() || "192k";
 const engineConfig = () => getVideoEngineConfig();
@@ -272,31 +273,16 @@ function categoryLabel(category: string, audience?: unknown) {
   return labels[category] || "ذِكر";
 }
 
-function audienceHook(category: string, audience?: unknown) {
-  if (audience === "kids") return "قصة قصيرة • تعلّم وابتسم";
-  const hooks: Record<string, string> = {
-    quran: "آية قصيرة • تدبّرها اليوم",
-    hadith: "رسالة نحتاجها اليوم",
-    dua: "ردّد هذا الدعاء اليوم",
-    adhkar: "دقيقة من الذكر تغيّر يومك",
-    story: "قصة قصيرة • معنى عميق",
-  };
-  return hooks[category] || "توقّف لحظة وخذ نصيبك من الذكر";
+function audienceHook(category: string, audience?: unknown, seed = "") {
+  return resolveDeterministicVideoHook({ id: seed, category, audience });
 }
 
 function deterministicScene(request: GeneratedRequest): AiVideoPlan["scene"] {
-  if (request.content?.audience === "kids") return "emerald";
-  const categoryScenes: Record<string, AiVideoPlan["scene"]> = {
-    quran: "night",
-    hadith: "paper",
-    dua: "rose",
-    adhkar: "emerald",
-    story: "dawn",
-  };
-  const base = categoryScenes[request.category] || "calm";
-  const seed = [...request.id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const alternatives: AiVideoPlan["scene"][] = ["calm", "dawn", "night", "gold", "emerald", "paper", "rose"];
-  return seed % 5 === 0 ? alternatives[seed % alternatives.length] : base;
+  return resolveDeterministicVideoScene({
+    id: request.id,
+    category: request.category,
+    audience: request.content?.audience,
+  });
 }
 
 function paginateArabic(value: string, lineChars: number, linesPerPage: number) {
@@ -317,6 +303,7 @@ function makeAss(
   category: string,
   isVertical: boolean,
   audience?: unknown,
+  openingSeed = "",
 ) {
   const playResX = isVertical ? 1080 : 1920;
   const playResY = isVertical ? 1920 : 1080;
@@ -346,7 +333,7 @@ function makeAss(
   title = normalizeArabicText(title);
   const events = [
     "Dialogue: 5,0:00:00.00,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Badge,,0,0,0,," + badge,
-    "Dialogue: 6,0:00:00.20,0:00:02.40,Hook,,0,0,0,,{\\fad(180,260)}" + assEscape(audienceHook(category, audience)),
+    "Dialogue: 6,0:00:00.20,0:00:02.40,Hook,,0,0,0,,{\\fad(180,260)}" + assEscape(audienceHook(category, audience, openingSeed)),
     "Dialogue: 0,0:00:00.12,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Title,,0,0,0,,{\\fad(220,420)}" + assEscape(title),
     "Dialogue: 3,0:00:00.00,0:00:" + duration.toFixed(2).padStart(5, "0") + ",Brand,,0,0,0,,ZIKR • ذِكرٌ",
     ...textEvents,
@@ -1091,8 +1078,19 @@ async function renderVideo(request: GeneratedRequest) {
     const persistedAi = request.content?.ai && typeof request.content.ai === "object"
       ? (request.content.ai as Partial<AiVideoPlan> & { scene?: AiVideoPlan["scene"]; motion?: AiVideoPlan["motion"] })
       : null;
-    const scene = persistedAi?.scene === "dawn" || persistedAi?.scene === "night" || persistedAi?.scene === "gold" || persistedAi?.scene === "calm" || persistedAi?.scene === "emerald" || persistedAi?.scene === "paper" || persistedAi?.scene === "rose" ? persistedAi.scene : deterministicScene(request);
-    const motion = persistedAi?.motion === "fade" ? "fade" : "slow";
+    const hasGeminiCreativePlan = persistedAi?.provider === "google-gemini";
+    const isKnownScene = (value: unknown): value is AiVideoPlan["scene"] =>
+      value === "calm" || value === "dawn" || value === "night" || value === "gold" ||
+      value === "emerald" || value === "paper" || value === "rose";
+    const scene = hasGeminiCreativePlan && isKnownScene(persistedAi?.scene)
+      ? persistedAi.scene
+      : deterministicScene(request);
+    const motion = hasGeminiCreativePlan && (persistedAi?.motion === "fade" || persistedAi?.motion === "slow")
+      ? persistedAi.motion
+      : resolveDeterministicVideoMotion(request.id);
+    if (persistedAi) {
+      request.content = { ...request.content, ai: { ...persistedAi, scene, motion } };
+    }
     const isVertical = height >= width;
 
     const narrationProfile = narrationProfileForRequest(request);
@@ -1222,7 +1220,7 @@ async function renderVideo(request: GeneratedRequest) {
     const audioProbe = await probeMedia(audioPath);
     const audioDuration = Number(audioProbe.format?.duration ?? 0);
     const duration = resolveRenderDuration(audioDuration, TARGET_VIDEO_SECONDS);
-    await writeFile(assPath, makeAss(text, request.title, typeof request.content?.sourceLabel === "string" && request.content.sourceLabel.trim() ? request.content.sourceLabel : sourceUrl, aiPlan.reflection || null, duration, request.category, isVertical, request.content?.audience), "utf8");
+    await writeFile(assPath, makeAss(text, request.title, typeof request.content?.sourceLabel === "string" && request.content.sourceLabel.trim() ? request.content.sourceLabel : sourceUrl, aiPlan.reflection || null, duration, request.category, isVertical, request.content?.audience, request.id), "utf8");
 
     const fadeOutStart = Math.max(0, duration - 0.8);
     const motionFilters = motion === "fade"
