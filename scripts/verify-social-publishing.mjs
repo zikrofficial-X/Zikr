@@ -16,6 +16,8 @@ const socialPage = read("src/app/admin/social/page.tsx");
 const writtenPage = read("src/app/admin/social/written-studio/page.tsx");
 const navigation = read("src/features/admin/config/navigation.ts");
 const runner = read("scripts/run-background-jobs.ts");
+const videoGenerator = read("scripts/jobs/template-video-automation.ts");
+const memoryPage = read("src/app/admin/memory/page.tsx");
 const socialWorkflow = read(".github/workflows/publish-social.yml");
 const writtenWorkflow = read(".github/workflows/generate-written-content.yml");
 const videoWorkflow = read(".github/workflows/generate-ai-video.yml");
@@ -45,8 +47,12 @@ if (!videoWorkflow.includes("BACKGROUND_JOB_TARGET: \"videos\"")) failures.push(
 for (const token of ["YOUTUBE_CLIENT_ID", "YOUTUBE_REFRESH_TOKEN", "FACEBOOK_GRAPH_API_VERSION", "SOCIAL_PUBLISH_ENABLED"]) {
   if (videoWorkflow.includes(token)) failures.push("internal video workflow must not depend on external social credential/config: " + token);
 }
-if (!socialPage.includes('redirect("/admin/media")')) failures.push("retired social center must redirect to internal project memory");
-if (!writtenPage.includes('redirect("/admin/media")')) failures.push("retired written-social studio must redirect to internal project memory");
+if (!socialPage.includes('redirect("/admin/memory")')) failures.push("retired social center must redirect to internal project memory");
+if (!writtenPage.includes('redirect("/admin/memory")')) failures.push("retired written-social studio must redirect to internal project memory");
+if (!memoryPage.includes("requireAdminPermission(\"media.manage\")")) failures.push("internal memory route must have a server-side permission gate");
+if (videoGenerator.includes("social_publish_queue") || videoGenerator.includes("getFacebookPageCredentials") || videoGenerator.includes("queueSocialItems")) {
+  failures.push("video generator must not enqueue or query any external social provider");
+}
 if (navigation.includes('key: "publishing"') || navigation.includes('href: "/admin/social"')) {
   failures.push("external social publishing must not be part of admin navigation");
 }
