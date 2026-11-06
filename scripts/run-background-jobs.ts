@@ -118,7 +118,6 @@ function applyVideoAutomationSettings(settings: VideoAutomationSettings) {
 }
 
 
-const SOCIAL_PUBLISH_ENABLED = process.env.SOCIAL_PUBLISH_ENABLED !== "false";
 const VIDEO_DRY_RUN = (process.env.VIDEO_AUTOMATION_DRY_RUN ?? "true").toLowerCase() === "true";
 
 async function isVideoGenerationPaused(): Promise<boolean> {
