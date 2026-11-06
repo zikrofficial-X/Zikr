@@ -302,7 +302,7 @@ export default function AdminSocialPage() {
     } else if (youtubeStatus) {
       const youtubeMessages: Record<string, string> = {
         configuration_missing: "إعداد Google OAuth غير مكتمل. تحقق من YOUTUBE_CLIENT_ID وYOUTUBE_CLIENT_SECRET.",
-        redirect_uri_mismatch: "عنوان العودة غير مسجل في Google Cloud. أضف https://zikrmediaofficial.vercel.app/api/admin/social/youtube/callback إلى Authorized redirect URIs.",
+        redirect_uri_mismatch: "Google رفض عنوان الرجوع. في OAuth Client المستخدم في YOUTUBE_CLIENT_ID أضف هذين العنوانين حرفيًا إلى Authorized redirect URIs: https://zikrmediaofficial.vercel.app/api/admin/social/youtube/callback وhttps://zqtssvlvmkzeeyqghqfk.supabase.co/auth/v1/callback. لا تضف /auth/callback بدلًا منهما.",
         permission_missing: "لم تُمنح صلاحية رفع الفيديو. أعد التفويض ووافق على قراءة القناة ورفع الفيديو وتقارير Analytics فقط؛ لا نطلب صلاحية الحذف.",
         authorization_denied: "تم إلغاء تفويض YouTube. لم يتم تغيير اتصال النشر الحالي.",
         state_mismatch: "انتهت جلسة ربط YouTube لأسباب أمنية. ابدأ الربط من جديد.",

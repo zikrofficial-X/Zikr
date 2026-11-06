@@ -160,7 +160,7 @@ function classifyGraphFailure(code: string | null, message: string): {
   if (code === "10" || code === "200" || normalized.includes("permission")) {
     return {
       status: "permission_error",
-      safeMessage: "اتصال Facebook موجود لكن الصلاحيات المطلوبة للنشر والإحصاءات غير مكتملة. أعد الربط ووافق على pages_show_list وpages_read_engagement وpages_manage_posts وpages_manage_engagement وread_insights.",
+      safeMessage: "اتصال Facebook موجود لكن الصلاحيات المطلوبة للنشر والإحصاءات غير مكتملة. أعد الربط ووافق على pages_show_list وpages_read_engagement وpages_manage_posts وread_insights.",
     };
   }
   return {
@@ -477,7 +477,7 @@ export async function adoptServerConfiguredFacebookPageToken(): Promise<{
   const permissions = Array.isArray(data.scopes)
     ? data.scopes.filter((value): value is string => typeof value === "string")
     : [];
-  const required = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "pages_manage_engagement", "read_insights"];
+  const required = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "read_insights"];
   const missing = required.filter((permission) => !permissions.includes(permission));
   if (missing.length) {
     throw new Error("توكن الخادم صالح، لكن صلاحيات النشر ناقصة: " + missing.join("، ") + ". أعد تفويض التطبيق مع هذه الصلاحيات.");

@@ -109,7 +109,7 @@ jobs:
               const expires = row?.expires_at ? Date.parse(row.expires_at) : null;
               const fresh = expires === null || (Number.isFinite(expires) && expires > Date.now());
               const scopes = Array.isArray(row?.granted_permissions) ? row.granted_permissions : [];
-              const required = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "pages_manage_engagement", "read_insights"];
+              const required = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "read_insights"];
               const scopesOkay = required.every(scope => scopes.includes(scope));
               process.stdout.write(String(Boolean(row?.is_enabled === true && row?.connection_status === "connected" && row?.page_id && fresh && scopesOkay)));
             ' "$facebook_json")"
