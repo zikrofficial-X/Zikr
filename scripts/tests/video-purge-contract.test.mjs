@@ -23,7 +23,7 @@ for (const token of [
   "video_generation_requests",
   "video_automation_runs",
   "publicVideoCatalogPreserved: true",
-  "socialQueueRowsPreserved: true",
+  "socialQueueRowsPreserved,",
   'action: "video.library.purge"',
   "externalSocialPostsDeleted: false",
 ]) {
