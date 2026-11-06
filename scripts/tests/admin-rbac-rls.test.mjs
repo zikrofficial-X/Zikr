@@ -189,12 +189,12 @@ assert.match(
 );
 assert.match(
   socialRoute,
-  /requireAdminApi\("social\\.manage"\)[\\s\\S]*?requireAdminApi\("social\\.publish"\)/,
+  /requireAdminApi\("social\.manage"\)[\s\S]*?requireAdminApi\("social\.publish"\)/,
   "social execution must require separate management and publishing permissions",
 );
 assert.match(
   socialRoute,
-  /dispatchGitHubWorkflow\("publish-social\\.yml"/,
+  /dispatchGitHubWorkflow\("publish-social\.yml"/,
   "social API must dispatch the controlled GitHub publisher",
 );
 assert.doesNotMatch(
@@ -247,7 +247,7 @@ assert.equal(videoManagerPermissions?.[1].includes("'social.manage'"), false);
 
 assert.match(
   rlsEventTriggerMigration,
-  /to_regprocedure\\('public\\.rls_auto_enable\\(\\)'\\)[\\s\\S]*?REVOKE EXECUTE ON FUNCTION public\\.rls_auto_enable\\(\\) FROM PUBLIC, anon, authenticated/i,
+  /to_regprocedure\\('public\\.rls_auto_enable\\(\\)'\\)[\s\S]*?REVOKE EXECUTE ON FUNCTION public\\.rls_auto_enable\\(\\) FROM PUBLIC, anon, authenticated/i,
   "RLS event-trigger function must not be callable by browser roles",
 );
 
