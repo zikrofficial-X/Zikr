@@ -241,6 +241,34 @@ function displaySource(label: string) {
   return trimmed;
 }
 
+function assEscape(value: string) {
+  // Keep the ASS line breaks created by the caption paginator, but strip user-supplied overrides.
+  return value.split("\\N").map((part) => part.replace(/[{}\\]/g, "")).join("\\N");
+}
+function categoryLabel(category: string, audience?: unknown) {
+  if (audience === "kids") return "قصص أطفال";
+  const labels: Record<string, string> = {
+    quran: "القرآن الكريم",
+    hadith: "الحديث الشريف",
+    dua: "دعاء",
+    adhkar: "أذكار",
+    story: "قصة",
+    stories: "قصص",
+    other: "رسالة إيمانية",
+  };
+  return labels[category] || "ذِكر";
+}
+function audienceHook(category: string, audience?: unknown, seed = "") {
+  return resolveDeterministicVideoHook({ id: seed, category, audience });
+}
+function deterministicScene(request: GeneratedRequest): AiVideoPlan["scene"] {
+  return resolveDeterministicVideoScene({
+    id: request.id,
+    category: request.category,
+    audience: request.content?.audience,
+  });
+}
+
 function paginateArabic(value: string, lineChars: number, linesPerPage: number) {
   return paginateCaptionText(normalizeArabicText(value), lineChars, linesPerPage);
 }
