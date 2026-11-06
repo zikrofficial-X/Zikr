@@ -37,6 +37,7 @@ if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_ne
 
 
 
+const platformAvailability = read("src/features/social/services/platform-availability.ts");
 const publisher = read("src/features/social/services/social-publishing.ts");
 const videoApproval = read("src/features/videos/services/video-publish-approval.ts");
 const socialWorkflowConfig = read(".github/workflows/publish-social.yml");
@@ -322,7 +323,6 @@ if (!publisher.includes("kidsAudience = true") || !publisher.includes("!kidsAudi
 if (!ytAutomation.includes("appendSmartLinkDisclosure") || !ytAutomation.includes("content.audience !== 'kids'")) failures.push("video metadata generation must include the disclosed SmartLink only for non-kids content");
 if (!ytAutomation.includes("MONETAG_SMARTLINK_YOUTUBE_TAGS")) failures.push("generated YouTube metadata must include SmartLink discovery tags for eligible videos");
 
-const platformAvailability = read("src/features/social/services/platform-availability.ts");
 const youtubePublishingHealth = read("src/features/social/services/youtube-publishing-health.ts");
 if (!platformAvailability.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED") || !platformAvailability.includes("SOCIAL_PUBLISH_YOUTUBE_ENABLED")) failures.push("Facebook and YouTube publishing must have separate runtime readiness switches");
 if (!platformAvailability.includes("canAttemptSocialPlatform") || !platformAvailability.includes("platformAttempts")) failures.push("retry eligibility must be isolated by platform");
