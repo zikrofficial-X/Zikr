@@ -75,17 +75,15 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
       { href: "/admin/video/qa", label: "ضبط الجودة", permission: "video.manage", icon: "shield-check" },
     ],
   },
-  {
-    key: "publishing",
-    label: "النشر والتوزيع",
-    icon: "send",
+key: "memory",
+    label: "الذاكرة والمكتبة",
+    icon: "brain",
     items: [
-      { href: "/admin/social", label: "مركز النشر الاجتماعي", permission: "social.manage", icon: "share-2" },
-      { href: "/admin/social/written-studio", label: "مصنع المنشورات المكتوبة", permission: "social.manage", icon: "file-pen-line" },
+      { href: "/admin/media", label: "ذاكرة الوسائط", permission: "media.manage", icon: "database" },
     ],
   },
   {
-    key: "media-audio",
+  key: "media-audio",
     label: "الوسائط والصوت",
     icon: "folder-open",
     items: [
