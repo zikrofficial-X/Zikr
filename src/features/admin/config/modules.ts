@@ -75,7 +75,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     key: "memory",
     label: "الذاكرة والمكتبة",
     description: "ملفات الوسائط وذاكرة المحتوى الداخلية ومخرجات التوليد.",
-    basePath: "/admin/media",
+    basePath: "/admin/memory",
     routes: routesFor("memory"),
     permission: "media.manage",
     permissions: ["media.manage"],
