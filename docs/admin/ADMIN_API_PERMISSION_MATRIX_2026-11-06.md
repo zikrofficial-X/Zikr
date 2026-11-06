@@ -1,0 +1,59 @@
+# مصفوفة صلاحيات واجهات Admin API — 6 نوفمبر 2026
+
+هذه المصفوفة هي المرجع التنفيذي لصلاحيات معالجات HTTP في `src/app/api/admin`. يجب أن يتطابق كل مسار وطريقة HTTP مع الصلاحيات المدرجة حرفيًا. لا تكفي صلاحية عامة أو صلاحية أعلى غير لازمة بدلًا منها.
+
+| الطريقة | المسار | الصلاحية الخادمية |
+|---|---|---|
+| GET | `/api/admin/analytics` | `analytics.read` |
+| POST | `/api/admin/cloudinary/image` | `media.manage` |
+| GET | `/api/admin/cloudinary/image` | رفض صريح 405 دون صلاحية أو أثر جانبي |
+| GET | `/api/admin/content` | `content.manage` |
+| GET | `/api/admin/media` | `media.manage` |
+| POST | `/api/admin/media` | `media.manage` |
+| PATCH | `/api/admin/media` | `media.manage` |
+| GET | `/api/admin/overview` | `dashboard.view` |
+| POST | `/api/admin/page-view` | `analytics.read` |
+| GET | `/api/admin/sections` | `sections.manage` |
+| POST | `/api/admin/sections` | `sections.manage` |
+| GET | `/api/admin/site-audio` | `audio.manage` |
+| POST | `/api/admin/site-audio` | `audio.manage` |
+| PATCH | `/api/admin/site-audio` | `audio.manage` |
+| DELETE | `/api/admin/site-audio` | `audio.manage` |
+| POST | `/api/admin/site-audio/upload` | `audio.manage` |
+| GET | `/api/admin/social/facebook/callback` | `social.manage` |
+| GET | `/api/admin/social/facebook/connect` | `social.manage` |
+| GET | `/api/admin/social` | `social.manage` |
+| POST | `/api/admin/social` | `social.manage` + `social.publish` |
+| GET | `/api/admin/social/written` | `social.manage` |
+| POST | `/api/admin/social/written` | `social.manage` + `social.publish` |
+| POST | `/api/admin/video-generation/narration-upload` | `video.manage` |
+| GET | `/api/admin/video-generation` | `video.manage` |
+| DELETE | `/api/admin/video-generation` | `video.delete` |
+| PATCH | `/api/admin/video-generation` | `video.manage` + `social.publish` |
+| GET | `/api/admin/video-generation/sources` | `video.manage` |
+| GET | `/api/admin/video/templates` | `video.manage` |
+| POST | `/api/admin/video/templates` | `video.manage` |
+| POST | `/api/admin/videos/[id]/retry` | `video.manage` |
+| GET | `/api/admin/videos/[id]` | `video.manage` |
+| PATCH | `/api/admin/videos/[id]` | `video.manage` |
+| DELETE | `/api/admin/videos/[id]` | `video.delete` |
+| POST | `/api/admin/videos/create` | `video.manage` |
+| GET | `/api/admin/videos` | `video.manage` |
+| POST | `/api/admin/videos/upload` | `video.manage` |
+| GET | `/api/admin/videos/upload` | رفض صريح 405 دون صلاحية أو أثر جانبي |
+| POST | `/api/admin/youtube-facebook/register-media` | `media.manage` |
+| POST | `/api/admin/youtube-facebook/upload-url` | `media.manage` |
+
+## ثوابت إضافية
+
+- إنشاء محتوى يدخل طابور النشر الفعلي يحتاج `social.manage` و`social.publish` معًا.
+- إعادة محاولة نشر فيديو تحتاج `social.publish` مستقلًا عن إدارة الفيديو.
+- حذف طلب فيديو أو سجل فيديو يحتاج `video.delete`، وليس `video.manage` وحدها.
+- رفع الوسائط أو طلب رابط رفع يحتاج صلاحية مجال الوسائط أو الفيديو بحسب نوع الأصل.
+- جميع عمليات التعديل والإرسال الحساسة تسجل Audit وفق عقود الخدمة؛ استثناءات القراءة و405 لا تنشئ أحداثًا وهمية.
+- فاحص `scripts/verify-admin-api-guards.mjs` يتحقق من وجود الحارس قبل العمل المحمي، ويقارن قائمة الصلاحيات الفعلية بالمصفوفة أعلاه لكل معالج. أي مسار جديد يحتاج إضافة واعتماد سجل صريح قبل اجتياز Quality Gate.
+- صلاحيات العناصر الظاهرة في التنقل لا تُعد بديلًا عن الحارس الخادمي، ولا تُمنح أي صلاحية بإخفاء/إظهار رابط فقط.
+
+## نطاق الفحص
+
+آخر جرد ناجح على `main` اكتشف 24 ملف API و39 معالج HTTP، منها معالجان GET يرفضان الطريقة صراحةً بـ405. كما اكتشف 14 وحدة Server Actions تضم 29 إجراءً محميًا. لا تتضمن هذه المصفوفة Server Actions؛ تظل خاضعة لفحص AST المنفصل في نفس الأداة.
