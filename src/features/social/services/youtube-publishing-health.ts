@@ -12,12 +12,15 @@ export type YouTubePublishingConnectionHealth = {
   status: YouTubePublishingHealthStatus;
   channelId: string | null;
   channelName: string | null;
+  subscribers: number | null;
+  totalViews: number | null;
+  videoCount: number | null;
   checkedAt: string;
   message: string;
 };
 
 type TokenResponse = { access_token?: string; error?: string };
-type ChannelResponse = { items?: Array<{ id?: string; snippet?: { title?: string } }>; error?: { errors?: Array<{ reason?: string }> } };
+type ChannelResponse = { items?: Array<{ id?: string; snippet?: { title?: string }; statistics?: { subscriberCount?: string; videoCount?: string; viewCount?: string } }>; error?: { errors?: Array<{ reason?: string }> } };
 
 export function classifyYouTubeHealthHttpStatus(status: number, endpoint: "token" | "channel"): YouTubePublishingHealthStatus {
   if (status === 400 || status === 401) return "reauthorization_required";
@@ -26,8 +29,9 @@ export function classifyYouTubeHealthHttpStatus(status: number, endpoint: "token
   return "unavailable";
 }
 
-function result(status: YouTubePublishingHealthStatus, message: string, channelId: string | null = null, channelName: string | null = null): YouTubePublishingConnectionHealth {
-  return { status, channelId, channelName, checkedAt: new Date().toISOString(), message };
+function result(status: YouTubePublishingHealthStatus, message: string, channelId: string | null = null, channelName: string | null = null, statistics?: { subscribers?: string; totalViews?: string; videoCount?: string }): YouTubePublishingConnectionHealth {
+  const count = (value: string | undefined) => value && /^\\d+$/.test(value) ? Number(value) : null;
+  return { status, channelId, channelName, subscribers: count(statistics?.subscribers), totalViews: count(statistics?.totalViews), videoCount: count(statistics?.videoCount), checkedAt: new Date().toISOString(), message };
 }
 
 /**
@@ -70,7 +74,7 @@ export async function getYouTubePublishingConnectionHealth(
     }
 
     const url = new URL("https://www.googleapis.com/youtube/v3/channels");
-    url.searchParams.set("part", "id,snippet");
+    url.searchParams.set("part", "id,snippet,statistics");
     url.searchParams.set("mine", "true");
     const channelResponse = await fetcher(url, {
       headers: { Authorization: "Bearer " + token.access_token },
@@ -88,7 +92,7 @@ export async function getYouTubePublishingConnectionHealth(
     const channels = await channelResponse.json() as ChannelResponse;
     const channel = channels.items?.[0];
     if (!channel?.id) return result("channel_not_found", "OAuth صالح، لكن الحساب لم يُرجع قناة YouTube مرتبطة.");
-    return result("connected", "تم تحديث OAuth والتحقق من قناة YouTube بنجاح.", channel.id, channel.snippet?.title ?? null);
+    return result("connected", "تم تحديث OAuth والتحقق من قناة YouTube بنجاح.", channel.id, channel.snippet?.title ?? null, { subscribers: channel.statistics?.subscriberCount, totalViews: channel.statistics?.viewCount, videoCount: channel.statistics?.videoCount });
   } catch {
     return result("unavailable", "تعذر اختبار اتصال YouTube بسبب مهلة أو خطأ اتصال مؤقت.");
   }
