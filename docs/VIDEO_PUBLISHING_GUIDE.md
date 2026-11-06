@@ -6,13 +6,13 @@
 |---|---|---|
 | Video generation | GitHub Actions | `.github/workflows/generate-ai-video.yml` |
 | Internal website video publication | GitHub Actions + Supabase | `content_publish_queue` |
-| External social publishing | Approval-gated | `.github/workflows/publish-social.yml` after video generation or manual dispatch |
+| External social publishing | Automated-QA-gated | `.github/workflows/publish-social.yml` after video generation or manual dispatch |
 | Application build/documentation | CircleCI | `application-build-docs` |
 | Android build/signing | CircleCI | `android-rebuild` |
 | Prayer notifications | Supabase | `prayer-notification-worker` + pg_cron |
 | Source-verified content ingestion | Supabase | `source-verified-content-agent` + pg_cron |
 
-There is no CircleCI production video worker and no Vercel Cron for video publication. External social publishing is separate from rendering and requires provider preflight, administrator enablement, and human QA approval.
+There is no CircleCI production video worker and no Vercel Cron for video publication. External social publishing is separate from rendering and requires provider preflight, administrator enablement, and five passing automated QA checks; no manual review is required.
 
 ## Video pipeline
 
@@ -47,11 +47,11 @@ Completed MP4s are uploaded to Cloudinary and registered in the ZIKR `videos` ta
 
 This queue is not a social queue. No video-generation step may enqueue `social_publish_queue`, call a provider upload endpoint, or require a social publishing permission. Template previews are explicitly excluded from public publication.
 
-## Approval-gated external social publishing
+## Automated-QA external social publishing
 
 Social delivery is a separate worker, never part of the renderer. After a successful video-generation run, GitHub Actions may invoke `.github/workflows/publish-social.yml`; an administrator can also dispatch it manually. There is no periodic polling. The workflow validates the connected Facebook Page and a YouTube OAuth refresh credential with `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly` before enabling each provider. No delete scope is requested. If provider readiness fails, that provider remains disabled and no rows are claimed for it.
 
-Only newly created rows at or after `SOCIAL_PUBLISH_AFTER` are eligible. The historic queue is excluded from automatic replay. Each video must pass the human QA review recorded on its generation request. The worker rechecks approval immediately before every provider call; a failed lookup holds the video. Provider results and remote IDs are stored per platform to prevent duplicate publishing. Social insights synchronization is opt-in and disabled during publishing runs to reduce Supabase reads.
+Only newly created rows at or after `SOCIAL_PUBLISH_AFTER` are eligible. The historic queue is excluded from automatic replay. Each video must pass automated source, audio, visuals, captions, and rights checks recorded on its generation request and bound to the exact source/content/template/MP4 fingerprint. The worker rechecks this immutable automated QA record immediately before every provider call; missing, stale, changed, or failed checks block publication. No human review is required. Provider results and remote IDs are stored per platform to prevent duplicate publishing. Social insights synchronization is opt-in and disabled during publishing runs to reduce Supabase reads.
 
 The internal website video catalog and `content_publish_queue` remain independent from external social delivery. A video may appear on the ZIKR website without being posted publicly to a social platform.
 
@@ -162,7 +162,7 @@ After deploying, sign in with a ZIKR administrator, open `/admin/social`, and co
 
 Production video generation is configured for a daily target of 20, in four UTC runs (03:17, 09:17, 15:17, 21:17), with a hard daily ceiling of 24. Provider quotas, storage availability, and source validation can reduce the actual number completed. Social publishing is event-driven after a successful video worker and checks each connected platform independently.
 
-External video publishing currently **requires human QA approval** against the five recorded checks (source, audio, visuals, captions, rights). The worker revalidates that approval and the exact video snapshot before each external upload. This is deliberate: do not disable the gate or mark reviews approved without evidence. Therefore, OAuth connection and daily generation can be automatic after initial setup, but unattended external publishing is not fully enabled until a verified automated-review policy replaces the human approval requirement.
+External video publishing now uses a verified automated QA policy for the five checks (source, audio, visuals, captions, rights). The worker creates a system QA record only when every check passes and binds it to the exact source, content, template version, and MP4 URL; it revalidates that fingerprint immediately before each upload. Failed or uncertain checks are not auto-approved and are retained in the generation audit without public distribution. Manual review is not required for passing videos.
 
 The live Supabase project has the private `video_likes` table and the RLS-protected `video_like_counts` summary table. Only authenticated users can add/remove their own likes; the public site reads aggregate counts, not other users' identities.
 
