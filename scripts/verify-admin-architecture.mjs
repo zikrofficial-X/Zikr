@@ -51,12 +51,10 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/video/templates", "استوديو القوالب", "video.manage"],
     ["/admin/video/qa", "ضبط الجودة", "video.manage"],
   ],
-  "النشر والتوزيع": [
-    ["/admin/social", "مركز النشر الاجتماعي", "social.manage"],
-    ["/admin/social/written-studio", "مصنع المنشورات المكتوبة", "social.manage"],
+  "الذاكرة والمكتبة": [
+    ["/admin/memory", "ذاكرة المشروع", "media.manage"],
   ],
   "الوسائط والصوت": [
-    ["/admin/memory", "ذاكرة المشروع", "media.manage"],
     ["/admin/audio", "مركز الصوت", "audio.manage"],
     ["/admin/audio/quran", "تلاوات القرآن", "audio.manage"],
     ["/admin/audio/adhan", "الأذان", "audio.manage"],
@@ -151,7 +149,7 @@ const legacyRedirects = {
   "src/app/admin/ai-video/curated/page.tsx": "/admin/video/studio/curated",
   "src/app/admin/alerts/page.tsx": "/admin/notifications",
   "src/app/admin/audio/site-audio/page.tsx": "/admin/site-audio",
-  "src/app/admin/video-factory/publishing/page.tsx": "/admin/social",
+  "src/app/admin/video-factory/publishing/page.tsx": "/admin/memory",
   "src/app/admin/video-factory/scheduler/page.tsx": "/admin/automation",
 };
 for (const [path, target] of Object.entries(legacyRedirects)) {
@@ -159,6 +157,18 @@ for (const [path, target] of Object.entries(legacyRedirects)) {
   if (!page.includes(`redirect("${target}")`)) {
     failures.push(`legacy admin route must redirect to canonical path: ${path} -> ${target}`);
   }
+}
+for (const path of [
+  "src/app/admin/social/page.tsx",
+  "src/app/admin/social/written-studio/page.tsx",
+]) {
+  const page = read(path);
+  if (!page.includes('redirect("/admin/memory")')) {
+    failures.push("retired external social admin route must redirect to internal project memory: " + path);
+  }
+}
+if (navigation.includes('href: "/admin/social"') || navigation.includes('key: "publishing"')) {
+  failures.push("retired external social publishing must not reappear in canonical Admin navigation");
 }
 for (const canonicalPath of [
   "src/app/admin/video/page.tsx",
