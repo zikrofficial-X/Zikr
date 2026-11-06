@@ -28,7 +28,7 @@ assert.equal(
 );
 assert.ok(["fade", "slow"].includes(resolveDeterministicVideoMotion(stableInput.id)));
 assert.equal(
-  resolveDeterministicVideoScene({ id: "kids-1", category: "story", audience: "kids" }) in ["emerald", "dawn", "gold", "calm"],
+  ["emerald", "dawn", "gold", "calm"].includes(resolveDeterministicVideoScene({ id: "kids-1", category: "story", audience: "kids" })),
   true,
 );
 assert.ok(
