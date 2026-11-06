@@ -7,45 +7,42 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const STATE_COOKIE = "zikr-youtube-oauth-state";
+const CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";
+const YOUTUBE_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/youtube/callback";
 const REQUIRED_SCOPES = [
-  "https://www.googleapis.com/auth/youtube.upload",
   "https://www.googleapis.com/auth/youtube.readonly",
-  "https://www.googleapis.com/auth/youtube.force-ssl",
   "https://www.googleapis.com/auth/yt-analytics.readonly",
 ];
 
 function siteUrl() {
-  return getServerEnv().NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  return CANONICAL_SITE_ORIGIN;
 }
 
 function adminStatusRedirect(status: string) {
   return NextResponse.redirect(
-    new URL(`/admin/social?youtube=${encodeURIComponent(status)}`, siteUrl()),
+    new URL(`/admin/analytics?youtube=${encodeURIComponent(status)}`, siteUrl()),
   );
 }
 
 export async function GET() {
-  const auth = await requireAdminApi("social.manage");
+  const auth = await requireAdminApi("analytics.read");
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   const env = getServerEnv();
   const clientId = env.YOUTUBE_CLIENT_ID?.trim();
-  if (!clientId || !siteUrl()) return adminStatusRedirect("configuration_missing");
+  if (!clientId) return adminStatusRedirect("configuration_missing");
 
   const state = randomBytes(32).toString("hex");
-  const redirectUri = new URL(
-    "/api/admin/social/youtube/callback",
-    siteUrl(),
-  ).toString();
+  const redirectUri = YOUTUBE_REDIRECT_URI;
   const authorizeUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   authorizeUrl.searchParams.set("client_id", clientId);
   authorizeUrl.searchParams.set("redirect_uri", redirectUri);
   authorizeUrl.searchParams.set("response_type", "code");
   authorizeUrl.searchParams.set("scope", REQUIRED_SCOPES.join(" "));
   authorizeUrl.searchParams.set("access_type", "offline");
-  authorizeUrl.searchParams.set("include_granted_scopes", "true");
+  authorizeUrl.searchParams.set("include_granted_scopes", "false");
   authorizeUrl.searchParams.set("prompt", "consent");
   authorizeUrl.searchParams.set("state", state);
 
