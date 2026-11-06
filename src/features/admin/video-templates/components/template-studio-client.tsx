@@ -247,7 +247,7 @@ export default function TemplateStudioClient() {
                           <div className="mt-3 flex flex-wrap gap-2">
                             <button onClick={() => runPreview(version)} disabled={Boolean(busy)} className="rounded-lg border border-brand-gold/25 px-3 py-2 text-xs text-brand-gold disabled:opacity-40">معاينة داخلية</button>
                             {version.status === "draft" && <button onClick={() => approve(version)} disabled={Boolean(busy)} className="rounded-lg border border-sky-400/25 px-3 py-2 text-xs text-sky-200 disabled:opacity-40">اعتماد المراجعة</button>}
-                            {(version.status === "approved" || version.status === "retired" || version.status === "active" && version.is_system_seed) && (
+                            {(version.status === "approved" || version.status === "retired") && (
                               <button onClick={() => activate(version)} disabled={Boolean(busy)} className="rounded-lg border border-emerald-400/25 px-3 py-2 text-xs text-emerald-200 disabled:opacity-40">{version.status === "retired" ? "استرجاع الإصدار" : "تفعيل الإصدار"}</button>
                             )}
                           </div>
