@@ -54,7 +54,10 @@ for (const file of appCode) {
   const source = read(file);
   if (/<img\b/i.test(source)) fail(`Raw <img> usage found in application code: ${file}`);
   if (/@next\/next\/no-img-element/.test(source)) fail(`Image lint suppression found in application code: ${file}`);
-  if (/\b(?:lorem ipsum|todo|fixme|coming soon|under construction|example\.com)\b/i.test(source)) {
+  const placeholderCopy = /\b(?:lorem ipsum|fixme|coming soon|under construction|example\.com)\b/i.test(source);
+  // A legitimate icon slug such as "list-todo" is not placeholder copy.
+  const standaloneTodo = /(?<![a-z0-9-])todo(?![a-z0-9-])/i.test(source);
+  if (placeholderCopy || standaloneTodo) {
     fail(`Placeholder/development text found in application code: ${file}`);
   }
 }
