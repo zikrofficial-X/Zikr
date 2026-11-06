@@ -19,28 +19,28 @@ const navigation = read(navigationPath);
 
 const CANONICAL_ARCHITECTURE = {
   "التشغيل والمراقبة": [
-["/admin", "لوحة التحكم", "dashboard.view"],
+    ["/admin", "لوحة التحكم", "dashboard.view"],
     ["/admin/queues", "مركز الطوابير", "dashboard.view"],
     ["/admin/automation", "التشغيل الآلي", "system.manage"],
     ["/admin/health", "صحة النظام", "system.manage"],
     ["/admin/notifications", "التنبيهات", "notifications.manage"],
-    ["/admin/audit", "سجل التدقيق", "audit.read"],
-    ["/admin/release", "مركز الإصدار", "release.manage"],
   ],
-  "المحتوى والمعرفة": [
-["/admin/content", "إدارة المحتوى", "content.manage"],
+  "إدارة المحتوى": [
+    ["/admin/content", "إدارة المحتوى", "content.manage"],
     ["/admin/library", "مكتبة المحتوى", "library.manage"],
-    ["/admin/sources", "مصادر المحتوى", "sources.manage"],
     ["/admin/editorial", "التحرير والنشر", "knowledge.manage"],
-    ["/admin/knowledge", "المعرفة الإسلامية", "knowledge.manage"],
-    ["/admin/prophets", "الأنبياء", "prophets.manage"],
-    ["/admin/battles", "الغزوات", "battles.manage"],
     ["/admin/categories", "التصنيفات", "content.manage"],
     ["/admin/sections", "الأقسام وترتيبها", "sections.manage"],
     ["/admin/search", "البحث والفهرسة", "content.manage"],
   ],
-  "الوسائط والإنتاج والنشر": [
-["/admin/video", "مركز الفيديو والإنتاج", "video.manage"],
+  "المصادر والمعرفة": [
+    ["/admin/sources", "مصادر المحتوى", "sources.manage"],
+    ["/admin/knowledge", "المعرفة الإسلامية", "knowledge.manage"],
+    ["/admin/prophets", "الأنبياء", "prophets.manage"],
+    ["/admin/battles", "الغزوات", "battles.manage"],
+  ],
+  "مصنع الفيديوهات": [
+    ["/admin/video", "مركز الفيديو والإنتاج", "video.manage"],
     ["/admin/video/requests", "طلبات الفيديو والطابور", "video.manage"],
     ["/admin/video/studio", "استوديو الفيديو", "video.manage"],
     ["/admin/video/studio/curated", "المحتوى الموثق للفيديو", "video.manage"],
@@ -48,29 +48,38 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/video/scripts", "نصوص السرد", "video.manage"],
     ["/admin/video/voices", "الأصوات", "video.manage"],
     ["/admin/video/visuals", "العناصر المرئية", "video.manage"],
-    ["/admin/video/templates", "القوالب", "video.manage"],
+    ["/admin/video/templates", "استوديو القوالب", "video.manage"],
     ["/admin/video/qa", "ضبط الجودة", "video.manage"],
+  ],
+  "النشر والتوزيع": [
+    ["/admin/social", "مركز النشر الاجتماعي", "social.manage"],
+    ["/admin/social/written-studio", "مصنع المنشورات المكتوبة", "social.manage"],
+  ],
+  "الوسائط والصوت": [
     ["/admin/media", "مكتبة الوسائط", "media.manage"],
-["/admin/audio", "مركز الصوت", "audio.manage"],
+    ["/admin/audio", "مركز الصوت", "audio.manage"],
     ["/admin/audio/quran", "تلاوات القرآن", "audio.manage"],
     ["/admin/audio/adhan", "الأذان", "audio.manage"],
     ["/admin/audio/tts", "تحويل النص إلى صوت", "audio.manage"],
     ["/admin/site-audio", "صوت الموقع والتذكيرات", "audio.manage"],
-["/admin/social", "مركز النشر الاجتماعي", "social.manage"],
   ],
-  "مركز الأطفال": [
-["/admin/kids", "لوحة الأطفال", "kids.manage"],
+  "عالم الأطفال": [
+    ["/admin/kids", "لوحة الأطفال", "kids.manage"],
     ["/admin/kids/content", "محتوى الأطفال", "kids.manage"],
     ["/admin/kids/games", "الألعاب", "kids.manage"],
     ["/admin/kids/levels", "المستويات", "kids.manage"],
     ["/admin/kids/assets", "الأصول", "kids.manage"],
     ["/admin/kids/analytics", "تحليلات الأطفال", "kids.manage"],
   ],
-  "النمو والنظام": [
-["/admin/users", "المستخدمون والأدوار", "users.read"],
+  "النمو والتحليلات": [
     ["/admin/analytics", "تحليلات المنصة", "analytics.read"],
-["/admin/security", "أمن لوحة الإدارة", "security.manage"],
     ["/admin/seo", "تحسين الظهور", "settings.manage"],
+  ],
+  "النظام والأمان": [
+    ["/admin/audit", "سجل التدقيق", "audit.read"],
+    ["/admin/release", "مركز الإصدار", "release.manage"],
+    ["/admin/users", "المستخدمون والأدوار", "users.read"],
+    ["/admin/security", "أمن لوحة الإدارة", "security.manage"],
     ["/admin/android", "إصدار أندرويد", "android.manage"],
     ["/admin/settings", "إعدادات الإدارة", "settings.manage"],
   ],
