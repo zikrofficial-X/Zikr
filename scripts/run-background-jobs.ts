@@ -21,8 +21,6 @@ type VideoAutomationSettings = {
   enabled: boolean;
   batchSize: number;
   aiEnabled: boolean;
-  autoPublish: boolean;
-  facebookEnabled: boolean;
   dailyTarget: number;
   aiAttemptsPerRun: number;
   videoSeconds: number;
@@ -62,7 +60,7 @@ function parseRunNowRequest(value: unknown): VideoAutomationRunNow | null {
 
 async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
   const rows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
-    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_facebook_enabled,video_automation_daily_target,video_automation_ai_attempts_per_run,video_automation_video_seconds,video_automation_run_now,video_custom_spaces)&select=key,value",
+    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_daily_target,video_automation_ai_attempts_per_run,video_automation_video_seconds,video_automation_run_now,video_custom_spaces)&select=key,value",
   ).catch(() => []);
 
   const values = Object.fromEntries((rows ?? []).map((row) => [row.key, row.value]));
@@ -98,14 +96,6 @@ async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
       10,
       45,
     ),
-    autoPublish: parseBoolSetting(
-      values.video_automation_auto_publish,
-      process.env.AUTO_VIDEO_PUBLISH_ENABLED !== "false",
-    ),
-    facebookEnabled: parseBoolSetting(
-      values.video_automation_facebook_enabled,
-      process.env.SOCIAL_PUBLISH_FACEBOOK_ENABLED === "true",
-    ),
     runNowRequest: parseRunNowRequest(values.video_automation_run_now),
   };
 }
@@ -132,9 +122,6 @@ function applyVideoAutomationSettings(settings: VideoAutomationSettings) {
   process.env.DAILY_VIDEO_TARGET = String(settings.dailyTarget);
   process.env.VIDEO_AI_ATTEMPTS_PER_RUN = String(settings.aiAttemptsPerRun);
   process.env.AUTO_VIDEO_SECONDS = String(settings.videoSeconds);
-  process.env.AUTO_VIDEO_PUBLISH_ENABLED = String(settings.autoPublish);
-  process.env.AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL = String(!settings.autoPublish);
-  process.env.SOCIAL_PUBLISH_FACEBOOK_ENABLED = String(settings.facebookEnabled);
 }
 
 
@@ -379,35 +366,17 @@ async function main() {
     ? await processVideos(videoSettings)
     : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
 
-  const reconcilePublishingEnabled =
-    (target === "all" || target === "social") &&
-    videoSettings.autoPublish &&
-    SOCIAL_PUBLISH_ENABLED;
-  const reconciledSocialQueue = reconcilePublishingEnabled
-    ? await reconcileCompletedVideoSocialQueue(100)
-    : 0;
-  if (reconcilePublishingEnabled) {
-    console.log(
-      `[background-jobs] Reconciled ${reconciledSocialQueue} completed video(s) with the current social publishing targets.`
-    );
-  } else if (target === "all" || target === "social") {
-    console.log("[background-jobs] Social queue reconciliation skipped while public publishing is paused; queue rows were not changed.");
-  }
+  // Internal generation is intentionally decoupled from all external social providers.
+  // The historic social queue remains untouched and is never reconciled by the video worker.
+  const reconciledSocialQueue = 0;
 
   if (runNowRequestedAt && (target === "all" || target === "videos") && videoSettings.enabled && videos.failed === 0) {
     await clearRunNowRequest(runNowRequestedAt);
     console.log(`[background-jobs] Cleared completed urgent video run request ${runNowRequestedAt}.`);
   }
 
-  const social = target === "all" || target === "social"
-    ? await processSocial(videoSettings)
-    : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
-  const scheduledContent = target === "all"
-    ? await processScheduledContent(20).catch((error) => {
-        console.error("[background-jobs] Scheduled content publishing unavailable:", error instanceof Error ? error.message : String(error));
-        return { claimed: 0, published: 0 };
-      })
-    : { claimed: 0, published: 0 };
+  const social = { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, disabledByProductPolicy: true };
+  const scheduledContent = { claimed: 0, published: 0, disabledByProductPolicy: true };
   const failed = videos.failed + social.failed;
 
   const queueAlerts = await notifyNewQueueFailures(new Date(startedAt).toISOString()).catch((error) => {
