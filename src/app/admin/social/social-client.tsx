@@ -736,7 +736,7 @@ export default function AdminSocialPage() {
                     <td className="p-3 text-brand-cream/55">
                       {item.target_platforms.join("، ")}
                     </td>
-                    <td className="p-3 text-xs text-brand-cream/60">{[youtubeInsightsSummary(item), facebookReelsInsightsSummary(item)].filter(value => value !== "—").join(" · ")}</td>
+                    <td className="p-3 text-xs text-brand-cream/60">{[youtubeInsightsSummary(item), facebookReelsInsightsSummary(item, health.facebookInsightsPermissionGranted === true)].filter(value => value !== "—").join(" · ")}</td>
                     <td className="p-3">
                       <span
                         className={`rounded-full border px-2 py-1 text-xs ${STATUS_CLASSES[status]}`}
