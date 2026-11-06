@@ -6,7 +6,7 @@ type QueueRow = {
   id: string;
   title: string;
   metadata: Record<string, unknown> | null;
-  published_at: string | null;
+  created_at: string;
 };
 
 type GraphInsight = {
@@ -127,7 +127,7 @@ async function getFacebookReelCandidates(limit: number): Promise<Array<{ queueId
 
   for (let page = 0; page < maxPages && candidates.length < limit; page += 1) {
     const rows = await supabaseServerAdminRequest<QueueRow[]>(
-      "/rest/v1/social_publish_queue?status=eq.published&published_at=not.is.null&content_type=like.*_video&select=id,title,metadata,published_at&order=published_at.asc,id.asc&limit=" +
+      "/rest/v1/social_publish_queue?content_type=like.*_video&select=id,title,metadata,created_at&order=created_at.asc,id.asc&limit=" +
         pageSize + "&offset=" + page * pageSize,
     );
     const batch = Array.isArray(rows) ? rows : [];
