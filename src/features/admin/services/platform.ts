@@ -66,17 +66,13 @@ export type AdminHealth = {
   database: "healthy" | "degraded";
   tables: Array<{ table: string; count: number | null; state: "healthy" | "empty" | "unavailable" }>;
   queues: {
-    socialQueued: number;
-    socialProcessing: number;
-    socialPartial: number;
-    socialFailed: number;
     videoPending: number;
     videoProcessing: number;
     videoRetryWait: number;
     videoFailed: number;
   };
   /** false means the queue could not be read and its counts are not real zeros. */
-  queuesAvailable: { social: boolean; video: boolean };
+  queuesAvailable: { video: boolean };
   github: AdminGitHubHealth;
   generatedAt: string;
 };
@@ -102,7 +98,6 @@ const COUNT_TABLES: Array<{ table: string; label: string }> = [
   { table: "media_assets", label: "أصول الوسائط" },
   { table: "profiles", label: "المستخدمون" },
   { table: "video_generation_requests", label: "طلبات الفيديو" },
-  { table: "social_publish_queue", label: "عناصر النشر الاجتماعي" },
   { table: "admin_audit_events", label: "سجلات التدقيق" },
 ];
 
@@ -122,11 +117,10 @@ export async function getAdminSnapshot() {
     }),
   );
 
-  const [auditRes, socialCounts, videoCounts, draftsRes] = await Promise.all([
+  const [auditRes, videoCounts, draftsRes] = await Promise.all([
     readAdminRows<AdminAuditRow>(
       "/rest/v1/admin_audit_events?select=id,action,permission,resource_type,resource_id,outcome,request_id,metadata,created_at,actor_user_id&order=created_at.desc&limit=12",
     ),
-    getExactStatusCounts("social_publish_queue", ["queued", "processing", "partial", "failed"]),
     getExactStatusCounts("video_generation_requests", ["pending", "processing", "retry_wait", "failed"]),
     readAdminRows<{ review_status: string; published: boolean }>(
       "/rest/v1/content_library?select=review_status,published&order=updated_at.desc&limit=500",
@@ -137,16 +131,13 @@ export async function getAdminSnapshot() {
   const contentDrafts = draftsRes.rows;
   const unavailable = [
     !auditRes.ok && "سجل التدقيق",
-    !socialCounts.available && "طابور النشر الاجتماعي",
     !videoCounts.available && "طابور توليد الفيديو",
     !draftsRes.ok && "مكتبة المحتوى",
   ].filter(Boolean) as string[];
 
-  const socialStatus = (status: string) => socialCounts.available ? socialCounts.counts[status] : null;
   const videoStatus = (status: string) => videoCounts.available ? videoCounts.counts[status] : null;
   const sum = (a: number | null, b: number | null) => (a === null || b === null ? null : a + b);
   const drafts = draftsRes.ok ? contentDrafts.filter((item) => !item.published || item.review_status !== "approved").length : null;
-  const socialFailed = socialStatus("failed");
   const videoFailed = videoStatus("failed");
   const auditFailures = auditRes.ok ? audit.filter((row) => row.outcome === "failed").length : null;
 
@@ -155,14 +146,10 @@ export async function getAdminSnapshot() {
     unavailable,
     metrics: [
       { key: "drafts", label: "مسودات/مراجعة", value: drafts, tone: drafts === null ? "neutral" : drafts > 0 ? "warning" : "success" },
-      { key: "social", label: "طابور النشر", value: sum(socialStatus("queued"), socialStatus("processing")), tone: socialFailed ? "danger" : "neutral" },
       { key: "video", label: "توليد الفيديو", value: sum(videoStatus("pending"), videoStatus("processing")), tone: videoFailed ? "danger" : "neutral" },
       { key: "auditFailures", label: "عمليات إدارية فاشلة", value: auditFailures, tone: auditFailures === null ? "neutral" : auditFailures > 0 ? "danger" : "success" },
     ] satisfies AdminMetric[],
     queues: {
-      socialQueued: socialStatus("queued"),
-      socialProcessing: socialStatus("processing"),
-      socialFailed,
       videoPending: videoStatus("pending"),
       videoProcessing: videoStatus("processing"),
       videoFailed,
@@ -199,15 +186,13 @@ export async function getAdminOverview() {
     ] as const),
   );
 
-  const [videoCounts, socialCounts, sectionsRes] = await Promise.all([
+  const [videoCounts, sectionsRes] = await Promise.all([
     getExactStatusCounts("video_generation_requests", ["pending", "processing", "retry_wait", "failed"]),
-    getExactStatusCounts("social_publish_queue", ["queued", "processing", "partial", "failed"]),
     readAdminRows<{ value?: unknown }>("/rest/v1/site_settings?key=eq.section_visibility&select=value&limit=1"),
   ]);
   const sections = sectionsRes.rows;
   const unavailable = [
     !videoCounts.available && "video_generation_requests",
-    !socialCounts.available && "social_publish_queue",
     !sectionsRes.ok && "site_settings",
   ].filter(Boolean) as string[];
 
@@ -220,7 +205,6 @@ export async function getAdminOverview() {
     counts: Object.fromEntries(counts),
     unavailable,
     videoGeneration: videoCounts.counts,
-    socialQueue: socialCounts.counts,
     sections: {
       total: Object.keys(visibility).length,
       enabled: Object.values(visibility).filter(Boolean).length,
@@ -233,7 +217,6 @@ export async function getAdminOverview() {
 const GITHUB_WORKFLOW_PATHS = new Set([
   ".github/workflows/supabase-production-health.yml",
   ".github/workflows/generate-ai-video.yml",
-  ".github/workflows/publish-social.yml",
   ".github/workflows/storage-retention.yml",
   ".github/workflows/dispatch-android-release-recovery.yml",
 ]);
@@ -341,10 +324,10 @@ async function getExactStatusCounts(
 }
 
 export async function getAdminHealth(): Promise<AdminHealth> {
-  const [databaseHealthy, tables, social, video, github] = await Promise.all([
+  const [databaseHealthy, tables, video, github] = await Promise.all([
     assertSupabaseConnection(),
     Promise.all(
-      ["admin_audit_events", "admin_settings", "profiles", "content_library", "media_assets", "social_publish_queue", "video_generation_requests"].map(async (table) => {
+      ["admin_audit_events", "admin_settings", "profiles", "content_library", "media_assets", "video_generation_requests"].map(async (table) => {
         try {
           const count = await supabaseServerAdminCount(table);
           return { table, count, state: count === 0 ? "empty" : "healthy" } as const;
@@ -353,7 +336,6 @@ export async function getAdminHealth(): Promise<AdminHealth> {
         }
       }),
     ),
-    getExactStatusCounts("social_publish_queue", ["queued", "processing", "partial", "failed"]),
     getExactStatusCounts("video_generation_requests", ["pending", "processing", "retry_wait", "failed"]),
     getAdminGitHubHealth(),
   ]);
@@ -362,16 +344,12 @@ export async function getAdminHealth(): Promise<AdminHealth> {
     database: databaseHealthy ? "healthy" : "degraded",
     tables,
     queues: {
-      socialQueued: social.counts.queued,
-      socialProcessing: social.counts.processing,
-      socialPartial: social.counts.partial,
-      socialFailed: social.counts.failed,
       videoPending: video.counts.pending,
       videoProcessing: video.counts.processing,
       videoRetryWait: video.counts.retry_wait,
       videoFailed: video.counts.failed,
     },
-    queuesAvailable: { social: social.available, video: video.available },
+    queuesAvailable: { video: video.available },
     github,
     generatedAt: new Date().toISOString(),
   };
