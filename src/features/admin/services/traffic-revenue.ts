@@ -234,7 +234,7 @@ export type TrafficRevenueSnapshot = {
   };
   socialPlatformStats: SocialPlatformDeliveryStats[] | null;
   socialPlatformStatsComplete: boolean;
-    integrations: {
+  integrations: {
     ga4MeasurementConfigured: boolean;
     ga4ReportingConnected: boolean;
     monetagVerificationMetaPresent: true;
