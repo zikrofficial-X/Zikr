@@ -17,7 +17,7 @@ export const metadata: Metadata = pageMetadata({
   path: '/videos',
 });
 
-export const revalidate = 900;
+export const dynamic = 'force-dynamic';
 
 function formatDate(value: string | null): string {
   if (!value) return '';

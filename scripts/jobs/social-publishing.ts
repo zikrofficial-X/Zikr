@@ -20,6 +20,27 @@ async function isVideoPurgeInProgress(): Promise<boolean> {
   }
 }
 
+export async function syncSocialInsights() {
+    const facebookInsights = await syncFacebookReelsInsights(25).catch((error: unknown) => {
+      console.error("[social-worker] Facebook Reels insights sync unavailable:", error instanceof Error ? error.message : "Unknown Meta insights error");
+      return { configured: false, candidates: 0, fetched: 0, updated: 0, failed: 0 };
+    });
+    if (!facebookInsights.configured || facebookInsights.updated > 0 || facebookInsights.failed > 0) {
+      console.log("[social-worker] Facebook Reels insights sync:", JSON.stringify(facebookInsights));
+    }
+  
+    const insights = await syncYoutubePublishedPostInsights(100).catch((error: unknown) => {
+      console.error("[social-worker] YouTube public insights sync unavailable:", error instanceof Error ? error.message : String(error));
+      return { configured: false, candidates: 0, fetched: 0, updated: 0 };
+    });
+  
+    if (insights.updated > 0) {
+      console.log("[social-worker] YouTube public post statistics synced:", JSON.stringify(insights));
+    }
+  
+  return { facebookInsights, youtubeInsights: insights };
+}
+
 export async function processSocialPublishQueue(limit = 10) {
   if (await isVideoPurgeInProgress()) {
     console.log("[social-worker] Video purge lock is active; no social queue item will be claimed.");
@@ -51,22 +72,5 @@ export async function processSocialPublishQueue(limit = 10) {
     else failed += 1;
   }
 
-  const facebookInsights = await syncFacebookReelsInsights(25).catch((error: unknown) => {
-    console.error("[social-worker] Facebook Reels insights sync unavailable:", error instanceof Error ? error.message : "Unknown Meta insights error");
-    return { configured: false, candidates: 0, fetched: 0, updated: 0, failed: 0 };
-  });
-  if (!facebookInsights.configured || facebookInsights.updated > 0 || facebookInsights.failed > 0) {
-    console.log("[social-worker] Facebook Reels insights sync:", JSON.stringify(facebookInsights));
-  }
-
-  const insights = await syncYoutubePublishedPostInsights(Math.max(50, Math.min(250, limit * 10))).catch((error: unknown) => {
-    console.error("[social-worker] YouTube public insights sync unavailable:", error instanceof Error ? error.message : String(error));
-    return { configured: false, candidates: 0, fetched: 0, updated: 0 };
-  });
-
-  if (insights.updated > 0) {
-    console.log("[social-worker] YouTube public post statistics synced:", JSON.stringify(insights));
-  }
-
-  return { processed: items.length, succeeded, deferred, authBlocked, approvalBlocked, failed, enabledPlatforms, insights, facebookInsights };
+  return { processed: items.length, succeeded, deferred, authBlocked, approvalBlocked, failed, enabledPlatforms };
 }

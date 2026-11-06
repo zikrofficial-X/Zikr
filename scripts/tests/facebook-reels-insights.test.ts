@@ -61,3 +61,6 @@ const callbackPermissions = requiredPermissions(
 assert.deepEqual(callbackPermissions, connectPermissions, "OAuth callback must validate every permission requested by the connect route");
 assert.ok(callbackPermissions.includes("read_insights"), "Facebook insights requires explicit read_insights authorization");
 assert.ok(callbackPermissions.includes("pages_manage_engagement"), "Facebook video insights requires Page engagement management authorization");
+const facebookCredentialService = readFileSync(resolve("src/features/social/services/facebook-credentials.ts"), "utf8");
+assert.ok(facebookCredentialService.includes('"read_insights"'), "stored credential validation must require read_insights");
+assert.ok(facebookCredentialService.includes('"pages_manage_engagement"'), "stored credential validation must require pages_manage_engagement");
