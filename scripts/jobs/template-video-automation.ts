@@ -210,7 +210,13 @@ async function bindTemplateVersion(request: GeneratedRequest): Promise<BoundTemp
 
   const label = versionedTemplateLabel(template.slug, version.version);
   const requestedLabel = request.content.templateVersion;
-  if (typeof requestedLabel === "string" && requestedLabel.trim() && requestedLabel !== label) {
+  const templateIdentity = `${template.slug}@${version.version}`;
+  if (
+    typeof requestedLabel === "string" &&
+    requestedLabel.trim() &&
+    requestedLabel !== templateIdentity &&
+    !requestedLabel.startsWith(templateIdentity + "+renderer:")
+  ) {
     throw new Error("Pinned template version label does not match the immutable database version.");
   }
 
