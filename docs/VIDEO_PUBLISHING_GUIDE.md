@@ -42,14 +42,13 @@ Video generation may enqueue a row in `social_publish_queue`, but it must not pu
 
 ## Video publication integrity and review modes
 
-The admin video workspace provides a five-part human review checklist: source/text, audio, visuals, captions, and usage rights. A reviewer can approve a completed request; approval is tied to the current media record, and regeneration resets the prior review.
+The admin video workspace provides a five-part human review checklist: source/text, audio, visuals, captions, and usage rights. A reviewer approves a completed request; the approval is persisted with reviewer ID, timestamp, checklist, and a snapshot hash covering source, content, template version, and media URL. Regeneration or any snapshot change invalidates the prior approval.
 
-The live production setting `video_automation_auto_publish=true` selects unattended publication mode. In this mode the publisher does not require the human checklist, but it still fails closed unless the linked request exists, is `completed`, and its stored media URL exactly matches the queued media URL. Provider readiness, Facebook OAuth state, queue idempotency, bounded retries, and platform result checks remain enforced. This is the configured automatic mode requested for production.
+Unattended publishing means the worker can publish approved items on its schedule; it does not mean approval can be bypassed. Every video queue item is checked before it is claimed and checked again immediately before platform calls. Missing, rejected, incomplete, stale, or changed approvals fail closed. Workflow environment flags cannot disable this rule.
 
-When `video_automation_auto_publish=false`, the worker enables the human review requirement and holds unreviewed video items. Do not confuse this setting with the separate global social worker schedule.
+Written-only posts follow their separate source-validation and editorial approval contract. The publisher continues to reuse the same queue and per-platform idempotency ledger.
 
-Approval is not a scheduler. The existing GitHub Actions social worker checks the queue on its 15-minute schedule and publishes eligible items automatically; it processes one queue item per run to limit provider pressure.
-
+Approval is not a scheduler. The existing GitHub Actions social worker checks the queue on its 15-minute schedule and publishes only eligible, approved items.
 ## Social publishing
 
 The social workflow is scheduled every 15 minutes through `publish-social.yml`. The current workflow configuration sets `SOCIAL_PUBLISH_ENABLED=true`; each run still performs protected runtime preflight and only publishes when the required Supabase, YouTube OAuth, Facebook Page connection, and queue checks pass.
