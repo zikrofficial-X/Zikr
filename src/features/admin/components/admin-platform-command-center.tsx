@@ -65,6 +65,7 @@ export async function AdminPlatformCommandCenter() {
     .filter((group) => group.items.length > 0);
   const availableHrefs = new Set(availableGroups.flatMap((group) => group.items.map((item) => item.href)));
   const canReadAudit = hasAdminPermission(role, "audit.read");
+  const canReadSocialQueue = hasAdminPermission(role, "social.manage");
   const canReadVideoQueue = hasAdminPermission(role, "video.manage");
   const visibleMetrics = snapshot.metrics.filter((metric) => {
     if (metric.key === "auditFailures") return canReadAudit;
@@ -90,7 +91,7 @@ export async function AdminPlatformCommandCenter() {
       typeof item.count === "number" && item.count > 0 && typeof item.href === "string",
   );
   const queueEntries = Object.entries(snapshot.queues).filter(([key]) =>
-    key.startsWith("video") && canReadVideoQueue,
+    (key.startsWith("video") && canReadVideoQueue) || (key.startsWith("social") && canReadSocialQueue),
   );
   const quickActionCandidates: Array<[string, string, string]> = [
     ["إدارة المحتوى", "/admin/content", "راجع المحتوى والمسودات"],
