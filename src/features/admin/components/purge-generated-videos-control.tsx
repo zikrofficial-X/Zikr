@@ -11,6 +11,7 @@ type PurgeResult = {
   storageObjectsDeleted: number;
   socialQueueRowsPreserved: boolean;
   publicVideoCatalogPreserved: boolean;
+  catalogRecordsHidden: number;
   generationRowsDeleted: number;
   automationRunsDeleted: number;
   externalSocialPostsDeleted: false;
@@ -62,6 +63,7 @@ export function PurgeGeneratedVideosControl({
         storageObjectsDeleted?: number;
         socialQueueRowsPreserved?: boolean;
         publicVideoCatalogPreserved?: boolean;
+        catalogRecordsHidden?: number;
         generationRowsDeleted?: number;
         automationRunsDeleted?: number;
         externalSocialPostsDeleted?: false;
@@ -81,6 +83,7 @@ export function PurgeGeneratedVideosControl({
         storageObjectsDeleted: payload.storageObjectsDeleted ?? 0,
         socialQueueRowsPreserved: payload.socialQueueRowsPreserved === true,
         publicVideoCatalogPreserved: payload.publicVideoCatalogPreserved === true,
+        catalogRecordsHidden: payload.catalogRecordsHidden ?? 0,
         generationRowsDeleted: payload.generationRowsDeleted ?? 0,
         automationRunsDeleted: payload.automationRunsDeleted ?? 0,
         externalSocialPostsDeleted: false,
@@ -88,7 +91,7 @@ export function PurgeGeneratedVideosControl({
       setResult(completed);
       setConfirmation("");
       setExpanded(false);
-      setMessage("تم حذف مخرجات الفيديو المولّدة وسجلات التوليد الداخلية. كتالوج الفيديوهات العامة وسجل التدقيق محفوظان، وسجلات المنصات القديمة لم تتغير.");
+      setMessage("تم حذف ملفات الفيديو المولّدة، وإخفاء سجلاتها داخل المكتبة مع الاحتفاظ بالعناوين ومعلومات المصدر وسجل التدقيق. سجلات المنصات القديمة لم تتغير.");
       await onCompleted?.();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر تصفير مكتبة الفيديو.");
@@ -105,7 +108,7 @@ export function PurgeGeneratedVideosControl({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-red-200">تصفير مكتبة الفيديوهات</p>
           <p className="mt-1 text-xs leading-6 text-brand-cream/55">
-            حذف ملفات الفيديو التي ولّدها ZIKR من Cloudinary وSupabase Storage وسجلات التوليد فقط. كتالوج الموقع وسجلات المنصات القديمة لا تتغير.
+            حذف ملفات الفيديو التي ولّدها ZIKR من Cloudinary وSupabase Storage. ستظل عناوين الفيديو ومصادرها محفوظة، لكن سجلات الفيديو المولّدة ستصبح مخفية وتُفرّغ روابط الملفات المحذوفة منها.
           </p>
         </div>
         <button
@@ -125,7 +128,7 @@ export function PurgeGeneratedVideosControl({
       {expanded && (
         <div className="mt-4 space-y-3 border-t border-red-400/15 pt-4">
           <p className="text-sm leading-7 text-brand-cream/80">
-            هذا الإجراء نهائي ولا يمكن التراجع عنه. سيحذف ملفات ZIKR المولّدة محليًا والطلبات غير المنشورة وسجلات تشغيل التوليد. سيحتفظ بكتالوج الفيديوهات العامة والقوالب والأصوات والحسابات. كما سيترك سجل الطابور الاجتماعي التاريخي دون تعديل.
+            هذا الإجراء نهائي ولا يمكن التراجع عنه. سيحذف الملفات المولّدة والطلبات وسجلات تشغيل التوليد، ويخفي سجلات الفيديو الداخلية مع الاحتفاظ بالعناوين ومعلومات المصدر. لن يحذف الفيديوهات اليدوية الأخرى أو القوالب أو الأصوات أو الحسابات أو سجل المنصات التاريخي.
           </p>
           <p className="text-xs leading-6 text-amber-200/90">
             ملاحظة: هذا الإجراء يمسح ذاكرة ملفات الفيديو المولّدة داخل ZIKR فقط. لا يرسل طلبات إلى أي منصة خارجية ولا يغيّر أي سجل نشر تاريخي.
@@ -185,7 +188,7 @@ export function PurgeGeneratedVideosControl({
             ملفات Cloudinary: {result.cloudinaryAssetsDeleted} · المساحة المحررة: {(result.cloudinaryBytesDeleted / (1024 * 1024)).toFixed(1)} MiB · عناصر Storage: {result.storageObjectsDeleted}
           </p>
           <p>
-            طلبات التوليد: {result.generationRowsDeleted} · سجل المنصات التاريخي: {result.socialQueueRowsPreserved ? "محفوظ" : "غير مؤكد"} · كتالوج الفيديوهات العامة: {result.publicVideoCatalogPreserved ? "محفوظ" : "غير مؤكد"} · سجلات التشغيل: {result.automationRunsDeleted}
+            طلبات التوليد: {result.generationRowsDeleted} · سجل المنصات التاريخي: {result.socialQueueRowsPreserved ? "محفوظ" : "غير مؤكد"} · سجلات الفيديو الداخلية المخفية: {result.catalogRecordsHidden} · الكتالوج اليدوي: {result.publicVideoCatalogPreserved ? "محفوظ" : "غير مؤكد"} · سجلات التشغيل: {result.automationRunsDeleted}
           </p>
           <p className="mt-1 text-amber-100/90">
             لم يتم إرسال أي طلب حذف إلى منصات خارجية.
