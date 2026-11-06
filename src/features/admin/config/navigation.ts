@@ -76,6 +76,14 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     ],
   },
   {
+    key: "publishing",
+    label: "النشر الاجتماعي",
+    icon: "send",
+    items: [
+      { href: "/admin/social", label: "مركز النشر الاجتماعي", permission: "social.manage", icon: "send" },
+    ],
+  },
+  {
     key: "memory",
     label: "الذاكرة والمكتبة",
     icon: "brain",
