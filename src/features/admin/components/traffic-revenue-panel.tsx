@@ -136,11 +136,11 @@ export async function TrafficRevenuePanel() {
         </div>
         {snapshot.socialPlatformStatsComplete && snapshot.socialPlatformStats ? (
           <Card className="overflow-hidden p-0">
-            <div className="grid grid-cols-5 gap-2 border-b border-brand-gold/10 px-4 py-3 text-[11px] text-brand-cream/40">
-              <span>المنصة</span><span className="text-center">محاولات</span><span className="text-center">نجاح</span><span className="text-center">فشل</span><span className="text-center">معرّفات بعيدة</span>
+            <div className="grid grid-cols-2 sm:grid-cols-2 sm:grid-cols-5 gap-2 border-b border-brand-gold/10 px-4 py-3 text-[11px] text-brand-cream/40">
+              <span>المنصة</span><span className="text-center">عمليات تسليم</span><span className="text-center">نجاح</span><span className="text-center">فشل</span><span className="text-center">معرّفات بعيدة</span>
             </div>
             {snapshot.socialPlatformStats.map((item) => (
-              <div key={item.platform} className="grid grid-cols-5 gap-2 border-b border-brand-gold/5 px-4 py-3 text-xs last:border-0">
+              <div key={item.platform} className="grid grid-cols-2 sm:grid-cols-2 sm:grid-cols-5 gap-2 border-b border-brand-gold/5 px-4 py-3 text-xs last:border-0">
                 <span className="font-semibold text-brand-cream/80">{platformLabels[item.platform] ?? item.platform}</span>
                 <span className="text-center tabular-nums text-brand-cream/65">{format(item.attempts)}</span>
                 <span className="text-center tabular-nums text-emerald-200/80">{format(item.successful)}</span>
