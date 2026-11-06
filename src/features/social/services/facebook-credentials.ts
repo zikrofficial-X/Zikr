@@ -489,10 +489,10 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
     const platformAttempts = { ...oldAttempts };
     for (const platform of facebookTargets) platformAttempts[platform] = 0;
     const authBlockedPlatforms = Array.isArray(metadata.authBlockedPlatforms)
-      ? metadata.authBlockedPlatforms.filter(platform => !facebookTargets.includes(String(platform)))
+      ? metadata.authBlockedPlatforms.filter(platform => !facebookTargets.some(target => target === String(platform)))
       : [];
     const permanentFailurePlatforms = Array.isArray(metadata.permanentFailurePlatforms)
-      ? metadata.permanentFailurePlatforms.filter(platform => !facebookTargets.includes(String(platform)))
+      ? metadata.permanentFailurePlatforms.filter(platform => !facebookTargets.some(target => target === String(platform)))
       : [];
     const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
       `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}`,
