@@ -784,7 +784,7 @@ export async function processSocialPublishItem(
   const hasNonAuthFailure = operationalFailures.some(failure => !isFacebookAuthFailure(failure.error));
   const hasTransientFailure = operationalFailures.some(failure => {
     const message = failure.error?.toLowerCase() || "";
-    return /http\\s+(408|425|429|500|502|503|504)|timeout|timed out|fetch failed|temporar|rate limit|overloaded|quota/i.test(message);
+    return /http\s+(408|425|429|500|502|503|504)|timeout|timed out|fetch failed|temporar|rate limit|overloaded|quota/i.test(message);
   });
   const facebookReelsNextAllowedAt = failures
     .filter(failure => failure.platform === "facebook_reels")
