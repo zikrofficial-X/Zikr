@@ -370,12 +370,19 @@ function makeAss(
   const playResY = height;
   const titleSize = composition.titleFontSize;
   const verseSize = composition.bodyFontSize;
-  const sourceSize = composition.isVertical ? 23 : 20;
+  const sourceSize = composition.sourceCardStyle === "compact"
+    ? (composition.isVertical ? 18 : 16)
+    : (composition.isVertical ? 23 : 20);
   const brandSize = composition.isVertical ? 27 : 23;
   const reflectionSize = composition.isVertical ? 31 : 27;
+  const baseFont = composition.fontFamily;
+  const captionBorderStyle = composition.captionStyle === "boxed" ? 3 : 1;
+  const captionOutline = composition.captionStyle === "minimal" ? 1 : 3;
+  const captionShadow = composition.captionStyle === "minimal" ? 1 : 2;
+  const captionBack = composition.captionStyle === "boxed" ? "&H9007110E" : "&H9A07110E";
   const textPages = paginateArabic(text, composition.lineChars, composition.linesPerPage);
   const captionCues = planCaptionTimings(textPages, audioDuration);
-  const bodyFont = composition.key === "kids" ? "Noto Sans Arabic" : "Noto Naskh Arabic";
+  const bodyFont = composition.fontFamily;
   const textEvents = captionCues.map((cue) =>
     "Dialogue: 1," + assTimestamp(cue.start) + "," + assTimestamp(cue.end) +
     ",Verse,,0,0,0,,{\\fad(180,180)\\an5\\pos(" +
@@ -416,14 +423,14 @@ function makeAss(
     "",
     "[V4+ Styles]",
     "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-    "Style: Badge,Noto Sans Arabic,24," + composition.accentAss + ",&H00000000,&H00101513,&H9807110E,1,0,0,0,100,100,0,0,1,2,2,8,60,60,120,1",
-    "Style: Hook,Noto Sans Arabic," + (composition.isVertical ? 29 : 24) + ",&H00FFFFFF,&H00000000,&H00101513,&H6A07110E,1,0,0,0,100,100,0,0,1,1,1,8,70,70,165,1",
-    "Style: Title,Noto Sans Arabic," + titleSize + "," + composition.accentAss + ",&H00000000,&H00101513,&H7007110E,1,0,0,0,100,100,0,0,1,2,2,8,70,70,215,1",
-    "Style: Verse," + bodyFont + "," + verseSize + ",&H00FFFFFF,&H00000000,&H00101513,&H9A07110E,0,0,0,0,100,100,0,0,1,3,3,5,100,100,190,1",
-    "Style: Source,Noto Sans Arabic," + sourceSize + ",&H00D8C8A6,&H00000000,&H00101513,&H7007110E,0,0,0,0,100,100,0,0,1,1,1,2,70,70,105,1",
-    "Style: Reflection,Noto Naskh Arabic," + reflectionSize + "," + composition.accentAss + ",&H00000000,&H00101513,&H7407110E,0,0,0,0,100,100,0,0,1,2,1,5,85,85,300,1",
-    "Style: Brand,Noto Naskh Arabic," + brandSize + ",&H00E8D8B4,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,55,55,60,1",
-    "Style: CTA,Noto Sans Arabic," + (composition.isVertical ? 27 : 22) + "," + composition.accentAss + ",&H00000000,&H00101513,&H7A07110E,1,0,0,0,100,100,0,0,1,2,1,2,70,70,95,1",
+    "Style: Badge," + baseFont + ",24," + composition.accentAss + ",&H00000000,&H00101513,&H9807110E,1,0,0,0,100,100,0,0,1,2,2,8,60,60,120,1",
+    "Style: Hook," + baseFont + "," + (composition.isVertical ? 29 : 24) + ",&H00FFFFFF,&H00000000,&H00101513,&H6A07110E,1,0,0,0,100,100,0,0,1,1,1,8,70,70,165,1",
+    "Style: Title," + baseFont + "," + titleSize + "," + composition.accentAss + ",&H00000000,&H00101513,&H7007110E,1,0,0,0,100,100,0,0,1,2,2,8,70,70,215,1",
+    "Style: Verse," + bodyFont + "," + verseSize + ",&H00FFFFFF,&H00000000,&H00101513," + captionBack + ",0,0,0,0,100,100,0,0," + captionBorderStyle + "," + captionOutline + "," + captionShadow + ",5,100,100,190,1",
+    "Style: Source," + baseFont + "," + sourceSize + ",&H00D8C8A6,&H00000000,&H00101513,&H7007110E,0,0,0,0,100,100,0,0,1,1,1,2,70,70,105,1",
+    "Style: Reflection," + baseFont + "," + reflectionSize + "," + composition.accentAss + ",&H00000000,&H00101513,&H7407110E,0,0,0,0,100,100,0,0,1,2,1,5,85,85,300,1",
+    "Style: Brand," + baseFont + "," + brandSize + ",&H00E8D8B4,&H00000000,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,0,0,9,55,55,60,1",
+    "Style: CTA," + baseFont + "," + (composition.isVertical ? 27 : 22) + "," + composition.accentAss + ",&H00000000,&H00101513,&H7A07110E,1,0,0,0,100,100,0,0,1,2,1,2,70,70,95,1",
     "",
     "[Events]",
     "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
@@ -1208,6 +1215,13 @@ async function renderVideo(request: GeneratedRequest) {
     if (request.category === "quran" && !audioUrl) {
       throw new Error("Quran video rejected: verified human recitation audio is unavailable; TTS is never used for Quran.");
     }
+    if (
+      !isTemplatePreview &&
+      boundTemplate?.config.audioPolicy === "verified-audio-only" &&
+      !audioUrl
+    ) {
+      throw new Error("Template audio policy requires a verified source or human recording; synthetic narration is disabled.");
+    }
 
     const preferredProvider =
       request.content.aiProviderHint === "hf_ltx_fast" ||
@@ -1322,6 +1336,7 @@ async function renderVideo(request: GeneratedRequest) {
       seed: request.id,
       width,
       height,
+      template: boundTemplate?.config,
     });
     await writeFile(
       assPath,
