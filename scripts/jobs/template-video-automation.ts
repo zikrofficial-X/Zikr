@@ -14,6 +14,8 @@ import { buildKidsSeriesEpisode, validateGeneratedKidsEpisode } from "../../src/
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
+import { isVideoTemplateAssetAllowedForAudience, parseVideoTemplateConfig, videoTemplateAssetPath, videoTemplateScene, type VideoTemplateAudience } from "../../src/features/videos/services/template-config";
+import { CURRENT_VIDEO_RENDERER_VERSION, versionedTemplateLabel } from "../../src/features/videos/services/video-template-version";
 import { AI_VISUAL_POLICY_VERSION, aiVisualPolicyPromptLine } from "../../src/features/videos/providers/ai-visual-policy";
 import { createVideoProviderRouter } from "../../src/features/videos/providers/provider-router";
 import { getDefaultVideoVoiceProfile, getVideoVoiceProfile } from "../../src/features/videos/services/voice-profiles";
@@ -29,7 +31,7 @@ const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_V
 const VIDEO_DEFAULT_TTS_PROFILE = process.env.ARABIC_TTS_PROFILE?.trim() || "hadith_male_msa";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
-const VIDEO_TEMPLATE_VERSION = "2026-11-06-composition-sync-v8";
+const VIDEO_TEMPLATE_VERSION = CURRENT_VIDEO_RENDERER_VERSION;
 const VIDEO_OUTPUT_CRF = Math.min(23, Math.max(16, Number(process.env.VIDEO_OUTPUT_CRF ?? 18) || 18));
 const VIDEO_AUDIO_BITRATE = process.env.VIDEO_AUDIO_BITRATE?.trim() || "192k";
 const engineConfig = () => getVideoEngineConfig();
@@ -167,7 +169,74 @@ function siteUrl() {
   return getServerEnv().NEXT_PUBLIC_SITE_URL;
 }
 
+type BoundTemplateVersion = {
+  label: string;
+  config: NonNullable<ReturnType<typeof parseVideoTemplateConfig>>;
+  audience: VideoTemplateAudience;
+};
+
+async function bindTemplateVersion(request: GeneratedRequest): Promise<BoundTemplateVersion | null> {
+  const versionId = request.content?.templateVersionId;
+  if (typeof versionId !== "string" || !versionId.trim()) return null;
+
+  const preview = request.content.templatePreview === true;
+  if (preview && request.content.skipSocialPublish !== true) {
+    throw new Error("Template previews must remain excluded from public social publishing.");
+  }
+
+  const versions = await supabaseServerAdminRequest<Array<{
+    id: string; template_id: string; version: number; config: unknown; status: string;
+  }>>(
+    `/rest/v1/video_template_versions?id=eq.${encodeURIComponent(versionId)}&select=id,template_id,version,config,status&limit=1`,
+  );
+  const version = versions?.[0];
+  if (!version) throw new Error("Pinned video template version was not found.");
+  if (!preview && version.status !== "active") {
+    throw new Error("Video generation can only use an active template version.");
+  }
+
+  const templates = await supabaseServerAdminRequest<Array<{
+    id: string; slug: string; audience: VideoTemplateAudience;
+  }>>(
+    `/rest/v1/video_templates?id=eq.${encodeURIComponent(version.template_id)}&select=id,slug,audience&limit=1`,
+  );
+  const template = templates?.[0];
+  if (!template) throw new Error("Pinned video template definition was not found.");
+
+  const config = parseVideoTemplateConfig(version.config);
+  if (!config || !isVideoTemplateAssetAllowedForAudience(config.assetKey, template.audience)) {
+    throw new Error("Pinned video template configuration failed renderer validation.");
+  }
+
+  const label = versionedTemplateLabel(template.slug, version.version);
+  const requestedLabel = request.content.templateVersion;
+  if (typeof requestedLabel === "string" && requestedLabel.trim() && requestedLabel !== label) {
+    throw new Error("Pinned template version label does not match the immutable database version.");
+  }
+
+  request.content = {
+    ...request.content,
+    templateVersion: label,
+    templateAssetKey: config.assetKey,
+    templateAudience: template.audience,
+    templateMotion: config.motion,
+    templateConfigSnapshot: config,
+    videoFormat: config.defaultFormat,
+    resolution: config.defaultFormat === "vertical" ? "1080x1920" : "1920x1080",
+  };
+
+  return { label, config, audience: template.audience };
+}
+
 function backgroundAsset(scene: AiVideoPlan["scene"], content?: Record<string, unknown>) {
+  const pinnedAsset = typeof content?.templateAssetKey === "string" ? content.templateAssetKey : "";
+  const pinnedAudience: VideoTemplateAudience | null =
+    content?.templateAudience === "kids" ? "kids" :
+    content?.templateAudience === "general" ? "general" : null;
+  if (pinnedAudience && pinnedAsset && isVideoTemplateAssetAllowedForAudience(pinnedAsset as Parameters<typeof isVideoTemplateAssetAllowedForAudience>[0], pinnedAudience)) {
+    const assetPath = videoTemplateAssetPath(pinnedAsset as Parameters<typeof isVideoTemplateAssetPath>[0], pinnedAudience);
+    if (assetPath) return assetPath;
+  }
   if (content?.audience === "kids") {
     const kidThemes: Record<string, string> = {
       "kids-garden": "public/video/templates/kids-garden.svg",
@@ -856,7 +925,7 @@ function comparableSourceText(value: string) {
 }
 
 function assertKidsStoryContract(request: GeneratedRequest) {
-  if (request.content?.audience !== "kids") return;
+  if (request.content?.templatePreview === true || request.content?.audience !== "kids") return;
   const content = request.content;
   const text = contentText(request);
   const episodeNumber = Number(content.episodeNumber);
@@ -1035,11 +1104,38 @@ function requestedVideoShape(request: GeneratedRequest) {
 async function renderVideo(request: GeneratedRequest) {
   const renderStartedAt = Date.now();
   await validateSourceContent(request);
+  const boundTemplate = await bindTemplateVersion(request);
   assertKidsStoryContract(request);
   const text = contentText(request);
   const sourceUrl = contentSourceUrl(request);
   const [width, height] = requestedVideoShape(request).split("x").map(Number);
   if (!width || !height) throw new Error("Invalid video resolution.");
+  const templateVersion = boundTemplate?.label ??
+    (typeof request.content.templateVersion === "string" && request.content.templateVersion.trim()
+      ? request.content.templateVersion.trim()
+      : VIDEO_TEMPLATE_VERSION);
+  const detectedFormat = width > height ? "horizontal" : "vertical";
+  const sourceHashValue = sourceHash({
+    sourceId: typeof request.content.sourceId === "string" ? request.content.sourceId : "",
+    sourceUrl,
+    text,
+  });
+  const contentHashValue = videoContentHash({
+    category: request.category,
+    sourceId: typeof request.content.sourceId === "string" ? request.content.sourceId : "",
+    text,
+    format: detectedFormat,
+    templateVersion,
+    language: typeof request.content.language === "string" ? request.content.language : "ar",
+    style: boundTemplate?.config.assetKey ??
+      (typeof request.content.style === "string" ? request.content.style : ""),
+  });
+  request.content = {
+    ...request.content,
+    templateVersion,
+    sourceHash: sourceHashValue,
+    contentHash: contentHashValue,
+  };
 
   const temp = await mkdtemp(tmpdir() + "/zikr-template-video-");
   const assPath = temp + "/captions.ass";
@@ -1075,12 +1171,16 @@ async function renderVideo(request: GeneratedRequest) {
     const isKnownScene = (value: unknown): value is AiVideoPlan["scene"] =>
       value === "calm" || value === "dawn" || value === "night" || value === "gold" ||
       value === "emerald" || value === "paper" || value === "rose";
-    const scene = hasGeminiCreativePlan && isKnownScene(persistedAi?.scene)
-      ? persistedAi.scene
-      : deterministicScene(request);
-    const motion = hasGeminiCreativePlan && (persistedAi?.motion === "fade" || persistedAi?.motion === "slow")
-      ? persistedAi.motion
-      : resolveDeterministicVideoMotion(request.id);
+    const scene = boundTemplate
+      ? videoTemplateScene(boundTemplate.config.assetKey)
+      : hasGeminiCreativePlan && isKnownScene(persistedAi?.scene)
+        ? persistedAi.scene
+        : deterministicScene(request);
+    const motion = boundTemplate
+      ? boundTemplate.config.motion
+      : hasGeminiCreativePlan && (persistedAi?.motion === "fade" || persistedAi?.motion === "slow")
+        ? persistedAi.motion
+        : resolveDeterministicVideoMotion(request.id);
     if (persistedAi) {
       request.content = { ...request.content, ai: { ...persistedAi, scene, motion } };
     }
@@ -1342,6 +1442,9 @@ async function renderVideo(request: GeneratedRequest) {
       scene,
       renderDurationMs,
       composition: composition.key,
+      sourceHash: sourceHashValue,
+      contentHash: contentHashValue,
+      templateVersion,
     };
   } finally {
     await rm(temp, { recursive: true, force: true });
@@ -1570,6 +1673,9 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           video_url: rendered.videoUrl,
           scene: rendered.scene,
           render_duration_ms: rendered.renderDurationMs,
+          source_hash: rendered.sourceHash,
+          content_hash: rendered.contentHash,
+          template_version: rendered.templateVersion,
           provider:
             typeof request.content.aiProvider === "string"
               ? request.content.aiProvider
