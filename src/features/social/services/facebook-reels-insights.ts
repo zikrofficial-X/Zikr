@@ -122,8 +122,9 @@ export async function syncFacebookReelsInsights(limit = MAX_BATCH): Promise<Face
   if (!credential?.page_id || !credential.page_access_token) {
     return { configured: false, reason: "not_connected", candidates: 0, fetched: 0, updated: 0, failed: 0 };
   }
+  const expiry = credential.expires_at ? Date.parse(credential.expires_at) : NaN;
   if (credential.connection_status !== "connected" ||
-      (credential.expires_at && Date.parse(credential.expires_at) <= Date.now())) {
+      (credential.expires_at && Number.isFinite(expiry) && expiry <= Date.now())) {
     return { configured: false, reason: "connection_unavailable", candidates: 0, fetched: 0, updated: 0, failed: 0 };
   }
   const permissions = new Set(credential.granted_permissions ?? []);
