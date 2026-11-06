@@ -75,6 +75,48 @@ function checkGuardedBlock({ block, label, allow405 = false }) {
   return "guarded";
 }
 
+const CANONICAL_API_GUARDS = {
+  "src/app/api/admin/analytics/route.ts GET": ["analytics.read"],
+  "src/app/api/admin/cloudinary/image/route.ts POST": ["media.manage"],
+  "src/app/api/admin/cloudinary/image/route.ts GET": [],
+  "src/app/api/admin/content/route.ts GET": ["content.manage"],
+  "src/app/api/admin/media/route.ts GET": ["media.manage"],
+  "src/app/api/admin/media/route.ts POST": ["media.manage"],
+  "src/app/api/admin/media/route.ts PATCH": ["media.manage"],
+  "src/app/api/admin/overview/route.ts GET": ["dashboard.view"],
+  "src/app/api/admin/page-view/route.ts POST": ["analytics.read"],
+  "src/app/api/admin/sections/route.ts GET": ["sections.manage"],
+  "src/app/api/admin/sections/route.ts POST": ["sections.manage"],
+  "src/app/api/admin/site-audio/route.ts GET": ["audio.manage"],
+  "src/app/api/admin/site-audio/route.ts POST": ["audio.manage"],
+  "src/app/api/admin/site-audio/route.ts PATCH": ["audio.manage"],
+  "src/app/api/admin/site-audio/route.ts DELETE": ["audio.manage"],
+  "src/app/api/admin/site-audio/upload/route.ts POST": ["audio.manage"],
+  "src/app/api/admin/social/facebook/callback/route.ts GET": ["social.manage"],
+  "src/app/api/admin/social/facebook/connect/route.ts GET": ["social.manage"],
+  "src/app/api/admin/social/route.ts GET": ["social.manage"],
+  "src/app/api/admin/social/route.ts POST": ["social.manage", "social.publish"],
+  "src/app/api/admin/social/written/route.ts GET": ["social.manage"],
+  "src/app/api/admin/social/written/route.ts POST": ["social.manage", "social.publish"],
+  "src/app/api/admin/video-generation/narration-upload/route.ts POST": ["video.manage"],
+  "src/app/api/admin/video-generation/route.ts GET": ["video.manage"],
+  "src/app/api/admin/video-generation/route.ts DELETE": ["video.delete"],
+  "src/app/api/admin/video-generation/route.ts PATCH": ["video.manage", "social.publish"],
+  "src/app/api/admin/video-generation/sources/route.ts GET": ["video.manage"],
+  "src/app/api/admin/video/templates/route.ts GET": ["video.manage"],
+  "src/app/api/admin/video/templates/route.ts POST": ["video.manage"],
+  "src/app/api/admin/videos/[id]/retry/route.ts POST": ["video.manage"],
+  "src/app/api/admin/videos/[id]/route.ts GET": ["video.manage"],
+  "src/app/api/admin/videos/[id]/route.ts PATCH": ["video.manage"],
+  "src/app/api/admin/videos/[id]/route.ts DELETE": ["video.delete"],
+  "src/app/api/admin/videos/create/route.ts POST": ["video.manage"],
+  "src/app/api/admin/videos/route.ts GET": ["video.manage"],
+  "src/app/api/admin/videos/upload/route.ts POST": ["video.manage"],
+  "src/app/api/admin/videos/upload/route.ts GET": [],
+  "src/app/api/admin/youtube-facebook/register-media/route.ts POST": ["media.manage"],
+  "src/app/api/admin/youtube-facebook/upload-url/route.ts POST": ["media.manage"],
+};
+
 const routeFiles = walk(apiRoot)
   .filter((file) => file.endsWith("route.ts"))
   .sort();
@@ -107,6 +149,20 @@ for (const file of routeFiles) {
       !/requireAdminApi\s*\(\s*(["'])social\.publish\1\s*\)/.test(block)
     ) {
       failures.push(route + " POST: auto-published written-content generation requires social.publish.");
+    }
+    const handlerKey = route + " " + match[1];
+    const expectedPermissions = CANONICAL_API_GUARDS[handlerKey];
+    if (!expectedPermissions) {
+      failures.push(handlerKey + ": missing canonical permission matrix entry.");
+    } else {
+      const guardMatches = [
+        ...block.matchAll(/\brequireAdminApi\s*\(\s*(["'])([^"']+)\1\s*\)|\brequireAdminPermission\s*\(\s*(["'])([^"']+)\3\s*\)|\brequireAdminStepUp\s*\(\s*(["'])([^"']+)\5\s*,/g),
+      ];
+      const actualPermissions = [...new Set(guardMatches.map((item) => item[2] ?? item[4] ?? item[6]).filter(Boolean))].sort();
+      const expectedSorted = [...expectedPermissions].sort();
+      if (actualPermissions.join("|") !== expectedSorted.join("|")) {
+        failures.push(handlerKey + ": expected [" + expectedSorted.join(", ") + "] but found [" + actualPermissions.join(", ") + "].");
+      }
     }
     const result = checkGuardedBlock({
       block,
@@ -182,6 +238,10 @@ for (const entry of actionFiles) {
   }
 }
 
+const expectedHandlerCount = Object.keys(CANONICAL_API_GUARDS).length;
+if (handlerCount !== expectedHandlerCount) {
+  failures.push("canonical API permission matrix expects " + expectedHandlerCount + " handlers, discovered " + handlerCount + ".");
+}
 if (handlerCount < routeFiles.length) failures.push("HTTP handler inventory is inconsistent with the route-file inventory");
 
 if (failures.length) {
