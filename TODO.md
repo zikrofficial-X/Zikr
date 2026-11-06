@@ -31,3 +31,17 @@ The Admin dashboard/content scheduling/analytics task set above is implemented. 
 - [ ] Complete route-by-route browser E2E and physical Android acceptance; the successful Preview HTTP smoke and zero recent Vercel runtime errors do not substitute for full E2E certification.
 
 A completed source task or green PR gate does not substitute for these owner, editorial, legal, browser or physical-device acceptance records.
+
+
+## Current production follow-up — 2026-11-07
+
+The 2026-11-01 queue count and 15-minute social-poller statement above are historical snapshots, not the current runtime. The current implementation uses a four-times-daily GitHub video worker, direct Cloudinary upload, and a separate event-driven social publisher after successful generation or manual dispatch.
+
+- [x] Merge the partial-success and canonical Kids-story normalization fix: PR #232 merged to `main` at `f606dab52996c76c483cf8944e9b218e8c283d70` after its Quality Gate and CircleCI config validation succeeded.
+- [x] Reconcile current production URL configuration without exposing secret values; canonical Supabase and site/Auth URLs matched Vercel Production.
+- [ ] Merge and certify the follow-up worker-audit/Run Now/release-documentation branch; then deploy the resulting main SHA through the controlled Vercel release process.
+- [ ] Re-run the scheduled video worker after deployment; verify completed/failed counts, the Kids series canonical snapshot, Run Now consumption, and that `started_at <= finished_at` in the audit row.
+- [ ] Verify a Facebook Reels post end-to-end from one eligible queue row and confirm the remote post ID is persisted. Seven Facebook-only queue rows were present in the 2026-11-07 snapshot; do not replay historical rows.
+- [ ] Connect YouTube OAuth from Admin and verify `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly` scopes before enabling YouTube publishing.
+- [ ] Resolve or formally accept the Free-plan Leaked Password Protection warning. Do not grant service_role access to `auth.users` to work around the historical video-template error.
+
