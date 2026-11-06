@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
-import { saveFacebookPageCredential } from "@/features/social/services/facebook-credentials";
+import { saveFacebookPageCredential, saveFacebookPublicProfile } from "@/features/social/services/facebook-credentials";
 import { getServerEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -172,6 +172,14 @@ export async function GET(request: NextRequest) {
       expiresAt: null,
       grantedPermissions,
     });
+    try {
+      await saveFacebookPublicProfile({
+        pageId: selectedPage.id,
+        pageName: pageResult.data.name || selectedPage.name || "Facebook Page",
+      });
+    } catch {
+      // The publishing credential is already stored; a public profile cache can be refreshed later.
+    }
 
     try {
       await recordAdminAuditEvent({
