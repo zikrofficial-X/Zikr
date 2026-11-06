@@ -26,8 +26,9 @@ assert.doesNotMatch(runner, /syncSocialInsights|const insights = await syncSocia
 assert.doesNotMatch(runner, /reconcileCompletedVideoSocialQueue|Social queue reconciliation/);
 assert.match(runner, /processScheduledContent\(20\)/);
 assert.match(runner, /external social delivery disabled/);
-assert.match(adminApi, /social_post_insights/);
-assert.match(adminApi, /autoPublishValue === true/);
+assert.match(adminApi, /SOCIAL_PUBLISHING_RETIRED/);
+assert.match(adminApi, /status: 410/);
+assert.doesNotMatch(adminApi, /social_post_insights|autoPublishValue|publish_now|run_worker/);
 assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.social_post_insights/);
 assert.doesNotMatch(migration, /REFERENCES public\.social_publish_queue/i);
 assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
@@ -38,4 +39,4 @@ assert.match(integration, /safeYoutubeErrorMessage/);
 assert.doesNotMatch(integration, /YouTube API failed \(\$\{response\.status\}\):/);
 assert.match(stories, /export const dynamic = 'force-dynamic'/);
 assert.match(videos, /export const dynamic = 'force-dynamic'/);
-console.log("✅ Social insights isolation, pause-safe sync, and YouTube error redaction contracts passed.");
+console.log("✅ Historical social-insights storage is isolated; the external social API remains retired.");
