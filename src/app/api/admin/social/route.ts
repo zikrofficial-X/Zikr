@@ -172,19 +172,17 @@ export async function GET() {
       current[platformKey] = value;
       insightsByQueueId.set(insight.queue_id, current);
     }
-    const rows = queueRows.map((item) => {
+    const rows: QueueItem[] = queueRows.map((item): QueueItem => {
       const stored = item.metadata?.platformInsights;
       const storedInsights = stored && typeof stored === "object" && !Array.isArray(stored)
         ? stored as Record<string, unknown>
         : {};
       const externalInsights = insightsByQueueId.get(item.id) ?? {};
-      return {
-        ...item,
-        metadata: {
-          ...(item.metadata ?? {}),
-          platformInsights: { ...storedInsights, ...externalInsights },
-        },
+      const metadata: Record<string, unknown> = {
+        ...(item.metadata ?? {}),
+        platformInsights: { ...storedInsights, ...externalInsights },
       };
+      return { ...item, metadata };
     });
     const counts = rows.reduce<Record<string, number>>((acc, item) => {
       acc[item.status] = (acc[item.status] ?? 0) + 1;
