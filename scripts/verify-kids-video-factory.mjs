@@ -16,8 +16,19 @@ for (const id of ["salim-nour", "garden-friends", "little-inventors", "little-go
 }
 
 const worker = read("scripts/jobs/template-video-automation.ts");
-for (const token of ['const mode = slot % 7', "buildKidsSeriesEpisode", "validateGeneratedKidsEpisode", 'category: "other"', 'audience: "kids"', 'contentFormat: "series_episode"', 'voiceProfile: "kids_friendly"', "assertKidsStoryContract", 'VIDEO_FREE_ONLY?.toLowerCase() === "false"']) {
+for (const token of ['const mode = slot % 7', "buildKidsSeriesEpisode", "validateGeneratedKidsEpisode", "validateCanonicalKidsEpisodeSnapshot", 'category: "other"', 'audience: "kids"', 'contentFormat: "series_episode"', 'voiceProfile: "kids_friendly"', "assertKidsStoryContract", 'VIDEO_FREE_ONLY?.toLowerCase() === "false"']) {
   if (!worker.includes(token)) failures.push("video worker missing kids/free mode contract: " + token);
+}
+const outcomePolicy = read("src/features/videos/services/background-job-outcome.ts");
+if (!outcomePolicy.includes("videoFailed > 0 && videoSucceeded > 0") ||
+    !outcomePolicy.includes("socialFailed > 0") ||
+    !outcomePolicy.includes("sitePublishingFailed")) {
+  failures.push("a partial video batch must retain failed-item audit data without suppressing successful downstream social publishing");
+}
+const backgroundRunner = read("scripts/run-background-jobs.ts");
+if (!backgroundRunner.includes("evaluateBackgroundJobOutcome") ||
+    !backgroundRunner.includes("allowing the dependent social publisher to run")) {
+  failures.push("background runner must allow downstream social publishing after a partially successful video batch");
 }
 if (!worker.includes("KIDS_SERIES_START_DAY_INDEX")) failures.push("kids series schedule must have a stable launch reference");
 if (!worker.includes("Math.ceil((dailyTarget * scheduleWindow) / 4)")) failures.push("daily target must be spread across four six-hour workflow windows");
