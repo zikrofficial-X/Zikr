@@ -27,7 +27,7 @@ assert.match(adminApi, /autoPublishValue === true/);
 assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.social_post_insights/);
 assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
 assert.match(migration, /FROM PUBLIC, anon, authenticated/);
-assert.match(migration, /ON public\.social_publish_queue/);
+assert.match(migration, /FROM public\.social_publish_queue/);
 assert.doesNotMatch(migration, /UPDATE public\.social_publish_queue|DELETE FROM public\.social_publish_queue/i);
 assert.match(integration, /safeYoutubeErrorMessage/);
 assert.doesNotMatch(integration, /YouTube API failed \(\$\{response\.status\}\):/);
