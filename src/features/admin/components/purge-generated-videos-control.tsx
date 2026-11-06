@@ -29,6 +29,18 @@ export function PurgeGeneratedVideosControl({
   const [result, setResult] = useState<PurgeResult | null>(null);
   const [authorized, setAuthorized] = useState(false);
 
+  useEffect(() => {
+    let active = true;
+    fetch("/api/admin/video-purge", { cache: "no-store" })
+      .then(async response => {
+        const payload = await response.json().catch(() => ({})) as { allowed?: unknown };
+        return response.ok && payload.allowed === true;
+      })
+      .then(allowed => { if (active) setAuthorized(allowed); })
+      .catch(() => { if (active) setAuthorized(false); });
+    return () => { active = false; };
+  }, []);
+
   async function purge() {
     if (confirmation !== CONFIRMATION_PHRASE || busy) return;
     setBusy(true);
@@ -84,6 +96,8 @@ export function PurgeGeneratedVideosControl({
       setBusy(false);
     }
   }
+
+  if (!authorized) return null;
 
   return (
     <section className="w-full rounded-2xl border border-red-500/25 bg-red-950/15 p-3 text-right sm:p-4">
