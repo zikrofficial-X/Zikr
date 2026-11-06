@@ -19,7 +19,7 @@ import { createVideoProviderRouter } from "../../src/features/videos/providers/p
 import { getDefaultVideoVoiceProfile, getVideoVoiceProfile } from "../../src/features/videos/services/voice-profiles";
 import { evaluateArabicNarrationText } from "../../src/features/videos/services/narration-quality";
 import { resolveDeterministicVideoHook, resolveDeterministicVideoMotion, resolveDeterministicVideoScene } from "../../src/features/videos/services/video-creative-variation";
-import { planCaptionTimings, resolveVideoComposition, type VideoCompositionProfile } from "../../src/features/videos/services/video-composition";
+import { paginateCaptionText, planCaptionTimings, resolveVideoComposition, type VideoCompositionProfile } from "../../src/features/videos/services/video-composition";
 import { resolveRenderDuration } from "../../src/features/videos/services/render-duration";
 import { getFacebookPageCredentials } from "../../src/features/social/services/facebook-credentials";
 
@@ -29,7 +29,7 @@ const TARGET_VIDEO_SECONDS = Math.min(45, Math.max(10, Number(process.env.AUTO_V
 const VIDEO_DEFAULT_TTS_PROFILE = process.env.ARABIC_TTS_PROFILE?.trim() || "hadith_male_msa";
 const QURAN_AYAH_AUDIO_BASE_URL =
   process.env.QURAN_AYAH_AUDIO_BASE_URL?.trim() || "https://verses.quran.com/Alafasy/mp3";
-const VIDEO_TEMPLATE_VERSION = "2026-11-06-composition-sync-v7";
+const VIDEO_TEMPLATE_VERSION = "2026-11-06-composition-sync-v8";
 const VIDEO_OUTPUT_CRF = Math.min(23, Math.max(16, Number(process.env.VIDEO_OUTPUT_CRF ?? 18) || 18));
 const VIDEO_AUDIO_BITRATE = process.env.VIDEO_AUDIO_BITRATE?.trim() || "192k";
 const engineConfig = () => getVideoEngineConfig();
@@ -241,58 +241,8 @@ function displaySource(label: string) {
   return trimmed;
 }
 
-function wrapArabic(value: string, max = 30) {
-  const words = normalizeArabicText(value).split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let line = "";
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word;
-    if (candidate.length > max && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = candidate;
-    }
-  }
-  if (line) lines.push(line);
-  return lines.slice(0, 10);
-}
-function assEscape(value: string) {
-  return value.replace(/[{}]/g, "").replace(/\\/g, "\\\\");
-}
-function categoryLabel(category: string, audience?: unknown) {
-  if (audience === "kids") return "قصص أطفال";
-  const labels: Record<string, string> = {
-    quran: "القرآن الكريم",
-    hadith: "الحديث الشريف",
-    dua: "دعاء",
-    adhkar: "أذكار",
-    story: "قصة",
-    stories: "قصص",
-    other: "رسالة إيمانية",
-  };
-  return labels[category] || "ذِكر";
-}
-
-function audienceHook(category: string, audience?: unknown, seed = "") {
-  return resolveDeterministicVideoHook({ id: seed, category, audience });
-}
-
-function deterministicScene(request: GeneratedRequest): AiVideoPlan["scene"] {
-  return resolveDeterministicVideoScene({
-    id: request.id,
-    category: request.category,
-    audience: request.content?.audience,
-  });
-}
-
 function paginateArabic(value: string, lineChars: number, linesPerPage: number) {
-  const lines = wrapArabic(value, lineChars);
-  const pages: string[] = [];
-  for (let index = 0; index < lines.length; index += linesPerPage) {
-    pages.push(lines.slice(index, index + linesPerPage).map((line) => RLM + line).join("\\N"));
-  }
-  return pages.length ? pages : [value.trim()];
+  return paginateCaptionText(normalizeArabicText(value), lineChars, linesPerPage);
 }
 
 function assTimestamp(seconds: number) {
@@ -1270,10 +1220,10 @@ async function renderVideo(request: GeneratedRequest) {
     const accentX = panelX + Math.round(panelW * 0.055);
     const accentY = panelY + Math.round(panelH * 0.075);
     const accentW = Math.max(24, Math.round(panelW * 0.28));
-    const cameraX = composition.cameraPath === "left-to-right" ? "0.38"
-      : composition.cameraPath === "right-to-left" ? "0.62" : "0.50";
-    const cameraY = composition.cameraPath === "top-to-bottom" ? "0.38"
-      : composition.cameraPath === "bottom-to-top" ? "0.62" : "0.50";
+    const cameraX = composition.cameraPath === "left-to-right" ? "(0.12+0.76*min(on/1800,1))"
+      : composition.cameraPath === "right-to-left" ? "(0.88-0.76*min(on/1800,1))" : "0.50";
+    const cameraY = composition.cameraPath === "top-to-bottom" ? "(0.12+0.76*min(on/1800,1))"
+      : composition.cameraPath === "bottom-to-top" ? "(0.88-0.76*min(on/1800,1))" : "0.50";
     const cameraFilter =
       "zoompan=z='min(zoom+" + composition.zoomIncrement + ",1.06)':x='(iw-iw/zoom)*" +
       cameraX + "':y='(ih-ih/zoom)*" + cameraY +
