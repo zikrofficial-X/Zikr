@@ -120,6 +120,9 @@ for (const expected of [
 if (socialWorkflow.includes("pages_manage_engagement")) {
   failures.push("Facebook publish workflow must not block publishing on comment-moderation scope");
 }
+if (!socialWorkflow.includes('SOCIAL_PUBLISH_BATCH_SIZE: "5"')) {
+  failures.push("social publisher must drain five verified items per generation run within the bounded worker cap");
+}
 if (socialWorkflow.includes("YOUTUBE_REFRESH_TOKEN") ||
     socialWorkflow.includes("SOCIAL_PUBLISH_BATCH_SIZE: \"10\"")) {
   failures.push("GitHub workflow must not inject a refresh token or run unbounded social batches");
