@@ -105,6 +105,38 @@ function youtubeInsightsSummary(item: QueueItem): string {
   ].filter(Boolean).join(" · ");
 }
 
+function facebookReelsInsightsSummary(item: QueueItem): string {
+  const raw = item.metadata?.platformInsights;
+  const reels = raw && typeof raw === "object" && !Array.isArray(raw)
+    ? (raw as Record<string, unknown>).facebookReels
+    : null;
+  if (!reels || typeof reels !== "object" || Array.isArray(reels)) {
+    return item.target_platforms.includes("facebook_reels") && item.status === "published"
+      ? "إحصاءات Reels تنتظر صلاحية read_insights"
+      : "—";
+  }
+  const metrics = (reels as Record<string, unknown>).metrics;
+  if (!metrics || typeof metrics !== "object" || Array.isArray(metrics)) return "لا توجد إحصاءات Reels متاحة";
+  const values = metrics as Record<string, unknown>;
+  const count = (value: unknown) =>
+    typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+      ? new Intl.NumberFormat("ar-EG").format(value)
+      : null;
+  const plays = count(values.fb_reels_total_plays);
+  const averageMs = typeof values.post_video_avg_time_watched === "number"
+    ? values.post_video_avg_time_watched
+    : null;
+  const averageSeconds = averageMs !== null && Number.isFinite(averageMs) && averageMs >= 0
+    ? (averageMs / 1000).toFixed(1) + " ث مشاهدة/متوسط"
+    : null;
+  const replays = count(values.fb_reels_replay_count);
+  return [
+    plays === null ? null : plays + " تشغيل Reels",
+    averageSeconds,
+    replays === null ? null : replays + " إعادة تشغيل",
+  ].filter(Boolean).join(" · ") || "لا توجد إحصاءات Reels متاحة";
+}
+
 export default function AdminSocialPage() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [health, setHealth] = useState<Health>({
@@ -665,7 +697,7 @@ export default function AdminSocialPage() {
                 <th className="p-3 text-right">العنوان</th>
                 <th className="p-3 text-right">النوع</th>
                 <th className="p-3 text-right">المنصات</th>
-                <th className="p-3 text-right">إحصاءات YouTube</th>
+                <th className="p-3 text-right">إحصاءات YouTube / Facebook Reels</th>
                 <th className="p-3 text-right">الحالة</th>
                 <th className="p-3 text-right">الموعد</th>
                 <th className="p-3 text-right">الخطأ</th>
@@ -702,7 +734,7 @@ export default function AdminSocialPage() {
                     <td className="p-3 text-brand-cream/55">
                       {item.target_platforms.join("، ")}
                     </td>
-                    <td className="p-3 text-xs text-brand-cream/60">{youtubeInsightsSummary(item)}</td>
+                    <td className="p-3 text-xs text-brand-cream/60">{[youtubeInsightsSummary(item), facebookReelsInsightsSummary(item)].filter(value => value !== "—").join(" · ")}</td>
                     <td className="p-3">
                       <span
                         className={`rounded-full border px-2 py-1 text-xs ${STATUS_CLASSES[status]}`}
