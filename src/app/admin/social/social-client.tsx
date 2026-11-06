@@ -235,7 +235,7 @@ export default function AdminSocialPage() {
       const youtubeMessages: Record<string, string> = {
         configuration_missing: "إعداد Google OAuth غير مكتمل. تحقق من YOUTUBE_CLIENT_ID وYOUTUBE_CLIENT_SECRET.",
         redirect_uri_mismatch: "عنوان العودة غير مسجل في Google Cloud. أضف https://zikrmediaofficial.vercel.app/api/admin/social/youtube/callback إلى Authorized redirect URIs.",
-        permission_missing: "لم تُمنح صلاحيات YouTube المطلوبة. أعد التفويض ووافق على قراءة القناة ورفع الفيديو وتقارير Analytics.",
+        permission_missing: "لم تُمنح صلاحيات YouTube المطلوبة. أعد التفويض ووافق على قراءة القناة ورفع الفيديو وتقارير Analytics وحذف الفيديوهات المنشورة.",
         authorization_denied: "تم إلغاء تفويض YouTube. لم يتم تغيير اتصال النشر الحالي.",
         state_mismatch: "انتهت جلسة ربط YouTube لأسباب أمنية. ابدأ الربط من جديد.",
         admin_session_missing: "انتهت جلسة الإدارة أثناء الرجوع من Google. سجّل الدخول ثم أعد ربط YouTube.",
