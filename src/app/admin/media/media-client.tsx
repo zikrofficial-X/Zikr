@@ -104,8 +104,8 @@ export default function AdminMediaPage() {
     <Container className="py-10 space-y-6" dir="rtl">
       <header>
         <p className="text-xs tracking-[0.2em] text-brand-cream/30">MEDIA LIBRARY</p>
-        <h1 className="mt-2 text-3xl font-bold text-brand-gold">مكتبة الوسائط والحقوق</h1>
-        <p className="mt-2 text-sm leading-7 text-brand-cream/50">رفع الأصول، تسجيل الترخيص والنسب، توثيق الحقوق، ثم نشر الأصل بعد اكتمال المراجعة.</p>
+        <h1 className="mt-2 text-3xl font-bold text-brand-gold">الذاكرة والمكتبة الداخلية</h1>
+        <p className="mt-2 text-sm leading-7 text-brand-cream/50">ذاكرة ملفات الموقع والفيديوهات المولّدة، وأصول الوسائط وحقوق استخدامها. احتفظ بمخرجات التوليد داخل ZIKR وأدر الملفات من مكان واحد.</p>
       </header>
 
       {error && <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</div>}
