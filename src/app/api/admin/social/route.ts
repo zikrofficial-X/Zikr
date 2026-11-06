@@ -144,14 +144,23 @@ export async function GET() {
     >((acc, item) => {
       for (const platform of item.target_platforms) {
         acc[platform] ??= { queued: 0, published: 0, failed: 0 };
-        if (item.status === "published") acc[platform].published += 1;
-        else if (item.status === "failed" || item.status === "partial")
-          acc[platform].failed += 1;
+        const ledger = item.metadata?.platformResults;
+        const raw = ledger && typeof ledger === "object" && !Array.isArray(ledger)
+          ? (ledger as Record<string, unknown>)[platform]
+          : null;
+        const result = raw && typeof raw === "object" && !Array.isArray(raw)
+          ? raw as { ok?: unknown; remoteId?: unknown }
+          : null;
+        const isDelivered = result?.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
+        const unavailable = Array.isArray(item.metadata?.unavailablePlatforms) && item.metadata?.unavailablePlatforms.includes(platform);
+        const approvalDeferred = Array.isArray(item.metadata?.approvalDeferredPlatforms) && item.metadata?.approvalDeferredPlatforms.includes(platform);
+        if (isDelivered || (!result && item.status === "published")) acc[platform].published += 1;
+        else if (unavailable || approvalDeferred || (!result && ["queued", "processing"].includes(item.status))) acc[platform].queued += 1;
+        else if (result?.ok === false || item.status === "failed" || item.status === "partial") acc[platform].failed += 1;
         else acc[platform].queued += 1;
       }
       return acc;
-    }, {});
-    const oldestQueuedAt =
+    }, {});    const oldestQueuedAt =
       rows
         .filter(
           item => item.status === "queued" || item.status === "processing"
@@ -334,14 +343,36 @@ export async function POST(request: NextRequest) {
             },
             body: JSON.stringify({
               status: "queued",
-              target_platforms: platforms,
+              // Preserve the original target set. Successful channels remain in the
+              // ledger and the worker retries only the failed platform(s).
               error_message: null,
               updated_at: new Date().toISOString(),
               scheduled_at: new Date().toISOString(),
               metadata: {
                 ...(item.metadata ?? {}),
-                authBlocked: false,
                 attempts: 0,
+                maxAttempts: item.metadata?.maxAttempts ?? 5,
+                platformAttempts: {
+                  ...(item.metadata?.platformAttempts && typeof item.metadata.platformAttempts === "object" && !Array.isArray(item.metadata.platformAttempts)
+                    ? item.metadata.platformAttempts as Record<string, number>
+                    : {}),
+                  ...Object.fromEntries(platforms.map(platform => [platform, 0])),
+                },
+                platformResults: Object.fromEntries(
+                  Object.entries(item.metadata?.platformResults && typeof item.metadata.platformResults === "object" && !Array.isArray(item.metadata.platformResults)
+                    ? item.metadata.platformResults as Record<string, unknown>
+                    : {}).filter(([platform]) => !platforms.includes(platform)),
+                ),
+                authBlocked: false,
+                authBlockedPlatforms: (Array.isArray(item.metadata?.authBlockedPlatforms)
+                  ? item.metadata.authBlockedPlatforms
+                  : []).filter(platform => !platforms.includes(String(platform))),
+                permanentFailure: false,
+                permanentFailurePlatforms: (Array.isArray(item.metadata?.permanentFailurePlatforms)
+                  ? item.metadata.permanentFailurePlatforms
+                  : []).filter(platform => !platforms.includes(String(platform))),
+                unavailablePlatforms: [],
+                approvalDeferredPlatforms: [],
                 nextRetryAt: null,
               },
             }),
