@@ -228,13 +228,21 @@ async function pauseVideoAutomation(): Promise<void> {
   );
 }
 
-async function hasProcessingVideoQueueItems(): Promise<number> {
-  const rows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-    "/rest/v1/social_publish_queue?content_type=in.(" +
-      VIDEO_CONTENT_TYPES.join(",") +
-      ")&status=eq.processing&select=id&limit=100",
-  );
-  return rows?.length ?? 0;
+async function getActiveVideoWork(): Promise<{ queue: number; generation: number }> {
+  const [queueRows, generationRows] = await Promise.all([
+    supabaseServerAdminRequest<Array<{ id: string }>>(
+      "/rest/v1/social_publish_queue?content_type=in.(" +
+        VIDEO_CONTENT_TYPES.join(",") +
+        ")&status=eq.processing&select=id&limit=100",
+    ),
+    supabaseServerAdminRequest<Array<{ id: string }>>(
+      "/rest/v1/video_generation_requests?status=eq.processing&select=id&limit=100",
+    ),
+  ]);
+  return {
+    queue: queueRows?.length ?? 0,
+    generation: generationRows?.length ?? 0,
+  };
 }
 
 async function deleteRows(table: string, filter: string): Promise<number> {
@@ -262,11 +270,11 @@ export async function POST(request: NextRequest) {
     await pauseVideoAutomation();
     await setPurgeLock(true);
 
-    const processing = await hasProcessingVideoQueueItems();
-    if (processing > 0) {
+    const processing = await getActiveVideoWork();
+    if (processing.queue > 0 || processing.generation > 0) {
       return NextResponse.json(
         {
-          error: `يوجد ${processing} عنصر فيديو قيد النشر حاليًا. أوقفت التوليد والنشر مؤقتًا؛ أعد تنفيذ التصفير بعد انتهاء العامل.`,
+          error: `يوجد ${processing.generation} طلب توليد و${processing.queue} عملية نشر فيديو قيد التنفيذ. أوقفت التوليد وحجزت النشر مؤقتًا؛ أعد تنفيذ التصفير بعد انتهاء العامل.`,
           processing,
           paused: true,
           retryRequired: true,
