@@ -220,7 +220,7 @@ if (worker.includes("publishToYoutube(") || worker.includes("publishToFacebook("
 if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"') ||
     !worker.includes("buildAutomatedVideoQaChecklist") ||
     !worker.includes("createAutomatedVideoQaApproval") ||
-    !worker.includes("automatedVideoQa.status !== \"passed\"")) {
+    !worker.includes("automatedQa.status !== \"passed\"")) {
   failures.push("new video candidates must use a complete automated QA snapshot instead of a manual approval gate");
 }
 if (!socialPublishing.includes("hasVideoApprovalForQueueItem(item)") ||
