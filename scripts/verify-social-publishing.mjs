@@ -41,8 +41,8 @@ if (!videoWorkflow.includes("BACKGROUND_JOB_TARGET: \"videos\"")) failures.push(
 for (const token of ["YOUTUBE_CLIENT_ID", "YOUTUBE_REFRESH_TOKEN", "FACEBOOK_GRAPH_API_VERSION", "SOCIAL_PUBLISH_ENABLED"]) {
   if (videoWorkflow.includes(token)) failures.push("internal video workflow must not depend on external social credential/config: " + token);
 }
-if (!socialPage.includes('redirect("/admin/memory")')) failures.push("retired social center must redirect to internal project memory");
-if (!writtenPage.includes('redirect("/admin/memory")')) failures.push("retired written-social studio must redirect to internal project memory");
+if (!socialPage.includes('redirect("/admin/media")')) failures.push("retired social center must redirect to internal project memory");
+if (!writtenPage.includes('redirect("/admin/media")')) failures.push("retired written-social studio must redirect to internal project memory");
 if (navigation.includes('key: "publishing"') || navigation.includes('href: "/admin/social"')) {
   failures.push("external social publishing must not be part of admin navigation");
 }
