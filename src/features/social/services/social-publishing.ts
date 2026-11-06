@@ -117,7 +117,7 @@ function socialRetryDelayMinutes(attempt: number, itemId: string) {
 
 function isPermanentSocialFailure(message: string | undefined) {
   const normalized = (message ?? "").toLowerCase();
-  return /no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|oauth|access token|publishing is disabled|not configured|human qa approval/i.test(normalized);
+  return /no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|oauth|access token|publishing is disabled|not configured|automated qa check/i.test(normalized);
 }
 
 async function markQueueItem(
@@ -212,7 +212,7 @@ export async function getPendingSocialPublishItems(
   }
   const createdSince = encodeURIComponent(publishAfterDate.toISOString());
   const effectiveLimit = Math.max(1, Math.min(100, Math.floor(limit) || 1));
-  // Read a wider candidate window before applying human-QA eligibility. Held
+  // Read a wider candidate window before applying automated-QA eligibility. Held
   // videos must not occupy the small delivery batch and starve written posts.
   const candidateLimit = Math.max(100, Math.min(500, effectiveLimit * 25));
   const maxAttemptsFor = (metadata: Record<string, unknown> | null) => socialMaxAttempts(metadata);
@@ -769,7 +769,7 @@ export async function processSocialPublishItem(
 ): Promise<"published" | "auth_blocked" | "approval_blocked" | "deferred" | "failed"> {
   if (!(await hasVideoApprovalForQueueItem(item))) {
     await markQueueItem(item.id, "queued", {
-      error_message: "Video held for human QA approval before public publishing.",
+      error_message: "Video held for automated qa check before public publishing.",
       metadata: { ...(item.metadata ?? {}), approvalBlocked: true },
     });
     return "approval_blocked";
