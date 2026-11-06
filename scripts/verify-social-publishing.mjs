@@ -39,6 +39,8 @@ if (!writtenApi.includes('code: "EXTERNAL_WRITTEN_PUBLISHING_RETIRED"') || !writ
   failures.push("Facebook-only written-content generation must fail closed with HTTP 410");
 }
 if (!socialWorkflow.includes("if: false")) failures.push("legacy external social publisher workflow must be disabled");
+if (!socialWorkflow.includes('FACEBOOK_PUBLISHING_REQUESTED: "false"') || !socialWorkflow.includes('YOUTUBE_PUBLISHING_REQUESTED: "false"') || !socialWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"')) failures.push("retired external social workflow must keep all publishing flags explicitly false");
+for (const secretName of ["YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN", "YOUTUBE_CHANNEL_ID", "FACEBOOK_GRAPH_API_VERSION"]) if (socialWorkflow.includes(secretName)) failures.push("retired social workflow must not receive external provider credentials: " + secretName);
 if (writtenWorkflow.includes("if: false") || !writtenWorkflow.includes('WRITTEN_CONTENT_ENABLED: "true"')) failures.push("internal written-content generator workflow must be enabled for ZIKR website articles");
 const writtenWorker = read("scripts/jobs/written-content-automation.ts");
 if (writtenWorker.includes("social_publish_queue") || !writtenWorker.includes('"/rest/v1/articles"') || !writtenWorker.includes('"/rest/v1/content_publish_queue"')) {
