@@ -13,6 +13,14 @@ type Status = SocialQueueStatus;
 type QueueItem = SocialPublishQueueItem;
 type Health = {
   youtubeConfigured: boolean;
+  youtubeConnectionStatus?: "not_configured" | "not_tested" | "connected" | "reauthorization_required" | "permission_missing" | "channel_not_found" | "unavailable";
+  youtubeChannelId?: string | null;
+  youtubeChannelName?: string | null;
+  youtubeLastCheckedAt?: string | null;
+  youtubeConnectionMessage?: string;
+  youtubeSubscribers?: number | null;
+  youtubeTotalViews?: number | null;
+  youtubeVideoCount?: number | null;
   facebookEnabled: boolean;
   facebookCredentialsConfigured: boolean;
   facebookEnvironmentTokenConfigured: boolean;
@@ -25,11 +33,21 @@ type Health = {
   facebookConnectionMessage?: string;
   facebookInsightsPermissionGranted?: boolean;
 };
-type SocialView = "overview" | "queue";
+type SocialView = "overview" | "queue" | "analytics";
+type PlatformFilter = "all" | "youtube" | "facebook" | "facebook_reels";
 type PlatformStats = Record<
   string,
   { queued: number; published: number; failed: number }
 >;
+type SocialAnalytics = {
+  platform: Record<string, { posts: number; views: number; likes: number; comments: number; shares: number }>;
+  audience: {
+    youtube: { status: string; channelName: string | null; subscribers: number | null; totalViews: number | null; videoCount: number | null; subscribersGained: number | null; subscribersLost: number | null; views28d: number | null; likes28d: number | null; comments28d: number | null; shares28d: number | null; watchMinutes28d: number | null };
+    facebook: { status: string; pageName: string | null; followers: number | null; pageLikes: number | null };
+  };
+  posts: Array<{ id: string; title: string; contentType: string; platform: string; publishedAt: string; remoteId: string | null; url: string | null; views: number | null; likes: number | null; comments: number | null; shares: number | null; metricsCapturedAt: string | null; metricsStatus: string }>;
+  capturedAt: string;
+};
 type AutomationStatus = {
   enabled: boolean;
   provider: string;
@@ -147,6 +165,7 @@ export default function AdminSocialPage() {
     facebookAuthBlocked: 0,
   });
   const [platformStats, setPlatformStats] = useState<PlatformStats>({});
+  const [socialAnalytics, setSocialAnalytics] = useState<SocialAnalytics | null>(null);
   const [automation, setAutomation] = useState<AutomationStatus>({
     enabled: true,
     provider: "GitHub Actions",
@@ -155,6 +174,7 @@ export default function AdminSocialPage() {
   });
   const [oldestQueuedAt, setOldestQueuedAt] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | Status>("all");
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -171,6 +191,7 @@ export default function AdminSocialPage() {
         items?: QueueItem[];
         health?: Health;
         platformStats?: PlatformStats;
+        socialAnalytics?: SocialAnalytics;
         automation?: AutomationStatus;
         oldestQueuedAt?: string | null;
         error?: string;
@@ -180,6 +201,7 @@ export default function AdminSocialPage() {
       setItems(Array.isArray(payload.items) ? payload.items : []);
       if (payload.health) setHealth(payload.health);
       setPlatformStats(payload.platformStats ?? {});
+      setSocialAnalytics(payload.socialAnalytics ?? null);
       setAutomation(payload.automation ?? {
         enabled: false,
         provider: "GitHub Actions",
@@ -264,6 +286,38 @@ export default function AdminSocialPage() {
     }
   }, []);
 
+  const testYouTube = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "test_youtube" }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        health?: { status?: Health["youtubeConnectionStatus"]; channelId?: string | null; channelName?: string | null; checkedAt?: string; message?: string };
+      };
+      if (!response.ok || !payload.health) throw new Error(payload.error || "تعذر اختبار اتصال YouTube.");
+      setHealth(current => ({
+        ...current,
+        youtubeConnectionStatus: payload.health?.status,
+        youtubeChannelId: payload.health?.channelId ?? null,
+        youtubeChannelName: payload.health?.channelName ?? null,
+        youtubeLastCheckedAt: payload.health?.checkedAt ?? null,
+        youtubeConnectionMessage: payload.health?.message ?? "انتهى اختبار YouTube.",
+      }));
+      if (payload.health.status === "connected") setMessage("اختبار YouTube ناجح. تم التحقق من قناة النشر.");
+      else setError(payload.health.message || "لم يجتز اتصال YouTube الاختبار.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر اختبار اتصال YouTube.");
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
   const adoptServerToken = useCallback(async () => {
     setBusy(true);
     setError("");
@@ -332,11 +386,11 @@ export default function AdminSocialPage() {
     }
   }, [load]);
 
-  const filtered = useMemo(
-    () =>
-      filter === "all" ? items : items.filter(item => item.status === filter),
-    [filter, items]
-  );
+  const filtered = useMemo(() => items.filter(item => {
+    const matchesStatus = filter === "all" || item.status === filter;
+    const matchesPlatform = platformFilter === "all" || item.target_platforms.includes(platformFilter);
+    return matchesStatus && matchesPlatform;
+  }), [filter, items, platformFilter]);
   const retryable = items.filter(
     item => item.status === "failed" || item.status === "partial"
   );
@@ -458,7 +512,7 @@ export default function AdminSocialPage() {
       <div
         role="tablist"
         aria-label="أقسام مركز النشر"
-        className="grid grid-cols-2 gap-2 rounded-2xl border border-brand-gold/10 bg-black/20 p-1.5"
+        className="grid grid-cols-3 gap-2 rounded-2xl border border-brand-gold/10 bg-black/20 p-1.5"
       >
         <button
           type="button"
@@ -477,6 +531,15 @@ export default function AdminSocialPage() {
           className={`rounded-xl px-3 py-3 text-sm font-semibold transition ${activeView === "queue" ? "bg-brand-gold text-brand-emeraldDeep" : "text-brand-cream/60 hover:bg-white/5"}`}
         >
           طابور النشر ({items.length})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeView === "analytics"}
+          onClick={() => setActiveView("analytics")}
+          className={`rounded-xl px-3 py-3 text-sm font-semibold transition ${activeView === "analytics" ? "bg-brand-gold text-brand-emeraldDeep" : "text-brand-cream/60 hover:bg-white/5"}`}
+        >
+          تحليلات المنصات والتفاعل
         </button>
       </div>
 
@@ -500,13 +563,18 @@ export default function AdminSocialPage() {
       {activeView === "overview" && (
         <>
       <section className="grid gap-3 md:grid-cols-3">
-        <Card>
-          <div className="text-xs text-brand-cream/50">YouTube</div>
-          <div className="mt-1 font-semibold">
-            {health.youtubeConfigured
-              ? "جاهز للنشر"
-              : "بيانات OAuth غير مكتملة"}
+        <Card className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs text-brand-cream/50">YouTube</div>
+            <span className={`text-xs ${health.youtubeConnectionStatus === "connected" ? "text-emerald-300" : "text-amber-200/80"}`}>
+              {health.youtubeConnectionStatus === "connected" ? "متصل" : health.youtubeConnectionStatus === "reauthorization_required" ? "يحتاج إعادة تفويض" : health.youtubeConnectionStatus === "permission_missing" ? "صلاحية قراءة القناة ناقصة" : health.youtubeConfigured ? "لم يُختبر الاتصال" : "غير مضبوط"}
+            </span>
           </div>
+          <p className="text-sm font-semibold text-brand-cream/85">{health.youtubeChannelName || (health.youtubeConfigured ? "OAuth موجود — يلزم اختبار القناة" : "بيانات OAuth غير مكتملة")}</p>
+          {health.youtubeConnectionMessage && <p className="text-xs leading-5 text-brand-cream/55">{health.youtubeConnectionMessage}</p>}
+          <Button variant="outline" size="sm" disabled={busy || !health.youtubeConfigured} onClick={() => void testYouTube()}>
+            اختبار اتصال YouTube
+          </Button>
         </Card>
         <Card className="space-y-3">
           <div className="text-xs text-brand-cream/50">Facebook</div>
@@ -648,8 +716,78 @@ export default function AdminSocialPage() {
         </>
       )}
 
+      {activeView === "analytics" && (
+        <section className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div><h2 className="text-xl font-bold text-brand-gold">تحليلات كل منصة على حدة</h2><p className="text-xs text-brand-cream/45">بيانات من مصادر المنصات الرسمية؛ الأرقام غير المتاحة لا تُعرض كأصفار.</p></div>
+            <p className="text-xs text-brand-cream/40">آخر تجميع: {socialAnalytics?.capturedAt ? new Date(socialAnalytics.capturedAt).toLocaleString("ar-EG") : "غير متاح"}</p>
+          </div>
+          {socialAnalytics ? (
+            <>
+              <section className="grid gap-3 xl:grid-cols-3">
+                {(["youtube","facebook","facebook_reels"] as const).map(platform => {
+                  const stats = socialAnalytics.platform[platform] ?? { posts:0,views:0,likes:0,comments:0,shares:0 };
+                  const title = platform === "youtube" ? "YouTube" : platform === "facebook" ? "Facebook Page" : "Facebook Reels";
+                  return <Card key={platform} className="space-y-4">
+                    <div className="flex items-center justify-between"><h3 className="font-bold text-brand-gold">{title}</h3><span className="text-xs text-brand-cream/45">{stats.posts} منشور منشور</span></div>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      {([["views","مشاهدات"],["likes","إعجابات"],["comments","تعليقات"],["shares","مشاركات"]] as const).map(([key,label]) => <div key={key} className="rounded-xl border border-brand-gold/10 p-3"><p className="text-[11px] text-brand-cream/45">{label}</p><p className="mt-1 text-lg font-bold tabular-nums text-brand-cream">{stats[key].toLocaleString("ar-EG")}</p></div>)}
+                    </div>
+                  </Card>;
+                })}
+              </section>
+              <section className="grid gap-3 md:grid-cols-2">
+                <Card className="space-y-3">
+                  <h3 className="font-bold text-red-300">جمهور YouTube</h3>
+                  <p className="text-sm text-brand-cream/60">{socialAnalytics.audience.youtube.channelName || "القناة"}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {([["subscribers","إجمالي المشتركين"],["subscribersGained","مشتركون جدد · 28 يومًا"],["subscribersLost","مشتركون مفقودون · 28 يومًا"],["views28d","مشاهدات · 28 يومًا"],["likes28d","إعجابات · 28 يومًا"],["comments28d","تعليقات · 28 يومًا"],["shares28d","مشاركات · 28 يومًا"],["watchMinutes28d","دقائق المشاهدة · 28 يومًا"]] as const).map(([key,label]) => { const value = key === "subscribers" ? socialAnalytics.audience.youtube.subscribers : socialAnalytics.audience.youtube[key as keyof typeof socialAnalytics.audience.youtube]; return <div key={key} className="rounded-xl bg-black/15 p-3"><p className="text-[11px] text-brand-cream/45">{label}</p><p className="mt-1 font-bold tabular-nums">{typeof value === "number" ? value.toLocaleString("ar-EG") : "غير متاح"}</p></div>; })}
+                  </div>
+                </Card>
+                <Card className="space-y-3">
+                  <h3 className="font-bold text-blue-300">جمهور Facebook</h3>
+                  <p className="text-sm text-brand-cream/60">{socialAnalytics.audience.facebook.pageName || "صفحة Facebook"}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl bg-black/15 p-3"><p className="text-xs text-brand-cream/45">المتابعون</p><p className="mt-1 text-xl font-bold">{socialAnalytics.audience.facebook.followers?.toLocaleString("ar-EG") ?? "غير متاح"}</p></div>
+                    <div className="rounded-xl bg-black/15 p-3"><p className="text-xs text-brand-cream/45">إعجابات الصفحة</p><p className="mt-1 text-xl font-bold">{socialAnalytics.audience.facebook.pageLikes?.toLocaleString("ar-EG") ?? "غير متاح"}</p></div>
+                  </div>
+                  <p className="text-xs leading-5 text-brand-cream/45">إحصاءات منشورات Facebook/Reels تظهر بحسب ما تسمح به صلاحيات Meta لكل منشور.</p>
+                </Card>
+              </section>
+              <Card className="space-y-3">
+                <div className="flex items-center justify-between gap-2"><h3 className="font-bold text-brand-gold">المنشورات المنشورة والتفاعل لكل منشور</h3><span className="text-xs text-brand-cream/40">آخر {socialAnalytics.posts.length} سجل</span></div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-[850px] w-full text-sm">
+                    <thead className="text-xs text-brand-cream/45"><tr><th className="p-2 text-right">المحتوى</th><th className="p-2 text-right">المنصة</th><th className="p-2 text-right">تاريخ النشر</th><th className="p-2 text-right">مشاهدات</th><th className="p-2 text-right">إعجابات</th><th className="p-2 text-right">تعليقات</th><th className="p-2 text-right">مشاركات</th><th className="p-2 text-right">الرابط</th></tr></thead>
+                    <tbody className="divide-y divide-brand-gold/10">{socialAnalytics.posts.map(post => <tr key={`${post.id}-${post.platform}`}><td className="max-w-[240px] truncate p-2">{post.title}</td><td className="p-2">{post.platform === "youtube" ? "YouTube" : post.platform === "facebook_reels" ? "Facebook Reels" : "Facebook"}</td><td className="p-2 text-xs" dir="ltr">{new Date(post.publishedAt).toLocaleDateString("ar-EG")}</td><td className="p-2 tabular-nums">{post.views?.toLocaleString("ar-EG") ?? "—"}</td><td className="p-2 tabular-nums">{post.likes?.toLocaleString("ar-EG") ?? "—"}</td><td className="p-2 tabular-nums">{post.comments?.toLocaleString("ar-EG") ?? "—"}</td><td className="p-2 tabular-nums">{post.shares?.toLocaleString("ar-EG") ?? "—"}</td><td className="p-2">{post.url ? <a href={post.url} target="_blank" rel="noreferrer" className="text-brand-gold underline">فتح</a> : "—"}</td></tr>)}</tbody>
+                  </table>
+                </div>
+                {!socialAnalytics.posts.length && <p className="py-8 text-center text-sm text-brand-cream/45">لا توجد منشورات منشورة مسجلة بعد.</p>}
+              </Card>
+            </>
+          ) : <Card><p className="text-sm text-brand-cream/50">لا تتوفر بيانات التحليلات حاليًا.</p></Card>}
+        </section>
+      )}
       {activeView === "queue" && (
       <Card className="space-y-4">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="تصفية طابور النشر حسب المنصة">
+          {([
+            ["all", "كل المنصات"],
+            ["youtube", "YouTube"],
+            ["facebook", "Facebook"],
+            ["facebook_reels", "Facebook Reels"],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={platformFilter === value}
+              onClick={() => setPlatformFilter(value)}
+              className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${platformFilter === value ? "border-brand-gold/40 bg-brand-gold/10 text-brand-gold" : "border-brand-gold/10 text-brand-cream/55 hover:border-brand-gold/25"}`}
+            >
+              {label} ({value === "all" ? items.length : items.filter(item => item.target_platforms.includes(value)).length})
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-brand-gold">

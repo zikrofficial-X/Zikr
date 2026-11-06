@@ -6,6 +6,7 @@ import { getFacebookPageCredentials } from "@/features/social/services/facebook-
 import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError } from "@/features/social/services/facebook-reels-rate-limit";
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing } from "@/features/videos/services/video-publish-approval";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getUnavailableSocialPlatforms } from "@/features/social/services/platform-availability";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 export type SocialQueueStatus =
@@ -34,6 +35,7 @@ type PlatformResult = {
   ok: boolean;
   remoteId?: string | null;
   error?: string;
+  approvalBlocked?: boolean;
 };
 
 function siteUrl() {
@@ -155,11 +157,11 @@ async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promi
 }
 
 export async function getPendingSocialPublishItems(
-  limit = 10
+  limit = 10,
+  enabledPlatforms: readonly SocialPlatform[] = getEnabledSocialPlatforms(process.env),
 ): Promise<SocialPublishQueueItem[]> {
   const now = encodeURIComponent(new Date().toISOString());
-  // Finish already-published platform targets before feeding more new items.
-  // Otherwise NULL scheduled_at queued rows can starve ready partial retries.
+  const maxAttemptsFor = (metadata: Record<string, unknown> | null) => socialMaxAttempts(metadata);
   const statusPriority: SocialQueueStatus[] = ["partial", "queued", "failed"];
   try {
     const rows: SocialPublishQueueItem[] = [];
@@ -174,9 +176,11 @@ export async function getPendingSocialPublishItems(
 
     const eligible = await Promise.all(rows.map(async (item) => {
       const metadata = item.metadata ?? {};
-      const attempts = Number(metadata.attempts ?? 0);
-      const maxAttempts = socialMaxAttempts(metadata);
-      if (metadata.authBlocked === true || metadata.permanentFailure === true || attempts >= maxAttempts) return null;
+      const maxAttempts = maxAttemptsFor(metadata);
+      const hasRunnableTarget = item.target_platforms.some((platform) =>
+        canAttemptSocialPlatform({ platform, enabledPlatforms, metadata, maxAttempts }),
+      );
+      if (!hasRunnableTarget) return null;
       if (!(await hasVideoApprovalForQueueItem(item))) return null;
       return item;
     }));
@@ -218,11 +222,12 @@ async function recoverStaleSocialPublishItems() {
 }
 
 export async function claimPendingSocialPublishItems(
-  limit = 10
+  limit = 10,
+  enabledPlatforms: readonly SocialPlatform[] = getEnabledSocialPlatforms(process.env),
 ): Promise<SocialPublishQueueItem[]> {
   await retryPendingPublishedVideoCleanup(25);
   await recoverStaleSocialPublishItems();
-  const normalItems = await getPendingSocialPublishItems(limit);
+  const normalItems = await getPendingSocialPublishItems(limit, enabledPlatforms);
   // Failed Facebook-auth items are intentionally not auto-retried. An expired
   // page token will otherwise create an unbounded retry loop and repeated provider
   // requests. Admin can manually requeue them after credentials are repaired.
@@ -373,6 +378,11 @@ async function publishPlatform(
   platform: SocialPlatform
 ): Promise<PlatformResult> {
   try {
+    // The approval snapshot is re-read immediately before every channel call.
+    // A review revoked or source/media change therefore holds only the not-yet-sent target.
+    if (!(await hasVideoApprovalForQueueItem(item))) {
+      return { platform, ok: false, approvalBlocked: true, error: "Video held for human QA approval before public publishing." };
+    }
     const remoteId =
       platform === "facebook"
         ? item.video_url
@@ -684,7 +694,7 @@ export async function retryPendingPublishedVideoCleanup(limit = 25): Promise<{
 
 export async function processSocialPublishItem(
   item: SocialPublishQueueItem,
-  options: { alreadyClaimed?: boolean } = {}
+  options: { alreadyClaimed?: boolean; enabledPlatforms?: readonly SocialPlatform[] } = {},
 ): Promise<"published" | "auth_blocked" | "approval_blocked" | "deferred" | "failed"> {
   if (!(await hasVideoApprovalForQueueItem(item))) {
     await markQueueItem(item.id, "queued", {
@@ -694,60 +704,87 @@ export async function processSocialPublishItem(
     return "approval_blocked";
   }
 
-  if (!options.alreadyClaimed) {
-    await markQueueItem(item.id, "processing");
-  }
+  if (!options.alreadyClaimed) await markQueueItem(item.id, "processing");
 
   const platforms = item.target_platforms.filter(
-    (p): p is SocialPlatform => p === "facebook" || p === "facebook_reels" || p === "youtube"
+    (platform): platform is SocialPlatform => platform === "facebook" || platform === "facebook_reels" || platform === "youtube",
   );
   if (platforms.length === 0) {
-    await markQueueItem(item.id, "failed", {
-      error_message: "No supported target platforms selected",
-    });
+    await markQueueItem(item.id, "failed", { error_message: "No supported target platforms selected" });
     return "failed";
   }
 
-  const previous =
-    item.metadata?.platformResults && typeof item.metadata.platformResults === "object"
-      ? (item.metadata.platformResults as Record<string, unknown>)
-      : {};
+  const enabledPlatforms = options.enabledPlatforms ?? getEnabledSocialPlatforms(process.env);
+  const previous = item.metadata?.platformResults && typeof item.metadata.platformResults === "object" && !Array.isArray(item.metadata.platformResults)
+    ? item.metadata.platformResults as Record<string, unknown>
+    : {};
+  const previousMetadata = item.metadata ?? {};
+  const maxAttempts = socialMaxAttempts(previousMetadata);
+  const runnablePlatforms = platforms.filter(platform => canAttemptSocialPlatform({
+    platform, enabledPlatforms, metadata: previousMetadata, maxAttempts,
+  }));
+  const unavailablePlatforms = getUnavailableSocialPlatforms(platforms, enabledPlatforms);
 
-  const pendingPlatforms = platforms.filter(platform => {
-    const prior = previous[platform];
-    return !(prior && typeof prior === "object" && (prior as { ok?: unknown }).ok === true && typeof (prior as { remoteId?: unknown }).remoteId === "string");
-  });
+  if (runnablePlatforms.length === 0) {
+    const allTargetsSucceeded = platforms.every(platform => {
+      const result = previous[platform];
+      return Boolean(result && typeof result === "object" && (result as PlatformResult).ok === true &&
+        typeof (result as PlatformResult).remoteId === "string" && (result as PlatformResult).remoteId?.trim());
+    });
+    if (allTargetsSucceeded) {
+      await markQueueItem(item.id, "published", { error_message: null, scheduled_at: null });
+      if (isVideoContentType(item.content_type)) await disposePublishedVideo({ ...item, metadata: previousMetadata });
+      return "published";
+    }
+    if (unavailablePlatforms.length > 0) {
+      const nextRetryAt = new Date(Date.now() + 15 * 60_000).toISOString();
+      await markQueueItem(item.id, "queued", {
+        scheduled_at: nextRetryAt,
+        error_message: "Waiting for configured publishing channels: " + unavailablePlatforms.join(", "),
+        metadata: { ...previousMetadata, unavailablePlatforms, nextRetryAt },
+      });
+      return "deferred";
+    }
+    const blockedFacebook = platforms.some(platform => {
+      const result = previous[platform] as PlatformResult | undefined;
+      return result?.ok === false && isFacebookAuthFailure(result.error);
+    });
+    await markQueueItem(item.id, platforms.some(platform => previous[platform] && (previous[platform] as PlatformResult).ok === true) ? "partial" : "failed", {
+      error_message: "No eligible target remains; repair the platform connection or review the channel-specific failure.",
+      scheduled_at: null,
+      metadata: { ...previousMetadata, unavailablePlatforms: [] },
+    });
+    return blockedFacebook ? "auth_blocked" : "failed";
+  }
 
-  const results = await Promise.all(
-    pendingPlatforms.map(platform => publishPlatform(item, platform))
-  );
-
+  const results = await Promise.all(runnablePlatforms.map(platform => publishPlatform(item, platform)));
   const mergedResults: Record<string, PlatformResult> = {};
   for (const platform of platforms) {
     const prior = previous[platform];
     if (prior && typeof prior === "object") mergedResults[platform] = prior as PlatformResult;
   }
-  for (const result of results) mergedResults[result.platform] = result;
+  for (const result of results) {
+    // Approval deferrals are not provider failures; keep them out of the
+    // permanent per-platform result ledger so a later human approval can retry.
+    if (result.approvalBlocked) continue;
+    mergedResults[result.platform] = result;
+  }
 
-  const finalResults = platforms.map(platform => mergedResults[platform]).filter(Boolean);
-  const failures = finalResults.filter(result => !result.ok);
-  const successes = finalResults.filter(result => result.ok);
-  // The local pacing guard is an expected deferral, not a provider error.
-  // Keep it queued as partial, but do not surface it as a red failure.
+  const allResults = platforms.map(platform => mergedResults[platform]).filter((result): result is PlatformResult => Boolean(result));
+  const successes = allResults.filter(result => result.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0);
+  const failures = results.filter(result => !result.ok && !result.approvalBlocked);
+  const approvalDeferredPlatforms = results.filter(result => result.approvalBlocked).map(result => result.platform);
   const deferredFailures = failures.filter(failure =>
-    failure.platform === "facebook_reels" && isFacebookReelsCooldownDeferredError(failure.error)
+    failure.platform === "facebook_reels" && isFacebookReelsCooldownDeferredError(failure.error),
   );
   const operationalFailures = failures.filter(failure => !deferredFailures.includes(failure));
-  const nextStatus: SocialQueueStatus =
-    failures.length === 0
-      ? "published"
-      : successes.length > 0
-        ? "partial"
-        : "failed";
+  const allTargetsSucceeded = platforms.every(platform => {
+    const result = mergedResults[platform];
+    return result?.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
+  });
 
   const hasAuthFailure = operationalFailures.some(failure =>
-    (failure.platform === "facebook" || failure.platform === "facebook_reels") &&
-    isFacebookAuthFailure(failure.error)
+    (failure.platform === "facebook" || failure.platform === "facebook_reels") && isFacebookAuthFailure(failure.error),
   );
   const hasNonAuthFailure = operationalFailures.some(failure => !isFacebookAuthFailure(failure.error));
   const hasTransientFailure = operationalFailures.some(failure => {
@@ -759,58 +796,85 @@ export async function processSocialPublishItem(
     .map(failure => extractFacebookReelsNextAllowedAt(failure.error))
     .find((value): value is string => Boolean(value)) ?? null;
 
-  // Meta code 368 triggers a shared cooldown. Defer the whole queue row until
-  // that time without burning per-item attempts or re-uploading successful targets.
+  const maxAttemptsByPlatform = {
+    ...((previousMetadata.platformAttempts && typeof previousMetadata.platformAttempts === "object" && !Array.isArray(previousMetadata.platformAttempts))
+      ? previousMetadata.platformAttempts as Record<string, number>
+      : {}),
+  };
+  for (const result of results) {
+    if (result.approvalBlocked) continue;
+    maxAttemptsByPlatform[result.platform] = Number(maxAttemptsByPlatform[result.platform] ?? 0) + 1;
+  }
+  const attemptedProviderCalls = results.filter(result => !result.approvalBlocked).length;
   const attempts = facebookReelsNextAllowedAt
-    ? 0
-    : Number(item.metadata?.attempts ?? 0) + 1;
-  const maxAttempts = socialMaxAttempts(item.metadata);
-  const hasPermanentFailure = operationalFailures.some(failure => isPermanentSocialFailure(failure.error));
-  const shouldRetry = Boolean(facebookReelsNextAllowedAt) ||
-    (attempts < maxAttempts && !hasAuthFailure && !hasPermanentFailure && (hasTransientFailure || nextStatus === "partial"));
-  const retryDelayMinutes = hasAuthFailure
-    ? 15
-    : socialRetryDelayMinutes(attempts, item.id);
+    ? Number(previousMetadata.attempts ?? 0)
+    : Number(previousMetadata.attempts ?? 0) + (attemptedProviderCalls > 0 ? 1 : 0);
+  const retryableOperationalFailures = operationalFailures.some(failure => {
+    const currentPlatformAttempts = Number(maxAttemptsByPlatform[failure.platform] ?? 0);
+    return currentPlatformAttempts < maxAttempts && !isFacebookAuthFailure(failure.error) && !isPermanentSocialFailure(failure.error);
+  });
+  const hasDeferredTargets = unavailablePlatforms.length > 0 || approvalDeferredPlatforms.length > 0 || deferredFailures.length > 0;
+  const shouldRetry = Boolean(facebookReelsNextAllowedAt) || hasDeferredTargets ||
+    (retryableOperationalFailures && (hasTransientFailure || successes.length > 0));
+  const retryDelayMinutes = hasAuthFailure ? 15 : socialRetryDelayMinutes(attempts, item.id);
   const nextRetryAt = facebookReelsNextAllowedAt ?? (shouldRetry
-    ? new Date(Date.now() + retryDelayMinutes * 60_000).toISOString()
+    ? new Date(Date.now() + (hasDeferredTargets ? 15 : retryDelayMinutes) * 60_000).toISOString()
     : null);
-  const persistedStatus: SocialQueueStatus = facebookReelsNextAllowedAt
-    ? "partial"
-    : shouldRetry
-      ? "partial"
-      : nextStatus;
 
+  const nextStatus: SocialQueueStatus = allTargetsSucceeded
+    ? "published"
+    : successes.length > 0 || hasDeferredTargets
+      ? "partial"
+      : "failed";
+  const onlyDeferred = hasDeferredTargets && operationalFailures.length === 0 && successes.length === 0;
+  const persistedStatus: SocialQueueStatus = allTargetsSucceeded
+    ? "published"
+    : onlyDeferred
+      ? "queued"
+      : shouldRetry
+        ? "partial"
+        : nextStatus;
+
+  const authBlockedPlatforms = operationalFailures
+    .filter(failure => isFacebookAuthFailure(failure.error))
+    .map(failure => failure.platform);
+  const permanentFailurePlatforms = operationalFailures
+    .filter(failure => isPermanentSocialFailure(failure.error))
+    .map(failure => failure.platform);
   const publishMetadata = {
-    ...(item.metadata ?? {}),
+    ...previousMetadata,
     attempts,
     maxAttempts,
+    platformAttempts: maxAttemptsByPlatform,
     nextRetryAt,
-    authBlocked: hasAuthFailure,
-    permanentFailure: hasPermanentFailure,
+    authBlocked: authBlockedPlatforms.length > 0,
+    authBlockedPlatforms,
+    permanentFailure: permanentFailurePlatforms.length > 0,
+    permanentFailurePlatforms,
+    unavailablePlatforms,
+    approvalDeferredPlatforms,
     facebookReelsNextAllowedAt,
     deferredPlatforms: deferredFailures.map(failure => failure.platform),
     platformResults: mergedResults,
   };
 
+  const errorMessages = operationalFailures.map(failure => `${failure.platform}: ${failure.error ?? "unknown error"}`);
+  if (unavailablePlatforms.length) errorMessages.push("Waiting for channel configuration: " + unavailablePlatforms.join(", "));
+  if (approvalDeferredPlatforms.length) errorMessages.push("Video held for a fresh human QA approval check: " + approvalDeferredPlatforms.join(", "));
   await markQueueItem(item.id, persistedStatus, {
     scheduled_at: nextRetryAt,
     published_at: successes.length > 0 ? new Date().toISOString() : null,
-    error_message:
-      operationalFailures
-        .map(failure => `${failure.platform}: ${failure.error ?? "unknown error"}`)
-        .join("; ") || null,
+    error_message: errorMessages.join("; ") || null,
     metadata: publishMetadata,
   });
 
-  if (nextStatus === "published") {
-    // Cleanup writes metadata too. Pass the newly merged platform results so
-    // disposal does not overwrite and erase the provider post IDs we just saved.
-    if (isVideoContentType(item.content_type)) {
-      await disposePublishedVideo({ ...item, metadata: publishMetadata });
-    }
+  if (allTargetsSucceeded) {
+    if (isVideoContentType(item.content_type)) await disposePublishedVideo({ ...item, metadata: publishMetadata });
     return "published";
   }
-  if (deferredFailures.length > 0 && operationalFailures.length === 0) return "deferred";
+  if (hasDeferredTargets && operationalFailures.length === 0) {
+    return approvalDeferredPlatforms.length > 0 && unavailablePlatforms.length === 0 ? "approval_blocked" : "deferred";
+  }
   if (hasAuthFailure && !hasNonAuthFailure) return "auth_blocked";
   return "failed";
 }

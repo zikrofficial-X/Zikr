@@ -37,6 +37,7 @@ if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_ne
 
 
 
+const platformAvailability = read("src/features/social/services/platform-availability.ts");
 const publisher = read("src/features/social/services/social-publishing.ts");
 const videoApproval = read("src/features/videos/services/video-publish-approval.ts");
 const socialWorkflowConfig = read(".github/workflows/publish-social.yml");
@@ -91,13 +92,13 @@ if (publisher.includes("status=eq.${claimStatus}&updated_at=eq.")) failures.push
 if (!publisher.includes("getFacebookPageCredentials")) failures.push("Facebook publisher must consume the canonical OAuth-managed Page credential");
 if (!publisher.includes("credentials.isEnabled")) failures.push("Facebook publisher must honor the explicit OAuth connection enable switch");
 if (!publisher.includes("isFacebookAuthFailure")) failures.push("Facebook auth failures must be classified separately");
-if (!publisher.includes("authBlocked: hasAuthFailure")) failures.push("Facebook auth failures must block repeated automatic retries");
+if (!publisher.includes("authBlockedPlatforms") || !publisher.includes("isFacebookAuthFailure")) failures.push("Facebook auth failures must be persisted and excluded from Facebook-only retries");
 if (!pendingSelector.includes('const statusPriority: SocialQueueStatus[] = ["partial", "queued", "failed"]') || !pendingSelector.includes("status=eq.${status}")) failures.push("failed social queue items must remain eligible in bounded scheduled auto-retry priority");
-if (!publisher.includes("permanentFailure === true")) failures.push("permanent social failures must be excluded from automatic retry");
+if (!publisher.includes("isPermanentSocialFailure") || !publisher.includes("permanentFailurePlatforms")) failures.push("permanent social failures must be excluded from automatic retry per platform");
 if (!publisher.includes("socialRetryDelayMinutes")) failures.push("social retries must use bounded exponential backoff");
 if (!publisher.includes("staleRecovery: true")) failures.push("stale social processing recovery must be recorded");
 if (!publisher.includes("platformResults")) failures.push("platform-level results must be persisted");
-if (!publisher.includes("pendingPlatforms")) failures.push("already-successful platforms must be excluded from retries");
+if (!publisher.includes("canAttemptSocialPlatform") || !platformAvailability.includes("hasSuccessfulDelivery")) failures.push("already-successful platforms must be excluded from retries");
 if (!publisher.includes("remoteId")) failures.push("successful providers must persist their remote platform IDs");
 if (publisher.includes("console.log(pageAccessToken") || publisher.includes("console.log(env.FACEBOOK_PAGE_ACCESS_TOKEN")) failures.push("Facebook access tokens must never be logged");
 
@@ -191,7 +192,7 @@ if (!adminApi.includes("const allTargetsSucceeded") || !adminApi.includes("targe
 if (!adminApi.includes("authBlockedPlatforms")) failures.push("Admin retry path must understand Facebook auth-blocked platforms");
 if (!adminApi.includes("youtubeConfigured")) failures.push("Admin social health must expose YouTube configuration");
 if (!adminApi.includes("facebookAuthBlocked")) failures.push("Admin social health must expose Facebook auth-block count");
-if (!adminApi.includes("target_platforms: platforms")) failures.push("Admin retry must narrow targets to actually retryable platforms");
+if (adminApi.includes("target_platforms: platforms") || !adminApi.includes("requestedPlatforms.includes(platform)")) failures.push("Admin retry must preserve original targets and scope retry work to the selected platform");
 if (!adminApi.includes("platformStats")) failures.push("Admin social API must expose platform-level queue statistics");
 if (!adminApi.includes("oldestQueuedAt")) failures.push("Admin social API must expose the oldest queued timestamp");
 if (!adminApi.includes('action === "run_worker"')) failures.push("Admin social API must support manual worker dispatch");
@@ -321,6 +322,26 @@ if (!publisher.includes("appendSmartLinkDisclosure") || !publisher.includes("MON
 if (!publisher.includes("kidsAudience = true") || !publisher.includes("!kidsAudience") || !publisher.includes("!madeForKids")) failures.push("social SmartLink must be omitted for child-directed videos or an unverified audience");
 if (!ytAutomation.includes("appendSmartLinkDisclosure") || !ytAutomation.includes("content.audience !== 'kids'")) failures.push("video metadata generation must include the disclosed SmartLink only for non-kids content");
 if (!ytAutomation.includes("MONETAG_SMARTLINK_YOUTUBE_TAGS")) failures.push("generated YouTube metadata must include SmartLink discovery tags for eligible videos");
+
+const youtubePublishingHealth = read("src/features/social/services/youtube-publishing-health.ts");
+if (!platformAvailability.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED") || !platformAvailability.includes("SOCIAL_PUBLISH_YOUTUBE_ENABLED")) failures.push("Facebook and YouTube publishing must have separate runtime readiness switches");
+if (!platformAvailability.includes("canAttemptSocialPlatform") || !platformAvailability.includes("platformAttempts")) failures.push("retry eligibility must be isolated by platform");
+if (!platformAvailability.includes("metadata?.authBlocked === true && platform.startsWith(\"facebook\")")) failures.push("legacy Facebook auth blocks must not block YouTube publishing");
+if (!socialWorker.includes("getEnabledSocialPlatforms(process.env)") || !socialWorker.includes("claimPendingSocialPublishItems(limit, enabledPlatforms)")) failures.push("worker must claim only platform targets whose channel is independently ready");
+if (!socialWorker.includes("processSocialPublishItem(item, { alreadyClaimed: true, enabledPlatforms })")) failures.push("worker must pass platform readiness into per-item delivery processing");
+if (!publisher.includes("platformAttempts") || !publisher.includes("unavailablePlatforms")) failures.push("publisher must retain per-platform attempt counts and unavailable target state");
+if (!publisher.includes("approvalBlocked") || !publisher.includes("immediately before every channel call")) failures.push("video human approval must be rechecked immediately before each provider call");
+if (!workflow.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_enabled") || !workflow.includes("SOCIAL_PUBLISH_YOUTUBE_ENABLED=$youtube_configured")) failures.push("scheduled workflow must export independent Facebook and YouTube readiness flags");
+if (!workflow.includes("Facebook targets will remain queued while YouTube continues independently") || !workflow.includes("YouTube targets will remain queued while Facebook continues independently")) failures.push("an unavailable social channel must not stop the other ready channel");
+if (!workflow.includes("FACEBOOK_PUBLISHING_REQUESTED") || !workflow.includes("YOUTUBE_PUBLISHING_REQUESTED")) failures.push("Facebook and YouTube must have independent operator enable switches");
+if (!adminApi.includes("action === \"test_youtube\"") || !adminUi.includes("اختبار اتصال YouTube")) failures.push("Admin social center must include a read-only YouTube OAuth/channel health test");
+if (!youtubePublishingHealth.includes("reauthorization_required") || !youtubePublishingHealth.includes("channels")) failures.push("YouTube connection test must validate the OAuth grant against the connected channel without exposing tokens");
+const retryActionStart = adminApi.indexOf("const retryItems = async");
+const retryActionEnd = adminApi.indexOf('if (action === "retry_all_failed")', retryActionStart);
+const retryActionBody = retryActionStart >= 0 && retryActionEnd > retryActionStart ? adminApi.slice(retryActionStart, retryActionEnd) : "";
+if (!retryActionBody || retryActionBody.includes("target_platforms: platforms")) failures.push("selective retries must preserve the original platform target set");
+if (!retryActionBody.includes("platformAttempts") || !retryActionBody.includes("platformResults")) failures.push("selective retries must reset only the selected channels while retaining successful channel results");
+if (!adminUi.includes("PlatformFilter") || !adminUi.includes("facebook_reels") || !adminUi.includes("setPlatformFilter")) failures.push("Admin social queue must provide independent channel filters");
 
 if (failures.length) {
   console.error("SOCIAL_PUBLISHING_CHECK_FAILED");

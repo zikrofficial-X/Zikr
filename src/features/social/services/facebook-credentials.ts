@@ -474,6 +474,26 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
     const targets = item.target_platforms ?? [];
     if (metadata.authBlocked !== true || !targets.some(p => p === "facebook" || p === "facebook_reels")) continue;
     const now = new Date().toISOString();
+    const facebookTargets = targets.filter((p): p is "facebook" | "facebook_reels" => p === "facebook" || p === "facebook_reels");
+    const oldResults = metadata.platformResults && typeof metadata.platformResults === "object" && !Array.isArray(metadata.platformResults)
+      ? metadata.platformResults as Record<string, unknown>
+      : {};
+    const platformResults = { ...oldResults };
+    for (const platform of facebookTargets) {
+      const result = platformResults[platform];
+      if (result && typeof result === "object" && (result as { ok?: unknown }).ok === false) delete platformResults[platform];
+    }
+    const oldAttempts = metadata.platformAttempts && typeof metadata.platformAttempts === "object" && !Array.isArray(metadata.platformAttempts)
+      ? metadata.platformAttempts as Record<string, number>
+      : {};
+    const platformAttempts = { ...oldAttempts };
+    for (const platform of facebookTargets) platformAttempts[platform] = 0;
+    const authBlockedPlatforms = Array.isArray(metadata.authBlockedPlatforms)
+      ? metadata.authBlockedPlatforms.filter(platform => !facebookTargets.some(target => target === String(platform)))
+      : [];
+    const permanentFailurePlatforms = Array.isArray(metadata.permanentFailurePlatforms)
+      ? metadata.permanentFailurePlatforms.filter(platform => !facebookTargets.some(target => target === String(platform)))
+      : [];
     const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
       `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}`,
       {
@@ -486,8 +506,13 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
           error_message: null,
           metadata: {
             ...metadata,
-            authBlocked: false,
+            authBlocked: authBlockedPlatforms.length > 0,
+            authBlockedPlatforms,
+            permanentFailure: permanentFailurePlatforms.length > 0,
+            permanentFailurePlatforms,
             attempts: 0,
+            platformAttempts,
+            platformResults,
             nextRetryAt: null,
             reauthorizedAt: now,
           },

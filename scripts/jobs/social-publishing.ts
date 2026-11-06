@@ -1,5 +1,6 @@
 import { syncYoutubePublishedPostInsights } from "../../src/features/social/services/youtube-post-insights";
 import { syncFacebookReelsInsights } from "../../src/features/social/services/facebook-reels-insights";
+import { getEnabledSocialPlatforms } from "../../src/features/social/services/platform-availability";
 import {
   claimPendingSocialPublishItems,
   processSocialPublishItem,
@@ -14,7 +15,10 @@ export async function processSocialPublishQueue(limit = 10) {
   if (cleanup.attempted > 0) {
     console.log("[social-worker] Published media cleanup retry:", JSON.stringify(cleanup));
   }
-  const items = await claimPendingSocialPublishItems(limit);
+  const enabledPlatforms = getEnabledSocialPlatforms(process.env);
+  const items = enabledPlatforms.length > 0
+    ? await claimPendingSocialPublishItems(limit, enabledPlatforms)
+    : [];
   let succeeded = 0;
   let deferred = 0;
   let authBlocked = 0;
@@ -22,7 +26,7 @@ export async function processSocialPublishQueue(limit = 10) {
   let failed = 0;
 
   for (const item of items) {
-    const outcome = await processSocialPublishItem(item, { alreadyClaimed: true });
+    const outcome = await processSocialPublishItem(item, { alreadyClaimed: true, enabledPlatforms });
     if (outcome === "published") succeeded += 1;
     else if (outcome === "deferred") deferred += 1;
     else if (outcome === "auth_blocked") authBlocked += 1;
@@ -47,5 +51,5 @@ export async function processSocialPublishQueue(limit = 10) {
     console.log("[social-worker] YouTube public post statistics synced:", JSON.stringify(insights));
   }
 
-  return { processed: items.length, succeeded, deferred, authBlocked, approvalBlocked, failed, insights, facebookInsights };
+  return { processed: items.length, succeeded, deferred, authBlocked, approvalBlocked, failed, enabledPlatforms, insights, facebookInsights };
 }
