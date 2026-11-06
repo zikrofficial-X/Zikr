@@ -60,6 +60,7 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/audio/adhan", "الأذان", "audio.manage"],
     ["/admin/audio/tts", "تحويل النص إلى صوت", "audio.manage"],
     ["/admin/site-audio", "صوت الموقع والتذكيرات", "audio.manage"],
+    ["/admin/social", "مركز النشر الاجتماعي", "social.manage"],
   ],
   "عالم الأطفال": [
     ["/admin/kids", "لوحة الأطفال", "kids.manage"],
@@ -166,8 +167,8 @@ if (!socialPage.includes('requireAdminPermission("social.manage")') || !socialPa
 if (!writtenSocialPage.includes('redirect("/admin/memory")')) {
   failures.push("retired external written-social studio must redirect to internal project memory");
 }
-if (!navigation.includes('href: "/admin/social"') || !navigation.includes('key: "publishing"')) {
-  failures.push("social publishing navigation must be available to explicitly authorized admins");
+if (!navigation.includes('href: "/admin/social"') || !navigation.includes('key: "media-audio"')) {
+  failures.push("social publishing must appear inside the canonical media/audio group and require social.manage");
 }
 for (const canonicalPath of [
   "src/app/admin/video/page.tsx",
