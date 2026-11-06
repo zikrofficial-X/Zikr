@@ -137,6 +137,7 @@ for (const token of ["syncYoutubePublishedPostInsights", "youtube-data-api-v3", 
 }
 
 if (!socialWorker.includes("syncYoutubePublishedPostInsights")) failures.push("social worker must periodically sync YouTube post statistics");
+if (!/import\s*\{\s*syncYoutubePublishedPostInsights\s*\}\s*from\s*["\']\.\.\/\.\.\/src\/features\/social\/services\/youtube-post-insights["\']/.test(socialWorker)) failures.push("social worker must import the YouTube insights sync implementation");
 if (!postInsights.includes("scope: \"public-statistics\"")) failures.push("YouTube metrics must be labelled as public statistics, not retention analytics");
 
 const adminApi = read("src/app/api/admin/social/route.ts");
