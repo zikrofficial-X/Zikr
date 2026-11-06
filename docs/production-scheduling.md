@@ -8,7 +8,7 @@ ZIKR has one authoritative execution owner per production workload. Quran audio 
 | Client-local azan and reminder sounds | Browser / native client | While active | Local/offline fallback; it does not create server delivery rows. |
 | Video generation queue | GitHub Actions `generate-ai-video.yml` → `pnpm background:jobs` → template/FFmpeg/AI worker | Four times daily + manual dispatch | Persisted Supabase queue; generated MP4s upload directly from the worker to Cloudinary; no Supabase video staging or CircleCI execution. |
 | Admin Run Now dispatcher | Admin server action → GitHub Actions `generate-ai-video.yml` dispatch | On demand | Direct dispatch with protected token; request is marked dispatched only after GitHub returns 204. |
-| Social publishing queue | GitHub Actions `publish-social.yml` → `pnpm background:jobs` → social publisher | Every 15 minutes at UTC minutes 7, 22, 37, 52 + manual dispatch | Queue claims, idempotency keys, provider credentials server-side, bounded retries and platform result tracking. |
+| Social publishing queue | GitHub Actions `publish-social.yml` → `pnpm background:jobs` → social publisher | After successful video-generation run + explicit manual dispatch | Only post-activation rows, provider preflight, human video QA approval, idempotent claims, bounded retries, and platform result tracking. No 15-minute polling. |
 | Quran text/catalog | Local canonical corpus → Supabase fallback | Request time | 114 surahs / 6,236 ayahs are verified; Supabase remains compatibility data. |
 | Quran audio playback | External HTTPS audio URLs via `quran_audio.audio_url` | On demand | No Supabase Storage dependency; no bulk MP3 import job is permitted. |
 | Repository verification | GitHub Actions `ZIKR Quality Gate` | Pull requests and `main` | `pnpm verify:pr` on PRs; full `pnpm verify` (including mobile, SEO, lint, types, and production build) on `main`. |
@@ -22,7 +22,7 @@ The Supabase migration `20260915004110_retire_vercel_video_processing_cron.sql` 
 
 Supabase owns minute-level prayer scheduling.
 GitHub Actions is the authoritative automatic video generation worker.
-GitHub Actions is the authoritative automatic social publisher. Video generation runs four times per day; the social publisher polls every 15 minutes at UTC minutes 7, 22, 37, and 52 to avoid quarter-hour boundaries. Admin Run Now dispatches the canonical GitHub video workflow directly. CircleCI is reserved for the application build/documentation artifact, Android release builds, Supabase release gates, English content sync, and explicit recovery/release operations.
+GitHub Actions is the authoritative automatic social publisher. Video generation runs four times per day; the separate social publisher starts only after a successful video-generation workflow or an explicit manual dispatch. There is no periodic social polling. New queue items are restricted by `SOCIAL_PUBLISH_AFTER`; historical rows remain excluded until an audited cleanup window is approved. Video publication always requires an explicit human QA approval, checked again immediately before every provider call. Admin Run Now dispatches the canonical GitHub video workflow directly. CircleCI is reserved for the application build/documentation artifact, Android release builds, Supabase release gates, English content sync, and explicit recovery/release operations.
 
 ## Quran audio architecture
 
