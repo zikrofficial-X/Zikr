@@ -370,7 +370,7 @@ async function publishFacebookVideoItem(
   // GitHub Actions must never need a duplicate Facebook Page token secret.
   let kidsAudience = true;
   try {
-    kidsAudience = await isMadeForKidsVideo(item);
+    kidsAudience = (await getYouTubeVideoDisclosure(item)).selfDeclaredMadeForKids;
   } catch (error) {
     // Do not add an external advertising link when the audience cannot be verified.
     console.warn("[social-publishing] SmartLink omitted because video audience could not be verified:", item.id, error);
