@@ -113,9 +113,9 @@ All changes must leave the repository buildable and must not introduce a second 
 
 ### Video generation and social publishing
 
-`.github/workflows/generate-ai-video.yml` is the canonical production video worker. It runs four times per day and on deliberate manual dispatch, creates idempotent source-locked Quran/Hadith/Dua/Adhkar/story requests, renders them with the configured AI providers plus deterministic FFmpeg fallback, stores generated MP4 files in Supabase Storage, and leaves publishable work in `social_publish_queue` without performing the external publish operation itself.
+`.github/workflows/generate-ai-video.yml` is the canonical production video worker. It runs at 03:17, 09:17, 15:17, and 21:17 UTC and on deliberate manual dispatch. It creates idempotent, source-locked Quran/Hadith/Dua/Adhkar/story requests, renders with free Hugging Face providers plus deterministic FFmpeg fallback, runs the automated source/audio/visual/caption/rights QA contract, and uploads verified MP4 bytes directly to Cloudinary. Supabase stores queue state, source and QA metadata, and audit records; generated video files are not staged in Supabase Storage. The worker creates eligible `social_publish_queue` candidates but never calls external publishing APIs.
 
-`.github/workflows/publish-social.yml` is the canonical production social publisher. It runs every 15 minutes and on deliberate manual dispatch, reconciles completed videos into `social_publish_queue`, then publishes pending YouTube/Facebook targets with idempotency, bounded retries, and per-platform result tracking.
+`.github/workflows/publish-social.yml` is the canonical production social publisher. It runs after a successful `generate-ai-video.yml` completion on `main` or by deliberate manual dispatch; it has no polling schedule and no push trigger. It consumes only eligible post-cutoff queue records with current automated QA, independently enables platforms only after their OAuth readiness checks, and persists per-platform results, remote IDs, and bounded retry state. A partial video batch may complete successfully when at least one item passed QA, allowing eligible items to reach this worker while failed items remain in the video audit/retry queue.
 
 ### CircleCI
 
