@@ -51,7 +51,7 @@ for (const item of workflowNames) {
 }
 
 assert.ok(video.includes('cron: "17 3,9,15,21 * * *"'), "GitHub must own the recurring video generation schedule");
-assert.ok(social.includes('cron: "7,22,37,52 * * * *"'), "GitHub must own the recurring off-peak social publishing schedule");
+assert.ok(!social.includes("\n  schedule:") && social.includes("if: false"), "retired social publisher must not retain a recurring schedule or active job");
 assert.ok(circle.includes('cron: "17 4 * * *"'), "CircleCI must retain the recurring English content schedule");
 assert.ok(!circle.includes('cron: "17 3,9,15,21 * * *"'), "CircleCI must not own the video generation schedule");
 assert.ok(
