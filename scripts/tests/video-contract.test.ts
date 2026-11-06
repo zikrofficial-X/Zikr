@@ -27,6 +27,12 @@ const voice = readFileSync("scripts/generate-arabic-voice.py", "utf8");
 assert.ok(!voice.includes("ZariyahNeural"), "default Arabic TTS voice must be male (Zariyah is female)");
 assert.ok(voice.includes("ar-SA-HamedNeural"), "male MSA profile required");
 
+const videoCatalog = readFileSync("src/features/videos/services/videos.ts", "utf8");
+const videoDetailPage = readFileSync("src/app/videos/[slug]/page.tsx", "utf8");
+assert.ok(videoCatalog.includes('metadata.generator === "zikr_internal_video_factory"'), "internal generated video catalog must use a distinct generator marker");
+assert.ok(videoCatalog.includes('parsed.hostname !== "res.cloudinary.com"'), "internal generated media must be served only from HTTPS Cloudinary URLs");
+assert.ok(videoDetailPage.includes('parsed.hostname === "res.cloudinary.com"'), "public internal video player must enforce the Cloudinary host allowlist");
+
 const worker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
 assert.ok(
   worker.includes('`--rate=${process.env.ARABIC_TTS_RATE?.trim() || narrationProfile.rate}`'),

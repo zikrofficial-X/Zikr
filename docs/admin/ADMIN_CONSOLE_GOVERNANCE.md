@@ -1,6 +1,6 @@
 # حوكمة لوحة إدارة ذِكر
 
-**آخر مراجعة:** 1 نوفمبر 2026
+**آخر مراجعة:** 6 نوفمبر 2026
 **مصدر الحقيقة للتنقل:** `src/features/admin/config/navigation.ts`  
 **مصدر الحقيقة للصلاحيات:** `src/features/admin/services/permissions.ts`
 
@@ -22,7 +22,7 @@
 - القوالب: `/admin/video/templates` بصلاحية `video.manage`.
 - ضبط الجودة: `/admin/video/qa` بصلاحية `video.manage`.
 
-جميع صفحات الفيديو السابقة تحت `/admin/video-factory/*` أصبحت تحويلات توافقية إلى مسارات مركز الفيديو الرسمية. صفحة الجدولة القديمة تحوّل إلى `/admin/automation` بصلاحية `system.manage`، وصفحة النشر القديمة تحوّل إلى `/admin/social` بصلاحية `social.manage`.
+جميع صفحات الفيديو السابقة تحت `/admin/video-factory/*` أصبحت تحويلات توافقية إلى مسارات مركز الفيديو الرسمية. صفحة الجدولة القديمة تحوّل إلى `/admin/automation` بصلاحية `system.manage`، وصفحة النشر الاجتماعي القديمة `/admin/social` تحوّل إلى `/admin/memory` بصلاحية `media.manage`.
 
 يوفر تخطيط الإدارة بحثًا سريعًا مفلترًا حسب الدور عبر `Ctrl+K`، بينما يحتفظ دليل الوحدات بالمفضلة والصفحات الأخيرة على الجهاز دون إرسال هذه التفضيلات إلى الخادم.
 
@@ -75,12 +75,13 @@
 | `/admin/video/templates` | استوديو القوالب | `video.manage` |
 | `/admin/video/qa` | ضبط الجودة | `video.manage` |
 
-### النشر والتوزيع
+### الذاكرة والمكتبة
 
 | المسار | الصفحة | الصلاحية المطلوبة |
 |---|---|---|
-| `/admin/social` | مركز النشر الاجتماعي | `social.manage` |
-| `/admin/social/written-studio` | مصنع المنشورات المكتوبة | `social.manage` |
+| `/admin/memory` | ذاكرة ملفات المشروع ومخرجات الفيديو المولّدة | `media.manage` |
+
+المسارات الاجتماعية القديمة ليست جزءًا من التنقل التشغيلي؛ `/admin/social` يحوّل إلى `/admin/memory`. تبقى سجلات الطابور والتدقيق السابقة محفوظة للمراجعة، ولا يجري نشر خارجي جديد.
 
 ### الوسائط والصوت
 
@@ -131,7 +132,7 @@
 | `content_manager` | المحتوى والمعرفة والمكتبة والمصادر والأطفال والأقسام والوسائط والتحليلات وسجل التدقيق؛ لا تمنحه المصفوفة صلاحيات النشر الاجتماعي أو إدارة النظام/الأمن. |
 | `editor` | تحرير المحتوى ونشره ضمن مسارات التحرير المسموحة، دون حذف المحتوى أو صلاحيات النظام الحساسة. |
 | `video_manager` | إدارة الفيديو والوسائط وحذف عمليات الفيديو والتحليلات وسجل التدقيق. |
-| `social_manager` | إدارة الوسائط والحسابات والطوابير والجدولة والنشر الاجتماعي والتحليلات والتنبيهات وسجل التدقيق؛ لا يدير إنتاج الفيديو. |
+| `social_manager` | دور متقاعد للقراءة التاريخية فقط؛ لا تظهر له منطقة تشغيل اجتماعي جديدة ولا تنفَّذ مهام نشر خارجية. |
 | `moderator` | المحتوى والمكتبة ومحتوى الأطفال والتحليلات وسجل التدقيق. |
 | `seo_manager` | إعدادات الموقع المرتبطة بالظهور والمحتوى والتحليلات وسجل التدقيق. |
 | `analyst` | القراءة التحليلية وسجل التدقيق فقط. |
@@ -148,7 +149,7 @@
 | التدقيق والإعدادات | `/admin/audit`, `/admin/settings` | `admin_audit_events`, `admin_settings`, `admin_rate_limits` | أحداث الإدارة تضاف عبر خدمة التدقيق؛ لا تسجل الرموز أو كلمات المرور أو مفاتيح السر. |
 | المحتوى والمعرفة | `/admin/content`, `/admin/library`, `/admin/editorial`, `/admin/knowledge` | `content_library`, `content_revisions`, `articles`, `stories`, `hadiths`, `duas`, `prophets`, `companions`, `scholars` | تُراجع صلاحية القراءة/التعديل/النشر مستقلة، ولا يكفي إخفاء الرابط من القائمة. |
 | الفيديو والوسائط | `/admin/video`, `/admin/video/requests`, `/admin/video/studio`, `/admin/video/sources`, `/admin/video/scripts`, `/admin/video/voices`, `/admin/video/visuals`, `/admin/video/templates`, `/admin/video/qa`, `/admin/media` | `videos`, `video_generation_requests`, `media_assets` وموارد التخزين | لا يُعلن عن تنفيذ فوري إذا كانت العملية قد دخلت طابور عامل مجدول. |
-| النشر الاجتماعي | `/admin/social` | `social_publish_queue`, `social_sync_jobs`, `social_platform_credentials` | بيانات OAuth ورموز الصفحات Server-only؛ لا تضاف سياسات قراءة للـanon أو authenticated على جدول الاعتمادات. |
+| سجل المنصات التاريخي | غير ظاهر في التنقل | `social_publish_queue`, `social_sync_jobs`, `social_platform_credentials` | سجلات للقراءة والتدقيق فقط؛ لا مهام نشر جديدة ولا سياسات قراءة عامة لبيانات OAuth. |
 | الأطفال والألعاب | `/admin/kids` وما يتفرع عنها | `kids_content` وجداول الألعاب والتقدم والنتائج | تعديلات اللعب ونتائج الأطفال تُفحص بعقود الاختبار وسياسات RLS الخاصة بالمجال. |
 | الصوت | `/admin/audio`, `/admin/site-audio` | `site_audio_assets` ومصادر الصوت | تُختبر روابط الأصول وحالات فشل التحميل؛ لا تُعرض حالة نجاح وهمية عند فشل القراءة. |
 | النشر والإصدار | `/admin/seo`, `/admin/release`, `/admin/android`, `/admin/health` | إعدادات الموقع وبيانات الإصدار وعمليات الفحص | إعدادات SEO والنشر لا تتجاوز التحقق من الروابط أو سجل التدقيق. |

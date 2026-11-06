@@ -156,6 +156,7 @@ type GeneratedRequest = {
   video_url?: string | null;
   generation_attempts?: number | null;
   next_retry_at?: string | null;
+  duration?: number | null;
 };
 
 type AiVideoPlan = {
@@ -1488,7 +1489,159 @@ async function renderVideo(request: GeneratedRequest) {
     if (aiVideoPath && aiVideoPath.startsWith(tmpdir()) && !aiVideoPath.startsWith(temp)) await rm(path.dirname(aiVideoPath), { recursive: true, force: true });
   }
 }
-// External social publishing is retired. Completed videos are kept inside ZIKR only.
+
+const INTERNAL_VIDEO_CATEGORY_SLUG: Record<string, string> = {
+  quran: "quran-verified",
+  hadith: "sunnah-verified",
+  story: "verified-stories",
+  dua: "duas-adhkar",
+  adhkar: "adhkar-verified",
+  other: "general-reminders",
+};
+
+async function registerGeneratedVideoOnSite(
+  request: GeneratedRequest,
+  rendered: {
+    videoUrl: string;
+    scene: string;
+    renderDurationMs: number;
+    sourceHash: string;
+    contentHash: string;
+    templateVersion: string;
+  },
+) {
+  const slug = "zikr-" + request.id.toLowerCase().replace(/[^a-z0-9-]/g, "");
+  const existingRows = await supabaseServerAdminRequest<Array<{
+    id: string;
+    published: boolean | null;
+  }>>(
+    "/rest/v1/videos?slug=eq." + encodeURIComponent(slug) + "&select=id,published&limit=1",
+  );
+  let videoId = existingRows?.[0]?.id ?? "";
+  const existingPublished = existingRows?.[0]?.published === true;
+  if (existingPublished) {
+    console.log("[video-worker] Internal video already published; preserving existing site record:", videoId);
+    return { videoId, published: true, queued: false };
+  }
+
+  const categorySlug = INTERNAL_VIDEO_CATEGORY_SLUG[request.category] ?? "general-reminders";
+  const categoryRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    "/rest/v1/video_categories?slug=eq." + encodeURIComponent(categorySlug) + "&published=eq.true&select=id&limit=1",
+  );
+  const now = new Date().toISOString();
+  const metadata = {
+    generator: "zikr_internal_video_factory",
+    videoGenerationRequestId: request.id,
+    generatedVideoUrl: rendered.videoUrl,
+    videoUrl: rendered.videoUrl,
+    caption: request.description ?? "",
+    sourceUrl: typeof request.content.sourceUrl === "string" ? request.content.sourceUrl : null,
+    sourceLabel: typeof request.content.sourceLabel === "string" ? request.content.sourceLabel : null,
+    sourceType: typeof request.content.sourceType === "string" ? request.content.sourceType : request.category,
+    publicPath: "/videos/" + slug,
+    generatedAt: now,
+    renderer: "template",
+    templateVersion: rendered.templateVersion,
+    sourceHash: rendered.sourceHash,
+    contentHash: rendered.contentHash,
+    renderDurationMs: rendered.renderDurationMs,
+    scene: rendered.scene,
+    audience: request.content.audience === "kids" ? "kids" : "general",
+    seriesId: typeof request.content.seriesId === "string" ? request.content.seriesId : null,
+    seriesTitle: typeof request.content.seriesTitle === "string" ? request.content.seriesTitle : null,
+    seasonNumber: Number.isInteger(Number(request.content.seasonNumber)) ? Number(request.content.seasonNumber) : null,
+    episodeNumber: Number.isInteger(Number(request.content.episodeNumber)) ? Number(request.content.episodeNumber) : null,
+    learningObjective: typeof request.content.learningObjective === "string" ? request.content.learningObjective : null,
+    factorySequence: Number.isInteger(Number(request.content.factorySequence)) ? Number(request.content.factorySequence) : null,
+    aiDisclosure: request.content.aiDisclosure ?? null,
+    quality: {
+      passed: true,
+      checks: [
+        "verified_source_or_editorial_contract",
+        "arabic_narration_quality",
+        "template_asset_policy",
+        "render_completed",
+        "cloudinary_delivery_verified",
+        "internal_site_only",
+      ],
+    },
+  };
+  const record = {
+    title: request.title,
+    slug,
+    description: request.description ?? null,
+    youtube_id: null,
+    thumbnail_url: null,
+    duration: Math.max(1, Number(request.content.durationSeconds ?? request.duration ?? TARGET_VIDEO_SECONDS) || TARGET_VIDEO_SECONDS),
+    views: 0,
+    published: false,
+    category_id: categoryRows?.[0]?.id ?? null,
+    metadata,
+    created_at: now,
+    updated_at: now,
+  };
+
+  if (!videoId) {
+    const inserted = await supabaseServerAdminRequest<Array<{ id: string }>>(
+      "/rest/v1/videos",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+        body: JSON.stringify(record),
+      },
+    );
+    videoId = inserted?.[0]?.id ?? "";
+    if (!videoId) throw new Error("Generated video was uploaded but its ZIKR video record was not returned.");
+  } else {
+    await supabaseServerAdminRequest(
+      "/rest/v1/videos?id=eq." + encodeURIComponent(videoId) + "&published=eq.false",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({
+          ...record,
+          created_at: undefined,
+        }),
+      },
+    );
+  }
+
+  const queueRows = await supabaseServerAdminRequest<Array<{ id: string; status: string }>>(
+    "/rest/v1/content_publish_queue?content_table=eq.videos&content_id=eq." +
+      encodeURIComponent(videoId) + "&select=id,status&order=created_at.desc&limit=1",
+  );
+  const existingQueue = queueRows?.[0];
+  if (!existingQueue) {
+    await supabaseServerAdminRequest("/rest/v1/content_publish_queue", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({
+        content_table: "videos",
+        content_id: videoId,
+        scheduled_at: now,
+        status: "queued",
+        created_at: now,
+        updated_at: now,
+      }),
+    });
+  } else if (existingQueue.status === "failed") {
+    await supabaseServerAdminRequest(
+      "/rest/v1/content_publish_queue?id=eq." + encodeURIComponent(existingQueue.id) + "&status=eq.failed",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({
+          status: "queued",
+          scheduled_at: now,
+          error_message: null,
+          updated_at: now,
+        }),
+      },
+    );
+  }
+
+  return { videoId, published: false, queued: true };
+}
 
 export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?: number) {
   if (engineConfig().dryRun) {
@@ -1520,7 +1673,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
     );
   }
   const candidateLimit = Math.max(1, Math.min(10, limit));
-  const eligibleFilter = `status=in.(pending,retry_wait)&or=(status.eq.pending,next_retry_at.lte.${encodeURIComponent(new Date().toISOString())})&select=id,title,description,category,content,status,automation_key,generation_attempts,next_retry_at&order=created_at.asc&limit=${candidateLimit}`;
+  const eligibleFilter = `status=in.(pending,retry_wait)&or=(status.eq.pending,next_retry_at.lte.${encodeURIComponent(new Date().toISOString())})&select=id,title,description,category,content,status,automation_key,generation_attempts,next_retry_at,duration&order=created_at.asc&limit=${candidateLimit}`;
   let rows: GeneratedRequest[] = [];
 
   if (Number.isInteger(priorityDay)) {
@@ -1560,6 +1713,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
     const attemptStartedAt = Date.now();
     try {
       const rendered = await renderVideo(request);
+      await registerGeneratedVideoOnSite(request, rendered);
       await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },

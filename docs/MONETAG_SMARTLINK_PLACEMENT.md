@@ -21,18 +21,11 @@ The link opens a new tab and uses `rel="nofollow sponsored noopener noreferrer"`
 
 ## Social video metadata
 
-For eligible non-kids videos:
-- YouTube descriptions include an explicit external-advertising disclosure and the exact SmartLink.
-- YouTube tags include descriptive keywords such as `smartlink`, `external offers`, and `روابط إعلانية`. The URL itself belongs in the description, not the tags field.
-- Facebook video and Reels captions include the same disclosure and URL. Facebook's video publisher accepts a description/caption rather than a YouTube-style tags array.
-
-For videos whose source audience is `kids`, the SmartLink and its advertising tags are omitted. If the audience cannot be verified for a Facebook video, the link is omitted rather than guessed.
+External social publishing is retired. The SmartLink is not appended to YouTube descriptions, Facebook/Reels captions, or any other external platform metadata. Existing historical posts are not edited or republished.
 
 ## Publishing behavior
 
-The integration changes metadata at publish time. It does not edit posts that were already published, and it does not republish old videos.
-
-The checked-in GitHub social workflow currently sets `SOCIAL_PUBLISH_ENABLED=true` and runs on its 15-minute schedule. Each run still depends on its protected provider preflight and a ready queue item. This change does not modify those flags, credentials, schedules, queue states, or approvals. Newly published eligible videos receive the disclosure and link automatically.
+The SmartLink is rendered only in the approved website placements above. The legacy social workflow is guarded by `if: false`, and the provider upload functions fail closed before making external requests. This website advertising placement does not enable social publishing or change historical social queue records.
 
 ## Verification
 

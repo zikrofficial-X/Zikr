@@ -190,8 +190,13 @@ assert.match(
 );
 assert.match(
   socialRoute,
-  /recordAdminAuditEvent\([\s\S]*?social\.queue\.(?:retry|delete)/,
-  "social queue mutations must append audit events",
+  /SOCIAL_PUBLISHING_RETIRED[\s\S]*?status: 410/,
+  "retired social queue API must return HTTP 410 without mutating historical queue records",
+);
+assert.doesNotMatch(
+  socialRoute,
+  /social_publish_queue|dispatchGitHubWorkflow|fetch\(/,
+  "retired social API must not read, mutate, or dispatch external social work",
 );
 assert.match(
   videoRoute,
