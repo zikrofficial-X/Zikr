@@ -106,6 +106,67 @@ export async function TrafficRevenuePanel() {
         </div>
       </div>
 
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-bold text-brand-cream">تحليلات زيارات الموقع — Google Analytics 4</h3>
+          <Badge variant="outline" className={snapshot.integrations.ga4ReportingConnected ? "border-emerald-400/20 text-emerald-200/80" : "border-amber-300/20 text-amber-100/75"}>
+            {snapshot.integrations.ga4ReportingConnected ? "تقارير GA4 متصلة" : snapshot.ga4Analytics.status === "authorization_required" ? "تحتاج إعادة تفويض" : "غير متصلة"}
+          </Badge>
+        </div>
+        {snapshot.ga4Analytics.status === "connected" ? (
+          <>
+            <p className="text-xs leading-5 text-brand-cream/45">آخر 28 يومًا مكتملة وفق المنطقة الزمنية لخاصية GA4؛ التحديث كل ساعة.</p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard label="المستخدمون النشطون" value={snapshot.ga4Analytics.activeUsers} note="GA4 Data API" icon={Users} />
+              <MetricCard label="الجلسات" value={snapshot.ga4Analytics.sessions} note="جلسات الموقع" icon={Activity} />
+              <MetricCard label="مشاهدات الصفحات" value={snapshot.ga4Analytics.pageViews} note="screenPageViews" icon={Eye} />
+              <MetricCard label="معدل التفاعل (%)" value={snapshot.ga4Analytics.engagementRate === null ? null : Number((snapshot.ga4Analytics.engagementRate * 100).toFixed(2))} note="معدل الجلسات المتفاعلة" icon={BarChart3} />
+              <MetricCard label="الأحداث" value={snapshot.ga4Analytics.events} note="إجمالي الأحداث المسجلة" icon={CheckCircle2} />
+              <MetricCard label="الأحداث الرئيسية" value={snapshot.ga4Analytics.keyEvents} note="Key events في GA4" icon={CheckCircle2} />
+            </div>
+            <div className="grid gap-4 xl:grid-cols-2">
+              <Card className="p-5">
+                <h4 className="font-semibold text-brand-gold">قنوات الزيارات</h4>
+                {snapshot.ga4Analytics.channels?.length ? (
+                  <div className="mt-3 divide-y divide-brand-gold/10">
+                    {snapshot.ga4Analytics.channels.map((channel) => (
+                      <div key={channel.channel} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                        <span className="text-brand-cream/80">{channel.channel}</span>
+                        <span className="tabular-nums text-brand-cream/65">{format(channel.sessions)} جلسة · {format(channel.activeUsers)} مستخدم</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="mt-3 text-xs text-brand-cream/45">لا توجد بيانات قنوات للفترة المحددة.</p>}
+              </Card>
+              <Card className="p-5">
+                <h4 className="font-semibold text-brand-gold">أهم صفحات الدخول</h4>
+                {snapshot.ga4Analytics.landingPages?.length ? (
+                  <div className="mt-3 divide-y divide-brand-gold/10">
+                    {snapshot.ga4Analytics.landingPages.map((page) => (
+                      <div key={page.page} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                        <span className="max-w-[65%] truncate text-brand-cream/80" dir="ltr">{page.page}</span>
+                        <span className="tabular-nums text-brand-cream/65">{format(page.sessions)} جلسة</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="mt-3 text-xs text-brand-cream/45">لا توجد صفحات دخول للفترة المحددة.</p>}
+              </Card>
+            </div>
+          </>
+        ) : (
+          <Card className="p-5">
+            <p className="text-sm leading-7 text-brand-cream/65">
+              {snapshot.ga4Analytics.status === "authorization_required"
+                ? "رمز GA4 لا يملك صلاحية analytics.readonly أو لا يستطيع الوصول إلى خاصية GA4. أعد التفويض بعد تفعيل Google Analytics Data API ومنح حساب Google صلاحية قراءة للخاصية."
+                : snapshot.ga4Analytics.status === "not_configured"
+                  ? "يلزم إعداد GOOGLE_CLIENT_ID وGOOGLE_CLIENT_SECRET وGA4_REFRESH_TOKEN وGA4_PROPERTY_ID. لا يكفي وجود Measurement ID لقراءة التقارير."
+                  : "تعذر الوصول إلى تقارير GA4 حاليًا. لم يتم استبدال البيانات المفقودة بأصفار."}
+            </p>
+          </Card>
+        )}
+      </section>
+
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-bold text-brand-cream">تحليلات قناة YouTube</h3>

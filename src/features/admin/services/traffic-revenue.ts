@@ -22,6 +22,184 @@ export type YoutubeAnalyticsSnapshot = {
   capturedAt: string | null;
 };
 
+
+export type Ga4AnalyticsSnapshot = {
+  status: "connected" | "authorization_required" | "unavailable" | "not_configured";
+  startDate: string | null;
+  endDate: string | null;
+  activeUsers: number | null;
+  sessions: number | null;
+  pageViews: number | null;
+  engagementRate: number | null;
+  events: number | null;
+  keyEvents: number | null;
+  channels: Array<{ channel: string; sessions: number; activeUsers: number }> | null;
+  landingPages: Array<{ page: string; sessions: number; activeUsers: number }> | null;
+  capturedAt: string | null;
+};
+
+type Ga4Value = { value?: string };
+type Ga4RunReport = {
+  dimensionHeaders?: Array<{ name?: string }>;
+  metricHeaders?: Array<{ name?: string }>;
+  rows?: Array<{ dimensionValues?: Ga4Value[]; metricValues?: Ga4Value[] }>;
+};
+
+function ga4Metric(report: Ga4RunReport, row: NonNullable<Ga4RunReport["rows"]>[number] | undefined, name: string): number | null {
+  if (!row) return null;
+  const index = (report.metricHeaders ?? []).findIndex((header) => header.name === name);
+  if (index < 0) return null;
+  const value = Number(row.metricValues?.[index]?.value);
+  return Number.isFinite(value) ? value : null;
+}
+
+function ga4Dimension(report: Ga4RunReport, row: NonNullable<Ga4RunReport["rows"]>[number], name: string): string | null {
+  const index = (report.dimensionHeaders ?? []).findIndex((header) => header.name === name);
+  const value = index < 0 ? null : row.dimensionValues?.[index]?.value;
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+const ga4ChannelLabels: Record<string, string> = {
+  Direct: "مباشر",
+  "Organic Search": "بحث طبيعي",
+  "Organic Social": "شبكات اجتماعية",
+  "Paid Search": "بحث مدفوع",
+  "Paid Social": "شبكات اجتماعية مدفوعة",
+  Referral: "إحالات وروابط",
+  Email: "البريد الإلكتروني",
+  "Organic Video": "فيديو طبيعي",
+  Display: "إعلانات عرض",
+  Unassigned: "غير مصنف",
+};
+
+async function fetchGa4AnalyticsSnapshot(): Promise<Ga4AnalyticsSnapshot> {
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  const refreshToken = process.env.GA4_REFRESH_TOKEN?.trim();
+  const propertyId = process.env.GA4_PROPERTY_ID?.trim();
+  const unavailable = (status: Ga4AnalyticsSnapshot["status"]): Ga4AnalyticsSnapshot => ({
+    status, startDate: null, endDate: null, activeUsers: null, sessions: null,
+    pageViews: null, engagementRate: null, events: null, keyEvents: null,
+    channels: null, landingPages: null, capturedAt: null,
+  });
+  if (!clientId || !clientSecret || !refreshToken || !propertyId || !/^\d+$/.test(propertyId)) {
+    return unavailable("not_configured");
+  }
+
+  try {
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!tokenResponse.ok) {
+      return unavailable(tokenResponse.status === 400 || tokenResponse.status === 401 ? "authorization_required" : "unavailable");
+    }
+    const tokenPayload = (await tokenResponse.json()) as { access_token?: string };
+    if (!tokenPayload.access_token) return unavailable("authorization_required");
+
+    const endpoint = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+    const dateRanges = [{ startDate: "28daysAgo", endDate: "yesterday" }];
+    const headers = {
+      Authorization: "Bearer " + tokenPayload.access_token,
+      "Content-Type": "application/json",
+    };
+    const postReport = async (body: Record<string, unknown>) => fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ dateRanges, ...body }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
+
+    const [summaryResponse, channelResponse, landingResponse] = await Promise.all([
+      postReport({
+        metrics: [
+          { name: "activeUsers" },
+          { name: "sessions" },
+          { name: "screenPageViews" },
+          { name: "engagementRate" },
+          { name: "eventCount" },
+          { name: "keyEvents" },
+        ],
+      }),
+      postReport({
+        dimensions: [{ name: "sessionDefaultChannelGroup" }],
+        metrics: [{ name: "sessions" }, { name: "activeUsers" }],
+        orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+        limit: "10",
+      }),
+      postReport({
+        dimensions: [{ name: "landingPagePlusQueryString" }],
+        metrics: [{ name: "sessions" }, { name: "activeUsers" }],
+        orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+        limit: "10",
+      }),
+    ]);
+    if (!summaryResponse.ok) {
+      return unavailable(summaryResponse.status === 401 || summaryResponse.status === 403 ? "authorization_required" : "unavailable");
+    }
+
+    const summary = (await summaryResponse.json()) as Ga4RunReport;
+    const summaryRow = summary.rows?.[0];
+    let channels: Ga4AnalyticsSnapshot["channels"] = null;
+    if (channelResponse.ok) {
+      const report = (await channelResponse.json()) as Ga4RunReport;
+      channels = (report.rows ?? []).flatMap((entry) => {
+        const source = ga4Dimension(report, entry, "sessionDefaultChannelGroup");
+        return source ? [{
+          channel: ga4ChannelLabels[source] ?? source,
+          sessions: ga4Metric(report, entry, "sessions") ?? 0,
+          activeUsers: ga4Metric(report, entry, "activeUsers") ?? 0,
+        }] : [];
+      });
+    }
+    let landingPages: Ga4AnalyticsSnapshot["landingPages"] = null;
+    if (landingResponse.ok) {
+      const report = (await landingResponse.json()) as Ga4RunReport;
+      landingPages = (report.rows ?? []).flatMap((entry) => {
+        const page = ga4Dimension(report, entry, "landingPagePlusQueryString");
+        return page ? [{
+          page,
+          sessions: ga4Metric(report, entry, "sessions") ?? 0,
+          activeUsers: ga4Metric(report, entry, "activeUsers") ?? 0,
+        }] : [];
+      });
+    }
+
+    return {
+      status: "connected",
+      startDate: "28daysAgo",
+      endDate: "yesterday",
+      activeUsers: ga4Metric(summary, summaryRow, "activeUsers") ?? 0,
+      sessions: ga4Metric(summary, summaryRow, "sessions") ?? 0,
+      pageViews: ga4Metric(summary, summaryRow, "screenPageViews") ?? 0,
+      engagementRate: ga4Metric(summary, summaryRow, "engagementRate"),
+      events: ga4Metric(summary, summaryRow, "eventCount") ?? 0,
+      keyEvents: ga4Metric(summary, summaryRow, "keyEvents") ?? 0,
+      channels,
+      landingPages,
+      capturedAt: new Date().toISOString(),
+    };
+  } catch {
+    // Access tokens, refresh tokens and raw API responses are never logged or returned.
+    return unavailable("unavailable");
+  }
+}
+
+const getCachedGa4AnalyticsSnapshot = unstable_cache(
+  fetchGa4AnalyticsSnapshot,
+  ["zikr-ga4-analytics-readonly-v1"],
+  { revalidate: 3600 },
+);
+
 export type TrafficRevenueSnapshot = {
   generatedAt: string;
   metrics: {
@@ -35,7 +213,7 @@ export type TrafficRevenueSnapshot = {
   };
   integrations: {
     ga4MeasurementConfigured: boolean;
-    ga4ReportingConnected: false;
+    ga4ReportingConnected: boolean;
     monetagVerificationMetaPresent: true;
     monetagSmartLinkConfigured: true;
     monetagReportingConnected: false;
@@ -43,6 +221,7 @@ export type TrafficRevenueSnapshot = {
     youtubeAnalyticsConnected: boolean;
   };
   youtubeAnalytics: YoutubeAnalyticsSnapshot;
+  ga4Analytics: Ga4AnalyticsSnapshot;
   socialProfiles: Array<{
     platform: string;
     name: string | null;
@@ -221,6 +400,7 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
     publishedVideos,
     profiles,
     youtubeAnalytics,
+    ga4Analytics,
   ] = await Promise.all([
     supabase.from("social_publish_queue").select("id", { count: "exact", head: true }).eq("status", "queued"),
     supabase.from("social_publish_queue").select("id", { count: "exact", head: true }).eq("status", "published"),
@@ -234,6 +414,7 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
       .select("platform,name,handle,status,synced_at")
       .order("platform", { ascending: true }),
     getCachedYoutubeAnalyticsSnapshot(),
+    getCachedGa4AnalyticsSnapshot(),
   ]);
 
   const metrics = {
@@ -258,6 +439,7 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
   }
   if (profiles.error) unavailable.push("حالة حسابات المنصات");
   if (youtubeAnalytics.status !== "connected") unavailable.push("YouTube Analytics");
+  if (ga4Analytics.status !== "connected") unavailable.push("GA4");
 
   const hasYoutubeAnalyticsCredentials = Boolean(
     process.env.YOUTUBE_CLIENT_ID?.trim() &&
@@ -270,7 +452,7 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
     metrics,
     integrations: {
       ga4MeasurementConfigured: Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID),
-      ga4ReportingConnected: false,
+      ga4ReportingConnected: ga4Analytics.status === "connected",
       monetagVerificationMetaPresent: true,
       monetagSmartLinkConfigured: true,
       monetagReportingConnected: false,
@@ -278,6 +460,7 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
       youtubeAnalyticsConnected: youtubeAnalytics.status === "connected",
     },
     youtubeAnalytics,
+    ga4Analytics,
     socialProfiles: profiles.error
       ? null
       : (profiles.data ?? []).map((profile) => ({
