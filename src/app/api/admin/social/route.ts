@@ -622,7 +622,7 @@ export async function POST(request: NextRequest) {
       );
       let deleted = 0;
       let failed = 0;
-      let missingRemoteId = 0;
+      let missingRemoteId = 0;\n      let localMemoryDeleted = 0;\n      let localMemoryFailed = 0;
       const results: Array<{ id: string; title: string; platform: string; status: "deleted" | "failed" | "missing_remote_id" | "already_deleted"; error?: string }> = [];
 
       for (const item of selectedItems ?? []) {
@@ -684,13 +684,81 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      if (deleteLocalMemory) {
+        // Remove only verified ZIKR-generated Cloudinary media after remote
+        // deletion was confirmed. Keep audit/social queue ledgers intact.
+        for (const item of selectedItems ?? []) {
+          const deletionLedger = asRecord(item.metadata?.platformDeletions) ?? {};
+          const remoteDeletionConfirmed = Object.values(deletionLedger).some(
+            value => asRecord(value)?.status === "deleted",
+          );
+          if (!remoteDeletionConfirmed) continue;
+          const contentId = item.content_id?.trim();
+          if (!contentId) {
+            localMemoryFailed += 1;
+            continue;
+          }
+          try {
+            const generationRows = await supabaseServerAdminRequest<Array<{ video_url: string | null }>>(
+              "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(contentId) + "&select=video_url&limit=1",
+            );
+            const videoUrl = generationRows?.[0]?.video_url;
+            if (!videoUrl) throw new Error("Generated source URL is unavailable.");
+            const parsed = new URL(videoUrl);
+            if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com") {
+              throw new Error("Generated media URL is not an approved Cloudinary URL.");
+            }
+            const env = getServerEnv();
+            const cloudName = env.CLOUDINARY_CLOUD_NAME?.trim();
+            const segments = parsed.pathname.split("/").filter(Boolean);
+            const upload = segments.indexOf("upload");
+            const cloud = cloudName ? segments.indexOf(cloudName) : -1;
+            if (!cloudName || cloud < 0 || upload <= cloud) throw new Error("Cloudinary ownership could not be verified.");
+            const assetParts = segments.slice(upload + 1).filter(part => !/^v\d+$/.test(part));
+            const filename = assetParts.pop() ?? "";
+            const publicId = [...assetParts, filename.replace(/\.mp4$/i, "")].join("/");
+            if (!/^auto-[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(publicId)) {
+              throw new Error("Asset is not tagged with the ZIKR generated-video prefix.");
+            }
+            const crypto = await import("node:crypto");
+            const timestamp = Math.floor(Date.now() / 1000).toString();
+            const params = { public_id: publicId, timestamp };
+            const signingText = Object.entries(params).sort(([a],[b]) => a.localeCompare(b))
+              .map(([key,value]) => key + "=" + value).join("&") + (env.CLOUDINARY_API_SECRET ?? "");
+            const signature = crypto.createHash("sha1").update(signingText).digest("hex");
+            const response = await fetch(
+              "https://api.cloudinary.com/v1_1/" + encodeURIComponent(cloudName) + "/video/destroy",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ ...params, api_key: env.CLOUDINARY_API_KEY ?? "", signature }),
+                cache: "no-store",
+                signal: AbortSignal.timeout(20_000),
+              },
+            );
+            const payload = await response.json().catch(() => ({})) as { result?: string };
+            if (!response.ok || !["ok", "not found"].includes(payload.result ?? "")) {
+              throw new Error("Cloudinary deletion was not confirmed.");
+            }
+            await supabaseServerAdminRequest(
+              "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(contentId),
+              { method: "DELETE", headers: { Prefer: "return=minimal" } },
+            );
+            localMemoryDeleted += 1;
+          } catch (error) {
+            localMemoryFailed += 1;
+            console.error("[api/admin/social] local generated-media deletion failed:", error instanceof Error ? error.message : "unknown error");
+          }
+        }
+      }
+
       await recordAdminAuditEvent({
         action: "social.queue.delete_published_remote",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { requestedIds: ids.length, deleted, failed, missingRemoteId },
+        metadata: { requestedIds: ids.length, deleted, failed, missingRemoteId, localMemoryRequested: deleteLocalMemory, localMemoryDeleted, localMemoryFailed },
       });
-      return NextResponse.json({ ok: true, deleted, failed, missingRemoteId, results });
+      return NextResponse.json({ ok: true, deleted, failed, missingRemoteId, localMemoryDeleted, localMemoryFailed, results });
     }
 
     const affected = await supabaseServerAdminRequest<QueueItem[]>(
