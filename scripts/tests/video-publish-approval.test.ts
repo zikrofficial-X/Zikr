@@ -42,11 +42,11 @@ assert.deepEqual(inspectVideoQueueItemApproval(queueItem).missingChecks, []);
 
 const awaitingReview = inspectVideoQueueItemApproval({
   ...queueItem,
-  request: { ...request, content: { ...content, approvalStatus: "awaiting_human_review", qualityReview: null } },
+  request: { ...request, content: { ...content, approvalStatus: "awaiting_automated_qa", qualityReview: null } },
 });
 assert.equal(awaitingReview.approved, false);
-assert.equal(awaitingReview.approvalStatus, "awaiting_human_review");
-assert.match(awaitingReview.reason ?? "", /المراجعة البشرية/);
+assert.equal(awaitingReview.approvalStatus, "awaiting_automated_qa");
+assert.match(awaitingReview.reason ?? "", /فحص الجودة الآلي/);
 assert.equal(awaitingReview.missingChecks.length, 5);
 
 const missingRights = inspectVideoQueueItemApproval({
