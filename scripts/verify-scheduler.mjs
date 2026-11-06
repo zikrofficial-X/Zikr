@@ -25,7 +25,7 @@ const vercel = existsSync("vercel.json") ? readFileSync("vercel.json", "utf8") :
 if (vercel.includes('"crons"') || vercel.includes("crons:")) failures.push("Vercel must not own production video scheduling");
 
 
-const currentCronMigration = read("supabase/migrations/20261106210000_repoint_active_cron_jobs_to_current_project.sql");
+const currentCronMigration = read("supabase/migrations/20261106210440_repoint_active_cron_jobs_to_current_project.sql");
 if (!currentCronMigration.includes("ymxdswkaxafakugktsim.supabase.co")) failures.push("cron migration must match only the previously configured project host");
 if (!currentCronMigration.includes("zqtssvlvmkzeeyqghqfk.supabase.co")) failures.push("cron migration must repoint to the active Supabase project");
 if (!currentCronMigration.includes("cron.alter_job")) failures.push("cron migration must use the supported pg_cron alter_job API");
