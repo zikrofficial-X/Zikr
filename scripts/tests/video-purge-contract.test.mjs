@@ -32,6 +32,12 @@ for (const token of [
 assert.ok(!/drop\s+table|supabase_migrations|android-releases/i.test(route), "Purge must not alter schema, migration history, or Android releases.");
 assert.ok(!route.includes('deleteRows("videos", "id=not.is.null")'), "Purge must preserve the public video catalogue.");
 assert.ok(route.includes("published_at=is.null") && route.includes("hasSuccessfulRemotePublication"), "Purge may remove only queued video items without publication evidence.");
+const unresolvedPreflight = route.indexOf("const unresolvedDeliveries = await getUnresolvedVideoDeliveries();");
+const pauseAutomation = route.indexOf("await pauseVideoAutomation();");
+assert.ok(unresolvedPreflight >= 0 && pauseAutomation > unresolvedPreflight, "unresolved social deliveries must block purge before pausing automation");
+assert.ok(route.includes('row.status === "partial"'), "partial video deliveries must block purge");
+assert.ok(route.includes('status=in.(queued,failed)'), "only queued/failed video queue rows may be purged");
+assert.ok(route.includes("automationMustBeReenabled: true"), "a purge blocked after the worker lock must expose the required recovery state");
 assert.ok(socialWorker.includes("isVideoPurgeInProgress"));
 assert.ok(socialWorker.includes("video_purge_in_progress"));
 assert.ok(videoWorker.includes("isVideoGenerationPaused"));
