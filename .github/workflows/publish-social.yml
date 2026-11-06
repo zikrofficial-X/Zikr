@@ -48,6 +48,8 @@ jobs:
       SOCIAL_PUBLISH_BATCH_SIZE: "2"
       YOUTUBE_UPLOAD_PRIVACY: "public"
       SOCIAL_PUBLISH_ENABLED: "true"
+      FACEBOOK_PUBLISHING_REQUESTED: ${{ vars.FACEBOOK_PUBLISHING_ENABLED || 'true' }}
+      YOUTUBE_PUBLISHING_REQUESTED: ${{ vars.YOUTUBE_PUBLISHING_ENABLED || 'true' }}
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
@@ -140,10 +142,11 @@ jobs:
           else
             echo "::warning::Unable to inspect the OAuth-managed Facebook connection (HTTP $facebook_status); Facebook will remain disabled for this run." >&2
           fi
+          if [[ "$FACEBOOK_PUBLISHING_REQUESTED" != "true" ]]; then facebook_enabled="false"; fi
           echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_enabled" >> "$GITHUB_ENV"
 
           youtube_configured="false"
-          if [[ -n "${YOUTUBE_CLIENT_ID:-}" && -n "${YOUTUBE_CLIENT_SECRET:-}" && -n "${YOUTUBE_REFRESH_TOKEN:-}" ]]; then
+          if [[ "$YOUTUBE_PUBLISHING_REQUESTED" == "true" && -n "${YOUTUBE_CLIENT_ID:-}" && -n "${YOUTUBE_CLIENT_SECRET:-}" && -n "${YOUTUBE_REFRESH_TOKEN:-}" ]]; then
             youtube_configured="true"
           fi
           echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=$youtube_configured" >> "$GITHUB_ENV"
@@ -179,12 +182,8 @@ jobs:
           fi
 
       - name: Process social publishing queue
-        if: env.SOCIAL_PUBLISH_FACEBOOK_ENABLED == 'true' || env.SOCIAL_PUBLISH_YOUTUBE_ENABLED == 'true'
+        # The worker reads the two independent GITHUB_ENV flags and claims no queue items if both are off.
         run: pnpm background:jobs
-
-      - name: Skip queue claim when both social channels are unavailable
-        if: env.SOCIAL_PUBLISH_FACEBOOK_ENABLED != 'true' && env.SOCIAL_PUBLISH_YOUTUBE_ENABLED != 'true'
-        run: echo "No queue item was claimed. The next scheduled run will retry Facebook and YouTube readiness independently."
 
       - name: Publish summary
         if: always()
