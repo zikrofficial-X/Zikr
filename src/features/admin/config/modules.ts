@@ -147,7 +147,7 @@ export const ADMIN_ROUTE_ALIASES = [
   { from: "/admin/video-factory/scheduler", to: "/admin/automation", reason: "الجدولة تحت مركز الأتمتة" },
   { from: "/admin/ai-video", to: "/admin/video/studio", reason: "دمج الاستوديو في مركز الفيديو" },
   { from: "/admin/ai-video/curated", to: "/admin/video/studio/curated", reason: "نقل المحتوى الموثق إلى الاستوديو الرسمي" },
-  { from: "/admin/video-factory/publishing", to: "/admin/social", reason: "النشر الاجتماعي وحدة مستقلة" },
+  { from: "/admin/video-factory/publishing", to: "/admin/memory", reason: "تحويل مساحة الوسائط والذاكرة الداخلية" },
   { from: "/admin/alerts", to: "/admin/notifications", reason: "توحيد التنبيهات" },
   { from: "/admin/control", to: "/admin", reason: "اختصار قديم لمركز العمليات" },
   { from: "/admin/audio/site-audio", to: "/admin/site-audio", reason: "مسار صوت الموقع الرسمي" },
