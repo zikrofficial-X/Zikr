@@ -77,6 +77,7 @@ assert.equal(videoTemplateScene("emerald"), "emerald");
 
 const read = (path: string) => readFileSync(path, "utf8");
 const migration = read("supabase/migrations/20261106010000_admin_video_template_studio.sql");
+const blockerFixMigration = read("supabase/migrations/20261106090800_production_blockers_and_social_insights.sql");
 const api = read("src/app/api/admin/video/templates/route.ts");
 const createApi = read("src/app/api/admin/videos/create/route.ts");
 const worker = read("scripts/jobs/template-video-automation.ts");
@@ -92,6 +93,8 @@ assert.match(migration, /BEFORE UPDATE OR DELETE ON public\.video_template_versi
 assert.match(migration, /video template version identity and config are immutable/i);
 assert.match(migration, /admin_create_video_template_version/i);
 assert.match(migration, /activate_video_template_version/i);
+assert.match(blockerFixMigration, /FROM public\.profiles AS actor WHERE actor\.id = p_actor_user_id/i);
+assert.doesNotMatch(blockerFixMigration, /FROM auth\.users/i);
 assert.match(migration, /video_template_versions_one_active_per_template/i);
 
 assert.match(api, /requireAdminApi\("video\.manage"\)/);
