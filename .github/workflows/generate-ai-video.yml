@@ -70,7 +70,7 @@ jobs:
       HF_VIDEO_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
       # Generate on free visual AI providers with deterministic FFmpeg fallback; keep completed media in ZIKR only.
       AUTO_VIDEO_SECONDS: "20"
-      # Generation only. Queue reconciliation and public posting belong to publish-social.yml (every 15 minutes).
+      # Generation only. Completed video assets are retained in the ZIKR internal media library.
       BACKGROUND_JOB_TARGET: "videos"
       VIDEO_TEMPLATE_VERSION: "2026-11-06-composition-sync-v8"
       VIDEO_OUTPUT_CRF: "17"
@@ -78,11 +78,6 @@ jobs:
       VERIFY_VIDEO_RUNTIME_TOOLS: "true"
       # Public social publishing is intentionally disabled for this product. Keep historical social workflows fail-closed.
       SOCIAL_PUBLISH_ENABLED: "false"
-      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-      YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
-      FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
       ADMIN_QUEUE_ALERT_WEBHOOK_URL: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_URL }}
       ADMIN_QUEUE_ALERT_WEBHOOK_SECRET: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_SECRET || secrets.WEBHOOK_SECRET }}
       ADMIN_QUEUE_ALERT_EMAIL_TO: ${{ vars.ADMIN_QUEUE_ALERT_EMAIL_TO || secrets.ADMIN_QUEUE_ALERT_EMAIL_TO }}
@@ -101,9 +96,6 @@ jobs:
           test -n "${CLOUDINARY_CLOUD_NAME:-}" || { echo "Missing production environment secret: CLOUDINARY_CLOUD_NAME" >&2; exit 1; }
           test -n "${CLOUDINARY_API_KEY:-}" || { echo "Missing production environment secret: CLOUDINARY_API_KEY" >&2; exit 1; }
           test -n "${CLOUDINARY_API_SECRET:-}" || { echo "Missing production environment secret: CLOUDINARY_API_SECRET" >&2; exit 1; }
-          if [[ -z "${YOUTUBE_CLIENT_ID:-}" || -z "${YOUTUBE_CLIENT_SECRET:-}" || -z "${YOUTUBE_REFRESH_TOKEN:-}" ]]; then
-            echo "Warning: YouTube OAuth is incomplete. Facebook publishing is managed separately through the ZIKR admin OAuth publishing center." >&2
-          fi
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -162,7 +154,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm video:engine:check
-          pnpm exec tsx -e 'Promise.all([import("./scripts/jobs/template-video-automation.ts"), import("./scripts/jobs/social-publishing.ts"), import("./src/features/social/services/social-publishing.ts")]).then(() => console.log("Video and social worker module smoke test: OK")).catch((error) => { console.error(error); process.exitCode = 1 })'
+          pnpm exec tsx -e 'import("./scripts/jobs/template-video-automation.ts").then(() => console.log("Internal video worker module smoke test: OK")).catch((error) => { console.error(error); process.exitCode = 1 })'
           "$GITHUB_WORKSPACE/.automation-venv/bin/python" -m py_compile scripts/jobs/hf-space-video.py
           "$GITHUB_WORKSPACE/.automation-venv/bin/python" -m py_compile scripts/generate-arabic-voice.py
           # Fail before touching the production queue if neither Arabic TTS provider can synthesize audio.
