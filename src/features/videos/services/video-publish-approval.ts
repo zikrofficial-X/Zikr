@@ -160,7 +160,7 @@ export function inspectVideoQueueItemApproval(input: {
 
   let reason: string;
   if (approvalStatus !== "approved") {
-    reason = "بانتظار اكتمال فحص الجودة الآلي."
+    reason = "بانتظار اكتمال فحص الجودة الآلي.";
   } else if (missingChecks.length > 0) {
     reason = "فحوص الجودة الآلية غير مكتملة؛ تم إيقاف النشر الخارجي."
   } else if (!snapshotHash || content?.approvalSnapshotHash !== snapshotHash) {
