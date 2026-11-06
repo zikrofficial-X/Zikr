@@ -150,6 +150,9 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === 'retry_publish') {
+      const publishAuth = await requireAdminApi('social.publish');
+      if (!publishAuth.ok) return NextResponse.json({ error: publishAuth.error }, { status: publishAuth.status });
+
       const rows = await supabaseServerAdminRequest<Array<{
         id: string;
         status: string;
