@@ -45,7 +45,7 @@ These are CI secrets and must never be committed to the repository.
 - Vercel team slug/name: `zikr3` / `zikr`
 - Vercel team ID: `team_RxPjmgZoSFmKGjScefYmwIVv`
 - Supabase project name: `Zikrmediaofficial-X`
-- Supabase project ref: `ymxdswkaxafakugktsim`
+- Supabase project ref: `zqtssvlvmkzeeyqghqfk`
 - Production domain: `https://zikrmediaofficial.vercel.app`
 
 The Vercel project is linked to the GitHub repository above, and the Supabase project ref is the active project used by the production-health workflow. Treat these identities as the current release targets; re-verify them through the connected provider contexts before changing deployment secrets. Never commit `VERCEL_TOKEN`, database passwords, or Supabase service-role keys.
