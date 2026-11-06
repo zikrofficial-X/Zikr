@@ -753,7 +753,7 @@ export default function AdminSocialPage() {
           {health.youtubeConnectionMessage && <p className="text-xs leading-5 text-brand-cream/55">{health.youtubeConnectionMessage}</p>}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void connectYouTube()}>
-              منح صلاحية قراءة القناة
+              ربط YouTube للنشر والإحصاءات
             </Button>
             <Button variant="outline" size="sm" disabled={busy || !health.youtubeConfigured} onClick={() => void testYouTube()}>
               اختبار اتصال YouTube
