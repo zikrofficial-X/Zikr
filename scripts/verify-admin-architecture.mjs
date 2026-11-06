@@ -56,7 +56,7 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/social/written-studio", "مصنع المنشورات المكتوبة", "social.manage"],
   ],
   "الوسائط والصوت": [
-    ["/admin/media", "مكتبة الوسائط", "media.manage"],
+    ["/admin/memory", "ذاكرة المشروع", "media.manage"],
     ["/admin/audio", "مركز الصوت", "audio.manage"],
     ["/admin/audio/quran", "تلاوات القرآن", "audio.manage"],
     ["/admin/audio/adhan", "الأذان", "audio.manage"],
