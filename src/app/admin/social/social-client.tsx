@@ -233,7 +233,7 @@ export default function AdminSocialPage() {
     provider: "GitHub Actions",
     trigger: "after_video_generation_or_manual",
     approvalRequired: true,
-    note: "النشر بعد توليد الفيديو، وبموافقة الجودة البشرية.",
+    note: "النشر التلقائي بعد توليد الفيديو واجتياز فحوص الجودة الآلية.",
   });
   const [oldestQueuedAt, setOldestQueuedAt] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | Status>("all");
