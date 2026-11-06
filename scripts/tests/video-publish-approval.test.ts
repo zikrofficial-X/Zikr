@@ -48,7 +48,15 @@ assert.equal(isVideoQueueItemApprovedForPublishing({ ...queueItem, request: null
 
 // The configured autonomous-publishing mode can skip the human checklist, but must
 // still require a completed source record and an exact source/media URL match.
-const unreviewedRequest = { status: "completed", video_url: "https://media.example.test/approved.mp4", content: {} };
+const unreviewedRequest = {
+  status: "completed",
+  category: "quran",
+  video_url: "https://media.example.test/approved.mp4",
+  source_hash: "source-sha-256",
+  content_hash: "content-sha-256",
+  template_version: "template-v1",
+  content: {},
+};
 assert.equal(isVideoQueueItemApprovedForPublishing({
   ...queueItem,
   request: unreviewedRequest,
