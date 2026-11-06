@@ -95,7 +95,7 @@ async function readPublicChannel(
       ? "OAuth الخاص بالنشر غير مكتمل؛ تم عرض بيانات القناة العامة فقط."
       : reason === "reauthorization_required"
         ? "تمت قراءة بيانات القناة العامة، لكن OAuth الخاص بالنشر يحتاج إعادة تفويض."
-        : "تمت قراءة بيانات القناة العامة بمفتاح API؛ صلاحية OAuth لقراءة القناة وتقارير Analytics غير ممنوحة.";
+        : "تمت القراءة العامة للقناة باستخدام مفتاح API؛ صلاحية OAuth لقراءة القناة وتقارير Analytics غير ممنوحة.";
 
     return result(
       "public_data_only",
