@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const CONFIRMATION_PHRASE = "امسح كل الفيديوهات";
+const CONFIRMATION_PHRASE = "امسح الفيديوهات المولّدة فقط";
 const VIDEO_CONTENT_TYPES = [
   "adhkar_video",
   "dua_video",
@@ -247,6 +247,65 @@ async function getActiveVideoWork(): Promise<{ queue: number; generation: number
   };
 }
 
+type SocialQueuePurgeCandidate = {
+  id: string;
+  published_at: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+function hasSuccessfulRemotePublication(metadata: Record<string, unknown> | null | undefined): boolean {
+  const raw = metadata?.platformResults;
+  const results = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === "object"
+      ? Object.values(raw)
+      : [];
+  return results.some(value => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const row = value as Record<string, unknown>;
+    return row.ok === true && typeof row.remoteId === "string" && row.remoteId.trim().length > 0;
+  });
+}
+
+/**
+ * Remove only video queue rows that have never been published. Published,
+ * partially delivered, failed, or remotely identified items remain as the
+ * delivery ledger so YouTube/Facebook IDs and analytics are not lost.
+ */
+async function deleteUnpublishedVideoQueueRows(): Promise<number> {
+  const candidates: SocialQueuePurgeCandidate[] = [];
+  for (let offset = 0; offset < 5000; offset += 1000) {
+    const rows = await supabaseServerAdminRequest<SocialQueuePurgeCandidate[]>(
+      "/rest/v1/social_publish_queue?content_type=in.(" +
+        VIDEO_CONTENT_TYPES.join(",") +
+        ")&status=eq.queued&published_at=is.null&select=id,published_at,metadata&order=created_at.asc&limit=1000&offset=" +
+        offset,
+    );
+    const page = rows ?? [];
+    candidates.push(...page);
+    if (page.length < 1000) break;
+    if (offset === 4000) {
+      throw new Error("Video publish queue inventory exceeded the safe purge pagination limit.");
+    }
+  }
+
+  const safeIds = candidates
+    .filter(row => !row.published_at && !hasSuccessfulRemotePublication(row.metadata))
+    .map(row => row.id);
+
+  let deleted = 0;
+  for (let offset = 0; offset < safeIds.length; offset += 100) {
+    const batch = safeIds.slice(offset, offset + 100);
+    const ids = batch.map(encodeURIComponent).join(",");
+    const rows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+      "/rest/v1/social_publish_queue?id=in.(" + ids + ")&status=eq.queued&published_at=is.null&select=id",
+      { method: "DELETE", headers: { Prefer: "return=representation" } },
+    );
+    deleted += rows?.length ?? 0;
+  }
+  return deleted;
+}
+
 async function deleteRows(table: string, filter: string): Promise<number> {
   const rows = await supabaseServerAdminRequest<Array<{ id: string }>>(
     `/rest/v1/${table}?${filter}&select=id`,
@@ -304,11 +363,10 @@ export async function POST(request: NextRequest) {
     }
 
     const storageObjectsDeleted = await deleteAutomatedStorageObjects(storagePaths);
-    const queueRowsDeleted = await deleteRows(
-      "social_publish_queue",
-      "content_type=in.(" + VIDEO_CONTENT_TYPES.join(",") + ")",
-    );
-    const siteVideoRowsDeleted = await deleteRows("videos", "id=not.is.null");
+    const queueRowsDeleted = await deleteUnpublishedVideoQueueRows();
+    // public.videos is the site's external/manual video catalogue, not the
+    // generated-video store. Preserve every row because it has no reliable
+    // generated-source discriminator.
     const generationRowsDeleted = await deleteRows("video_generation_requests", "id=not.is.null");
     const automationRunsDeleted = await deleteRows("video_automation_runs", "id=not.is.null");
 
@@ -322,7 +380,7 @@ export async function POST(request: NextRequest) {
         cloudinaryBytesDeleted: assets.reduce((sum, asset) => sum + Number(asset.bytes ?? 0), 0),
         storageObjectsDeleted,
         queueRowsDeleted,
-        siteVideoRowsDeleted,
+        publicVideoCatalogPreserved: true,
         generationRowsDeleted,
         automationRunsDeleted,
         externalSocialPostsDeleted: false,
@@ -342,11 +400,12 @@ export async function POST(request: NextRequest) {
         cloudinaryBytesDeleted: assets.reduce((sum, asset) => sum + Number(asset.bytes ?? 0), 0),
         storageObjectsDeleted,
         queueRowsDeleted,
-        siteVideoRowsDeleted,
+        publicVideoCatalogPreserved: true,
         generationRowsDeleted,
         automationRunsDeleted,
         externalSocialPostsDeleted: false,
-        note: "تم حذف النسخ المحلية وسجلات الفيديو من ZIKR. المنشورات الموجودة داخل حسابات YouTube وFacebook نفسها لم تُحذف.",
+        publicVideoCatalogPreserved: true,
+        note: "تم حذف مخرجات الفيديو المولّدة غير المنشورة وسجلات التوليد. كتالوج الفيديوهات العامة وسجل النشر ذي المعرّفات الخارجية محفوظان؛ المنشورات الموجودة داخل YouTube وFacebook لم تُحذف.",
       },
       { headers: { "Cache-Control": "no-store" } },
     );
