@@ -7,6 +7,7 @@ export type SocialPlatformMetadata = {
   platformAttempts?: unknown;
   authBlocked?: unknown;
   permanentFailure?: unknown;
+  attempts?: unknown;
 } | null | undefined;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
