@@ -7,12 +7,10 @@ import {
   CircleHelp,
   ExternalLink,
   Globe2,
-  Instagram,
   Search,
   Send,
   Share2,
   Wallet,
-  Youtube,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -158,7 +156,7 @@ export async function TrafficRevenuePanel() {
               const profile = platforms.find((item) => item.platform.toLowerCase() === platform);
               const connected = Boolean(profile);
               const label = platformLabels[platform] ?? platform;
-              const Icon = platform === "youtube" ? Youtube : platform === "instagram" ? Instagram : platform === "telegram" ? Send : Share2;
+              const Icon = platform === "telegram" ? Send : platform === "youtube" ? Share2 : platform === "instagram" ? Globe2 : Share2;
               return (
                 <div key={platform} className="flex items-center justify-between gap-2 rounded-xl border border-brand-gold/10 bg-black/10 p-3">
                   <span className="flex min-w-0 items-center gap-2 text-sm text-brand-cream/80">
