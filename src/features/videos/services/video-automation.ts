@@ -1,28 +1,10 @@
 import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from '@/lib/smartlink';
-import { getServerEnv } from '@/lib/env';
-import { getYouTubeRefreshToken } from '@/features/social/services/youtube-oauth-credentials';
-import {
-  getFacebookPageCredentials,
-  setFacebookReelsNextAllowedAt,
-} from '@/features/social/services/facebook-credentials';
-import {
-  FACEBOOK_REELS_MIN_POST_INTERVAL_MS,
-  FACEBOOK_REELS_RATE_LIMIT_COOLDOWN_MS,
-  facebookReelsCooldownDeferredError,
-  isFacebookReelsRateLimitResponseError,
-  resolveFacebookReelsNextAllowedAt,
-} from '@/features/social/services/facebook-reels-rate-limit';
 import type { VideoGenerationRequest } from '@/lib/types/video';
 import { sourceHash, videoContentHash } from '../providers/content-hash';
 import { CURRENT_VIDEO_RENDERER_VERSION } from './video-template-version';
 
 export type { VideoGenerationRequest };
-
-function getEnv(name: string): string | undefined {
-  const value = process.env[name];
-  return value?.trim() || undefined;
-}
 
 function contentObject(request: VideoGenerationRequest): Record<string, unknown> {
   return request.content && typeof request.content === 'object' && !Array.isArray(request.content)
@@ -326,301 +308,25 @@ export async function generateAdhkarVideo(
   });
 }
 
-function assertRemoteVideoUrl(videoUrl: string, target: string): string {
-  const parsed = new URL(videoUrl);
-  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error(`${target} requires an HTTP(S) media URL`);
-  const host = parsed.hostname.toLowerCase();
-  if (host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be' || host.endsWith('.youtu.be')) {
-    throw new Error(`${target} requires the original media file, not a YouTube watch URL`);
-  }
-  return parsed.toString();
-}
-
-async function getYoutubeAccessToken(): Promise<string> {
-  const clientId = getEnv('YOUTUBE_CLIENT_ID');
-  const clientSecret = getEnv('YOUTUBE_CLIENT_SECRET');
-  const refreshToken = await getYouTubeRefreshToken();
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error('YouTube OAuth is not configured: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET and YOUTUBE_REFRESH_TOKEN are required');
-  }
-
-  try {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      }),
-      signal: AbortSignal.timeout(20_000),
-    });
-    const payload = (await response.json().catch(() => ({}))) as {
-      access_token?: string;
-      error?: string;
-      error_description?: string;
-    };
-    if (!response.ok) {
-      throw new Error(
-        `YouTube OAuth token refresh failed (HTTP ${response.status}): ${payload.error_description || payload.error || 'unknown OAuth error'}`,
-      );
-    }
-    if (!payload.access_token) {
-      throw new Error('YouTube OAuth token refresh succeeded without an access token');
-    }
-    return payload.access_token;
-  } catch (error) {
-    console.error('[video-automation] YouTube token refresh failed:', error);
-    throw error instanceof Error ? error : new Error(String(error));
-  }
-}
-
-function resolveYoutubePrivacy(): 'public' | 'unlisted' | 'private' {
-  const value = process.env.YOUTUBE_UPLOAD_PRIVACY?.trim().toLowerCase();
-  return value === 'unlisted' || value === 'private' ? value : 'public';
-}
-
+/**
+ * External provider publishing is retired. Generated media is registered and
+ * published only through the internal ZIKR website catalog.
+ */
 export async function publishToYoutube(
-  videoId: string,
-  metadata: ReturnType<typeof generateYoutubeMetadata>,
-  videoUrl: string,
-  options: { selfDeclaredMadeForKids?: boolean } = {},
+  _videoId: string,
+  _metadata: ReturnType<typeof generateYoutubeMetadata>,
+  _videoUrl: string,
+  _options: { selfDeclaredMadeForKids?: boolean } = {},
 ): Promise<string> {
-  void videoId;
-  const accessToken = await getYoutubeAccessToken();
-  const source = assertRemoteVideoUrl(videoUrl, 'YouTube');
-  const videoResponse = await fetch(source, { signal: AbortSignal.timeout(60_000) });
-  if (!videoResponse.ok) {
-    throw new Error(`Could not download generated video (HTTP ${videoResponse.status})`);
-  }
-  const videoBuffer = await videoResponse.arrayBuffer();
-  if (videoBuffer.byteLength < 1024) {
-    throw new Error('Generated video download was empty or invalid');
-  }
-
-  const initResponse = await fetch(
-    'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json; charset=UTF-8',
-        'X-Upload-Content-Type': 'video/mp4',
-        'X-Upload-Content-Length': String(videoBuffer.byteLength),
-      },
-      body: JSON.stringify({
-        snippet: {
-          title: metadata.title.slice(0, 100),
-          description: metadata.description.slice(0, 5000),
-          tags: metadata.tags,
-          categoryId: metadata.categoryId,
-        },
-        status: {
-          privacyStatus: resolveYoutubePrivacy(),
-          selfDeclaredMadeForKids: options.selfDeclaredMadeForKids === true,
-        },
-      }),
-      signal: AbortSignal.timeout(30_000),
-    },
-  );
-  const initBody = await initResponse.text();
-  if (!initResponse.ok) {
-    throw new Error(`YouTube upload initialization failed (HTTP ${initResponse.status}): ${initBody.slice(0, 500)}`);
-  }
-  const uploadLocation = initResponse.headers.get('location');
-  if (!uploadLocation) {
-    throw new Error('YouTube upload initialization succeeded without a resumable upload URL');
-  }
-
-  const uploadResponse = await fetch(uploadLocation, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(videoBuffer.byteLength) },
-    body: videoBuffer,
-    signal: AbortSignal.timeout(120_000),
-  });
-  const uploadBody = await uploadResponse.text();
-  if (!uploadResponse.ok) {
-    throw new Error(`YouTube video upload failed (HTTP ${uploadResponse.status}): ${uploadBody.slice(0, 500)}`);
-  }
-
-  let payload: { id?: string };
-  try {
-    payload = JSON.parse(uploadBody) as { id?: string };
-  } catch {
-    throw new Error('YouTube video upload returned an invalid JSON response');
-  }
-  if (!payload.id) {
-    throw new Error('YouTube video upload completed without returning a video ID');
-  }
-  return payload.id;
-}
-
-type FacebookVideoApiResponse = {
-  id?: string;
-  video_id?: string;
-  upload_url?: string;
-  post_id?: string;
-  success?: boolean;
-  message?: string;
-  error?: {
-    message?: string;
-    type?: string;
-    code?: number | string;
-    error_subcode?: number | string;
-    fbtrace_id?: string;
-  };
-};
-
-async function readFacebookApiResponse(response: Response): Promise<FacebookVideoApiResponse> {
-  const body = await response.text().catch(() => "");
-  if (!body) return {};
-  try {
-    return JSON.parse(body) as FacebookVideoApiResponse;
-  } catch {
-    return { message: body.slice(0, 300) };
-  }
-}
-
-function facebookApiFailure(stage: string, status: number, payload: FacebookVideoApiResponse): Error {
-  const provider = payload.error;
-  const message = provider?.message || payload.message;
-  const details = [
-    provider?.type ? `type=${provider.type}` : "",
-    provider?.code !== undefined ? `code=${provider.code}` : "",
-    provider?.error_subcode !== undefined ? `subcode=${provider.error_subcode}` : "",
-    provider?.fbtrace_id ? `trace=${provider.fbtrace_id}` : "",
-  ].filter(Boolean);
-  const responseHint = message ? `: ${message}` : " (Meta did not provide an error message)";
-  const codes = details.length ? ` [${details.join(", ")}]` : "";
-  return new Error(`${stage} failed (HTTP ${status})${responseHint}${codes}`);
+  throw new Error("EXTERNAL_SOCIAL_PUBLISHING_RETIRED");
 }
 
 export async function publishToFacebook(
-  videoId: string,
-  metadata: ReturnType<typeof generateFacebookMetadata>,
-  videoUrl: string,
-  pageId: string,
-  asReel = false,
+  _videoId: string,
+  _metadata: ReturnType<typeof generateFacebookMetadata>,
+  _videoUrl: string,
+  _pageId: string,
+  _asReel = false,
 ): Promise<string | null> {
-  void videoId;
-  try {
-    const env = getServerEnv();
-    const credentials = await getFacebookPageCredentials();
-    if (!credentials.isEnabled) {
-      throw new Error("Facebook publishing is disabled. Connect the Page from the admin publishing center.");
-    }
-    const pageAccessToken = credentials.accessToken;
-    const actualPageId = credentials.pageId || pageId;
-    if (!pageAccessToken || !actualPageId) {
-      throw new Error("Facebook Page credentials are incomplete. Reconnect the Page from the admin publishing center.");
-    }
-    if (asReel && credentials.reelsNextAllowedAt) {
-      const cooldownUntil = Date.parse(credentials.reelsNextAllowedAt);
-      if (Number.isFinite(cooldownUntil) && cooldownUntil > Date.now()) {
-        throw facebookReelsCooldownDeferredError(credentials.reelsNextAllowedAt);
-      }
-    }
-    const source = assertRemoteVideoUrl(videoUrl, 'Facebook');
-    const version = env.FACEBOOK_GRAPH_API_VERSION || 'v26.0';
-
-    if (asReel) {
-      const startParams = new URLSearchParams({ upload_phase: 'start', access_token: pageAccessToken });
-      const startResponse = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(actualPageId)}/video_reels`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: startParams,
-        signal: AbortSignal.timeout(20_000),
-      });
-      const startData = await readFacebookApiResponse(startResponse);
-      if (!startResponse.ok || !startData.video_id || !startData.upload_url) {
-        throw facebookApiFailure("Facebook Reel start", startResponse.status, {
-          ...startData,
-          message: startData.message || (!startData.video_id || !startData.upload_url
-            ? "Meta response omitted video_id or upload_url"
-            : undefined),
-        });
-      }
-
-      const uploadResponse = await fetch(startData.upload_url, {
-        method: 'POST',
-        headers: { Authorization: `OAuth ${pageAccessToken}`, file_url: source },
-        signal: AbortSignal.timeout(120_000),
-      });
-      const uploadData = await readFacebookApiResponse(uploadResponse);
-      if (!uploadResponse.ok || uploadData.success !== true) {
-        throw facebookApiFailure("Facebook Reel upload", uploadResponse.status, {
-          ...uploadData,
-          message: uploadData.message || (uploadData.success !== true
-            ? "Meta upload response did not confirm success"
-            : undefined),
-        });
-      }
-
-      const finishParams = new URLSearchParams({ upload_phase: 'finish', video_id: startData.video_id, video_state: 'PUBLISHED', title: metadata.title, description: metadata.description, is_ai_generated: 'true', access_token: pageAccessToken });
-      const finishResponse = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(actualPageId)}/video_reels`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: finishParams,
-        signal: AbortSignal.timeout(20_000),
-      });
-      const finishData = await readFacebookApiResponse(finishResponse);
-      if (!finishResponse.ok || finishData.success !== true) {
-        throw facebookApiFailure("Facebook Reel publish", finishResponse.status, {
-          ...finishData,
-          message: finishData.message || (finishData.success !== true
-            ? "Meta publish response did not confirm success"
-            : undefined),
-        });
-      }
-      // Pace Reels to at most one per scheduled publisher run. Meta has already
-      // applied a rate restriction, so do not send a burst immediately after recovery.
-      try {
-        await setFacebookReelsNextAllowedAt(
-          new Date(Date.now() + FACEBOOK_REELS_MIN_POST_INTERVAL_MS).toISOString(),
-        );
-      } catch {
-        // Never turn a confirmed remote post into a retry just because pacing metadata failed.
-        console.error('[video-automation] Unable to persist the next Facebook Reels publish time.');
-      }
-      return finishData.post_id ?? startData.video_id;
-    }
-
-    const params = new URLSearchParams({ file_url: source, title: metadata.title, description: metadata.description, access_token: pageAccessToken });
-    const response = await fetch(`https://graph.facebook.com/${version}/${encodeURIComponent(actualPageId)}/videos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params,
-      signal: AbortSignal.timeout(120_000),
-    });
-    const data = await readFacebookApiResponse(response);
-    if (!response.ok) {
-      throw facebookApiFailure("Facebook video publish", response.status, data);
-    }
-    if (!data.id) {
-      throw new Error("Facebook video publish succeeded without returning a video ID.");
-    }
-    return data.id;
-  } catch (error) {
-    if (asReel && isFacebookReelsRateLimitResponseError(error)) {
-      const rateLimitedUntil = resolveFacebookReelsNextAllowedAt(error)
-        ?? new Date(Date.now() + FACEBOOK_REELS_RATE_LIMIT_COOLDOWN_MS).toISOString();
-      try {
-        await setFacebookReelsNextAllowedAt(rateLimitedUntil);
-      } catch {
-        // Keep the external provider failure visible even if cooldown persistence fails.
-        console.error('[video-automation] Unable to persist the Facebook Reels rate-limit cooldown.');
-      }
-      const message = error instanceof Error ? error.message : String(error);
-      const rateLimitedError = new Error(`${message} [facebook_reels_next_allowed_at=${rateLimitedUntil}]`);
-      console.error('[video-automation] Facebook Reels rate-limited:', rateLimitedError.message);
-      throw rateLimitedError;
-    }
-    // Preserve the stage-specific Meta error instead of returning an opaque null.
-    console.error(
-      '[video-automation] Failed to publish to Facebook:',
-      error instanceof Error ? error.message : String(error),
-    );
-    throw error;
-  }
+  throw new Error("EXTERNAL_SOCIAL_PUBLISHING_RETIRED");
 }
