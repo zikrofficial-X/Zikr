@@ -35,20 +35,16 @@ if (!adminHealth.includes("getAdminSettings") || !adminHealth.includes("video_au
 if (!workflow.includes("VIDEO_PROVIDER_ORDER")) {
   throw new Error("Workflow must preserve the canonical provider priority contract");
 }
-const phase0Freeze =
-  workflow.includes('VIDEO_AI_ENABLED: "false"') &&
-  workflow.includes('HF_WAN_VIDEO_ENABLED: "false"') &&
-  workflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "false"') &&
-  workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
-  workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"');
-const normalProductionMode =
+const internalGenerationMode =
   workflow.includes('VIDEO_AI_ENABLED: "true"') &&
   workflow.includes('HF_WAN_VIDEO_ENABLED: "true"') &&
   workflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "true"') &&
-  workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') &&
-  workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"');
-if (!phase0Freeze && !normalProductionMode) {
-  throw new Error("Video workflow must be either fully configured or explicitly Phase 0 frozen");
+  workflow.includes('VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,template"') &&
+  workflow.includes('BACKGROUND_JOB_TARGET: "videos"');
+// Publishing is intentionally site-only and governed by the internal content queue.
+// Never require or re-enable legacy external social publishing flags in this worker.
+if (!internalGenerationMode || workflow.includes("AUTO_VIDEO_PUBLISH_ENABLED") || workflow.includes("AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL")) {
+  throw new Error("Video worker must enable internal AI generation and must not contain legacy external publishing controls");
 }
 
 if ((process.env.VERIFY_VIDEO_RUNTIME_TOOLS ?? "false").toLowerCase() === "true") {
