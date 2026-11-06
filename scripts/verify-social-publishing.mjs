@@ -203,7 +203,7 @@ if (!adminApi.includes("platformStats")) failures.push("Admin social API must ex
 if (!adminApi.includes("oldestQueuedAt")) failures.push("Admin social API must expose the oldest queued timestamp");
 if (!adminApi.includes('action === "run_worker"')) failures.push("Admin social API must support manual worker dispatch");
 if (!adminApi.includes('operation: "publish_queue"')) failures.push("Admin manual worker dispatch must explicitly pass the publish_queue operation instead of GitHub's default no-op");
-if (!adminApi.includes("const socialPublishingEnabled = true;")) failures.push("Admin publishing health must mirror the active GitHub workflow");
+if (!adminApi.includes("admin_settings?key=eq.video_automation_auto_publish") || !adminApi.includes("autoPublishValue === true")) failures.push("Admin publishing health must reflect the canonical persisted auto-publish setting");
 
 const facebookCallback = read("src/app/api/admin/social/facebook/callback/route.ts");
 if (!facebookCallback.includes('operation: "publish_queue"')) failures.push("Facebook OAuth callback worker dispatch must pass the explicit publish_queue operation");
