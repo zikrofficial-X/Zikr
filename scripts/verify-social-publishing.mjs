@@ -174,7 +174,7 @@ if (!videoAutomation.includes("https://www.googleapis.com/upload/youtube/v3/vide
     videoAutomation.includes("EXTERNAL_SOCIAL_PUBLISHING_RETIRED")) {
   failures.push("YouTube and Facebook/Reels upload adapters must be restored and must preserve provider error handling");
 }
-if (!adminClient.includes("ربط YouTube لقراءة القناة والإحصاءات") ||
+if (!adminClient.includes("إعادة تفويض YouTube للرفع والتحليلات") ||
     !adminClient.includes("لا نطلب صلاحية الحذف") ||
     adminClient.includes("scheduleMinutes")) {
   failures.push("social center must describe YouTube analytics connection and the event-driven publisher accurately");
