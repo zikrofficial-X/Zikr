@@ -162,7 +162,7 @@ export async function PATCH(request: NextRequest) {
         metadata: { category: current.category, approvalChecks: REQUIRED_VIDEO_APPROVAL_CHECKS.length, approvalSnapshotHash },
       });
       return NextResponse.json({ ok: true, approvalStatus: 'approved',
-        note: 'سيتولى عامل GitHub Actions المجدول مزامنة طابور النشر؛ لم تتم إضافة مجدول جديد.' });
+        note: 'تم اعتماد جودة الفيديو لمكتبة ZIKR الداخلية فقط؛ لا يتم نشره على منصات خارجية.' });
     }
 
     if (action === "retry_publish") {
