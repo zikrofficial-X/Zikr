@@ -41,8 +41,8 @@ if (existsSync("src/app/api/internal/video-processing/route.ts")) failures.push(
 if (existsSync("src/app/api/internal/video-generation/daily/route.ts")) failures.push("retired /api/internal/video-generation/daily endpoint must remain deleted");
 if (existsSync("src/app/api/internal/youtube-sync/route.ts")) failures.push("retired /api/internal/youtube-sync endpoint must remain deleted");
 if (adminSocial.includes("/api/internal/video-processing")) failures.push("admin social must not call the retired video-processing compatibility endpoint");
-if (!adminSocial.includes('dispatchGitHubWorkflow("publish-social.yml", {') || !adminSocial.includes('operation: "publish_queue"')) failures.push("admin social retry must dispatch the canonical publish-social workflow with its explicit publish_queue operation");
-if (!publisher.includes('cron: "7,22,37,52 * * * *"')) failures.push("GitHub social publisher must own the recurring off-peak publishing schedule");
+if (!adminSocial.includes("SOCIAL_PUBLISHING_RETIRED") || !adminSocial.includes("status: 410") || adminSocial.includes("dispatchGitHubWorkflow")) failures.push("retired social API must return HTTP 410 without dispatching external publishing");
+if (publisher.includes("\n  schedule:")) failures.push("retired social publisher must not retain an automatic schedule");
 if (!publisher.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("GitHub social publisher must execute only the social target");
 if (publisher.includes("\n  push:")) failures.push("social maintenance operations must never be triggered by source pushes");
 if (!publisher.includes("workflow_dispatch:") || !publisher.includes("inputs:") || !publisher.includes("operation:")) failures.push("social maintenance actions must be available only through explicit workflow_dispatch inputs");
@@ -76,7 +76,7 @@ if (!androidPublish.includes("github.ref_type == 'tag'")) failures.push("tagged 
 
 const runner = read("scripts/run-background-jobs.ts");
 if (!runner.includes("processTemplateVideoQueue")) failures.push("background runner must invoke the canonical video queue");
-if (!runner.includes("reconcileCompletedVideoSocialQueue")) failures.push("background runner must reconcile completed video social rows");
+if (runner.includes("reconcileCompletedVideoSocialQueue") || runner.includes("social_publish_queue")) failures.push("background runner must not reconcile or mutate historical external social queue rows");
 if (!runner.includes("ensureArabicTtsRuntime")) failures.push("background runner must initialize Arabic TTS");
 if (!runner.includes("runNowRequest")) failures.push("background runner must consume the admin run-now request");
 if (!runner.includes("clearRunNowRequest")) failures.push("background runner must clear fulfilled run-now requests");
