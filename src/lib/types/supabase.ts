@@ -3578,6 +3578,46 @@ export type Database = {
         }
         Relationships: []
       }
+
+      social_post_insights: {
+        Row: {
+          captured_at: string
+          metrics: Json
+          period: string | null
+          platform: string
+          queue_id: string
+          scope: string
+          source: string
+          status: string | null
+          updated_at: string
+          video_id: string | null
+        }
+        Insert: {
+          captured_at: string
+          metrics?: Json
+          period?: string | null
+          platform: string
+          queue_id: string
+          scope: string
+          source: string
+          status?: string | null
+          updated_at?: string
+          video_id?: string | null
+        }
+        Update: {
+          captured_at?: string
+          metrics?: Json
+          period?: string | null
+          platform?: string
+          queue_id?: string
+          scope?: string
+          source?: string
+          status?: string | null
+          updated_at?: string
+          video_id?: string | null
+        }
+        Relationships: []
+      },
       social_sync_jobs: {
         Row: {
           attempts: number
