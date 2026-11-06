@@ -356,6 +356,7 @@ export async function POST(request: NextRequest) {
       action?: unknown;
       ids?: unknown;
       platforms?: unknown;
+      deleteLocalMemory?: unknown;
     };
     const action = typeof body.action === "string" ? body.action : "";
     if (["retry", "retry_all_failed", "run_worker", "publish_now", "delete_published"].includes(action)) {
@@ -616,14 +617,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "delete_published") {
+      const deleteLocalMemory = body.deleteLocalMemory === true;
       const selectedFilter = ids.map(encodeURIComponent).join(",");
       const selectedItems = await supabaseServerAdminRequest<QueueItem[]>(
         "/rest/v1/social_publish_queue?id=in.(" + selectedFilter + ")&status=eq.published&select=id,content_type,content_id,title,video_url,target_platforms,status,scheduled_at,published_at,error_message,created_at,metadata",
       );
       let deleted = 0;
       let failed = 0;
-      let missingRemoteId = 0;\n      let localMemoryDeleted = 0;\n      let localMemoryFailed = 0;
-      const deletionLedgerByItem = new Map<string, Record<string, unknown>>();\n      const results: Array<{ id: string; title: string; platform: string; status: "deleted" | "failed" | "missing_remote_id" | "already_deleted"; error?: string }> = [];
+      let missingRemoteId = 0;
+      let localMemoryDeleted = 0;
+      let localMemoryFailed = 0;
+      const deletionLedgerByItem = new Map<string, Record<string, unknown>>();
+      const results: Array<{ id: string; title: string; platform: string; status: "deleted" | "failed" | "missing_remote_id" | "already_deleted"; error?: string }> = [];
 
       for (const item of selectedItems ?? []) {
         if (!isVideoContentType(item.content_type)) {
