@@ -40,30 +40,17 @@ Queue safety is enforced through:
 
 Video generation may enqueue a row in `social_publish_queue`, but it must not publish directly.
 
-## Video publication integrity and review modes
+## Internal ZIKR video publication
 
-The admin video workspace provides a five-part human review checklist: source/text, audio, visuals, captions, and usage rights. A reviewer approves a completed request; the approval is persisted with reviewer ID, timestamp, checklist, and a snapshot hash covering source, content, template version, and media URL. Regeneration or any snapshot change invalidates the prior approval.
+Completed MP4s are uploaded to Cloudinary and registered in the ZIKR `videos` table with the `zikr_internal_video_factory` metadata marker. Each record is initially unpublished. The site-owned `content_publish_queue` then publishes the video to the ZIKR website after verifying that its media URL is HTTPS on `res.cloudinary.com` and that the record has not been purged. The public `/videos` page displays only internally generated ZIKR videos; individual video pages play the verified Cloudinary MP4.
 
-Unattended publishing means the worker can publish approved items on its schedule; it does not mean approval can be bypassed. Every video queue item is checked before it is claimed and checked again immediately before platform calls. Missing, rejected, incomplete, stale, or changed approvals fail closed. Workflow environment flags cannot disable this rule.
+This queue is not a social queue. No video-generation step may enqueue `social_publish_queue`, call a provider upload endpoint, or require a social publishing permission. Template previews are explicitly excluded from public publication.
 
-Written-only posts follow their separate source-validation and editorial approval contract. The publisher continues to reuse the same queue and per-platform idempotency ledger.
+## External social publishing — retired
 
-Approval is not a scheduler. The existing GitHub Actions social worker checks the queue on its 15-minute schedule and publishes only eligible, approved items.
-## Social publishing
+External social publishing and external written-post distribution are disabled. The legacy social workflow is guarded by `if: false`; old Facebook and social control APIs return HTTP 410. Legacy YouTube/Facebook media-import endpoints and external video retry actions are also retired. The YouTube OAuth connection remains available only for read-only channel and analytics reporting using `youtube.readonly` and `yt-analytics.readonly`; upload and delete scopes are neither requested nor accepted.
 
-The social workflow is scheduled every 15 minutes through `publish-social.yml`. The current workflow configuration sets `SOCIAL_PUBLISH_ENABLED=true`; each run still performs protected runtime preflight and only publishes when the required Supabase, YouTube OAuth, Facebook Page connection, and queue checks pass.
-
-It consumes ready rows from `social_publish_queue` and never renders video. YouTube and Facebook readiness are evaluated separately, so a platform that fails preflight is not assumed to be available merely because the workflow is scheduled.
-
-The explicit workflow setting is:
-
-```text
-SOCIAL_PUBLISH_ENABLED=true
-```
-
-The workflow derives `SOCIAL_PUBLISH_FACEBOOK_ENABLED` from the verified OAuth-managed Facebook Page credential; do not hardcode or bypass this preflight. The Admin worker button dispatches `operation=publish_queue`; it must not use GitHub's `none` default.
-
-A provider failure is recorded as a failure for that provider; it must not make video generation appear failed when the generated media itself is valid.
+Do not restore the old social publishing workflow or its provider credentials as part of video generation. Historical social queue and insight records remain retained for audit and are not processed.
 
 ## Monetag SmartLink
 
