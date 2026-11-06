@@ -47,7 +47,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 function requiredPermissions(source: string): string[] {
-  const match = source.match(/const REQUIRED_PERMISSIONS = \[([\s\S]*?)\];/);
+  const match = source.match(/const REQUIRED_PERMISSIONS = \[([\s\S]*?)\](?: as const)?;/);
   assert.ok(match, "OAuth route must declare its required Meta permissions");
   return [...match[1].matchAll(/"([^"]+)"/g)].map((entry) => entry[1]);
 }
