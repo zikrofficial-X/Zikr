@@ -39,7 +39,10 @@ assert.ok(!route.includes("social_publish_queue"), "memory purge must not query 
 assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical social queue records must be explicitly preserved.");
 assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active internal generation before deleting media.");
 assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");
-assert.ok(route.includes("automationMustBeReenabled: true"), "a purge blocked after the worker lock must expose the required recovery state");
+assert.ok(route.includes("getVideoAutomationEnabled") && route.includes("restoreVideoAutomation(automationWasEnabled)"), "cleanup must restore the previous automation state after the temporary lock");
+assert.ok(route.includes('body.scope === "files"') && route.includes('body.scope === "memory"') && route.includes('body.scope === "both"'), "the cleanup endpoint must expose distinct files, memory, and combined scopes");
+assert.ok(route.includes("includeFiles") && route.includes("includeMemory"), "the cleanup endpoint must honor the selected scope");
+assert.ok(route.includes("automation_key=not.is.null"), "project-memory cleanup must only delete automated generation requests");
 assert.ok(socialWorker.includes("isVideoPurgeInProgress"));
 assert.ok(socialWorker.includes("video_purge_in_progress"));
 assert.ok(videoWorker.includes("isVideoGenerationPaused"));
@@ -51,7 +54,9 @@ assert.ok(read("src/app/admin/memory/page.tsx").includes("AdminMediaClient"));
 assert.ok(control.includes("امسح الفيديوهات المولّدة فقط"));
 assert.ok(control.includes('fetch("/api/admin/video-purge"'));
 assert.ok(control.includes("setAuthorized(allowed)"));
-assert.ok(control.includes("لا يغيّر أي سجل نشر تاريخي"));
+assert.ok(control.includes('value="files"') && control.includes('value="memory"') && control.includes('value="both"'));
+assert.ok(control.includes('JSON.stringify({ confirmation, scope })'));
+assert.ok(control.includes("سجلات النشر الاجتماعي التاريخية"));
 assert.ok(apiGuards.includes('src/app/api/admin/video-purge/route.ts GET'));
 assert.ok(apiGuards.includes('src/app/api/admin/video-purge/route.ts POST'));
 
