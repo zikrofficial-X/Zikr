@@ -5,5 +5,5 @@ export const dynamic = "force-dynamic";
 
 export default async function VideoFactoryPublishingRedirectPage() {
   await requireAdminPermission("media.manage");
-  redirect("/admin/media");
+  redirect("/admin/memory");
 }
