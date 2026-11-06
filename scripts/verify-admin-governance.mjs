@@ -37,7 +37,7 @@ const groups = [...navigation.matchAll(/key:\s*"([^"]+)",\s*label:\s*"([^"]+)",\
       .map((item) => ({ href: item[1], label: item[2], permission: item[3] })),
   }));
 const moduleCatalog = read("src/features/admin/config/modules.ts");
-const moduleBlocks = [...moduleCatalog.matchAll(/\\{\\s*key:\\s*"([^"]+)"[\\s\\S]*?routes:\\s*\\[([\\s\\S]*?)\\][\\s\\S]*?status:\\s*"[^"]+"\\s*\\}/g)];
+const moduleBlocks = [...moduleCatalog.matchAll(/\{\s*key:\s*"([^"]+)"[\s\S]*?routes:\s*\[([\s\S]*?)\][\s\S]*?status:\s*"[^"]+"\s*\}/g)];
 const catalog = moduleBlocks.map((match) => ({
   key: match[1],
   routes: [...match[2].matchAll(/"([^"]+)"/g)].map((route) => route[1]),
