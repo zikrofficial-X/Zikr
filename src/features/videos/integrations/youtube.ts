@@ -94,15 +94,15 @@ export function normalizeYoutubeChannelInput(value: string): string {
 function safeYoutubeErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error ?? "Unknown YouTube API error.");
   return message
-    .replace(/https?:\\/\\/www\\.googleapis\\.com\\/youtube\\/v3\\/[^\\s"'<>]+/gi, "[YouTube API request redacted]")
-    .replace(/([?&](?:key|access_token)=)[^&\\s]+/gi, "$1[REDACTED]")
+    .replace(/https?:\/\/[^\s"'<>]+/gi, "[provider request redacted]")
+    .replace(/([?&](?:key|access_token)=)[^&\s]+/gi, "$1[REDACTED]")
     .slice(0, 300);
 }
 
 function getYoutubeErrorCode(error: unknown): YoutubeChannelFeed['errorCode'] {
   const message = error instanceof Error ? error.message : String(error ?? '');
   if (/\b429\b|quota exceeded|quotaExceeded|dailyLimitExceeded|forbidden.*quota/i.test(message)) return 'quota_exceeded';
-  if (/YouTube API failed \(\d{3}\)/i.test(message)) return 'http_error';
+  if (/YouTube API failed \(HTTP \d{3}\)/i.test(message)) return 'http_error';
   return 'unknown';
 }
 
