@@ -686,7 +686,7 @@ export default function AdminSocialPage() {
             <span className="mt-1 block text-xs text-brand-cream/40">الطابور الذي يمكن للعامل معالجته</span>
           </button>
           <button type="button" onClick={() => setActiveView("queue")} className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-right transition hover:bg-amber-400/10">
-            <span className="text-xs text-brand-cream/55">موقوف لمراجعة الجودة</span>
+            <span className="text-xs text-brand-cream/55">موقوف — فحوص الجودة الآلية غير مكتملة</span>
             <span className="mt-1 block text-2xl font-bold text-amber-200">{readiness.approvalPending}</span>
             <span className="mt-1 block text-xs text-brand-cream/40">اعتماد بشري مطلوب قبل النشر</span>
           </button>
@@ -978,7 +978,7 @@ export default function AdminSocialPage() {
               الإجراءات السريعة
             </h2>
             <p className="text-xs text-brand-cream/40">
-              العناصر التي تنتظر مراجعة الجودة لا تُنشر تلقائيًا. اعتمد الفيديو أولًا من طابور الفيديو، ثم استخدم «نشر المحدد الآن». تبقى نتائج القنوات الناجحة محفوظة لمنع التكرار.
+              العناصر التي لم تجتز فحوص الجودة الآلية لا تُنشر. أصلح سبب الفشل وأعد التوليد؛ الفيديوهات التي تجتاز الفحص تنتقل للنشر تلقائيًا. تبقى نتائج القنوات الناجحة محفوظة لمنع التكرار.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
