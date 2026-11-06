@@ -1150,8 +1150,8 @@ async function renderVideo(request: GeneratedRequest) {
       request.content = {
         ...request.content,
         ai: {
-          provider: aiPlanEnabled() ? "google-gemini" : "deterministic-fallback",
-          model: aiPlanEnabled() ? (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim() : null,
+          provider: isTemplatePreview ? "template-preview" : aiPlanEnabled() ? "google-gemini" : "deterministic-fallback",
+          model: !isTemplatePreview && aiPlanEnabled() ? (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim() : null,
           reflection: aiPlan.reflection || null,
           socialCaption: aiPlan.socialCaption || null,
           scene: aiPlan.scene,
