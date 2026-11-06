@@ -404,7 +404,6 @@ export async function POST(request: NextRequest) {
         generationRowsDeleted,
         automationRunsDeleted,
         externalSocialPostsDeleted: false,
-        publicVideoCatalogPreserved: true,
         note: "تم حذف مخرجات الفيديو المولّدة غير المنشورة وسجلات التوليد. كتالوج الفيديوهات العامة وسجل النشر ذي المعرّفات الخارجية محفوظان؛ المنشورات الموجودة داخل YouTube وFacebook لم تُحذف.",
       },
       { headers: { "Cache-Control": "no-store" } },
