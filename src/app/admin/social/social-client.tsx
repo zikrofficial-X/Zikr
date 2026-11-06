@@ -13,6 +13,11 @@ type Status = SocialQueueStatus;
 type QueueItem = SocialPublishQueueItem;
 type Health = {
   youtubeConfigured: boolean;
+  youtubeConnectionStatus?: "not_configured" | "not_tested" | "connected" | "reauthorization_required" | "permission_missing" | "channel_not_found" | "unavailable";
+  youtubeChannelId?: string | null;
+  youtubeChannelName?: string | null;
+  youtubeLastCheckedAt?: string | null;
+  youtubeConnectionMessage?: string;
   facebookEnabled: boolean;
   facebookCredentialsConfigured: boolean;
   facebookEnvironmentTokenConfigured: boolean;
@@ -26,6 +31,7 @@ type Health = {
   facebookInsightsPermissionGranted?: boolean;
 };
 type SocialView = "overview" | "queue";
+type PlatformFilter = "all" | "youtube" | "facebook" | "facebook_reels";
 type PlatformStats = Record<
   string,
   { queued: number; published: number; failed: number }
@@ -155,6 +161,7 @@ export default function AdminSocialPage() {
   });
   const [oldestQueuedAt, setOldestQueuedAt] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | Status>("all");
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -264,6 +271,38 @@ export default function AdminSocialPage() {
     }
   }, []);
 
+  const testYouTube = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "test_youtube" }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        health?: { status?: Health["youtubeConnectionStatus"]; channelId?: string | null; channelName?: string | null; checkedAt?: string; message?: string };
+      };
+      if (!response.ok || !payload.health) throw new Error(payload.error || "تعذر اختبار اتصال YouTube.");
+      setHealth(current => ({
+        ...current,
+        youtubeConnectionStatus: payload.health?.status,
+        youtubeChannelId: payload.health?.channelId ?? null,
+        youtubeChannelName: payload.health?.channelName ?? null,
+        youtubeLastCheckedAt: payload.health?.checkedAt ?? null,
+        youtubeConnectionMessage: payload.health?.message ?? "انتهى اختبار YouTube.",
+      }));
+      if (payload.health.status === "connected") setMessage("اختبار YouTube ناجح. تم التحقق من قناة النشر.");
+      else setError(payload.health.message || "لم يجتز اتصال YouTube الاختبار.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر اختبار اتصال YouTube.");
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
   const adoptServerToken = useCallback(async () => {
     setBusy(true);
     setError("");
@@ -332,11 +371,11 @@ export default function AdminSocialPage() {
     }
   }, [load]);
 
-  const filtered = useMemo(
-    () =>
-      filter === "all" ? items : items.filter(item => item.status === filter),
-    [filter, items]
-  );
+  const filtered = useMemo(() => items.filter(item => {
+    const matchesStatus = filter === "all" || item.status === filter;
+    const matchesPlatform = platformFilter === "all" || item.target_platforms.includes(platformFilter);
+    return matchesStatus && matchesPlatform;
+  }), [filter, items, platformFilter]);
   const retryable = items.filter(
     item => item.status === "failed" || item.status === "partial"
   );
@@ -500,13 +539,18 @@ export default function AdminSocialPage() {
       {activeView === "overview" && (
         <>
       <section className="grid gap-3 md:grid-cols-3">
-        <Card>
-          <div className="text-xs text-brand-cream/50">YouTube</div>
-          <div className="mt-1 font-semibold">
-            {health.youtubeConfigured
-              ? "جاهز للنشر"
-              : "بيانات OAuth غير مكتملة"}
+        <Card className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs text-brand-cream/50">YouTube</div>
+            <span className={`text-xs ${health.youtubeConnectionStatus === "connected" ? "text-emerald-300" : "text-amber-200/80"}`}>
+              {health.youtubeConnectionStatus === "connected" ? "متصل" : health.youtubeConnectionStatus === "reauthorization_required" ? "يحتاج إعادة تفويض" : health.youtubeConnectionStatus === "permission_missing" ? "صلاحية قراءة القناة ناقصة" : health.youtubeConfigured ? "لم يُختبر الاتصال" : "غير مضبوط"}
+            </span>
           </div>
+          <p className="text-sm font-semibold text-brand-cream/85">{health.youtubeChannelName || (health.youtubeConfigured ? "OAuth موجود — يلزم اختبار القناة" : "بيانات OAuth غير مكتملة")}</p>
+          {health.youtubeConnectionMessage && <p className="text-xs leading-5 text-brand-cream/55">{health.youtubeConnectionMessage}</p>}
+          <Button variant="outline" size="sm" disabled={busy || !health.youtubeConfigured} onClick={() => void testYouTube()}>
+            اختبار اتصال YouTube
+          </Button>
         </Card>
         <Card className="space-y-3">
           <div className="text-xs text-brand-cream/50">Facebook</div>
@@ -650,6 +694,24 @@ export default function AdminSocialPage() {
 
       {activeView === "queue" && (
       <Card className="space-y-4">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="تصفية طابور النشر حسب المنصة">
+          {([
+            ["all", "كل المنصات"],
+            ["youtube", "YouTube"],
+            ["facebook", "Facebook"],
+            ["facebook_reels", "Facebook Reels"],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={platformFilter === value}
+              onClick={() => setPlatformFilter(value)}
+              className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${platformFilter === value ? "border-brand-gold/40 bg-brand-gold/10 text-brand-gold" : "border-brand-gold/10 text-brand-cream/55 hover:border-brand-gold/25"}`}
+            >
+              {label} ({value === "all" ? items.length : items.filter(item => item.target_platforms.includes(value)).length})
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-brand-gold">
