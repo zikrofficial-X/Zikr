@@ -1,0 +1,55 @@
+name: Temporary security dependency lock refresh
+
+on:
+  push:
+    branches:
+      - chore/security-dependency-refresh-20261106
+
+permissions:
+  contents: write
+
+concurrency:
+  group: zikr-security-lock-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout dedicated dependency branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Regenerate lockfile without lifecycle scripts
+        run: pnpm install --lockfile-only --ignore-scripts
+
+      - name: Commit lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json pnpm-lock.yaml
+          if git diff --cached --quiet; then
+            echo "Lockfile is already current."
+            exit 0
+          fi
+          git commit -m "chore(deps): regenerate patched dependency lockfile"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod
