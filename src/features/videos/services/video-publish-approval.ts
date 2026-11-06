@@ -88,9 +88,10 @@ export function isVideoApprovalRecorded(content: unknown, expectedSnapshotHash: 
   if (!expectedSnapshotHash || data.approvalSnapshotHash !== expectedSnapshotHash) return false;
   const reviewedAt = typeof data.approvalReviewedAt === "string" ? Date.parse(data.approvalReviewedAt) : Number.NaN;
   if (!Number.isFinite(reviewedAt)) return false;
-  const review = record(data.qualityReview);
-  if (!hasCompleteVideoApprovalChecklist(review)) return false;
-  const reviewTimestamp = (review as Record<string, unknown>).reviewedAt;
+  const reviewData = record(data.qualityReview);
+  if (!hasCompleteVideoApprovalChecklist(reviewData)) return false;
+  const review = reviewData as Record<string, unknown>;
+  const reviewTimestamp = review.reviewedAt;
   if (typeof reviewTimestamp !== "string" || !Number.isFinite(Date.parse(reviewTimestamp))) return false;
 
   if (data.approvalReviewerId === AUTOMATED_VIDEO_QA_REVIEWER_ID) {
@@ -145,8 +146,8 @@ export function inspectVideoQueueItemApproval(input: {
   }
 
   const content = record(input.request.content);
-  const review = record(content?.qualityReview);
-  const missingChecks = REQUIRED_VIDEO_APPROVAL_CHECKS.filter((key) => review?.[key] !== true);
+  const reviewData = record(content?.qualityReview);
+  const missingChecks = REQUIRED_VIDEO_APPROVAL_CHECKS.filter((key) => reviewData?.[key] !== true);
   const approvalStatus = typeof content?.approvalStatus === "string" ? content.approvalStatus : null;
   const snapshotHash = buildVideoApprovalSnapshotHash({
     category: input.request.category,
