@@ -106,7 +106,6 @@ for (const expected of [
   'SOCIAL_PUBLISH_AFTER: "2026-11-06T20:00:00Z"',
   "SOCIAL_PUBLISH_FACEBOOK_ENABLED",
   "pages_manage_posts",
-  "pages_manage_engagement",
   "pages_show_list",
   "pages_read_engagement",
   "read_insights",
@@ -114,6 +113,9 @@ for (const expected of [
   "youtube.upload",
 ]) {
   if (!socialWorkflow.includes(expected)) failures.push("social workflow is missing safety contract: " + expected);
+}
+if (socialWorkflow.includes("pages_manage_engagement")) {
+  failures.push("Facebook publish workflow must not block publishing on comment-moderation scope");
 }
 if (socialWorkflow.includes("YOUTUBE_REFRESH_TOKEN") ||
     socialWorkflow.includes("SOCIAL_PUBLISH_BATCH_SIZE: \"10\"")) {
@@ -129,6 +131,9 @@ if (!youtubeConnect.includes('requireAdminApi("social.manage")') ||
     !youtubeConnect.includes("https://www.googleapis.com/auth/youtube.upload") ||
     !youtubeConnect.includes('include_granted_scopes", "false"')) {
   failures.push("YouTube OAuth connect must request isolated upload consent without inheriting unknown legacy scopes");
+}
+if (facebookConnect.includes("pages_manage_engagement") || facebookCallback.includes("pages_manage_engagement")) {
+  failures.push("Facebook OAuth must not request comment-moderation scope for video publishing");
 }
 if (!facebookConnect.includes('requireAdminApi("social.manage")') ||
     !facebookConnect.includes("dialog/oauth") ||
