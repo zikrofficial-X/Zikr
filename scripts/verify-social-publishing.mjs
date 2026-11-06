@@ -25,6 +25,8 @@ const socialWorkflow = read(".github/workflows/publish-social.yml");
 const videoWorkflow = read(".github/workflows/generate-ai-video.yml");
 const youtubeConnect = read("src/app/api/admin/social/youtube/connect/route.ts");
 const youtubeCallback = read("src/app/api/admin/social/youtube/callback/route.ts");
+const facebookConnect = read("src/app/api/admin/social/facebook/connect/route.ts");
+const facebookCallback = read("src/app/api/admin/social/facebook/callback/route.ts");
 const adminClient = read("src/app/admin/social/social-client.tsx");
 const writtenWorker = read("scripts/jobs/written-content-automation.ts");
 const videoCatalog = read("src/features/videos/services/videos.ts");
@@ -127,6 +129,20 @@ if (!youtubeConnect.includes('requireAdminApi("social.manage")') ||
     !youtubeConnect.includes("https://www.googleapis.com/auth/youtube.upload") ||
     !youtubeConnect.includes('include_granted_scopes", "false"')) {
   failures.push("YouTube OAuth connect must request isolated upload consent without inheriting unknown legacy scopes");
+}
+if (!facebookConnect.includes('requireAdminApi("social.manage")') ||
+    !facebookConnect.includes("dialog/oauth") ||
+    !facebookConnect.includes("pages_manage_posts") ||
+    facebookConnect.includes("FACEBOOK_INTEGRATION_RETIRED")) {
+  failures.push("Facebook OAuth connect must start a scoped Meta Page authorization flow");
+}
+if (!facebookCallback.includes('requireAdminApi("social.manage")') ||
+    !facebookCallback.includes("timingSafeEqual") ||
+    !facebookCallback.includes("saveFacebookPageCredential") ||
+    !facebookCallback.includes("pages_show_list") ||
+    !facebookCallback.includes("page_selection_required") ||
+    facebookCallback.includes("FACEBOOK_INTEGRATION_RETIRED")) {
+  failures.push("Facebook OAuth callback must validate state, required Page permissions, and the selected managed Page before storing credentials");
 }
 if (!youtubeCallback.includes('requireAdminApi("social.manage")') ||
     !youtubeCallback.includes("canUpload") ||
