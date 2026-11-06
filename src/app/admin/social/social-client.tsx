@@ -75,6 +75,35 @@ function formatDeferredAt(value: string): string {
   return new Date(value).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" });
 }
 
+function youtubeInsightsSummary(item: QueueItem): string {
+  const raw = item.metadata?.platformInsights;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return item.target_platforms.includes("youtube") && item.status === "published"
+      ? "إحصاءات YouTube ستظهر بعد أول مزامنة"
+      : "—";
+  }
+  const youtube = (raw as Record<string, unknown>).youtube;
+  if (!youtube || typeof youtube !== "object" || Array.isArray(youtube)) {
+    return item.target_platforms.includes("youtube") && item.status === "published"
+      ? "إحصاءات YouTube ستظهر بعد أول مزامنة"
+      : "—";
+  }
+  const stats = youtube as Record<string, unknown>;
+  const count = (value: unknown) =>
+    typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+      ? new Intl.NumberFormat("ar-EG").format(value)
+      : null;
+  const views = count(stats.views);
+  const likes = count(stats.likes);
+  const comments = count(stats.comments);
+  if (views === null && likes === null && comments === null) return "لا توجد إحصاءات عامة متاحة";
+  return [
+    views === null ? null : views + " مشاهدة",
+    likes === null ? null : likes + " إعجاب",
+    comments === null ? null : comments + " تعليق",
+  ].filter(Boolean).join(" · ");
+}
+
 export default function AdminSocialPage() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [health, setHealth] = useState<Health>({
@@ -631,6 +660,7 @@ export default function AdminSocialPage() {
                 <th className="p-3 text-right">العنوان</th>
                 <th className="p-3 text-right">النوع</th>
                 <th className="p-3 text-right">المنصات</th>
+                <th className="p-3 text-right">إحصاءات YouTube</th>
                 <th className="p-3 text-right">الحالة</th>
                 <th className="p-3 text-right">الموعد</th>
                 <th className="p-3 text-right">الخطأ</th>
@@ -667,6 +697,7 @@ export default function AdminSocialPage() {
                     <td className="p-3 text-brand-cream/55">
                       {item.target_platforms.join("، ")}
                     </td>
+                    <td className="p-3 text-xs text-brand-cream/60">{youtubeInsightsSummary(item)}</td>
                     <td className="p-3">
                       <span
                         className={`rounded-full border px-2 py-1 text-xs ${STATUS_CLASSES[status]}`}
@@ -731,6 +762,7 @@ export default function AdminSocialPage() {
                   <div className="min-w-0 flex-1">
                     <h3 className="break-words text-sm font-semibold leading-6 text-brand-cream">{item.title}</h3>
                     <p className="mt-1 text-xs text-brand-cream/50">{item.content_type} · {item.target_platforms.join("، ")}</p>
+                    <p className="mt-1 text-xs text-brand-cream/55">{youtubeInsightsSummary(item)}</p>
                   </div>
                   <span className={`shrink-0 rounded-full border px-2 py-1 text-[11px] ${STATUS_CLASSES[status]}`}>
                     {deferredAt && status === "partial" ? "نشر جزئي — Reels مؤجل" : STATUS_LABELS[status]}
