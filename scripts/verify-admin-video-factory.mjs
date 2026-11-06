@@ -54,6 +54,9 @@ const retryPublishBlock = retryPublishStart >= 0 && retryPublishEnd > retryPubli
 if (!retryPublishBlock.includes("EXTERNAL_VIDEO_PUBLISHING_RETIRED") || !retryPublishBlock.includes("status: 410")) {
   failures.push("external video publish retry must be retired; internal generation remains available");
 }
+if (retryPublishBlock.includes("publishToYoutube") || retryPublishBlock.includes("publishToFacebook")) {
+  failures.push("retired external publish retry must not call provider upload functions");
+}
 const videoManagerRole = permissions.match(/video_manager:\s*\[([\s\S]*?)\]/)?.[1] ?? "";
 const socialManagerRole = permissions.match(/social_manager:\s*\[([\s\S]*?)\]/)?.[1] ?? "";
 if (videoManagerRole.includes("'social.publish'")) {
