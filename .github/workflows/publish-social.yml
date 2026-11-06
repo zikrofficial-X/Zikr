@@ -102,13 +102,16 @@ jobs:
             facebook_json="$(curl -fsS \
               -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
               -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-              "$SUPABASE_URL/rest/v1/social_platform_credentials?platform=eq.facebook&select=is_enabled,connection_status,page_id,expires_at&limit=1")"
+              "$SUPABASE_URL/rest/v1/social_platform_credentials?platform=eq.facebook&select=is_enabled,connection_status,page_id,expires_at,granted_permissions&limit=1")"
             facebook_ready="$(node -e '
               const rows = JSON.parse(process.argv[1]);
               const row = Array.isArray(rows) ? rows[0] : null;
               const expires = row?.expires_at ? Date.parse(row.expires_at) : null;
               const fresh = expires === null || (Number.isFinite(expires) && expires > Date.now());
-              process.stdout.write(String(Boolean(row?.is_enabled === true && row?.connection_status === "connected" && row?.page_id && fresh)));
+              const scopes = Array.isArray(row?.granted_permissions) ? row.granted_permissions : [];
+              const required = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "pages_manage_engagement", "read_insights"];
+              const scopesOkay = required.every(scope => scopes.includes(scope));
+              process.stdout.write(String(Boolean(row?.is_enabled === true && row?.connection_status === "connected" && row?.page_id && fresh && scopesOkay)));
             ' "$facebook_json")"
           fi
           echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_ready" >> "$GITHUB_ENV"
