@@ -292,11 +292,41 @@ export async function POST(request: NextRequest) {
     }
 
     const storageObjectsDeleted = await deleteAutomatedStorageObjects(storagePaths);
+    // Preserve generated catalog records for audit/history, but unpublish them
+    // and remove dead media URLs so no public page points to a deleted Cloudinary file.
+    const generatedCatalogRows = await supabaseServerAdminRequest<Array<{
+      id: string;
+      metadata: Record<string, unknown> | null;
+    }>>(
+      "/rest/v1/videos?metadata->>generator=eq.zikr_internal_video_factory&select=id,metadata&limit=1000",
+    );
+    if ((generatedCatalogRows ?? []).length >= 1000) {
+      throw new Error("Generated video catalog exceeded the safe purge batch; no catalog rows were changed.");
+    }
+    const catalogUpdateErrors = await mapWithConcurrency(generatedCatalogRows ?? [], 6, async row => {
+      const previousMetadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+      await supabaseServerAdminRequest("/rest/v1/videos?id=eq." + encodeURIComponent(row.id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({
+          published: false,
+          metadata: {
+            ...previousMetadata,
+            generatedVideoUrl: null,
+            videoUrl: null,
+            mediaState: "purged",
+            mediaPurgedAt: new Date().toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        }),
+      });
+    });
+    if (catalogUpdateErrors.length) {
+      throw new Error("Cloudinary media was removed, but some internal catalog records could not be unpublished: " + catalogUpdateErrors.slice(0, 3).join(" | "));
+    }
+    const catalogRecordsHidden = generatedCatalogRows?.length ?? 0;
     // The historical social queue is not part of project memory and is left untouched.
     const socialQueueRowsPreserved = true;
-    // public.videos is the site's external/manual video catalogue, not the
-    // generated-video store. Preserve every row because it has no reliable
-    // generated-source discriminator.
     const generationRowsDeleted = await deleteRows("video_generation_requests", "id=not.is.null");
     const automationRunsDeleted = await deleteRows("video_automation_runs", "id=not.is.null");
 
@@ -311,13 +341,14 @@ export async function POST(request: NextRequest) {
         storageObjectsDeleted,
         socialQueueRowsPreserved,
         publicVideoCatalogPreserved: true,
+        catalogRecordsHidden,
         generationRowsDeleted,
         automationRunsDeleted,
         externalSocialPostsDeleted: false,
       },
     });
 
-    for (const path of ["/videos", "/admin/memory", "/admin/video/requests", "/admin/videos"]) {
+    for (const path of ["/videos", "/admin/media", "/admin/video/requests", "/admin/videos"]) {
       revalidatePath(path);
     }
 
@@ -334,7 +365,7 @@ export async function POST(request: NextRequest) {
         generationRowsDeleted,
         automationRunsDeleted,
         externalSocialPostsDeleted: false,
-        note: "تم حذف ملفات الفيديو المولّدة وسجلات التوليد الداخلية. كتالوج الفيديوهات العامة وسجل التدقيق محفوظان، وسجلات المنصات القديمة لم تُعدّل.",
+        note: "تم حذف ملفات Cloudinary المولّدة، وإخفاء سجلات الفيديو الداخلية وتفريغ روابط الملفات منها مع إبقاء العناوين ومعلومات المصدر وسجل التدقيق. سجلات المنصات القديمة لم تُعدّل.",
       },
       { headers: { "Cache-Control": "no-store" } },
     );
