@@ -38,5 +38,5 @@ assert.doesNotMatch(migration, /UPDATE public\.social_publish_queue|DELETE FROM 
 assert.match(integration, /safeYoutubeErrorMessage/);
 assert.doesNotMatch(integration, /YouTube API failed \(\$\{response\.status\}\):/);
 assert.match(stories, /export const dynamic = 'force-dynamic'/);
-assert.match(videos, /export const dynamic = 'force-dynamic'/);
+assert.match(videos, /export const dynamic = ["\']force-dynamic["\']/);
 console.log("✅ Historical social-insights storage is isolated; the external social API remains retired.");
