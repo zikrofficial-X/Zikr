@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getYouTubeRefreshToken } from "@/features/social/services/youtube-oauth-credentials";
-import { averageRenderDuration, isCompleteBoundedRead, summarizePlatformResults, type SocialPlatformDeliveryStats } from "@/features/admin/services/traffic-revenue-metrics";
+import { averageRenderDuration } from "@/features/admin/services/traffic-revenue-metrics";
 
 type CountResult = { count: number | null; error: { message: string } | null };
 
@@ -208,15 +208,6 @@ export type TrafficRevenueSnapshot = {
   generatedAt: string;
   period: { timezone: "UTC"; start24h: string; start7d: string; end: string };
   metrics: {
-    socialQueued: number | null;
-    socialProcessing: number | null;
-    socialPartial: number | null;
-    socialPublished: number | null;
-    socialFailed: number | null;
-    socialCreated24h: number | null;
-    socialCreated7d: number | null;
-    socialPublished24h: number | null;
-    socialPublished7d: number | null;
     videoCompleted: number | null;
     videoFailed: number | null;
     videoRetryPending: number | null;
@@ -228,8 +219,6 @@ export type TrafficRevenueSnapshot = {
     publishedArticles: number | null;
     publishedVideos: number | null;
   };
-  socialPlatformStats: SocialPlatformDeliveryStats[] | null;
-  socialPlatformStatsComplete: boolean;
   integrations: {
     ga4MeasurementConfigured: boolean;
     ga4ReportingConnected: boolean;
@@ -241,13 +230,6 @@ export type TrafficRevenueSnapshot = {
   };
   youtubeAnalytics: YoutubeAnalyticsSnapshot;
   ga4Analytics: Ga4AnalyticsSnapshot;
-  socialProfiles: Array<{
-    platform: string;
-    name: string | null;
-    handle: string | null;
-    status: string | null;
-    syncedAt: string | null;
-  }> | null;
   unavailable: string[];
 };
 
@@ -413,29 +395,27 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
   const start24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
   const start7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  // A newly authorized refresh token gets a separate cache entry. Hash it so
-  // the cache key never contains the raw credential.
+  // A newly authorized read-only refresh token gets a separate cache entry.
+  // Hash it so the cache key never contains the raw credential.
   const youtubeRefreshToken = await getYouTubeRefreshToken();
   const youtubeCredentialFingerprint = youtubeRefreshToken
     ? createHash("sha256").update(youtubeRefreshToken).digest("hex")
     : "not-configured";
 
   const [
-    socialQueued, socialProcessing, socialPartial, socialPublished, socialFailed,
-    socialCreated24h, socialCreated7d, socialPublished24h, socialPublished7d,
-    videoCompleted, videoFailed, videoRetryPending, videoRequested24h, videoRequested7d,
-    videoCompleted24h, videoCompleted7d, renderDurations, platformRows,
-    publishedArticles, publishedVideos, profiles, youtubeAnalytics, ga4Analytics,
+    videoCompleted,
+    videoFailed,
+    videoRetryPending,
+    videoRequested24h,
+    videoRequested7d,
+    videoCompleted24h,
+    videoCompleted7d,
+    renderDurations,
+    publishedArticles,
+    publishedVideos,
+    youtubeAnalytics,
+    ga4Analytics,
   ] = await Promise.all([
-    supabase.from("social_publish_queue").select("id", { count: "exact", head: true }).eq("status", "queued"),
-    supabase.from("social_publish_queue").select("id", { count: "exact", head: true }).eq("status", "processing"),
-    supabase.from("social_publish_queue").select("id", { count: "exact", head: true }).eq("status", "partial"),
-    supabase.from("social_publish_queue").select("id", { count: "exact", head: true }).eq("status", "published"),
-    supabase.from("social_publish_queue").select("id", { count: "exact", head: true }).eq("status", "failed"),
-    supabase.from("social_publish_queue").select("id", { count: "exact", head: true }).gte("created_at", start24h),
-    supabase.from("social_publish_queue").select("id", { count: "exact", head: true }).gte("created_at", start7d),
-    supabase.from("social_publish_queue").select("id", { count: "exact", head: true }).gte("published_at", start24h),
-    supabase.from("social_publish_queue").select("id", { count: "exact", head: true }).gte("published_at", start7d),
     supabase.from("video_generation_requests").select("id", { count: "exact", head: true }).eq("status", "completed"),
     supabase.from("video_generation_requests").select("id", { count: "exact", head: true }).eq("status", "failed"),
     supabase.from("video_generation_requests").select("id", { count: "exact", head: true }).in("status", ["pending", "failed"]).not("next_retry_at", "is", null),
@@ -444,24 +424,13 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
     supabase.from("video_generation_requests").select("id", { count: "exact", head: true }).eq("status", "completed").gte("updated_at", start24h),
     supabase.from("video_generation_requests").select("id", { count: "exact", head: true }).eq("status", "completed").gte("updated_at", start7d),
     supabase.from("video_generation_requests").select("render_duration_ms", { count: "exact" }).eq("status", "completed").not("render_duration_ms", "is", null).gte("updated_at", start7d).limit(1000),
-    supabase.from("social_publish_queue").select("metadata", { count: "exact" }).limit(1000),
     supabase.from("articles").select("id", { count: "exact", head: true }).eq("published", true),
     supabase.from("videos").select("id", { count: "exact", head: true }).eq("published", true),
-    supabase.from("social_platform_profiles").select("platform,name,handle,status,synced_at").order("platform", { ascending: true }),
     getCachedYoutubeAnalyticsSnapshot(youtubeCredentialFingerprint),
     getCachedGa4AnalyticsSnapshot(),
   ]);
 
   const metrics = {
-    socialQueued: readCount(socialQueued),
-    socialProcessing: readCount(socialProcessing),
-    socialPartial: readCount(socialPartial),
-    socialPublished: readCount(socialPublished),
-    socialFailed: readCount(socialFailed),
-    socialCreated24h: readCount(socialCreated24h),
-    socialCreated7d: readCount(socialCreated7d),
-    socialPublished24h: readCount(socialPublished24h),
-    socialPublished7d: readCount(socialPublished7d),
     videoCompleted: readCount(videoCompleted),
     videoFailed: readCount(videoFailed),
     videoRetryPending: readCount(videoRetryPending),
@@ -474,23 +443,11 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
     publishedVideos: readCount(publishedVideos),
   };
 
-  const platformCount = platformRows.count;
-  const platformRowsComplete =
-    !platformRows.error &&
-    isCompleteBoundedRead(platformCount, (platformRows.data ?? []).length, 1000);
-  const socialPlatformStats = platformRowsComplete
-    ? summarizePlatformResults(platformRows.data ?? [])
-    : null;
-
   const unavailable: string[] = [];
-  if ([metrics.socialQueued, metrics.socialProcessing, metrics.socialPartial, metrics.socialPublished, metrics.socialFailed].some((value) => value === null)) unavailable.push("طابور النشر الاجتماعي");
-  if ([metrics.socialCreated24h, metrics.socialCreated7d, metrics.socialPublished24h, metrics.socialPublished7d].some((value) => value === null)) unavailable.push("اتجاهات النشر الاجتماعي");
-  if (!platformRowsComplete) unavailable.push("نتائج النشر لكل منصة");
   if ([metrics.videoCompleted, metrics.videoFailed, metrics.videoRetryPending].some((value) => value === null)) unavailable.push("حالة عمليات إنتاج الفيديو");
   if ([metrics.videoRequested24h, metrics.videoRequested7d, metrics.videoCompleted24h, metrics.videoCompleted7d].some((value) => value === null)) unavailable.push("اتجاهات إنتاج الفيديو");
   if (metrics.averageRenderDurationMs7d === null) unavailable.push("متوسط مدة الرندر");
   if (metrics.publishedArticles === null || metrics.publishedVideos === null) unavailable.push("المحتوى المنشور");
-  if (profiles.error) unavailable.push("حالة حسابات المنصات");
   if (youtubeAnalytics.status !== "connected") unavailable.push("YouTube Analytics");
   if (ga4Analytics.status !== "connected") unavailable.push("GA4");
 
@@ -504,8 +461,6 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
     generatedAt: nowIso,
     period: { timezone: "UTC", start24h, start7d, end: nowIso },
     metrics,
-    socialPlatformStats,
-    socialPlatformStatsComplete: platformRowsComplete,
     integrations: {
       ga4MeasurementConfigured: Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID),
       ga4ReportingConnected: ga4Analytics.status === "connected",
@@ -517,15 +472,6 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
     },
     youtubeAnalytics,
     ga4Analytics,
-    socialProfiles: profiles.error
-      ? null
-      : (profiles.data ?? []).map((profile) => ({
-          platform: profile.platform,
-          name: profile.name,
-          handle: profile.handle,
-          status: profile.status,
-          syncedAt: profile.synced_at,
-        })),
     unavailable,
   };
 }
