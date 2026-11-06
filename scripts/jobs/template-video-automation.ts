@@ -353,6 +353,19 @@ function categoryLabel(category: string, audience?: unknown) {
 function audienceHook(category: string, audience?: unknown, seed = "") {
   return resolveDeterministicVideoHook({ id: seed, category, audience });
 }
+function audienceCta(category: string, audience?: unknown) {
+  if (audience === "kids") return "اكتشفوا الحلقة القادمة معًا • تابعوا ذِكر";
+  const labels: Record<string, string> = {
+    quran: "تدبّر الآية واحفظها وشاركها",
+    hadith: "تأمّل الحديث وطبّقه اليوم",
+    dua: "احفظ الدعاء وكرّره",
+    adhkar: "اجعل الذكر جزءًا من يومك",
+    story: "تعلّم من القصة وشارك العبرة",
+    stories: "تعلّم من القصة وشارك العبرة",
+    other: "احفظ الرسالة وشاركها",
+  };
+  return (labels[category] ?? labels.other) + " • تابع ذِكر للمزيد";
+}
 function deterministicScene(request: GeneratedRequest): AiVideoPlan["scene"] {
   return resolveDeterministicVideoScene({
     id: request.id,
@@ -437,7 +450,7 @@ function makeAss(
   }
   events.push(
     "Dialogue: 7," + assTimestamp(Math.max(0.8, duration - 3.2)) + "," + assTimestamp(duration) +
-    ",CTA,,0,0,0,,{\\fad(220,300)\\an2\\pos(" + composition.bodyX + "," + Math.round(height * 0.92) + ")}" + assEscape("تابع ذِكر للمزيد • احفظها وشاركها"),
+    ",CTA,,0,0,0,,{\\fad(220,300)\\an2\\pos(" + composition.bodyX + "," + Math.round(height * 0.92) + ")}" + assEscape(audienceCta(category, audience)),
   );
   return [
     "[Script Info]",
@@ -911,7 +924,7 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
   const sourceText = contentText(request).slice(0, 5000);
   if (!sourceText) return { ...DEFAULT_AI_VIDEO_PLAN };
 
-  const model = (process.env.GEMINI_MODEL || "gemini-3.1-flash-lite").trim();
+  const model = (process.env.GEMINI_MODEL || "gemini-3.8-flash").trim();
   const prompt = [
     "أنت مخطط محتوى بصري لمنصة ذِكر الإسلامية.",
     "المصدر أدناه موثق بالفعل. النص الديني source-locked ولا يجوز تغييره أو إعادة صياغته أو تكرار أجزاء واضحة منه داخل التأمل أو الكابشن.",
