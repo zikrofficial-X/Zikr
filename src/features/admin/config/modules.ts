@@ -7,19 +7,123 @@ export type AdminModuleDefinition = {
   label: string;
   description: string;
   basePath: string;
+  routes: readonly string[];
   permission: AdminPermission;
+  permissions: readonly AdminPermission[];
   sourceTables: readonly string[];
   ownerRole: string;
   status: AdminModuleStatus;
 };
 
 export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
-  { key: "operations", label: "العمليات الآن", description: "الصحة والطوابير والتنبيهات والإصدار.", basePath: "/admin", permission: "dashboard.view", sourceTables: ["admin_audit_events", "admin_queue_alert_deliveries"], ownerRole: "super_admin", status: "active" },
-  { key: "content", label: "المحتوى والتحرير", description: "المحتوى والمصادر والمراجعة والنشر.", basePath: "/admin/content", permission: "content.manage", sourceTables: ["content_library", "articles", "stories", "content_publish_queue", "content_translation_queue"], ownerRole: "content_manager", status: "active" },
-  { key: "video", label: "الوسائط والإنتاج", description: "الفيديو والصوت والجودة والنشر.", basePath: "/admin/video", permission: "video.manage", sourceTables: ["video_generation_requests", "videos", "media_assets", "social_publish_queue"], ownerRole: "video_manager", status: "active" },
-  { key: "audio", label: "الصوت", description: "التلاوات والأذان والصوت العام.", basePath: "/admin/audio", permission: "audio.manage", sourceTables: ["quran_audio", "site_audio_assets", "tawasheeh"], ownerRole: "video_manager", status: "active" },
-  { key: "kids", label: "الأطفال", description: "المحتوى والألعاب والأصول والسلامة.", basePath: "/admin/kids", permission: "kids.manage", sourceTables: ["kids_content", "kids_games", "kids_game_levels"], ownerRole: "moderator", status: "active" },
-  { key: "growth-system", label: "النمو والنظام", description: "التحليلات وSEO والمستخدمون والأمن.", basePath: "/admin/analytics", permission: "analytics.read", sourceTables: ["profiles", "admin_role_assignments", "admin_settings"], ownerRole: "super_admin", status: "active" },
+  {
+    key: "operations",
+    label: "التشغيل والمراقبة",
+    description: "لوحة التحكم والطوابير والأتمتة والتنبيهات ومتابعة صحة النظام.",
+    basePath: "/admin",
+    routes: ["/admin", "/admin/queues", "/admin/automation", "/admin/health", "/admin/notifications"],
+    permission: "dashboard.view",
+    permissions: ["dashboard.view", "system.manage", "notifications.manage"],
+    sourceTables: ["admin_audit_events", "admin_queue_alert_deliveries", "admin_queue_alert_rules"],
+    ownerRole: "super_admin",
+    status: "active",
+  },
+  {
+    key: "content",
+    label: "إدارة المحتوى",
+    description: "المكتبة والتحرير والتصنيفات والأقسام والبحث.",
+    basePath: "/admin/content",
+    routes: ["/admin/content", "/admin/library", "/admin/editorial", "/admin/categories", "/admin/sections", "/admin/search"],
+    permission: "content.manage",
+    permissions: ["content.manage", "library.manage", "knowledge.manage", "sections.manage"],
+    sourceTables: ["content_library", "articles", "stories", "content_publish_queue", "content_translation_queue"],
+    ownerRole: "content_manager",
+    status: "active",
+  },
+  {
+    key: "knowledge",
+    label: "المصادر والمعرفة",
+    description: "مصادر المحتوى والمعرفة الإسلامية والأنبياء والغزوات.",
+    basePath: "/admin/sources",
+    routes: ["/admin/sources", "/admin/knowledge", "/admin/prophets", "/admin/battles"],
+    permission: "sources.manage",
+    permissions: ["sources.manage", "knowledge.manage", "prophets.manage", "battles.manage"],
+    sourceTables: ["content_sources", "hadiths", "duas", "prophets", "companions", "scholars"],
+    ownerRole: "content_manager",
+    status: "active",
+  },
+  {
+    key: "video-production",
+    label: "مصنع الفيديوهات",
+    description: "الطلبات والاستوديو والمصادر والنصوص والأصوات والقوالب والجودة.",
+    basePath: "/admin/video",
+    routes: ["/admin/video", "/admin/video/requests", "/admin/video/studio", "/admin/video/studio/curated", "/admin/video/sources", "/admin/video/scripts", "/admin/video/voices", "/admin/video/visuals", "/admin/video/templates", "/admin/video/qa"],
+    permission: "video.manage",
+    permissions: ["video.manage"],
+    sourceTables: ["video_generation_requests", "videos", "video_templates", "video_template_versions"],
+    ownerRole: "video_manager",
+    status: "active",
+  },
+  {
+    key: "publishing",
+    label: "النشر والتوزيع",
+    description: "مركز النشر الاجتماعي ومصنع المنشورات المكتوبة.",
+    basePath: "/admin/social",
+    routes: ["/admin/social", "/admin/social/written-studio"],
+    permission: "social.manage",
+    permissions: ["social.manage", "social.publish"],
+    sourceTables: ["social_publish_queue", "social_platform_credentials", "social_platform_profiles"],
+    ownerRole: "social_manager",
+    status: "active",
+  },
+  {
+    key: "media-audio",
+    label: "الوسائط والصوت",
+    description: "مكتبة الوسائط والتلاوات والأذان وتحويل النص إلى صوت والتذكيرات.",
+    basePath: "/admin/media",
+    routes: ["/admin/media", "/admin/audio", "/admin/audio/quran", "/admin/audio/adhan", "/admin/audio/tts", "/admin/site-audio"],
+    permission: "media.manage",
+    permissions: ["media.manage", "audio.manage"],
+    sourceTables: ["media_assets", "quran_audio", "site_audio_assets", "tawasheeh"],
+    ownerRole: "video_manager",
+    status: "active",
+  },
+  {
+    key: "kids",
+    label: "عالم الأطفال",
+    description: "محتوى الأطفال والألعاب والمستويات والأصول والتحليلات.",
+    basePath: "/admin/kids",
+    routes: ["/admin/kids", "/admin/kids/content", "/admin/kids/games", "/admin/kids/levels", "/admin/kids/assets", "/admin/kids/analytics"],
+    permission: "kids.manage",
+    permissions: ["kids.manage"],
+    sourceTables: ["kids_content", "kids_games", "kids_game_levels", "kids_game_results"],
+    ownerRole: "moderator",
+    status: "active",
+  },
+  {
+    key: "growth",
+    label: "النمو والتحليلات",
+    description: "تحليلات المنصة وتحسين الظهور.",
+    basePath: "/admin/analytics",
+    routes: ["/admin/analytics", "/admin/seo"],
+    permission: "analytics.read",
+    permissions: ["analytics.read", "settings.manage"],
+    sourceTables: ["articles", "videos", "video_generation_requests", "social_publish_queue"],
+    ownerRole: "analyst",
+    status: "active",
+  },
+  {
+    key: "system-security",
+    label: "النظام والأمان",
+    description: "التدقيق والإصدار والمستخدمون والأمن وإعدادات النظام وأندرويد.",
+    basePath: "/admin/audit",
+    routes: ["/admin/audit", "/admin/release", "/admin/users", "/admin/security", "/admin/android", "/admin/settings"],
+    permission: "audit.read",
+    permissions: ["audit.read", "release.manage", "users.read", "users.roles", "security.manage", "android.manage", "settings.manage"],
+    sourceTables: ["profiles", "admin_role_assignments", "admin_settings", "admin_audit_events"],
+    ownerRole: "super_admin",
+    status: "active",
+  },
 ] as const;
 
 export const ADMIN_ROUTE_ALIASES = [
@@ -34,6 +138,7 @@ export const ADMIN_ROUTE_ALIASES = [
   { from: "/admin/video-factory/queue", to: "/admin/video/requests", reason: "توحيد طابور الفيديو" },
   { from: "/admin/video-factory/scheduler", to: "/admin/automation", reason: "الجدولة تحت مركز الأتمتة" },
   { from: "/admin/ai-video", to: "/admin/video/studio", reason: "دمج الاستوديو في مركز الفيديو" },
+  { from: "/admin/ai-video/curated", to: "/admin/video/studio/curated", reason: "نقل المحتوى الموثق إلى الاستوديو الرسمي" },
   { from: "/admin/video-factory/publishing", to: "/admin/social", reason: "النشر الاجتماعي وحدة مستقلة" },
   { from: "/admin/alerts", to: "/admin/notifications", reason: "توحيد التنبيهات" },
   { from: "/admin/control", to: "/admin", reason: "اختصار قديم لمركز العمليات" },
@@ -41,7 +146,12 @@ export const ADMIN_ROUTE_ALIASES = [
 ] as const;
 
 export function getAdminModule(pathname: string) {
-  return ADMIN_MODULES
-    .filter((module) => pathname === module.basePath || pathname.startsWith(`${module.basePath}/`))
-    .sort((a, b) => b.basePath.length - a.basePath.length)[0] ?? null;
+  const matches = ADMIN_MODULES.map((module) => ({
+    module,
+    route: module.routes
+      .filter((route) => pathname === route || pathname.startsWith(`${route}/`))
+      .sort((a, b) => b.length - a.length)[0],
+  })).filter((entry): entry is { module: AdminModuleDefinition; route: string } => Boolean(entry.route));
+
+  return matches.sort((a, b) => b.route.length - a.route.length)[0]?.module ?? null;
 }

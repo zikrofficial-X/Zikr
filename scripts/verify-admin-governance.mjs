@@ -36,6 +36,27 @@ const groups = [...navigation.matchAll(/key:\s*"([^"]+)",\s*label:\s*"([^"]+)",\
     items: [...group[3].matchAll(/href:\s*"([^"]+)",\s*label:\s*"([^"]+)",\s*permission:\s*"([^"]+)"/g)]
       .map((item) => ({ href: item[1], label: item[2], permission: item[3] })),
   }));
+const moduleCatalog = read("src/features/admin/config/modules.ts");
+const moduleBlocks = [...moduleCatalog.matchAll(/\{\s*key:\s*"([^"]+)"[\s\S]*?routes:\s*\[([\s\S]*?)\][\s\S]*?status:\s*"[^"]+"\s*,?\s*\}/g)];
+const catalog = moduleBlocks.map((match) => ({
+  key: match[1],
+  routes: [...match[2].matchAll(/"([^"]+)"/g)].map((route) => route[1]),
+}));
+if (catalog.map((module) => module.key).join("|") !== groups.map((group) => group.key).join("|")) {
+  failures.push("ADMIN_MODULES must mirror the nine canonical navigation keys and order");
+}
+for (const group of groups) {
+  const catalogEntry = catalog.find((entry) => entry.key === group.key);
+  if (!catalogEntry) {
+    failures.push("module catalog is missing navigation group: " + group.key);
+    continue;
+  }
+  for (const item of group.items) {
+    if (!catalogEntry.routes.includes(item.href)) {
+      failures.push("module catalog is missing canonical route " + item.href + " in " + group.key);
+    }
+  }
+}
 const items = groups.flatMap((group) => group.items);
 if (groups.length !== 9) failures.push("expected exactly nine canonical admin navigation zones");
 for (const label of ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "النشر والتوزيع", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"]) {
