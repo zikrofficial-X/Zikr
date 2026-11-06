@@ -191,8 +191,8 @@ async function bindTemplateVersion(request: GeneratedRequest): Promise<BoundTemp
   );
   const version = versions?.[0];
   if (!version) throw new Error("Pinned video template version was not found.");
-  if (!preview && version.status !== "active") {
-    throw new Error("Video generation can only use an active template version.");
+  if (!preview && version.status !== "active" && version.status !== "retired") {
+    throw new Error("Video generation can only use an active or previously pinned approved template version.");
   }
 
   const templates = await supabaseServerAdminRequest<Array<{
@@ -1425,7 +1425,7 @@ async function renderVideo(request: GeneratedRequest) {
         bytes: uploadedMedia.bytes,
       },
       render: {
-        templateVersion: VIDEO_TEMPLATE_VERSION,
+        templateVersion,
         resolution: width + "x" + height,
         durationSeconds: duration,
         scene,
