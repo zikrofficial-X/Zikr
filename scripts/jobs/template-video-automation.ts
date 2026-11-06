@@ -1076,7 +1076,7 @@ async function renderVideo(request: GeneratedRequest) {
     }
 
     const persistedAi = request.content?.ai && typeof request.content.ai === "object"
-      ? (request.content.ai as Partial<AiVideoPlan> & { scene?: AiVideoPlan["scene"]; motion?: AiVideoPlan["motion"] })
+      ? (request.content.ai as Partial<AiVideoPlan> & { scene?: AiVideoPlan["scene"]; motion?: AiVideoPlan["motion"]; provider?: string })
       : null;
     const hasGeminiCreativePlan = persistedAi?.provider === "google-gemini";
     const isKnownScene = (value: unknown): value is AiVideoPlan["scene"] =>
