@@ -59,11 +59,15 @@ export default async function VideoDetailPage({ params }: VideoDetailPageProps) 
   }
 
   const directVideoUrl =
-    typeof video.metadata?.sourceVideoUrl === 'string'
-      ? video.metadata.sourceVideoUrl
-      : typeof video.metadata?.generatedVideoUrl === 'string'
-        ? video.metadata.generatedVideoUrl
-        : null;
+    typeof video.metadata?.generatedVideoUrl === "string"
+      ? video.metadata.generatedVideoUrl
+      : typeof video.metadata?.videoUrl === "string"
+        ? video.metadata.videoUrl
+        : typeof video.metadata?.video_url === "string"
+          ? video.metadata.video_url
+          : typeof video.metadata?.sourceVideoUrl === "string"
+            ? video.metadata.sourceVideoUrl
+            : null;
   const publicCaption = typeof video.metadata?.caption === 'string' ? video.metadata.caption : null;
 
   return (
