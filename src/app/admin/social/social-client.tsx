@@ -543,7 +543,8 @@ export default function AdminSocialPage() {
         if (action === "publish_now") {
           setMessage(`تم تجهيز ${payload.affected ?? 0} عنصرًا للتشغيل الفوري عبر GitHub Actions.`);
           if (payload.blocked?.length) {
-            setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
+            setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("
+"));
           }
         } else {
           setMessage(`تم تنفيذ الإجراء بنجاح${typeof payload.affected === "number" ? ` (${payload.affected})` : ""}.`);
@@ -564,7 +565,9 @@ export default function AdminSocialPage() {
       return;
     }
     const targetText = platforms?.length ? platforms.map(value => PLATFORM_LABELS[value] ?? value).join(" و") : "كل المنصات التي نُشر عليها الفيديو";
-    const confirmation = `تأكيد الحذف النهائي من ${targetText}؟\n\nسيتم حذف المنشور الفعلي من المنصة. ${deleteLocalMemory ? "سيتم حذف ملف الفيديو المولّد من ذاكرة ZIKR أيضًا." : "سيظل ملف الفيديو المولّد داخل ذاكرة ZIKR."} سيظل سجل النشر والتدقيق محفوظًا داخل ZIKR.`;
+    const confirmation = `تأكيد الحذف النهائي من ${targetText}؟
+
+سيتم حذف المنشور الفعلي من المنصة. ${deleteLocalMemory ? "سيتم حذف ملف الفيديو المولّد من ذاكرة ZIKR أيضًا." : "سيظل ملف الفيديو المولّد داخل ذاكرة ZIKR."} سيظل سجل النشر والتدقيق محفوظًا داخل ZIKR.`;
     if (!window.confirm(confirmation)) return;
 
     setBusy(true);
@@ -591,7 +594,8 @@ export default function AdminSocialPage() {
         result.status === "failed" || result.status === "missing_remote_id"
       );
       if (issues.length) {
-        setError(issues.map(result => `${result.title} — ${PLATFORM_LABELS[result.platform] ?? result.platform}: ${result.error || "معرّف المنشور غير متاح."}`).join("\n"));
+        setError(issues.map(result => `${result.title} — ${PLATFORM_LABELS[result.platform] ?? result.platform}: ${result.error || "معرّف المنشور غير متاح."}`).join("
+"));
       }
       setSelectedPublished([]);
       setDeleteLocalMemory(false);
@@ -1176,7 +1180,11 @@ export default function AdminSocialPage() {
                   الحذف هنا يزيل المنشور من المنصة نفسها. سجل ZIKR ونتائج النشر يظلان محفوظين للمراجعة والتدقيق.
                 </p>
               </div>
-              <label className="flex items-center gap-2 text-xs text-brand-cream/70">\n                <input type="checkbox" checked={deleteLocalMemory} onChange={event => setDeleteLocalMemory(event.target.checked)} disabled={busy} className="h-4 w-4" />\n                حذف ملف الفيديو من ذاكرة ZIKR أيضًا\n              </label>\n              <div className="flex flex-wrap gap-2">
+              <label className="flex items-center gap-2 text-xs text-brand-cream/70">
+                <input type="checkbox" checked={deleteLocalMemory} onChange={event => setDeleteLocalMemory(event.target.checked)} disabled={busy} className="h-4 w-4" />
+                حذف ملف الفيديو من ذاكرة ZIKR أيضًا
+              </label>
+              <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" disabled={!publishedVideos.length || busy} onClick={togglePublishedSelection}>
                   {allPublishedSelected ? "إلغاء تحديد الكل" : "تحديد كل المنشورات"}
                 </Button>
