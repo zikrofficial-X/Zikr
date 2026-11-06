@@ -13,6 +13,8 @@ import {
   resolveFacebookReelsNextAllowedAt,
 } from '@/features/social/services/facebook-reels-rate-limit';
 import type { VideoGenerationRequest } from '@/lib/types/video';
+import { sourceHash, videoContentHash } from '../providers/content-hash';
+import { CURRENT_VIDEO_RENDERER_VERSION } from './video-template-version';
 
 export type { VideoGenerationRequest };
 
@@ -84,9 +86,45 @@ export async function createVideoGenerationRequest(data: {
       content = { ...data.content };
     }
 
+    const category = data.category.trim();
+    const text = ['textAr', 'text', 'script', 'prompt', 'narration']
+      .map((key) => content[key])
+      .find((value): value is string => typeof value === 'string' && Boolean(value.trim()))?.trim()
+      ?? data.description.trim();
+    const sourceId = typeof content.sourceId === 'string'
+      ? content.sourceId
+      : typeof content.curatedSourceId === 'string'
+        ? content.curatedSourceId
+        : '';
+    const sourceUrl = typeof content.sourceUrl === 'string' ? content.sourceUrl : '';
+    const resolution = typeof content.resolution === 'string' ? content.resolution : '';
+    const format = /^\d+x\d+$/.test(resolution)
+      ? (Number(resolution.split('x')[0]) > Number(resolution.split('x')[1]) ? 'horizontal' : 'vertical')
+      : content.videoFormat === 'horizontal' ? 'horizontal' : 'vertical';
+    const templateVersion = typeof content.templateVersion === 'string' && content.templateVersion.trim()
+      ? content.templateVersion.trim()
+      : CURRENT_VIDEO_RENDERER_VERSION;
+    const language = typeof content.language === 'string' ? content.language : 'ar';
+    const style = typeof content.templateAssetKey === 'string'
+      ? content.templateAssetKey
+      : typeof content.style === 'string' ? content.style : '';
+    const sourceHashValue = sourceHash({ sourceId, sourceUrl, text });
+    const contentHashValue = videoContentHash({
+      category,
+      sourceId,
+      text,
+      format,
+      templateVersion,
+      language,
+      style,
+    });
+
     content = {
       ...content,
       renderer: typeof content.renderer === 'string' ? content.renderer : 'template',
+      templateVersion,
+      sourceHash: sourceHashValue,
+      contentHash: contentHashValue,
     };
 
     const result = await supabaseServerAdminRequest<VideoGenerationRequest[]>(
@@ -97,8 +135,11 @@ export async function createVideoGenerationRequest(data: {
         body: JSON.stringify({
           title: data.title.trim(),
           description: data.description.trim(),
-          category: data.category.trim(),
+          category,
           content,
+          source_hash: sourceHashValue,
+          content_hash: contentHashValue,
+          template_version: templateVersion,
           status: 'pending',
           error_message: null,
           error_details: null,

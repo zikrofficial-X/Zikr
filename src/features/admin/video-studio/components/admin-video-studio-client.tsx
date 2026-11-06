@@ -17,6 +17,14 @@ type Source = {
   sourceLabel: string;
   sourceUrl: string;
   grade?: string | null;
+  audience?: string | null;
+};
+type ActiveTemplateOption = {
+  versionId: string;
+  title: string;
+  version: number;
+  audience: "general" | "kids";
+  slug: string;
 };
 
 const CATEGORIES: Array<{ id: Category; title: string; description: string }> =
@@ -75,6 +83,9 @@ export default function AdminVideoStudioClient() {
   const [sourceId, setSourceId] = useState("");
   const [sources, setSources] = useState<Source[]>([]);
   const [sourcesLoading, setSourcesLoading] = useState(false);
+  const [activeTemplates, setActiveTemplates] = useState<ActiveTemplateOption[]>([]);
+  const [templateVersionId, setTemplateVersionId] = useState("");
+  const [templatesLoading, setTemplatesLoading] = useState(false);
   const [surahId, setSurahId] = useState("1");
   const [ayahNumber, setAyahNumber] = useState("1");
   const [sourceLoading, setSourceLoading] = useState(false);
@@ -87,6 +98,43 @@ export default function AdminVideoStudioClient() {
 
   const isLocked = IS_SOURCE_LOCKED(category);
   const narrationLength = useMemo(() => narration.trim().length, [narration]);
+  const selectedSource = sources.find((source) => source.id === sourceId);
+  const selectedAudience = selectedSource?.audience === "kids" ? "kids" : "general";
+  const compatibleTemplates = activeTemplates.filter((template) => template.audience === selectedAudience);
+
+  useEffect(() => {
+    if (templateVersionId && !compatibleTemplates.some((template) => template.versionId === templateVersionId)) {
+      setTemplateVersionId("");
+    }
+  }, [templateVersionId, compatibleTemplates]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setTemplatesLoading(true);
+    void fetch("/api/admin/video/templates", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "تعذر تحميل القوالب النشطة.");
+        const templates = Array.isArray(data.templates) ? data.templates : [];
+        const versions = Array.isArray(data.versions) ? data.versions : [];
+        const activeOptions: ActiveTemplateOption[] = versions
+          .filter((version: { status?: string }) => version.status === "active")
+          .flatMap((version: { id?: string; template_id?: string; version?: number }) => {
+            const template = templates.find((item: { id: string }) => item.id === version.template_id);
+            return template && typeof version.id === "string"
+              ? [{ versionId: version.id, title: template.title, slug: template.slug, audience: template.audience, version: version.version }]
+              : [];
+          });
+        setActiveTemplates(activeOptions);
+      })
+      .catch((cause) => {
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "تعذر تحميل القوالب النشطة.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setTemplatesLoading(false);
+      });
+    return () => controller.abort();
+  }, []);
 
   const selectSource = useCallback((source: Source) => {
     setSourceId(source.id);
@@ -230,6 +278,7 @@ export default function AdminVideoStudioClient() {
             renderer: "template",
             workflow: "ai-video-studio",
             videoFormat: format,
+            templateVersionId: templateVersionId || undefined,
             language: "ar",
             resolution: format === "vertical" ? "1080x1920" : "1920x1080",
           },
@@ -345,6 +394,22 @@ export default function AdminVideoStudioClient() {
       </section>
 
       <Card className="space-y-5 border-brand-gold/20 p-6">
+        <div>
+          <label htmlFor="video-template-version" className="mb-2 block text-sm text-brand-cream/70">نسخة القالب النشط</label>
+          <select
+            id="video-template-version"
+            value={templateVersionId}
+            onChange={(event) => setTemplateVersionId(event.target.value)}
+            disabled={templatesLoading || compatibleTemplates.length === 0}
+            className="w-full rounded-lg border border-brand-gold/20 bg-black/30 px-4 py-3 text-brand-cream disabled:opacity-50"
+          >
+            <option value="">{templatesLoading ? "جارٍ تحميل القوالب النشطة…" : "اختيار تلقائي حسب المحتوى"}</option>
+            {compatibleTemplates.map((template) => (
+              <option key={template.versionId} value={template.versionId}>{template.title} — v{template.version}</option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs leading-6 text-brand-cream/45">يمكن اختيار إصدار نشط ومعتمد فقط. الإصدار المختار يُثبّت داخل الطلب ولا يتغير إذا تم تفعيل نسخة أخرى لاحقًا.</p>
+        </div>
         {category === "quran" ? (
           <div className="rounded-xl border border-brand-gold/15 bg-black/15 p-4">
             <p className="font-semibold text-brand-gold">

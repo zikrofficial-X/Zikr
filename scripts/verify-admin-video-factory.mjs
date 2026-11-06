@@ -156,8 +156,42 @@ if (!canonicalQueue.includes('@/features/admin/video-requests/components/admin-v
 if (existsSync("src/app/admin/ai-video/ai-video-client.tsx")) failures.push("Legacy AI video client must be moved out of app route folders");
 if (existsSync("src/app/admin/videos/videos-client.tsx")) failures.push("Legacy Video Requests client must be moved out of app route folders");
 
-const worker = read("scripts/jobs/template-video-automation.ts");
+const templateApi = read("src/app/api/admin/video/templates/route.ts");
+const templateStudio = read("src/features/admin/video-templates/components/template-studio-client.tsx");
+const templateConfig = read("src/features/videos/services/template-config.ts");
+const templateVersion = read("src/features/videos/services/video-template-version.ts");
+if (!templateApi.includes('requireAdminApi("video.manage")')) failures.push("template registry API must require video.manage");
+for (const action of ["create-version", "approve-version", "activate-version", "preview-version"]) {
+  if (!templateApi.includes(action)) failures.push(`template registry API action is missing: ${action}`);
+}
+if (!templateApi.includes("created_by === auth.profile.id")) failures.push("template review must require a reviewer different from the author");
+if (!templateApi.includes("skipSocialPublish: true") || !templateApi.includes("templatePreview: true")) failures.push("template previews must be marked internal and excluded from social publishing");
+if (!templateStudio.includes("TemplateStudioClient") || !templateStudio.includes("معاينات الرندر الأخيرة")) failures.push("Admin must render the versioned Template Studio and preview history");
+for (const token of ["parseVideoTemplateConfig", "isVideoTemplateAssetAllowedForAudience", "videoTemplateAssetPath"]) {
+  if (!templateConfig.includes("export function " + token)) failures.push(`template renderer config validation missing: ${token}`);
+}
+if (!templateVersion.includes("CURRENT_VIDEO_RENDERER_VERSION")) failures.push("a shared immutable renderer version identifier is required");
+const createVideoApi = read("src/app/api/admin/videos/create/route.ts");
+if (!createVideoApi.includes("templateVersion.status !== \"active\"")) failures.push("normal video creation must pin an active template version only");
+if (!createVideoApi.includes("versionedTemplateLabel")) failures.push("normal video requests must persist the exact template version label");
+const videoAutomation = read("src/features/videos/services/video-automation.ts");
+for (const token of ["source_hash: sourceHashValue", "content_hash: contentHashValue", "template_version: templateVersion"]) {
+  if (!videoAutomation.includes(token)) failures.push(`manual video requests must persist ${token}`);
+}
+if (!templateApi.includes("/rest/v1/rpc/admin_create_video_template_version") || !templateApi.includes("/rest/v1/rpc/activate_video_template_version")) {
+  failures.push("template version creation/activation must use atomic database functions");
+}
+if (!templateApi.includes("recordAdminAuditEvent")) failures.push("template actions must be included in the admin audit stream");
 
+const worker = read("scripts/jobs/template-video-automation.ts");
+if (!worker.includes("async function bindTemplateVersion")) failures.push("video worker must bind requests to an immutable template version");
+if (!worker.includes("request.content.templatePreview === true")) failures.push("template preview mode must be recognized by the renderer");
+if (!worker.includes("if (!isTemplatePreview) aiPlan = await generateAiVideoPlan(request)")) failures.push("internal template previews must avoid external generative planning");
+if (!worker.includes("source_hash: rendered.sourceHash") || !worker.includes("content_hash: rendered.contentHash") || !worker.includes("template_version: rendered.templateVersion")) {
+  failures.push("completed manual renders must persist source, content and template integrity fingerprints");
+}
+if (!worker.includes("content.skipSocialPublish === true")) failures.push("template preview requests must never enter public social queues");
+if (!worker.includes("!isTemplatePreview &&") || !worker.includes("!boundTemplate &&")) failures.push("pinned template renders must not be handed to external video providers");
 for (const [path, destinations] of [
   ["src/app/admin/audio/tts/page.tsx", ["/admin/video/voices", "/admin/video/scripts"]],
   ["src/app/admin/audio/quran/page.tsx", ["/admin/video/voices"]],

@@ -14,6 +14,9 @@ export interface VideoGenerationRequest {
   youtube_id?: string | null;
   facebook_id?: string | null;
   video_url?: string | null;
+  source_hash?: string | null;
+  content_hash?: string | null;
+  template_version?: string | null;
   heygen_video_id?: string | null;
   heygen_status?: string | null;
   heygen_submitted_at?: string | null;

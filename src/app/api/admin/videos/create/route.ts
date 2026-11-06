@@ -4,6 +4,9 @@ import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { createVideoGenerationRequest } from "@/features/videos/services/video-automation";
 import { resolveVideoSource } from "@/features/videos/services/video-sources";
 import { resolveCuratedVideoSource } from "@/features/videos/data/curated-content";
+import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { isVideoTemplateAssetAllowedForAudience, parseVideoTemplateConfig } from "@/features/videos/services/template-config";
+import { versionedTemplateLabel } from "@/features/videos/services/video-template-version";
 
 const VALID_CATEGORIES = [
   "quran",
@@ -192,6 +195,46 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    if (typeof content.templateVersionId === "string" && content.templateVersionId.trim()) {
+      const versionId = content.templateVersionId.trim();
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(versionId)) {
+        return NextResponse.json({ error: "إصدار القالب المحدد غير صالح." }, { status: 400 });
+      }
+      const versions = await supabaseServerAdminRequest<Array<{
+        id: string; template_id: string; version: number; config: unknown; status: string;
+      }>>(
+        `/rest/v1/video_template_versions?id=eq.${encodeURIComponent(versionId)}&select=id,template_id,version,config,status&limit=1`,
+      );
+      const templateVersion = versions?.[0];
+      if (!templateVersion || templateVersion.status !== "active") {
+        return NextResponse.json({ error: "اختر إصدار قالب نشطًا؛ المسودات والإصدارات القديمة لا تقبل طلبات إنتاج جديدة." }, { status: 409 });
+      }
+      const templates = await supabaseServerAdminRequest<Array<{
+        id: string; slug: string; audience: "general" | "kids";
+      }>>(
+        `/rest/v1/video_templates?id=eq.${encodeURIComponent(templateVersion.template_id)}&select=id,slug,audience&limit=1`,
+      );
+      const template = templates?.[0];
+      const config = parseVideoTemplateConfig(templateVersion.config);
+      if (!template || !config || !isVideoTemplateAssetAllowedForAudience(config.assetKey, template.audience)) {
+        return NextResponse.json({ error: "إعدادات القالب لا تجتاز تحقق محرك الرندر." }, { status: 422 });
+      }
+      const requestedAudience = content.audience === "kids" ? "kids" : "general";
+      if (requestedAudience !== template.audience) {
+        return NextResponse.json({ error: "القالب المختار لا يتوافق مع فئة الجمهور لهذا الفيديو." }, { status: 422 });
+      }
+      content = {
+        ...content,
+        templateVersion: versionedTemplateLabel(template.slug, templateVersion.version),
+        templateAssetKey: config.assetKey,
+        templateAudience: template.audience,
+        templateMotion: config.motion,
+        templateConfigSnapshot: config,
+        videoFormat: config.defaultFormat,
+        resolution: config.defaultFormat === "vertical" ? "1080x1920" : "1920x1080",
+      };
+    }
+
     let humanAudioUrl: string | null = null;
     if (typeof body.humanAudioUrl === "string" && body.humanAudioUrl.trim()) {
       if (category === "quran") {
@@ -236,7 +279,7 @@ export async function POST(request: NextRequest) {
       permission: "video.manage",
       resourceType: "video_generation_requests",
       resourceId: result.id,
-      metadata: { category, sourceVerified: Boolean(source), hasHumanAudio: Boolean(humanAudioUrl) },
+      metadata: { category, sourceVerified: Boolean(source), hasHumanAudio: Boolean(humanAudioUrl), templateVersionId: typeof content.templateVersionId === "string" ? content.templateVersionId : null, templateVersion: typeof content.templateVersion === "string" ? content.templateVersion : null },
     });
 
     return NextResponse.json(
