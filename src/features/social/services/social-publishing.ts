@@ -153,7 +153,7 @@ async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promi
       request: rows?.[0] ?? null,
     });
   } catch (error) {
-    console.error("[social-publishing] Approval lookup failed; holding video item:", item.id, error);
+    console.error("[social-publishing] Automated QA lookup failed; holding video item:", item.id, error);
     return false;
   }
 }
@@ -441,10 +441,10 @@ async function publishPlatform(
   platform: SocialPlatform
 ): Promise<PlatformResult> {
   try {
-    // The approval snapshot is re-read immediately before every channel call.
-    // A review revoked or source/media change therefore holds only the not-yet-sent target.
+    // The automated QA snapshot is re-read immediately before every channel call.
+    // Any source, content, template or media change holds the not-yet-sent target.
     if (!(await hasVideoApprovalForQueueItem(item))) {
-      return { platform, ok: false, approvalBlocked: true, error: "Video held for human QA approval before public publishing." };
+      return { platform, ok: false, approvalBlocked: true, error: "Video held because automated QA is missing, incomplete or stale." };
     }
     const remoteId =
       platform === "facebook"
@@ -835,8 +835,8 @@ export async function processSocialPublishItem(
     if (prior && typeof prior === "object") mergedResults[platform] = prior as PlatformResult;
   }
   for (const result of results) {
-    // Approval deferrals are not provider failures; keep them out of the
-    // permanent per-platform result ledger so a later human approval can retry.
+    // Automated QA deferrals are not provider failures; keep them out of the
+    // permanent per-platform result ledger so a corrected render can be retried.
     if (result.approvalBlocked) continue;
     mergedResults[result.platform] = result;
   }
@@ -931,7 +931,7 @@ export async function processSocialPublishItem(
 
   const errorMessages = operationalFailures.map(failure => `${failure.platform}: ${failure.error ?? "unknown error"}`);
   if (unavailablePlatforms.length) errorMessages.push("Waiting for channel configuration: " + unavailablePlatforms.join(", "));
-  if (approvalDeferredPlatforms.length) errorMessages.push("Video held for a fresh human QA approval check: " + approvalDeferredPlatforms.join(", "));
+  if (approvalDeferredPlatforms.length) errorMessages.push("Video held for a fresh automated QA check: " + approvalDeferredPlatforms.join(", "));
   await markQueueItem(item.id, persistedStatus, {
     scheduled_at: nextRetryAt,
     published_at: successes.length > 0 ? new Date().toISOString() : null,
