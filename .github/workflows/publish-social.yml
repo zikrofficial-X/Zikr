@@ -1,10 +1,6 @@
 name: ZIKR Autonomous Social Publisher
 
 on:
-  # GitHub Actions is the sole production owner for social/video publishing.
-  schedule:
-    # Avoid quarter-hour/top-of-hour contention; GitHub schedule events are best-effort.
-    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
     inputs:
       operation:
