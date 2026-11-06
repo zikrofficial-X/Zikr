@@ -262,12 +262,15 @@ async function getUnresolvedVideoDeliveries(): Promise<number> {
     throw new Error("Unresolved video delivery inventory exceeded the safe preflight limit.");
   }
   return candidates.filter(row =>
-    Boolean(row.published_at) || hasSuccessfulRemotePublication(row.metadata),
+    row.status === "partial" ||
+    Boolean(row.published_at) ||
+    hasSuccessfulRemotePublication(row.metadata),
   ).length;
 }
 
 type SocialQueuePurgeCandidate = {
   id: string;
+  status: string;
   published_at: string | null;
   metadata?: Record<string, unknown> | null;
 };
@@ -297,7 +300,7 @@ async function deleteUnpublishedVideoQueueRows(): Promise<number> {
     const rows = await supabaseServerAdminRequest<SocialQueuePurgeCandidate[]>(
       "/rest/v1/social_publish_queue?content_type=in.(" +
         VIDEO_CONTENT_TYPES.join(",") +
-        ")&status=eq.queued&published_at=is.null&select=id,published_at,metadata&order=created_at.asc&limit=1000&offset=" +
+        ")&status=in.(queued,failed)&published_at=is.null&select=id,status,published_at,metadata&order=created_at.asc&limit=1000&offset=" +
         offset,
     );
     const page = rows ?? [];
@@ -308,19 +311,24 @@ async function deleteUnpublishedVideoQueueRows(): Promise<number> {
     }
   }
 
-  const safeIds = candidates
-    .filter(row => !row.published_at && !hasSuccessfulRemotePublication(row.metadata))
-    .map(row => row.id);
+  const safeRows = candidates.filter(row =>
+    (row.status === "queued" || row.status === "failed") &&
+    !row.published_at &&
+    !hasSuccessfulRemotePublication(row.metadata),
+  );
 
   let deleted = 0;
-  for (let offset = 0; offset < safeIds.length; offset += 100) {
-    const batch = safeIds.slice(offset, offset + 100);
-    const ids = batch.map(encodeURIComponent).join(",");
-    const rows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-      "/rest/v1/social_publish_queue?id=in.(" + ids + ")&status=eq.queued&published_at=is.null&select=id",
-      { method: "DELETE", headers: { Prefer: "return=representation" } },
-    );
-    deleted += rows?.length ?? 0;
+  for (const status of ["queued", "failed"] as const) {
+    const statusIds = safeRows.filter(row => row.status === status).map(row => row.id);
+    for (let offset = 0; offset < statusIds.length; offset += 100) {
+      const batch = statusIds.slice(offset, offset + 100);
+      const ids = batch.map(encodeURIComponent).join(",");
+      const rows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+        "/rest/v1/social_publish_queue?id=in.(" + ids + ")&status=eq." + status + "&published_at=is.null&select=id",
+        { method: "DELETE", headers: { Prefer: "return=representation" } },
+      );
+      deleted += rows?.length ?? 0;
+    }
   }
   return deleted;
 }
@@ -374,11 +382,15 @@ export async function POST(request: NextRequest) {
 
     const processing = await getActiveVideoWork();
     if (processing.queue > 0 || processing.generation > 0) {
+      // Current claims may finish, but the automation settings remain disabled.
+      // Release the claim lock so an administrator can resume/settle them safely.
+      await setPurgeLock(false);
       return NextResponse.json(
         {
-          error: `يوجد ${processing.generation} طلب توليد و${processing.queue} عملية نشر فيديو قيد التنفيذ. أوقفت التوليد وحجزت النشر مؤقتًا؛ أعد تنفيذ التصفير بعد انتهاء العامل.`,
+          error: `يوجد ${processing.generation} طلب توليد و${processing.queue} عملية نشر فيديو قيد التنفيذ. أوقفت التشغيل التلقائي مؤقتًا؛ انتظر انتهاء العامل ثم عالج أي نشر جزئي وأعد التصفير.`,
           processing,
           paused: true,
+          automationMustBeReenabled: true,
           retryRequired: true,
         },
         { status: 409, headers: { "Cache-Control": "no-store" } },
