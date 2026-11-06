@@ -35,6 +35,19 @@ if (!videoAutomation.includes("facebook_reels_next_allowed_at")) failures.push("
 
 if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_next_allowed_at")) failures.push("Supabase must have a durable global Facebook Reels next-allowed column");
 
+
+const pendingSelectorStart = publisher.indexOf("export async function getPendingSocialPublishItems");
+const pendingSelectorEnd = publisher.indexOf("async function recoverStaleSocialPublishItems", pendingSelectorStart);
+const pendingSelector = pendingSelectorStart >= 0 && pendingSelectorEnd > pendingSelectorStart
+  ? publisher.slice(pendingSelectorStart, pendingSelectorEnd)
+  : "";
+if (!pendingSelector.includes('const statusPriority: SocialQueueStatus[] = ["partial", "queued", "failed"]')) {
+  failures.push("eligible partial social retries must be selected before new queued/failed rows so NULL scheduled_at items cannot starve them");
+}
+if (!pendingSelector.includes("for (const status of statusPriority)")) {
+  failures.push("social queue selection must fetch each status in explicit priority order within the worker batch limit");
+}
+
 const publisher = read("src/features/social/services/social-publishing.ts");
 const ytAutomation = read("src/features/videos/services/video-automation.ts");
 if (!publisher.includes("extractFacebookReelsNextAllowedAt")) failures.push("social queue must defer rate-limited Reels to the shared next-allowed time");
