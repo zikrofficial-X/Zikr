@@ -7,7 +7,7 @@
 - PR #208 merged: canonical exact permission matrix for all 39 Admin API handlers, enforced by `scripts/verify-admin-api-guards.mjs`.
 - Operational traffic/revenue dashboard work is consolidated from PRs #209/#210 into one follow-up branch.
 - Social publishing and video generation metrics include exact counts and UTC time windows.
-- Per-platform aggregation exposes counts only; no remote IDs or OAuth tokens.
+- Per-platform aggregation exposes delivery-record counts and outcomes only; it does not claim to count retry attempts and never exposes raw remote IDs or OAuth tokens.
 - Bounded analytics reads must match the exact count and remain at or below the configured limit, otherwise report unavailable.
 - Unit tests cover bounded-read completeness, platform aggregation, sensitive-field exclusion, and render-duration semantics.
 
