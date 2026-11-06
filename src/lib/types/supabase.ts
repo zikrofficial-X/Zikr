@@ -3578,6 +3578,54 @@ export type Database = {
         }
         Relationships: []
       }
+
+      social_post_insights: {
+        Row: {
+          captured_at: string
+          metrics: Json
+          period: string | null
+          platform: string
+          queue_id: string
+          scope: string
+          source: string
+          status: string | null
+          updated_at: string
+          video_id: string | null
+        }
+        Insert: {
+          captured_at: string
+          metrics?: Json
+          period?: string | null
+          platform: string
+          queue_id: string
+          scope: string
+          source: string
+          status?: string | null
+          updated_at?: string
+          video_id?: string | null
+        }
+        Update: {
+          captured_at?: string
+          metrics?: Json
+          period?: string | null
+          platform?: string
+          queue_id?: string
+          scope?: string
+          source?: string
+          status?: string | null
+          updated_at?: string
+          video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_post_insights_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "social_publish_queue"
+            referencedColumns: ["id"]
+          },
+        ]
+      },
       social_sync_jobs: {
         Row: {
           attempts: number
