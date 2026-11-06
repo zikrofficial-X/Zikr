@@ -35,7 +35,21 @@ if (!videoAutomation.includes("facebook_reels_next_allowed_at")) failures.push("
 
 if (!reelsCooldownMigration.includes("ADD COLUMN IF NOT EXISTS facebook_reels_next_allowed_at")) failures.push("Supabase must have a durable global Facebook Reels next-allowed column");
 
+
+
 const publisher = read("src/features/social/services/social-publishing.ts");
+
+const pendingSelectorStart = publisher.indexOf("export async function getPendingSocialPublishItems");
+const pendingSelectorEnd = publisher.indexOf("async function recoverStaleSocialPublishItems", pendingSelectorStart);
+const pendingSelector = pendingSelectorStart >= 0 && pendingSelectorEnd > pendingSelectorStart
+  ? publisher.slice(pendingSelectorStart, pendingSelectorEnd)
+  : "";
+if (!pendingSelector.includes('const statusPriority: SocialQueueStatus[] = ["partial", "queued", "failed"]')) {
+  failures.push("eligible partial social retries must be selected before new queued/failed rows so NULL scheduled_at items cannot starve them");
+}
+if (!pendingSelector.includes("for (const status of statusPriority)")) {
+  failures.push("social queue selection must fetch each status in explicit priority order within the worker batch limit");
+}
 const ytAutomation = read("src/features/videos/services/video-automation.ts");
 if (!publisher.includes("extractFacebookReelsNextAllowedAt")) failures.push("social queue must defer rate-limited Reels to the shared next-allowed time");
 if (!publisher.includes("facebookReelsNextAllowedAt")) failures.push("social queue must persist the Reels cooldown deadline per item");
@@ -62,7 +76,7 @@ if (!publisher.includes("getFacebookPageCredentials")) failures.push("Facebook p
 if (!publisher.includes("credentials.isEnabled")) failures.push("Facebook publisher must honor the explicit OAuth connection enable switch");
 if (!publisher.includes("isFacebookAuthFailure")) failures.push("Facebook auth failures must be classified separately");
 if (!publisher.includes("authBlocked: hasAuthFailure")) failures.push("Facebook auth failures must block repeated automatic retries");
-if (!publisher.includes("status.eq.failed")) failures.push("failed social queue items must be eligible for scheduled automatic retry");
+if (!pendingSelector.includes('const statusPriority: SocialQueueStatus[] = ["partial", "queued", "failed"]') || !pendingSelector.includes("status=eq.${status}")) failures.push("failed social queue items must remain eligible in bounded scheduled auto-retry priority");
 if (!publisher.includes("permanentFailure === true")) failures.push("permanent social failures must be excluded from automatic retry");
 if (!publisher.includes("socialRetryDelayMinutes")) failures.push("social retries must use bounded exponential backoff");
 if (!publisher.includes("staleRecovery: true")) failures.push("stale social processing recovery must be recorded");
