@@ -54,9 +54,15 @@ const facebookCallback = readFileSync(
   resolve("src/app/api/admin/social/facebook/callback/route.ts"),
   "utf8",
 );
-assert.match(facebookConnect, /FACEBOOK_INTEGRATION_RETIRED/);
-assert.match(facebookConnect, /status: 410/);
-assert.match(facebookCallback, /FACEBOOK_INTEGRATION_RETIRED/);
-assert.match(facebookCallback, /status: 410/);
+assert.match(facebookConnect, /requireAdminApi\("social.manage"\)/);
+assert.match(facebookConnect, /dialog\\/oauth/);
+assert.match(facebookConnect, /pages_manage_posts/);
+assert.doesNotMatch(facebookConnect, /FACEBOOK_INTEGRATION_RETIRED/);
+assert.match(facebookCallback, /requireAdminApi\("social.manage"\)/);
+assert.match(facebookCallback, /timingSafeEqual/);
+assert.match(facebookCallback, /saveFacebookPageCredential/);
+assert.match(facebookCallback, /pages_show_list/);
+assert.match(facebookCallback, /page_selection_required/);
+assert.doesNotMatch(facebookCallback, /FACEBOOK_INTEGRATION_RETIRED/);
 
-console.log("Facebook Reels historical metric parsing and external integration retirement tests passed.");
+console.log("Facebook Reels metric parsing and secure Page OAuth flow tests passed.");
