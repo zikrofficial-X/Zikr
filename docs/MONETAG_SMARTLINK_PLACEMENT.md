@@ -21,11 +21,11 @@ The link opens a new tab and uses `rel="nofollow sponsored noopener noreferrer"`
 
 ## Social video metadata
 
-External social publishing is retired. The SmartLink is not appended to YouTube descriptions, Facebook/Reels captions, or any other external platform metadata. Existing historical posts are not edited or republished.
+Social captions use approved platform metadata. Monetag SmartLinks remain website-only and are not appended to YouTube descriptions, Facebook/Reels captions, or any external platform metadata. Existing historical posts are not edited or republished.
 
 ## Publishing behavior
 
-The SmartLink is rendered only in the approved website placements above. The legacy social workflow is guarded by `if: false`, and the provider upload functions fail closed before making external requests. This website advertising placement does not enable social publishing or change historical social queue records.
+The SmartLink is rendered only in the approved website placements above. Social publishing uses a separate approval-gated workflow with no SmartLink injection. This website advertising placement does not change historical social queue records.
 
 ## Verification
 
