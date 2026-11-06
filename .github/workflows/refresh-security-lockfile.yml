@@ -1,6 +1,13 @@
 name: Temporary security dependency lock refresh
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - package.json
+      - pnpm-lock.yaml
+      - .github/workflows/refresh-security-lockfile.yml
   push:
     branches:
       - chore/security-dependency-refresh-20261106
