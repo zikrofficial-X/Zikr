@@ -249,15 +249,20 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const body = await request.json().catch(() => ({})) as { confirmation?: unknown };
+    const body = await request.json().catch(() => ({})) as { confirmation?: unknown; scope?: unknown };
     if (body.confirmation !== CONFIRMATION_PHRASE) {
       return NextResponse.json(
         { error: `اكتب العبارة التالية حرفيًا للتأكيد: ${CONFIRMATION_PHRASE}` },
         { status: 400 },
       );
     }
+    const scope = body.scope === "files" || body.scope === "memory" || body.scope === "both"
+      ? body.scope
+      : "both";
+    const includeFiles = scope === "files" || scope === "both";
+    const includeMemory = scope === "memory" || scope === "both";
 
-    cloudinaryConfig();
+    if (includeFiles) cloudinaryConfig();
 
     await pauseVideoAutomation();
     await setPurgeLock(true);
@@ -279,21 +284,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const assets = await listGeneratedVideos();
-    const storagePaths = await listAutomatedStorageObjects();
-    const cloudinaryErrors = await mapWithConcurrency(assets, 6, async asset => {
-      if (!asset.public_id) throw new Error("Generated video asset is missing its public ID.");
-      await deleteCloudinaryVideo(asset.public_id);
-    });
+    const assets = includeFiles ? await listGeneratedVideos() : [];
+    const storagePaths = includeFiles ? await listAutomatedStorageObjects() : [];
+    const cloudinaryErrors = includeFiles
+      ? await mapWithConcurrency(assets, 6, async asset => {
+          if (!asset.public_id) throw new Error("Generated video asset is missing its public ID.");
+          await deleteCloudinaryVideo(asset.public_id);
+        })
+      : [];
     if (cloudinaryErrors.length > 0) {
       throw new Error(
         `تعذر حذف ${cloudinaryErrors.length} ملفًا من Cloudinary. لم تُحذف سجلات الفيديو من قاعدة البيانات حتى يمكن إعادة المحاولة بأمان. ${cloudinaryErrors.slice(0, 3).join(" | ")}`,
       );
     }
 
-    const storageObjectsDeleted = await deleteAutomatedStorageObjects(storagePaths);
-    // Preserve generated catalog records for audit/history, but unpublish them
-    // and remove dead media URLs so no public page points to a deleted Cloudinary file.
+    const storageObjectsDeleted = includeFiles ? await deleteAutomatedStorageObjects(storagePaths) : 0;
+    // The site catalog is treated as project memory. It is always hidden during
+    // a purge; links are cleared only when the physical generated files are removed.
     const generatedCatalogRows = await supabaseServerAdminRequest<Array<{
       id: string;
       metadata: Record<string, unknown> | null;
@@ -305,30 +312,47 @@ export async function POST(request: NextRequest) {
     }
     const catalogUpdateErrors = await mapWithConcurrency(generatedCatalogRows ?? [], 6, async row => {
       const previousMetadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+      const nextMetadata = {
+        ...previousMetadata,
+        ...(includeFiles ? { generatedVideoUrl: null, videoUrl: null, mediaState: "purged" } : { mediaState: "unlinked" }),
+        mediaPurgedAt: includeFiles ? new Date().toISOString() : previousMetadata.mediaPurgedAt ?? null,
+        memoryUnlinkedAt: new Date().toISOString(),
+      };
       await supabaseServerAdminRequest("/rest/v1/videos?id=eq." + encodeURIComponent(row.id), {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify({
           published: false,
-          metadata: {
-            ...previousMetadata,
-            generatedVideoUrl: null,
-            videoUrl: null,
-            mediaState: "purged",
-            mediaPurgedAt: new Date().toISOString(),
-          },
+          metadata: nextMetadata,
           updated_at: new Date().toISOString(),
         }),
       });
+      await supabaseServerAdminRequest(
+        "/rest/v1/content_publish_queue?content_table=eq.videos&content_id=eq." +
+          encodeURIComponent(row.id) + "&status=in.(queued,processing)",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({
+            status: "failed",
+            error_message: "Internal video publication was stopped by the administrator's project-memory cleanup.",
+            updated_at: new Date().toISOString(),
+          }),
+        },
+      );
     });
     if (catalogUpdateErrors.length) {
-      throw new Error("Cloudinary media was removed, but some internal catalog records could not be unpublished: " + catalogUpdateErrors.slice(0, 3).join(" | "));
+      throw new Error("Some internal catalog records or scheduled publication entries could not be safely unlinked: " + catalogUpdateErrors.slice(0, 3).join(" | "));
     }
     const catalogRecordsHidden = generatedCatalogRows?.length ?? 0;
-    // The historical social queue is not part of project memory and is left untouched.
+    // Historical external platform queue records are never read or modified.
     const socialQueueRowsPreserved = true;
-    const generationRowsDeleted = await deleteRows("video_generation_requests", "id=not.is.null");
-    const automationRunsDeleted = await deleteRows("video_automation_runs", "id=not.is.null");
+    const generationRowsDeleted = includeMemory
+      ? await deleteRows("video_generation_requests", "id=not.is.null")
+      : 0;
+    const automationRunsDeleted = includeMemory
+      ? await deleteRows("video_automation_runs", "id=not.is.null")
+      : 0;
 
     await setPurgeLock(false);
     await recordAdminAuditEvent({
@@ -336,12 +360,15 @@ export async function POST(request: NextRequest) {
       permission: "video.delete",
       resourceType: "generated_video_library",
       metadata: {
+        scope,
         cloudinaryAssetsDeleted: assets.length,
         cloudinaryBytesDeleted: assets.reduce((sum, asset) => sum + Number(asset.bytes ?? 0), 0),
         storageObjectsDeleted,
         socialQueueRowsPreserved,
         publicVideoCatalogPreserved: true,
         catalogRecordsHidden,
+        generationMemoryDeleted: includeMemory,
+        physicalFilesDeleted: includeFiles,
         generationRowsDeleted,
         automationRunsDeleted,
         externalSocialPostsDeleted: false,
@@ -357,16 +384,23 @@ export async function POST(request: NextRequest) {
         ok: true,
         paused: true,
         automationRemainsDisabled: true,
+        scope,
         cloudinaryAssetsDeleted: assets.length,
         cloudinaryBytesDeleted: assets.reduce((sum, asset) => sum + Number(asset.bytes ?? 0), 0),
         storageObjectsDeleted,
         socialQueueRowsPreserved,
         publicVideoCatalogPreserved: true,
         catalogRecordsHidden,
+        generationMemoryDeleted: includeMemory,
+        physicalFilesDeleted: includeFiles,
         generationRowsDeleted,
         automationRunsDeleted,
         externalSocialPostsDeleted: false,
-        note: "تم حذف ملفات Cloudinary المولّدة، وإخفاء سجلات الفيديو الداخلية وتفريغ روابط الملفات منها مع إبقاء العناوين ومعلومات المصدر وسجل التدقيق. سجلات المنصات القديمة لم تُعدّل.",
+        note: includeFiles && includeMemory
+          ? "تم حذف ملفات التوليد ورفعها من الذاكرة الداخلية، مع إبقاء سجل التدقيق والعناوين الأساسية. سجلات المنصات الخارجية لم تُعدّل."
+          : includeFiles
+            ? "تم حذف ملفات الفيديو فقط، مع إبقاء سجل التوليد ومعلومات المصادر كذاكرة تاريخية. سجلات المنصات الخارجية لم تُعدّل."
+            : "تم فك ربط ذاكرة الفيديوهات وإخفاؤها من الموقع مع إبقاء ملفات Cloudinary كما هي. سجلات المنصات الخارجية لم تُعدّل.",
       },
       { headers: { "Cache-Control": "no-store" } },
     );
