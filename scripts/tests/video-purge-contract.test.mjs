@@ -13,7 +13,7 @@ const apiGuards = read("scripts/verify-admin-api-guards.mjs");
 
 for (const token of [
   'requireAdminApi("video.delete")',
-  'CONFIRMATION_PHRASE = "امسح كل الفيديوهات"',
+  'CONFIRMATION_PHRASE = "امسح الفيديوهات المولّدة فقط"',
   "resource_type:video AND tags=automated",
   'asset.public_id.startsWith("auto-")',
   'tags.has("zikr-generated")',
