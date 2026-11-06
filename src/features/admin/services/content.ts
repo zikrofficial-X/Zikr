@@ -63,7 +63,7 @@ export async function getManagedContent(): Promise<ManagedContentItem[]> {
           .limit(20),
         supabase
           .from("pinned_messages")
-          .select("id, title, is_active, created_at, updated_at")
+          .select("id, title, published, created_at, updated_at")
           .order("created_at", { ascending: false })
           .limit(20),
       ]);
@@ -124,7 +124,7 @@ export async function getManagedContent(): Promise<ManagedContentItem[]> {
       ...(pinnedRes.data ?? []).map((item) => ({
         id: item.id,
         title: item.title ?? "رسالة مثبتة",
-        published: item.is_active ?? false,
+        published: item.published ?? false,
         views: 0,
         created_at: item.created_at,
         updated_at: item.updated_at,
@@ -238,7 +238,6 @@ export async function toggleManagedContent(
   optimisticUpdatedAt?: string | null,
 ): Promise<void> {
   assertManagedContentTarget(table, id);
-  const column = table === "pinned_messages" ? "is_active" : "published";
   const filter = `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}${optimisticUpdatedAt ? `&updated_at=eq.${encodeURIComponent(optimisticUpdatedAt)}` : ""}`;
   const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
     filter,
@@ -249,7 +248,7 @@ export async function toggleManagedContent(
         Prefer: "return=representation",
       },
       body: JSON.stringify({
-        [column]: published,
+        published,
         updated_at: new Date().toISOString(),
       }),
     },
@@ -267,19 +266,17 @@ export async function deleteManagedContent(
   optimisticUpdatedAt?: string | null,
 ): Promise<void> {
   assertManagedContentTarget(table, id);
-  const column = table === "pinned_messages" ? "is_active" : "published";
-
   const current = await supabaseServerAdminRequest<
     Array<Record<string, unknown>>
   >(
-    `/rest/v1/${table}?select=id,${column},updated_at&id=eq.${encodeURIComponent(
+    `/rest/v1/${table}?select=id,published,updated_at&id=eq.${encodeURIComponent(
       id,
     )}&limit=1`,
     { method: "GET" },
   );
 
   if (!current[0]) throw new Error("العنصر غير موجود.");
-  if (Boolean(current[0][column])) {
+  if (Boolean(current[0].published)) {
     throw new Error(
       "لا يمكن حذف عنصر منشور. قم بإخفائه أولاً ثم أعد المحاولة.",
     );
