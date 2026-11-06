@@ -329,6 +329,7 @@ if (!publisher.includes("kidsAudience = true") || !publisher.includes("!kidsAudi
 if (!ytAutomation.includes("appendSmartLinkDisclosure") || !ytAutomation.includes("content.audience !== 'kids'")) failures.push("video metadata generation must include the disclosed SmartLink only for non-kids content");
 if (!ytAutomation.includes("MONETAG_SMARTLINK_YOUTUBE_TAGS")) failures.push("generated YouTube metadata must include SmartLink discovery tags for eligible videos");
 
+const traffic = read("src/features/admin/services/traffic-revenue.ts");
 const youtubePublishingHealth = read("src/features/social/services/youtube-publishing-health.ts");
 const youtubeOAuthCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
 const youtubeOAuthConnect = read("src/app/api/admin/social/youtube/connect/route.ts");
