@@ -156,12 +156,15 @@ export async function GET() {
         const unavailable = Array.isArray(item.metadata?.unavailablePlatforms) && item.metadata?.unavailablePlatforms.includes(platform);
         const approvalDeferred = Array.isArray(item.metadata?.approvalDeferredPlatforms) && item.metadata?.approvalDeferredPlatforms.includes(platform);
         if (isDelivered || (!result && item.status === "published")) acc[platform].published += 1;
-        else if (unavailable || approvalDeferred || (!result && ["queued", "processing"].includes(item.status))) acc[platform].queued += 1;
-        else if (result?.ok === false || item.status === "failed" || item.status === "partial") acc[platform].failed += 1;
+        else if (unavailable || approvalDeferred || !result) {
+          if (item.status === "failed" && !unavailable && !approvalDeferred) acc[platform].failed += 1;
+          else acc[platform].queued += 1;
+        } else if (result.ok === false) acc[platform].failed += 1;
         else acc[platform].queued += 1;
       }
       return acc;
-    }, {});    const oldestQueuedAt =
+    }, {});
+    const oldestQueuedAt =
       rows
         .filter(
           item => item.status === "queued" || item.status === "processing"
@@ -218,6 +221,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json().catch(() => ({}))) as {
       action?: unknown;
       ids?: unknown;
+      platforms?: unknown;
     };
     const action = typeof body.action === "string" ? body.action : "";
     if (["retry", "retry_all_failed", "run_worker"].includes(action)) {
@@ -237,6 +241,10 @@ export async function POST(request: NextRequest) {
             )
           ),
         ]
+      : [];
+    const allowedPlatforms = new Set(["facebook", "facebook_reels", "youtube"]);
+    const requestedPlatforms = Array.isArray(body.platforms)
+      ? [...new Set(body.platforms.filter((value): value is string => typeof value === "string" && allowedPlatforms.has(value)))]
       : [];
     if (action === "test_facebook") {
       const health = await getFacebookPageConnectionHealth();
@@ -318,7 +326,10 @@ export async function POST(request: NextRequest) {
       let affected = 0;
       for (const item of items ?? []) {
         if (!retryableStatuses.has(item.status)) continue;
-        const platforms = retryPlatforms(item);
+        const eligiblePlatforms = retryPlatforms(item);
+        const platforms = requestedPlatforms.length > 0
+          ? eligiblePlatforms.filter(platform => requestedPlatforms.includes(platform))
+          : eligiblePlatforms;
         if (platforms.length === 0) {
           // A retry is complete only when every requested platform has a recorded
           // successful remote ID. A Facebook auth-block must not be hidden just
