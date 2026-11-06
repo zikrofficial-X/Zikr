@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 
 const CONFIRMATION_PHRASE = "امسح الفيديوهات المولّدة فقط";
+type PurgeScope = "files" | "memory" | "both";
 
 type PurgeResult = {
   ok: true;
+  scope: PurgeScope;
+  automationResumed: boolean;
   cloudinaryAssetsDeleted: number;
   cloudinaryBytesDeleted: number;
   storageObjectsDeleted: number;
@@ -23,6 +26,7 @@ export function PurgeGeneratedVideosControl({
   onCompleted?: () => void | Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [scope, setScope] = useState<PurgeScope>("both");
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -52,12 +56,14 @@ export function PurgeGeneratedVideosControl({
       const response = await fetch("/api/admin/video-purge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmation }),
+        body: JSON.stringify({ confirmation, scope }),
       });
       const payload = await response.json().catch(() => ({})) as {
         error?: string;
         paused?: boolean;
         ok?: boolean;
+        scope?: PurgeScope;
+        automationResumed?: boolean;
         cloudinaryAssetsDeleted?: number;
         cloudinaryBytesDeleted?: number;
         storageObjectsDeleted?: number;
@@ -78,6 +84,8 @@ export function PurgeGeneratedVideosControl({
       }
       const completed: PurgeResult = {
         ok: true,
+        scope: payload.scope ?? scope,
+        automationResumed: payload.automationResumed === true,
         cloudinaryAssetsDeleted: payload.cloudinaryAssetsDeleted ?? 0,
         cloudinaryBytesDeleted: payload.cloudinaryBytesDeleted ?? 0,
         storageObjectsDeleted: payload.storageObjectsDeleted ?? 0,
@@ -91,7 +99,13 @@ export function PurgeGeneratedVideosControl({
       setResult(completed);
       setConfirmation("");
       setExpanded(false);
-      setMessage("تم حذف ملفات الفيديو المولّدة، وإخفاء سجلاتها داخل المكتبة مع الاحتفاظ بالعناوين ومعلومات المصدر وسجل التدقيق. سجلات المنصات القديمة لم تتغير.");
+      setMessage(
+        scope === "files"
+          ? "تم حذف ملفات الفيديو من التخزين، مع الاحتفاظ بذاكرة المصدر وسجلات التوليد."
+          : scope === "memory"
+            ? "تم إخفاء ذاكرة الفيديوهات داخل ZIKR وفصلها عن المكتبة، مع الاحتفاظ بملفات Cloudinary."
+            : "تم حذف ملفات الفيديو المولّدة وإخفاء ذاكرة التوليد الداخلية، مع الاحتفاظ بسجل التدقيق.",
+      );
       await onCompleted?.();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر تصفير مكتبة الفيديو.");
@@ -108,7 +122,7 @@ export function PurgeGeneratedVideosControl({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-red-200">تصفير مكتبة الفيديوهات</p>
           <p className="mt-1 text-xs leading-6 text-brand-cream/55">
-            حذف ملفات الفيديو التي ولّدها ZIKR من Cloudinary وSupabase Storage. ستظل عناوين الفيديو ومصادرها محفوظة، لكن سجلات الفيديو المولّدة ستصبح مخفية وتُفرّغ روابط الملفات المحذوفة منها.
+            اختر بوضوح هل تريد حذف الملفات المولّدة، أو ذاكرة المشروع الداخلية، أو الاثنين معًا. لا توجد أي عملية حذف على YouTube أو Facebook أو أي منصة خارجية.
           </p>
         </div>
         <button
@@ -127,11 +141,29 @@ export function PurgeGeneratedVideosControl({
 
       {expanded && (
         <div className="mt-4 space-y-3 border-t border-red-400/15 pt-4">
-          <p className="text-sm leading-7 text-brand-cream/80">
-            هذا الإجراء نهائي ولا يمكن التراجع عنه. سيحذف الملفات المولّدة والطلبات وسجلات تشغيل التوليد، ويخفي سجلات الفيديو الداخلية مع الاحتفاظ بالعناوين ومعلومات المصدر. لن يحذف الفيديوهات اليدوية الأخرى أو القوالب أو الأصوات أو الحسابات أو سجل المنصات التاريخي.
-          </p>
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-brand-cream/75" htmlFor="video-purge-scope">نطاق الحذف</label>
+            <select
+              id="video-purge-scope"
+              value={scope}
+              onChange={event => setScope(event.target.value as PurgeScope)}
+              disabled={busy}
+              className="w-full rounded-xl border border-brand-gold/20 bg-black/30 px-3 py-3 text-sm text-brand-cream"
+            >
+              <option value="files">ملفات الفيديو فقط — Cloudinary وSupabase Storage</option>
+              <option value="memory">ذاكرة المشروع فقط — إخفاء مكتبة ZIKR وسجلات التوليد، مع إبقاء الملفات</option>
+              <option value="both">الملفات وذاكرة المشروع معًا</option>
+            </select>
+            <p className="text-xs leading-6 text-brand-cream/55">
+              {scope === "files"
+                ? "سيتم حذف ملفات MP4، وإخفاء سجلات الفيديو حتى لا تظهر روابط مكسورة. ستبقى عناوينها ومصادرها وسجلات التوليد."
+                : scope === "memory"
+                  ? "سيتم إخفاء سجلات الفيديو الداخلية وإزالة طلبات وسجلات التوليد، بينما تبقى ملفات Cloudinary دون حذف."
+                  : "سيتم حذف ملفات MP4 وإخفاء ذاكرة الفيديو الداخلية وإزالة سجلات التوليد. ستبقى سجلات التدقيق والمنصات الخارجية دون تغيير."}
+            </p>
+          </div>
           <p className="text-xs leading-6 text-amber-200/90">
-            ملاحظة: هذا الإجراء يمسح ذاكرة ملفات الفيديو المولّدة داخل ZIKR فقط. لا يرسل طلبات إلى أي منصة خارجية ولا يغيّر أي سجل نشر تاريخي.
+            لا يتأثر المحتوى اليدوي أو القوالب أو الأصوات أو الحسابات. سجلات النشر الاجتماعي التاريخية ومنشورات الحسابات الخارجية لن تُحذف أو تُعدّل.
           </p>
           <label className="block space-y-2">
             <span className="text-xs text-brand-cream/60">
@@ -185,6 +217,9 @@ export function PurgeGeneratedVideosControl({
         <div role="status" className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs leading-6 text-emerald-100">
           <p className="font-semibold">{message}</p>
           <p className="mt-1">
+            النطاق: {result.scope === "files" ? "الملفات فقط" : result.scope === "memory" ? "ذاكرة المشروع فقط" : "الملفات والذاكرة"} · إعادة تشغيل التلقائي: {result.automationResumed ? "تمت إعادة تشغيله" : "ظل متوقفًا كما كان قبل العملية"}
+          </p>
+          <p>
             ملفات Cloudinary: {result.cloudinaryAssetsDeleted} · المساحة المحررة: {(result.cloudinaryBytesDeleted / (1024 * 1024)).toFixed(1)} MiB · عناصر Storage: {result.storageObjectsDeleted}
           </p>
           <p>
