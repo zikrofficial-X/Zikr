@@ -165,3 +165,15 @@ Production video generation is configured for a daily target of 20, in four UTC 
 External video publishing currently **requires human QA approval** against the five recorded checks (source, audio, visuals, captions, rights). The worker revalidates that approval and the exact video snapshot before each external upload. This is deliberate: do not disable the gate or mark reviews approved without evidence. Therefore, OAuth connection and daily generation can be automatic after initial setup, but unattended external publishing is not fully enabled until a verified automated-review policy replaces the human approval requirement.
 
 The live Supabase project has the private `video_likes` table and the RLS-protected `video_like_counts` summary table. Only authenticated users can add/remove their own likes; the public site reads aggregate counts, not other users' identities.
+
+
+### OAuth callback and Facebook Page scopes
+
+The production Google OAuth web client currently backs both the ZIKR Google sign-in configuration and the YouTube publishing connection. Its **Authorized redirect URIs** must contain both exact values:
+
+- YouTube publishing callback: `https://zikrmediaofficial.vercel.app/api/admin/social/youtube/callback`
+- Supabase Google provider callback: `https://zqtssvlvmkzeeyqghqfk.supabase.co/auth/v1/callback`
+
+Do not substitute the application's post-login `/auth/callback` route for the Supabase provider callback. Google validates the redirect URI against the specific OAuth client ID used in the request; protocol, hostname, path, and trailing slash must match exactly. The YouTube worker uses the same `YOUTUBE_CLIENT_ID` during authorization and token exchange.
+
+Facebook Page publishing requests the least-privilege permissions required by the implemented workflow: `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, and `read_insights`. The Page comment-moderation permission `pages_manage_engagement` is intentionally not requested or required for video posting. Add it only if a future, explicitly implemented comment-management feature needs it and Meta has enabled the permission for this app.
