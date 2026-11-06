@@ -34,7 +34,7 @@ export async function processSocialPublishQueue(limit = 10) {
     console.error("[social-worker] Facebook Reels insights sync unavailable:", error instanceof Error ? error.message : "Unknown Meta insights error");
     return { configured: false, candidates: 0, fetched: 0, updated: 0, failed: 0 };
   });
-  if (facebookInsights.updated > 0 || facebookInsights.failed > 0) {
+  if (!facebookInsights.configured || facebookInsights.updated > 0 || facebookInsights.failed > 0) {
     console.log("[social-worker] Facebook Reels insights sync:", JSON.stringify(facebookInsights));
   }
 
