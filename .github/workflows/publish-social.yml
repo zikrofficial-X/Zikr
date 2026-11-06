@@ -45,7 +45,7 @@ jobs:
       SOCIAL_QUEUE_RESET_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.operation == 'reset_queued_video_media' }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       BACKGROUND_JOB_TARGET: "social"
-      SOCIAL_PUBLISH_BATCH_SIZE: "1"
+      SOCIAL_PUBLISH_BATCH_SIZE: "2"
       YOUTUBE_UPLOAD_PRIVACY: "public"
       SOCIAL_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
