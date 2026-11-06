@@ -25,6 +25,7 @@ assert.match(runner, /Social queue reconciliation skipped while public publishin
 assert.match(adminApi, /social_post_insights/);
 assert.match(adminApi, /autoPublishValue === true/);
 assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.social_post_insights/);
+assert.doesNotMatch(migration, /REFERENCES public\\.social_publish_queue/i);
 assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
 assert.match(migration, /FROM PUBLIC, anon, authenticated/);
 assert.match(migration, /FROM public\.social_publish_queue/);
