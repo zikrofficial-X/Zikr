@@ -255,6 +255,12 @@ async function deleteRows(table: string, filter: string): Promise<number> {
   return rows?.length ?? 0;
 }
 
+export async function GET() {
+  const auth = await requireAdminApi("video.delete");
+  if (!auth.ok) return NextResponse.json({ allowed: false }, { status: auth.status });
+  return NextResponse.json({ allowed: true }, { headers: { "Cache-Control": "no-store" } });
+}
+
 export async function POST(request: NextRequest) {
   const auth = await requireAdminApi("video.delete");
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
