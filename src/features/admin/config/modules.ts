@@ -72,7 +72,6 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     status: "active",
   },
   {
-  {
     key: "memory",
     label: "الذاكرة والمكتبة",
     description: "ملفات الوسائط وذاكرة المحتوى الداخلية ومخرجات التوليد.",
