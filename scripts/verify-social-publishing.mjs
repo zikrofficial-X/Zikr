@@ -41,6 +41,9 @@ if (!publisher.includes("extractFacebookReelsNextAllowedAt")) failures.push("soc
 if (!publisher.includes("facebookReelsNextAllowedAt")) failures.push("social queue must persist the Reels cooldown deadline per item");
 if (!publisher.includes("isFacebookReelsCooldownDeferredError")) failures.push("expected local Reels cooldown must be classified as a deferral");
 if (!publisher.includes("deferredPlatforms: deferredFailures.map")) failures.push("social queue must persist deferred platform metadata separately from errors");
+if (!publisher.includes("const publishMetadata = {")) failures.push("social publish results must be merged into one durable metadata snapshot before cleanup");
+if (!publisher.includes("disposePublishedVideo({ ...item, metadata: publishMetadata })")) failures.push("published-video cleanup must preserve YouTube/Facebook remote post IDs written by the publisher");
+
 if (!publisher.includes("operationalFailures")) failures.push("expected Reels pacing must not be written as a publication error");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
 if (!socialWorker.includes("retryPendingPublishedVideoCleanup")) failures.push("scheduled social worker must retry published-media cleanup without a separate manual sweep");
