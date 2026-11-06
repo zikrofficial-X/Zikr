@@ -142,7 +142,7 @@ export async function TrafficRevenuePanel() {
             {snapshot.socialPlatformStats.map((item) => (
               <div key={item.platform} className="grid grid-cols-2 sm:grid-cols-2 sm:grid-cols-5 gap-2 border-b border-brand-gold/5 px-4 py-3 text-xs last:border-0">
                 <span className="font-semibold text-brand-cream/80">{platformLabels[item.platform] ?? item.platform}</span>
-                <span className="text-center tabular-nums text-brand-cream/65">{format(item.attempts)}</span>
+                <span className="text-center tabular-nums text-brand-cream/65">{format(item.deliveries)}</span>
                 <span className="text-center tabular-nums text-emerald-200/80">{format(item.successful)}</span>
                 <span className="text-center tabular-nums text-amber-100/75">{format(item.failed)}</span>
                 <span className="text-center tabular-nums text-brand-cream/65">{format(item.remoteIds)}</span>
