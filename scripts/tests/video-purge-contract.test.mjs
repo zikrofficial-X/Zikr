@@ -47,7 +47,7 @@ assert.ok(videoWorker.includes("video_automation_enabled,video_purge_in_progress
 assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
 assert.ok(generationStudio.includes("PurgeGeneratedVideosControl"));
 assert.ok(read("src/app/admin/media/media-client.tsx").includes("PurgeGeneratedVideosControl"));
-assert.ok(read("src/app/admin/media/page.tsx").includes("AdminMediaClient"));
+assert.ok(read("src/app/admin/memory/page.tsx").includes("AdminMediaClient"));
 assert.ok(control.includes("امسح الفيديوهات المولّدة فقط"));
 assert.ok(control.includes('fetch("/api/admin/video-purge"'));
 assert.ok(control.includes("setAuthorized(allowed)"));
