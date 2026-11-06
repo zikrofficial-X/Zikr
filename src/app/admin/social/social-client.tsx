@@ -62,7 +62,8 @@ type SocialAnalytics = {
 type AutomationStatus = {
   enabled: boolean;
   provider: string;
-  scheduleMinutes: number;
+  trigger: string;
+  approvalRequired: boolean;
   note: string;
 };
 
@@ -230,8 +231,9 @@ export default function AdminSocialPage() {
   const [automation, setAutomation] = useState<AutomationStatus>({
     enabled: true,
     provider: "GitHub Actions",
-    scheduleMinutes: 15,
-    note: "النشر التلقائي مفعّل كل 15 دقيقة.",
+    trigger: "after_video_generation_or_manual",
+    approvalRequired: true,
+    note: "النشر بعد توليد الفيديو، وبموافقة الجودة البشرية.",
   });
   const [oldestQueuedAt, setOldestQueuedAt] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | Status>("all");
@@ -250,7 +252,7 @@ export default function AdminSocialPage() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/admin/social", { cache: "no-store" });
+      const response = await fetch("/api/admin/social");
       const payload = (await response.json().catch(() => ({}))) as {
         items?: QueueItem[];
         health?: Health;
@@ -270,7 +272,8 @@ export default function AdminSocialPage() {
       setAutomation(payload.automation ?? {
         enabled: false,
         provider: "GitHub Actions",
-        scheduleMinutes: 15,
+        trigger: "after_video_generation_or_manual",
+        approvalRequired: true,
         note: "تعذر التحقق من حالة النشر؛ يظل النشر متوقفًا بأمان.",
       });
       setOldestQueuedAt(payload.oldestQueuedAt ?? null);
@@ -300,7 +303,7 @@ export default function AdminSocialPage() {
       const youtubeMessages: Record<string, string> = {
         configuration_missing: "إعداد Google OAuth غير مكتمل. تحقق من YOUTUBE_CLIENT_ID وYOUTUBE_CLIENT_SECRET.",
         redirect_uri_mismatch: "عنوان العودة غير مسجل في Google Cloud. أضف https://zikrmediaofficial.vercel.app/api/admin/social/youtube/callback إلى Authorized redirect URIs.",
-        permission_missing: "لم تُمنح صلاحيات YouTube المطلوبة. أعد التفويض ووافق على قراءة القناة ورفع الفيديو وتقارير Analytics وحذف الفيديوهات المنشورة.",
+        permission_missing: "لم تُمنح صلاحية رفع الفيديو. أعد التفويض ووافق على قراءة القناة ورفع الفيديو وتقارير Analytics فقط؛ لا نطلب صلاحية الحذف.",
         authorization_denied: "تم إلغاء تفويض YouTube. لم يتم تغيير اتصال النشر الحالي.",
         state_mismatch: "انتهت جلسة ربط YouTube لأسباب أمنية. ابدأ الربط من جديد.",
         admin_session_missing: "انتهت جلسة الإدارة أثناء الرجوع من Google. سجّل الدخول ثم أعد ربط YouTube.",
@@ -636,7 +639,7 @@ export default function AdminSocialPage() {
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <Button variant="outline" disabled={busy} onClick={() => void connectYouTube()}>
-              إعادة ربط YouTube بصلاحيات القراءة
+              إعادة تفويض YouTube للرفع والتحليلات
             </Button>
             <Button variant="outline" disabled={busy} onClick={() => void connectFacebook()}>
               ربط Facebook عبر OAuth
@@ -672,7 +675,7 @@ export default function AdminSocialPage() {
               </p>
             </div>
             <span className="inline-flex w-fit items-center rounded-full border border-brand-gold/15 px-3 py-1 text-xs text-brand-gold/80">
-              {automation.enabled ? `الجدولة: كل ${automation.scheduleMinutes} دقيقة` : "النشر متوقف"}
+              {automation.enabled ? "بعد توليد الفيديو أو تشغيل يدوي — بموافقة الجودة" : "النشر متوقف"}
             </span>
           </div>
         </div>

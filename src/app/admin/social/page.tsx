@@ -1,5 +1,14 @@
-import { redirect } from "next/navigation";
+import { Container } from "@/components/ui/container";
+import { requireAdminPermission } from "@/features/admin/services/admin";
+import AdminSocialClient from "./social-client";
 
-export default function AdminSocialPage() {
-  redirect("/admin/memory");
+export const dynamic = "force-dynamic";
+
+export default async function AdminSocialPage() {
+  await requireAdminPermission("social.manage");
+  return (
+    <Container className="py-8">
+      <AdminSocialClient />
+    </Container>
+  );
 }

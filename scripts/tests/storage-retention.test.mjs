@@ -8,7 +8,7 @@ import {
   selectProtectedAndroidTags,
 } from "../cleanup-supabase-storage.mjs";
 
-const supabaseUrl = "https://ymxdswkaxafakugktsim.supabase.co";
+const supabaseUrl = "https://zqtssvlvmkzeeyqghqfk.supabase.co";
 const publicUrl = `${supabaseUrl}/storage/v1/object/public/videos/automated/story:20750:11.mp4`;
 const now = new Date("2026-10-30T12:00:00.000Z");
 const cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();

@@ -20,9 +20,9 @@ pnpm ci:build:report
 
 `android-rebuild` pins these non-secret build settings in `.circleci/config.yml`:
 
-- `NEXT_PUBLIC_SUPABASE_URL=https://ymxdswkaxafakugktsim.supabase.co`
+- `NEXT_PUBLIC_SUPABASE_URL=https://zqtssvlvmkzeeyqghqfk.supabase.co`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the public anon key; it is not a service-role secret)
-- `SUPABASE_URL=https://ymxdswkaxafakugktsim.supabase.co`
+- `SUPABASE_URL=https://zqtssvlvmkzeeyqghqfk.supabase.co`
 
 The following values must be available before the Android job starts:
 
@@ -45,7 +45,7 @@ CircleCI owns the recurring English article/Hadith synchronization schedule. Git
 
 The scheduled `english-content-sync` job does not attach the `android-signing` context. It requires these CircleCI **project environment variables**:
 
-- `SUPABASE_URL=https://ymxdswkaxafakugktsim.supabase.co`
+- `SUPABASE_URL=https://zqtssvlvmkzeeyqghqfk.supabase.co`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `GEMINI_API_KEY`
 

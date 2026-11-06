@@ -56,7 +56,7 @@ const OPTIONAL = [
 ];
 
 const CANONICAL_SITE = "https://zikrmediaofficial.vercel.app";
-const EXPECTED_SUPABASE = "https://ymxdswkaxafakugktsim.supabase.co";
+const EXPECTED_SUPABASE = "https://zqtssvlvmkzeeyqghqfk.supabase.co";
 const results = [];
 
 const add = (status, name, detail) => results.push({ status, name, detail });

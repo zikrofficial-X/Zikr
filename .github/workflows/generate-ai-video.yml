@@ -33,8 +33,8 @@ jobs:
     timeout-minutes: 30
     env:
       # The canonical Supabase URL is public configuration; only the service-role key remains secret.
-      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
-      NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
+      SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
@@ -47,6 +47,12 @@ jobs:
       GEMINI_MODEL: gemini-3.1-flash-lite
       GEMINI_AUDIO_SMOKE_TEST: "false"
       AUTO_VIDEO_ENABLED: "true"
+      AUTO_VIDEO_PUBLISH_ENABLED: "true"
+      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      FACEBOOK_PUBLISHING_REQUESTED: ${{ vars.FACEBOOK_PUBLISHING_ENABLED || 'true' }}
+      YOUTUBE_PUBLISHING_REQUESTED: ${{ vars.YOUTUBE_PUBLISHING_ENABLED || 'true' }}
       AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '10' }}
       DAILY_VIDEO_TARGET: "20"
       AUTO_VIDEO_URGENT: ${{ inputs.urgent || 'false' }}
@@ -70,7 +76,7 @@ jobs:
       HF_VIDEO_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
       # Generate on free visual AI providers with deterministic FFmpeg fallback; keep completed media in ZIKR only.
       AUTO_VIDEO_SECONDS: "20"
-      # Generation only. Completed video assets are retained in the ZIKR internal media library.
+      # Video assets are registered internally; social distribution is queued only for fresh jobs and held for human QA approval.
       BACKGROUND_JOB_TARGET: "videos"
       VIDEO_TEMPLATE_VERSION: "2026-11-06-composition-sync-v8"
       VIDEO_OUTPUT_CRF: "17"

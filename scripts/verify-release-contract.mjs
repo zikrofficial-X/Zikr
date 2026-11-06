@@ -134,9 +134,9 @@ assert.ok(recoveryDispatch.includes("ref: isTagDispatch ? tag : recoveryBranch")
 
 assert.ok(circle.includes('REPOSITORY="zikrofficial-X/Zikr"') && circle.includes('https://github.com/${REPOSITORY}/releases/download/'), "CircleCI Android release metadata must use GitHub Releases in the canonical repository");
 const androidJob = circle.split("  android-rebuild:")[1]?.split("\n  security-audit:")[0] ?? "";
-assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co"), "Android job must use the canonical public Supabase URL");
+assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co"), "Android job must use the canonical public Supabase URL");
 assert.ok(androidJob.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY:"), "Android job must declare the public Supabase anon key required by preflight");
-assert.ok(!androidJob.includes("\n      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co"), "Android artifact publisher must not configure a Supabase storage URL");
+assert.ok(!androidJob.includes("\n      SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co"), "Android artifact publisher must not configure a Supabase storage URL");
 assert.ok(!androidJob.includes("SUPABASE_SERVICE_ROLE_KEY"), "Android artifact publisher must not validate the Supabase service-role key");
 assert.ok(androidJob.includes("GH_TOKEN"), "Android artifact publisher must use a protected GitHub token");
 const releaseWorkflow = circle.split("workflows:\n")[1] ?? "";

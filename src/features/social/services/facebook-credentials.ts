@@ -303,6 +303,84 @@ export async function getFacebookPageConnectionHealth(): Promise<FacebookConnect
   }
 }
 
+export type FacebookPublicProfile = {
+  externalId: string | null;
+  name: string;
+  pageUrl: string;
+  avatarUrl: string | null;
+  coverUrl: string | null;
+  followersCount: number | null;
+  likesCount: number | null;
+};
+
+export async function saveFacebookPublicProfile(input: {
+  pageId: string;
+  pageName: string;
+}): Promise<void> {
+  const now = new Date().toISOString();
+  await supabaseServerAdminRequest(
+    "/rest/v1/social_platform_profiles?on_conflict=platform",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify({
+        platform: "facebook",
+        external_id: input.pageId,
+        handle: null,
+        name: input.pageName,
+        description: "",
+        category: "media",
+        website: null,
+        avatar_url: null,
+        cover_url: null,
+        page_url: "https://www.facebook.com/" + encodeURIComponent(input.pageId),
+        subscribers_count: null,
+        followers_count: null,
+        likes_count: null,
+        following_count: null,
+        view_count: null,
+        video_count: null,
+        synced_at: now,
+        status: "ok",
+        last_error: null,
+        updated_at: now,
+      }),
+    },
+  );
+}
+
+export async function getFacebookPublicProfile(): Promise<FacebookPublicProfile | null> {
+  try {
+    const rows = await supabaseServerAdminRequest<Array<{
+      external_id: string | null;
+      name: string;
+      page_url: string;
+      avatar_url: string | null;
+      cover_url: string | null;
+      followers_count: number | null;
+      likes_count: number | null;
+    }>>(
+      "/rest/v1/social_platform_profiles?platform=eq.facebook&select=external_id,name,page_url,avatar_url,cover_url,followers_count,likes_count&limit=1",
+    );
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (!row) return null;
+    return {
+      externalId: row.external_id,
+      name: row.name,
+      pageUrl: row.page_url,
+      avatarUrl: row.avatar_url,
+      coverUrl: row.cover_url,
+      followersCount: row.followers_count,
+      likesCount: row.likes_count,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function saveFacebookPageCredential(input: {
   pageId: string;
   pageName: string;

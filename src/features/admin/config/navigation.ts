@@ -93,6 +93,7 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
       { href: "/admin/audio/adhan", label: "الأذان", permission: "audio.manage", icon: "radio" },
       { href: "/admin/audio/tts", label: "تحويل النص إلى صوت", permission: "audio.manage", icon: "mic-2" },
       { href: "/admin/site-audio", label: "صوت الموقع والتذكيرات", permission: "audio.manage", icon: "bell" },
+      { href: "/admin/social", label: "مركز النشر الاجتماعي", permission: "social.manage", icon: "send" },
     ],
   },
   {

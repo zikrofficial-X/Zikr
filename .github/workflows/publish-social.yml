@@ -1,18 +1,21 @@
-name: ZIKR Autonomous Social Publisher
+name: ZIKR Approval-Gated Social Publisher
 
 on:
+  # A publish run follows a successful video-generation run; there is no 15-minute
+  # polling loop and no automatic resubmission of the pre-activation queue.
+  workflow_run:
+    workflows: ["ZIKR Autonomous AI Video Worker"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       operation:
-        description: "Select one explicit action. Leave as none to do nothing."
+        description: "Publish only eligible items created after the controlled go-live cutoff."
         required: true
-        default: none
+        default: publish_queue
         type: choice
         options:
-          - none
           - publish_queue
-          - reset_queued_video_media
-          - cleanup_published_video_media
 
 permissions:
   contents: read
@@ -23,42 +26,54 @@ concurrency:
 
 jobs:
   publish:
-    # Emergency product-policy kill switch: external social publishing is retired.
-    if: false
+    if: >-
+      ${{ (github.event_name == 'workflow_run' &&
+            github.event.workflow_run.conclusion == 'success' &&
+            github.event.workflow_run.head_branch == 'main') ||
+           (github.event_name == 'workflow_dispatch' &&
+            github.ref == 'refs/heads/main' &&
+            inputs.operation == 'publish_queue') }}
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
-      SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
-      NEXT_PUBLIC_SUPABASE_URL: https://ymxdswkaxafakugktsim.supabase.co
+      SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
       CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-      SOCIAL_CLEANUP_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.operation == 'cleanup_published_video_media' }}
-      SOCIAL_QUEUE_RESET_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.operation == 'reset_queued_video_media' }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       BACKGROUND_JOB_TARGET: "social"
+      SOCIAL_PUBLISH_ENABLED: "true"
+      SOCIAL_SYNC_INSIGHTS: "false"
       SOCIAL_PUBLISH_BATCH_SIZE: "2"
+      # Do not touch the 101 historical queued rows or any pre-launch retries.
+      SOCIAL_PUBLISH_AFTER: "2026-11-06T20:00:00Z"
+      FACEBOOK_PUBLISHING_REQUESTED: ${{ vars.FACEBOOK_PUBLISHING_ENABLED || 'true' }}
+      YOUTUBE_PUBLISHING_REQUESTED: ${{ vars.YOUTUBE_PUBLISHING_ENABLED || 'true' }}
+      FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_UPLOAD_PRIVACY: "public"
-      SOCIAL_PUBLISH_ENABLED: "false"
-      FACEBOOK_PUBLISHING_REQUESTED: "false"
-      YOUTUBE_PUBLISHING_REQUESTED: "false"
-      AUTO_VIDEO_PUBLISH_ENABLED: "false"
       ADMIN_QUEUE_ALERT_WEBHOOK_URL: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_URL }}
       ADMIN_QUEUE_ALERT_WEBHOOK_SECRET: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_SECRET || secrets.WEBHOOK_SECRET }}
       ADMIN_QUEUE_ALERT_EMAIL_TO: ${{ vars.ADMIN_QUEUE_ALERT_EMAIL_TO || secrets.ADMIN_QUEUE_ALERT_EMAIL_TO }}
       ADMIN_QUEUE_ALERT_EMAIL_FROM: ${{ vars.ADMIN_QUEUE_ALERT_EMAIL_FROM || secrets.ADMIN_QUEUE_ALERT_EMAIL_FROM }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-    steps:
-      - name: Record schedule trigger
-        run: |
-          echo "GitHub event: ${GITHUB_EVENT_NAME}"
-          echo "GitHub ref: ${GITHUB_REF}"
-          echo "Scheduled expression: ${{ github.event.schedule || 'manual workflow_dispatch' }}"
 
-      - name: Checkout
+    steps:
+      - name: Record trigger
+        shell: bash
+        run: |
+          echo "Social publishing triggered by: ${GITHUB_EVENT_NAME}"
+          echo "Queue cutoff: ${SOCIAL_PUBLISH_AFTER}"
+          echo "Batch size: ${SOCIAL_PUBLISH_BATCH_SIZE}"
+
+      - name: Checkout main
         uses: actions/checkout@v7
+        with:
+          ref: main
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -73,109 +88,74 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Install production dependencies
-        run: pnpm install --frozen-lockfile --prod=false
-
-      - name: Validate publishing runtime
+      - name: Validate production credentials and isolate enabled providers
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${SUPABASE_URL:-}" || { echo "::error::Missing canonical SUPABASE_URL configuration." >&2; exit 1; }
-          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing production Supabase service-role secret." >&2; exit 1; }
-          if [[ "$SOCIAL_CLEANUP_ONLY" == "true" || "$SOCIAL_QUEUE_RESET_ONLY" == "true" ]]; then
-            if [[ -z "${CLOUDINARY_CLOUD_NAME:-}" || -z "${CLOUDINARY_API_KEY:-}" || -z "${CLOUDINARY_API_SECRET:-}" ]]; then
-              echo "::error::Cloudinary credentials are required for explicit managed-media deletion." >&2
-              exit 1
-            fi
-            echo "Maintenance-only operation selected; provider publishing credentials are not needed."
-            echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=false" >> "$GITHUB_ENV"
-            echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=false" >> "$GITHUB_ENV"
-            exit 0
-          fi
-          if [[ "$SOCIAL_PUBLISH_ENABLED" != "true" ]]; then
-            echo "::notice::Social publishing is disabled; no queue item will be claimed or posted publicly."
-            echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=false" >> "$GITHUB_ENV"
-            echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=false" >> "$GITHUB_ENV"
-            exit 0
-          fi
-          if [[ -z "${CLOUDINARY_CLOUD_NAME:-}" || -z "${CLOUDINARY_API_KEY:-}" || -z "${CLOUDINARY_API_SECRET:-}" ]]; then
-            echo "::warning::Cloudinary credentials are incomplete; new media deletion will remain pending and retry safely." >&2
-          fi
-          # The Facebook Page token is managed by the admin OAuth center and stored
-          # in the server-only Supabase table. Do not duplicate it in GitHub Actions.
-          facebook_response="$(mktemp)"
-          facebook_status="$(curl -sS -o "$facebook_response" -w '%{http_code}' \
-            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-            "$SUPABASE_URL/rest/v1/social_platform_credentials?platform=eq.facebook&select=page_id,page_access_token,is_enabled,connection_status,expires_at&limit=1")"
-          facebook_enabled="false"
-          if [[ "$facebook_status" == "200" ]]; then
-            facebook_enabled="$(node -e '
-              const fs = require("node:fs");
-              let rows = [];
-              try { rows = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); } catch {}
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing Supabase service-role secret." >&2; exit 1; }
+          test -n "${CLOUDINARY_CLOUD_NAME:-}" || { echo "::error::Missing Cloudinary cloud name." >&2; exit 1; }
+          test -n "${CLOUDINARY_API_KEY:-}" || { echo "::error::Missing Cloudinary API key." >&2; exit 1; }
+          test -n "${CLOUDINARY_API_SECRET:-}" || { echo "::error::Missing Cloudinary API secret." >&2; exit 1; }
+
+          facebook_ready=false
+          if [[ "${FACEBOOK_PUBLISHING_REQUESTED,,}" == "true" ]]; then
+            facebook_json="$(curl -fsS \
+              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              "$SUPABASE_URL/rest/v1/social_platform_credentials?platform=eq.facebook&select=is_enabled,connection_status,page_id,expires_at,granted_permissions&limit=1")"
+            facebook_ready="$(node -e '
+              const rows = JSON.parse(process.argv[1]);
               const row = Array.isArray(rows) ? rows[0] : null;
-              const expiry = row?.expires_at ? Date.parse(row.expires_at) : NaN;
-              const expiryOkay = !row?.expires_at || (Number.isFinite(expiry) && expiry > Date.now());
-              console.log(
-                row?.is_enabled === true &&
-                row?.connection_status === "connected" &&
-                typeof row?.page_id === "string" &&
-                row.page_id.length > 0 &&
-                typeof row?.page_access_token === "string" &&
-                row.page_access_token.length > 0 &&
-                expiryOkay ? "true" : "false"
-              );
-            ' "$facebook_response")"
-          else
-            echo "::warning::Unable to inspect the OAuth-managed Facebook connection (HTTP $facebook_status); Facebook will remain disabled for this run." >&2
+              const expires = row?.expires_at ? Date.parse(row.expires_at) : null;
+              const fresh = expires === null || (Number.isFinite(expires) && expires > Date.now());
+              const scopes = Array.isArray(row?.granted_permissions) ? row.granted_permissions : [];
+              const required = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "pages_manage_engagement", "read_insights"];
+              const scopesOkay = required.every(scope => scopes.includes(scope));
+              process.stdout.write(String(Boolean(row?.is_enabled === true && row?.connection_status === "connected" && row?.page_id && fresh && scopesOkay)));
+            ' "$facebook_json")"
           fi
-          if [[ "$FACEBOOK_PUBLISHING_REQUESTED" != "true" ]]; then facebook_enabled="false"; fi
-          echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_enabled" >> "$GITHUB_ENV"
+          echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_ready" >> "$GITHUB_ENV"
 
-          youtube_configured="false"
-          if [[ "$YOUTUBE_PUBLISHING_REQUESTED" == "true" && -n "${YOUTUBE_CLIENT_ID:-}" && -n "${YOUTUBE_CLIENT_SECRET:-}" && -n "${YOUTUBE_REFRESH_TOKEN:-}" ]]; then
-            youtube_configured="true"
+          youtube_ready=false
+          if [[ "${YOUTUBE_PUBLISHING_REQUESTED,,}" == "true" && -n "${YOUTUBE_CLIENT_ID:-}" && -n "${YOUTUBE_CLIENT_SECRET:-}" ]]; then
+            youtube_json="$(curl -fsS \
+              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              "$SUPABASE_URL/rest/v1/youtube_oauth_credentials?provider=eq.youtube&select=granted_scopes&limit=1")"
+            youtube_ready="$(node -e '
+              const rows = JSON.parse(process.argv[1]);
+              const scopes = Array.isArray(rows?.[0]?.granted_scopes) ? rows[0].granted_scopes : [];
+              const required = [
+                "https://www.googleapis.com/auth/youtube.upload",
+                "https://www.googleapis.com/auth/youtube.readonly",
+                "https://www.googleapis.com/auth/yt-analytics.readonly"
+              ];
+              process.stdout.write(String(required.every(scope => scopes.includes(scope))));
+            ' "$youtube_json")"
           fi
-          echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=$youtube_configured" >> "$GITHUB_ENV"
-          rm -f "$facebook_response"
-          if [[ "$facebook_enabled" != "true" ]]; then
-            echo "::warning::Facebook is not ready; Facebook targets will remain queued while YouTube continues independently." >&2
-          fi
-          if [[ "$youtube_configured" != "true" ]]; then
-            echo "::warning::YouTube OAuth is not ready; YouTube targets will remain queued while Facebook continues independently." >&2
-          fi
-          if [[ "$facebook_enabled" != "true" && "$youtube_configured" != "true" ]]; then
-            echo "::notice::Neither publishing channel is ready. The worker will not claim queue items; the next scheduled check will retry readiness."
-            echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=false" >> "$GITHUB_ENV"
-            echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=false" >> "$GITHUB_ENV"
-          fi
-          echo "Social publisher readiness: Facebook=$facebook_enabled, YouTube=$youtube_configured. Each channel runs independently."
+          echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=$youtube_ready" >> "$GITHUB_ENV"
 
-      - name: Verify scheduler and social publishing contracts
+          echo "Facebook publishing readiness: $facebook_ready"
+          echo "YouTube upload-scope readiness: $youtube_ready"
+          if [[ "$facebook_ready" != "true" && "$youtube_ready" != "true" ]]; then
+            echo "::notice::No social provider has a verified publishing credential. No queue item will be claimed."
+            echo "SOCIAL_PUBLISH_ENABLED=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Verify social publishing and scheduler contracts
         run: |
           pnpm scheduler:check
           pnpm social:publish:check
 
-      - name: Verify Supabase data-plane access
-        shell: bash
-        run: |
-          set -euo pipefail
-          response_file="$(mktemp)"
-          status="$(curl -sS -o "$response_file" -w '%{http_code}'             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY"             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"             "$SUPABASE_URL/rest/v1/social_publish_queue?select=id&limit=1")"
-          echo "Supabase social queue HTTP status: $status"
-          if [[ "$status" != "200" ]]; then
-            head -c 500 "$response_file" >&2 || true
-            exit 1
-          fi
-
-      - name: Process social publishing queue
-        # The worker reads the two independent GITHUB_ENV flags and claims no queue items if both are off.
+      - name: Run approval-gated social queue
         run: pnpm background:jobs
 
-      - name: Publish summary
+      - name: Report completion
         if: always()
+        shell: bash
         run: |
-          echo "ZIKR GitHub Actions social publisher completed."
-          echo "It reconciles completed video records into the social queue and processes pending YouTube/Facebook targets."
-          echo "CircleCI does not execute production video generation or social publishing."
+          echo "Social worker finished. Only rows created on/after ${SOCIAL_PUBLISH_AFTER} are eligible."
+          echo "Human video QA approval remains mandatory."

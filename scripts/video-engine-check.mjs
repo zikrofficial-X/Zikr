@@ -29,7 +29,7 @@ for (const token of ["content_hash", "source_hash", "video_automation_runs", "IF
 
 const workflow = readFileSync(".github/workflows/generate-ai-video.yml", "utf8");
 const adminHealth = readFileSync("src/app/admin/health/page.tsx", "utf8");
-if (!adminHealth.includes("getAdminSettings") || !adminHealth.includes("video_automation_ai_enabled") || !adminHealth.includes("video_automation_enabled") || !adminHealth.includes("النشر داخل الموقع") || !adminHealth.includes("لا يُرسل منشورات إلى منصات خارجية") || adminHealth.includes("video_automation_auto_publish") || adminHealth.includes("youtube.upload")) {
+if (!adminHealth.includes("getAdminSettings") || !adminHealth.includes("video_automation_ai_enabled") || !adminHealth.includes("video_automation_enabled") || !adminHealth.includes("النشر داخل الموقع") || !adminHealth.includes("النشر الاجتماعي الخارجي") || !adminHealth.includes("video_automation_auto_publish") || !adminHealth.includes("اعتماد الجودة")) {
   throw new Error("Admin health must report canonical internal worker settings and enforce site-only publishing");
 }
 if (!workflow.includes("VIDEO_PROVIDER_ORDER")) {
@@ -41,12 +41,13 @@ const internalGenerationMode =
   workflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "true"') &&
   workflow.includes('VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,template"') &&
   workflow.includes('BACKGROUND_JOB_TARGET: "videos"');
-// Publishing is intentionally site-only and governed by the internal content queue.
-// Never require or re-enable legacy external social publishing flags in this worker.
-if (!internalGenerationMode || workflow.includes("AUTO_VIDEO_PUBLISH_ENABLED") || workflow.includes("AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL")) {
-  throw new Error("Video worker must enable internal AI generation and must not contain legacy external publishing controls");
+// Rendering stays separate; generated media may be queued for external delivery,
+// but every external post must pass a fresh human QA approval check.
+if (!internalGenerationMode ||
+    !workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') ||
+    !workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"')) {
+  throw new Error("Video worker must enable internal AI generation and queue external delivery behind human QA approval");
 }
-
 if ((process.env.VERIFY_VIDEO_RUNTIME_TOOLS ?? "false").toLowerCase() === "true") {
   execFileSync("ffprobe", ["-version"], { stdio: "ignore" });
 }

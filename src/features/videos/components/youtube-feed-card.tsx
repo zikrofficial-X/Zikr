@@ -62,6 +62,15 @@ export function YoutubeFeedCard({ videoId, title, thumbnailUrl, publishedLabel }
       <div className="p-4 space-y-2 flex-1">
         <h3 className="text-sm font-semibold text-brand-cream line-clamp-2">{title}</h3>
         {publishedLabel ? <p className="text-xs text-brand-cream/50">{publishedLabel}</p> : null}
+        <a
+          href={"https://www.youtube.com/watch?v=" + encodeURIComponent(videoId)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex text-xs font-semibold text-brand-gold underline underline-offset-4"
+          aria-label={"فتح " + title + " على YouTube للمشاهدة والإعجاب"}
+        >
+          مشاهدة الفيديو والإعجاب به على YouTube
+        </a>
       </div>
     </Card>
   );

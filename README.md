@@ -19,7 +19,7 @@ ZIKR is an Arabic-first Islamic content and spiritual platform covering Quran, H
 
 ## Video and social automation
 
-Production video generation uses the deterministic FFmpeg template renderer. GitHub Actions is the sole production video worker. Social publishing is a separate GitHub Actions worker consuming `social_publish_queue`; CircleCI does not execute either production worker.
+Production video generation uses the verified AI/FFmpeg pipeline in GitHub Actions. Social publishing is a separate event-driven worker consuming only post-activation `social_publish_queue` rows; every generated video requires human QA approval before an external post. GitHub Actions triggers the publisher after successful generation or manual dispatch; there is no 15-minute polling loop. CircleCI does not execute either production worker.
 
 ## Required runtime configuration
 

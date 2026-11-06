@@ -8,7 +8,7 @@ const production = "https://zikrmediaofficial.vercel.app";
 const nativeCallback = "com.zikr.app://auth/callback";
 const localWildcard = "http://localhost:3000/**";
 const browserCallback = production + "/auth/callback";
-const canonicalSupabaseProject = "ymxdswkaxafakugktsim";
+const canonicalSupabaseProject = "zqtssvlvmkzeeyqghqfk";
 const canonicalSupabaseUrl = `https://${canonicalSupabaseProject}.supabase.co`;
 
 
