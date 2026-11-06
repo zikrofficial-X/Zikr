@@ -14,9 +14,12 @@ const videos = read("src/app/videos/page.tsx");
 
 assert.match(youtube, /social_post_insights/);
 assert.match(youtube, /offset=/);
-assert.match(youtube, /order=published_at\.asc/);
+assert.match(youtube, /order=created_at\.asc/);
 assert.doesNotMatch(youtube, /PATCH[\s\S]*social_publish_queue/);
+assert.doesNotMatch(youtube, /status=eq\.published/);
 assert.match(facebook, /social_post_insights/);
+assert.match(facebook, /order=created_at\.asc/);
+assert.doesNotMatch(facebook, /status=eq\.published/);
 assert.doesNotMatch(facebook, /PATCH[\s\S]*social_publish_queue/);
 assert.match(worker, /syncSocialInsights/);
 assert.match(runner, /const insights = await syncSocialInsights\(\)/);
