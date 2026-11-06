@@ -6,7 +6,6 @@ const route = read("src/app/api/admin/video-purge/route.ts");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
 const videoWorker = read("scripts/jobs/template-video-automation.ts");
 const videoQueuePage = read("src/features/admin/video-requests/components/admin-video-requests-client.tsx");
-const socialPage = read("src/app/admin/social/social-client.tsx");
 const generationStudio = read("src/app/admin/video/studio/page.tsx");
 const control = read("src/features/admin/components/purge-generated-videos-control.tsx");
 const apiGuards = read("scripts/verify-admin-api-guards.mjs");
@@ -40,6 +39,10 @@ assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical s
 assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active internal generation before deleting media.");
 assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");
 assert.ok(route.includes("getVideoAutomationEnabled") && route.includes("restoreVideoAutomation(automationWasEnabled)"), "cleanup must restore the previous automation state after the temporary lock");
+assert.ok(route.includes("purgeLockAttempted") && route.includes("await setPurgeLock(false)"), "purge failures must attempt to release the temporary worker lock");
+assert.ok(route.includes("partialPurge: destructiveWorkStarted && !dataCleanupFinished"), "partial destructive failure must be explicitly reported");
+assert.ok(route.includes("metadata->>generator=eq.multi-provider-free-ai"), "purge must select only run records created by the internal video worker");
+assert.ok(!route.includes('deleteRows("video_automation_runs", "id=not.is.null")'), "purge must not delete unrelated or unclassified automation-run records");
 assert.ok(route.includes('body.scope === "files"') && route.includes('body.scope === "memory"') && route.includes('body.scope === "both"'), "the cleanup endpoint must expose distinct files, memory, and combined scopes");
 assert.ok(route.includes("includeFiles") && route.includes("includeMemory"), "the cleanup endpoint must honor the selected scope");
 assert.ok(route.includes("automation_key=not.is.null"), "project-memory cleanup must only delete automated generation requests");

@@ -46,7 +46,7 @@ if (!generation.includes("requireAdminApi('video.manage')")) failures.push("vide
 if (!generation.includes("requireAdminApi('video.delete')")) failures.push("video generation DELETE must require video.delete");
 if (!generation.includes("updated_at=eq.") || !generation.includes("current.updated_at")) failures.push("admin publish retry must use optimistic concurrency");
 
-const retryPublishStart = generation.indexOf("if (action === 'retry_publish')");
+const retryPublishStart = generation.search(/if\s*\(action\s*===\s*["']retry_publish["']\)/);
 const retryPublishEnd = generation.indexOf("if (!ALLOWED_STATUSES.has(status))", retryPublishStart);
 const retryPublishBlock = retryPublishStart >= 0 && retryPublishEnd > retryPublishStart
   ? generation.slice(retryPublishStart, retryPublishEnd)
