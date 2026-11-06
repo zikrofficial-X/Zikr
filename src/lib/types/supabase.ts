@@ -3616,15 +3616,7 @@ export type Database = {
           updated_at?: string
           video_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "social_post_insights_queue_id_fkey"
-            columns: ["queue_id"]
-            isOneToOne: false
-            referencedRelation: "social_publish_queue"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       },
       social_sync_jobs: {
         Row: {
