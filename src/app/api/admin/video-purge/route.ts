@@ -47,12 +47,14 @@ function cloudinaryConfig() {
 
 function isGeneratedZikrVideo(asset: CloudinaryAsset): boolean {
   const tags = new Set(Array.isArray(asset.tags) ? asset.tags : []);
+  const isGenerated = tags.has("zikr-generated") ||
+    (tags.has("zikr") && tags.has("cloudinary-migration"));
   return asset.resource_type === "video" &&
     asset.type === "upload" &&
     asset.format === "mp4" &&
     typeof asset.public_id === "string" &&
     asset.public_id.startsWith("auto-") &&
-    tags.has("zikr-generated") &&
+    isGenerated &&
     tags.has("automated");
 }
 
