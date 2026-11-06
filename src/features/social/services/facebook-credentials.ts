@@ -1,4 +1,3 @@
-import "server-only";
 import { getServerEnv } from "@/lib/env";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 
