@@ -1,7 +1,7 @@
 name: ZIKR Autonomous Social Publisher
 
 on:
-  # Legacy social publishing is held disabled; this workflow remains only for audited historical maintenance.
+  # GitHub Actions is the sole production owner for social/video publishing.
   schedule:
     # Avoid quarter-hour/top-of-hour contention; GitHub schedule events are best-effort.
     - cron: "7,22,37,52 * * * *"
@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   publish:
-    # Retired: no external publishing or social queue maintenance is run automatically.
+    # Emergency product-policy kill switch: external social publishing is retired.
     if: false
     runs-on: ubuntu-latest
     environment: production
