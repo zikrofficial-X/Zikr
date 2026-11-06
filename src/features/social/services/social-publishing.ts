@@ -763,7 +763,12 @@ export async function processSocialPublishItem(
     const prior = previous[platform];
     if (prior && typeof prior === "object") mergedResults[platform] = prior as PlatformResult;
   }
-  for (const result of results) mergedResults[result.platform] = result;
+  for (const result of results) {
+    // Approval deferrals are not provider failures; keep them out of the
+    // permanent per-platform result ledger so a later human approval can retry.
+    if (result.approvalBlocked) continue;
+    mergedResults[result.platform] = result;
+  }
 
   const allResults = platforms.map(platform => mergedResults[platform]).filter((result): result is PlatformResult => Boolean(result));
   const successes = allResults.filter(result => result.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0);
