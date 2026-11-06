@@ -97,7 +97,7 @@ if (!publisher.includes("isPermanentSocialFailure") || !publisher.includes("perm
 if (!publisher.includes("socialRetryDelayMinutes")) failures.push("social retries must use bounded exponential backoff");
 if (!publisher.includes("staleRecovery: true")) failures.push("stale social processing recovery must be recorded");
 if (!publisher.includes("platformResults")) failures.push("platform-level results must be persisted");
-if (!publisher.includes("canAttemptSocialPlatform") || !publisher.includes("hasSuccessfulDelivery")) failures.push("already-successful platforms must be excluded from retries");
+if (!publisher.includes("canAttemptSocialPlatform") || !platformAvailability.includes("hasSuccessfulDelivery")) failures.push("already-successful platforms must be excluded from retries");
 if (!publisher.includes("remoteId")) failures.push("successful providers must persist their remote platform IDs");
 if (publisher.includes("console.log(pageAccessToken") || publisher.includes("console.log(env.FACEBOOK_PAGE_ACCESS_TOKEN")) failures.push("Facebook access tokens must never be logged");
 
