@@ -26,8 +26,9 @@ if (vercel.includes('"crons"') || vercel.includes("crons:")) failures.push("Verc
 
 
 const currentCronMigration = read("supabase/migrations/20261106210000_repoint_active_cron_jobs_to_current_project.sql");
-if (!currentCronMigration.includes("zqtssvlvmkzeeyqghqfk.supabase.co/functions/v1/prayer-notification-worker")) failures.push("active prayer worker migration must target the current Supabase project");
-if (!currentCronMigration.includes("zqtssvlvmkzeeyqghqfk.supabase.co/functions/v1/source-verified-content-agent")) failures.push("active source agent migration must target the current Supabase project");
+if (!currentCronMigration.includes("ymxdswkaxafakugktsim.supabase.co")) failures.push("cron migration must match only the previously configured project host");
+if (!currentCronMigration.includes("zqtssvlvmkzeeyqghqfk.supabase.co")) failures.push("cron migration must repoint to the active Supabase project");
+if (!currentCronMigration.includes("cron.alter_job")) failures.push("cron migration must use the supported pg_cron alter_job API");
 if (!currentCronMigration.includes("zikr-prayer-push-dispatch") || !currentCronMigration.includes("zikr-source-verified-content-agent")) failures.push("current cron migration must explicitly limit updates to the two active ZIKR jobs");
 
 const contentSync = read(".github/workflows/english-content-sync.yml");
@@ -107,10 +108,7 @@ if (scheduling.includes("GitHub Actions is the authoritative automatic video/soc
 if (scheduling.includes("GitHub Actions are not the active scheduler in the current repository.")) failures.push("stale contradictory scheduler documentation remains");
 
 const mig1 = read("supabase/migrations/20261008050000_repoint_production_cron_to_current_project.sql");
-const migCurrent = read("supabase/migrations/20261012210000_repoint_cron_to_connected_project.sql");
-if (!migCurrent.includes("zqtssvlvmkzeeyqghqfk.supabase.co/functions/v1/prayer-notification-worker")) failures.push("cron migration must pin prayer worker to current Supabase project");
-if (!migCurrent.includes("zqtssvlvmkzeeyqghqfk.supabase.co/functions/v1/source-verified-content-agent")) failures.push("cron migration must pin source agent to current Supabase project");
-if (!mig1.includes("job_id => 4") || !mig1.includes("active => false")) failures.push("cron migration must retire the obsolete cleanup job");
+if (!mig1.includes("job_id => 4") || !mig1.includes("active => false")) failures.push("historical cron migration must retire the obsolete cleanup job");
 
 const mig2 = read("supabase/migrations/20261002114000_retire_dead_media_cleanup_cron_20261002.sql");
 if (!mig2.includes("cron.unschedule(4)")) failures.push("dead media cleanup cron retirement migration is missing");
