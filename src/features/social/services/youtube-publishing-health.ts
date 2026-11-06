@@ -1,4 +1,5 @@
 import type { SocialPlatformEnvironment } from "./platform-availability";
+import { getYouTubeRefreshToken } from "./youtube-oauth-credentials";
 
 export type YouTubePublishingHealthStatus =
   | "not_configured"
@@ -121,7 +122,7 @@ export async function getYouTubePublishingConnectionHealth(
 ): Promise<YouTubePublishingConnectionHealth> {
   const clientId = env.YOUTUBE_CLIENT_ID?.trim();
   const clientSecret = env.YOUTUBE_CLIENT_SECRET?.trim();
-  const refreshToken = env.YOUTUBE_REFRESH_TOKEN?.trim();
+  const refreshToken = await getYouTubeRefreshToken(env);
   if (!clientId || !clientSecret || !refreshToken) {
     const publicRead = await readPublicChannel(env, fetcher, "oauth_missing");
     return publicRead ?? result("not_configured", "بيانات OAuth الخاصة بـYouTube غير مكتملة.");

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { publishToFacebook, publishToYoutube } from "@/features/videos/services/video-automation";
 import { getServerEnv } from "@/lib/env";
+import { getYouTubeRefreshToken } from "@/features/social/services/youtube-oauth-credentials";
 import { getFacebookPageCredentials } from "@/features/social/services/facebook-credentials";
 import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError } from "@/features/social/services/facebook-reels-rate-limit";
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
@@ -395,7 +396,8 @@ async function publishYoutubeItem(item: SocialPublishQueueItem): Promise<string 
   if (!item.video_url) throw new Error("YouTube publishing requires video_url");
   const mediaUrl = assertPublishableVideoUrl(item.video_url, "youtube");
   const env = getServerEnv();
-  if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET || !env.YOUTUBE_REFRESH_TOKEN) {
+  const refreshToken = await getYouTubeRefreshToken(env);
+  if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET || !refreshToken) {
     throw new Error("YouTube OAuth is not configured: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET and YOUTUBE_REFRESH_TOKEN are required");
   }
   const madeForKids = await isMadeForKidsVideo(item);

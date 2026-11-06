@@ -1,0 +1,61 @@
+import { randomBytes } from "node:crypto";
+import { NextResponse } from "next/server";
+import { requireAdminApi } from "@/features/admin/services/admin";
+import { getServerEnv } from "@/lib/env";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+const STATE_COOKIE = "zikr-youtube-oauth-state";
+const REQUIRED_SCOPES = [
+  "https://www.googleapis.com/auth/youtube.upload",
+  "https://www.googleapis.com/auth/youtube.readonly",
+  "https://www.googleapis.com/auth/yt-analytics.readonly",
+];
+
+function siteUrl() {
+  return getServerEnv().NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+}
+
+function adminStatusRedirect(status: string) {
+  return NextResponse.redirect(
+    new URL(`/admin/social?youtube=${encodeURIComponent(status)}`, siteUrl()),
+  );
+}
+
+export async function GET() {
+  const auth = await requireAdminApi("social.manage");
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const env = getServerEnv();
+  const clientId = env.YOUTUBE_CLIENT_ID?.trim();
+  if (!clientId || !siteUrl()) return adminStatusRedirect("configuration_missing");
+
+  const state = randomBytes(32).toString("hex");
+  const redirectUri = new URL(
+    "/api/admin/social/youtube/callback",
+    siteUrl(),
+  ).toString();
+  const authorizeUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  authorizeUrl.searchParams.set("client_id", clientId);
+  authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+  authorizeUrl.searchParams.set("response_type", "code");
+  authorizeUrl.searchParams.set("scope", REQUIRED_SCOPES.join(" "));
+  authorizeUrl.searchParams.set("access_type", "offline");
+  authorizeUrl.searchParams.set("include_granted_scopes", "true");
+  authorizeUrl.searchParams.set("prompt", "consent");
+  authorizeUrl.searchParams.set("state", state);
+
+  const response = NextResponse.redirect(authorizeUrl);
+  response.headers.set("Cache-Control", "no-store");
+  response.cookies.set(STATE_COOKIE, state, {
+    httpOnly: true,
+    secure: siteUrl().startsWith("https://"),
+    sameSite: "lax",
+    path: "/api/admin/social/youtube/callback",
+    maxAge: 10 * 60,
+  });
+  return response;
+}

@@ -1,7 +1,10 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/server";
+import { getYouTubeRefreshToken } from "@/features/social/services/youtube-oauth-credentials";
 import { averageRenderDuration, isCompleteBoundedRead, summarizePlatformResults, type SocialPlatformDeliveryStats } from "@/features/admin/services/traffic-revenue-metrics";
 
 type CountResult = { count: number | null; error: { message: string } | null };
@@ -295,7 +298,7 @@ function trafficSourceLabel(source: string): string {
 async function fetchYoutubeAnalyticsSnapshot(): Promise<YoutubeAnalyticsSnapshot> {
   const clientId = process.env.YOUTUBE_CLIENT_ID?.trim();
   const clientSecret = process.env.YOUTUBE_CLIENT_SECRET?.trim();
-  const refreshToken = process.env.YOUTUBE_REFRESH_TOKEN?.trim();
+  const refreshToken = await getYouTubeRefreshToken();
   const unavailable = (status: YoutubeAnalyticsSnapshot["status"]): YoutubeAnalyticsSnapshot => ({
     status, startDate: null, endDate: null, views: null, estimatedMinutesWatched: null,
     averageViewDurationSeconds: null, averageViewPercentage: null, subscribersGained: null,
@@ -394,8 +397,8 @@ async function fetchYoutubeAnalyticsSnapshot(): Promise<YoutubeAnalyticsSnapshot
 }
 
 const getCachedYoutubeAnalyticsSnapshot = unstable_cache(
-  fetchYoutubeAnalyticsSnapshot,
-  ["zikr-youtube-analytics-readonly-v1"],
+  (_credentialFingerprint: string) => fetchYoutubeAnalyticsSnapshot(),
+  ["zikr-youtube-analytics-readonly-v2"],
   { revalidate: 3600 },
 );
 
@@ -409,6 +412,13 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
   const nowIso = now.toISOString();
   const start24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
   const start7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  // A newly authorized refresh token gets a separate cache entry. Hash it so
+  // the cache key never contains the raw credential.
+  const youtubeRefreshToken = await getYouTubeRefreshToken();
+  const youtubeCredentialFingerprint = youtubeRefreshToken
+    ? createHash("sha256").update(youtubeRefreshToken).digest("hex")
+    : "not-configured";
 
   const [
     socialQueued, socialProcessing, socialPartial, socialPublished, socialFailed,
@@ -438,7 +448,7 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
     supabase.from("articles").select("id", { count: "exact", head: true }).eq("published", true),
     supabase.from("videos").select("id", { count: "exact", head: true }).eq("published", true),
     supabase.from("social_platform_profiles").select("platform,name,handle,status,synced_at").order("platform", { ascending: true }),
-    getCachedYoutubeAnalyticsSnapshot(),
+    getCachedYoutubeAnalyticsSnapshot(youtubeCredentialFingerprint),
     getCachedGa4AnalyticsSnapshot(),
   ]);
 
@@ -487,7 +497,7 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
   const hasYoutubeAnalyticsCredentials = Boolean(
     process.env.YOUTUBE_CLIENT_ID?.trim() &&
     process.env.YOUTUBE_CLIENT_SECRET?.trim() &&
-    process.env.YOUTUBE_REFRESH_TOKEN?.trim(),
+    youtubeRefreshToken,
   );
 
   return {

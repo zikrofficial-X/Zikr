@@ -329,7 +329,19 @@ if (!publisher.includes("kidsAudience = true") || !publisher.includes("!kidsAudi
 if (!ytAutomation.includes("appendSmartLinkDisclosure") || !ytAutomation.includes("content.audience !== 'kids'")) failures.push("video metadata generation must include the disclosed SmartLink only for non-kids content");
 if (!ytAutomation.includes("MONETAG_SMARTLINK_YOUTUBE_TAGS")) failures.push("generated YouTube metadata must include SmartLink discovery tags for eligible videos");
 
+const traffic = read("src/features/admin/services/traffic-revenue.ts");
 const youtubePublishingHealth = read("src/features/social/services/youtube-publishing-health.ts");
+const youtubeOAuthCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
+const youtubeOAuthConnect = read("src/app/api/admin/social/youtube/connect/route.ts");
+const youtubeOAuthCallback = read("src/app/api/admin/social/youtube/callback/route.ts");
+if (!youtubeOAuthCredentials.includes("readStoredYouTubeRefreshToken") || !youtubeOAuthCredentials.includes("getYouTubeRefreshToken") || !youtubeOAuthCredentials.includes("saveYouTubeOAuthCredential")) failures.push("YouTube OAuth credentials must be stored server-side with a safe environment fallback");
+if (!youtubeOAuthConnect.includes("youtube.readonly") || !youtubeOAuthConnect.includes("yt-analytics.readonly") || !youtubeOAuthConnect.includes("youtube.upload") || !youtubeOAuthConnect.includes("access_type") || !youtubeOAuthConnect.includes("prompt")) failures.push("YouTube reconnect must request channel read, analytics read, and upload scopes with offline consent");
+if (!youtubeOAuthCallback.includes("timingSafeEqual") || !youtubeOAuthCallback.includes("saveYouTubeOAuthCredential") || !youtubeOAuthCallback.includes("channels") || !youtubeOAuthCallback.includes("grantedScopes")) failures.push("YouTube OAuth callback must validate state, granted scopes, and channel identity before persisting the credential");
+if (!youtubePublishingHealth.includes("getYouTubeRefreshToken")) failures.push("YouTube channel health must use the stored read-enabled OAuth credential");
+if (!ytAutomation.includes("getYouTubeRefreshToken")) failures.push("YouTube uploads must use the newly authorized credential after reauthorization");
+if (!publisher.includes("getYouTubeRefreshToken")) failures.push("social publisher readiness must use the stored YouTube credential");
+if (!traffic.includes("getYouTubeRefreshToken")) failures.push("YouTube Analytics must use the read-enabled OAuth credential");
+if (!adminUi.includes("/api/admin/social/youtube/connect") || !adminUi.includes("إعادة ربط YouTube بصلاحيات القراءة")) failures.push("Admin social center must expose YouTube channel-read reauthorization");
 if (!platformAvailability.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED") || !platformAvailability.includes("SOCIAL_PUBLISH_YOUTUBE_ENABLED")) failures.push("Facebook and YouTube publishing must have separate runtime readiness switches");
 if (!platformAvailability.includes("canAttemptSocialPlatform") || !platformAvailability.includes("platformAttempts")) failures.push("retry eligibility must be isolated by platform");
 if (!platformAvailability.includes("metadata?.authBlocked === true && platform.startsWith(\"facebook\")")) failures.push("legacy Facebook auth blocks must not block YouTube publishing");

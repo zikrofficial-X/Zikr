@@ -226,16 +226,37 @@ export default function AdminSocialPage() {
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
-    const status = query.get("facebook");
-    if (!status) return;
-    if (status === "connected") {
+    const youtubeStatus = query.get("youtube");
+    if (youtubeStatus === "connected") {
+      setMessage("تم ربط YouTube بصلاحيات القراءة والرفع وAnalytics. جارٍ تحديث حالة القناة.");
+      void load();
+    } else if (youtubeStatus) {
+      const youtubeMessages: Record<string, string> = {
+        configuration_missing: "إعداد Google OAuth غير مكتمل. تحقق من YOUTUBE_CLIENT_ID وYOUTUBE_CLIENT_SECRET.",
+        redirect_uri_mismatch: "عنوان العودة غير مسجل في Google Cloud. أضف https://zikrmediaofficial.vercel.app/api/admin/social/youtube/callback إلى Authorized redirect URIs.",
+        permission_missing: "لم تُمنح صلاحيات YouTube المطلوبة. أعد التفويض ووافق على قراءة القناة ورفع الفيديو وتقارير Analytics.",
+        authorization_denied: "تم إلغاء تفويض YouTube. لم يتم تغيير اتصال النشر الحالي.",
+        state_mismatch: "انتهت جلسة ربط YouTube لأسباب أمنية. ابدأ الربط من جديد.",
+        admin_session_missing: "انتهت جلسة الإدارة أثناء الرجوع من Google. سجّل الدخول ثم أعد ربط YouTube.",
+        missing_code: "لم يُرجع Google رمز التفويض المطلوب.",
+        refresh_token_missing: "لم يُرجع Google Refresh Token جديدًا. أعد الربط مع الموافقة على Offline access.",
+        channel_read_failed: "تم التفويض لكن تعذرت قراءة القناة المرتبطة بحساب Google.",
+        channel_mismatch: "القناة التي تم تفويضها لا تطابق YOUTUBE_CHANNEL_ID المضبوط في ZIKR.",
+        oauth_failed: "فشل تفويض Google. تحقق من إعدادات OAuth Authorized redirect URI وحاول مرة أخرى.",
+      };
+      setError(youtubeMessages[youtubeStatus] || "تعذر إكمال ربط YouTube.");
+    }
+
+    const facebookStatus = query.get("facebook");
+    if (!facebookStatus) return;
+    if (facebookStatus === "connected") {
       const insights = query.get("insights");
       setMessage(insights === "missing"
         ? "تم تجديد اتصال Facebook للنشر، لكن read_insights لم تُمنح بعد؛ إحصاءات Reels ستظل معلّقة حتى اعتماد الصلاحية وإعادة الربط."
         : "تم تجديد اتصال Facebook بنجاح. سيستأنف النشر التلقائي، وأُعيدت العناصر المحجوبة إلى الطابور.");
       return;
     }
-    const messages: Record<string, string> = {
+    const facebookMessages: Record<string, string> = {
       configuration_missing: "إعداد تطبيق Meta غير مكتمل. تحقق من FACEBOOK_APP_ID وFACEBOOK_APP_SECRET.",
       redirect_uri_mismatch: "عنوان العودة غير مسجل في إعدادات تطبيق Meta. أضف /api/admin/social/facebook/callback إلى Valid OAuth Redirect URIs.",
       permission_missing: "لم تُمنح جميع صلاحيات صفحة Facebook المطلوبة. وافق على pages_show_list وpages_read_engagement وpages_manage_posts، وread_insights لإحصاءات Reels، ثم أعد الربط.",
@@ -249,13 +270,19 @@ export default function AdminSocialPage() {
       missing_code: "لم يُرجع Facebook رمز التفويض المطلوب. أعد الربط.",
       oauth_failed: "فشل تفويض Facebook. تحقق من إعدادات تطبيق Meta وحاول مرة أخرى.",
     };
-    setError(messages[status] || "تعذر استكمال ربط Facebook.");
-  }, []);
+    setError(facebookMessages[facebookStatus] || "تعذر استكمال ربط Facebook.");
+  }, [load]);
 
   const connectFacebook = useCallback(() => {
     // Full-page navigation is intentional because this API route starts the server-side OAuth redirect to Meta.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- OAuth must leave the current client route.
     window.location.href = "/api/admin/social/facebook/connect";
+  }, []);
+
+  const connectYouTube = useCallback(() => {
+    // Full-page navigation is intentional because the server starts the Google OAuth consent flow.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- OAuth must leave the current client route.
+    window.location.href = "/api/admin/social/youtube/connect";
   }, []);
 
   const testFacebook = useCallback(async () => {
@@ -482,6 +509,9 @@ export default function AdminSocialPage() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <Button variant="outline" disabled={busy} onClick={() => void connectYouTube()}>
+              إعادة ربط YouTube بصلاحيات القراءة
+            </Button>
             <Button variant="outline" disabled={busy} onClick={() => void connectFacebook()}>
               ربط Facebook عبر OAuth
             </Button>
@@ -578,9 +608,14 @@ export default function AdminSocialPage() {
           </div>
           <p className="text-sm font-semibold text-brand-cream/85">{health.youtubeChannelName || (health.youtubeConfigured ? "قناة YouTube — يلزم الاختبار" : "بيانات YouTube غير مكتملة")}</p>
           {health.youtubeConnectionMessage && <p className="text-xs leading-5 text-brand-cream/55">{health.youtubeConnectionMessage}</p>}
-          <Button variant="outline" size="sm" disabled={busy || !health.youtubeConfigured} onClick={() => void testYouTube()}>
-            اختبار اتصال YouTube
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => void connectYouTube()}>
+              منح صلاحية قراءة القناة
+            </Button>
+            <Button variant="outline" size="sm" disabled={busy || !health.youtubeConfigured} onClick={() => void testYouTube()}>
+              اختبار اتصال YouTube
+            </Button>
+          </div>
         </Card>
         <Card className="space-y-3">
           <div className="text-xs text-brand-cream/50">Facebook</div>

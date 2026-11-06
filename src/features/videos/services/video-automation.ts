@@ -1,6 +1,7 @@
 import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from '@/lib/smartlink';
 import { getServerEnv } from '@/lib/env';
+import { getYouTubeRefreshToken } from '@/features/social/services/youtube-oauth-credentials';
 import {
   getFacebookPageCredentials,
   setFacebookReelsNextAllowedAt,
@@ -338,7 +339,7 @@ function assertRemoteVideoUrl(videoUrl: string, target: string): string {
 async function getYoutubeAccessToken(): Promise<string> {
   const clientId = getEnv('YOUTUBE_CLIENT_ID');
   const clientSecret = getEnv('YOUTUBE_CLIENT_SECRET');
-  const refreshToken = getEnv('YOUTUBE_REFRESH_TOKEN');
+  const refreshToken = await getYouTubeRefreshToken();
   if (!clientId || !clientSecret || !refreshToken) {
     throw new Error('YouTube OAuth is not configured: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET and YOUTUBE_REFRESH_TOKEN are required');
   }
