@@ -108,3 +108,60 @@ The video worker accepts up to five additional public Spaces through the GitHub 
 [{"space":"owner/space-one","variant":"wan2_2_fast","enabled":true},{"space":"owner/space-two","variant":"ltx_fast","enabled":true}]
 
 Each Space must expose a Gradio API compatible with the existing Wan 2.2 or LTX Fast adapter. Any other input/output signature needs a dedicated adapter before use. Free quotas, queue availability, runtime availability, and commercial terms are controlled by the Space owner and Hugging Face; VIDEO_FREE_ONLY=true does not guarantee unlimited free GPU time.
+
+
+## Social channel connection and environment placement — 2026-11-06
+
+The public social/video hub is `/videos`. It reads the official YouTube feed and the non-secret Facebook Page profile from the server-side social profile cache. Visitors can play YouTube embeds, open YouTube to subscribe or like with their own Google account, open/follow the Facebook Page with their own Facebook account, and like internally published ZIKR videos after signing in to ZIKR.
+
+### Vercel Production environment
+
+Keep these values in Vercel Project → Settings → Environment Variables (Production), not in client-visible variables:
+
+- Core: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
+- Facebook OAuth: `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, `FACEBOOK_GRAPH_API_VERSION=v26.0`. Set `FACEBOOK_PAGE_ID` when the connected Meta account manages more than one Page; it selects the intended Page.
+- YouTube: `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_API_KEY`, `YOUTUBE_CHANNEL_ID`.
+- Public app URLs: `NEXT_PUBLIC_SITE_URL=https://zikrmediaofficial.vercel.app`, `AUTH_CALLBACK_URL=https://zikrmediaofficial.vercel.app/auth/callback`, and the canonical `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+Never prefix an app secret, service-role key, OAuth refresh token, or Page access token with `NEXT_PUBLIC_`.
+
+### GitHub Actions → production environment
+
+The video and social workers run in GitHub Actions, so Vercel secrets are not inherited by them. Add these as GitHub repository/environment **Secrets** under the `production` environment:
+
+- `SUPABASE_SERVICE_ROLE_KEY` (the workflow also accepts the legacy `SUPABASE_SERVICE_KEY` name)
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+- `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`
+- Optional: `HF_TOKEN` (public Hugging Face Spaces may still impose their own free quotas)
+- Optional alerting: `ADMIN_QUEUE_ALERT_WEBHOOK_URL`, `ADMIN_QUEUE_ALERT_WEBHOOK_SECRET` (or `WEBHOOK_SECRET`), `RESEND_API_KEY`.
+
+Add these as GitHub Actions **Variables** in the same `production` environment when you need to override the defaults:
+
+- `FACEBOOK_PUBLISHING_ENABLED=true`
+- `YOUTUBE_PUBLISHING_ENABLED=true`
+- `FACEBOOK_GRAPH_API_VERSION=v26.0`
+- Optional `HF_VIDEO_CUSTOM_SPACES` JSON array.
+
+The workflows already supply the canonical Supabase URL and social publishing enable flag; do not create duplicate Vercel Cron or Supabase cron workers for video/social publishing.
+
+### Supabase — what to enter
+
+Do **not** paste Meta App Secret, Google OAuth Client Secret, YouTube refresh tokens, Facebook Page tokens, Cloudinary secrets, or GitHub worker secrets into Supabase Project → Edge Function Secrets. The app stores provider credentials after the administrator completes OAuth:
+
+- Facebook Page credentials: `social_platform_credentials` (RLS-protected).
+- YouTube OAuth refresh credential and granted scopes: `youtube_oauth_credentials` (RLS-protected).
+- Public, non-secret Page/channel profile metadata: `social_platform_profiles`.
+
+The Facebook callback must be registered in Meta Developers as:
+
+`https://zikrmediaofficial.vercel.app/api/admin/social/facebook/callback`
+
+After deploying, sign in with a ZIKR administrator, open `/admin/social`, and connect the intended Facebook Page and YouTube channel once. Grant the requested publishing/read scopes. If the Meta account manages multiple Pages, set `FACEBOOK_PAGE_ID` in Vercel before connecting so the callback cannot select the wrong Page. Do not manually copy access tokens into the database.
+
+### Current automation and approval boundary
+
+Production video generation is configured for a daily target of 20, in four UTC runs (03:17, 09:17, 15:17, 21:17), with a hard daily ceiling of 24. Provider quotas, storage availability, and source validation can reduce the actual number completed. Social publishing is event-driven after a successful video worker and checks each connected platform independently.
+
+External video publishing currently **requires human QA approval** against the five recorded checks (source, audio, visuals, captions, rights). The worker revalidates that approval and the exact video snapshot before each external upload. This is deliberate: do not disable the gate or mark reviews approved without evidence. Therefore, OAuth connection and daily generation can be automatic after initial setup, but unattended external publishing is not fully enabled until a verified automated-review policy replaces the human approval requirement.
+
+The live Supabase project has the private `video_likes` table and the RLS-protected `video_like_counts` summary table. Only authenticated users can add/remove their own likes; the public site reads aggregate counts, not other users' identities.
