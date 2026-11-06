@@ -1,4 +1,5 @@
 import { syncYoutubePublishedPostInsights } from "../../src/features/social/services/youtube-post-insights";
+import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 import { syncFacebookReelsInsights } from "../../src/features/social/services/facebook-reels-insights";
 import { getEnabledSocialPlatforms } from "../../src/features/social/services/platform-availability";
 import {
@@ -7,7 +8,23 @@ import {
   retryPendingPublishedVideoCleanup,
 } from "../../src/features/social/services/social-publishing";
 
+async function isVideoPurgeInProgress(): Promise<boolean> {
+  try {
+    const rows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+      "/rest/v1/admin_settings?key=eq.video_purge_in_progress&select=value&limit=1",
+    );
+    return rows?.[0]?.value === true;
+  } catch (error) {
+    console.error("[social-worker] Could not verify the video purge lock; failing closed:", error);
+    return true;
+  }
+}
+
 export async function processSocialPublishQueue(limit = 10) {
+  if (await isVideoPurgeInProgress()) {
+    console.log("[social-worker] Video purge lock is active; no social queue item will be claimed.");
+    return { processed: 0, succeeded: 0, deferred: 0, authBlocked: 0, approvalBlocked: 0, failed: 0, purgeLocked: true };
+  }
   // Retry media cleanup for posts already confirmed on every target before
   // claiming new work. This removes temporary Supabase/Cloudinary assets
   // without republishing or deleting the publication/audit records.
