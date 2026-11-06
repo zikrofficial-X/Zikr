@@ -205,7 +205,26 @@ if (!internalVideoQueueMigration.includes("'videos'") || !internalVideoQueueMigr
 if (!worker.includes("source_hash: rendered.sourceHash") || !worker.includes("content_hash: rendered.contentHash") || !worker.includes("template_version: rendered.templateVersion")) {
   failures.push("completed manual renders must persist source, content and template integrity fingerprints");
 }
-if (worker.includes("social_publish_queue") || worker.includes("getFacebookPageCredentials") || worker.includes("queueSocialItems")) failures.push("video generation must never enqueue or query external social platforms");
+const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
+if (!worker.includes("async function queueSocialItems") ||
+    !worker.includes("await queueSocialItems(request, rendered.videoUrl)") ||
+    !worker.includes('status: "queued"') ||
+    !worker.includes("automation_key: socialKey")) {
+  failures.push("new generated videos may create only idempotent queued social candidates");
+}
+if (worker.includes("publishToYoutube(") || worker.includes("publishToFacebook(") ||
+    worker.includes("https://www.googleapis.com/upload/youtube/v3/videos") ||
+    worker.includes("graph.facebook.com")) {
+  failures.push("video generation must never call external platform publishing APIs directly");
+}
+if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"')) {
+  failures.push("social candidates from video generation must require human QA approval");
+}
+if (!socialPublishing.includes("hasVideoApprovalForQueueItem(item)") ||
+    !socialPublishing.includes("Video held for human QA approval before public publishing.") ||
+    !socialPublishing.includes("Approval lookup failed; holding video item")) {
+  failures.push("the separate social worker must fail closed and revalidate human QA approval before provider calls");
+}
 if (!worker.includes("!isTemplatePreview &&") || !worker.includes("!boundTemplate &&")) failures.push("pinned template renders must not be handed to external video providers");
 for (const [path, destinations] of [
   ["src/app/admin/audio/tts/page.tsx", ["/admin/video/voices", "/admin/video/scripts"]],
