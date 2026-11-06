@@ -55,7 +55,7 @@ for (const token of ["YOUTUBE_CLIENT_ID", "YOUTUBE_REFRESH_TOKEN", "FACEBOOK_GRA
   if (videoWorkflow.includes(token)) failures.push("internal video workflow must not depend on external social credential/config: " + token);
 }
 if (!socialPage.includes('redirect("/admin/memory")')) failures.push("retired social center must redirect to internal project memory");
-if (!writtenPage.includes('redirect("/admin/media")')) failures.push("retired written-social studio must redirect to internal project memory");
+if (!writtenPage.includes('redirect("/admin/memory")')) failures.push("retired written-social studio must redirect to internal project memory");
 if (!memoryPage.includes("requireAdminPermission(\"media.manage\")")) failures.push("internal memory route must have a server-side permission gate");
 if (videoGenerator.includes("social_publish_queue") || videoGenerator.includes("getFacebookPageCredentials") || videoGenerator.includes("queueSocialItems")) {
   failures.push("video generator must not enqueue or query any external social provider");
