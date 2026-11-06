@@ -42,7 +42,7 @@ export async function GET() {
   authorizeUrl.searchParams.set("response_type", "code");
   authorizeUrl.searchParams.set("scope", REQUIRED_SCOPES.join(" "));
   authorizeUrl.searchParams.set("access_type", "offline");
-  authorizeUrl.searchParams.set("include_granted_scopes", "true");
+  authorizeUrl.searchParams.set("include_granted_scopes", "false");
   authorizeUrl.searchParams.set("prompt", "consent");
   authorizeUrl.searchParams.set("state", state);
 
