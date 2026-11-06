@@ -68,7 +68,7 @@ SELECT
     'comments', q.metadata #> '{platformInsights,youtube,comments}'
   )),
   CASE
-    WHEN q.metadata #>> '{platformInsights,youtube,capturedAt}' ~ '^\d{4}-\d{2}-\d{2}T'
+    WHEN q.metadata #>> '{platformInsights,youtube,capturedAt}' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'
       THEN (q.metadata #>> '{platformInsights,youtube,capturedAt}')::timestamptz
     ELSE COALESCE(q.published_at, q.updated_at)
   END,
@@ -89,7 +89,7 @@ SELECT
   q.metadata #>> '{platformInsights,facebookReels,videoId}',
   COALESCE(q.metadata #> '{platformInsights,facebookReels,metrics}', '{}'::jsonb),
   CASE
-    WHEN q.metadata #>> '{platformInsights,facebookReels,capturedAt}' ~ '^\d{4}-\d{2}-\d{2}T'
+    WHEN q.metadata #>> '{platformInsights,facebookReels,capturedAt}' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'
       THEN (q.metadata #>> '{platformInsights,facebookReels,capturedAt}')::timestamptz
     ELSE COALESCE(q.published_at, q.updated_at)
   END,
