@@ -119,10 +119,11 @@ async function readPublicChannel(
 export async function getYouTubePublishingConnectionHealth(
   env: SocialPlatformEnvironment = process.env,
   fetcher: typeof fetch = fetch,
+  resolveReadOnlyRefreshToken: () => Promise<string | null> = () => getYouTubeRefreshToken(env),
 ): Promise<YouTubePublishingConnectionHealth> {
   const clientId = env.YOUTUBE_CLIENT_ID?.trim();
   const clientSecret = env.YOUTUBE_CLIENT_SECRET?.trim();
-  const refreshToken = await getYouTubeRefreshToken(env);
+  const refreshToken = await resolveReadOnlyRefreshToken();
   if (!clientId || !clientSecret || !refreshToken) {
     const publicRead = await readPublicChannel(env, fetcher, "oauth_missing");
     return publicRead ?? result("not_configured", "بيانات OAuth الخاصة بـYouTube غير مكتملة.");
