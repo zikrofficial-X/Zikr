@@ -63,13 +63,5 @@ export async function processSocialPublishQueue(limit = 10) {
     else failed += 1;
   }
 
-  return {
-    processed: items.length,
-    succeeded,
-    deferred,
-    authBlocked,
-    approvalBlocked,
-    failed,
-    enabledPlatforms,
-  };
+  return { processed: items.length, succeeded, deferred, authBlocked, approvalBlocked, failed, enabledPlatforms };
 }
