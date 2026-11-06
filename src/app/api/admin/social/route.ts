@@ -191,7 +191,7 @@ export async function GET() {
         const bucket = platformAnalytics[platform as keyof typeof platformAnalytics];
         if (!bucket) return [];
         bucket.posts += 1; add(bucket,"views",views); add(bucket,"likes",likes); add(bucket,"comments",comments); add(bucket,"shares",shares);
-        return [{ id:item.id,title:item.title,contentType:item.content_type,platform,publishedAt:item.published_at,remoteId:typeof delivery.remoteId==="string"?delivery.remoteId:null,url:typeof delivery.url==="string"?delivery.url:null,views,likes,comments,shares,metricsCapturedAt:typeof metric.capturedAt==="string"?metric.capturedAt:null,metricsStatus:typeof metric.status==="string"?metric.status:(Object.keys(metric).length?"available":"awaiting_sync") }];
+        return [{ id:item.id,title:item.title,contentType:item.content_type,platform,publishedAt:item.published_at ?? item.created_at,remoteId:typeof delivery.remoteId==="string"?delivery.remoteId:null,url:typeof delivery.url==="string"?delivery.url:null,views,likes,comments,shares,metricsCapturedAt:typeof metric.capturedAt==="string"?metric.capturedAt:null,metricsStatus:typeof metric.status==="string"?metric.status:(Object.keys(metric).length?"available":"awaiting_sync") }];
       });
     }).sort((a,b)=>Date.parse(b.publishedAt)-Date.parse(a.publishedAt)).slice(0,100);
     const youtubeAnalytics = trafficSnapshot.youtubeAnalytics;
