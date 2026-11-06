@@ -1217,6 +1217,7 @@ async function renderVideo(request: GeneratedRequest) {
 
     if (
       !isTemplatePreview &&
+      !boundTemplate &&
       engineConfig().aiEnabled &&
       engineConfig().order.some((provider) => provider !== "template") &&
       aiAttemptsUsed < AI_ATTEMPTS_PER_RUN
@@ -1270,7 +1271,7 @@ async function renderVideo(request: GeneratedRequest) {
           ? null
           : aiResult.error || "AI providers unavailable",
       };
-    } else if (!isTemplatePreview && engineConfig().aiEnabled && aiAttemptsUsed >= AI_ATTEMPTS_PER_RUN) {
+    } else if (!isTemplatePreview && !boundTemplate && engineConfig().aiEnabled && aiAttemptsUsed >= AI_ATTEMPTS_PER_RUN) {
       request.content = {
         ...request.content,
         aiProvider: null,
