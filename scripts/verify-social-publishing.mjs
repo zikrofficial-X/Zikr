@@ -76,7 +76,7 @@ if (!publisher.includes("getFacebookPageCredentials")) failures.push("Facebook p
 if (!publisher.includes("credentials.isEnabled")) failures.push("Facebook publisher must honor the explicit OAuth connection enable switch");
 if (!publisher.includes("isFacebookAuthFailure")) failures.push("Facebook auth failures must be classified separately");
 if (!publisher.includes("authBlocked: hasAuthFailure")) failures.push("Facebook auth failures must block repeated automatic retries");
-if (!publisher.includes("status.eq.failed")) failures.push("failed social queue items must be eligible for scheduled automatic retry");
+if (!pendingSelector.includes('const statusPriority: SocialQueueStatus[] = ["partial", "queued", "failed"]') || !pendingSelector.includes("status=eq.${status}")) failures.push("failed social queue items must remain eligible in bounded scheduled auto-retry priority");
 if (!publisher.includes("permanentFailure === true")) failures.push("permanent social failures must be excluded from automatic retry");
 if (!publisher.includes("socialRetryDelayMinutes")) failures.push("social retries must use bounded exponential backoff");
 if (!publisher.includes("staleRecovery: true")) failures.push("stale social processing recovery must be recorded");
