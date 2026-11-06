@@ -4,7 +4,8 @@ import { publishToFacebook, publishToYoutube } from "@/features/videos/services/
 import { getServerEnv } from "@/lib/env";
 import { getFacebookPageCredentials } from "@/features/social/services/facebook-credentials";
 import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError } from "@/features/social/services/facebook-reels-rate-limit";
-import { isVideoContentType, isVideoQueueItemApprovedForPublishing } from "@/features/videos/services/video-publish-approval";
+import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
+import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getUnavailableSocialPlatforms } from "@/features/social/services/platform-availability";
 
@@ -156,35 +157,82 @@ async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promi
   }
 }
 
+async function getApprovedVideoQueueItemIds(
+  items: readonly SocialPublishQueueItem[],
+): Promise<Set<string>> {
+  const videoItems = items.filter((item) => isVideoContentType(item.content_type));
+  const contentIds = [...new Set(
+    videoItems
+      .map((item) => item.content_id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
+  )];
+  if (contentIds.length === 0) return new Set();
+
+  try {
+    const filter = contentIds.map((id) => encodeURIComponent(id)).join(",");
+    const rows = await supabaseServerAdminRequest<Array<VideoPublishRequestSnapshot & { id: string }>>(
+      `/rest/v1/video_generation_requests?id=in.(${filter})&select=id,status,category,video_url,source_hash,content_hash,template_version,content`,
+    );
+    const requestsById = new Map<string, VideoPublishRequestSnapshot>();
+    for (const row of rows ?? []) {
+      const { id, ...request } = row;
+      requestsById.set(id, request);
+    }
+
+    const approvedIds = new Set<string>();
+    for (const item of videoItems) {
+      if (!item.content_id || !item.video_url) continue;
+      if (isVideoQueueItemApprovedForPublishing({
+        contentType: item.content_type,
+        contentId: item.content_id,
+        queuedVideoUrl: item.video_url,
+        request: requestsById.get(item.content_id) ?? null,
+      })) {
+        approvedIds.add(item.id);
+      }
+    }
+    return approvedIds;
+  } catch (error) {
+    console.error("[social-publishing] Batch video approval lookup failed; holding video items:", error);
+    return new Set();
+  }
+}
+
 export async function getPendingSocialPublishItems(
   limit = 10,
   enabledPlatforms: readonly SocialPlatform[] = getEnabledSocialPlatforms(process.env),
 ): Promise<SocialPublishQueueItem[]> {
   const now = encodeURIComponent(new Date().toISOString());
+  const effectiveLimit = Math.max(1, Math.min(100, Math.floor(limit) || 1));
+  // Read a wider candidate window before applying human-QA eligibility. Held
+  // videos must not occupy the small delivery batch and starve written posts.
+  const candidateLimit = Math.max(100, Math.min(500, effectiveLimit * 25));
   const maxAttemptsFor = (metadata: Record<string, unknown> | null) => socialMaxAttempts(metadata);
   const statusPriority: SocialQueueStatus[] = ["partial", "queued", "failed"];
   try {
-    const rows: SocialPublishQueueItem[] = [];
-    for (const status of statusPriority) {
-      const remaining = Math.max(0, limit - rows.length);
-      if (remaining === 0) break;
-      const path =
-        `/rest/v1/social_publish_queue?status=eq.${status}&or=(scheduled_at.is.null,scheduled_at.lte.${now})&order=scheduled_at.asc.nullsfirst,created_at.asc&limit=${remaining}`;
-      const batch = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(path);
-      if (Array.isArray(batch)) rows.push(...batch);
-    }
-
-    const eligible = await Promise.all(rows.map(async (item) => {
-      const metadata = item.metadata ?? {};
-      const maxAttempts = maxAttemptsFor(metadata);
-      const hasRunnableTarget = item.target_platforms.some((platform) =>
-        canAttemptSocialPlatform({ platform, enabledPlatforms, metadata, maxAttempts }),
-      );
-      if (!hasRunnableTarget) return null;
-      if (!(await hasVideoApprovalForQueueItem(item))) return null;
-      return item;
-    }));
-    return eligible.filter((item): item is SocialPublishQueueItem => item !== null);
+    const batches = await Promise.all(statusPriority.map((status) =>
+      supabaseServerAdminRequest<SocialPublishQueueItem[]>(
+        `/rest/v1/social_publish_queue?status=eq.${status}&or=(scheduled_at.is.null,scheduled_at.lte.${now})&order=scheduled_at.asc.nullsfirst,created_at.asc&limit=${candidateLimit}`,
+      ),
+    ));
+    const candidates = batches.flatMap((batch) => Array.isArray(batch) ? batch : []);
+    const runnableCandidates = candidates.filter((item) =>
+      item.target_platforms.some((platform) =>
+        canAttemptSocialPlatform({
+          platform,
+          enabledPlatforms,
+          metadata: item.metadata ?? {},
+          maxAttempts: maxAttemptsFor(item.metadata),
+        }),
+      ),
+    );
+    const approvedVideoQueueItemIds = await getApprovedVideoQueueItemIds(runnableCandidates);
+    return selectEligibleSocialPublishItems(runnableCandidates, {
+      enabledPlatforms,
+      approvedVideoQueueItemIds,
+      maxAttemptsFor,
+      limit: effectiveLimit,
+    });
   } catch (error) {
     console.error("[social-publishing] Failed to fetch queue:", error);
     return [];
