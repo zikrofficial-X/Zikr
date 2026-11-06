@@ -100,6 +100,7 @@ const CANONICAL_API_GUARDS = {
   "src/app/api/admin/social/written/route.ts POST": ["social.manage", "social.publish"],
   "src/app/api/admin/video-generation/narration-upload/route.ts POST": ["video.manage"],
   "src/app/api/admin/video-generation/route.ts GET": ["video.manage"],
+  "src/app/api/admin/video-purge/route.ts POST": ["video.delete"],
   "src/app/api/admin/video-generation/route.ts DELETE": ["video.delete"],
   "src/app/api/admin/video-generation/route.ts PATCH": ["video.manage", "social.publish"],
   "src/app/api/admin/video-generation/sources/route.ts GET": ["video.manage"],
