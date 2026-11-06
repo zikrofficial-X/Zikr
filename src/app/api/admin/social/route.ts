@@ -691,14 +691,10 @@ export async function POST(request: NextRequest) {
       }
 
       if (deleteLocalMemory) {
-        // Remove only verified ZIKR-generated Cloudinary media after remote
-        // deletion was confirmed. Keep audit/social queue ledgers intact.
+        // Remove only verified ZIKR-generated Cloudinary media when explicitly
+        // requested. This is independent from remote social deletion. Keep all ledgers intact.
         for (const item of selectedItems ?? []) {
           const deletionLedger = deletionLedgerByItem.get(item.id) ?? asRecord(item.metadata?.platformDeletions) ?? {};
-          const remoteDeletionConfirmed = Object.values(deletionLedger).some(
-            value => asRecord(value)?.status === "deleted",
-          );
-          if (!remoteDeletionConfirmed) continue;
           const contentId = item.content_id?.trim();
           if (!contentId) {
             localMemoryFailed += 1;
