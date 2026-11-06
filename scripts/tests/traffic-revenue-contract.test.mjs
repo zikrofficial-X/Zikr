@@ -16,7 +16,7 @@ assert.doesNotMatch(service, /\.select\([^)]*(?:page_access_token|access_token|r
 assert.doesNotMatch(service, /socialProfiles:\s*\[[\s\S]*?(?:page_access_token|access_token|refresh_token)/i);
 assert.match(service, /GA4_REFRESH_TOKEN/);
 assert.match(service, /GA4_PROPERTY_ID/);
-assert.match(service, /analyticsdata\.googleapis\\.com/);
+assert.match(service, /analyticsdata\.googleapis\.com/);
 assert.match(service, /sessionDefaultChannelGroup/);
 assert.match(service, /landingPagePlusQueryString/);
 assert.match(service, /getCachedGa4AnalyticsSnapshot/);
