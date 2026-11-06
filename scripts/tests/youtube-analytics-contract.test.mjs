@@ -6,7 +6,8 @@ const panel = readFileSync("src/features/admin/components/traffic-revenue-panel.
 
 assert.match(service, /YOUTUBE_CLIENT_ID/);
 assert.match(service, /YOUTUBE_CLIENT_SECRET/);
-assert.match(service, /YOUTUBE_REFRESH_TOKEN/);
+assert.match(service, /getYouTubeRefreshToken/);
+assert.match(service, /await getYouTubeRefreshToken\(\)/);
 assert.match(service, /yt-analytics|youtubeanalytics\.googleapis\.com/);
 assert.match(service, /insightTrafficSourceType/);
 assert.match(service, /estimatedMinutesWatched/);
