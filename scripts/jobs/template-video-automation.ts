@@ -992,7 +992,7 @@ function assertKidsStoryContract(request: GeneratedRequest) {
   if (normalizedText.length < 180 || normalizedText.length > 1500 || !normalizedText.includes("؟")) {
     throw new Error("Child-directed narration must be a short complete story ending with a question.");
   }
-  if (/https?:\\/\\/|قال الله|قال رسول الله|حديث قدسي|حديث نبوي/u.test(normalizedText)) {
+  if (normalizedText.includes("http://") || normalizedText.includes("https://") || /قال الله|قال رسول الله|حديث قدسي|حديث نبوي/u.test(normalizedText)) {
     throw new Error("Child-directed fiction must not contain raw URLs or unsupported religious attributions.");
   }
   if (String(content.sourceType ?? "") === "original_kids_fiction" && !String(content.sourceLabel ?? "").includes("آية أو حديث")) {
