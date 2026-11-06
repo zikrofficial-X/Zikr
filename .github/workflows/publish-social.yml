@@ -27,10 +27,8 @@ concurrency:
 
 jobs:
   publish:
-    if: >-
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'schedule' ||
-       (github.event_name == 'workflow_dispatch' && inputs.operation != 'none'))
+    # Emergency product-policy kill switch: external social publishing is retired.
+    if: false
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 15
@@ -47,7 +45,7 @@ jobs:
       BACKGROUND_JOB_TARGET: "social"
       SOCIAL_PUBLISH_BATCH_SIZE: "2"
       YOUTUBE_UPLOAD_PRIVACY: "public"
-      SOCIAL_PUBLISH_ENABLED: "true"
+      SOCIAL_PUBLISH_ENABLED: "false"
       FACEBOOK_PUBLISHING_REQUESTED: ${{ vars.FACEBOOK_PUBLISHING_ENABLED || 'true' }}
       YOUTUBE_PUBLISHING_REQUESTED: ${{ vars.YOUTUBE_PUBLISHING_ENABLED || 'true' }}
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
