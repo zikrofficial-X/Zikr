@@ -10,30 +10,11 @@ GitHub Actions invokes `pnpm background:jobs` with free Hugging Face video provi
 
 The queue is idempotent through `video_generation_requests.automation_key` and conditional pending claims, so scheduled reruns do not create duplicate automated jobs.
 
-## Automatic social publishing
+## External social publishing — retired
 
-The dedicated GitHub Actions publisher is configured with SOCIAL_PUBLISH_ENABLED=true in .github/workflows/publish-social.yml and runs every 15 minutes. It requires the protected Supabase service-role secret, YouTube OAuth for YouTube targets, and an enabled OAuth-managed Facebook Page credential for Facebook targets. The Admin dashboard worker button dispatches operation=publish_queue. The publisher handles both video queue items and written-only items (content_type=written_post, video_url=null) using the same idempotent per-platform result ledger. Video items require a persisted human approval record tied to the current source/content/template/media snapshot; the publisher rechecks it before claim and immediately before each platform call. Workflow flags cannot disable this gate. Written posts are generated from approved source records by the separate written-content worker and pass source/text validation before queue insertion.
+External publishing to Facebook, Instagram, TikTok, Pinterest, WhatsApp, and YouTube is disabled. The legacy `.github/workflows/publish-social.yml` remains only as a guarded historical workflow with `if: false`; it must not claim, publish, retry, or clean the external social queue. Legacy social API routes return HTTP 410 after authorization. YouTube OAuth is retained only for read-only channel and analytics reporting, with explicit `youtube.readonly` and `yt-analytics.readonly` scopes. No upload or delete scopes are requested or accepted.
 
-YouTube requires:
-
-```text
-YOUTUBE_CLIENT_ID
-YOUTUBE_CLIENT_SECRET
-YOUTUBE_REFRESH_TOKEN
-YOUTUBE_CHANNEL_ID
-```
-
-Facebook requires:
-
-```text
-FACEBOOK_PAGE_ID
-FACEBOOK_PAGE_ACCESS_TOKEN
-```
-
-Secrets are GitHub Actions secrets and are never committed to the repository.
-
-If a provider credential is missing or expired, that platform is recorded as failed instead of pretending that publication succeeded. Video generation itself remains independent from a single provider failure. Child-directed videos are identified from the source request and uploaded to YouTube with `selfDeclaredMadeForKids=true`; if the audience metadata lookup fails, YouTube publication is held.
-
+The video generation worker stores verified MP4 files in Cloudinary and registers them in the ZIKR `videos` catalog. Internal site publication uses `content_publish_queue` with `content_table=videos`; this is website publication only and does not invoke external providers. The production video workflow remains generation-only.
 
 ## Written Facebook content factory
 
