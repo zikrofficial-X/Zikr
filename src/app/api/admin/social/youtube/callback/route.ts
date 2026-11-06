@@ -13,6 +13,7 @@ const YOUTUBE_READ_SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
 const YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload";
 const YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube";
 const ANALYTICS_SCOPE = "https://www.googleapis.com/auth/yt-analytics.readonly";
+const YOUTUBE_DELETE_SCOPE = "https://www.googleapis.com/auth/youtube.force-ssl";
 
 type GoogleOAuthToken = {
   access_token?: string;
@@ -74,6 +75,7 @@ function scopeFlags(scopes: string[]) {
     canReadChannel: broadYoutube || set.has(YOUTUBE_READ_SCOPE),
     canUpload: broadYoutube || set.has(YOUTUBE_UPLOAD_SCOPE),
     canReadAnalytics: set.has(ANALYTICS_SCOPE),
+    canDeleteVideos: broadYoutube || set.has(YOUTUBE_DELETE_SCOPE),
   };
 }
 
@@ -140,11 +142,12 @@ export async function GET(request: NextRequest) {
         ? token.scope.split(/\s+/).filter(Boolean)
         : [];
     const flags = scopeFlags(grantedScopes);
-    if (!flags.canReadChannel || !flags.canUpload || !flags.canReadAnalytics) {
+    if (!flags.canReadChannel || !flags.canUpload || !flags.canReadAnalytics || !flags.canDeleteVideos) {
       return redirectResult("permission_missing", {
         read: flags.canReadChannel ? "ready" : "missing",
         upload: flags.canUpload ? "ready" : "missing",
         analytics: flags.canReadAnalytics ? "ready" : "missing",
+        delete: flags.canDeleteVideos ? "ready" : "missing",
       });
     }
 
