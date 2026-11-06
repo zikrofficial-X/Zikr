@@ -5,7 +5,7 @@ import {
   reconcileCompletedVideoSocialQueue,
   seedAutomatedVideoRequests,
 } from "./jobs/template-video-automation";
-import { processSocialPublishQueue } from "./jobs/social-publishing";
+import { processSocialPublishQueue, syncSocialInsights } from "./jobs/social-publishing";
 import { retryPendingPublishedVideoCleanup, resetQueuedSocialVideoMedia } from "../src/features/social/services/social-publishing";
 import { processScheduledContent } from "./jobs/content-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
@@ -273,9 +273,10 @@ async function processVideos(settings: VideoAutomationSettings) {
 }
 
 async function processSocial(settings: VideoAutomationSettings) {
+  const insights = await syncSocialInsights();
   if (!settings.autoPublish) {
     console.log("[background-jobs] Automatic social publishing is paused from Admin settings.");
-    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0 };
+    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, insights };
   }
   if (!SOCIAL_PUBLISH_ENABLED) {
     console.log("[background-jobs] Social publishing disabled.");
@@ -292,7 +293,7 @@ async function processSocial(settings: VideoAutomationSettings) {
   if (result.processed === 0) {
     console.log("[background-jobs] No queued social publish items claimed.");
   }
-  return result;
+  return { ...result, insights };
 }
 
 
@@ -377,12 +378,20 @@ async function main() {
     ? await processVideos(videoSettings)
     : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
 
-  const reconciledSocialQueue = target === "all" || target === "social"
+  const reconcilePublishingEnabled =
+    (target === "all" || target === "social") &&
+    videoSettings.autoPublish &&
+    SOCIAL_PUBLISH_ENABLED;
+  const reconciledSocialQueue = reconcilePublishingEnabled
     ? await reconcileCompletedVideoSocialQueue(100)
     : 0;
-  console.log(
-    `[background-jobs] Reconciled ${reconciledSocialQueue} completed video(s) with the current social publishing targets.`
-  );
+  if (reconcilePublishingEnabled) {
+    console.log(
+      `[background-jobs] Reconciled ${reconciledSocialQueue} completed video(s) with the current social publishing targets.`
+    );
+  } else if (target === "all" || target === "social") {
+    console.log("[background-jobs] Social queue reconciliation skipped while public publishing is paused; queue rows were not changed.");
+  }
 
   if (runNowRequestedAt && (target === "all" || target === "videos") && videoSettings.enabled && videos.failed === 0) {
     await clearRunNowRequest(runNowRequestedAt);
