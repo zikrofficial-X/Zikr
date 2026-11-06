@@ -1,13 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import {
-  processTemplateVideoQueue,
-  reconcileCompletedVideoSocialQueue,
-  seedAutomatedVideoRequests,
-} from "./jobs/template-video-automation";
-import { processSocialPublishQueue, syncSocialInsights } from "./jobs/social-publishing";
-import { retryPendingPublishedVideoCleanup, resetQueuedSocialVideoMedia } from "../src/features/social/services/social-publishing";
-import { processScheduledContent } from "./jobs/content-publishing";
+import { processTemplateVideoQueue, seedAutomatedVideoRequests } from "./jobs/template-video-automation";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
 import { notifyNewQueueFailures } from "./jobs/admin-queue-alerts";
@@ -316,9 +309,7 @@ async function main() {
     throw new Error(`Invalid BACKGROUND_JOB_TARGET: ${target}`);
   }
 
-  console.log(
-    `[background-jobs] Starting autonomous background job runner (target=${target}, generator=multi-provider-free-ai, social=${SOCIAL_PUBLISH_ENABLED ? "enabled" : "disabled"}).`
-  );
+  console.log(`[background-jobs] Starting internal ZIKR video generator (target=${target}, external social delivery disabled).`);
   const startedAt = Date.now();
 
   const videos = target === "all" || target === "videos"
