@@ -37,6 +37,36 @@ requireRegex(kidsGameHardening, /DROP POLICY IF EXISTS "Users can insert their o
 requireRegex(kidsGameHardening, /DROP POLICY IF EXISTS "Users can update their own game progress"/i, "legacy kids progress update policy removal");
 requireRegex(kidsGameHardening, /CREATE POLICY kids_game_results_select_own[\s\S]*TO authenticated[\s\S]*auth\.uid\(\).*user_id/i, "kids game result self-read policy");
 
+
+const adminContent = readFileSync("src/features/admin/services/content.ts", "utf8");
+const siteContent = readFileSync("src/features/site-content/services/site-content.ts", "utf8");
+const scheduledContent = readFileSync("scripts/jobs/content-publishing.ts", "utf8");
+
+requireRegex(
+  migrations,
+  /create table if not exists pinned_messages[\\s\\S]{0,500}?published boolean not null default false/i,
+  "pinned_messages.published migration contract",
+);
+requireRegex(
+  types,
+  /pinned_messages\\s*:\\s*\\{[\\s\\S]{0,1000}?published:\\s*boolean/,
+  "pinned_messages.published generated type contract",
+);
+requireText(
+  adminContent,
+  '.select("id, title, published, created_at, updated_at")',
+  "admin pinned_messages query contract",
+);
+requireText(
+  siteContent,
+  ".select('id, title, body, cta_label, cta_href, published, created_at')",
+  "public pinned_messages query contract",
+);
+requireText(siteContent, ".eq('published', true)", "public pinned_messages visibility contract");
+assert.doesNotMatch(adminContent, /is_active/);
+assert.doesNotMatch(siteContent, /is_active|priority/);
+assert.doesNotMatch(scheduledContent, /is_active/);
+
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 assert.equal(pkg.scripts["video:contract:check"], "tsx scripts/tests/video-contract.test.ts", "video contract check must remain wired to the canonical test");
 
