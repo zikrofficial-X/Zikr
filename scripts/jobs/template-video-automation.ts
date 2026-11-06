@@ -1556,7 +1556,7 @@ function buildAutomatedVideoQaChecklist(
       : audioKind === "arabic_tts_narration" ||
         (audioKind === "source_audio" && content.audioRightsVerified === true));
 
-  const allowedProviders = new Set(["hf_ltx_fast", "hf_wan"]);
+  const allowedProviders = new Set(["hf_ltx_fast", "hf_wan", "template"]);
   const aiProvider = typeof content.aiProvider === "string" ? content.aiProvider : "";
   const providerAllowed = !aiProvider || allowedProviders.has(aiProvider);
   const allowedScenes = new Set(["calm", "dawn", "night", "gold", "emerald", "paper", "rose"]);
