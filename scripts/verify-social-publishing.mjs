@@ -102,6 +102,11 @@ for (const expected of [
   'BACKGROUND_JOB_TARGET: "social"',
   'SOCIAL_PUBLISH_AFTER: "2026-11-06T20:00:00Z"',
   "SOCIAL_PUBLISH_FACEBOOK_ENABLED",
+  "pages_manage_posts",
+  "pages_manage_engagement",
+  "pages_show_list",
+  "pages_read_engagement",
+  "read_insights",
   "SOCIAL_PUBLISH_YOUTUBE_ENABLED",
   "youtube.upload",
 ]) {
