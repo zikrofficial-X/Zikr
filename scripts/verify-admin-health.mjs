@@ -50,8 +50,8 @@ if (!health.includes("queuesAvailable: { video: video.available }")) {
 if (!platform.includes("getAdminGitHubHealth") || !platform.includes("/commits/main/status") || !platform.includes("/actions/runs?branch=main")) {
   throw new Error("Admin health must expose read-only GitHub commit and workflow status");
 }
-if (!platform.includes("GITHUB_WORKFLOW_PATHS") || !platform.includes("storage-retention.yml") || platform.includes(".github/workflows/publish-social.yml")) {
-  throw new Error("Admin health must inventory active production workflows only");
+if (!platform.includes("GITHUB_WORKFLOW_PATHS") || !platform.includes("storage-retention.yml") || !platform.includes(".github/workflows/publish-social.yml")) {
+  throw new Error("Admin health must inventory active production workflows only, including approval-gated social delivery");
 }
 
 if (!page.includes("حالة النشر والتكاملات") || !page.includes("health.github.statuses") || !page.includes("health.github.workflows")) {
@@ -66,14 +66,15 @@ if (!page.includes('queueAttention === null ? "غير متاح" : queueAttention
 if (!page.includes("getAdminSettings") || !page.includes("video_automation_ai_enabled") || !page.includes("video_automation_enabled")) {
   throw new Error("Admin health must read canonical internal worker settings from admin_settings");
 }
-if (page.includes("video_automation_auto_publish") || page.includes("Facebook") || page.includes("youtube.upload")) {
-  throw new Error("Admin health must not expose retired external publishing flags or providers");
+if (!page.includes("video_automation_auto_publish") || !page.includes("socialAutoPublishEnabled")) {
+  throw new Error("Admin health must expose the canonical social auto-publish setting from admin_settings");
 }
-if (!page.includes("النشر داخل الموقع") || !page.includes("لا يُرسل منشورات إلى منصات خارجية")) {
-  throw new Error("Admin health must state the internal site-only publishing policy");
+if (!page.includes("النشر داخل الموقع") || !page.includes("النشر الاجتماعي الخارجي") ||
+    !page.includes("اعتماد الجودة") || !page.includes("صلاحيات القنوات")) {
+  throw new Error("Admin health must explain the separate internal-site and approval-gated social publishing paths");
 }
 if (page.includes("getVideoEngineConfig()") || page.includes("engine.autoPublishEnabled")) {
   throw new Error("Admin health must not infer GitHub worker state from the Vercel process environment");
 }
 
-console.log("Admin health internal-only accuracy contract passed.");
+console.log("Admin health internal and approval-gated social publishing contract passed.");
