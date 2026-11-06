@@ -63,7 +63,6 @@ export async function TrafficRevenuePanel() {
   const snapshot = await getTrafficRevenueSnapshot();
   const metrics = snapshot.metrics;
   const platforms = snapshot.socialProfiles ?? [];
-  const knownPlatforms = new Set(platforms.map((profile) => profile.platform.toLowerCase()));
 
   return (
     <section className="mt-8 space-y-6" dir="rtl" aria-labelledby="traffic-revenue-heading">
