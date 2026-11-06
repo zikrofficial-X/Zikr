@@ -5,6 +5,7 @@ import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { getAdminAnalytics } from "@/features/admin/services/analytics";
 import { AnalyticsDashboard } from "./analytics-dashboard";
+import { TrafficRevenuePanel } from "@/features/admin/components/traffic-revenue-panel";
 
 export const metadata: Metadata = { title: "تحليلات المنصة | إدارة ذِكر" };
 
