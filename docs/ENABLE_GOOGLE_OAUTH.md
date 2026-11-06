@@ -8,11 +8,11 @@ Production application URL:
 
 Production Supabase project:
 
-`ymxdswkaxafakugktsim`
+`zqtssvlvmkzeeyqghqfk`
 
 The Google OAuth provider callback for this Supabase project is:
 
-`https://ymxdswkaxafakugktsim.supabase.co/auth/v1/callback`
+`https://zqtssvlvmkzeeyqghqfk.supabase.co/auth/v1/callback`
 
 Do not use a callback from an old Supabase project.
 
@@ -79,7 +79,7 @@ The source-of-truth local configuration is `supabase/config.toml`.
 
 The Google OAuth Web client must include the exact Supabase provider callback URI as an Authorized redirect URI:
 
-`https://ymxdswkaxafakugktsim.supabase.co/auth/v1/callback`
+`https://zqtssvlvmkzeeyqghqfk.supabase.co/auth/v1/callback`
 
 For the web client, configure the production JavaScript origin:
 
