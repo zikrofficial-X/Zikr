@@ -135,7 +135,7 @@ const postInsights = read("src/features/social/services/youtube-post-insights.ts
 for (const token of ["syncYoutubePublishedPostInsights", "youtube-data-api-v3", "views:", "likes:", "comments:", "INSIGHTS_REFRESH_MS"]) {
   if (!postInsights.includes(token)) failures.push("YouTube public post insights sync missing: " + token);
 }
-const socialWorker = read("scripts/jobs/social-publishing.ts");
+
 if (!socialWorker.includes("syncYoutubePublishedPostInsights")) failures.push("social worker must periodically sync YouTube post statistics");
 if (!postInsights.includes("scope: \"public-statistics\"")) failures.push("YouTube metrics must be labelled as public statistics, not retention analytics");
 
