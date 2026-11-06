@@ -42,3 +42,22 @@ assert.ok(FACEBOOK_REELS_INSIGHT_METRICS.includes("post_video_avg_time_watched")
 assert.ok(!FACEBOOK_REELS_INSIGHT_METRICS.includes("post_impressions_unique" as never));
 
 console.log("Facebook Reels insights permission and metric tests passed.");
+
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+function requiredPermissions(source: string): string[] {
+  const match = source.match(/const REQUIRED_PERMISSIONS = \[([\\s\\S]*?)\];/);
+  assert.ok(match, "OAuth route must declare its required Meta permissions");
+  return [...match[1].matchAll(/"([^"]+)"/g)].map((entry) => entry[1]);
+}
+
+const connectPermissions = requiredPermissions(
+  readFileSync(resolve("src/app/api/admin/social/facebook/connect/route.ts"), "utf8"),
+);
+const callbackPermissions = requiredPermissions(
+  readFileSync(resolve("src/app/api/admin/social/facebook/callback/route.ts"), "utf8"),
+);
+assert.deepEqual(callbackPermissions, connectPermissions, "OAuth callback must validate every permission requested by the connect route");
+assert.ok(callbackPermissions.includes("read_insights"), "Facebook insights requires explicit read_insights authorization");
+assert.ok(callbackPermissions.includes("pages_manage_engagement"), "Facebook video insights requires Page engagement management authorization");
