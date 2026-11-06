@@ -43,10 +43,14 @@ export type SiteSettingValue = {
 
 export type PinnedMessage = {
   id: string;
-  title: string | null;
-  body: string | null;
+  title: string;
+  body: string;
+  cta_label: string | null;
+  cta_href: string | null;
   type: string | null;
+  /** Compatibility alias sourced from the canonical `published` field. */
   is_active: boolean;
+  /** No priority column exists; messages are ordered newest first. */
   priority: number;
 };
 
@@ -94,12 +98,16 @@ export async function getPinnedMessages(limit = 3): Promise<PinnedMessage[]> {
     const supabase = await createClient();
     const { data } = await supabase
       .from('pinned_messages')
-      .select('id, title, body, type, is_active, priority')
-      .eq('is_active', true)
-      .order('priority', { ascending: false })
+      .select('id, title, body, cta_label, cta_href, published, created_at')
+      .eq('published', true)
       .order('created_at', { ascending: false })
       .limit(limit);
-    return data ?? [];
+    return (data ?? []).map((item) => ({
+      ...item,
+      type: null,
+      is_active: item.published,
+      priority: 0,
+    }));
   } catch {
     return [];
   }
