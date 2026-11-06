@@ -1547,6 +1547,12 @@ async function registerGeneratedVideoOnSite(
     renderDurationMs: rendered.renderDurationMs,
     scene: rendered.scene,
     audience: request.content.audience === "kids" ? "kids" : "general",
+    seriesId: typeof request.content.seriesId === "string" ? request.content.seriesId : null,
+    seriesTitle: typeof request.content.seriesTitle === "string" ? request.content.seriesTitle : null,
+    seasonNumber: Number.isInteger(Number(request.content.seasonNumber)) ? Number(request.content.seasonNumber) : null,
+    episodeNumber: Number.isInteger(Number(request.content.episodeNumber)) ? Number(request.content.episodeNumber) : null,
+    learningObjective: typeof request.content.learningObjective === "string" ? request.content.learningObjective : null,
+    factorySequence: Number.isInteger(Number(request.content.factorySequence)) ? Number(request.content.factorySequence) : null,
     aiDisclosure: request.content.aiDisclosure ?? null,
     quality: {
       passed: true,
