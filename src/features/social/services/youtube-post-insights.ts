@@ -104,7 +104,7 @@ export async function syncYoutubePublishedPostInsights(
   const payload = (await response.json()) as YoutubeVideosResponse;
   if (payload.error) throw new Error("YouTube public statistics endpoint returned an API error.");
 
-  const byId = new Map((payload.items ?? []).map((video) => [video.id, video]));
+  const byId = new Map<string, YoutubeVideo>((payload.items ?? []).map((video) => [video.id, video]));
   const capturedAt = new Date().toISOString();
   let updated = 0;
 
