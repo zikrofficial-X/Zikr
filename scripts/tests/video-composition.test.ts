@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  paginateCaptionText,
   planCaptionTimings,
   resolveVideoComposition,
 } from "../../src/features/videos/services/video-composition";
@@ -28,6 +29,12 @@ assert.ok(["center", "left-to-right", "right-to-left", "top-to-bottom", "bottom-
 const first = resolveVideoComposition({ category: "quran", seed: "stable-id", ...dimensions });
 const retry = resolveVideoComposition({ category: "quran", seed: "stable-id", ...dimensions });
 assert.equal(first.cameraPath, retry.cameraPath, "camera path must remain stable across retries");
+
+const longStory = Array.from({ length: 450 }, (_, index) => `كلمة${index + 1}`).join(" ");
+const longStoryPages = paginateCaptionText(longStory, 26, 3);
+assert.ok(longStoryPages.length > 10, "long narrations must expand into all required caption pages");
+const reconstructedLongStory = longStoryPages.join(" ").replace(/\\\\N/g, " ").replace(/\\s+/g, " ").trim();
+assert.equal(reconstructedLongStory, longStory, "caption pagination must not drop any spoken words");
 
 const pages = [
   "الحمد لله رب العالمين\\Nالرحمن الرحيم",
