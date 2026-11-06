@@ -348,7 +348,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    for (const path of ["/videos", "/admin/media", "/admin/video/requests", "/admin/videos"]) {
+    for (const path of ["/videos", "/admin/media", "/admin/memory", "/admin/video/requests", "/admin/videos"]) {
       revalidatePath(path);
     }
 
