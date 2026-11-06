@@ -1,6 +1,5 @@
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { getServerEnv } from "@/lib/env";
-import type { SocialPlatformEnvironment } from "./platform-availability";
 
 type StoredYouTubeOAuthCredential = {
   refresh_token?: string | null;
@@ -33,7 +32,7 @@ export async function readStoredYouTubeRefreshToken(): Promise<string | null> {
  * validated and persisted.
  */
 export async function getYouTubeRefreshToken(
-  env: Pick<SocialPlatformEnvironment, "YOUTUBE_REFRESH_TOKEN"> = getServerEnv(),
+  env: { YOUTUBE_REFRESH_TOKEN?: string } = getServerEnv(),
   readStored: () => Promise<string | null> = readStoredYouTubeRefreshToken,
 ): Promise<string | null> {
   const stored = await readStored().catch(() => null);
