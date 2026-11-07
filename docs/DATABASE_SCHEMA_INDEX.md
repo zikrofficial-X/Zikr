@@ -87,3 +87,8 @@ Use the canonical repository checks:
 For the current authentication URL contract, see:
 
 `docs/CANONICAL_AUTH_CONFIG.md`
+
+
+## Production Quran tafsir recovery — 2026-11-07
+
+The 2026-11-07 audit found `public.quran_tafsir` empty on the current production project even though the repository contains nine original `ar.muyassar` migrations totaling 6,236 unique ayah explanations. Those migrations were conditional on the matching surah already existing when they were first applied. The next controlled release will replay the existing files atomically after schema migrations and verify all 6,236 source-attributed rows before declaring the Quran tafsir dataset complete. The Git-tracked offline Quran corpus remains the canonical reader source; this database restoration repairs the compatibility, tafsir lookup, and content-index paths.
