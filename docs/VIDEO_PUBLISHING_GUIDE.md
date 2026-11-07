@@ -6,7 +6,7 @@
 |---|---|---|
 | Video generation | GitHub Actions | `.github/workflows/generate-ai-video.yml` |
 | Internal website video publication | GitHub Actions + Supabase | `content_publish_queue` |
-| External social publishing | Automated-QA-gated | `.github/workflows/publish-social.yml` after video generation or manual dispatch |
+| External social publishing | Automated-QA-gated | `.github/workflows/publish-social.yml` after generation, every 15 minutes, or manual dispatch |
 | Application build/documentation | CircleCI | `application-build-docs` |
 | Android build/signing | CircleCI | `android-rebuild` |
 | Prayer notifications | Supabase | `prayer-notification-worker` + pg_cron |
@@ -39,7 +39,7 @@ Queue safety is enforced through:
 - bounded retry attempts;
 - separate generation and publication responsibilities.
 
-Video generation may enqueue a new row in `social_publish_queue`, but it must not publish directly. The social worker is triggered after a successful video workflow or by an explicit manual dispatch; it does not poll every 15 minutes.
+Video generation may enqueue a new row in `social_publish_queue`, but it must not publish directly. The social worker is triggered immediately after a successful video workflow, by an explicit manual dispatch, and by a bounded 15-minute schedule (UTC minutes 07, 22, 37, 52) that drains up to five eligible rows and retries deferred/partial provider results after cooldowns.
 
 ## Internal ZIKR video publication
 
@@ -49,7 +49,7 @@ This queue is not a social queue. No video-generation step may enqueue `social_p
 
 ## Automated-QA external social publishing
 
-Social delivery is a separate worker, never part of the renderer. After a successful video-generation run, GitHub Actions may invoke `.github/workflows/publish-social.yml`; an administrator can also dispatch it manually. There is no periodic polling. The workflow validates the connected Facebook Page and a YouTube OAuth refresh credential with `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly` before enabling each provider. No delete scope is requested. If provider readiness fails, that provider remains disabled and no rows are claimed for it.
+Social delivery is a separate worker, never part of the renderer. After a successful video-generation run, GitHub Actions invokes `.github/workflows/publish-social.yml`; an administrator can also dispatch it manually. A bounded 15-minute schedule also drains up to five eligible rows and retries deferred/partial results after provider cooldowns. The workflow validates the connected Facebook Page and a YouTube OAuth refresh credential with `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly` before enabling each provider. No delete scope is requested. If provider readiness fails, that provider remains disabled and no rows are claimed for it.
 
 Only newly created rows at or after `SOCIAL_PUBLISH_AFTER` are eligible. The historic queue is excluded from automatic replay. Each video must pass automated source, audio, visuals, captions, and rights checks recorded on its generation request and bound to the exact source/content/template/MP4 fingerprint. The worker rechecks this immutable automated QA record immediately before every provider call; missing, stale, changed, or failed checks block publication. No human review is required. Provider results and remote IDs are stored per platform to prevent duplicate publishing. Social insights synchronization is opt-in and disabled during publishing runs to reduce Supabase reads.
 
@@ -63,7 +63,7 @@ Monetag links are not appended to YouTube or Facebook descriptions/captions; pro
 
 ## Admin Run Now
 
-Admin Run Now does not run a separate poller or second scheduler.
+Admin Run Now does not run a second scheduler; the shared social queue has one bounded 15-minute retry schedule plus the immediate post-generation trigger.
 
 The admin action dispatches the canonical GitHub video workflow directly. The workflow concurrency group prevents overlapping production generations.
 
@@ -160,7 +160,7 @@ After deploying, sign in with a ZIKR administrator, open `/admin/social`, and co
 
 ### Current automation and approval boundary
 
-Production video generation is configured for a daily target of 20, in four UTC runs (03:17, 09:17, 15:17, 21:17), with a hard daily ceiling of 24. Provider quotas, storage availability, and source validation can reduce the actual number completed. Social publishing is event-driven after a successful video worker and checks each connected platform independently.
+Production video generation is configured for a daily target of 20, in four UTC runs (03:17, 09:17, 15:17, 21:17), with a hard daily ceiling of 24. Provider quotas, storage availability, and source validation can reduce the actual number completed. Social publishing runs immediately after a successful video worker and is retried every 15 minutes (UTC minutes 07, 22, 37, 52), five eligible rows per run, with each connected platform checked independently.
 
 External video publishing now uses a verified automated QA policy for the five checks (source, audio, visuals, captions, rights). The worker creates a system QA record only when every check passes and binds it to the exact source, content, template version, and MP4 URL; it revalidates that fingerprint immediately before each upload. Failed or uncertain checks are not auto-approved and are retained in the generation audit without public distribution. Manual review is not required for passing videos.
 
