@@ -51,7 +51,7 @@ for (const item of workflowNames) {
 }
 
 assert.ok(video.includes('cron: "17 3,9,15,21 * * *"'), "GitHub must own the recurring video generation schedule");
-assert.ok(!social.includes("\n  schedule:") && !social.includes("\n  push:") && social.includes("workflow_run:"), "social publisher must be event-driven after successful generation with no polling schedule or push trigger");
+assert.ok(social.includes('cron: "7,22,37,52 * * * *"') && social.includes("github.event_name == 'schedule'") && !social.includes("\n  push:") && social.includes("workflow_run:"), "social publisher must retry the bounded queue every 15 minutes on main, while preserving the immediate post-generation trigger and avoiding push triggers");
 assert.ok(circle.includes('cron: "17 4 * * *"'), "CircleCI must retain the recurring English content schedule");
 assert.ok(!circle.includes('cron: "17 3,9,15,21 * * *"'), "CircleCI must not own the video generation schedule");
 assert.ok(

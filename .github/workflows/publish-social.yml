@@ -1,9 +1,10 @@
 name: ZIKR Automated Social Publisher
 
 on:
-  # A publish run follows a successful video-generation run; there is no 15-minute
-  # polling loop and no automatic resubmission of the pre-activation queue. Video
-  # rows must carry a current, complete automated QA snapshot before any provider call.
+  # Drain only post-launch queue rows and retry deferred providers after cooldowns.
+  # This bounded poll complements the immediate run after successful generation.
+  schedule:
+    - cron: "7,22,37,52 * * * *"
   workflow_run:
     workflows: ["ZIKR Autonomous AI Video Worker"]
     types: [completed]
@@ -28,7 +29,9 @@ concurrency:
 jobs:
   publish:
     if: >-
-      ${{ (github.event_name == 'workflow_run' &&
+      ${{ (github.event_name == 'schedule' &&
+            github.ref == 'refs/heads/main') ||
+           (github.event_name == 'workflow_run' &&
             github.event.workflow_run.conclusion == 'success' &&
             github.event.workflow_run.head_branch == 'main') ||
            (github.event_name == 'workflow_dispatch' &&

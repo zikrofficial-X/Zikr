@@ -51,7 +51,7 @@ if (existsSync("src/app/api/internal/video-generation/daily/route.ts")) failures
 if (existsSync("src/app/api/internal/youtube-sync/route.ts")) failures.push("retired /api/internal/youtube-sync endpoint must remain deleted");
 if (adminSocial.includes("SOCIAL_PUBLISHING_RETIRED") || !adminSocial.includes("dispatchGitHubWorkflow(\"publish-social.yml\"")) failures.push("admin social API must dispatch the controlled publisher and must not return HTTP 410");
 if (!publisher.includes("workflow_run:") || !publisher.includes("github.event.workflow_run.conclusion == 'success'")) failures.push("social publisher must run only after a successful video-generation workflow");
-if (!publisher.includes("workflow_dispatch:") || publisher.includes("\\n  schedule:") || publisher.includes("\\n  push:")) failures.push("social publishing must be event-driven/manual and must not poll or trigger on source pushes");
+if (!publisher.includes("workflow_dispatch:") || !publisher.includes('cron: "7,22,37,52 * * * *"') || !publisher.includes("github.event_name == 'schedule'") || publisher.includes("\\n  push:")) failures.push("social publishing must combine event-driven publishing with a bounded 15-minute retry drain and must not trigger on source pushes");
 if (!publisher.includes('SOCIAL_PUBLISH_ENABLED: "true"') || !publisher.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("social publisher must execute the social target behind the explicit enabled flag");
 if (!publisher.includes('SOCIAL_SYNC_INSIGHTS: "false"')) failures.push("publishing runs must not refresh expensive social insights on every dispatch");
 if (!publisher.includes("SOCIAL_PUBLISH_AFTER: \"2026-11-06T20:00:00Z\"")) failures.push("social publisher must exclude the pre-activation queue backlog");
