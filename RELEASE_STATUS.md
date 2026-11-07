@@ -8,7 +8,8 @@ Production URL: https://zikrmediaofficial.vercel.app
 
 | Item | Verified state |
 |---|---|
-| Source commit | `a712708004942b99fceab0993592cef6c5112afe` |
+| Deployed source commit | `a712708004942b99fceab0993592cef6c5112afe` |
+| Current main commit (not yet deployed) | `1c9f44a6c55ad9f6d65b7552892fc44b6eed43c9` |
 | Vercel deployment | `dpl_9d8LhBw1xDjNfWWcnTkv46sfdV3C` |
 | Deployment state | READY (Production) |
 | Production alias | `zikrmediaofficial.vercel.app` |
@@ -16,7 +17,7 @@ Production URL: https://zikrmediaofficial.vercel.app
 | Deployment created | 2026-11-06 (UTC) |
 | Runtime logs | No error/fatal logs returned by the latest 30-minute query; older error clusters belong to older deployments |
 
-The inspected production deployment is built from the latest `main` commit observed during this reconciliation. Its aliases include `zikrmediaofficial.vercel.app`. PR #232 is merged into `main`, but the deployment inspected here still points to its pre-merge base commit; a new controlled production release is required before merged changes are considered live.
+The inspected production deployment is READY and serves `zikrmediaofficial.vercel.app`, but it remains on the deployed source commit shown above. Current `main` is `1c9f44a6c55ad9f6d65b7552892fc44b6eed43c9`; PRs #232, #233 and #234 have merged after the deployed commit and are not live yet. The production release remains manual-only through `.github/workflows/release-finalization.yml` and requires explicit `RELEASE` confirmation.
 
 ## Atomic Android release preparation
 

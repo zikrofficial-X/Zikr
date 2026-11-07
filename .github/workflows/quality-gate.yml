@@ -27,6 +27,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxdHNzdmx2bWt6ZWV5cWdocWZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM5OTAzNDEsImV4cCI6MjEwOTU2NjM0MX0.jux_q16W3CL3lUFT3P4DvqmnjTYWXTlIF86g2j_AKhw
       NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: 224706285284-fubdladk24v49v2lnq4p5jrk5ht1uqk8.apps.googleusercontent.com
       AUTH_CALLBACK_URL: https://zikrmediaofficial.vercel.app/auth/callback
+      QUALITY_GATE_FULL_SCOPE: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && (startsWith(github.head_ref, 'codex/zikr-comprehensive-repair-') || startsWith(github.head_ref, 'codex/zikr-final-cleanup-'))) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -77,9 +78,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]] || \
-             [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]] || \
-             [[ "${GITHUB_EVENT_NAME}" == "pull_request" && ( "${GITHUB_HEAD_REF}" == codex/zikr-comprehensive-repair-* || "${GITHUB_HEAD_REF}" == codex/zikr-final-cleanup-* ) ]]; then
+          if [[ "${QUALITY_GATE_FULL_SCOPE}" == "true" ]]; then
             echo "Running the full verification suite for main or a comprehensive repair branch."
             pnpm verify
           else
@@ -93,9 +92,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]] || \
-             [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]] || \
-             [[ "${GITHUB_EVENT_NAME}" == "pull_request" && ( "${GITHUB_HEAD_REF}" == codex/zikr-comprehensive-repair-* || "${GITHUB_HEAD_REF}" == codex/zikr-final-cleanup-* ) ]]; then
+          if [[ "${QUALITY_GATE_FULL_SCOPE}" == "true" ]]; then
             echo "QUALITY_GATE=PASSED_FULL (tests, integrity, mobile, SEO, security, lint, types, and production build)"
           else
             echo "QUALITY_GATE=PASSED_PR (tests, integrity, security, lint, types, and architecture)"

@@ -587,6 +587,7 @@ workflows:
                 - /^fix\/video-worker-partial-success-and-kids-validation-20261107$/
                 - /^fix\/worker-audit-run-now-release-docs-20261107$/
                 - /^fix\/quran-tafsir-backfill-release-preflight-20261107$/
+                - /^fix\/quality-gate-full-main-scope-20261107$/
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
       - application-build-docs:
@@ -598,6 +599,7 @@ workflows:
                 - /^fix\/video-worker-partial-success-and-kids-validation-20261107$/
                 - /^fix\/worker-audit-run-now-release-docs-20261107$/
                 - /^fix\/quran-tafsir-backfill-release-preflight-20261107$/
+                - /^fix\/quality-gate-full-main-scope-20261107$/
             tags:
               ignore: /.*/
       - supabase-production-gate:

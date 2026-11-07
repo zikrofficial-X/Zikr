@@ -93,12 +93,15 @@ assert.ok(
 
 assert.ok(quality.includes('name: "ZIKR / Quality Gate"'), "Canonical GitHub quality check name is incorrect");
 assert.ok(
-  quality.includes('[[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]') &&
-    quality.includes('[[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF}" == "refs/heads/main" ]]') &&
-    quality.includes('[[ "${GITHUB_EVENT_NAME}" == "pull_request" && ( "${GITHUB_HEAD_REF}" == codex/zikr-comprehensive-repair-* || "${GITHUB_HEAD_REF}" == codex/zikr-final-cleanup-* ) ]]') &&
+  quality.includes("QUALITY_GATE_FULL_SCOPE: ${{") &&
+    quality.includes("github.event_name == 'workflow_dispatch'") &&
+    quality.includes("github.event_name == 'push' && github.ref == 'refs/heads/main'") &&
+    quality.includes("startsWith(github.head_ref, 'codex/zikr-comprehensive-repair-')") &&
+    quality.includes("startsWith(github.head_ref, 'codex/zikr-final-cleanup-')") &&
+    quality.includes('if [[ "${QUALITY_GATE_FULL_SCOPE}" == "true" ]]') &&
     quality.includes("pnpm verify") &&
     quality.includes("pnpm verify:pr"),
-  "GitHub Quality Gate must run full verification on main, manual dispatch, and comprehensive repair PRs",
+  "GitHub Quality Gate must derive the full verification scope from the GitHub event/ref context and run full verification on main, manual dispatch, and comprehensive repair PRs",
 );
 assert.ok(quality.includes("timeout-minutes: 30"), "Full main-branch verification must have an explicit bounded timeout");
 assert.ok(quality.includes("QUALITY_GATE=PASSED_FULL"), "The main-branch gate must report full verification scope");
