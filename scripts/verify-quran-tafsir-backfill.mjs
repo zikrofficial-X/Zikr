@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 
 const migrationNames = [
   "20260817074038_quran_tafsir_expansion_01.sql",
@@ -54,6 +55,11 @@ assert.equal(pairs.size, 6236, "the original source migrations must cover 6,236 
 assert.equal(ayahCountsBySurah.size, 114, "the tafsir seed corpus must cover all 114 Quran surahs");
 for (let surah = 1; surah <= 114; surah += 1) {
   assert.ok((ayahCountsBySurah.get(surah) ?? 0) > 0, "missing tafsir seed rows for surah " + surah);
+}
+
+for (const file of ["scripts/restore-quran-tafsir.sh", "scripts/reconcile-supabase-migration-history.sh"]) {
+  const syntax = spawnSync("bash", ["-n", file], { encoding: "utf8" });
+  assert.equal(syntax.status, 0, file + " must pass bash -n: " + (syntax.stderr || syntax.stdout || "unknown shell error"));
 }
 
 const restore = readFileSync("scripts/restore-quran-tafsir.sh", "utf8");
