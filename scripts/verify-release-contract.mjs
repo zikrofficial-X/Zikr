@@ -165,6 +165,8 @@ assert.ok(finalization.includes("pnpm production:smoke"), "web production releas
 assert.ok(finalization.includes("fetch-depth: 0"), "schema-baseline verification must have the parent commit available");
 assert.ok(finalization.includes('git worktree add --detach "${baseline}" "${GITHUB_SHA}^"'), "schema baseline must be checked against the commit before this release");
 assert.ok(finalization.includes('supabase db push --db-url "${SUPABASE_DB_URL}" --yes'), "pending SQL migrations must be applied through the controlled production release");
+assert.equal(finalization.split("secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING").length - 1, 5, "the explicitly configured Supabase release URL must take precedence over a stale generic Postgres secret in every release phase");
+assert.ok(!finalization.includes("secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL"), "a generic Postgres secret must not silently override the dedicated Supabase release URL");
 const baselineStep = finalization.indexOf("Verify production data and baseline schema against parent commit");
 const buildStep = finalization.indexOf("Build production artifact");
 const deployStep = finalization.indexOf("Deploy prebuilt artifact to production");
