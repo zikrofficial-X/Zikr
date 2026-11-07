@@ -97,9 +97,12 @@ if (!socialWorkflow.includes("workflow_run:") ||
     !socialWorkflow.includes("workflow_dispatch:")) {
   failures.push("social publisher must be event-driven after successful generation and support explicit manual dispatch");
 }
-if (socialWorkflow.includes("\n  schedule:") || socialWorkflow.includes("\n  push:") ||
+if (!socialWorkflow.includes("\n  schedule:") ||
+    !socialWorkflow.includes('cron: "7,22,37,52 * * * *"') ||
+    !socialWorkflow.includes("github.event_name == 'schedule'") ||
+    socialWorkflow.includes("\n  push:") ||
     socialWorkflow.includes("if: false")) {
-  failures.push("social publisher must not use polling, push triggers, or the retired kill switch");
+  failures.push("social publisher must retry its bounded post-launch queue every 15 minutes on main, without push triggers or a kill switch");
 }
 for (const expected of [
   'SOCIAL_PUBLISH_ENABLED: "true"',
@@ -204,4 +207,4 @@ if (failures.length) {
   for (const failure of failures) console.error("❌ " + failure);
   process.exit(1);
 }
-console.log("✅ Automated-QA event-driven social publishing and internal video generation contracts passed.");
+console.log("✅ Scheduled, event-driven automated-QA social publishing and internal video generation contracts passed.");
