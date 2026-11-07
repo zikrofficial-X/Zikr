@@ -650,7 +650,7 @@ export default function AdminSocialPage() {
               </Button>
             )}
             <Link
-              href="/admin/video-requests"
+              href="/admin/video/requests"
               className="inline-flex items-center justify-center rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-400/15"
             >
               مراجعة الفيديوهات ({readiness.approvalPending})
@@ -1084,7 +1084,7 @@ export default function AdminSocialPage() {
                           {!!item.videoApproval.missingChecks.length && (
                             <p className="text-[11px] text-amber-100/70">الناقص: {item.videoApproval.missingChecks.map(key => QA_CHECK_LABELS[key] ?? key).join("، ")}</p>
                           )}
-                          <Link href="/admin/video-requests" className="inline-flex font-semibold text-brand-gold underline underline-offset-2">عرض تشخيص فحوص الفيديو</Link>
+                          <Link href="/admin/video/requests" className="inline-flex font-semibold text-brand-gold underline underline-offset-2">عرض تشخيص فحوص الفيديو</Link>
                         </div>
                       )}
                       {deferredAt && (
@@ -1153,7 +1153,7 @@ export default function AdminSocialPage() {
                       <p className="font-semibold">موقوف — فحوص الجودة الآلية غير مكتملة</p>
                       <p>{item.videoApproval.reason}</p>
                       {!!item.videoApproval.missingChecks.length && <p className="text-[11px]">الناقص: {item.videoApproval.missingChecks.map(key => QA_CHECK_LABELS[key] ?? key).join("، ")}</p>}
-                      <Link href="/admin/video-requests" className="inline-flex font-semibold text-brand-gold underline underline-offset-2">عرض تشخيص فحوص الفيديو</Link>
+                      <Link href="/admin/video/requests" className="inline-flex font-semibold text-brand-gold underline underline-offset-2">عرض تشخيص فحوص الفيديو</Link>
                     </div>
                   )}
                   {deferredAt && <p className="break-words text-amber-300/80">مؤجل تلقائيًا حتى {formatDeferredAt(deferredAt)}</p>}
