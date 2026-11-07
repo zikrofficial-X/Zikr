@@ -14,8 +14,10 @@ SELECT
   (SELECT count(*) FROM public.quran_ayahs),
   (SELECT count(DISTINCT (surah_id, ayah_number)) FROM public.quran_ayahs),
   (SELECT count(*) FROM public.quran_surahs),
-  (SELECT count(*) FROM public.quran_tafsir),
-  (SELECT count(*) FROM public.quran_tafsir WHERE tafsir_ar IS NULL OR length(trim(tafsir_ar)) = 0),
+  (SELECT count(*) FILTER (WHERE author = 'التفسير الميسر') FROM public.quran_tafsir),
+  (SELECT count(DISTINCT (surah_id, ayah_number)) FILTER (WHERE author = 'التفسير الميسر') FROM public.quran_tafsir),
+  (SELECT count(*) FILTER (WHERE author = 'التفسير الميسر' AND (tafsir_ar IS NULL OR length(trim(tafsir_ar)) = 0)) FROM public.quran_tafsir),
+  (SELECT count(*) FILTER (WHERE author = 'التفسير الميسر' AND (source_url IS DISTINCT FROM ('https://api.alquran.cloud/v1/surah/' || surah_id::text || '/ar.muyassar') OR retrieved_at IS NULL)) FROM public.quran_tafsir),
   (SELECT count(*) FROM public.hadiths),
   (SELECT count(*) FROM public.duas),
   (SELECT count(*) FROM public.stories),
@@ -51,7 +53,7 @@ SELECT
   (SELECT count(*) FROM pg_roles WHERE rolname = 'zikr_seed_loader' AND rolcanlogin);
 SQL
 
-IFS='|' read -r ayahs distinct_ayahs surahs tafsir empty_tafsir hadiths duas stories prophets scholars companions articles kids_games article_categories battles battle_events conquests conquest_events companion_stories prophet_sections hadith_books quran_reciters quran_audio kids_game_levels kids_content video_categories videos media_assets site_audio_assets tawasheeh tawasheeh_categories content_library content_agent_sources site_settings video_settings unprotected_tables temporary_policy seed_role_logins < /tmp/zikr-supabase-preflight.txt
+IFS='|' read -r ayahs distinct_ayahs surahs tafsir_muyassar tafsir_muyassar_distinct empty_tafsir_muyassar invalid_tafsir_muyassar_metadata hadiths duas stories prophets scholars companions articles kids_games article_categories battles battle_events conquests conquest_events companion_stories prophet_sections hadith_books quran_reciters quran_audio kids_game_levels kids_content video_categories videos media_assets site_audio_assets tawasheeh tawasheeh_categories content_library content_agent_sources site_settings video_settings unprotected_tables temporary_policy seed_role_logins < /tmp/zikr-supabase-preflight.txt
 
 assert_eq() {
   local actual="$1"
@@ -77,8 +79,25 @@ assert_positive() {
 assert_eq "$ayahs" "6236" "Quran ayah rows"
 assert_eq "$distinct_ayahs" "6236" "distinct Quran ayahs"
 assert_eq "$surahs" "114" "Quran surahs"
-assert_eq "$tafsir" "6236" "tafsir rows"
-assert_eq "$empty_tafsir" "0" "empty tafsir rows"
+expected_tafsir_count="${TAFSIR_EXPECTED_COUNT:-6236}"
+case "${expected_tafsir_count}" in
+  0,6236)
+    if [[ "${tafsir_muyassar}" != "0" && "${tafsir_muyassar}" != "6236" ]]; then
+      echo "PRECHECK FAILED: التفسير الميسر must be either absent (0) or complete (6236); got ${tafsir_muyassar}." >&2
+      exit 1
+    fi
+    ;;
+  0|6236)
+    assert_eq "${tafsir_muyassar}" "${expected_tafsir_count}" "التفسير الميسر rows"
+    ;;
+  *)
+    echo "Invalid TAFSIR_EXPECTED_COUNT; use 0, 6236, or 0,6236." >&2
+    exit 1
+    ;;
+esac
+assert_eq "${tafsir_muyassar_distinct}" "${tafsir_muyassar}" "unique التفسير الميسر ayah pairs"
+assert_eq "${empty_tafsir_muyassar}" "0" "empty التفسير الميسر rows"
+assert_eq "${invalid_tafsir_muyassar_metadata}" "0" "التفسير الميسر source metadata"
 assert_eq "$video_settings" "3" "required video automation settings"
 assert_eq "$unprotected_tables" "0" "public tables without RLS"
 assert_eq "$temporary_policy" "0" "temporary seed-loader policies"

@@ -28,6 +28,7 @@ jobs:
     env:
       EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
       SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
+      TAFSIR_EXPECTED_COUNT: "0,6236"
       PGSSLMODE: require
     steps:
       - name: Checkout the exact main commit

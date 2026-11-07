@@ -39,9 +39,19 @@ The 2026-11-01 queue count and 15-minute social-poller statement above are histo
 
 - [x] Merge the partial-success and canonical Kids-story normalization fix: PR #232 merged to `main` at `f606dab52996c76c483cf8944e9b218e8c283d70` after its Quality Gate and CircleCI config validation succeeded.
 - [x] Reconcile current production URL configuration without exposing secret values; canonical Supabase and site/Auth URLs matched Vercel Production.
-- [ ] Merge and certify the follow-up worker-audit/Run Now/release-documentation branch; then deploy the resulting main SHA through the controlled Vercel release process.
+- [x] Merge and certify the worker-audit/Run Now/release-documentation follow-up: PR #233 merged to `main` at `125c4eb59aeabf62117fca519b516e47f9f7007b`; GitHub Quality Gate and all three CircleCI statuses passed.
 - [ ] Re-run the scheduled video worker after deployment; verify completed/failed counts, the Kids series canonical snapshot, Run Now consumption, and that `started_at <= finished_at` in the audit row.
 - [ ] Verify a Facebook Reels post end-to-end from one eligible queue row and confirm the remote post ID is persisted. Seven Facebook-only queue rows were present in the 2026-11-07 snapshot; do not replay historical rows.
 - [ ] Connect YouTube OAuth from Admin and verify `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly` scopes before enabling YouTube publishing.
 - [ ] Resolve or formally accept the Free-plan Leaked Password Protection warning. Do not grant service_role access to `auth.users` to work around the historical video-template error.
+
+
+
+## Quran tafsir data recovery — 2026-11-07
+
+- [x] Identify why `public.quran_tafsir` is empty despite 6,236 ayahs: the original nine `ar.muyassar` seed migrations were guarded by surah existence and were marked applied before all surahs existed.
+- [x] Verify the repository's original seed corpus contains exactly 6,236 unique ayah records across all 114 surahs, with explicit source URLs and retrieval metadata.
+- [ ] Merge the guarded restoration/preflight PR and deploy it through `.github/workflows/release-finalization.yml`; the original seed files will be replayed atomically after `supabase db push`.
+- [ ] Verify the live database has 6,236 non-empty `التفسير الميسر` rows, one per Quran ayah, and smoke-test `/tafsir` and verse-level tafsir lookup.
+- [ ] After that release, verify a new video-worker run's accurate start/finish audit timestamps, partial-success semantics and Facebook Reels remote post IDs. YouTube remains disabled until channel OAuth is connected.
 
