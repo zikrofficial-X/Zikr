@@ -106,3 +106,10 @@ This dated snapshot supersedes the queue/credential absence recorded in the 2026
 The canonical production project currently contains all 114 surahs and 6,236 ayahs, but `public.quran_tafsir` has zero rows. The repository retains nine original, source-attributed `التفسير الميسر` seed migrations (AlQuranCloud `ar.muyassar`) covering exactly 6,236 unique ayah pairs across all 114 surahs. Their original `WHERE EXISTS (quran_surahs)` guard meant they could be marked applied before the surah seed data existed, leaving the table empty without migration-ledger drift.
 
 PR follow-up branch `fix/quran-tafsir-backfill-release-preflight-20261107` adds a controlled correction: pre-deploy verification accepts only the known absent state (0) or complete state (6,236), production schema migrations run first, then the original nine immutable upsert-only source chunks are replayed atomically, and post-migration verification requires exactly 6,236 non-empty source-attributed records with matching Quran ayah coverage. Other tafsir authors are not changed. No production tafsir rows have been written during this audit; the restore runs only inside the protected release workflow.
+
+
+## Post-merge CI scope correction — 2026-11-07
+
+PR #234 merged into `main` at `1c9f44a6c55ad9f6d65b7552892fc44b6eed43c9`. Its GitHub Quality Gate and all PR-level CircleCI checks passed. The post-merge `push` run exposed a CI scope-selection defect: the shell gate selected `verify:pr` even though GitHub identified the event as a push to `main`. A follow-up replaces shell reads of default event/ref variables with a scope boolean computed directly from the GitHub Actions expression context. Full main-branch `pnpm verify` must pass before the controlled production release is dispatched.
+
+The current Vercel Production deployment remains `dpl_9d8LhBw1xDjNfWWcnTkv46sfdV3C` on deployed commit `a712708004942b99fceab0993592cef6c5112afe`; it does not contain PRs #232–#234. No production Quran tafsir rows have been restored yet; the protected release is still required.

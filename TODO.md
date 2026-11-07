@@ -51,7 +51,7 @@ The 2026-11-01 queue count and 15-minute social-poller statement above are histo
 
 - [x] Identify why `public.quran_tafsir` is empty despite 6,236 ayahs: the original nine `ar.muyassar` seed migrations were guarded by surah existence and were marked applied before all surahs existed.
 - [x] Verify the repository's original seed corpus contains exactly 6,236 unique ayah records across all 114 surahs, with explicit source URLs and retrieval metadata.
-- [ ] Merge the guarded restoration/preflight PR and deploy it through `.github/workflows/release-finalization.yml`; the original seed files will be replayed atomically after `supabase db push`.
+- [x] Merge the guarded restoration/preflight PR #234 into `main` at `1c9f44a6c55ad9f6d65b7552892fc44b6eed43c9`; the atomic restore and strict post-migration check are now in the protected release workflow. Deployment and data restoration remain pending its manual `RELEASE` dispatch.
 - [ ] Verify the live database has 6,236 non-empty `التفسير الميسر` rows, one per Quran ayah, and smoke-test `/tafsir` and verse-level tafsir lookup.
 - [ ] After that release, verify a new video-worker run's accurate start/finish audit timestamps, partial-success semantics and Facebook Reels remote post IDs. YouTube remains disabled until channel OAuth is connected.
 
