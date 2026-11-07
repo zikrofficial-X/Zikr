@@ -29,26 +29,23 @@ for (const token of ["content_hash", "source_hash", "video_automation_runs", "IF
 
 const workflow = readFileSync(".github/workflows/generate-ai-video.yml", "utf8");
 const adminHealth = readFileSync("src/app/admin/health/page.tsx", "utf8");
-if (!adminHealth.includes("getAdminSettings") || !adminHealth.includes("video_automation_ai_enabled") || !adminHealth.includes("video_automation_auto_publish") || !adminHealth.includes("فحص المصدر والوسائط")) {
-  throw new Error("Admin health must report canonical worker AI/publishing settings and preserve per-video approval");
+if (!adminHealth.includes("getAdminSettings") || !adminHealth.includes("video_automation_ai_enabled") ||
+    !adminHealth.includes("video_automation_enabled") || !adminHealth.includes("النشر داخل الموقع") ||
+    !adminHealth.includes("لا يُرسل منشورات إلى منصات خارجية")) {
+  throw new Error("Admin health must report canonical internal worker settings and the site-only publishing policy");
+}
+if (adminHealth.includes("video_automation_auto_publish") || adminHealth.includes("Facebook") || adminHealth.includes("youtube.upload")) {
+  throw new Error("Admin health must not expose retired external publishing controls or providers");
 }
 if (!workflow.includes("VIDEO_PROVIDER_ORDER")) {
   throw new Error("Workflow must preserve the canonical provider priority contract");
 }
-const phase0Freeze =
-  workflow.includes('VIDEO_AI_ENABLED: "false"') &&
-  workflow.includes('HF_WAN_VIDEO_ENABLED: "false"') &&
-  workflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "false"') &&
-  workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "false"') &&
-  workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "true"');
-const normalProductionMode =
-  workflow.includes('VIDEO_AI_ENABLED: "true"') &&
-  workflow.includes('HF_WAN_VIDEO_ENABLED: "true"') &&
-  workflow.includes('HF_LTX_FAST_VIDEO_ENABLED: "true"') &&
-  workflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') &&
-  workflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"');
-if (!phase0Freeze && !normalProductionMode) {
-  throw new Error("Video workflow must be either fully configured or explicitly Phase 0 frozen");
+if (!workflow.includes('AUTO_VIDEO_ENABLED: "true"') || !workflow.includes('VIDEO_AI_ENABLED: "true"') ||
+    !workflow.includes('BACKGROUND_JOB_TARGET: "videos"')) {
+  throw new Error("Production workflow must enable the internal video worker and target only the internal video queue");
+}
+for (const token of ["AUTO_VIDEO_PUBLISH_ENABLED", "YOUTUBE_CLIENT_ID", "YOUTUBE_REFRESH_TOKEN", "FACEBOOK_GRAPH_API_VERSION", "SOCIAL_PUBLISH_ENABLED"]) {
+  if (workflow.includes(token)) throw new Error("Internal video workflow must not depend on external social publishing config: " + token);
 }
 
 if ((process.env.VERIFY_VIDEO_RUNTIME_TOOLS ?? "false").toLowerCase() === "true") {

@@ -94,6 +94,9 @@
       "path": "/admin/media"
     },
     {
+      "path": "/admin/memory"
+    },
+    {
       "path": "/admin/notifications"
     },
     {

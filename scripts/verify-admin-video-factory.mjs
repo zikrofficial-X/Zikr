@@ -130,6 +130,15 @@ if (!page.includes('requireAdminPermission("video.manage")')) failures.push("Vid
 const canonicalQueue = read("src/app/admin/video/requests/page.tsx");
 if (!canonicalQueue.includes("AdminVideoRequestsClient")) failures.push("Video Factory queue must render the feature-owned queue client");
 if (!canonicalQueue.includes('requireAdminPermission("video.manage")')) failures.push("Video Factory queue must require video.manage");
+const socialClient = read("src/app/admin/social/social-client.tsx");
+if (socialClient.includes('href="/admin/video-requests"') || socialClient.includes('href="/admin/videos"')) {
+  failures.push("Video review links must target the canonical /admin/video/requests page, not a missing route");
+}
+if (!socialClient.includes('href="/admin/video/requests"') ||
+    !socialClient.includes("مراجعة الفيديوهات") ||
+    !socialClient.includes("فتح تفاصيل الفيديو واعتماده")) {
+  failures.push("Publishing video-review actions must link to the canonical protected video queue");
+}
 
 const legacyQueue = read("src/app/admin/videos/page.tsx");
 if (!legacyQueue.includes('redirect("/admin/video/requests")')) failures.push("Legacy /admin/videos route must redirect to /admin/video/requests");

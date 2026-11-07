@@ -51,9 +51,8 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/video/templates", "استوديو القوالب", "video.manage"],
     ["/admin/video/qa", "ضبط الجودة", "video.manage"],
   ],
-  "النشر والتوزيع": [
-    ["/admin/social", "مركز النشر الاجتماعي", "social.manage"],
-    ["/admin/social/written-studio", "مصنع المنشورات المكتوبة", "social.manage"],
+  "الذاكرة والمكتبة": [
+    ["/admin/memory", "ذاكرة المشروع", "media.manage"],
   ],
   "الوسائط والصوت": [
     ["/admin/memory", "ذاكرة المشروع", "media.manage"],
@@ -151,7 +150,7 @@ const legacyRedirects = {
   "src/app/admin/ai-video/curated/page.tsx": "/admin/video/studio/curated",
   "src/app/admin/alerts/page.tsx": "/admin/notifications",
   "src/app/admin/audio/site-audio/page.tsx": "/admin/site-audio",
-  "src/app/admin/video-factory/publishing/page.tsx": "/admin/social",
+  "src/app/admin/video-factory/publishing/page.tsx": "/admin/memory",
   "src/app/admin/video-factory/scheduler/page.tsx": "/admin/automation",
 };
 for (const [path, target] of Object.entries(legacyRedirects)) {
