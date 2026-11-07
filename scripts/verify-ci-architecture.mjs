@@ -156,6 +156,15 @@ assert.ok(reconciliation.includes("consumes role:zikr_seed_loader") && reconcili
 assert.ok(reconciliation.includes("env -u PGSSLMODE supabase db diff"), "Schema diff must not leak the remote TLS requirement into the local shadow database");
 assert.ok(reconciliation.includes("SCHEMA DRIFT DETECTED") && reconciliation.includes("public.quran_ayahs"), "Migration repair must fail closed on schema drift and check canonical Quran data");
 assert.ok(reconciliation.includes("SUPABASE_MIGRATION_HISTORY_RECONCILED"), "Migration reconciliation must verify the final local/remote version count");
+const tafsirRestore = read("scripts/restore-quran-tafsir.sh");
+const tafsirVerifier = read("scripts/verify-quran-tafsir-backfill.mjs");
+assert.ok(tafsirRestore.includes("--single-transaction"), "Quran tafsir source chunks must be restored atomically");
+assert.ok(tafsirRestore.includes("التفسير الميسر") && tafsirRestore.includes("6236"), "Quran tafsir restore must target only the verified 6,236-row Muyassar corpus");
+assert.ok(release.includes("TAFSIR_EXPECTED_COUNT=0,6236"), "Baseline release verification must accept an absent or complete corpus, not partial data");
+assert.ok(release.includes("bash scripts/restore-quran-tafsir.sh"), "Production release must restore the canonical source-verified tafsir corpus after migrations");
+assert.ok(release.indexOf("bash scripts/restore-quran-tafsir.sh") > release.indexOf("supabase db push") && release.indexOf("bash scripts/restore-quran-tafsir.sh") < release.indexOf('TAFSIR_EXPECTED_COUNT: "6236"'), "Tafsir restore must run after migration push and before strict production verification");
+assert.ok(reconciliationWorkflow.includes('TAFSIR_EXPECTED_COUNT: "0,6236"'), "History-only reconciliation must allow only the current absent or complete tafsir state");
+assert.ok(tafsirVerifier.includes("6236") && tafsirVerifier.includes("114"), "CI must verify all 6,236 source rows across 114 Quran surahs");
 
 assert.ok(smoke.includes("name: ZIKR Production Smoke Verification"), "Manual production smoke workflow name is incorrect");
 assert.ok(smoke.includes("node scripts/verify-production-smoke.mjs"), "Manual smoke workflow must use the canonical production smoke script");
