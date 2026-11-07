@@ -1,10 +1,10 @@
 # Background jobs runbook
 
-ZIKR's recurring production video queue is executed by GitHub Actions `generate-ai-video.yml`. External social publishing is a separate, automated-QA-gated worker in `publish-social.yml`, triggered only after successful video generation or explicit manual dispatch. `scripts/run-background-jobs.ts` is the shared worker entrypoint; CircleCI does not execute it for production video/social work.
+ZIKR's recurring production video queue is executed by GitHub Actions `generate-ai-video.yml`. External social publishing is a separate, automated-QA-gated worker in `publish-social.yml`, triggered after successful video generation, every 15 minutes for bounded queue retries, or by explicit manual dispatch. `scripts/run-background-jobs.ts` is the shared worker entrypoint; CircleCI does not execute it for production video/social work.
 
 ## Production video generation
 
-GitHub Actions runs video generation four times per day at 03:17, 09:17, 15:17, and 21:17 UTC, with a manual dispatch path for Run Now/recovery. The social workflow has no polling schedule and does not run on source pushes. A successful video-generation run triggers a separate social job; manual recovery is available only from main. Commits and merges do not start production video generation.
+GitHub Actions runs video generation four times per day at 03:17, 09:17, 15:17, and 21:17 UTC, with a manual dispatch path for Run Now/recovery. The social workflow also drains up to five eligible queue items every 15 minutes at minutes 07, 22, 37, and 52 UTC. A successful video-generation run triggers an immediate separate social job; the bounded schedule retries deferred/partial items after provider cooldowns. It does not run on source pushes. Manual recovery is available only from main. Commits and merges do not start production video generation.
 
 GitHub Actions invokes `pnpm background:jobs` with free Hugging Face video providers (`LTX Fast` and `Wan`) enabled first and the deterministic FFmpeg template renderer as the automatic fallback. `VIDEO_FREE_ONLY=true` excludes paid/custom providers and keeps Gemini text generation off. Production generation uses trusted Quran/Hadith/Dua content, Arabic fonts, verified HTTPS Quran recitation audio, and Arabic TTS where allowed. Completed MP4 bytes are uploaded directly from the GitHub runner to Cloudinary; generated videos and human narration files must not be staged in Supabase Storage. Supabase stores only the generation queue, content metadata, and audit records. Source religious text remains locked and is never rewritten.
 
@@ -14,7 +14,7 @@ Admin **Run Now** is a one-shot dispatch signal stored in `admin_settings.video_
 
 ## Automated-QA external social publishing
 
-The social publisher runs separately from rendering. A successful `generate-ai-video.yml` run may trigger `publish-social.yml`; an administrator may also dispatch the social workflow manually. It is not a 15-minute poller and has no push trigger. The workflow validates stored Facebook Page credentials and the stored YouTube OAuth scopes before enabling each provider. YouTube requires `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly`; no channel-delete scope is requested. If neither provider is verified, no queue row is claimed.
+The social publisher runs separately from rendering. A successful `generate-ai-video.yml` run may trigger `publish-social.yml`; an administrator may also dispatch the social workflow manually. A bounded 15-minute schedule (UTC minutes 07, 22, 37, 52) drains up to five eligible items and retries deferred/partial provider results after cooldowns. It has no push trigger. The workflow validates stored Facebook Page credentials and the stored YouTube OAuth scopes before enabling each provider. YouTube requires `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly`; no channel-delete scope is requested. If neither provider is verified, no queue row is claimed.
 
 Only rows created on or after `SOCIAL_PUBLISH_AFTER` are eligible. Historical social queue records are not replayed. Videos require a complete automated five-part QA result (source, audio, visuals, captions, rights) bound to the exact source/content/template/MP4 fingerprint. The social worker rechecks this approval immediately before every provider call; no manual review or click is required. Published provider IDs are persisted per platform, so a retry may only target unfinished platforms. Insights sync is opt-in and remains off during publishing runs to limit database reads.
 
@@ -34,7 +34,7 @@ The workflow expects a GitHub Actions secret `GEMINI_API_KEY` in the production 
 
 ```text
 Video generation: 4 runs/day
-Social publisher: after successful video generation or manual dispatch; up to 5 eligible videos per dispatch, no recurring polling schedule
+Social publisher: after successful video generation plus every 15 minutes (UTC minutes 07, 22, 37, 52); up to 5 eligible videos per run
 Admin social worker button: dispatches `publish-social.yml` with `operation=publish_queue`; provider preflight + admin auto-publish setting + per-video automated QA approval are all required
 Admin video Run Now: direct GitHub workflow dispatch from the admin action
 English content sync: daily, at most 5 article translations and 25 Hadith records by default
@@ -45,7 +45,7 @@ The daily English content sync uses one shared runner for one article batch and 
 
 ## Recovery
 
-Use GitHub Actions workflow dispatch for deliberate video generation, written-content generation, or social publishing recovery. Social recovery is active only when the protected workflow preflight passes, `SOCIAL_PUBLISH_ENABLED=true`, the administrator has enabled auto-publish, and each video has a current, complete automated QA fingerprint. No manual review is required for passing videos. CircleCI is reserved for application/Android builds, documentation/release artifacts, English-content sync, Supabase gates, and explicit release operations.
+Use GitHub Actions workflow dispatch for deliberate video generation, written-content generation, or immediate social publishing recovery. The social schedule also retries deferred items automatically. Social delivery runs only when the protected workflow preflight passes, `SOCIAL_PUBLISH_ENABLED=true`, each requested provider has valid credentials, the administrator has enabled auto-publish, and each video has a current, complete automated QA fingerprint. No manual review is required for passing videos. CircleCI is reserved for application/Android builds, documentation/release artifacts, English-content sync, Supabase gates, and explicit release operations.
 
 The prayer notification path remains separate: Supabase `pg_cron` invokes `prayer-notification-worker` every minute.
 
