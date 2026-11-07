@@ -59,7 +59,7 @@ jobs:
       - name: Verify Supabase admin connection
         shell: bash
         env:
-          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING }}
         run: |
           set -euo pipefail
           if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
@@ -152,7 +152,7 @@ jobs:
       - name: Verify production data and baseline schema against parent commit
         shell: bash
         env:
-          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING }}
           EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
         run: |
           set -euo pipefail
@@ -200,7 +200,7 @@ jobs:
       - name: Apply pending production migrations after deployment
         shell: bash
         env:
-          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING }}
           EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
         run: |
           set -euo pipefail
@@ -210,13 +210,13 @@ jobs:
       - name: Restore source-verified Quran tafsir corpus
         shell: bash
         env:
-          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING }}
           EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
         run: bash scripts/restore-quran-tafsir.sh
 
       - name: Verify production schema after migration
         env:
-          SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING }}
           EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
           TAFSIR_EXPECTED_COUNT: "6236"
         run: bash scripts/reconcile-supabase-migration-history.sh
