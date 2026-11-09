@@ -13,8 +13,8 @@ importers:
   .:
     dependencies:
       '@capacitor/android':
-        specifier: 7.6.9
-        version: 7.6.9(@capacitor/core@7.6.9)
+        specifier: 7.6.10
+        version: 7.6.10(@capacitor/core@7.6.9)
       '@capacitor/app':
         specifier: 7.0.2
         version: 7.0.2(@capacitor/core@7.6.9)
@@ -46,14 +46,14 @@ importers:
         specifier: 7.0.2
         version: 7.0.2(@capacitor/core@7.6.9)
       '@capacitor/network':
-        specifier: 7.0.2
-        version: 7.0.2(@capacitor/core@7.6.9)
+        specifier: 7.0.4
+        version: 7.0.4(@capacitor/core@7.6.9)
       '@capacitor/preferences':
         specifier: 7.0.2
         version: 7.0.2(@capacitor/core@7.6.9)
       '@capacitor/push-notifications':
-        specifier: 7.0.3
-        version: 7.0.3(@capacitor/core@7.6.9)
+        specifier: 7.0.7
+        version: 7.0.7(@capacitor/core@7.6.9)
       '@capacitor/share':
         specifier: 7.0.4
         version: 7.0.4(@capacitor/core@7.6.9)
@@ -82,8 +82,8 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1(next@16.4.5(@babel/core@7.29.7)(@types/node@26.6.5)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       '@vercel/speed-insights':
-        specifier: ^2.0.0
-        version: 2.0.0(next@16.4.5(@babel/core@7.29.7)(@types/node@26.6.5)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
+        specifier: ^2.1.0
+        version: 2.1.0(next@16.4.5(@babel/core@7.29.7)(@types/node@26.6.5)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       ai:
         specifier: ^7.0.163
         version: 7.0.163(zod@4.6.6)
@@ -97,8 +97,8 @@ importers:
         specifier: 16.4.5
         version: 16.4.5(@babel/core@7.29.7)(@types/node@26.6.5)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       phaser:
-        specifier: ^3.90.0
-        version: 3.90.0
+        specifier: ^4.2.1
+        version: 4.2.1
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -253,8 +253,8 @@ packages:
     resolution: {integrity: sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==}
     engines: {node: '>=6.9.0'}
 
-  '@capacitor/android@7.6.9':
-    resolution: {integrity: sha512-jvfU42aOuj92/KJqRscfDm+5612WzJainFL09xjJgD9oI3OMXN4PBfccn8Ig9i8x7bkVqZv/XNwFshiIRqmggg==}
+  '@capacitor/android@7.6.10':
+    resolution: {integrity: sha512-94DBImYZyDA9RnO5ks3MI/j6rRFs1uK5DR2ft/rBIsvsltDT4w1CSuM8U7vKmKEGRmAfP6vH/woJkBF69fZa4A==}
     peerDependencies:
       '@capacitor/core': ^7.6.0
 
@@ -311,8 +311,8 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
-  '@capacitor/network@7.0.2':
-    resolution: {integrity: sha512-KKkiUvGfMVKIcYaG+KlGAxrQtoRnwJtT+9yhTkCFzZWeYrY91sBZKOVOfnNHO8RiOxqbKn5VSUlyFLQQiyyfyg==}
+  '@capacitor/network@7.0.4':
+    resolution: {integrity: sha512-fNhN3968AQWMnzasPJ0B8e+nyk7+R6V9PWIBQWSQRHrKndDgWRHpxkjEzJPgnJr3EjnKLjbwO+UYy+EwBlGs3A==}
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
@@ -321,8 +321,8 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
-  '@capacitor/push-notifications@7.0.3':
-    resolution: {integrity: sha512-4qt5dRVBkHzq202NEoj3JC+S+zQCrZ1FJh7sjkICy/i1iEos+VaoB3bie8eWDQ2LTARktB4+k2xkdpu8pcVo/g==}
+  '@capacitor/push-notifications@7.0.7':
+    resolution: {integrity: sha512-TgFsPV4uOez0RtFKsWPz3XCrLxc9th+UyAkillUY9vL6ezVKT35te9Sn4vGR0jeU2U0KUNU7Dt6oSCALnSiEKg==}
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
@@ -1227,10 +1227,10 @@ packages:
     resolution: {integrity: sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug==}
     engines: {node: '>= 20'}
 
-  '@vercel/speed-insights@2.0.0':
-    resolution: {integrity: sha512-jwkNcrTeafWxjmWq4AHBaptSqZiJkYU5adLC9QBSqeim0GcqDMgN5Ievh8OG1rJ6W3A4l1oiP7qr9CWxGuzu3w==}
+  '@vercel/speed-insights@2.1.0':
+    resolution: {integrity: sha512-tkDiIEjjmlwPpTFnOK14hBhsRLMo5yoCeK2Er3AHWlL7WTzHgFSyItps3TOW0HukErUlYlaUeHiVLCyfiE4WAA==}
     peerDependencies:
-      '@sveltejs/kit': ^1 || ^2
+      '@sveltejs/kit': ^1 || ^2 || ^3 || ^3.0.0-next.0
       next: '>= 13'
       nuxt: '>= 3'
       react: ^18 || ^19 || ^19.0.0-rc
@@ -2396,8 +2396,8 @@ packages:
   pend@1.2.0:
     resolution: {integrity: sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==}
 
-  phaser@3.90.0:
-    resolution: {integrity: sha512-/cziz/5ZIn02uDkC9RzN8VF9x3Gs3XdFFf9nkiMEQT3p7hQlWuyjy4QWosU802qqno2YSLn2BfqwOKLv/sSVfQ==}
+  phaser@4.2.1:
+    resolution: {integrity: sha512-WUNwCPJpdjvZiuT6SgCfYVW8Qw/3j0jJ4ws7P2QkhFLFu74sbGuyHJcbFueGkY/AYO4Pi47bNQXn1OCJeLX//w==}
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -2989,7 +2989,7 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@capacitor/android@7.6.9(@capacitor/core@7.6.9)':
+  '@capacitor/android@7.6.10(@capacitor/core@7.6.9)':
     dependencies:
       '@capacitor/core': 7.6.9
 
@@ -3057,7 +3057,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 7.6.9
 
-  '@capacitor/network@7.0.2(@capacitor/core@7.6.9)':
+  '@capacitor/network@7.0.4(@capacitor/core@7.6.9)':
     dependencies:
       '@capacitor/core': 7.6.9
 
@@ -3065,7 +3065,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 7.6.9
 
-  '@capacitor/push-notifications@7.0.3(@capacitor/core@7.6.9)':
+  '@capacitor/push-notifications@7.0.7(@capacitor/core@7.6.9)':
     dependencies:
       '@capacitor/core': 7.6.9
 
@@ -3828,7 +3828,7 @@ snapshots:
 
   '@vercel/oidc@3.2.0': {}
 
-  '@vercel/speed-insights@2.0.0(next@16.4.5(@babel/core@7.29.7)(@types/node@26.6.5)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
+  '@vercel/speed-insights@2.1.0(next@16.4.5(@babel/core@7.29.7)(@types/node@26.6.5)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
     optionalDependencies:
       next: 16.4.5(@babel/core@7.29.7)(@types/node@26.6.5)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react: 19.2.7
@@ -5128,7 +5128,7 @@ snapshots:
 
   pend@1.2.0: {}
 
-  phaser@3.90.0:
+  phaser@4.2.1:
     dependencies:
       eventemitter3: 5.0.4
 

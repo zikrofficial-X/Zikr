@@ -1,6 +1,6 @@
 {
   "name": "zikr",
-  "version": "1.1.12",
+  "version": "1.1.13",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -108,7 +108,7 @@
     "quran:tafsir:check": "node scripts/verify-quran-tafsir-backfill.mjs"
   },
   "dependencies": {
-    "@capacitor/android": "7.6.9",
+    "@capacitor/android": "7.6.10",
     "@capacitor/app": "7.0.2",
     "@capacitor/browser": "7.0.5",
     "@capacitor/camera": "7.0.2",
@@ -119,9 +119,9 @@
     "@capacitor/ios": "7.6.9",
     "@capacitor/keyboard": "7.0.6",
     "@capacitor/local-notifications": "7.0.2",
-    "@capacitor/network": "7.0.2",
+    "@capacitor/network": "7.0.4",
     "@capacitor/preferences": "7.0.2",
-    "@capacitor/push-notifications": "7.0.3",
+    "@capacitor/push-notifications": "7.0.7",
     "@capacitor/share": "7.0.4",
     "@capacitor/splash-screen": "7.0.5",
     "@capacitor/status-bar": "7.0.6",
@@ -130,12 +130,12 @@
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.119.0",
     "@vercel/analytics": "^2.0.1",
-    "@vercel/speed-insights": "^2.0.0",
+    "@vercel/speed-insights": "^2.1.0",
     "ai": "^7.0.163",
     "clsx": "2.1.1",
     "lucide-react": "^1.61.0",
     "next": "16.4.5",
-    "phaser": "^3.90.0",
+    "phaser": "^4.2.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "server-only": "^0.0.1",
