@@ -159,35 +159,78 @@ jobs:
           echo "Published release already lists the required assets; the full byte-for-byte verification will run after artifact checks."
 
 
-      - name: Verify CircleCI Android build status before waiting for artifacts
+      - name: Verify CircleCI release prerequisites before waiting for artifacts
         if: steps.gate.outputs.publish == 'true' && github.event_name != 'workflow_dispatch'
         shell: bash
         run: |
           set -euo pipefail
-          # CircleCI is the signing authority. Do not wait for artifacts when its
-          # matching android-rebuild status has already failed.
+          latest_context_state() {
+            local context="$1"
+            jq -r --arg context "$context" \
+              '[.[] | select(.context == $context)] | sort_by(.updated_at) | (last // {}) | .state // ""'
+          }
+
           for attempt in $(seq 1 240); do
-            status="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status" \
-              --jq '.statuses | map(select(.context == "ci/circleci: android-rebuild")) | sort_by(.updated_at) | (last // {}) | .state // ""' 2>/dev/null || true)"
-            case "${status}" in
+            statuses="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status" --jq '.statuses' 2>/dev/null || printf '[]')"
+            source_state="$(latest_context_state "ci/circleci: source-verify" <<< "$statuses")"
+            supabase_state="$(latest_context_state "ci/circleci: supabase-production-gate" <<< "$statuses")"
+            android_state="$(latest_context_state "ci/circleci: android-rebuild" <<< "$statuses")"
+
+            case "$source_state" in
+              success) ;;
+              failure|error|cancelled)
+                echo "::error title=CircleCI source verification failed::The release source did not pass source-verify. Fix the source checks and prepare a draft from the verified commit." >&2
+                exit 1
+                ;;
+              pending|"")
+                echo "Waiting for CircleCI source-verify (attempt ${attempt}/240)..."
+                sleep 15
+                continue
+                ;;
+              *)
+                echo "Unknown CircleCI source-verify state '${source_state}' (attempt ${attempt}/240); refusing to continue without success."
+                sleep 15
+                continue
+                ;;
+            esac
+
+            case "$supabase_state" in
+              success) ;;
+              failure|error|cancelled)
+                echo "::error title=CircleCI Supabase production gate failed::The production Supabase prerequisite failed; Android signing/build will not run." >&2
+                exit 1
+                ;;
+              pending|"")
+                echo "Waiting for CircleCI supabase-production-gate (attempt ${attempt}/240)..."
+                sleep 15
+                continue
+                ;;
+              *)
+                echo "Unknown CircleCI Supabase gate state '${supabase_state}' (attempt ${attempt}/240); refusing to continue without success."
+                sleep 15
+                continue
+                ;;
+            esac
+
+            case "$android_state" in
               success)
                 echo "CircleCI Android build succeeded for ${GITHUB_SHA}."
                 exit 0
                 ;;
-              failure|error)
-                echo "::error title=CircleCI Android build failed::The protected APK/AAB build failed for commit ${GITHUB_SHA}. Check the CircleCI android-rebuild job before retrying publication."
+              failure|error|cancelled)
+                echo "::error title=CircleCI Android build failed::The protected APK/AAB build failed for commit ${GITHUB_SHA}. Check the CircleCI android-rebuild job before retrying publication." >&2
                 exit 1
                 ;;
               pending|"")
                 echo "Waiting for CircleCI Android build status (attempt ${attempt}/240)..."
                 ;;
               *)
-                echo "Unknown CircleCI status '${status}' (attempt ${attempt}/80); refusing to publish without success."
+                echo "Unknown CircleCI Android status '${android_state}' (attempt ${attempt}/240); refusing to publish without success."
                 ;;
             esac
             sleep 15
           done
-          echo "::error title=CircleCI Android build status unavailable::No successful CircleCI android-rebuild status was observed for ${GITHUB_SHA} within 60 minutes."
+          echo "::error title=CircleCI release build status unavailable::CircleCI did not complete source verification, the Supabase production gate, and Android rebuild for ${GITHUB_SHA} within 60 minutes."
           exit 1
 
       - name: Install Android SDK
