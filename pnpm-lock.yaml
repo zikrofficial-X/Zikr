@@ -46,8 +46,8 @@ importers:
         specifier: 7.0.2
         version: 7.0.2(@capacitor/core@7.6.9)
       '@capacitor/network':
-        specifier: 7.0.2
-        version: 7.0.2(@capacitor/core@7.6.9)
+        specifier: 7.0.4
+        version: 7.0.4(@capacitor/core@7.6.9)
       '@capacitor/preferences':
         specifier: 7.0.2
         version: 7.0.2(@capacitor/core@7.6.9)
@@ -311,8 +311,8 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
-  '@capacitor/network@7.0.2':
-    resolution: {integrity: sha512-KKkiUvGfMVKIcYaG+KlGAxrQtoRnwJtT+9yhTkCFzZWeYrY91sBZKOVOfnNHO8RiOxqbKn5VSUlyFLQQiyyfyg==}
+  '@capacitor/network@7.0.4':
+    resolution: {integrity: sha512-fNhN3968AQWMnzasPJ0B8e+nyk7+R6V9PWIBQWSQRHrKndDgWRHpxkjEzJPgnJr3EjnKLjbwO+UYy+EwBlGs3A==}
     peerDependencies:
       '@capacitor/core': '>=7.0.0'
 
@@ -3057,7 +3057,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 7.6.9
 
-  '@capacitor/network@7.0.2(@capacitor/core@7.6.9)':
+  '@capacitor/network@7.0.4(@capacitor/core@7.6.9)':
     dependencies:
       '@capacitor/core': 7.6.9
 
