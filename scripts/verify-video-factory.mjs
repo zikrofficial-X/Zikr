@@ -29,13 +29,18 @@ if (!template.includes("sourceId") || !template.includes("published source is re
 if (!template.includes("narration does not exactly match the current published source text")) failures.push("source text must be exact before rendering");
 if (!template.includes("buildAutomatedVideoQaChecklist") ||
     !template.includes("createAutomatedVideoQaApproval") ||
-    !template.includes("automatedQa.status !== \"passed\"")) {
-  failures.push("external publishing must require a complete source-locked automated QA approval");
+    !template.includes("if (!qaApproval)") ||
+    !template.includes("if (qaApproval)") ||
+    !template.includes("registerGeneratedVideoOnSite(request, rendered)")) {
+  failures.push("internal site publication must require a complete source-locked automated QA approval");
 }
-if (!template.includes("if (qaApproval)") ||
-    !template.includes("Render retained in the generation audit only") ||
-    !template.includes("automatedVideoQa: request.content.automatedVideoQa ?? null")) {
-  failures.push("failed automated QA renders must remain in the generation audit and must not be published to site or social queues");
+if (!template.includes("Render retained in the generation audit only") ||
+    !template.includes("automatedVideoQa: request.content.automatedVideoQa ?? null") ||
+    !template.includes("External distribution is retired") ||
+    template.includes("social_publish_queue") ||
+    template.includes("getFacebookPageCredentials") ||
+    template.includes("getYouTubeUploadRefreshToken")) {
+  failures.push("failed QA renders must remain audit-only and the video worker must have no external publishing path");
 }
 if (!template.includes("assertPlayableOutput")) failures.push("rendered videos must pass media integrity QA");
 if (!template.includes("assertAudibleAudio")) failures.push("rendered videos must pass audible-audio QA");

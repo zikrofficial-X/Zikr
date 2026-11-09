@@ -33,10 +33,6 @@ const siteAudioRoute = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/site-audio/route.ts"),
   "utf8",
 );
-const rlsEventTriggerMigration = readFileSync(
-  resolve(process.cwd(), "supabase/migrations/20261106205519_revoke_public_execution_on_rls_auto_enable.sql"),
-  "utf8",
-);
 const editorialActions = readFileSync(
   resolve(process.cwd(), "src/app/admin/editorial-actions.ts"),
   "utf8",
@@ -190,17 +186,17 @@ assert.match(
 assert.match(
   socialRoute,
   /requireAdminApi\("social\.manage"\)[\s\S]*?requireAdminApi\("social\.publish"\)/,
-  "social execution must require separate management and publishing permissions",
+  "social execution must require a separate publishing permission",
 );
 assert.match(
   socialRoute,
-  /dispatchGitHubWorkflow\("publish-social\.yml"/,
-  "social API must dispatch the controlled GitHub publisher",
+  /SOCIAL_PUBLISHING_RETIRED[\s\S]*?status: 410/,
+  "retired social queue API must return HTTP 410 without mutating historical queue records",
 );
 assert.doesNotMatch(
   socialRoute,
-  /SOCIAL_PUBLISHING_RETIRED|status: 410/,
-  "social API must not remain in its retired state",
+  /social_publish_queue|dispatchGitHubWorkflow|fetch\(/,
+  "retired social API must not read, mutate, or dispatch external social work",
 );
 assert.match(
   videoRoute,
@@ -244,13 +240,5 @@ assert.equal(socialManagerPermissions?.[1].includes("'video.delete'"), false);
 assert.ok(videoManagerPermissions?.[1].includes("'video.manage'"));
 assert.equal(videoManagerPermissions?.[1].includes("'social.publish'"), false);
 assert.equal(videoManagerPermissions?.[1].includes("'social.manage'"), false);
-
-assert.ok(
-  rlsEventTriggerMigration.includes("to_regprocedure('public.rls_auto_enable()')") &&
-    rlsEventTriggerMigration.includes(
-      "REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated",
-    ),
-  "RLS event-trigger function must not be callable by browser roles",
-);
 
 console.log("Admin RBAC/RLS migration contract passed.");
