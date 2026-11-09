@@ -262,6 +262,10 @@ export async function POST(request: NextRequest) {
   const auth = await requireAdminApi("video.delete");
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
+  let automationWasEnabled: boolean | undefined;
+  let purgeLockAttempted = false;
+  let destructiveWorkStarted = false;
+  let dataCleanupFinished = false;
   try {
     const body = await request.json().catch(() => ({})) as { confirmation?: unknown; scope?: unknown };
     if (body.confirmation !== CONFIRMATION_PHRASE) {
@@ -277,9 +281,10 @@ export async function POST(request: NextRequest) {
     const includeMemory = scope === "memory" || scope === "both";
 
     if (includeFiles) cloudinaryConfig();
-    const automationWasEnabled = await getVideoAutomationEnabled();
+    automationWasEnabled = await getVideoAutomationEnabled();
 
     await pauseVideoAutomation();
+    purgeLockAttempted = true;
     await setPurgeLock(true);
 
     const processing = await getActiveVideoWork();
@@ -288,6 +293,7 @@ export async function POST(request: NextRequest) {
       // Release the claim lock so an administrator can resume/settle them safely.
       await restoreVideoAutomation(automationWasEnabled);
       await setPurgeLock(false);
+      purgeLockAttempted = false;
       return NextResponse.json(
         {
           error: `يوجد ${processing.generation} طلب توليد قيد التنفيذ. لم يبدأ الحذف؛ استمر التشغيل التلقائي، وأعد المحاولة بعد انتهاء العامل الحالي.`,
@@ -302,6 +308,7 @@ export async function POST(request: NextRequest) {
 
     const assets = includeFiles ? await listGeneratedVideos() : [];
     const storagePaths = includeFiles ? await listAutomatedStorageObjects() : [];
+    if (includeFiles && assets.length > 0) destructiveWorkStarted = true;
     const cloudinaryErrors = includeFiles
       ? await mapWithConcurrency(assets, 6, async asset => {
           if (!asset.public_id) throw new Error("Generated video asset is missing its public ID.");
@@ -314,6 +321,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (includeFiles && storagePaths.length > 0) destructiveWorkStarted = true;
     const storageObjectsDeleted = includeFiles ? await deleteAutomatedStorageObjects(storagePaths) : 0;
     // The site catalog is treated as project memory. It is always hidden during
     // a purge; links are cleared only when the physical generated files are removed.
@@ -326,6 +334,7 @@ export async function POST(request: NextRequest) {
     if ((generatedCatalogRows ?? []).length >= 1000) {
       throw new Error("Generated video catalog exceeded the safe purge batch; no catalog rows were changed.");
     }
+    if ((generatedCatalogRows ?? []).length > 0) destructiveWorkStarted = true;
     const catalogUpdateErrors = await mapWithConcurrency(generatedCatalogRows ?? [], 6, async row => {
       const previousMetadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
       const nextMetadata = {
@@ -372,18 +381,34 @@ export async function POST(request: NextRequest) {
       throw new Error("Automated generation history exceeded the safe purge batch.");
     }
     let generationRowsDeleted = 0;
+    if ((generatedRequests ?? []).length > 0) destructiveWorkStarted = true;
     for (const generatedRequest of generatedRequests ?? []) {
       generationRowsDeleted += await deleteRows(
         "video_generation_requests",
         "id=eq." + encodeURIComponent(generatedRequest.id),
       );
     }
-    const automationRunsDeleted = includeMemory
-      ? await deleteRows("video_automation_runs", "id=not.is.null")
-      : 0;
+    const automationRuns = includeMemory
+      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/video_automation_runs?metadata->>generator=eq.multi-provider-free-ai&select=id&limit=1000",
+        )
+      : [];
+    if (includeMemory && (automationRuns ?? []).length >= 1000) {
+      throw new Error("Internal video automation history exceeded the safe purge batch.");
+    }
+    let automationRunsDeleted = 0;
+    if ((automationRuns ?? []).length > 0) destructiveWorkStarted = true;
+    for (const run of automationRuns ?? []) {
+      automationRunsDeleted += await deleteRows(
+        "video_automation_runs",
+        "id=eq." + encodeURIComponent(run.id),
+      );
+    }
 
+    dataCleanupFinished = true;
     await restoreVideoAutomation(automationWasEnabled);
     await setPurgeLock(false);
+    purgeLockAttempted = false;
     await recordAdminAuditEvent({
       action: "video.library.purge",
       permission: "video.delete",
@@ -436,11 +461,36 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("[api/admin/video-purge] POST:", error);
+    const recoveryErrors: string[] = [];
+    if (automationWasEnabled !== undefined &&
+      (!destructiveWorkStarted || dataCleanupFinished)) {
+      try {
+        await restoreVideoAutomation(automationWasEnabled);
+      } catch (recoveryError) {
+        recoveryErrors.push("automation state: " + (recoveryError instanceof Error ? recoveryError.message : String(recoveryError)));
+      }
+    }
+    let purgeLockCleared = !purgeLockAttempted;
+    if (purgeLockAttempted) {
+      try {
+        await setPurgeLock(false);
+        purgeLockCleared = true;
+      } catch (recoveryError) {
+        recoveryErrors.push("purge lock: " + (recoveryError instanceof Error ? recoveryError.message : String(recoveryError)));
+      }
+    }
+    const automationRemainsDisabled = automationWasEnabled === true &&
+      (recoveryErrors.some(message => message.startsWith("automation state:")) ||
+        (destructiveWorkStarted && !dataCleanupFinished));
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "تعذر إتمام تصفير الفيديوهات.",
-        paused: true,
+        paused: automationRemainsDisabled,
+        automationRemainsDisabled,
+        purgeLockCleared,
+        partialPurge: destructiveWorkStarted && !dataCleanupFinished,
         retryRequired: true,
+        ...(recoveryErrors.length ? { recoveryErrors } : {}),
       },
       { status: 500, headers: { "Cache-Control": "no-store" } },
     );
