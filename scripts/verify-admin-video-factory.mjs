@@ -46,16 +46,13 @@ if (!generation.includes("requireAdminApi('video.manage')")) failures.push("vide
 if (!generation.includes("requireAdminApi('video.delete')")) failures.push("video generation DELETE must require video.delete");
 if (!generation.includes("updated_at=eq.") || !generation.includes("current.updated_at")) failures.push("admin publish retry must use optimistic concurrency");
 
-const retryPublishStart = generation.search(/if\s*\(\s*action\s*===\s*["']retry_publish["']\s*\)/);
+const retryPublishStart = generation.search(/if\s*\(action\s*===\s*["']retry_publish["']\)/);
 const retryPublishEnd = generation.indexOf("if (!ALLOWED_STATUSES.has(status))", retryPublishStart);
 const retryPublishBlock = retryPublishStart >= 0 && retryPublishEnd > retryPublishStart
   ? generation.slice(retryPublishStart, retryPublishEnd)
   : "";
 if (!retryPublishBlock.includes("EXTERNAL_VIDEO_PUBLISHING_RETIRED") || !retryPublishBlock.includes("status: 410")) {
   failures.push("external video publish retry must be retired; internal generation remains available");
-}
-if (retryPublishBlock.includes("publishToYoutube") || retryPublishBlock.includes("publishToFacebook")) {
-  failures.push("retired external publish retry must not call provider upload functions");
 }
 const videoManagerRole = permissions.match(/video_manager:\s*\[([\s\S]*?)\]/)?.[1] ?? "";
 const socialManagerRole = permissions.match(/social_manager:\s*\[([\s\S]*?)\]/)?.[1] ?? "";
@@ -137,7 +134,9 @@ const socialClient = read("src/app/admin/social/social-client.tsx");
 if (socialClient.includes('href="/admin/video-requests"') || socialClient.includes('href="/admin/videos"')) {
   failures.push("Video review links must target the canonical /admin/video/requests page, not a missing route");
 }
-if (!socialClient.includes('href="/admin/video/requests"') || !socialClient.includes("مراجعة الفيديوهات")) {
+if (!socialClient.includes('href="/admin/video/requests"') ||
+    !socialClient.includes("مراجعة الفيديوهات") ||
+    !socialClient.includes("فتح تفاصيل الفيديو واعتماده")) {
   failures.push("Publishing video-review actions must link to the canonical protected video queue");
 }
 
@@ -212,29 +211,7 @@ if (!internalVideoQueueMigration.includes("'videos'") || !internalVideoQueueMigr
 if (!worker.includes("source_hash: rendered.sourceHash") || !worker.includes("content_hash: rendered.contentHash") || !worker.includes("template_version: rendered.templateVersion")) {
   failures.push("completed manual renders must persist source, content and template integrity fingerprints");
 }
-const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
-if (!worker.includes("async function queueSocialItems") ||
-    !worker.includes("await queueSocialItems(request, rendered.videoUrl)") ||
-    !worker.includes('status: "queued"') ||
-    !worker.includes("automation_key: socialKey")) {
-  failures.push("new generated videos may create only idempotent queued social candidates");
-}
-if (worker.includes("publishToYoutube(") || worker.includes("publishToFacebook(") ||
-    worker.includes("https://www.googleapis.com/upload/youtube/v3/videos") ||
-    worker.includes("graph.facebook.com")) {
-  failures.push("video generation must never call external platform publishing APIs directly");
-}
-if (!generationWorkflow.includes('AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"') ||
-    !worker.includes("buildAutomatedVideoQaChecklist") ||
-    !worker.includes("createAutomatedVideoQaApproval") ||
-    !worker.includes("automatedQa.status !== \"passed\"")) {
-  failures.push("new video candidates must use a complete automated QA snapshot instead of a manual approval gate");
-}
-if (!socialPublishing.includes("hasVideoApprovalForQueueItem(item)") ||
-    !socialPublishing.includes("Video held because automated QA is missing, incomplete or stale.") ||
-    !socialPublishing.includes("Automated QA lookup failed; holding video item")) {
-  failures.push("the separate social worker must fail closed and revalidate automated QA immediately before provider calls");
-}
+if (worker.includes("social_publish_queue") || worker.includes("getFacebookPageCredentials") || worker.includes("queueSocialItems")) failures.push("video generation must never enqueue or query external social platforms");
 if (!worker.includes("!isTemplatePreview &&") || !worker.includes("!boundTemplate &&")) failures.push("pinned template renders must not be handed to external video providers");
 for (const [path, destinations] of [
   ["src/app/admin/audio/tts/page.tsx", ["/admin/video/voices", "/admin/video/scripts"]],

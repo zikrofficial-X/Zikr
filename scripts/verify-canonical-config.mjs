@@ -42,7 +42,6 @@ const supabaseTargetFiles = [
   ".github/workflows/quality-gate.yml",
   ".github/workflows/supabase-production-health.yml",
   ".github/workflows/generate-ai-video.yml",
-  ".github/workflows/publish-social.yml",
 ];
 for (const file of supabaseTargetFiles) {
   const source = read(file);
@@ -53,6 +52,12 @@ for (const file of supabaseTargetFiles) {
   if (!source.includes(canonicalSupabaseUrl)) {
     fail(`Supabase target drift in ${file}; expected ${canonicalSupabaseUrl}`);
   }
+}
+const retiredSocialWorkflow = read(".github/workflows/publish-social.yml");
+if (!retiredSocialWorkflow.includes("if: false") ||
+    retiredSocialWorkflow.includes(canonicalSupabaseUrl) ||
+    /SUPABASE_(URL|SERVICE_ROLE_KEY)|SOCIAL_PUBLISH_ENABLED|YOUTUBE_CLIENT_SECRET|FACEBOOK_PAGE_ACCESS_TOKEN/.test(retiredSocialWorkflow)) {
+  fail("Retired social workflow must remain inert and must not receive production targets or credentials");
 }
 const supabaseUrlReferenceDocs = [
   "docs/circleci-supabase-environment.md",

@@ -4,7 +4,6 @@ import { evaluateBackgroundJobOutcome, shouldClearRunNowRequest } from "../../sr
 assert.deepEqual(evaluateBackgroundJobOutcome({
   videoSucceeded: 10,
   videoFailed: 0,
-  socialFailed: 0,
   sitePublishingFailed: false,
 }), {
   hasPartialVideoFailures: false,
@@ -15,7 +14,6 @@ assert.deepEqual(evaluateBackgroundJobOutcome({
 assert.deepEqual(evaluateBackgroundJobOutcome({
   videoSucceeded: 9,
   videoFailed: 1,
-  socialFailed: 0,
   sitePublishingFailed: false,
 }), {
   hasPartialVideoFailures: true,
@@ -26,7 +24,6 @@ assert.deepEqual(evaluateBackgroundJobOutcome({
 assert.deepEqual(evaluateBackgroundJobOutcome({
   videoSucceeded: 0,
   videoFailed: 10,
-  socialFailed: 0,
   sitePublishingFailed: false,
 }), {
   hasPartialVideoFailures: false,
@@ -37,18 +34,10 @@ assert.deepEqual(evaluateBackgroundJobOutcome({
 assert.equal(evaluateBackgroundJobOutcome({
   videoSucceeded: 9,
   videoFailed: 1,
-  socialFailed: 1,
-  sitePublishingFailed: false,
-}).shouldFailRun, true, "a social provider failure must remain fatal");
-
-assert.equal(evaluateBackgroundJobOutcome({
-  videoSucceeded: 9,
-  videoFailed: 1,
-  socialFailed: 0,
   sitePublishingFailed: true,
 }).shouldFailRun, true, "an internal site-publishing failure must remain fatal");
 
-console.log("Background job outcome policy passed: partial video failures do not suppress eligible social publishing.");
+console.log("Background job outcome policy passed: partial video failures do not suppress successful internal site publishing.");
 
 
 assert.equal(shouldClearRunNowRequest({

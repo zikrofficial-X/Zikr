@@ -2,7 +2,6 @@ import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { processTemplateVideoQueue, seedAutomatedVideoRequests } from "./jobs/template-video-automation";
 import { processScheduledContent } from "./jobs/content-publishing";
-import { processSocialPublishQueue, syncSocialInsights } from "./jobs/social-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
 import { evaluateBackgroundJobOutcome, shouldClearRunNowRequest } from "../src/features/videos/services/background-job-outcome";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
@@ -259,32 +258,6 @@ async function processVideos(settings: VideoAutomationSettings) {
 
 
 
-async function processSocial(settings: VideoAutomationSettings) {
-  if (!settings.autoPublish || process.env.SOCIAL_PUBLISH_ENABLED !== "true") {
-    console.log("[background-jobs] Social publishing remains paused by Admin settings or workflow policy.");
-    return { processed: 0, succeeded: 0, deferred: 0, authBlocked: 0, approvalBlocked: 0, failed: 0, enabled: false, insights: null };
-  }
-
-  // Expensive provider insights are refreshed only by an explicit maintenance run,
-  // not every time a video is generated or a queue is drained.
-  const insights = process.env.SOCIAL_SYNC_INSIGHTS === "true"
-    ? await syncSocialInsights()
-    : null;
-  const configuredBatchSize = Number(process.env.SOCIAL_PUBLISH_BATCH_SIZE ?? 2);
-  const batchSize = Math.max(1, Math.min(5, Number.isFinite(configuredBatchSize) ? Math.floor(configuredBatchSize) : 2));
-  const result = await processSocialPublishQueue(batchSize);
-  console.log("[background-jobs] Social publish batch:", JSON.stringify({
-    processed: result.processed,
-    succeeded: result.succeeded,
-    deferred: result.deferred,
-    authBlocked: result.authBlocked,
-    approvalBlocked: result.approvalBlocked,
-    failed: result.failed,
-    enabledPlatforms: result.enabledPlatforms,
-  }));
-  return { ...result, enabled: true, insights };
-}
-
 async function recordAutomationRun(summary: {
   startedAt: number;
   target: string;
@@ -340,11 +313,11 @@ async function main() {
   const runNowRequestedAt = videoSettings.runNowRequest?.requestedAt ?? null;
   applyVideoAutomationSettings(videoSettings);
   console.log("[background-jobs] Admin video settings:", JSON.stringify(videoSettings));
-  if (!["all", "videos", "social"].includes(target)) {
+  if (!["all", "videos"].includes(target)) {
     throw new Error(`Invalid BACKGROUND_JOB_TARGET: ${target}`);
   }
 
-  console.log(`[background-jobs] Starting ZIKR worker (target=${target}, autoPublish=${videoSettings.autoPublish}, socialPolicy=${process.env.SOCIAL_PUBLISH_ENABLED === "true"}).`);
+  console.log(`[background-jobs] Starting ZIKR worker (target=${target}, autoPublish=${videoSettings.autoPublish}).`);
   const startedAt = Date.now();
   const videos = target === "all" || target === "videos"
     ? await processVideos(videoSettings)
@@ -368,32 +341,26 @@ async function main() {
       })
     : { claimed: 0, published: 0 };
 
-  const social = target === "all" || target === "social"
-    ? await processSocial(videoSettings)
-    : { processed: 0, succeeded: 0, deferred: 0, authBlocked: 0, approvalBlocked: 0, failed: 0, enabled: false, insights: null };
-
-  const failed = videos.failed + social.failed + ("error" in sitePublishing ? 1 : 0);
+  // External social publishing is retired; retain zero-valued fields for audit compatibility.
+  const social = { processed: 0, succeeded: 0, deferred: 0, authBlocked: 0, approvalBlocked: 0, failed: 0, enabled: false, insights: null };
+  const failed = videos.failed + ("error" in sitePublishing ? 1 : 0);
   const queueAlerts = await notifyNewQueueFailures(new Date(startedAt).toISOString()).catch((error) => {
     console.error("[background-jobs] Queue failure alert delivery unavailable:", error instanceof Error ? error.message : String(error));
     return { alerts: 0, delivered: 0 };
   });
 
-  // Social batches already persist platform status/remote IDs in the social queue
-  // and GitHub Actions logs. Do not add a video_automation_runs row per social run.
-  if (target !== "social") {
-    await recordAutomationRun({
-      startedAt,
-      target,
-      seeded: videos.seeded || 0,
-      processed: videos.processed + social.processed,
-      completed: videos.succeeded + social.succeeded,
-      failed,
-      socialProcessed: social.processed,
-      socialSucceeded: social.succeeded,
-      siteContentPublished: sitePublishing.published,
-      urgentRunRequestedAt: runNowRequestedAt,
-    });
-  }
+  await recordAutomationRun({
+    startedAt,
+    target,
+    seeded: videos.seeded || 0,
+    processed: videos.processed + social.processed,
+    completed: videos.succeeded + social.succeeded,
+    failed,
+    socialProcessed: social.processed,
+    socialSucceeded: social.succeeded,
+    siteContentPublished: sitePublishing.published,
+    urgentRunRequestedAt: runNowRequestedAt,
+  });
 
   console.log("[background-jobs] Summary:", JSON.stringify({
     target,
@@ -407,12 +374,11 @@ async function main() {
   const outcome = evaluateBackgroundJobOutcome({
     videoSucceeded: videos.succeeded,
     videoFailed: videos.failed,
-    socialFailed: social.failed,
     sitePublishingFailed: "error" in sitePublishing,
   });
   if (outcome.hasPartialVideoFailures) {
     console.warn(
-      `[background-jobs] ${videos.failed} video item(s) failed but ${videos.succeeded} passed QA and completed; preserving successful delivery and allowing the dependent social publisher to run.`,
+      `[background-jobs] ${videos.failed} video item(s) failed but ${videos.succeeded} passed QA and completed; preserving successful internal delivery.`,
     );
   }
   if (outcome.shouldFailRun) {

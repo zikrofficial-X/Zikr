@@ -49,6 +49,7 @@ assert.ok(route.includes("automation_key=not.is.null"), "project-memory cleanup 
 assert.ok(socialWorker.includes("isVideoPurgeInProgress"));
 assert.ok(socialWorker.includes("video_purge_in_progress"));
 assert.ok(videoWorker.includes("isVideoGenerationPaused"));
+assert.ok(videoWorker.includes("External distribution is retired") && !videoWorker.includes("social_publish_queue") && !videoWorker.includes("getFacebookPageCredentials") && !videoWorker.includes("getYouTubeUploadRefreshToken"), "automated video runs must remain internal and contain no external social queue or provider calls");
 assert.ok(videoWorker.includes("video_automation_enabled,video_purge_in_progress"));
 assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
 assert.ok(generationStudio.includes("PurgeGeneratedVideosControl"));

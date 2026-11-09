@@ -47,12 +47,6 @@ jobs:
       GEMINI_MODEL: gemini-3.8-flash
       GEMINI_AUDIO_SMOKE_TEST: "false"
       AUTO_VIDEO_ENABLED: "true"
-      AUTO_VIDEO_PUBLISH_ENABLED: "true"
-      AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
-      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
-      FACEBOOK_PUBLISHING_REQUESTED: ${{ vars.FACEBOOK_PUBLISHING_ENABLED || 'true' }}
-      YOUTUBE_PUBLISHING_REQUESTED: ${{ vars.YOUTUBE_PUBLISHING_ENABLED || 'true' }}
       AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '10' }}
       DAILY_VIDEO_TARGET: "20"
       AUTO_VIDEO_URGENT: ${{ inputs.urgent || 'false' }}
@@ -76,7 +70,6 @@ jobs:
       HF_VIDEO_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
       # Generate on free visual AI providers with deterministic FFmpeg fallback; the canonical video record stays in ZIKR.
       AUTO_VIDEO_SECONDS: "25"
-      # New social candidates are queued only after the source-locked automated QA snapshot passes. No manual approval step is required.
       BACKGROUND_JOB_TARGET: "videos"
       VIDEO_TEMPLATE_VERSION: "2026-11-06-composition-sync-v8"
       VIDEO_OUTPUT_CRF: "17"
