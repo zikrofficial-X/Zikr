@@ -108,7 +108,7 @@
     "quran:tafsir:check": "node scripts/verify-quran-tafsir-backfill.mjs"
   },
   "dependencies": {
-    "@capacitor/android": "7.6.9",
+    "@capacitor/android": "7.6.10",
     "@capacitor/app": "7.0.2",
     "@capacitor/browser": "7.0.5",
     "@capacitor/camera": "7.0.2",
