@@ -45,14 +45,22 @@ if (articleTranslator.includes("gemini-3.5-flash-lite")) failures.push("article 
 const publisher = read(".github/workflows/publish-social.yml");
 const adminSocial = read("src/app/api/admin/social/route.ts");
 const socialRunner = read("scripts/run-background-jobs.ts");
+const socialService = read("src/features/social/services/social-publishing.ts");
 if (existsSync("src/app/api/internal/video-processing/route.ts")) failures.push("retired /api/internal/video-processing endpoint must remain deleted");
 if (existsSync("src/app/api/internal/video-generation/daily/route.ts")) failures.push("retired /api/internal/video-generation/daily endpoint must remain deleted");
 if (existsSync("src/app/api/internal/youtube-sync/route.ts")) failures.push("retired /api/internal/youtube-sync endpoint must remain deleted");
-if (!adminSocial.includes("SOCIAL_PUBLISHING_RETIRED") || !adminSocial.includes("status: 410") || adminSocial.includes("social_publish_queue")) failures.push("admin social API must fail closed with HTTP 410 and leave historical queue records untouched");
-if (/^\s{2}(schedule|workflow_run):/m.test(publisher) || !publisher.includes("workflow_dispatch:") || !/disabled:\s*\n\s+if:\s*false/m.test(publisher)) failures.push("external social workflow must have no automatic trigger and an inert manual-dispatch sentinel");
-if (publisher.includes("BACKGROUND_JOB_TARGET") || publisher.includes('SOCIAL_PUBLISH_ENABLED: "true"') || publisher.includes("YOUTUBE_CLIENT_SECRET")) failures.push("external social workflow must not enable a worker or inject provider credentials");
-if (socialRunner.includes("processSocialPublishQueue") || socialRunner.includes("social_publish_queue") || socialRunner.includes("BACKGROUND_JOB_TARGET ?? \"social\"")) failures.push("background runner must not invoke or reconcile external social work");
-if (!socialRunner.includes("External social publishing is retired") || !socialRunner.includes("processScheduledContent(20)")) failures.push("background runner must explicitly retire social delivery while preserving internal site publishing");
+if (adminSocial.includes("SOCIAL_PUBLISHING_RETIRED") || !adminSocial.includes("dispatchGitHubWorkflow(\"publish-social.yml\"")) failures.push("admin social API must dispatch the controlled publisher and must not return HTTP 410");
+if (!publisher.includes("workflow_run:") || !publisher.includes("github.event.workflow_run.conclusion == 'success'")) failures.push("social publisher must run only after a successful video-generation workflow");
+if (!publisher.includes("workflow_dispatch:") || !publisher.includes('cron: "7,22,37,52 * * * *"') || !publisher.includes("github.event_name == 'schedule'") || publisher.includes("\\n  push:")) failures.push("social publishing must combine event-driven publishing with a bounded 15-minute retry drain and must not trigger on source pushes");
+if (!publisher.includes('SOCIAL_PUBLISH_ENABLED: "true"') || !publisher.includes('BACKGROUND_JOB_TARGET: "social"')) failures.push("social publisher must execute the social target behind the explicit enabled flag");
+if (!publisher.includes('SOCIAL_SYNC_INSIGHTS: "false"')) failures.push("publishing runs must not refresh expensive social insights on every dispatch");
+if (!publisher.includes("SOCIAL_PUBLISH_AFTER: \"2026-11-06T20:00:00Z\"")) failures.push("social publisher must exclude the pre-activation queue backlog");
+if (!publisher.includes("youtube.upload") || !publisher.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED") || !publisher.includes("SOCIAL_PUBLISH_YOUTUBE_ENABLED")) failures.push("social preflight must verify provider scopes and credentials before allowing queue claims");
+if (socialRunner.includes("reconcileCompletedVideoSocialQueue")) failures.push("video worker must never reconcile historical completed requests into social queue rows");
+if (!socialRunner.includes("processSocialPublishQueue") || !socialRunner.includes('process.env.SOCIAL_PUBLISH_ENABLED !== "true"')) failures.push("background runner must execute social publishing only when the protected workflow and admin setting allow it");
+if (!socialRunner.includes('process.env.SOCIAL_SYNC_INSIGHTS === "true"')) failures.push("social insight sync must remain opt-in to protect Free-plan query usage");
+if (!socialService.includes("created_at=gte.${createdSince}") || !socialService.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff")) failures.push("social queue claims and stale recovery must respect the launch cutoff");
+if (publisher.includes("if: false")) failures.push("social publisher must not retain the retired workflow kill switch");
 const retentionWorkflow = read(".github/workflows/storage-retention.yml");
 if (retentionWorkflow.includes("\n  push:")) failures.push("Supabase Storage cleanup must not be triggered by source pushes");
 if (!retentionWorkflow.includes("workflow_dispatch:") || !retentionWorkflow.includes("inputs:") || !retentionWorkflow.includes("apply:")) failures.push("Storage retention must retain an explicit manual approval control");
@@ -95,7 +103,7 @@ if (!env.includes("VIDEO_STALE_AFTER_MINUTES=30")) failures.push("video stale ti
 
 const scheduling = read("docs/production-scheduling.md");
 if (!scheduling.includes("GitHub Actions is the authoritative automatic video generation worker")) failures.push("production scheduler ownership documentation is stale");
-if (!scheduling.includes("External social publishing is retired")) failures.push("production scheduling docs must state that external social publishing is retired");
+if (!scheduling.includes("GitHub Actions is the authoritative automatic social publisher")) failures.push("social publisher ownership documentation is stale");
 if (scheduling.includes("GitHub Actions is the authoritative automatic video/social worker")) failures.push("stale GitHub-owned scheduler documentation remains");
 if (scheduling.includes("GitHub Actions are not the active scheduler in the current repository.")) failures.push("stale contradictory scheduler documentation remains");
 

@@ -51,13 +51,7 @@ for (const item of workflowNames) {
 }
 
 assert.ok(video.includes('cron: "17 3,9,15,21 * * *"'), "GitHub must own the recurring video generation schedule");
-assert.ok(
-  !/^\s{2}(schedule|workflow_run):/m.test(social) &&
-    social.includes("workflow_dispatch:") &&
-    /disabled:\s*\n\s+if:\s*false/m.test(social) &&
-    !social.includes("\n  push:"),
-  "external social publishing must have no automated triggers and its manual dispatch must be inert",
-);
+assert.ok(social.includes('cron: "7,22,37,52 * * * *"') && social.includes("github.event_name == 'schedule'") && !social.includes("\n  push:") && social.includes("workflow_run:"), "social publisher must retry the bounded queue every 15 minutes on main, while preserving the immediate post-generation trigger and avoiding push triggers");
 assert.ok(circle.includes('cron: "17 4 * * *"'), "CircleCI must retain the recurring English content schedule");
 assert.ok(!circle.includes('cron: "17 3,9,15,21 * * *"'), "CircleCI must not own the video generation schedule");
 assert.ok(
@@ -118,12 +112,16 @@ assert.ok(!video.includes("\n  push:"), "Production video worker must not run on
 assert.ok(video.includes("environment: production"), "Video worker must use protected production environment");
 assert.ok(video.includes("github.ref == 'refs/heads/main'"), "Video worker must be main-only");
 
-assert.ok(!social.includes("BACKGROUND_JOB_TARGET") && !social.includes('SOCIAL_PUBLISH_ENABLED: "true"'), "Retired social publisher must not invoke the social worker or enable external delivery");
-assert.ok(!social.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED") && !social.includes("SOCIAL_PUBLISH_YOUTUBE_ENABLED"), "Retired social publisher must not configure external provider controls");
-assert.ok(social.includes("if: false"), "Social publishing must remain behind the unconditional retired kill switch");
+assert.ok(social.includes('BACKGROUND_JOB_TARGET: "social"'), "Social publisher must target the social queue only");
+assert.ok(social.includes('SOCIAL_PUBLISH_ENABLED: "true"'), "Social publisher must be explicitly enabled behind the protected production environment");
+assert.ok(social.includes('SOCIAL_SYNC_INSIGHTS: "false"'), "Social publisher must not run expensive insights sync on every delivery");
+assert.ok(social.includes("SOCIAL_PUBLISH_AFTER: \"2026-11-06T20:00:00Z\""), "Social publisher must isolate new queue rows from the historical backlog");
+assert.ok(social.includes("youtube.upload") && social.includes("SOCIAL_PUBLISH_FACEBOOK_ENABLED") && social.includes("SOCIAL_PUBLISH_YOUTUBE_ENABLED"), "Social preflight must validate provider readiness before delivery");
+assert.ok(social.includes("environment: production"), "Social publisher must use protected production environment");
+assert.ok(!social.includes("if: false"), "Social publishing must not retain the retired kill switch");
 const socialEnvironment = social.slice(social.indexOf("    env:"), social.indexOf("    steps:"));
-assert.ok(!socialEnvironment.includes("YOUTUBE_REFRESH_TOKEN") && !socialEnvironment.includes("YOUTUBE_CLIENT_SECRET"), "External provider secrets must never be injected into GitHub Actions");
-assert.ok(social.includes("workflow_dispatch:"), "Retired social publisher may remain manually discoverable only as an inert sentinel");
+assert.ok(!socialEnvironment.includes("YOUTUBE_REFRESH_TOKEN"), "Stored OAuth refresh tokens must never be injected into GitHub Actions");
+assert.ok(social.includes("workflow_dispatch:"), "Social publisher must retain explicit manual recovery");
 assert.ok(!english.includes("\n  schedule:"), "GitHub English sync must not own an automatic schedule");
 assert.ok(english.includes("environment: production"), "English sync must use protected production environment");
 assert.ok(english.includes("github.ref == 'refs/heads/main'"), "English sync must be main-only");
@@ -205,6 +203,7 @@ assert.ok(!supabaseConfig.includes("[functions.sync-youtube-facebook]"), "retire
 
 for (const file of [
   ".github/workflows/generate-ai-video.yml",
+  ".github/workflows/publish-social.yml",
   ".github/workflows/english-content-sync.yml",
   ".github/workflows/release-finalization.yml",
 ]) {

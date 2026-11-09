@@ -8,6 +8,8 @@ import {
   supabaseServerAdminCount,
   supabaseServerAdminRequest,
 } from "../../src/lib/supabase/admin-rest";
+import { getFacebookPageCredentials } from "../../src/features/social/services/facebook-credentials";
+import { getYouTubeUploadRefreshToken } from "../../src/features/social/services/youtube-oauth-credentials";
 import { listVideoSources, resolveVideoSource } from "../../src/features/videos/services/video-sources";
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
 import { buildKidsSeriesEpisode, validateCanonicalKidsEpisodeSnapshot, validateGeneratedKidsEpisode } from "../../src/features/videos/data/kids-story-factory";
@@ -146,6 +148,12 @@ type DuaRow = {
 };
 
 type ExistingRow = { id: string; status: string; automation_key: string | null };
+type SocialQueueRow = {
+  id: string;
+  status: string;
+  target_platforms: string[] | null;
+  metadata: Record<string, unknown> | null;
+};
 type GeneratedRequest = {
   id: string;
   title: string;
@@ -1613,6 +1621,48 @@ function buildAutomatedVideoQaChecklist(
   };
 }
 
+function buildAutomatedSocialCaption(request: GeneratedRequest, publicUrl: string) {
+  const content = request.content ?? {};
+  const ai = content.ai && typeof content.ai === "object" ? content.ai as Record<string, unknown> : {};
+  const generatedCaption = typeof ai.socialCaption === "string" ? ai.socialCaption.trim() : "";
+  const hook = resolveDeterministicVideoHook({
+    id: request.id,
+    category: request.category,
+    audience: content.audience,
+  });
+  const callToAction: Record<string, string> = {
+    quran: "احفظ الآية وشاركها مع من تحب.",
+    hadith: "تأمل المعنى وجرّب تطبيقه اليوم.",
+    dua: "احفظ الدعاء وارجع إليه وقت الحاجة.",
+    adhkar: "اجعل الذكر جزءًا ثابتًا من يومك.",
+    story: "تابع القصة وشارك العبرة.",
+    other: content.audience === "kids" ? "شارك الحلقة مع الأسرة وتحدثوا عن فكرتها." : "احفظ الرسالة وشاركها لمن قد تنفعه.",
+  };
+  const tags: Record<string, string> = {
+    quran: "#القرآن_الكريم #تدبر",
+    hadith: "#السنة_النبوية #حديث",
+    dua: "#دعاء #أدعية",
+    adhkar: "#أذكار #ذكر",
+    story: "#قصص_وعبر",
+    other: content.audience === "kids" ? "#قصص_أطفال #تعليم" : "#رسالة_اليوم",
+  };
+  const visualDisclosure = content.aiProvider && ["hf_ltx_fast", "hf_wan"].includes(String(content.aiProvider))
+    ? "المشاهد البصرية مولّدة بأدوات الذكاء الاصطناعي، والنص الديني مرتبط بمصدره الموضح."
+    : "";
+  return [
+    hook,
+    request.title.trim(),
+    generatedCaption || request.description?.trim() || "",
+    callToAction[request.category] ?? callToAction.other,
+    visualDisclosure,
+    tags[request.category] ?? tags.other,
+    "المصدر: " + contentSourceUrl(request),
+    publicUrl,
+  ].filter((value, index, values): value is string =>
+    typeof value === "string" && value.trim().length > 0 && values.indexOf(value) === index
+  ).join("\n\n").slice(0, 4500);
+}
+
 const INTERNAL_VIDEO_CATEGORY_SLUG: Record<string, string> = {
   quran: "quran-verified",
   hadith: "sunnah-verified",
@@ -1767,6 +1817,139 @@ async function registerGeneratedVideoOnSite(
   return { videoId, published: false, queued: true };
 }
 
+async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueRow | null> {
+  const rows = await supabaseServerAdminRequest<SocialQueueRow[]>(
+    `/rest/v1/social_publish_queue?automation_key=eq.${encodeURIComponent(key)}&select=id,status,target_platforms,metadata&limit=1`,
+  );
+  return rows?.[0] ?? null;
+}
+
+async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
+  if (!engineConfig().autoPublishEnabled) {
+    console.log(`[template-video] External publishing is disabled for ${request.id}; internal video remains available.`);
+    return;
+  }
+  if (engineConfig().requiresApproval) {
+    console.log(`[template-video] External publishing remains held by the explicit approval setting for ${request.id}.`);
+    return;
+  }
+  const content = request.content;
+  const automatedQa = content.automatedVideoQa && typeof content.automatedVideoQa === "object"
+    ? content.automatedVideoQa as Record<string, unknown>
+    : {};
+  if (automatedQa.status !== "passed" || content.approvalStatus !== "approved") {
+    console.log(`[template-video] Automated QA did not pass for ${request.id}; no external queue item was created.`);
+    return;
+  }
+  if (content.skipSocialPublish === true) {
+    console.log(`[template-video] Social publishing skipped for test request ${request.id}`);
+    return;
+  }
+  const key = request.automation_key || request.id;
+  const publicPath =
+    typeof content.publicPath === "string" && content.publicPath.startsWith("/")
+      ? content.publicPath
+      : "/videos";
+  const targets: string[] = [];
+  if (
+    process.env.YOUTUBE_PUBLISHING_REQUESTED !== "false" &&
+    process.env.YOUTUBE_CLIENT_ID &&
+    process.env.YOUTUBE_CLIENT_SECRET &&
+    await getYouTubeUploadRefreshToken()
+  ) {
+    targets.push("youtube");
+  }
+  // Only an OAuth-managed Page credential in Supabase may create Facebook publishing targets.
+  const facebookCredentials = await getFacebookPageCredentials().catch(() => null);
+  if (process.env.FACEBOOK_PUBLISHING_REQUESTED !== "false" && facebookCredentials?.isEnabled && facebookCredentials.pageId && facebookCredentials.accessToken) {
+    targets.push(content.videoFormat === "horizontal" ? "facebook" : "facebook_reels");
+  }
+  if (!targets.length) return;
+
+  const socialKey = `${key}:social-video`;
+  const existing = await findSocialQueueByAutomationKey(socialKey);
+
+  if (!existing) {
+    await supabaseServerAdminRequest("/rest/v1/social_publish_queue", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        content_type: `${request.category || "content"}_video`,
+        content_id: request.id,
+        title: request.title,
+        body: [
+          buildAutomatedSocialCaption(request, `${siteUrl()}${publicPath}`),
+          content.audience === "kids" && typeof content.seriesTitle === "string"
+            ? `سلسلة أطفال: ${content.seriesTitle} — الموسم ${Number(content.seasonNumber) || 1}، الحلقة ${Number(content.episodeNumber) || 1}. الهدف: ${String(content.learningObjective || "قيمة تربوية")}`
+            : "",
+        ].filter(Boolean).join("\n\n"),
+        video_url: videoUrl,
+        target_platforms: targets,
+        status: "queued",
+        metadata: {
+          automationKey: socialKey,
+          publicPath,
+          videoFormat: content.videoFormat === "horizontal" ? "horizontal" : "vertical",
+          sourceUrl: contentSourceUrl(request),
+          authBlocked: false,
+          attempts: 0,
+          maxAttempts: 5,
+          nextRetryAt: null,
+          ai: content.ai && typeof content.ai === "object" ? content.ai : null,
+          automatedVideoQa: content.automatedVideoQa,
+          automatedVideoQaVersion: AUTOMATED_VIDEO_QA_VERSION,
+        },
+        automation_key: socialKey,
+      }),
+    });
+    return;
+  }
+
+  const existingTargets = Array.isArray(existing.target_platforms)
+    ? existing.target_platforms.filter(Boolean)
+    : [];
+  const desiredTargets = [...new Set([...existingTargets, ...targets])];
+  const platformResults =
+    existing.metadata?.platformResults && typeof existing.metadata.platformResults === "object"
+      ? (existing.metadata.platformResults as Record<string, unknown>)
+      : {};
+
+  const newlyEnabledTargets = desiredTargets.filter(
+    target =>
+      targets.includes(target) &&
+      !existingTargets.includes(target) &&
+      !(
+        platformResults[target] &&
+        typeof platformResults[target] === "object" &&
+        (platformResults[target] as { ok?: unknown }).ok === true
+      ),
+  );
+
+  if (desiredTargets.length !== existingTargets.length || newlyEnabledTargets.length > 0) {
+    await supabaseServerAdminRequest(
+      `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(existing.id)}`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          video_url: videoUrl,
+          target_platforms: desiredTargets,
+          status: "queued",
+          scheduled_at: new Date().toISOString(),
+          error_message: null,
+          updated_at: new Date().toISOString(),
+          metadata: {
+            ...(existing.metadata ?? {}),
+            authBlocked: false,
+            nextRetryAt: null,
+          },
+        }),
+      },
+    );
+  }
+}
+
+
 export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?: number) {
   if (engineConfig().dryRun) {
     console.log(`[template-video] dry-run enabled; no video generation, upload, or publishing will occur (limit=${limit}).`);
@@ -1894,12 +2077,12 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
             },
           };
       if (!qaApproval) {
-        console.warn(`[template-video] Automated QA blocked internal site publication for ${request.id}: ${missingQaChecks.join(", ")}`);
+        console.warn(`[template-video] Automated QA blocked external distribution for ${request.id}: ${missingQaChecks.join(", ")}`);
       }
       if (qaApproval) {
         await registerGeneratedVideoOnSite(request, rendered);
       } else {
-        console.warn(`[template-video] Render retained in the generation audit only; automated QA blocked the internal site queue for ${request.id}.`);
+        console.warn(`[template-video] Render retained in the generation audit only; automated QA blocked site and social publication for ${request.id}.`);
       }
       await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
         method: "PATCH",
@@ -1926,7 +2109,14 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           error_details: null,
         }),
       });
-      console.log(`[template-video] External distribution is retired; retained internally for ${request.id}.`);
+      try {
+        await queueSocialItems(request, rendered.videoUrl);
+      } catch (socialError) {
+        console.error(
+          `[template-video] Internal video succeeded but social queue enqueue failed for ${request.id}:`,
+          socialError instanceof Error ? socialError.message : String(socialError),
+        );
+      }
       succeeded += 1;
       console.log(`[template-video] Completed ${request.id}`);
     } catch (error) {

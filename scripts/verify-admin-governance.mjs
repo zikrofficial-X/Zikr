@@ -125,11 +125,12 @@ if (!sidebar.includes('aria-label="اختيار مجموعة الإدارة"') |
 if (!dashboard.includes("hasAdminPermission") || !dashboard.includes("availableHrefs")) failures.push("dashboard quick links and section cards must be filtered by the signed-in role");
 if (!dashboard.includes("AdminModuleDirectory groups={availableGroups}")) failures.push("dashboard must use the permission-filtered interactive module directory");
 if (!moduleDirectory.includes("FAVORITES_KEY") || !moduleDirectory.includes("RECENTS_KEY") || !moduleDirectory.includes("visibleGroups")) failures.push("admin directory must provide favorites, recent pages, and searchable group filtering");
-if (!dashboard.includes('hasAdminPermission(role, "audit.read")') || !dashboard.includes('hasAdminPermission(role, "video.manage")')) {
-  failures.push("audit and video-queue operational details must respect admin role permissions");
-}
-if (!dashboard.includes('if (metric.key === "social") return false')) {
-  failures.push("retired external social-publishing metrics must not be exposed on the admin dashboard");
+if (
+  !dashboard.includes('hasAdminPermission(role, "audit.read")') ||
+  !dashboard.includes('hasAdminPermission(role, "video.manage")') ||
+  !dashboard.includes('if (metric.key === "social") return false;')
+) {
+  failures.push("audit and internal video queue details must respect admin role permissions; retired social metrics must remain hidden");
 }
 if (!dashboard.includes("attentionItems.length > 0")) failures.push("dashboard must display actionable attention items based on operational counts");
 if (!editorialActions.includes("enforceEditorialRateLimit") || !editorialActions.includes("EDITORIAL_RATE_LIMIT_MESSAGE") || !editorialActions.includes("editorialError(EDITORIAL_RATE_LIMIT_MESSAGE)")) failures.push("expected editorial rate-limit denials must redirect to a visible message instead of surfacing as runtime exceptions");

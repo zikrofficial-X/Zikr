@@ -124,11 +124,15 @@ for (const token of ["safeExternalUrl", "facebookUrl", "youtubeUrl", 'href="/qur
 if (footer.includes("cursor-pointer")) failures.push("Footer must not render decorative, non-functional icon controls");
 
 const videoPage = readFileSync("src/app/videos/page.tsx", "utf8");
-if (!videoPage.includes("getInternalGeneratedVideos")) failures.push("Videos page must render the internal ZIKR generated-video catalog");
-if (!videoPage.includes("video.thumbnailUrl ?") || !videoPage.includes("justify-center text-4xl text-brand-gold/40")) {
-  failures.push("Internal Videos page must provide a safe placeholder when a generated video has no thumbnail");
+if (
+  !videoPage.includes("video.thumbnailUrl ?") ||
+  !videoPage.includes("text-4xl text-brand-gold/40")
+) {
+  failures.push("Internal Videos page must render branded fallback imagery when a generated video's thumbnail is unavailable");
 }
-if (videoPage.includes("ResilientProfileImage")) failures.push("Internal Videos page must not depend on remote social-channel avatars");
+if (videoPage.includes("ResilientProfileImage")) {
+  failures.push("Internal Videos page must not depend on retired external channel avatars");
+}
 
 const runNowAction = readFileSync("src/app/admin/system-actions.ts", "utf8");
 if (!runNowAction.includes("queuedForScheduledWorker")) failures.push("Run Now must save a truthful scheduled-worker fallback when GitHub dispatch is not configured");

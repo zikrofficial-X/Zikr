@@ -8,8 +8,7 @@ ZIKR has one authoritative execution owner per production workload. Quran audio 
 | Client-local azan and reminder sounds | Browser / native client | While active | Local/offline fallback; it does not create server delivery rows. |
 | Video generation queue | GitHub Actions `generate-ai-video.yml` → `pnpm background:jobs` → template/FFmpeg/AI worker | Four times daily + manual dispatch | Persisted Supabase queue; generated MP4s upload directly from the worker to Cloudinary; no Supabase video staging or CircleCI execution. |
 | Admin Run Now dispatcher | Admin server action → GitHub Actions `generate-ai-video.yml` dispatch | On demand | Direct dispatch with protected token; request is marked dispatched only after GitHub returns 204. |
-| Internal video publication | Video worker → `videos` → `content_publish_queue` → `scripts/jobs/content-publishing.ts` | After each QA-approved generation | Source-locked automated QA must pass; generated video is served only inside ZIKR. |
-| External social publishing | Retired; inert `publish-social.yml` sentinel | None | Admin social API returns HTTP 410; no schedule, workflow-run trigger, provider credentials, or background publisher. Historical records are preserved and not processed. |
+| Social publishing queue | GitHub Actions `publish-social.yml` → `pnpm background:jobs` → social publisher | After successful video-generation run + explicit manual dispatch | Only post-activation rows, provider preflight, human video QA approval, idempotent claims, bounded retries, and platform result tracking. No 15-minute polling. |
 | Quran text/catalog | Local canonical corpus → Supabase fallback | Request time | 114 surahs / 6,236 ayahs are verified; Supabase remains compatibility data. |
 | Quran audio playback | External HTTPS audio URLs via `quran_audio.audio_url` | On demand | No Supabase Storage dependency; no bulk MP3 import job is permitted. |
 | Repository verification | GitHub Actions `ZIKR Quality Gate` | Pull requests and `main` | `pnpm verify:pr` on PRs; full `pnpm verify` (including mobile, SEO, lint, types, and production build) on `main`. |
@@ -23,7 +22,7 @@ The Supabase migration `20260915004110_retire_vercel_video_processing_cron.sql` 
 
 Supabase owns minute-level prayer scheduling.
 GitHub Actions is the authoritative automatic video generation worker.
-External social publishing is retired. Its API returns HTTP 410, the workflow has no automatic triggers and an inert manual-dispatch job, and the background runner never claims or reconciles historical social queue rows. Existing records are retained. Video generation runs four times per day; videos enter ZIKR's internal site queue only after the versioned source/audio/visual/caption/rights QA record passes and matches the exact source, content, template and MP4 fingerprint. Admin Run Now dispatches the canonical GitHub video workflow directly. CircleCI is reserved for the application build/documentation artifact, Android release builds, Supabase release gates, English content sync, and explicit recovery/release operations.
+GitHub Actions is the authoritative automatic social publisher. Video generation runs four times per day; the separate social publisher starts only after a successful video-generation workflow or an explicit manual dispatch. There is no periodic social polling. New queue items are restricted by `SOCIAL_PUBLISH_AFTER`; historical rows remain excluded until an audited cleanup window is approved. New videos publish automatically only after the versioned five-part source/audio/visual/caption/rights QA record passes and matches the exact source, content, template and MP4 fingerprint; the worker revalidates it immediately before every provider call. No manual video review is required. Admin Run Now dispatches the canonical GitHub video workflow directly. CircleCI is reserved for the application build/documentation artifact, Android release builds, Supabase release gates, English content sync, and explicit recovery/release operations.
 
 ## Quran audio architecture
 
@@ -47,19 +46,22 @@ GitHub Actions: generate-ai-video.yml
         ├── seed queue items
         ├── AI providers / FFmpeg renderer
         ├── Arabic TTS or verified Quran recitation
-        ├── source-locked video QA
-        └── register approved video in the internal `videos` catalog
+        ├── video QA
+        └── Supabase Storage
                     │
                     ▼
-            content_publish_queue (`content_table=videos`)
+            social_publish_queue
                     │
                     ▼
-            ZIKR site publisher (`/videos`)
+GitHub Actions: publish-social.yml
+        │
+        ├── YouTube OAuth upload
+        └── Facebook / Reels publish
 ```
 
-Production video generation uses the deterministic FFmpeg template renderer. Quran videos use the verified external recitation URL from the Quran catalog. All other source-locked videos receive Arabic narration from the free `edge-tts` worker helper when no source recording exists; silent output is not allowed. HeyGen fields/migrations remain only for historical compatibility and must not become an alternate production execution path. Generated videos are published on the ZIKR site only; provider credentials and external distribution are not used by the worker.
+Production video generation uses the deterministic FFmpeg template renderer. Quran videos use the verified external recitation URL from the Quran catalog. All other source-locked videos receive Arabic narration from the free `edge-tts` worker helper when no source recording exists; silent output is not allowed. HeyGen fields/migrations remain only for historical compatibility and must not become an alternate production execution path.
 
-The internal publisher validates the generated video record and uses the site's own content queue. Historical social queue rows are not claimed, mutated, reconciled, or delivered.
+The worker requires a direct HTTPS media URL for social publication and rejects YouTube watch URLs as media sources. Social queue items record platform-level success/failure and retry only unfinished platforms.
 
 ## Manual CircleCI operations
 
@@ -72,13 +74,13 @@ Pipeline parameters:
 
 There is intentionally **no `run_quran_audio_import` parameter**. Quran audio is externalized and must not be bulk-uploaded to Supabase Storage.
 
-Recurring schedules are declared in GitHub Actions: internal video generation at 03:17, 09:17, 15:17, and 21:17 UTC. External social publishing has no schedule. CircleCI retains the English content schedule at 04:17 UTC and handles application/Android build artifacts. Routine source-change verification belongs to GitHub Actions.
+Recurring schedules are declared in GitHub Actions: video generation at 03:17, 09:17, 15:17, and 21:17 UTC; social publishing every 15 minutes. CircleCI retains the English content schedule at 04:17 UTC and handles application/Android build artifacts. Routine source-change verification belongs to GitHub Actions.
 
 ## Safety
 
-Production credentials belong only in the protected GitHub production environment for internal video/site automation, CircleCI project/context variables for app/Android builds, Supabase secrets, or Vercel secrets as appropriate. Never commit `SUPABASE_SERVICE_ROLE_KEY`, provider access tokens, OAuth refresh tokens, Android signing keys, or scheduler secrets.
+Production credentials belong only in the protected GitHub production environment for video/social automation, CircleCI project/context variables for app/Android builds, Supabase secrets, or Vercel secrets as appropriate. Never commit `SUPABASE_SERVICE_ROLE_KEY`, provider access tokens, OAuth refresh tokens, Android signing keys, or scheduler secrets.
 
-Do not create a second scheduler to compensate for an outage. Inspect the internal queue state and error metadata, then use the GitHub Actions manual dispatch for video generation. Social publishing must not be re-enabled through a manual dispatch.
+Do not create a second scheduler to compensate for a temporary provider outage. Inspect the queue state and error metadata, then use the GitHub Actions manual dispatch for video generation or social publishing.
 
 ## Supabase Preview integration
 

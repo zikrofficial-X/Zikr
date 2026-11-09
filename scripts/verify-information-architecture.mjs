@@ -38,7 +38,7 @@ if (sitemap.includes('"/videos"') && sitemap.includes('NON_INDEXABLE_PATHS')) {
     failures.push('Public /videos hub must remain indexable and must not be excluded from sitemap generation.');
   }
 }
-if (!/path:\s*["']\/videos["']/.test(videosPage) || /noindex:\s*true/.test(videosPage)) {
+if (!videosPage.includes('path: "/videos"') || videosPage.includes("noindex: true")) {
   failures.push('Public /videos hub metadata is not indexable as expected.');
 }
 if (!site.includes('path: "/library"') || !site.includes('path: "/audio"')) {

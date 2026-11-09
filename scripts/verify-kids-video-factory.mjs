@@ -21,14 +21,14 @@ for (const token of ['const mode = slot % 7', "buildKidsSeriesEpisode", "validat
 }
 const outcomePolicy = read("src/features/videos/services/background-job-outcome.ts");
 if (!outcomePolicy.includes("videoFailed > 0 && videoSucceeded > 0") ||
+    !outcomePolicy.includes("socialFailed > 0") ||
     !outcomePolicy.includes("sitePublishingFailed")) {
-  failures.push("a partial video batch must retain failed-item audit data while allowing successful internal site publishing");
+  failures.push("a partial video batch must retain failed-item audit data without suppressing successful downstream social publishing");
 }
 const backgroundRunner = read("scripts/run-background-jobs.ts");
 if (!backgroundRunner.includes("evaluateBackgroundJobOutcome") ||
-    !backgroundRunner.includes("processScheduledContent(20)") ||
-    !backgroundRunner.includes("preserving successful internal delivery")) {
-  failures.push("background runner must preserve successful internal site delivery after a partially failed video batch");
+    !backgroundRunner.includes("allowing the dependent social publisher to run")) {
+  failures.push("background runner must allow downstream social publishing after a partially successful video batch");
 }
 if (!worker.includes("KIDS_SERIES_START_DAY_INDEX")) failures.push("kids series schedule must have a stable launch reference");
 if (!worker.includes("Math.ceil((dailyTarget * scheduleWindow) / 4)")) failures.push("daily target must be spread across four six-hour workflow windows");
