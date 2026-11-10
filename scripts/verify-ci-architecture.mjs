@@ -184,6 +184,22 @@ assert.ok(release.includes("pnpm production:smoke"), "Controlled release must us
 assert.ok(!release.includes("--token"), "Controlled Vercel release must not pass credentials through CLI arguments");
 assert.ok(release.includes("environment:\n      name: production"), "Controlled release must use the protected production environment");
 assert.ok(release.includes("workflow_dispatch:"), "Production release must remain manually triggerable");
+assert.ok(release.includes("cancel-in-progress: false"), "An active production release must never be cancelled between deploy and schema migration");
+assert.ok(release.includes("checks: read") && release.includes("statuses: read"), "Production release must have read-only permission to verify CI gates");
+assert.ok(
+  release.includes("ci/circleci: config-guard") &&
+    release.includes("ci/circleci: source-verify") &&
+    release.includes("ci/circleci: application-build-docs") &&
+    release.includes("ci/circleci: android-release-draft") &&
+    release.includes("ZIKR / Quality Gate"),
+  "Production release must verify the exact commit's required CircleCI contexts and GitHub Quality Gate",
+);
+assert.ok(
+  release.includes("git rev-parse origin/main") &&
+    release.includes("Verify the approved main commit and required CI gates") &&
+    release.includes("Recheck approved main SHA immediately before production deployment"),
+  "Production release must reject stale queued commits and recheck main before deploying",
+);
 assert.ok(!release.includes("\n  push:"), "Production release must not be enqueued on ordinary source pushes");
 assert.ok(release.includes("github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'"), "Manual production deployment must retain explicit RELEASE confirmation");
 assert.ok(release.includes("Missing Vercel deployment credential"), "Controlled release must fail before build when VERCEL_TOKEN is missing");
