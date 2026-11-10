@@ -80,6 +80,48 @@ if (!pkg.scripts.test?.includes("kids-video-series.test.ts")) failures.push("sta
 if (!pkg.scripts["verify:pr"]?.includes("pnpm kids:video:check")) failures.push("PR verification must include Kids Video Factory");
 if (!pkg.scripts.verify?.includes("pnpm kids:video:check")) failures.push("full verification must include Kids Video Factory");
 
+const kidsHome = read("src/app/kids/page.tsx");
+for (const token of [
+  'fetch("/api/kids/videos"',
+  "generatedKidsItems.map",
+  "kids-generated-stories-heading",
+  "kids-social-posts-heading",
+  "socialPublication.status",
+]) {
+  if (!kidsHome.includes(token)) failures.push("Kids home must display approved generated stories, videos, and social posts: " + token);
+}
+
+const kidsFeedRoute = read("src/app/api/kids/videos/route.ts");
+for (const token of [
+  "getKidsGeneratedVideos(60)",
+  "storyText:",
+  "socialCaption:",
+  "socialPublication:",
+  "SOCIAL_PLATFORMS",
+]) {
+  if (!kidsFeedRoute.includes(token)) failures.push("Kids feed API must expose safe QA-approved video/story/social metadata: " + token);
+}
+
+const kidsWorker = read("scripts/jobs/template-video-automation.ts");
+for (const token of [
+  "storyText: kidsStoryText",
+  "socialCaption: kidsSocialCaption",
+  'audience: content.audience === "kids" ? "kids" : "general"',
+  'kidsContentQaStatus: content.audience === "kids" ? "passed" : null',
+]) {
+  if (!kidsWorker.includes(token)) failures.push("Kids generation must persist story/social copy with an explicit Kids QA audience: " + token);
+}
+
+const socialWorker = read("src/features/social/services/social-publishing.ts");
+if (!socialWorker.includes("syncKidsSocialPublicationToCatalog") ||
+    !socialWorker.includes("await syncKidsSocialPublicationToCatalog(item, publishMetadata)")) {
+  failures.push("confirmed social-platform deliveries must sync back to the Kids catalog");
+}
+const kidsVideoDetail = read("src/app/kids/videos/[slug]/page.tsx");
+if (!kidsVideoDetail.includes("الحكاية كاملة") || !kidsVideoDetail.includes("منشور السوشيال ميديا") || !kidsVideoDetail.includes("socialPublication")) {
+  failures.push("Kids video detail must display the full story and its generated social post");
+}
+
 const docs = read("docs/kids-video-series-free-factory.md");
 if (!docs.includes("VIDEO_FREE_ONLY=true") || !docs.includes("Quran videos continue to require human recitation audio")) failures.push("documentation must state free-provider boundaries and Quran audio safety");
 if (failures.length) {

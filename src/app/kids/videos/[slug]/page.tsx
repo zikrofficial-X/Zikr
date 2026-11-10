@@ -38,6 +38,14 @@ export default async function KidsVideoDetailPage({ params }: Props) {
   }
 
   const metadata = video.metadata ?? {};
+  const storyText = typeof metadata.storyText === "string" ? metadata.storyText : "";
+  const socialCaption = typeof metadata.socialCaption === "string" ? metadata.socialCaption : "";
+  const socialPublication = metadata.socialPublication && typeof metadata.socialPublication === "object" && !Array.isArray(metadata.socialPublication)
+    ? metadata.socialPublication as { status?: unknown; platforms?: unknown }
+    : null;
+  const publishedPlatforms = Array.isArray(socialPublication?.platforms)
+    ? socialPublication.platforms.filter((platform): platform is string => typeof platform === "string")
+    : [];
   const candidate = [metadata.generatedVideoUrl, metadata.videoUrl, metadata.video_url, metadata.sourceVideoUrl]
     .find((value): value is string => typeof value === "string" && value.trim().length > 0);
   let mediaUrl: string | null = null;
@@ -77,6 +85,26 @@ export default async function KidsVideoDetailPage({ params }: Props) {
           <Card className="p-6 text-center text-brand-cream/70">ملف الفيديو غير متاح حاليًا.</Card>
         )}
         {video.description ? <Card className="p-6 leading-8 text-brand-cream/85">{video.description}</Card> : null}
+        {storyText ? (
+          <Card className="space-y-3 border-brand-gold/20 bg-brand-gold/[.04] p-6">
+            <h2 className="text-xl font-black text-brand-gold">الحكاية كاملة</h2>
+            <p className="whitespace-pre-wrap text-base leading-8 text-brand-cream/85">{storyText}</p>
+          </Card>
+        ) : null}
+        {socialCaption ? (
+          <Card className="space-y-3 border-brand-emerald/20 bg-brand-emerald/[.04] p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl font-black text-brand-gold">منشور السوشيال ميديا</h2>
+              {publishedPlatforms.length > 0 && (
+                <span className="text-xs font-bold text-brand-emerald">
+                  {socialPublication?.status === "published" ? "نُشر على " : "نُشر جزئيًا على "}
+                  {publishedPlatforms.map((platform) => platform === "facebook_reels" ? "ريلز فيسبوك" : platform === "facebook" ? "فيسبوك" : platform === "youtube" ? "يوتيوب" : platform).join("، ")}
+                </span>
+              )}
+            </div>
+            <p className="whitespace-pre-wrap text-sm leading-7 text-brand-cream/80">{socialCaption}</p>
+          </Card>
+        ) : null}
       </Container>
     </main>
   );
