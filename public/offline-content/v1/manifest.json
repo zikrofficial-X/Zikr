@@ -1,6 +1,6 @@
 {
-  "version": "2026-10-30-20261110034849",
-  "generatedAt": "2026-11-10T03:48:49.613Z",
+  "version": "2026-10-30-20261110040003",
+  "generatedAt": "2026-11-10T04:00:03.563Z",
   "source": "Zikr Supabase published public content tables with explicit validated-corpus retention where the live tafsir table is empty",
   "licenseNote": "Quran and hadith records retain source attribution. Editorial records are Zikr content. External audio remains a reference unless the file is explicitly packaged locally.",
   "staleDatasets": [
