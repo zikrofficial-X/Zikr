@@ -2,13 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   getFallbackKidsContentBySlug,
-  isKidsContentPublishable,
   mergeKidsContentWithFallback,
 } from "../../src/features/kids/services/kids-content-visibility";
-
-assert.equal(isKidsContentPublishable("story", false), false, "a Kids story cannot be published before age-suitability approval");
-assert.equal(isKidsContentPublishable("story", true), true, "an explicitly approved Kids story may be published");
-assert.equal(isKidsContentPublishable("game", false), true, "non-story Kids content keeps its existing publication contract");
 
 const databaseItems = [
   { slug: "story-live", source: "database" },
@@ -51,10 +46,10 @@ const kidsDetailPage = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
 const kidsDetailLayout = readFileSync("src/app/kids/[slug]/layout.tsx", "utf8");
 const kidsDetailApi = readFileSync("src/app/api/kids/content/[slug]/route.ts", "utf8");
 
-assert.match(adminAction, /isKidsContentPublishable\(type, ageAppropriate\)/);
 assert.match(adminAction, /age_appropriate: ageAppropriate/);
 assert.match(adminManager, /name="age_appropriate"/);
-assert.match(adminManager, /ageReviewRequiredCount/);
+assert.match(adminManager, /automationApprovalRequiredCount/);
+assert.match(adminManager, /اعتماد التوليد الآلي/);
 assert.doesNotMatch(kidsDetailPage, /getKidsItemBySlug/, "the client must not resurrect a static fallback after the visibility-aware API returns 404");
 assert.match(kidsDetailPage, /setContent\(null\)/, "a hidden or unavailable database slug must remain unavailable in the detail page");
 assert.match(kidsDetailLayout, /getKidsContentBySlug\(slug, "ar"\)/, "SEO metadata must use the same visibility-aware resolver");
@@ -65,7 +60,7 @@ assert.match(adminManager, /name="published" type="checkbox" defaultChecked=\{fa
 const service = readFileSync("src/features/kids/services/kids-content.ts", "utf8");
 assert.match(service, /published=eq\.true&is_active=eq\.true/, "public Kids queries must include active state");
 assert.match(service, /select=\*&published=eq\.true&is_active=eq\.true/, "the Kids page must preserve every active published content type");
-assert.match(service, /isKidsContentPublishable\(item\.type, item\.metadata\?\.age_appropriate === true\)/, "the Kids service must fail closed for unapproved stories even before the production RLS migration is applied");
+assert.doesNotMatch(service, /isKidsContentPublishable/, "age_appropriate is an automation eligibility flag, not a public visibility filter");
 assert.doesNotMatch(service, /type=eq\.story/, "the Kids page must not regress to a story-only database feed");
 assert.match(service, /supabaseServerAdminRequest[\s\S]*?select=slug/, "fallback visibility must consult database-owned slugs");
 assert.match(service, /mergeKidsContentWithFallback\(database\.items, FALLBACK_KIDS_CONTENT, database\.knownSlugs\)/);
@@ -78,18 +73,8 @@ const migration = readFileSync(
 assert.match(migration, /drop policy if exists "kids_content_public_read"/i);
 assert.match(
   migration,
-  /using\s*\(\s*published\s+is\s+true\s+and\s+is_active\s+is\s+true\s+and\s*\(\s*type\s*<>\s*'story'\s+or\s+metadata->>'age_appropriate'\s*=\s*'true'\s*\)\s*\)/i,
-  "public Kids RLS must hide unpublished, inactive, and age-unapproved stories while preserving other content types",
-);
-assert.match(
-  migration,
-  /and\s*\(\s*type\s*<>\s*'story'\s+or\s+metadata->>'age_appropriate'\s*=\s*'true'\s*\)/i,
-  "public RLS must keep unapproved Kids stories private without hiding other Kids content types",
-);
-assert.match(
-  migration,
-  /kids_content\.type\s*<>\s*'story'\s+or\s+kids_content\.metadata->>'age_appropriate'\s*=\s*'true'/i,
-  "the share counter must apply the same age-approval gate to stories",
+  /using\s*\(\s*published\s+is\s+true\s+and\s+is_active\s+is\s+true\s*\)/i,
+  "public Kids RLS must hide unpublished and inactive rows while preserving published active stories regardless of automation eligibility",
 );
 
 console.log("Kids content visibility and fallback contracts passed.");

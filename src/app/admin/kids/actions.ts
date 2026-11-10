@@ -6,7 +6,6 @@ import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { uploadCloudinaryImage } from "@/features/media/services/cloudinary";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { isRegisteredGameId } from "@/lib/games/registry";
-import { isKidsContentPublishable } from "@/features/kids/services/kids-content-visibility";
 
 function value(formData: FormData, key: string) {
   const raw = String(formData.get(key) ?? "").trim();
@@ -56,9 +55,6 @@ export async function saveKidsContentAction(formData: FormData) {
 
   if (!allowedTypes.has(type)) throw new Error("نوع محتوى الأطفال غير صالح.");
   if (!allowedAgeGroups.has(ageGroup)) throw new Error("الفئة العمرية غير صالحة.");
-  if (published && !isKidsContentPublishable(type, ageAppropriate)) {
-    throw new Error("لا يمكن نشر قصة للأطفال قبل مراجعتها واعتماد ملاءمتها للفئة العمرية.");
-  }
 
   if (!title_ar || !slug || !content_ar) {
     throw new Error("العنوان بالعربية والرابط المختصر والمحتوى كلها مطلوبة.");

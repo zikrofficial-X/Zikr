@@ -11,7 +11,6 @@ import type { Locale } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n/server";
 import {
   getFallbackKidsContentBySlug,
-  isKidsContentPublishable,
   mergeKidsContentWithFallback,
   normalizeKidsContentSlug,
 } from "@/features/kids/services/kids-content-visibility";
@@ -67,9 +66,7 @@ async function getDatabaseKidsContent(): Promise<KidsDatabaseState> {
     ? dedupeBySlug(
         (publicResult.value ?? [])
           .map((row) => normalizeKidsContentRow(row))
-          .filter((item): item is KidsItem =>
-            item !== null && isKidsContentPublishable(item.type, item.metadata?.age_appropriate === true),
-          ),
+          .filter((item): item is KidsItem => item !== null),
       )
     : [];
   const knownSlugs = visibilityResult.status === "fulfilled"
@@ -109,13 +106,9 @@ async function getDatabaseKidsContentBySlug(slug: string): Promise<{
     console.error("[kids] Failed to verify fallback slug visibility:", visibilityResult.reason);
   }
 
-  const normalizedItem = publicResult.status === "fulfilled" && publicResult.value[0]
+  const databaseItem = publicResult.status === "fulfilled" && publicResult.value[0]
     ? normalizeKidsContentRow(publicResult.value[0])
     : null;
-  const databaseItem = normalizedItem && isKidsContentPublishable(
-    normalizedItem.type,
-    normalizedItem.metadata?.age_appropriate === true,
-  ) ? normalizedItem : null;
   const knownSlugs = visibilityResult.status === "fulfilled"
     ? new Set(
         (visibilityResult.value ?? [])

@@ -36,7 +36,3 @@ export function getFallbackKidsContentBySlug<T extends { slug: string }>(
   if (!normalizedSlug || knownDatabaseSlugs.has(normalizedSlug)) return null;
   return fallbackItems.find((item) => normalizeKidsContentSlug(item.slug) === normalizedSlug) ?? null;
 }
-
-export function isKidsContentPublishable(type: string, ageAppropriate: boolean): boolean {
-  return type !== "story" || ageAppropriate;
-}
