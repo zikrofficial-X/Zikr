@@ -333,7 +333,15 @@ jobs:
                 const matchingReleases = releaseList.data.filter((item) => item?.tag_name === releaseTag);
                 if (matchingReleases.length > 1) {
                   const releaseIds = matchingReleases.map((item) => String(item.id || "unknown")).join(", ");
-                  throw new Error("Multiple GitHub releases exist for " + releaseTag + " (IDs: " + releaseIds + "). Refusing to select or create an ambiguous release.");
+                  const message = "Multiple GitHub releases exist for " + releaseTag + " (IDs: " + releaseIds + ").";
+                  if (isReleasePreparationCommit) {
+                    throw new Error(message + " Refusing to prepare or publish artifacts against an ambiguous release.");
+                  }
+                  // Existing duplicate draft records must not make ordinary main CI red.
+                  // Keep the release gate green for unrelated source changes, while the
+                  // explicit release-preparation and publisher paths remain fail-closed.
+                  console.log("::warning::" + message + " Android release preparation is blocked until an owner resolves the duplicate drafts.");
+                  process.exit(0);
                 }
 
                 if (matchingReleases.length === 1) {
