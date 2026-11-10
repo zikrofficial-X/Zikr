@@ -166,7 +166,6 @@ assert.ok(androidReleaseService.includes("hasApk(release) &&\n        hasAab(rel
 assert.ok(androidReleaseService.includes("!hasApk(release) || !hasAab(release)"), "Pinned Android releases missing either APK or AAB must be rejected");
 
 const circle = read(".circleci/config.yml");
-const androidDraftJob = circle.split("  android-release-draft:")[1]?.split("\n  android-rebuild:")[0] ?? "";
 assert.ok(androidDraftJob.includes('"/releases?per_page=100&page=1"'), "CircleCI must inspect all draft and published release records for the canonical tag");
 assert.ok(androidDraftJob.includes("matchingReleases.length > 1"), "CircleCI must fail closed when multiple release drafts share one tag");
 assert.ok(androidDraftJob.includes("isReleasePreparationCommit"), "CircleCI must wait for the Admin Release service only on its atomic release-preparation commit");
