@@ -1765,6 +1765,16 @@ async function registerGeneratedVideoOnSite(
     : kidsSeriesMetadataComplete && qaSnapshot.status === "passed"
       ? "passed"
       : "blocked";
+  const kidsStoryText = isKidsVideo
+    ? (typeof request.content.textAr === "string"
+        ? request.content.textAr
+        : typeof request.content.script === "string" ? request.content.script : "")
+        .trim()
+        .slice(0, 3000)
+    : null;
+  const kidsSocialCaption = isKidsVideo && kidsVideoQaStatus === "passed" && request.content.approvalStatus === "approved"
+    ? buildAutomatedSocialCaption(request, `${siteUrl()}/kids/videos/${slug}`).slice(0, 4500)
+    : null;
   const metadata = {
     generator: "zikr_internal_video_factory",
     videoGenerationRequestId: request.id,
@@ -1772,6 +1782,8 @@ async function registerGeneratedVideoOnSite(
     videoUrl: rendered.videoUrl,
     thumbnailUrl: resolveCloudinaryVideoPoster(rendered.videoUrl),
     caption: request.description ?? "",
+    storyText: kidsStoryText,
+    socialCaption: kidsSocialCaption,
     sourceUrl: typeof request.content.sourceUrl === "string" ? request.content.sourceUrl : null,
     sourceLabel: typeof request.content.sourceLabel === "string" ? request.content.sourceLabel : null,
     sourceType: typeof request.content.sourceType === "string" ? request.content.sourceType : request.category,
@@ -1961,6 +1973,8 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
           maxAttempts: 5,
           nextRetryAt: null,
           ai: content.ai && typeof content.ai === "object" ? content.ai : null,
+          audience: content.audience === "kids" ? "kids" : "general",
+          kidsContentQaStatus: content.audience === "kids" ? "passed" : null,
           automatedVideoQa: content.automatedVideoQa,
           automatedVideoQaVersion: AUTOMATED_VIDEO_QA_VERSION,
         },

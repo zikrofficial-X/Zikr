@@ -576,6 +576,75 @@ async function deleteManagedVideoUrl(
  * has confirmed publication. Provider post IDs and text/audit records stay.
  * Failed cleanup is retried by the social publishing worker.
  */
+async function syncKidsSocialPublicationToCatalog(
+  item: SocialPublishQueueItem,
+  queueMetadata: Record<string, unknown>,
+): Promise<void> {
+  if (!isVideoContentType(item.content_type) || !item.content_id) return;
+  if (queueMetadata.audience !== "kids" || queueMetadata.kidsContentQaStatus !== "passed") return;
+
+  const rawResults = queueMetadata.platformResults;
+  const results = rawResults && typeof rawResults === "object" && !Array.isArray(rawResults)
+    ? rawResults as Record<string, unknown>
+    : {};
+  const successfulPlatforms = item.target_platforms.filter((platform) => {
+    const result = results[platform];
+    if (!result || typeof result !== "object" || Array.isArray(result)) return false;
+    const row = result as { ok?: unknown; remoteId?: unknown };
+    return row.ok === true && typeof row.remoteId === "string" && row.remoteId.trim().length > 0;
+  });
+  if (successfulPlatforms.length === 0) return;
+
+  try {
+    const rows = await supabaseServerAdminRequest<Array<{
+      id: string;
+      metadata: Record<string, unknown> | null;
+      updated_at: string | null;
+    }>>(
+      "/rest/v1/videos?metadata->>videoGenerationRequestId=eq." +
+        encodeURIComponent(item.content_id) +
+        "&metadata->>audience=eq.kids&select=id,metadata,updated_at&limit=2",
+    );
+    if (rows?.length !== 1) {
+      if ((rows?.length ?? 0) > 1) {
+        console.error("[social-publishing] Kids catalog reconciliation stopped: request maps to multiple video rows:", item.content_id);
+      }
+      return;
+    }
+
+    const row = rows[0];
+    const existing = row.metadata ?? {};
+    if (
+      existing.generator !== "zikr_internal_video_factory" ||
+      existing.audience !== "kids" ||
+      existing.kidsVideoQaStatus !== "passed"
+    ) return;
+
+    const allTargetsSucceeded = item.target_platforms.every((platform) => successfulPlatforms.includes(platform));
+    const updatedAt = new Date().toISOString();
+    const nextMetadata = {
+      ...existing,
+      socialPublication: {
+        status: allTargetsSucceeded ? "published" : "partial",
+        platforms: successfulPlatforms,
+        publishedAt: updatedAt,
+      },
+    };
+    const query = "/rest/v1/videos?id=eq." + encodeURIComponent(row.id) +
+      (row.updated_at ? "&updated_at=eq." + encodeURIComponent(row.updated_at) : "");
+    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(query, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ metadata: nextMetadata, updated_at: updatedAt }),
+    });
+    if (!updated?.length) {
+      console.warn("[social-publishing] Kids catalog social status was not updated after a concurrent change:", item.content_id);
+    }
+  } catch (error) {
+    console.error("[social-publishing] Kids social status sync failed:", item.content_id, error);
+  }
+}
+
 async function syncYouTubeVideoReferenceToCatalog(
   item: SocialPublishQueueItem,
   result: unknown,
@@ -865,6 +934,7 @@ export async function processSocialPublishItem(
     });
     if (allTargetsSucceeded) {
       await markQueueItem(item.id, "published", { error_message: null, scheduled_at: null });
+      await syncKidsSocialPublicationToCatalog(item, previousMetadata);
       if (isVideoContentType(item.content_type)) await disposePublishedVideo({ ...item, metadata: previousMetadata });
       return "published";
     }
@@ -1003,6 +1073,7 @@ export async function processSocialPublishItem(
   // Persist the confirmed YouTube video ID to the public catalog even when
   // another requested target is deferred; this provides a resilient playback fallback.
   await syncYouTubeVideoReferenceToCatalog(item, mergedResults.youtube);
+  await syncKidsSocialPublicationToCatalog(item, publishMetadata);
 
   if (allTargetsSucceeded) {
     if (isVideoContentType(item.content_type)) await disposePublishedVideo({ ...item, metadata: publishMetadata });
