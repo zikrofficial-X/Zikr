@@ -113,6 +113,14 @@ assert.ok(
   "the purge lock must be acquired before automation is paused, and concurrent purge requests must be rejected.",
 );
 assert.ok(route.includes("if (purgeLockToken)") && route.includes("await releasePurgeLock(purgeLockToken)"), "purge failures must attempt to release only the lock owned by this request.");
+const releaseLockStart = route.indexOf("async function releasePurgeLock");
+const releaseLockEnd = route.indexOf("async function getVideoAutomationEnabled", releaseLockStart);
+const releaseLockSource = route.slice(releaseLockStart, releaseLockEnd);
+assert.ok(
+  releaseLockSource.includes('Prefer: "return=representation"') &&
+    releaseLockSource.includes("if ((released ?? []).length === 0)"),
+  "the purge lock release must verify that the current request still owns and cleared the lock.",
+);
 assert.ok(route.includes("partialPurge: destructiveWorkStarted && !dataCleanupFinished"), "partial destructive failure must be explicitly reported");
 assert.ok(route.includes("metadata->>generator=eq.multi-provider-free-ai"), "purge must select only run records created by the internal video worker");
 assert.ok(!route.includes('deleteRows("video_automation_runs", "id=not.is.null")'), "purge must not delete unrelated or unclassified automation-run records");
