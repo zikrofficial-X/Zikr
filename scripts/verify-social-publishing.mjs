@@ -86,6 +86,11 @@ if (!socialPublishingService.includes("hasVideoApprovalForQueueItem") ||
     !socialPublishingService.includes("Automated QA lookup failed; holding video item")) {
   failures.push("the social worker must fail closed and revalidate the automated QA snapshot before provider calls");
 }
+if (!socialPublishingService.includes("syncYouTubeVideoReferenceToCatalog") ||
+    !socialPublishingService.includes("mergedResults.youtube") ||
+    !socialPublishingService.includes("youtubePublishedVideoId")) {
+  failures.push("a confirmed YouTube remote ID must be synchronized to the public video catalog for playback fallback");
+}
 const mediaDisposalStart = socialPublishingService.indexOf("async function disposePublishedVideo");
 const mediaDisposalEnd = socialPublishingService.indexOf("export async function resetQueuedSocialVideoMedia", mediaDisposalStart);
 const mediaDisposal = socialPublishingService.slice(mediaDisposalStart, mediaDisposalEnd);

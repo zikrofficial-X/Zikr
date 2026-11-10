@@ -84,7 +84,7 @@ async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
     ),
     aiAttemptsPerRun: parseBoundedNumberSetting(
       values.video_automation_ai_attempts_per_run,
-      Math.max(1, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 3) || 3),
+      4,
       0,
       4,
     ),

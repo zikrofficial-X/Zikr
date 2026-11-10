@@ -1,7 +1,15 @@
 name: ZIKR Daily Social Insights Sync
 
 on:
-  # Analytics are intentionally isolated from publishing and refreshed once daily.
+  # Refresh analytics immediately after deployment changes and once per day.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/sync-social-insights.yml"
+      - "scripts/jobs/social-publishing.ts"
+      - "scripts/run-background-jobs.ts"
+      - "src/features/social/services/youtube-post-insights.ts"
+      - "src/features/social/services/facebook-reels-insights.ts"
   schedule:
     - cron: "13 4 * * *"
   workflow_dispatch:
@@ -35,6 +43,7 @@ jobs:
       FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
       YOUTUBE_UPLOAD_PRIVACY: "public"
       ADMIN_QUEUE_ALERT_WEBHOOK_URL: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_URL }}
       ADMIN_QUEUE_ALERT_WEBHOOK_SECRET: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_SECRET || secrets.WEBHOOK_SECRET }}

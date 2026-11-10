@@ -29,7 +29,7 @@ The worker executes:
 
 `pnpm background:jobs`
 
-The canonical rendering path is the deterministic FFmpeg template renderer. Source religious text is treated as authoritative; AI may be used only for optional supporting layers such as reflections/captions.
+The canonical rendering path is the deterministic FFmpeg template renderer. Source religious text is treated as authoritative; AI may be used only for optional supporting layers such as reflections/captions. The worker reads the Admin `video_automation_ai_attempts_per_run` setting at runtime (0–4 attempts per worker cycle); the production default is four free Hugging Face provider attempts, followed by deterministic FFmpeg fallback. No paid provider is silently enabled.
 
 Queue safety is enforced through:
 
@@ -43,7 +43,7 @@ Video generation may enqueue a new row in `social_publish_queue`, but it must no
 
 ## Internal ZIKR video publication
 
-Completed MP4s are uploaded to Cloudinary and registered in the ZIKR `videos` table with the `zikr_internal_video_factory` metadata marker. Each record is initially unpublished. The site-owned `content_publish_queue` then publishes the video to the ZIKR website after verifying that its media URL is HTTPS on `res.cloudinary.com` and that the record has not been purged. The public `/videos` page displays only internally generated ZIKR videos; individual video pages play the verified Cloudinary MP4.
+Completed MP4s are uploaded to Cloudinary and registered in the ZIKR `videos` table with the `zikr_internal_video_factory` metadata marker. Each record is initially unpublished. The site-owned `content_publish_queue` then publishes the video to the ZIKR website after verifying that its media URL is HTTPS on `res.cloudinary.com` and that the record has not been purged. General-audience internal videos appear in `/videos`; child-directed videos with `metadata.audience=kids` are assigned to the dedicated `kids-stories` category and the separate `/kids/videos` library. Kids media is excluded from the general feed, while the Kids library enforces an explicit audience and generator filter.
 
 This queue is not a social queue. No video-generation step may enqueue `social_publish_queue`, call a provider upload endpoint, or require a social publishing permission. Template previews are explicitly excluded from public publication.
 
@@ -51,7 +51,7 @@ This queue is not a social queue. No video-generation step may enqueue `social_p
 
 Social delivery is a separate worker, never part of the renderer. After a successful video-generation run, GitHub Actions invokes `.github/workflows/publish-social.yml`; an administrator can also dispatch it manually. A bounded 15-minute schedule also drains up to five eligible rows and retries deferred/partial results after provider cooldowns. The workflow validates the connected Facebook Page and a YouTube OAuth refresh credential with `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly` before enabling each provider. No delete scope is requested. If provider readiness fails, that provider remains disabled and no rows are claimed for it.
 
-Only newly created rows at or after `SOCIAL_PUBLISH_AFTER` are eligible. The historic queue is excluded from automatic replay. Each video must pass automated source, audio, visuals, captions, and rights checks recorded on its generation request and bound to the exact source/content/template/MP4 fingerprint. The worker rechecks this immutable automated QA record immediately before every provider call; missing, stale, changed, or failed checks block publication. No human review is required. Provider results and remote IDs are stored per platform to prevent duplicate publishing. Social insights synchronization is opt-in and disabled during publishing runs to reduce Supabase reads.
+Only newly created rows at or after `SOCIAL_PUBLISH_AFTER` are eligible. The historic queue is excluded from automatic replay. Each video must pass automated source, audio, visuals, captions, and rights checks recorded on its generation request and bound to the exact source/content/template/MP4 fingerprint. The worker rechecks this immutable automated QA record immediately before every provider call; missing, stale, changed, or failed checks block publication. No human review is required. Provider results and remote IDs are stored per platform to prevent duplicate publishing. Social insights are refreshed by the dedicated daily `sync-social-insights.yml` workflow and after relevant changes reach `main`; that analytics-only worker disables social publishing explicitly and does not claim queue rows.
 
 The internal website video catalog and `content_publish_queue` remain independent from external social delivery. A video may appear on the ZIKR website without being posted publicly to a social platform.
 
@@ -100,7 +100,7 @@ The written-content factory runs through `.github/workflows/generate-written-con
 
 ## Generated media lifecycle
 
-Generated video binaries are temporary publishing assets. The publisher removes eligible source media only after every requested platform has a confirmed remote ID. On partial publication it retains the source for unfinished targets and retries only targets without a confirmed remote ID. Queue records, remote IDs, source references, and audit metadata remain available after media cleanup.
+The Cloudinary video URL stored in `public.videos` is the permanent playback master for the ZIKR website and must never be deleted by social publishing or storage retention. Social delivery does not delete media masters. If a separate Supabase staging copy exists, only that redundant copy may be removed after the 48-hour grace period, confirmed remote IDs for all requested platforms, and a reference check. Partial publication retains staging media for unfinished targets and retries only targets without a confirmed remote ID. Queue records, remote IDs, source references, and audit metadata remain available.
 
 ## Optional additional Hugging Face Spaces
 

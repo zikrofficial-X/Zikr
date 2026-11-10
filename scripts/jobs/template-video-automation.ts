@@ -100,7 +100,10 @@ async function uploadGeneratedVideoToCloudinary(bytes: Uint8Array, storageKey: s
   }
   return { secureUrl: payload.secure_url, publicId, bytes: payload.bytes ?? bytes.byteLength };
 }
-const AI_ATTEMPTS_PER_RUN = Math.max(0, Math.min(4, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 3) || 3));
+function getAiAttemptsPerRunLimit() {
+  const configured = Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 4);
+  return Number.isFinite(configured) ? Math.max(0, Math.min(4, Math.floor(configured))) : 4;
+}
 let aiAttemptsUsed = 0;
 
 function videoRetryDelayMinutes(attempt: number, requestId: string) {
@@ -154,7 +157,7 @@ type SocialQueueRow = {
   target_platforms: string[] | null;
   metadata: Record<string, unknown> | null;
 };
-type GeneratedRequest = {
+export type GeneratedRequest = {
   id: string;
   title: string;
   description: string | null;
@@ -166,6 +169,11 @@ type GeneratedRequest = {
   generation_attempts?: number | null;
   next_retry_at?: string | null;
   duration?: number | null;
+  source_hash?: string | null;
+  content_hash?: string | null;
+  template_version?: string | null;
+  scene?: string | null;
+  render_duration_ms?: number | null;
 };
 
 type AiVideoPlan = {
@@ -829,7 +837,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
 
   return created;
 }
-function contentText(request: GeneratedRequest) {
+export function contentText(request: GeneratedRequest) {
   const content = request.content || {};
   for (const key of ["textAr", "text", "script", "prompt", "narration"]) {
     const value = content[key];
@@ -973,7 +981,7 @@ function comparableSourceText(value: string) {
     .replace(/[\uFEFF\u200B-\u200D\u200E\u200F\u2060\u2066-\u2069\u202A-\u202E]/g, "");
 }
 
-function assertKidsStoryContract(request: GeneratedRequest) {
+export function assertKidsStoryContract(request: GeneratedRequest) {
   if (request.content?.templatePreview === true || request.content?.audience !== "kids") return;
   const content = request.content;
   const text = contentText(request);
@@ -1024,7 +1032,7 @@ function contentAudioKind(request: GeneratedRequest, audioUrl: string) {
   return "arabic_tts_narration";
 }
 
-async function validateSourceContent(request: GeneratedRequest) {
+export async function validateSourceContent(request: GeneratedRequest) {
   const content = request.content || {};
   const text = contentText(request);
   if (!text) throw new Error("Template video requires text/script/narration content.");
@@ -1277,7 +1285,7 @@ async function renderVideo(request: GeneratedRequest) {
       !boundTemplate &&
       engineConfig().aiEnabled &&
       engineConfig().order.some((provider) => provider !== "template") &&
-      aiAttemptsUsed < AI_ATTEMPTS_PER_RUN
+      aiAttemptsUsed < getAiAttemptsPerRunLimit()
     ) {
       aiAttemptsUsed += 1;
       const router = createVideoProviderRouter(async () => ({
@@ -1328,7 +1336,7 @@ async function renderVideo(request: GeneratedRequest) {
           ? null
           : aiResult.error || "AI providers unavailable",
       };
-    } else if (!isTemplatePreview && !boundTemplate && engineConfig().aiEnabled && aiAttemptsUsed >= AI_ATTEMPTS_PER_RUN) {
+    } else if (!isTemplatePreview && !boundTemplate && engineConfig().aiEnabled && aiAttemptsUsed >= getAiAttemptsPerRunLimit()) {
       request.content = {
         ...request.content,
         aiProvider: null,
@@ -1513,7 +1521,7 @@ async function renderVideo(request: GeneratedRequest) {
   }
 }
 
-function buildAutomatedVideoQaChecklist(
+export function buildAutomatedVideoQaChecklist(
   request: GeneratedRequest,
   rendered: {
     videoUrl: string;
@@ -1663,6 +1671,20 @@ function buildAutomatedSocialCaption(request: GeneratedRequest, publicUrl: strin
   ).join("\n\n").slice(0, 4500);
 }
 
+function resolveCloudinaryVideoPoster(videoUrl: string): string | null {
+  try {
+    const parsed = new URL(videoUrl);
+    if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com" ||
+        !parsed.pathname.includes("/video/upload/")) return null;
+    const posterPath = parsed.pathname
+      .replace("/video/upload/", "/video/upload/so_0/")
+      .replace(/\.(mp4|webm|mov|m4v)$/i, ".jpg");
+    return parsed.origin + posterPath;
+  } catch {
+    return null;
+  }
+}
+
 const INTERNAL_VIDEO_CATEGORY_SLUG: Record<string, string> = {
   quran: "quran-verified",
   hadith: "sunnah-verified",
@@ -1697,7 +1719,8 @@ async function registerGeneratedVideoOnSite(
     return { videoId, published: true, queued: false };
   }
 
-  const categorySlug = INTERNAL_VIDEO_CATEGORY_SLUG[request.category] ?? "general-reminders";
+  const isKidsVideo = request.content.audience === "kids";
+  const categorySlug = isKidsVideo ? "kids-stories" : (INTERNAL_VIDEO_CATEGORY_SLUG[request.category] ?? "general-reminders");
   const categoryRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
     "/rest/v1/video_categories?slug=eq." + encodeURIComponent(categorySlug) + "&published=eq.true&select=id&limit=1",
   );
@@ -1707,11 +1730,12 @@ async function registerGeneratedVideoOnSite(
     videoGenerationRequestId: request.id,
     generatedVideoUrl: rendered.videoUrl,
     videoUrl: rendered.videoUrl,
+    thumbnailUrl: resolveCloudinaryVideoPoster(rendered.videoUrl),
     caption: request.description ?? "",
     sourceUrl: typeof request.content.sourceUrl === "string" ? request.content.sourceUrl : null,
     sourceLabel: typeof request.content.sourceLabel === "string" ? request.content.sourceLabel : null,
     sourceType: typeof request.content.sourceType === "string" ? request.content.sourceType : request.category,
-    publicPath: "/videos/" + slug,
+    publicPath: (isKidsVideo ? "/kids/videos/" : "/videos/") + slug,
     generatedAt: now,
     renderer: "template",
     templateVersion: rendered.templateVersion,
@@ -1745,7 +1769,7 @@ async function registerGeneratedVideoOnSite(
     slug,
     description: request.description ?? null,
     youtube_id: null,
-    thumbnail_url: null,
+    thumbnail_url: resolveCloudinaryVideoPoster(rendered.videoUrl),
     duration: Math.max(1, Number(request.content.durationSeconds ?? request.duration ?? TARGET_VIDEO_SECONDS) || TARGET_VIDEO_SECONDS),
     views: 0,
     published: false,

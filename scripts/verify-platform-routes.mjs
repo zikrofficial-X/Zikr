@@ -29,6 +29,8 @@ const requiredRoutes = [
   'src/app/prayer-times/page.tsx',
   'src/app/kids/page.tsx',
   'src/app/kids/[slug]/page.tsx',
+  'src/app/kids/videos/page.tsx',
+  'src/app/kids/videos/[slug]/page.tsx',
   'src/app/kids/puzzle/page.tsx',
   'src/app/memorization/page.tsx',
   'src/app/spiritual-ai/page.tsx',

@@ -168,7 +168,7 @@ export default async function AdminAutomationPage() {
                         : key === "video_automation_daily_target"
                           ? "20"
                           : key === "video_automation_ai_attempts_per_run"
-                            ? "2"
+                            ? "4"
                             : key === "video_automation_video_seconds"
                               ? "25"
                               : "10"
