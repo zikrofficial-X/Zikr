@@ -587,7 +587,10 @@ export async function publishToFacebook(
         // Never turn a confirmed remote post into a retry just because pacing metadata failed.
         console.error('[video-automation] Unable to persist the next Facebook Reels publish time.');
       }
-      return finishData.post_id ?? startData.video_id;
+      // Insights are read from /{video-id}/video_insights. Meta returns
+      // post_id on FINISH, but that is a Page post ID, not the Reel video ID.
+      // Persist the START video_id as the canonical remote object identifier.
+      return startData.video_id;
     }
 
     const params = new URLSearchParams({ file_url: source, title: metadata.title, description: metadata.description, access_token: pageAccessToken });
