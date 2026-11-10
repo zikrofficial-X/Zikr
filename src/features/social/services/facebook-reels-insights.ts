@@ -37,7 +37,6 @@ export const FACEBOOK_REELS_INSIGHT_METRICS = [
   "post_video_view_time",
   "post_video_followers",
   "post_video_social_actions",
-  "post_video_likes_by_reaction_type",
 ] as const;
 
 const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -106,8 +105,10 @@ async function fetchReelInsights(videoId: string, pageAccessToken: string): Prom
   });
   const payload = (await response.json().catch(() => ({}))) as GraphInsightsResponse;
   if (!response.ok || payload.error) {
-    // Do not expose the request URL, Page token, or raw provider response.
-    throw new Error("Meta Facebook Reels insights request failed (HTTP " + response.status + ").");
+    // Keep useful provider diagnostics without logging the request URL, token,
+    // full payload, Page ID, or other potentially identifying response data.
+    const code = Number.isInteger(payload.error?.code) ? " Meta code " + payload.error?.code : "";
+    throw new Error("Meta Facebook Reels insights request failed (HTTP " + response.status + code + ").");
   }
   return parseFacebookReelsInsights(Array.isArray(payload.data) ? payload.data : []);
 }
