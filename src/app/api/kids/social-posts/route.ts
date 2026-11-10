@@ -22,7 +22,7 @@ export async function GET() {
 
   try {
     const rows = await supabaseServerAdminRequest<KidsWrittenQueueRow[]>(
-      "/rest/v1/social_publish_queue?content_type=eq.written_post&status=eq.published&metadata->>audience=eq.kids&select=id,content_type,content_id,title,body,target_platforms,status,published_at,metadata&order=published_at.desc&limit=12",
+      "/rest/v1/social_publish_queue?content_type=eq.written_post&status=eq.published&metadata->>audience=eq.kids&select=id,content_type,content_id,title,body,target_platforms,status,published_at,metadata&order=published_at.desc&limit=60",
     );
     const candidateIds = [...new Set(
       (rows ?? [])
@@ -49,7 +49,7 @@ export async function GET() {
       return item ? [item] : [];
     });
 
-    return NextResponse.json(items, {
+    return NextResponse.json(items.slice(0, 12), {
       headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
     });
   } catch (error) {
