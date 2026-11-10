@@ -191,7 +191,7 @@ assert.match(worker, /metadata\.age_appropriate!==true/);
 assert.match(worker, /readRequired<Row>\(\s*"\/rest\/v1\/kids_content\?/, "Kids source lookup must fail closed instead of silently bypassing daily prioritization");
 assert.match(worker, /metadata->>audience=eq\.kids&or=\$\{kidsDayFilter\}/, "Kids backfill must inspect all UTC-day reservation timestamps");
 assert.match(worker, /shouldBackfillKidsWrittenPost\(sourceType,hasKidsPostToday\)/, "Kids backfill must stop after one daily reservation");
-assert.match(worker, /scheduleKidsBackfillWithinUtcDay\(new Date\(\)\)/, "Kids backfill must not schedule its reserved slot into a future UTC day");
+assert.match(worker, /scheduleKidsBackfillWithinUtcDay\(now\)/, "Kids backfill must not schedule its reserved slot into a future UTC day");
 assert.match(worker, /if\(sourceType==="kids_story"\)hasKidsPostToday=true/, "a successful Kids backfill must reserve the current UTC day for later rows");
 assert.match(worker, /source\.kind==="kids_story"/);
 assert.match(worker, /chooseWrittenSourceKind\(/);
