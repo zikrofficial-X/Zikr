@@ -51,7 +51,19 @@ function facebookPostUrl(metadata: Record<string, unknown> | null): string | nul
 
   if (!result || typeof result !== "object") return null;
   const row = result as Record<string, unknown>;
-  if (typeof row.url === "string" && /^https:\/\//i.test(row.url)) return row.url;
+  if (typeof row.url === "string") {
+    try {
+      const url = new URL(row.url);
+      if (
+        url.protocol === "https:" &&
+        (url.hostname === "facebook.com" || url.hostname.endsWith(".facebook.com"))
+      ) {
+        return url.toString();
+      }
+    } catch {
+      // Ignore malformed or untrusted provider URLs; a validated remote ID may still be available.
+    }
+  }
 
   const remoteId = typeof row.remoteId === "string" ? row.remoteId : "";
   return /^[0-9_]{8,128}$/.test(remoteId) ? "https://www.facebook.com/" + remoteId : null;
