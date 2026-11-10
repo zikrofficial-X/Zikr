@@ -34,7 +34,19 @@ assert.ok(route.includes('metadata->>generator=eq.zikr_internal_video_factory'),
 assert.ok(route.includes('mediaState: "purged"'), "Purge must mark removed generated media records.");
 assert.ok(route.includes('published: false'), "Purge must hide generated records whose Cloudinary media was deleted.");
 assert.ok(route.includes('generatedVideoUrl: null') && route.includes('videoUrl: null'), "Purge must clear dead media URLs.");
-assert.ok(!route.includes("social_publish_queue"), "memory purge must not query or mutate the retired social queue.");
+assert.ok(route.includes("status=neq.published&video_url=not.is.null&select=video_url&limit=1000"), "file purge must inspect every non-published social queue media reference before deleting assets.");
+assert.ok(route.includes("isGeneratedCloudinaryVideoUrl") && route.includes("protectedSocialQueueMedia.size > 0"), "file purge must protect generated Cloudinary media referenced by unfinished social posts.");
+assert.ok(route.includes("deletionStarted: false") && route.includes("retryRequired: true"), "a protected queue reference must stop purge before destructive work.");
+assert.ok(
+  !/social_publish_queue[^\n]*method:\s*["'](?:POST|PATCH|DELETE)/i.test(route),
+  "purge must never mutate historical social queue rows.",
+);
+const queueMediaGuardPosition = route.indexOf("const pendingSocialQueueMedia");
+const cloudinaryInventoryPosition = route.indexOf("const assets = includeFiles");
+assert.ok(
+  queueMediaGuardPosition >= 0 && queueMediaGuardPosition < cloudinaryInventoryPosition,
+  "pending social media must be checked before the Cloudinary deletion inventory is processed.",
+);
 assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical social queue records must be explicitly preserved.");
 assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active internal generation before deleting media.");
 assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");
