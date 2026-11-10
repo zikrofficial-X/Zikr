@@ -14,21 +14,21 @@ export async function GET(
     if (!item) {
       return NextResponse.json(
         { error: "Kids content not found" },
-        { status: 404 },
+        { status: 404, headers: { "Cache-Control": "private, no-store" } },
       );
     }
 
     return NextResponse.json(item, {
       headers: {
         "Cache-Control":
-          "public, s-maxage=300, stale-while-revalidate=1800",
+          "private, no-store",
       },
     });
   } catch (error) {
     console.error("[api/kids/content/[slug]] GET error:", error);
     return NextResponse.json(
       { error: "Failed to fetch kids content" },
-      { status: 500 },
+      { status: 500, headers: { "Cache-Control": "private, no-store" } },
     );
   }
 }

@@ -47,10 +47,20 @@ assert.equal(
 
 const adminAction = readFileSync("src/app/admin/kids/actions.ts", "utf8");
 const adminManager = readFileSync("src/features/admin/components/kids-content-manager.tsx", "utf8");
+const kidsDetailPage = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
+const kidsDetailLayout = readFileSync("src/app/kids/[slug]/layout.tsx", "utf8");
+const kidsDetailApi = readFileSync("src/app/api/kids/content/[slug]/route.ts", "utf8");
+
 assert.match(adminAction, /isKidsContentPublishable\(type, ageAppropriate\)/);
 assert.match(adminAction, /age_appropriate: ageAppropriate/);
 assert.match(adminManager, /name="age_appropriate"/);
 assert.match(adminManager, /ageReviewRequiredCount/);
+assert.doesNotMatch(kidsDetailPage, /getKidsItemBySlug/, "the client must not resurrect a static fallback after the visibility-aware API returns 404");
+assert.match(kidsDetailPage, /setContent\(null\)/, "a hidden or unavailable database slug must remain unavailable in the detail page");
+assert.match(kidsDetailLayout, /getKidsContentBySlug\(slug, "ar"\)/, "SEO metadata must use the same visibility-aware resolver");
+assert.doesNotMatch(kidsDetailLayout, /supabaseServerAnonRequest/, "SEO metadata must not bypass database visibility checks");
+assert.match(kidsDetailApi, /private, no-store/, "Kids detail responses must not serve stale content after deactivation or age-review changes");
+
 assert.match(adminManager, /name="published" type="checkbox" defaultChecked=\{false\}/, "Kids content must default to draft until an editor explicitly publishes it");
 const service = readFileSync("src/features/kids/services/kids-content.ts", "utf8");
 assert.match(service, /published=eq\.true&is_active=eq\.true/, "public Kids queries must include active state");

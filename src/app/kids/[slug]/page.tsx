@@ -13,7 +13,6 @@ import { KidsWorldGameShell } from "@/features/kids/components/games/game-shell"
 import { GAME_REGISTRY, parseGameContentMetadata } from "@/lib/games/registry";
 import { useLanguage } from "@/components/layout/language-provider";
 import {
-  getKidsItemBySlug,
   normalizeKidsContentRow,
 } from "@/features/kids/data/content";
 
@@ -166,12 +165,10 @@ export default function KidsDetailPage() {
           }
         }
 
-        const staticItem = getKidsItemBySlug(slug);
-        if (active) setContent(staticItem ? toDetailContent(staticItem) : null);
+        if (active) setContent(null);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        const staticItem = getKidsItemBySlug(slug);
-        if (active) setContent(staticItem ? toDetailContent(staticItem) : null);
+        if (active) setContent(null);
       } finally {
         if (active) setLoading(false);
       }

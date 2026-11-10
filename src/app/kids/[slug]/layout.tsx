@@ -1,30 +1,23 @@
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/site';
-import { supabaseServerAnonRequest } from '@/lib/supabase/server';
-import { getKidsItemBySlug } from '@/features/kids/data/content';
+import { getKidsContentBySlug } from '@/features/kids/services/kids-content';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   let title = 'محتوى الأطفال';
   let description = 'قصص وأنشطة إسلامية تعليمية ممتعة للأطفال.';
 
-  // Static curated content first, then database fallback.
-  const staticItem = getKidsItemBySlug(slug);
-  if (staticItem) {
-    title = staticItem.title_ar;
-    if (staticItem.content_ar) description = staticItem.content_ar.replace(/\s+/g, ' ').slice(0, 160);
-  } else {
-    try {
-      const data = await supabaseServerAnonRequest<{ title_ar: string; summary_ar?: string }[]>(
-        `/rest/v1/kids_content?select=title_ar,summary_ar&slug=eq.${encodeURIComponent(slug)}&published=eq.true&limit=1`
-      );
-      if (data?.[0]) {
-        title = data[0].title_ar;
-        if (data[0].summary_ar) description = data[0].summary_ar.slice(0, 160);
-      }
-    } catch {
-      // fall back to generic metadata
+  // Use the same visibility-aware resolver as the page API. A database
+  // slug that is unpublished, inactive, or age-unapproved must not inherit
+  // metadata from a same-slug static fallback.
+  try {
+    const item = await getKidsContentBySlug(slug, "ar");
+    if (item) {
+      title = item.title_ar;
+      if (item.content_ar) description = item.content_ar.replace(/\s+/g, " ").slice(0, 160);
     }
+  } catch {
+    // Keep generic metadata when visibility cannot be verified.
   }
   return pageMetadata({ title, description, path: `/kids/${slug}` });
 }
