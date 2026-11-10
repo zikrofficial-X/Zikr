@@ -183,7 +183,7 @@ const adminSocialRoute = readFileSync(
   "utf8",
 );
 assert.match(adminSocialRoute, /normalizeSocialPlatformResults\(item\.metadata\?\.platformResults\)/);
-assert.match(adminSocialRoute, /getRetryableSocialPlatforms\\(item\\.target_platforms, item\\.metadata, allowAmbiguous\\)/);
+assert.match(adminSocialRoute, /getRetryableSocialPlatforms\(item\.target_platforms, item\.metadata, allowAmbiguous\)/);
 assert.match(adminSocialRoute, /authBlockedPlatforms\(item\.metadata, item\.target_platforms\)/);
 assert.match(adminSocialRoute, /authBlocked: remainingAuthBlockedPlatforms\.length > 0/);
 
