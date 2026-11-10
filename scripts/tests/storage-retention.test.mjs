@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   compareSemverTags,
   extractManagedVideoPath,
@@ -136,4 +137,9 @@ assert.equal(
   "The newest two published local release versions stay available after an upgrade",
 );
 
-console.log("Supabase Storage retention policy passed: 24 assertions.");
+const retentionWorkflow = readFileSync(".github/workflows/storage-retention.yml", "utf8");
+assert.ok(retentionWorkflow.includes("inputs.confirmation == 'DELETE_STAGING_COPIES'"), "destructive cleanup must require typed owner confirmation");
+assert.ok(retentionWorkflow.includes("github.event_name == 'workflow_dispatch' && inputs.apply == true"), "destructive cleanup must require manual dispatch");
+assert.equal(retentionWorkflow.includes("github.event_name == 'schedule' ||"), false, "scheduled retention runs must never apply deletions");
+
+console.log("Supabase Storage retention policy passed: 27 assertions.");

@@ -29,6 +29,13 @@ assert.ok(androidRecovery.includes("workflow_dispatch:"), "Android recovery must
 assert.ok(!androidRecovery.includes("\n  status:") && !androidRecovery.includes("\n  push:"), "Android recovery must not subscribe to every repository status or push event");
 assert.ok(androidRecovery.includes("github.event_name == 'workflow_dispatch'"), "Android recovery must accept only an explicit workflow dispatch");
 assert.ok(circle.includes("android-release-dispatch:"), "CircleCI must dispatch Android recovery only after android-rebuild succeeds");
+assert.ok(circle.includes("audit\\/continuous-closeout") && circle.includes("automation\\/offline-content-snapshot"), "CircleCI source and application build gates must run on the audit and generated offline snapshot branches");
+const backfillWorkflow = read(".github/workflows/backfill-legacy-video-qa.yml");
+assert.ok(backfillWorkflow.includes("inputs.confirmation == 'APPLY_QA_BACKFILL'") && backfillWorkflow.includes("inputs.apply == true") && !backfillWorkflow.includes("[apply-legacy-kids-qa]"), "Legacy QA production updates must require manual dispatch and typed confirmation; commit messages must never authorize a production write");
+const retentionWorkflow = read(".github/workflows/storage-retention.yml");
+assert.ok(retentionWorkflow.includes("inputs.confirmation == 'DELETE_STAGING_COPIES'") && retentionWorkflow.includes("github.event_name == 'workflow_dispatch'") && !retentionWorkflow.includes("github.event_name == 'schedule' ||"), "Scheduled storage retention must remain dry-run; destructive cleanup requires manual typed confirmation");
+const offlineWorkflow = read(".github/workflows/refresh-offline-content.yml");
+assert.ok(offlineWorkflow.includes("pull-requests: write") && offlineWorkflow.includes("automation/offline-content-snapshot") && offlineWorkflow.includes("gh pr create") && offlineWorkflow.includes("gh workflow run quality-gate.yml") && !offlineWorkflow.includes("git push origin HEAD:main"), "Offline content refresh must create a reviewable PR and dispatch the full Quality Gate instead of pushing generated data directly to main");
 assert.ok(circle.includes("api.github.com/repos/zikrofficial-X/Zikr/actions/workflows/dispatch-android-release-recovery.yml/dispatches"), "CircleCI must invoke the guarded Android recovery workflow");
 
 
@@ -96,6 +103,7 @@ assert.ok(
   quality.includes("QUALITY_GATE_FULL_SCOPE: ${{") &&
     quality.includes("github.event_name == 'workflow_dispatch'") &&
     quality.includes("github.event_name == 'push' && github.ref == 'refs/heads/main'") &&
+    quality.includes("github.head_ref == 'audit/continuous-closeout'") &&
     quality.includes("startsWith(github.head_ref, 'codex/zikr-comprehensive-repair-')") &&
     quality.includes("startsWith(github.head_ref, 'codex/zikr-final-cleanup-')") &&
     quality.includes('if [[ "${QUALITY_GATE_FULL_SCOPE}" == "true" ]]') &&

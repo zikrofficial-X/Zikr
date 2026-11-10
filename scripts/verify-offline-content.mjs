@@ -116,6 +116,14 @@ if (existsSync(offlineWorkflowPath) &&
       !offlineWorkflow.includes('"scripts/export-offline-content.mjs"'))) {
   failures.push('Offline snapshot must rerun after exporter or validation contract changes reach main');
 }
+if (existsSync(offlineWorkflowPath) &&
+    (!offlineWorkflow.includes('pull-requests: write') ||
+      !offlineWorkflow.includes('automation/offline-content-snapshot') ||
+      !offlineWorkflow.includes('gh pr create') ||
+      !offlineWorkflow.includes('gh workflow run quality-gate.yml') ||
+      offlineWorkflow.includes('git push origin HEAD:main'))) {
+  failures.push('Offline snapshot refresh must publish through a reviewable PR and dispatch the full Quality Gate; it must never push generated content directly to main');
+}
 try { execFileSync(process.execPath, ['--check', exporterPath], { stdio: 'pipe' }); }
 catch (error) { failures.push(`Offline exporter syntax check failed: ${error instanceof Error ? error.message : 'unknown error'}`); }
 for (const dataset of ['surahs','ayahs','tafsir','hadith_books','hadith','prophets','prophet_sections','battles','battle_events','conquests','conquest_events','articles','duas','kids','companions','stories','article_categories','companion_stories','scholars','tawasheeh','quran_reciters','quran_audio','kids_games','kids_game_levels','dua_categories']) {
