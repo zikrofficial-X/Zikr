@@ -1,14 +1,24 @@
 import { readFileSync } from "node:fs";
 
 const layout = readFileSync("src/app/layout.tsx", "utf8");
-const deferred = readFileSync("src/components/layout/runtime-effects.tsx", "utf8");
+const advertisingRuntime = readFileSync(
+  "src/components/layout/web-advertising-runtime.tsx",
+  "utf8",
+);
 
 const consentDefault = layout.indexOf("gtag('consent', 'default'");
-const cmpScript = layout.indexOf('id="google-funding-choices"');
+const cmpScript = advertisingRuntime.indexOf('"google-funding-choices"');
 const analytics = layout.indexOf('id="google-analytics-src"');
-const tagManager = layout.indexOf('id="google-tag-manager"');
+const tagManager = advertisingRuntime.indexOf('"google-tag-manager"');
+const nativeGuard = advertisingRuntime.indexOf(
+  "if (Capacitor.isNativePlatform())",
+);
 
-if (consentDefault < 0) throw new Error("Google Consent Mode must default to denied before loading Google tags");
+if (consentDefault < 0) {
+  throw new Error(
+    "Google Consent Mode must default to denied before loading Google tags",
+  );
+}
 for (const token of [
   "ad_storage: 'denied'",
   "analytics_storage: 'denied'",
@@ -18,32 +28,46 @@ for (const token of [
   "ads_data_redaction",
   "requestNonPersonalizedAds = 1",
 ]) {
-  if (!layout.includes(token)) throw new Error("Google Consent Mode default missing: " + token);
-}
-
-if (cmpScript < 0 || cmpScript < consentDefault) {
-  throw new Error("Google Funding Choices must load from the root layout after the denied-by-default consent state is established");
-}
-const cmpMarkup = layout.slice(cmpScript, layout.indexOf("/>", cmpScript) + 2);
-for (const token of [
-  "fundingchoicesmessages.google.com/i/fundingchoicesmessages.js",
-  'strategy="beforeInteractive"',
-]) {
-  if (!cmpMarkup.includes(token)) {
-    throw new Error("Root-layout Funding Choices script is missing: " + token);
+  if (!layout.includes(token)) {
+    throw new Error("Google Consent Mode default missing: " + token);
   }
 }
-if (analytics < 0 || tagManager < 0 || analytics < cmpScript || tagManager < cmpScript) {
-  throw new Error("Google Analytics and Tag Manager must load only after the consent default and CMP loader");
+
+if (cmpScript < 0 || tagManager < cmpScript) {
+  throw new Error(
+    "Funding Choices and GTM must load from the web-only advertising runtime in the expected order",
+  );
 }
-if (deferred.includes("GoogleFundingChoices")) {
-  throw new Error("Google Funding Choices must not be loaded a second time from deferred runtime effects");
+if (nativeGuard < 0 || nativeGuard > cmpScript) {
+  throw new Error(
+    "The native-platform early return must run before Funding Choices and GTM can load",
+  );
 }
-if (layout.includes("<GoogleFundingChoices")) {
-  throw new Error("Funding Choices must be declared directly in app/layout.tsx, not through an extracted component");
+for (const token of [
+  "fundingchoicesmessages.google.com/i/fundingchoicesmessages.js",
+  "https://www.googletagmanager.com/gtm.js?id=",
+]) {
+  if (!advertisingRuntime.includes(token)) {
+    throw new Error("Web-only third-party tag loader is missing: " + token);
+  }
+}
+if (analytics < 0 || analytics < consentDefault) {
+  throw new Error(
+    "Google Analytics must load only after the denied-by-default consent state is established",
+  );
+}
+if (
+  layout.includes('id="google-funding-choices"') ||
+  layout.includes('id="google-tag-manager"')
+) {
+  throw new Error(
+    "Funding Choices and GTM must not be emitted in the server-rendered native layout",
+  );
 }
 if (layout.includes("ns.html?id=") || layout.includes("<noscript>")) {
-  throw new Error("GTM noscript iframe bypasses the consent gate and must remain disabled");
+  throw new Error(
+    "GTM noscript iframe bypasses the consent gate and must remain disabled",
+  );
 }
 
 console.log("Consent-mode contract passed.");
