@@ -10,7 +10,7 @@ import {
   sanitizeStorageSegment,
   SIGNED_UPLOAD_URL_TTL_SECONDS,
   type StorageObjectPurpose,
-} from "../../src/lib/services/storage";
+} from "../../src/lib/services/storage-contract";
 
 const expectedConfig: Record<StorageObjectPurpose, {
   bucket: string;
