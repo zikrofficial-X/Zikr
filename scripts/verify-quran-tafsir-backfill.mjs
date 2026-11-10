@@ -62,10 +62,55 @@ for (const file of ["scripts/restore-quran-tafsir.sh", "scripts/reconcile-supaba
   assert.equal(syntax.status, 0, file + " must pass bash -n: " + (syntax.stderr || syntax.stdout || "unknown shell error"));
 }
 
+const expectedProjectRef = "zqtssvlvmkzeeyqghqfk";
+function runDatabaseUrlValidation(url) {
+  const env = { ...process.env, SUPABASE_DB_URL: url, EXPECTED_PROJECT_REF: expectedProjectRef };
+  delete env.PGSSLMODE;
+  return spawnSync("python3", ["scripts/verify-supabase-db-url.py"], { encoding: "utf8", env });
+}
+const validDirectUrl = runDatabaseUrlValidation(
+  `postgresql://postgres:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres?sslmode=require`,
+);
+assert.equal(validDirectUrl.status, 0, "the exact direct project endpoint with TLS must pass");
+const validPoolerUrl = runDatabaseUrlValidation(
+  `postgresql://postgres.${expectedProjectRef}:test-only-secret@aws-0-eu-west-2.pooler.supabase.com:6543/postgres?sslmode=verify-full`,
+);
+assert.equal(validPoolerUrl.status, 0, "the Supabase pooler must require the project-qualified postgres user");
+const wrongHostUrl = runDatabaseUrlValidation(
+  `postgresql://postgres:test-only-secret-${expectedProjectRef}@db.attacker.supabase.co:5432/postgres?sslmode=require`,
+);
+assert.notEqual(wrongHostUrl.status, 0, "a project ref appearing only in a password must not validate a foreign hostname");
+assert.ok(
+  !String(wrongHostUrl.stdout + wrongHostUrl.stderr).includes("test-only-secret"),
+  "database URL validation must never echo credentials",
+);
+const wrongPoolerUser = runDatabaseUrlValidation(
+  "postgresql://postgres:test-only-secret@aws-0-eu-west-2.pooler.supabase.com:6543/postgres?sslmode=require",
+);
+assert.notEqual(wrongPoolerUser.status, 0, "pooler usernames must identify the expected project");
+const weakTlsUrl = runDatabaseUrlValidation(
+  `postgresql://postgres:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres?sslmode=disable`,
+);
+assert.notEqual(weakTlsUrl.status, 0, "explicitly disabled TLS must fail");
+const missingTlsUrl = runDatabaseUrlValidation(
+  `postgresql://postgres:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres`,
+);
+assert.notEqual(missingTlsUrl.status, 0, "a production database URL without an explicit secure TLS mode must fail");
+const retiredRoleUrl = runDatabaseUrlValidation(
+  `postgresql://zikr_seed_loader:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres?sslmode=require`,
+);
+assert.notEqual(retiredRoleUrl.status, 0, "the retired seed-loader role must remain blocked");
+
 const restore = readFileSync("scripts/restore-quran-tafsir.sh", "utf8");
 for (const name of migrationNames) assert.ok(restore.includes(name), "restore script is missing " + name);
 assert.ok(restore.includes("--single-transaction"), "all tafsir chunks must restore atomically");
+assert.ok(restore.includes("python3 scripts/verify-supabase-db-url.py"), "tafsir restore must validate the exact database host, role, project and TLS before connecting");
+assert.ok(!restore.includes('!= *"${EXPECTED_PROJECT_REF}"*'), "tafsir restore must not rely on a raw substring target check");
 assert.ok(!restore.includes("INSERT INTO public.quran_tafsir"), "restore wrapper must reuse immutable source migrations instead of duplicating tafsir text");
+const manualRestoreWorkflow = readFileSync(".github/workflows/supabase-restore-seed-data.yml", "utf8");
+assert.ok(manualRestoreWorkflow.includes("bash scripts/restore-quran-tafsir.sh"), "manual seed restore must reuse the canonical guarded restore implementation");
+assert.ok(manualRestoreWorkflow.includes('[[ "$count" == "6236" ]]'), "manual seed restore must require the complete source-verified corpus");
+assert.ok(!manualRestoreWorkflow.includes("grep -l"), "manual seed restore must not discover arbitrary future migrations by matching SQL text");
 
 const reconcile = readFileSync("scripts/reconcile-supabase-migration-history.sh", "utf8");
 assert.ok(reconcile.includes("TAFSIR_EXPECTED_COUNT"), "production schema reconciliation must expose the source-corpus preflight mode");

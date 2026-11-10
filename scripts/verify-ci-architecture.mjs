@@ -14,6 +14,9 @@ const english = read(".github/workflows/english-content-sync.yml");
 const release = read(".github/workflows/release-finalization.yml");
 const smoke = read(".github/workflows/release-vercel.yml");
 const androidPublish = read(".github/workflows/publish-android-release-assets.yml");
+const insightsWorkflow = read(".github/workflows/sync-social-insights.yml");
+const backgroundRunner = read("scripts/run-background-jobs.ts");
+const socialWorker = read("scripts/jobs/social-publishing.ts");
 assert.ok(!androidPublish.includes("branches:\n      - main"), "Android asset publishing must not trigger directly from main");
 assert.ok(androidPublish.includes("workflow_dispatch:"), "Android asset publishing must retain explicit manual recovery");
 assert.ok(androidPublish.includes("inputs.retry"), "Android manual recovery must require an explicit retry input");
@@ -132,6 +135,31 @@ assert.ok(!social.includes("if: false"), "Social publishing must not retain the 
 const socialEnvironment = social.slice(social.indexOf("    env:"), social.indexOf("    steps:"));
 assert.ok(!socialEnvironment.includes("YOUTUBE_REFRESH_TOKEN"), "Stored OAuth refresh tokens must never be injected into GitHub Actions");
 assert.ok(social.includes("workflow_dispatch:"), "Social publisher must retain explicit manual recovery");
+assert.ok(
+  insightsWorkflow.includes('BACKGROUND_JOB_TARGET: "insights"') &&
+    insightsWorkflow.includes('SOCIAL_PUBLISH_ENABLED: "false"') &&
+    insightsWorkflow.includes('SOCIAL_SYNC_INSIGHTS: "true"') &&
+    insightsWorkflow.includes("run: pnpm background:jobs"),
+  "Daily insights workflow must dispatch only the isolated insights target with social publishing explicitly disabled",
+);
+assert.ok(
+  backgroundRunner.includes('const videos = target === "all" || target === "videos"') &&
+    backgroundRunner.includes('const sitePublishing = target === "all" || target === "videos"') &&
+    backgroundRunner.includes('const social = target === "all" || target === "social"') &&
+    backgroundRunner.includes('const insights = target === "insights" ? await syncSocialInsights() : null'),
+  "The insights target must not invoke video generation, site-content publishing, or social queue processing",
+);
+const insightsService = socialWorker.slice(
+  socialWorker.indexOf("export async function syncSocialInsights()"),
+  socialWorker.indexOf("export async function processSocialPublishQueue"),
+);
+assert.ok(
+  insightsService.includes("syncFacebookReelsInsights") &&
+    insightsService.includes("syncYoutubePublishedPostInsights") &&
+    !insightsService.includes("claimPendingSocialPublishItems") &&
+    !insightsService.includes("processSocialPublishItem"),
+  "The analytics-only service must update published-post insights without claiming or publishing queue rows",
+);
 assert.ok(!english.includes("\n  schedule:"), "GitHub English sync must not own an automatic schedule");
 assert.ok(english.includes("environment: production"), "English sync must use protected production environment");
 assert.ok(english.includes("github.ref == 'refs/heads/main'"), "English sync must be main-only");
