@@ -81,6 +81,8 @@ for (const marker of [
   "if (includeMemory && (automationRuns ?? []).length >= 1000)",
   "const assets = includeFiles ? await listGeneratedVideos()",
   "const storagePaths = includeFiles ? await listAutomatedStorageObjects()",
+  "const processingAfterPreflight = await getActiveVideoWork()",
+  "if (processingAfterPreflight.generation > 0)",
 ]) {
   const position = route.indexOf(marker);
   assert.ok(
@@ -131,6 +133,23 @@ assert.ok(socialWorker.includes("isVideoPurgeInProgress"));
 assert.ok(socialWorker.includes("video_purge_in_progress"));
 assert.ok(videoWorker.includes("isVideoGenerationPaused"));
 assert.ok(videoWorker.includes("video_automation_enabled,video_purge_in_progress"));
+const videoQueueStart = videoWorker.indexOf("export async function processTemplateVideoQueue");
+const videoQueueSource = videoWorker.slice(videoQueueStart);
+const queueStartLockCheck = videoQueueSource.indexOf("if (await isVideoGenerationPaused())");
+const staleRecoveryStart = videoQueueSource.indexOf("const staleBefore");
+const claimLoopStart = videoQueueSource.indexOf("for (const request of rows || [])");
+const claimStatement = videoQueueSource.indexOf("const claimed = await", claimLoopStart);
+const preClaimLockCheck = videoQueueSource.indexOf("if (await isVideoGenerationPaused())", claimLoopStart);
+const postClaimLockCheck = videoQueueSource.indexOf("if (await isVideoGenerationPaused())", claimStatement);
+const claimRestore = videoQueueSource.indexOf("status: request.status", postClaimLockCheck);
+const renderStart = videoQueueSource.indexOf("await renderVideo(request)", claimStatement);
+assert.ok(
+  queueStartLockCheck >= 0 && queueStartLockCheck < staleRecoveryStart &&
+    preClaimLockCheck >= claimLoopStart && preClaimLockCheck < claimStatement &&
+    postClaimLockCheck > claimStatement && postClaimLockCheck < renderStart &&
+    claimRestore > postClaimLockCheck && claimRestore < renderStart,
+  "video queue processing must stop before claim and release any claim if the purge lock activates during the claim race.",
+);
 assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
 assert.ok(generationStudio.includes("PurgeGeneratedVideosControl"));
 assert.ok(read("src/app/admin/media/media-client.tsx").includes("PurgeGeneratedVideosControl"));
