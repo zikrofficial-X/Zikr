@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeUploadScopes } from "../../src/features/social/services/youtube-oauth-credentials";
+import { getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeUploadScopes, matchesConfiguredYouTubeChannel } from "../../src/features/social/services/youtube-oauth-credentials";
+
+assert.equal(matchesConfiguredYouTubeChannel("UC123", "UC123"), true, "stored provider ID must match the configured YouTube channel");
+assert.equal(matchesConfiguredYouTubeChannel("UC123", "UC999"), false, "a token for a different channel must fail closed");
+assert.equal(matchesConfiguredYouTubeChannel("", "UC123"), false, "missing stored provider ID must fail closed");
+assert.equal(matchesConfiguredYouTubeChannel("UC123", undefined), true, "a verified stored channel remains usable when no channel override is configured");
 
 const legacyEnv = { YOUTUBE_REFRESH_TOKEN: "legacy-upload-capable-token" };
 
