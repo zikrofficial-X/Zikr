@@ -169,3 +169,96 @@ export function getRetryableSocialPlatforms(
     return true;
   });
 }
+
+export type MissingMediaQueueRecoveryItem = {
+  status: string;
+  target_platforms: string[] | null;
+  metadata: Record<string, unknown> | null;
+};
+
+export type MissingMediaQueueRecoveryPatch = {
+  status: "queued";
+  video_url: string;
+  scheduled_at: string;
+  published_at: null;
+  error_message: null;
+  updated_at: string;
+  metadata: Record<string, unknown>;
+};
+
+/**
+ * Release a held Facebook Reels target only after a verified Cloudinary render
+ * replaces the missing source. Successful provider IDs on other platforms are
+ * preserved; ambiguous or auth-blocked outcomes remain held for manual review.
+ */
+export function buildMissingMediaQueueRecoveryPatch(input: {
+  item: MissingMediaQueueRecoveryItem;
+  videoUrl: string;
+  now: string;
+}): MissingMediaQueueRecoveryPatch | null {
+  const { item, videoUrl, now } = input;
+  const metadata = item.metadata ?? {};
+  if (metadata.sourceMediaMissing !== true) return null;
+  if (item.status !== "failed" && item.status !== "partial") return null;
+  if (!Array.isArray(item.target_platforms) || !item.target_platforms.includes("facebook_reels")) return null;
+  if (!Number.isFinite(Date.parse(now))) return null;
+
+  let delivery: URL;
+  try {
+    delivery = new URL(videoUrl);
+  } catch {
+    return null;
+  }
+  if (delivery.protocol !== "https:" || delivery.hostname !== "res.cloudinary.com" ||
+      !delivery.pathname.includes("/video/upload/")) return null;
+
+  const authBlockedPlatforms = metadataPlatforms(metadata.authBlockedPlatforms);
+  const approvalDeferredPlatforms = metadataPlatforms(metadata.approvalDeferredPlatforms);
+  if (metadata.authBlocked === true || authBlockedPlatforms.includes("facebook_reels") ||
+      approvalDeferredPlatforms.includes("facebook_reels")) return null;
+
+  const results = normalizeSocialPlatformResults(metadata.platformResults);
+  const facebookResult = asRecord(results.facebook_reels);
+  if (!facebookResult || facebookResult.ok !== false || typeof facebookResult.error !== "string") return null;
+  if (typeof facebookResult.remoteId === "string" && facebookResult.remoteId.trim()) return null;
+  if (facebookResult.requiresReconciliation === true || isAuthBlocked("facebook_reels", facebookResult.error) ||
+      isAmbiguousProviderOutcome(facebookResult.error)) return null;
+
+  const error = facebookResult.error.toLowerCase();
+  if (!/http\\s*422|unprocessable|source media|missing media|cooldown/i.test(error)) return null;
+
+  const permanentFailurePlatforms = Array.isArray(metadata.permanentFailurePlatforms)
+    ? metadata.permanentFailurePlatforms.filter((platform): platform is string => typeof platform === "string")
+    : null;
+  if (permanentFailurePlatforms === null && metadata.permanentFailure === true) return null;
+  const remainingPermanentFailurePlatforms = (permanentFailurePlatforms ?? [])
+    .filter(platform => platform !== "facebook_reels");
+  const nextResults = { ...results };
+  delete nextResults.facebook_reels;
+  const previousAttempts = asRecord(metadata.platformAttempts) ?? {};
+
+  const nextMetadata: Record<string, unknown> = {
+    ...metadata,
+    sourceMediaMissing: false,
+    sourceMediaMissingAt: null,
+    sourceMediaMissingReason: null,
+    mediaRecoveredAt: now,
+    platformResults: nextResults,
+    platformAttempts: { ...previousAttempts, facebook_reels: 0 },
+    attempts: 0,
+    permanentFailure: remainingPermanentFailurePlatforms.length > 0,
+    permanentFailurePlatforms: remainingPermanentFailurePlatforms,
+    nextRetryAt: null,
+    facebookReelsNextAllowedAt: null,
+  };
+
+  return {
+    status: "queued",
+    video_url: videoUrl,
+    scheduled_at: now,
+    published_at: null,
+    error_message: null,
+    updated_at: now,
+    metadata: nextMetadata,
+  };
+}
