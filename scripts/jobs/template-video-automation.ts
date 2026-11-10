@@ -15,6 +15,7 @@ import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/fe
 import { buildKidsSeriesEpisode, validateCanonicalKidsEpisodeSnapshot, validateGeneratedKidsEpisode } from "../../src/features/videos/data/kids-story-factory";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
+import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoTemplateAssetAllowedForAudience, parseVideoTemplateConfig, videoTemplateAssetPath, videoTemplateScene, type VideoTemplateAudience } from "../../src/features/videos/services/template-config";
@@ -1906,6 +1907,60 @@ async function registerGeneratedVideoOnSite(
   return { videoId, published: false, queued: true };
 }
 
+type MissingMediaSocialQueueRow = {
+  id: string;
+  status: string;
+  target_platforms: string[] | null;
+  metadata: Record<string, unknown> | null;
+};
+
+async function restoreMissingMediaSocialQueueItems(
+  requestId: string,
+  videoUrl: string,
+  now: string,
+): Promise<{ recovered: number; failedUpdates: number }> {
+  const pageSize = 100;
+  let cursor: string | null = null;
+  let recovered = 0;
+  let failedUpdates = 0;
+
+  while (true) {
+    const cursorFilter = cursor === null ? "" : "&id=gt." + encodeURIComponent(cursor);
+    const rows = await supabaseServerAdminRequest<MissingMediaSocialQueueRow[]>(
+      "/rest/v1/social_publish_queue?content_id=eq." + encodeURIComponent(requestId) +
+        "&metadata->>sourceMediaMissing=eq.true&status=in.(failed,partial)&select=id,status,target_platforms,metadata&order=id.asc&limit=" +
+        pageSize + cursorFilter,
+    );
+    if (!Array.isArray(rows) || rows.length === 0) break;
+
+    for (const item of rows) {
+      cursor = item.id;
+      const patch = buildMissingMediaQueueRecoveryPatch({ item, videoUrl, now });
+      if (!patch) continue;
+      try {
+        const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/social_publish_queue?id=eq." + encodeURIComponent(item.id) +
+            "&status=eq." + encodeURIComponent(item.status) +
+            "&metadata->>sourceMediaMissing=eq.true",
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+            body: JSON.stringify(patch),
+          },
+        );
+        if (updated?.[0]?.id) recovered += 1;
+      } catch (error) {
+        failedUpdates += 1;
+        console.error("[template-video] Could not release a source-media-held social queue row after verified recovery:", item.id, error);
+      }
+    }
+
+    if (rows.length < pageSize) break;
+  }
+
+  return { recovered, failedUpdates };
+}
+
 async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueRow | null> {
   const rows = await supabaseServerAdminRequest<SocialQueueRow[]>(
     `/rest/v1/social_publish_queue?automation_key=eq.${encodeURIComponent(key)}&select=id,status,target_platforms,metadata&limit=1`,
@@ -2274,6 +2329,16 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
             );
             if (!restoredOwnerRows?.[0]?.id) {
               throw new Error(`Canonical duplicate request ${duplicate.id} changed during media recovery; the render remains unapproved for distribution.`);
+            }
+
+            let socialQueueRecovery = { recovered: 0, failedUpdates: 0 };
+            try {
+              socialQueueRecovery = await restoreMissingMediaSocialQueueItems(duplicate.id, rendered.videoUrl, duplicateAt);
+            } catch (queueRecoveryError) {
+              console.error(`[template-video] Canonical media was restored, but held social queue rows need reconciliation for ${duplicate.id}:`, queueRecoveryError);
+            }
+            if (socialQueueRecovery.recovered > 0 || socialQueueRecovery.failedUpdates > 0) {
+              console.info(`[template-video] Recovered ${socialQueueRecovery.recovered} held social queue row(s); ${socialQueueRecovery.failedUpdates} update(s) need reconciliation for ${duplicate.id}.`);
             }
 
             await supabaseServerAdminRequest(
