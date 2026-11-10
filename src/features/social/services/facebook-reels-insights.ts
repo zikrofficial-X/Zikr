@@ -69,8 +69,12 @@ function facebookReelId(metadata: Record<string, unknown> | null): string | null
   const results = metadata?.platformResults;
   if (!isRecord(results)) return null;
   const reel = results.facebook_reels;
-  if (!isRecord(reel) || reel.ok !== true || typeof reel.remoteId !== "string") return null;
-  const id = reel.remoteId.trim();
+  if (!isRecord(reel) || reel.ok !== true) return null;
+  // New queue rows persist both IDs; videoId is required by /video_insights.
+  // Older rows only have remoteId (the FINISH post_id) and use the resolver below.
+  const id = typeof reel.videoId === "string" ? reel.videoId.trim()
+    : typeof reel.remoteId === "string" ? reel.remoteId.trim()
+    : "";
   return /^[0-9]{8,}$/.test(id) ? id : null;
 }
 
