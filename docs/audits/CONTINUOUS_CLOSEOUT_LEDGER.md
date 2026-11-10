@@ -782,3 +782,15 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 
 - PRs #320–#325 remain open with no submitted review. CODEOWNERS `@Zikrmediaofficial` is not requestable under the connected GitHub identity. Protected-branch and review requirements remain intact.
 - The file-status matrix still has 1,525 main-baseline files at `REVIEW_REQUIRED`; modules closed remain 0. Manual Android/iOS device acceptance, live OAuth/YouTube confirmation, production migration, Vercel deployment, and owner approval remain outstanding. No claim of full repository closure is made.
+
+
+## 2026-11-10T22:45:00Z — RBAC grant audit and exact-head verification
+
+- **PR #320**: latest verified branch head `74fa73d507c30cec433b894692af573cb79e6659`; GitHub Quality Gate #42916076863 SUCCESS and CircleCI `source-verify`, `application-build-docs`, and `config-guard` SUCCESS. The branch contains the Kids UTC-day backfill guard and the 60-candidate/12-valid public feed fix. No merge or deployment.
+- **PR #323**: added `20261111000000_revoke_anon_public_admin_predicate.sql`. Production ACL inspection showed `anon` could execute the public SECURITY INVOKER wrapper but could not execute its private callee. The new migration revokes the unnecessary anon grant while preserving authenticated/service-role execution. Exact head `5a2ea09224fdba81909cffff915d521fb5238b10`; Quality Gate #42916716464 SUCCESS and CircleCI config-guard SUCCESS. Migration remains unapplied.
+- **PR #324**: exact head `f86010f1d97c0064699bca0aabdc34f126896a82`; Quality Gate #42914613560 and config-guard SUCCESS. Recursive Storage inventory has a global 5,000-object cap. No purge executed.
+- **PR #325**: exact head `8e3a73d81968e0c5fa17c739f7172b8a40ade383`; Quality Gate #42911264957 and config-guard SUCCESS. AdSense owner/editorial and canonical-domain acceptance remain manual.
+- PRs #321 and #322 also passed their GitHub Quality Gates and config-guard; iOS device acceptance and live YouTube OAuth acceptance remain manual.
+- Read-only production smoke `GET /api/health` returned HTTP 200 on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. Vercel runtime error query for the last hour returned none. Current production Facebook/YouTube profile rows remain `ok`.
+- Production ACL and advisor checks were read-only. Security advisor still reports leaked-password protection disabled; 86 unused-index INFO findings remain untouched. No production migrations, data writes, deployment, content generation, Gemini request, social publishing, video purge, or storage deletion occurred.
+- All six audit PRs remain open without owner review. CODEOWNERS owner `@Zikrmediaofficial` has no collaborator permission under the connected identity. The repository audit remains open with 1,525 main-baseline files `REVIEW_REQUIRED` and zero modules closed.
