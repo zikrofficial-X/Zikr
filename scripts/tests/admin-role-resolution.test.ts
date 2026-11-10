@@ -16,7 +16,7 @@ const adminService = readFileSync("src/features/admin/services/admin.ts", "utf8"
 assert.match(adminService, /error: assignmentError/, "the assignment query error must be captured");
 assert.match(
   adminService,
-  /resolveAdminRole\(\s*profile\.role,\s*assignment\?\.role,\s*Boolean\(assignmentError\)\s*\)/,
+  /resolveAdminRole\(\s*profile\.role,\s*assignment\?\.role,\s*Boolean\(assignmentError\),\s*\)/,
   "the role resolver must receive the lookup failure state",
 );
 
