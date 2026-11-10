@@ -206,5 +206,62 @@ const legacyFacebookRecovery = buildFacebookQueueRecoveryPatch(
 assert.deepEqual(
   legacyFacebookRecovery?.metadata.platformAttempts,
   { facebook: 0, facebook_reels: 0 },
-  "legacy global Facebook auth blocks must still release both Facebook targets",
+  "legacy global Facebook auth blocks with no Facebook result ledger must still release both Facebook targets",
+);
+
+const legacyMixedFacebookRecovery = buildFacebookQueueRecoveryPatch(
+  {
+    authBlocked: true,
+    platformResults: {
+      facebook: { ok: false, error: "Facebook OAuthException: access token expired" },
+      facebook_reels: { ok: false, error: "HTTP 422 invalid media" },
+      youtube: { ok: true, remoteId: "youtube-remote-2" },
+    },
+    platformAttempts: { facebook: 4, facebook_reels: 4, youtube: 1 },
+    permanentFailure: true,
+    permanentFailurePlatforms: ["facebook_reels"],
+  },
+  ["facebook", "facebook_reels", "youtube"],
+  "2026-11-10T10:00:00.000Z",
+);
+assert.ok(legacyMixedFacebookRecovery, "a legacy global flag with an explicit Facebook OAuth result must release that target");
+assert.equal(
+  (legacyMixedFacebookRecovery.metadata.platformResults as Record<string, unknown>).facebook,
+  undefined,
+  "the confirmed Facebook auth failure must be cleared",
+);
+assert.deepEqual(
+  (legacyMixedFacebookRecovery.metadata.platformResults as Record<string, unknown>).facebook_reels,
+  { ok: false, error: "HTTP 422 invalid media" },
+  "a separate permanent Facebook Reels failure must not be cleared by legacy global auth recovery",
+);
+assert.deepEqual(
+  legacyMixedFacebookRecovery.metadata.platformAttempts,
+  { facebook: 0, facebook_reels: 4, youtube: 1 },
+  "only the confirmed auth-blocked platform attempt counter may reset",
+);
+assert.deepEqual(
+  legacyMixedFacebookRecovery.metadata.permanentFailurePlatforms,
+  ["facebook_reels"],
+  "non-auth permanent failure metadata must survive legacy global auth recovery",
+);
+assert.deepEqual(
+  (legacyMixedFacebookRecovery.metadata.platformResults as Record<string, unknown>).youtube,
+  { ok: true, remoteId: "youtube-remote-2" },
+  "a successful YouTube remote ID must remain untouched during Facebook recovery",
+);
+
+assert.equal(
+  buildFacebookQueueRecoveryPatch(
+    {
+      authBlocked: true,
+      platformResults: {
+        facebook_reels: { ok: false, error: "HTTP 422 invalid media" },
+      },
+    },
+    ["facebook_reels"],
+    "2026-11-10T10:00:00.000Z",
+  ),
+  null,
+  "a global auth flag must not override a recorded non-auth Facebook failure",
 );
