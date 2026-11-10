@@ -1,5 +1,6 @@
 import "server-only";
 import { getServerEnv } from "@/lib/env";
+import { isGitHubWorkflowDispatchAllowed } from "./workflow-dispatch-policy";
 
 const GITHUB_API = "https://api.github.com";
 const DEFAULT_REPOSITORY = "zikrofficial-X/Zikr";
@@ -22,6 +23,12 @@ export async function dispatchGitHubWorkflow(
   workflowFile: string,
   inputs: WorkflowInputs = {},
 ) {
+  if (!isGitHubWorkflowDispatchAllowed(process.env)) {
+    throw new Error(
+      "GitHub workflow dispatch is disabled outside the Vercel production deployment of main.",
+    );
+  }
+
   const token = githubToken();
   if (!token) {
     throw new Error("GitHub workflow dispatch token is not configured.");
