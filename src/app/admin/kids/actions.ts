@@ -43,7 +43,7 @@ export async function saveKidsContentAction(formData: FormData) {
   }
 
   // Validate structured form data before uploading media so rejected forms do not leave orphaned Cloudinary assets.
-  const quizData = parseKidsQuizData(value(formData, "quiz_data"));
+  const quizData = type === "quiz" ? parseKidsQuizData(value(formData, "quiz_data")) : null;
   if (type === "quiz" && !quizData) {
     throw new Error("بيانات الاختبار مطلوبة.");
   }
