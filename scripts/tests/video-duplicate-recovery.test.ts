@@ -44,7 +44,7 @@ assert.equal(
     qaApproved: true,
     siteRecord: {
       published: false,
-      metadata: { mediaState: "purged", generatedVideoUrl: null, videoUrl: null },
+      metadata: { mediaState: "purged", mediaPurgedFromPublished: true, generatedVideoUrl: null, videoUrl: null },
     },
   }),
   true,
