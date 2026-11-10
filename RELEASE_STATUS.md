@@ -1,10 +1,40 @@
 # ZIKR Project Release & Build Status
 
-Last reconciled: 2026-11-07  
+Last reconciled: 2026-11-10  
 Repository: https://github.com/zikrofficial-X/Zikr  
 Production URL: https://zikrmediaofficial.vercel.app
 
-## Production web deployment
+## Latest verified Android release — 2026-11-10
+
+| Item | Verified state |
+|---|---|
+| Android version / versionCode | `1.1.14` / `68` |
+| Repository / main source commit | `zikrofficial-X/Zikr` / `d05598035de7b51ba460a0c2424a58b22b4f4e81` |
+| Annotated tag | [`v1.1.14`](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.14), targets the exact main commit above; Git tag object itself is unsigned |
+| GitHub Release | Published, release ID `439960831`, published `2026-11-10T05:12:05Z` |
+| Release workflow | [run `42758799773`](https://github.com/zikrofficial-X/Zikr/actions/runs/42758799773) — SUCCESS |
+| Quality Gate | [run `42758477048`](https://github.com/zikrofficial-X/Zikr/actions/runs/42758477048) — SUCCESS |
+| CircleCI | `config-guard`, `application-build-docs`, `android-release-draft`, `source-verify`, `supabase-production-gate`, `android-rebuild`, and `android-release-dispatch` — SUCCESS |
+
+### Published v1.1.14 assets
+
+| Asset | Size | SHA-256 |
+|---|---:|---|
+| `app-release.apk` | 41,277,148 bytes | `c982ad8449432ed3128ae97d1d69dbe48ab619159238443757d945958a39202f` |
+| `app-release.aab` | 36,091,440 bytes | `bfd01d055cafd04a61d3bff1c06ba59d6143c4ded51d44b1044dc37327f828e6` |
+| `release-metadata.json` | 635 bytes | `89f68c0d15de0ae09298c3ed23c3baa077060ce6ad67a923ed0243e1e3f9bd29` |
+| `SHA256SUMS` | 243 bytes | `d2760afa945a2e26ad57eb17fd3d0c5ac44424bab783561038ad8d4b3bc34786` |
+
+The GitHub publisher verified the tag/source SHA, release metadata, SHA-256 checksums, APK signature and manifest, signed AAB, and the exact published asset bytes. The release is published; it is no longer a Draft. The Git tag object remains annotated but unsigned, which is distinct from the verified Android APK/AAB signing.
+
+### Current web deployment relationship
+
+- The latest inspected Vercel production deployment is `dpl_AK3uuUj4nAouG4tcNF9bNnsKpCDM` (READY), sourced from `main` commit `6bcc456eb0977cd9688dc837fee3236bb43a2053`.
+- The audited `main` source commit `d05598035de7b51ba460a0c2424a58b22b4f4e81` has not yet been found in the production deployment list. Production web release remains intentionally manual-only through `.github/workflows/release-finalization.yml` and requires the explicit `RELEASE` input.
+- Live smoke checks returned HTTP 200 for the sampled public and admin routes recorded in `PROJECT_STATUS.md`; this is not a substitute for full authenticated browser and device acceptance.
+
+
+## Historical production web deployment snapshot — 2026-11-07
 
 | Item | Verified state |
 |---|---|
@@ -41,7 +71,7 @@ The v1.1.11 Android tag had one unrelated CircleCI application-build-docs failur
 
 Pipeline correction: CircleCI application-build-docs is main-only. Semantic Android tags continue to run source-verify, supabase-production-gate, android-rebuild, and the guarded Android release dispatch; they no longer trigger the separate web build/docs job. A regression assertion protects these filters.
 
-## Latest published stable Android release
+## Previous published stable Android release — v1.1.12
 
 | Item | Verified state |
 |---|---|
@@ -70,7 +100,7 @@ The release publisher verified the exact source/tag provenance, APK signature an
 
 Publisher evidence: [GitHub Release v1.1.12](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.12) and [release notes](docs/releases/1.1.12.md).
 
-## Git tag signature and immutable release attestation
+## Previous release tag signature and immutable release attestation — v1.1.12
 
 The published `v1.1.12` tag is an annotated Git tag object, but its Git object signature is **unsigned**. GitHub reports tag object `0aee16eb5f6f4e1d2ee27a282ae03e27b3b955c5` as `verified: false`, reason `unsigned`. It points to source commit `c8cf106d709aa4f10e94a0d45e668794e41f94f3`.
 
