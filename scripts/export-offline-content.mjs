@@ -104,34 +104,67 @@ async function fetchAll(table, filters) {
   return rows;
 }
 
+const manifestPath = path.join(outputDir, 'manifest.json');
+let previous = { routes: [], datasets: {} };
+try { previous = JSON.parse(await readFile(manifestPath, 'utf8')); } catch { /* first export */ }
+
 const exported = [];
 for (const [dataset, table, ...filters] of datasets) {
-  const rows = await fetchAll(table, filters);
+  let rows = await fetchAll(table, filters);
   const minimum = minimumRecords[dataset] ?? 0;
+  let stale = false;
+  let source = 'supabase';
+
+  // Tafsir is a separately curated corpus. The live table may be temporarily
+  // empty while the last validated, attributed offline corpus remains intact.
+  // Never invent tafsir text or replace a known-good offline corpus with [].
+  if (dataset === 'tafsir' && rows.length < minimum) {
+    const previousDefinition = previous.datasets?.tafsir;
+    const previousPath = typeof previousDefinition?.path === 'string'
+      ? previousDefinition.path
+      : '';
+    if (!previousPath.startsWith('/offline-content/v1/tafsir.json') ||
+        !Number.isInteger(previousDefinition?.count) ||
+        previousDefinition.count < minimum) {
+      throw new Error(`Offline export safety check failed for tafsir: live source returned ${rows.length} rows and no complete validated offline corpus is available.`);
+    }
+    const previousRows = JSON.parse(await readFile(path.join(root, 'public', previousPath.replace(/^\\//, '')), 'utf8'));
+    if (!Array.isArray(previousRows) || previousRows.length !== previousDefinition.count || previousRows.length < minimum) {
+      throw new Error('The previous offline tafsir corpus failed its integrity check; refusing to publish an incomplete snapshot.');
+    }
+    rows = previousRows;
+    stale = true;
+    source = 'previous-validated-snapshot';
+    console.warn(`[offline-export] tafsir live table is empty; retaining ${rows.length} previously validated, attributed rows without fabricating content.`);
+  }
+
   if (rows.length < minimum) {
     throw new Error(`Offline export safety check failed for ${dataset}: expected at least ${minimum} rows, received ${rows.length}.`);
   }
-  exported.push({ dataset, rows });
-  console.log(`[offline-export] verified ${dataset}: ${rows.length}`);
+  exported.push({ dataset, rows, stale, source });
+  console.log(`[offline-export] verified ${dataset}: ${rows.length} (${source})`);
 }
 
 await mkdir(outputDir, { recursive: true });
-const manifestPath = path.join(outputDir, 'manifest.json');
-let previous = { routes: [] };
-try { previous = JSON.parse(await readFile(manifestPath, 'utf8')); } catch { /* first export */ }
 const manifest = {
   version: `2026-10-30-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`,
   generatedAt: new Date().toISOString(),
-  source: 'Zikr Supabase published public content tables',
+  source: 'Zikr Supabase published public content tables with explicit validated-corpus retention where the live tafsir table is empty',
   licenseNote: 'Quran and hadith records retain source attribution. Editorial records are Zikr content. External audio remains a reference unless the file is explicitly packaged locally.',
+  staleDatasets: exported.filter((item) => item.stale).map((item) => item.dataset),
   datasets: {},
   routes: Array.isArray(previous.routes) ? previous.routes : [],
 };
 
-for (const { dataset, rows } of exported) {
+for (const { dataset, rows, stale, source } of exported) {
   const fileName = `${dataset}.json`;
-  await writeFile(path.join(outputDir, fileName), `${JSON.stringify(rows)}\n`, 'utf8');
-  manifest.datasets[dataset] = { path: `/offline-content/v1/${fileName}`, count: rows.length };
+  if (!stale) await writeFile(path.join(outputDir, fileName), `${JSON.stringify(rows)}\n`, 'utf8');
+  manifest.datasets[dataset] = {
+    path: `/offline-content/v1/${fileName}`,
+    count: rows.length,
+    source,
+    stale,
+  };
 }
 await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 console.log(`[offline-export] Wrote ${Object.keys(manifest.datasets).length} validated datasets; version ${manifest.version}`);
