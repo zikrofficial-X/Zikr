@@ -13,7 +13,7 @@ using (
 );
 
 -- Keep the server-side share counter aligned with the same public visibility
--- contract; inactive or unpublished Kids content must not accept public shares.
+-- contract; inactive, unpublished, or age-unapproved stories must not accept public shares.
 create or replace function public.increment_kids_content_shares(p_slug text)
 returns table(slug text, shares integer)
 language sql
