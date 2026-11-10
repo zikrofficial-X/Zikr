@@ -1839,7 +1839,7 @@ PR #275 was merged at `035ea4568572eea36c82b79b1e9cd212113e8e32`. Its former 18 
 
 | PR | Branch | Verified code head | Changed files | GitHub Quality Gate | CircleCI | Remaining gate |
 |---|---|---|---:|---|---|---|
-| [#320](https://github.com/zikrofficial-X/Zikr/pull/320) | `audit/zikr-kids-daily-priority-20261110` | `9d8d3164ebcdfe059dfa6117d9bef7f1cbf684ad` | 19 | #2042 SUCCESS | config-guard, source-verify, application-build-docs, config validation SUCCESS | Supabase Preview unavailable (only main branch); migration not applied; CODEOWNERS review missing; documentation checkpoint changes branch head and requires rerun |
+| [#320](https://github.com/zikrofficial-X/Zikr/pull/320) | `audit/zikr-kids-daily-priority-20261110` | code `9d8d3164ebcdfe059dfa6117d9bef7f1cbf684ad`; docs `935a84b46334a0251813866d5bc0d765bbed5458` | 19 | #2042 SUCCESS on code head | code-head CircleCI contexts SUCCESS; docs-head contexts pending | Supabase Preview unavailable (only main branch); migration not applied; CODEOWNERS review missing; documentation-only follow-ups require exact-head rerun |
 | [#321](https://github.com/zikrofficial-X/Zikr/pull/321) | `audit/zikr-ios-permission-contract-20261110` | `5022e609842a7ef208560772c9cba235bedb58c3` | 3 | #2028 SUCCESS | config-guard SUCCESS; source/build not scheduled until #320 filter merge | Physical iOS/device acceptance and CODEOWNERS review |
 | [#322](https://github.com/zikrofficial-X/Zikr/pull/322) | `audit/zikr-youtube-oauth-actor-20261110` | `40e693d48e86bc2a2c7ab3f61c86d1c6d52316c7` | 2 | #2030 SUCCESS | config-guard SUCCESS; source/build not scheduled until #320 filter merge | Live OAuth/return-to-app acceptance and CODEOWNERS review |
 | [#323](https://github.com/zikrofficial-X/Zikr/pull/323) | `audit/zikr-admin-role-fail-closed-20261110` | `4c740f596426c693dfd7f401bb9630f9677e6ee9` | 5 | #2041 SUCCESS | config-guard SUCCESS; source/build not scheduled until #320 filter merge | CODEOWNERS review |
@@ -1850,13 +1850,13 @@ All six PRs are open and unmerged with empty review lists. The configured CODEOW
 
 ### Active audit branch overlays — exact file blobs
 
-These entries are branch overlays, not part of the `main@c4560d9` manifest baseline. The matrix file itself is omitted from its own overlay to avoid a self-referential blob SHA; its exact blob is in the Git tree for the documentation commit. PR #320 code blobs are from verified code head `9d8d3164ebcdfe059dfa6117d9bef7f1cbf684ad`; the status and ledger blob SHAs below are from this reconciliation commit.
+These entries are branch overlays, not part of the `main@c4560d9` manifest baseline. The matrix file itself is omitted from its own overlay to avoid a self-referential blob SHA; its exact blob is in the Git tree for the documentation commit. PR #320 code blobs are from verified code head `9d8d3164ebcdfe059dfa6117d9bef7f1cbf684ad`; the status and ledger blob SHAs below are from documentation commit `935a84b46334a0251813866d5bc0d765bbed5458` (its exact-head CircleCI contexts are pending). This matrix-size correction is another documentation-only commit and must also receive exact-head CI.
 
 | PR | Path | Branch blob SHA-1 | Bytes | State |
 |---|---|---|---:|---|
 | #320 | `.circleci/config.yml` | `e05272c698aec33f64e436b86d1478820f8e7e56` | 37564 | TESTED_PASS |
-| #320 | `PROJECT_STATUS.md` | `ca6112feaeceb4551e4742ab3ada1dc45285bf12` | 87346 | AUDIT_CHECKPOINT_RECORDED |
-| #320 | `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | `0e782c504c2187c0aec58ca165366c0ec9fe7fb9` | 122888 | AUDIT_CHECKPOINT_RECORDED |
+| #320 | `PROJECT_STATUS.md` | `ca6112feaeceb4551e4742ab3ada1dc45285bf12` | 87463 | AUDIT_CHECKPOINT_RECORDED |
+| #320 | `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | `0e782c504c2187c0aec58ca165366c0ec9fe7fb9` | 122984 | AUDIT_CHECKPOINT_RECORDED |
 | #320 | `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` | `ae8849ca2127dd5ee1d6e327fb07405e3a05cbc2` | 311031 | MANIFEST_CAPTURED_MAIN_BASELINE |
 | #320 | `package.json` | `66b90f8f474004b8fe2186e89ff490cbaf04c0ea` | 15789 | TESTED_PASS |
 | #320 | `scripts/jobs/written-content-automation.ts` | `46ca4262e171472b3c98934737d162797335eb4a` | 22420 | TESTED_PASS |
