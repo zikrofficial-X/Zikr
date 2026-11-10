@@ -27,7 +27,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxdHNzdmx2bWt6ZWV5cWdocWZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM5OTAzNDEsImV4cCI6MjEwOTU2NjM0MX0.jux_q16W3CL3lUFT3P4DvqmnjTYWXTlIF86g2j_AKhw
       NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: 224706285284-fubdladk24v49v2lnq4p5jrk5ht1uqk8.apps.googleusercontent.com
       AUTH_CALLBACK_URL: https://zikrmediaofficial.vercel.app/auth/callback
-      QUALITY_GATE_FULL_SCOPE: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && (startsWith(github.head_ref, 'codex/zikr-comprehensive-repair-') || startsWith(github.head_ref, 'codex/zikr-final-cleanup-'))) }}
+      QUALITY_GATE_FULL_SCOPE: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && (github.head_ref == 'audit/continuous-closeout' || startsWith(github.head_ref, 'codex/zikr-comprehensive-repair-') || startsWith(github.head_ref, 'codex/zikr-final-cleanup-'))) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
