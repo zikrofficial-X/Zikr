@@ -1,6 +1,47 @@
 # ZIKR Continuous Closeout Ledger
 
 
+## Checkpoint — 2026-11-10T18:49:41Z (main a637 baseline, live migration reconciliation, release and queue acceptance)
+
+### Baseline and inventory
+
+- Canonical main: `a637558965b10c52ae1c9a8bf17a0948155e5725`; recursive tree: 2152 entries, 1661 files, 491 directories, 139710188 bytes; not truncated. 142 App Router page files, 80 route handlers, 418 SQL migration files. Four new tracked files since main `035ea4568572eea36c82b79b1e9cd212113e8e32`; no paths removed.
+- The manifest and file-status matrix are refreshed in this audit PR against the exact `a637558965b10c52ae1c9a8bf17a0948155e5725` snapshot. Matrix rows are keyed by path and Git blob SHA. Any changed blob is reset to `REVIEW_REQUIRED` unless current evidence is recorded. Automated inventory coverage is 100%; this is not manual source review. Modules closed remains 0.
+
+### GitHub, CI and active work
+
+- Main Quality Gate run `42874180774`: SUCCESS. CircleCI config-guard, source-verify, application-build-docs and android-release-draft: SUCCESS on the same main SHA.
+- PR #312 is the only open PR at this checkpoint. It updates generated Supabase types and the required-table verifier. The live Supabase generator output is byte-for-byte equal to PR #312's `src/lib/types/supabase.ts`; main is missing `youtube_oauth_credentials`. Config-guard passed. The first Quality Gate attempt was cancelled after source checks; a rerun was requested. PR remains Draft and must not be merged before current-head CI and CODEOWNERS owner review.
+- PR #275, #279, #280 and #281 are merged. PR #278 and #283 are closed without merge. Main is not branch-protected; CODEOWNERS owner review remains the explicit governance gate. No branch deletion was performed.
+
+### Vercel production and route acceptance
+
+- Vercel project `zikr` remains linked to the canonical GitHub repository. Deployment `dpl_8SDdkrR2AutQBe8fXLTkJEK9dAD8` is READY on `a637558965b10c52ae1c9a8bf17a0948155e5725`, with canonical alias `zikrmediaofficial.vercel.app`. The live health endpoint returned HTTP 200, `ok=true`, and exact commit `a637558965b10c52ae1c9a8bf17a0948155e5725`.
+- Sampled public routes returned HTTP 200: home, Quran, Hadith, adhkar, dua, prayer times, Qibla, Kids, videos, audio and articles. The protected written-post studio redirected to login as expected. Kids API returned 10 records and the sampled records show confirmed YouTube/Facebook Reels publication metadata. This is not full browser/E2E acceptance.
+- Runtime error aggregation: seven Supabase transport failures in 24 hours, last seen 17:32 UTC on previous deployment `dpl_4ZyKHwS2rStF3MDURJ3E2rLxDM7h`; latest 30-minute production error query returned no entries. Two missing-service-role events were on the old Preview deployment only. One rejected Meta token attempt is historical. No speculative code patch was made.
+
+### Supabase and storage
+
+- Project `zqtssvlvmkzeeyqghqfk`: ACTIVE_HEALTHY, PostgreSQL 17.11. Local `supabase/migrations` and live `supabase_migrations.schema_migrations` both contain 418 unique versions; set comparison found no missing or extra versions.
+- Public schema: 92 tables, all 92 RLS-enabled; 211 public policies; 53 public triggers; 40 public routines. Storage: 9 buckets, 0 objects, 10 `storage.objects` policies. The four owner policies for avatars/media/audio/documents constrain the first path segment to `auth.uid()`. Health Advisor clear. Security Advisor warning: leaked-password protection disabled. Performance unused-index notices remain; no index was dropped.
+- Read-only video recovery check: migration `20261110170000_restore_purge_audit_proven_video_catalog.sql` is live. Exactly 58 rows are tagged to the exact purge audit event and are published via YouTube fallback (50 general, 8 Kids). Forty-seven generated rows remain purged (33 general, 14 Kids); the remaining Kids set has 5 QA-passed rows without enough prior-publication provenance and 9 `revalidation_required` rows. No additional recovery or mutation was performed.
+
+### Video and social delivery
+
+- `social_publish_queue`: 83 published and 9 queued written posts; no source-media-missing flags, no failed/partial statuses in the current grouped snapshot. All 9 queued written posts have future schedules; next due 23:19:07 UTC on Nov 10, latest 15:19:07 UTC on Nov 13. Scheduled publisher run `42878563637` succeeded.
+- `content_publish_queue`: 113 video rows and 11 article rows published. `video_generation_requests`: 115 completed, 2 cancelled; 64 completed rows have no `video_url`. Those requests need provenance/reconciliation before any retry; no duplicate generation or external publish was triggered.
+
+### Android release
+
+- GitHub Release `v1.1.15` is published at 2026-11-10 18:29:21 UTC. Annotated tag object `7bc78b5c406abf850ca6a142ed35a27bb795f7c1` targets source commit `faf16ea2450ab22f44c336161cd841806d97bbe6`; GitHub reports the tag unsigned. APK/AAB and metadata/checksum assets are present; GitHub asset API digest metadata is recorded in the release document.
+- GitHub publisher run `42851264285` failed at the exact-tag preflight because the tag's GitHub Quality Gate was not successful. CircleCI tag contexts subsequently report success, including source-verify, Supabase production gate, Android rebuild and release dispatch, and the release is now published. This audit did not independently download/re-verify APK/AAB signatures; do not claim cryptographic tag signing.
+
+### File review performed this run
+
+Full file contents read and inspected: `src/features/social/services/facebook-public-posts.ts`, `src/features/social/services/facebook-queue-recovery-policy.ts`, `src/features/social/services/published-video-cleanup.ts`, `src/components/layout/web-advertising-runtime.tsx`, `scripts/verify-mobile-ads-free.mjs`, and `supabase/migrations/20261110170000_restore_purge_audit_proven_video_catalog.sql`. The mobile advertising verifier is part of `mobile:check`, which is included in `verify:pr`; main Quality Gate passed. Actual Android/iOS device acceptance remains open. The video purge route and large admin social client were retrieved but not fully reviewed in this checkpoint; they remain open.
+
+No files, branches, database rows, storage objects, Cloudinary assets, indexes, secrets or social posts were deleted or modified by this run.
+
 ## Checkpoint — 2026-11-10T16:01:46.706Z (main merge, live database reconciliation, and active repair PRs)
 
 ### Canonical baseline and deployment

@@ -1,6 +1,48 @@
 # ZIKR Project Release & Build Status
 
-Last reconciled (Android release): 2026-11-10 05:12:05 UTC. Production deployment details below retain their 2026-11-07 inspection snapshot.
+## Current verified checkpoint — 2026-11-10T18:49:41Z
+
+**Current main:** `a637558965b10c52ae1c9a8bf17a0948155e5725`  
+**Production Vercel:** `dpl_8SDdkrR2AutQBe8fXLTkJEK9dAD8`, READY on the exact main SHA; canonical alias `https://zikrmediaofficial.vercel.app`. Live `/api/health` returned HTTP 200 with `ok=true` and commit `a637558965b10c52ae1c9a8bf17a0948155e5725`.
+
+### Latest published Android release
+
+| Item | Verified state |
+|---|---|
+| Android version | 1.1.15 |
+| Android versionCode | 69 |
+| Application ID | `com.zikr.app` |
+| Target SDK | 36 |
+| Release | https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.15 |
+| Git tag target commit | `faf16ea2450ab22f44c336161cd841806d97bbe6` |
+| Annotated tag object | `7bc78b5c406abf850ca6a142ed35a27bb795f7c1` |
+| Git tag signature | Annotated tag, **unsigned** (GitHub verification reason: `unsigned`) |
+| GitHub Release ID | `440588928` |
+| Published at | 2026-11-10 18:29:21 UTC |
+| Release state | Published; APK/AAB and metadata/checksum assets present |
+
+### Published asset metadata
+
+| Asset | Size | GitHub-reported SHA-256 |
+|---|---:|---|
+| app-release.apk | 41,498,367 bytes | `90140be1f44e81d9d93011e8c78c882c6e045ba35e61495077039b7e1e6faee9` |
+| app-release.aab | 36,312,681 bytes | `ec611f1e3b643c0c80349ae6b3a41602950e92cf32f28a9e3d0ccbb7dbb15f1f` |
+| release-metadata.json | 635 bytes | `6eb724755eec9c7cdda750c0e4bf3ce6e2c3887d086b11aac15edb482fcbe59b` |
+| SHA256SUMS | 243 bytes | `bc6f093f5cfd57a9678da7295f5dd57f9db0b4302c6ef7847aa75a063264258c` |
+
+Downloads: [APK](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.15/app-release.apk) · [AAB](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.15/app-release.aab) · [SHA256SUMS](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.15/SHA256SUMS) · [Metadata](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.15/release-metadata.json)
+
+The tag commit's CircleCI contexts (config-guard, source-verify, Supabase production gate, Android rebuild and release dispatch) report SUCCESS. The initial GitHub publisher run `42851264285` failed at preflight because the tag's GitHub Quality Gate was not successful; the later CircleCI release dispatch passed and the GitHub Release is now published. This checkpoint records GitHub's asset digest metadata, not a fresh local digest calculation or independent APK/AAB signature verification. The Git tag itself is unsigned. Do not describe the tag as cryptographically signed.
+
+### Current main CI
+
+GitHub Quality Gate run `42874180774` and CircleCI config-guard, source-verify, application-build-docs and android-release-draft all passed on `a637558965b10c52ae1c9a8bf17a0948155e5725`.
+
+---
+
+**Historical release/deployment snapshots below are retained for audit history and are superseded by this current checkpoint.**
+
+Last reconciled: 2026-11-10 18:49:41 UTC.
 Repository: https://github.com/zikrofficial-X/Zikr  
 Production URL: https://zikrmediaofficial.vercel.app
 
