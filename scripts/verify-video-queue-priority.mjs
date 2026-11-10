@@ -51,7 +51,7 @@ const claimGuard = queue.indexOf("if (!claimed?.[0]) continue;");
 const claimedCounter = queue.indexOf("processed += 1;", claimGuard);
 assert(claimGuard >= 0 && claimedCounter > claimGuard, "processed count increments only after a successful atomic claim");
 assert(
-  queue.includes("return { processed, succeeded, failed };"),
+  queue.includes("return { processed, succeeded, failed, skipped };"),
   "processed count reflects actual claimed rows rather than fetched candidates",
 );
 
