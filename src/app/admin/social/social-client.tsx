@@ -524,9 +524,11 @@ export default function AdminSocialPage() {
       if (action !== "retry") {
         const confirmation = action === "publish_now"
           ? "سيتم إرسال العناصر المؤهلة للنشر فورًا. الفيديو غير المعتمد سيظل محجوبًا ولن يتم تجاوز فحص الجودة."
-          : action === "delete_failed"
-            ? `سيتم حذف ${retryable.length} عملية فاشلة أو نشر جزئي من سجل الطابور.`
-            : "سيتم حذف العمليات الفاشلة أو الجزئية المحددة من سجل الطابور.";
+          : action === "retry_all_failed"
+            ? "سيتم إعادة محاولة العناصر الفاشلة أو الجزئية المؤهلة فقط. العناصر التي تتطلب مراجعة يدوية لنتيجة النشر سيتم تجاوزها."
+            : action === "delete_failed"
+              ? `سيتم حذف ${retryable.length} عملية فاشلة أو نشر جزئي من سجل الطابور.`
+              : "سيتم حذف العمليات الفاشلة أو الجزئية المحددة من سجل الطابور.";
         if (!window.confirm(confirmation)) return;
       }
       const ids = action === "retry_all_failed" || action === "delete_failed" ? [] : selected;
@@ -555,7 +557,12 @@ export default function AdminSocialPage() {
         };
         if (!response.ok) throw new Error(payload.error || "تعذر تنفيذ الإجراء.");
         if (action === "publish_now") {
-          setMessage(`تم تجهيز ${payload.affected ?? 0} عنصرًا للتشغيل الفوري عبر GitHub Actions.`);
+          setMessage(
+            `تم تجهيز ${payload.affected ?? 0} عنصرًا للتشغيل الفوري عبر GitHub Actions.` +
+              ((payload.manualReconciliationSkipped ?? 0) > 0
+                ? ` تم تجاوز ${payload.manualReconciliationSkipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.`
+                : ""),
+          );
           if (payload.blocked?.length) {
             setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
           }

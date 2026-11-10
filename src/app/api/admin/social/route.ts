@@ -125,7 +125,7 @@ function authBlockedPlatforms(
 function retryPlatforms(item: QueueItem, allowAmbiguous = false): string[] {
   const succeeded = successfulPlatforms(item.metadata);
   const blocked = authBlockedPlatforms(item.metadata);
-  const manual = new Set(getManualReconciliationPlatforms(item.metadata));
+  const manual = new Set<string>(getManualReconciliationPlatforms(item.metadata));
   return item.target_platforms.filter(
     platform => !succeeded.has(platform) && !blocked.has(platform) && (allowAmbiguous || !manual.has(platform))
   );
