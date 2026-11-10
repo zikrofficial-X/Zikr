@@ -2171,6 +2171,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
   let processed = 0;
   let succeeded = 0;
   let failed = 0;
+  let skipped = 0;
   for (const request of rows || []) {
     const claimed = await supabaseServerAdminRequest<GeneratedRequest[]>(
       `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=in.(pending,retry_wait)`,
@@ -2389,7 +2390,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
             }),
           },
         );
-        failed += 1;
+        skipped += 1;
         console.warn(`[template-video] Skipped duplicate rendered content for ${request.id}; existing request ${duplicate.id}.`);
         continue;
       }
@@ -2452,5 +2453,5 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       console.error(`[template-video] Failed ${request.id}: ${message}`);
     }
   }
-  return { processed, succeeded, failed };
+  return { processed, succeeded, failed, skipped };
 }
