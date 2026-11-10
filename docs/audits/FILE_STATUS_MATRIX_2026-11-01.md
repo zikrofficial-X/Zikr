@@ -1861,3 +1861,33 @@ The code head `937e408c6607fe08503dbc4be0a5252f2442943a` passed local `pnpm writ
 The main-baseline manifest had exactly one stale file record: the ledger entry referenced `057c5b9ffb16691abfc6e245e583c908a0dbe73d` / 93,248 bytes instead of the exact `main@c4560d9` blob `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` / 99,259 bytes. The manifest record is corrected in this PR branch; its self-entry remains excluded and the `docs` ancestor hashes remain null.
 
 No Vercel Preview deployment was returned for this audit branch at the time of this checkpoint. CODEOWNERS assigns review to `@Zikrmediaofficial`, but GitHub returned no collaborator permission (`null`) and did not register the review request. The owner must add an eligible collaborator or correct CODEOWNERS before merge.
+## Supplemental file-by-file review — 2026-11-10
+
+### PR #320 — Kids/social/content visibility batch
+| File | Review status | Evidence |
+|---|---|---|
+| `.circleci/config.yml` | Read and CI-validated | Config guard, source verification, and application-build-docs passed on source head `ab7d003` |
+| `scripts/verify-ci-architecture.mjs` | Read, repaired, tested | Workflow parsing now scopes job checks beneath `workflows`; Quality Gate #2033 passed |
+| `scripts/jobs/written-content-automation.ts` | Read, repaired, tested | Kids source query fails closed; one daily Kids slot; invalid/unsafe backfill rows are skipped individually |
+| `scripts/tests/written-content-automation.test.ts` | Expanded and passed | Daily priority, source-load failure, Kids candidate, and backfill regressions |
+| `src/features/social/services/written-content.ts` | Read, repaired, tested | Strict Kids path/UUID validation, child-safety backfill screening, and Kids-candidate classification |
+| `src/features/social/services/social-publishing.ts` | Read, repaired, tested | Malformed Kids metadata cannot bypass the live-source approval gate |
+| `src/features/kids/services/kids-content.ts` | Read, repaired, tested | Public active/published filtering; database-owned hidden slugs suppress static fallback |
+| `src/features/kids/services/kids-content-visibility.ts` | New pure helper, tested | Prevents fallback resurrection for unpublished/inactive database slugs |
+| `scripts/tests/kids-content-visibility.test.ts` | New regression suite, passed | Hidden, inactive, duplicate, and static-only fallback cases |
+| `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql` | New migration, syntax/application validated in CI | Public SELECT policy requires `published IS TRUE AND is_active IS TRUE`; not applied to production |
+| `package.json` | Updated test registration | Kids visibility suite included in `pnpm test` |
+| `PROJECT_STATUS.md` | Updated with this checkpoint | Exact code SHA and remaining manual gates recorded |
+| `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | Updated with this checkpoint | Exact test and deployment evidence recorded |
+| `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | Updated with this checkpoint | File-level evidence recorded; remaining inventory not marked closed |
+| `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` | Verified baseline inventory | Exact match to `main@c4560d9`; retained as baseline rather than rewritten to include unmerged branch files |
+
+### PR #323 — admin authorization hardening
+| File | Review status | Evidence |
+|---|---|---|
+| `src/features/admin/services/permissions.ts` | Read, repaired, tested | Pure role resolver matches database role contract and fails closed |
+| `src/features/admin/services/admin.ts` | Read, repaired, tested | Assignment query errors and invalid assignments no longer fall back to full admin |
+| `scripts/tests/admin-role-resolution.test.ts` | New behavioral regression suite, passed | Failure, invalid role, prototype key, and profile-role mismatch cases |
+| `package.json` | Updated test registration on PR #323 | New resolver suite runs in `pnpm test` |
+
+**Not closed:** remaining repository files and consumer paths outside these reviewed batches; owner-only review; Supabase Preview; physical Android/iOS acceptance; OAuth return-to-app testing; and production release validation.

@@ -461,3 +461,44 @@ No files or production data were deleted in this checkpoint. No Cloudinary asset
 
 - CODEOWNERS assigns review to `@Zikrmediaofficial`, but GitHub reports no repository collaborator permission for that account (`permission: null`). The review-request action did not persist; PR #320 still has no requested reviewers and no review submissions.
 - The authenticated GitHub account is the PR author and cannot approve its own PR. Do not merge until an eligible CODEOWNER/collaborator is added or CODEOWNERS is corrected and a real approval is recorded.
+
+## Latest automated audit checkpoint — 2026-11-10 23:17 Africa/Cairo
+
+### Kids daily-priority and content-visibility repair — PR #320
+- PR: https://github.com/zikrofficial-X/Zikr/pull/320
+- Verified source-code head before this documentation-only reconciliation: `ab7d0033d5597f4d2e4e31ddca00399c97e17dcb`; base: `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- The branch remains open and mergeable; it is not merged or deployed.
+- Fixed the CircleCI workflow verifier so it reads job declarations under `workflows`, not the CircleCI job definitions.
+- Enforced one Kids written-post slot per day; a second automatic selection excludes `kids_story`, and Kids source loading now fails closed on database read errors.
+- Hardened historical Kids backfill: strict `/kids/<slug>` path and UUID validation, child-safety personal-data screening, and per-row quarantine so one bad historical article does not abort the batch.
+- Hardened the publisher so Kids identity markers trigger approval checks even when the audience marker is malformed; inconsistent metadata is blocked before provider delivery.
+- Fixed static Kids fallback resurrection: database-backed slugs are checked independently of publication state, so unpublished/inactive rows cannot reappear from static fallback. Public reads now require both `published=true` and `is_active=true`.
+- Added migration `20261110212000_kids_content_public_read_respects_active_state.sql` and regression coverage.
+
+**Verified on source head `ab7d0033d5597f4d2e4e31ddca00399c97e17dcb`:**
+- GitHub Quality Gate run #2033 completed successfully (`verify:pr`).
+- CircleCI `config-guard`, `source-verify`, and `application-build-docs` all completed successfully.
+- The source gate applied all 419 migration files to its ephemeral PostgreSQL test database and passed the written-content, Kids visibility, Kids approval, social publishing, architecture, type, lint, security, and integrity checks.
+- The repository manifest was checked against the `main@c4560d9` Git tree: 2,154 tree entries (1,662 files and 492 directories), 2,153 manifest records, 1,661 blob records excluding the manifest itself, and zero path/SHA/size mismatches. The manifest remains a main-baseline inventory, not a claim that the PR branch is fully audited.
+
+**Production state — read-only inspection only:**
+- Supabase production has 418 applied migrations; the new Kids policy migration is not applied. The project exposes only its `main` branch, with no PR-specific preview branch.
+- Current production Kids data has no published inactive rows. The policy mismatch was still real: the existing public policy checked `published` but not `is_active`.
+- Vercel production remains READY on `main@c4560d9`; no preview deployment for this audit branch was found. No production deployment was started.
+- Facebook credentials are enabled with the required Page scopes; the YouTube OAuth record has a refresh token and the required upload scopes. Video automation settings are enabled, and read-only counts showed 13 completed video requests and 11 published social queue rows today. No generation or publishing was triggered by this audit.
+- Four deployed Supabase Edge Functions were compared with their repository sources and matched exactly. Their scheduler endpoints use service-role-only secret RPCs; no anonymous execute privilege was found for those secret functions.
+- Vercel reported no runtime errors in the preceding hour and no warning/error log entries in the available 30-minute log window.
+- Supabase Security Advisor still reports leaked-password protection disabled and 86 unused indexes. Neither setting nor indexes were changed; the latter require a measured retention/usage review before any removal.
+
+### Separate admin authorization repair — PR #323
+- PR: https://github.com/zikrofficial-X/Zikr/pull/323
+- Branch: `audit/zikr-admin-role-fail-closed-20261110`; verified head: `da5817884c7474bde72bc49cc892db41058296a1`.
+- Fixed a privilege-escalation fallback in `getCurrentProfile`: an error or invalid value from `admin_role_assignments` can no longer cause a delegated admin to be treated as full `admin`. Role resolution now matches the database `private.current_admin_role()` contract and fails closed.
+- GitHub Quality Gate run #2035 passed, including the new behavioral regression tests. CircleCI `config-guard` passed; no CircleCI source/build contexts were returned for this branch at this checkpoint.
+- PR #323 remains open, mergeable, and unmerged.
+
+### Remaining closeout gates
+- Both PRs still require CODEOWNERS owner review. The configured owner `@Zikrmediaofficial` could not be assigned from the connected GitHub identity because the collaborator permission check returned no access; no review or approval was bypassed.
+- No Supabase Preview branch exists, no migration was applied to production, and no Vercel preview or production deployment was created for these branches.
+- Android/iOS acceptance on physical devices, Google OAuth return-to-app testing, and owner-side production approval remain manual.
+- The repository-wide file/code-path audit is still open. This run covered the active Kids/social paths, 19 GitHub workflows, CircleCI/Vercel configuration, Capacitor Android/iOS and native Google OAuth paths, the relevant Supabase RLS/functions, and the admin role resolver; it does not close the remaining inventory.
