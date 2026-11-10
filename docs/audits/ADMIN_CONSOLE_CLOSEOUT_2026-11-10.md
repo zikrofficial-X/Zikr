@@ -8,20 +8,20 @@
 
 ## 1. Current source inventory
 
-The current branch tree contains:
+The current branch tree contains (after syncing the latest `main` changes):
 
 | Surface | Inventory |
 |---|---:|
 | Admin page entrypoints | 66 |
 | Canonical navigation groups | 10 |
-| Canonical visible navigation links | 46 |
-| Compatibility redirects registered in `ADMIN_ROUTE_ALIASES` | 19 |
+| Canonical visible navigation links | 47 |
+| Compatibility redirects registered in `ADMIN_ROUTE_ALIASES` | 18 |
 | Additional security step-up page | 1 |
 | Admin API route files | 27 |
 | HTTP handlers covered by the canonical permission matrix | 43 |
 | Server-action source modules under the audited roots | 11 |
 
-The page count reconciles as 46 canonical navigation pages + 19 compatibility redirects + 1 security step-up page. The 19 redirect pages remain for compatibility; they are not duplicate navigation entries.
+The page count reconciles as 47 canonical navigation pages + 18 compatibility redirects + 1 security step-up page. The 19 redirect pages remain for compatibility; they are not duplicate navigation entries.
 
 ## 2. Canonical navigation domains
 
@@ -47,6 +47,8 @@ The page count reconciles as 46 canonical navigation pages + 19 compatibility re
 - Updated the governance document so the `social_manager` description matches its active `social.manage` and `social.publish` permissions.
 - Localized the audio hub title, navigation labels and descriptions in Arabic.
 - Replaced an unregistered memory navigation icon with a registered icon.
+- Corrected `/admin/kids/content`, which previously showed only a placeholder; both `/admin/kids` and `/admin/kids/content` now render the shared full content manager and use the correct `@/app/admin/kids/actions` Server Action import.
+- Moved the Next.js 16 request proxy from repository root `proxy.ts` to `src/proxy.ts`, matching the `src/app` application root. Updated `tsconfig`, auth/OAuth contracts, project-integrity checks, local-import checks, and documentation. The root-level duplicate is now explicitly rejected.
 - Added governance checks for duplicate routes, domain separation, required groups, registered icon keys, documentation alignment and module ownership.
 - Strengthened the module-registry check to require exact navigation-route parity, permission coverage by the declared module, owner-role coverage for every module permission, and a real redirect page for every registered compatibility alias.
 - Added `pnpm admin:modules:check` to both `verify` and `verify:pr`.
@@ -68,7 +70,11 @@ This is an Admin UI/navigation/governance change. It does not:
 - Change Vercel production configuration or trigger a production deployment.
 - Publish a test post or call external social providers.
 
-## 6. Validation state
+## 6. Page-by-page review status
+
+All 66 `src/app/admin/**/page.tsx` entrypoints were fetched and read in full. Each was classified as an operational page, compatibility redirect, or the security step-up flow, and its server guard, data access, form/action wiring, linked routes and error/empty states were checked. The audit also followed page imports into shared components and server actions. Confirmed corrections include the Kids content placeholder and stale relative action import, the active written-post studio restoration, role/module ownership, proxy placement, and canonical media/social routes. No page files were deleted.
+
+## 7. Validation state
 
 - GitHub tree inspection confirms 66 Admin page entrypoints, 27 API route files and 46 unique visible navigation links.
 - Source-level inventory confirms the 43 API HTTP methods all have entries in the canonical permission matrix.
@@ -76,10 +82,10 @@ This is an Admin UI/navigation/governance change. It does not:
 - `ZIKR Quality Gate` is running for the current PR head. Its final result must be checked before the PR is considered ready.
 - Browser/mobile role-by-role acceptance, authenticated production smoke tests and live Supabase/Vercel verification remain separate release gates. They must not be inferred from source inspection or a green static check.
 
-## 7. Closeout criteria
+## 8. Closeout criteria
 
 Do not merge or deploy until:
-1. The Quality Gate for the latest PR head completes successfully.
+1. The Quality Gate for the latest PR head completes successfully after the final sync and changes.
 2. The governance, module-registry, page and API checks pass in that run.
 3. A Preview/browser pass confirms desktop and mobile navigation, search/command palette, all ten sections, and the canonical media/social destinations.
 4. Each role is checked against both visible navigation and direct page/API access.
