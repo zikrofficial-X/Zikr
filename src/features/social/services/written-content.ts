@@ -21,7 +21,7 @@ export function parseWrittenGenerationRequest(value: unknown):
  if (typeof rawBatchSize !== "number" && typeof rawBatchSize !== "string") {
   return { ok: false, reason: "invalid_batch_size" };
  }
- if (typeof rawBatchSize === "string" && !/^\\d+$/.test(rawBatchSize.trim())) {
+ if (typeof rawBatchSize === "string" && !/^\d+$/.test(rawBatchSize.trim())) {
   return { ok: false, reason: "invalid_batch_size" };
  }
  const batchSize = Number(rawBatchSize);
