@@ -45,6 +45,7 @@ const adminManager = readFileSync("src/features/admin/components/kids-content-ma
 const kidsDetailPage = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
 const kidsDetailLayout = readFileSync("src/app/kids/[slug]/layout.tsx", "utf8");
 const kidsDetailApi = readFileSync("src/app/api/kids/content/[slug]/route.ts", "utf8");
+const kidsContentData = readFileSync("src/features/kids/data/content.ts", "utf8");
 
 assert.match(adminAction, /age_appropriate: ageAppropriate/);
 assert.match(adminManager, /name="age_appropriate"/);
@@ -53,6 +54,7 @@ assert.match(adminManager, /اعتماد التوليد الآلي/);
 assert.doesNotMatch(kidsDetailPage, /getKidsItemBySlug/, "the client must not resurrect a static fallback after the visibility-aware API returns 404");
 assert.match(kidsDetailPage, /setContent\(null\)/, "a hidden or unavailable database slug must remain unavailable in the detail page");
 assert.match(kidsDetailLayout, /getKidsContentBySlug\(slug, "ar"\)/, "SEO metadata must use the same visibility-aware resolver");
+assert.match(kidsContentData, /content_ar:\s*row\.content_ar\s*\?\?\s*row\.summary_ar/, "Kids metadata must map the live summary_ar field into the shared content model");
 assert.doesNotMatch(kidsDetailLayout, /supabaseServerAnonRequest/, "SEO metadata must not bypass database visibility checks");
 assert.match(kidsDetailApi, /private, no-store/, "Kids detail responses must not serve stale content after deactivation or age-review changes");
 
