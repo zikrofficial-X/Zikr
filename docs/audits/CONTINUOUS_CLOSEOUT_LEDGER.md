@@ -610,3 +610,11 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 ### Safety
 - No production migration, data mutation, Storage/Cloudinary deletion, social publication/replay, Android tag movement, signed artifact publication, secret change, OAuth mutation, or rollback was performed in this checkpoint.
 - Keep the 47 hidden purged videos hidden until independent provenance and QA gates are satisfied.
+
+
+## Deployment confirmation — 2026-11-10 19:22 UTC
+
+- Production deployment `dpl_74gc2BQnQXTjZam5L6sSstsheLHo` reached READY on the exact `main@6e8010ef95616c01950ff5ef7d6f44b178da5132` commit.
+- The canonical `zikrmediaofficial.vercel.app` alias returned HTTP 200 for `/`, `/videos`, `/kids`, `/api/health`, and `/api/kids/videos`.
+- `/api/health` confirmed `ok=true`, `environment=production`, and the exact main SHA above. `/api/kids/videos` returned 10 records.
+- Vercel deployment context is SUCCESS on the same main SHA. This closes the post-#314 Production deployment smoke-test gate only; it does not close the full code/content/device audit.
