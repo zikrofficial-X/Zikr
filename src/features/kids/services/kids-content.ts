@@ -43,15 +43,16 @@ async function getDatabaseKidsContent(): Promise<KidsDatabaseState> {
   if (!isSupabaseConfigured()) return { configured: false, items: [], knownSlugs: null };
 
   const [publicResult, visibilityResult] = await Promise.allSettled([
-    supabaseServerAnonRequest<KidsDbRow[]>(
+    Promise.resolve().then(() => supabaseServerAnonRequest<KidsDbRow[]>(
       "/rest/v1/kids_content?select=*&published=eq.true&is_active=eq.true&order=created_at.desc&limit=1000",
       { timeoutMs: 10_000, retries: 1 },
-    ),
-    // Read only the fallback slugs with the service role so an unpublished or
-    // inactive database row cannot be resurrected by the static fallback.
-    supabaseServerAdminRequest<KidsVisibilityDbRow[]>(
+    )),
+    // Defer the service-role call so missing Preview credentials are captured
+    // as a rejected result instead of throwing before Promise.allSettled.
+    Promise.resolve().then(() => supabaseServerAdminRequest<KidsVisibilityDbRow[]>(
       `/rest/v1/kids_content?select=slug&${FALLBACK_SLUG_FILTER}`,
-    ),
+      { timeoutMs: 10_000, retries: 1 },
+    )),
   ]);
 
   if (publicResult.status === "rejected") {
@@ -88,13 +89,14 @@ async function getDatabaseKidsContentBySlug(slug: string): Promise<{
   const encodedSlug = encodeURIComponent(slug);
 
   const [publicResult, visibilityResult] = await Promise.allSettled([
-    supabaseServerAnonRequest<KidsDbRow[]>(
+    Promise.resolve().then(() => supabaseServerAnonRequest<KidsDbRow[]>(
       `/rest/v1/kids_content?select=*&slug=eq.${encodedSlug}&published=eq.true&is_active=eq.true&limit=1`,
       { timeoutMs: 10_000, retries: 1 },
-    ),
-    supabaseServerAdminRequest<KidsVisibilityDbRow[]>(
+    )),
+    Promise.resolve().then(() => supabaseServerAdminRequest<KidsVisibilityDbRow[]>(
       `/rest/v1/kids_content?select=slug&slug=eq.${encodedSlug}&limit=1`,
-    ),
+      { timeoutMs: 10_000, retries: 1 },
+    )),
   ]);
 
   if (publicResult.status === "rejected") {
