@@ -74,11 +74,12 @@ assert.ok(
 );
 assert.doesNotMatch(adminAction, /on_conflict=slug|resolution=merge-duplicates/, "the add-only Kids form must never silently overwrite an existing published slug");
 assert.ok(
-  adminAction.indexOf("const quizData = parseKidsQuizData(value(formData, \"quiz_data\"));") < imageUploadPosition,
+  adminAction.indexOf("const quizData = type === \"quiz\" ? parseKidsQuizData(value(formData, \"quiz_data\")) : null;") < imageUploadPosition,
   "invalid quiz JSON must be rejected before uploading an image",
 );
 const quizRequiredPosition = adminAction.indexOf("if (type === \"quiz\" && !quizData)");
 assert.ok(quizRequiredPosition > 0 && quizRequiredPosition < imageUploadPosition, "a quiz record must require a valid non-empty question set before media upload");
+assert.match(adminAction, /const quizData = type === "quiz" \? parseKidsQuizData[\s\S]*?: null;/, "non-quiz Kids records must not persist quiz metadata");
 assert.ok(
   adminAction.indexOf("if (type === \"game\" && !isRegisteredGameId(gameId))") < imageUploadPosition,
   "an invalid game registry ID must be rejected before uploading an image",
