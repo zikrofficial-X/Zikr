@@ -65,7 +65,8 @@ export function validateWrittenPostDraft(d:WrittenPostDraft):{ok:boolean;reason?
  if(hook.length<12||hook.length>260)return {ok:false,reason:"hook_length"};
  if(reflection.length<70||reflection.length>900)return {ok:false,reason:"reflection_length"};
  if(!/[\u0600-\u06FF]/u.test(title+hook+reflection))return {ok:false,reason:"arabic_required"};
- if(/(قال رسول الله|قال النبي|قال تعالى|رواه|حديث قدسي|فتوى قاطعة)/u.test(reflection))return {ok:false,reason:"unattributed_religious_quote"};
+ const generatedText=[title,hook,reflection,typeof d.question==="string"?d.question.trim():""].join("\n");
+ if(/(قال رسول الله|قال النبي|قال تعالى|رواه|حديث قدسي|فتوى قاطعة)/u.test(generatedText))return {ok:false,reason:"unattributed_religious_quote"};
  return {ok:true};
 }
 export function buildWrittenPost(source:WrittenContentSource,draft:WrittenPostDraft){
