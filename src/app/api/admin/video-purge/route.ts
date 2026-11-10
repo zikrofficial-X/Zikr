@@ -373,7 +373,7 @@ export async function POST(request: NextRequest) {
 
     const pendingSocialGenerationRefs = includeMemory
       ? await supabaseServerAdminRequest<Array<{ id: string }>>(
-          "/rest/v1/social_publish_queue?status=neq.published&video_url=not.is.null&select=id&limit=1000",
+          "/rest/v1/social_publish_queue?status=neq.published&or=(content_type.like.*video*,video_url.not.is.null)&select=id&limit=1000",
         )
       : [];
     if (includeMemory && (pendingSocialGenerationRefs ?? []).length >= 1000) {
