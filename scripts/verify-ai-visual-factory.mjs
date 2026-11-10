@@ -30,6 +30,10 @@ for (const token of ["prophets or sacred figures", "invented Arabic scripture", 
 const hf = read("src/features/videos/providers/hf-space-provider.ts");
 if (!hf.includes("Verified source text:")) failures.push("HF provider prompt must receive verified source text");
 if (!hf.includes("aiVisualPolicyPromptLine()")) failures.push("HF provider must consume the shared visual policy");
+if (!hf.includes("freeZeroGpuQuotaExhausted") ||
+    !hf.includes("Free ZeroGPU quota exhausted; skipping remaining Hugging Face providers")) {
+  failures.push("HF providers must stop retrying all Spaces after the account's free ZeroGPU quota is exhausted");
+}
 const hfAdapter = read("scripts/jobs/hf-space-video.py");
 for (const token of ["negative_prompt", "duration_seconds", "guidance_scale_2", "randomize_seed", 'api_name="/generate_video"', 'api_name="/text_to_video"']) {
   if (!hfAdapter.includes(token)) failures.push("HF Gradio adapter is missing the current provider input contract: " + token);
