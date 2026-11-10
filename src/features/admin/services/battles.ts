@@ -12,17 +12,26 @@ export type AdminBattle = {
   metadata: Record<string, string> | null;
 };
 
-export async function getAdminBattles(): Promise<AdminBattle[]> {
+export type AdminBattlesReadResult = {
+  rows: AdminBattle[];
+  ok: boolean;
+};
+
+export async function getAdminBattles(): Promise<AdminBattlesReadResult> {
   try {
     const supabase = await createClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("battles")
       .select("id,name_ar,name_en,slug,year_hijri,published,metadata")
       .order("year_hijri", { ascending: true });
-    return data ?? [];
+    if (error) {
+      console.error("[admin/battles] failed to load battles:", error);
+      return { rows: [], ok: false };
+    }
+    return { rows: data ?? [], ok: true };
   } catch (error) {
     console.error("[admin/battles] failed to load battles:", error);
-    return [];
+    return { rows: [], ok: false };
   }
 }
 
