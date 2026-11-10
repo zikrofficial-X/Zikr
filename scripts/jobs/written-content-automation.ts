@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
-import { buildWrittenPost, buildWrittenSocialQueuePayload, createWrittenAutomationKey, createWrittenSocialAutomationKey, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
+import { buildWrittenPost, buildWrittenSocialQueuePayload, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
 
 type Row = Record<string, unknown>;
 const str=(v:unknown)=>typeof v==="string"?v.trim():"";
@@ -105,7 +105,7 @@ async function makeDraft(source:WrittenContentSource,key:string):Promise<Written
  if(!text)throw new Error("Gemini returned empty text.");
  const draft=JSON.parse(text.replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,"")) as WrittenPostDraft;
  const valid=validateWrittenPostDraft(draft);if(!valid.ok)throw new Error("Quality gate: "+valid.reason);
- if(source.kind==="kids_story"&&/(رقم هاتفك|عنوان بيتك|اسم مدرستك|أرسل صورتك|أرسل صورة|قابلني|راسلني|كلمة المرور|كلمة السر|موقعك الحالي)/u.test([draft.title,draft.hook,draft.reflection,draft.question||""].join(" ")))throw new Error("Kids safety gate: personal-data solicitation or unsafe contact language.");
+ if(source.kind==="kids_story"&&containsKidsPersonalDataSolicitation([draft.title,draft.hook,draft.reflection,draft.question||""].join(" ")))throw new Error("Kids safety gate: personal-data solicitation or unsafe contact language.");
  return draft;
 }
 function writtenArticleSlug(automationKey: string) {
