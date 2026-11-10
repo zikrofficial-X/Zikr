@@ -96,6 +96,12 @@ const publicVideoService = read("src/features/videos/services/videos.ts");
 if (!publicVideoService.includes("Boolean(video.youtubeId)")) failures.push("YouTube-recovered generated videos must remain visible in the public video library");
 const runtimeSettings = read("src/app/admin/automation/page.tsx");
 if (!runtimeSettings.includes('? "4"')) failures.push("Admin AI-attempt fallback must match the four-attempt production setting");
+if (!runtimeSettings.includes('? "25"')) failures.push("Admin video-duration fallback must match the production 25-second default");
+const backgroundRunner = read("scripts/run-background-jobs.ts");
+if (!backgroundRunner.includes("AUTO_VIDEO_SECONDS ?? 25") ||
+    !backgroundRunner.includes("|| 25")) {
+  failures.push("Worker video-duration fallback must match the 25-second production default");
+}
 
 const migration = read("supabase/migrations/20261110021309_kids_video_library_and_thumbnail_recovery.sql");
 for (const token of ["kids-stories", "metadata->>'audience' = 'kids'", "hqdefault.jpg", "so_0/", "/branding/og-image.jpg"]) {
