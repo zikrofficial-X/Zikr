@@ -682,7 +682,7 @@ workflows:
                 - /^fix\/quality-gate-full-main-scope-20261107$/
                 - /^codex\/zikr-comprehensive-repair-safety-20261110$/
                 - /^automation\/offline-content-snapshot$/
-                - /^fix\/content-integrity-scan-20261110$/
+                - /^fix\/content-integrity-scan-scope-20261110$/
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
       - application-build-docs:
@@ -697,7 +697,7 @@ workflows:
                 - /^fix\/quality-gate-full-main-scope-20261107$/
                 - /^codex\/zikr-comprehensive-repair-safety-20261110$/
                 - /^automation\/offline-content-snapshot$/
-                - /^fix\/content-integrity-scan-20261110$/
+                - /^fix\/content-integrity-scan-scope-20261110$/
             tags:
               ignore: /.*/
       - android-release-draft:
