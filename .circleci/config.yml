@@ -290,7 +290,6 @@ jobs:
           command: |
             set -euo pipefail
             test "${CIRCLE_BRANCH:-}" = "main"
-            test -n "${GH_TOKEN:-}" || { echo "Missing GH_TOKEN in CircleCI android-signing context." >&2; exit 1; }
             node --input-type=module -e '
               import { readFileSync } from "node:fs";
               const repository = "zikrofficial-X/Zikr";
@@ -305,7 +304,7 @@ jobs:
               const api = async (path, method = "GET", body) => {
                 const response = await fetch("https://api.github.com/repos/" + repository + path, {
                   method,
-                  headers: { Accept: "application/vnd.github+json", Authorization: "Bearer " + token, "X-GitHub-Api-Version": "2022-11-28", ...(body ? { "Content-Type": "application/json" } : {}) },
+                  headers: { Accept: "application/vnd.github+json", ...(method !== "GET" && token ? { Authorization: "Bearer " + token } : {}), "X-GitHub-Api-Version": "2022-11-28", ...(body ? { "Content-Type": "application/json" } : {}) },
                   ...(body ? { body: JSON.stringify(body) } : {}),
                 });
                 const raw = await response.text();
@@ -335,6 +334,7 @@ jobs:
               process.exit(0);
             }
 
+            if (!token) throw new Error("GH_TOKEN is required only when a new Android tag or draft release must be created.");
             let tagRef = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
             if (tagRef.status === 404) {
               const tagObject = await api("/git/tags", "POST", { tag: releaseTag, message: "ZIKR Android " + releaseTag, object: sourceSha, type: "commit" });
