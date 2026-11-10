@@ -254,7 +254,7 @@ function isGeneratedCloudinaryVideoUrl(value: unknown, cloudName: string): boole
 
     const publicParts = parts.slice(3);
     const version = publicParts[0] ?? "";
-    if (/^v\\d+$/.test(version)) publicParts.shift();
+    if (/^v\d+$/.test(version)) publicParts.shift();
     const fileName = publicParts.pop() ?? "";
     const extensionIndex = fileName.lastIndexOf(".");
     const extension = extensionIndex > 0 ? fileName.slice(extensionIndex + 1).toLowerCase() : "";
