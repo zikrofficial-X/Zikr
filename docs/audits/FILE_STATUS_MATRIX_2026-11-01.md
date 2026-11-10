@@ -1860,4 +1860,4 @@ The code head `937e408c6607fe08503dbc4be0a5252f2442943a` passed local `pnpm writ
 
 The main-baseline manifest had exactly one stale file record: the ledger entry referenced `057c5b9ffb16691abfc6e245e583c908a0dbe73d` / 93,248 bytes instead of the exact `main@c4560d9` blob `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` / 99,259 bytes. The manifest record is corrected in this PR branch; its self-entry remains excluded and the `docs` ancestor hashes remain null.
 
-No Vercel Preview deployment was returned for this audit branch at the time of this checkpoint. CODEOWNERS assigns review to `@Zikrmediaofficial`; the review request has not yet been submitted.
+No Vercel Preview deployment was returned for this audit branch at the time of this checkpoint. CODEOWNERS assigns review to `@Zikrmediaofficial`, but GitHub returned no collaborator permission (`null`) and did not register the review request. The owner must add an eligible collaborator or correct CODEOWNERS before merge.
