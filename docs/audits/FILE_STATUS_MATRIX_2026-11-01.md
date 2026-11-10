@@ -1849,8 +1849,8 @@ The PR branch is separate from the `main@c4560d9` manifest snapshot. These three
 
 | Path | PR branch blob SHA-1 | Bytes | State |
 |---|---|---:|---|
-| `src/features/social/services/written-content.ts` | `0215398e4e94b2805e8f44b2f2d8a43272c000e9` | 8772 UTF-8 characters | Read; pure selection helper added; exact-head CI pending |
-| `scripts/jobs/written-content-automation.ts` | `60500d598965a16e178457c79174465e62b918bd` | 21047 UTF-8 characters | Read; daily Kids slot guard added; exact-head CI pending |
-| `scripts/tests/written-content-automation.test.ts` | `46217d2d59752d28121143765d2440ae90d76e4c` | 10593 UTF-8 characters | Regression assertions added; exact-head CI pending |
+| `src/features/social/services/written-content.ts` | `0215398e4e94b2805e8f44b2f2d8a43272c000e9` | 9241 | Read; pure selection helper added; exact-head CI pending |
+| `scripts/jobs/written-content-automation.ts` | `60500d598965a16e178457c79174465e62b918bd` | 22195 | Read; daily Kids slot guard added; exact-head CI pending |
+| `scripts/tests/written-content-automation.test.ts` | `46217d2d59752d28121143765d2440ae90d76e4c` | 11067 | Regression assertions added; exact-head CI pending |
 
 PR #320 remains Draft. The last observed pre-follow-up status was `config-guard SUCCESS` and `ZIKR Quality Gate IN_PROGRESS`; after these documentation changes, re-read all required contexts on the latest PR head before any readiness or merge decision. CODEOWNERS review remains mandatory.
