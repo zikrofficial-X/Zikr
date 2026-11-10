@@ -200,7 +200,7 @@ export default async function AdminLibraryPage({
   const mediaCount = mediaResult.count;
   const gamesCount = gamesResult.count;
   const published = rows.filter((x) => x.published).length;
-  const review = rows.filter((x) => x.review_status !== 'draft').length;
+  const review = rows.filter((x) => x.review_status === 'editorial_review' || x.review_status === 'scholarly_review').length;
   const unavailableReads = [
     !itemsAvailable && 'مكتبة المحتوى',
     !sourcesAvailable && 'مصادر النشر',
