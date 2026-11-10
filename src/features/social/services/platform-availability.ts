@@ -99,6 +99,7 @@ export function canAttemptSocialPlatform(input: {
   const authBlockedPlatforms = metadataPlatforms(metadata?.authBlockedPlatforms);
   const permanentFailurePlatforms = metadataPlatforms(metadata?.permanentFailurePlatforms);
   if (authBlockedPlatforms.includes(platform) || permanentFailurePlatforms.includes(platform)) return false;
+  if (!Array.isArray(metadata?.permanentFailurePlatforms) && metadata?.permanentFailure === true) return false;
 
   // Legacy global authBlocked was emitted only by the Facebook adapter. It must
   // not prevent an independent YouTube target from being published.
@@ -119,4 +120,40 @@ export function getUnavailableSocialPlatforms(
   enabledPlatforms: readonly SocialPlatform[],
 ): SocialPlatform[] {
   return targets.filter(platform => !enabledPlatforms.includes(platform));
+}
+
+/**
+ * Return only targets that an administrator may safely requeue. Manual
+ * reconciliation can override an ambiguous provider outcome after an explicit
+ * no-remote-publication confirmation, but it must never erase a confirmed
+ * permanent failure such as an HTTP 422 media rejection.
+ */
+export function getRetryableSocialPlatforms(
+  targets: readonly string[],
+  metadata: SocialPlatformMetadata,
+  allowAmbiguous = false,
+): SocialPlatform[] {
+  const results = normalizeSocialPlatformResults(metadata?.platformResults);
+  const authBlockedPlatforms = metadataPlatforms(metadata?.authBlockedPlatforms);
+  const permanentFailurePlatforms = metadataPlatforms(metadata?.permanentFailurePlatforms);
+  const hasPermanentFailureList = Array.isArray(metadata?.permanentFailurePlatforms);
+  const manualReconciliation = new Set(getManualReconciliationPlatforms(metadata));
+  const hasFacebookResult = Object.keys(results).some((target) => target.startsWith("facebook"));
+  const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
+
+  return targets.filter((target): target is SocialPlatform => {
+    if (!supported.includes(target as SocialPlatform)) return false;
+    const platform = target as SocialPlatform;
+    const previous = asRecord(results[platform]);
+    if (hasSuccessfulDelivery(previous)) return false;
+    if (authBlockedPlatforms.includes(platform) || permanentFailurePlatforms.includes(platform)) return false;
+    if (!hasPermanentFailureList && metadata?.permanentFailure === true) return false;
+    if (isAuthBlocked(platform, previous?.error) || isPermanentSocialFailure(previous?.error)) return false;
+    if (!allowAmbiguous && manualReconciliation.has(platform)) return false;
+    // A legacy global Facebook auth flag blocks Facebook only when there is
+    // no per-platform Facebook result to identify the affected target.
+    if (!hasFacebookResult && authBlockedPlatforms.length === 0 &&
+        metadata?.authBlocked === true && platform.startsWith("facebook")) return false;
+    return true;
+  });
 }
