@@ -1,7 +1,8 @@
-export type WrittenCategory = "auto" | "quran" | "hadith" | "dua" | "adhkar" | "story" | "prophets" | "companions" | "knowledge";
-export type WrittenContentSource = { kind: Exclude<WrittenCategory,"auto">; id:string; title:string; sourceText:string; reference:string; publicPath:string; categoryLabel:string; sourceVerified:boolean; quoteRequired:boolean };
+export type WrittenCategory = "auto" | "quran" | "hadith" | "dua" | "adhkar" | "story" | "prophets" | "companions" | "knowledge" | "kids";
+export type WrittenSourceKind = Exclude<WrittenCategory, "auto" | "kids"> | "kids_story";
+export type WrittenContentSource = { kind: WrittenSourceKind; id:string; title:string; sourceText:string; reference:string; publicPath:string; categoryLabel:string; sourceVerified:boolean; quoteRequired:boolean; ageGroup?: string };
 export type WrittenPostDraft = { eligible?:boolean; title:string; hook:string; reflection:string; question?:string };
-export function normalizeWrittenCategory(value:string):WrittenCategory { const v=value.trim().toLowerCase(); return (["auto","quran","hadith","dua","adhkar","story","prophets","companions","knowledge"] as string[]).includes(v)?v as WrittenCategory:"auto"; }
+export function normalizeWrittenCategory(value:string):WrittenCategory { const v=value.trim().toLowerCase(); return (["auto","quran","hadith","dua","adhkar","story","prophets","companions","knowledge","kids"] as string[]).includes(v)?v as WrittenCategory:"auto"; }
 export function createWrittenAutomationKey(kind:string,id:string){return `written-v1:${kind}:${id}`;}
 export function validateWrittenPostDraft(d:WrittenPostDraft):{ok:boolean;reason?:string}{
  if(d.eligible===false)return {ok:false,reason:"source_insufficient"};
@@ -33,7 +34,7 @@ export function buildWrittenSocialQueuePayload(
  const post = buildWrittenPost(source, draft);
  return {
   content_type: "written_post",
-  content_id: articleId,
+  content_id: source.kind === "kids_story" ? source.id : articleId,
   title: post.title,
   body: post.body,
   image_url: null,
@@ -46,6 +47,11 @@ export function buildWrittenSocialQueuePayload(
   metadata: {
    contentType: "written_post",
    publicPath: post.publicPath,
+   ...(source.kind === "kids_story" ? {
+    audience: "kids",
+    kidsContentId: source.id,
+    ageGroup: source.ageGroup ?? null,
+   } : {}),
    source: {
     type: source.kind,
     id: source.id,
