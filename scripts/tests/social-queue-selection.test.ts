@@ -4,8 +4,11 @@ import { selectEligibleSocialPublishItems } from "../../src/features/social/serv
 const videos = Array.from({ length: 74 }, (_, index) => ({
   id: `video-${index}`,
   content_type: "video",
-  target_platforms: ["youtube"] as const,
-  metadata: null,
+  target_platforms: ["youtube", "facebook_reels"] as const,
+  metadata: {
+    platformResults: { facebook_reels: { ok: false, error: "Facebook Reel upload failed (HTTP 422)" } },
+    platformAttempts: { facebook_reels: 4 },
+  },
 }));
 const writtenPosts = [
   { id: "post-1", content_type: "written_post", target_platforms: ["facebook"] as const, metadata: null },
@@ -48,7 +51,7 @@ const fairBatch = selectEligibleSocialPublishItems(
 assert.equal(
   fairBatch[0]?.id,
   "post-1",
-  "one due written post must receive a reserved batch slot ahead of recurring approved-video retries",
+  "one due written post must receive a reserved batch slot ahead of eligible YouTube/Reels retry candidates",
 );
 assert.equal(
   fairBatch.filter((item) => item.content_type === "written_post").length,
