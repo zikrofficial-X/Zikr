@@ -4,7 +4,7 @@
 **Manifest:** `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` (recursive Git tree snapshot of this exact main baseline; Git object SHA-1; manifest self-entry excluded)
 **Inventory:** 2152 tracked entries — 1661 files and 491 directories; 139706706 file bytes; recursive GitHub tree API response not truncated.
 **Coverage:** automated inventory 1661/1661 main files (100%); minimum documented full source-content reads 132/1661; 1508 files remain `REVIEW_REQUIRED`; modules closed 0. Inventory coverage is not manual review coverage. Dynamic-reference tracing, full consumer analysis, route/browser/device acceptance and runtime verification remain open.
-**Merged repairs:** PR #275, #279, #280 and #281 are merged. PR #279 supplies native ad exclusion; PR #280 refreshed the 25-dataset offline snapshot; PR #281's purge-audit-proven catalog recovery migration is live. PR #278 and #283 closed without merge; their optional Facebook service-role guard and expanded content-integrity scan are present in current main source and still require full file-level trace.
+**Merged repairs:** PR #275, #279, #280, #281 and #306 are merged. PR #306 corrected offline snapshot branch filters and permission fallback. PR #279 supplies native ad exclusion; PR #280 refreshed the 25-dataset offline snapshot; PR #281's purge-audit-proven catalog recovery migration is live. PRs #278 and #283 closed without merge; their optional Facebook service-role guard and expanded content-integrity scan are present in current main source and still require full file-level trace.
 **Production:** Vercel deployment `dpl_4ZyKHwS2rStF3MDURJ3E2rLxDM7h` is READY on `faf16ea2450ab22f44c336161cd841806d97bbe6`; main `ab0bd0e7ad5e5dd2d86250ed0b63ae257dc237b4` is one CI/release-contract-only commit ahead. App source matches the deployed commit. Health and sampled routes returned HTTP 200; manual Android/public-release gate remains untouched.
 **Previous matrix:** 1657 files at `035ea4568572eea36c82b79b1e9cd212113e8e32`. Delta: +4 files, 0 removed, 37 modified existing file blobs.
 
@@ -1748,9 +1748,8 @@ PR #275 was merged at `035ea4568572eea36c82b79b1e9cd212113e8e32`. Its former 18 
 
 | PR | Scope | Current CI | Remaining gate |
 |---|---|---|---|
-| [#306](https://github.com/zikrofficial-X/Zikr/pull/306) | Offline snapshot workflow permission fallback and reliable Quality Gate dispatch | Exact head `07e0a6ffa891cce8d8c24b5b595b9d33367c1199`: CircleCI config-guard, source-verify, application-build-docs and GitHub Quality Gate SUCCESS | Repository-wide CODEOWNERS owner review still required; do not merge without it |
-| #304 | Earlier duplicate of #306 workflow fix | Closed as superseded | No further action |
+| [#307](https://github.com/zikrofficial-X/Zikr/pull/307) | Single-owner Android release draft lifecycle; CircleCI verifies but does not create tag/draft; publisher rejects duplicate releases | Current head `9a15b6d982b879170392f0b96c98e4de7e3cb149`: config-guard, source-verify and application-build-docs pending; previous head failed on stale tag-ownership assertion, now corrected | CODEOWNERS owner review; resolve the existing empty duplicate `v1.1.15` draft before the main Android draft gate can pass |
 
-PR #275, #279, #280 and #281 are merged. PR #278 and #283 closed without merge; current main contains the optional Facebook feed service-role guard and expanded content-integrity scan across `src`, `content`, `public` and `supabase`, including SQL. PR #304 was closed because its offline manifest and immutable Android release-contract changes are already on main and its workflow fallback is represented in #306.
+PR #306 merged at `ab0bd0e7ad5e5dd2d86250ed0b63ae257dc237b4`; PR #304 closed as superseded. PR #275, #279, #280 and #281 are merged. PR #278 and #283 closed without merge; current main contains the optional Facebook feed service-role guard and expanded content-integrity scan across `src`, `content`, `public` and `supabase`, including SQL.
 
-`.github/CODEOWNERS` assigns the repository-wide default to `@Zikrmediaofficial`. The reviewer request for #306 returned no registered reviewer. Do not bypass owner review or the manual production release gate.
+`.github/CODEOWNERS` assigns the repository-wide default to `@Zikrmediaofficial`. Do not bypass owner review or the manual production release gate.
