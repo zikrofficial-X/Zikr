@@ -63,6 +63,12 @@ confirmed as (
     and q.metadata->'platformResults'->'youtube'->>'ok' = 'true'
     and q.metadata->'platformResults'->'youtube'->>'remoteId' ~ '^[A-Za-z0-9_-]{11}$'
     and (v.youtube_id is null or v.youtube_id = q.metadata->'platformResults'->'youtube'->>'remoteId')
+    and not exists (
+      select 1
+      from public.videos existing_video
+      where existing_video.id <> v.id
+        and existing_video.youtube_id = q.metadata->'platformResults'->'youtube'->>'remoteId'
+    )
     and r.status = 'completed'
     and r.content_hash = v.metadata->>'contentHash'
     and r.source_hash = v.metadata->>'sourceHash'
@@ -93,9 +99,12 @@ declare
   candidate_count integer;
   general_count integer;
   kids_count integer;
+  candidate_youtube_id_count integer;
   already_restored_count integer;
   already_restored_general integer;
   already_restored_kids integer;
+  already_restored_unique_youtube_ids integer;
+  already_restored_youtube_collisions integer;
   updated_count integer;
   purge_event_count integer;
 begin
@@ -111,11 +120,12 @@ begin
   select
     count(*),
     count(*) filter (where audience = 'general'),
-    count(*) filter (where audience = 'kids')
-  into candidate_count, general_count, kids_count
+    count(*) filter (where audience = 'kids'),
+    count(distinct youtube_id)
+  into candidate_count, general_count, kids_count, candidate_youtube_id_count
   from pg_temp._zikr_purge_proven_video_recovery;
 
-  if candidate_count = 58 and general_count = 50 and kids_count = 8 then
+  if candidate_count = 58 and general_count = 50 and kids_count = 8 and candidate_youtube_id_count = 58 then
     update public.videos v
     set published = true,
         youtube_id = confirmed.youtube_id,
@@ -152,8 +162,22 @@ begin
     select
       count(*),
       count(*) filter (where metadata->>'audience' = 'general'),
-      count(*) filter (where metadata->>'audience' = 'kids')
-    into already_restored_count, already_restored_general, already_restored_kids
+      count(*) filter (where metadata->>'audience' = 'kids'),
+      count(distinct youtube_id),
+      (
+        select count(*)
+        from public.videos restored
+        join public.videos existing_video
+          on existing_video.youtube_id = restored.youtube_id
+         and existing_video.id <> restored.id
+        where restored.published is true
+          and restored.metadata->>'generator' = 'zikr_internal_video_factory'
+          and restored.metadata->>'mediaState' = 'youtube_fallback'
+          and restored.metadata->'mediaRecovery'->>'auditEventId' = 'b97b0756-3e4c-4a43-aec8-a42686ab1682'
+          and restored.metadata->>'mediaPurgedFromPublished' = 'true'
+      )
+    into already_restored_count, already_restored_general, already_restored_kids,
+         already_restored_unique_youtube_ids, already_restored_youtube_collisions
     from public.videos
     where published is true
       and metadata->>'generator' = 'zikr_internal_video_factory'
@@ -163,15 +187,17 @@ begin
 
     if already_restored_count = 58
        and already_restored_general = 50
-       and already_restored_kids = 8 then
+       and already_restored_kids = 8
+       and already_restored_unique_youtube_ids = 58
+       and already_restored_youtube_collisions = 0 then
       raise notice 'Purge-proven video catalog recovery was already applied; no changes made.';
     else
-      raise exception 'Purge-proven video recovery expected 58 candidates (50 general, 8 Kids), found %; already restored % (general %, Kids %). Refusing to change public catalog.',
-        candidate_count, already_restored_count, already_restored_general, already_restored_kids;
+      raise exception 'Purge-proven video recovery expected 58 candidates (50 general, 8 Kids) and 58 unique YouTube IDs; found % candidates, % unique IDs; already restored % (general %, Kids %, unique IDs %, collisions %). Refusing to change public catalog.',
+        candidate_count, candidate_youtube_id_count, already_restored_count, already_restored_general, already_restored_kids, already_restored_unique_youtube_ids, already_restored_youtube_collisions;
     end if;
   else
-    raise exception 'Purge-proven video recovery expected 58 candidates (50 general, 8 Kids), found % (general %, Kids %). Refusing to change public catalog.',
-      candidate_count, general_count, kids_count;
+    raise exception 'Purge-proven video recovery expected 58 candidates (50 general, 8 Kids) with 58 unique YouTube IDs and no existing video-ID collisions; found % (general %, Kids %, unique IDs %). Refusing to change public catalog.',
+      candidate_count, general_count, kids_count, candidate_youtube_id_count;
   end if;
 end;
 $$;
