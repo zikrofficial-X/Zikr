@@ -500,13 +500,18 @@ function facebookApiFailure(stage: string, status: number, payload: FacebookVide
   return new Error(`${stage} failed (HTTP ${status})${responseHint}${codes}`);
 }
 
-export async function publishToFacebook(
+export type FacebookPublishReceipt = {
+  remoteId: string;
+  videoId?: string;
+};
+
+async function publishToFacebookDetailed(
   videoId: string,
   metadata: ReturnType<typeof generateFacebookMetadata>,
   videoUrl: string,
   pageId: string,
   asReel = false,
-): Promise<string | null> {
+): Promise<FacebookPublishReceipt | null> {
   void videoId;
   try {
     const env = getServerEnv();
@@ -587,10 +592,12 @@ export async function publishToFacebook(
         // Never turn a confirmed remote post into a retry just because pacing metadata failed.
         console.error('[video-automation] Unable to persist the next Facebook Reels publish time.');
       }
-      // Insights are read from /{video-id}/video_insights. Meta returns
-      // post_id on FINISH, but that is a Page post ID, not the Reel video ID.
-      // Persist the START video_id as the canonical remote object identifier.
-      return startData.video_id;
+      // Preserve both Meta IDs: post_id powers the public Page permalink and
+      // deletion API; START video_id is the object required by /video_insights.
+      return {
+        remoteId: finishData.post_id ?? startData.video_id,
+        videoId: startData.video_id,
+      };
     }
 
     const params = new URLSearchParams({ file_url: source, title: metadata.title, description: metadata.description, access_token: pageAccessToken });
@@ -607,7 +614,7 @@ export async function publishToFacebook(
     if (!data.id) {
       throw new Error("Facebook video publish succeeded without returning a video ID.");
     }
-    return data.id;
+    return { remoteId: data.id };
   } catch (error) {
     if (asReel && isFacebookReelsRateLimitResponseError(error)) {
       const rateLimitedUntil = resolveFacebookReelsNextAllowedAt(error)
@@ -630,4 +637,24 @@ export async function publishToFacebook(
     );
     throw error;
   }
+}
+
+export async function publishToFacebook(
+  videoId: string,
+  metadata: ReturnType<typeof generateFacebookMetadata>,
+  videoUrl: string,
+  pageId: string,
+  asReel = false,
+): Promise<string | null> {
+  const result = await publishToFacebookDetailed(videoId, metadata, videoUrl, pageId, asReel);
+  return result?.remoteId ?? null;
+}
+
+export async function publishFacebookReelWithIds(
+  queueId: string,
+  metadata: ReturnType<typeof generateFacebookMetadata>,
+  videoUrl: string,
+  pageId: string,
+): Promise<FacebookPublishReceipt | null> {
+  return publishToFacebookDetailed(queueId, metadata, videoUrl, pageId, true);
 }
