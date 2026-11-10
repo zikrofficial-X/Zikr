@@ -73,8 +73,8 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
   },
   {
     key: "memory",
-    label: "الذاكرة والمكتبة",
-    description: "ملفات الوسائط وذاكرة المحتوى الداخلية ومخرجات التوليد.",
+    label: "الوسائط والذاكرة",
+    description: "مكتبة أصول الوسائط وحقوق الاستخدام وملفات الموقع ومخرجات الفيديو المولّدة.",
     basePath: "/admin/memory",
     routes: routesFor("memory"),
     permission: "media.manage",
@@ -86,12 +86,12 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
   {
     key: "media-audio",
     label: "الوسائط والصوت",
-    description: "مكتبة الوسائط والتلاوات والأذان وتحويل النص إلى صوت والتذكيرات.",
-    basePath: "/admin/media",
+    description: "إدارة التلاوات والأذان وتحويل النص إلى صوت والتذكيرات.",
+    basePath: "/admin/audio",
     routes: routesFor("media-audio"),
-    permission: "media.manage",
-    permissions: ["media.manage", "audio.manage"],
-    sourceTables: ["media_assets", "quran_audio", "site_audio_assets", "tawasheeh"],
+    permission: "audio.manage",
+    permissions: ["audio.manage"],
+    sourceTables: ["quran_audio", "site_audio_assets", "tawasheeh"],
     ownerRole: "video_manager",
     status: "active",
   },
@@ -162,6 +162,7 @@ export const ADMIN_ROUTE_ALIASES = [
   { from: "/admin/video-factory/publishing", to: "/admin/memory", reason: "تحويل مساحة الوسائط والذاكرة الداخلية" },
   { from: "/admin/alerts", to: "/admin/notifications", reason: "توحيد التنبيهات" },
   { from: "/admin/control", to: "/admin", reason: "اختصار قديم لمركز العمليات" },
+  { from: "/admin/media", to: "/admin/memory", reason: "المسار القديم يحول إلى مكتبة الوسائط والذاكرة الرسمية" },
   { from: "/admin/audio/site-audio", to: "/admin/site-audio", reason: "مسار صوت الموقع الرسمي" },
 ] as const;
 
