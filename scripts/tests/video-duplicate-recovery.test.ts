@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
+import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
 
 const owner = {
   status: "completed",
@@ -89,8 +90,93 @@ reject({
 }, "a catalog record retaining a media URL must not be treated as purged");
 
 const worker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+
+const recoveredFailed = buildMissingMediaQueueRecoveryPatch({
+  item: {
+    status: "failed",
+    target_platforms: ["facebook_reels"],
+    metadata: {
+      sourceMediaMissing: true,
+      permanentFailure: true,
+      permanentFailurePlatforms: ["facebook_reels"],
+      platformResults: {
+        facebook_reels: {
+          ok: false,
+          error: "Facebook Reel upload failed (HTTP 422): Meta upload response did not confirm success",
+        },
+      },
+      platformAttempts: { facebook_reels: 5 },
+    },
+  },
+  videoUrl: "https://res.cloudinary.com/example/video/upload/v1/auto-recovered.mp4",
+  now: "2026-11-10T14:00:00.000Z",
+});
+assert.ok(recoveredFailed, "a verified replacement asset may release a source-media-only 422 hold");
+assert.equal(recoveredFailed.status, "queued");
+assert.equal(recoveredFailed.video_url, "https://res.cloudinary.com/example/video/upload/v1/auto-recovered.mp4");
+assert.equal(recoveredFailed.metadata.sourceMediaMissing, false);
+assert.equal(recoveredFailed.metadata.permanentFailure, false);
+assert.deepEqual(recoveredFailed.metadata.permanentFailurePlatforms, []);
+assert.equal((recoveredFailed.metadata.platformResults as Record<string, unknown>).facebook_reels, undefined);
+assert.equal((recoveredFailed.metadata.platformAttempts as Record<string, unknown>).facebook_reels, 0);
+
+const recoveredPartial = buildMissingMediaQueueRecoveryPatch({
+  item: {
+    status: "partial",
+    target_platforms: ["youtube", "facebook_reels"],
+    metadata: {
+      sourceMediaMissing: true,
+      permanentFailure: true,
+      permanentFailurePlatforms: ["facebook_reels"],
+      platformResults: {
+        youtube: { ok: true, remoteId: "already-published-youtube-id" },
+        facebook_reels: { ok: false, error: "Facebook Reels cooldown is over" },
+      },
+      platformAttempts: { youtube: 1, facebook_reels: 4 },
+    },
+  },
+  videoUrl: "https://res.cloudinary.com/example/video/upload/v1/auto-recovered.mp4",
+  now: "2026-11-10T14:00:00.000Z",
+});
+assert.ok(recoveredPartial, "a cooldown-held partial item may be released after verified media recovery");
+const partialResults = recoveredPartial.metadata.platformResults as Record<string, { remoteId?: string }>;
+assert.equal(partialResults.youtube?.remoteId, "already-published-youtube-id", "existing YouTube delivery IDs must be preserved");
+assert.equal(partialResults.facebook_reels, undefined, "only the failed Facebook Reels result may be retried");
+
+const heldBase = {
+  status: "failed",
+  target_platforms: ["facebook_reels"],
+  metadata: {
+    sourceMediaMissing: true,
+    permanentFailure: true,
+    permanentFailurePlatforms: ["facebook_reels"],
+    platformResults: { facebook_reels: { ok: false, error: "HTTP 422 source media unavailable" } },
+  },
+};
+assert.equal(buildMissingMediaQueueRecoveryPatch({
+  item: { ...heldBase, metadata: { ...heldBase.metadata, authBlocked: true } },
+  videoUrl: "https://res.cloudinary.com/example/video/upload/v1/auto-recovered.mp4",
+  now: "2026-11-10T14:00:00.000Z",
+}), null, "auth-blocked queue rows must remain held");
+assert.equal(buildMissingMediaQueueRecoveryPatch({
+  item: { ...heldBase, metadata: { ...heldBase.metadata, platformResults: { facebook_reels: { ok: false, error: "HTTP 500 timeout", requiresReconciliation: true } } } },
+  videoUrl: "https://res.cloudinary.com/example/video/upload/v1/auto-recovered.mp4",
+  now: "2026-11-10T14:00:00.000Z",
+}), null, "ambiguous provider outcomes must remain held for manual reconciliation");
+assert.equal(buildMissingMediaQueueRecoveryPatch({
+  item: { ...heldBase, metadata: { ...heldBase.metadata, platformResults: { facebook_reels: { ok: false, error: "caption rejected" } } } },
+  videoUrl: "https://res.cloudinary.com/example/video/upload/v1/auto-recovered.mp4",
+  now: "2026-11-10T14:00:00.000Z",
+}), null, "unrelated permanent provider failures must not be cleared by media recovery");
+assert.equal(buildMissingMediaQueueRecoveryPatch({
+  item: { ...heldBase, metadata: { ...heldBase.metadata, sourceMediaMissing: false } },
+  videoUrl: "https://res.cloudinary.com/example/video/upload/v1/auto-recovered.mp4",
+  now: "2026-11-10T14:00:00.000Z",
+}), null, "ordinary queue rows must not be changed by missing-media recovery");
+
 assert.ok(worker.includes("canRecoverDuplicateVideoRender"), "the video worker must use the recovery decision contract");
 assert.ok(worker.includes("recoverPurgedRecord: true"), "purged canonical records must use the controlled recovery queue path");
+assert.ok(worker.includes("restoreMissingMediaSocialQueueItems"), "restored canonical media must release only eligible held social queue rows");
 assert.ok(
   worker.includes('existingQueue.status === "published"'),
   "a previously published internal queue row must be re-queued only for explicit purged-record recovery",
