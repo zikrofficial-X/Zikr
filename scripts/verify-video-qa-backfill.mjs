@@ -61,6 +61,12 @@ const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
 if (!generationWorkflow.includes('VIDEO_AI_ATTEMPTS_PER_RUN: "4"')) {
   failures.push("video generation workflow default must use the approved four-attempt free-provider budget");
 }
+if (!dynamicWorker.includes('isKidsVideo ? "kids-stories"') ||
+    !dynamicWorker.includes('isKidsVideo ? "/kids/videos/" : "/videos/"')) {
+  failures.push("New Kids videos must be catalogued and routed exclusively through the Kids library");
+}
+const publicVideoService = read("src/features/videos/services/videos.ts");
+if (!publicVideoService.includes("Boolean(video.youtubeId)")) failures.push("YouTube-recovered generated videos must remain visible in the public video library");
 const runtimeSettings = read("src/app/admin/automation/page.tsx");
 if (!runtimeSettings.includes('? "4"')) failures.push("Admin AI-attempt fallback must match the four-attempt production setting");
 
