@@ -46,9 +46,9 @@ export async function processSocialPublishQueue(limit = 10) {
     console.log("[social-worker] Video purge lock is active; no social queue item will be claimed.");
     return { processed: 0, succeeded: 0, deferred: 0, authBlocked: 0, approvalBlocked: 0, failed: 0, purgeLocked: true };
   }
-  // Retry media cleanup for posts already confirmed on every target before
-  // claiming new work. This removes temporary Supabase/Cloudinary assets
-  // without republishing or deleting the publication/audit records.
+  // Reconcile deferred staging-cleanup metadata for posts already confirmed
+  // on every target. The 48-hour retention worker removes only the redundant
+  // Supabase staging copy; the public Cloudinary playback master is never deleted.
   const cleanup = await retryPendingPublishedVideoCleanup(Math.max(25, Math.min(100, limit * 2)));
   if (cleanup.attempted > 0) {
     console.log("[social-worker] Published media cleanup retry:", JSON.stringify(cleanup));
