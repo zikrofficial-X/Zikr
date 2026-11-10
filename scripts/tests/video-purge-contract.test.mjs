@@ -42,6 +42,12 @@ assert.ok(route.includes("getConfirmedYoutubeFallbackId") && route.includes("sho
 assert.ok(route.includes("catalogFallbackRowsKeptPublished"), "Purge audit metadata must report the fallback rows it kept public.");
 assert.ok(route.includes('generatedVideoUrl: null') && route.includes('videoUrl: null'), "Purge must clear dead media URLs.");
 assert.ok(route.includes("status=neq.published&video_url=not.is.null&select=video_url&limit=1000"), "file purge must inspect every non-published social queue media reference before deleting assets.");
+assert.ok(
+  route.includes("pendingSocialGenerationRefs") &&
+    route.includes("status=neq.published&video_url=not.is.null&select=id&limit=1000") &&
+    route.includes("includeMemory && (pendingSocialGenerationRefs ?? []).length > 0"),
+  "memory cleanup must preserve generation history while any unfinished social video media row remains",
+);
 assert.ok(route.includes("isGeneratedCloudinaryVideoUrl") && route.includes("protectedSocialQueueMedia.size > 0"), "file purge must protect generated Cloudinary media referenced by unfinished social posts.");
 assert.ok(route.includes("/^v\\d+$/"), "Cloudinary delivery URL parsing must strip version segments before protecting generated media.");
 assert.ok(route.includes("deletionStarted: false") && route.includes("retryRequired: true"), "a protected queue reference must stop purge before destructive work.");
