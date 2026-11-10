@@ -13,6 +13,8 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+  actions: write
 
 concurrency:
   group: zikr-offline-content-snapshot
@@ -26,12 +28,30 @@ jobs:
     env:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout canonical main branch
         uses: actions/checkout@v7
         with:
           ref: main
-          fetch-depth: 1
+          fetch-depth: 0
+
+      - name: Prepare stable review branch from the latest main
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="automation/offline-content-snapshot"
+          git fetch origin main
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            git fetch origin "$branch"
+            git checkout -B "$branch" "origin/$branch"
+            git merge --no-edit origin/main
+            echo "OFFLINE_CONTENT_BRANCH_EXISTS=true" >> "$GITHUB_ENV"
+          else
+            git checkout -b "$branch" origin/main
+            echo "OFFLINE_CONTENT_BRANCH_EXISTS=false" >> "$GITHUB_ENV"
+          fi
+          echo "OFFLINE_CONTENT_BRANCH=$branch" >> "$GITHUB_ENV"
 
       - name: Validate protected Supabase access
         shell: bash
@@ -62,7 +82,7 @@ jobs:
       - name: Verify complete snapshot and manifest
         run: pnpm offline:check
 
-      - name: Commit only when the public snapshot changed
+      - name: Commit and open a reviewable snapshot pull request
         shell: bash
         run: |
           set -euo pipefail
@@ -70,8 +90,28 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/offline-content/v1
           if git diff --cached --quiet; then
-            echo "Offline content snapshot is already current."
-            exit 0
+            if [[ "${OFFLINE_CONTENT_BRANCH_EXISTS}" == "true" ]] && ! git diff --quiet "origin/${OFFLINE_CONTENT_BRANCH}" HEAD; then
+              git push origin "${OFFLINE_CONTENT_BRANCH}"
+            else
+              echo "Offline content snapshot is already current; no PR update is required."
+              exit 0
+            fi
+          else
+            git commit -m "chore(content): refresh public offline snapshot"
+            git push origin "${OFFLINE_CONTENT_BRANCH}"
           fi
-          git commit -m "chore(content): refresh public offline snapshot"
-          git push origin HEAD:main
+
+          pr_number="$(gh pr list --base main --head "${OFFLINE_CONTENT_BRANCH}" --state open --json number --jq '.[0].number // empty')"
+          if [[ -z "${pr_number}" ]]; then
+            gh pr create \
+              --base main \
+              --head "${OFFLINE_CONTENT_BRANCH}" \
+              --title "chore(content): refresh public offline snapshot" \
+              --body "Automated refresh of the validated public offline-content snapshot from canonical Supabase tables. The exporter enforces dataset floors and retains only the integrity-checked tafsir fallback. This PR changes public JSON snapshots only; it does not apply migrations or modify database/storage records. Merge only after the Quality Gate passes."
+          else
+            echo "Updated existing offline snapshot PR #${pr_number}."
+          fi
+
+          # GITHUB_TOKEN-created PRs do not reliably trigger pull_request workflows.
+          # Dispatch the full Quality Gate explicitly against the exact review branch.
+          gh workflow run quality-gate.yml --ref "${OFFLINE_CONTENT_BRANCH}"
