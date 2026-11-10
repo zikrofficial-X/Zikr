@@ -374,10 +374,12 @@ async function main() {
   const insights = target === "insights" ? await syncSocialInsights() : null;
 
   const failed = videos.failed + social.failed + ("error" in sitePublishing ? 1 : 0);
-  const queueAlerts = await notifyNewQueueFailures(new Date(startedAt).toISOString()).catch((error) => {
-    console.error("[background-jobs] Queue failure alert delivery unavailable:", error instanceof Error ? error.message : String(error));
-    return { alerts: 0, delivered: 0 };
-  });
+  const queueAlerts = target === "insights"
+    ? { alerts: 0, delivered: 0 }
+    : await notifyNewQueueFailures(new Date(startedAt).toISOString()).catch((error) => {
+        console.error("[background-jobs] Queue failure alert delivery unavailable:", error instanceof Error ? error.message : String(error));
+        return { alerts: 0, delivered: 0 };
+      });
 
   // Social batches already persist platform status/remote IDs in the social queue
   // and GitHub Actions logs. Do not add a video_automation_runs row per social run.
