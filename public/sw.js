@@ -15,7 +15,7 @@ if (!isNativeCapacitorWorker) {
 
 // Service Worker for Zikr PWA
 const CACHE_NAME = "zikr-v15";
-const CACHE_PREFIX = "zikr-";
+const APP_SHELL_CACHE_PATTERN = /^zikr-v\d+$/;
 const OFFLINE_CONTENT_PREFIX = "/offline-content/";
 const MAX_OFFLINE_ROUTES = 400;
 const ROUTE_CACHE_CONCURRENCY = 4;
@@ -237,7 +237,7 @@ self.addEventListener("activate", event => {
     caches.keys().then(async cacheNames => {
       await Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheName.startsWith(CACHE_PREFIX) && cacheName !== CACHE_NAME) {
+          if (APP_SHELL_CACHE_PATTERN.test(cacheName) && cacheName !== CACHE_NAME) {
             return caches.delete(cacheName);
           }
           return undefined;
