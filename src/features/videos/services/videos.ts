@@ -196,21 +196,8 @@ export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
   if (!isSupabaseConfigured()) return [];
 
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
-    "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&published=eq.true&metadata->>audience=eq.kids&category_id=eq." +
-      encodeURIComponent("kids-stories") +
-      "&order=created_at.desc&limit=" + safeLimit,
-  ).catch(async () => {
-    // Category IDs are UUIDs; resolve by the canonical Kids-only slug before retrying.
-    const categories = await supabaseServerAnonRequest<Array<{ id: string }>>(
-      "/rest/v1/video_categories?slug=eq.kids-stories&select=id&limit=1",
-    ).catch(() => []);
-    const categoryId = categories?.[0]?.id;
-    if (!categoryId) return [];
-    return supabaseServerAnonRequest<Array<Record<string, unknown>>>(
-      "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&published=eq.true&metadata->>audience=eq.kids&category_id=eq." +
-        encodeURIComponent(categoryId) + "&order=created_at.desc&limit=" + safeLimit,
-    ).catch(() => []);
-  });
+    "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&published=eq.true&metadata->>audience=eq.kids&order=created_at.desc&limit=" + safeLimit,
+  ).catch(() => []);
 
   return (rows ?? [])
     .filter((row) => {
