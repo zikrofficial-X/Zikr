@@ -60,6 +60,12 @@ export async function saveKidsContentAction(formData: FormData) {
     throw new Error("العنوان بالعربية والرابط المختصر والمحتوى كلها مطلوبة.");
   }
 
+  // Validate structured form data before uploading media so rejected forms do not leave orphaned Cloudinary assets.
+  const quizData = parseQuizData(value(formData, "quiz_data"));
+  if (type === "game" && !isRegisteredGameId(gameId)) {
+    throw new Error("معرف اللعبة غير مسجل أو غير صالح.");
+  }
+
   const featuredImageFile = formData.get("featured_image_file");
   const featuredImageUrl =
     featuredImageFile instanceof File && featuredImageFile.size > 0
@@ -72,10 +78,6 @@ export async function saveKidsContentAction(formData: FormData) {
           })
         ).secureUrl
       : value(formData, "featured_image_url");
-
-  if (type === "game" && !isRegisteredGameId(gameId)) {
-    throw new Error("معرف اللعبة غير مسجل أو غير صالح.");
-  }
 
   const saved = await supabaseServerAdminRequest<Array<{ id: string; slug: string }>>("/rest/v1/kids_content?on_conflict=slug&select=id,slug", {
     method: "POST",
@@ -90,7 +92,7 @@ export async function saveKidsContentAction(formData: FormData) {
       age_group: ageGroup,
       featured_image_url: featuredImageUrl,
       video_url: value(formData, "video_url"),
-      quiz_data: parseQuizData(value(formData, "quiz_data")),
+      quiz_data: quizData,
       published,
       metadata: {
         ...(type === "story" ? { age_appropriate: ageAppropriate } : {}),
