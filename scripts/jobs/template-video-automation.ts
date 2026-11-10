@@ -2186,7 +2186,8 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
             method: "PATCH",
             headers: { Prefer: "return=representation" },
             body: JSON.stringify({
-                  updated_at: new Date().toISOString(),
+              content_hash: rendered.contentHash,
+              updated_at: new Date().toISOString(),
             }),
           },
         );
@@ -2244,7 +2245,6 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           scene: rendered.scene,
           render_duration_ms: rendered.renderDurationMs,
           source_hash: rendered.sourceHash,
-          content_hash: rendered.contentHash,
           template_version: rendered.templateVersion,
           provider:
             typeof request.content.aiProvider === "string"
