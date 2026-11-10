@@ -112,6 +112,8 @@ assert.ok(insightsService.includes('fields", "id,attachments{media,target}"'));
 assert.ok(insightsService.includes('.replaceAll(pageAccessToken, "[redacted]")'));
 assert.ok(insightsService.includes('[id]'));
 assert.ok(insightsService.includes('[url]'));
+assert.ok(insightsService.includes(String.raw`.replace(/\\b\\d{8,}\\b/g, "[id]")`));
+assert.ok(insightsService.includes(String.raw`.replace(/https?:\\/\\/\\S+/gi, "[url]")`));
 assert.ok(insightsService.includes("Meta could not list Page posts to resolve historical Reel video IDs"));
 assert.ok(!insightsService.includes("object_id"));
 
