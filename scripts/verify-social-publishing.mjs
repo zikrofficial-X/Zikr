@@ -248,6 +248,13 @@ if (!videoCatalog.includes("metadata.generatedVideoUrl") ||
   failures.push("generated media must remain visible in the internal video catalog and site publication queue");
 }
 
+if (!facebookCallback.includes("unblockFacebookAuthBlockedQueue") ||
+    facebookCallback.indexOf("await saveFacebookPageCredential(") < 0 ||
+    facebookCallback.indexOf("await unblockFacebookAuthBlockedQueue(") <= facebookCallback.indexOf("await saveFacebookPageCredential(") ||
+    facebookCallback.includes('dispatchGitHubWorkflow("publish-social.yml"')) {
+  failures.push("a successful Facebook OAuth reconnect must release only auth-blocked queue rows after storing the verified Page credential and leave dispatch to the scheduled publisher");
+}
+
 if (failures.length) {
   console.error("CONTROLLED_SOCIAL_PUBLISHING_CHECK_FAILED");
   for (const failure of failures) console.error("❌ " + failure);
