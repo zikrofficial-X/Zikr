@@ -82,12 +82,19 @@ export function resolveVideoMediaUrl(row: Record<string, unknown>): string | nul
     return youtubeUrl;
   }
 
-  const candidates = [
-    metadata.sourceVideoUrl,
-    metadata.generatedVideoUrl,
-    metadata.videoUrl,
-    metadata.video_url,
-  ];
+  const candidates = metadata.generator === "zikr_internal_video_factory"
+    ? [
+        metadata.generatedVideoUrl,
+        metadata.videoUrl,
+        metadata.video_url,
+        metadata.sourceVideoUrl,
+      ]
+    : [
+        metadata.sourceVideoUrl,
+        metadata.generatedVideoUrl,
+        metadata.videoUrl,
+        metadata.video_url,
+      ];
   for (const value of candidates) {
     if (typeof value !== "string") continue;
     try {
