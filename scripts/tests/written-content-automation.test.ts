@@ -24,6 +24,7 @@ assert.match(worker, /\/rest\/v1\/content_publish_queue/);
 assert.match(worker, /\/rest\/v1\/social_publish_queue/);
 assert.match(worker, /buildWrittenSocialQueuePayload/);
 assert.match(worker, /createWrittenSocialAutomationKey/);
+assert.match(worker, /enqueueExistingWrittenArticlesForFacebook/);
 assert.match(writtenFactory, /content_type:\s*"written_post"/);
 assert.match(writtenFactory, /target_platforms:\s*\["facebook"\]/);
 assert.match(worker, /published:\s*false/);
