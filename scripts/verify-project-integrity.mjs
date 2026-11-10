@@ -260,7 +260,9 @@ requireText('src/lib/offline-db.ts', [
   'async count(',
 ]);
 requireText('src/components/layout/service-worker-register.tsx', [
-  "navigator.serviceWorker.register('/sw.js'",
+  'navigator.serviceWorker.register(serviceWorkerUrl',
+  "'/sw.js?native=1'",
+  "'/sw.js'",
   'hydrateOfflineContent',
 ]);
 requireText('src/app/layout.tsx', ['OfflineNavigationGuard']);
