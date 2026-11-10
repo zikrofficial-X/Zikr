@@ -2,7 +2,17 @@ import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 type StoredYouTubeOAuthCredential = {
   refresh_token?: string | null;
   granted_scopes?: string[] | null;
+  channel_id?: string | null;
 };
+
+export function matchesConfiguredYouTubeChannel(
+  storedChannelId: unknown,
+  configuredChannelId: string | undefined = process.env.YOUTUBE_CHANNEL_ID,
+): boolean {
+  const stored = typeof storedChannelId === "string" ? storedChannelId.trim() : "";
+  const configured = configuredChannelId?.trim() ?? "";
+  return Boolean(stored) && (!configured || stored === configured);
+}
 
 export type YouTubeOAuthCredentialInput = {
   refreshToken: string;
@@ -14,9 +24,10 @@ export type YouTubeOAuthCredentialInput = {
 export async function readStoredYouTubeRefreshToken(): Promise<string | null> {
   try {
     const rows = await supabaseServerAdminRequest<StoredYouTubeOAuthCredential[]>(
-      "/rest/v1/youtube_oauth_credentials?provider=eq.youtube&select=refresh_token,granted_scopes&limit=1",
+      "/rest/v1/youtube_oauth_credentials?provider=eq.youtube&select=refresh_token,granted_scopes,channel_id&limit=1",
     );
     const row = Array.isArray(rows) ? rows[0] : null;
+    if (!matchesConfiguredYouTubeChannel(row?.channel_id)) return null;
     const scopes = Array.isArray(row?.granted_scopes) ? row.granted_scopes : [];
     const readScopes = [
       "https://www.googleapis.com/auth/youtube.readonly",
@@ -63,9 +74,10 @@ export function hasYouTubeUploadScopes(scopes: readonly string[]): boolean {
 async function readStoredYouTubeUploadRefreshToken(): Promise<string | null> {
   try {
     const rows = await supabaseServerAdminRequest<StoredYouTubeOAuthCredential[]>(
-      "/rest/v1/youtube_oauth_credentials?provider=eq.youtube&select=refresh_token,granted_scopes&limit=1",
+      "/rest/v1/youtube_oauth_credentials?provider=eq.youtube&select=refresh_token,granted_scopes,channel_id&limit=1",
     );
     const row = Array.isArray(rows) ? rows[0] : null;
+    if (!matchesConfiguredYouTubeChannel(row?.channel_id)) return null;
     const scopes = Array.isArray(row?.granted_scopes) ? row.granted_scopes : [];
     if (!hasYouTubeUploadScopes(scopes)) return null;
     const token = row?.refresh_token;
