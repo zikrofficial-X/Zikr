@@ -14,16 +14,56 @@ export type PresignedUpload = {
   expiresIn: number;
 };
 
-const PURPOSE_CONFIG: Record<StorageObjectPurpose, { bucket: string; maxBytes: number; isPublic: boolean }> = {
-  avatar: { bucket: 'avatars', maxBytes: 5 * 1024 * 1024, isPublic: true },
-  media: { bucket: 'media', maxBytes: 20 * 1024 * 1024, isPublic: true },
-  audio: { bucket: 'audio', maxBytes: 50 * 1024 * 1024, isPublic: false },
-  document: { bucket: 'documents', maxBytes: 20 * 1024 * 1024, isPublic: false },
-  video: { bucket: 'videos', maxBytes: 512 * 1024 * 1024, isPublic: true },
+// Supabase createSignedUploadUrl has a fixed two-hour lifetime. Unlike
+// createSignedUrl, its SDK method does not accept a custom expiresIn value.
+export const SIGNED_UPLOAD_URL_TTL_SECONDS = 2 * 60 * 60;
+
+type StoragePurposeConfig = {
+  bucket: string;
+  maxBytes: number;
+  isPublic: boolean;
+  allowedContentTypes: readonly string[];
+};
+
+const PURPOSE_CONFIG: Record<StorageObjectPurpose, StoragePurposeConfig> = {
+  avatar: {
+    bucket: 'avatars',
+    maxBytes: 5 * 1024 * 1024,
+    isPublic: true,
+    allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  },
+  media: {
+    bucket: 'media',
+    maxBytes: 20 * 1024 * 1024,
+    isPublic: true,
+    allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'video/mp4'],
+  },
+  audio: {
+    bucket: 'audio',
+    maxBytes: 50 * 1024 * 1024,
+    isPublic: false,
+    allowedContentTypes: ['audio/mpeg', 'audio/mp4', 'audio/ogg', 'audio/wav'],
+  },
+  document: {
+    bucket: 'documents',
+    maxBytes: 20 * 1024 * 1024,
+    isPublic: false,
+    allowedContentTypes: ['application/pdf'],
+  },
+  video: {
+    bucket: 'videos',
+    maxBytes: 512 * 1024 * 1024,
+    isPublic: true,
+    allowedContentTypes: ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v'],
+  },
 };
 
 export function getStoragePurposeConfig(purpose: StorageObjectPurpose) {
   return PURPOSE_CONFIG[purpose];
+}
+
+export function isAllowedStorageContentType(purpose: StorageObjectPurpose, contentType: string) {
+  return PURPOSE_CONFIG[purpose].allowedContentTypes.includes(contentType.trim().toLowerCase());
 }
 
 export function sanitizeStorageSegment(value: string) {
@@ -43,11 +83,11 @@ export function buildStoragePath(ownerId: string, filename: string) {
 }
 
 export function encodeStorageKey(bucket: string, path: string) {
-  return `${bucket}/${path.replace(/^\/+/, '')}`;
+  return `${bucket}/${path.replace(/^\\/+/, '')}`;
 }
 
 export function parseStorageKey(key: string) {
-  const cleanKey = key.trim().replace(/^\/+/, '');
+  const cleanKey = key.trim().replace(/^\\/+/, '');
   const separator = cleanKey.indexOf('/');
   if (separator <= 0 || separator === cleanKey.length - 1) return null;
 
@@ -63,20 +103,22 @@ export async function createPresignedUploadUrl(params: {
   filename: string;
   contentType: string;
   contentLength: number;
-  expiresIn?: number;
 }): Promise<PresignedUpload> {
   const config = PURPOSE_CONFIG[params.purpose];
-  if (params.contentLength <= 0 || params.contentLength > config.maxBytes) {
+  if (!Number.isSafeInteger(params.contentLength) || params.contentLength <= 0 || params.contentLength > config.maxBytes) {
     throw new Error(`File size exceeds the ${Math.round(config.maxBytes / 1024 / 1024)}MB limit for ${params.purpose} uploads.`);
   }
 
-  if (!params.contentType || !/^[\w.+-]+\/[\w.+-]+$/.test(params.contentType)) {
+  if (!params.contentType || !/^[\\w.+-]+\\/[\\w.+-]+$/.test(params.contentType.trim())) {
     throw new Error('A valid content type is required for Supabase Storage uploads.');
+  }
+
+  if (!isAllowedStorageContentType(params.purpose, params.contentType)) {
+    throw new Error(`Unsupported content type for ${params.purpose} uploads.`);
   }
 
   const supabase = await createClient();
   const path = buildStoragePath(params.ownerId, params.filename);
-  const expiresIn = Math.min(Math.max(params.expiresIn ?? 300, 60), 900);
   const { data, error } = await supabase.storage
     .from(config.bucket)
     .createSignedUploadUrl(path, { upsert: false });
@@ -94,7 +136,7 @@ export async function createPresignedUploadUrl(params: {
     token: data.token,
     uploadUrl: data.signedUrl,
     publicUrl,
-    expiresIn,
+    expiresIn: SIGNED_UPLOAD_URL_TTL_SECONDS,
   };
 }
 
