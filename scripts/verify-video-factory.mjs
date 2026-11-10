@@ -69,6 +69,22 @@ for (const token of ["scene text", "render_duration_ms integer", "video_generati
 }
 if (!template.includes("content_hash")) failures.push("video seed must persist a deterministic content hash");
 if (!template.includes("video_generation_requests_content_hash_unique")) failures.push("video seed must tolerate duplicate content-hash races without aborting the worker");
+if (!template.includes("function isContentHashConflict(error: unknown)")) failures.push("video worker must recognize content-hash uniqueness conflicts consistently");
+const renderedHashClaimPosition = template.indexOf("const hashClaimRows = await supabaseServerAdminRequest");
+const siteRegistrationPosition = template.indexOf("await registerGeneratedVideoOnSite(request, rendered)");
+if (renderedHashClaimPosition < 0 || siteRegistrationPosition < 0 || renderedHashClaimPosition > siteRegistrationPosition) {
+  failures.push("rendered content hash must be atomically claimed before public site registration");
+}
+for (const token of [
+  'status: "cancelled"',
+  'video_url: rendered.videoUrl',
+  'next_retry_at: null',
+  'error_message: "Duplicate generated content; publication skipped"',
+  'content_hash=eq.',
+  'id=neq.',
+]) {
+  if (!template.includes(token)) failures.push("duplicate rendered content must be retained without publishing or retrying: " + token);
+}
 if (!template.includes("day * 16 + slot")) failures.push("video seed source index must not overlap across day boundaries");
 
 const sourceService = read("src/features/videos/services/video-sources.ts");
