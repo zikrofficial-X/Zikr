@@ -117,16 +117,19 @@ export function resolveFacebookReelVideoIdFromPagePostsPayload(
   return null;
 }
 
-async function resolveFacebookReelVideoIdFromPost(
-  postId: string,
+let pagePostVideoIndexCache: {
+  pageId: string;
+  promise: Promise<Map<string, string>>;
+} | null = null;
+
+async function loadFacebookPagePostVideoIndex(
   pageId: string,
   pageAccessToken: string,
-): Promise<string | null> {
+): Promise<Map<string, string>> {
   const version = getServerEnv().FACEBOOK_GRAPH_API_VERSION?.trim() || "v26.0";
+  const index = new Map<string, string>();
   let after: string | null = null;
-  // A FINISH post_id is a Page post, not a Video node. Resolve it from the
-  // supported Page posts collection and read the attached media/object ID.
-  // Querying /{post-id} directly invokes Meta's deprecated singular Status API.
+
   for (let page = 0; page < 5; page += 1) {
     const url = new URL(
       "https://graph.facebook.com/" + version + "/" + encodeURIComponent(pageId) + "/posts",
@@ -144,20 +147,49 @@ async function resolveFacebookReelVideoIdFromPost(
     if (!response.ok || (isRecord(payload) && payload.error)) {
       const error = isRecord(payload) && isRecord(payload.error) ? payload.error : {};
       throw new FacebookReelsInsightsApiError({
-        message: "Meta could not list Page posts to resolve a historical Reel video ID (HTTP " + response.status + ").",
+        message: "Meta could not list Page posts to resolve historical Reel video IDs (HTTP " + response.status + ").",
         code: typeof error.code === "number" ? error.code : undefined,
         subcode: typeof error.error_subcode === "number" ? error.error_subcode : undefined,
         type: typeof error.type === "string" ? error.type : undefined,
       });
     }
-    const resolved = resolveFacebookReelVideoIdFromPagePostsPayload(payload, postId);
-    if (resolved) return resolved;
+    if (isRecord(payload) && Array.isArray(payload.data)) {
+      for (const row of payload.data) {
+        if (!isRecord(row) || typeof row.id !== "string") continue;
+        const videoId = resolveFacebookReelVideoIdFromPagePostsPayload({ data: [row] }, row.id);
+        if (!videoId) continue;
+        const normalizedId = row.id.trim().split("_").pop() ?? row.id.trim();
+        index.set(normalizedId, videoId);
+        index.set(row.id.trim(), videoId);
+      }
+    }
     const paging = isRecord(payload) && isRecord(payload.paging) ? payload.paging : {};
     const cursors = isRecord(paging.cursors) ? paging.cursors : {};
     after = typeof cursors.after === "string" ? cursors.after : null;
     if (!after) break;
   }
-  return null;
+  return index;
+}
+
+async function resolveFacebookReelVideoIdFromPost(
+  postId: string,
+  pageId: string,
+  pageAccessToken: string,
+): Promise<string | null> {
+  if (!pagePostVideoIndexCache || pagePostVideoIndexCache.pageId !== pageId) {
+    pagePostVideoIndexCache = {
+      pageId,
+      promise: loadFacebookPagePostVideoIndex(pageId, pageAccessToken),
+    };
+  }
+  try {
+    const index = await pagePostVideoIndexCache.promise;
+    const normalizedId = postId.trim().split("_").pop() ?? postId.trim();
+    return index.get(postId.trim()) ?? index.get(normalizedId) ?? null;
+  } catch (error) {
+    pagePostVideoIndexCache = null;
+    throw error;
+  }
 }
 
 function safeMetricValue(value: unknown): number | Record<string, number> | null {
