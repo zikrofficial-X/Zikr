@@ -13,6 +13,7 @@ const read = (file) => {
 const backfill = read("scripts/jobs/backfill-legacy-video-qa.ts");
 for (const token of [
   "validateSourceContent",
+  "contentSourceUrl(request)",
   "assertKidsStoryContract",
   "sourceHash(",
   "videoContentHash(",
@@ -44,8 +45,16 @@ if (!workflow.includes("workflow_dispatch:") || !workflow.includes("push:") ||
 }
 
 const videoService = read("src/features/videos/services/videos.ts");
-for (const token of ["getKidsGeneratedVideos", "getKidsGeneratedVideoBySlug", "metadata->>audience=eq.kids", "slug=neq.kids-stories"]) {
-  if (!videoService.includes(token)) failures.push("Dedicated Kids video library service is missing: " + token);
+for (const token of [
+  "getKidsGeneratedVideos",
+  "getKidsGeneratedVideoBySlug",
+  "metadata->>audience=eq.kids",
+  "slug=neq.kids-stories",
+  "function hasPassedKidsVideoQa",
+  'metadata.kidsVideoQaStatus === "passed"',
+  'qa.status === "passed"',
+]) {
+  if (!videoService.includes(token)) failures.push("Dedicated Kids video library service is missing QA isolation: " + token);
 }
 const kidsHome = read("src/app/kids/page.tsx");
 if (!kidsHome.includes('href="/kids/videos"')) failures.push("Kids homepage must link to its separate story-video library");
@@ -62,8 +71,10 @@ if (!generationWorkflow.includes('VIDEO_AI_ATTEMPTS_PER_RUN: "4"')) {
   failures.push("video generation workflow default must use the approved four-attempt free-provider budget");
 }
 if (!dynamicWorker.includes('isKidsVideo ? "kids-stories"') ||
-    !dynamicWorker.includes('isKidsVideo ? "/kids/videos/" : "/videos/"')) {
-  failures.push("New Kids videos must be catalogued and routed exclusively through the Kids library");
+    !dynamicWorker.includes('isKidsVideo ? "/kids/videos/" : "/videos/"') ||
+    !dynamicWorker.includes("kidsVideoQaStatus") ||
+    !dynamicWorker.includes('qaSnapshot.status === "passed"')) {
+  failures.push("New Kids videos must be catalogued, routed, and gated by a passed Kids-specific QA contract");
 }
 const publicVideoService = read("src/features/videos/services/videos.ts");
 if (!publicVideoService.includes("Boolean(video.youtubeId)")) failures.push("YouTube-recovered generated videos must remain visible in the public video library");
@@ -76,6 +87,17 @@ for (const token of ["kids-stories", "metadata->>'audience' = 'kids'", "hqdefaul
 }
 const kidsPathMigration = read("supabase/migrations/20261110022756_set_kids_video_public_paths.sql");
 if (!kidsPathMigration.includes("'/kids/videos/' || slug")) failures.push("Existing Kids catalog records must point to the dedicated Kids video detail route");
+const kidsIsolationMigration = read("supabase/migrations/20261110030705_isolate_legacy_kids_series_and_require_kids_qa.sql");
+for (const token of [
+  "curatedSourceId",
+  "kidsVideoQaStatus",
+  "revalidation_required",
+  "kids_qa_ready",
+  "published = linked.kids_qa_ready",
+  "'automatedVideoQa'",
+]) {
+  if (!kidsIsolationMigration.includes(token)) failures.push("Legacy Kids audience isolation migration is missing a QA visibility gate: " + token);
+}
 
 if (failures.length) {
   console.error("VIDEO_QA_BACKFILL_CHECK_FAILED");

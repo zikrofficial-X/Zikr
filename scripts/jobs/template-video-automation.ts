@@ -846,7 +846,7 @@ export function contentText(request: GeneratedRequest) {
   if (typeof request.description === "string" && request.description.trim()) return request.description.trim();
   return "";
 }
-function contentSourceUrl(request: GeneratedRequest) {
+export function contentSourceUrl(request: GeneratedRequest) {
   const value = request.content?.sourceUrl;
   return typeof value === "string" && /^https?:\/\//i.test(value) ? value : siteUrl();
 }
@@ -1725,6 +1725,22 @@ async function registerGeneratedVideoOnSite(
     "/rest/v1/video_categories?slug=eq." + encodeURIComponent(categorySlug) + "&published=eq.true&select=id&limit=1",
   );
   const now = new Date().toISOString();
+  const qaSnapshot = request.content.automatedVideoQa && typeof request.content.automatedVideoQa === "object" && !Array.isArray(request.content.automatedVideoQa)
+    ? request.content.automatedVideoQa as Record<string, unknown>
+    : {};
+  const kidsSeriesMetadataComplete = isKidsVideo &&
+    request.content.aiMode === "original_kids_story" &&
+    request.content.sourceType === "original_kids_fiction" &&
+    typeof request.content.seriesId === "string" && Boolean(request.content.seriesId.trim()) &&
+    typeof request.content.seriesTitle === "string" && Boolean(request.content.seriesTitle.trim()) &&
+    typeof request.content.learningObjective === "string" && Boolean(request.content.learningObjective.trim()) &&
+    Number.isInteger(Number(request.content.seasonNumber)) && Number(request.content.seasonNumber) > 0 &&
+    Number.isInteger(Number(request.content.episodeNumber)) && Number(request.content.episodeNumber) > 0;
+  const kidsVideoQaStatus = !isKidsVideo
+    ? null
+    : kidsSeriesMetadataComplete && qaSnapshot.status === "passed"
+      ? "passed"
+      : "blocked";
   const metadata = {
     generator: "zikr_internal_video_factory",
     videoGenerationRequestId: request.id,
@@ -1744,6 +1760,7 @@ async function registerGeneratedVideoOnSite(
     renderDurationMs: rendered.renderDurationMs,
     scene: rendered.scene,
     audience: request.content.audience === "kids" ? "kids" : "general",
+    kidsVideoQaStatus,
     seriesId: typeof request.content.seriesId === "string" ? request.content.seriesId : null,
     seriesTitle: typeof request.content.seriesTitle === "string" ? request.content.seriesTitle : null,
     seasonNumber: Number.isInteger(Number(request.content.seasonNumber)) ? Number(request.content.seasonNumber) : null,
