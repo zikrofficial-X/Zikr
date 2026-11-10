@@ -39,6 +39,7 @@ export function canRecoverDuplicateVideoRender(input: {
 
   const purgedUnpublishedSiteRecord = siteRecord !== null && siteRecord.published === false &&
     siteRecord.metadata?.mediaState === "purged" &&
+    siteRecord.metadata?.mediaPurgedFromPublished === true &&
     ![siteRecord.metadata.generatedVideoUrl, siteRecord.metadata.videoUrl].some(
       (value) => typeof value === "string" && value.trim().length > 0,
     );
