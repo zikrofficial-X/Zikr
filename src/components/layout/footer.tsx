@@ -13,7 +13,7 @@ import { MONETAG_SMARTLINK_DISCLOSURE_AR, MONETAG_SMARTLINK_DISCLOSURE_EN, MONET
 
 const FACEBOOK_PAGE_URL = "https://www.facebook.com/zikrmediaofficial1";
 const YOUTUBE_CHANNEL_URL = "https://www.youtube.com/@zikrmediaofficial";
-const APP_VERSION = "1.1.14";
+const APP_VERSION = "1.1.15";
 
 type FooterSocialLinks = {
   facebookPageUrl?: string | null;
