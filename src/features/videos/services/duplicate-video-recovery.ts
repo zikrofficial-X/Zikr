@@ -27,9 +27,9 @@ function isGeneratedCloudinaryVideoUrl(value: string): boolean {
     const uploadIndex = parts.findIndex((part, index) => part === "video" && parts[index + 1] === "upload");
     if (uploadIndex < 0) return false;
     const assetParts = parts.slice(uploadIndex + 2);
-    if (/^v\\d+$/.test(assetParts[0] ?? "")) assetParts.shift();
+    if (/^v\d+$/.test(assetParts[0] ?? "")) assetParts.shift();
     const filename = assetParts.pop() ?? "";
-    const publicId = [...assetParts, filename.replace(/\\.[^.]+$/, "")].filter(Boolean).join("/");
+    const publicId = [...assetParts, filename.replace(/\.[^.]+$/, "")].filter(Boolean).join("/");
     return publicId.startsWith("auto-");
   } catch {
     return false;
@@ -66,6 +66,9 @@ export function canRecoverDuplicateVideoRender(input: {
   if (!candidate.sourceHash || owner.source_hash !== candidate.sourceHash) return false;
   if (!candidate.templateVersion || owner.template_version !== candidate.templateVersion) return false;
   if (!candidate.category || owner.category !== candidate.category) return false;
+  if (typeof owner.video_url === "string" && owner.video_url.trim() && !isGeneratedCloudinaryVideoUrl(owner.video_url)) {
+    return false;
+  }
 
   const purgedUnpublishedSiteRecord = siteRecord !== null && siteRecord.published === false &&
     siteRecord.metadata?.mediaState === "purged" &&
