@@ -1,4 +1,4 @@
-{"kind":"manifest_header","repository":"zikrofficial-X/Zikr","ref":"codex/zikr-comprehensive-repair-safety-20261110","commit":"0d4744948c0d96cfd04f0d60a1d7364b7b624524","baselineMain":"c91f64ccd6162e5107b3edb8be3c7aa521865c2f","capturedAt":"2026-11-10T14:59:44Z","treeEntries":2147,"files":1656,"directories":491,"totalFileBytes":139023215,"truncated":false,"hashAlgorithm":"git-object-sha1","source":"GitHub recursive Git Trees API","scope":"tracked Git tree snapshot excluding this manifest itself; excludes ignored/untracked local files"}
+{"kind":"manifest_header","repository":"zikrofficial-X/Zikr","ref":"codex/zikr-comprehensive-repair-safety-20261110","commit":"e3baf37d5c503f454b19ba1f6116a3e0ea639c1d","baselineMain":"c91f64ccd6162e5107b3edb8be3c7aa521865c2f","capturedAt":"2026-11-10T15:16:32.981Z","treeEntries":2147,"files":1656,"directories":491,"totalFileBytes":139039492,"truncated":false,"hashAlgorithm":"git-object-sha1","source":"GitHub recursive Git Trees API","scope":"tracked Git tree snapshot excluding this manifest itself; excludes ignored/untracked local files"}
 {"path":".circleci","type":"tree","mode":"040000","sha":"8f3902f80ac0babbf7befc29c249ee85f1149a96","size":null}
 {"path":".circleci/config.yml","type":"blob","mode":"100644","sha":"0a88fc77c65bfe0008281ee4990c1338d15d8594","size":34384}
 {"path":".env.example","type":"blob","mode":"100644","sha":"9cb7310c087c14bb6a439fe018810fc3ae4cc2b6","size":8044}
@@ -37,7 +37,7 @@
 {"path":"CLAUDE.md","type":"blob","mode":"100644","sha":"43c994c2d3617f947bcb5adf1933e21dabe46bb5","size":11}
 {"path":"DEPLOYMENT_CHECKLIST.md","type":"blob","mode":"100644","sha":"c7fb700b9f3750df36ba34609e812be3d58f0232","size":6124}
 {"path":"DOCUMENTATION_INDEX.md","type":"blob","mode":"100644","sha":"e35e031001e2d2f53a5378f995332e39101de204","size":2280}
-{"path":"PROJECT_STATUS.md","type":"blob","mode":"100644","sha":"de6b04bc364352e7b58aca0478a980bab7a7c23f","size":49143}
+{"path":"PROJECT_STATUS.md","type":"blob","mode":"100644","sha":"efdcf62d136451fffbb7aad216fad96c453baa32","size":53403}
 {"path":"README.md","type":"blob","mode":"100644","sha":"22c44102811e0e7246857ca4b983b0241c4181eb","size":6044}
 {"path":"RELEASE_STATUS.md","type":"blob","mode":"100644","sha":"eb55791949000356a7723e993123b7fb92c71b40","size":7698}
 {"path":"SECURITY.md","type":"blob","mode":"100644","sha":"76b48b3cf1291ed25b069840586979de649c255b","size":1557}
@@ -132,7 +132,7 @@
 {"path":"android/variables.gradle","type":"blob","mode":"100644","sha":"b9b046a22b8df5f01d325fe5e2cac7e7e1237134","size":498}
 {"path":"capacitor.config.json","type":"blob","mode":"100644","sha":"17ce2f556ce3bbfa82c57665b305f43be2a0ee85","size":2023}
 {"path":"components.json","type":"blob","mode":"100644","sha":"723b14b8df19bab4c3696be5a96f8177783581f9","size":398}
-{"path":"docs","type":"tree","mode":"040000","sha":"78166c2a12eec12ae65c9949cbfbc8ef3b4fc48b","size":null}
+{"path":"docs","type":"tree","mode":"040000","sha":"bc4680e8b7487d11a7b3555de577a280a4ee48b7","size":null}
 {"path":"docs/ADMIN_REORGANIZATION_PLAN_2026-10-30.md","type":"blob","mode":"100644","sha":"f3f87e9dc72259020340d2059a951e95ae8ec7a3","size":30349}
 {"path":"docs/ADSENSE_REVIEW_2026-10-15.md","type":"blob","mode":"100644","sha":"84536eb259159b16ffff837cee004f60ac86e186","size":3797}
 {"path":"docs/ADSENSE_SETUP.md","type":"blob","mode":"100644","sha":"042a85eca8ca23c1d8dda98a364325241ecaabe8","size":2904}
@@ -206,14 +206,14 @@
 {"path":"docs/assets-guide.md","type":"blob","mode":"100644","sha":"496abc40539f922b9896298c53e698901b0ea1b9","size":4066}
 {"path":"docs/audio","type":"tree","mode":"040000","sha":"8d1a137e06e3ed9edc1c2c1634599e9da3e373ea","size":null}
 {"path":"docs/audio/HUMAN_AUDIO_LIBRARY_2026-10-02.md","type":"blob","mode":"100644","sha":"2430ff9df2ee3bb081180d8fd9e41b4fe37c30b1","size":1635}
-{"path":"docs/audits","type":"tree","mode":"040000","sha":"7b5d028ebaf19c2914940cef8cc96e29e1b5cdb6","size":null}
+{"path":"docs/audits","type":"tree","mode":"040000","sha":"f0b3a5d0159f0c0fca04e3496d83b0239419456d","size":null}
 {"path":"docs/audits/ADMIN_CONSOLE_CLOSEOUT_2026-11-10.md","type":"blob","mode":"100644","sha":"c71ffe9eb270543c05431f7d188b002d11d0aa9e","size":8069}
 {"path":"docs/audits/ADMIN_CONTROL_CENTER_2.0_AUDIT_PLAN_2026-11-06.md","type":"blob","mode":"100644","sha":"7387af5d46907272037520b104f42b79b513ba48","size":19574}
 {"path":"docs/audits/ADMIN_CONTROL_CENTER_2.0_EXECUTION_2026-11-06.md","type":"blob","mode":"100644","sha":"645787f9652f1f2368c54d127e798f2ad2da7c58","size":10603}
 {"path":"docs/audits/ADMIN_CONTROL_CENTER_CLOSEOUT_2026-11-06.md","type":"blob","mode":"100644","sha":"400a77eab1cbb9db7f6f8ebfc5ac2e3f1794887f","size":6156}
 {"path":"docs/audits/ARCHITECTURE_MAP_2026-11-01.md","type":"blob","mode":"100644","sha":"b96835e6a1dc30d40568bbc9891d7d5278a4b2b0","size":20353}
-{"path":"docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md","type":"blob","mode":"100644","sha":"2dbaeea216bae4b5c11a50d6296d7d55bcf3927e","size":60703}
-{"path":"docs/audits/FILE_STATUS_MATRIX_2026-11-01.md","type":"blob","mode":"100644","sha":"f218d4b4bd92987c7a199125c3b1d9bde53ccb0c","size":582355}
+{"path":"docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md","type":"blob","mode":"100644","sha":"76d5949ffa3d94dd1d5173f18181c9cbf768f013","size":68376}
+{"path":"docs/audits/FILE_STATUS_MATRIX_2026-11-01.md","type":"blob","mode":"100644","sha":"9eaa4c86c20fc987f2dcc1796c8e62a6aac11e0b","size":585382}
 {"path":"docs/audits/PG_CRON_RUNTIME_AUDIT_2026-11-01.md","type":"blob","mode":"100644","sha":"5fc0a95e8227bf2f3c8608d26db6c204c937a03a","size":1605}
 {"path":"docs/audits/PLATFORM_READINESS_2026-11-01.md","type":"blob","mode":"100644","sha":"ed882af34988c81d7e7992758b1f0a511cb14eda","size":6163}
 {"path":"docs/audits/REMEDIATION_CLOSEOUT_2026-11-01.md","type":"blob","mode":"100644","sha":"0e8b7cf04531894d1020821de299d1179c8074b4","size":5364}
@@ -442,7 +442,7 @@
 {"path":"public/video/templates/night.svg","type":"blob","mode":"100644","sha":"6c36312bb51736bed33644df164afecb7ef1b282","size":1272}
 {"path":"public/video/templates/paper.svg","type":"blob","mode":"100644","sha":"e64d12fd855cb59d7b1095d8f01d711538409506","size":1001}
 {"path":"public/video/templates/rose.svg","type":"blob","mode":"100644","sha":"d7a38daf4f6b540656435500715840fc94e567d7","size":1069}
-{"path":"scripts","type":"tree","mode":"040000","sha":"332fdee0883455973e30cc28bff83c4e7c9a3c36","size":null}
+{"path":"scripts","type":"tree","mode":"040000","sha":"bb8465caf50ab56733b79ce8c854a7445cbb8418","size":null}
 {"path":"scripts/cleanup-supabase-storage.mjs","type":"blob","mode":"100644","sha":"d961f6a975771184681698618abba9f705252ec6","size":33310}
 {"path":"scripts/ensure-ffmpeg.mjs","type":"blob","mode":"100644","sha":"0130b13b09fa88090f66435698f7623eed84ecdd","size":3245}
 {"path":"scripts/export-offline-content.mjs","type":"blob","mode":"100644","sha":"22cf34315d840b92ada7b57898a83e50949c506e","size":8428}
@@ -464,7 +464,7 @@
 {"path":"scripts/restore-quran-tafsir.sh","type":"blob","mode":"100644","sha":"19005af5048fda3db88a1b2c866b3a48f5eb0858","size":5472}
 {"path":"scripts/run-background-jobs.ts","type":"blob","mode":"100644","sha":"ac887a0b6c11d7a8ccf40f6f56ad5beb8b2554c0","size":17816}
 {"path":"scripts/sync-hadith-english.ts","type":"blob","mode":"100644","sha":"65dfff951e811a2ca9fb5aff9d8221c7419a4f7d","size":3866}
-{"path":"scripts/tests","type":"tree","mode":"040000","sha":"3b61f9af75fa002b50cac68a86b2d61ed72ddc6b","size":null}
+{"path":"scripts/tests","type":"tree","mode":"040000","sha":"da3b3fbf29f26cca32f21b08633a6b3d64ee1f77","size":null}
 {"path":"scripts/tests/admin-rbac-rls.test.mjs","type":"blob","mode":"100644","sha":"42a79e6e2299de19b034b4dc1d76145c024a9e9a","size":10937}
 {"path":"scripts/tests/admin-role-update.integration-setup.sql","type":"blob","mode":"100644","sha":"65c06e199feb825c087dd0053dca59de5cdefc30","size":2461}
 {"path":"scripts/tests/admin-role-update.integration.sh","type":"blob","mode":"100644","sha":"30f2f9ba7e93b23be788e15d39f39747f8de279e","size":1273}
@@ -519,10 +519,10 @@
 {"path":"scripts/tests/video-contract.test.ts","type":"blob","mode":"100644","sha":"3167749f4b297ffc43421fc5ab7ad26d695658ff","size":4097}
 {"path":"scripts/tests/video-creative-variation.test.ts","type":"blob","mode":"100644","sha":"6fac6d6ad293469c2b5251c8382a384521683122","size":1688}
 {"path":"scripts/tests/video-custom-provider-registry.test.ts","type":"blob","mode":"100644","sha":"da0c36b55c9a7bf1d3195c8289509a26e8a82275","size":1529}
-{"path":"scripts/tests/video-duplicate-recovery.test.ts","type":"blob","mode":"100644","sha":"5f61f596bf00b7a40f64782fa5ad07d7b5c86760","size":8913}
-{"path":"scripts/tests/video-media-fallback.test.ts","type":"blob","mode":"100644","sha":"5f2f78d91a114bb3a341fa0aae59712470224af2","size":5530}
+{"path":"scripts/tests/video-duplicate-recovery.test.ts","type":"blob","mode":"100644","sha":"6a207a27fd38e4394456e52bb4ae619f0a0c2b80","size":9440}
+{"path":"scripts/tests/video-media-fallback.test.ts","type":"blob","mode":"100644","sha":"a8aa43f5e57335f8f9e8dd798411700bc37dffdb","size":5981}
 {"path":"scripts/tests/video-publish-approval.test.ts","type":"blob","mode":"100644","sha":"f19d36b22aa81cd682c387e13b22cda21fdf3815","size":7103}
-{"path":"scripts/tests/video-purge-contract.test.mjs","type":"blob","mode":"100644","sha":"17fbfe56aeddff668827be198427343d10f1b874","size":7991}
+{"path":"scripts/tests/video-purge-contract.test.mjs","type":"blob","mode":"100644","sha":"7953c1353eacb8bbac5910eb17c991baea7a1a59","size":7971}
 {"path":"scripts/tests/video-route-cache.test.ts","type":"blob","mode":"100644","sha":"52b3cc54e43942deb94aec32e27ad92199422dc9","size":582}
 {"path":"scripts/tests/video-template-studio.test.ts","type":"blob","mode":"100644","sha":"a8a524ef6d1ffd2f9a36e945cd9bb60de5167e44","size":8170}
 {"path":"scripts/tests/written-content-automation.test.ts","type":"blob","mode":"100644","sha":"8ee57c72c339617dc1995c8d3f546bbde083662e","size":3377}
@@ -596,8 +596,8 @@
 {"path":"scripts/verify-video-queue-priority.mjs","type":"blob","mode":"100644","sha":"cf285009886a22b3efbb4ce782e8f01678eb2422","size":2837}
 {"path":"scripts/verify-voice-factory.mjs","type":"blob","mode":"100644","sha":"c8ed24a9e914b99cc575b286a3975a5f698e22eb","size":4833}
 {"path":"scripts/video-engine-check.mjs","type":"blob","mode":"100644","sha":"c7dc9156901847f4b7666ead969b0f1c4aee2040","size":3597}
-{"path":"src","type":"tree","mode":"040000","sha":"500409b8c289ad12f9111059e701434dad6af968","size":null}
-{"path":"src/app","type":"tree","mode":"040000","sha":"355500ec17213338ce649e52827e5558267e3d89","size":null}
+{"path":"src","type":"tree","mode":"040000","sha":"a37ea506a68682c73d712d894de50f903de2f3a0","size":null}
+{"path":"src/app","type":"tree","mode":"040000","sha":"832834834c7e4a0a5222a4e4ac309a4b98dbfb49","size":null}
 {"path":"src/app/.well-known","type":"tree","mode":"040000","sha":"634b32eafddb7e87e51333b9cc311c6aab87d813","size":null}
 {"path":"src/app/.well-known/apple-app-site-association","type":"tree","mode":"040000","sha":"823075c626bc8232e6d51ccd520d11de73c2eff0","size":null}
 {"path":"src/app/.well-known/apple-app-site-association/route.ts","type":"blob","mode":"100644","sha":"bcfba9e3bce9eda5958e9d8d76dae231528385d3","size":701}
@@ -762,8 +762,8 @@
 {"path":"src/app/admin/video/voices/page.tsx","type":"blob","mode":"100644","sha":"c96c8538d23e6980adf904b7edbf0fb4afd66741","size":4574}
 {"path":"src/app/admin/videos","type":"tree","mode":"040000","sha":"87a888c3d3d29f0b46dc13bf1a07b0a264b7a7bc","size":null}
 {"path":"src/app/admin/videos/page.tsx","type":"blob","mode":"100644","sha":"56b26cd15a2f3f9b7cc6a6b9c48d5a875b31db08","size":175}
-{"path":"src/app/api","type":"tree","mode":"040000","sha":"314f0f7066879263b1108a8c189207ccb1145efa","size":null}
-{"path":"src/app/api/admin","type":"tree","mode":"040000","sha":"847236aba126f9d0ae603dea330e3e56acfd438b","size":null}
+{"path":"src/app/api","type":"tree","mode":"040000","sha":"b7f18c7d54e762fb3c50555a19a35bfc46782d22","size":null}
+{"path":"src/app/api/admin","type":"tree","mode":"040000","sha":"a291f0b97db1d06b0f3419a0eaca7ea4c85795fe","size":null}
 {"path":"src/app/api/admin/analytics","type":"tree","mode":"040000","sha":"900e22a0a85a3f4b54c1ee28e2f741441b308c92","size":null}
 {"path":"src/app/api/admin/analytics/route.ts","type":"blob","mode":"100644","sha":"e0978b9c87a25868caf3aebf481596f52fa994a1","size":3969}
 {"path":"src/app/api/admin/cloudinary","type":"tree","mode":"040000","sha":"0312476c4c4e504c10ed8eb5627dcd5f9d46c2c9","size":null}
@@ -803,8 +803,8 @@
 {"path":"src/app/api/admin/video-generation/route.ts","type":"blob","mode":"100644","sha":"024348645056b9902b7ad121ffa01332632448a3","size":10991}
 {"path":"src/app/api/admin/video-generation/sources","type":"tree","mode":"040000","sha":"67c665686403b4f9abc80bf4d004e40bd170a5df","size":null}
 {"path":"src/app/api/admin/video-generation/sources/route.ts","type":"blob","mode":"100644","sha":"d12c2b63cfd0c4dc09a0dcd457a360bc90fb3176","size":2241}
-{"path":"src/app/api/admin/video-purge","type":"tree","mode":"040000","sha":"999fa8f846671a75c70851e386b322a05fdb2337","size":null}
-{"path":"src/app/api/admin/video-purge/route.ts","type":"blob","mode":"100644","sha":"cd05fa155a3bc6698cb3b03ea03d436503790caa","size":25905}
+{"path":"src/app/api/admin/video-purge","type":"tree","mode":"040000","sha":"093c168d2555bd4f5a7f2c875efe33b57ae3597e","size":null}
+{"path":"src/app/api/admin/video-purge/route.ts","type":"blob","mode":"100644","sha":"cb59100cbb494aaea2d96f4dbf8746e64e23f9c9","size":25946}
 {"path":"src/app/api/admin/video","type":"tree","mode":"040000","sha":"3b0d7b934d04482674559abfd61c18995af6fc01","size":null}
 {"path":"src/app/api/admin/video/templates","type":"tree","mode":"040000","sha":"e598778b9e7bf66c96d8e5c8307cd3259412eb18","size":null}
 {"path":"src/app/api/admin/video/templates/route.ts","type":"blob","mode":"100644","sha":"24fdc5749bc6500307abc8b2da5061768bfb1f15","size":12076}
@@ -1219,7 +1219,7 @@
 {"path":"src/components/ui/page-skeleton.tsx","type":"blob","mode":"100644","sha":"1f535f376c2dbbae1de3a1342cdcf6de7dcb552e","size":1712}
 {"path":"src/components/ui/progress.tsx","type":"blob","mode":"100644","sha":"2a1686870e0ee7322df746927bd29a1fffbb2671","size":815}
 {"path":"src/components/ui/section-header.tsx","type":"blob","mode":"100644","sha":"14e6cfd227d14c275b95de09d967f58bbdfb5f97","size":444}
-{"path":"src/features","type":"tree","mode":"040000","sha":"1c68b02c9509ada0a73630545c86c89637e9ab5f","size":null}
+{"path":"src/features","type":"tree","mode":"040000","sha":"2f05507a1cd623043858cff7824b9f84b9097a51","size":null}
 {"path":"src/features/adhkar","type":"tree","mode":"040000","sha":"ea5779d99a7f6e6f378a44396d7c62103d123bef","size":null}
 {"path":"src/features/adhkar/components","type":"tree","mode":"040000","sha":"33462c6167c041b5b5aa76f836c448ba83a858f4","size":null}
 {"path":"src/features/adhkar/components/adhkar-page.tsx","type":"blob","mode":"100644","sha":"c20b2c0866d4d3ff32d13951fc9d0a3f717f2cfa","size":14232}
@@ -1542,7 +1542,7 @@
 {"path":"src/features/tasbeeh/components/tasbeeh-page.tsx","type":"blob","mode":"100644","sha":"be11dafaf9c228be8e18395c37a2e51da14097c6","size":10384}
 {"path":"src/features/tasbeeh/services","type":"tree","mode":"040000","sha":"bc91d037c04ff7c095ffb5bba2c11e2d67e0b1dc","size":null}
 {"path":"src/features/tasbeeh/services/tasbeeh.ts","type":"blob","mode":"100644","sha":"e7e14483826b254efb11462960972d46fc5b0aa1","size":5939}
-{"path":"src/features/videos","type":"tree","mode":"040000","sha":"60009ce5f05330c7ff714b19e4769148837fa870","size":null}
+{"path":"src/features/videos","type":"tree","mode":"040000","sha":"3236aa821d88654212c617cde19ecea61463c88d","size":null}
 {"path":"src/features/videos/components","type":"tree","mode":"040000","sha":"43bc5e22a59855e080115fa67c9e946a71112fe3","size":null}
 {"path":"src/features/videos/components/video-like-button.tsx","type":"blob","mode":"100644","sha":"294135860d7b3ba62b0fb63c46c613cd8a025011","size":3645}
 {"path":"src/features/videos/components/youtube-feed-card.tsx","type":"blob","mode":"100644","sha":"a7eec230e47226d884e5e858987d8541690e92bc","size":3370}
@@ -1562,16 +1562,16 @@
 {"path":"src/features/videos/providers/provider-router.ts","type":"blob","mode":"100644","sha":"cbf315407489e5abcb7de2a3e23cd2a667a7586d","size":4546}
 {"path":"src/features/videos/providers/template-provider.ts","type":"blob","mode":"100644","sha":"b5744b740922375aec8e1d410557fc09eee977a8","size":609}
 {"path":"src/features/videos/providers/types.ts","type":"blob","mode":"100644","sha":"9669fc97e08684962db9c143a6d522b276b2b784","size":4873}
-{"path":"src/features/videos/services","type":"tree","mode":"040000","sha":"62f5a87ed9f27c05a8223cec70371971851e4d04","size":null}
+{"path":"src/features/videos/services","type":"tree","mode":"040000","sha":"9385312b5475ec05b6e33ec93143fde09a986f1f","size":null}
 {"path":"src/features/videos/services/background-job-outcome.ts","type":"blob","mode":"100644","sha":"e91d6c76dd7ea2071f5366e1576760384dc42b6a","size":2056}
-{"path":"src/features/videos/services/duplicate-video-recovery.ts","type":"blob","mode":"100644","sha":"e372417f9f80a8f1e73f98921efe3a71bbe3037d","size":2178}
+{"path":"src/features/videos/services/duplicate-video-recovery.ts","type":"blob","mode":"100644","sha":"48619dfa94c5d5d21b36ffa6c15f730f59955e88","size":2240}
 {"path":"src/features/videos/services/narration-quality.ts","type":"blob","mode":"100644","sha":"d6ceea752928f0803b39263ef3785b81b8bd249b","size":1959}
 {"path":"src/features/videos/services/render-duration.ts","type":"blob","mode":"100644","sha":"498feb6676300ac1a6a58ce5acd7639deb92f5a7","size":1027}
 {"path":"src/features/videos/services/template-config.ts","type":"blob","mode":"100644","sha":"a0b0dd0eb1b26b33cc12ea0b3cfc5849a4613b1e","size":4096}
 {"path":"src/features/videos/services/video-automation.ts","type":"blob","mode":"100644","sha":"4b1d21ce88d2cb42aed294f901c377b8f1781377","size":26870}
 {"path":"src/features/videos/services/video-composition.ts","type":"blob","mode":"100644","sha":"255382f55a11edfd0fc684b82d5f126835ee23be","size":11402}
 {"path":"src/features/videos/services/video-creative-variation.ts","type":"blob","mode":"100644","sha":"50ce96af56a4f058e2b68d657a0ea9178ce5fc68","size":4743}
-{"path":"src/features/videos/services/video-media-contract.ts","type":"blob","mode":"100644","sha":"9fd0fba6151b2fefc4e6ae7198c55c146c1a818e","size":6655}
+{"path":"src/features/videos/services/video-media-contract.ts","type":"blob","mode":"100644","sha":"81c408074fb58810637925bc12be8dce8b70751a","size":6911}
 {"path":"src/features/videos/services/video-publish-approval.ts","type":"blob","mode":"100644","sha":"981b34eba593330cce889f7038b11ed58abab4df","size":8500}
 {"path":"src/features/videos/services/video-sources.ts","type":"blob","mode":"100644","sha":"2d4d7e611e62e837836f8a0ffba6c1cfdab94af2","size":12126}
 {"path":"src/features/videos/services/video-template-version.ts","type":"blob","mode":"100644","sha":"57d954843229dd63614ac5b867da93bd17d286a9","size":239}

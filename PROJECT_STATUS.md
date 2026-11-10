@@ -1,14 +1,30 @@
 # ZIKR — Current Project Status
 
+## Latest execution checkpoint — 2026-11-10 17:14 Africa/Cairo
+
+**Audit state: IN PROGRESS. Not a final certification.**
+
+- Production identity reverified: `zikrofficial-X/Zikr@c91f64c`, Vercel `zikr` deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` READY on that exact main SHA, Supabase `zqtssvlvmkzeeyqghqfk` ACTIVE_HEALTHY.
+- PR #275 code snapshot: `e3baf37d5c503f454b19ba1f6116a3e0ea639c1d`; recursive tree 2,148 entries, 1,657 files, 491 directories. Main baseline remains 2,130 entries, 1,639 files, 491 directories. No tree truncation.
+- New PR fixes: duplicate recovery requires evidence that an existing purged catalog row was public before purge; repeated purges preserve that evidence. Commits: `564c002`, `6773c27`, `838297d`, `30b17ad`, `b063524`, `5e89550`, `e3baf37`. Regression tests were updated; current-head CI remains pending.
+- CI on the code snapshot: CircleCI config-guard PASS; source-verify and application-build-docs PENDING; GitHub Quality Gate IN PROGRESS; CircleCI Config Validation PASS. Do not merge until all checks pass on the resulting exact head.
+- Live Supabase: 415 migrations, 92/92 public tables with RLS; Health Advisor clear; one Auth warning for leaked-password protection disabled; 89 unused-index advisories. No migration or production data change.
+- Video/social: 127 videos (22 public, 105 hidden); 112 completed generation requests, 64 without a video URL; 9 non-published social video rows remain held for missing media; 10 queued rows are written posts. No retries or public posts were triggered.
+- Vercel 24-hour errors: 7 intermittent Supabase socket/TLS fetch failures (latest 14:09 UTC) and one historical rejected Meta Server Token event. No speculative code change.
+- No Preview is safe for authenticated writes because it shares production-backed credentials; production remains on main. No Android artifact from current main was produced.
+- Full review remains incomplete: 129/1,639 main files have full source-content reads recorded; 1,509 remain REVIEW_REQUIRED; modules closed = 0. The PR manifest and matrix were refreshed to the current code snapshot.
+- No production migrations, data, media, indexes, buckets, external posts, branches or files were deleted or modified in this run.
+
+
 ## Additional verified fix — Android release publishing gate (2026-11-10)
 
 PR #275 now fixes a second release-control defect. The Android asset publisher previously allowed a recovery branch to run without the explicit retry input and skipped the full CircleCI prerequisite check on manual retries. It now resolves the exact immutable tag target for every path, requires `workflow_dispatch` plus `retry=true` for recovery branches, and waits for all required CircleCI contexts and the latest `ZIKR / Quality Gate` on that exact source commit before publishing. The combined commit status must also be successful.
 
 Commits: `4ee6a5b` (workflow gate), `e6f7e3b` (release-contract and CI-architecture tests, fail-fast combined status). No Android release workflow was dispatched. The existing `v1.1.14` release remains unchanged.
 
-Current PR #275 code head: `e6f7e3baf8c6ad904a0082e67c5740c2a3ed9a5a`; 58 changed files; still Draft. CircleCI source-verify 4459 and application-build-docs 4460 are pending; config-guard 4461 passed; GitHub Quality Gate 42824891836 is queued; CircleCI Config Validation 42824891750 is in progress. Do not merge until all checks pass on the exact current head.
+PR #275 code head at that checkpoint: `e6f7e3baf8c6ad904a0082e67c5740c2a3ed9a5a`; 58 changed files; still Draft. CircleCI source-verify 4459 and application-build-docs 4460 are pending; config-guard 4461 passed; GitHub Quality Gate 42824891836 is queued; CircleCI Config Validation 42824891750 is in progress. Do not merge until all checks pass on the exact current head.
 
-## Current verified checkpoint — 2026-11-10 15:08 Africa/Cairo
+## Previous verified checkpoint — 2026-11-10 15:08 Africa/Cairo
 
 **Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
 

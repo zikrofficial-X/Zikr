@@ -1,13 +1,29 @@
 # ZIKR Continuous Closeout Ledger
 
-**Last reconciled:** 2026-11-10 15:08 Africa/Cairo  
+## Latest execution checkpoint — 2026-11-10 17:14 Africa/Cairo
+
+- **Verified identities:** GitHub `zikrofficial-X/Zikr`; production `main@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; Vercel project `zikr` / `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`; production deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` is READY on that exact main SHA; Supabase `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY (PostgreSQL 17.11).
+- **Inventory:** main = 2,130 tree entries (1,639 files, 491 directories); PR #275 code snapshot `e3baf37d5c503f454b19ba1f6116a3e0ea639c1d` = 2,148 entries (1,657 files, 491 directories), 18 PR-only paths, no removed paths, 70 changed files (9,977 additions / 2,262 deletions). Both recursive trees were complete and not truncated.
+- **Coverage:** matrix records 129/1,639 main files with full source-content reads; 1,509 remain REVIEW_REQUIRED. This is not full manual/functional review. Five files have full manual/functional evidence recorded; modules closed = 0. The PR manifest and matrix are refreshed against this code snapshot.
+- **New code defects fixed on PR #275:** (1) duplicate render recovery previously accepted any hidden `mediaState=purged` catalog row, including one explicitly unpublished before purge. It now requires `mediaPurgedFromPublished=true` for an existing purged row; absent prior-publication proof fails closed. (2) repeated purge could overwrite that prior-publication flag with false after the first purge hid the row. A shared `wasPublishedBeforeMediaPurge` helper now preserves the original flag across repeated purges. Regression tests cover true, false, and missing evidence.
+- **Fix commits:** `564c002c10c7c78d7ac9ce6dc407b45f7be4b607` (duplicate-recovery gate); `6773c27088dceb2531bb5a78cd0ff38337defe8d` (duplicate-recovery regression tests); `838297d44976f8b88346d3fc9e95c22eaf2c9d9e` (prior-publication helper); `30b17ad3cdcbb64685b5fd3bdb94b595e8cb0976` (purge route); `b063524d495cbf6e00886be2e3c0f80e26954025` and `5e895505970a43736b483955056b08b7e920c3c0` (regression contracts); `e3baf37d5c503f454b19ba1f6116a3e0ea639c1d` (final prior-publication test fixture).
+- **CI on exact code snapshot `e3baf37d5c503f454b19ba1f6116a3e0ea639c1d`:** CircleCI config-guard PASS; source-verify PENDING; application-build-docs PENDING; GitHub Quality Gate IN PROGRESS; CircleCI Config Validation PASS. Do not merge. This documentation refresh follows the code snapshot and will trigger another exact-head CI cycle; recheck before merge.
+- **Live Supabase read-only snapshot:** 415 applied migrations (latest `20261110085520`); 92/92 public tables have RLS enabled; Security Advisor has one warning (Leaked Password Protection disabled); Health Advisor clear; Performance Advisor reports 89 unused-index candidates. No PR migration has been applied.
+- **Video/social data:** 127 videos (22 published, 105 hidden, 110 internal); 112/112 generation requests completed, 64 lack `video_url`; social queue 98 rows (79 published, 6 failed, 3 partial, 10 queued written posts); 9 rows remain held with `sourceMediaMissing=true`; internal content queue 121 published, 0 queued. No provider retry, regeneration, or public post was triggered.
+- **Runtime:** Vercel 24-hour aggregation shows 7 `fetch failed` events (last 14:09 UTC) across home, adhan audio, hadith detail, admin automation and analytics; traces indicate socket/TLS resets to the canonical Supabase host. One rejected Meta Server Token event last occurred 08:33 UTC. No speculative retry or code change was made.
+- **Release/deploy:** production remains on `main@c91f64c`; no PR Preview is safe because Preview/Development share production-backed sensitive integrations and custom environments are unavailable. Android v1.1.14 remains the last previously verified release; no signed artifact from current main was produced in this run.
+- **Safety:** no production migration, RLS/Auth setting, Storage policy, bucket, index, content row, Cloudinary asset, social queue row, external post, branch, or tracked file was deleted or modified by this run. No module is marked closed.
+- **Open gates:** current-head CI; full review of the 1,657-file PR tree and 1,639-file main baseline; safe authenticated Preview/browser/mobile acceptance; reconcile the 9 held social rows and 64 completed requests without media; keep the 6 Kids items with revalidation_required excluded; owner-level leaked-password protection decision; investigate Supabase transport errors; controlled release of the two pending PR migrations only after all gates pass.
+
+
+**Last reconciled:** 2026-11-10 17:14 Africa/Cairo  
 **Repository:** `zikrofficial-X/Zikr`  
 **Base snapshot:** `main@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`  
 **Working PR:** [#275](https://github.com/zikrofficial-X/Zikr/pull/275)  
 **State:** IN PROGRESS — not a final certification.
 
 
-## Latest execution checkpoint — 2026-11-10 15:08 Africa/Cairo
+## Previous execution checkpoint — 2026-11-10 15:08 Africa/Cairo
 
 - **Canonical identities:** GitHub `zikrofficial-X/Zikr`; `main@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; Vercel project `zikr` / `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs` with production deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` READY on that exact main SHA; Supabase `zqtssvlvmkzeeyqghqfk`, `ACTIVE_HEALTHY`, PostgreSQL 17.11.
 - **Inventory:** main tree remains 2,130 entries (1,639 files, 491 directories), recursive response not truncated. PR #275 head is `695aacfee5bed657e607faf79e1e65608c711073`, 2,140 entries (1,649 files, 491 directories), 10 PR-only additions, zero removed paths, 56 changed files. Main remains the production baseline; PR is still Draft and unmerged.
