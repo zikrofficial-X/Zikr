@@ -305,7 +305,7 @@ export async function runWrittenContentAutomation(options:{category?:string;batc
 
  const todaysKidsPosts = category === "auto"
   ? await readRequired<Row>(
-   `/rest/v1/social_publish_queue?content_type=eq.written_post&status=in.(queued,published,partial)&metadata->>audience=eq.kids&created_at=gte.${encodeURIComponent(today.toISOString())}&select=id&limit=1`,
+   `/rest/v1/social_publish_queue?content_type=eq.written_post&status=in.(queued,processing,publishing,partial,published)&metadata->>audience=eq.kids&created_at=gte.${encodeURIComponent(today.toISOString())}&select=id&limit=1`,
   )
   : [];
  let hasKidsPostToday = todaysKidsPosts.length > 0;
