@@ -128,6 +128,8 @@ async function listLegacyRequests(): Promise<LegacyVideoRequest[]> {
 async function processRequest(request: LegacyVideoRequest, apply: boolean) {
   const originalContent = asRecord(request.content);
   const checkedAt = new Date().toISOString();
+  let sourceRevalidated = false;
+  let mediaVerified = false;
   const fail = async (reason: string, checks?: ReturnType<typeof buildAutomatedVideoQaChecklist>) => {
     const reviewChecks = checks ?? Object.fromEntries(
       REQUIRED_VIDEO_APPROVAL_CHECKS.map((key) => [key, false]),
@@ -157,8 +159,8 @@ async function processRequest(request: LegacyVideoRequest, apply: boolean) {
         blockedReason: reason,
         legacyBackfill: {
           checkedAt,
-          sourceRevalidated: false,
-          mediaVerified: false,
+          sourceRevalidated,
+          mediaVerified,
           method: "safe_legacy_backfill_v1",
         },
       },
@@ -205,6 +207,7 @@ async function processRequest(request: LegacyVideoRequest, apply: boolean) {
     if (asRecord(requestForValidation.content).audience === "kids") {
       assertKidsStoryContract(requestForValidation);
     }
+    sourceRevalidated = true;
   } catch (error) {
     return fail("Source or Kids content revalidation failed: " + (error instanceof Error ? error.message : String(error)));
   }
@@ -222,7 +225,7 @@ async function processRequest(request: LegacyVideoRequest, apply: boolean) {
     return fail("Recomputed current content fingerprint does not match the rendered content hash.");
   }
 
-  const mediaVerified = await verifyRemoteMedia(request.video_url);
+  mediaVerified = await verifyRemoteMedia(request.video_url);
   if (!mediaVerified) return fail("Cloudinary did not confirm that the stored master is reachable as a video asset.");
 
   const checks = buildAutomatedVideoQaChecklist(
@@ -252,7 +255,7 @@ async function processRequest(request: LegacyVideoRequest, apply: boolean) {
   }
 
   const approvedContent: RecordValue = {
-    ...originalContent,
+    ...validatedContent,
     ...approval,
     automatedVideoQa: {
       ...asRecord(approval.automatedVideoQa),
