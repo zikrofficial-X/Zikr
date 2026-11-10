@@ -17,6 +17,7 @@ const writtenPage = read("src/app/admin/social/written-studio/page.tsx");
 const navigation = read("src/features/admin/config/navigation.ts");
 const runner = read("scripts/run-background-jobs.ts");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
+const facebookProfileIntegration = read("src/features/social/integrations/facebook.ts");
 const videoGenerator = read("scripts/jobs/template-video-automation.ts");
 const socialPublishingService = read("src/features/social/services/social-publishing.ts");
 const cleanupPolicy = read("src/features/social/services/published-video-cleanup.ts");
@@ -73,7 +74,18 @@ if (!runner.includes("processSocialPublishQueue") ||
     !runner.includes('process.env.SOCIAL_SYNC_INSIGHTS === "true"')) {
   failures.push("background runner must process social only when enabled and must make insights sync opt-in");
 }
+const insightsStart = socialWorker.indexOf("export async function syncSocialInsights()");
+const insightsEnd = socialWorker.indexOf("export async function processSocialPublishQueue", insightsStart);
+const insightsWorker = socialWorker.slice(insightsStart, insightsEnd);
+if (!insightsWorker.includes("getFacebookPageProfile()") ||
+    !insightsWorker.includes("facebookProfileSync") ||
+    !insightsWorker.includes("facebookProfileSync.configured && facebookProfileSync.stale") ||
+    !facebookProfileIntegration.includes("supabaseServerAdminRequest") ||
+    facebookProfileIntegration.includes("createAdminClient")) {
+  failures.push("analytics-only worker must refresh Facebook Page profile metrics through the Node-safe admin REST client and report stale profile data");
+}
 if (!runner.includes('const insightsFailed = target === "insights"') ||
+    !runner.includes("Number(insights.failed ?? 0)") ||
     !runner.includes("if (insightsFailed > 0)") ||
     !socialWorker.includes("Number(facebookInsights.failed ?? 0) + Number(insights.failed ?? 0)")) {
   failures.push("analytics-only worker must expose provider failures and fail CI instead of reporting false success");
