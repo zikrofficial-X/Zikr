@@ -339,7 +339,8 @@ export function isEligibleKidsWrittenPostForPublishing(
     /^[a-z0-9-]+$/i.test(slug) &&
     rawPublicPath === "/kids/" + slug &&
     Boolean(title) &&
-    Boolean(body);
+    Boolean(body) &&
+    !containsKidsPersonalDataSolicitation([title, body].join("\n"));
 }
 
 /** Re-check the live Kids source before exposing a previously published social post. */
@@ -381,6 +382,7 @@ export function buildPublicKidsWrittenPost(
   rawPublicPath !== publicPath ||
   !title ||
   !body ||
+  containsKidsPersonalDataSolicitation([title, body].join("\n")) ||
   !publishedAt ||
   platforms.length === 0
  ) return null;
