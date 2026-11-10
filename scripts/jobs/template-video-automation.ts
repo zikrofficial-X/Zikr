@@ -14,7 +14,7 @@ import { listVideoSources, resolveVideoSource } from "../../src/features/videos/
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
 import { buildKidsSeriesEpisode, validateCanonicalKidsEpisodeSnapshot, validateGeneratedKidsEpisode } from "../../src/features/videos/data/kids-story-factory";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
-import { canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
+import { buildDuplicateVideoOwnerVideoUrlFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
 import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
@@ -2306,7 +2306,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
 
           if (!recoveryResult.published) {
             const restoredOwnerRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-              `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(duplicate.id)}&status=eq.completed&or=(video_url.is.null,video_url.eq.)`,
+              `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(duplicate.id)}&status=eq.completed&${buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)}`,
               {
                 method: "PATCH",
                 headers: { Prefer: "return=representation" },
