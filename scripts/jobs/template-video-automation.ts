@@ -14,6 +14,7 @@ import { listVideoSources, resolveVideoSource } from "../../src/features/videos/
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
 import { buildKidsSeriesEpisode, validateCanonicalKidsEpisodeSnapshot, validateGeneratedKidsEpisode } from "../../src/features/videos/data/kids-story-factory";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
+import { canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoTemplateAssetAllowedForAudience, parseVideoTemplateConfig, videoTemplateAssetPath, videoTemplateScene, type VideoTemplateAudience } from "../../src/features/videos/services/template-config";
@@ -1729,6 +1730,7 @@ async function registerGeneratedVideoOnSite(
     contentHash: string;
     templateVersion: string;
   },
+  options: { recoverPurgedRecord?: boolean } = {},
 ) {
   const slug = "zikr-" + request.id.toLowerCase().replace(/[^a-z0-9-]/g, "");
   const existingRows = await supabaseServerAdminRequest<Array<{
@@ -1881,9 +1883,13 @@ async function registerGeneratedVideoOnSite(
         updated_at: now,
       }),
     });
-  } else if (existingQueue.status === "failed") {
+  } else if (
+    existingQueue.status === "failed" ||
+    (options.recoverPurgedRecord === true && existingQueue.status === "published")
+  ) {
     await supabaseServerAdminRequest(
-      "/rest/v1/content_publish_queue?id=eq." + encodeURIComponent(existingQueue.id) + "&status=eq.failed",
+      "/rest/v1/content_publish_queue?id=eq." + encodeURIComponent(existingQueue.id) +
+        "&status=eq." + encodeURIComponent(existingQueue.status),
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
@@ -2196,14 +2202,105 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
         }
       } catch (hashError) {
         if (!isContentHashConflict(hashError)) throw hashError;
-        const duplicateRows = await supabaseServerAdminRequest<Array<{ id: string; status: string }>>(
-          `/rest/v1/video_generation_requests?content_hash=eq.${encodeURIComponent(rendered.contentHash)}&id=neq.${encodeURIComponent(request.id)}&select=id,status&limit=1`,
+        const duplicateRows = await supabaseServerAdminRequest<GeneratedRequest[]>(
+          `/rest/v1/video_generation_requests?content_hash=eq.${encodeURIComponent(rendered.contentHash)}&id=neq.${encodeURIComponent(request.id)}&select=id,title,description,category,content,status,automation_key,video_url,generation_attempts,next_retry_at,duration,source_hash,content_hash,template_version,scene,render_duration_ms&limit=1`,
         );
         const duplicate = duplicateRows?.[0];
         if (!duplicate) throw hashError;
 
+        const duplicateSlug = "zikr-" + duplicate.id.toLowerCase().replace(/[^a-z0-9-]/g, "");
+        const duplicateSiteRows = await supabaseServerAdminRequest<Array<{
+          published: boolean | null;
+          metadata: Record<string, unknown> | null;
+        }>>(
+          `/rest/v1/videos?slug=eq.${encodeURIComponent(duplicateSlug)}&select=published,metadata&limit=1`,
+        );
+        const duplicateSiteRecord = duplicateSiteRows?.[0] ?? null;
+        const canRecover = canRecoverDuplicateVideoRender({
+          owner: duplicate,
+          candidate: {
+            category: request.category,
+            contentHash: rendered.contentHash,
+            sourceHash: rendered.sourceHash,
+            templateVersion: rendered.templateVersion,
+          },
+          qaApproved: Boolean(qaApproval),
+          siteRecord: duplicateSiteRecord,
+        });
         const duplicateAt = new Date().toISOString();
         const attempts = (request.generation_attempts ?? 0) + 1;
+
+        if (canRecover && qaApproval) {
+          const recoveredContent = {
+            ...(duplicate.content ?? {}),
+            ...qaApproval,
+            automatedVideoQa: {
+              ...(qaApproval.automatedVideoQa as Record<string, unknown>),
+              engagement,
+            },
+          };
+          const recoveredRequest: GeneratedRequest = {
+            ...duplicate,
+            content: recoveredContent,
+          };
+          const recoveryResult = await registerGeneratedVideoOnSite(
+            recoveredRequest,
+            rendered,
+            { recoverPurgedRecord: true },
+          );
+
+          if (!recoveryResult.published) {
+            const restoredOwnerRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+              `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(duplicate.id)}&status=eq.completed&or=(video_url.is.null,video_url.eq.)`,
+              {
+                method: "PATCH",
+                headers: { Prefer: "return=representation" },
+                body: JSON.stringify({
+                  status: "completed",
+                  video_url: rendered.videoUrl,
+                  scene: rendered.scene,
+                  render_duration_ms: rendered.renderDurationMs,
+                  source_hash: rendered.sourceHash,
+                  content_hash: rendered.contentHash,
+                  template_version: rendered.templateVersion,
+                  content: recoveredContent,
+                  next_retry_at: null,
+                  last_attempt_at: duplicateAt,
+                  error_message: null,
+                  error_details: null,
+                  updated_at: duplicateAt,
+                }),
+              },
+            );
+            if (!restoredOwnerRows?.[0]?.id) {
+              throw new Error(`Canonical duplicate request ${duplicate.id} changed during media recovery; the render remains unapproved for distribution.`);
+            }
+
+            await supabaseServerAdminRequest(
+              `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
+              {
+                method: "PATCH",
+                headers: { Prefer: "return=minimal" },
+                body: JSON.stringify({
+                  status: "cancelled",
+                  video_url: null,
+                  scene: null,
+                  render_duration_ms: null,
+                  generation_attempts: attempts,
+                  next_retry_at: null,
+                  last_attempt_at: duplicateAt,
+                  error_message: "Duplicate render recovered into the canonical request",
+                  error_details: `Verified media was restored to canonical request ${duplicate.id}; no second video or social queue item was created.`,
+                  updated_at: duplicateAt,
+                }),
+              },
+            );
+            succeeded += 1;
+            console.info(`[template-video] Recovered purged media for canonical request ${duplicate.id} from duplicate render ${request.id}.`);
+            continue;
+          }
+        }
+
         await supabaseServerAdminRequest(
           `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
           {
