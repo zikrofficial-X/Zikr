@@ -181,6 +181,9 @@ for (const [label, page, service] of [
   if (!page.includes("rawUrl && !videoId") || !page.includes("recordAdminAuditEvent")) {
     failures.push(`Admin ${label} mutations must reject malformed YouTube URLs and record audit events.`);
   }
+  if (!page.includes("requireAdminStepUp")) {
+    failures.push(`Admin ${label} video and publication mutations must honor the configured MFA step-up policy.`);
+  }
 }
 for (const [label, page] of [["battles", battlesPage], ["prophets", prophetsPage]]) {
   if (!page.includes(`"${label}.youtube_video.update"`) || !page.includes(`"${label}.publish"`) || !page.includes(`"${label}.unpublish"`)) {
