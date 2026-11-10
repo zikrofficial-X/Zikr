@@ -1,4 +1,4 @@
-# ZIKR file status matrix — refreshed 2026-11-10T22:21:00Z
+# ZIKR file status matrix — refreshed 2026-11-10T22:45:00Z
 
 **Current baseline:** `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`  
 **Manifest:** `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` (recursive snapshot of this exact main baseline; self-entry excluded; `docs` and `docs/audits` directory hashes are null because they contain the manifest)  
@@ -1850,28 +1850,28 @@ All six PRs are open and unmerged with empty review lists. The configured CODEOW
 
 ### Active audit branch overlays — exact file blobs
 
-These entries are branch overlays, not part of the `main@c4560d9` manifest baseline. The matrix file itself is omitted from its own overlay to avoid a self-referential blob SHA; its exact blob is available in the Git tree. PR #320 code blobs are from code head `2055be4678fb39275377f9eef21829bdb3b68c43`; its latest Quality Gate is queued and all three CircleCI contexts are pending. The project-status and ledger blobs are from documentation commits `86bc9223c14d11a3a4e5768749ec021b695a713d` and `c96b2a2b1b4213adfcc5195aee05a4db8f3a1010`. PR #324 code blobs are from `f86010f1d97c0064699bca0aabdc34f126896a82`; its Quality Gate and CircleCI config-guard passed. This matrix refresh is a documentation-only change and requires exact-head CI.
+These entries are branch overlays, not part of the `main@c4560d9` manifest baseline. The matrix file itself is omitted from its own overlay to avoid a self-referential blob SHA; its exact blob is available in the Git tree. PR #320 source-code repair head is `2055be4678fb39275377f9eef21829bdb3b68c43`; fully verified branch head `74fa73d507c30cec433b894692af573cb79e6659` passed GitHub Quality Gate and all three CircleCI contexts. PR #323 head `5a2ea09224fdba81909cffff915d521fb5238b10` passed GitHub Quality Gate and config-guard; its new migration remains pending production application. PR #324 head `f86010f1d97c0064699bca0aabdc34f126896a82` passed Quality Gate and config-guard. PR #325 head `8e3a73d81968e0c5fa17c739f7172b8a40ade383` passed Quality Gate and config-guard. Project-status and ledger blobs below are the current checkpoint files. This matrix refresh itself requires exact-head CI.
 
 | PR | Path | Branch blob SHA-1 | Bytes | State |
 |---|---|---|---:|---|
 | #320 | `.circleci/config.yml` | `e05272c698aec33f64e436b86d1478820f8e7e56` | 37564 | TESTED_PASS |
-| #320 | `PROJECT_STATUS.md` | `bed5f5e6645d9581a9a7d4bf03e482f06b9d8e6d` | 91608 | AUDIT_CHECKPOINT_RECORDED |
-| #320 | `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | `6d320e96f42ebe78a2a4d7f72b128862267a0178` | 127431 | AUDIT_CHECKPOINT_RECORDED |
+| #320 | `PROJECT_STATUS.md` | `a3f13b227478043e33b36adc63397963f0f226d1` | 93524 | AUDIT_CHECKPOINT_RECORDED |
+| #320 | `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | `fa355fed567b307e0a3a0aae59c638f4264f3931` | 129671 | AUDIT_CHECKPOINT_RECORDED |
 | #320 | `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` | `ae8849ca2127dd5ee1d6e327fb07405e3a05cbc2` | 311031 | MANIFEST_CAPTURED_MAIN_BASELINE |
 | #320 | `package.json` | `66b90f8f474004b8fe2186e89ff490cbaf04c0ea` | 15789 | TESTED_PASS |
-| #320 | `scripts/jobs/written-content-automation.ts` | `613e97b18834cc5aba55dd17f076197de03e56f3` | 23437 | PENDING_EXACT_HEAD_CI |
+| #320 | `scripts/jobs/written-content-automation.ts` | `613e97b18834cc5aba55dd17f076197de03e56f3` | 23437 | TESTED_PASS |
 | #320 | `scripts/platform-route-baseline.mjs` | `f26237b693b59c6e5daf484637ec212abe8b541f` | 380 | TESTED_PASS |
 | #320 | `scripts/tests/kids-content-visibility.test.ts` | `ee9fb271b4126c007473c780a26eb0c479c91398` | 2508 | TESTED_PASS |
 | #320 | `scripts/tests/kids-share-rate-limit.test.ts` | `d65b4ca3c07020c315202b15f01a4382f3232a38` | 1738 | TESTED_PASS |
-| #320 | `scripts/tests/written-content-automation.test.ts` | `036f90de89b68f63a63fe5974ff330fce28eb1c0` | 19942 | PENDING_EXACT_HEAD_CI |
+| #320 | `scripts/tests/written-content-automation.test.ts` | `036f90de89b68f63a63fe5974ff330fce28eb1c0` | 19942 | TESTED_PASS |
 | #320 | `scripts/verify-ci-architecture.mjs` | `e3f84bbc768e39d8bd932a7930d5f94e0594c024` | 29402 | TESTED_PASS |
 | #320 | `src/app/api/kids/track-share/route.ts` | `05051d159c4b0f18dac301594c6ecc0a61663a07` | 3087 | TESTED_PASS |
-| #320 | `src/app/api/kids/social-posts/route.ts` | `04f162aa598144f9c531deb299dc3883af7b04ac` | 2716 | PENDING_EXACT_HEAD_CI |
+| #320 | `src/app/api/kids/social-posts/route.ts` | `04f162aa598144f9c531deb299dc3883af7b04ac` | 2716 | TESTED_PASS |
 | #320 | `src/features/kids/services/kids-content-visibility.ts` | `84502847ba52bfeb10f10c3b22ede8c898b0c820` | 1225 | TESTED_PASS |
 | #320 | `src/features/kids/services/kids-content.ts` | `b6373b0e7787a1d1dc4af707dacc339c46b4d380` | 5993 | TESTED_PASS |
 | #320 | `src/features/kids/services/share-rate-limit.ts` | `c7550eae6bd1f2ca1ce46e061161e58d664a7775` | 1165 | TESTED_PASS |
 | #320 | `src/features/social/services/social-publishing.ts` | `a6c9bd96ccdb65993078ecaa72cc7dba8ef7bb43` | 54101 | TESTED_PASS |
-| #320 | `src/features/social/services/written-content.ts` | `6dc9e3aadc627f0f980d35545e0ac64036840174` | 13891 | PENDING_EXACT_HEAD_CI |
+| #320 | `src/features/social/services/written-content.ts` | `6dc9e3aadc627f0f980d35545e0ac64036840174` | 13891 | TESTED_PASS |
 | #320 | `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql` | `367fa2443a393dd591e469da98a904a57751536f` | 1132 | FIXED_TESTED_PENDING_LIVE_APPLY |
 | #321 | `ios/App/App/Info.plist` | `aec6e05bc4cf08d9f38dc7a40021ff5771c7f2f8` | 2136 | TESTED_PASS_PENDING_DEVICE_ACCEPTANCE |
 | #321 | `mobile/README.md` | `59c10a45f122ec59250fa1456f1eb7439fee1507` | 3061 | DOC_REVIEWED |
@@ -1879,16 +1879,17 @@ These entries are branch overlays, not part of the `main@c4560d9` manifest basel
 | #322 | `scripts/tests/youtube-oauth-credentials.test.ts` | `c0d303a53705559346ca41622dfcb545641f3c37` | 4840 | TESTED_PASS |
 | #322 | `src/app/api/admin/social/youtube/callback/route.ts` | `94006383d1dc686d0893a993c462989bc0c73e19` | 7778 | TESTED_PASS_PENDING_LIVE_OAUTH |
 | #323 | `package.json` | `38d089219045e9533d91a95f28808a7052172f15` | 15736 | TESTED_PASS |
-| #323 | `scripts/tests/admin-role-resolution.test.ts` | `879d06449c072f363d46d24ab6dae577e34c6dd1` | 2028 | TESTED_PASS |
+| #323 | `scripts/tests/admin-role-resolution.test.ts` | `1a60dae2600ecb76a533e55751f195608aed0460` | 2372 | TESTED_PASS |
+| #323 | `supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql` | `506bc1fcfcf19744b98221c1b4ccd9d7df4c9807` | 284 | FIXED_TESTED_PENDING_LIVE_APPLY |
 | #323 | `src/features/admin/services/admin.ts` | `b48cea6d914650825a396af9ffc875be8202e8d0` | 3064 | TESTED_PASS |
 | #323 | `src/features/admin/services/permissions.ts` | `476bdb4b401b540558f0ac6cedc3ce007c1c5140` | 4720 | TESTED_PASS |
 | #323 | `src/features/profile/services/profile.ts` | `222746e96e84559ba8d88840c31585f92749efba` | 11836 | TESTED_PASS |
 | #324 | `scripts/jobs/template-video-automation.ts` | `02404dda5d059447a91fe0e5645c9cbe5449e304` | 117780 | TESTED_PASS |
 | #324 | `scripts/tests/video-purge-contract.test.mjs` | `00721a7f82759ea0a0b5895212d716c4ea93d494` | 13104 | TESTED_PASS |
 | #324 | `src/app/api/admin/video-purge/route.ts` | `8841ebca871f405479b7d9d72b08175a67b18ebe` | 29742 | TESTED_PASS_NO_PURGE_EXECUTED |
-| #325 | `scripts/verify-adsense-readiness.mjs` | `78368625d8b1404ce5747b635b7338e11116154d` | 9478 | PENDING_CI |
-| #325 | `src/components/layout/runtime-effects.tsx` | `09943f804591f0d09b4fe029fd18172580ae5506` | 1710 | PENDING_CI |
-| #325 | `src/components/layout/web-advertising-runtime.tsx` | `3dda4c3fb912ce7d9900c2f77f780f3175a6ee73` | 4213 | PENDING_CI |
+| #325 | `scripts/verify-adsense-readiness.mjs` | `78368625d8b1404ce5747b635b7338e11116154d` | 9478 | TESTED_PASS_PENDING_ADSENSE_OWNER_ACCEPTANCE |
+| #325 | `src/components/layout/runtime-effects.tsx` | `09943f804591f0d09b4fe029fd18172580ae5506` | 1710 | TESTED_PASS_PENDING_ADSENSE_OWNER_ACCEPTANCE |
+| #325 | `src/components/layout/web-advertising-runtime.tsx` | `3dda4c3fb912ce7d9900c2f77f780f3175a6ee73` | 4213 | TESTED_PASS_PENDING_ADSENSE_OWNER_ACCEPTANCE |
 
 ## Supplemental file-by-file review — 2026-11-10
 
@@ -1957,3 +1958,15 @@ These entries are branch overlays, not part of the `main@c4560d9` manifest basel
 - Supabase production is ACTIVE_HEALTHY with 418 migrations through `20261110170000`; the PR #320 Kids migration remains unapplied. One security advisor warning remains (leaked-password protection disabled); 86 unused-index INFO findings are not deletion candidates without workload evidence; health advisor has no findings.
 - Production Facebook/YouTube profile status is `ok`; YouTube OAuth is connected. Vercel Production remains READY at `main@c4560d9`; no preview exists for PR #320/#324. The missing service-role key log is from Preview, where that secret is intentionally not configured.
 - All audit PRs remain open without owner review. 1,525 main-baseline files remain `REVIEW_REQUIRED`; modules closed remain 0. Manual/device, live OAuth, owner, migration, and deployment gates remain open.
+
+
+## Latest audit continuation — 2026-11-10T22:45:00Z
+
+- PR #320 code changes are fully verified at branch head `74fa73d507c30cec433b894692af573cb79e6659`: GitHub Quality Gate #42916076863 and CircleCI `source-verify`, `application-build-docs`, `config-guard` passed. The Kids backfill reservation and 60-candidate public feed changes are now `TESTED_PASS`.
+- PR #323 head `5a2ea09224fdba81909cffff915d521fb5238b10` passed Quality Gate #42916716464 and config-guard. Its new anonymous admin-wrapper grant migration is `FIXED_TESTED_PENDING_LIVE_APPLY`; production ACL remains unchanged.
+- PR #324 head `f86010f1d97c0064699bca0aabdc34f126896a82` passed Quality Gate #42914613560 and config-guard; the recursive Storage global cap is tested and no purge was run.
+- PR #325 head `8e3a73d81968e0c5fa17c739f7172b8a40ade383` passed Quality Gate #42911264957 and config-guard; account/editorial AdSense acceptance remains open.
+- PRs #321 and #322 passed their GitHub Quality Gates and config-guard; device and live OAuth acceptance remain open.
+- Read-only production `/api/health` smoke returned HTTP 200 on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; no Vercel runtime errors were found in the last hour. Production Facebook/YouTube profile status remains `ok`.
+- Supabase still has 418 applied migrations through `20261110170000`; the Kids migration and anonymous-wrapper grant migration remain unapplied. Security advisor reports disabled leaked-password protection; 86 unused-index INFO findings remain untouched.
+- CODEOWNERS owner `@Zikrmediaofficial` remains unavailable as a requestable collaborator. All six PRs remain open without owner review; 1,525 main-baseline files remain `REVIEW_REQUIRED`; modules closed remain 0.
