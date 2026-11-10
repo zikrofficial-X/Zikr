@@ -262,6 +262,7 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
   const scheduledAt=sourceType==="kids_story"
    ? scheduleKidsBackfillWithinUtcDay(new Date())
    : new Date(Date.now()+5*60*1000+slot*8*60*60*1000).toISOString();
+  if(!scheduledAt){slot++;continue;}
   let queuePayload: ReturnType<typeof buildWrittenBackfillQueuePayload>;
   try {
    queuePayload=buildWrittenBackfillQueuePayload({
