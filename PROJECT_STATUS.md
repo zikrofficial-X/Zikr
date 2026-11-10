@@ -1,5 +1,22 @@
 # ZIKR — Current Project Status
 
+## Current verified checkpoint — 2026-11-10T19:16:52.506Z
+
+**Audit state: IN PROGRESS. This is not a FINAL BASELINE READY certification.**
+
+- Canonical main: `6e8010ef95616c01950ff5ef7d6f44b178da5132`. Recursive inventory: 2,152 entries, 1,661 files, 491 directories, 139720105 file bytes; response not truncated. Route inventory: 142 page files and 80 route handlers. Main contains 418 SQL migration files.
+- PR #314 merged at `6e8010ef95616c01950ff5ef7d6f44b178da5132`; its exact head passed GitHub Quality Gate and all three CircleCI config/source/build checks. Main post-merge status: config-guard SUCCESS, source-verify SUCCESS, application-build-docs PENDING at this checkpoint.
+- The generated Supabase RPC drift is fixed on main: live generator and source now both contain 92 table names and 16 function names. The verifier requires both `admin_set_primary_site_audio_asset` and `admin_update_user_role`. Full field-level type parity and consumer tracing remain open.
+- Vercel Production remains READY on `dpl_EpQK1pKTiYhxJGM6z8VpNW7pbXbV`, serving older `main@c75b92111fa2391a2a09abf928669547a8bb112c`; live health returns HTTP 200 and that SHA. Main 6e8010e is not deployed. The merged change is type/verifier/CI-only; no manual RELEASE action was invoked.
+- Supabase `zqtssvlvmkzeeyqghqfk` remains ACTIVE_HEALTHY. Main/live migrations match 418/418; 92/92 public tables have RLS enabled, with 211 policies and 53 triggers. No production schema or data was changed.
+- Social queue: 83 published records and 9 queued written posts; none of the queued written posts has an explicit Kids audience marker. The Kids page currently reads Kids content and generated Kids videos, not written social posts. This is an open feature gap; general posts were not reclassified.
+- All 64 completed generation requests lacking `video_url` have matching video rows and matching published social queue rows; all 64 queue rows are already published and none is marked source-media-missing. No regeneration or replay is justified.
+- Kids API returned 10 items with sampled confirmed YouTube/Facebook Reels publication metadata. Content publish queue has 124 published rows.
+- Android v1.1.15 remains the latest release; the tag is unsigned. APK/AAB assets remain published; no new release or binary signature verification was performed.
+- Progress: automated inventory 1,661/1,661 (100%); 106 rows with a CONTENT_READ status; 1,519 REVIEW_REQUIRED; modules closed 0. Full source-content review and acceptance remain incomplete.
+- No files/branches deleted, no migration applied, no external post published, and no production data or deployment changed. PR #315 is Draft pending CODEOWNERS review; PR #313 remains closed unmerged.
+
+
 
 ## Current verified checkpoint — 2026-11-10T16:01:46.706Z
 
