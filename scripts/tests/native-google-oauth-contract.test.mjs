@@ -1,13 +1,11 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(path, "utf8");
 const button = read("src/features/auth/components/google-oauth-button.tsx");
 const activity = read("android/app/src/main/java/com/zikr/app/MainActivity.java");
 const pkg = JSON.parse(read("package.json"));
 const lock = read("pnpm-lock.yaml");
-assert.ok(existsSync("src/proxy.ts"), "Next.js 16 Proxy must live beside src/app");
-assert.equal(existsSync("proxy.ts"), false, "the root must not retain a competing Proxy entrypoint");
 const proxy = read("src/proxy.ts");
 
 assert.ok(pkg.dependencies?.["@capgo/capacitor-social-login"], "Capgo Social Login dependency is required");

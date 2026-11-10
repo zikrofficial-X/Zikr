@@ -51,8 +51,8 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/video/templates", "استوديو القوالب", "video.manage"],
     ["/admin/video/qa", "ضبط الجودة", "video.manage"],
   ],
-  "الذاكرة والمكتبة": [
-    ["/admin/memory", "ذاكرة المشروع", "media.manage"],
+  "الوسائط والذاكرة": [
+    ["/admin/memory", "مكتبة الوسائط والذاكرة", "media.manage"],
   ],
   "الوسائط والصوت": [
     ["/admin/audio", "مركز الصوت", "audio.manage"],
@@ -60,6 +60,8 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/audio/adhan", "الأذان", "audio.manage"],
     ["/admin/audio/tts", "تحويل النص إلى صوت", "audio.manage"],
     ["/admin/site-audio", "صوت الموقع والتذكيرات", "audio.manage"],
+  ],
+  "النشر والتواصل الاجتماعي": [
     ["/admin/social", "مركز النشر الاجتماعي", "social.manage"],
     ["/admin/social/written-studio", "مصنع المنشورات المكتوبة", "social.manage"],
   ],
@@ -139,6 +141,8 @@ for (const label of visibleLabels) {
 
 const legacyRedirects = {
   "src/app/admin/videos/page.tsx": "/admin/video/requests",
+  "src/app/admin/control/page.tsx": "/admin",
+  "src/app/admin/media/page.tsx": "/admin/memory",
   "src/app/admin/video-factory/page.tsx": "/admin/video",
   "src/app/admin/video-factory/sources/page.tsx": "/admin/video/sources",
   "src/app/admin/video-factory/scripts/page.tsx": "/admin/video/scripts",
@@ -149,6 +153,7 @@ const legacyRedirects = {
   "src/app/admin/video-factory/queue/page.tsx": "/admin/video/requests",
   "src/app/admin/ai-video/page.tsx": "/admin/video/studio",
   "src/app/admin/ai-video/curated/page.tsx": "/admin/video/studio/curated",
+  "src/app/admin/social/youtube-import/page.tsx": "/admin/analytics",
   "src/app/admin/alerts/page.tsx": "/admin/notifications",
   "src/app/admin/audio/site-audio/page.tsx": "/admin/site-audio",
   "src/app/admin/video-factory/publishing/page.tsx": "/admin/memory",
@@ -162,15 +167,43 @@ for (const [path, target] of Object.entries(legacyRedirects)) {
 }
 const socialPage = read("src/app/admin/social/page.tsx");
 const writtenSocialPage = read("src/app/admin/social/written-studio/page.tsx");
+const writtenSocialClient = read("src/app/admin/social/written-studio/written-studio-client.tsx");
+const writtenSocialApi = read("src/app/api/admin/social/written/route.ts");
 if (!socialPage.includes('requireAdminPermission("social.manage")') || !socialPage.includes("AdminSocialClient")) {
   failures.push("social publishing center must remain protected by social.manage");
 }
-if (!writtenSocialPage.includes('requireAdminPermission("social.manage")') ||
-    !writtenSocialPage.includes("WrittenStudioClient")) {
-  failures.push("written Facebook posts studio must render directly behind social.manage");
+if (
+  !writtenSocialPage.includes('requireAdminPermission("social.manage")') ||
+  !writtenSocialPage.includes("WrittenStudioClient") ||
+  !writtenSocialPage.includes("./written-studio-client")
+) {
+  failures.push("written Facebook studio must remain an operational social.manage page");
 }
-if (!navigation.includes('href: "/admin/social"') || !navigation.includes('key: "media-audio"')) {
-  failures.push("social publishing must appear inside the canonical media/audio group and require social.manage");
+if (
+  !writtenSocialClient.includes('fetch("/api/admin/social/written"') ||
+  !/method:\s*"POST"/.test(writtenSocialClient) ||
+  !writtenSocialClient.includes("معاينة نص المنشور")
+) {
+  failures.push("written Facebook studio must retain generation, queue loading and post preview UI");
+}
+if (
+  !writtenSocialApi.includes('requireAdminApi("social.manage")') ||
+  !writtenSocialApi.includes('requireAdminApi("social.publish")') ||
+  !writtenSocialApi.includes('dispatchGitHubWorkflow("generate-written-content.yml"')
+) {
+  failures.push("written Facebook API must enforce management and publishing permissions before controlled workflow dispatch");
+}
+const socialNavigationGroup = navigation.match(/key:\s*"social-publishing"[\s\S]*?items:\s*\[([\s\S]*?)\]/);
+if (
+  !socialNavigationGroup?.[1].includes('href: "/admin/social"') ||
+  !socialNavigationGroup[1].includes('permission: "social.manage"') ||
+  !socialNavigationGroup[1].includes('href: "/admin/social/written-studio"')
+) {
+  failures.push("social center and written-content studio must appear in the dedicated social navigation group");
+}
+const audioNavigationGroup = navigation.match(/key:\s*"media-audio"[\s\S]*?items:\s*\[([\s\S]*?)\]/);
+if (audioNavigationGroup?.[1].includes('href: "/admin/social/written-studio"')) {
+  failures.push("written social publishing must not be nested under media/audio navigation");
 }
 for (const canonicalPath of [
   "src/app/admin/video/page.tsx",

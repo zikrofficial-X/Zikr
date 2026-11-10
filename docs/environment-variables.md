@@ -32,6 +32,10 @@ The application treats `NEXT_PUBLIC_SUPABASE_ANON_KEY` as the browser-facing can
 | `CLOUDINARY_API_SECRET` | Server | Cloudinary secret |
 | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Public | Google Analytics |
 | `NEXT_PUBLIC_GTM_ID` | Public | Google Tag Manager |
+| `GOOGLE_CLIENT_ID` | Server | Optional GA4 OAuth client ID; not Google sign-in |
+| `GOOGLE_CLIENT_SECRET` | Server | Optional GA4 OAuth client secret |
+| `GA4_REFRESH_TOKEN` | Server | GA4 read-only OAuth refresh token |
+| `GA4_PROPERTY_ID` | Server | Numeric GA4 property ID |
 | `NEXT_PUBLIC_ADSENSE_CLIENT` | Public | AdSense publisher identifier |
 | `NEXT_PUBLIC_KIDS_ANALYTICS_ENABLED` | Public | Kids game analytics opt-in; default `false`, enable only after consent/CMP review |
 | `AI_GATEWAY_API_KEY` | Server | Optional Vercel AI Gateway path; no current core-runtime requirement |
@@ -212,15 +216,15 @@ These are not application secrets and should not be manually provisioned just to
 
 ## 8. Retired variables
 
-The deployment validator rejects these in application runtime configuration:
+The deployment validator rejects the legacy public Google client ID and warns on direct Postgres connection variables:
 
 - `DATABASE_URL`
 - `POSTGRES_URL`
 - `POSTGRES_PRISMA_URL`
 - `POSTGRES_URL_NON_POOLING`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
 - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are not retired: they are server-only OAuth client credentials for optional GA4 reporting, not Google sign-in. GA4 also requires `GA4_REFRESH_TOKEN` and numeric `GA4_PROPERTY_ID`. If any GA4 credential is missing, the reporting panel remains `not_configured`. Google sign-in continues to use Supabase Auth and `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
 
 Do not provision a direct Postgres application URL. Database schema changes are managed through Supabase migrations and Supabase client/API access.
 
@@ -263,7 +267,7 @@ The current production contract is aligned around:
 
 A read-only check against that target passed for Auth settings, `quran_surahs`, `kids_games`, and `kids_content`. It found two schema gaps: `content_library.summary_en` is missing, and `public.content_translation_queue` is absent. Treat schema reconciliation as incomplete until these are reviewed and migrated.
 
-The deployment environment validator also flags the existing `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` application variables because Google login is handled by Supabase Auth. Those values were not changed; review them separately.
+Google sign-in is handled by Supabase Auth and the public client uses `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`. The server-only `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are used by the optional GA4 reporting integration, which also requires `GA4_REFRESH_TOKEN` and `GA4_PROPERTY_ID`; never expose these credentials through a `NEXT_PUBLIC_*` variable.
 
 As of October 9, 2026, a fresh production schema query confirmed that `public.content_library.summary_en` and `public.content_translation_queue` both exist. The earlier schema-gap note has been reconciled; it is no longer a current production gap. The current Supabase Security Advisor still warns that leaked-password protection is disabled, and the Performance Advisor reports 68 unused indexes (informational; review query workload before removal).
 

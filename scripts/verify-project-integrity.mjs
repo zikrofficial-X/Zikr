@@ -55,6 +55,9 @@ const requiredFiles = [
   '.release-tag',
 ];
 for (const file of requiredFiles) requireFile(file);
+if (existsSync(join(root, 'proxy.ts'))) {
+  failures.push('Legacy root proxy.ts must not exist; Next.js App Router is rooted under src and uses src/proxy.ts.');
+}
 
 // Application-facing type contracts used by finalization-critical paths.
 requireText('src/lib/types/supabase.ts', [

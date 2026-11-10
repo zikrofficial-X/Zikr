@@ -120,8 +120,8 @@ if (env("FACEBOOK_GRAPH_API_VERSION") && !/^v\d+\.\d+$/.test(env("FACEBOOK_GRAPH
 if (env("NEXT_PUBLIC_GOOGLE_CLIENT_ID")) {
   add(
     "fail",
-    "Google Auth credential isolation",
-    "NEXT_PUBLIC_GOOGLE_CLIENT_ID is obsolete; Google login uses Supabase Auth and NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID. GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET are server-only GA4 reporting credentials.",
+    "Legacy public Google client variable",
+    "NEXT_PUBLIC_GOOGLE_CLIENT_ID is obsolete; Google sign-in is configured in Supabase Auth and the public web/native client uses NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID. Server-side GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET are reserved for optional GA4 reporting.",
   );
 }
 if (env("DATABASE_URL") || env("POSTGRES_URL") || env("POSTGRES_PRISMA_URL") || env("POSTGRES_URL_NON_POOLING")) {

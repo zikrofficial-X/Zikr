@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import {
   hasAdminPermission,
@@ -52,7 +53,15 @@ export async function getCurrentProfile(): Promise<AdminProfile | null> {
 
 export async function requireAdminPermission(permission: AdminPermission) {
   const profile = await getCurrentProfile();
-  if (!profile) redirect(`/auth/login?next=${encodeURIComponent('/admin')}`);
+  if (!profile) {
+    const requestHeaders = await headers();
+    const requestedPath = requestHeaders.get('x-zikr-pathname');
+    const nextPath =
+      requestedPath === '/admin' || requestedPath?.startsWith('/admin/')
+        ? requestedPath
+        : '/admin';
+    redirect(`/auth/login?next=${encodeURIComponent(nextPath)}`);
+  }
   if (!hasAdminPermission(profile.role, permission)) {
     redirect('/profile?error=admin_permission_required');
   }

@@ -1,7 +1,8 @@
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
-import { getSiteSetting, type SiteSettingValue } from "@/features/site-content/services/site-content";
+import { type SiteSettingValue } from "@/features/site-content/services/site-content";
+import { readAdminRows } from "@/features/admin/services/safe-read";
 import { saveAndroidReleaseAction } from "./actions";
 
 const RELEASES_API_BASE =
@@ -44,7 +45,7 @@ function compareVersions(a: string, b: string) {
   return 0;
 }
 
-async function getReleases(): Promise<Release[]> {
+async function getReleases(): Promise<{ rows: Release[]; ok: boolean }> {
   const releases: Release[] = [];
 
   try {
@@ -54,12 +55,17 @@ async function getReleases(): Promise<Release[]> {
         { headers: githubHeaders, cache: "no-store" },
       );
 
-      if (!response.ok) break;
+      if (!response.ok) {
+        throw new Error(`GitHub releases API returned ${response.status}.`);
+      }
 
-      const batch = (await response.json()) as Release[];
-      if (!Array.isArray(batch) || batch.length === 0) break;
+      const batch = (await response.json()) as unknown;
+      if (!Array.isArray(batch)) {
+        throw new Error("GitHub releases API returned an invalid payload.");
+      }
+      if (batch.length === 0) break;
 
-      releases.push(...batch);
+      releases.push(...(batch as Release[]));
       if (batch.length < 100) break;
     }
 
@@ -79,25 +85,33 @@ async function getReleases(): Promise<Release[]> {
       if (!unique.has(tag)) unique.set(tag, release);
     }
 
-    return [...unique.values()].sort((a, b) => {
-      const versionDiff = compareVersions(b.tag_name ?? "", a.tag_name ?? "");
-      if (versionDiff !== 0) return versionDiff;
+    return {
+      rows: [...unique.values()].sort((a, b) => {
+        const versionDiff = compareVersions(b.tag_name ?? "", a.tag_name ?? "");
+        if (versionDiff !== 0) return versionDiff;
 
-      const aDate = a.published_at ? Date.parse(a.published_at) : 0;
-      const bDate = b.published_at ? Date.parse(b.published_at) : 0;
-      return bDate - aDate;
-    });
-  } catch {
-    return [];
+        const aDate = a.published_at ? Date.parse(a.published_at) : 0;
+        const bDate = b.published_at ? Date.parse(b.published_at) : 0;
+        return bDate - aDate;
+      }),
+      ok: true,
+    };
+  } catch (error) {
+    console.error("[admin/android] failed to load GitHub releases:", error);
+    return { rows: [], ok: false };
   }
 }
-
 export default async function AndroidReleaseAdminPage() {
   await requireAdminPermission("android.manage");
-  const [releases, setting] = await Promise.all([
+  const [releasesResult, settingResult] = await Promise.all([
     getReleases(),
-    getSiteSetting("android_release"),
+    readAdminRows<{ value: SiteSettingValue }>(
+      "/rest/v1/site_settings?select=value&key=eq.android_release&limit=1",
+    ),
   ]);
+  const releases = releasesResult.rows;
+  const settingAvailable = settingResult.ok;
+  const setting = settingAvailable ? settingResult.rows[0]?.value ?? null : null;
 
   const androidSetting = setting as SiteSettingValue & {
     mode?: string;
@@ -115,10 +129,26 @@ export default async function AndroidReleaseAdminPage() {
         </p>
       </section>
 
+      {!settingAvailable && (
+        <div role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-6 text-red-100">
+          تعذر قراءة إعداد إصدار Android المحفوظ. تم تعطيل الحفظ حتى لا يتم استبدال إعداد موجود بقيمة افتراضية غير مؤكدة.
+        </div>
+      )}
+      {!releasesResult.ok && (
+        <div role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-6 text-red-100">
+          تعذر الاتصال بواجهة GitHub لقراءة الإصدارات. لم يتم اعتبار خطأ الاتصال قائمة إصدارات فارغة.
+        </div>
+      )}
+      {settingAvailable && selectedMode === "pinned" && releasesResult.ok && selectedTag && !releases.some((release) => release.tag_name === selectedTag) ? (
+        <div role="alert" className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm leading-6 text-amber-100">
+          الإصدار المثبّت حاليًا ({selectedTag}) غير موجود ضمن الإصدارات المستقرة التي تحتوي على APK. اختر إصدارًا متاحًا أو حوّل الوضع إلى تلقائي.
+        </div>
+      ) : null}
+
       <Card className="space-y-6 p-6">
         <form action={saveAndroidReleaseAction} className="space-y-5">
           <label className="flex items-center gap-3 rounded-xl border border-brand-gold/15 bg-black/20 p-4 cursor-pointer">
-            <input type="radio" name="mode" value="auto" defaultChecked={selectedMode === "auto"} />
+            <input type="radio" name="mode" value="auto" defaultChecked={selectedMode === "auto"} disabled={!settingAvailable} />
             <span>
               <span className="block font-semibold text-brand-cream">تلقائي — أحدث Release مستقر</span>
               <span className="text-xs text-brand-cream/45">كل Release جديد تنشره يصبح هو الإصدار الذي يتم تنزيله تلقائيًا.</span>
@@ -126,12 +156,15 @@ export default async function AndroidReleaseAdminPage() {
           </label>
 
           <label className="flex items-start gap-3 rounded-xl border border-brand-gold/15 bg-black/20 p-4 cursor-pointer">
-            <input type="radio" name="mode" value="pinned" defaultChecked={selectedMode === "pinned"} className="mt-1" />
+            <input type="radio" name="mode" value="pinned" defaultChecked={selectedMode === "pinned"} className="mt-1" disabled={!settingAvailable || !releasesResult.ok || releases.length === 0} />
             <span className="flex-1">
               <span className="block font-semibold text-brand-cream">تثبيت إصدار محدد</span>
               <span className="text-xs text-brand-cream/45">استخدم هذا عندما تريد تأخير التحديث للمستخدمين رغم وجود Release أحدث.</span>
-              <select name="releaseTag" defaultValue={selectedTag} className="mt-3 w-full rounded-xl border border-brand-gold/20 bg-black/40 px-4 py-3 text-sm text-brand-cream">
+              <select name="releaseTag" defaultValue={selectedTag} disabled={!settingAvailable || !releasesResult.ok || releases.length === 0} className="mt-3 w-full rounded-xl border border-brand-gold/20 bg-black/40 px-4 py-3 text-sm text-brand-cream disabled:cursor-not-allowed disabled:opacity-50">
                 <option value="">اختر الإصدار</option>
+                {selectedTag && !releases.some(release => release.tag_name === selectedTag) ? (
+                  <option value={selectedTag} disabled>{selectedTag} — الإصدار المحفوظ غير متاح حاليًا</option>
+                ) : null}
                 {releases.map(release => (
                   <option key={release.tag_name} value={release.tag_name}>
                     {release.name || release.tag_name} — {release.tag_name}
@@ -141,7 +174,7 @@ export default async function AndroidReleaseAdminPage() {
             </span>
           </label>
 
-          <button type="submit" className="w-full rounded-full bg-brand-gold px-6 py-3 font-bold text-black transition-colors hover:bg-brand-gold/90">
+          <button type="submit" disabled={!settingAvailable} className="w-full rounded-full bg-brand-gold px-6 py-3 font-bold text-black transition-colors hover:bg-brand-gold/90 disabled:cursor-not-allowed disabled:opacity-40">
             حفظ إعداد إصدار Android
           </button>
         </form>
@@ -149,10 +182,10 @@ export default async function AndroidReleaseAdminPage() {
 
       <Card className="space-y-3 p-6">
         <h2 className="text-lg font-bold text-brand-gold">الإصدارات المستقرة المتاحة</h2>
-        {releases.length === 0 ? (
-          <p className="text-sm text-brand-cream/50">
-            تعذر جلب الإصدارات الآن. تأكد من إعداد GITHUB_TOKEN في Vercel للإصدارات الخاصة.
-          </p>
+        {!releasesResult.ok ? (
+          <p className="text-sm text-red-200">قائمة الإصدارات غير متاحة بسبب فشل اتصال GitHub. راجع صلاحية الاتصال وحدود API ثم حدّث الصفحة.</p>
+        ) : releases.length === 0 ? (
+          <p className="text-sm text-amber-200">اتصال GitHub ناجح، لكن لا توجد إصدارات مستقرة تحتوي على ملف APK في السجل الحالي.</p>
         ) : (
           <div className="space-y-2">
             {releases.map(release => (

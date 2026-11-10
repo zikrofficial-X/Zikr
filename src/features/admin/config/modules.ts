@@ -73,8 +73,8 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
   },
   {
     key: "memory",
-    label: "الذاكرة والمكتبة",
-    description: "ملفات الوسائط وذاكرة المحتوى الداخلية ومخرجات التوليد.",
+    label: "الوسائط والذاكرة",
+    description: "مكتبة أصول الوسائط وحقوق الاستخدام وملفات الموقع ومخرجات الفيديو المولّدة.",
     basePath: "/admin/memory",
     routes: routesFor("memory"),
     permission: "media.manage",
@@ -86,13 +86,25 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
   {
     key: "media-audio",
     label: "الوسائط والصوت",
-    description: "مكتبة الوسائط والتلاوات والأذان وتحويل النص إلى صوت والتذكيرات.",
+    description: "إدارة التلاوات والأذان وتحويل النص إلى صوت والتذكيرات.",
     basePath: "/admin/audio",
     routes: routesFor("media-audio"),
     permission: "audio.manage",
     permissions: ["audio.manage"],
     sourceTables: ["quran_audio", "site_audio_assets", "tawasheeh"],
-    ownerRole: "video_manager",
+    ownerRole: "super_admin",
+    status: "active",
+  },
+  {
+    key: "social-publishing",
+    label: "النشر والتواصل الاجتماعي",
+    description: "إدارة القنوات والنشر والجدولة وحالة المزامنة والتحليلات الاجتماعية.",
+    basePath: "/admin/social",
+    routes: routesFor("social-publishing"),
+    permission: "social.manage",
+    permissions: ["social.manage", "social.publish"],
+    sourceTables: ["social_publish_queue", "social_sync_jobs", "social_platform_credentials"],
+    ownerRole: "social_manager",
     status: "active",
   },
   {
@@ -116,7 +128,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     permission: "analytics.read",
     permissions: ["analytics.read", "settings.manage"],
     sourceTables: ["articles", "videos", "video_generation_requests", "content_publish_queue"],
-    ownerRole: "analyst",
+    ownerRole: "seo_manager",
     status: "active",
   },
   {
@@ -148,8 +160,10 @@ export const ADMIN_ROUTE_ALIASES = [
   { from: "/admin/ai-video", to: "/admin/video/studio", reason: "دمج الاستوديو في مركز الفيديو" },
   { from: "/admin/ai-video/curated", to: "/admin/video/studio/curated", reason: "نقل المحتوى الموثق إلى الاستوديو الرسمي" },
   { from: "/admin/video-factory/publishing", to: "/admin/memory", reason: "تحويل مساحة الوسائط والذاكرة الداخلية" },
+    { from: "/admin/social/youtube-import", to: "/admin/analytics", reason: "إيقاف أداة الاستيراد القديمة وتحويل المستخدم إلى التحليلات" },
   { from: "/admin/alerts", to: "/admin/notifications", reason: "توحيد التنبيهات" },
   { from: "/admin/control", to: "/admin", reason: "اختصار قديم لمركز العمليات" },
+  { from: "/admin/media", to: "/admin/memory", reason: "المسار القديم يحول إلى مكتبة الوسائط والذاكرة الرسمية" },
   { from: "/admin/audio/site-audio", to: "/admin/site-audio", reason: "مسار صوت الموقع الرسمي" },
 ] as const;
 
