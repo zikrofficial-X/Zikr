@@ -30,7 +30,7 @@ assert.deepEqual(
   "unapproved videos must not starve later eligible written posts",
 );
 
-const approvedVideo = selectEligibleSocialPublishItems(candidates, {
+const approvedVideo = selectEligibleSocialPublishItems(videos, {
   enabledPlatforms,
   approvedVideoQueueItemIds: new Set(["video-0"]),
   maxAttemptsFor: () => 5,
