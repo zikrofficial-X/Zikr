@@ -4,6 +4,21 @@ export type WrittenContentSource = { kind: WrittenSourceKind; id:string; title:s
 export type WrittenPostDraft = { eligible?:boolean; title:string; hook:string; reflection:string; question?:string };
 export function normalizeWrittenCategory(value:string):WrittenCategory { const v=value.trim().toLowerCase(); return (["auto","quran","hadith","dua","adhkar","story","prophets","companions","knowledge","kids"] as string[]).includes(v)?v as WrittenCategory:"auto"; }
 export function createWrittenAutomationKey(kind:string,id:string){return `written-v1:${kind}:${id}`;}
+export function chooseWrittenSourceKind(
+ availableKinds: readonly WrittenSourceKind[],
+ category: WrittenCategory,
+ hasKidsPostToday: boolean,
+ randomIndex: number,
+): WrittenSourceKind | null {
+ if (availableKinds.length === 0) return null;
+ if (category === "auto" && !hasKidsPostToday && availableKinds.includes("kids_story")) {
+  return "kids_story";
+ }
+ const index = Number.isFinite(randomIndex)
+  ? Math.max(0, Math.min(availableKinds.length - 1, Math.floor(randomIndex)))
+  : 0;
+ return availableKinds[index] ?? null;
+}
 
 export function containsKidsPersonalDataSolicitation(value: string): boolean {
  const normalized = value
