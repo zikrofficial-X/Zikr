@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { parseKidsQuizData } from "../../src/features/kids/services/kids-content-validation";
 import { readFileSync } from "node:fs";
 import {
   getFallbackKidsContentBySlug,
@@ -40,6 +41,22 @@ assert.equal(
   "curated static-only content remains available when no database row owns the slug",
 );
 
+assert.deepEqual(
+  parseKidsQuizData("{\"questions\":[{\"text\":\"من ربك؟\",\"options\":[\"الله\",\"غير ذلك\"],\"correctAnswer\":0}]}"),
+  { questions: [{ text: "من ربك؟", options: ["الله", "غير ذلك"], correctAnswer: 0 }] },
+  "valid Kids quiz JSON must normalize into the shape consumed by the detail page",
+);
+assert.throws(
+  () => parseKidsQuizData("{\"questions\":[{\"q\":\"من ربك؟\",\"answers\":[\"الله\"],\"reward\":\"نجمة\"}]}"),
+  /بيانات اللعبة/,
+  "the former placeholder shape must be rejected instead of saving a quiz that renders empty",
+);
+assert.throws(
+  () => parseKidsQuizData("{\"questions\":[{\"text\":\"من ربك؟\",\"options\":[\"الله\",\"غير ذلك\"],\"correctAnswer\":2}]}"),
+  /بيانات اللعبة/,
+  "quiz answers must point to an existing option",
+);
+
 const adminAction = readFileSync("src/app/admin/kids/actions.ts", "utf8");
 const adminManager = readFileSync("src/features/admin/components/kids-content-manager.tsx", "utf8");
 const kidsDetailPage = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
@@ -48,16 +65,16 @@ const kidsDetailApi = readFileSync("src/app/api/kids/content/[slug]/route.ts", "
 const kidsContentData = readFileSync("src/features/kids/data/content.ts", "utf8");
 
 assert.match(adminAction, /age_appropriate: ageAppropriate/);
+const imageUploadPosition = adminAction.indexOf("await uploadCloudinaryImage");
+assert.ok(imageUploadPosition > 0, "Kids image upload path must remain present");
 const duplicateSlugCheckPosition = adminAction.indexOf("/rest/v1/kids_content?select=id&slug=eq.");
 assert.ok(
   duplicateSlugCheckPosition > 0 && duplicateSlugCheckPosition < imageUploadPosition,
   "duplicate Kids slugs must be rejected before uploading media",
 );
 assert.doesNotMatch(adminAction, /on_conflict=slug|resolution=merge-duplicates/, "the add-only Kids form must never silently overwrite an existing published slug");
-const imageUploadPosition = adminAction.indexOf("await uploadCloudinaryImage");
-assert.ok(imageUploadPosition > 0, "Kids image upload path must remain present");
 assert.ok(
-  adminAction.indexOf("const quizData = parseQuizData(value(formData, \"quiz_data\"));") < imageUploadPosition,
+  adminAction.indexOf("const quizData = parseKidsQuizData(value(formData, \"quiz_data\"));") < imageUploadPosition,
   "invalid quiz JSON must be rejected before uploading an image",
 );
 assert.ok(
@@ -67,8 +84,11 @@ assert.ok(
 assert.match(adminManager, /name="age_appropriate"/);
 assert.match(adminManager, /automationApprovalRequiredCount/);
 assert.match(adminManager, /اعتماد التوليد الآلي/);
+assert.match(adminManager, /"text":"من ربك؟","options":\["الله","غير ذلك"\],"correctAnswer":0/, "the admin quiz example must match the Kids detail player contract");
+assert.doesNotMatch(adminManager, /"q":|"answers":/, "the admin quiz example must not use unsupported question keys");
 assert.doesNotMatch(kidsDetailPage, /getKidsItemBySlug/, "the client must not resurrect a static fallback after the visibility-aware API returns 404");
 assert.match(kidsDetailPage, /setContent\(null\)/, "a hidden or unavailable database slug must remain unavailable in the detail page");
+assert.match(kidsDetailPage, /Number\.isInteger\(q\.correctAnswer\)[\s\S]*?q\.correctAnswer < q\.options\.length/, "the Kids player must reject out-of-range quiz answers");
 assert.match(kidsDetailLayout, /getKidsContentBySlug\(slug, "ar"\)/, "SEO metadata must use the same visibility-aware resolver");
 assert.match(kidsContentData, /content_ar:\s*row\.content_ar\s*\?\?\s*row\.summary_ar/, "Kids metadata must map the live summary_ar field into the shared content model");
 assert.doesNotMatch(kidsDetailLayout, /supabaseServerAnonRequest/, "SEO metadata must not bypass database visibility checks");
