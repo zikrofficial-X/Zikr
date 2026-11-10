@@ -1,5 +1,21 @@
 # ZIKR Continuous Closeout Ledger
 
+## Latest execution checkpoint — 2026-11-10 17:18 Africa/Cairo
+
+- **Verified identities:** GitHub `zikrofficial-X/Zikr`; production `main@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; Vercel project `zikr` / `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`; production deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` is READY on that exact main SHA; Supabase `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY (PostgreSQL 17.11).
+- **Inventory:** main = 2,130 tree entries (1,639 files, 491 directories); PR #275 code snapshot `3f4e1e60670c27382a957151ad3c35029b8b7b48` = 2,148 entries (1,657 files, 491 directories), 18 PR-only paths, no removed paths, 72 changed files (10,016 additions / 2,268 deletions). Both recursive trees were complete and not truncated.
+- **Coverage:** matrix records 129/1,639 main files with full source-content reads; 1,509 files were REVIEW_REQUIRED before this checkpoint. This is not full manual/functional review. Five files have full manual/functional evidence recorded; modules closed = 0. The PR manifest and matrix are refreshed against this code snapshot.
+- **New code defects fixed on PR #275:** duplicate render recovery now requires `mediaPurgedFromPublished=true` for an existing purged catalog row, preventing a previously intentionally-unpublished item from being re-queued; repeated purge now preserves that original-publication flag instead of resetting it. Regression tests cover true, false, and missing evidence. Commits: `564c002`, `6773c27`, `838297d`, `30b17ad`, `b063524`, `5e89550`, `e3baf37`.
+- **Visible Arabic encoding defect fixed:** live `/kids` and `/hadith` crawls exposed U+FFFD replacement characters in the shared `EditorialDepth` footer. Five corrupted Arabic words were corrected in `src/components/content/editorial-depth.tsx` (commit `3dadca1de6b79d3af0d02c048d9475e2017ca708`). Root cause: `scripts/verify-content-integrity.mjs` scanned only `src/features` and `src/app`, excluding `src/components`. The scanner now covers all of `src` (commit `3f4e1e60670c27382a957151ad3c35029b8b7b48`). The repaired file contains zero replacement characters; exact-current-head CI must confirm the expanded scan.
+- **CI:** latest PR head checks have not yet populated after the content fix. The immediately preceding code snapshot had CircleCI config-guard PASS, source-verify and application-build-docs PENDING, and GitHub Quality Gate IN PROGRESS. Do not merge until all required checks pass on the exact latest head.
+- **Live Supabase read-only snapshot:** 415 applied migrations (latest `20261110085520`); 92/92 public tables have RLS enabled; 211 public policies; 66 foreign keys; 45 non-internal triggers; 40 public functions; 20 SECURITY DEFINER functions, none without a pinned `search_path`; 280 public indexes; 9 Storage buckets, 0 objects, 6 Storage object policies; 4 cron jobs (3 active); 4 Edge Functions ACTIVE. Security Advisor has one warning (Leaked Password Protection disabled); Health Advisor clear; Performance Advisor reports 89 unused-index candidates. No PR migration has been applied.
+- **Video/social data:** 127 videos (22 published, 105 hidden, 110 internal); 112/112 generation requests completed, 64 lack `video_url`; social queue 98 rows (79 published, 6 failed, 3 partial, 10 queued written posts); 9 rows remain held with `sourceMediaMissing=true`; internal content queue 121 published, 0 queued. No provider retry, regeneration, or public post was triggered.
+- **Runtime:** Vercel 24-hour aggregation shows 7 `fetch failed` events (last 14:09 UTC) across home, adhan audio, hadith detail, admin automation and analytics; traces indicate socket/TLS resets to the canonical Supabase host. One rejected Meta Server Token event last occurred 08:33 UTC. No speculative retry or code change was made.
+- **Release/deploy:** production remains on `main@c91f64c`; no PR Preview is safe because Preview/Development share production-backed sensitive integrations and custom environments are unavailable. Android v1.1.14 remains the last verified release; no signed artifact from current main was produced.
+- **Safety:** no production migration, RLS/Auth setting, Storage policy, bucket, index, content row, Cloudinary asset, social queue row, external post, branch, or tracked file was deleted. No production migration or deployment was triggered. No module is marked closed.
+- **Open gates:** current-head CI; full review of the 1,657-file PR tree and 1,639-file main baseline; safe authenticated Preview/browser/mobile acceptance; reconcile the 9 held social rows and 64 completed requests without media; keep 6 Kids items with `revalidation_required` excluded; owner-level leaked-password protection decision; investigate Supabase transport errors; controlled release of the two pending PR migrations only after all gates pass.
+
+
 ## Latest execution checkpoint — 2026-11-10 17:14 Africa/Cairo
 
 - **Verified identities:** GitHub `zikrofficial-X/Zikr`; production `main@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; Vercel project `zikr` / `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`; production deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` is READY on that exact main SHA; Supabase `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY (PostgreSQL 17.11).
@@ -16,7 +32,7 @@
 - **Open gates:** current-head CI; full review of the 1,657-file PR tree and 1,639-file main baseline; safe authenticated Preview/browser/mobile acceptance; reconcile the 9 held social rows and 64 completed requests without media; keep the 6 Kids items with revalidation_required excluded; owner-level leaked-password protection decision; investigate Supabase transport errors; controlled release of the two pending PR migrations only after all gates pass.
 
 
-**Last reconciled:** 2026-11-10 17:14 Africa/Cairo  
+**Last reconciled:** 2026-11-10 17:18 Africa/Cairo  
 **Repository:** `zikrofficial-X/Zikr`  
 **Base snapshot:** `main@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`  
 **Working PR:** [#275](https://github.com/zikrofficial-X/Zikr/pull/275)  

@@ -1,5 +1,22 @@
 # ZIKR — Current Project Status
 
+## Latest execution checkpoint — 2026-11-10 17:18 Africa/Cairo
+
+**Audit state: IN PROGRESS. Not a final certification.**
+
+- Production identity reverified: `zikrofficial-X/Zikr@c91f64c`, Vercel `zikr` deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` READY on that exact main SHA, Supabase `zqtssvlvmkzeeyqghqfk` ACTIVE_HEALTHY.
+- PR #275 code snapshot: `3f4e1e60670c27382a957151ad3c35029b8b7b48`; recursive tree 2,148 entries, 1,657 files, 491 directories. Main baseline remains 2,130 entries, 1,639 files, 491 directories. No tree truncation.
+- Fixed duplicate recovery provenance and repeated-purge idempotence; commits `564c002`, `6773c27`, `838297d`, `30b17ad`, `b063524`, `5e89550`, `e3baf37`.
+- Fixed five malformed Arabic strings in the shared editorial-depth component. Expanded the content-integrity scanner from two subtrees to all `src`, so shared components and libraries are covered. Commits `3dadca1` and `3f4e1e6`; current-head CI is still required.
+- CI had not yet populated on the latest head at the time of this checkpoint. The preceding head had config-guard PASS, source-verify and application-build-docs PENDING, and GitHub Quality Gate IN PROGRESS. Do not merge until all checks pass on the exact latest head.
+- Live Supabase: 415 migrations; 92/92 public tables with RLS; 211 policies; 66 foreign keys; 45 non-internal triggers; 40 public functions; 20 SECURITY DEFINER functions all pinned to search_path; 9 buckets, 0 objects; 4 cron jobs (3 active); 4 Edge Functions active. Health Advisor clear; one Auth warning for leaked-password protection disabled; 89 unused-index advisories. No migration or production data change.
+- Video/social: 127 videos (22 public, 105 hidden); 112 completed generation requests, 64 without a video URL; 9 non-published social video rows remain held for missing media; 10 queued rows are written posts. No retries or public posts were triggered.
+- Vercel 24-hour errors: 7 intermittent Supabase socket/TLS fetch failures (latest 14:09 UTC) and one historical rejected Meta Server Token event. No speculative code change.
+- No Preview is safe for authenticated writes because it shares production-backed credentials; production remains on main. Android v1.1.14 remains the last verified release; no artifact from current main was produced.
+- Full review remains incomplete: 129/1,639 main files have full source-content reads recorded; 1,509 were REVIEW_REQUIRED before this checkpoint; modules closed = 0. The PR manifest and matrix were refreshed to the current code snapshot.
+- No production migrations, data, media, indexes, buckets, external posts, branches or tracked files were deleted or changed in this run.
+
+
 ## Latest execution checkpoint — 2026-11-10 17:14 Africa/Cairo
 
 **Audit state: IN PROGRESS. Not a final certification.**
