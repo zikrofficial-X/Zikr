@@ -349,7 +349,28 @@ jobs:
               tagTargetSha = annotatedTag.data.object?.sha;
               tagTargetType = annotatedTag.data.object?.type;
             }
-            if (tagTargetType !== "commit" || tagTargetSha !== sourceSha) throw new Error("Release tag provenance mismatch; refusing to retarget an existing tag.");
+            if (tagTargetType !== "commit" || !/^[0-9a-f]{40}$/.test(tagTargetSha || "")) {
+              throw new Error("Release tag does not resolve to a full commit SHA; refusing to create a draft.");
+            }
+            // Tags are immutable. If main has advanced since this release tag was created,
+            // allow draft creation only when every release-defining file is byte-identical
+            // between the pinned tag target and current main. The signed build still runs
+            // against the exact tag commit, never against a newer main commit.
+            const releaseMetadataPaths = [".release-tag", "package.json", "android/app/build.gradle", "docs/releases/" + version + ".md"];
+            if (tagTargetSha !== sourceSha) {
+              for (const file of releaseMetadataPaths) {
+                const apiPath = "/contents/" + file.split("/").map(encodeURIComponent).join("/");
+                const [tagFile, currentFile] = await Promise.all([
+                  api(apiPath + "?ref=" + encodeURIComponent(tagTargetSha)),
+                  api(apiPath + "?ref=" + encodeURIComponent(sourceSha))
+                ]);
+                if (tagFile.status !== 200 || currentFile.status !== 200 || tagFile.data.sha !== currentFile.data.sha) {
+                  throw new Error("Release metadata changed after the immutable tag target; refusing to retarget or rebuild under an older release tag: " + file);
+                }
+              }
+              console.log("Main advanced, but all release metadata is identical to the immutable tag target " + tagTargetSha + "; preparing the draft for that pinned commit.");
+            }
+            const expectedTagTargetSha = tagTargetSha;
             const release = await api("/releases", "POST", { tag_name: releaseTag, name: "ZIKR Android " + version, body: notes, draft: true, prerelease: false });
             if (release.data.tag_name !== releaseTag) throw new Error("GitHub returned a different release tag.");
             if (release.data.draft !== true) throw new Error("New Android release was not created as a draft.");
@@ -361,8 +382,8 @@ jobs:
               verifySha = verifyObject.data.object?.sha;
               verifyType = verifyObject.data.object?.type;
             }
-            if (verifyType !== "commit" || verifySha !== sourceSha) throw new Error("Final tag-to-commit verification failed.");
-            console.log("Verified " + releaseTag + " draft against exact source commit " + sourceSha + ".");
+            if (verifyType !== "commit" || verifySha !== expectedTagTargetSha) throw new Error("Final tag-to-commit verification failed; the immutable tag was changed.");
+            console.log("Verified " + releaseTag + " draft against immutable tag commit " + expectedTagTargetSha + ".");
             '
   android-rebuild:
     docker:
