@@ -3,7 +3,7 @@ import { assertSupabaseConnection } from '@/lib/supabase/server';
 import { generateGeminiText } from '@/features/spiritual-ai/services/gemini-client';
 import { getYoutubeSyncHealth } from '@/features/videos/integrations/youtube';
 
-import { createSupabaseHealthCheck, type ApiHealthCheck, type ApiHealthStatus } from "@/lib/services/api-health-status";
+import { createSupabaseHealthCheck, type ApiHealthCheck } from "@/lib/services/api-health-status";
 
 export type { ApiHealthCheck, ApiHealthStatus } from "@/lib/services/api-health-status";
 
