@@ -42,6 +42,11 @@ assert.ok(
 );
 
 const circle = read(".circleci/config.yml");
+const androidDraftJob = circle.split("  android-release-draft:")[1]?.split("\n  android-rebuild:")[0] ?? "";
+assert.ok(androidDraftJob.includes('"/releases?per_page=100&page=1"'), "CircleCI Android release gate must inspect draft releases through the collection endpoint");
+assert.ok(androidDraftJob.includes("matchingReleases.length > 1"), "CircleCI Android release gate must reject duplicate release records");
+assert.ok(androidDraftJob.includes("if (isReleasePreparationCommit)") && androidDraftJob.includes("process.exit(0)"), "CircleCI must fail closed for a new release but avoid breaking ordinary main CI for legacy duplicate drafts.");
+assert.ok(!androidDraftJob.includes('api("/releases", "POST"') && !androidDraftJob.includes('api("/git/tags", "POST"'), "CircleCI must verify, not create, Admin Release manager artifacts");
 const sourceVerifyJob = circle.slice(circle.indexOf("  source-verify:"), circle.indexOf("  application-build-docs:"));
 for (const contract of [
   "NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app",
