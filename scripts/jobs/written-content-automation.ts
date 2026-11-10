@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
-import { buildWrittenPost, buildWrittenSocialQueuePayload, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
+import { buildWrittenPost, buildWrittenSocialQueuePayload, chooseWrittenSourceKind, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
 
 type Row = Record<string, unknown>;
 const str=(v:unknown)=>typeof v==="string"?v.trim():"";
@@ -303,19 +303,31 @@ export async function runWrittenContentAutomation(options:{category?:string;batc
  const category=normalizeWrittenCategory(options.category||process.env.WRITTEN_CONTENT_CATEGORY||"auto"),all=await loadSources(),pool=category==="auto"?[...all]:category==="kids"?all.filter(x=>x.kind==="kids_story"):all.filter(x=>x.kind===category);
  if(!pool.length)throw new Error("No approved and published source for category "+category);
 
+ const todaysKidsPosts = category === "auto"
+  ? await readRequired<Row>(
+   `/rest/v1/social_publish_queue?content_type=eq.written_post&status=in.(queued,published,partial)&metadata->>audience=eq.kids&created_at=gte.${encodeURIComponent(today.toISOString())}&select=id&limit=1`,
+  )
+  : [];
+ let hasKidsPostToday = todaysKidsPosts.length > 0;
  const groups = new Map<WrittenContentSource["kind"], WrittenContentSource[]>();
  for (const item of pool) groups.set(item.kind, [...(groups.get(item.kind) ?? []), item]);
  const ids:string[]=[];let duplicates=0,skipped=0;
  while(ids.length<Math.min(batchSize,remaining)&&groups.size){
   const kinds=[...groups.keys()];
-  const kind=kinds[Math.floor(Math.random()*kinds.length)];
+  const kind=chooseWrittenSourceKind(kinds,category,hasKidsPostToday,Math.floor(Math.random()*kinds.length));
+  if(!kind)break;
   const candidates=groups.get(kind) ?? [];
   const source=pick(candidates);
   if(!source){groups.delete(kind);continue;}
   candidates.splice(candidates.indexOf(source),1);
   if(!candidates.length)groups.delete(kind);
-  try{const draft=await makeDraft(source,apiKey),result=await enqueue(source,draft);if(result.status==="queued")ids.push(result.id);else duplicates++;}
-  catch(error){skipped++;console.warn("[written-content] quarantined",source.kind,source.id,error instanceof Error?error.message:String(error));}
+  try{
+   const draft=await makeDraft(source,apiKey),result=await enqueue(source,draft);
+   if(result.status==="queued"){
+    ids.push(result.id);
+    if(kind==="kids_story")hasKidsPostToday=true;
+   }else duplicates++;
+  }catch(error){skipped++;console.warn("[written-content] quarantined",source.kind,source.id,error instanceof Error?error.message:String(error));}
  }
  return {enabled:true,created:ids.length,duplicates,skipped,facebookBackfilled,dailyTarget,dailyUsed:dailyUsed+ids.length,ids};
 }
