@@ -74,6 +74,8 @@ const migration = read("supabase/migrations/20261110021309_kids_video_library_an
 for (const token of ["kids-stories", "metadata->>'audience' = 'kids'", "hqdefault.jpg", "so_0/", "/branding/og-image.jpg"]) {
   if (!migration.includes(token)) failures.push("Kids/video thumbnail data migration is missing: " + token);
 }
+const kidsPathMigration = read("supabase/migrations/20261110022756_set_kids_video_public_paths.sql");
+if (!kidsPathMigration.includes("'/kids/videos/' || slug")) failures.push("Existing Kids catalog records must point to the dedicated Kids video detail route");
 
 if (failures.length) {
   console.error("VIDEO_QA_BACKFILL_CHECK_FAILED");
