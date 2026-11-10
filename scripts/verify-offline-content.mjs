@@ -118,6 +118,7 @@ if (existsSync(offlineWorkflowPath) &&
       !offlineWorkflow.includes('automation/offline-content-snapshot') ||
       !offlineWorkflow.includes('gh pr create') ||
       !offlineWorkflow.includes('gh workflow run quality-gate.yml') ||
+      !offlineWorkflow.includes("if: github.ref == 'refs/heads/main'") ||
       offlineWorkflow.includes('git push origin HEAD:main'))) {
   failures.push('Offline snapshot refresh must publish through a reviewable PR and dispatch the full Quality Gate; it must never push generated content directly to main');
 }
