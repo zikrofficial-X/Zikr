@@ -69,8 +69,12 @@ function facebookReelId(metadata: Record<string, unknown> | null): string | null
   const results = metadata?.platformResults;
   if (!isRecord(results)) return null;
   const reel = results.facebook_reels;
-  if (!isRecord(reel) || reel.ok !== true || typeof reel.remoteId !== "string") return null;
-  const id = reel.remoteId.trim();
+  if (!isRecord(reel) || reel.ok !== true) return null;
+  // New queue rows persist both IDs; videoId is required by /video_insights.
+  // Older rows only have remoteId (the FINISH post_id) and use the resolver below.
+  const id = typeof reel.videoId === "string" ? reel.videoId.trim()
+    : typeof reel.remoteId === "string" ? reel.remoteId.trim()
+    : "";
   return /^[0-9]{8,}$/.test(id) ? id : null;
 }
 
@@ -84,6 +88,53 @@ export function shouldRefreshFacebookReelsInsights(
   if (typeof capturedAt !== "string") return true;
   const timestamp = Date.parse(capturedAt);
   return !Number.isFinite(timestamp) || now - timestamp >= REFRESH_INTERVAL_MS;
+}
+
+export function resolveFacebookReelVideoIdFromPostPayload(payload: unknown): string | null {
+  if (!isRecord(payload)) return null;
+  const candidates: unknown[] = [payload.object_id];
+  const attachments = payload.attachments;
+  if (isRecord(attachments) && Array.isArray(attachments.data)) {
+    for (const attachment of attachments.data) {
+      if (!isRecord(attachment)) continue;
+      const media = attachment.media;
+      if (isRecord(media)) candidates.push(media.id);
+    }
+  }
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && /^[0-9]{8,}$/.test(candidate.trim())) {
+      return candidate.trim();
+    }
+  }
+  return null;
+}
+
+async function resolveFacebookReelVideoIdFromPost(
+  postId: string,
+  pageAccessToken: string,
+): Promise<string | null> {
+  const version = getServerEnv().FACEBOOK_GRAPH_API_VERSION?.trim() || "v26.0";
+  const url = new URL(
+    "https://graph.facebook.com/" + version + "/" + encodeURIComponent(postId),
+  );
+  url.searchParams.set("fields", "object_id,attachments{media}");
+  url.searchParams.set("access_token", pageAccessToken);
+  const response = await fetch(url, {
+    method: "GET",
+    cache: "no-store",
+    signal: AbortSignal.timeout(GRAPH_TIMEOUT_MS),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || (isRecord(payload) && payload.error)) {
+    const error = isRecord(payload) && isRecord(payload.error) ? payload.error : {};
+    throw new FacebookReelsInsightsApiError({
+      message: "Meta could not resolve the published Reel post to its video object (HTTP " + response.status + ").",
+      code: typeof error.code === "number" ? error.code : undefined,
+      subcode: typeof error.error_subcode === "number" ? error.error_subcode : undefined,
+      type: typeof error.type === "string" ? error.type : undefined,
+    });
+  }
+  return resolveFacebookReelVideoIdFromPostPayload(payload);
 }
 
 function safeMetricValue(value: unknown): number | Record<string, number> | null {
@@ -227,8 +278,24 @@ export async function syncFacebookReelsInsights(limit = MAX_BATCH): Promise<Face
     const group = candidates.slice(index, index + 4);
     const results = await Promise.all(group.map(async (candidate) => {
       try {
-        const metrics = await fetchReelInsights(candidate.videoId, credential.page_access_token);
-        return { candidate, metrics, error: false };
+        let videoId = candidate.videoId;
+        let metrics: Record<string, number | Record<string, number>>;
+        try {
+          metrics = await fetchReelInsights(videoId, credential.page_access_token);
+        } catch (error) {
+          const providerError = error instanceof FacebookReelsInsightsApiError ? error : null;
+          const isPostIdMismatch = providerError?.code === 12 ||
+            /singular statuses API is deprecated/i.test(providerError?.message ?? "");
+          if (!isPostIdMismatch) throw error;
+          const resolvedVideoId = await resolveFacebookReelVideoIdFromPost(
+            candidate.videoId,
+            credential.page_access_token,
+          );
+          if (!resolvedVideoId || resolvedVideoId === candidate.videoId) throw error;
+          videoId = resolvedVideoId;
+          metrics = await fetchReelInsights(videoId, credential.page_access_token);
+        }
+        return { candidate: { ...candidate, videoId }, metrics, error: false };
       } catch (error) {
         const providerError = error instanceof FacebookReelsInsightsApiError ? error : null;
         console.error(

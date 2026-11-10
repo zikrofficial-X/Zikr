@@ -10,6 +10,7 @@ on:
       - "scripts/run-background-jobs.ts"
       - "src/features/social/services/youtube-post-insights.ts"
       - "src/features/social/services/facebook-reels-insights.ts"
+      - "src/features/videos/services/video-automation.ts"
   schedule:
     - cron: "13 4 * * *"
   workflow_dispatch:

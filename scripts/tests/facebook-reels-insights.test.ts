@@ -2,10 +2,18 @@ import assert from "node:assert/strict";
 import {
   FACEBOOK_REELS_INSIGHT_METRICS,
   parseFacebookReelsInsights,
+  resolveFacebookReelVideoIdFromPostPayload,
   shouldRefreshFacebookReelsInsights,
 } from "../../src/features/social/services/facebook-reels-insights";
 
 const now = Date.parse("2026-11-06T00:00:00.000Z");
+assert.equal(resolveFacebookReelVideoIdFromPostPayload({ object_id: "123456789012345" }), "123456789012345");
+assert.equal(resolveFacebookReelVideoIdFromPostPayload({
+  attachments: { data: [{ media: { id: "987654321098765" } }] },
+}), "987654321098765");
+assert.equal(resolveFacebookReelVideoIdFromPostPayload({ id: "123456789012345" }), null);
+assert.equal(resolveFacebookReelVideoIdFromPostPayload(null), null);
+
 assert.equal(shouldRefreshFacebookReelsInsights(null, now), true);
 assert.equal(shouldRefreshFacebookReelsInsights({
   platformInsights: {
@@ -73,5 +81,26 @@ assert.match(facebookCallback, /pages_show_list/);
 assert.doesNotMatch(facebookCallback, /pages_manage_engagement/);
 assert.match(facebookCallback, /page_selection_required/);
 assert.doesNotMatch(facebookCallback, /FACEBOOK_INTEGRATION_RETIRED/);
+
+const videoAutomation = readFileSync(
+  resolve("src/features/videos/services/video-automation.ts"),
+  "utf8",
+);
+assert.ok(videoAutomation.includes("remoteId: finishData.post_id ?? startData.video_id"));
+assert.ok(videoAutomation.includes("videoId: startData.video_id"));
+
+const socialPublisher = readFileSync(
+  resolve("src/features/social/services/social-publishing.ts"),
+  "utf8",
+);
+assert.ok(socialPublisher.includes("publishFacebookReelWithIds"));
+assert.ok(socialPublisher.includes("...(videoId ? { videoId } : {})"));
+
+const insightsService = readFileSync(
+  resolve("src/features/social/services/facebook-reels-insights.ts"),
+  "utf8",
+);
+assert.ok(insightsService.includes("typeof reel.videoId === \"string\""));
+assert.ok(insightsService.includes("resolveFacebookReelVideoIdFromPost"));
 
 console.log("Facebook Reels metric parsing and secure Page OAuth flow tests passed.");

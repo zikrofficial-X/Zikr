@@ -1,6 +1,12 @@
 name: ZIKR Offline Content Snapshot
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/refresh-offline-content.yml"
+      - "scripts/export-offline-content.mjs"
+      - "scripts/verify-offline-content.mjs"
   schedule:
     - cron: "41 2 * * *"
   workflow_dispatch:

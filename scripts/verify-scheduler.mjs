@@ -63,7 +63,12 @@ if (!socialRunner.includes('"insights"') || !socialRunner.includes('target === "
 const insightsWorkflow = read(".github/workflows/sync-social-insights.yml");
 if (!insightsWorkflow.includes('cron: "13 4 * * *"') || !insightsWorkflow.includes('BACKGROUND_JOB_TARGET: "insights"') || !insightsWorkflow.includes('SOCIAL_SYNC_INSIGHTS: "true"') || !insightsWorkflow.includes('SOCIAL_PUBLISH_ENABLED: "false"')) failures.push("daily insights workflow must run independently with publishing disabled");
 if (!insightsWorkflow.includes("YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}")) failures.push("daily YouTube insights worker must receive the API key used for channel video metrics");
-if (!insightsWorkflow.includes("push:") || !insightsWorkflow.includes('branches: [main]') || !insightsWorkflow.includes('"scripts/jobs/social-publishing.ts"')) failures.push("daily insights worker must refresh after relevant main-branch updates");
+if (!insightsWorkflow.includes("push:") || !insightsWorkflow.includes('branches: [main]') ||
+    !insightsWorkflow.includes('"scripts/jobs/social-publishing.ts"') ||
+    !insightsWorkflow.includes('"src/features/social/services/facebook-reels-insights.ts"') ||
+    !insightsWorkflow.includes('"src/features/videos/services/video-automation.ts"')) {
+  failures.push("daily insights worker must refresh after relevant YouTube/Facebook publisher and insights changes reach main");
+}
 if (!socialService.includes("created_at=gte.${createdSince}") || !socialService.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff")) failures.push("social queue claims and stale recovery must respect the launch cutoff");
 if (publisher.includes("if: false")) failures.push("social publisher must not retain the retired workflow kill switch");
 const mediaAuditWorkflow = read(".github/workflows/audit-video-media.yml");
