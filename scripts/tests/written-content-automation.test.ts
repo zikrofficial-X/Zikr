@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {buildPublicKidsWrittenPost,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
+import {buildPublicKidsWrittenPost,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
 const source:WrittenContentSource={kind:"quran",id:"ayah-1",title:"آية",sourceText:"إِنَّ مَعَ الْعُسْرِ يُسْرًا",reference:"سورة الشرح، الآية 6",publicPath:"/quran/ash-sharh",categoryLabel:"القرآن الكريم",sourceVerified:true,quoteRequired:true};
 const draft:WrittenPostDraft={eligible:true,title:"مع كل عسر يسر",hook:"قد تمر بلحظة تظن فيها أن الطريق انتهى، لكن الأمل يظل حاضرًا.",reflection:"تدعونا الآية إلى ألا نستسلم لليأس، وأن نتذكر أن الشدة لا تدوم وأن الأمل باب للعمل والصبر.",question:"ما المعنى الذي تستحضره عندما تمر بوقت صعب؟"};
 assert.equal(normalizeWrittenCategory("hadith"),"hadith");assert.equal(normalizeWrittenCategory("other"),"auto");assert.equal(normalizeWrittenCategory("companions"),"companions");assert.equal(normalizeWrittenCategory("kids"),"kids");
@@ -27,6 +27,48 @@ assert.equal(kidsPayload.content_id, kidsSource.id, "Kids written posts must lin
 const kidsMetadata = kidsPayload.metadata as Record<string, unknown>;
 assert.equal(kidsMetadata.audience, "kids");
 assert.equal(kidsMetadata.kidsContentId, kidsSource.id);
+const backfillKidsPayload = buildWrittenBackfillQueuePayload({
+ articleId: "article-kids-1",
+ title: "قصة للأطفال",
+ body: "نص مناسب للأطفال",
+ publicPath: "/kids/story-1",
+ sourceType: "kids_story",
+ sourceId: "123e4567-e89b-12d3-a456-426614174000",
+ sourceTitle: "قصة للأطفال",
+ ageGroup: "6-8",
+ automationKey: "written-v1:kids_story:123e4567-e89b-12d3-a456-426614174000",
+ now: "2026-11-10T08:00:00.000Z",
+ scheduledAt: "2026-11-10T08:05:00.000Z",
+});
+assert.equal(backfillKidsPayload.content_id, "123e4567-e89b-12d3-a456-426614174000", "Kids backfill must link the live Kids source, not the article UUID");
+assert.equal(backfillKidsPayload.metadata.audience, "kids", "Kids backfill must retain its audience marker");
+assert.equal(backfillKidsPayload.metadata.kidsContentId, "123e4567-e89b-12d3-a456-426614174000");
+assert.equal(backfillKidsPayload.metadata.ageGroup, "6-8");
+const backfillGeneralPayload = buildWrittenBackfillQueuePayload({
+ articleId: "article-general-1",
+ title: "معلومة عامة",
+ body: "نص عام",
+ publicPath: "/quran/ash-sharh",
+ sourceType: "quran",
+ sourceId: "ayah-1",
+ automationKey: "written-v1:quran:ayah-1",
+ now: "2026-11-10T08:00:00.000Z",
+ scheduledAt: "2026-11-10T08:05:00.000Z",
+});
+assert.equal(backfillGeneralPayload.content_id, "article-general-1");
+assert.equal("audience" in backfillGeneralPayload.metadata, false, "general backfill must not be mislabeled as Kids");
+assert.throws(() => buildWrittenBackfillQueuePayload({
+ articleId: "article-kids-invalid",
+ title: "قصة",
+ body: "نص",
+ publicPath: "/quran/ash-sharh",
+ sourceType: "kids_story",
+ sourceId: "not-a-uuid",
+ automationKey: "written-v1:kids_story:invalid",
+ now: "2026-11-10T08:00:00.000Z",
+ scheduledAt: "2026-11-10T08:05:00.000Z",
+}), /Kids backfill must retain a valid Kids source ID and \/kids\/ public path/);
+
 assert.equal(kidsMetadata.ageGroup, "6-8");
 
 const queueRow: KidsWrittenQueueRow = {
@@ -87,6 +129,7 @@ assert.match(worker, /\/rest\/v1\/articles/);
 assert.match(worker, /\/rest\/v1\/content_publish_queue/);
 assert.match(worker, /\/rest\/v1\/social_publish_queue/);
 assert.match(worker, /buildWrittenSocialQueuePayload/);
+assert.match(worker, /buildWrittenBackfillQueuePayload/);
 assert.match(worker, /createWrittenSocialAutomationKey/);
 assert.match(worker, /enqueueExistingWrittenArticlesForFacebook/);
 assert.match(worker, /\/rest\/v1\/kids_content/);
