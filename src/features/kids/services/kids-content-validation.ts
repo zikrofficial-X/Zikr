@@ -1,4 +1,4 @@
-import type { KidsQuizQuestion } from "@/features/kids/data/content";
+import type { KidsQuizQuestion } from "../data/content";
 
 export type KidsQuizData = { questions: KidsQuizQuestion[] };
 
