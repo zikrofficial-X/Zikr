@@ -100,7 +100,10 @@ async function uploadGeneratedVideoToCloudinary(bytes: Uint8Array, storageKey: s
   }
   return { secureUrl: payload.secure_url, publicId, bytes: payload.bytes ?? bytes.byteLength };
 }
-const AI_ATTEMPTS_PER_RUN = Math.max(0, Math.min(4, Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 3) || 3));
+function getAiAttemptsPerRunLimit() {
+  const configured = Number(process.env.VIDEO_AI_ATTEMPTS_PER_RUN ?? 4);
+  return Number.isFinite(configured) ? Math.max(0, Math.min(4, Math.floor(configured))) : 4;
+}
 let aiAttemptsUsed = 0;
 
 function videoRetryDelayMinutes(attempt: number, requestId: string) {
@@ -1277,7 +1280,7 @@ async function renderVideo(request: GeneratedRequest) {
       !boundTemplate &&
       engineConfig().aiEnabled &&
       engineConfig().order.some((provider) => provider !== "template") &&
-      aiAttemptsUsed < AI_ATTEMPTS_PER_RUN
+      aiAttemptsUsed < getAiAttemptsPerRunLimit()
     ) {
       aiAttemptsUsed += 1;
       const router = createVideoProviderRouter(async () => ({
@@ -1328,7 +1331,7 @@ async function renderVideo(request: GeneratedRequest) {
           ? null
           : aiResult.error || "AI providers unavailable",
       };
-    } else if (!isTemplatePreview && !boundTemplate && engineConfig().aiEnabled && aiAttemptsUsed >= AI_ATTEMPTS_PER_RUN) {
+    } else if (!isTemplatePreview && !boundTemplate && engineConfig().aiEnabled && aiAttemptsUsed >= getAiAttemptsPerRunLimit()) {
       request.content = {
         ...request.content,
         aiProvider: null,
