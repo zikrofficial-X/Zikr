@@ -36,7 +36,7 @@ Both are snapshots of the exact parent baseline `c91f64ccd6162e5107b3edb8be3c7aa
 |---|---|---|---|
 | Repository inventory | <badge color="success">Automated snapshot complete</badge> | Recursive Git tree: 1639 files, 491 directories, not truncated | File-by-file dependency and functional review |
 | Route inventory | In progress | 142 pages, 80 route handlers; PR #275 updates shared baseline to 80 and requires Kids videos route | Run route verifier and full route/browser smoke |
-| Automation safety | In progress | PR #275 removes implicit QA apply, scheduled storage deletion, and direct offline snapshot push | Quality Gate, CircleCI and Preview checks |
+| Automation safety | In progress | PR #275 removes implicit QA apply, scheduled storage deletion, direct offline snapshot push, and blocks Vercel Preview/Development workflow dispatch before reading a write-capable token | Quality Gate, CircleCI and Preview checks |
 | Facebook OAuth recovery | In progress | PR #275 calls existing auth-blocked queue recovery after validated Page credential storage | CI and live admin-role acceptance; no publish dispatch |
 | Admin console | Partially remediated | PR #265 merged; 66 Admin pages, 27 Admin API route files, 43 handlers in permission matrix | Authenticated browser acceptance for each role/permission |
 | Kids content | Partially remediated | PR #266 merged; Kids feed requires published + kids audience + passed Kids QA + playable media | Editorial review and real device/browser acceptance |
@@ -59,7 +59,7 @@ Both are snapshots of the exact parent baseline `c91f64ccd6162e5107b3edb8be3c7aa
 - Production deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` is READY on `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; canonical alias is `zikrmediaofficial.vercel.app`.
 - Main Quality Gate `42789168100`, Supabase Production Health `42789168307`, CircleCI config guard, source verify, application build/docs and Android release-draft statuses passed.
 - The controlled release workflow previously failed at Vercel token identity validation; it did not deploy. A GitHub Actions credential authorized for team `zikr3` remains an owner-managed release prerequisite; no secret value was read or changed.
-- PR #275 is draft and awaiting its own Quality Gate, CircleCI and Vercel Preview checks. Its Preview must remain read-only because the Preview environment currently uses production-backed integrations.
+- PR #275 is draft and awaiting its own Quality Gate, CircleCI and Vercel Preview checks; it now includes the production-only workflow dispatch guard. Its Preview must remain read-only because the Preview environment currently uses production-backed integrations.
 
 ### Supabase
 
@@ -83,6 +83,8 @@ Both are snapshots of the exact parent baseline `c91f64ccd6162e5107b3edb8be3c7aa
 | SAFE-003 | Offline snapshot workflow pushed generated data directly to main | P1 | PR #275 routes updates through stable branch + reviewable PR + Quality Gate dispatch | `9c66e17edd349e67ec15aede06de4f2953844806`, `d93c8ca78f0c068ce48f638359a3be1f49bd707d` | `offline:check` pending |
 | SAFE-004 | Facebook OAuth reconnect stored a valid Page credential but did not release explicitly auth-blocked queue rows | P1 | PR #275 calls existing recovery function after credential storage; no publisher dispatch from callback | `5fb47866ae5994405fec1ae8adde35b694adee40`, `4c761738ed9156c7e10fbb5e7549dc855bd9b28e` | `social:publish:check` pending |
 | ROUTE-001 | New Kids videos API route was missing from the shared 79-handler baseline and required-route list | P1 | PR #275 updates expected handler count to 80 and adds `src/app/api/kids/videos/route.ts` to required routes | `eece9ea5eea08b2b31fef40ce8b9b60445e8cea1`, `804edee88edc475fd8e33c4216136cb05fd47d4f` | `routes:check` pending |
+| SAFE-006 | Written Facebook posts could starve behind a full batch of video retries | P1 | PR #275 reserves one batch slot for an eligible non-video post while preserving the configured batch limit | `148c5d5ee12577520b30d1959338afcad8753c99`, `6cc8893d445ddd62dc8dbd16b28c3a2727c60298` | `social-queue-selection.test.ts` via `pnpm test` pending |
+| SAFE-007 | Vercel Preview/Development could call the GitHub workflow dispatcher with production repository credentials | P0 | PR #275 rejects Vercel non-production or non-main runtime before reading the write-capable GitHub token; local development remains allowed | `2ffe84422043501de434f2f24b2bda289244efaa`, `76dd38f8f647ec69e5ef97948ee73479d4ba3346`, `87bd7b0c71971ef808dd9d6c524a902f86737ffa`, `67f1dbb9477e42fa02a7c5dfbd6fdc45503c5069` | `github-workflow-dispatch-policy.test.ts` via `pnpm test` pending |
 | SAFE-005 | Admin video purge could delete generated Cloudinary MP4s still referenced by non-published social queue rows | P0 | PR #275 checks pending queue media before Cloudinary inventory and fails closed on protected references or an incomplete 1,000-row scan | `eb58c09d55ff32f9cb9fbc3dd1dcb95936a2e736`, `ca0b86ac8d1597af05d1ae03f70c2433634a48a7`, `f5c55566cfc0407c4958ee897e8acaf85e36a099`, `5abc544906543ba8369a8dd772ec95890e8e3fb2` | `video:purge:check` pending |
 
 No production data, storage objects, migrations, policies, indexes, OAuth credentials, or social content were changed. No file deletion was performed.
