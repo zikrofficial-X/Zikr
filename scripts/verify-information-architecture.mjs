@@ -22,6 +22,8 @@ const videosPage = await read('src/app/videos/page.tsx');
 const audioPage = await read('src/app/audio/page.tsx');
 const kidsLayout = await read('src/app/kids/layout.tsx');
 const kidsDetailLayout = await read('src/app/kids/[slug]/layout.tsx');
+const kidsContentService = await read('src/features/kids/services/kids-content.ts');
+const kidsContentData = await read('src/features/kids/data/content.ts');
 const searchService = await read('src/features/search/services/search.ts');
 const mobileNavigation = await read('src/components/layout/mobile-nav.tsx');
 // The normalized index lives in the v2 migration; the current definition of search_public_content
@@ -50,8 +52,10 @@ if (!sitemap.includes('siteConfigRoutes().map')) {
 if (!audioPage.includes("path: '/audio'")) {
   failures.push('Audio hub must expose page-level canonical metadata.');
 }
-if (!kidsDetailLayout.includes('select=title_ar,summary_ar') || kidsDetailLayout.includes('description_ar')) {
-  failures.push('Kids detail metadata must use the live kids_content.summary_ar column, not a nonexistent description_ar column.');
+if (!kidsDetailLayout.includes('getKidsContentBySlug(slug, "ar")') ||
+    !kidsContentService.includes('published=eq.true&is_active=eq.true') ||
+    !kidsContentData.includes('content_ar: row.content_ar ?? row.summary_ar')) {
+  failures.push('Kids detail metadata must use the visibility-aware Kids resolver and map the live kids_content.summary_ar column.');
 }
 if (!searchService.includes('/rest/v1/rpc/search_public_content') || !searchService.includes('searchIndexedContent')) {
   failures.push('Public search must call the normalized Supabase full-text search RPC before any bounded fallback.');
