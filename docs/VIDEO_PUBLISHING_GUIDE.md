@@ -6,13 +6,13 @@
 |---|---|---|
 | Video generation | GitHub Actions | `.github/workflows/generate-ai-video.yml` |
 | Internal website video publication | GitHub Actions + Supabase | `content_publish_queue` |
-| External social publishing | Automated-QA-gated | `.github/workflows/publish-social.yml` after generation, every 15 minutes, or manual dispatch |
+| External social publishing | Source-verified text posts; automated-QA-gated videos | `.github/workflows/publish-social.yml` after generation, every 15 minutes, or manual dispatch |
 | Application build/documentation | CircleCI | `application-build-docs` |
 | Android build/signing | CircleCI | `android-rebuild` |
 | Prayer notifications | Supabase | `prayer-notification-worker` + pg_cron |
 | Source-verified content ingestion | Supabase | `source-verified-content-agent` + pg_cron |
 
-There is no CircleCI production video worker and no Vercel Cron for video publication. External social publishing is separate from rendering and requires provider preflight, administrator enablement, and five passing automated QA checks; no manual review is required.
+There is no CircleCI production video worker and no Vercel Cron for video publication. External social publishing is separate from rendering and requires provider preflight and administrator enablement. Video rows additionally require five passing automated QA checks; source-verified written text rows use the written-content quality gate.
 
 ## Video pipeline
 
