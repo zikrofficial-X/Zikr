@@ -109,6 +109,68 @@ export function buildWrittenSocialQueuePayload(
  };
 }
 
+export function buildWrittenBackfillQueuePayload(input: {
+ articleId: string;
+ title: string;
+ body: string;
+ publicPath: string;
+ sourceType: string;
+ sourceId: string;
+ sourceTitle?: string | null;
+ sourceReference?: string | null;
+ ageGroup?: string | null;
+ originalCreatedAt?: string | null;
+ automationKey: string;
+ now: string;
+ scheduledAt: string;
+}) {
+ const isKidsStory = input.sourceType === "kids_story";
+ if (isKidsStory && (
+  !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(input.sourceId) ||
+  !input.publicPath.startsWith("/kids/")
+ )) {
+  throw new Error("Kids backfill must retain a valid Kids source ID and /kids/ public path.");
+ }
+ return {
+  content_type: "written_post",
+  content_id: isKidsStory ? input.sourceId : input.articleId,
+  title: input.title,
+  body: input.body,
+  image_url: null,
+  video_url: null,
+  target_platforms: ["facebook"],
+  status: "queued",
+  scheduled_at: input.scheduledAt,
+  published_at: null,
+  error_message: null,
+  metadata: {
+   contentType: "written_post",
+   publicPath: input.publicPath,
+   ...(isKidsStory ? {
+    audience: "kids",
+    kidsContentId: input.sourceId,
+    ageGroup: input.ageGroup ?? null,
+   } : {}),
+   source: {
+    type: input.sourceType,
+    id: input.sourceId,
+    title: input.sourceTitle || input.title,
+    reference: input.sourceReference || "",
+    verified: true,
+   },
+   generation: {
+    provider: "gemini",
+    version: "written-facebook-backfill-v1",
+    importedFromArticleId: input.articleId,
+    originalCreatedAt: input.originalCreatedAt ?? null,
+   },
+  },
+  automation_key: input.automationKey,
+  created_at: input.now,
+  updated_at: input.now,
+ };
+}
+
 export type KidsWrittenQueueRow = {
  id: string;
  content_type: string;
