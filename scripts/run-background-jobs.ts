@@ -340,7 +340,7 @@ async function main() {
   const runNowRequestedAt = videoSettings.runNowRequest?.requestedAt ?? null;
   applyVideoAutomationSettings(videoSettings);
   console.log("[background-jobs] Admin video settings:", JSON.stringify(videoSettings));
-  if (!["all", "videos", "social"].includes(target)) {
+  if (!["all", "videos", "social", "insights"].includes(target)) {
     throw new Error(`Invalid BACKGROUND_JOB_TARGET: ${target}`);
   }
 
@@ -371,6 +371,7 @@ async function main() {
   const social = target === "all" || target === "social"
     ? await processSocial(videoSettings)
     : { processed: 0, succeeded: 0, deferred: 0, authBlocked: 0, approvalBlocked: 0, failed: 0, enabled: false, insights: null };
+  const insights = target === "insights" ? await syncSocialInsights() : null;
 
   const failed = videos.failed + social.failed + ("error" in sitePublishing ? 1 : 0);
   const queueAlerts = await notifyNewQueueFailures(new Date(startedAt).toISOString()).catch((error) => {
@@ -380,7 +381,7 @@ async function main() {
 
   // Social batches already persist platform status/remote IDs in the social queue
   // and GitHub Actions logs. Do not add a video_automation_runs row per social run.
-  if (target !== "social") {
+  if (target !== "social" && target !== "insights") {
     await recordAutomationRun({
       startedAt,
       target,
@@ -400,6 +401,7 @@ async function main() {
     videos,
     sitePublishing,
     social,
+    insights,
     queueAlerts,
     durationMs: Date.now() - startedAt,
   }, null, 2));
