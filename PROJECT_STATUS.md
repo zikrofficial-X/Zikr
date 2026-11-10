@@ -14,25 +14,35 @@
 - The GitHub repository attached to the Vercel production deployment is `zikrofficial-X/Zikr`, branch `main`. Current main SHA: `2bfedae38e3818d076d9f1eb8a36132c3b8d0a79` — “Fix written Facebook post generation and admin studio (#268)”.
 - Vercel project `zikr` belongs to team `zikr3` (project `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`). Latest production deployment `dpl_EnVi4cmLBN6G2R34rUgRmCKhVyty` is `READY` and built from this exact main SHA. Verified production domain: `zikrmediaofficial.vercel.app`.
 - Supabase target is `zqtssvlvmkzeeyqghqfk`, status `ACTIVE_HEALTHY`, PostgreSQL 17. This run did not change project settings, secrets, schema or data.
-- Main is currently unprotected in GitHub. No protection setting was changed. A merge to main has been observed to create a Vercel production deployment automatically; the proposed code fix therefore remains PR-only pending the release gate.
+- Main is currently unprotected in GitHub. No protection setting was changed. A merge to main has been observed to create a Vercel production deployment automatically; the proposed code fix remains PR-only pending release authorization.
 
 ### Inventory and measurable progress
 
 - Main recursive Git tree: **2125 entries, 1634 files, 491 directories**, untruncated; tracked file bytes: **138,150,372**.
-- Route inventory: **142 pages and 80 API handlers**. The current route-baseline source still expects 79; correction is proposed on the audit branch.
+- Route inventory: **142 pages and 80 API handlers**. The main route-baseline source still expects 79; correction is proposed on the audit branch.
 - Other inventory: **19 GitHub Actions workflows, 56 test-file paths, 414 active Supabase migration files**.
 - Previous matrix contained **1631 file rows** at baseline `84deeb994a9f33bd0b685adfe081c09ccbf86861`; it is refreshed to 1634 rows against main `2bfedae38e3818d076d9f1eb8a36132c3b8d0a79`. Stale prior file paths: 0; new current paths: 3.
 - Full recursive manifest: `docs/audits/REPO_MANIFEST_2026-11-10.jsonl`. It records path, type, mode, Git object hash and size for all 2125 entries in the main baseline, including tracked dotfiles.
-- File-status ledger: `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` (same central file, refreshed rather than duplicated). Status counts: REVIEW_REQUIRED=1628, FIX_PROPOSED=3, VERIFIED_BY_CI=2, VERIFIED_RUNTIME=1.
-- Evidence-backed classification covers 6/1634 files (0.37%); 5 files were read in full, and the route-checker change was scoped to its exact required-path declaration. Two cleanup helper/test files passed main CI; the Kids feed API passed a live GET smoke test; three routing files have confirmed issues with a proposed fix. **No whole product module is closed.**
+- File-status ledger: `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` (same central file, refreshed rather than duplicated). Status counts: REVIEW_REQUIRED=1600, FIX_PROPOSED=12, VERIFIED_BY_CI=2, REVIEWED_STATIC=19, VERIFIED_RUNTIME=1.
+- Evidence-backed classification covers 34/1634 files (2.08%): 19 static-reviewed auth/admin files, 2 CI-verified cleanup files, 1 runtime-smoke-tested Kids API, and 12 files in proposed fixes. This is not module closure.
 - The three new main paths are `src/app/api/kids/videos/route.ts`, `src/features/social/services/published-video-cleanup.ts`, and `scripts/tests/social-published-video-cleanup.test.ts`. No deletion candidate was proven safe.
 
-### Code repair in progress
+### Code repair in progress — PR #269
 
-- Created stable branch `audit/continuous-closeout` from main `2bfedae38e3818d076d9f1eb8a36132c3b8d0a79`.
-- Commit `300f9c43632050040f6c69cba71165c335aaf76a` relocates the Next.js 16 Proxy entrypoint from root `proxy.ts` to `src/proxy.ts`, updates active consumers, changes the expected API route count to 80, and adds the Kids feed route to the required route list.
-- Next.js requires Proxy beside `src/app` when using the `src` directory. References: https://nextjs.org/docs/app/api-reference/file-conventions/src-folder and https://nextjs.org/docs/app/getting-started/proxy.
-- This commit has not yet passed branch CI or Preview checks. It is not merged, and this run did not trigger production deployment.
+- Stable branch: `audit/continuous-closeout`, created from main `2bfedae38e3818d076d9f1eb8a36132c3b8d0a79`.
+- Commit `300f9c43632050040f6c69cba71165c335aaf76a` moves Next.js 16 Proxy from root `proxy.ts` to `src/proxy.ts`, updates active consumers, changes the expected API route count to 80 and adds the Kids feed route to the required route list.
+- Commit `9dc8727f07ed3d2ff35926b0c4b42428efd248b1` resumes auth-blocked Facebook queue rows after a verified OAuth reconnect, records the recovery outcome and leaves actual publishing to the scheduled worker. The live queue currently has zero auth-blocked rows, so no production queue row was changed.
+- PR #269 is draft. Its first code/audit head passed the GitHub Quality Gate; the Facebook OAuth recovery commit has just been pushed and its checks are rerunning. Vercel Preview for the newest head is pending.
+- Next.js requires Proxy beside `src/app` when using `src`. References: https://nextjs.org/docs/app/api-reference/file-conventions/src-folder and https://nextjs.org/docs/app/getting-started/proxy.
+- No merge or production deployment was initiated. Main auto-deploys to production on pushes, so PR #269 stays unmerged until all checks and the release gate are cleared.
+
+### Auth and admin security review
+
+- Static review covered 19 auth/admin files: environment aliases, auth origin and next-path handling, Supabase browser/server/middleware clients, Google web/native OAuth, callback exchange, login/register/password actions, HIBP screening, admin permission resolution, protected layout/API, profile self-service and profile sync.
+- Live RLS check: `profiles` and `admin_role_assignments` policies restrict reads/writes to the session owner or authorized admins; the `guard_profile_sensitive_fields` trigger prevents non-service-role users from changing role/email. Current profile/assignment role mismatches: 0; orphan assignments: 0.
+- The profile-sync API derives its user from `auth.getUser()`; it does not accept a caller-supplied user ID. Admin dashboard API requires `dashboard.view`.
+- Security gap remains: Supabase leaked-password protection is disabled. The app-level HIBP range check fails open on HIBP outage by design. Enabling Supabase's control or changing the app to fail closed is an owner security-policy decision; neither was changed.
+- Anonymous browser/API acceptance is not closed: the Vercel fetch connector returned a share-link authentication failure for admin API paths, so the 200 HTML responses for protected pages cannot be treated as anonymous access proof.
 
 ### GitHub, CI and Android
 
@@ -47,7 +57,7 @@
 - Public schema: **92/92 tables have RLS enabled**, 211 public policies, 53 public triggers, 20 public SECURITY DEFINER functions, and 9 extensions.
 - Four cron jobs exist: three active (history cleanup, prayer push dispatch, source-verified content agent) and the YouTube/Facebook sync cron is inactive. Four deployed Edge Functions are ACTIVE.
 - Storage: 9 buckets (7 public), **0 objects**. No bucket, object, row or metadata was deleted.
-- Supabase health advisor returned no health lints. Security advisor reports one owner-setting warning: leaked-password protection is disabled. Enablement is an account/security-owner decision and was not changed here.
+- Supabase health advisor returned no health lints. Security advisor reports one owner-setting warning: leaked-password protection is disabled. No account/security setting was changed.
 
 ### Video and social operations
 
@@ -67,7 +77,7 @@
 ### Existing pull request and blockers
 
 - Existing PR #265 (`codex/admin-console-full-audit-20261110`) remains open, 21 files changed, 42 commits. Its base is `f314ffba187a292b063def1b8c4779bd2e30d368`, while current main is `2bfedae38e3818d076d9f1eb8a36132c3b8d0a79`; GitHub reports `mergeable_state=dirty`. Its head has only a CircleCI config-guard success and no Quality Gate run. It is not safe to merge without resolving conflicts and rerunning CI.
-- Remaining gates: branch CI and Preview for the Proxy/route fix; role-by-role authenticated browser checks; Android physical-device checks; OAuth refresh and live provider read-only validation; editorial/religious review of Kids and Islamic content; owner decision on leaked-password protection; trace of the old upstream fetch errors.
+- Remaining gates: PR #269 latest-head Quality Gate, CircleCI and Vercel Preview; browser login/logout, OAuth callback, anonymous API and role-by-role admin checks; Android physical-device checks; OAuth refresh and provider read-only validation; editorial/religious review; owner decision on leaked-password protection; trace of old upstream fetch errors.
 - No public social post, production data deletion, migration, bucket deletion, or production deployment was initiated by this audit.
 
 ## Historical consolidated closeout checkpoint — 2026-10-30
