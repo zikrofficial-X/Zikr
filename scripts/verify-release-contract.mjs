@@ -137,6 +137,7 @@ assert.ok(publish.includes("release-metadata.json"), "Android publisher must ver
 assert.ok(publish.includes('gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}"'), "Android publisher must publish the resolved GitHub release ID after asset verification");
 assert.ok(publish.includes('repos/${GITHUB_REPOSITORY}/releases?per_page=100'), "Android publisher must resolve draft releases from the releases list API");
 assert.ok(publish.includes("MATCH_COUNT > 1") && publish.includes("Ambiguous Android release draft"), "Android publisher must refuse to select an arbitrary release when duplicate drafts share a tag");
+assert.ok(publish.includes("Found ${MATCH_COUNT} GitHub releases for ${TAG}"), "Android publisher duplicate-release diagnostics must include the actual tag and count");
 assert.ok(publish.includes('releases/413815658'), "Android publisher must recover the existing v1.1.4 draft by ID if the release list omits it");
 assert.ok(publish.includes('gh release upload "$TAG" "$asset"') && publish.includes('--repo "$GITHUB_REPOSITORY"'), "Android publisher must upload verified binaries to the canonical repository and release tag through GitHub CLI");
 assert.ok(!publish.includes('https://uploads.github.com/'), "Android publisher must not use the legacy direct upload endpoint that caused the 404 race");
