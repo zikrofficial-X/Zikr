@@ -19,6 +19,7 @@ const requiredTables = [
   "video_generation_requests",
   "social_publish_queue",
   "social_post_insights",
+  "youtube_oauth_credentials",
 ];
 const retiredTables = [
   "admin_actions_audit",
