@@ -84,6 +84,14 @@ if (!contentHash.includes("export function sourceHash")) failures.push("video so
 const queue = read("scripts/run-background-jobs.ts");
 if (!queue.includes("processTemplateVideoQueue")) failures.push("background runner must use the canonical template queue");
 if (!queue.includes("ensureArabicTtsRuntime")) failures.push("background runner must initialize the canonical voice runtime");
+if (!template.includes("function getAiAttemptsPerRunLimit()") ||
+    template.includes("const AI_ATTEMPTS_PER_RUN") ||
+    !template.includes("aiAttemptsUsed < getAiAttemptsPerRunLimit()")) {
+  failures.push("AI provider attempt budget must be read dynamically after admin runtime settings are applied");
+}
+if (!queue.includes('VIDEO_AI_ATTEMPTS_PER_RUN = String(settings.aiAttemptsPerRun)')) {
+  failures.push("runtime AI attempt setting must be injected into the worker environment");
+}
 
 const workflow = read(".github/workflows/generate-ai-video.yml");
 if (!workflow.includes("pnpm video:engine:check")) failures.push("GitHub video workflow must execute the engine guard");
