@@ -51,7 +51,9 @@ export function buildFacebookQueueRecoveryPatch(
   const remainingAuthBlockedPlatforms = declaredBlocked.filter((platform) => !blockedTargets.includes(platform));
   const hasRemainingAuthBlock = remainingAuthBlockedPlatforms.length > 0;
   const permanentFailurePlatforms = Array.isArray(metadata.permanentFailurePlatforms)
-    ? metadata.permanentFailurePlatforms.filter((platform) => !blockedTargets.includes(String(platform)))
+    ? metadata.permanentFailurePlatforms.filter((platform) =>
+        !blockedTargets.some((target) => target === String(platform)),
+      )
     : [];
   const hasPermanentFailureMetadata = Array.isArray(metadata.permanentFailurePlatforms);
 
