@@ -4,6 +4,7 @@ import {
   createAdminClient,
   createClient,
 } from "@/lib/supabase/server";
+import { resolveAdminRole } from "@/features/admin/services/permissions";
 
 export type ProfileFavorite = {
   id: string;
@@ -81,6 +82,16 @@ export async function getCurrentProfileData(): Promise<CurrentProfileData | null
         .limit(10),
     ]);
 
+  const effectiveRole = resolveAdminRole(
+    profileRes.data?.[0]?.role,
+    assignmentRes.data?.role,
+    Boolean(assignmentRes.error),
+  );
+  const assignedRole =
+    effectiveRole !== "admin" && effectiveRole !== "user"
+      ? effectiveRole
+      : null;
+
   return {
     user: {
       id: user.id,
@@ -102,7 +113,7 @@ export async function getCurrentProfileData(): Promise<CurrentProfileData | null
           display_name: profileRes.data[0].display_name ?? null,
           avatar_url: profileRes.data[0].avatar_url ?? null,
           locale: profileRes.data[0].locale ?? null,
-          role: profileRes.data[0].role ?? null,
+          role: effectiveRole,
           bio: profileRes.data[0].bio ?? null,
           preferred_reciter_code: profileRes.data[0].preferred_reciter_code ?? null,
           daily_wird_target: profileRes.data[0].daily_wird_target ?? 20,
@@ -111,10 +122,7 @@ export async function getCurrentProfileData(): Promise<CurrentProfileData | null
           updated_at: profileRes.data[0].updated_at ?? null,
         }
       : null,
-    assignedRole:
-      typeof assignmentRes.data?.role === "string"
-        ? assignmentRes.data.role
-        : null,
+    assignedRole,
     favorites: (favoritesRes.data ?? []) as ProfileFavorite[],
     readingProgress: (progressRes.data ?? []) as ProfileReadingProgress[],
   };
