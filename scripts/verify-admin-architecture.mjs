@@ -61,6 +61,7 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/audio/tts", "تحويل النص إلى صوت", "audio.manage"],
     ["/admin/site-audio", "صوت الموقع والتذكيرات", "audio.manage"],
     ["/admin/social", "مركز النشر الاجتماعي", "social.manage"],
+    ["/admin/social/written-studio", "مصنع المنشورات المكتوبة", "social.manage"],
   ],
   "عالم الأطفال": [
     ["/admin/kids", "لوحة الأطفال", "kids.manage"],
@@ -164,8 +165,9 @@ const writtenSocialPage = read("src/app/admin/social/written-studio/page.tsx");
 if (!socialPage.includes('requireAdminPermission("social.manage")') || !socialPage.includes("AdminSocialClient")) {
   failures.push("social publishing center must remain protected by social.manage");
 }
-if (!writtenSocialPage.includes('redirect("/admin/memory")')) {
-  failures.push("retired external written-social studio must redirect to internal project memory");
+if (!writtenSocialPage.includes('requireAdminPermission("social.manage")') ||
+    !writtenSocialPage.includes("WrittenStudioClient")) {
+  failures.push("written Facebook posts studio must render directly behind social.manage");
 }
 if (!navigation.includes('href: "/admin/social"') || !navigation.includes('key: "media-audio"')) {
   failures.push("social publishing must appear inside the canonical media/audio group and require social.manage");
