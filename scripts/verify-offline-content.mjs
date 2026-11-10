@@ -122,6 +122,7 @@ for (const dataset of ['surahs','ayahs','tafsir','hadith_books','hadith','prophe
 }
 if (!exporter.includes('SUPABASE_SERVICE_ROLE_KEY') || !exporter.includes('NEXT_PUBLIC_SUPABASE_ANON_KEY') || !exporter.includes("params.set('limit'") || !exporter.includes('const minimumRecords = {') || !exporter.includes('select=id,slug,title,content,mood,category,created_at,updated_at,published,metadata,summary,is_approved')) failures.push('Offline exporter must use paginated public reads, minimum safety floors, and explicit public story fields');
 if (!exporter.includes('previous-validated-snapshot') || !exporter.includes('staleDatasets') || !exporter.includes('previousRows.length !== previousDefinition.count')) failures.push('Offline exporter must preserve only an integrity-checked prior tafsir corpus when the live curated table is empty, and label it stale');
+if (!exporter.includes("if (previousPath !== '/offline-content/v1/tafsir.json' ||")) failures.push('Offline Tafsir fallback must reject non-canonical snapshot paths before reading the previous file');
 if (!offlineDb.includes('DB_VERSION = 6')) failures.push('IndexedDB schema must be version 6');
 if (!offlineDb.includes('replaceAllMany(datasets: Record<string, unknown[]>')) failures.push('IndexedDB atomic full-pack replacement method is missing');
 for (const token of [
