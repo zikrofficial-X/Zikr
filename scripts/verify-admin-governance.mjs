@@ -179,6 +179,18 @@ if (!sidebar.includes("filteredMobileGroups") || !sidebar.includes("لا توج�
 if (!adminService.includes("admin_role_assignments") || !adminService.includes("requireAdminPermissionApi")) {
   failures.push("admin RBAC/API guard contract missing");
 }
+const proxy = read("proxy.ts");
+if (!proxy.includes('headers.set("x-zikr-pathname", pathname)')) {
+  failures.push("admin route proxy must forward the requested pathname for safe post-login return navigation");
+}
+if (
+  !adminService.includes("import { headers } from 'next/headers'") ||
+  !adminService.includes("requestHeaders.get('x-zikr-pathname')") ||
+  !adminService.includes("requestedPath?.startsWith('/admin/')") ||
+  !adminService.includes("encodeURIComponent(nextPath)")
+) {
+  failures.push("unauthenticated admin deep links must return to their original /admin path without allowing external redirects");
+}
 if (!/catch \(error\) \{[\s\S]*return true;[\s\S]*\}/.test(securityService)) {
   failures.push("destructive-action MFA policy must fail closed when settings cannot be read");
 }
