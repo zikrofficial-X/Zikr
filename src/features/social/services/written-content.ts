@@ -47,7 +47,7 @@ export function chooseWrittenSourceKind(
  if (category === "auto" && !hasKidsPostToday && availableKinds.includes("kids_story")) {
   return "kids_story";
  }
- const eligibleKinds = category === "auto" && hasKidsPostToday
+ const eligibleKinds = (category === "auto" || category === "kids") && hasKidsPostToday
   ? availableKinds.filter((kind) => kind !== "kids_story")
   : availableKinds;
  if (eligibleKinds.length === 0) return null;
