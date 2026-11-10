@@ -58,7 +58,7 @@ for (const [token, message] of [
   assert.ok(auditMigration.includes(token), message + ": " + token);
 }
 assert.ok(auditMigration.includes("set published = true"), "only the fully proven recovery set is made public");
-assert.doesNotMatch(auditMigration, /\\b(delete\\s+from|truncate\\s+|drop\\s+table)\\b/i, "audit-proven recovery must not delete user data or schema");
-assert.doesNotMatch(auditMigration, /update public\\.(social_publish_queue|content_publish_queue)/i, "recovery must not mutate historical social or site publication queues");
+assert.doesNotMatch(auditMigration, /\b(delete\s+from|truncate\s+|drop\s+table)\b/i, "audit-proven recovery must not delete user data or schema");
+assert.doesNotMatch(auditMigration, /update public\.(social_publish_queue|content_publish_queue)/i, "recovery must not mutate historical social or site publication queues");
 
 console.log("Confirmed purged-video catalog recovery migration contract passed.");
