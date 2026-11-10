@@ -16,7 +16,7 @@
 
 ## Android releases
 
-- [`docs/releases/1.1.4.md`](./docs/releases/1.1.4.md) — published v1.1.4 release record, APK/AAB downloads, SHA-256 evidence, application identity, tag target, artifact source commit, and provenance finding.
+- [`docs/releases/1.1.14.md`](./docs/releases/1.1.14.md) — current published v1.1.14 release notes, APK/AAB downloads, SHA-256 evidence, application identity, tag target, artifact source commit, and provenance checks.
 
 ## Authentication and data
 
