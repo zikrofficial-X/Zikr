@@ -99,13 +99,15 @@ export function resolveFacebookReelVideoIdFromPagePostsPayload(
   const target = normalize(postId);
   for (const row of payload.data) {
     if (!isRecord(row) || typeof row.id !== "string" || normalize(row.id) !== target) continue;
-    const candidates: unknown[] = [row.object_id];
+    const candidates: unknown[] = [];
     const attachments = row.attachments;
     if (isRecord(attachments) && Array.isArray(attachments.data)) {
       for (const attachment of attachments.data) {
         if (!isRecord(attachment)) continue;
         const media = attachment.media;
         if (isRecord(media)) candidates.push(media.id);
+        const targetObject = attachment.target;
+        if (isRecord(targetObject)) candidates.push(targetObject.id);
       }
     }
     for (const candidate of candidates) {
@@ -134,7 +136,7 @@ async function loadFacebookPagePostVideoIndex(
     const url = new URL(
       "https://graph.facebook.com/" + version + "/" + encodeURIComponent(pageId) + "/posts",
     );
-    url.searchParams.set("fields", "id,object_id,attachments{media}");
+    url.searchParams.set("fields", "id,attachments{media,target}");
     url.searchParams.set("limit", "100");
     url.searchParams.set("access_token", pageAccessToken);
     if (after) url.searchParams.set("after", after);
