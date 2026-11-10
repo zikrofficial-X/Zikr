@@ -26,25 +26,21 @@ assert.ok(releaseAction.includes("prepareAndroidRelease"), "Admin release action
 assert.ok(!releaseManager.includes("buildTag"), "Android release manager must not create a redundant -build tag");
 
 const androidCircle = read(".circleci/config.yml");
+const androidDraftJob = androidCircle.split("  android-release-draft:")[1]?.split("\n  android-rebuild:")[0] ?? "";
+const androidRebuildJob = androidCircle.split("  android-rebuild:")[1]?.split("\n  security-audit:")[0] ?? "";
 
-assert.ok(androidCircle.includes("  android-release-draft:"), "CircleCI main pipeline must prepare the canonical Android draft release");
-assert.ok(androidCircle.includes("/git/tags") && androidCircle.includes("/git/refs"), "CircleCI must create an annotated semantic tag through GitHub Git Data API");
-assert.ok(androidCircle.includes("/releases") && androidCircle.includes("draft: true"), "CircleCI must create a GitHub Draft Release after creating/verifying the tag");
-assert.ok(androidCircle.includes("process.env.CIRCLE_SHA1") && androidCircle.includes("/commits/main"), "Android draft release creation must refuse stale main commits");
-assert.ok(androidCircle.includes("tagTargetSha !== sourceSha") && androidCircle.includes("releaseMetadataPaths") && androidCircle.includes("tagFile.data.sha !== currentFile.data.sha") && androidCircle.includes("refusing to retarget"), "Android draft preparation may reuse an immutable tag only when all release-defining files are unchanged; it must never retarget it");
-assert.ok(androidCircle.includes('const releaseMetadataPaths = [".release-tag", "android/app/build.gradle", "docs/releases/" + version + ".md"];'), "Android draft preparation must compare release-defining files rather than the entire package manifest");
-assert.ok(androidCircle.includes('const tagPackageVersion = JSON.parse(Buffer.from(tagPackage.data.content, "base64").toString("utf8")).version;') && androidCircle.includes("tagPackageVersion !== version"), "Android draft preparation must verify the immutable tag package version while allowing non-release package metadata to evolve");
-const androidRepairFilters = androidCircle.match(/android-release-draft-immutable-tag-mainline-\d+-20261110/g) ?? [];
-assert.equal(androidRepairFilters.length, 2, "CircleCI source/build filters must both include the Android release repair branch");
-assert.equal(new Set(androidRepairFilters).size, 1, "CircleCI source/build filters must use the same Android release repair branch");
-assert.ok(androidCircle.includes("expectedTagTargetSha") && androidCircle.includes("verifySha !== expectedTagTargetSha"), "Android draft release and signed-artifact provenance must remain pinned to the immutable tag target");
-assert.ok(androidCircle.includes("const existingRelease = await api(\"/releases/tags/\"") && androidCircle.includes("existingRelease.status !== 404"), "CircleCI must skip release creation when the semantic release already exists");
-assert.ok(androidCircle.includes("existingTargetSha") && androidCircle.includes("Preserving its original tag target") && androidCircle.includes("process.exit(0)"), "A documentation-only main update must preserve an existing release and its original tag target without failing or retargeting");
-assert.ok(androidCircle.includes("node --input-type=module -e") && androidCircle.includes("Authorization:") && androidCircle.includes("Bearer"), "Android draft release creation must use Node 22 built-in fetch and the protected GitHub token without external CLI installation");
-assert.ok(!androidCircle.includes("sudo apt-get install -y gh jq"), "Android draft release creation must not depend on apt-installed GitHub CLI or jq");
-assert.ok(androidCircle.includes("Upload verified Android assets to GitHub Draft Release"), "CircleCI must upload signed Android assets to GitHub Draft Releases");
-assert.ok(androidCircle.includes("gh release upload"), "CircleCI Android artifacts must be uploaded with GitHub CLI");
-assert.ok(!androidCircle.includes("Upload verified Android assets to Supabase Storage"), "CircleCI must not upload Android release assets to Supabase Storage");
+assert.ok(androidDraftJob.length > 0, "CircleCI main pipeline must verify the canonical Android draft release");
+assert.ok(androidDraftJob.includes('"/releases?per_page=100&page=1"'), "CircleCI must inspect the complete GitHub release collection");
+assert.ok(androidDraftJob.includes("matchingReleases.length > 1"), "CircleCI must reject ambiguous duplicate releases before a release build");
+assert.ok(androidDraftJob.includes("isReleasePreparationCommit") && androidDraftJob.includes('commitMessage.startsWith("release: prepare Android ")'), "CircleCI must distinguish atomic Admin Release preparation commits from ordinary main updates");
+assert.ok(androidDraftJob.includes("existingTargetSha !== sourceSha") && androidDraftJob.includes("refusing to publish mismatched Android artifacts"), "Release-preparation artifacts must remain pinned to the exact immutable tag commit");
+assert.ok(androidDraftJob.includes("maxAttempts") && androidDraftJob.includes("setTimeout"), "CircleCI must allow the Admin Release manager a bounded window to create the tag/draft before verification");
+assert.ok(!androidDraftJob.includes('api("/releases", "POST"') && !androidDraftJob.includes('api("/git/tags", "POST"') && !androidDraftJob.includes('api("/git/refs", "POST"'), "CircleCI must verify, never create, a Git tag or GitHub draft release");
+const androidSingleOwnerFilters = androidCircle.match(/android-release-draft-single-owner-20261110/g) ?? [];
+assert.equal(androidSingleOwnerFilters.length, 2, "CircleCI source/build filters must both include the single-owner Android release branch");
+assert.ok(androidRebuildJob.includes("Upload verified Android assets to GitHub Draft Release"), "CircleCI must upload verified signed Android assets to the existing draft release");
+assert.ok(androidRebuildJob.includes("gh release upload"), "CircleCI Android artifacts must be uploaded through GitHub Releases");
+assert.ok(!androidRebuildJob.includes("Upload verified Android assets to Supabase Storage"), "CircleCI must not upload Android release assets to Supabase Storage");
 
 const siteContentService = read("src/features/site-content/services/site-content.ts");
 assert.ok(siteContentService.includes("supabaseServerAnonRequest"), "Public site settings must use the shared server-side REST cache");
