@@ -29,6 +29,7 @@ const facebookConnect = read("src/app/api/admin/social/facebook/connect/route.ts
 const facebookCallback = read("src/app/api/admin/social/facebook/callback/route.ts");
 const adminClient = read("src/app/admin/social/social-client.tsx");
 const writtenWorker = read("scripts/jobs/written-content-automation.ts");
+const writtenPostService = read("src/features/social/services/written-content.ts");
 const videoCatalog = read("src/features/videos/services/videos.ts");
 const sitePublisher = read("scripts/jobs/content-publishing.ts");
 
@@ -219,9 +220,10 @@ if (adminClient.includes("اعتمد الفيديو أولًا") ||
 if (!writtenWorker.includes('"articles"') ||
     !writtenWorker.includes("content_publish_queue") ||
     !writtenWorker.includes("social_publish_queue") ||
-    !writtenWorker.includes('content_type: "written_post"') ||
-    !writtenWorker.includes('target_platforms: ["facebook"]') ||
-    !writtenWorker.includes("createWrittenSocialAutomationKey")) {
+    !writtenWorker.includes("buildWrittenSocialQueuePayload") ||
+    !writtenWorker.includes("createWrittenSocialAutomationKey") ||
+    !writtenPostService.includes('content_type: "written_post"') ||
+    !writtenPostService.includes('target_platforms: ["facebook"]')) {
   failures.push("written-content factory must preserve the internal article queue and idempotently enqueue a Facebook-only text post");
 }
 if (!videoCatalog.includes("metadata.generatedVideoUrl") ||
