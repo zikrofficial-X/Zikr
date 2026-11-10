@@ -37,7 +37,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      BACKFILL_APPLY: ${{ github.event_name == 'workflow_dispatch' && inputs.apply == true }}
+      # One-time apply is authorized by this exact merge commit marker; ordinary pushes stay dry-run.
+      BACKFILL_APPLY: ${{ (github.event_name == 'workflow_dispatch' && inputs.apply == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[apply-legacy-kids-qa]')) }}
     steps:
       - name: Checkout exact main revision
         uses: actions/checkout@v7
@@ -76,10 +77,10 @@ jobs:
           set -euo pipefail
           if [ "${BACKFILL_APPLY:-false}" = "true" ]; then
             echo "Mode: manual apply of source-verified QA updates."
-            pnpm video:qa:backfill -- --apply
+            pnpm exec tsx scripts/jobs/backfill-legacy-video-qa.ts --apply
           else
             echo "Mode: dry-run only; no production rows will be updated."
-            pnpm video:qa:backfill
+            pnpm exec tsx scripts/jobs/backfill-legacy-video-qa.ts
           fi
         timeout-minutes: 15
 

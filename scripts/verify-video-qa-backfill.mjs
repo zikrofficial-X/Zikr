@@ -63,9 +63,11 @@ if (!workflow.includes("workflow_dispatch:") || !workflow.includes("push:") ||
     !workflow.includes("inputs.apply == true") ||
     !workflow.includes("default: false") ||
     !workflow.includes("BACKFILL_APPLY") ||
+    !workflow.includes("[apply-legacy-kids-qa]") ||
     !workflow.includes("Mode: dry-run only; no production rows will be updated.") ||
-    !workflow.includes("pnpm video:qa:backfill") ||
-    !workflow.includes("pnpm video:qa:backfill -- --apply")) {
+    !workflow.includes("pnpm exec tsx scripts/jobs/backfill-legacy-video-qa.ts") ||
+    !workflow.includes("pnpm exec tsx scripts/jobs/backfill-legacy-video-qa.ts --apply") ||
+    workflow.includes("pnpm video:qa:backfill -- --apply")) {
   failures.push("Legacy QA workflow must default to read-only dry-run and require a manual apply=true dispatch before production writes");
 }
 
