@@ -230,6 +230,18 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
   "/rest/v1/articles?metadata->>automation=eq.written-content-v2&created_at=gte."+encodeURIComponent(cutoff.toISOString())+
   "&select=id,title,content,slug,metadata,created_at&order=created_at.asc&limit="+String(Math.max(1,Math.min(200,limit))),
  );
+ const today = new Date();
+ today.setUTCHours(0, 0, 0, 0);
+ const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+ const dayStartIso = today.toISOString();
+ const dayEndIso = tomorrow.toISOString();
+ const kidsDayFilter = encodeURIComponent(
+  `(and(created_at.gte.${dayStartIso},created_at.lt.${dayEndIso}),and(scheduled_at.gte.${dayStartIso},scheduled_at.lt.${dayEndIso}),and(published_at.gte.${dayStartIso},published_at.lt.${dayEndIso}))`,
+ );
+ const todaysKidsPosts = await readRequired<Row>(
+  `/rest/v1/social_publish_queue?content_type=eq.written_post&metadata->>audience=eq.kids&or=${kidsDayFilter}&select=id&limit=1`,
+ );
+ let hasKidsPostToday = todaysKidsPosts.length > 0;
  let created=0,slot=0;
  for(const article of rows){
   const metadata=article.metadata&&typeof article.metadata==="object"&&!Array.isArray(article.metadata)?article.metadata as Row:{};
