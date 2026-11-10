@@ -9,6 +9,7 @@ import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPu
 import { shouldRestorePurgedPublishedVideo } from "@/features/videos/services/video-media-contract";
 import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
+import { isEligibleKidsWrittenPostForPublishing, type CurrentKidsStory } from "@/features/social/services/written-content";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
 
@@ -155,6 +156,33 @@ async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promi
   } catch (error) {
     console.error("[social-publishing] Automated QA lookup failed; holding video item:", item.id, error);
     return false;
+  }
+}
+
+type KidsWrittenApproval = "not_applicable" | "approved" | "blocked" | "unavailable";
+
+async function checkKidsWrittenPostApproval(
+  item: SocialPublishQueueItem,
+): Promise<KidsWrittenApproval> {
+  const metadata = item.metadata ?? {};
+  if (item.content_type !== "written_post" || metadata.audience !== "kids") {
+    return "not_applicable";
+  }
+
+  const sourceId = item.content_id;
+  if (!sourceId || metadata.kidsContentId !== sourceId) return "blocked";
+
+  try {
+    const rows = await supabaseServerAdminRequest<CurrentKidsStory[]>(
+      "/rest/v1/kids_content?id=eq." + encodeURIComponent(sourceId) +
+        "&select=id,slug,title_ar,age_group,type,published,is_active,metadata&limit=2",
+    );
+    if (!Array.isArray(rows)) throw new Error("Kids source lookup returned invalid data.");
+    if (rows.length !== 1) return "blocked";
+    return isEligibleKidsWrittenPostForPublishing(item, rows[0]) ? "approved" : "blocked";
+  } catch (error) {
+    console.error("[social-publishing] Kids written-post approval lookup failed; holding item:", item.id, error);
+    return "unavailable";
   }
 }
 
@@ -923,6 +951,25 @@ export async function processSocialPublishItem(
     await markQueueItem(item.id, "queued", {
       error_message: "Video held for automated qa check before public publishing.",
       metadata: { ...(item.metadata ?? {}), approvalBlocked: true },
+    });
+    return "approval_blocked";
+  }
+
+  const kidsWrittenApproval = await checkKidsWrittenPostApproval(item);
+  if (kidsWrittenApproval === "blocked") {
+    await markQueueItem(item.id, "failed", {
+      scheduled_at: null,
+      error_message: "Kids source is no longer published, active, and age-appropriate; publishing was held for review.",
+      metadata: { ...(item.metadata ?? {}), kidsSourceApprovalBlocked: true, kidsSourceApprovalPending: false },
+    });
+    return "approval_blocked";
+  }
+  if (kidsWrittenApproval === "unavailable") {
+    const nextRetryAt = new Date(Date.now() + 15 * 60_000).toISOString();
+    await markQueueItem(item.id, "queued", {
+      scheduled_at: nextRetryAt,
+      error_message: "Kids source approval could not be verified; publishing remains on hold.",
+      metadata: { ...(item.metadata ?? {}), kidsSourceApprovalPending: true, nextRetryAt },
     });
     return "approval_blocked";
   }
