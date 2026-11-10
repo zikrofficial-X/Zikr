@@ -4607,6 +4607,14 @@ export type Database = {
         Args: { p_actor_user_id: string; p_config: Json; p_template_id: string }
         Returns: { id: string; version: number }[]
       }
+      admin_set_primary_site_audio_asset: {
+        Args: { p_actor_user_id: string; p_asset_id: string; p_kind: string }
+        Returns: undefined
+      }
+      admin_update_user_role: {
+        Args: { p_actor_user_id: string; p_role: string; p_user_id: string }
+        Returns: undefined
+      }
       activate_video_template_version: {
         Args: { p_actor_user_id: string; p_version_id: string }
         Returns: string
