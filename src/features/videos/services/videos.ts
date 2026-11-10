@@ -11,6 +11,18 @@ function resolveVideoMediaUrl(row: Record<string, unknown>): string | null {
     row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
       ? (row.metadata as Record<string, unknown>)
       : {};
+  const mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "";
+  const youtubeId = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
+  const youtubeUrl = /^[A-Za-z0-9_-]{6,20}$/.test(youtubeId)
+    ? `https://www.youtube.com/watch?v=${encodeURIComponent(youtubeId)}`
+    : null;
+
+  // When the Cloudinary master has been confirmed missing, do not return its
+  // stale pointer ahead of the already-published YouTube playback fallback.
+  if (metadata.generator === "zikr_internal_video_factory" &&
+      ["cloudinary_missing", "unavailable"].includes(mediaState)) {
+    return youtubeUrl;
+  }
 
   const candidates = [
     metadata.sourceVideoUrl,
@@ -34,11 +46,7 @@ function resolveVideoMediaUrl(row: Record<string, unknown>): string | null {
     }
   }
 
-  const youtubeId = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
-  if (/^[A-Za-z0-9_-]{6,20}$/.test(youtubeId)) {
-    return `https://www.youtube.com/watch?v=${encodeURIComponent(youtubeId)}`;
-  }
-
+  if (youtubeUrl) return youtubeUrl;
   return null;
 }
 
