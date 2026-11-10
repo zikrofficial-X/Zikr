@@ -575,3 +575,40 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 3. Isolate Preview from production Supabase only after approval for the additional environment/project and its costs.
 4. Do not replay failed/held social items, expose credentials, or publish unverified Kids content.
 5. Do not delete branches, assets, files, tables, or rows; do not alter OAuth/domains/secrets or perform production release/rollback without explicit approval.
+
+
+## Verified execution checkpoint — 2026-11-10T19:09:48.336Z — post PR #312
+
+**State: main checks and production smoke tests passed; full project certification remains IN PROGRESS.**
+
+### Canonical GitHub state
+- Canonical repository: `zikrofficial-X/Zikr`.
+- Main baseline: `c75b92111fa2391a2a09abf928669547a8bb112c`.
+- PR #312 (YouTube OAuth generated Supabase type) merged as `c75b92111fa2391a2a09abf928669547a8bb112c`.
+- On exact PR head `fc795dedfda58a31bdb4d8c42664b8d993a86765`, GitHub Quality Gate, CircleCI `config-guard`, `source-verify`, and `application-build-docs` all passed. Its Vercel Preview deployment `dpl_4Cm2vLFH99j4Rrk7XEgzomPQSvzS` reached READY.
+- On the merged main commit, GitHub Quality Gate, CircleCI `config-guard`, `source-verify`, `application-build-docs`, `android-release-draft`, and Supabase Preview all passed.
+- Stale audit PR #313, whose baseline was `a637558`, was closed unmerged so its old manifest/matrix cannot be mistaken for the current main inventory. Its branch was retained for historical reference.
+
+### Production deployment and route smoke tests
+- A production deployment was created only after the main CI checks passed: `dpl_EpQK1pKTiYhxJGM6z8VpNW7pbXbV`.
+- Vercel state: READY; exact source commit: `c75b92111fa2391a2a09abf928669547a8bb112c`; canonical alias: `zikrmediaofficial.vercel.app`.
+- Read-only HTTP smoke checks returned 200 for `/`, `/videos`, `/kids`, `/api/health`, and `/api/kids/videos`. The health response reported environment `production` and commit `c75b92111fa2391a2a09abf928669547a8bb112c`.
+- The separate Preview deployment for PR #312 returned 200 for `/videos`, `/kids`, `/api/health`, and `/api/kids/videos`; Preview root fetch was blocked by Vercel SSO and is not counted as passed.
+
+### Supabase production reconciliation — read-only
+- Project `zqtssvlvmkzeeyqghqfk`: 92 public tables; all 92 have RLS enabled; 211 public policies; 66 public foreign keys; 45 distinct public triggers (53 trigger event rows).
+- Production migration ledger contains 418 versions; the `main` migration directory contains 418 files. Exact version-set comparison found no local-only or remote-only versions.
+- `youtube_oauth_credentials` has RLS enabled; `anon` and `authenticated` have no SELECT privilege; `service_role` has SELECT privilege. No token values were read.
+- PR #312 changed generated TypeScript/schema-contract checks and documentation only. No production migration, grant, RLS policy, OAuth secret, credential, or application data was modified.
+
+### Current inventory and review scope
+- Recursive Git tree at `c75b92111fa2391a2a09abf928669547a8bb112c`: 2152 entries including the manifest itself; 1661 files; 491 directories; 139718901 tracked file bytes; response truncated: `false`.
+- The refreshed manifest excludes its own file entry and records 2151 entries, 1660 files, 491 directories, and 139408228 bytes. This is automated inventory metadata, not source-content review.
+- The previous file-status matrix is a historical checkpoint. It has not been fully re-read/rebased against this main SHA; do not treat its per-file blob hashes as current.
+- Full file-by-file consumer tracing, UI/device acceptance, queue recovery validation, social publishing validation, release signing, and module-level closeout remain open. No claim of full-project completion is made.
+
+### Explicit safety boundary
+- No Android tag was moved; no APK/AAB was signed or published during this checkpoint.
+- No Supabase migration was applied; no tables, rows, storage objects, policies, grants, OAuth credentials, or secrets were changed.
+- No social posts were published/replayed and no video/catalog/storage objects were deleted.
+- Continue only from this exact baseline, preserving existing release and destructive-operation gates.
