@@ -34,7 +34,7 @@ assert.ok(androidCircle.includes("process.env.CIRCLE_SHA1") && androidCircle.inc
 assert.ok(androidCircle.includes("tagTargetSha !== sourceSha") && androidCircle.includes("releaseMetadataPaths") && androidCircle.includes("tagFile.data.sha !== currentFile.data.sha") && androidCircle.includes("refusing to retarget"), "Android draft preparation may reuse an immutable tag only when all release-defining files are unchanged; it must never retarget it");
 assert.ok(androidCircle.includes('const releaseMetadataPaths = [".release-tag", "android/app/build.gradle", "docs/releases/" + version + ".md"];'), "Android draft preparation must compare release-defining files rather than the entire package manifest");
 assert.ok(androidCircle.includes('const tagPackageVersion = JSON.parse(Buffer.from(tagPackage.data.content, "base64").toString("utf8")).version;') && androidCircle.includes("tagPackageVersion !== version"), "Android draft preparation must verify the immutable tag package version while allowing non-release package metadata to evolve");
-const androidRepairFilters = androidCircle.match(/android-release-draft-immutable-tag-mainline-\\d+-20261110/g) ?? [];
+const androidRepairFilters = androidCircle.match(/android-release-draft-immutable-tag-mainline-\d+-20261110/g) ?? [];
 assert.equal(androidRepairFilters.length, 2, "CircleCI source/build filters must both include the Android release repair branch");
 assert.equal(new Set(androidRepairFilters).size, 1, "CircleCI source/build filters must use the same Android release repair branch");
 assert.ok(androidCircle.includes("expectedTagTargetSha") && androidCircle.includes("verifySha !== expectedTagTargetSha"), "Android draft release and signed-artifact provenance must remain pinned to the immutable tag target");
