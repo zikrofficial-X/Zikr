@@ -6,6 +6,11 @@ function metadataFor(row: Record<string, unknown>): VideoMetadata {
     : {};
 }
 
+/** Preserve evidence that a catalog row was public before an earlier purge. */
+export function wasPublishedBeforeMediaPurge(row: Record<string, unknown>): boolean {
+  return row.published === true || metadataFor(row).mediaPurgedFromPublished === true;
+}
+
 function isValidYoutubeId(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9_-]{6,20}$/.test(value.trim());
 }
