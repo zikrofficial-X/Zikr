@@ -68,7 +68,7 @@ async function getDatabaseKidsContent(): Promise<KidsDatabaseState> {
         (publicResult.value ?? [])
           .map((row) => normalizeKidsContentRow(row))
           .filter((item): item is KidsItem =>
-            Boolean(item) && isKidsContentPublishable(item.type, item.metadata?.age_appropriate === true),
+            item !== null && isKidsContentPublishable(item.type, item.metadata?.age_appropriate === true),
           ),
       )
     : [];
