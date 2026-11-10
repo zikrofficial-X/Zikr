@@ -12,7 +12,10 @@ export default async function AdminSearchPage({ searchParams }: { searchParams: 
   await requireAdminPermission("content.manage");
   const params = await searchParams;
   const query = String(params.q ?? "").trim();
-  const results = query ? await searchAdminContent(query) : [];
+  const searchResult = query
+    ? await searchAdminContent(query)
+    : { items: [], unavailableSources: [] as string[] };
+  const results = searchResult.items;
 
   return (
     <Container className="py-10 space-y-6" dir="rtl">
@@ -27,7 +30,12 @@ export default async function AdminSearchPage({ searchParams }: { searchParams: 
         <button className="rounded-xl border border-brand-gold/25 px-5 py-3 text-sm font-semibold text-brand-gold hover:bg-brand-gold/10" type="submit">بحث</button>
       </form>
 
-      {query && <p className="text-sm text-brand-cream/40">نتائج البحث عن: <span className="text-brand-cream/70">{query}</span> — {results.length} نتيجة</p>}
+      {query && <p className="text-sm text-brand-cream/40">نتائج البحث عن: <span className="text-brand-cream/70">{query}</span> — {searchResult.unavailableSources.length ? "نتائج جزئية" : results.length + " نتيجة"}</p>}
+      {query && searchResult.unavailableSources.length > 0 ? (
+        <div role="alert" className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm leading-6 text-amber-100">
+          تعذر البحث في بعض المصادر: {searchResult.unavailableSources.join("، ")}. النتائج المعروضة جزئية ولا تعني أن هذه المصادر لا تحتوي على تطابقات.
+        </div>
+      ) : null}
 
       <section className="space-y-3">
         {results.map((item) => {
@@ -48,7 +56,7 @@ export default async function AdminSearchPage({ searchParams }: { searchParams: 
             </div>
           );
         })}
-        {query && results.length === 0 && <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-8 text-center text-sm text-brand-cream/40">لا توجد نتائج.</div>}
+        {query && results.length === 0 && searchResult.unavailableSources.length === 0 && <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-8 text-center text-sm text-brand-cream/40">لم يتم العثور على نتائج في المصادر التي تم فحصها بنجاح.</div>}{query && results.length === 0 && searchResult.unavailableSources.length > 0 ? <div role="status" className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-8 text-center text-sm text-amber-100">لا توجد نتائج من المصادر المتاحة، وبعض المصادر لم تنجح قراءتها.</div> : null}
       </section>
     </Container>
   );
