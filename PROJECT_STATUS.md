@@ -284,3 +284,46 @@ The current Vercel Production deployment remains `dpl_9d8LhBw1xDjNfWWcnTkv46sfdV
 - PR tree: 1,649 files / 491 directories / 2,140 entries. Main baseline remains 1,639 files; full source-content reads 117/1,639; 1,522 REVIEW_REQUIRED; modules closed 0.
 - PR #275 head at this refinement: `241840744a606e42519b7f0e9c9930363651c7e0`, still draft/open/unmerged. CI has to pass on the final head.
 
+## Additional verified audit checkpoint — 2026-11-10 16:59 Africa/Cairo
+
+**Audit state: IN PROGRESS. This is not a FINAL BASELINE READY certification.**
+
+### Canonical environment
+
+- GitHub production branch remains main at c91f64ccd6162e5107b3edb8be3c7aa521865c2f.
+- PR #275 remains Draft. The video-recovery code snapshot is 0d4744948c0d96cfd04f0d60a1d7364b7b624524; the latest audit-document update follows it.
+- Vercel project zikr is READY in production from the unchanged main SHA c91f64c; canonical domain is zikrmediaofficial.vercel.app.
+- Supabase project zqtssvlvmkzeeyqghqfk is ACTIVE_HEALTHY on PostgreSQL 17.11.
+- Direct migration-ledger SQL confirms 415/415 unique local-main/live versions. Public RLS is enabled on all 92/92 tables. The only current Security Advisor warning is leaked-password protection disabled, which remains an owner-level settings/plan decision.
+
+### Video catalog recovery finding
+
+A read-only join of the video catalog, generation requests, social publishing queue, and site content publishing queue found 64 generated videos that were previously published on the ZIKR site, whose media was disposed after successful social publication, and whose YouTube remote ID matches the catalog record. All 64 have completed requests, matching content/source/template hashes, and automated QA passed.
+
+- 50 general videos meet the recovery gate.
+- 14 kids videos are split into 8 with kidsVideoQaStatus=passed and 6 with kidsVideoQaStatus=revalidation_required.
+- The safe recovery set is 58 videos (50 general + 8 kids QA-passed). The 6 kids records remain hidden.
+- Root cause: the earlier YouTube fallback migration skipped records when the YouTube ID and thumbnail were already populated, even if the media state remained purged and the fallback metadata was incomplete. It also did not restore the site published flag.
+
+### Repair prepared in PR #275
+
+- Added a fail-closed prior-publication/QA helper for late YouTube fallback restoration.
+- The video purge route now records whether the catalog row was public before its media was purged.
+- Successful YouTube catalog reconciliation can restore a previously public purged row only when that marker and the applicable automated/Kids QA gates pass.
+- Added migration 20261110150000_restore_confirmed_purged_video_catalog.sql. It requires confirmed YouTube success, a published site queue record, matching canonical request hashes/template, valid and non-conflicting provider ID, and the appropriate QA state. It restores only evidence-qualified rows and performs no deletions.
+- Added regression coverage for restoration eligibility, kids QA blocking, purge-state capture, migration guards, and YouTube catalog sync.
+- The migration has not been applied to production. The 58-row candidate query was run read-only; no production catalog rows were modified.
+
+### Current video/social state
+
+- Internal generated catalog: 105 rows remain hidden in purged state; 5 internal rows remain published. There are also 17 published manual videos.
+- Social publishing queue: 78 published video rows, 1 published written post, 10 queued written posts, 6 failed video rows, and 3 partial video rows. The 9 failed/partial rows are flagged sourceMediaMissing and remain held; no blind retry or duplicate publishing was performed.
+- All 112 generation requests are currently completed.
+
+### CI and release state
+
+- The earlier Quality Gate run 42839488376 passed toolchain, PostgreSQL integration checks, and the new Supabase database URL regression test, then failed on the new migration contract because an intermediate migration edit was malformed.
+- The migration was rewritten cleanly in commit 0d4744948c0d96cfd04f0d60a1d7364b7b624524. The current-head CI run must pass before merge; no production release or migration apply was initiated.
+- PR #275 remains Draft with 70 changed files (9,842 additions / 2,262 deletions). No merge is authorized until current-head checks, isolated Preview, and acceptance gates pass.
+
+No files or production data were deleted in this checkpoint. No Cloudinary assets were deleted, no social posts were published, and no production deployment was initiated. File-level review and browser/mobile acceptance remain incomplete; modules closed remains 0.
