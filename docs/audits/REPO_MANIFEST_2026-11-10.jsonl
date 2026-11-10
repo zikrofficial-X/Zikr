@@ -211,7 +211,7 @@
 {"path":"docs/audits/ADMIN_CONTROL_CENTER_2.0_EXECUTION_2026-11-06.md","type":"blob","mode":"100644","sha":"645787f9652f1f2368c54d127e798f2ad2da7c58","size":10603}
 {"path":"docs/audits/ADMIN_CONTROL_CENTER_CLOSEOUT_2026-11-06.md","type":"blob","mode":"100644","sha":"400a77eab1cbb9db7f6f8ebfc5ac2e3f1794887f","size":6156}
 {"path":"docs/audits/ARCHITECTURE_MAP_2026-11-01.md","type":"blob","mode":"100644","sha":"b96835e6a1dc30d40568bbc9891d7d5278a4b2b0","size":20353}
-{"path":"docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md","type":"blob","mode":"100644","sha":"057c5b9ffb16691abfc6e245e583c908a0dbe73d","size":93248}
+{"path":"docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md","type":"blob","mode":"100644","sha":"31c64dc29e01e9d92a2a2ae82ae103e8d6521076","size":99259}
 {"path":"docs/audits/FILE_STATUS_MATRIX_2026-11-01.md","type":"blob","mode":"100644","sha":"ee71e55157136fad3999a54ecc18b678db944c57","size":603262}
 {"path":"docs/audits/PG_CRON_RUNTIME_AUDIT_2026-11-01.md","type":"blob","mode":"100644","sha":"5fc0a95e8227bf2f3c8608d26db6c204c937a03a","size":1605}
 {"path":"docs/audits/PLATFORM_READINESS_2026-11-01.md","type":"blob","mode":"100644","sha":"ed882af34988c81d7e7992758b1f0a511cb14eda","size":6163}
