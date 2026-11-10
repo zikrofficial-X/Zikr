@@ -6,7 +6,7 @@ on:
   schedule:
     - cron: "7,22,37,52 * * * *"
   workflow_run:
-    workflows: ["ZIKR Autonomous AI Video Worker"]
+    workflows: ["ZIKR Autonomous AI Video Worker", "ZIKR Internal Site Content Generator"]
     types: [completed]
     branches: [main]
   workflow_dispatch:
