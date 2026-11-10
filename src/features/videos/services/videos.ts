@@ -56,6 +56,24 @@ function resolveVideoThumbnail(row: Record<string, unknown>): string {
     if (typeof value === "string" && /^https?:\/\//i.test(value.trim())) return value.trim();
   }
 
+  // Cloudinary can render a poster frame directly from the durable video master.
+  // This avoids a generic OG image when a generated video has no stored thumbnail.
+  for (const key of ["generatedVideoUrl", "videoUrl", "video_url"]) {
+    const value = metadata[key];
+    if (typeof value !== "string") continue;
+    try {
+      const parsed = new URL(value.trim());
+      if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com") continue;
+      if (!parsed.pathname.includes("/video/upload/")) continue;
+      const posterPath = parsed.pathname
+        .replace("/video/upload/", "/video/upload/so_0/")
+        .replace(/\.(mp4|webm|mov|m4v)$/i, ".jpg");
+      return parsed.origin + posterPath;
+    } catch {
+      continue;
+    }
+  }
+
   const youtubeId = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
   if (/^[A-Za-z0-9_-]{6,20}$/.test(youtubeId)) {
     return `https://i.ytimg.com/vi/${encodeURIComponent(youtubeId)}/hqdefault.jpg`;
