@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { getYouTubeRefreshToken } from "../../src/features/social/services/youtube-oauth-credentials";
+import { readFileSync } from "node:fs";
+import { getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeUploadScopes } from "../../src/features/social/services/youtube-oauth-credentials";
 
 const legacyEnv = { YOUTUBE_REFRESH_TOKEN: "legacy-upload-capable-token" };
 
@@ -29,4 +30,36 @@ assert.equal(
   "blank credentials must be treated as unconfigured",
 );
 
-console.log("YouTube read-only OAuth credential tests passed.");
+const requiredUploadScopes = [
+  "https://www.googleapis.com/auth/youtube.upload",
+  "https://www.googleapis.com/auth/youtube.readonly",
+  "https://www.googleapis.com/auth/yt-analytics.readonly",
+];
+assert.equal(hasYouTubeUploadScopes(requiredUploadScopes), true, "publishing requires upload plus read and analytics scopes");
+assert.equal(hasYouTubeUploadScopes(requiredUploadScopes.filter((scope) => scope !== "https://www.googleapis.com/auth/youtube.upload")), false, "read-only credentials must not be accepted for publishing");
+assert.equal(hasYouTubeUploadScopes(requiredUploadScopes.filter((scope) => scope !== "https://www.googleapis.com/auth/yt-analytics.readonly")), false, "publishing credential must retain the full verified scope contract");
+
+assert.equal(
+  await getYouTubeUploadRefreshToken(async () => "stored-upload-token"),
+  "stored-upload-token",
+  "publisher may use only the upload-scoped stored credential",
+);
+assert.equal(
+  await getYouTubeUploadRefreshToken(async () => null),
+  null,
+  "missing upload-scoped credentials must fail closed",
+);
+assert.equal(
+  await getYouTubeUploadRefreshToken(async () => { throw new Error("database unavailable"); }),
+  null,
+  "credential-store errors must fail closed",
+);
+
+const socialPublisherSource = readFileSync(
+  new URL("../../src/features/social/services/social-publishing.ts", import.meta.url),
+  "utf8",
+);
+assert.match(socialPublisherSource, /getYouTubeUploadRefreshToken/);
+assert.doesNotMatch(socialPublisherSource, /getYouTubeRefreshToken/, "publishing must not use the read-only analytics credential getter");
+
+console.log("YouTube OAuth read-only and upload-scope credential tests passed.");
