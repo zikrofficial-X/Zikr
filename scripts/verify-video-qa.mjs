@@ -11,11 +11,20 @@ const read = (path) => {
 };
 
 const service = read("src/features/videos/services/videos.ts");
+const mediaContract = read("src/features/videos/services/video-media-contract.ts");
 for (const token of [
   "function resolveVideoMediaUrl",
   "function resolveVideoThumbnail",
-  "function isPubliclyRenderableVideo",
   "https://i.ytimg.com/vi/",
+  "metadata.mediaFallbackAvailable !== true",
+  'mediaState === "purged"',
+]) {
+  if (!mediaContract.includes(token)) failures.push(`video media contract missing QA contract: ${token}`);
+}
+for (const token of [
+  'from "./video-media-contract"',
+  "function isPubliclyRenderableVideo",
+  "resolveVideoMediaUrl(row)",
   "defaultOgImage",
   "rows.filter(isPubliclyRenderableVideo)",
 ]) {
