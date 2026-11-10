@@ -215,6 +215,43 @@ function asWrittenRecord(value: unknown): Record<string, unknown> {
   : {};
 }
 
+export type KidsWrittenPublishQueueItem = Pick<
+  KidsWrittenQueueRow,
+  "content_type" | "content_id" | "title" | "body" | "metadata"
+>;
+
+export function isEligibleKidsWrittenPostForPublishing(
+  row: KidsWrittenPublishQueueItem,
+  source: CurrentKidsStory,
+): boolean {
+  const metadata = asWrittenRecord(row.metadata);
+  const sourceMetadata = asWrittenRecord(metadata.source);
+  const liveMetadata = asWrittenRecord(source.metadata);
+  const kidsContentId = typeof metadata.kidsContentId === "string" ? metadata.kidsContentId : "";
+  const rawPublicPath = typeof metadata.publicPath === "string" ? metadata.publicPath : "";
+  const slug = typeof source.slug === "string" ? source.slug.trim() : "";
+  const title = typeof row.title === "string" ? row.title.trim() : "";
+  const body = typeof row.body === "string" ? row.body.trim() : "";
+
+  return row.content_type === "written_post" &&
+    Boolean(row.content_id) &&
+    row.content_id === source.id &&
+    Boolean(source.id) &&
+    source.type === "story" &&
+    source.published === true &&
+    source.is_active === true &&
+    liveMetadata.age_appropriate === true &&
+    metadata.audience === "kids" &&
+    kidsContentId === source.id &&
+    sourceMetadata.type === "kids_story" &&
+    sourceMetadata.id === source.id &&
+    sourceMetadata.verified === true &&
+    /^[a-z0-9-]+$/i.test(slug) &&
+    rawPublicPath === "/kids/" + slug &&
+    Boolean(title) &&
+    Boolean(body);
+}
+
 /** Re-check the live Kids source before exposing a previously published social post. */
 export function buildPublicKidsWrittenPost(
  row: KidsWrittenQueueRow,
