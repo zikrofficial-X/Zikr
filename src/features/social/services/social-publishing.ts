@@ -569,6 +569,68 @@ async function deleteManagedVideoUrl(
  * has confirmed publication. Provider post IDs and text/audit records stay.
  * Failed cleanup is retried by the social publishing worker.
  */
+async function syncYouTubeVideoReferenceToCatalog(
+  item: SocialPublishQueueItem,
+  result: unknown,
+): Promise<void> {
+  if (!isVideoContentType(item.content_type) || !item.content_id || !result || typeof result !== "object") return;
+  const platformResult = result as Partial<PlatformResult>;
+  const youtubeId = typeof platformResult.remoteId === "string" ? platformResult.remoteId.trim() : "";
+  if (platformResult.ok !== true || !/^[A-Za-z0-9_-]{6,20}$/.test(youtubeId)) return;
+
+  try {
+    const rows = await supabaseServerAdminRequest<Array<{
+      id: string;
+      youtube_id: string | null;
+      metadata: Record<string, unknown> | null;
+      updated_at: string | null;
+    }>>(
+      "/rest/v1/videos?metadata->>videoGenerationRequestId=eq." +
+        encodeURIComponent(item.content_id) +
+        "&select=id,youtube_id,metadata,updated_at&limit=2",
+    );
+    if (!rows?.length) {
+      console.warn("[social-publishing] YouTube upload succeeded but no matching public catalog record was found:", item.content_id);
+      return;
+    }
+    if (rows.length !== 1) {
+      console.error("[social-publishing] YouTube catalog reconciliation stopped: generation request maps to multiple video rows:", item.content_id);
+      return;
+    }
+    const row = rows[0];
+    if (row.youtube_id && row.youtube_id !== youtubeId) {
+      console.error("[social-publishing] YouTube catalog reconciliation stopped: existing YouTube ID differs from the confirmed platform result:", item.content_id);
+      return;
+    }
+    const metadata = row.metadata ?? {};
+    const nextMetadata = {
+      ...metadata,
+      youtubePublishedVideoId: youtubeId,
+      youtubePublishedUrl: "https://www.youtube.com/watch?v=" + youtubeId,
+      youtubePublishedAt: new Date().toISOString(),
+      mediaFallbackAvailable: true,
+    };
+    const updatedAt = row.updated_at;
+    const query = "/rest/v1/videos?id=eq." + encodeURIComponent(row.id) +
+      (updatedAt ? "&updated_at=eq." + encodeURIComponent(updatedAt) : "");
+    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(query, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        youtube_id: youtubeId,
+        metadata: nextMetadata,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+    if (!updated?.length) {
+      console.warn("[social-publishing] YouTube catalog pointer update was skipped after a concurrent catalog change:", item.content_id);
+    }
+  } catch (error) {
+    // The daily media reconciliation worker retries this idempotently.
+    console.error("[social-publishing] YouTube catalog reference sync failed:", item.content_id, error);
+  }
+}
+
 async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<boolean> {
   if (!item.video_url || !item.content_id) return true;
 
@@ -930,6 +992,10 @@ export async function processSocialPublishItem(
     error_message: errorMessages.join("; ") || null,
     metadata: publishMetadata,
   });
+
+  // Persist the confirmed YouTube video ID to the public catalog even when
+  // another requested target is deferred; this provides a resilient playback fallback.
+  await syncYouTubeVideoReferenceToCatalog(item, mergedResults.youtube);
 
   if (allTargetsSucceeded) {
     if (isVideoContentType(item.content_type)) await disposePublishedVideo({ ...item, metadata: publishMetadata });
