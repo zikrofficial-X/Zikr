@@ -1839,6 +1839,18 @@ PR #275 was merged at `035ea4568572eea36c82b79b1e9cd212113e8e32`. Its former 18 
 
 | PR | Scope | Exact-head CI | Remaining gate |
 |---|---|---|---|
-| [#320](https://github.com/zikrofficial-X/Zikr/pull/320) | Reserve one daily source-verified Kids written-post slot when eligible Kids stories exist and no Kids post is already queued/partial/published that day | Pending after latest audit-document updates | Exact-head Quality Gate/CircleCI and CODEOWNERS review; do not merge while Draft or checks are pending |
+| [#320](https://github.com/zikrofficial-X/Zikr/pull/320) | Reserve one daily source-verified Kids written-post slot when eligible Kids stories exist and no Kids post is already queued/processing/publishing/partial/published that day | Pending after latest audit-document updates | Exact-head Quality Gate/CircleCI and CODEOWNERS review; do not merge while Draft or checks are pending |
 
 PRs #275, #317, #318 and #319 are merged. No other open PR was present when this checkpoint began.
+
+### Active repair branch — PR #320
+
+The PR branch is separate from the `main@c4560d9` manifest snapshot. These three source files contain the functional repair; audit documents in the same PR update the baseline and checkpoint only.
+
+| Path | PR branch blob SHA-1 | Bytes | State |
+|---|---|---:|---|
+| `src/features/social/services/written-content.ts` | `0215398e4e94b2805e8f44b2f2d8a43272c000e9` | 8772 UTF-8 characters | Read; pure selection helper added; exact-head CI pending |
+| `scripts/jobs/written-content-automation.ts` | `60500d598965a16e178457c79174465e62b918bd` | 21047 UTF-8 characters | Read; daily Kids slot guard added; exact-head CI pending |
+| `scripts/tests/written-content-automation.test.ts` | `46217d2d59752d28121143765d2440ae90d76e4c` | 10593 UTF-8 characters | Regression assertions added; exact-head CI pending |
+
+PR #320 remains Draft. The last observed pre-follow-up status was `config-guard SUCCESS` and `ZIKR Quality Gate IN_PROGRESS`; after these documentation changes, re-read all required contexts on the latest PR head before any readiness or merge decision. CODEOWNERS review remains mandatory.
