@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const failures = [];
 const layout = readFileSync('src/app/layout.tsx', 'utf8');
+const webAdvertisingRuntime = readFileSync('src/components/layout/web-advertising-runtime.tsx', 'utf8');
 const deferredAnalytics = readFileSync('src/components/layout/deferred-analytics.tsx', 'utf8');
 const nextConfig = readFileSync('next.config.ts', 'utf8');
 const approvedGaId = 'G-W30Z9JW0VF';
@@ -32,12 +33,22 @@ for (const token of expectedTokens) {
 
 if (!layout.includes('NEXT_PUBLIC_GA_MEASUREMENT_ID')) failures.push('متغير GA4 canonical غير موجود في root layout.');
 if (!layout.includes(approvedGaId)) failures.push(`معرّف GA4 المعتمد غير موجود: ${approvedGaId}`);
-if (!layout.includes(approvedGtmId)) failures.push(`معرّف GTM المعتمد غير موجود: ${approvedGtmId}`);
+if (layout.includes(approvedGtmId) || layout.includes('NEXT_PUBLIC_GTM_ID') || layout.includes('googletagmanager.com/gtm.js')) {
+  failures.push('يجب إبقاء GTM خارج root layout حتى لا يُحقن في HTML الخاص بتطبيق Capacitor.');
+}
+if (!layout.includes('<WebAdvertisingRuntime />')) failures.push('WebAdvertisingRuntime غير مركّب في root layout.');
+if (!webAdvertisingRuntime.includes(approvedGtmId)) failures.push(`معرّف GTM المعتمد غير موجود في web-only runtime: ${approvedGtmId}`);
+if (!webAdvertisingRuntime.includes('NEXT_PUBLIC_GTM_ID')) failures.push('متغير GTM canonical غير موجود في web-only runtime.');
+if (!webAdvertisingRuntime.includes('https://www.googletagmanager.com/gtm.js?id=')) failures.push('مصدر GTM غير موجود في web-only runtime.');
+const nativeGuardIndex = webAdvertisingRuntime.indexOf('if (Capacitor.isNativePlatform())');
+const gtmInjectionIndex = webAdvertisingRuntime.indexOf('"google-tag-manager"');
+if (nativeGuardIndex < 0 || gtmInjectionIndex < 0 || nativeGuardIndex > gtmInjectionIndex) {
+  failures.push('يجب أن يسبق خروج Capacitor native أي حقن فعلي لسكريبت GTM.');
+}
 if (layout.includes('G-G9DPYTK78')) failures.push('المعرّف القديم G-G9DPYTK78 ما زال موجودًا في root layout.');
-if (!layout.includes('strategy="lazyOnload"')) failures.push('GA4/GTM لا يستخدمان lazyOnload في root layout.');
-if (!layout.includes('https://www.googletagmanager.com/gtag/js?id=')) failures.push('مصدر gtag.js غير موجود في root layout.');
-if (/import\(.+analytics/.test(deferredAnalytics)) failures.push('تمت إعادة تحميل Analytics ديناميكيًا خارج root layout.');
-if (!layout.includes('NEXT_PUBLIC_GTM_ID')) failures.push('متغير GTM canonical غير موجود في root layout.');
+if (!layout.includes('strategy="lazyOnload"')) failures.push('GA4 لا يستخدم lazyOnload في root layout.');
+if (!layout.includes('https://www.googletagmanager.com/gtag/js?id=')) failures.push('مصدر GA4 gtag.js غير موجود في root layout.');
+if (/import\\(.+analytics/.test(deferredAnalytics)) failures.push('تمت إعادة تحميل Analytics ديناميكيًا خارج root layout.');
 const frameSrc = nextConfig.match(/frame-src\s+([^;]+)/)?.[1] ?? '';
 if (!frameSrc.split(/\s+/).includes('https://www.googletagmanager.com')) failures.push('أصل GTM مفقود من CSP frame-src؛ قد يُحجب إطار noscript.');
 
