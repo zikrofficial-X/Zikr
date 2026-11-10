@@ -28,6 +28,11 @@ assert.ok(!releaseManager.includes("buildTag"), "Android release manager must no
 const androidCircle = read(".circleci/config.yml");
 
 assert.ok(androidCircle.includes("  android-release-draft:"), "CircleCI main pipeline must prepare the canonical Android draft release");
+assert.ok(androidCircle.includes("if (existingRelease.status !== 404)"), "Android release preparation must read and preserve an existing release before requiring write access.");
+assert.ok(androidCircle.includes('if (!token) throw new Error("GH_TOKEN is required only when a new Android tag or draft release must be created.");'), "A pre-existing release must not fail the main CI job when no write token is configured.");
+assert.ok(androidCircle.indexOf("if (existingRelease.status !== 404)") < androidCircle.indexOf("GH_TOKEN is required only when a new Android tag"), "The token requirement must apply only after the existing-release fast path.");
+assert.ok(!androidCircle.includes('test -n "${GH_TOKEN:-}" || { echo "Missing GH_TOKEN in CircleCI android-signing context."'), "Do not require a write token when main only needs to verify an already-existing release.");
+
 assert.ok(androidCircle.includes("/git/tags") && androidCircle.includes("/git/refs"), "CircleCI must create an annotated semantic tag through GitHub Git Data API");
 assert.ok(androidCircle.includes("/releases") && androidCircle.includes("draft: true"), "CircleCI must create a GitHub Draft Release after creating/verifying the tag");
 assert.ok(androidCircle.includes("process.env.CIRCLE_SHA1") && androidCircle.includes("/commits/main"), "Android draft release creation must refuse stale main commits");
