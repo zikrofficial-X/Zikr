@@ -26,6 +26,8 @@ const analyticsDashboard = read("src/app/admin/analytics/analytics-dashboard.tsx
 const securityService = read("src/features/admin/services/security.ts");
 const auditService = read("src/features/admin/services/audit.ts");
 const editorialActions = read("src/app/admin/editorial-actions.ts");
+const knowledgeActions = read("src/app/admin/knowledge/actions.ts");
+const androidActions = read("src/app/admin/android/actions.ts");
 const docs = read("docs/admin/ADMIN_CONSOLE_GOVERNANCE.md");
 const packageJson = JSON.parse(read("package.json"));
 
@@ -36,6 +38,25 @@ const groups = [...navigation.matchAll(/key:\s*"([^"]+)",\s*label:\s*"([^"]+)"[\
     items: [...group[3].matchAll(/href:\s*"([^"]+)",\s*label:\s*"([^"]+)",\s*permission:\s*"([^"]+)"/g)]
       .map((item) => ({ href: item[1], label: item[2], permission: item[3] })),
   }));
+const knowledgeAuditCalls = [...knowledgeActions.matchAll(/recordAdminAuditEvent\s*\(/g)];
+if (
+  !knowledgeActions.includes('import { recordAdminAuditEvent }') ||
+  knowledgeAuditCalls.length !== 4 ||
+  !knowledgeActions.includes('"knowledge.companion.save"') ||
+  !knowledgeActions.includes('"knowledge.scholar.save"') ||
+  !knowledgeActions.includes('"knowledge.surah.update"') ||
+  !knowledgeActions.includes('"knowledge.hadith.save"')
+) {
+  failures.push("all four Islamic knowledge mutations must append an admin audit event after a successful write");
+}
+if (
+  !androidActions.includes('import { recordAdminAuditEvent }') ||
+  !androidActions.includes('"android.release_setting.update"') ||
+  !androidActions.includes('permission: "android.manage"')
+) {
+  failures.push("Android release-setting mutations must append a permission-scoped admin audit event");
+}
+
 const socialManagerRole = permissions.match(/social_manager:\s*\[([\s\S]*?)\],/);
 const videoManagerRole = permissions.match(/video_manager:\s*\[([\s\S]*?)\],/);
 if (!socialManagerRole || !socialManagerRole[1].includes("'social.manage'") || !socialManagerRole[1].includes("'social.publish'")) {
