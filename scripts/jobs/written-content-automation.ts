@@ -220,7 +220,7 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
   "/rest/v1/articles?metadata->>automation=eq.written-content-v2&created_at=gte."+encodeURIComponent(cutoff.toISOString())+
   "&select=id,title,content,slug,metadata,created_at&order=created_at.asc&limit="+String(Math.max(1,Math.min(200,limit))),
  );
- let created=0;
+ let created=0,slot=0;
  for(const article of rows){
   const metadata=article.metadata&&typeof article.metadata==="object"&&!Array.isArray(article.metadata)?article.metadata as Row:{};
   const quality=metadata.quality&&typeof metadata.quality==="object"&&!Array.isArray(metadata.quality)?metadata.quality as Row:{};
@@ -234,9 +234,9 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
   const existing=await readRequired<Row>(
    "/rest/v1/social_publish_queue?automation_key=eq."+encodeURIComponent(automationKey)+"&select=id&limit=1",
   );
-  if(existing[0])continue;
+  if(existing[0]){slot++;continue;}
   const nowIso=new Date().toISOString();
-  const scheduledAt=new Date(Date.now()+5*60*1000+created*8*60*60*1000).toISOString();
+  const scheduledAt=new Date(Date.now()+5*60*1000+slot*8*60*60*1000).toISOString();
   await supabaseServerAdminRequest("/rest/v1/social_publish_queue",{
    method:"POST",
    headers:{"Content-Type":"application/json",Prefer:"return=minimal"},
@@ -275,6 +275,7 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
    }),
   });
   created++;
+  slot++;
  }
  return created;
 }
