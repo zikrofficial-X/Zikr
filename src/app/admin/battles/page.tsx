@@ -21,11 +21,19 @@ async function saveBattleVideoAction(formData: FormData) {
   await requireAdminPermission("battles.manage");
   const id = String(formData.get('id') ?? '').trim();
   const rawUrl = String(formData.get('youtube_url') ?? '').trim();
-  if (!id) return;
+  if (!id) throw new Error("معرّف الغزوة مطلوب.");
 
   const videoId = parseYouTubeVideoId(rawUrl);
+  if (rawUrl && !videoId) throw new Error("رابط YouTube غير صالح. أدخل رابطًا صحيحًا أو اترك الحقل فارغًا لإزالة الربط.");
   const ok = await saveAdminBattleVideo(id, videoId);
   if (!ok) throw new Error("تعذر حفظ فيديو الغزوة. راجع صلاحيات قاعدة البيانات وسجل الأخطاء.");
+  await recordAdminAuditEvent({
+    action: "battles.youtube_video.update",
+    permission: "battles.manage",
+    resourceType: "battles",
+    resourceId: id,
+    metadata: { hasYoutubeVideo: Boolean(videoId) },
+  });
 
   revalidatePath('/admin/battles');
   revalidatePath('/battles');
@@ -36,10 +44,17 @@ async function toggleBattlePublishAction(formData: FormData) {
   await requireAdminPermission("battles.manage");
   const id = String(formData.get('id') ?? '').trim();
   const next = formData.get('next') === 'true';
-  if (!id) return;
+  if (!id) throw new Error("معرّف الغزوة مطلوب.");
 
   const ok = await setAdminBattlePublished(id, next);
   if (!ok) throw new Error("تعذر تحديث حالة نشر الغزوة.");
+  await recordAdminAuditEvent({
+    action: next ? "battles.publish" : "battles.unpublish",
+    permission: "battles.manage",
+    resourceType: "battles",
+    resourceId: id,
+    metadata: { published: next },
+  });
 
   revalidatePath('/admin/battles');
   revalidatePath('/battles');
