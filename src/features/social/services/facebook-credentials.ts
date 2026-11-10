@@ -538,6 +538,13 @@ export async function adoptServerConfiguredFacebookPageToken(): Promise<{
   return { pageId, pageName, expiresAt, grantedPermissions: permissions };
 }
 
+type FacebookAuthBlockedQueueRow = {
+  id: string;
+  target_platforms: string[] | null;
+  metadata: Record<string, unknown> | null;
+  status: string;
+};
+
 export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
   const pageSize = 250;
   let cursor: string | null = null;
@@ -546,19 +553,14 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
   // Filter to explicitly auth-blocked rows and use a stable UUID cursor. Updating
   // a row removes it from this query, so offset pagination would skip later rows.
   while (true) {
-    const cursorFilter = cursor ? "&id=gt." + encodeURIComponent(cursor) : "";
-    const rows = await supabaseServerAdminRequest<Array<{
-      id: string;
-      target_platforms: string[] | null;
-      metadata: Record<string, unknown> | null;
-      status: string;
-    }>>(
+    const cursorFilter: string = cursor === null ? "" : "&id=gt." + encodeURIComponent(cursor);
+    const rows: FacebookAuthBlockedQueueRow[] = await supabaseServerAdminRequest<FacebookAuthBlockedQueueRow[]>(
       "/rest/v1/social_publish_queue?status=in.(failed,partial)&metadata->>authBlocked=eq.true&select=id,target_platforms,metadata,status&order=id.asc&limit=" +
         pageSize + cursorFilter,
     );
     if (!Array.isArray(rows) || rows.length === 0) break;
 
-    for (const item of rows) {
+    for (const item of rows as FacebookAuthBlockedQueueRow[]) {
       cursor = item.id;
       const now = new Date().toISOString();
       const patch = buildFacebookQueueRecoveryPatch(item.metadata, item.target_platforms ?? [], now);
