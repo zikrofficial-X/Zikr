@@ -98,6 +98,29 @@ assert.equal(
   "explicit permanent-failure platforms must remain blocked independently",
 );
 
+
+const legacyGlobalAuthWithYoutubeResult = {
+  authBlocked: true,
+  platformResults: {
+    youtube: { platform: "youtube", ok: false, error: "temporary provider failure" },
+  },
+};
+assert.equal(
+  canAttemptSocialPlatform({ platform: "facebook", enabledPlatforms: both, metadata: legacyGlobalAuthWithYoutubeResult, maxAttempts: 5 }),
+  false,
+  "a legacy global Facebook auth flag must still block Facebook when only a YouTube result exists",
+);
+assert.equal(
+  canAttemptSocialPlatform({ platform: "facebook_reels", enabledPlatforms: both, metadata: legacyGlobalAuthWithYoutubeResult, maxAttempts: 5 }),
+  false,
+  "a legacy global Facebook auth flag must hold both Facebook targets when no Facebook result exists",
+);
+assert.equal(
+  canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: legacyGlobalAuthWithYoutubeResult, maxAttempts: 5 }),
+  true,
+  "a legacy global Facebook auth flag must not block an independent YouTube retry",
+);
+
 const explicitBlocksWithoutResults = {
   authBlocked: false,
   authBlockedPlatforms: ["facebook_reels"],

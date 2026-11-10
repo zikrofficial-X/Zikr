@@ -102,7 +102,8 @@ export function canAttemptSocialPlatform(input: {
 
   // Legacy global authBlocked was emitted only by the Facebook adapter. It must
   // not prevent an independent YouTube target from being published.
-  if (!hasPlatformResults && authBlockedPlatforms.length === 0 &&
+  const hasFacebookResult = Object.keys(results).some((target) => target.startsWith("facebook"));
+  if (!hasFacebookResult && authBlockedPlatforms.length === 0 &&
       metadata?.authBlocked === true && platform.startsWith("facebook")) return false;
   if (isAuthBlocked(platform, previous?.error) || isPermanentSocialFailure(previous?.error)) return false;
 
