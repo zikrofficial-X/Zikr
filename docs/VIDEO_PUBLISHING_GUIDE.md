@@ -29,7 +29,7 @@ The worker executes:
 
 `pnpm background:jobs`
 
-The canonical rendering path is the deterministic FFmpeg template renderer. Source religious text is treated as authoritative; AI may be used only for optional supporting layers such as reflections/captions.
+The canonical rendering path is the deterministic FFmpeg template renderer. Source religious text is treated as authoritative; AI may be used only for optional supporting layers such as reflections/captions. The worker reads the Admin `video_automation_ai_attempts_per_run` setting at runtime (0–4 attempts per worker cycle); the production default is four free Hugging Face provider attempts, followed by deterministic FFmpeg fallback. No paid provider is silently enabled.
 
 Queue safety is enforced through:
 
