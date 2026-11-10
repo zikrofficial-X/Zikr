@@ -11,6 +11,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const CONFIRMATION_PHRASE = "امسح الفيديوهات المولّدة فقط";
+const MAX_AUTOMATED_STORAGE_OBJECTS = 5000;
 
 
 type CloudinaryAsset = {
@@ -146,13 +147,13 @@ async function mapWithConcurrency<T>(
 async function listAutomatedStorageObjects(): Promise<string[]> {
   const supabase = createAdminClient();
   const bucket = supabase.storage.from("videos");
-  const paths: string[] = [];
+  const paths = new Set<string>();
 
   const walk = async (prefix: string): Promise<void> => {
     let fullyEnumerated = false;
-    for (let offset = 0; offset <= 5000; offset += 1000) {
+    for (let offset = 0; offset <= MAX_AUTOMATED_STORAGE_OBJECTS; offset += 1000) {
       const { data, error } = await bucket.list(prefix, {
-        limit: offset === 5000 ? 1 : 1000,
+        limit: offset === MAX_AUTOMATED_STORAGE_OBJECTS ? 1 : 1000,
         offset,
         sortBy: { column: "name", order: "asc" },
       });
@@ -168,8 +169,12 @@ async function listAutomatedStorageObjects(): Promise<string[]> {
       for (const object of objects) {
         if (!object.name || object.name === "." || object.name === "..") continue;
         const path = `${prefix}/${object.name}`;
-        if (object.id || object.metadata) paths.push(path);
-        else await walk(path);
+        if (object.id || object.metadata) {
+          paths.add(path);
+          if (paths.size > MAX_AUTOMATED_STORAGE_OBJECTS) {
+            throw new Error("Automated video Storage inventory exceeded the safe 5,000-object limit.");
+          }
+        } else await walk(path);
       }
       if (objects.length < 1000) {
         fullyEnumerated = true;
@@ -182,7 +187,7 @@ async function listAutomatedStorageObjects(): Promise<string[]> {
   };
 
   await walk("automated");
-  return [...new Set(paths)].filter(path =>
+  return [...paths].filter(path =>
     path.startsWith("automated/") &&
     !path.split("/").some(part => part === "." || part === ".."),
   );
