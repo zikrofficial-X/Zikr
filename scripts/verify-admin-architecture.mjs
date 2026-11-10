@@ -152,6 +152,8 @@ const legacyRedirects = {
   "src/app/admin/video-factory/queue/page.tsx": "/admin/video/requests",
   "src/app/admin/ai-video/page.tsx": "/admin/video/studio",
   "src/app/admin/ai-video/curated/page.tsx": "/admin/video/studio/curated",
+  "src/app/admin/social/written-studio/page.tsx": "/admin/memory",
+  "src/app/admin/social/youtube-import/page.tsx": "/admin/analytics",
   "src/app/admin/alerts/page.tsx": "/admin/notifications",
   "src/app/admin/audio/site-audio/page.tsx": "/admin/site-audio",
   "src/app/admin/video-factory/publishing/page.tsx": "/admin/memory",
