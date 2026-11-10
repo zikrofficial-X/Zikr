@@ -65,6 +65,18 @@ requireCondition(
     serviceWorker.includes("await purgeNativeAdvertisingMarkup()"),
   "The native worker must remove cached HTML containing previously published ad markup.",
 );
+for (const providerMarker of [
+  "fundingchoicesmessages",
+  "googletagmanager",
+  "pagead2",
+  "googleads",
+  "tpc.googlesyndication",
+]) {
+  requireCondition(
+    serviceWorker.includes(providerMarker),
+    `The native worker must purge cached HTML containing legacy ${providerMarker} markup.`,
+  );
+}
 requireCondition(
   adsenseSlot.includes("Capacitor.isNativePlatform()"),
   "The existing AdSense slot must continue to reject native Capacitor runtimes.",
