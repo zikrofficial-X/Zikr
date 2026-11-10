@@ -1,108 +1,161 @@
 {
-  "version": "2026-10-30-20261106032437",
-  "generatedAt": "2026-11-06T03:24:37.641Z",
-  "source": "Zikr Supabase published public content tables",
+  "version": "2026-10-30-20261110034849",
+  "generatedAt": "2026-11-10T03:48:49.613Z",
+  "source": "Zikr Supabase published public content tables with explicit validated-corpus retention where the live tafsir table is empty",
   "licenseNote": "Quran and hadith records retain source attribution. Editorial records are Zikr content. External audio remains a reference unless the file is explicitly packaged locally.",
+  "staleDatasets": [
+    "tafsir"
+  ],
   "datasets": {
     "surahs": {
       "path": "/offline-content/v1/surahs.json",
-      "count": 114
+      "count": 114,
+      "source": "supabase",
+      "stale": false
     },
     "ayahs": {
       "path": "/offline-content/v1/ayahs.json",
-      "count": 6236
+      "count": 6236,
+      "source": "supabase",
+      "stale": false
     },
     "tafsir": {
       "path": "/offline-content/v1/tafsir.json",
-      "count": 6236
+      "count": 6236,
+      "source": "previous-validated-snapshot",
+      "stale": true
     },
     "hadith_books": {
       "path": "/offline-content/v1/hadith_books.json",
-      "count": 9
+      "count": 9,
+      "source": "supabase",
+      "stale": false
     },
     "hadith": {
       "path": "/offline-content/v1/hadith.json",
-      "count": 2964
+      "count": 2964,
+      "source": "supabase",
+      "stale": false
     },
     "prophets": {
       "path": "/offline-content/v1/prophets.json",
-      "count": 25
+      "count": 25,
+      "source": "supabase",
+      "stale": false
     },
     "prophet_sections": {
       "path": "/offline-content/v1/prophet_sections.json",
-      "count": 175
+      "count": 175,
+      "source": "supabase",
+      "stale": false
     },
     "battles": {
       "path": "/offline-content/v1/battles.json",
-      "count": 21
+      "count": 21,
+      "source": "supabase",
+      "stale": false
     },
     "battle_events": {
       "path": "/offline-content/v1/battle_events.json",
-      "count": 84
+      "count": 84,
+      "source": "supabase",
+      "stale": false
     },
     "conquests": {
       "path": "/offline-content/v1/conquests.json",
-      "count": 15
+      "count": 15,
+      "source": "supabase",
+      "stale": false
     },
     "conquest_events": {
       "path": "/offline-content/v1/conquest_events.json",
-      "count": 60
+      "count": 60,
+      "source": "supabase",
+      "stale": false
     },
     "articles": {
       "path": "/offline-content/v1/articles.json",
-      "count": 38
+      "count": 59,
+      "source": "supabase",
+      "stale": false
     },
     "duas": {
       "path": "/offline-content/v1/duas.json",
-      "count": 43
+      "count": 43,
+      "source": "supabase",
+      "stale": false
     },
     "kids": {
       "path": "/offline-content/v1/kids.json",
-      "count": 65
+      "count": 65,
+      "source": "supabase",
+      "stale": false
     },
     "companions": {
       "path": "/offline-content/v1/companions.json",
-      "count": 12
+      "count": 12,
+      "source": "supabase",
+      "stale": false
     },
     "stories": {
       "path": "/offline-content/v1/stories.json",
-      "count": 21
+      "count": 21,
+      "source": "supabase",
+      "stale": false
     },
     "article_categories": {
       "path": "/offline-content/v1/article_categories.json",
-      "count": 5
+      "count": 5,
+      "source": "supabase",
+      "stale": false
     },
     "companion_stories": {
       "path": "/offline-content/v1/companion_stories.json",
-      "count": 22
+      "count": 22,
+      "source": "supabase",
+      "stale": false
     },
     "scholars": {
       "path": "/offline-content/v1/scholars.json",
-      "count": 8
+      "count": 8,
+      "source": "supabase",
+      "stale": false
     },
     "tawasheeh": {
       "path": "/offline-content/v1/tawasheeh.json",
-      "count": 12
+      "count": 12,
+      "source": "supabase",
+      "stale": false
     },
     "quran_reciters": {
       "path": "/offline-content/v1/quran_reciters.json",
-      "count": 172
+      "count": 172,
+      "source": "supabase",
+      "stale": false
     },
     "quran_audio": {
       "path": "/offline-content/v1/quran_audio.json",
-      "count": 19608
+      "count": 19608,
+      "source": "supabase",
+      "stale": false
     },
     "kids_games": {
       "path": "/offline-content/v1/kids_games.json",
-      "count": 13
+      "count": 13,
+      "source": "supabase",
+      "stale": false
     },
     "kids_game_levels": {
       "path": "/offline-content/v1/kids_game_levels.json",
-      "count": 1170
+      "count": 1170,
+      "source": "supabase",
+      "stale": false
     },
     "dua_categories": {
       "path": "/offline-content/v1/dua_categories.json",
-      "count": 6
+      "count": 6,
+      "source": "supabase",
+      "stale": false
     }
   },
   "routes": [
