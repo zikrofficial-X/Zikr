@@ -30,9 +30,9 @@ requireCondition(
   "The root layout must not emit advertising scripts or verification markup into native HTML.",
 );
 requireCondition(
-  advertisingRuntime.includes("Capacitor.isNativePlatform()") &&
-    advertisingRuntime.indexOf("Capacitor.isNativePlatform()") <
-      advertisingRuntime.indexOf("document.createElement"),
+  advertisingRuntime.includes("if (Capacitor.isNativePlatform()) {\n      removeAdvertisingElements();\n      return;\n    }") &&
+    advertisingRuntime.indexOf("if (Capacitor.isNativePlatform())") <
+      advertisingRuntime.indexOf("if (process.env.NODE_ENV !== \"production\")"),
   "The advertising runtime must exit on native before creating any third-party script.",
 );
 for (const host of ["al5sm.com", "5gvci.com", "uplcm.com"]) {
