@@ -25,6 +25,7 @@ type LegacyVideoRequest = GeneratedRequest & {
   scene: string | null;
   render_duration_ms: number | null;
   video_url: string | null;
+  provider: string | null;
 };
 
 type RecordValue = Record<string, unknown>;
@@ -106,7 +107,7 @@ function expectedHashes(request: LegacyVideoRequest) {
 
 async function patchRequest(id: string, content: RecordValue) {
   await supabaseServerAdminRequest(
-    "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(id) + "&status=eq.completed",
+    "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(id) + "&status=eq.completed&content->automatedVideoQa=is.null",
     {
       method: "PATCH",
       headers: {
@@ -120,7 +121,7 @@ async function patchRequest(id: string, content: RecordValue) {
 
 async function listLegacyRequests(): Promise<LegacyVideoRequest[]> {
   return await supabaseServerAdminRequest<LegacyVideoRequest[]>(
-    "/rest/v1/video_generation_requests?status=eq.completed&content->automatedVideoQa=is.null&video_url=not.is.null&select=id,title,description,category,content,status,automation_key,video_url,source_hash,content_hash,template_version,scene,render_duration_ms&order=created_at.asc&limit=200",
+    "/rest/v1/video_generation_requests?status=eq.completed&content->automatedVideoQa=is.null&video_url=not.is.null&select=id,title,description,category,content,status,automation_key,video_url,source_hash,content_hash,template_version,scene,render_duration_ms,provider&order=created_at.asc&limit=200",
   );
 }
 
@@ -182,6 +183,13 @@ async function processRequest(request: LegacyVideoRequest, apply: boolean) {
   if (originalContent.templateVersionId) {
     return fail("The historical request references a mutable template version; it requires a dedicated template-version audit.");
   }
+  if (
+    typeof originalContent.curatedSourceId === "string" &&
+    originalContent.curatedSourceId.startsWith("kids-series:") &&
+    originalContent.audience !== "kids"
+  ) {
+    return fail("The stored source belongs to a Kids series but the request has no explicit Kids audience; it must be classified before approval.");
+  }
 
   const publicId = validateLegacyCloudinaryMaster(request.video_url, originalContent);
   if (!publicId) return fail("The stored media URL is not a matching Cloudinary video master with a verified media record.");
@@ -202,6 +210,10 @@ async function processRequest(request: LegacyVideoRequest, apply: boolean) {
   }
 
   const validatedContent = asRecord(requestForValidation.content);
+  if (typeof request.provider === "string" && request.provider.trim()) {
+    validatedContent.aiProvider = request.provider.trim();
+    requestForValidation.content = validatedContent;
+  }
   const hashes = expectedHashes({ ...request, content: validatedContent });
   if (hashes.currentSourceHash !== request.source_hash) {
     return fail("Revalidated current source text/URL no longer matches the original source hash.");
