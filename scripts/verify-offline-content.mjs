@@ -43,6 +43,22 @@ try {
   if (!manifest.datasets || typeof manifest.datasets !== 'object') failures.push('Offline manifest has no datasets');
   if (!Array.isArray(manifest.routes) || manifest.routes.length < 20) failures.push('Offline manifest route inventory is unexpectedly small');
 
+  const declaredStaleDatasets = [...(manifest.staleDatasets ?? [])].sort();
+  const actualStaleDatasets = Object.entries(manifest.datasets ?? {})
+    .filter(([, definition]) => definition?.stale === true)
+    .map(([name]) => name)
+    .sort();
+  if (JSON.stringify(declaredStaleDatasets) !== JSON.stringify(actualStaleDatasets)) {
+    failures.push("Offline manifest staleDatasets must exactly match per-dataset stale flags");
+  }
+  const tafsirDefinition = manifest.datasets?.tafsir;
+  if (tafsirDefinition?.stale === true && tafsirDefinition.source !== "previous-validated-snapshot") {
+    failures.push("Stale tafsir must be labelled previous-validated-snapshot");
+  }
+  if (tafsirDefinition?.stale === false && tafsirDefinition.source !== "supabase") {
+    failures.push("Fresh tafsir must be labelled supabase");
+  }
+
   for (const [name, definition] of Object.entries(manifest.datasets ?? {})) {
     if (!definition?.path || !Number.isInteger(definition.count) || definition.count <= 0) {
       failures.push(`Invalid dataset metadata: ${name}`);
