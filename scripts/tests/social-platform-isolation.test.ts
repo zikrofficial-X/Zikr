@@ -246,6 +246,32 @@ assert.deepEqual(
   "legacy global Facebook auth blocks with no Facebook result ledger must still release both Facebook targets",
 );
 
+const legacyGlobalWithPermanentReels = buildFacebookQueueRecoveryPatch(
+  {
+    authBlocked: true,
+    permanentFailure: true,
+    permanentFailurePlatforms: ["facebook_reels"],
+    platformAttempts: { facebook: 5, facebook_reels: 5 },
+  },
+  ["facebook", "facebook_reels"],
+  "2026-11-10T10:00:00.000Z",
+);
+assert.deepEqual(
+  legacyGlobalWithPermanentReels?.metadata.platformAttempts,
+  { facebook: 0, facebook_reels: 5 },
+  "a legacy global auth flag must not reset a separately declared permanent Reels failure when the result ledger is absent",
+);
+assert.deepEqual(
+  legacyGlobalWithPermanentReels?.metadata.permanentFailurePlatforms,
+  ["facebook_reels"],
+  "the legacy recovery fallback must preserve explicit permanent failure targets",
+);
+assert.equal(
+  legacyGlobalWithPermanentReels?.metadata.permanentFailure,
+  true,
+  "global permanent failure must remain set while any declared permanent target remains",
+);
+
 const legacyMixedFacebookRecovery = buildFacebookQueueRecoveryPatch(
   {
     authBlocked: true,
