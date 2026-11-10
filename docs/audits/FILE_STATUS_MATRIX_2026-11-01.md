@@ -9,7 +9,7 @@
 - File inventory: **1636 / 1636 (100% of the main tree captured)**.
 - Manifest: `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` records every entry with path, type, mode, Git object hash and byte size where applicable. Its own future blob hash is excluded to avoid self-reference; it inventories the complete main tree at `bb22f511281ea83b4c64e97f391f6ff1fcb07208`.
 - Delta from prior manifest `2bfedae38e3818d076d9f1eb8a36132c3b8d0a79`: **3 added**, **40 changed**, **1 removed** paths.
-- This is automated Git-tree inventory coverage, not manual code review or functional acceptance. Every unverified file remains `REVIEW_REQUIRED`.
+- This is automated Git-tree inventory coverage, not manual code review or functional acceptance. All 1,636 file rows remain `REVIEW_REQUIRED`; no file or module is marked complete in this checkpoint. Focused work is in progress across audit/route baseline (PR #269), social queue fairness (PR #270), generated-media purge protection (PR #271), and hadith schema reconciliation (PR #272).
 - Applied Supabase migrations, native assets, compatibility routes, generated manifests, dynamic imports, workflow references and runtime-discovered files require domain-specific handling.
 
 ## Directory distribution
@@ -1736,7 +1736,7 @@
 
 ## Known findings from first comparison
 
-- Previous matrix baseline inventoried 1,491 files and left 90 rows in `REVIEW_REQUIRED`; this inventory adds the 140 paths introduced/omitted since that baseline. The prior matrix is superseded for current path coverage.
+- The 2026-11-01 matrix inventoried 1,491 files and left 90 rows in `REVIEW_REQUIRED`; the current main tree has 1,636 files (+145 paths). Separately, the previous 2026-11-10 manifest at `2bfedae38e3818d076d9f1eb8a36132c3b8d0a79` differs from current main by 3 added, 40 changed and 1 removed paths. These are distinct baselines and must not be conflated.
 - Duplicate basenames are numerous by design in Next.js routes and native asset variants; basename matching alone is not a safe duplicate detector.
 - Both `docs/closeout/ZIKR_ALL_PLANS_CLOSEOUT_2026-10-30.md` and `docs/finalization/ZIKR_ALL_PLANS_CLOSEOUT_2026-10-30.md` exist and contain different historical snapshots. Retain both pending content ownership reconciliation.
 - `src/lib/utils/companions.ts` is a compatibility re-export of `src/features/companions/utils/companions.ts`, not duplicated logic.
