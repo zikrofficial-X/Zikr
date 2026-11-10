@@ -75,6 +75,13 @@ export type KnowledgeAdminData = {
     hadiths: boolean;
     books: boolean;
   };
+  errors: {
+    companions: string | null;
+    scholars: string | null;
+    surahs: string | null;
+    hadiths: string | null;
+    books: string | null;
+  };
 };
 
 export async function getKnowledgeAdminData(): Promise<KnowledgeAdminData> {
@@ -103,11 +110,18 @@ export async function getKnowledgeAdminData(): Promise<KnowledgeAdminData> {
     hadiths: hadiths.rows,
     books: books.rows,
     availability: {
-      companions: companions.ok,
-      scholars: scholars.ok,
-      surahs: surahs.ok,
-      hadiths: hadiths.ok,
-      books: books.ok,
+      companions: !companions.error,
+      scholars: !scholars.error,
+      surahs: !surahs.error,
+      hadiths: !hadiths.error,
+      books: !books.error,
+    },
+    errors: {
+      companions: companions.error,
+      scholars: scholars.error,
+      surahs: surahs.error,
+      hadiths: hadiths.error,
+      books: books.error,
     },
   };
 }
