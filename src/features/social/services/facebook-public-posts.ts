@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import { getServerEnv } from "@/lib/env";
 
 type SocialQueueRow = {
   id: string;
@@ -65,6 +66,10 @@ function buildFacebookPostUrl(remoteId: string): string | null {
  */
 export async function getFacebookPublishedPosts(limit = 6): Promise<FacebookPublishedPost[]> {
   const safeLimit = Math.max(1, Math.min(12, Math.trunc(limit)));
+  // Preview/Development intentionally do not receive the production service-role key.
+  // Facebook queue metadata is private, so skip this optional public-page section
+  // rather than logging an expected configuration absence as a runtime failure.
+  if (!getServerEnv().SUPABASE_SERVICE_ROLE_KEY) return [];
   try {
     const rows = await supabaseServerAdminRequest<SocialQueueRow[]>(
       "/rest/v1/social_publish_queue?select=id,title,body,image_url,video_url,target_platforms,status,published_at,metadata" +
