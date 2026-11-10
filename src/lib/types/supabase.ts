@@ -3524,6 +3524,45 @@ export type Database = {
         }
         Relationships: []
       }
+      social_post_insights: {
+        Row: {
+          captured_at: string
+          metrics: Json
+          period: string | null
+          platform: string
+          queue_id: string
+          scope: string
+          source: string
+          status: string | null
+          updated_at: string
+          video_id: string | null
+        }
+        Insert: {
+          captured_at: string
+          metrics?: Json
+          period?: string | null
+          platform: string
+          queue_id: string
+          scope: string
+          source: string
+          status?: string | null
+          updated_at?: string
+          video_id?: string | null
+        }
+        Update: {
+          captured_at?: string
+          metrics?: Json
+          period?: string | null
+          platform?: string
+          queue_id?: string
+          scope?: string
+          source?: string
+          status?: string | null
+          updated_at?: string
+          video_id?: string | null
+        }
+        Relationships: []
+      }
       social_publish_queue: {
         Row: {
           automation_key: string | null
@@ -3581,46 +3620,6 @@ export type Database = {
         }
         Relationships: []
       }
-
-      social_post_insights: {
-        Row: {
-          captured_at: string
-          metrics: Json
-          period: string | null
-          platform: string
-          queue_id: string
-          scope: string
-          source: string
-          status: string | null
-          updated_at: string
-          video_id: string | null
-        }
-        Insert: {
-          captured_at: string
-          metrics?: Json
-          period?: string | null
-          platform: string
-          queue_id: string
-          scope: string
-          source: string
-          status?: string | null
-          updated_at?: string
-          video_id?: string | null
-        }
-        Update: {
-          captured_at?: string
-          metrics?: Json
-          period?: string | null
-          platform?: string
-          queue_id?: string
-          scope?: string
-          source?: string
-          status?: string | null
-          updated_at?: string
-          video_id?: string | null
-        }
-        Relationships: []
-      },
       social_sync_jobs: {
         Row: {
           attempts: number
@@ -4282,47 +4281,21 @@ export type Database = {
         }
         Relationships: []
       }
-      video_likes: {
-        Row: {
-          video_id: string
-          user_id: string
-          created_at: string
-        }
-        Insert: {
-          video_id: string
-          user_id: string
-          created_at?: string
-        }
-        Update: {
-          video_id?: string
-          user_id?: string
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "video_likes_video_id_fkey"
-            columns: ["video_id"]
-            isOneToOne: false
-            referencedRelation: "videos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       video_like_counts: {
         Row: {
-          video_id: string
           like_count: number
           updated_at: string
+          video_id: string
         }
         Insert: {
-          video_id: string
           like_count?: number
           updated_at?: string
+          video_id: string
         }
         Update: {
-          video_id?: string
           like_count?: number
           updated_at?: string
+          video_id?: string
         }
         Relationships: [
           {
@@ -4334,78 +4307,74 @@ export type Database = {
           },
         ]
       }
-      video_templates: {
+      video_likes: {
         Row: {
-          id: string
-          slug: string
-          title: string
-          description: string
-          audience: string
-          asset_key: string
           created_at: string
+          user_id: string
+          video_id: string
         }
         Insert: {
-          id?: string
-          slug: string
-          title: string
-          description?: string
-          audience: string
-          asset_key: string
           created_at?: string
+          user_id: string
+          video_id: string
         }
         Update: {
-          id?: string
-          slug?: string
-          title?: string
-          description?: string
-          audience?: string
-          asset_key?: string
           created_at?: string
+          user_id?: string
+          video_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "video_likes_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       video_template_versions: {
         Row: {
+          activated_at: string | null
+          activated_by: string | null
+          config: Json
+          created_at: string
+          created_by: string | null
           id: string
+          is_system_seed: boolean
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
           template_id: string
           version: number
-          config: Json
-          status: string
-          is_system_seed: boolean
-          created_by: string | null
-          reviewed_by: string | null
-          reviewed_at: string | null
-          activated_by: string | null
-          activated_at: string | null
-          created_at: string
         }
         Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          config: Json
+          created_at?: string
+          created_by?: string | null
           id?: string
+          is_system_seed?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
           template_id: string
           version: number
-          config: Json
-          status?: string
-          is_system_seed?: boolean
-          created_by?: string | null
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          activated_by?: string | null
-          activated_at?: string | null
-          created_at?: string
         }
         Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          config?: Json
+          created_at?: string
+          created_by?: string | null
           id?: string
+          is_system_seed?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
           template_id?: string
           version?: number
-          config?: Json
-          status?: string
-          is_system_seed?: boolean
-          created_by?: string | null
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          activated_by?: string | null
-          activated_at?: string | null
-          created_at?: string
         }
         Relationships: [
           {
@@ -4416,6 +4385,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      video_templates: {
+        Row: {
+          asset_key: string
+          audience: string
+          created_at: string
+          description: string
+          id: string
+          slug: string
+          title: string
+        }
+        Insert: {
+          asset_key: string
+          audience: string
+          created_at?: string
+          description?: string
+          id?: string
+          slug: string
+          title: string
+        }
+        Update: {
+          asset_key?: string
+          audience?: string
+          created_at?: string
+          description?: string
+          id?: string
+          slug?: string
+          title?: string
+        }
+        Relationships: []
       }
       videos: {
         Row: {
@@ -4512,6 +4511,39 @@ export type Database = {
         }
         Relationships: []
       }
+      youtube_oauth_credentials: {
+        Row: {
+          channel_id: string
+          channel_name: string | null
+          connected_at: string
+          connected_by: string | null
+          granted_scopes: string[]
+          provider: string
+          refresh_token: string
+          updated_at: string
+        }
+        Insert: {
+          channel_id: string
+          channel_name?: string | null
+          connected_at?: string
+          connected_by?: string | null
+          granted_scopes?: string[]
+          provider?: string
+          refresh_token: string
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string
+          channel_name?: string | null
+          connected_at?: string
+          connected_by?: string | null
+          granted_scopes?: string[]
+          provider?: string
+          refresh_token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       youtube_sync_state: {
         Row: {
           channel_id: string | null
@@ -4550,6 +4582,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_video_template_version: {
+        Args: { p_actor_user_id: string; p_version_id: string }
+        Returns: string
+      }
+      admin_create_video_template_version: {
+        Args: { p_actor_user_id: string; p_config: Json; p_template_id: string }
+        Returns: {
+          id: string
+          version: number
+        }[]
+      }
+      admin_set_primary_site_audio_asset: {
+        Args: { p_actor_user_id: string; p_asset_id: string; p_kind: string }
+        Returns: undefined
+      }
+      admin_update_user_role: {
+        Args: { p_actor_user_id: string; p_role: string; p_user_id: string }
+        Returns: undefined
+      }
       consume_admin_rate_limit: {
         Args: {
           p_actor: string
@@ -4569,14 +4620,6 @@ export type Database = {
           shares: number
           slug: string
         }[]
-      }
-      admin_create_video_template_version: {
-        Args: { p_actor_user_id: string; p_config: Json; p_template_id: string }
-        Returns: { id: string; version: number }[]
-      }
-      activate_video_template_version: {
-        Args: { p_actor_user_id: string; p_version_id: string }
-        Returns: string
       }
       is_admin_user: { Args: never; Returns: boolean }
       kids_record_game_result: {
