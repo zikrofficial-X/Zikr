@@ -9,6 +9,8 @@ export type SocialPlatformMetadata = {
   authBlockedPlatforms?: unknown;
   permanentFailure?: unknown;
   permanentFailurePlatforms?: unknown;
+  approvalDeferredPlatforms?: unknown;
+  unavailablePlatforms?: unknown;
   attempts?: unknown;
 } | null | undefined;
 
@@ -95,6 +97,7 @@ export function canAttemptSocialPlatform(input: {
   const previous = asRecord(results[platform]);
   if (hasSuccessfulDelivery(previous)) return false;
   if (getManualReconciliationPlatforms(metadata).includes(platform)) return false;
+  if (metadataPlatforms(metadata?.approvalDeferredPlatforms).includes(platform)) return false;
 
   const authBlockedPlatforms = metadataPlatforms(metadata?.authBlockedPlatforms);
   const permanentFailurePlatforms = metadataPlatforms(metadata?.permanentFailurePlatforms);
