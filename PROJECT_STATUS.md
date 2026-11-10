@@ -387,3 +387,10 @@ No files or production data were deleted in this checkpoint. No Cloudinary asset
 - Video catalog: 58 provenance-confirmed videos are visible through YouTube fallback; 47 purged rows remain hidden because provenance is not established, including 9 Kids rows requiring revalidation. Social queue has 83 published and 9 queued records with zero current sourceMediaMissing flags or error-message rows. YouTube sync status is `ok`; Facebook Page connection is connected and recently validated.
 - Current tree inventory: 2152 entries including the manifest, 1661 files, 491 directories, no truncation. Updated Git manifest records this exact `main` baseline; manual source review and module-level certification remain IN PROGRESS.
 - Production deployment for this latest main SHA is still subject to final READY and route verification; do not describe it as released until its exact SHA is confirmed.
+
+
+## Production confirmation — 2026-11-10 19:22 UTC
+
+- Latest production deployment `dpl_74gc2BQnQXTjZam5L6sSstsheLHo` is READY on `main@6e8010ef95616c01950ff5ef7d6f44b178da5132`.
+- Canonical production routes `/`, `/videos`, `/kids`, `/api/health`, and `/api/kids/videos` returned HTTP 200. Health endpoint reported `ok=true`, `production`, exact commit match; Kids videos API returned 10 records.
+- Full source review, UI/browser/device acceptance, release signing and module closeout remain IN PROGRESS.
