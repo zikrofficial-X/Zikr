@@ -1,6 +1,6 @@
 # ZIKR Project Release & Build Status
 
-Last reconciled: 2026-11-07  
+Last reconciled (Android release): 2026-11-10 05:12:05 UTC. Production deployment details below retain their 2026-11-07 inspection snapshot.
 Repository: https://github.com/zikrofficial-X/Zikr  
 Production URL: https://zikrmediaofficial.vercel.app
 
@@ -45,45 +45,52 @@ Pipeline correction: CircleCI application-build-docs is main-only. Semantic Andr
 
 | Item | Verified state |
 |---|---|
-| Android version | 1.1.12 |
-| Android versionCode | 66 |
+| Android version | 1.1.14 |
+| Android versionCode | 68 |
 | Application ID | `com.zikr.app` |
 | Compile / Target SDK | 36 / 36 |
-| Release tag | https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.12 |
-| Tag target commit | `c8cf106d709aa4f10e94a0d45e668794e41f94f3` |
+| Release tag | https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.14 |
+| Tag target commit | `d05598035de7b51ba460a0c2424a58b22b4f4e81` |
+| Annotated tag object | `a1e3bb90093bd37d56d64f0b4e0c031b8cc5b562` |
 | Git tag signature | Annotated tag, **unsigned**; GitHub reason: `unsigned` |
+| GitHub Release ID | `439960831` |
 | Release state | Published, immutable |
-| Published at | 2026-11-02 03:30:37 UTC |
+| Published at | 2026-11-10 05:12:05 UTC |
 
 ### Published assets
 
 | Asset | Size | SHA-256 |
 |---|---:|---|
-| app-release.apk | 40,854,242 bytes | `04368ac54509ad22b4cf01eb66580bc1a014c544c85e74f4f4bda049b3e3fdfe` |
-| app-release.aab | 35,668,096 bytes | `5dbe99ff97db5e014bda39646dd94e2012710d6e8a7202f2080785f827b3894b` |
-| release-metadata.json | 635 bytes | `e4f57173e62ebf5c052499188f3ecccfdb26a871276b0b7b9c44c53a2667bf78` |
-| SHA256SUMS | 243 bytes | `73278c0c4b824e76e45507b960bed0a20fe89a4c5eacf3288dd162368b135216` |
+| app-release.apk | 41,277,148 bytes | `c982ad8449432ed3128ae97d1d69dbe48ab619159238443757d945958a39202f` |
+| app-release.aab | 36,091,440 bytes | `bfd01d055cafd04a61d3bff1c06ba59d6143c4ded51d44b1044dc37327f828e6` |
+| release-metadata.json | 635 bytes | `89f68c0d15de0ae09298c3ed23c3baa077060ce6ad67a923ed0243e1e3f9bd29` |
+| SHA256SUMS | 243 bytes | `d2760afa945a2e26ad57eb17fd3d0c5ac44424bab783561038ad8d4b3bc34786` |
 
-Release: https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.12
+Release: https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.14
 
-The release publisher verified the exact source/tag provenance, APK signature and manifest, AAB signature, SHA-256 checksums, release metadata, and immutable GitHub release attestations. Both Android artifacts are signed; the Git tag itself remains unsigned.
+Published downloads:
+- [Signed APK](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.14/app-release.apk)
+- [Signed AAB](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.14/app-release.aab)
+- [SHA256SUMS](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.14/SHA256SUMS)
+- [Release metadata](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.14/release-metadata.json)
 
-Publisher evidence: [GitHub Release v1.1.12](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.12) and [release notes](docs/releases/1.1.12.md).
+CircleCI Android rebuild and guarded release dispatch succeeded. The GitHub publisher also succeeded after verifying exact tag/source provenance, release metadata, checksums, APK signature and manifest, signed AAB, and the exact four published assets. GitHub marks the release immutable. Asset SHA-256 digests are recorded above.
+
+Publisher evidence: [GitHub Actions — Publish Android Release Assets](https://github.com/zikrofficial-X/Zikr/actions/runs/42758799773), [CircleCI Android rebuild #3895](https://circleci.com/gh/zikrofficial-X/Zikr/3895), and [release notes](docs/releases/1.1.14.md).
 
 ## Git tag signature and immutable release attestation
 
-The published `v1.1.12` tag is an annotated Git tag object, but its Git object signature is **unsigned**. GitHub reports tag object `0aee16eb5f6f4e1d2ee27a282ae03e27b3b955c5` as `verified: false`, reason `unsigned`. It points to source commit `c8cf106d709aa4f10e94a0d45e668794e41f94f3`.
+The published `v1.1.14` tag is an annotated Git tag object, but its Git object signature is **unsigned**. GitHub reports tag object `a1e3bb90093bd37d56d64f0b4e0c031b8cc5b562` as `verified: false`, reason `unsigned`. It points to source commit `d05598035de7b51ba460a0c2424a58b22b4f4e81`. The Android APK and AAB signatures were verified separately by CircleCI and the GitHub release publisher.
 
-The associated GitHub Release `431036231` is immutable. GitHub release attestations verified successfully for both `app-release.apk` and `app-release.aab`. This release-level attestation is separate from a GPG/SSH signature on the Git tag; keep describing the tag itself as unsigned.
+GitHub Release `439960831` is marked immutable. The exact source provenance and all four release assets were checked before publication. This release immutability is separate from a GPG/SSH signature on the Git tag; keep describing the tag itself as unsigned.
 
-Never delete, recreate, or retarget the immutable `v1.1.12` release or tag. To sign future tags, configure an owner-managed GPG/SSH signing key in protected CI secrets and verify the tag signature before publication; do not store signing material in source or public artifacts.
+Never delete, recreate, or retarget the immutable `v1.1.14` release or tag. To sign future tags, configure an owner-managed GPG/SSH signing key in protected CI secrets and verify the tag signature before publication; do not store signing material in source or public artifacts.
 
 Official verification commands:
 
 ```bash
-gh release verify v1.1.12
-gh release verify-asset v1.1.12 ./app-release.apk
-gh release verify-asset v1.1.12 ./app-release.aab
+gh release verify-asset v1.1.14 ./app-release.apk
+gh release verify-asset v1.1.14 ./app-release.aab
 sha256sum -c SHA256SUMS
 ```
 

@@ -86,15 +86,16 @@ The project uses Supabase RLS, server-side service-role boundaries, protected OA
 
 ## Release process
 
-Current published Android release: [`v1.1.12`](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.12).
+Current published Android release: [`v1.1.14`](https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.14).
 
-- Application version: `1.1.12`
-- Android versionCode: `66`
+- Application version: `1.1.14`
+- Android versionCode: `68`
 - Application ID: `com.zikr.app`
 - Compile / target SDK: `36`
-- Canonical tag: `v1.1.12`
-- Download: [Signed APK](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.12/app-release.apk) · [Signed AAB](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.12/app-release.aab) · [Checksums](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.12/SHA256SUMS)
-- Release evidence and provenance: [`docs/releases/1.1.12.md`](./docs/releases/1.1.12.md)
+- Canonical tag: `v1.1.14`
+- Source commit: [`d05598035de7b51ba460a0c2424a58b22b4f4e81`](https://github.com/zikrofficial-X/Zikr/commit/d05598035de7b51ba460a0c2424a58b22b4f4e81)
+- Download: [Signed APK](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.14/app-release.apk) · [Signed AAB](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.14/app-release.aab) · [Checksums](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.14/SHA256SUMS) · [Release metadata](https://github.com/zikrofficial-X/Zikr/releases/download/v1.1.14/release-metadata.json)
+- Release evidence and provenance: [`docs/releases/1.1.14.md`](./docs/releases/1.1.14.md)
 
 Before preparing the next Android release:
 
@@ -105,7 +106,7 @@ pnpm mobile:check
 
 Production web deployment is controlled through `.github/workflows/release-finalization.yml`. Android release uses one semantic tag (`vX.Y.Z`), CircleCI for the signed build, and GitHub Actions for release-asset verification/publication.
 
-The immutable `v1.1.12` release was published on 2026-11-02. Its APK/AAB signatures, checksums, source provenance, and GitHub release attestations were verified. The annotated Git tag itself is **unsigned**; the release attestations are a separate integrity control. Never describe the tag as signed unless GitHub verifies a future owner-managed GPG/SSH signature.
+The immutable `v1.1.14` release was published on 2026-11-10. Its APK/AAB signatures, manifest, checksums, release metadata, exact source provenance, and presence of all four release assets were verified by CircleCI and the GitHub release publisher. The annotated Git tag itself is **unsigned**; never describe it as signed unless GitHub verifies a future owner-managed GPG/SSH signature.
 
 ## Support
 
