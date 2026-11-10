@@ -12,6 +12,7 @@ import {
   assertKidsStoryContract,
   buildAutomatedVideoQaChecklist,
   contentText,
+  contentSourceUrl,
   validateSourceContent,
   type GeneratedRequest,
 } from "./template-video-automation";
@@ -85,7 +86,8 @@ function expectedHashes(request: LegacyVideoRequest) {
   const content = asRecord(request.content);
   const text = contentText(request);
   const contentSourceId = typeof content.sourceId === "string" ? content.sourceId : "";
-  const sourceUrl = typeof content.sourceUrl === "string" ? content.sourceUrl : "";
+  // Match the generation worker exactly: missing sourceUrl falls back to the canonical site origin.
+  const sourceUrl = contentSourceUrl(request);
   const currentSourceHash = sourceHash({ sourceId: contentSourceId, sourceUrl, text });
   const resolution = typeof content.resolution === "string" ? content.resolution : "";
   const format = resolution
