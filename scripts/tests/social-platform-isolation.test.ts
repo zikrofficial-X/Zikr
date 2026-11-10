@@ -16,6 +16,16 @@ assert.deepEqual(youtubeOnly, ["youtube"]);
 assert.deepEqual(getUnavailableSocialPlatforms(["facebook_reels", "youtube"], youtubeOnly), ["facebook_reels"]);
 
 assert.deepEqual(getEnabledSocialPlatforms({}), [], "missing flags must fail closed");
+const sourceMediaMissingMetadata = {
+  sourceMediaMissing: true,
+  authBlocked: true,
+  authBlockedPlatforms: ["facebook_reels"],
+  permanentFailure: true,
+  permanentFailurePlatforms: ["facebook_reels"],
+};
+assert.equal(canAttemptSocialPlatform({ platform: "facebook_reels", enabledPlatforms: both, metadata: sourceMediaMissingMetadata, maxAttempts: 5 }), false, "missing source media must block every automatic platform attempt");
+assert.deepEqual(getRetryableSocialPlatforms(["facebook_reels", "youtube"], sourceMediaMissingMetadata), [], "manual retry policy must not release a missing-media row");
+assert.equal(buildFacebookQueueRecoveryPatch(sourceMediaMissingMetadata, ["facebook_reels"], "2026-11-10T12:00:00.000Z"), null, "Facebook reauthorization must not release a missing-media row");
 assert.deepEqual(getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true" }), ["facebook", "facebook_reels"], "one configured channel must not require the other");
 
 assert.equal(isAmbiguousProviderOutcome("Facebook Reel upload timed out"), true, "provider timeouts have an uncertain remote outcome");
@@ -209,6 +219,8 @@ assert.match(adminSocialRoute, /getRetryableSocialPlatforms\(item\.target_platfo
 assert.ok(adminSocialRoute.includes("approvalDeferredPlatforms: preservedApprovalDeferredPlatforms"), "admin retries must preserve all outstanding approval gates.");
 assert.match(adminSocialRoute, /authBlockedPlatforms\(item\.metadata, item\.target_platforms\)/);
 assert.match(adminSocialRoute, /authBlocked: remainingAuthBlockedPlatforms\.length > 0/);
+assert.match(adminSocialRoute, /item\.metadata\?\.sourceMediaMissing === true/);
+assert.match(adminSocialRoute, /sourceMediaMissingSkipped/);
 
 console.log("Social platform isolation and independent readiness tests passed.");
 

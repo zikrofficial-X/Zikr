@@ -11,6 +11,7 @@ export type SocialPlatformMetadata = {
   permanentFailurePlatforms?: unknown;
   approvalDeferredPlatforms?: unknown;
   unavailablePlatforms?: unknown;
+  sourceMediaMissing?: unknown;
   attempts?: unknown;
 } | null | undefined;
 
@@ -76,6 +77,7 @@ export function isAmbiguousProviderOutcome(error: unknown): boolean {
 }
 
 export function getManualReconciliationPlatforms(metadata: SocialPlatformMetadata): SocialPlatform[] {
+  if (metadata?.sourceMediaMissing === true) return [];
   const results = normalizeSocialPlatformResults(metadata?.platformResults);
   const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
   return supported.filter(
@@ -90,6 +92,7 @@ export function canAttemptSocialPlatform(input: {
   maxAttempts: number;
 }): boolean {
   const { platform, enabledPlatforms, metadata, maxAttempts } = input;
+  if (metadata?.sourceMediaMissing === true) return false;
   if (!enabledPlatforms.includes(platform)) return false;
   const rawResults = metadata?.platformResults;
   const hasPlatformResults = rawResults !== null && typeof rawResults === "object";

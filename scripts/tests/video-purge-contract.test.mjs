@@ -45,8 +45,9 @@ assert.ok(route.includes("status=neq.published&video_url=not.is.null&select=vide
 assert.ok(
   route.includes("pendingSocialGenerationRefs") &&
     route.includes("status=neq.published&or=(content_type.like.*video*,video_url.not.is.null)&select=id&limit=1000") &&
-    route.includes("includeMemory && (pendingSocialGenerationRefs ?? []).length > 0"),
-  "memory cleanup must preserve generation history while any unfinished social video media row remains",
+    route.includes("const pendingSocialGenerationRefs = (includeFiles || includeMemory)") &&
+    route.includes("(includeFiles || includeMemory) && (pendingSocialGenerationRefs ?? []).length > 0"),
+  "file-only and memory cleanup must both stop while any unfinished social video row remains, including rows without video_url",
 );
 assert.ok(route.includes("isGeneratedCloudinaryVideoUrl") && route.includes("protectedSocialQueueMedia.size > 0"), "file purge must protect generated Cloudinary media referenced by unfinished social posts.");
 assert.ok(route.includes("/^v\\d+$/"), "Cloudinary delivery URL parsing must strip version segments before protecting generated media.");

@@ -484,7 +484,12 @@ export async function POST(request: NextRequest) {
       );
       let affected = 0;
       let manualReconciliationSkipped = 0;
+      let sourceMediaMissingSkipped = 0;
       for (const item of items ?? []) {
+        if (item.metadata?.sourceMediaMissing === true) {
+          sourceMediaMissingSkipped += 1;
+          continue;
+        }
         if (!retryableStatuses.has(item.status) && !(includeQueued && item.status === "queued")) continue;
         const manualPlatforms = getManualReconciliationPlatforms(item.metadata);
         if (!allowAmbiguous && manualPlatforms.some(platform => requestedPlatforms.length === 0 || requestedPlatforms.includes(platform))) {
@@ -589,7 +594,7 @@ export async function POST(request: NextRequest) {
         );
         affected += 1;
       }
-      return { affected, manualReconciliationSkipped };
+      return { affected, manualReconciliationSkipped, sourceMediaMissingSkipped };
     };
 
     if (action === "publish_now") {
@@ -603,24 +608,30 @@ export async function POST(request: NextRequest) {
         .map(item => item.id);
       const blocked = [
         ...diagnosedItems
-          .filter(item => isVideoContentType(item.content_type) && item.videoApproval?.approved !== true)
-          .map(item => ({ id: item.id, title: item.title, reason: item.videoApproval?.reason ?? "الفيديو يحتاج اعتماد مراجعة الجودة." })),
+          .filter(item => isVideoContentType(item.content_type) && (item.metadata?.sourceMediaMissing === true || item.videoApproval?.approved !== true))
+          .map(item => ({
+            id: item.id,
+            title: item.title,
+            reason: item.metadata?.sourceMediaMissing === true
+              ? "ملف الفيديو المصدر مفقود؛ لا يمكن إعادة النشر حتى استعادته أو إعادة توليده."
+              : item.videoApproval?.reason ?? "الفيديو يحتاج اعتماد مراجعة الجودة.",
+          })),
         ...ids.filter(id => !diagnosedItems.some(item => item.id === id)).map(id => ({
           id, title: null, reason: "العنصر غير موجود في الطابور أو لم يعد في حالة تسمح بالنشر الفوري.",
         })),
       ];
       const retryResult = approvedIds.length
         ? await retryItems("id=in.(" + approvedIds.map(encodeURIComponent).join(",") + ")&status=in.(queued,partial,failed)", true, false)
-        : { affected: 0, manualReconciliationSkipped: 0 };
+        : { affected: 0, manualReconciliationSkipped: 0, sourceMediaMissingSkipped: 0 };
       const affected = retryResult.affected;
       const worker = affected > 0 ? await triggerSocialWorker() : null;
       await recordAdminAuditEvent({
         action: "social.queue.publish_now",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { requestedIds: ids.length, affected, approvalBlocked: blocked.length, workerDispatched: affected > 0 },
+        metadata: { requestedIds: ids.length, affected, approvalBlocked: blocked.length, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, workerDispatched: affected > 0 },
       });
-      return NextResponse.json({ ok: true, affected, blocked, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, worker });
+      return NextResponse.json({ ok: true, affected, blocked, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, worker });
     }
 
     if (action === "retry_all_failed") {
@@ -631,9 +642,9 @@ export async function POST(request: NextRequest) {
         action: "social.queue.retry_all_failed",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, workerDispatched: affected > 0 },
+        metadata: { affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, workerDispatched: affected > 0 },
       });
-      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, worker });
+      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, worker });
     }
 
     const filter = ids.map(encodeURIComponent).join(",");
@@ -653,11 +664,12 @@ export async function POST(request: NextRequest) {
           requestedIds: ids.length,
           affected,
           manualReconciliationSkipped: retryResult.manualReconciliationSkipped,
+          sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped,
           confirmedNoRemotePublication,
           workerDispatched: affected > 0,
         },
       });
-      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, worker });
+      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, worker });
     }
 
     if (action === "delete") {

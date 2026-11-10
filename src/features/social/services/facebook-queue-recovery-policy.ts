@@ -21,7 +21,7 @@ export function buildFacebookQueueRecoveryPatch(
     (platform): platform is FacebookQueueRecoveryPlatform =>
       platform === "facebook" || platform === "facebook_reels",
   );
-  if (metadata.authBlocked !== true || facebookTargets.length === 0) return null;
+  if (metadata.sourceMediaMissing === true || metadata.authBlocked !== true || facebookTargets.length === 0) return null;
 
   const declaredBlocked = Array.isArray(metadata.authBlockedPlatforms)
     ? metadata.authBlockedPlatforms.filter((platform): platform is FacebookQueueRecoveryPlatform =>

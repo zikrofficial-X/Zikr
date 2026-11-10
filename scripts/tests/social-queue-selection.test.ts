@@ -18,6 +18,20 @@ const writtenPosts = [
 const candidates = [...videos, ...writtenPosts];
 const enabledPlatforms = ["facebook", "facebook_reels", "youtube"] as const;
 
+const missingSourceMedia = {
+  id: "missing-source-media",
+  content_type: "video",
+  target_platforms: ["youtube", "facebook_reels"] as const,
+  metadata: { sourceMediaMissing: true },
+};
+const missingMediaSelection = selectEligibleSocialPublishItems([missingSourceMedia], {
+  enabledPlatforms,
+  approvedVideoQueueItemIds: new Set([missingSourceMedia.id]),
+  maxAttemptsFor: () => 5,
+  limit: 1,
+});
+assert.deepEqual(missingMediaSelection, [], "source-media-missing videos must stay out of the worker queue even when QA approval exists");
+
 const selectedPosts = selectEligibleSocialPublishItems(candidates, {
   enabledPlatforms,
   approvedVideoQueueItemIds: new Set(),

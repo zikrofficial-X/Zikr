@@ -25,6 +25,7 @@ export function selectEligibleSocialPublishItems<T extends SocialQueueSelectionC
 
   const eligible: T[] = [];
   for (const item of candidates) {
+    if (item.metadata?.sourceMediaMissing === true) continue;
     const maxAttempts = options.maxAttemptsFor(item.metadata);
     const hasRunnableTarget = item.target_platforms.some((platform) =>
       canAttemptSocialPlatform({

@@ -138,6 +138,7 @@ async function markQueueItem(
 }
 
 async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promise<boolean> {
+  if (item.metadata?.sourceMediaMissing === true) return false;
   if (!isVideoContentType(item.content_type)) return true;
   if (!item.content_id || !item.video_url) return false;
   try {
@@ -159,7 +160,7 @@ async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promi
 async function getApprovedVideoQueueItemIds(
   items: readonly SocialPublishQueueItem[],
 ): Promise<Set<string>> {
-  const videoItems = items.filter((item) => isVideoContentType(item.content_type));
+  const videoItems = items.filter((item) => isVideoContentType(item.content_type) && item.metadata?.sourceMediaMissing !== true);
   const contentIds = [...new Set(
     videoItems
       .map((item) => item.content_id)

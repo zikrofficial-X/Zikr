@@ -331,3 +331,36 @@ Read-only SQL against the active project returned:
 - PR tree is now 2,140 entries: 1,649 files and 491 directories. The main baseline remains 1,639 files; coverage remains 117/1,639 and 1,522 REVIEW_REQUIRED. The pure contract, forward migration and test are supplemental PR paths, not yet part of main.
 - PR #275 head at this refinement: `241840744a606e42519b7f0e9c9930363651c7e0`; draft/open/unmerged. CI must run against the final head.
 
+
+
+## Safety follow-up — 2026-11-10 16:18 Africa/Cairo
+
+### Current verified baseline and CI correction
+- Repository identity remains `zikrofficial-X/Zikr`; production project `zikr` is linked to Supabase `zqtssvlvmkzeeyqghqfk`.
+- Production remains `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` on `main@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; no production deployment or database migration was run.
+- PR #275 current base is `c91f64c`; its branch has 143 commits and 65 changed files. The existing manifest header is stale (captured at `8133aab`, 2,144 tree entries/1,653 files) and must be regenerated at the final head. The main baseline remains 2,130 entries/1,639 files/491 directories.
+- The tracked-file matrix still records only 117/1,639 main files as full source-content reads (7.1%); 1,522 remain REVIEW_REQUIRED. Inventory is not a substitute for file-level review; no modules are closed.
+- The failing Quality Gate log identified a stale assertion in `scripts/tests/video-contract.test.ts`: it expected the Cloudinary host check to remain inline in `videos.ts` after validation moved to `video-media-contract.ts`. Updated the test to assert delegation and the shared HTTPS/Cloudinary allowlist. Commit: `65392967fad877502118d44f24ddeae87060c6d8`. CircleCI was re-triggered by that branch update; final status must be checked on the new head.
+
+### New P0 queue-safety gap found and patched on the PR branch
+- The containment audit event `5de18dd5-8bcc-4784-a471-e1c7821405dc` still identifies nine source-media-missing rows (six failed, three partial); all nine retain non-null historical media URLs and `sourceMediaMissing=true`. No rows were republished or requeued.
+- Source review found a bypass: `retry_all_failed`/manual retry could set a held row back to queued; Facebook reauthorization could also release it because the recovery policy did not check `sourceMediaMissing`. The worker selector and video-approval path likewise lacked a universal source-media hold.
+- Added fail-closed checks to platform availability, queue selection, video approval, Facebook auth recovery and admin retry actions. Retry responses now report `sourceMediaMissingSkipped`; publish-now diagnostics identify the missing source explicitly. Regression coverage added for worker selection, retryability and Facebook reauthorization.
+- Found a second scope gap in `video-purge`: the file-only scope checked queue rows with non-null `video_url`, but the broader generation-reference guard ran only for memory scope. Changed the guard so file-only and memory cleanup both stop on any non-published video queue reference, including rows without `video_url`. Updated the purge contract test.
+- These are code/test changes on the PR branch only. They do not mutate the live queue, call social providers, delete assets or change production settings. New head CI and Vercel Preview validation are required before merge.
+
+### Fresh downstream observations
+- Supabase migration history remains 415/415; public tables 92/92 have RLS; six current Storage policies cover public-assets, site-audio and videos. The four owner-scoped policies in the PR migration are absent from production and remain pending; no migration was applied.
+- Current Facebook credential row is enabled/connected with no stored error code; last validation `2026-11-10 08:36:36 UTC`. YouTube OAuth row is present with read-only, upload and analytics scopes; no token value was read.
+- Current queue snapshot: nine held video rows (six failed, three partial), zero queued video rows, ten queued written posts and one published written post. The nine held rows have `sourceMediaMissing=true`; none is marked auth-blocked at this snapshot. 112 generation requests are completed; 48 have Cloudinary URLs and 64 have no `video_url` (these 64 are not assumed to be all broken without cross-table reconciliation).
+- Vercel Production is READY on the main SHA. A fresh runtime event at `2026-11-10 14:09:32 UTC` recorded `ETIMEDOUT` while reading a hadith detail page. `src/features/hadith/services/hadith.ts` catches Supabase read failures and falls back to the external Hadith API; this is a resilience warning, not proof that the page failed. Supabase logs for 14:00–14:18 UTC contained 45 Postgres records: 44 LOG/00000 and one ERROR/42703, not yet tied to a concrete application query.
+- Vercel environment metadata shows 17 sensitive variables target Preview and 13 target Development. No values were decrypted or changed. Preview still shares the production Supabase URL; environment isolation requires explicit approval.
+
+### Remaining gates
+1. Confirm the new PR head's CircleCI Source Verify, Application Build, and GitHub Quality Gate all pass.
+2. Review the new queue-hold and file-only purge guards on the exact final head; then obtain a Vercel Preview isolated from production before merge.
+3. Reconcile and restore/rebuild the nine missing media assets while preserving successful remote YouTube IDs; do not dispatch retries until media and external publication state are verified.
+4. Regenerate the PR manifest and continue the remaining file-content review. Current 117/1,639 source reads are not full-project review.
+5. Keep the owner-scoped Storage migration, Preview secret isolation, Auth hardening, branch protection and all destructive cleanup behind their existing approval gates.
+
+**State: IN PROGRESS / CRITICAL. No production data, secrets, OAuth settings, domains, Storage objects, Cloudinary assets, branches or releases were modified.**

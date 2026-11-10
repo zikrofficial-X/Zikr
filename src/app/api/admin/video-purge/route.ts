@@ -371,12 +371,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pendingSocialGenerationRefs = includeMemory
+    const pendingSocialGenerationRefs = (includeFiles || includeMemory)
       ? await supabaseServerAdminRequest<Array<{ id: string }>>(
           "/rest/v1/social_publish_queue?status=neq.published&or=(content_type.like.*video*,video_url.not.is.null)&select=id&limit=1000",
         )
       : [];
-    if (includeMemory && (pendingSocialGenerationRefs ?? []).length >= 1000) {
+    if ((includeFiles || includeMemory) && (pendingSocialGenerationRefs ?? []).length >= 1000) {
       await restoreVideoAutomation(automationWasEnabled);
       await setPurgeLock(false);
       purgeLockAttempted = false;
@@ -391,7 +391,7 @@ export async function POST(request: NextRequest) {
         { status: 409, headers: { "Cache-Control": "no-store" } },
       );
     }
-    if (includeMemory && (pendingSocialGenerationRefs ?? []).length > 0) {
+    if ((includeFiles || includeMemory) && (pendingSocialGenerationRefs ?? []).length > 0) {
       await restoreVideoAutomation(automationWasEnabled);
       await setPurgeLock(false);
       purgeLockAttempted = false;
