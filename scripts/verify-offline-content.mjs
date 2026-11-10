@@ -188,7 +188,7 @@ if (serviceWorker.includes('const CACHE_NAME = "zikr-v10"')) failures.push('Lega
 if (!offlinePack.includes('const OFFLINE_CACHE_NAME = "zikr-v15"')) failures.push('Offline pack cache name must match Service Worker cache zikr-v15');
 const quranAudioCacheName = offlineAudio.match(/const CACHE_NAME = ["']([^"']+)["']/)?.[1] ?? "";
 if (quranAudioCacheName !== "zikr-quran-audio-v1") failures.push("Quran audio downloads must use their dedicated persistent cache");
-if (/^zikr-v\\d+$/.test(quranAudioCacheName)) failures.push("Quran audio cache must never match the app-shell cache cleanup pattern");
+if (/^zikr-v\d+$/.test(quranAudioCacheName)) failures.push("Quran audio cache must never match the app-shell cache cleanup pattern");
 
 const offlineLibrary = read(offlineLibraryPath);
 const offlineLibraryClient = read(offlineLibraryClientPath);
