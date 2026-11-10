@@ -1,5 +1,44 @@
 # ZIKR Continuous Closeout Ledger
 
+## Checkpoint — 2026-11-10T18:07:16Z (downstream production, media recovery, social profile and release verification)
+
+### Canonical baseline and deployment
+- Repository `zikrofficial-X/Zikr`, branch `main`, commit `ab0bd0e7ad5e5dd2d86250ed0b63ae257dc237b4`.
+- Recursive tree: 2,152 entries, 1,661 files, 491 directories; 100% inventory coverage, 132 documented full source reads, 1,508 files still `REVIEW_REQUIRED`, 0 modules closed.
+- Vercel production deployment `dpl_6CgDFtWmoVaArSRbS5JM3iX8BKzm` is READY on the exact main SHA and aliases `zikrmediaofficial.vercel.app`. The root page responds with version 1.1.15. Git auto-deploy is disabled in `vercel.json`; no production promotion was initiated in this run.
+- Current production error-log window (15 minutes) is empty. A single earlier `fetch failed` event at 17:32 UTC is associated with the previous deployment, not the current READY deployment.
+- Main CI contexts all pass. PR #306 is merged; the offline snapshot workflow run 42868794278 succeeded after the permission-fallback repair.
+
+### Database and security
+- Supabase project `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY. 418/418 migration versions match main; latest `20261110170000`.
+- 92 public tables, all RLS-enabled; 211 public policies; 66 foreign keys; 280 indexes; 0 invalid indexes; 45 public triggers; 40 public functions; 20 SECURITY DEFINER functions. Storage: 9 buckets, 0 objects, 10 object policies. Cron: 4 jobs, 3 active.
+- Security Advisor warning: leaked-password protection disabled. Performance Advisor: 88 unused-index candidates. No auth setting, index, policy or schema was changed.
+- The `content_translation_queue` permission-denied event was produced by the intended anonymous negative-permission check in `scripts/verify-supabase-production.mjs`; it is not an application authorization regression. No actual Supabase 4xx/5xx or Postgres errors were observed in the latest hour.
+
+### Media and video
+- `videos`: 130 rows, 83 published, 47 hidden; 58 verified YouTube fallback rows.
+- Purge audit event `b97b0756-3e4c-4a43-aec8-a42686ab1682` hid 105 catalog records. Applied migration `20261110170000_restore_purge_audit_proven_video_catalog.sql` restored exactly 58 with strict site/social publication, Cloudinary disposal, hash, unique YouTube ID and QA evidence (50 general, 8 Kids). The remaining 47 stay hidden; no broad restoration or deletion occurred.
+- 115 generation requests are completed and 2 cancelled. Of 64 completed requests without direct `video_url`, all 64 match catalog rows by request ID and content hash; no unmatched completed request remains.
+- Kids: 24 video rows, 10 published with Kids QA passed, 14 unpublished. Content library: 26 stories, 35 game entries, 3 quizzes, 1 wudu; separate game catalogue: 13 published games.
+- Standalone Kids written posts are still absent: 0 `written_post` queue rows have audience `kids`. The Kids videos API exposes video-linked social posts only. The 2 published and 9 queued written posts are all audience `unspecified`; do not surface them as Kids content without explicit classification.
+
+### Social and OAuth
+- Queue totals: 83 published, 9 queued, 3 partial, 6 failed. Failed/partial rows remain held because approved source media is missing; no blind retries. Latest publisher run 42870360436 succeeded with one processed item and zero failures.
+- YouTube scopes and sync are healthy; last profile sync 17:44 UTC. Facebook credential is connected with `read_insights` and `pages_read_engagement`; post-level insights last captured 15:40 UTC, but the cached Page profile remains at 2026-11-06. PR #309 adds profile refresh to the analytics-only worker and has passing checks, but awaits CODEOWNERS review.
+- Vercel environment-name audit: 55 visible names plus 2 hidden Production entries; values were never decrypted. Required Supabase, Google, YouTube, Facebook, Cloudinary, Gemini, site and callback names are present. Service-role and GitHub dispatch/release tokens are Production-only. No env mutation occurred.
+
+### Android release and PRs
+- Immutable tag `v1.1.15` points to `faf16ea2450ab22f44c336161cd841806d97bbe6` (Android versionCode 69). Three draft releases share the tag: 440588928 has APK/AAB/SHA256SUMS/metadata; 440692934 and 440708333 are empty. Do not publish or select arbitrarily.
+- PR #307 changes CircleCI to read-only Admin Release verification and makes the publisher reject duplicate release records. PR #309 refreshes Facebook Page metrics; PR #310 clears SSR AdSense state in native shells. All three have CircleCI config-guard/source-verify/application-build-docs passing; #307 and #309 also passed GitHub Quality Gate. All await CODEOWNERS review. PR #308 remains a documentation checkpoint awaiting owner review.
+- No release was published, deleted or retargeted; no APK/AAB was rebuilt; no branch was deleted; no force-push, secret change, OAuth/domain change, destructive migration, production promotion or queue replay occurred.
+
+### Remaining work
+1. Obtain CODEOWNERS review for PRs #307, #309 and #310; preserve the Android duplicate-release block until an owner resolves the two empty drafts.
+2. Implement/validate a dedicated Kids written-post generation/classification/display path; do not reclassify general posts.
+3. Refresh Facebook Page profile metrics via PR #309 after review and verify the live `social_platform_profiles` timestamp.
+4. Complete full source-content reads and consumer tracing; current documented coverage is 132/1,661 and no module is closed.
+5. Review 88 unused-index candidates and leaked-password protection with workload and owner context; do not delete indexes or change Auth settings automatically.
+
 ## Checkpoint — 2026-11-10T17:54:24.231Z (current main baseline, CI repair, and live media reconciliation)
 
 ### Canonical repository and inventory
