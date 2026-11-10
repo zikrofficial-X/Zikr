@@ -1839,7 +1839,7 @@ PR #275 was merged at `035ea4568572eea36c82b79b1e9cd212113e8e32`. Its former 18 
 
 | PR | Scope | Exact-head CI | Remaining gate |
 |---|---|---|---|
-| [#320](https://github.com/zikrofficial-X/Zikr/pull/320) | Reserve one daily source-verified Kids written-post slot when eligible Kids stories exist and no Kids post is already queued/processing/publishing/partial/published that day | Pending after latest audit-document updates | Exact-head Quality Gate/CircleCI and CODEOWNERS review; do not merge while Draft or checks are pending |
+| [#320](https://github.com/zikrofficial-X/Zikr/pull/320) | Reserve one daily source-verified Kids written-post slot when eligible Kids stories exist and no Kids post is already any-status Kids written-post queue row that day | Pending after latest audit-document updates | Exact-head Quality Gate/CircleCI and CODEOWNERS review; do not merge while Draft or checks are pending |
 
 PRs #275, #317, #318 and #319 are merged. No other open PR was present when this checkpoint began.
 
