@@ -230,3 +230,10 @@ The current Vercel Production deployment remains `dpl_9d8LhBw1xDjNfWWcnTkv46sfdV
 - **No module is closed.** Browser/device acceptance, migration replay, current CI, missing-media restoration, and the remaining REVIEW_REQUIRED inventory are still open.
 
 **State: IN PROGRESS — do not mark FINAL BASELINE READY.**
+
+
+### Storage testability refinement — 2026-11-10 13:45 Africa/Cairo
+- Extracted pure storage configuration/path/MIME/TTL logic into `src/lib/services/storage-contract.ts`; the server helper re-exports it and the new test imports the pure module, avoiding a server-only module in the Node test runtime.
+- PR tree: 1,649 files / 491 directories / 2,140 entries. Main baseline remains 1,639 files; full source-content reads 117/1,639; 1,522 REVIEW_REQUIRED; modules closed 0.
+- PR #275 head at this refinement: `241840744a606e42519b7f0e9c9930363651c7e0`, still draft/open/unmerged. CI has to pass on the final head.
+
