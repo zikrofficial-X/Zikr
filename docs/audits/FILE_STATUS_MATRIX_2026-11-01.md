@@ -1,16 +1,16 @@
-# ZIKR file status matrix — refreshed 2026-11-10T16:01:46.704Z
+# ZIKR file status matrix — refreshed 2026-11-10T20:12:00Z
 
-**Baseline:** `main@035ea4568572eea36c82b79b1e9cd212113e8e32`  
-**Manifest:** `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` (recursive Git tree snapshot of this exact main baseline; Git object SHA-1; manifest self-entry excluded)  
-**Inventory:** 2148 tracked entries — 1657 files and 491 directories; 139372949 file bytes; recursive GitHub tree API response not truncated.  
-**Coverage:** automated inventory 1657/1657 main files (100%); minimum documented full source-content reads 129/1657; 1502 files remain `REVIEW_REQUIRED`; modules closed 0. Inventory coverage is not manual review coverage. Dynamic-reference tracing, full consumer analysis, runtime and acceptance remain open.  
-**Merged PR #275:** merge commit `035ea4568572eea36c82b79b1e9cd212113e8e32`; all four main CircleCI contexts pass. Its 18 former PR-only files are now included in the main file table.  
-**Production lag:** Vercel production remains READY on `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; main `035ea4568572eea36c82b79b1e9cd212113e8e32` is not deployed. Production release remains behind the existing manual `RELEASE` gate.  
-**Previous matrix:** 1,631 files. Delta: 27 added paths, 1 removed path, net +26 files.
+**Current baseline:** `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`  
+**Manifest:** `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` (recursive snapshot of this exact main baseline; self-entry excluded; `docs` and `docs/audits` directory hashes are null because they contain the manifest)  
+**Inventory:** 2,154 tracked entries — 1,662 files and 492 directories; 139,748,929 file bytes; recursive GitHub tree response not truncated.  
+**Coverage:** automated inventory 1,662/1,662 main files (100%); minimum previously documented full source-content reads 129/1,662; at least 1,502 older rows remain `REVIEW_REQUIRED`; modules closed 0. Inventory coverage is not manual review coverage.  
+**Current main CI:** CircleCI config-guard, source-verify, application-build-docs and Android release-draft all SUCCESS on this exact SHA.  
+**Production lag:** Vercel production is READY on `6e8010ef95616c01950ff5ef7d6f44b178da5132`; main is ahead by three commits. The existing manual `RELEASE` gate was not dispatched or changed.  
+**Supabase:** 418/418 migration versions match; 92/92 public tables have RLS; 211 public policies; 45 public triggers; 40 public functions; 9 buckets / 0 objects. Security warning: leaked-password protection disabled; Performance Advisor: 86 unused-index candidates; no schema/index/data change performed.  
+**Historical detail:** the original file-by-file table below records the earlier `035ea456` snapshot. The current-main delta at the end revalidates every changed blob and adds all five new files; prior statuses are not carried forward for changed blobs.
+## Historical inventory delta — baseline 035ea456
 
-## Inventory delta
-
-Previous matrix: 1,631 files. Current `main@035ea4568572eea36c82b79b1e9cd212113e8e32`: 1,657 files and 491 directories. Net delta: +26 files (27 added paths, 1 removed path).
+Previous matrix: 1,631 files. Historical `main@035ea4568572eea36c82b79b1e9cd212113e8e32`: 1,657 files and 491 directories. Net delta: +26 files (27 added paths, 1 removed path).
 
 Added paths (27):
 - `docs/audits/ADMIN_CONSOLE_CLOSEOUT_2026-11-10.md`
@@ -1761,14 +1761,84 @@ Removed paths:
 
 PR #275 was merged at `035ea4568572eea36c82b79b1e9cd212113e8e32`. Its former 18 PR-only file rows have been folded into the main file-by-file table above. The historical `REPO_MANIFEST_PR275_2026-11-10.jsonl` is retained as an immutable snapshot of the PR code tree; it is not the current main manifest.
 
-## Pending PRs and acceptance gates
 
-| PR | Scope | Current CI | Remaining gate |
+
+## Current main delta — `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`
+
+- Prior matrix baseline: `035ea4568572eea36c82b79b1e9cd212113e8e32` (1,657 files / 491 directories).
+- Current main: 1,662 files / 492 directories. Delta: 58 existing file blobs changed, 5 new files and 1 new directory, no removed paths.
+- Every changed file is reopened for dependency/reference review; previous pass/fail labels remain historical until the current blob and its consumers are revalidated. No changed file is treated as complete solely because the main CI passed.
+
+| Path | Current Git blob SHA-1 | Bytes | Previous status | Current status | Evidence / reason |
+|---|---|---:|---|---|---|
+| `.circleci/config.yml` | `027eb2a2f43727c14a789635e562b663539cded3` | 37490 | CONTENT_READ_TESTED_PASS | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `.github/workflows/generate-written-content.yml` | `b4353e3b10891aa8440f00e9fb1163abc5cae0e2` | 2263 | CONTENT_READ_PENDING_TRACE | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `.github/workflows/publish-android-release-assets.yml` | `f6ca1f4fc22a78560d98d42e86c176a98967a989` | 25019 | FIXED_PENDING_CI | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `.github/workflows/refresh-offline-content.yml` | `78ad2b348cfc796428445a050e6f9ec7e99d6ec4` | 5279 | FIXED_PENDING_CI | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `.github/workflows/sync-social-insights.yml` | `7666184e66a257e356725d7e852e981cbd599c84` | 2661 | FIXED_PENDING_CI | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `.release-tag` | `95ff739aff957d83ff04cbca41c37db400c84064` | 8 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `android/app/build.gradle` | `883c91dae10cd208a846e41cebcddfcb36111433` | 2271 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | `ee71e55157136fad3999a54ecc18b678db944c57` | 603262 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `docs/MONETAG_SMARTLINK_PLACEMENT.md` | `90eb1e64ef8eb722e4a2263d1a6ac68f004db28a` | 2628 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `ios/App/App.xcodeproj/project.pbxproj` | `6ab930574bf59e49b2cd9c86325b0fa8af6272be` | 17238 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `ios/App/App/Info.plist` | `c133061bf282146ca863baf3491a26a66654cc6f` | 2277 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `mobile/README.md` | `68a01dad1d4cf9433d03b2aa22d109e9823a700c` | 2884 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `package.json` | `883dbb85ced034deeefd8cce663237bfd185be0e` | 15685 | TEST_UPDATED_PENDING_CI | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `PROJECT_STATUS.md` | `74e589178e0c4626929ad9a2f6d07a4aa8a34fbe` | 61344 | AUDIT_CHECKPOINT_RECORDED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `public/offline-content/v1/articles.json` | `20ce2171d4b674e9a72feab8dd890004ec89177d` | 1019809 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `public/offline-content/v1/hadith.json` | `d9392f2cb440909a9d6ea18d90a90a435213cae0` | 12029568 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `public/offline-content/v1/manifest.json` | `c41da1e111817c55ad41faed87f6ded0948a2927` | 11323 | REVIEWED_REFRESH_PR_280_PENDING_CI | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `public/offline-content/v1/tafsir.json` | `16795025f2284efed9031352b2b504146ad9d136` | 4685593 | REVIEWED_REFRESH_PR_280_PENDING_CI | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `public/sw.js` | `2ac100651b6cf8f616ee3778ff1615d295f75b66` | 17819 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/export-offline-content.mjs` | `c54e3811718cc8b3cc2f9796d973659acc7a3d3e` | 8452 | REVIEWED_REFRESH_PR_280_PENDING_CI | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/jobs/social-publishing.ts` | `1d5ee61fdedd984664f928a922f5efe67ab01292` | 4897 | CONTENT_READ_PENDING_TRACE | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/jobs/template-video-automation.ts` | `070cd0ba9bbe3178ace61366269b5b4792500df0` | 116353 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/jobs/written-content-automation.ts` | `8fd0731b694dcf06763cfebb19c7584dcc2c78d3` | 21667 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/run-background-jobs.ts` | `cf5d4eb859a0f6e0e1a5e851edf404d20fb16fd0` | 18072 | CONTENT_READ_PENDING_TRACE | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/tests/video-purge-contract.test.mjs` | `24e2c766ef0a12081519bf824c5fb0b4b3a5c46e` | 8790 | TEST_UPDATED_PR_281_PENDING_OWNER_REVIEW | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/tests/written-content-automation.test.ts` | `a383b5ed8e95b8b10280c1d54371bff819fd1af4` | 10199 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-adsense-readiness.mjs` | `75dbf8d935ad4b659f36684f05ba9766d488022a` | 8911 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-ci-architecture.mjs` | `014c94c3242c7cedbcc35babfc24b9f5e615c388` | 28794 | FIXED_PENDING_CI | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-consent-mode.mjs` | `83347233532a4c2b7cefbc8645223c376678b7e9` | 2287 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-content-integrity.mjs` | `872fb57f2d9b81ccb6839206c9a0c20605dddc26` | 1234 | REVIEWED_SCOPE_EXPANSION_PR_283_PENDING_CI | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-generated-supabase-types.mjs` | `8afbf4e776ad367d3ff7afc8f21053fddbd0b38d` | 2461 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-google-search-console.mjs` | `539d378443c0ce793ad8f54059443a39f690461c` | 4453 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-mobile-readiness.mjs` | `f9bc60a3042007f1d55aa096a1c3b7a365b4b500` | 11952 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-offline-content.mjs` | `0aa68c8b31ee3ec2b12e9ae40d0b0e761895d144` | 12111 | REVIEWED_REFRESH_PR_280_PENDING_CI | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-project-integrity.mjs` | `81caa7bedee5a9476cfedb2d147c87eed7e09c5d` | 16840 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-quran-offline.mjs` | `d49891821670ad063a57adcddd6ca461c223261c` | 2625 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-release-contract.mjs` | `bc029c0f466f1581e6b75f7a6f05d33049155705` | 28311 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-social-publishing.mjs` | `e0bf3da99752cfa44643029a8f3e0dcce4939fee` | 18167 | REVIEWED_FIX_PR_278_PENDING_PREVIEW | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-video-queue-priority.mjs` | `87231cdc01bbb613fa79149944198fdf26f354cc` | 2846 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/app/admin/prophets/page.tsx` | `a8f0470685e8cf4d34c278370362c79d391ca4dc` | 10305 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/app/admin/social/written-studio/written-studio-client.tsx` | `cdc0afcb169789b2bf8cbc1fbdc84019f73c27c9` | 14630 | CONTENT_READ_PENDING_TRACE | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/app/api/admin/social/written/route.ts` | `da2edf06f87a6688cf7725732153cd1ea845aeef` | 4154 | CONTENT_READ_PENDING_TRACE | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/app/api/admin/video-purge/route.ts` | `836407cb21a0cf83dde203ff7534bc05853bb899` | 26284 | REVIEWED_FIX_PR_281_PENDING_OWNER_REVIEW | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/app/kids/page.tsx` | `529c1733783e48d004ca4e160e584bce3d94ad3e` | 26978 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/app/layout.tsx` | `bc79d6ee5b79add67f4b017811619e094f49585d` | 8282 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/components/layout/footer.tsx` | `5e56ab8189228eefdb4bc869704354e2c8941384` | 9491 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/components/layout/service-worker-register.tsx` | `7410258270ae9da2317a0a9c5f1c28018037913c` | 6675 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/components/smartlink-promo.tsx` | `3a5c6ada7d5b9628c3873fbbb4b8a4abf8d5ee8a` | 2722 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/features/admin/components/purge-generated-videos-control.tsx` | `35830b67241880e37d2a8ea3e93d5e33ef7cb914` | 12148 | REVIEWED_FIX_PR_281_PENDING_OWNER_REVIEW | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/features/quran/services/quran-server.ts` | `fd89af40cf84dd844f354879e6c9937ff03c0c9f` | 17041 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/features/social/integrations/facebook.ts` | `57f6fc02e5886c2fd7ef46083cea8cc2e648fdb6` | 8620 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/features/social/services/facebook-public-posts.ts` | `791b72cc852d20add76f6b81a091d76538007bad` | 4100 | REVIEWED_FIX_PR_278_PENDING_PREVIEW | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/features/social/services/written-content.ts` | `179cceeda212667f4f37f91dc5075061ee150b8a` | 8712 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/lib/types/supabase.ts` | `564d2d6220c4d83097a25e8de02f0c4f1bd19c58` | 142964 | CONTENT_READ_PENDING_TRACE | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` | 99259 | AUDIT_CHECKPOINT_RECORDED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` | `ca147f925347d22f48f333c435822de0e2cb8daa` | 311107 | MANIFEST_CAPTURED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/tests/purged-video-catalog-recovery.test.mjs` | `aa70777e5452a8f03c89ccc1a1111a3e959ea064` | 6003 | TESTED_PASS | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/tests/video-duplicate-recovery.test.ts` | `10edcac912a213bcf96275199afa9b695cd18a11` | 11908 | TESTED_PASS | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `docs/releases/1.1.15.md` | `ee5666490b8f3c180a642054b955c5a81fa21655` | 1956 | NEW | REVIEW_REQUIRED | Candidate release notes only; no v1.1.15 tag/assets verified. |
+| `scripts/verify-mobile-ads-free.mjs` | `41afead16ccc1ddcf86559d4b13b109977bb3deb` | 5116 | NEW | CONTENT_READ_TESTED_PASS | Read in this run; main source-verify includes mobile:check and passed. |
+| `src/app/api/kids/social-posts/route.ts` | `cf792bcf62907a8e390a80aaff6a46391c210cc7` | 2703 | NEW | CONTENT_READ_TESTED_PENDING_LIVE_ACCEPTANCE | Source and contract test read; production API returns [], with no Kids written-post rows. |
+| `src/components/layout/web-advertising-runtime.tsx` | `5069c82f8ecb7452584d9f47f93ed7512333d1e3` | 3699 | NEW | CONTENT_READ_TESTED_PASS | Read in this run; mobile:check on current main passed. |
+| `supabase/migrations/20261110170000_restore_purge_audit_proven_video_catalog.sql` | `21b9a1ed66f27fcebeae67b68c99a5d4cc7be4c9` | 9319 | NEW | APPLIED_LIVE_VERIFIED | 418/418 migration versions; live recovery provenance confirms 50 general + 8 Kids rows. |
+
+### Current open repair PRs
+
+| PR | Scope | Exact-head CI | Remaining gate |
 |---|---|---|---|
-| #278 | Optional Facebook public feed skips private queue reads when Preview/Development lacks the service-role key | CircleCI config-guard, source-verify and application-build-docs SUCCESS | Vercel Preview for exact head and owner review |
-| #279 | Native Capacitor advertising exclusion; candidate Android version 1.1.15 / versionCode 69 | config-guard SUCCESS; other contexts not yet complete | source/build CI, Vercel Preview, owner review, then separate release gate |
-| #280 | Offline snapshot refresh (25 datasets) and manifest source/stale consistency | config-guard SUCCESS; source/build pending | complete Quality Gate and owner review; all 25 live dataset counts currently match |
-| #281 | Purge-audit-proven restoration of 58 prior public videos (50 general, 8 Kids), plus precise admin purge reporting | CircleCI config-guard, source-verify and application-build-docs SUCCESS | owner review, Vercel Preview, and manual production RELEASE gate before migration |
-| #283 | Expand content integrity scan to content/public/supabase and SQL | config-guard SUCCESS; source/build pending | complete Quality Gate and owner review |
+| [#320](https://github.com/zikrofficial-X/Zikr/pull/320) | Reserve one daily source-verified Kids written-post slot when eligible Kids stories exist and no Kids post is already queued/partial/published that day | Pending after latest audit-document updates | Exact-head Quality Gate/CircleCI and CODEOWNERS review; do not merge while Draft or checks are pending |
 
-`CODEOWNERS` assigns all files to `@Zikrmediaofficial`. No reviewer request is currently registered. Do not bypass owner review or the manual production release gate. PRs #276 and #277 were closed as superseded; their implemented work is already present on main or carried forward into newer PRs.
+PRs #275, #317, #318 and #319 are merged. No other open PR was present when this checkpoint began.
