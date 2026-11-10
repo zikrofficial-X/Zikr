@@ -12,6 +12,13 @@ assert.equal(resolveAdminRole("admin", "__proto__"), "user", "inherited object k
 assert.equal(resolveAdminRole("user", "content_manager"), "user", "delegated assignments cannot override a non-admin profile flag");
 assert.equal(resolveAdminRole("user", null), "user");
 
+const adminPredicateGrantMigration = readFileSync("supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql", "utf8");
+assert.match(
+  adminPredicateGrantMigration,
+  /REVOKE EXECUTE ON FUNCTION public\\.is_admin_user\\(\\) FROM anon;/,
+  "anonymous clients must not retain EXECUTE on the public admin compatibility wrapper",
+);
+
 const adminService = readFileSync("src/features/admin/services/admin.ts", "utf8");
 const profileService = readFileSync("src/features/profile/services/profile.ts", "utf8");
 assert.match(adminService, /error: assignmentError/, "the assignment query error must be captured");
