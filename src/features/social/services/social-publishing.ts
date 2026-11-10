@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
-import { publishToFacebook, publishToYoutube } from "@/features/videos/services/video-automation";
+import { publishFacebookReelWithIds, publishToFacebook, publishToYoutube } from "@/features/videos/services/video-automation";
 import { getServerEnv } from "@/lib/env";
 import { getYouTubeRefreshToken } from "@/features/social/services/youtube-oauth-credentials";
 import { getFacebookPageCredentials } from "@/features/social/services/facebook-credentials";
@@ -36,6 +36,7 @@ type PlatformResult = {
   platform: SocialPlatform;
   ok: boolean;
   remoteId?: string | null;
+  videoId?: string;
   error?: string;
   approvalBlocked?: boolean;
 };
@@ -357,7 +358,7 @@ async function publishFacebookPost(item: SocialPublishQueueItem): Promise<string
 async function publishFacebookVideoItem(
   item: SocialPublishQueueItem,
   asReel: boolean
-): Promise<string | null> {
+): Promise<string | { remoteId: string; videoId?: string } | null> {
   const credentials = await getFacebookPageCredentials();
   if (!credentials.isEnabled) {
     throw new Error("Facebook publishing is disabled. Connect and enable the Page from the admin publishing center.");
@@ -375,16 +376,14 @@ async function publishFacebookVideoItem(
     // Do not add an external advertising link when the audience cannot be verified.
     console.warn("[social-publishing] SmartLink omitted because video audience could not be verified:", item.id, error);
   }
-  return publishToFacebook(
-    item.id,
-    {
-      title: item.title,
-      description: appendSmartLinkDisclosure(item.body ?? "", !kidsAudience),
-    },
-    mediaUrl,
-    credentials.pageId,
-    asReel
-  );
+  const metadata = {
+    title: item.title,
+    description: appendSmartLinkDisclosure(item.body ?? "", !kidsAudience),
+  };
+  if (asReel) {
+    return publishFacebookReelWithIds(item.id, metadata, mediaUrl, credentials.pageId);
+  }
+  return publishToFacebook(item.id, metadata, mediaUrl, credentials.pageId, false);
 }
 
 async function getYouTubeVideoDisclosure(item: SocialPublishQueueItem): Promise<{
@@ -460,7 +459,7 @@ async function publishPlatform(
     if (!(await hasVideoApprovalForQueueItem(item))) {
       return { platform, ok: false, approvalBlocked: true, error: "Video held because automated QA is missing, incomplete or stale." };
     }
-    const remoteId =
+    const publication =
       platform === "facebook"
         ? item.video_url
           ? await publishFacebookVideoItem(item, false)
@@ -468,6 +467,14 @@ async function publishPlatform(
         : platform === "facebook_reels"
           ? await publishFacebookVideoItem(item, true)
           : await publishYoutubeItem(item);
+    const remoteId = typeof publication === "string"
+      ? publication
+      : publication && typeof publication === "object"
+        ? publication.remoteId
+        : null;
+    const videoId = publication && typeof publication === "object" && "videoId" in publication
+      ? publication.videoId
+      : undefined;
 
     if (!remoteId) {
       throw new Error(
@@ -475,7 +482,7 @@ async function publishPlatform(
       );
     }
 
-    return { platform, ok: true, remoteId };
+    return { platform, ok: true, remoteId, ...(videoId ? { videoId } : {}) };
   } catch (error) {
     return {
       platform,
