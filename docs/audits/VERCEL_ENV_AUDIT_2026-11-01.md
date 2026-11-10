@@ -15,7 +15,7 @@ Secret values were not retrieved or printed.
 | Variable(s) | Reason | Scope |
 |---|---|---|
 | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | Android signing secrets are owned by CircleCI's protected `android-signing` context; they are not needed by the web runtime. | Development, Preview, Production |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Obsolete app variables; validator rejects them. Google login is configured in Supabase Auth. | Development, Preview, Production |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Server-only GA4 OAuth client credentials, not Google sign-in. GA4 also requires `GA4_REFRESH_TOKEN` and `GA4_PROPERTY_ID`. | Development, Preview, Production |
 | `VIDEO_AUTO_PUBLISH` | Explicitly classified as stale by `scripts/verify-hygiene.mjs`; no active runtime reader found. | Development, Preview, Production |
 | `SOCIAL_SYNC_SECRET` | Only legacy migration/backfill documentation references remain; not part of the current GitHub social publisher contract. | Development, Preview, Production |
 | `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`, `POSTGRES_HOST`, `POSTGRES_DATABASE`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Direct Postgres values are not used by the Next.js application. The release workflows use GitHub secrets separately. | Development, Preview, Production |
@@ -42,3 +42,8 @@ The connected Vercel action set supports listing, reading, creating, and editing
 - Canonical runtime values were read back from Vercel and matched the production contract.
 - All cleanup candidates were cross-checked against repository source searches.
 - No Vercel environment variable was edited or deleted in this pass.
+
+
+## Correction — 2026-11-10
+
+The application reads `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `src/features/admin/services/traffic-revenue.ts` for server-side GA4 OAuth. They are not obsolete Google sign-in variables. The current Vercel inventory contains those two names but does not contain `GA4_REFRESH_TOKEN` or `GA4_PROPERTY_ID`, so GA4 reporting is not configured. Google sign-in remains configured in Supabase Auth and uses `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` for the public client. No environment values were read or changed.

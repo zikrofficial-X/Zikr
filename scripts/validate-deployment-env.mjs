@@ -48,6 +48,10 @@ const OPTIONAL = [
   "GITHUB_TOKEN",
   "NEXT_PUBLIC_GA_MEASUREMENT_ID",
   "NEXT_PUBLIC_GTM_ID",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+  "GA4_REFRESH_TOKEN",
+  "GA4_PROPERTY_ID",
   "NEXT_PUBLIC_ADSENSE_CLIENT",
   "NEXT_PUBLIC_KIDS_ANALYTICS_ENABLED",
   "QURAN_VIDEO_RECITER_CODE",
@@ -113,11 +117,11 @@ if (env("FACEBOOK_GRAPH_API_VERSION") && !/^v\d+\.\d+$/.test(env("FACEBOOK_GRAPH
   add("fail", "FACEBOOK_GRAPH_API_VERSION", "must match vNN.N");
 }
 
-if (env("GOOGLE_CLIENT_ID") || env("GOOGLE_CLIENT_SECRET") || env("NEXT_PUBLIC_GOOGLE_CLIENT_ID")) {
+if (env("NEXT_PUBLIC_GOOGLE_CLIENT_ID")) {
   add(
     "fail",
-    "Google Auth credential isolation",
-    "GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET/NEXT_PUBLIC_GOOGLE_CLIENT_ID are obsolete application variables; Google login is configured in Supabase Auth and YouTube uses YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET",
+    "Legacy public Google client variable",
+    "NEXT_PUBLIC_GOOGLE_CLIENT_ID is obsolete; Google sign-in is configured in Supabase Auth and the public web/native client uses NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID. Server-side GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET are reserved for optional GA4 reporting.",
   );
 }
 if (env("DATABASE_URL") || env("POSTGRES_URL") || env("POSTGRES_PRISMA_URL") || env("POSTGRES_URL_NON_POOLING")) {
