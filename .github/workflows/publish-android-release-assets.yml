@@ -115,8 +115,17 @@ jobs:
           for attempt in $(seq 1 30); do
             RELEASES_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" 2>/dev/null || true)"
             if [[ -n "$RELEASES_JSON" ]]; then
-              RELEASE_JSON="$(jq -c --arg tag "$TAG" '[.[] | select(.tag_name == $tag)] | .[0] | if . == null then empty else {id: .id, isDraft: .draft, assets: .assets} end' <<< "$RELEASES_JSON" 2>/dev/null || true)"
-              if [[ -n "$RELEASE_JSON" ]]; then
+              MATCH_COUNT="$(jq -r --arg tag "$TAG" '[.[] | select(.tag_name == $tag)] | length' <<< "$RELEASES_JSON" 2>/dev/null || printf '0')"
+              if [[ ! "$MATCH_COUNT" =~ ^[0-9]+$ ]]; then
+                echo "::error title=Invalid Android release list::Could not count release records for \${TAG}." >&2
+                exit 1
+              fi
+              if (( MATCH_COUNT > 1 )); then
+                echo "::error title=Ambiguous Android release draft::Found \${MATCH_COUNT} GitHub releases for \${TAG}. Resolve duplicate release records before publishing; no release was modified." >&2
+                exit 1
+              fi
+              if (( MATCH_COUNT == 1 )); then
+                RELEASE_JSON="$(jq -c --arg tag "$TAG" '[.[] | select(.tag_name == $tag)] | .[0] | {id: .id, isDraft: .draft, assets: .assets}' <<< "$RELEASES_JSON")"
                 break
               fi
             fi
