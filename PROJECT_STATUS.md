@@ -419,3 +419,11 @@ No files or production data were deleted in this checkpoint. No Cloudinary asset
 ### Acceptance and safety gates
 - Full browser/device acceptance, every route journey, authenticated positive-case Kids feed, all admin roles, Android/iOS runtime, and complete source review remain open. The Preview has no production service-role key, while production has no Kids written-post queue row to display; a positive live feed cannot yet be verified without creating real content.
 - No production deployment, social post, media purge, user-data deletion, schema deletion, index deletion, secret read, or Android release was performed. No module is marked closed.
+
+
+## Follow-up evidence — 2026-11-10T20:16:00Z
+
+- PR #320 was open, Draft, mergeable, with 11 commits and 7 changed files at branch head `c364aa014d8caf1344378666fe1a8f5bbcf1553f`. At that head CircleCI `config-guard` had passed and the GitHub Quality Gate was still in progress. Subsequent audit-document commits require checking the new exact head; no merge was attempted.
+- The Kids daily-slot guard now counts queue states `queued`, `processing`, `publishing`, `partial`, and `published`, so an in-flight post consumes the day's Kids slot and cannot trigger a second one. The pure helper tests and static worker assertions cover the rule. The generator remains undispatched.
+- Supabase unified edge logs for `2026-11-10 19:50:30–19:52:30 UTC` contain **391 requests, all HTTP 200**. The `/rest/v1/articles` request at 19:51:46 also returned 200. No PostgREST 5xx appears in that interval, despite Vercel recording a `write ETIMEDOUT` at 19:51:46. This narrows the incident to a transient Vercel-to-upstream transport failure or another outbound request, but does not prove the exact caller; no retry policy or application code was changed without a reproducible failure.
+- Supabase pooler `server idle timeout` entries are normal idle connection closures, not database faults. The SQL errors from the audit session itself were caused by an invalid diagnostic query referencing a nonexistent `social_sync_jobs.error_message` column; they are not application failures and are not counted as product defects.
