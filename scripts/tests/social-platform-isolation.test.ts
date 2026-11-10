@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getUnavailableSocialPlatforms } from "../../src/features/social/services/platform-availability";
+import { buildFacebookQueueRecoveryPatch } from "../../src/features/social/services/facebook-queue-recovery-policy";
 
 const both = getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true", SOCIAL_PUBLISH_YOUTUBE_ENABLED: "true" });
 assert.deepEqual(both, ["facebook", "facebook_reels", "youtube"]);
@@ -51,3 +52,55 @@ const legacyFacebookAuthBlock = { authBlocked: true, attempts: 5 };
 assert.equal(canAttemptSocialPlatform({ platform: "facebook", enabledPlatforms: both, metadata: legacyFacebookAuthBlock, maxAttempts: 5 }), false, "legacy Facebook auth block must continue holding Facebook");
 assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: legacyFacebookAuthBlock, maxAttempts: 5 }), true, "legacy Facebook auth block must not block YouTube");
 assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: { platformResults: { facebook: { ok: false, error: "Facebook access token expired" } }, platformAttempts: { facebook: 5 } }, maxAttempts: 5 }), true, "a Facebook-only result must not block a fresh YouTube target");
+
+
+const facebookRecovery = buildFacebookQueueRecoveryPatch(
+  {
+    authBlocked: true,
+    authBlockedPlatforms: ["facebook"],
+    permanentFailure: true,
+    permanentFailurePlatforms: ["facebook_reels"],
+    attempts: 7,
+    platformResults: {
+      facebook: { ok: false, error: "Facebook access token expired" },
+      facebook_reels: { ok: false, error: "HTTP 422 media source unavailable" },
+      youtube: { ok: true, remoteId: "youtube-remote-1" },
+    },
+    platformAttempts: { facebook: 4, facebook_reels: 4, youtube: 1 },
+  },
+  ["facebook", "facebook_reels", "youtube"],
+  "2026-11-10T10:00:00.000Z",
+);
+assert.ok(facebookRecovery, "an auth-blocked Facebook target must produce a recovery patch");
+assert.equal(facebookRecovery.metadata.authBlocked, false);
+assert.deepEqual(facebookRecovery.metadata.authBlockedPlatforms, []);
+assert.equal(facebookRecovery.metadata.permanentFailure, true);
+assert.deepEqual(facebookRecovery.metadata.permanentFailurePlatforms, ["facebook_reels"]);
+assert.equal(
+  (facebookRecovery.metadata.platformResults as Record<string, unknown>).facebook,
+  undefined,
+  "only the reauthorized Facebook target result is cleared",
+);
+assert.deepEqual(
+  (facebookRecovery.metadata.platformResults as Record<string, unknown>).facebook_reels,
+  { ok: false, error: "HTTP 422 media source unavailable" },
+  "a separate permanent Reels failure must not be reset by Facebook Page reauthorization",
+);
+assert.deepEqual(
+  (facebookRecovery.metadata.platformResults as Record<string, unknown>).youtube,
+  { ok: true, remoteId: "youtube-remote-1" },
+  "a successful YouTube result must remain untouched",
+);
+assert.deepEqual(facebookRecovery.metadata.platformAttempts, { facebook: 0, facebook_reels: 4, youtube: 1 });
+assert.equal(facebookRecovery.metadata.attempts, 7, "reauthorization must not reset the overall retry history");
+
+const legacyFacebookRecovery = buildFacebookQueueRecoveryPatch(
+  { authBlocked: true, platformAttempts: { facebook: 5, facebook_reels: 5 } },
+  ["facebook", "facebook_reels"],
+  "2026-11-10T10:00:00.000Z",
+);
+assert.deepEqual(
+  legacyFacebookRecovery?.metadata.platformAttempts,
+  { facebook: 0, facebook_reels: 0 },
+  "legacy global Facebook auth blocks must still release both Facebook targets",
+);
