@@ -77,6 +77,8 @@ assert.ok(
   adminAction.indexOf("const quizData = parseKidsQuizData(value(formData, \"quiz_data\"));") < imageUploadPosition,
   "invalid quiz JSON must be rejected before uploading an image",
 );
+const quizRequiredPosition = adminAction.indexOf("if (type === \"quiz\" && !quizData)");
+assert.ok(quizRequiredPosition > 0 && quizRequiredPosition < imageUploadPosition, "a quiz record must require a valid non-empty question set before media upload");
 assert.ok(
   adminAction.indexOf("if (type === \"game\" && !isRegisteredGameId(gameId))") < imageUploadPosition,
   "an invalid game registry ID must be rejected before uploading an image",
