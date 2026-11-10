@@ -1,5 +1,63 @@
 # ZIKR Continuous Closeout Ledger
 
+## Checkpoint — 2026-11-10T17:54:24.231Z (current main baseline, CI repair, and live media reconciliation)
+
+### Canonical repository and inventory
+
+- Canonical repository: `zikrofficial-X/Zikr`; branch `main`; baseline `ab0bd0e7ad5e5dd2d86250ed0b63ae257dc237b4`.
+- Recursive Git tree: 2152 entries, 1661 blobs, 491 trees, 139706706 file bytes; response not truncated. Previous baseline `035ea4568572eea36c82b79b1e9cd212113e8e32` had 1657 files. Delta: 4 added files, 37 modified existing blobs, 0 removed files.
+- Refreshed manifest: `docs/audits/REPO_MANIFEST_2026-11-10.jsonl`; refreshed matrix: `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md`. Automated inventory 1661/1661; documented full source reads 132/1661; 1508 files remain `REVIEW_REQUIRED`; modules closed 0. Ignored/untracked runtime files remain outside the Git tree API.
+- Added files: `docs/releases/1.1.15.md`, `scripts/verify-mobile-ads-free.mjs`, `src/components/layout/web-advertising-runtime.tsx`, `supabase/migrations/20261110170000_restore_purge_audit_proven_video_catalog.sql`. No tracked files were removed.
+
+### GitHub and CI
+
+- Main CI for `ab0bd0e7ad5e5dd2d86250ed0b63ae257dc237b4`: CircleCI config-guard, source-verify, application-build-docs and android-release-draft all SUCCESS; Vercel check SUCCESS.
+- PR #306 fixes the offline snapshot workflow when repository policy blocks automated PR creation. Two branch filters were over-escaped and prevented source/build jobs from matching the branch; both were corrected in `07e0a6ffa891cce8d8c24b5b595b9d33367c1199`. Exact-head config-guard, source-verify, application-build-docs and GitHub Quality Gate now all SUCCESS.
+- PR #306 remains open because `.github/CODEOWNERS` assigns the CI/workflow paths and repository-wide default to `@Zikrmediaofficial`. A reviewer request returned no registered reviewer. No merge or policy bypass was performed.
+- PR #304 was closed as superseded; its offline manifest and immutable Android release-contract changes are already on main. PR #275, #279, #280 and #281 are merged. PR #278 and #283 are closed without merge; current main contains the optional Facebook feed credential guard and expanded content-integrity scan across `src`, `content`, `public`, and `supabase` including SQL.
+- Offline snapshot workflow run 42864006464 succeeded after run 42863154825 failed. The workflow warns and continues if automated PR creation is blocked after validating and pushing the stable snapshot branch; the Quality Gate dispatch remains explicit.
+
+### Vercel production
+
+- Vercel team `zikr3` (Hobby), project `zikr` (`prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`) is linked to `zikrofficial-X/Zikr`.
+- Latest production deployment `dpl_4ZyKHwS2rStF3MDURJ3E2rLxDM7h` is READY on `faf16ea2450ab22f44c336161cd841806d97bbe6`, alias `zikrmediaofficial.vercel.app`. Main is one commit ahead, but that commit changes only CircleCI/release-contract logic; app source remains at the deployed SHA. No production deployment was triggered.
+- `/api/health`, `/`, `/videos`, `/kids`, and `/hadith` returned HTTP 200. Health reported `ok=true`, `environment=production`, commit `faf16ea...`.
+- Runtime errors: 8 intermittent `fetch failed` events in the last 24 hours, latest 17:32 UTC on the current deployment; causes are `ETIMEDOUT` and `UND_ERR_SOCKET`, routes include home, Hadith and admin automation/analytics. Trace lookup returned not-found, so the failing upstream call remains unproven. Two missing-service-role errors were on historical Preview deployment `dpl_9jg1eFabED8NUuv7jEcFVbQRdAFY` (commit `632be78...`), not current production.
+
+### Supabase live state
+
+- Project `zqtssvlvmkzeeyqghqfk`: ACTIVE_HEALTHY. Live migration ledger 418, latest `20261110170000`; main contains 418 migration files. No migration was executed by this run.
+- Public schema: 92 tables, all 92 RLS-enabled; 211 policies; 53 triggers; 40 public functions; 20 SECURITY DEFINER functions with 0 unpinned search_path. Storage: 9 buckets, 0 objects, 10 storage-object policies.
+- Cron: history cleanup, prayer push and source-verified content agent active; legacy YouTube/Facebook sync inactive. No cron mutation performed.
+
+### Video and social reconciliation
+
+- `videos`: 130 rows (83 published, 47 hidden). `video_generation_requests`: 117 rows (115 completed, 2 cancelled); 64 completed requests have no `video_url`. A read-only join proves all 64 match a catalog row by `metadata.videoGenerationRequestId` and `contentHash`.
+- All 64 have a `mediaRecovery` record and retired Cloudinary master marker. Exactly 58 are marked as previously published and currently restored; 6 remain hidden. The media contract only exposes YouTube fallback when the stored fallback flag, ID and canonical URL match; purged Cloudinary URLs are rejected. This is catalog/playback fallback, not restoration of the original master.
+- Cloudinary currently lists 11 `auto-*` assets created after the purge window; they are new renders, not proof that any of the 64 original masters was restored. No Cloudinary upload, deletion or backup restore was performed.
+- `social_publish_queue`: 82 published, 9 queued, 4 partial, 6 failed. Six failed and three partial records say the approved source video is missing from Cloudinary. Four partial rows target YouTube + Facebook Reels; six failed rows target Facebook Reels; nine queued rows are Facebook written posts. No replay or external publication was triggered.
+- `content_publish_queue`: 124 published.
+
+### Android release state
+
+- `v1.1.15` is still a draft. Annotated tag `v1.1.15` points to immutable commit `faf16ea2450ab22f44c336161cd841806d97bbe6`. Draft release 440588928 contains APK (41,498,367 bytes, SHA-256 `90140be1f44e81d9d93011e8c78c882c6e045ba35e61495077039b7e1e6faee9`), AAB (36,312,681 bytes, SHA-256 `ec611f1e3b643c0c80349ae6b3a41602950e92cf32f28a9e3d0ccbb7dbb15f1f`), release metadata and SHA256SUMS. A second empty draft release 440692934 exists for the same tag. No draft was published/deleted; v1.1.14 remains the latest published release.
+- Main Android release-draft CI passed; no new APK/AAB was created by this run.
+
+### Files read and actions taken
+
+- Full file bodies read this run: `.github/workflows/refresh-offline-content.yml`, `src/features/social/services/facebook-public-posts.ts`, `src/features/videos/services/video-media-contract.ts`, `src/features/social/services/published-video-cleanup.ts`, and `scripts/verify-content-integrity.mjs`. These are recorded as `CONTENT_READ_PENDING_TRACE` or `CONTENT_READ_TESTED_PASS`; no module is closed from a source read alone.
+- Fixed two malformed CircleCI regex filters on PR #306; exact-head CI now passes.
+- Closed duplicate PR #304 as superseded; added validation comments to PR #306.
+- Files deleted: 0. Production migrations/data changes: 0. Storage object/bucket changes: 0. Cloudinary mutations: 0. Social posts/retries: 0. Production deployments: 0. Public release publications: 0.
+
+### Open blockers and next work
+
+1. Exact source-media recovery for 64 retired Cloudinary masters is not proven; do not substitute unrelated new renders or blindly republish. Preserve 58 verified YouTube fallbacks and keep 6 rows hidden.
+2. Reconcile the 9 blocked social queue rows only after exact original media is recovered and per-platform provider IDs are checked.
+3. Obtain the required CODEOWNERS review for PR #306; do not bypass repository review policy.
+4. Trace the 8 current-production transport failures to their exact upstream/caller when trace/log detail is available; do not change retry policy speculatively.
+5. Resolve the duplicate empty v1.1.15 draft only after confirming release ownership; do not publish or delete it automatically.
+6. Complete authenticated owner-scoped Storage session acceptance, all remaining source/dependency tracing, exhaustive route/browser/device acceptance, and every `REVIEW_REQUIRED` file before declaring a module closed.
 
 ## Checkpoint — 2026-11-10T16:01:46.706Z (main merge, live database reconciliation, and active repair PRs)
 
