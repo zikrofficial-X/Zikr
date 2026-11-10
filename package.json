@@ -25,7 +25,7 @@
     "mobile:android:debug": "pnpm mobile:sync && cd android && ./gradlew assembleDebug",
     "mobile:android:release": "pnpm mobile:sync && cd android && ./gradlew bundleRelease",
     "mobile:ios:open": "pnpm mobile:sync && pnpm exec cap open ios",
-    "mobile:check": "node scripts/verify-mobile-readiness.mjs",
+    "mobile:check": "node scripts/verify-mobile-readiness.mjs && node scripts/verify-mobile-ads-free.mjs",
     "verify-mobile-readiness": "node scripts/verify-mobile-readiness.mjs",
     "offline:check": "node scripts/verify-offline-content.mjs",
     "project:check": "node scripts/verify-project-integrity.mjs",
