@@ -668,6 +668,8 @@ workflows:
             branches:
               only:
                 - main
+                - /^audit\/continuous-closeout$/
+                - /^audit\/continuous-closeout$/
                 - /^android-release-v[0-9]+\.[0-9]+\.[0-9]+$/
                 - /^feat\/autonomous-video-qa-publishing-20261107$/
                 - /^fix\/video-worker-partial-success-and-kids-validation-20261107$/
