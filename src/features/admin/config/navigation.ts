@@ -88,11 +88,19 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     label: "الوسائط والصوت",
     icon: "folder-open",
     items: [
+      { href: "/admin/media", label: "مكتبة الوسائط", permission: "media.manage", icon: "image" },
       { href: "/admin/audio", label: "مركز الصوت", permission: "audio.manage", icon: "volume-2" },
       { href: "/admin/audio/quran", label: "تلاوات القرآن", permission: "audio.manage", icon: "headphones" },
       { href: "/admin/audio/adhan", label: "الأذان", permission: "audio.manage", icon: "radio" },
       { href: "/admin/audio/tts", label: "تحويل النص إلى صوت", permission: "audio.manage", icon: "mic-2" },
       { href: "/admin/site-audio", label: "صوت الموقع والتذكيرات", permission: "audio.manage", icon: "bell" },
+    ],
+  },
+  {
+    key: "social-publishing",
+    label: "النشر والتواصل الاجتماعي",
+    icon: "send",
+    items: [
       { href: "/admin/social", label: "مركز النشر الاجتماعي", permission: "social.manage", icon: "send" },
     ],
   },
