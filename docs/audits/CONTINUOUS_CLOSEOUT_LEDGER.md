@@ -232,3 +232,41 @@ Read-only SQL against the active project returned:
 - **Progress:** inventory 1,639 files / 491 directories; full source-content evidence remains 92/1,639; 1547 REVIEW_REQUIRED; modules closed 0. New helper/test files in this PR are supplemental and do not alter the main-baseline manifest until merged.
 
 **State: IN PROGRESS.**
+
+
+## Additional checkpoint — 2026-11-10 13:45 Africa/Cairo
+
+### Source of truth and progress
+- Re-resolved Vercel project `zikr` under team `team_RxPjmgZoSFmKGjScefYmwIVv`; it is linked to `zikrofficial-X/Zikr`. The connected Supabase project is `zqtssvlvmkzeeyqghqfk`, matching the repository configuration and production environment metadata.
+- Main baseline remains `main@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`. Production deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` is READY on that SHA with the `zikrmediaofficial.vercel.app` alias. No production deployment was initiated.
+- Main manifest remains 2,130 tracked entries: 1,639 files, 491 directories. The PR branch tree at checkpoint is 2,139 entries: 1,648 files, 491 directories; its two new files are not part of the main-baseline manifest until merge.
+- File matrix now records 117/1,639 full source-content reads (7.1%), 1,522 REVIEW_REQUIRED (92.9%), 99 CONTENT_READ_PENDING_TRACE, 10 FIXED_PENDING_CI, and 8 TEST_UPDATED_PENDING_CI. Automated inventory coverage is 100%; modules closed remain 0. No file is marked complete from static presence alone.
+- PR #275 remains draft/open/unmerged, 48 changed files and 81 commits at the checkpoint. Head before this ledger update: `46a8b66c27c9b5c7c771c3e97794854e3b3f1ac7`.
+
+### Storage/RLS defect found and repaired in the PR branch
+- Full source reads covered `src/lib/services/storage.ts`, all three static route consumers, `supabase/config.toml`, the relevant active/archive migrations, and the migration replay validator.
+- Live `storage.objects` policies cover public-assets, site-audio and videos, but none cover the user-managed `avatars`, `media`, `audio`, or `documents` buckets. The authenticated presign route uses the session client and owner-prefixed paths, so those uploads/downloads were denied by RLS. Bucket visibility and limits were not changed.
+- Added forward-only migration `20261110115000_restore_owner_scoped_user_storage_policies.sql` with authenticated owner-path SELECT/INSERT/UPDATE/DELETE policies for those four buckets only. Commit: `87c058fd28d7e32553ac4b26321fe1310bcc08e2`. It is not applied to production; live migration history remains 415/415 at latest version `20261110085520`.
+- Corrected the storage helper to enforce per-purpose MIME allowlists matching live bucket configuration and to report Supabase's fixed 7,200-second signed-upload URL lifetime instead of the caller-supplied 300/900-second value. The admin video route no longer passes an unsupported 900-second override. Final helper correction commit: `376b3587ca735cb49e0c9154c7a6c83237a5ebac`; route commit: `acfdc60791d8cd56c0a9a4383c3e9e34ce19b9f7`.
+- Added `scripts/tests/storage-service-contract.test.ts` and wired it into `pnpm test` (test commit `ffa40ce20aae5f6edef2d3f778e8dcaaa9a7c2ed`; package commit `5b6434e4fc6c626269bef39347685d1d18311dfa`). Migration replay and the test are pending CI. No production migration or Storage object was changed.
+
+### Video/social queue containment and written-post visibility
+- Read-only Cloudinary inventory checks confirmed that nine approved, non-published social queue rows reference nine missing `auto-*` Cloudinary video public IDs. The 2026-11-10 09:37:58Z scheduled publisher run `42792340735` recorded five Facebook Reels HTTP 422 failures with only a generic “Meta upload response did not confirm success” detail. The exact provider-side reason/trace body is unavailable; the missing source assets are a strong, independently verified cause, but no provider response body was available to prove the exact 422.
+- To prevent automatic retries against missing media, a reversible queue hold was applied to exactly those nine approved rows. Three queued rows became failed, three partial rows remain partial, and three failed rows remain failed. All received `sourceMediaMissing=true`, `permanentFailurePlatforms=[facebook_reels]`, and a future `scheduled_at` hold until 2099-01-01. Existing YouTube remote IDs were preserved. Audit event: `5de18dd5-8bcc-4784-a471-e1c7821405dc`. No provider call, requeue, regeneration, or social post was created by this action.
+- The one newer partial row with an active Cloudinary asset and successful YouTube remote ID `xdVYEEr7bhQ` was left untouched; Facebook was previously cooldown-deferred. No manual retry was triggered. Current queue snapshot: 77 published videos, 4 partial videos, 6 failed videos, 10 queued written posts, and 1 published written post (98 rows total); no video rows remain queued.
+- The dedicated written-post studio already existed at `/admin/social/written-studio`, requires `social.manage`, and is present in the admin navigation. The main social dashboard previously lacked a direct entry point; PR #275 now adds a prominent link with a count of unpublished `written_post` rows. Commits: `ac9bd72cb36897472e37a3a1781d0b7659a3a360` and verifier update `70019f928aba23e4516f6d485ca1261287fbe9fa`. The API returns the latest 100 written posts; its generation POST requires both `social.manage` and `social.publish`. Ten written posts are currently queued. No generation request was dispatched.
+
+### Service, CI and release state
+- Supabase: 415 live migrations, latest `20261110085520`; 92/92 public tables have RLS; nine Storage buckets and zero Storage objects; four cron jobs (three active); security advisor warns that leaked-password protection is disabled; performance advisor reports 89 unused-index candidates; health advisor returned no findings. No indexes or production policies were removed.
+- GitHub checks on checkpoint head `46a8b66`: CircleCI config-guard passed (run 4389); source-verify (4388) and application-build-docs (4387) were pending; ZIKR Quality Gate run 42812689522 was in progress. A prior source-verify run (4358) failed on earlier head `6e1845a`; its detailed log was not available through the connected tools. Do not merge while the current source-verify/build checks are pending.
+- No Vercel Preview deployment exists for the PR branch. Creating a Vercel sandbox was blocked by the team's storage quota; the local container could not resolve GitHub DNS, so no local install/build/lint/typecheck was claimed. GitHub CI remains the required execution evidence.
+- Android signing/build was not run. No APK/AAB is claimed. No files, branches, migrations, buckets, Storage objects, indexes or social posts were deleted. No production deployment or migration apply was performed.
+
+### Next checkpoint
+1. Resolve the CircleCI source-verify failure using the actual failed step output when available; wait for current source-verify, application-build-docs and full Quality Gate before merge.
+2. Run migration replay and the new Storage contract test in CI, then apply the forward migration only after merge and verify authenticated owner uploads/downloads in a browser.
+3. Restore the nine missing media assets only from a verified backup or approved regeneration source; keep their queue rows blocked until media is restored and remote-post state is reconciled.
+4. Complete authenticated browser acceptance for written studio/social dashboard and role-based navigation; do not trigger generation or publishing during acceptance.
+5. Continue from the first remaining REVIEW_REQUIRED operational files. Android/device and remaining product-module acceptance are still open.
+
+**State: IN PROGRESS. No modules closed. No FINAL BASELINE READY claim.**
