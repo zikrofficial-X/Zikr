@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 
 const server = readFileSync("src/lib/supabase/server.ts", "utf8");
+const apiHealth = readFileSync("src/lib/services/api-health.ts", "utf8");
+
 const platform = readFileSync("src/features/admin/services/platform.ts", "utf8");
+if (!apiHealth.includes("const connected = await assertSupabaseConnection()") ||
+    !apiHealth.includes("createSupabaseHealthCheck(connected)")) {
+  throw new Error("Admin health must surface a failed Supabase data-plane probe instead of reporting unconditional success");
+}
+
 const page = readFileSync("src/app/admin/health/page.tsx", "utf8");
 
 if (!server.includes("filter?: { column: string; value: string }")) {

@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import { isSupabaseConfigured } from '@/lib/supabase/server';
 
 /**
- * Guard for account-scoped route handlers.
+ * Supabase-availability guard for account-scoped route handlers.
  *
- * When Supabase is not connected there is no auth provider, so no request can
- * ever be authenticated. Returning 401 (rather than letting the client
- * constructor throw a 500) lets the UI show its normal "sign in required"
- * state instead of an error.
+ * This is not an identity check: each route's service must still call
+ * supabase.auth.getUser() and scope every query to that authenticated user
+ * before reading or writing account data. Returning 401 here only prevents
+ * client-construction failures when the provider is not configured.
  *
  * Returns a response to send immediately, or `null` to continue.
  */
@@ -17,7 +17,9 @@ export function requireSupabaseAuth(): NextResponse | null {
 }
 
 /**
- * Guard for admin-only route handlers that need the service-role key.
+ * Legacy Supabase-availability check only. This does not validate an admin
+ * role or authorize service-role access; admin routes must use requireAdminApi
+ * and the role-assignment/RLS contract.
  * Returns a response to send immediately, or `null` to continue.
  */
 export function requireSupabaseAdmin(): NextResponse | null {
