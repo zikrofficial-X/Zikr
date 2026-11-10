@@ -124,3 +124,78 @@ No production data, storage objects, migrations, policies, indexes, OAuth creden
 5. Complete browser, role, accessibility, SEO, mobile and Android device acceptance before closing modules.
 
 **Do not set `FINAL BASELINE READY` until the inventory and module acceptance requirements are fully met.**
+
+
+## 9. Continuous closeout checkpoint — 2026-11-10 12:12 Africa/Cairo
+
+**State: IN PROGRESS. No module is closed and this is not a final baseline certification.**
+
+### Source of truth and inventory
+
+- GitHub repository: `zikrofficial-X/Zikr`; canonical baseline branch `main` remains at `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`.
+- Active repair PR: #275, draft, base `main`; working branch `codex/zikr-comprehensive-repair-safety-20261110`. Latest branch head at this checkpoint: `66ec209d1d86056af89fa107241b0230e39c5666`. No merge, force-push, or branch deletion was performed.
+- Vercel project `zikr` / `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`, team `team_RxPjmgZoSFmKGjScefYmwIVv`; the latest Production deployment is READY on the exact main baseline SHA above. Its canonical aliases remain `zikrmediaofficial.vercel.app`, `zikr-zikr3.vercel.app`, and `zikr-git-main-zikr3.vercel.app`. Deployment metadata confirms repository `zikrofficial-X/Zikr`. No production deploy was triggered.
+- Vercel environment inventory: 55 variable records across development/preview/production. Only names, targets and encrypted/sensitive/plain classifications were inspected; values were not read or copied into this ledger.
+- Supabase project `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY. Local and live migration ledgers both contain 415 unique versions, latest `20261110085520`; no migration was applied during this run.
+- Recursive Git tree: 2,130 entries = 1,639 files + 491 directories, 138,209,705 file bytes; the API response was not truncated. Matrix inventory coverage is 1,639/1,639 (100% automated). This does not include ignored/untracked local files.
+
+### Measured review progress
+
+- Full source-content reads recorded in the matrix: **21/1,639**. One additional PR-only test file was read but is outside the main-baseline inventory.
+- 21 matrix rows now carry evidence and non-final states such as `CONTENT_READ_PENDING_TRACE`, `FIXED_PENDING_CI`, or `TEST_UPDATED_PENDING_CI`. The remaining **1,618** baseline files remain `REVIEW_REQUIRED`.
+- Content reading is not equivalent to full dependency/runtime/acceptance verification. Imports, dynamic references, all consumers, browser/device acceptance and module-level tests remain open.
+- Modules closed: **0**. No file or product module is marked complete solely because static checks passed.
+- Automated workflow scan covered all 19 tracked GitHub workflow files for triggers, production environments, write permissions, secret references, branch gates and checkout refs. Nine high-risk workflow files were also read in full; the 21 file reads include the three workflows noted in the previous checkpoint.
+
+### Code and CI remediation in PR #275
+
+| Finding | Change | Commit | Verification |
+|---|---|---|---|
+| Approved-video eligibility test included competing written posts while claiming none competed | Isolated the video-only eligibility assertion; retained a separate fairness test with mixed candidates | `eae0a949d0f8701b47dcc1e303b73b2824d05b52` | The earlier Quality Gate run failed later in the suite at the YouTube OAuth source assertion; the corrected queue test itself passed before that failure |
+| Production storage-retention workflow could be manually dispatched from a non-main branch and execute branch-controlled code with production secrets | Added a main-only job gate and pinned checkout to `main` | `111e8c012a2c2e0515e1d8317f08a5cb688b1cdb` | Regression assertion added in `dfee14252c7de92b700d7ef07bcffdb8dcec39e4`; latest full gate pending |
+| Offline snapshot workflow could be manually dispatched from a non-main branch while using production Supabase credentials | Added a main-only job gate; it already checked out main and continues to publish generated data through a PR | `11cee4fdbb2c87a9fdaba84ebc50acc0dc688278` | Offline verifier assertion added in `69b325dec4e0519ee5e5f3bad13364490357813a`; CI pending |
+| YouTube OAuth test regex was over-escaped and matched zero source call sites although both analytics/publishing readers enforce channel identity | Corrected the regex to match the actual TypeScript calls | `5cba3a850083f73deaf6b74dc9c41c381a6efecb` | Latest Quality Gate is still running on that code head; no merge |
+| CI architecture verifier now explicitly checks the storage-retention and offline workflow source-ref gates | Added regression assertions | `8db50d502a03e8e83d0113066c40a6ab5494ddeb` | CircleCI config guard passed; source/build and full Quality Gate still need green results |
+
+- Prior PR Quality Gate failure on `9fbcd0028a4395544f34cbec15fe46cd5196c503`: the approved-video assertion selected `post-1` because the test fixture included eligible written posts. Corrected as above; no production selector change was made for that test failure.
+- Quality Gate run `42797491221` on `eae0a949d0f8701b47dcc1e303b73b2824d05b52` then failed at `scripts/tests/youtube-oauth-credentials.test.ts:67` (`actual 0, expected 2`); corrected in commit `5cba3a850083f73deaf6b74dc9c41c381a6efecb`.
+- For commit `5cba3a850083f73deaf6b74dc9c41c381a6efecb`, CircleCI `config-guard` was successful, while `source-verify` and `application-build-docs` reported failures. Their CircleCI job logs were not accessible through the connected tools, so the root causes are not yet verified. GitHub Quality Gate run `42797998682` was in progress when this checkpoint was written. Subsequent documentation commits have not yet completed their own checks. Do not merge until all required checks are green.
+
+### Production video/social incident — read-only reconciliation
+
+- Main-branch scheduled social publisher run `42797712830` failed after processing five queue items: one item published successfully, one was deferred by the persisted Facebook Reels cooldown, and three items failed Facebook Reels with HTTP 422. The successful Kids-series item has confirmed YouTube and Facebook remote IDs. Three other items have confirmed YouTube success but Facebook Reels failure.
+- A read-only Supabase query found **12** non-published queue rows with generated Cloudinary URLs: six older rows from batch `20763` (four failed, two queued) and six newer rows from batch `20767` (four partial, two queued).
+- A read-only Cloudinary `list_videos` lookup found only **3 of those 12** assets. **Nine queue references have no matching Cloudinary video asset**: the six older batch-`20763` rows and three newer partial rows (`auto-dua-20767-2-0b3b03617196e4cc`, `auto-story-20767-4-770e425b83476d95`, `auto-adhkar-20767-3-da6313300ae0834f`). The three present assets correspond to two queued rows and one cooldown-deferred partial row.
+- This confirms a media-reference/data-consistency incident; it is not evidence of a transient Meta outage or a cooldown defect. The three new YouTube uploads are already recorded as successful. **No queue retry, requeue, regeneration, deletion, purge, or manual social publish was performed.** Do not retry these items until media restoration/replacement and remote delivery state are reconciled.
+- The previously added video-purge guard in PR #275 protects remaining referenced assets from future cleanup; it cannot restore the 44 assets deleted in the earlier incident. A backup/restore source has not yet been proven.
+
+### Supabase security and data-plane snapshot
+
+Read-only SQL against the active project returned:
+
+- 92 public tables; RLS enabled on all 92.
+- 211 public RLS policies; 45 non-internal public triggers.
+- 40 public functions; 20 are SECURITY DEFINER; all 20 have a pinned `search_path`; zero direct EXECUTE grants to `anon` or `authenticated` on those 20 functions.
+- Four pg_cron jobs (three active, one disabled).
+- Nine Storage buckets, zero objects in the current project.
+- Security Advisor still reports `auth_leaked_password_protection` WARN (leaked-password protection disabled). This is an owner-level Auth setting and was not changed.
+- Performance Advisor reports 91 unused-index candidates. No index was dropped because workload/usage evidence is insufficient.
+- No schema, policy, role, grant, function, trigger, extension, cron, bucket, row, or storage object was modified.
+
+### Other release domains
+
+- GitHub main remains unprotected; this run did not change branch protection. PR #275 remains draft and unmerged.
+- Vercel production remains on main SHA `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; no production deployment or alias change occurred.
+- Android: no new APK/AAB was built or signed in this run. The earlier `v1.1.14` release remains the last recorded signed release; it was not re-verified against the current main commit.
+- No file deletion, migration replay, production data cleanup, OAuth credential update, provider consent, or manual social publishing occurred in this audit run. The scheduled main-branch social workflow ran independently as described above.
+
+### Open blockers and next actions
+
+1. Obtain accessible CircleCI job output or reproduce `pnpm verify:pr` and `pnpm build` on the exact failing SHA; fix confirmed causes and wait for new required checks.
+2. Continue from the next unreviewed operational files: `src/features/social/services/published-video-cleanup.ts`, `src/features/social/services/social-publishing.ts`, `scripts/jobs/social-publishing.ts`, `src/lib/github/dispatch-workflow.ts`, and their callers/tests.
+3. Add/verify bounded pagination for `unblockFacebookAuthBlockedQueue`; it currently reads only the first 250 failed/partial rows, so later auth-blocked rows may not be released in one pass.
+4. Review Facebook OAuth expiry introspection and Page task verification; OAuth callback currently persists `expires_at: null` for Page tokens, while health checks rely on Graph API validation.
+5. Keep the nine missing Cloudinary assets and their queue rows untouched until a verified backup/restore or owner-approved replacement plan exists.
+6. Owner action remains required to enable leaked-password protection. Browser/admin role checks, accessibility/SEO, physical Android acceptance, and all remaining file/module reviews are still open.
+
+**No modules closed. No `FINAL BASELINE READY` claim.**

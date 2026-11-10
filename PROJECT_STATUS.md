@@ -177,3 +177,16 @@ PR follow-up branch `fix/quran-tafsir-backfill-release-preflight-20261107` adds 
 PR #234 merged into `main` at `1c9f44a6c55ad9f6d65b7552892fc44b6eed43c9`. Its GitHub Quality Gate and all PR-level CircleCI checks passed. The post-merge `push` run exposed a CI scope-selection defect: the shell gate selected `verify:pr` even though GitHub identified the event as a push to `main`. A follow-up replaces shell reads of default event/ref variables with a scope boolean computed directly from the GitHub Actions expression context. Full main-branch `pnpm verify` must pass before the controlled production release is dispatched.
 
 The current Vercel Production deployment remains `dpl_9d8LhBw1xDjNfWWcnTkv46sfdV3C` on deployed commit `a712708004942b99fceab0993592cef6c5112afe`; it does not contain PRs #232–#234. No production Quran tafsir rows have been restored yet; the protected release is still required.
+
+  
+## Continuous closeout checkpoint — 2026-11-10 12:12 Africa/Cairo
+
+- Canonical baseline: `zikrofficial-X/Zikr@main` = `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; active draft remediation is PR #275 on `codex/zikr-comprehensive-repair-safety-20261110`, head `66ec209d1d86056af89fa107241b0230e39c5666`.
+- Recursive tracked inventory: 1,639 files / 491 directories / 2,130 entries; 100% automated inventory coverage. Matrix records 21 full source-content reads; 1,618 files remain `REVIEW_REQUIRED`; dependency/runtime/acceptance review is incomplete; 0 modules closed.
+- PR #275 fixes two production workflow source-ref risks (storage retention and offline snapshot), two test defects (social queue fixture and YouTube OAuth regex), and adds regression checks. See `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` for commit IDs and pending CI.
+- CI is not green: CircleCI `config-guard` passed, but `source-verify` and `application-build-docs` failed on commit `5cba3a850083f73deaf6b74dc9c41c381a6efecb`; job logs were inaccessible. GitHub Quality Gate run `42797998682` was still running on that code head. The newer audit-documentation head has not yet passed its own checks.
+- Production video/social reconciliation found 12 non-published queue rows, of which nine Cloudinary source assets are missing. Three recent YouTube uploads are already successful; their Facebook Reels uploads failed HTTP 422. No retry or regeneration was performed. The main-branch scheduled publisher independently published one Kids-series item to both platforms during its normal run.
+- Supabase: 415 local/live migrations match; 92/92 public tables have RLS; 211 policies; 45 triggers; 40 public functions (20 SECURITY DEFINER, all pinned search_path); 4 cron jobs (3 active); 9 buckets with 0 current objects. Leaked-password protection remains disabled (owner action); 91 unused-index candidates were not dropped.
+- Vercel Production remains READY on main SHA `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; no production deploy. No Android APK/AAB was built or signed against this baseline. No files or production data were deleted or changed by this audit.
+
+**State: IN PROGRESS — do not mark FINAL BASELINE READY.**
