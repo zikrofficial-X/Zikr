@@ -204,7 +204,7 @@ async function deleteAutomatedStorageObjects(paths: string[]): Promise<number> {
 const PURGE_LOCK_DESCRIPTION = "Temporary lock preventing internal video generation while ZIKR-owned generated media is being purged.";
 
 async function acquirePurgeLock(token: string): Promise<boolean> {
-  const description = `${PURGE_LOCK_DESCRIPTION} (${token})`;
+  const description = `${PURGE_LOCK_DESCRIPTION} ${token}`;
   const updated = await supabaseServerAdminRequest<Array<{ key: string }>>(
     "/rest/v1/admin_settings?key=eq.video_purge_in_progress&value=eq.false&select=key",
     {
@@ -234,7 +234,7 @@ async function acquirePurgeLock(token: string): Promise<boolean> {
 }
 
 async function releasePurgeLock(token: string): Promise<void> {
-  const description = `${PURGE_LOCK_DESCRIPTION} (${token})`;
+  const description = `${PURGE_LOCK_DESCRIPTION} ${token}`;
   await supabaseServerAdminRequest(
     `/rest/v1/admin_settings?key=eq.video_purge_in_progress&description=eq.${encodeURIComponent(description)}`,
     {
