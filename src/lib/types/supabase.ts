@@ -4512,6 +4512,39 @@ export type Database = {
         }
         Relationships: []
       }
+      youtube_oauth_credentials: {
+        Row: {
+          channel_id: string
+          channel_name: string | null
+          connected_at: string
+          connected_by: string | null
+          granted_scopes: string[]
+          provider: string
+          refresh_token: string
+          updated_at: string
+        }
+        Insert: {
+          channel_id: string
+          channel_name?: string | null
+          connected_at?: string
+          connected_by?: string | null
+          granted_scopes?: string[]
+          provider?: string
+          refresh_token: string
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string
+          channel_name?: string | null
+          connected_at?: string
+          connected_by?: string | null
+          granted_scopes?: string[]
+          provider?: string
+          refresh_token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       youtube_sync_state: {
         Row: {
           channel_id: string | null
