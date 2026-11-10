@@ -92,6 +92,15 @@ if (!adsenseSlot.includes('data-ad-slot') || !adsenseSlot.includes('requestNonPe
 if (!adsenseSlot.includes('Capacitor.isNativePlatform()') || !articlePage.includes('<AdSenseSlot')) {
   fail('AdSense must be limited to web editorial articles and excluded from native app builds.');
 }
+if (
+  !webAdvertisingRuntime.includes('import { PRODUCTION_URL } from "@/lib/site";') ||
+  !webAdvertisingRuntime.includes("isCanonicalProductionHost") ||
+  !webAdvertisingRuntime.includes("if (!isCanonicalProductionHost())") ||
+  !runtimeEffects.includes('import { PRODUCTION_URL } from "@/lib/site";') ||
+  !runtimeEffects.includes("window.location.hostname.toLowerCase()")
+) {
+  fail('Monetization scripts must load only on the canonical production host, never on Vercel Preview aliases.');
+}
 if (!layout.includes('requestNonPersonalizedAds = 1')) {
   fail('AdSense requests must default to non-personalized before the Google tag is loaded.');
 }
