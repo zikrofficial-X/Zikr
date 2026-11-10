@@ -83,11 +83,11 @@ export function buildStoragePath(ownerId: string, filename: string) {
 }
 
 export function encodeStorageKey(bucket: string, path: string) {
-  return `${bucket}/${path.replace(/^\\/+/, '')}`;
+  return `${bucket}/${path.replace(/^\/+/, '')}`;
 }
 
 export function parseStorageKey(key: string) {
-  const cleanKey = key.trim().replace(/^\\/+/, '');
+  const cleanKey = key.trim().replace(/^\/+/, '');
   const separator = cleanKey.indexOf('/');
   if (separator <= 0 || separator === cleanKey.length - 1) return null;
 
@@ -109,7 +109,7 @@ export async function createPresignedUploadUrl(params: {
     throw new Error(`File size exceeds the ${Math.round(config.maxBytes / 1024 / 1024)}MB limit for ${params.purpose} uploads.`);
   }
 
-  if (!params.contentType || !/^[\\w.+-]+\\/[\\w.+-]+$/.test(params.contentType.trim())) {
+  if (!params.contentType || !/^[\w.+-]+\/[\w.+-]+$/.test(params.contentType.trim())) {
     throw new Error('A valid content type is required for Supabase Storage uploads.');
   }
 
