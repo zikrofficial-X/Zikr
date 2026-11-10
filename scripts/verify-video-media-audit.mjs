@@ -28,7 +28,7 @@ for (const token of [
   if (!audit.includes(token)) failures.push("Video media audit is missing required evidence/reconciliation behavior: " + token);
 }
 if (!audit.includes("concurrency = Math.min(5")) failures.push("Cloudinary availability probing must use bounded concurrency");
-if (!audit.includes("status: "unknown"")) failures.push("Transient media probe failures must remain unknown and must not mark valid assets missing");
+if (!audit.includes('status: "unknown"')) failures.push("Transient media probe failures must remain unknown and must not mark valid assets missing");
 if (!audit.includes("return null") || !audit.includes("unavailable")) failures.push("Video media audit must distinguish missing media from a valid YouTube fallback");
 
 const service = read("src/features/videos/services/videos.ts");
