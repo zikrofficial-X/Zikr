@@ -18,6 +18,9 @@ export async function saveAndroidReleaseAction(formData: FormData) {
   if (mode === "pinned" && !releaseTag) {
     throw new Error("اختر إصدار Android محددًا أو استخدم الوضع التلقائي.");
   }
+  if (mode === "pinned" && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(releaseTag)) {
+    throw new Error("صيغة وسم إصدار Android غير صالحة.");
+  }
 
   await supabaseServerAdminRequest("/rest/v1/site_settings?on_conflict=key", {
     method: "POST",
@@ -41,7 +44,7 @@ export async function saveAndroidReleaseAction(formData: FormData) {
     metadata: { mode, releaseTag: mode === "pinned" ? releaseTag : null },
   });
 
-    updateTag("site-setting:android_release");
+  updateTag("site-setting:android_release");
   revalidatePath("/admin/android");
   revalidatePath("/platform");
   revalidatePath("/api/download/android");
