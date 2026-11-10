@@ -4,6 +4,29 @@ export type WrittenContentSource = { kind: WrittenSourceKind; id:string; title:s
 export type WrittenPostDraft = { eligible?:boolean; title:string; hook:string; reflection:string; question?:string };
 export function normalizeWrittenCategory(value:string):WrittenCategory { const v=value.trim().toLowerCase(); return (["auto","quran","hadith","dua","adhkar","story","prophets","companions","knowledge","kids"] as string[]).includes(v)?v as WrittenCategory:"auto"; }
 export function createWrittenAutomationKey(kind:string,id:string){return `written-v1:${kind}:${id}`;}
+
+export function containsKidsPersonalDataSolicitation(value: string): boolean {
+ const normalized = value
+  .normalize("NFKC")
+  .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
+  .replace(/[أإآ]/g, "ا")
+  .replace(/ى/g, "ي")
+  .toLowerCase()
+  .replace(/\s+/g, " ")
+  .trim();
+ const personalData = "(?:اسم(?:ك(?: الكامل)?| مدرستك| ولي امرك| والديك)|رقم(?:ك| هاتفك| الموبايل| جوالك| ولي امرك)|عنوانك|عنوان (?:بيتك|منزلك)|مدرستك|بريدك(?: الالكتروني)?|ايميلك|كلمة المرور|كلمة السر|موقعك|مكانك|صورتك|صورك|صورة لك|صورة شخصية|حسابك|اسم المستخدم|بياناتك الشخصية|معلوماتك الشخصية)";
+ const askVerbs = "(?:ارسل|ابعث|ابعت|شارك|اكتب|اذكر|قل لي|اخبرني|اعطني|تعطيني|اترك|ضع|سجل|ادخل|ارسل لي|ابعث لي|ابعت لي|ارسال|مشاركة)";
+ const channels = "(?:واتساب|واتس اب|تيليجرام|تلجرام|انستجرام|سناب(?: شات)?|فيسبوك|ماسنجر|الخاص|رسالة خاصة)";
+ const asksForData = new RegExp("(?:^|\\s)" + askVerbs + "(?:\\s+[^.!؟?]{1,30})?\\s+" + personalData, "u");
+ const asksDirectly = new RegExp("(?:^|\\s)(?:ما|ما هو|ما هي|اين|اين هو|اين هي)(?:\\s+[^.!؟?]{0,24})?\\s+" + personalData, "u");
+ const asksForContact = new RegExp("(?:^|\\s)(?:راسلني|تواصل معي|اتصل بي|قابلني|كلمني)(?:\\s+[^.!؟?]{1,30})?(?:" + channels + ")?", "u");
+ const asksInEnglish = /\b(?:send|share|tell me|give me|write|enter|leave|dm|message|contact|call|meet|text me)\b[\s\S]{0,45}\b(?:your (?:full )?name|phone(?: number)?|home address|address|school|email|password|location|photo|picture|selfie|account|username|whatsapp|telegram|instagram|snapchat|facebook|where you live)\b/i;
+ const privateEnglishContact = /\b(?:dm me|message me privately|contact me|call me|meet me)\b/i;
+ return asksForData.test(normalized) || asksDirectly.test(normalized) ||
+  asksForContact.test(normalized) || asksInEnglish.test(normalized) ||
+  privateEnglishContact.test(normalized);
+}
+
 export function validateWrittenPostDraft(d:WrittenPostDraft):{ok:boolean;reason?:string}{
  if(d.eligible===false)return {ok:false,reason:"source_insufficient"};
  const title=typeof d.title==="string"?d.title.trim():"",hook=typeof d.hook==="string"?d.hook.trim():"",reflection=typeof d.reflection==="string"?d.reflection.trim():"";
@@ -68,5 +91,99 @@ export function buildWrittenSocialQueuePayload(
   automation_key: automationKey,
   created_at: now,
   updated_at: now,
+ };
+}
+
+export type KidsWrittenQueueRow = {
+ id: string;
+ content_type: string;
+ content_id: string | null;
+ title: string;
+ body: string | null;
+ status: string;
+ target_platforms: string[] | null;
+ published_at: string | null;
+ metadata: Record<string, unknown> | null;
+};
+
+export type CurrentKidsStory = {
+ id: string;
+ slug: string;
+ title_ar: string;
+ age_group: string | null;
+ type: string;
+ published: boolean | null;
+ is_active: boolean | null;
+ metadata: Record<string, unknown> | null;
+};
+
+export type PublicKidsWrittenPost = {
+ id: string;
+ title: string;
+ body: string;
+ publishedAt: string;
+ ageGroup: string | null;
+ publicPath: string;
+ sourceTitle: string | null;
+ platforms: Array<"facebook" | "facebook_reels" | "youtube">;
+};
+
+function asWrittenRecord(value: unknown): Record<string, unknown> {
+ return value && typeof value === "object" && !Array.isArray(value)
+  ? value as Record<string, unknown>
+  : {};
+}
+
+/** Re-check the live Kids source before exposing a previously published social post. */
+export function buildPublicKidsWrittenPost(
+ row: KidsWrittenQueueRow,
+ source: CurrentKidsStory,
+): PublicKidsWrittenPost | null {
+ const metadata = asWrittenRecord(row.metadata);
+ const sourceMetadata = asWrittenRecord(metadata.source);
+ const liveMetadata = asWrittenRecord(source.metadata);
+ const kidsContentId = typeof metadata.kidsContentId === "string" ? metadata.kidsContentId : "";
+ const rawPublicPath = typeof metadata.publicPath === "string" ? metadata.publicPath : "";
+ const slug = typeof source.slug === "string" ? source.slug.trim() : "";
+ const title = typeof row.title === "string" ? row.title.trim() : "";
+ const body = typeof row.body === "string" ? row.body.trim() : "";
+ const publishedAt = typeof row.published_at === "string" ? row.published_at.trim() : "";
+ const publicPath = "/kids/" + slug;
+ const platforms = (row.target_platforms ?? []).filter(
+  (platform): platform is "facebook" | "facebook_reels" | "youtube" =>
+   platform === "facebook" || platform === "facebook_reels" || platform === "youtube",
+ );
+ if (
+  row.content_type !== "written_post" ||
+  row.status !== "published" ||
+  !row.id ||
+  !row.content_id ||
+  row.content_id !== source.id ||
+  !source.id ||
+  source.type !== "story" ||
+  source.published !== true ||
+  source.is_active !== true ||
+  liveMetadata.age_appropriate !== true ||
+  metadata.audience !== "kids" ||
+  kidsContentId !== source.id ||
+  sourceMetadata.type !== "kids_story" ||
+  sourceMetadata.id !== source.id ||
+  sourceMetadata.verified !== true ||
+  !/^[a-z0-9-]+$/i.test(slug) ||
+  rawPublicPath !== publicPath ||
+  !title ||
+  !body ||
+  !publishedAt ||
+  platforms.length === 0
+ ) return null;
+ return {
+  id: row.id,
+  title,
+  body: body.slice(0, 4500),
+  publishedAt,
+  ageGroup: typeof source.age_group === "string" && source.age_group.trim() ? source.age_group.trim() : null,
+  publicPath,
+  sourceTitle: typeof source.title_ar === "string" && source.title_ar.trim() ? source.title_ar.trim() : null,
+  platforms,
  };
 }
