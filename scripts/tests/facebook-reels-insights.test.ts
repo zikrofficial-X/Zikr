@@ -109,6 +109,10 @@ assert.ok(insightsService.includes("typeof reel.videoId === \"string\""));
 assert.ok(insightsService.includes("resolveFacebookReelVideoIdFromPost"));
 assert.ok(insightsService.includes('"/posts"'));
 assert.ok(insightsService.includes('fields", "id,attachments{media,target}"'));
+assert.ok(insightsService.includes('.replaceAll(pageAccessToken, "[redacted]")'));
+assert.ok(insightsService.includes('[id]'));
+assert.ok(insightsService.includes('[url]'));
+assert.ok(insightsService.includes("Meta could not list Page posts to resolve historical Reel video IDs"));
 assert.ok(!insightsService.includes("object_id"));
 
 console.log("Facebook Reels metric parsing and secure Page OAuth flow tests passed.");
