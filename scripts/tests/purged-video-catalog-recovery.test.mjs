@@ -7,6 +7,7 @@ const migration = readFileSync(
 );
 
 for (const [token, message] of [
+  ["v.metadata->>'mediaPurgedFromPublished' = 'true'", "the catalog must explicitly record that it was public at purge time"],
   ["q.status = 'published'", "only successful social queue rows may restore a video"],
   ["q.metadata ? 'videoDisposedAt'", "the temporary media must have been disposed by the publishing flow"],
   ["q.metadata->'platformResults'->'youtube'->>'ok' = 'true'", "YouTube success must be confirmed"],

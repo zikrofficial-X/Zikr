@@ -15,6 +15,10 @@ with confirmed as (
   where v.published = false
     and v.metadata->>'generator' = 'zikr_internal_video_factory'
     and v.metadata->>'mediaState' = 'purged'
+    -- Queue history proves prior publication at some point, not that the item was
+    -- still public when the purge ran. Legacy rows without this explicit provenance
+    -- remain hidden until an administrator reviews and confirms them.
+    and v.metadata->>'mediaPurgedFromPublished' = 'true'
     and q.status = 'published'
     and (q.content_type = 'video' or q.content_type like '%_video')
     and q.metadata ? 'videoDisposedAt'
