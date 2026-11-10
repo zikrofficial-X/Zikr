@@ -2,8 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   getFallbackKidsContentBySlug,
+  isKidsContentPublishable,
   mergeKidsContentWithFallback,
 } from "../../src/features/kids/services/kids-content-visibility";
+
+assert.equal(isKidsContentPublishable("story", false), false, "a Kids story cannot be published before age-suitability approval");
+assert.equal(isKidsContentPublishable("story", true), true, "an explicitly approved Kids story may be published");
+assert.equal(isKidsContentPublishable("game", false), true, "non-story Kids content keeps its existing publication contract");
 
 const databaseItems = [
   { slug: "story-live", source: "database" },
@@ -40,6 +45,12 @@ assert.equal(
   "curated static-only content remains available when no database row owns the slug",
 );
 
+const adminAction = readFileSync("src/app/admin/kids/actions.ts", "utf8");
+const adminManager = readFileSync("src/features/admin/components/kids-content-manager.tsx", "utf8");
+assert.match(adminAction, /isKidsContentPublishable\(type, ageAppropriate\)/);
+assert.match(adminAction, /age_appropriate: ageAppropriate/);
+assert.match(adminManager, /name="age_appropriate"/);
+assert.match(adminManager, /ageReviewRequiredCount/);
 const service = readFileSync("src/features/kids/services/kids-content.ts", "utf8");
 assert.match(service, /published=eq\.true&is_active=eq\.true/, "public Kids queries must include active state");
 assert.match(service, /supabaseServerAdminRequest[\s\S]*?select=slug/, "fallback visibility must consult database-owned slugs");
@@ -53,8 +64,19 @@ const migration = readFileSync(
 assert.match(migration, /drop policy if exists "kids_content_public_read"/i);
 assert.match(
   migration,
-  /using\s*\(\s*published\s+is\s+true\s+and\s+is_active\s+is\s+true\s*\)/i,
-  "public Kids RLS must hide unpublished and inactive rows",
+  /using\s*\(\s*published\s+is\s+true\s+and\s+is_active\s+is\s+true\s+and\s*\(\s*type\s*<>\s*'story'\s+or\s+metadata->>'age_appropriate'\s*=\s*'true'\s*\)\s*\)/i,
+  "public Kids RLS must hide unpublished, inactive, and age-unapproved stories while preserving other content types",
+assert.match(
+  migration,
+  /and\s*\(\s*type\s*<>\s*'story'\s+or\s+metadata->>'age_appropriate'\s*=\s*'true'\s*\)/i,
+  "public RLS must keep unapproved Kids stories private without hiding other Kids content types",
+);
+assert.match(
+  migration,
+  /kids_content\.type\s*<>\s*'story'\s+or\s+kids_content\.metadata->>'age_appropriate'\s*=\s*'true'/i,
+  "the share counter must apply the same age-approval gate to stories",
+);
+
 );
 
 console.log("Kids content visibility and fallback contracts passed.");

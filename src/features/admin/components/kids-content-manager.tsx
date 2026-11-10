@@ -38,6 +38,7 @@ type KidsRow = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  metadata: Record<string, unknown> | null;
 };
 
 function Field({
@@ -74,7 +75,7 @@ function Field({
 async function getKidsContent(): Promise<{ rows: KidsRow[]; ok: boolean }> {
   try {
     const rows = await supabaseServerAdminRequest<KidsRow[]>(
-      "/rest/v1/kids_content?select=id,title_ar,title_en,slug,type,age_group,published,is_active,created_at,updated_at&order=updated_at.desc&limit=300",
+      "/rest/v1/kids_content?select=id,title_ar,title_en,slug,type,age_group,published,is_active,created_at,updated_at,metadata&order=updated_at.desc&limit=300",
       { method: "GET" },
     );
     return { rows, ok: true };
@@ -88,6 +89,7 @@ export async function AdminKidsContentManager() {
   const { rows, ok } = await getKidsContent();
   const publishedCount = rows.filter((item) => item.published && item.is_active).length;
   const draftCount = rows.length - publishedCount;
+  const ageReviewRequiredCount = rows.filter((item) => item.type === "story" && item.metadata?.age_appropriate !== true).length;
   const typeCounts = rows.reduce<Record<string, number>>((acc, item) => {
     acc[item.type] = (acc[item.type] ?? 0) + 1;
     return acc;
@@ -107,11 +109,12 @@ export async function AdminKidsContentManager() {
         </div>
       )}
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-5">
         <Card><p className="text-sm arabic-muted">إجمالي السجلات الفعلية</p><strong className="text-3xl text-brand-gold">{ok ? rows.length : "غير متاح"}</strong></Card>
         <Card><p className="text-sm arabic-muted">منشور ومفعّل</p><strong className="text-3xl text-emerald-300">{ok ? publishedCount : "غير متاح"}</strong></Card>
         <Card><p className="text-sm arabic-muted">مسودة / مخفي</p><strong className="text-3xl text-amber-300">{ok ? draftCount : "غير متاح"}</strong></Card>
         <Card><p className="text-sm arabic-muted">أنواع المحتوى</p><strong className="text-3xl text-brand-gold">{ok ? Object.keys(typeCounts).length : "غير متاح"}</strong></Card>
+        <Card><p className="text-sm arabic-muted">قصص تحتاج مراجعة عمرية</p><strong className="text-3xl text-amber-300">{ok ? ageReviewRequiredCount : "غير متاح"}</strong></Card>
       </section>
 
       <section className="flex flex-wrap gap-2">
@@ -153,8 +156,12 @@ export async function AdminKidsContentManager() {
           <div className="md:col-span-2"><Field name="content_ar" label="المحتوى بالعربية" textarea required placeholder="اكتب محتوى القصة أو الدعاء هنا..." /></div>
           <div className="md:col-span-2"><Field name="quiz_data" label="بيانات اللعبة / الأسئلة (JSON اختياري)" textarea placeholder='{"questions":[{"q":"من ربك؟","answers":["الله"],"reward":"نجمة"}]}' /></div>
           <label className="flex items-center gap-2 text-sm text-brand-cream/70 md:col-span-2">
-            <input name="published" type="checkbox" defaultChecked className="accent-brand-gold" />
-            نشر المحتوى مباشرة
+            <input name="age_appropriate" type="checkbox" defaultChecked={false} className="accent-brand-gold" />
+            تمت مراجعة القصة والتأكد من ملاءمتها للفئة العمرية المحددة (مطلوب قبل نشر القصص)
+          </label>
+          <label className="flex items-center gap-2 text-sm text-brand-cream/70 md:col-span-2">
+            <input name="published" type="checkbox" defaultChecked={false} className="accent-brand-gold" />
+            نشر المحتوى بعد المراجعة
           </label>
           <div className="md:col-span-2"><Button type="submit">حفظ المحتوى في قاعدة البيانات</Button></div>
         </form>
@@ -171,7 +178,7 @@ export async function AdminKidsContentManager() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[850px] text-sm">
             <thead><tr className="border-b border-brand-gold/20 text-brand-cream/60">
-              <th className="pb-2 text-right">العنوان</th><th className="pb-2 text-right">النوع</th><th className="pb-2 text-right">العمر</th><th className="pb-2 text-right">الحالة</th><th className="pb-2 text-right">آخر تحديث</th>
+              <th className="pb-2 text-right">العنوان</th><th className="pb-2 text-right">النوع</th><th className="pb-2 text-right">العمر</th><th className="pb-2 text-right">مراجعة العمر</th><th className="pb-2 text-right">الحالة</th><th className="pb-2 text-right">آخر تحديث</th>
             </tr></thead>
             <tbody className="divide-y divide-brand-gold/10">
               {rows.map(item => (
@@ -179,6 +186,7 @@ export async function AdminKidsContentManager() {
                   <td className="py-2 text-brand-cream"><div>{item.title_ar}</div><div className="text-xs text-brand-cream/30" dir="ltr">/{item.slug}</div></td>
                   <td className="py-2"><span className="px-2 py-0.5 rounded-full bg-brand-gold/10 text-brand-gold text-xs">{typeLabels[item.type] ?? item.type}</span></td>
                   <td className="py-2 text-brand-cream/60">{ageGroupLabels[item.age_group ?? ""] ?? item.age_group ?? "—"}</td>
+                  <td className="py-2">{item.type !== "story" ? "—" : item.metadata?.age_appropriate === true ? <span className="text-emerald-300">معتمد</span> : <span className="text-amber-300">بحاجة للمراجعة</span>}</td>
                   <td className="py-2">{item.published && item.is_active ? <span className="text-emerald-300">منشور</span> : <span className="text-amber-300">مخفي/مسودة</span>}</td>
                   <td className="py-2 text-xs text-brand-cream/40">{item.updated_at ? new Date(item.updated_at).toLocaleString("ar-EG-u-nu-latn") : "—"}</td>
                 </tr>

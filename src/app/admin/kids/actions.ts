@@ -6,6 +6,7 @@ import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { uploadCloudinaryImage } from "@/features/media/services/cloudinary";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { isRegisteredGameId } from "@/lib/games/registry";
+import { isKidsContentPublishable } from "@/features/kids/services/kids-content-visibility";
 
 function value(formData: FormData, key: string) {
   const raw = String(formData.get(key) ?? "").trim();
@@ -47,6 +48,17 @@ export async function saveKidsContentAction(formData: FormData) {
   const content_ar = String(formData.get("content_ar") ?? "").trim();
   const type = value(formData, "type") ?? "story";
   const gameId = value(formData, "game_id");
+  const allowedTypes = new Set(["story", "prayer", "wudu", "quiz", "game", "puzzle", "coloring", "matching", "video", "memorize"]);
+  const allowedAgeGroups = new Set(["3-5", "6-8", "9-12", "13-15"]);
+  const ageGroup = value(formData, "age_group") ?? "6-8";
+  const ageAppropriate = type === "story" && formData.has("age_appropriate");
+  const published = formData.has("published");
+
+  if (!allowedTypes.has(type)) throw new Error("نوع محتوى الأطفال غير صالح.");
+  if (!allowedAgeGroups.has(ageGroup)) throw new Error("الفئة العمرية غير صالحة.");
+  if (published && !isKidsContentPublishable(type, ageAppropriate)) {
+    throw new Error("لا يمكن نشر قصة للأطفال قبل مراجعتها واعتماد ملاءمتها للفئة العمرية.");
+  }
 
   if (!title_ar || !slug || !content_ar) {
     throw new Error("العنوان بالعربية والرابط المختصر والمحتوى كلها مطلوبة.");
@@ -79,12 +91,13 @@ export async function saveKidsContentAction(formData: FormData) {
       type,
       content_ar,
       content_en: value(formData, "content_en"),
-      age_group: value(formData, "age_group") ?? "6-8",
+      age_group: ageGroup,
       featured_image_url: featuredImageUrl,
       video_url: value(formData, "video_url"),
       quiz_data: parseQuizData(value(formData, "quiz_data")),
-      published: formData.has("published"),
+      published,
       metadata: {
+        ...(type === "story" ? { age_appropriate: ageAppropriate } : {}),
         reward: value(formData, "reward"),
         memorizationTarget: value(formData, "memorization_target"),
         ...(type === "game" && gameId
@@ -100,7 +113,7 @@ export async function saveKidsContentAction(formData: FormData) {
     permission: "kids.manage",
     resourceType: "kids_content",
     resourceId: saved[0].id,
-    metadata: { slug, type, published: formData.has("published"), gameId },
+    metadata: { slug, type, published, ageGroup, ageAppropriate: type === "story" ? ageAppropriate : null, gameId },
   });
 
   revalidatePath("/kids");

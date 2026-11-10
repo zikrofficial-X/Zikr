@@ -6,7 +6,11 @@ create policy "kids_content_public_read"
 on public.kids_content
 for select
 to anon, authenticated
-using (published is true and is_active is true);
+using (
+  published is true
+  and is_active is true
+  and (type <> 'story' or metadata->>'age_appropriate' = 'true')
+);
 
 -- Keep the server-side share counter aligned with the same public visibility
 -- contract; inactive or unpublished Kids content must not accept public shares.
@@ -22,6 +26,7 @@ as $function$
   where kids_content.slug = p_slug
     and kids_content.published is true
     and kids_content.is_active is true
+    and (kids_content.type <> 'story' or kids_content.metadata->>'age_appropriate' = 'true')
   returning kids_content.slug, kids_content.shares;
 $function$;
 
