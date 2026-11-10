@@ -10,6 +10,17 @@ import { KidsGameArt } from "@/features/kids/components/games/kids-game-art";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
 
+type KidsWrittenPost = {
+  id: string;
+  title: string;
+  body: string;
+  publishedAt: string;
+  ageGroup: string | null;
+  publicPath: string;
+  sourceTitle: string | null;
+  platforms: string[];
+};
+
 type KidsGeneratedItem = {
   id: string;
   title: string;
@@ -58,6 +69,7 @@ export default function KidsPage() {
   const { isEnglish } = useLanguage();
   const [contentItems, setContentItems] = useState(kidsContent);
   const [generatedKidsItems, setGeneratedKidsItems] = useState<KidsGeneratedItem[]>([]);
+  const [kidsWrittenPosts, setKidsWrittenPosts] = useState<KidsWrittenPost[]>([]);
   useEffect(() => {
     let active = true;
     fetch("/api/kids/content", { credentials: "include", cache: "no-store" })
@@ -70,6 +82,12 @@ export default function KidsPage() {
       .then((response) => response.ok ? response.json() : [])
       .then((data) => {
         if (active && Array.isArray(data)) setGeneratedKidsItems(data);
+      })
+      .catch(() => undefined);
+    fetch("/api/kids/social-posts", { credentials: "include", cache: "no-store" })
+      .then((response) => response.ok ? response.json() : [])
+      .then((data) => {
+        if (active && Array.isArray(data)) setKidsWrittenPosts(data);
       })
       .catch(() => undefined);
     return () => { active = false; };
@@ -195,6 +213,42 @@ export default function KidsPage() {
               </section>
             )}
           </>
+        )}
+
+        {kidsWrittenPosts.length > 0 && (
+          <section aria-labelledby="kids-written-posts-heading" className="space-y-5">
+            <div>
+              <p className="text-sm font-bold text-brand-emerald">{isEnglish ? "New written posts" : "منشورات قصص الأطفال"}</p>
+              <h2 id="kids-written-posts-heading" className="mt-2 text-2xl font-black text-brand-cream sm:text-3xl">
+                {isEnglish ? "Little lessons from our stories" : "كلمات صغيرة من حكاياتنا"}
+              </h2>
+              <p className="mt-2 max-w-2xl leading-7 text-brand-cream/60">
+                {isEnglish ? "Only posts generated from age-appropriate Kids stories and confirmed as published are shown here." : "تظهر هنا المنشورات المشتقة من قصص الأطفال المناسبة للعمر بعد تأكيد نشرها على المنصة."}
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {kidsWrittenPosts.map((item) => (
+                <Link key={item.id} href={item.publicPath} className="block h-full">
+                  <Card className="h-full space-y-3 border-brand-emerald/20 bg-brand-emerald/[.04] p-5 transition hover:border-brand-gold/40">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="font-bold text-brand-gold">{item.title}</h3>
+                      {item.ageGroup && (
+                        <span className="rounded-full border border-brand-gold/20 px-3 py-1 text-xs text-brand-gold">
+                          {isEnglish ? "Age " : "العمر "} {item.ageGroup}
+                        </span>
+                      )}
+                    </div>
+                    <p className="whitespace-pre-wrap text-sm leading-7 text-brand-cream/75">{item.body}</p>
+                    {item.sourceTitle && <p className="text-xs text-brand-cream/50">{isEnglish ? "From: " : "من قصة: "}{item.sourceTitle}</p>}
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-brand-cream/10 pt-3">
+                      <span className="text-xs font-bold text-brand-emerald">{isEnglish ? "Published on" : "نُشر على"} {item.platforms.join("، ")}</span>
+                      <span className="text-xs font-bold text-brand-gold">{isEnglish ? "Open story →" : "افتح القصة ←"}</span>
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </section>
         )}
 
         <section id="learning" aria-labelledby="learning-heading" className="space-y-5 scroll-mt-6">
