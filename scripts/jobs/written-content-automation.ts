@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
-import { buildWrittenPost, createWrittenAutomationKey, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
+import { buildWrittenPost, buildWrittenSocialQueuePayload, createWrittenAutomationKey, createWrittenSocialAutomationKey, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
 
 type Row = Record<string, unknown>;
 const str=(v:unknown)=>typeof v==="string"?v.trim():"";
@@ -171,25 +171,46 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
   articleId=Array.isArray(saved)?str(saved[0]?.id):"";
   if(!articleId)throw new Error("Article insert returned no record.");
  }
- if(existing[0] && existing[0].published===true) return {status:"already_published",id:articleId};
- const queue=await readRequired<Row>(
-  "/rest/v1/content_publish_queue?content_table=eq.articles&content_id=eq."+encodeURIComponent(articleId)+"&select=id,status&limit=1",
+
+ // Keep the existing internal ZIKR article workflow, but do not let it replace
+ // the independent Facebook written-post delivery record.
+ if(existing[0]?.published!==true){
+  const contentQueue=await readRequired<Row>(
+   "/rest/v1/content_publish_queue?content_table=eq.articles&content_id=eq."+encodeURIComponent(articleId)+"&select=id,status&limit=1",
+  );
+  if(!contentQueue[0]){
+   const scheduledAt=new Date(now.getTime()+5*60*1000).toISOString();
+   await supabaseServerAdminRequest("/rest/v1/content_publish_queue",{
+    method:"POST",
+    headers:{"Content-Type":"application/json",Prefer:"return=minimal"},
+    body:JSON.stringify({
+     content_table:"articles",
+     content_id:articleId,
+     scheduled_at:scheduledAt,
+     status:"queued",
+     created_at:nowIso,
+     updated_at:nowIso,
+    }),
+   });
+  }
+ }
+
+ const socialAutomationKey=createWrittenSocialAutomationKey(source.kind,source.id);
+ const socialRows=await readRequired<Row>(
+  "/rest/v1/social_publish_queue?automation_key=eq."+encodeURIComponent(socialAutomationKey)+"&select=id,status&limit=1",
  );
- if(queue[0]) return {status:"duplicate",id:articleId};
- const scheduledAt=new Date(now.getTime()+5*60*1000).toISOString();
- await supabaseServerAdminRequest("/rest/v1/content_publish_queue",{
-  method:"POST",
-  headers:{"Content-Type":"application/json",Prefer:"return=minimal"},
-  body:JSON.stringify({
-   content_table:"articles",
-   content_id:articleId,
-   scheduled_at:scheduledAt,
-   status:"queued",
-   created_at:nowIso,
-   updated_at:nowIso,
-  }),
- });
- return {status:"queued",id:articleId};
+ if(!socialRows[0]){
+  const socialPayload=buildWrittenSocialQueuePayload(
+   source,draft,articleId,socialAutomationKey,nowIso,
+  );
+  await supabaseServerAdminRequest("/rest/v1/social_publish_queue",{
+   method:"POST",
+   headers:{"Content-Type":"application/json",Prefer:"return=minimal"},
+   body:JSON.stringify(socialPayload),
+  });
+  return {status:"queued",id:articleId};
+ }
+ return {status:"duplicate",id:articleId};
 }
 export async function runWrittenContentAutomation(options:{category?:string;batchSize?:number}={}){
  if(process.env.WRITTEN_CONTENT_ENABLED?.toLowerCase()==="false")return {enabled:false,created:0,duplicates:0,skipped:0};
