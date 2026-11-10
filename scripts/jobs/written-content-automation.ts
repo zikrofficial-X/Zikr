@@ -212,13 +212,81 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
  }
  return {status:"duplicate",id:articleId};
 }
+async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
+ const cutoffValue=process.env.SOCIAL_PUBLISH_AFTER?.trim()||"2026-11-06T20:00:00Z";
+ const cutoff=new Date(cutoffValue);
+ if(!Number.isFinite(cutoff.getTime()))throw new Error("Invalid SOCIAL_PUBLISH_AFTER cutoff for written-post backfill.");
+ const rows=await readRequired<Row>(
+  "/rest/v1/articles?metadata->>automation=eq.written-content-v2&created_at=gte."+encodeURIComponent(cutoff.toISOString())+
+  "&select=id,title,content,slug,metadata,created_at&order=created_at.asc&limit="+String(Math.max(1,Math.min(200,limit))),
+ );
+ let created=0;
+ for(const article of rows){
+  const metadata=article.metadata&&typeof article.metadata==="object"&&!Array.isArray(article.metadata)?article.metadata as Row:{};
+  const quality=metadata.quality&&typeof metadata.quality==="object"&&!Array.isArray(metadata.quality)?metadata.quality as Row:{};
+  const source=metadata.source&&typeof metadata.source==="object"&&!Array.isArray(metadata.source)?metadata.source as Row:{};
+  const articleId=str(article.id),title=str(article.title),body=str(article.content);
+  const publicPath=str(metadata.publicPath);
+  const sourceType=str(source.type),sourceId=str(source.id);
+  if(!articleId||title.length<8||!body||body.length>12000||quality.passed!==true||source.verified!==true||
+     !sourceType||!sourceId||!publicPath.startsWith("/")||publicPath.startsWith("//"))continue;
+  const automationKey=createWrittenSocialAutomationKey(sourceType,sourceId);
+  const existing=await readRequired<Row>(
+   "/rest/v1/social_publish_queue?automation_key=eq."+encodeURIComponent(automationKey)+"&select=id&limit=1",
+  );
+  if(existing[0])continue;
+  const nowIso=new Date().toISOString();
+  const scheduledAt=new Date(Date.now()+5*60*1000+created*8*60*60*1000).toISOString();
+  await supabaseServerAdminRequest("/rest/v1/social_publish_queue",{
+   method:"POST",
+   headers:{"Content-Type":"application/json",Prefer:"return=minimal"},
+   body:JSON.stringify({
+    content_type:"written_post",
+    content_id:articleId,
+    title,
+    body,
+    image_url:null,
+    video_url:null,
+    target_platforms:["facebook"],
+    status:"queued",
+    scheduled_at:scheduledAt,
+    published_at:null,
+    error_message:null,
+    metadata:{
+     contentType:"written_post",
+     publicPath,
+     source:{
+      type:sourceType,
+      id:sourceId,
+      title:str(source.title)||title,
+      reference:str(source.reference),
+      verified:true,
+     },
+     generation:{
+      provider:"gemini",
+      version:"written-facebook-backfill-v1",
+      importedFromArticleId:articleId,
+      originalCreatedAt:str(article.created_at),
+     },
+    },
+    automation_key:automationKey,
+    created_at:nowIso,
+    updated_at:nowIso,
+   }),
+  });
+  created++;
+ }
+ return created;
+}
+
 export async function runWrittenContentAutomation(options:{category?:string;batchSize?:number}={}){
  if(process.env.WRITTEN_CONTENT_ENABLED?.toLowerCase()==="false")return {enabled:false,created:0,duplicates:0,skipped:0};
  const apiKey=process.env.GEMINI_API_KEY?.trim();if(!apiKey)throw new Error("GEMINI_API_KEY is required.");
+ const facebookBackfilled=await enqueueExistingWrittenArticlesForFacebook();
  const dailyTarget=clamp(process.env.WRITTEN_CONTENT_DAILY_TARGET,3,1,10),batchSize=clamp(options.batchSize??process.env.WRITTEN_CONTENT_BATCH_SIZE,1,1,3);
  const today=new Date();today.setUTCHours(0,0,0,0);
  const todays=await readRequired<Row>(`/rest/v1/articles?metadata->>automation=eq.written-content-v2&created_at=gte.${encodeURIComponent(today.toISOString())}&select=id&limit=100`);
- const remaining=Math.max(0,dailyTarget-todays.length);if(!remaining)return {enabled:true,created:0,duplicates:0,skipped:0,dailyTarget,dailyUsed:todays.length};
+ const remaining=Math.max(0,dailyTarget-todays.length);if(!remaining)return {enabled:true,created:0,duplicates:0,skipped:0,facebookBackfilled,dailyTarget,dailyUsed:todays.length};
  const category=normalizeWrittenCategory(options.category||process.env.WRITTEN_CONTENT_CATEGORY||"auto"),all=await loadSources(),pool=category==="auto"?[...all]:all.filter(x=>x.kind===category);
  if(!pool.length)throw new Error("No approved and published source for category "+category);
 
@@ -236,7 +304,7 @@ export async function runWrittenContentAutomation(options:{category?:string;batc
   try{const draft=await makeDraft(source,apiKey),result=await enqueue(source,draft);if(result.status==="queued")ids.push(result.id);else duplicates++;}
   catch(error){skipped++;console.warn("[written-content] quarantined",source.kind,source.id,error instanceof Error?error.message:String(error));}
  }
- return {enabled:true,created:ids.length,duplicates,skipped,dailyTarget,dailyUsed:todays.length+ids.length,ids};
+ return {enabled:true,created:ids.length,duplicates,skipped,facebookBackfilled,dailyTarget,dailyUsed:todays.length+ids.length,ids};
 }
 const args=process.argv.slice(2),c=args.indexOf("--category"),b=args.indexOf("--batch-size");
 runWrittenContentAutomation({category:c>=0?args[c+1]:undefined,batchSize:b>=0?Number(args[b+1]):undefined}).then(result=>{console.log("[written-content]",JSON.stringify(result));if(result.enabled&&result.created===0&&result.duplicates===0&&result.skipped>0)process.exitCode=1;}).catch(error=>{console.error("[written-content] failed",error instanceof Error?error.message:error);process.exitCode=1;});
