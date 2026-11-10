@@ -89,7 +89,12 @@ assert.ok(publish.includes("seq 1 120") && publish.includes("sleep 30"), "Androi
 assert.ok(publish.includes('group: android-release-publish-global'), "Android publisher must serialize all tag/branch retries with a single release-wide concurrency lock");
 assert.ok(publish.includes('gh release upload "$TAG" "$asset"') && publish.includes("--clobber"), "Android publisher must use the idempotent GitHub CLI upload path for same-named assets");
 assert.ok(publish.includes("statuses: read"), "Android publisher must be able to inspect CircleCI status");
-assert.ok(publish.includes('select(.context == "ci/circleci: android-rebuild")'), "Android publisher must inspect the canonical Android build status");
+assert.ok(
+  publish.includes("select(.context == $context)") &&
+    publish.includes('"ci/circleci: android-rebuild"') &&
+    publish.includes("required_contexts=("),
+  "Android publisher must inspect the canonical Android build status through its complete required-context gate",
+);
 assert.ok(publish.includes("failure|error"), "Android publisher must stop promptly when the signed build fails");
 assert.ok(publish.includes("seq 1 240") && publish.includes("sleep 15") && publish.includes("within 60 minutes"), "Android publisher must allow up to 60 minutes for CircleCI status preflight");
 assert.ok(publish.includes('AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"'), "Android publisher must verify the APK manifest with JAXB-independent aapt");
