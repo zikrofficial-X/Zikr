@@ -137,7 +137,7 @@ assert.match(worker, /metadata\.age_appropriate!==true/);
 assert.match(worker, /source\.kind==="kids_story"/);
 assert.match(worker, /chooseWrittenSourceKind\(/);
 assert.match(worker, /metadata->>audience=eq\.kids/);
-assert.match(worker, /status=in\.\(queued,processing,publishing,partial,published\)/);
+assert.match(worker, /content_type=eq\.written_post&metadata->>audience=eq\.kids/);
 assert.match(worker, /if\(kind==="kids_story"\)hasKidsPostToday=true/);
 assert.match(worker, /Kids safety gate/);
 assert.match(worker, /containsKidsPersonalDataSolicitation/);
