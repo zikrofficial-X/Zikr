@@ -13,6 +13,7 @@ const read = (file) => {
 const backfill = read("scripts/jobs/backfill-legacy-video-qa.ts");
 for (const token of [
   "validateSourceContent",
+  "contentSourceUrl(request)",
   "assertKidsStoryContract",
   "sourceHash(",
   "videoContentHash(",
