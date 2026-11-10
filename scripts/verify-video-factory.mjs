@@ -71,9 +71,10 @@ if (!template.includes("content_hash")) failures.push("video seed must persist a
 if (!template.includes("video_generation_requests_content_hash_unique")) failures.push("video seed must tolerate duplicate content-hash races without aborting the worker");
 if (!template.includes("function isContentHashConflict(error: unknown)")) failures.push("video worker must recognize content-hash uniqueness conflicts consistently");
 const renderedHashClaimPosition = template.indexOf("const hashClaimRows = await supabaseServerAdminRequest");
+const renderedHashWritePosition = template.indexOf("content_hash: rendered.contentHash", renderedHashClaimPosition);
 const siteRegistrationPosition = template.indexOf("await registerGeneratedVideoOnSite(request, rendered)");
-if (renderedHashClaimPosition < 0 || siteRegistrationPosition < 0 || renderedHashClaimPosition > siteRegistrationPosition) {
-  failures.push("rendered content hash must be atomically claimed before public site registration");
+if (renderedHashClaimPosition < 0 || renderedHashWritePosition < renderedHashClaimPosition || siteRegistrationPosition < 0 || renderedHashWritePosition > siteRegistrationPosition) {
+  failures.push("rendered content hash must be atomically written before public site registration");
 }
 for (const token of [
   'status: "cancelled"',
