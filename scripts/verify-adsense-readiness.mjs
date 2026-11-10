@@ -67,6 +67,7 @@ const adsTxt = read('public/ads.txt');
 const nextConfig = read('next.config.ts');
 const analytics = read('src/components/layout/analytics.tsx');
 const adsense = read('src/components/layout/adsense.tsx');
+const webAdvertisingRuntime = read('src/components/layout/web-advertising-runtime.tsx');
 const adsenseSlot = read('src/components/layout/adsense-slot.tsx');
 const articlePage = read('src/app/articles/[slug]/page.tsx');
 const envExample = read('.env.example');
@@ -145,8 +146,8 @@ for (const block of longformBlocks) {
     fail(`Long-form article "${slug}" talks about the product instead of serving the reader.`);
   }
 }
-if (/al5sm\.com|5gvci\.com/.test(layout)) {
-  warn('Separate third-party Monetag scripts remain in the production layout; review their ad formats, consent and AdSense policy compatibility in the publisher accounts.');
+if (/al5sm\.com|5gvci\.com/.test(webAdvertisingRuntime)) {
+  warn('Separate third-party Monetag scripts remain in the web-only advertising runtime; review their ad formats, consent and AdSense policy compatibility in the publisher accounts.');
 }
 
 const productionUrl = site.match(/PRODUCTION_URL\s*=\s*["']([^"']+)["']/)?.[1];
