@@ -36,6 +36,20 @@ assert.equal(
   "an explicitly purged unpublished catalog row can be restored",
 );
 
+assert.equal(
+  canRecoverDuplicateVideoRender({
+    owner: { ...owner, video_url: "https://res.cloudinary.com/example/video/upload/auto-stale.mp4" },
+    candidate,
+    qaApproved: true,
+    siteRecord: {
+      published: false,
+      metadata: { mediaState: "purged", generatedVideoUrl: null, videoUrl: null },
+    },
+  }),
+  true,
+  "a stale generation URL may be replaced only when the matching catalog row is explicitly purged and unpublished",
+);
+
 const reject = (overrides: {
   owner?: Partial<typeof owner>;
   candidate?: Partial<typeof candidate>;
