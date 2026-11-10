@@ -140,6 +140,7 @@ for (const label of visibleLabels) {
 
 const legacyRedirects = {
   "src/app/admin/videos/page.tsx": "/admin/video/requests",
+  "src/app/admin/control/page.tsx": "/admin",
   "src/app/admin/media/page.tsx": "/admin/memory",
   "src/app/admin/video-factory/page.tsx": "/admin/video",
   "src/app/admin/video-factory/sources/page.tsx": "/admin/video/sources",
