@@ -139,6 +139,11 @@ export default async function AndroidReleaseAdminPage() {
           تعذر الاتصال بواجهة GitHub لقراءة الإصدارات. لم يتم اعتبار خطأ الاتصال قائمة إصدارات فارغة.
         </div>
       )}
+      {settingAvailable && selectedMode === "pinned" && releasesResult.ok && selectedTag && !releases.some((release) => release.tag_name === selectedTag) ? (
+        <div role="alert" className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm leading-6 text-amber-100">
+          الإصدار المثبّت حاليًا ({selectedTag}) غير موجود ضمن الإصدارات المستقرة التي تحتوي على APK. اختر إصدارًا متاحًا أو حوّل الوضع إلى تلقائي.
+        </div>
+      ) : null}
 
       <Card className="space-y-6 p-6">
         <form action={saveAndroidReleaseAction} className="space-y-5">
@@ -151,14 +156,14 @@ export default async function AndroidReleaseAdminPage() {
           </label>
 
           <label className="flex items-start gap-3 rounded-xl border border-brand-gold/15 bg-black/20 p-4 cursor-pointer">
-            <input type="radio" name="mode" value="pinned" defaultChecked={selectedMode === "pinned"} className="mt-1" disabled={!settingAvailable} />
+            <input type="radio" name="mode" value="pinned" defaultChecked={selectedMode === "pinned"} className="mt-1" disabled={!settingAvailable || !releasesResult.ok || releases.length === 0} />
             <span className="flex-1">
               <span className="block font-semibold text-brand-cream">تثبيت إصدار محدد</span>
               <span className="text-xs text-brand-cream/45">استخدم هذا عندما تريد تأخير التحديث للمستخدمين رغم وجود Release أحدث.</span>
               <select name="releaseTag" defaultValue={selectedTag} disabled={!settingAvailable || !releasesResult.ok || releases.length === 0} className="mt-3 w-full rounded-xl border border-brand-gold/20 bg-black/40 px-4 py-3 text-sm text-brand-cream disabled:cursor-not-allowed disabled:opacity-50">
                 <option value="">اختر الإصدار</option>
                 {selectedTag && !releases.some(release => release.tag_name === selectedTag) ? (
-                  <option value={selectedTag}>{selectedTag} — الإصدار المحفوظ غير موجود ضمن قائمة GitHub الحالية</option>
+                  <option value={selectedTag} disabled>{selectedTag} — الإصدار المحفوظ غير متاح حاليًا</option>
                 ) : null}
                 {releases.map(release => (
                   <option key={release.tag_name} value={release.tag_name}>
