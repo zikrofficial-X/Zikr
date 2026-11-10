@@ -169,6 +169,7 @@ assert.equal(isKidsWrittenPostCandidate({
  metadata: { audience: "general", source: { type: "quran" }, publicPath: "/quran/ash-sharh" },
 }), false, "general written posts must not be classified as Kids candidates");
 assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, liveKidsStory), true, "Kids written posts require a currently approved live story before provider delivery");
+assert.equal(isEligibleKidsWrittenPostForPublishing({ ...kidsPublishCandidate, body: "أرسل رقم هاتفك لي" }, liveKidsStory), false, "unsafe child personal-data solicitation must be blocked again immediately before provider delivery");
 assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, { ...liveKidsStory, published: false }), false, "unpublished Kids sources must be held before provider delivery");
 assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, { ...liveKidsStory, is_active: false }), false, "inactive Kids sources must be held before provider delivery");
 assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, { ...liveKidsStory, metadata: { age_appropriate: false } }), false, "non-age-appropriate Kids sources must be held before provider delivery");
@@ -177,6 +178,7 @@ assert.equal(isEligibleKidsWrittenPostForPublishing({ ...kidsPublishCandidate, m
 assert.equal(isEligibleKidsWrittenPostForPublishing({ ...kidsPublishCandidate, metadata: { ...queueRow.metadata, source: { type: "kids_story", id: "kids-story-1", verified: false } } }, liveKidsStory), false, "unverified Kids source metadata must be held before provider delivery");
 const publicKidsPost = buildPublicKidsWrittenPost(queueRow, liveKidsStory);
 assert.ok(publicKidsPost, "a published post with a currently approved Kids source may be displayed");
+assert.equal(buildPublicKidsWrittenPost({ ...queueRow, body: "أرسل رقم هاتفك لي" }, liveKidsStory), null, "the public Kids feed must hide unsafe legacy or manually inserted copy");
 assert.equal(publicKidsPost?.publicPath, "/kids/story-kind-word");
 assert.equal(publicKidsPost?.ageGroup, "6-8");
 assert.equal(buildPublicKidsWrittenPost(queueRow, { ...liveKidsStory, published: false }), null, "unpublished source stories must disappear from the public Kids feed");
