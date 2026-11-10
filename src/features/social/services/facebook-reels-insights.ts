@@ -151,8 +151,8 @@ async function loadFacebookPagePostVideoIndex(
       const providerMessage = typeof error.message === "string"
         ? error.message
             .replaceAll(pageAccessToken, "[redacted]")
-            .replace(/\\b\\d{8,}\\b/g, "[id]")
-            .replace(/https?:\\/\\/\\S+/gi, "[url]")
+            .replace(/\b\d{8,}\b/g, "[id]")
+            .replace(/https?:\/\/\S+/gi, "[url]")
             .slice(0, 220)
         : "No provider message returned.";
       throw new FacebookReelsInsightsApiError({
