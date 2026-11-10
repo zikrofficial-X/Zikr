@@ -30,6 +30,7 @@ const facebookConnect = read("src/app/api/admin/social/facebook/connect/route.ts
 const facebookCallback = read("src/app/api/admin/social/facebook/callback/route.ts");
 const adminClient = read("src/app/admin/social/social-client.tsx");
 const writtenWorker = read("scripts/jobs/written-content-automation.ts");
+const writtenPostService = read("src/features/social/services/written-content.ts");
 const videoCatalog = read("src/features/videos/services/videos.ts");
 const sitePublisher = read("scripts/jobs/content-publishing.ts");
 
@@ -45,15 +46,19 @@ if (!socialApi.includes("created_at=gte.") || !socialApi.includes("limit=200") |
     !socialApi.includes("limit=500") || !socialApi.includes("private, max-age=30")) {
   failures.push("social admin reads must be bounded, cached and isolated to the post-launch queue window");
 }
-if (!writtenApi.includes('code: "EXTERNAL_WRITTEN_PUBLISHING_RETIRED"') || !writtenApi.includes("status: 410")) {
-  failures.push("external written-post publishing must remain retired; internal articles use their own generator");
+if (!writtenApi.includes('requireAdminApi("social.manage")') ||
+    !writtenApi.includes('requireAdminApi("social.publish")') ||
+    !writtenApi.includes('dispatchGitHubWorkflow("generate-written-content.yml"') ||
+    !writtenApi.includes("content_type=eq.written_post")) {
+  failures.push("written Facebook posts API must expose queue rows and dispatch the authenticated written-content generator");
 }
 if (!socialPage.includes('requireAdminPermission("social.manage")') ||
     !socialPage.includes("AdminSocialClient")) {
   failures.push("social admin page must be permission-gated and render the social control center");
 }
-if (!writtenPage.includes('redirect("/admin/memory")')) {
-  failures.push("external written studio must remain retired and redirect to internal memory");
+if (!writtenPage.includes('requireAdminPermission("social.manage")') ||
+    !writtenPage.includes("WrittenStudioClient")) {
+  failures.push("written Facebook posts studio must render directly and require social.manage");
 }
 if (!navigation.includes('key: "media-audio"') || !navigation.includes('href: "/admin/social"')) {
   failures.push("permission-gated social publishing center must be present in admin navigation");
@@ -127,10 +132,11 @@ if (!socialPublishingService.includes("shouldRetryPublishedVideoCleanup(item.met
   failures.push("published-video cleanup must skip rows already deferred and retry only missing or explicitly pending cleanup metadata");
 }
 if (!socialWorkflow.includes("workflow_run:") ||
-    !socialWorkflow.includes('workflows: ["ZIKR Autonomous AI Video Worker"]') ||
+    !socialWorkflow.includes('"ZIKR Autonomous AI Video Worker"') ||
+    !socialWorkflow.includes('"ZIKR Internal Site Content Generator"') ||
     !socialWorkflow.includes("github.event.workflow_run.conclusion == 'success'") ||
     !socialWorkflow.includes("workflow_dispatch:")) {
-  failures.push("social publisher must be event-driven after successful generation and support explicit manual dispatch");
+  failures.push("social publisher must run after successful video or written-content generation and support explicit manual dispatch");
 }
 if (!socialWorkflow.includes("\n  schedule:") ||
     !socialWorkflow.includes('cron: "7,22,37,52 * * * *"') ||
@@ -227,9 +233,14 @@ if (adminClient.includes("اعتمد الفيديو أولًا") ||
   failures.push("social center must show automated QA diagnostics and must not prompt for manual video approval");
 }
 if (!writtenWorker.includes('"articles"') ||
-    writtenWorker.includes("social_publish_queue") ||
-    !writtenWorker.includes("content_publish_queue")) {
-  failures.push("internal written-content factory must continue publishing only to the ZIKR website");
+    !writtenWorker.includes("content_publish_queue") ||
+    !writtenWorker.includes("social_publish_queue") ||
+    !writtenWorker.includes("buildWrittenSocialQueuePayload") ||
+    !writtenWorker.includes("createWrittenSocialAutomationKey") ||
+    !writtenWorker.includes("enqueueExistingWrittenArticlesForFacebook") ||
+    !writtenPostService.includes('content_type: "written_post"') ||
+    !writtenPostService.includes('target_platforms: ["facebook"]')) {
+  failures.push("written-content factory must preserve the internal article queue and idempotently enqueue a Facebook-only text post");
 }
 if (!videoCatalog.includes("metadata.generatedVideoUrl") ||
     !videoCatalog.includes("isPubliclyRenderableVideo") ||
