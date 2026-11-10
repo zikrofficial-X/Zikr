@@ -22,6 +22,10 @@ for (const token of [
   "validateLegacyCloudinaryMaster",
   "verifyRemoteMedia",
   "content->automatedVideoQa=is.null",
+  "KIDS_CLASSIFICATION_BLOCK_REASON",
+  "isKidsClassificationRevalidation",
+  "content->automatedVideoQa->>blockedReason=eq.",
+  "revalidatedAfterCanonicalKidsClassification",
   'approvalStatus: "qa_failed"',
   'status: "blocked"',
   "sourceRevalidated: true",
@@ -78,6 +82,25 @@ read("src/app/kids/videos/page.tsx");
 read("src/app/kids/videos/[slug]/page.tsx");
 
 const dynamicWorker = read("scripts/jobs/template-video-automation.ts");
+for (const token of [
+  'source.audience === "kids"',
+  'source.generationMode === "free_deterministic_story_factory"',
+  'aiMode: "original_kids_story"',
+  'sourceType: "original_kids_fiction"',
+  "seriesId: source.seriesId",
+  "seriesTitle: source.seriesTitle",
+  "learningObjective: source.learningObjective",
+]) {
+  if (!dynamicWorker.includes(token)) failures.push("Trusted curated Kids source must restore canonical classification metadata before QA: " + token);
+}
+if (!dynamicWorker.includes("source.category === \"story\"") ||
+    !dynamicWorker.includes('"generationMode" in source')) {
+  failures.push("Kids classification recovery must be restricted to canonical deterministic Kids story sources");
+}
+if (!backfill.includes("originalContent.curatedSourceId.startsWith(\"kids-series:\")") ||
+    !backfill.includes('validatedContent.audience !== "kids"')) {
+  failures.push("Legacy Kids backfill must reclassify only after a canonical source lookup restores the Kids audience");
+}
 if (!dynamicWorker.includes("function getAiAttemptsPerRunLimit()") ||
     dynamicWorker.includes("const AI_ATTEMPTS_PER_RUN")) {
   failures.push("AI retry budget must be dynamically read after runtime settings injection");
