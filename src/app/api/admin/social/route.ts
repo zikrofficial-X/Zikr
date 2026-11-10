@@ -367,7 +367,7 @@ export async function POST(request: NextRequest) {
       platforms?: unknown;
     };
     const action = typeof body.action === "string" ? body.action : "";
-    if (["retry", "retry_all_failed", "run_worker", "publish_now", "delete_published"].includes(action)) {
+    if (["retry", "retry_all_failed", "run_worker", "publish_now", "delete_published", "adopt_server_facebook_token"].includes(action)) {
       const executionAuth = await requireAdminApi("social.publish");
       if (!executionAuth.ok) {
         return NextResponse.json(

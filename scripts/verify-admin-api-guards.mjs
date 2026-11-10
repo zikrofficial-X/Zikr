@@ -121,6 +121,19 @@ const CANONICAL_API_GUARDS = {
   "src/app/api/admin/youtube-facebook/upload-url/route.ts POST": ["media.manage"],
 };
 
+const socialRouteSource = readFileSync(join(apiRoot, "social/route.ts"), "utf8");
+const socialActionGateStart = socialRouteSource.indexOf("if ([");
+const socialActionGateEnd = socialRouteSource.indexOf("const ids", socialActionGateStart);
+const socialActionGate = socialActionGateStart >= 0 && socialActionGateEnd > socialActionGateStart
+  ? socialRouteSource.slice(socialActionGateStart, socialActionGateEnd)
+  : "";
+if (
+  !socialActionGate.includes("adopt_server_facebook_token") ||
+  !socialActionGate.includes('requireAdminApi("social.publish")')
+) {
+  failures.push("social token adoption must require social.publish because it releases and dispatches public queue items");
+}
+
 const routeFiles = walk(apiRoot)
   .filter((file) => file.endsWith("route.ts"))
   .sort();
