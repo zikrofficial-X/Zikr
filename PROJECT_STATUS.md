@@ -1,5 +1,13 @@
 # ZIKR — Current Project Status
 
+## Additional verified fix — Android release publishing gate (2026-11-10)
+
+PR #275 now fixes a second release-control defect. The Android asset publisher previously allowed a recovery branch to run without the explicit retry input and skipped the full CircleCI prerequisite check on manual retries. It now resolves the exact immutable tag target for every path, requires `workflow_dispatch` plus `retry=true` for recovery branches, and waits for all required CircleCI contexts and the latest `ZIKR / Quality Gate` on that exact source commit before publishing. The combined commit status must also be successful.
+
+Commits: `4ee6a5b` (workflow gate), `e6f7e3b` (release-contract and CI-architecture tests, fail-fast combined status). No Android release workflow was dispatched. The existing `v1.1.14` release remains unchanged.
+
+Current PR #275 code head: `e6f7e3baf8c6ad904a0082e67c5740c2a3ed9a5a`; 58 changed files; still Draft. CircleCI source-verify 4459 and application-build-docs 4460 are pending; config-guard 4461 passed; GitHub Quality Gate 42824891836 is queued; CircleCI Config Validation 42824891750 is in progress. Do not merge until all checks pass on the exact current head.
+
 ## Current verified checkpoint — 2026-11-10 15:08 Africa/Cairo
 
 **Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
