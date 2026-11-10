@@ -149,21 +149,35 @@ async function listAutomatedStorageObjects(): Promise<string[]> {
   const paths: string[] = [];
 
   const walk = async (prefix: string): Promise<void> => {
-    for (let offset = 0; offset < 5000; offset += 1000) {
+    let fullyEnumerated = false;
+    for (let offset = 0; offset <= 5000; offset += 1000) {
       const { data, error } = await bucket.list(prefix, {
-        limit: 1000,
+        limit: offset === 5000 ? 1 : 1000,
         offset,
         sortBy: { column: "name", order: "asc" },
       });
       if (error) throw new Error(`Supabase video Storage inventory failed: ${error.message}`);
       const objects = data ?? [];
+      if (offset === 5000) {
+        if (objects.length > 0) {
+          throw new Error("Automated video Storage inventory exceeded the safe pagination limit.");
+        }
+        fullyEnumerated = true;
+        break;
+      }
       for (const object of objects) {
         if (!object.name || object.name === "." || object.name === "..") continue;
         const path = `${prefix}/${object.name}`;
         if (object.id || object.metadata) paths.push(path);
         else await walk(path);
       }
-      if (objects.length < 1000) break;
+      if (objects.length < 1000) {
+        fullyEnumerated = true;
+        break;
+      }
+    }
+    if (!fullyEnumerated) {
+      throw new Error("Automated video Storage inventory exceeded the safe pagination limit.");
     }
   };
 
@@ -407,6 +421,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Complete every bounded database inventory before the first external or
+    // database deletion. A limit hit must never leave a partially purged library.
+    const generatedCatalogRows = await supabaseServerAdminRequest<Array<{
+      id: string;
+      metadata: Record<string, unknown> | null;
+      published: boolean | null;
+      youtube_id: string | null;
+    }>>(
+      "/rest/v1/videos?metadata->>generator=eq.zikr_internal_video_factory&select=id,metadata,published,youtube_id&limit=1000",
+    );
+    if ((generatedCatalogRows ?? []).length >= 1000) {
+      throw new Error("Generated video catalog exceeded the safe purge batch; no files or catalog rows were changed.");
+    }
+    const generatedRequests = includeMemory
+      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/video_generation_requests?automation_key=not.is.null&select=id&limit=1000",
+        )
+      : [];
+    if (includeMemory && (generatedRequests ?? []).length >= 1000) {
+      throw new Error("Automated generation history exceeded the safe purge batch; no files or catalog rows were changed.");
+    }
+    const automationRuns = includeMemory
+      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/video_automation_runs?metadata->>generator=eq.multi-provider-free-ai&select=id&limit=1000",
+        )
+      : [];
+    if (includeMemory && (automationRuns ?? []).length >= 1000) {
+      throw new Error("Internal video automation history exceeded the safe purge batch; no files or catalog rows were changed.");
+    }
+
     const assets = includeFiles ? await listGeneratedVideos() : [];
     const storagePaths = includeFiles ? await listAutomatedStorageObjects() : [];
     if (includeFiles && assets.length > 0) destructiveWorkStarted = true;
@@ -427,17 +471,6 @@ export async function POST(request: NextRequest) {
     // Remove Cloudinary masters without hiding videos that already have a
     // verified YouTube publication fallback. Unconfirmed IDs are never treated
     // as a playback fallback, and unpublished records remain unpublished.
-    const generatedCatalogRows = await supabaseServerAdminRequest<Array<{
-      id: string;
-      metadata: Record<string, unknown> | null;
-      published: boolean | null;
-      youtube_id: string | null;
-    }>>(
-      "/rest/v1/videos?metadata->>generator=eq.zikr_internal_video_factory&select=id,metadata,published,youtube_id&limit=1000",
-    );
-    if ((generatedCatalogRows ?? []).length >= 1000) {
-      throw new Error("Generated video catalog exceeded the safe purge batch; no catalog rows were changed.");
-    }
     if ((generatedCatalogRows ?? []).length > 0) destructiveWorkStarted = true;
     let catalogRecordsHidden = 0;
     let catalogFallbackRowsKeptPublished = 0;
@@ -492,15 +525,8 @@ export async function POST(request: NextRequest) {
     }
         // Historical external platform queue records are never read or modified.
     const socialQueueRowsPreserved = true;
-    const generatedRequests = includeMemory
-      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
-          "/rest/v1/video_generation_requests?automation_key=not.is.null&select=id&limit=1000",
-        )
-      : [];
-    if (includeMemory && (generatedRequests ?? []).length >= 1000) {
-      throw new Error("Automated generation history exceeded the safe purge batch.");
-    }
     let generationRowsDeleted = 0;
+    if ((generatedRequests ?? []).length > 0) destructiveWorkStarted = true;
     if ((generatedRequests ?? []).length > 0) destructiveWorkStarted = true;
     for (const generatedRequest of generatedRequests ?? []) {
       generationRowsDeleted += await deleteRows(
@@ -508,15 +534,8 @@ export async function POST(request: NextRequest) {
         "id=eq." + encodeURIComponent(generatedRequest.id),
       );
     }
-    const automationRuns = includeMemory
-      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
-          "/rest/v1/video_automation_runs?metadata->>generator=eq.multi-provider-free-ai&select=id&limit=1000",
-        )
-      : [];
-    if (includeMemory && (automationRuns ?? []).length >= 1000) {
-      throw new Error("Internal video automation history exceeded the safe purge batch.");
-    }
     let automationRunsDeleted = 0;
+    if ((automationRuns ?? []).length > 0) destructiveWorkStarted = true;
     if ((automationRuns ?? []).length > 0) destructiveWorkStarted = true;
     for (const run of automationRuns ?? []) {
       automationRunsDeleted += await deleteRows(
