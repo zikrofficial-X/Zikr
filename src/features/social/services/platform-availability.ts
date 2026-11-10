@@ -225,7 +225,7 @@ export function buildMissingMediaQueueRecoveryPatch(input: {
       isAmbiguousProviderOutcome(facebookResult.error)) return null;
 
   const error = facebookResult.error.toLowerCase();
-  if (!/http\\s*422|unprocessable|source media|missing media|cooldown/i.test(error)) return null;
+  if (!/http\s*422|unprocessable|source media|missing media|cooldown/i.test(error)) return null;
 
   const permanentFailurePlatforms = Array.isArray(metadata.permanentFailurePlatforms)
     ? metadata.permanentFailurePlatforms.filter((platform): platform is string => typeof platform === "string")
