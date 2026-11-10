@@ -28,6 +28,13 @@ export function shouldBackfillKidsWrittenPost(sourceType: string, hasKidsPostTod
  return sourceType !== "kids_story" || !hasKidsPostToday;
 }
 
+export function scheduleKidsBackfillWithinUtcDay(now: Date): string {
+ const timestamp = now.getTime();
+ if (!Number.isFinite(timestamp)) throw new Error("Invalid Kids backfill scheduling time.");
+ const nextUtcDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+ return new Date(Math.max(timestamp, Math.min(timestamp + 5 * 60_000, nextUtcDay - 1))).toISOString();
+}
+
 export function containsKidsPersonalDataSolicitation(value: string): boolean {
  const normalized = value
   .normalize("NFKC")
