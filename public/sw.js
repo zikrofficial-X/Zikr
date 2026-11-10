@@ -38,14 +38,18 @@ async function purgeNativeAdvertisingMarkup() {
 
   const cache = await caches.open(CACHE_NAME);
   const requests = await cache.keys();
-  await Promise.all(
+  await Promise.allSettled(
     requests.map(async request => {
-      const response = await cache.match(request);
-      if (!response?.headers.get("content-type")?.includes("text/html")) return;
+      try {
+        const response = await cache.match(request);
+        if (!response?.headers.get("content-type")?.includes("text/html")) return;
 
-      const html = await response.clone().text();
-      if (/(?:al5sm\\.com|5gvci\\.com|uplcm\\.com|name=["']monetag["']|fundingchoicesmessages\\.google\\.com|googletagmanager\\.com\\/gtm\\.js|pagead2\\.googlesyndication\\.com|googleads\\.g\\.doubleclick\\.net|tpc\\.googlesyndication\\.com|google-adsense-account)/i.test(html)) {
-        await cache.delete(request);
+        const html = await response.clone().text();
+        if (/(?:al5sm\\.com|5gvci\\.com|uplcm\\.com|name=["']monetag["']|fundingchoicesmessages\\.google\\.com|googletagmanager\\.com\\/gtm\\.js|pagead2\\.googlesyndication\\.com|googleads\\.g\\.doubleclick\\.net|tpc\\.googlesyndication\\.com|google-adsense-account)/i.test(html)) {
+          await cache.delete(request);
+        }
+      } catch {
+        // A damaged legacy cache entry must never block worker activation.
       }
     })
   );
