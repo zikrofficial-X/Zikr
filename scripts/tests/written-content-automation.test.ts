@@ -99,6 +99,8 @@ assert.match(writtenFactory, /liveMetadata\.age_appropriate !== true/);
 assert.match(writtenFactory, /kidsContentId !== source\.id/);
 assert.match(writtenFactory, /sourceMetadata\.id !== source\.id/);
 assert.match(kidsApi, /buildPublicKidsWrittenPost/);
+assert.match(kidsApi, /getServerEnv\(\)\.SUPABASE_SERVICE_ROLE_KEY/);
+assert.match(kidsApi, /return NextResponse\.json\(\[\],/);
 assert.match(kidsApi, /\/rest\/v1\/kids_content\?id=in\.\(/);
 assert.match(kidsApi, /is_active=eq\.true/);
 assert.match(kidsApi, /metadata->>age_appropriate=eq\.true/);
