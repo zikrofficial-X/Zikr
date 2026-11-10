@@ -136,6 +136,7 @@ assert.match(worker, /createWrittenSocialAutomationKey/);
 assert.match(worker, /enqueueExistingWrittenArticlesForFacebook/);
 assert.match(worker, /\/rest\/v1\/kids_content/);
 assert.match(worker, /metadata\.age_appropriate!==true/);
+assert.match(worker, /readRequired<Row>\(\s*"\/rest\/v1\/kids_content\?/, "Kids source lookup must fail closed instead of silently bypassing daily prioritization");
 assert.match(worker, /source\.kind==="kids_story"/);
 assert.match(worker, /chooseWrittenSourceKind\(/);
 assert.match(worker, /metadata->>audience=eq\.kids/);
