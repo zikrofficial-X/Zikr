@@ -40,6 +40,7 @@ export function createVideoProviderRouter(
         (name) => name !== input.preferredProvider,
       )];
       let templateAttempted = false;
+      const providerErrors: string[] = [];
 
       for (const name of candidates) {
         // Free-only mode permits public Hugging Face Spaces and the local FFmpeg renderer only.
@@ -65,7 +66,9 @@ export function createVideoProviderRouter(
           continue;
         }
         if (!available) {
-          console.warn("[video-provider-router] Provider unavailable: " + name);
+          const message = name + ": unavailable (disabled, missing gradio_client, or no runtime)";
+          providerErrors.push(message);
+          console.warn("[video-provider-router] " + message);
           continue;
         }
 
@@ -73,14 +76,14 @@ export function createVideoProviderRouter(
         try {
           const result = await provider.generate(input);
           if (result.ok) return result;
-          console.warn(
-            "[video-provider-router] Provider " + name + " failed for " + input.requestId + ": " + (result.error || "unknown error"),
-          );
+          const message = name + ": " + (result.error || "unknown error");
+          providerErrors.push(message);
+          console.warn("[video-provider-router] Provider " + name + " failed for " + input.requestId + ": " + (result.error || "unknown error"));
         } catch (error) {
-          console.warn(
-            "[video-provider-router] Provider " + name + " threw for " + input.requestId + ": " +
-            (error instanceof Error ? error.message : String(error)),
-          );
+          const message = name + ": " + (error instanceof Error ? error.message : String(error));
+          providerErrors.push(message);
+          console.warn("[video-provider-router] Provider " + name + " threw for " + input.requestId + ": " +
+            (error instanceof Error ? error.message : String(error)));
         }
       }
 
@@ -99,7 +102,9 @@ export function createVideoProviderRouter(
       return {
         ok: false,
         provider: "template",
-        error: "All enabled video providers failed.",
+        error: providerErrors.length
+          ? providerErrors.join(" | ").slice(0, 1800)
+          : "All enabled video providers failed.",
       };
     },
   };
