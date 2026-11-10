@@ -575,3 +575,39 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 3. Isolate Preview from production Supabase only after approval for the additional environment/project and its costs.
 4. Do not replay failed/held social items, expose credentials, or publish unverified Kids content.
 5. Do not delete branches, assets, files, tables, or rows; do not alter OAuth/domains/secrets or perform production release/rollback without explicit approval.
+
+
+---
+
+## Checkpoint — 2026-11-10 19:58 UTC — PR #317/#318 closeout and current baseline
+
+**State: CODE FIXES MERGED; production rollout and full-project acceptance remain IN PROGRESS. Do not label the project error-free yet.**
+
+### Canonical source and release state
+- Repository: `zikrofficial-X/Zikr`; branch: `main`; current code SHA: `021c00b6f76a55c0e47d85b79fb012c74aacc99b`.
+- PR #317 merged at `cb6c3284cee7d275bb3e3a7547bb51d05282f1b8`: duplicate video renders now increment a separate `skipped` count rather than inflating failures; the count is carried into the worker summary and run metadata. Exact-head Quality Gate and CircleCI config-guard passed.
+- PR #318 merged at `021c00b6f76a55c0e47d85b79fb012c74aacc99b`: adds source-verified, age-appropriate Kids written-post generation; Kids safety checks; Kids admin category; idempotent Facebook queueing linked to the existing Kids story; a public API that revalidates the live story before exposure; and a Kids page section that displays only confirmed-published posts.
+- PR #318 exact feature head `c8725483d1a57008a8fe40449f2f3acf553ac529` passed GitHub Quality Gate, CircleCI config-guard/source-verify/application-build-docs, and Vercel Preview. Preview smoke checks for `/`, `/kids`, `/videos`, `/api/kids/social-posts`, and `/api/health` all returned HTTP 200. The Kids social-post API returned `[]` in Preview because Preview intentionally has no production service-role key; this is now handled as a safe empty optional feed, not a 503.
+- The same Preview build exposed an expected missing-key log from Quran fallback. `quran-server.ts` now uses the public read path directly when the optional Preview service-role key is absent, and `verify-quran-offline.mjs` guards this behavior. This last fix was included in the exact PR #318 head that passed all checks and Preview.
+- The squash merge commit `021c00b6...` has new main-branch CircleCI checks pending at checkpoint time. Production's latest observed deployment is still READY on `6e8010ef95616c01950ff5ef7d6f44b178da5132`; no deployment for the new main SHA was yet observed. Monitor the automatic main deployment and verify it before calling this release live. No manual production release workflow was dispatched.
+
+### Production database reconciliation (read-only)
+- Recursive Git tree: 2,154 entries (1,662 files, 492 directories), not truncated. The current manifest is regenerated from the exact `main` tree; it excludes its own file to avoid a self-referential blob SHA.
+- Local active SQL migrations: 418; remote `schema_migrations` versions: 418; exact version-set comparison: no local-only, remote-only, or duplicate versions.
+- Public schema snapshot: 92 tables, 92 RLS-enabled, 0 RLS-disabled, 211 public policies, 280 public indexes, 40 routines, 53 triggers; Storage 9 buckets and 0 objects.
+- Current read-only generation snapshot: 117 video requests (115 completed, 2 cancelled, 0 failed, 0 processing, 0 queued). The 64 completed rows with null `video_url` all have a `content.videoDisposedAt` timestamp; treat these as intentional media disposal records, not missing outputs, unless further evidence contradicts this.
+- Video worker runs before the PR #317 fix still contain historical `failed_count` values of 2 and 1; these are immutable historical records. Future runs must show the separate skipped metric.
+- Social queue snapshot: 83 published video posts, 2 published written posts, and 9 queued written posts. None of the existing written posts is marked as Kids content; do not relabel them. Current Kids content has 26 published/active stories, of which 6 are explicitly marked age-appropriate and are eligible for the new Kids generator.
+- Facebook credential state is enabled/connected with Page publishing and insights permissions; no error code/message is stored. YouTube OAuth row exists for the ZIKR channel with readonly, upload, and analytics scopes; no token value was read. YouTube sync state last succeeded at 19:29 UTC with no error; cached profile snapshots were status `ok` (Facebook 33 followers/likes; YouTube 215 subscribers, 56,886 views, 940 videos). Counts are snapshots, not guaranteed real-time totals.
+
+### Access and acceptance limitations
+- Vercel runtime-error cluster access returned HTTP 403 for the connected project scope. Do not infer zero runtime errors from this unavailable endpoint. Build logs and direct Preview/Production smoke tests remain available.
+- This is a targeted post-merge checkpoint, not a completed 1,662-file source review or full browser/device acceptance. Remaining areas include complete Admin role-by-role browser acceptance, Android/iOS native runtime and release validation, all public route journeys, media playback and accessibility, social delivery confirmation for newly generated Kids posts, YouTube channel feed freshness after the next allowed sync, and complete runtime-error visibility.
+- Existing approval gates remain: Auth leaked-password protection warning, unused-index cleanup, Preview/Production database isolation, destructive media/asset cleanup, credentials/domains, and manual production release/rollback. Do not change these without the relevant explicit approval.
+
+### Required next verification
+1. Confirm CircleCI checks on main SHA `021c00b6...` complete successfully.
+2. Confirm Vercel Production deployment reaches READY on that exact SHA; then smoke-test `/`, `/kids`, `/videos`, `/api/health`, and `/api/kids/social-posts`.
+3. Verify the Kids written-post API returns only rows with `status=published`, audience `kids`, matching live `kids_content` source, `age_appropriate=true`, and a valid `/kids/<slug>` path. No Kids post is currently in the production queue.
+4. Verify the next video worker run records intentional duplicate suppression in `metadata.skipped` and does not increase `failed_count` for those cancellations.
+5. Continue the file-by-file and route-by-route audit from this baseline; do not mark modules closed without evidence and acceptance tests.
