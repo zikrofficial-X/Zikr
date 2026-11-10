@@ -67,7 +67,7 @@ requireCondition(
     serviceWorker.includes("await purgeNativeAdvertisingMarkup()"),
   "The native worker must remove cached HTML containing previously published ad markup.",
 );
-const appShellCachePattern = /^zikr-v\\d+$/;
+const appShellCachePattern = /^zikr-v\d+$/;
 const appShellCacheName = serviceWorker.match(/const CACHE_NAME = ["']([^"']+)["']/)?.[1] ?? "";
 const offlinePackCacheName = offlinePack.match(/const OFFLINE_CACHE_NAME = ["']([^"']+)["']/)?.[1] ?? "";
 const quranAudioCacheName = offlineAudio.match(/const CACHE_NAME = ["']([^"']+)["']/)?.[1] ?? "";
