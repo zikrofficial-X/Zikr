@@ -308,12 +308,12 @@ jobs:
             fi
 
             if TAG_REF="$(GH_TOKEN="${GH_TOKEN}" gh api "repos/${REPOSITORY}/git/ref/tags/${RELEASE_TAG}" 2>/dev/null)"; then
-              TAG_TYPE="$(jq -r '.object.type' <<< "${TAG_REF}")"
-              TAG_SHA="$(jq -r '.object.sha' <<< "${TAG_REF}")"
+              TAG_TYPE="$(printf '%s' "${TAG_REF}" | jq -r '.object.type')"
+              TAG_SHA="$(printf '%s' "${TAG_REF}" | jq -r '.object.sha')"
               if [[ "${TAG_TYPE}" == "tag" ]]; then
                 TAG_OBJECT="$(GH_TOKEN="${GH_TOKEN}" gh api "repos/${REPOSITORY}/git/tags/${TAG_SHA}")"
-                TAG_TARGET_TYPE="$(jq -r '.object.type' <<< "${TAG_OBJECT}")"
-                TAG_TARGET_SHA="$(jq -r '.object.sha' <<< "${TAG_OBJECT}")"
+                TAG_TARGET_TYPE="$(printf '%s' "${TAG_OBJECT}" | jq -r '.object.type')"
+                TAG_TARGET_SHA="$(printf '%s' "${TAG_OBJECT}" | jq -r '.object.sha')"
               else
                 TAG_TARGET_TYPE="${TAG_TYPE}"
                 TAG_TARGET_SHA="${TAG_SHA}"
@@ -341,16 +341,16 @@ jobs:
               --notes-file "${NOTES}"
 
             RELEASE_JSON="$(GH_TOKEN="${GH_TOKEN}" gh release view "${RELEASE_TAG}" --repo "${REPOSITORY}" --json tagName,isDraft)"
-            test "$(jq -r '.tagName' <<< "${RELEASE_JSON}")" = "${RELEASE_TAG}"
-            test "$(jq -r '.isDraft' <<< "${RELEASE_JSON}")" = "true"
+            test "$(printf '%s' "${RELEASE_JSON}" | jq -r '.tagName')" = "${RELEASE_TAG}"
+            test "$(printf '%s' "${RELEASE_JSON}" | jq -r '.isDraft')" = "true"
 
             TAG_REF="$(GH_TOKEN="${GH_TOKEN}" gh api "repos/${REPOSITORY}/git/ref/tags/${RELEASE_TAG}")"
-            TAG_TYPE="$(jq -r '.object.type' <<< "${TAG_REF}")"
-            TAG_SHA="$(jq -r '.object.sha' <<< "${TAG_REF}")"
+            TAG_TYPE="$(printf '%s' "${TAG_REF}" | jq -r '.object.type')"
+            TAG_SHA="$(printf '%s' "${TAG_REF}" | jq -r '.object.sha')"
             if [[ "${TAG_TYPE}" == "tag" ]]; then
               TAG_OBJECT="$(GH_TOKEN="${GH_TOKEN}" gh api "repos/${REPOSITORY}/git/tags/${TAG_SHA}")"
-              TAG_TARGET_SHA="$(jq -r '.object.sha' <<< "${TAG_OBJECT}")"
-              TAG_TARGET_TYPE="$(jq -r '.object.type' <<< "${TAG_OBJECT}")"
+              TAG_TARGET_SHA="$(printf '%s' "${TAG_OBJECT}" | jq -r '.object.sha')"
+              TAG_TARGET_TYPE="$(printf '%s' "${TAG_OBJECT}" | jq -r '.object.type')"
             else
               TAG_TARGET_SHA="${TAG_SHA}"
               TAG_TARGET_TYPE="${TAG_TYPE}"
