@@ -94,9 +94,11 @@ For the complete ownership matrix, see `docs/AUTOMATION_OWNERSHIP_2026-10-08.md`
 For queue internals, see `docs/background-jobs.md`.
 
 
-## Internal written website content
+## Written Facebook posts and internal website content
 
-The written-content factory runs through `.github/workflows/generate-written-content.yml`, independently from video production. It selects published/reviewed source records, preserves Quran/Hadith/Dua/Adhkar quotations verbatim, and creates unpublished ZIKR website articles. It schedules those articles through `content_publish_queue` with `content_table=articles`; it does not create social posts or use `social_publish_queue`. The workflow requires `GEMINI_API_KEY` as a GitHub Actions secret in the production environment. Vercel environment variables are not automatically available to GitHub Actions.
+The written-content factory runs through `.github/workflows/generate-written-content.yml`, independently from video rendering. It selects published/reviewed source records, preserves Quran/Hadith/Dua/Adhkar quotations verbatim, and creates unpublished ZIKR website articles. Website scheduling remains in `content_publish_queue` with `content_table=articles`.
+
+For each generated draft, the same job also creates one idempotent `social_publish_queue` record with `content_type=written_post`, `target_platforms=[facebook]`, and no video asset. The existing social worker publishes it as a Facebook Page feed text post through the existing Page `/feed` adapter; video QA remains mandatory for video records only. The dedicated Admin route is `/admin/social/written-studio`. The social publisher workflow starts after either successful video generation or successful written-content generation, and its bounded schedule remains the retry fallback. The workflow requires `GEMINI_API_KEY` as a GitHub Actions secret in the production environment. Vercel environment variables are not automatically available to GitHub Actions.
 
 ## Generated media lifecycle
 
