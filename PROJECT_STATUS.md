@@ -534,3 +534,26 @@ No files or production data were deleted in this checkpoint. No Cloudinary asset
 
 - No production database mutation, migration, storage/media deletion, content generation, Gemini request, social publishing, Android/iOS release, or production deployment was triggered.
 - Repository-wide review is still open: 1,525 main-baseline rows remain `REVIEW_REQUIRED`, many consumer/import/API/database traces remain outstanding, and 0 modules are closed. Manual owner approval, Supabase migration release, physical Android/iOS acceptance, YouTube OAuth return-to-app testing, public-route browser journeys, and AdSense account/editorial checks remain outstanding.
+
+
+## Latest audit continuation — 2026-11-11 00:21 Africa/Cairo
+
+### Exact repair heads and verification
+
+- **PR #320** — current branch head `2055be4678fb39275377f9eef21829bdb3b68c43` (69 commits, 20 changed files). The Kids written-post backfill now checks UTC-day reservations across creation, scheduling, and publication timestamps, creates at most one Kids backfill reservation per UTC day, schedules it within that same day, and defers when a five-minute lead would cross midnight. The public Kids feed now examines 60 recent candidates, revalidates live source eligibility, then returns at most 12 valid posts so stale rows do not crowd out valid content. Regression tests cover the daily reservation, UTC boundary, and feed refill. GitHub Quality Gate run #42915158933 is QUEUED; CircleCI `source-verify`, `application-build-docs`, and `config-guard` are PENDING. Do not merge or deploy until all exact-head checks pass.
+- **PR #324** — current branch head `f86010f1d97c0064699bca0aabdc34f126896a82`. Recursive Supabase Storage inventory now enforces a global 5,000-object cap across all prefixes, not only a per-prefix pagination cap; the contract test asserts the global guard. GitHub Quality Gate run #42914613560 and CircleCI config-guard passed. No purge was executed.
+- PRs #321, #322, #323, and #325 remain separate open repairs. Their device, live OAuth, owner-review, and exact-head verification gates remain open as recorded below.
+
+### Repository and production reconciliation
+
+- Main baseline remains `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`: 1,662 tracked files, 492 directories, 2,154 tree entries. The main-baseline manifest contains 2,153 records (1,661 blobs and 492 directories), excludes its own file, and matches every remaining main path, mode, blob SHA, and blob size. The two ancestor directory SHA values (`docs`, `docs/audits`) are intentionally null because they contain the manifest itself. The PR #320 branch tree contains 1,667 files and 492 directories; five files are branch-only additions.
+- Supabase production `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY with 418 applied migrations; latest is `20261110170000`. The Kids visibility migration `20261110212000` remains unapplied. Only the `main` database branch exists, so no isolated Preview database is available. Security advisor reports one warning: leaked-password protection is disabled. Performance advisor reports 86 unused-index informational findings; no index was removed. Health advisor reports no findings.
+- Current production social profile rows report Facebook and YouTube status `ok`, with no stored last error; YouTube OAuth credentials are connected to the ZIKR channel. The Vercel service-role key is configured for Production only; the missing-key log came from a protected Preview deployment and is expected for that environment.
+- Vercel production remains READY on `main@c4560d9` at deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`. No Preview deployment exists for PR #320 or #324. No deployment was initiated by this run.
+- Recent Vercel runtime clusters include transient Supabase socket resets, a Preview-only missing service-role key, and an older rejected social token attempt. Current production Facebook/YouTube profile status is healthy; the socket-reset cluster is not yet reproduced on the latest production deployment.
+
+### Remaining gates
+
+- All six audit repair PRs remain open and have no submitted owner review. CODEOWNERS owner `@Zikrmediaofficial` is not available as a requestable collaborator under the connected GitHub identity. No branch protection or review gate was bypassed.
+- 1,525 main-baseline files remain `REVIEW_REQUIRED`; modules closed remain 0. This run reviewed the current repair branches and their changed paths, but does not claim the entire repository is error-free.
+- Production migration application, Vercel deployment, live social/OAuth acceptance, and Android/iOS device acceptance remain blocked on the appropriate owner/review gates. No production SQL/data mutation, content generation, Gemini request, social publishing, video purge, storage deletion, or Android release was run.
