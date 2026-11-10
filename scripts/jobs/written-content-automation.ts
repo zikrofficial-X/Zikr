@@ -31,7 +31,7 @@ async function loadSources():Promise<WrittenContentSource[]>{
   read<Row>("/rest/v1/articles?select=id,title,title_ar,summary,summary_ar,content,content_ar,slug,author,published&published=eq.true&limit=200"),
   read<Row>("/rest/v1/companion_stories?select=id,companion_id,title_ar,content_ar,story_type&order=order_num.asc&limit=200"),
   read<Row>("/rest/v1/companions?select=id,name_ar,slug,published&published=eq.true&limit=200"),
-  read<Row>("/rest/v1/kids_content?select=id,title_ar,content_ar,summary_ar,slug,age_group,metadata,published,is_active&type=eq.story&published=eq.true&is_active=eq.true&metadata->>age_appropriate=eq.true&order=created_at.desc&limit=100"),
+  readRequired<Row>("/rest/v1/kids_content?select=id,title_ar,content_ar,summary_ar,slug,age_group,metadata,published,is_active&type=eq.story&published=eq.true&is_active=eq.true&metadata->>age_appropriate=eq.true&order=created_at.desc&limit=100"),
  ]);
  const surahMap=new Map(surahs.map(x=>[String(x.id),x]));
  const bookMap=new Map(books.map(x=>[String(x.id),x]));
