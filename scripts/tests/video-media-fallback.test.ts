@@ -87,7 +87,7 @@ const nonYoutubeUrl = {
   ...confirmed,
   metadata: {
     ...confirmed.metadata,
-    youtubePublishedUrl: "https://example.com/watch?v=5pob7O7rLnU",
+    youtubePublishedUrl: "https://not-youtube.test/watch?v=5pob7O7rLnU",
   },
 };
 assert.equal(getConfirmedYoutubeFallbackId(nonYoutubeUrl), null);
