@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {buildWrittenPost,buildWrittenSocialQueuePayload,createWrittenAutomationKey,createWrittenSocialAutomationKey,normalizeWrittenCategory,validateWrittenPostDraft,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
+import {buildPublicKidsWrittenPost,buildWrittenPost,buildWrittenSocialQueuePayload,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
 const source:WrittenContentSource={kind:"quran",id:"ayah-1",title:"آية",sourceText:"إِنَّ مَعَ الْعُسْرِ يُسْرًا",reference:"سورة الشرح، الآية 6",publicPath:"/quran/ash-sharh",categoryLabel:"القرآن الكريم",sourceVerified:true,quoteRequired:true};
 const draft:WrittenPostDraft={eligible:true,title:"مع كل عسر يسر",hook:"قد تمر بلحظة تظن فيها أن الطريق انتهى، لكن الأمل يظل حاضرًا.",reflection:"تدعونا الآية إلى ألا نستسلم لليأس، وأن نتذكر أن الشدة لا تدوم وأن الأمل باب للعمل والصبر.",question:"ما المعنى الذي تستحضره عندما تمر بوقت صعب؟"};
 assert.equal(normalizeWrittenCategory("hadith"),"hadith");assert.equal(normalizeWrittenCategory("other"),"auto");assert.equal(normalizeWrittenCategory("companions"),"companions");assert.equal(normalizeWrittenCategory("kids"),"kids");
@@ -24,6 +24,52 @@ const kidsMetadata = kidsPayload.metadata as Record<string, unknown>;
 assert.equal(kidsMetadata.audience, "kids");
 assert.equal(kidsMetadata.kidsContentId, kidsSource.id);
 assert.equal(kidsMetadata.ageGroup, "6-8");
+
+const queueRow: KidsWrittenQueueRow = {
+ id: "queue-kids-1",
+ content_type: "written_post",
+ content_id: "kids-story-1",
+ title: "الكلمة الطيبة",
+ body: "من قصة الكلمة الطيبة نتعلم أن الخير يبدأ بكلمة حسنة.",
+ status: "published",
+ target_platforms: ["facebook"],
+ published_at: "2026-11-10T12:00:00.000Z",
+ metadata: {
+  audience: "kids",
+  kidsContentId: "kids-story-1",
+  publicPath: "/kids/story-kind-word",
+  source: { type: "kids_story", id: "kids-story-1", verified: true },
+ },
+};
+const liveKidsStory: CurrentKidsStory = {
+ id: "kids-story-1",
+ slug: "story-kind-word",
+ title_ar: "الكلمة الطيبة",
+ age_group: "6-8",
+ type: "story",
+ published: true,
+ is_active: true,
+ metadata: { age_appropriate: true },
+};
+const publicKidsPost = buildPublicKidsWrittenPost(queueRow, liveKidsStory);
+assert.ok(publicKidsPost, "a published post with a currently approved Kids source may be displayed");
+assert.equal(publicKidsPost?.publicPath, "/kids/story-kind-word");
+assert.equal(publicKidsPost?.ageGroup, "6-8");
+assert.equal(buildPublicKidsWrittenPost(queueRow, { ...liveKidsStory, published: false }), null, "unpublished source stories must disappear from the public Kids feed");
+assert.equal(buildPublicKidsWrittenPost(queueRow, { ...liveKidsStory, is_active: false }), null, "inactive source stories must disappear from the public Kids feed");
+assert.equal(buildPublicKidsWrittenPost(queueRow, { ...liveKidsStory, metadata: { age_appropriate: false } }), null, "stories no longer marked age-appropriate must disappear from the public Kids feed");
+assert.equal(buildPublicKidsWrittenPost(queueRow, { ...liveKidsStory, type: "quiz" }), null, "only approved story sources may back Kids written posts");
+assert.equal(buildPublicKidsWrittenPost({ ...queueRow, content_id: "different-source" }, liveKidsStory), null, "queue content_id must match the live Kids source");
+assert.equal(buildPublicKidsWrittenPost({ ...queueRow, status: "queued" }, liveKidsStory), null, "queued posts must never be exposed publicly");
+assert.equal(buildPublicKidsWrittenPost({ ...queueRow, metadata: { ...queueRow.metadata, publicPath: "/kids/other-story" } }, liveKidsStory), null, "stale story paths must never be exposed");
+assert.equal(buildPublicKidsWrittenPost({ ...queueRow, metadata: { ...queueRow.metadata, source: { type: "kids_story", id: "different-source", verified: true } } }, liveKidsStory), null, "source metadata must identify the same approved story");
+assert.equal(containsKidsPersonalDataSolicitation("أرسل رقم هاتفك لي"), true, "Arabic phone-number solicitation must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("ما عنوان بيتك؟"), true, "direct Arabic questions about a child's address must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("راسلني على واتساب"), true, "private-contact requests must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("DM me your location"), true, "English personal-location requests must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("لا تشارك رقم هاتفك مع أي شخص"), false, "safety warnings must not be mistaken for personal-data solicitation");
+assert.equal(containsKidsPersonalDataSolicitation("ما الدرس الذي تعلمته من القصة؟"), false, "ordinary educational questions must remain allowed");
+
 const worker = readFileSync("scripts/jobs/written-content-automation.ts", "utf8");
 const writtenFactory = readFileSync("src/features/social/services/written-content.ts", "utf8");
 const kidsApi = readFileSync("src/app/api/kids/social-posts/route.ts", "utf8");
@@ -44,6 +90,10 @@ assert.match(worker, /Kids safety gate/);
 assert.match(kidsApi, /status=eq\.published&metadata->>audience=eq\.kids/);
 assert.match(kidsApi, /source\.type !== "kids_story"/);
 assert.match(kidsApi, /kidsContentId !== source\.id/);
+assert.match(kidsApi, /buildPublicKidsWrittenPost/);
+assert.match(kidsApi, /\/rest\/v1\/kids_content\?id=in\.\(/);
+assert.match(kidsApi, /is_active=eq\\.true/);
+assert.match(kidsApi, /metadata->>age_appropriate=eq\\.true/);
 assert.match(kidsPage, /\/api\/kids\/social-posts/);
 assert.match(kidsPage, /kidsWrittenPosts\.map/);
 assert.match(writtenApi, /"kids"/);
