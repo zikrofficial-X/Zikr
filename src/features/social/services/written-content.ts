@@ -75,6 +75,33 @@ export function buildWrittenPost(source:WrittenContentSource,draft:WrittenPostDr
  return {title:draft.title.trim(),body:[draft.hook.trim(),quote,reflection,draft.question?.trim()||"",source.reference.trim()].filter(Boolean).join("\n\n"),publicPath:source.publicPath};
 }
 
+export function countUniqueWrittenContentReservations(
+ articles: readonly Record<string, unknown>[],
+ socialRows: readonly Record<string, unknown>[],
+): number {
+ const reservations = new Set<string>();
+ const add = (row: Record<string, unknown>, kind: "article" | "social", index: number) => {
+  const metadata = asWrittenRecord(row.metadata);
+  const rawAutomationKey = kind === "article" ? metadata.automationKey : row.automation_key;
+  if (typeof rawAutomationKey === "string" && rawAutomationKey.trim()) {
+   reservations.add(rawAutomationKey.trim().replace(/^written-social-v1:/, "written-v1:"));
+   return;
+  }
+  const source = asWrittenRecord(metadata.source);
+  const sourceType = typeof source.type === "string" ? source.type.trim() : "";
+  const sourceId = typeof source.id === "string" ? source.id.trim() : "";
+  if (sourceType && sourceId) {
+   reservations.add("written-v1:" + sourceType + ":" + sourceId);
+   return;
+  }
+  const id = typeof row.id === "string" && row.id.trim() ? row.id.trim() : String(index);
+  reservations.add(kind + ":" + id);
+ };
+ articles.forEach((row, index) => add(row, "article", index));
+ socialRows.forEach((row, index) => add(row, "social", index));
+ return reservations.size;
+}
+
 export function createWrittenSocialAutomationKey(kind: string, id: string) {
  return `written-social-v1:${kind}:${id}`;
 }

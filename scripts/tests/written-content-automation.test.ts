@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {buildPublicKidsWrittenPost,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,shouldBackfillKidsWrittenPost,scheduleKidsBackfillWithinUtcDay,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,isKidsWrittenPostCandidate,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
+import {buildPublicKidsWrittenPost,countUniqueWrittenContentReservations,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,shouldBackfillKidsWrittenPost,scheduleKidsBackfillWithinUtcDay,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,isKidsWrittenPostCandidate,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
 const source:WrittenContentSource={kind:"quran",id:"ayah-1",title:"آية",sourceText:"إِنَّ مَعَ الْعُسْرِ يُسْرًا",reference:"سورة الشرح، الآية 6",publicPath:"/quran/ash-sharh",categoryLabel:"القرآن الكريم",sourceVerified:true,quoteRequired:true};
 const draft:WrittenPostDraft={eligible:true,title:"مع كل عسر يسر",hook:"قد تمر بلحظة تظن فيها أن الطريق انتهى، لكن الأمل يظل حاضرًا.",reflection:"تدعونا الآية إلى ألا نستسلم لليأس، وأن نتذكر أن الشدة لا تدوم وأن الأمل باب للعمل والصبر.",question:"ما المعنى الذي تستحضره عندما تمر بوقت صعب؟"};
 assert.equal(normalizeWrittenCategory("hadith"),"hadith");assert.equal(normalizeWrittenCategory("other"),"auto");assert.equal(normalizeWrittenCategory("companions"),"companions");assert.equal(normalizeWrittenCategory("kids"),"kids");
@@ -13,6 +13,17 @@ assert.equal(chooseWrittenSourceKind([],"auto",false,0),null,"empty source kinds
 assert.equal(shouldBackfillKidsWrittenPost("kids_story",false),true,"the first Kids backfill may reserve today's slot");
 assert.equal(shouldBackfillKidsWrittenPost("kids_story",true),false,"a second Kids backfill must wait until another UTC day");
 assert.equal(shouldBackfillKidsWrittenPost("quran",true),true,"general written-post backfill must remain unaffected by the Kids daily slot");
+assert.equal(countUniqueWrittenContentReservations(
+ [
+  { id: "article-general-1", metadata: { automationKey: "written-v1:quran:ayah-1", source: { type: "quran", id: "ayah-1" } } },
+  { id: "article-orphan-1", metadata: { automationKey: "written-v1:hadith:hadith-1", source: { type: "hadith", id: "hadith-1" } } },
+ ],
+ [
+  { id: "queue-general-1", automation_key: "written-social-v1:quran:ayah-1", metadata: { source: { type: "quran", id: "ayah-1" } } },
+  { id: "queue-kids-1", automation_key: "written-social-v1:kids_story:kids-1", metadata: { source: { type: "kids_story", id: "kids-1" } } },
+ ],
+), 3, "daily quota must deduplicate article/queue pairs without undercounting an orphan article alongside a Kids-only queue row");
+
 assert.equal(scheduleKidsBackfillWithinUtcDay(new Date("2026-11-11T18:00:00.000Z")),"2026-11-11T18:05:00.000Z","Kids backfill must schedule within the current UTC day");
 assert.equal(scheduleKidsBackfillWithinUtcDay(new Date("2026-11-11T23:58:00.000Z")),null,"Kids backfill must defer when its lead time would spill into the next UTC day");
 assert.notEqual(createWrittenAutomationKey("quran","1"),createWrittenAutomationKey("quran","2"));
@@ -188,6 +199,7 @@ assert.match(worker, /\/rest\/v1\/content_publish_queue/);
 assert.match(worker, /\/rest\/v1\/social_publish_queue/);
 assert.match(worker, /buildWrittenSocialQueuePayload/);
 assert.match(worker, /buildWrittenBackfillQueuePayload/);
+assert.match(worker, /countUniqueWrittenContentReservations\(todays,todaysSocial\)/, "daily quota must count unique source reservations across article and social-only Kids records");
 assert.match(worker, /skipped invalid written-post backfill/, "one malformed or unsafe historical row must not abort the entire backfill batch");
 assert.match(worker, /createWrittenSocialAutomationKey/);
 assert.match(worker, /enqueueExistingWrittenArticlesForFacebook/);
