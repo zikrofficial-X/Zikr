@@ -103,7 +103,7 @@ assert.ok(
     route.includes("async function releasePurgeLock(token: string)") &&
     route.includes("value=eq.false") &&
     route.includes("resolution=ignore-duplicates,return=representation") &&
-    route.includes("description=eq.\\${encodeURIComponent(description)}"),
+    route.includes("description=eq.${encodeURIComponent(description)}"),
   "purge lock acquisition must be atomic and release must be limited to the owning request token.",
 );
 const lockAcquisitionPosition = route.indexOf("const lockToken = randomUUID()");
