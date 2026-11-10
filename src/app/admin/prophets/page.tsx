@@ -25,11 +25,19 @@ async function saveProphetVideoAction(formData: FormData) {
   await requireAdminPermission("prophets.manage");
   const id = String(formData.get('id') ?? '').trim();
   const rawUrl = String(formData.get('youtube_url') ?? '').trim();
-  if (!id) return;
+  if (!id) throw new Error("معرّف النبي مطلوب.");
 
   const videoId = parseYouTubeVideoId(rawUrl);
+  if (rawUrl && !videoId) throw new Error("رابط YouTube غير صالح. أدخل رابطًا صحيحًا أو اترك الحقل فارغًا لإزالة الربط.");
   const ok = await saveAdminProphetVideo(id, videoId);
   if (!ok) throw new Error("تعذر حفظ فيديو النبي. راجع صلاحيات قاعدة البيانات وسجل الأخطاء.");
+  await recordAdminAuditEvent({
+    action: "prophets.youtube_video.update",
+    permission: "prophets.manage",
+    resourceType: "prophets",
+    resourceId: id,
+    metadata: { hasYoutubeVideo: Boolean(videoId) },
+  });
 
   revalidatePath('/admin/prophets');
   revalidatePath('/prophets');
@@ -40,10 +48,17 @@ async function toggleProphetPublishAction(formData: FormData) {
   await requireAdminPermission("prophets.manage");
   const id = String(formData.get('id') ?? '').trim();
   const next = formData.get('next') === 'true';
-  if (!id) return;
+  if (!id) throw new Error("معرّف النبي مطلوب.");
 
   const ok = await setAdminProphetPublished(id, next);
   if (!ok) throw new Error("تعذر تحديث حالة نشر النبي.");
+  await recordAdminAuditEvent({
+    action: next ? "prophets.publish" : "prophets.unpublish",
+    permission: "prophets.manage",
+    resourceType: "prophets",
+    resourceId: id,
+    metadata: { published: next },
+  });
 
   revalidatePath('/admin/prophets');
   revalidatePath('/prophets');
