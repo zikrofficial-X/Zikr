@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { createAdminClient, supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { getConfirmedYoutubeFallbackId, shouldKeepPublishedVideoAfterMediaPurge, wasPublishedBeforeMediaPurge } from "@/features/videos/services/video-media-contract";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -244,6 +245,29 @@ async function getActiveVideoWork(): Promise<{ generation: number }> {
   return { generation: generationRows?.length ?? 0 };
 }
 
+function isGeneratedCloudinaryVideoUrl(value: unknown, cloudName: string): boolean {
+  if (typeof value !== "string" || !value.trim()) return false;
+  try {
+    const parsed = new URL(value.trim());
+    if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com") return false;
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (parts[0] !== cloudName || parts[1] !== "video" || parts[2] !== "upload") return false;
+
+    const publicParts = parts.slice(3);
+    const version = publicParts[0] ?? "";
+    if (/^v\d+$/.test(version)) publicParts.shift();
+    const fileName = publicParts.pop() ?? "";
+    const extensionIndex = fileName.lastIndexOf(".");
+    const extension = extensionIndex > 0 ? fileName.slice(extensionIndex + 1).toLowerCase() : "";
+    const publicId = [...publicParts, extensionIndex > 0 ? fileName.slice(0, extensionIndex) : fileName]
+      .filter(Boolean)
+      .join("/");
+    return extension === "mp4" && publicId.startsWith("auto-");
+  } catch {
+    return false;
+  }
+}
+
 async function deleteRows(table: string, filter: string): Promise<number> {
   const rows = await supabaseServerAdminRequest<Array<{ id: string }>>(
     `/rest/v1/${table}?${filter}&select=id`,
@@ -280,7 +304,7 @@ export async function POST(request: NextRequest) {
     const includeFiles = scope === "files" || scope === "both";
     const includeMemory = scope === "memory" || scope === "both";
 
-    if (includeFiles) cloudinaryConfig();
+    const cloudinary = includeFiles ? cloudinaryConfig() : null;
     automationWasEnabled = await getVideoAutomationEnabled();
 
     await pauseVideoAutomation();
@@ -306,6 +330,83 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const pendingSocialQueueMedia = includeFiles
+      ? await supabaseServerAdminRequest<Array<{ video_url: string | null }>>(
+          "/rest/v1/social_publish_queue?status=neq.published&video_url=not.is.null&select=video_url&limit=1000",
+        )
+      : [];
+    if (includeFiles && (pendingSocialQueueMedia ?? []).length >= 1000) {
+      await restoreVideoAutomation(automationWasEnabled);
+      await setPurgeLock(false);
+      purgeLockAttempted = false;
+      return NextResponse.json(
+        {
+          error: "تعذر التحقق من جميع عناصر طابور النشر بأمان. لم يبدأ الحذف؛ قلّص الطابور أو عالج العناصر ثم أعد المحاولة.",
+          protectedSocialQueueItems: null,
+          deletionStarted: false,
+          paused: false,
+          retryRequired: true,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    const protectedSocialQueueMedia = new Set(
+      (pendingSocialQueueMedia ?? [])
+        .map((row) => row.video_url)
+        .filter((value): value is string => isGeneratedCloudinaryVideoUrl(value, cloudinary?.cloudName ?? "")),
+    );
+    if (includeFiles && protectedSocialQueueMedia.size > 0) {
+      await restoreVideoAutomation(automationWasEnabled);
+      await setPurgeLock(false);
+      purgeLockAttempted = false;
+      return NextResponse.json(
+        {
+          error: `يوجد ${protectedSocialQueueMedia.size} فيديو مرتبط بعناصر نشر لم تكتمل بعد. لم يبدأ حذف أي ملف؛ أعد محاولة النشر أو عالج العناصر أولًا.`,
+          protectedSocialQueueItems: protectedSocialQueueMedia.size,
+          deletionStarted: false,
+          paused: false,
+          retryRequired: true,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
+    const pendingSocialGenerationRefs = (includeFiles || includeMemory)
+      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/social_publish_queue?status=neq.published&or=(content_type.like.*video*,video_url.not.is.null)&select=id&limit=1000",
+        )
+      : [];
+    if ((includeFiles || includeMemory) && (pendingSocialGenerationRefs ?? []).length >= 1000) {
+      await restoreVideoAutomation(automationWasEnabled);
+      await setPurgeLock(false);
+      purgeLockAttempted = false;
+      return NextResponse.json(
+        {
+          error: "تعذر التحقق من جميع مراجع طلبات الفيديو في طابور النشر. لم يبدأ حذف سجل التوليد.",
+          protectedGenerationRequestCount: null,
+          deletionStarted: false,
+          paused: false,
+          retryRequired: true,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    if ((includeFiles || includeMemory) && (pendingSocialGenerationRefs ?? []).length > 0) {
+      await restoreVideoAutomation(automationWasEnabled);
+      await setPurgeLock(false);
+      purgeLockAttempted = false;
+      return NextResponse.json(
+        {
+          error: `يوجد ${pendingSocialGenerationRefs.length} عنصر نشر اجتماعي غير مكتمل مرتبط بوسيط فيديو. تم الحفاظ على سجل التوليد ولم يبدأ الحذف.`,
+          protectedGenerationRequestCount: pendingSocialGenerationRefs.length,
+          deletionStarted: false,
+          paused: false,
+          retryRequired: true,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
     const assets = includeFiles ? await listGeneratedVideos() : [];
     const storagePaths = includeFiles ? await listAutomatedStorageObjects() : [];
     if (includeFiles && assets.length > 0) destructiveWorkStarted = true;
@@ -323,23 +424,40 @@ export async function POST(request: NextRequest) {
 
     if (includeFiles && storagePaths.length > 0) destructiveWorkStarted = true;
     const storageObjectsDeleted = includeFiles ? await deleteAutomatedStorageObjects(storagePaths) : 0;
-    // The site catalog is treated as project memory. It is always hidden during
-    // a purge; links are cleared only when the physical generated files are removed.
+    // Remove Cloudinary masters without hiding videos that already have a
+    // verified YouTube publication fallback. Unconfirmed IDs are never treated
+    // as a playback fallback, and unpublished records remain unpublished.
     const generatedCatalogRows = await supabaseServerAdminRequest<Array<{
       id: string;
       metadata: Record<string, unknown> | null;
+      published: boolean | null;
+      youtube_id: string | null;
     }>>(
-      "/rest/v1/videos?metadata->>generator=eq.zikr_internal_video_factory&select=id,metadata&limit=1000",
+      "/rest/v1/videos?metadata->>generator=eq.zikr_internal_video_factory&select=id,metadata,published,youtube_id&limit=1000",
     );
     if ((generatedCatalogRows ?? []).length >= 1000) {
       throw new Error("Generated video catalog exceeded the safe purge batch; no catalog rows were changed.");
     }
     if ((generatedCatalogRows ?? []).length > 0) destructiveWorkStarted = true;
+    let catalogRecordsHidden = 0;
+    let catalogFallbackRowsKeptPublished = 0;
     const catalogUpdateErrors = await mapWithConcurrency(generatedCatalogRows ?? [], 6, async row => {
       const previousMetadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+      const fallbackId = includeFiles ? getConfirmedYoutubeFallbackId(row) : null;
+      const keepPublishedFallback = shouldKeepPublishedVideoAfterMediaPurge(row, includeFiles);
+      if (keepPublishedFallback) catalogFallbackRowsKeptPublished += 1;
+      else catalogRecordsHidden += 1;
       const nextMetadata = {
         ...previousMetadata,
-        ...(includeFiles ? { generatedVideoUrl: null, videoUrl: null, mediaState: "purged" } : { mediaState: "unlinked" }),
+        ...(includeFiles
+          ? {
+              generatedVideoUrl: null,
+              videoUrl: null,
+              mediaState: "purged",
+              mediaFallbackAvailable: fallbackId !== null,
+              mediaPurgedFromPublished: wasPublishedBeforeMediaPurge(row),
+            }
+          : { mediaState: "unlinked" }),
         mediaPurgedAt: includeFiles ? new Date().toISOString() : previousMetadata.mediaPurgedAt ?? null,
         memoryUnlinkedAt: new Date().toISOString(),
       };
@@ -347,7 +465,8 @@ export async function POST(request: NextRequest) {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify({
-          published: false,
+          published: keepPublishedFallback,
+          ...(keepPublishedFallback && fallbackId ? { youtube_id: fallbackId } : {}),
           metadata: nextMetadata,
           updated_at: new Date().toISOString(),
         }),
@@ -360,7 +479,9 @@ export async function POST(request: NextRequest) {
           headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
           body: JSON.stringify({
             status: "failed",
-            error_message: "Internal video publication was stopped by the administrator's project-memory cleanup.",
+            error_message: keepPublishedFallback
+              ? "No internal upload is required; the already-published YouTube fallback remains public."
+              : "Internal video publication was stopped by the administrator project-memory cleanup.",
             updated_at: new Date().toISOString(),
           }),
         },
@@ -369,8 +490,7 @@ export async function POST(request: NextRequest) {
     if (catalogUpdateErrors.length) {
       throw new Error("Some internal catalog records or scheduled publication entries could not be safely unlinked: " + catalogUpdateErrors.slice(0, 3).join(" | "));
     }
-    const catalogRecordsHidden = generatedCatalogRows?.length ?? 0;
-    // Historical external platform queue records are never read or modified.
+        // Historical external platform queue records are never read or modified.
     const socialQueueRowsPreserved = true;
     const generatedRequests = includeMemory
       ? await supabaseServerAdminRequest<Array<{ id: string }>>(
@@ -421,6 +541,7 @@ export async function POST(request: NextRequest) {
         socialQueueRowsPreserved,
         publicVideoCatalogPreserved: true,
         catalogRecordsHidden,
+        catalogFallbackRowsKeptPublished,
         generationMemoryDeleted: includeMemory,
         physicalFilesDeleted: includeFiles,
         generationRowsDeleted,

@@ -18,6 +18,7 @@ on:
 permissions:
   contents: write
   statuses: read
+  checks: read
 
 # Tag pushes and recovery dispatches can target the same GitHub Release from
 # different refs. A single shared lock prevents concurrent asset delete/upload
@@ -31,10 +32,10 @@ jobs:
     name: Verify and publish Android release
     if: >-
       github.ref_type == 'tag' ||
-      (github.ref_type == 'branch' && startsWith(github.ref_name, 'android-release-v')) ||
       (github.event_name == 'workflow_dispatch' &&
        inputs.retry == true &&
-       github.ref == 'refs/heads/main')
+       (github.ref == 'refs/heads/main' ||
+        startsWith(github.ref_name, 'android-release-v')))
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}
@@ -50,9 +51,9 @@ jobs:
           PUBLISH=false
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             PUBLISH=true
-          elif [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" =~ ^android-release-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${{ inputs.retry }}" == "true" && "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" =~ ^android-release-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             PUBLISH=true
-          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${{ inputs.retry }}" == "true" && -f docs/finalization/RELEASE_RETRY.flag ]]; then
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${{ inputs.retry }}" == "true" && "${GITHUB_REF}" == "refs/heads/main" && -f docs/finalization/RELEASE_RETRY.flag ]]; then
             PUBLISH=true
           fi
           echo "publish=${PUBLISH}" >> "$GITHUB_OUTPUT"
@@ -76,28 +77,33 @@ jobs:
           EXPECTED_TAG="v$(jq -r '.version' package.json)"
           test "$TAG" = "$EXPECTED_TAG"
 
-          # A recovery branch is publishable only when it is exactly the commit
-          # referenced by the canonical semantic tag. Never publish newer branch
-          # binaries under an older immutable tag.
+          # Always resolve the immutable tag target, including manual retries
+          # dispatched from main. All CI prerequisites are checked against this
+          # exact source commit, never against the dispatching branch by accident.
+          TAG_REF_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")"
+          TAG_REF_TYPE="$(jq -r '.object.type' <<< "$TAG_REF_JSON")"
+          TAG_REF_SHA="$(jq -r '.object.sha' <<< "$TAG_REF_JSON")"
+          if [[ "$TAG_REF_TYPE" == "tag" ]]; then
+            TAG_OBJECT_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${TAG_REF_SHA}")"
+            TAG_TARGET_TYPE="$(jq -r '.object.type' <<< "$TAG_OBJECT_JSON")"
+            TAG_TARGET_SHA="$(jq -r '.object.sha' <<< "$TAG_OBJECT_JSON")"
+          else
+            TAG_TARGET_TYPE="$TAG_REF_TYPE"
+            TAG_TARGET_SHA="$TAG_REF_SHA"
+          fi
+          if [[ "$TAG_TARGET_TYPE" != "commit" ]]; then
+            echo "::error title=Android release tag is not a commit::Tag ${TAG} does not resolve to a commit." >&2
+            exit 1
+          fi
           if [[ "${GITHUB_REF_TYPE}" == "tag" || "${GITHUB_REF_NAME}" =~ ^android-release-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            TAG_REF_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")"
-            TAG_REF_TYPE="$(jq -r '.object.type' <<< "$TAG_REF_JSON")"
-            TAG_REF_SHA="$(jq -r '.object.sha' <<< "$TAG_REF_JSON")"
-            if [[ "$TAG_REF_TYPE" == "tag" ]]; then
-              TAG_OBJECT_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${TAG_REF_SHA}")"
-              TAG_TARGET_TYPE="$(jq -r '.object.type' <<< "$TAG_OBJECT_JSON")"
-              TAG_TARGET_SHA="$(jq -r '.object.sha' <<< "$TAG_OBJECT_JSON")"
-            else
-              TAG_TARGET_TYPE="$TAG_REF_TYPE"
-              TAG_TARGET_SHA="$TAG_REF_SHA"
-            fi
-            if [[ "$TAG_TARGET_TYPE" != "commit" || "$TAG_TARGET_SHA" != "$GITHUB_SHA" ]]; then
-              echo "::error title=Android release tag/source mismatch::Tag ${TAG} points to ${TAG_TARGET_SHA}, but this run is checking out ${GITHUB_SHA}. Rebuild from the exact tag commit; do not publish recovery-branch binaries under a different source tag." >&2
+            if [[ "$TAG_TARGET_SHA" != "$GITHUB_SHA" ]]; then
+              echo "::error title=Android release tag/source mismatch::Tag ${TAG} points to ${TAG_TARGET_SHA}, but this run is checking out ${GITHUB_SHA}. Rebuild from the exact tag commit; do not publish recovery-branch binaries under an older immutable tag." >&2
               exit 1
             fi
           fi
 
           echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "TAG_TARGET_SHA=$TAG_TARGET_SHA" >> "$GITHUB_ENV"
 
       - name: Fail fast if a published immutable release is missing APK/AAB
         if: steps.gate.outputs.publish == 'true'
@@ -159,8 +165,8 @@ jobs:
           echo "Published release already lists the required assets; the full byte-for-byte verification will run after artifact checks."
 
 
-      - name: Verify CircleCI release prerequisites before waiting for artifacts
-        if: steps.gate.outputs.publish == 'true' && github.event_name != 'workflow_dispatch'
+      - name: Verify all CircleCI and GitHub release prerequisites before waiting for artifacts
+        if: steps.gate.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -170,67 +176,68 @@ jobs:
               '[.[] | select(.context == $context)] | sort_by(.updated_at) | (last // {}) | .state // ""'
           }
 
+          required_contexts=(
+            "ci/circleci: config-guard"
+            "ci/circleci: source-verify"
+            "ci/circleci: application-build-docs"
+            "ci/circleci: android-release-draft"
+            "ci/circleci: supabase-production-gate"
+            "ci/circleci: android-rebuild"
+            "ci/circleci: android-release-dispatch"
+          )
+
           for attempt in $(seq 1 240); do
-            statuses="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status" --jq '.statuses' 2>/dev/null || printf '[]')"
-            source_state="$(latest_context_state "ci/circleci: source-verify" <<< "$statuses")"
-            supabase_state="$(latest_context_state "ci/circleci: supabase-production-gate" <<< "$statuses")"
-            android_state="$(latest_context_state "ci/circleci: android-rebuild" <<< "$statuses")"
+            status_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${TAG_TARGET_SHA}/status" 2>/dev/null || printf '{}')"
+            statuses="$(jq -c '.statuses // []' <<< "$status_json")"
+            combined_state="$(jq -r '.state // ""' <<< "$status_json")"
+            pending=false
+            for context in "${required_contexts[@]}"; do
+              state="$(latest_context_state "$context" <<< "$statuses")"
+              case "$state" in
+                success) ;;
+                failure|error|cancelled)
+                  echo "::error title=Required CircleCI gate failed::${context} is ${state} for source commit ${TAG_TARGET_SHA}; refusing to publish Android assets." >&2
+                  exit 1
+                  ;;
+                *)
+                  echo "Waiting for ${context} (state='${state}', attempt ${attempt}/240)..."
+                  pending=true
+                  ;;
+              esac
+            done
 
-            case "$source_state" in
+            check_runs="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${TAG_TARGET_SHA}/check-runs?per_page=100" 2>/dev/null || printf '{}')"
+            quality="$(jq -c '[.check_runs[]? | select(.name == "ZIKR / Quality Gate" and .head_sha == env.TAG_TARGET_SHA)] | sort_by(.started_at) | last // {}' <<< "$check_runs")"
+            quality_status="$(jq -r '.status // ""' <<< "$quality")"
+            quality_conclusion="$(jq -r '.conclusion // ""' <<< "$quality")"
+            if [[ "$quality_status" == "completed" && "$quality_conclusion" != "success" ]]; then
+              echo "::error title=GitHub Quality Gate failed::The latest ZIKR / Quality Gate did not pass for ${TAG_TARGET_SHA}." >&2
+              exit 1
+            fi
+            if [[ "$quality_status" != "completed" || "$quality_conclusion" != "success" ]]; then
+              echo "Waiting for the exact source commit's ZIKR / Quality Gate (attempt ${attempt}/240)..."
+              pending=true
+            fi
+
+            case "$combined_state" in
               success) ;;
-              failure|error|cancelled)
-                echo "::error title=CircleCI source verification failed::The release source did not pass source-verify. Fix the source checks and prepare a draft from the verified commit." >&2
+              failure|error)
+                echo "::error title=Combined release status failed::The source commit has a failing commit status; refusing to publish Android assets."
                 exit 1
                 ;;
-              pending|"")
-                echo "Waiting for CircleCI source-verify (attempt ${attempt}/240)..."
-                sleep 15
-                continue
-                ;;
               *)
-                echo "Unknown CircleCI source-verify state '${source_state}' (attempt ${attempt}/240); refusing to continue without success."
-                sleep 15
-                continue
+                echo "Waiting for combined commit status success on ${TAG_TARGET_SHA} (state='${combined_state}')."
+                pending=true
                 ;;
             esac
 
-            case "$supabase_state" in
-              success) ;;
-              failure|error|cancelled)
-                echo "::error title=CircleCI Supabase production gate failed::The production Supabase prerequisite failed; Android signing/build will not run." >&2
-                exit 1
-                ;;
-              pending|"")
-                echo "Waiting for CircleCI supabase-production-gate (attempt ${attempt}/240)..."
-                sleep 15
-                continue
-                ;;
-              *)
-                echo "Unknown CircleCI Supabase gate state '${supabase_state}' (attempt ${attempt}/240); refusing to continue without success."
-                sleep 15
-                continue
-                ;;
-            esac
-
-            case "$android_state" in
-              success)
-                echo "CircleCI Android build succeeded for ${GITHUB_SHA}."
-                exit 0
-                ;;
-              failure|error|cancelled)
-                echo "::error title=CircleCI Android build failed::The protected APK/AAB build failed for commit ${GITHUB_SHA}. Check the CircleCI android-rebuild job before retrying publication." >&2
-                exit 1
-                ;;
-              pending|"")
-                echo "Waiting for CircleCI Android build status (attempt ${attempt}/240)..."
-                ;;
-              *)
-                echo "Unknown CircleCI Android status '${android_state}' (attempt ${attempt}/240); refusing to publish without success."
-                ;;
-            esac
+            if [[ "$pending" == "false" ]]; then
+              echo "All required CircleCI contexts and the GitHub Quality Gate passed for ${TAG_TARGET_SHA}."
+              exit 0
+            fi
             sleep 15
           done
-          echo "::error title=CircleCI release build status unavailable::CircleCI did not complete source verification, the Supabase production gate, and Android rebuild for ${GITHUB_SHA} within 60 minutes."
+          echo "::error title=Android release prerequisites unavailable::Required CircleCI contexts and the GitHub Quality Gate did not all pass for ${TAG_TARGET_SHA} within 60 minutes."
           exit 1
 
       - name: Install Android SDK
@@ -320,17 +327,9 @@ jobs:
             exit 1
           fi
 
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            source_status="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${SOURCE_COMMIT}/status" --jq '.statuses | map(select(.context == "ci/circleci: android-rebuild")) | sort_by(.updated_at) | (last // {}) | .state // ""' 2>/dev/null || true)"
-            if [[ "${source_status}" != "success" ]]; then
-              echo "::error title=Unverified Android artifact source::The metadata source commit has no successful CircleCI android-rebuild status." >&2
-              exit 1
-            fi
-          else
-            test "${SOURCE_COMMIT}" = "${GITHUB_SHA}" || {
-              echo "::error title=Stale Android release artifacts::Artifact source commit does not match the exact release ref commit." >&2
-              exit 1
-            }
+          if [[ "${SOURCE_COMMIT}" != "${TAG_TARGET_SHA}" ]]; then
+            echo "::error title=Android artifact/tag provenance mismatch::Artifact source commit ${SOURCE_COMMIT} does not match immutable tag target ${TAG_TARGET_SHA}." >&2
+            exit 1
           fi
 
       - name: Verify checksums

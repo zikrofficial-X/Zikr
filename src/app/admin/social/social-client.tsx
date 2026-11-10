@@ -10,6 +10,7 @@ import type {
   SocialPublishQueueItem,
   SocialQueueStatus,
 } from "@/features/social/services/social-publishing";
+import { getManualReconciliationPlatforms } from "@/features/social/services/platform-availability";
 
 type Status = SocialQueueStatus;
 type QueueItem = SocialPublishQueueItem & {
@@ -496,6 +497,9 @@ export default function AdminSocialPage() {
   }), [filter, queueOpenItems, platformFilter]);
   const retryable = items.filter(item => item.status === "failed" || item.status === "partial");
   const selectedRetryableCount = selected.filter(id => retryable.some(item => item.id === id)).length;
+  const selectedManualReconciliationCount = items.filter(item =>
+    selected.includes(item.id) && getManualReconciliationPlatforms(item.metadata).length > 0,
+  ).length;
   const visibleSelectable = filtered.filter(item =>
     item.status === "failed" || item.status === "partial" ||
     (item.status === "queued" && (!isVideoQueueItem(item) || item.videoApproval?.approved === true))
@@ -511,12 +515,20 @@ export default function AdminSocialPage() {
 
   const runAction = useCallback(
     async (action: "retry" | "retry_all_failed" | "delete" | "delete_failed" | "publish_now") => {
+      let confirmedNoRemotePublication = false;
+      if (action === "retry" && selectedManualReconciliationCount > 0) {
+        const confirmation = `تحذير: نتيجة النشر غير مؤكدة في ${selectedManualReconciliationCount} عنصر. افتح Facebook/YouTube وتأكد يدويًا من عدم وجود المنشور قبل المتابعة؛ إعادة المحاولة دون هذا التحقق قد تنشئ منشورًا مكررًا. هل تؤكد أنك تحققت من عدم النشر؟`;
+        if (!window.confirm(confirmation)) return;
+        confirmedNoRemotePublication = true;
+      }
       if (action !== "retry") {
         const confirmation = action === "publish_now"
           ? "سيتم إرسال العناصر المؤهلة للنشر فورًا. الفيديو غير المعتمد سيظل محجوبًا ولن يتم تجاوز فحص الجودة."
-          : action === "delete_failed"
-            ? `سيتم حذف ${retryable.length} عملية فاشلة أو نشر جزئي من سجل الطابور.`
-            : "سيتم حذف العمليات الفاشلة أو الجزئية المحددة من سجل الطابور.";
+          : action === "retry_all_failed"
+            ? "سيتم إعادة محاولة العناصر الفاشلة أو الجزئية المؤهلة فقط. العناصر التي تتطلب مراجعة يدوية لنتيجة النشر سيتم تجاوزها."
+            : action === "delete_failed"
+              ? `سيتم حذف ${retryable.length} عملية فاشلة أو نشر جزئي من سجل الطابور.`
+              : "سيتم حذف العمليات الفاشلة أو الجزئية المحددة من سجل الطابور.";
         if (!window.confirm(confirmation)) return;
       }
       const ids = action === "retry_all_failed" || action === "delete_failed" ? [] : selected;
@@ -535,21 +547,31 @@ export default function AdminSocialPage() {
         const response = await fetch("/api/admin/social", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action, ids }),
+          body: JSON.stringify({ action, ids, confirmedNoRemotePublication }),
         });
         const payload = (await response.json().catch(() => ({}))) as {
           error?: string;
           affected?: number;
+          manualReconciliationSkipped?: number;
           blocked?: Array<{ id: string; title?: string | null; reason: string }>;
         };
         if (!response.ok) throw new Error(payload.error || "تعذر تنفيذ الإجراء.");
         if (action === "publish_now") {
-          setMessage(`تم تجهيز ${payload.affected ?? 0} عنصرًا للتشغيل الفوري عبر GitHub Actions.`);
+          setMessage(
+            `تم تجهيز ${payload.affected ?? 0} عنصرًا للتشغيل الفوري عبر GitHub Actions.` +
+              ((payload.manualReconciliationSkipped ?? 0) > 0
+                ? ` تم تجاوز ${payload.manualReconciliationSkipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.`
+                : ""),
+          );
           if (payload.blocked?.length) {
             setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
           }
         } else {
-          setMessage(`تم تنفيذ الإجراء بنجاح${typeof payload.affected === "number" ? ` (${payload.affected})` : ""}.`);
+          const skipped = payload.manualReconciliationSkipped ?? 0;
+          setMessage(
+            `تم تنفيذ الإجراء بنجاح${typeof payload.affected === "number" ? ` (${payload.affected})` : ""}.` +
+              (skipped > 0 ? ` تم تجاوز ${skipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.` : ""),
+          );
         }
         await load();
       } catch (cause) {
@@ -558,7 +580,7 @@ export default function AdminSocialPage() {
         setBusy(false);
       }
     },
-    [load, retryable.length, selected, selectedPublishNowCount]
+    [load, retryable.length, selected, selectedManualReconciliationCount, selectedPublishNowCount]
   );
 
   const deletePublished = useCallback(async (ids: string[], platforms?: string[]) => {
@@ -654,6 +676,12 @@ export default function AdminSocialPage() {
               className="inline-flex items-center justify-center rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-400/15"
             >
               مراجعة الفيديوهات ({readiness.approvalPending})
+            </Link>
+            <Link
+              href="/admin/social/written-studio"
+              className="inline-flex items-center justify-center rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-3 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/15"
+            >
+              مصنع المنشورات المكتوبة ({items.filter(item => item.content_type === "written_post" && item.status !== "published").length})
             </Link>
             <Button variant="outline" disabled={busy || loading} onClick={() => void load()}>
               تحديث البيانات

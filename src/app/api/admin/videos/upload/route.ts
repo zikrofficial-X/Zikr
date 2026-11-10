@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
       filename,
       contentType,
       contentLength,
-      expiresIn: 900,
     });
     await recordAdminAuditEvent({
       action: "video.upload_url.create",

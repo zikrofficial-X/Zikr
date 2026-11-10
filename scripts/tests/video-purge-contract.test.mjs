@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(path, "utf8");
 const route = read("src/app/api/admin/video-purge/route.ts");
+const videoMediaContract = read("src/features/videos/services/video-media-contract.ts");
+const videosService = read("src/features/videos/services/videos.ts");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
 const videoWorker = read("scripts/jobs/template-video-automation.ts");
 const videoQueuePage = read("src/features/admin/video-requests/components/admin-video-requests-client.tsx");
@@ -32,9 +34,35 @@ assert.ok(!/drop\s+table|supabase_migrations|android-releases/i.test(route), "Pu
 assert.ok(!route.includes('deleteRows("videos", "id=not.is.null")'), "Purge must preserve unrelated/manual video records.");
 assert.ok(route.includes('metadata->>generator=eq.zikr_internal_video_factory'), "Purge must select only internally generated video catalog rows.");
 assert.ok(route.includes('mediaState: "purged"'), "Purge must mark removed generated media records.");
-assert.ok(route.includes('published: false'), "Purge must hide generated records whose Cloudinary media was deleted.");
+assert.ok(route.includes("mediaPurgedFromPublished: wasPublishedBeforeMediaPurge(row)"), "Purge must preserve prior-publication evidence across repeated purges.");
+assert.ok(videoMediaContract.includes('"cloudinary_missing", "unavailable", "purged"'), "purged internal media must never fall through to stale Cloudinary source URLs.");
+assert.ok(videoMediaContract.includes("metadata.mediaFallbackAvailable !== true"), "YouTube fallback must require the explicit publisher-confirmed flag.");
+assert.ok(videosService.includes("resolveVideoYoutubeId"), "all public video adapters must expose only the validated YouTube fallback ID.");
+assert.ok(route.includes("published: keepPublishedFallback"), "Purge must preserve an already-published catalog row only when a verified YouTube fallback exists.");
+assert.ok(route.includes("getConfirmedYoutubeFallbackId") && route.includes("shouldKeepPublishedVideoAfterMediaPurge"), "Purge must rely on a verified YouTube publication fallback, not an untrusted row.youtube_id.");
+assert.ok(route.includes("catalogFallbackRowsKeptPublished"), "Purge audit metadata must report the fallback rows it kept public.");
 assert.ok(route.includes('generatedVideoUrl: null') && route.includes('videoUrl: null'), "Purge must clear dead media URLs.");
-assert.ok(!route.includes("social_publish_queue"), "memory purge must not query or mutate the retired social queue.");
+assert.ok(route.includes("status=neq.published&video_url=not.is.null&select=video_url&limit=1000"), "file purge must inspect every non-published social queue media reference before deleting assets.");
+assert.ok(
+  route.includes("pendingSocialGenerationRefs") &&
+    route.includes("status=neq.published&or=(content_type.like.*video*,video_url.not.is.null)&select=id&limit=1000") &&
+    route.includes("const pendingSocialGenerationRefs = (includeFiles || includeMemory)") &&
+    route.includes("(includeFiles || includeMemory) && (pendingSocialGenerationRefs ?? []).length > 0"),
+  "file-only and memory cleanup must both stop while any unfinished social video row remains, including rows without video_url",
+);
+assert.ok(route.includes("isGeneratedCloudinaryVideoUrl") && route.includes("protectedSocialQueueMedia.size > 0"), "file purge must protect generated Cloudinary media referenced by unfinished social posts.");
+assert.ok(route.includes("/^v\\d+$/"), "Cloudinary delivery URL parsing must strip version segments before protecting generated media.");
+assert.ok(route.includes("deletionStarted: false") && route.includes("retryRequired: true"), "a protected queue reference must stop purge before destructive work.");
+assert.ok(
+  !/social_publish_queue[^\n]*method:\s*["'](?:POST|PATCH|DELETE)/i.test(route),
+  "purge must never mutate historical social queue rows.",
+);
+const queueMediaGuardPosition = route.indexOf("const pendingSocialQueueMedia");
+const cloudinaryInventoryPosition = route.indexOf("const assets = includeFiles");
+assert.ok(
+  queueMediaGuardPosition >= 0 && queueMediaGuardPosition < cloudinaryInventoryPosition,
+  "pending social media must be checked before the Cloudinary deletion inventory is processed.",
+);
 assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical social queue records must be explicitly preserved.");
 assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active internal generation before deleting media.");
 assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");

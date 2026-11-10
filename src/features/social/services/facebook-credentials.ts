@@ -1,5 +1,6 @@
 import { getServerEnv } from "@/lib/env";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import { buildFacebookQueueRecoveryPatch } from "@/features/social/services/facebook-queue-recovery-policy";
 
 export type FacebookCredentialSource = "database" | "environment" | "missing";
 export type FacebookConnectionStatus =
@@ -537,68 +538,47 @@ export async function adoptServerConfiguredFacebookPageToken(): Promise<{
   return { pageId, pageName, expiresAt, grantedPermissions: permissions };
 }
 
+type FacebookAuthBlockedQueueRow = {
+  id: string;
+  target_platforms: string[] | null;
+  metadata: Record<string, unknown> | null;
+  status: string;
+};
+
 export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
-  const rows = await supabaseServerAdminRequest<Array<{
-    id: string;
-    target_platforms: string[] | null;
-    metadata: Record<string, unknown> | null;
-    status: string;
-  }>>(
-    "/rest/v1/social_publish_queue?status=in.(failed,partial)&select=id,target_platforms,metadata,status&order=updated_at.asc&limit=250",
-  );
+  const pageSize = 250;
+  let cursor: string | null = null;
   let released = 0;
-  for (const item of rows ?? []) {
-    const metadata = item.metadata ?? {};
-    const targets = item.target_platforms ?? [];
-    if (metadata.authBlocked !== true || !targets.some(p => p === "facebook" || p === "facebook_reels")) continue;
-    const now = new Date().toISOString();
-    const facebookTargets = targets.filter((p): p is "facebook" | "facebook_reels" => p === "facebook" || p === "facebook_reels");
-    const oldResults = metadata.platformResults && typeof metadata.platformResults === "object" && !Array.isArray(metadata.platformResults)
-      ? metadata.platformResults as Record<string, unknown>
-      : {};
-    const platformResults = { ...oldResults };
-    for (const platform of facebookTargets) {
-      const result = platformResults[platform];
-      if (result && typeof result === "object" && (result as { ok?: unknown }).ok === false) delete platformResults[platform];
-    }
-    const oldAttempts = metadata.platformAttempts && typeof metadata.platformAttempts === "object" && !Array.isArray(metadata.platformAttempts)
-      ? metadata.platformAttempts as Record<string, number>
-      : {};
-    const platformAttempts = { ...oldAttempts };
-    for (const platform of facebookTargets) platformAttempts[platform] = 0;
-    const authBlockedPlatforms = Array.isArray(metadata.authBlockedPlatforms)
-      ? metadata.authBlockedPlatforms.filter(platform => !facebookTargets.some(target => target === String(platform)))
-      : [];
-    const permanentFailurePlatforms = Array.isArray(metadata.permanentFailurePlatforms)
-      ? metadata.permanentFailurePlatforms.filter(platform => !facebookTargets.some(target => target === String(platform)))
-      : [];
-    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
-      `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-        body: JSON.stringify({
-          status: "queued",
-          scheduled_at: now,
-          published_at: null,
-          error_message: null,
-          metadata: {
-            ...metadata,
-            authBlocked: authBlockedPlatforms.length > 0,
-            authBlockedPlatforms,
-            permanentFailure: permanentFailurePlatforms.length > 0,
-            permanentFailurePlatforms,
-            attempts: 0,
-            platformAttempts,
-            platformResults,
-            nextRetryAt: null,
-            reauthorizedAt: now,
-          },
-          updated_at: now,
-        }),
-      },
+
+  // Filter to explicitly auth-blocked rows and use a stable UUID cursor. Updating
+  // a row removes it from this query, so offset pagination would skip later rows.
+  while (true) {
+    const cursorFilter: string = cursor === null ? "" : "&id=gt." + encodeURIComponent(cursor);
+    const rows: FacebookAuthBlockedQueueRow[] = await supabaseServerAdminRequest<FacebookAuthBlockedQueueRow[]>(
+      "/rest/v1/social_publish_queue?status=in.(failed,partial)&metadata->>authBlocked=eq.true&select=id,target_platforms,metadata,status&order=id.asc&limit=" +
+        pageSize + cursorFilter,
     );
-    if (Array.isArray(updated) && updated[0]?.id) released += 1;
+    if (!Array.isArray(rows) || rows.length === 0) break;
+
+    for (const item of rows as FacebookAuthBlockedQueueRow[]) {
+      cursor = item.id;
+      const now = new Date().toISOString();
+      const patch = buildFacebookQueueRecoveryPatch(item.metadata, item.target_platforms ?? [], now);
+      if (!patch) continue;
+      const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+        "/rest/v1/social_publish_queue?id=eq." + encodeURIComponent(item.id) +
+          "&status=eq." + encodeURIComponent(item.status),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify(patch),
+        },
+      );
+      if (Array.isArray(updated) && updated[0]?.id) released += 1;
+    }
+
+    if (rows.length < pageSize) break;
   }
+
   return released;
 }

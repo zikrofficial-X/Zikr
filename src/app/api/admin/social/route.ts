@@ -14,6 +14,7 @@ import { getFacebookPageAudienceSnapshot } from "@/features/social/services/face
 import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
 import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
+import { getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -96,13 +97,19 @@ function successfulPlatforms(
 }
 
 function authBlockedPlatforms(
-  metadata: Record<string, unknown> | null | undefined
+  metadata: Record<string, unknown> | null | undefined,
+  targets: readonly string[] = [],
 ): Set<string> {
-  const values = metadata?.platformResults;
   const result = new Set<string>();
-  if (!values || typeof values !== "object" || Array.isArray(values))
-    return result;
+  const declared = Array.isArray(metadata?.authBlockedPlatforms)
+    ? metadata.authBlockedPlatforms.filter(
+        (platform): platform is string =>
+          typeof platform === "string" && platform.startsWith("facebook"),
+      )
+    : [];
+  for (const platform of declared) result.add(platform);
 
+  const values = normalizeSocialPlatformResults(metadata?.platformResults);
   for (const [platform, value] of Object.entries(values)) {
     if (!value || typeof value !== "object") continue;
     const row = value as { ok?: unknown; error?: unknown };
@@ -112,21 +119,28 @@ function authBlockedPlatforms(
         platform.startsWith("facebook") &&
         (error.includes("access token") ||
           error.includes("session has expired") ||
-          error.includes("oauth"))
+          error.includes("oauth") ||
+          error.includes("reauthorization_required") ||
+          error.includes("reconnect the page"))
       ) {
         result.add(platform);
       }
     }
   }
+
+  // Old rows may carry only a global Facebook auth flag. Expand it to the
+  // row's Facebook targets so a partial retry cannot release another blocked
+  // target merely because the per-platform result ledger is absent.
+  if (metadata?.authBlocked === true && declared.length === 0 && result.size === 0) {
+    for (const platform of targets) {
+      if (platform.startsWith("facebook")) result.add(platform);
+    }
+  }
   return result;
 }
 
-function retryPlatforms(item: QueueItem): string[] {
-  const succeeded = successfulPlatforms(item.metadata);
-  const blocked = authBlockedPlatforms(item.metadata);
-  return item.target_platforms.filter(
-    platform => !succeeded.has(platform) && !blocked.has(platform)
-  );
+function retryPlatforms(item: QueueItem, allowAmbiguous = false): string[] {
+  return getRetryableSocialPlatforms(item.target_platforms, item.metadata, allowAmbiguous);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -337,10 +351,10 @@ export async function GET() {
         automation: {
           enabled: socialPublishingEnabled,
           provider: "GitHub Actions",
-          trigger: "after_video_generation_or_manual",
+          trigger: "after_video_or_written_content_or_15m_schedule_or_manual",
           approvalRequired: true,
           note: socialPublishingEnabled
-            ? "يعمل العامل بعد نجاح توليد الفيديو أو التشغيل اليدوي. لا يُنشر أي فيديو قبل اجتياز موافقة الجودة."
+            ? "يعمل العامل بعد نجاح توليد الفيديو أو المحتوى المكتوب، وكذلك كل 15 دقيقة أو عند التشغيل اليدوي من الفرع الرئيسي. لا يُنشر أي فيديو قبل اجتياز موافقة الجودة."
             : "النشر متوقف؛ لا يتم تشغيل العامل ما لم تُفعّل صلاحيات القنوات وإعداد النشر.",
         },
       },
@@ -365,9 +379,11 @@ export async function POST(request: NextRequest) {
       action?: unknown;
       ids?: unknown;
       platforms?: unknown;
+      confirmedNoRemotePublication?: unknown;
     };
     const action = typeof body.action === "string" ? body.action : "";
-    if (["retry", "retry_all_failed", "run_worker", "publish_now", "delete_published"].includes(action)) {
+    const confirmedNoRemotePublication = body.confirmedNoRemotePublication === true;
+    if (["retry", "retry_all_failed", "run_worker", "publish_now", "delete_published", "adopt_server_facebook_token"].includes(action)) {
       const executionAuth = await requireAdminApi("social.publish");
       if (!executionAuth.ok) {
         return NextResponse.json(
@@ -462,14 +478,24 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
 
-    const retryItems = async (filter: string, includeQueued = false) => {
+    const retryItems = async (filter: string, includeQueued = false, allowAmbiguous = false) => {
       const items = await supabaseServerAdminRequest<QueueItem[]>(
         `/rest/v1/social_publish_queue?${filter}&select=id,target_platforms,metadata,status`
       );
       let affected = 0;
+      let manualReconciliationSkipped = 0;
+      let sourceMediaMissingSkipped = 0;
       for (const item of items ?? []) {
+        if (item.metadata?.sourceMediaMissing === true) {
+          sourceMediaMissingSkipped += 1;
+          continue;
+        }
         if (!retryableStatuses.has(item.status) && !(includeQueued && item.status === "queued")) continue;
-        const eligiblePlatforms = retryPlatforms(item);
+        const manualPlatforms = getManualReconciliationPlatforms(item.metadata);
+        if (!allowAmbiguous && manualPlatforms.some(platform => requestedPlatforms.length === 0 || requestedPlatforms.includes(platform))) {
+          manualReconciliationSkipped += 1;
+        }
+        const eligiblePlatforms = retryPlatforms(item, allowAmbiguous);
         const platforms = requestedPlatforms.length > 0
           ? eligiblePlatforms.filter(platform => requestedPlatforms.includes(platform))
           : eligiblePlatforms;
@@ -503,6 +529,30 @@ export async function POST(request: NextRequest) {
           // Leave partial/failed records unchanged if any target is still blocked.
           continue;
         }
+        const previousResults = normalizeSocialPlatformResults(item.metadata?.platformResults);
+        const nextPlatformResults = Object.fromEntries(
+          Object.entries(previousResults).filter(([platform]) => !platforms.includes(platform)),
+        );
+        const remainingAuthBlockedPlatforms = [...authBlockedPlatforms(item.metadata, item.target_platforms)]
+          .filter(platform => !platforms.includes(platform));
+        const declaredPermanentFailures = Array.isArray(item.metadata?.permanentFailurePlatforms)
+          ? item.metadata.permanentFailurePlatforms.filter((platform): platform is string => typeof platform === "string")
+          : [];
+        const remainingPermanentFailurePlatforms = declaredPermanentFailures.filter(
+          platform => !platforms.includes(platform),
+        );
+        const remainingUnavailablePlatforms = Array.isArray(item.metadata?.unavailablePlatforms)
+          ? item.metadata.unavailablePlatforms.filter(
+              (platform): platform is string => typeof platform === "string" && !platforms.includes(platform),
+            )
+          : [];
+        const preservedApprovalDeferredPlatforms = Array.isArray(item.metadata?.approvalDeferredPlatforms)
+          ? item.metadata.approvalDeferredPlatforms.filter((platform): platform is string => typeof platform === "string")
+          : [];
+        const legacyPermanentFailureRemains =
+          !Array.isArray(item.metadata?.permanentFailurePlatforms) &&
+          item.metadata?.permanentFailure === true &&
+          platforms.length < item.target_platforms.length;
         await supabaseServerAdminRequest(
           `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}`,
           {
@@ -513,8 +563,9 @@ export async function POST(request: NextRequest) {
             },
             body: JSON.stringify({
               status: "queued",
-              // Preserve the original target set. Successful channels remain in the
-              // ledger and the worker retries only the failed platform(s).
+              // Preserve successful provider IDs; only the explicitly selected
+              // unresolved targets are cleared after the administrator confirms
+              // that no corresponding remote post exists.
               error_message: null,
               updated_at: new Date().toISOString(),
               scheduled_at: new Date().toISOString(),
@@ -528,21 +579,14 @@ export async function POST(request: NextRequest) {
                     : {}),
                   ...Object.fromEntries(platforms.map(platform => [platform, 0])),
                 },
-                platformResults: Object.fromEntries(
-                  Object.entries(item.metadata?.platformResults && typeof item.metadata.platformResults === "object" && !Array.isArray(item.metadata.platformResults)
-                    ? item.metadata.platformResults as Record<string, unknown>
-                    : {}).filter(([platform]) => !platforms.includes(platform)),
-                ),
-                authBlocked: false,
-                authBlockedPlatforms: (Array.isArray(item.metadata?.authBlockedPlatforms)
-                  ? item.metadata.authBlockedPlatforms
-                  : []).filter(platform => !platforms.includes(String(platform))),
-                permanentFailure: false,
-                permanentFailurePlatforms: (Array.isArray(item.metadata?.permanentFailurePlatforms)
-                  ? item.metadata.permanentFailurePlatforms
-                  : []).filter(platform => !platforms.includes(String(platform))),
-                unavailablePlatforms: [],
-                approvalDeferredPlatforms: [],
+                platformResults: nextPlatformResults,
+                authBlocked: remainingAuthBlockedPlatforms.length > 0,
+                authBlockedPlatforms: remainingAuthBlockedPlatforms,
+                permanentFailure: remainingPermanentFailurePlatforms.length > 0 || legacyPermanentFailureRemains,
+                permanentFailurePlatforms: remainingPermanentFailurePlatforms,
+                unavailablePlatforms: remainingUnavailablePlatforms,
+                // A retry must never clear a scholarly/editorial approval gate.
+                approvalDeferredPlatforms: preservedApprovalDeferredPlatforms,
                 nextRetryAt: null,
               },
             }),
@@ -550,7 +594,7 @@ export async function POST(request: NextRequest) {
         );
         affected += 1;
       }
-      return affected;
+      return { affected, manualReconciliationSkipped, sourceMediaMissingSkipped };
     };
 
     if (action === "publish_now") {
@@ -564,50 +608,68 @@ export async function POST(request: NextRequest) {
         .map(item => item.id);
       const blocked = [
         ...diagnosedItems
-          .filter(item => isVideoContentType(item.content_type) && item.videoApproval?.approved !== true)
-          .map(item => ({ id: item.id, title: item.title, reason: item.videoApproval?.reason ?? "الفيديو يحتاج اعتماد مراجعة الجودة." })),
+          .filter(item => isVideoContentType(item.content_type) && (item.metadata?.sourceMediaMissing === true || item.videoApproval?.approved !== true))
+          .map(item => ({
+            id: item.id,
+            title: item.title,
+            reason: item.metadata?.sourceMediaMissing === true
+              ? "ملف الفيديو المصدر مفقود؛ لا يمكن إعادة النشر حتى استعادته أو إعادة توليده."
+              : item.videoApproval?.reason ?? "الفيديو يحتاج اعتماد مراجعة الجودة.",
+          })),
         ...ids.filter(id => !diagnosedItems.some(item => item.id === id)).map(id => ({
           id, title: null, reason: "العنصر غير موجود في الطابور أو لم يعد في حالة تسمح بالنشر الفوري.",
         })),
       ];
-      const affected = approvedIds.length
-        ? await retryItems("id=in.(" + approvedIds.map(encodeURIComponent).join(",") + ")&status=in.(queued,partial,failed)", true)
-        : 0;
+      const retryResult = approvedIds.length
+        ? await retryItems("id=in.(" + approvedIds.map(encodeURIComponent).join(",") + ")&status=in.(queued,partial,failed)", true, false)
+        : { affected: 0, manualReconciliationSkipped: 0, sourceMediaMissingSkipped: 0 };
+      const affected = retryResult.affected;
       const worker = affected > 0 ? await triggerSocialWorker() : null;
       await recordAdminAuditEvent({
         action: "social.queue.publish_now",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { requestedIds: ids.length, affected, approvalBlocked: blocked.length, workerDispatched: affected > 0 },
+        metadata: { requestedIds: ids.length, affected, approvalBlocked: blocked.length, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, workerDispatched: affected > 0 },
       });
-      return NextResponse.json({ ok: true, affected, blocked, worker });
+      return NextResponse.json({ ok: true, affected, blocked, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, worker });
     }
 
     if (action === "retry_all_failed") {
-      const affected = await retryItems("status=in.(failed,partial)");
+      const retryResult = await retryItems("status=in.(failed,partial)", false, false);
+      const affected = retryResult.affected;
       const worker = affected > 0 ? await triggerSocialWorker() : null;
       await recordAdminAuditEvent({
         action: "social.queue.retry_all_failed",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { affected, workerDispatched: affected > 0 },
+        metadata: { affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, workerDispatched: affected > 0 },
       });
-      return NextResponse.json({ ok: true, affected, worker });
+      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, worker });
     }
 
     const filter = ids.map(encodeURIComponent).join(",");
     if (action === "retry") {
-      const affected = await retryItems(
-        `id=in.(${filter})&status=in.(failed,partial)`
+      const retryResult = await retryItems(
+        `id=in.(${filter})&status=in.(failed,partial)`,
+        false,
+        confirmedNoRemotePublication,
       );
+      const affected = retryResult.affected;
       const worker = affected > 0 ? await triggerSocialWorker() : null;
       await recordAdminAuditEvent({
         action: "social.queue.retry",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { requestedIds: ids.length, affected, workerDispatched: affected > 0 },
+        metadata: {
+          requestedIds: ids.length,
+          affected,
+          manualReconciliationSkipped: retryResult.manualReconciliationSkipped,
+          sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped,
+          confirmedNoRemotePublication,
+          workerDispatched: affected > 0,
+        },
       });
-      return NextResponse.json({ ok: true, affected, worker });
+      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, worker });
     }
 
     if (action === "delete") {

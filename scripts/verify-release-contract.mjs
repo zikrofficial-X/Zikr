@@ -75,12 +75,6 @@ assert.ok(publish.includes("Android release tag/source mismatch"), "Android publ
 assert.ok(releaseManager.includes("Preparation base commit"), "New release notes must not label the pre-release baseline SHA as the binary source SHA");
 
 
-assert.ok(recoveryDispatch.includes("ci/circleci: android-rebuild"), "Android recovery publisher must wait for the signed CircleCI build success status");
-assert.ok(recoveryDispatch.includes("RELEASE_RETRY.flag"), "Android recovery dispatch must require the repository release retry guard");
-assert.ok(recoveryDispatch.includes("listReleases"), "Android recovery dispatch must find the matching GitHub Release through the releases list API");
-assert.ok(recoveryDispatch.includes("release.draft !== true"), "Android recovery dispatch must only target an unpublished draft release");
-assert.ok(recoveryDispatch.includes("createWorkflowDispatch"), "Android recovery dispatch must start the guarded publisher workflow");
-assert.ok(recoveryDispatch.includes("branchData.commit.sha"), "Android recovery dispatch must bind publication to the recovery branch commit that passed CircleCI");
 
 assert.ok(publish.includes("github.ref_type == 'tag'"), "Android publisher must support semantic release tags");
 assert.ok(publish.includes("inputs.retry == true"), "Android publisher must support an explicit guarded recovery retry");
@@ -89,8 +83,19 @@ assert.ok(publish.includes("seq 1 120") && publish.includes("sleep 30"), "Androi
 assert.ok(publish.includes('group: android-release-publish-global'), "Android publisher must serialize all tag/branch retries with a single release-wide concurrency lock");
 assert.ok(publish.includes('gh release upload "$TAG" "$asset"') && publish.includes("--clobber"), "Android publisher must use the idempotent GitHub CLI upload path for same-named assets");
 assert.ok(publish.includes("statuses: read"), "Android publisher must be able to inspect CircleCI status");
-assert.ok(publish.includes('select(.context == "ci/circleci: android-rebuild")'), "Android publisher must inspect the canonical Android build status");
-assert.ok(publish.includes("failure|error"), "Android publisher must stop promptly when the signed build fails");
+assert.ok(
+  publish.includes("select(.context == $context)") &&
+    publish.includes('"ci/circleci: android-rebuild"') &&
+    publish.includes("required_contexts=("),
+  "Android publisher must inspect the canonical Android build status through its complete required-context gate",
+);
+assert.ok(publish.includes("failure|error|cancelled"), "Android publisher must stop promptly when a required signed build fails or is cancelled");
+assert.ok(
+  publish.includes('case "$combined_state"') &&
+    publish.includes("Combined release status failed") &&
+    publish.includes("quality_conclusion"),
+  "Android publisher must fail immediately on a failing combined status or GitHub Quality Gate",
+);
 assert.ok(publish.includes("seq 1 240") && publish.includes("sleep 15") && publish.includes("within 60 minutes"), "Android publisher must allow up to 60 minutes for CircleCI status preflight");
 assert.ok(publish.includes('AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"'), "Android publisher must verify the APK manifest with JAXB-independent aapt");
 assert.ok(!publish.includes("apkanalyzer"), "Android publisher must not use JAXB-dependent APK Analyzer with Java 21");
@@ -98,8 +103,32 @@ assert.ok(!publish.includes("branches:\n      - main"), "Android publisher must 
 assert.ok(publish.includes("EXPECTED_TAG=\"v$(jq -r '.version' package.json)\""), "Android publisher must revalidate tag/version parity");
 assert.ok(publish.includes("com.zikr.app"), "Android publisher must verify the canonical application id");
 assert.ok(publish.includes(".sourceCommit"), "Android publisher must validate the artifact source commit");
-assert.ok(publish.includes('test "${SOURCE_COMMIT}" = "${GITHUB_SHA}"'), "Tag and branch publication must use artifacts from the exact release commit");
-assert.ok(publish.includes("source_status") && publish.includes("ci/circleci: android-rebuild"), "Manual retry must validate CircleCI success for the artifact source commit");
+assert.ok(
+  publish.includes('if [[ "${SOURCE_COMMIT}" != "${TAG_TARGET_SHA}" ]]') &&
+    publish.includes("Android artifact/tag provenance mismatch"),
+  "Every Android release path must bind signed artifact metadata to the immutable tag target commit",
+);
+assert.ok(
+  publish.includes("required_contexts=(") &&
+    publish.includes("ci/circleci: config-guard") &&
+    publish.includes("ci/circleci: source-verify") &&
+    publish.includes("ci/circleci: application-build-docs") &&
+    publish.includes("ci/circleci: android-release-draft") &&
+    publish.includes("ci/circleci: supabase-production-gate") &&
+    publish.includes("ci/circleci: android-rebuild") &&
+    publish.includes("ci/circleci: android-release-dispatch") &&
+    publish.includes("ZIKR / Quality Gate") &&
+    publish.includes("check-runs?per_page=100") &&
+    !publish.includes("github.event_name != 'workflow_dispatch'"),
+  "Every Android publish/retry path must wait for the exact tag source commit's complete CircleCI and GitHub Quality Gate results",
+);
+assert.ok(publish.includes("checks: read") && publish.includes("statuses: read"), "Android publisher must have read-only permissions for commit statuses and check runs");
+assert.ok(
+  publish.includes("github.event_name == 'workflow_dispatch'") &&
+    publish.includes("inputs.retry == true") &&
+    publish.includes("startsWith(github.ref_name, 'android-release-v')"),
+  "Android recovery branch dispatch must require an explicit retry input",
+);
 assert.ok(publish.includes("SHA256SUMS"), "Android publisher must verify and publish checksums");
 assert.ok(publish.includes("release-metadata.json"), "Android publisher must verify and publish release metadata");
 assert.ok(publish.includes('gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}"'), "Android publisher must publish the resolved GitHub release ID after asset verification");

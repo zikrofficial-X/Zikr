@@ -1,11 +1,125 @@
 # ZIKR — Current Project Status
 
+## Latest execution checkpoint — 2026-11-10 17:18 Africa/Cairo
+
+**Audit state: IN PROGRESS. Not a final certification.**
+
+- Production identity reverified: `zikrofficial-X/Zikr@c91f64c`, Vercel `zikr` deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` READY on that exact main SHA, Supabase `zqtssvlvmkzeeyqghqfk` ACTIVE_HEALTHY.
+- PR #275 code snapshot: `3f4e1e60670c27382a957151ad3c35029b8b7b48`; recursive tree 2,148 entries, 1,657 files, 491 directories. Main baseline remains 2,130 entries, 1,639 files, 491 directories. No tree truncation.
+- Fixed duplicate recovery provenance and repeated-purge idempotence; commits `564c002`, `6773c27`, `838297d`, `30b17ad`, `b063524`, `5e89550`, `e3baf37`.
+- Fixed five malformed Arabic strings in the shared editorial-depth component. Expanded the content-integrity scanner from two subtrees to all `src`, so shared components and libraries are covered. Commits `3dadca1` and `3f4e1e6`; current-head CI is still required.
+- CI had not yet populated on the latest head at the time of this checkpoint. The preceding head had config-guard PASS, source-verify and application-build-docs PENDING, and GitHub Quality Gate IN PROGRESS. Do not merge until all checks pass on the exact latest head.
+- Live Supabase: 415 migrations; 92/92 public tables with RLS; 211 policies; 66 foreign keys; 45 non-internal triggers; 40 public functions; 20 SECURITY DEFINER functions all pinned to search_path; 9 buckets, 0 objects; 4 cron jobs (3 active); 4 Edge Functions active. Health Advisor clear; one Auth warning for leaked-password protection disabled; 89 unused-index advisories. No migration or production data change.
+- Video/social: 127 videos (22 public, 105 hidden); 112 completed generation requests, 64 without a video URL; 9 non-published social video rows remain held for missing media; 10 queued rows are written posts. No retries or public posts were triggered.
+- Vercel 24-hour errors: 7 intermittent Supabase socket/TLS fetch failures (latest 14:09 UTC) and one historical rejected Meta Server Token event. No speculative code change.
+- No Preview is safe for authenticated writes because it shares production-backed credentials; production remains on main. Android v1.1.14 remains the last verified release; no artifact from current main was produced.
+- Full review remains incomplete: 129/1,639 main files have full source-content reads recorded; 1,509 were REVIEW_REQUIRED before this checkpoint; modules closed = 0. The PR manifest and matrix were refreshed to the current code snapshot.
+- No production migrations, data, media, indexes, buckets, external posts, branches or tracked files were deleted or changed in this run.
+
+
+## Latest execution checkpoint — 2026-11-10 17:14 Africa/Cairo
+
+**Audit state: IN PROGRESS. Not a final certification.**
+
+- Production identity reverified: `zikrofficial-X/Zikr@c91f64c`, Vercel `zikr` deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` READY on that exact main SHA, Supabase `zqtssvlvmkzeeyqghqfk` ACTIVE_HEALTHY.
+- PR #275 code snapshot: `e3baf37d5c503f454b19ba1f6116a3e0ea639c1d`; recursive tree 2,148 entries, 1,657 files, 491 directories. Main baseline remains 2,130 entries, 1,639 files, 491 directories. No tree truncation.
+- New PR fixes: duplicate recovery requires evidence that an existing purged catalog row was public before purge; repeated purges preserve that evidence. Commits: `564c002`, `6773c27`, `838297d`, `30b17ad`, `b063524`, `5e89550`, `e3baf37`. Regression tests were updated; current-head CI remains pending.
+- CI on the code snapshot: CircleCI config-guard PASS; source-verify and application-build-docs PENDING; GitHub Quality Gate IN PROGRESS; CircleCI Config Validation PASS. Do not merge until all checks pass on the resulting exact head.
+- Live Supabase: 415 migrations, 92/92 public tables with RLS; Health Advisor clear; one Auth warning for leaked-password protection disabled; 89 unused-index advisories. No migration or production data change.
+- Video/social: 127 videos (22 public, 105 hidden); 112 completed generation requests, 64 without a video URL; 9 non-published social video rows remain held for missing media; 10 queued rows are written posts. No retries or public posts were triggered.
+- Vercel 24-hour errors: 7 intermittent Supabase socket/TLS fetch failures (latest 14:09 UTC) and one historical rejected Meta Server Token event. No speculative code change.
+- No Preview is safe for authenticated writes because it shares production-backed credentials; production remains on main. No Android artifact from current main was produced.
+- Full review remains incomplete: 129/1,639 main files have full source-content reads recorded; 1,509 remain REVIEW_REQUIRED; modules closed = 0. The PR manifest and matrix were refreshed to the current code snapshot.
+- No production migrations, data, media, indexes, buckets, external posts, branches or files were deleted or modified in this run.
+
+
+## Additional verified fix — Android release publishing gate (2026-11-10)
+
+PR #275 now fixes a second release-control defect. The Android asset publisher previously allowed a recovery branch to run without the explicit retry input and skipped the full CircleCI prerequisite check on manual retries. It now resolves the exact immutable tag target for every path, requires `workflow_dispatch` plus `retry=true` for recovery branches, and waits for all required CircleCI contexts and the latest `ZIKR / Quality Gate` on that exact source commit before publishing. The combined commit status must also be successful.
+
+Commits: `4ee6a5b` (workflow gate), `e6f7e3b` (release-contract and CI-architecture tests, fail-fast combined status). No Android release workflow was dispatched. The existing `v1.1.14` release remains unchanged.
+
+PR #275 code head at that checkpoint: `e6f7e3baf8c6ad904a0082e67c5740c2a3ed9a5a`; 58 changed files; still Draft. CircleCI source-verify 4459 and application-build-docs 4460 are pending; config-guard 4461 passed; GitHub Quality Gate 42824891836 is queued; CircleCI Config Validation 42824891750 is in progress. Do not merge until all checks pass on the exact current head.
+
+## Previous verified checkpoint — 2026-11-10 15:08 Africa/Cairo
+
+**Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
+
+- Main production source remains `zikrofficial-X/Zikr@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`. Vercel project `zikr` is READY on the exact main SHA; Supabase `zqtssvlvmkzeeyqghqfk` is `ACTIVE_HEALTHY`.
+- Recursive main inventory: 2,130 entries (1,639 files, 491 directories), not truncated. The matrix classifies 128/1,639 files; 1,511 remain `REVIEW_REQUIRED`. No module is closed. PR #275 has 1,649 files, 491 directories, 10 added paths, no removals and 56 changed files; it remains Draft.
+- PR #275 now contains three safety hardening commits: `c93eae7` (strict Supabase DB endpoint/role/TLS validation and canonical guarded tafsir restore), `73a5e99` (least-privilege analytics-only social insights workflow), and `695aacf` (CI-gated, stale-SHA-safe production release that cannot be cancelled mid-migration).
+- Exact current PR CI is not complete: CircleCI source-verify 4448 and application-build-docs 4447 pending; config-guard 4449 pending; GitHub Quality Gate 42823397094 pending. PR must remain unmerged until all checks pass on the same head.
+- Supabase: 415 migrations (latest `20261110085520`), 92/92 public tables with RLS, 211 policies, 45 triggers, 9 buckets, 0 Storage objects. Security Advisor: leaked-password protection disabled. Performance Advisor: 89 unused-index candidates. Health Advisor: no findings. No production DB writes or migrations were made.
+- Live content snapshot: 6,236 Quran ayahs/tafsir rows, 2,964 hadiths, 113 articles. Video catalog 127 rows (22 published, 105 hidden); 112 completed generation requests, 64 without a recorded video URL. Social queue 98 rows: 79 published, 6 failed and 3 partial video items with missing source media, and 10 queued written posts. Content queue 121 published; insights 148 (72 Facebook Reels, 76 YouTube).
+- Android `v1.1.14` is still the published release from older SHA `d055980...`; no signed APK/AAB from current main was produced in this run. No production deployment or external social post was made.
+- Remaining blockers: missing source media for 9 video queue rows; 64 completed requests without video URLs need reconciliation; CI pending; no isolated safe Preview; Storage owner-policy migration awaits controlled release; leaked-password protection needs owner-level decision; current-main Android release pending.
+
 **Production branch:** `main`  
-**Last reconciled:** 2026-11-10  
+**Last reconciled:** 2026-11-10 15:08 Africa/Cairo  
 **Repository:** `zikrofficial-X/Zikr`  
 **Production origin:** `https://zikrmediaofficial.vercel.app`
 
-## Current verified checkpoint — 2026-11-10
+## Current verified checkpoint — 2026-11-10 14:59 Africa/Cairo
+
+**Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
+
+- Latest verified PR #275 audit head before this documentation refresh: `1b49ff8e236a6cb6a6a424e7c102251db45baeba`. CircleCI source-verify 4427, application-build-docs 4426, config-guard 4428, GitHub Quality Gate 42819681898, and CircleCI Config Validation 42819681906 passed. PR remains Draft and unmerged.
+- Main remains `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`. Production Vercel deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` is READY on that exact SHA; `/api/health` and 10 sampled routes/APIs returned HTTP 200. This is not exhaustive browser/device acceptance.
+- Supabase remains `ACTIVE_HEALTHY`, with 415/415 unique migrations. Security Advisor reports one leaked-password-protection warning; Performance Advisor reports 89 unused-index candidates; Health Advisor has no findings. No database or Auth changes were made.
+- Video/social queue: 78 published, 6 failed, 3 partial. All 9 non-published rows are marked `sourceMediaMissing`; exact Cloudinary public-ID searches returned zero active assets for all nine. No asset/version identifiers were available for safe backup restore. No retry, regeneration, provider call or public post was made.
+- Vercel environment inventory: 55 records / 50 unique names; 17 sensitive-type variables include Preview and 13 include Development. Values were not decrypted. No custom environments are available, so the Preview environment remains production-backed and unsafe for write tests. Sandbox creation was blocked by HTTP 402 Snapshots Storage quota.
+- Android's last verified published release is still `v1.1.14` on the older `d055980` baseline; no signed APK/AAB for current main was built in this run.
+- File inventory remains 1,639 files / 491 directories with 100% automated manifest coverage. Full source-content reads: 122/1,639; full manual/functional reviews: 5/1,639; modules closed: 0; safe deletions: 0.
+- No production data, media, credentials, environment values, migrations, policies, indexes, or social posts were modified. No files were deleted.
+
+
+## Historical checkpoint — 2026-11-10 14:48 Africa/Cairo
+
+**Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
+
+- GitHub main remains `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; active PR #275 is Draft at `8f835e824bb4f848e0304294a04464d8c08903bf`. The PR-only test fix isolates `YOUTUBE_CHANNEL_ID` for the no-override test; CircleCI 4415/4414/4416 and GitHub Quality Gate 42818371121 all passed on this exact head. No runtime OAuth code changed.
+- The PR remains unmerged. No matching Vercel Preview exists; Preview uses production-backed integrations. Vercel Sandbox creation was blocked by the team's exhausted Snapshots Storage quota (HTTP 402), so no isolated sandbox run was possible. Do not merge until an isolated/read-only Preview strategy and full diff review are complete.
+- Production Vercel deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` is READY on main. `/api/health` reports the same main SHA. Ten sampled routes/APIs returned HTTP 200: `/`, `/quran`, `/hadith`, `/adhkar`, `/prayer-times`, `/kids`, `/videos`, `/api/kids/videos`, `/api/quran/surahs`, and `/api/hadith/books`.
+- Supabase remains `ACTIVE_HEALTHY`. Live migration ledger is 415/415 unique versions. Security Advisor: one warning for disabled leaked-password protection; Performance Advisor: 89 unused-index candidates; Health Advisor: no findings. No database or Auth changes were made.
+- Video/social queue now reports 78 published, 6 failed, 3 partial video rows. All 9 non-published rows carry `sourceMediaMissing` and remain held; no media recovery, retry, regeneration, or public publishing was attempted.
+- Current inventory baseline remains 1,639 files / 491 directories; full content reads advanced from 3 to 5/1,639 for this ledger's manually reviewed set (the manifest and file matrix still cover the full tracked tree automatically). Modules closed: 0. No files deleted.
+
+
+## Historical checkpoint — 2026-11-10 11:38 Africa/Cairo
+
+**Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
+
+- **GitHub source of truth:** `zikrofficial-X/Zikr`, branch `main`, commit `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`. GitHub reports the `main` branch as unprotected; this audit did not change repository protection settings.
+- **Recursive inventory:** 2130 entries (1639 files, 491 directories, 138209705 file bytes), complete and not truncated. The refreshed matrix contains 1639 file rows; automated tree coverage is 100%, but functional/manual review remains 0/1639. The delta from the prior 1,631-row matrix is 9 new paths and 1 removed path(s). The removed root `proxy.ts` is replaced by canonical `src/proxy.ts`.
+- **Routes:** 142 App Router pages and 80 `route.ts` handlers are present. The shared route baseline is being updated from 79 to 80 because `src/app/api/kids/videos/route.ts` is now present; the route verifier is being updated to require that route.
+- **Vercel:** project `zikr` (`prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`) is linked to this repository. Production deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` is READY on the exact `c91f64ccd6162e5107b3edb8be3c7aa521865c2f` main commit, with aliases `zikrmediaofficial.vercel.app`, `zikr-zikr3.vercel.app`, and `zikr-git-main-zikr3.vercel.app`. No production deployment was triggered by this audit.
+- **Supabase:** project `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY on PostgreSQL 17. Local and live migration ledgers both contain exactly 415 unique versions, latest `20261110085520`; there are no missing or extra versions. Live public schema has 92/92 tables with RLS enabled, 211 policies, 45 triggers, 40 public functions (20 SECURITY DEFINER), and no direct `anon` or `authenticated` EXECUTE grants on those 20 functions. Nine extensions are installed; four Edge Functions are active; four pg_cron jobs exist (three active, one disabled).
+- **Supabase operations:** nine Storage buckets currently contain zero objects. This is consistent with the current architecture: all 19,608 `quran_audio` rows are external MP3Quran URLs with no Supabase storage paths; all 30 `site_audio_assets` use `curated:` keys resolved to Cloudinary; Android binaries are delivered from GitHub Releases, not Supabase Storage. Cloudinary inventory confirms 30/30 curated audio assets exist. The scheduled storage-retention run `42746805266` completed with zero video candidates and zero Android copies, so it deleted nothing. The disabled `zikr-youtube-facebook-sync` cron entry still references the retired project host `ymxdswkaxafakugktsim`; it remains disabled and was not modified. A historical 2026-11-01 snapshot for that former project records 148 storage objects, but the former project is not the Vercel-linked project and was not accessible through the current connector; no restore or deletion was attempted. Security Advisor warns that leaked-password protection is disabled. Performance Advisor reports 91 unused indexes; no index was dropped because usage history and workload evidence are insufficient.
+- **Video/social incident:** the live purge audit event at 2026-11-10 08:35:56 UTC records 44 Cloudinary MP4 assets deleted (212,392,150 bytes), 105 generated catalog rows hidden, social queue rows preserved, and no external posts deleted. Cloudinary inventory now returns zero `auto-*` video assets, and all nine non-published queue rows (4 failed, 3 partial, 2 queued) reference public IDs that are absent from Cloudinary. The latest scheduled publisher run `42792340735` then failed five Facebook Reels uploads with HTTP 422. No retry, requeue, regeneration, purge, or public social dispatch was performed. PR #275 now includes a fail-closed purge guard and a written-post fairness reserve; the older PRs #270 and #271 were closed as superseded. Ten written Facebook posts remain queued and one written post is published. The 30 curated audio assets are unaffected and all 30 exist in Cloudinary.
+- **CI:** main Quality Gate `42789168100` and Supabase Production Health `42789168307` passed for `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`. CircleCI `config-guard`, `source-verify`, `application-build-docs`, and `android-release-draft` statuses are green. The scheduled social-publisher failure above remains an operational failure, not a passing check.
+- **Android:** the last verified signed release remains `v1.1.14` from its earlier exact release baseline. This audit did not build or verify a new signed APK/AAB for `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; the current CircleCI Android release-draft status alone is not a signed-artifact claim.
+- **Review progress:** three high-risk workflow files were inspected in full, with targeted inspection of the Facebook OAuth callback/service, YouTube OAuth scopes/callback and stored channel identity, media-purge guard, queue selector, and route-verification contracts. PR #275 adds a fail-closed YouTube channel-ID match for stored refresh tokens; the callback requests offline access and required upload/read/analytics scopes. The full repository file matrix remains `REVIEW_REQUIRED`; no product module is closed yet. PR #275 contains code guardrails and route-baseline reconciliation and is awaiting its own CI/Preview checks.
+- **Open follow-ups:** PRs #269, #270, #271, #272, and #274 were closed as superseded after their required changes were ported into PR #275 or confirmed applied by PR #273. PR #275 is the active current-main safety remediation and includes the refreshed manifest, matrix, ledger, route baseline, purge guard, queue fairness, OAuth recovery, production-only workflow dispatch guard, and workflow protections.
+- **Safety:** no production user data, storage objects, migrations, policies, indexes, OAuth credentials, environment values, Android signing material, or social content were changed by this audit. No files were deleted.
+
+## Current verified checkpoint — 2026-11-10 11:38 Africa/Cairo
+
+**Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
+
+- **GitHub source of truth:** `zikrofficial-X/Zikr`, branch `main`, commit `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`. GitHub reports the `main` branch as unprotected; this audit did not change repository protection settings.
+- **Recursive inventory:** 2130 entries (1639 files, 491 directories, 138209705 file bytes), complete and not truncated. The refreshed matrix contains 1639 file rows; automated tree coverage is 100%, but functional/manual review remains 0/1639. The delta from the prior 1,631-row matrix is 9 new paths and 1 removed path(s). The removed root `proxy.ts` is replaced by canonical `src/proxy.ts`.
+- **Routes:** 142 App Router pages and 80 `route.ts` handlers are present. The shared route baseline is being updated from 79 to 80 because `src/app/api/kids/videos/route.ts` is now present; the route verifier is being updated to require that route.
+- **Vercel:** project `zikr` (`prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`) is linked to this repository. Production deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` is READY on the exact `c91f64ccd6162e5107b3edb8be3c7aa521865c2f` main commit, with aliases `zikrmediaofficial.vercel.app`, `zikr-zikr3.vercel.app`, and `zikr-git-main-zikr3.vercel.app`. No production deployment was triggered by this audit.
+- **Supabase:** project `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY on PostgreSQL 17. Local and live migration ledgers both contain exactly 415 unique versions, latest `20261110085520`; there are no missing or extra versions. Live public schema has 92/92 tables with RLS enabled, 211 policies, 45 triggers, 40 public functions (20 SECURITY DEFINER), and no direct `anon` or `authenticated` EXECUTE grants on those 20 functions. Nine extensions are installed; four Edge Functions are active; four pg_cron jobs exist (three active, one disabled).
+- **Supabase operations:** nine Storage buckets currently contain zero objects. The disabled `zikr-youtube-facebook-sync` cron entry still references the retired project host `ymxdswkaxafakugktsim`; it remains disabled and was not modified. Security Advisor warns that leaked-password protection is disabled. Performance Advisor reports 91 unused indexes; no index was dropped because usage history and workload evidence are insufficient.
+- **Video/social incident:** the latest scheduled publisher run `42792340735` failed after five Facebook Reels uploads returned HTTP 422. Live queue inspection found nine non-published video rows still referencing Cloudinary media URLs (4 failed, 3 partial, 2 queued). The prior purge incident recorded 44 deleted MP4 assets; no retry, purge, regeneration, or public social dispatch was performed during this audit. PR #271 contains a fail-closed purge guard but remains a draft. Ten written Facebook posts remain queued and one written post is published.
+- **CI:** main Quality Gate `42789168100` and Supabase Production Health `42789168307` passed for `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`. CircleCI `config-guard`, `source-verify`, `application-build-docs`, and `android-release-draft` statuses are green. The scheduled social-publisher failure above remains an operational failure, not a passing check.
+- **Android:** the last verified signed release remains `v1.1.14` from its earlier exact release baseline. This audit did not build or verify a new signed APK/AAB for `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; the current CircleCI Android release-draft status alone is not a signed-artifact claim.
+- **Review progress:** three high-risk workflow files were inspected in full, with targeted inspection of the Facebook OAuth callback/service and route-verification contracts. The full repository file matrix remains `REVIEW_REQUIRED`; no product module is closed yet. PR #275 contains code guardrails and route-baseline reconciliation and is awaiting its own CI/Preview checks.
+- **Open follow-ups:** PR #270 (social queue fairness), #271 (purge guard), and #274 (production-only dispatch guard) remain draft. PR #272 was closed as superseded by merged PR #273. Older PR #269 remains a stale, divergent audit branch and is not used as the current baseline. PR #275 is the active current-main safety remediation.
+- **Safety:** no production user data, storage objects, migrations, policies, indexes, OAuth credentials, environment values, Android signing material, or social content were changed by this audit. No files were deleted.
+
+## Previous checkpoint — 2026-11-10 (superseded by the 11:38 reconciliation)
 
 **Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
 
@@ -143,3 +257,106 @@ PR follow-up branch `fix/quran-tafsir-backfill-release-preflight-20261107` adds 
 PR #234 merged into `main` at `1c9f44a6c55ad9f6d65b7552892fc44b6eed43c9`. Its GitHub Quality Gate and all PR-level CircleCI checks passed. The post-merge `push` run exposed a CI scope-selection defect: the shell gate selected `verify:pr` even though GitHub identified the event as a push to `main`. A follow-up replaces shell reads of default event/ref variables with a scope boolean computed directly from the GitHub Actions expression context. Full main-branch `pnpm verify` must pass before the controlled production release is dispatched.
 
 The current Vercel Production deployment remains `dpl_9d8LhBw1xDjNfWWcnTkv46sfdV3C` on deployed commit `a712708004942b99fceab0993592cef6c5112afe`; it does not contain PRs #232–#234. No production Quran tafsir rows have been restored yet; the protected release is still required.
+
+  
+## Continuous closeout checkpoint — 2026-11-10 12:12 Africa/Cairo
+
+- Canonical baseline: `zikrofficial-X/Zikr@main` = `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; active draft remediation is PR #275 on `codex/zikr-comprehensive-repair-safety-20261110`, head `66ec209d1d86056af89fa107241b0230e39c5666`.
+- Recursive tracked inventory: 1,639 files / 491 directories / 2,130 entries; 100% automated inventory coverage. Matrix records 21 full source-content reads; 1,618 files remain `REVIEW_REQUIRED`; dependency/runtime/acceptance review is incomplete; 0 modules closed.
+- PR #275 fixes two production workflow source-ref risks (storage retention and offline snapshot), two test defects (social queue fixture and YouTube OAuth regex), and adds regression checks. See `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` for commit IDs and pending CI.
+- CI is not green: CircleCI `config-guard` passed, but `source-verify` and `application-build-docs` failed on commit `5cba3a850083f73deaf6b74dc9c41c381a6efecb`; job logs were inaccessible. GitHub Quality Gate run `42797998682` was still running on that code head. The newer audit-documentation head has not yet passed its own checks.
+- Production video/social reconciliation found 12 non-published queue rows, of which nine Cloudinary source assets are missing. Three recent YouTube uploads are already successful; their Facebook Reels uploads failed HTTP 422. No retry or regeneration was performed. The main-branch scheduled publisher independently published one Kids-series item to both platforms during its normal run.
+- Supabase: 415 local/live migrations match; 92/92 public tables have RLS; 211 policies; 45 triggers; 40 public functions (20 SECURITY DEFINER, all pinned search_path); 4 cron jobs (3 active); 9 buckets with 0 current objects. Leaked-password protection remains disabled (owner action); 91 unused-index candidates were not dropped.
+- Vercel Production remains READY on main SHA `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; no production deploy. No Android APK/AAB was built or signed against this baseline. No files or production data were deleted or changed by this audit.
+
+**State: IN PROGRESS — do not mark FINAL BASELINE READY.**
+
+  
+## Continuous closeout checkpoint — 2026-11-10 13:25 Africa/Cairo
+
+- Main baseline remains `zikrofficial-X/Zikr@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; Vercel production is READY on that SHA and linked to the same GitHub repository.
+- Recursive inventory: 1,639 files / 491 directories / 2,130 entries. Manifest coverage 100%; full source-content reads 91/1,639; 1548 remain REVIEW_REQUIRED; modules closed 0.
+- All 59 `src/lib` files were fetched and statically scanned. Import/export/environment references were enumerated; no replacement-character or scanned private-key/API-key marker matches were found. Consumer tracing and runtime acceptance remain open.
+- PR #275 head is `1a522cd910d2eca3a9094feebef654aa7b58b2a6`. It adds legacy social queue result normalization and preserves remote IDs / platform blocks during retries. GitHub Quality Gate is in progress; CircleCI config-guard passed, source-verify failed, application-build-docs pending. PR remains draft and unmerged.
+- Supabase remains read-only: 415/415 migrations, 92/92 public tables RLS-enabled, 211 policies, 45 triggers, 40 functions, 20 SECURITY DEFINER with zero direct client EXECUTE grants, 4 cron jobs (3 active), 9 buckets / 0 objects. Leaked-password protection remains an owner action; 89 unused-index candidates were not dropped.
+- Social queue: 98 rows (77 published, 13 queued, 4 partial, 4 failed); 3 partial and 4 failed rows carry HTTP 422, one partial is cooldown-deferred. No retries or live publishing were initiated. Nine previously identified Cloudinary assets remain unresolved.
+- No production deploy, migration replay, data mutation, file deletion, or Android signing was performed. Latest signed Android release on record is v1.1.14 and is not verified against this baseline.
+
+**State: IN PROGRESS — do not mark FINAL BASELINE READY.**
+
+  
+## Additional continuous closeout checkpoint — 2026-11-10 13:35 Africa/Cairo
+
+- PR #275 head: `fe5112dae122b038c5e90dc0cd8a4c4da33bb665`, draft/open and not merged.
+- Fixed a false-positive admin health result: failed Supabase connectivity probes now map to `error`, with a pure unit test wired into `pnpm test` and the admin-health verifier.
+- Traced all seven `requireSupabaseAuth` consumers: their feature services call `auth.getUser()`; the guard is only provider availability. Its documentation now states that it is not identity or admin authorization.
+- Confirmed `supabase/server.ts` and `supabase/admin-rest.ts` have separate Next-server and Node-worker responsibilities; no Edge-runtime route consumer of the Next server module was found in code search.
+- Storage owner-path enforcement remains pending the Storage RLS policy audit. No data or policies were changed.
+- Current inventory evidence remains 92/1,639 source-content reads; 1547 REVIEW_REQUIRED; modules closed 0. Earlier GitHub Quality Gate success belongs to commit `1a522cd`, not the current head; latest checks remain pending.
+
+**State: IN PROGRESS — do not mark FINAL BASELINE READY.**
+
+
+## Continuous closeout checkpoint — 2026-11-10 13:45 Africa/Cairo
+
+- **Source of truth:** GitHub repository `zikrofficial-X/Zikr`, main baseline `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; Vercel project `zikr` is linked to that repository. Production remains READY on the same main SHA. Connected Supabase project: `zqtssvlvmkzeeyqghqfk`.
+- **Inventory:** main baseline 1,639 files / 491 directories / 2,130 tracked entries; 100% automated inventory coverage. Full source-content reads 117/1,639; 1,522 REVIEW_REQUIRED; 99 CONTENT_READ_PENDING_TRACE; 10 FIXED_PENDING_CI; 8 TEST_UPDATED_PENDING_CI. Modules closed: 0.
+- **PR #275:** draft/open/unmerged; head at checkpoint `46a8b66c27c9b5c7c771c3e97794854e3b3f1ac7`; 48 changed files. Branch tree: 1,648 files / 491 directories. Current CircleCI config-guard passed; source-verify and application-build-docs pending; full ZIKR Quality Gate in progress. Earlier source-verify failure on head `6e1845a` still needs a detailed cause.
+- **Storage repair:** live Storage RLS lacked owner policies for avatars, media, audio and documents. PR adds a forward migration with authenticated owner-path policies, fixes MIME allowlists, corrects the signed-upload TTL to 7,200 seconds, and adds a contract test. Migration remains unapplied; live migrations remain 415/415.
+- **Social containment:** nine approved queue rows referencing missing Cloudinary assets are held from retry. Three queued became failed; three partial and three failed remain held. Audit event `5de18dd5-8bcc-4784-a471-e1c7821405dc`. Existing YouTube remote IDs preserved. No provider call, generation or post was triggered.
+- **Written posts:** ten written Facebook posts are queued and one is published. The dedicated page is `/admin/social/written-studio`; a direct link and pending count were added to the main social dashboard. The page requires `social.manage`; generation requires `social.publish` as well.
+- **Supabase:** 92/92 public tables RLS-enabled; 89 unused-index candidates remain untouched; leaked-password protection remains an owner setting; health advisor returned no findings. No index, data, bucket or Storage object was deleted.
+- **Vercel/Android:** no PR Preview deployment; production not redeployed. Vercel sandbox creation was blocked by storage quota and local GitHub DNS was unavailable, so no local build is claimed. No APK/AAB build or signature verification was performed.
+- **No module is closed.** Browser/device acceptance, migration replay, current CI, missing-media restoration, and the remaining REVIEW_REQUIRED inventory are still open.
+
+**State: IN PROGRESS — do not mark FINAL BASELINE READY.**
+
+
+### Storage testability refinement — 2026-11-10 13:45 Africa/Cairo
+- Extracted pure storage configuration/path/MIME/TTL logic into `src/lib/services/storage-contract.ts`; the server helper re-exports it and the new test imports the pure module, avoiding a server-only module in the Node test runtime.
+- PR tree: 1,649 files / 491 directories / 2,140 entries. Main baseline remains 1,639 files; full source-content reads 117/1,639; 1,522 REVIEW_REQUIRED; modules closed 0.
+- PR #275 head at this refinement: `241840744a606e42519b7f0e9c9930363651c7e0`, still draft/open/unmerged. CI has to pass on the final head.
+
+## Additional verified audit checkpoint — 2026-11-10 16:59 Africa/Cairo
+
+**Audit state: IN PROGRESS. This is not a FINAL BASELINE READY certification.**
+
+### Canonical environment
+
+- GitHub production branch remains main at c91f64ccd6162e5107b3edb8be3c7aa521865c2f.
+- PR #275 remains Draft. The video-recovery code snapshot is 0d4744948c0d96cfd04f0d60a1d7364b7b624524; the latest audit-document update follows it.
+- Vercel project zikr is READY in production from the unchanged main SHA c91f64c; canonical domain is zikrmediaofficial.vercel.app.
+- Supabase project zqtssvlvmkzeeyqghqfk is ACTIVE_HEALTHY on PostgreSQL 17.11.
+- Direct migration-ledger SQL confirms 415/415 unique local-main/live versions. Public RLS is enabled on all 92/92 tables. The only current Security Advisor warning is leaked-password protection disabled, which remains an owner-level settings/plan decision.
+
+### Video catalog recovery finding
+
+A read-only join of the video catalog, generation requests, social publishing queue, and site content publishing queue found 64 generated videos that were previously published on the ZIKR site, whose media was disposed after successful social publication, and whose YouTube remote ID matches the catalog record. All 64 have completed requests, matching content/source/template hashes, and automated QA passed.
+
+- 50 general videos meet the recovery gate.
+- 14 kids videos are split into 8 with kidsVideoQaStatus=passed and 6 with kidsVideoQaStatus=revalidation_required.
+- The safe recovery set is 58 videos (50 general + 8 kids QA-passed). The 6 kids records remain hidden.
+- Root cause: the earlier YouTube fallback migration skipped records when the YouTube ID and thumbnail were already populated, even if the media state remained purged and the fallback metadata was incomplete. It also did not restore the site published flag.
+
+### Repair prepared in PR #275
+
+- Added a fail-closed prior-publication/QA helper for late YouTube fallback restoration.
+- The video purge route now records whether the catalog row was public before its media was purged.
+- Successful YouTube catalog reconciliation can restore a previously public purged row only when that marker and the applicable automated/Kids QA gates pass.
+- Added migration 20261110150000_restore_confirmed_purged_video_catalog.sql. It requires confirmed YouTube success, a published site queue record, matching canonical request hashes/template, valid and non-conflicting provider ID, and the appropriate QA state. It restores only evidence-qualified rows and performs no deletions.
+- Added regression coverage for restoration eligibility, kids QA blocking, purge-state capture, migration guards, and YouTube catalog sync.
+- The migration has not been applied to production. The 58-row candidate query was run read-only; no production catalog rows were modified.
+
+### Current video/social state
+
+- Internal generated catalog: 105 rows remain hidden in purged state; 5 internal rows remain published. There are also 17 published manual videos.
+- Social publishing queue: 78 published video rows, 1 published written post, 10 queued written posts, 6 failed video rows, and 3 partial video rows. The 9 failed/partial rows are flagged sourceMediaMissing and remain held; no blind retry or duplicate publishing was performed.
+- All 112 generation requests are currently completed.
+
+### CI and release state
+
+- The earlier Quality Gate run 42839488376 passed toolchain, PostgreSQL integration checks, and the new Supabase database URL regression test, then failed on the new migration contract because an intermediate migration edit was malformed.
+- The migration was rewritten cleanly in commit 0d4744948c0d96cfd04f0d60a1d7364b7b624524. The current-head CI run must pass before merge; no production release or migration apply was initiated.
+- PR #275 remains Draft with 70 changed files (9,842 additions / 2,262 deletions). No merge is authorized until current-head checks, isolated Preview, and acceptance gates pass.
+
+No files or production data were deleted in this checkpoint. No Cloudinary assets were deleted, no social posts were published, and no production deployment was initiated. File-level review and browser/mobile acceptance remain incomplete; modules closed remains 0.

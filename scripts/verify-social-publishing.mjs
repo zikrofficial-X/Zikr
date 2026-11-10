@@ -46,6 +46,10 @@ if (!socialApi.includes("created_at=gte.") || !socialApi.includes("limit=200") |
     !socialApi.includes("limit=500") || !socialApi.includes("private, max-age=30")) {
   failures.push("social admin reads must be bounded, cached and isolated to the post-launch queue window");
 }
+if (!adminClient.includes('href="/admin/social/written-studio"') ||
+    !adminClient.includes('item.content_type === "written_post"')) {
+  failures.push("social dashboard must expose the written-post studio and its pending queue count");
+}
 if (!writtenApi.includes('requireAdminApi("social.manage")') ||
     !writtenApi.includes('requireAdminApi("social.publish")') ||
     !writtenApi.includes('dispatchGitHubWorkflow("generate-written-content.yml"') ||
@@ -207,6 +211,12 @@ if (!facebookCallback.includes('requireAdminApi("social.manage")') ||
     !facebookCallback.includes("page_selection_required") ||
     facebookCallback.includes("FACEBOOK_INTEGRATION_RETIRED")) {
   failures.push("Facebook OAuth callback must validate state, required Page permissions, and the selected managed Page before storing credentials");
+}
+if (!facebookCallback.includes("unblockFacebookAuthBlockedQueue") ||
+    facebookCallback.indexOf("await saveFacebookPageCredential(") < 0 ||
+    facebookCallback.indexOf("await unblockFacebookAuthBlockedQueue(") <= facebookCallback.indexOf("await saveFacebookPageCredential(") ||
+    facebookCallback.includes('dispatchGitHubWorkflow("publish-social.yml"')) {
+  failures.push("a successful Facebook OAuth reconnect must release only auth-blocked queue rows after storing the verified Page credential and leave dispatch to the scheduled publisher");
 }
 if (!youtubeCallback.includes('requireAdminApi("social.manage")') ||
     !youtubeCallback.includes("canUpload") ||

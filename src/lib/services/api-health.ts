@@ -3,13 +3,9 @@ import { assertSupabaseConnection } from '@/lib/supabase/server';
 import { generateGeminiText } from '@/features/spiritual-ai/services/gemini-client';
 import { getYoutubeSyncHealth } from '@/features/videos/integrations/youtube';
 
-export type ApiHealthStatus = 'ok' | 'warning' | 'error';
+import { createSupabaseHealthCheck, type ApiHealthCheck } from "@/lib/services/api-health-status";
 
-export type ApiHealthCheck = {
-  name: string;
-  status: ApiHealthStatus;
-  message: string;
-};
+export type { ApiHealthCheck, ApiHealthStatus } from "@/lib/services/api-health-status";
 
 async function timed(name: string, check: () => Promise<ApiHealthCheck>): Promise<ApiHealthCheck> {
   try {
@@ -25,8 +21,8 @@ export async function runApiHealthChecks(): Promise<ApiHealthCheck[]> {
 
   return Promise.all([
     timed('Supabase Auth/REST', async () => {
-      await assertSupabaseConnection();
-      return { name: 'Supabase Auth/REST', status: 'ok', message: 'Supabase URL and anon key responded successfully.' };
+      const connected = await assertSupabaseConnection();
+      return createSupabaseHealthCheck(connected);
     }),
     timed('Gemini Quran/Voice AI', async () => {
       if (!serverEnv.GEMINI_API_KEY) return { name: 'Gemini Quran/Voice AI', status: 'warning', message: 'GEMINI_API_KEY is not configured; AI falls back to static responses.' };

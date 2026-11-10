@@ -10,6 +10,11 @@ on:
         required: true
         default: false
         type: boolean
+      confirmation:
+        description: "Type DELETE_STAGING_COPIES to authorize irreversible removal of verified redundant copies"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -20,6 +25,7 @@ concurrency:
 
 jobs:
   cleanup:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 25
@@ -31,8 +37,22 @@ jobs:
       CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - name: Checkout
+      - name: Checkout canonical main
         uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Require explicit owner confirmation before destructive cleanup
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == true
+        shell: bash
+        env:
+          RETENTION_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "${RETENTION_CONFIRMATION}" = "DELETE_STAGING_COPIES" || {
+            echo "::error::Destructive retention requires typed confirmation DELETE_STAGING_COPIES." >&2
+            exit 1
+          }
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -67,8 +87,8 @@ jobs:
       - name: Print deletion plan (dry run)
         run: pnpm storage:cleanup
 
-      - name: Apply scheduled or manually approved full storage retention
-        if: ${{ github.event_name == 'schedule' || github.event.inputs.apply == 'true' }}
+      - name: Apply manually approved full storage retention
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.apply == true && inputs.confirmation == 'DELETE_STAGING_COPIES' }}
         run: pnpm storage:cleanup -- --apply
 
       - name: Verify final bucket inventory

@@ -1,61 +1,31 @@
 import "server-only";
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from "@/lib/supabase/server";
+import {
+  buildStoragePath,
+  encodeStorageKey,
+  getStoragePurposeConfig,
+  isAllowedStorageContentType,
+  parseStorageKey,
+  SIGNED_UPLOAD_URL_TTL_SECONDS,
+  type PresignedUpload,
+  type StorageObjectPurpose,
+} from "./storage-contract";
 
-export type StorageObjectPurpose = 'avatar' | 'media' | 'audio' | 'document' | 'video';
-
-export type PresignedUpload = {
-  key: string;
-  bucket: string;
-  path: string;
-  token: string;
-  uploadUrl: string;
-  publicUrl: string | null;
-  expiresIn: number;
-};
-
-const PURPOSE_CONFIG: Record<StorageObjectPurpose, { bucket: string; maxBytes: number; isPublic: boolean }> = {
-  avatar: { bucket: 'avatars', maxBytes: 5 * 1024 * 1024, isPublic: true },
-  media: { bucket: 'media', maxBytes: 20 * 1024 * 1024, isPublic: true },
-  audio: { bucket: 'audio', maxBytes: 50 * 1024 * 1024, isPublic: false },
-  document: { bucket: 'documents', maxBytes: 20 * 1024 * 1024, isPublic: false },
-  video: { bucket: 'videos', maxBytes: 512 * 1024 * 1024, isPublic: true },
-};
-
-export function getStoragePurposeConfig(purpose: StorageObjectPurpose) {
-  return PURPOSE_CONFIG[purpose];
-}
-
-export function sanitizeStorageSegment(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 120);
-}
-
-export function buildStoragePath(ownerId: string, filename: string) {
-  const cleanOwner = sanitizeStorageSegment(ownerId) || 'anonymous';
-  const cleanFilename = sanitizeStorageSegment(filename) || 'file';
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  return `${cleanOwner}/${timestamp}-${cleanFilename}`;
-}
-
-export function encodeStorageKey(bucket: string, path: string) {
-  return `${bucket}/${path.replace(/^\/+/, '')}`;
-}
-
-export function parseStorageKey(key: string) {
-  const cleanKey = key.trim().replace(/^\/+/, '');
-  const separator = cleanKey.indexOf('/');
-  if (separator <= 0 || separator === cleanKey.length - 1) return null;
-
-  return {
-    bucket: cleanKey.slice(0, separator),
-    path: cleanKey.slice(separator + 1),
-  };
-}
+export {
+  buildStoragePath,
+  encodeStorageKey,
+  getStoragePurposeConfig,
+  isAllowedStorageContentType,
+  parseStorageKey,
+  sanitizeStorageSegment,
+  SIGNED_UPLOAD_URL_TTL_SECONDS,
+} from "./storage-contract";
+export type {
+  PresignedUpload,
+  StorageObjectPurpose,
+  StoragePurposeConfig,
+} from "./storage-contract";
 
 export async function createPresignedUploadUrl(params: {
   purpose: StorageObjectPurpose;
@@ -63,20 +33,22 @@ export async function createPresignedUploadUrl(params: {
   filename: string;
   contentType: string;
   contentLength: number;
-  expiresIn?: number;
 }): Promise<PresignedUpload> {
-  const config = PURPOSE_CONFIG[params.purpose];
-  if (params.contentLength <= 0 || params.contentLength > config.maxBytes) {
+  const config = getStoragePurposeConfig(params.purpose);
+  if (!Number.isSafeInteger(params.contentLength) || params.contentLength <= 0 || params.contentLength > config.maxBytes) {
     throw new Error(`File size exceeds the ${Math.round(config.maxBytes / 1024 / 1024)}MB limit for ${params.purpose} uploads.`);
   }
 
-  if (!params.contentType || !/^[\w.+-]+\/[\w.+-]+$/.test(params.contentType)) {
+  if (!params.contentType || !/^[\w.+-]+\/[\w.+-]+$/.test(params.contentType.trim())) {
     throw new Error('A valid content type is required for Supabase Storage uploads.');
+  }
+
+  if (!isAllowedStorageContentType(params.purpose, params.contentType)) {
+    throw new Error(`Unsupported content type for ${params.purpose} uploads.`);
   }
 
   const supabase = await createClient();
   const path = buildStoragePath(params.ownerId, params.filename);
-  const expiresIn = Math.min(Math.max(params.expiresIn ?? 300, 60), 900);
   const { data, error } = await supabase.storage
     .from(config.bucket)
     .createSignedUploadUrl(path, { upsert: false });
@@ -94,7 +66,7 @@ export async function createPresignedUploadUrl(params: {
     token: data.token,
     uploadUrl: data.signedUrl,
     publicUrl,
-    expiresIn,
+    expiresIn: SIGNED_UPLOAD_URL_TTL_SECONDS,
   };
 }
 

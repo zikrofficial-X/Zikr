@@ -6,7 +6,12 @@ export type SocialPlatformMetadata = {
   platformResults?: unknown;
   platformAttempts?: unknown;
   authBlocked?: unknown;
+  authBlockedPlatforms?: unknown;
   permanentFailure?: unknown;
+  permanentFailurePlatforms?: unknown;
+  approvalDeferredPlatforms?: unknown;
+  unavailablePlatforms?: unknown;
+  sourceMediaMissing?: unknown;
   attempts?: unknown;
 } | null | undefined;
 
@@ -14,6 +19,29 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+}
+
+/** Normalize both the current keyed object and legacy array-shaped result ledger. */
+export function normalizeSocialPlatformResults(value: unknown): Record<string, unknown> {
+  if (Array.isArray(value)) {
+    const entries: Array<[string, unknown]> = [];
+    for (const item of value) {
+      const row = asRecord(item);
+      if (row && typeof row.platform === "string" && row.platform.trim()) {
+        entries.push([row.platform, row]);
+      }
+    }
+    return Object.fromEntries(entries);
+  }
+  return asRecord(value) ?? {};
+}
+
+function metadataPlatforms(value: unknown): SocialPlatform[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (platform): platform is SocialPlatform =>
+      platform === "facebook" || platform === "facebook_reels" || platform === "youtube",
+  );
 }
 
 export function getEnabledSocialPlatforms(env: SocialPlatformEnvironment): SocialPlatform[] {
@@ -38,9 +66,23 @@ function isAuthBlocked(platform: SocialPlatform, error: unknown): boolean {
     value.includes("reconnect the page");
 }
 
-function isPermanentFailure(error: unknown): boolean {
+export function isPermanentSocialFailure(error: unknown): boolean {
   if (typeof error !== "string") return false;
-  return /no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|oauth|access token|publishing is disabled|not configured|human qa approval/i.test(error);
+  return /http\s+422|unprocessable entity|source media unavailable|no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|oauth|access token|publishing is disabled|not configured|human qa approval/i.test(error);
+}
+
+export function isAmbiguousProviderOutcome(error: unknown): boolean {
+  if (typeof error !== "string") return false;
+  return /http\s+(?:408|425|500|502|503|504)\b|\b(?:aborterror|fetch failed|und_err_socket|socket hang up|econnreset|etimedout|econnaborted|network error|timeout|timed out)\b/i.test(error);
+}
+
+export function getManualReconciliationPlatforms(metadata: SocialPlatformMetadata): SocialPlatform[] {
+  if (metadata?.sourceMediaMissing === true) return [];
+  const results = normalizeSocialPlatformResults(metadata?.platformResults);
+  const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
+  return supported.filter(
+    (platform) => asRecord(results[platform])?.requiresReconciliation === true,
+  );
 }
 
 export function canAttemptSocialPlatform(input: {
@@ -50,19 +92,31 @@ export function canAttemptSocialPlatform(input: {
   maxAttempts: number;
 }): boolean {
   const { platform, enabledPlatforms, metadata, maxAttempts } = input;
+  if (metadata?.sourceMediaMissing === true) return false;
   if (!enabledPlatforms.includes(platform)) return false;
-  const results = asRecord(metadata?.platformResults);
-  const previous = asRecord(results?.[platform]);
+  const rawResults = metadata?.platformResults;
+  const hasPlatformResults = rawResults !== null && typeof rawResults === "object";
+  const results = normalizeSocialPlatformResults(rawResults);
+  const previous = asRecord(results[platform]);
   if (hasSuccessfulDelivery(previous)) return false;
+  if (getManualReconciliationPlatforms(metadata).includes(platform)) return false;
+  if (metadataPlatforms(metadata?.approvalDeferredPlatforms).includes(platform)) return false;
+
+  const authBlockedPlatforms = metadataPlatforms(metadata?.authBlockedPlatforms);
+  const permanentFailurePlatforms = metadataPlatforms(metadata?.permanentFailurePlatforms);
+  if (authBlockedPlatforms.includes(platform) || permanentFailurePlatforms.includes(platform)) return false;
+  if (!Array.isArray(metadata?.permanentFailurePlatforms) && metadata?.permanentFailure === true) return false;
 
   // Legacy global authBlocked was emitted only by the Facebook adapter. It must
   // not prevent an independent YouTube target from being published.
-  if (!results && metadata?.authBlocked === true && platform.startsWith("facebook")) return false;
-  if (isAuthBlocked(platform, previous?.error) || isPermanentFailure(previous?.error)) return false;
+  const hasFacebookResult = Object.keys(results).some((target) => target.startsWith("facebook"));
+  if (!hasFacebookResult && authBlockedPlatforms.length === 0 &&
+      metadata?.authBlocked === true && platform.startsWith("facebook")) return false;
+  if (isAuthBlocked(platform, previous?.error) || isPermanentSocialFailure(previous?.error)) return false;
 
   const attempts = asRecord(metadata?.platformAttempts);
   const legacyAttempts = Number(metadata?.attempts ?? 0);
-  const fallbackAttempts = !results && !(metadata?.authBlocked === true && platform === "youtube") ? legacyAttempts : 0;
+  const fallbackAttempts = !hasPlatformResults && !(metadata?.authBlocked === true && platform === "youtube") ? legacyAttempts : 0;
   const currentAttempts = Number(attempts?.[platform] ?? fallbackAttempts);
   return Number.isFinite(currentAttempts) && currentAttempts < Math.max(1, maxAttempts);
 }
@@ -72,4 +126,139 @@ export function getUnavailableSocialPlatforms(
   enabledPlatforms: readonly SocialPlatform[],
 ): SocialPlatform[] {
   return targets.filter(platform => !enabledPlatforms.includes(platform));
+}
+
+/**
+ * Return only targets that an administrator may safely requeue. Manual
+ * reconciliation can override an ambiguous provider outcome after an explicit
+ * no-remote-publication confirmation, but it must never erase a confirmed
+ * permanent failure such as an HTTP 422 media rejection.
+ */
+export function getRetryableSocialPlatforms(
+  targets: readonly string[],
+  metadata: SocialPlatformMetadata,
+  allowAmbiguous = false,
+): SocialPlatform[] {
+  if (metadata?.sourceMediaMissing === true) return [];
+  const results = normalizeSocialPlatformResults(metadata?.platformResults);
+  const authBlockedPlatforms = metadataPlatforms(metadata?.authBlockedPlatforms);
+  const permanentFailurePlatforms = metadataPlatforms(metadata?.permanentFailurePlatforms);
+  const approvalDeferredPlatforms = metadataPlatforms(metadata?.approvalDeferredPlatforms);
+  const hasPermanentFailureList = Array.isArray(metadata?.permanentFailurePlatforms);
+  const manualReconciliation = new Set(getManualReconciliationPlatforms(metadata));
+  const hasFacebookResult = Object.keys(results).some((target) => target.startsWith("facebook"));
+  const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
+
+  return targets.filter((target): target is SocialPlatform => {
+    if (!supported.includes(target as SocialPlatform)) return false;
+    const platform = target as SocialPlatform;
+    const previous = asRecord(results[platform]);
+    if (hasSuccessfulDelivery(previous)) return false;
+    if (
+      authBlockedPlatforms.includes(platform) ||
+      permanentFailurePlatforms.includes(platform) ||
+      approvalDeferredPlatforms.includes(platform)
+    ) return false;
+    if (!hasPermanentFailureList && metadata?.permanentFailure === true) return false;
+    if (isAuthBlocked(platform, previous?.error) || isPermanentSocialFailure(previous?.error)) return false;
+    if (!allowAmbiguous && manualReconciliation.has(platform)) return false;
+    // A legacy global Facebook auth flag blocks Facebook only when there is
+    // no per-platform Facebook result to identify the affected target.
+    if (!hasFacebookResult && authBlockedPlatforms.length === 0 &&
+        metadata?.authBlocked === true && platform.startsWith("facebook")) return false;
+    return true;
+  });
+}
+
+export type MissingMediaQueueRecoveryItem = {
+  status: string;
+  target_platforms: string[] | null;
+  metadata: Record<string, unknown> | null;
+};
+
+export type MissingMediaQueueRecoveryPatch = {
+  status: "queued";
+  video_url: string;
+  scheduled_at: string;
+  published_at: null;
+  error_message: null;
+  updated_at: string;
+  metadata: Record<string, unknown>;
+};
+
+/**
+ * Release a held Facebook Reels target only after a verified Cloudinary render
+ * replaces the missing source. Successful provider IDs on other platforms are
+ * preserved; ambiguous or auth-blocked outcomes remain held for manual review.
+ */
+export function buildMissingMediaQueueRecoveryPatch(input: {
+  item: MissingMediaQueueRecoveryItem;
+  videoUrl: string;
+  now: string;
+}): MissingMediaQueueRecoveryPatch | null {
+  const { item, videoUrl, now } = input;
+  const metadata = item.metadata ?? {};
+  if (metadata.sourceMediaMissing !== true) return null;
+  if (item.status !== "failed" && item.status !== "partial") return null;
+  if (!Array.isArray(item.target_platforms) || !item.target_platforms.includes("facebook_reels")) return null;
+  if (!Number.isFinite(Date.parse(now))) return null;
+
+  let delivery: URL;
+  try {
+    delivery = new URL(videoUrl);
+  } catch {
+    return null;
+  }
+  if (delivery.protocol !== "https:" || delivery.hostname !== "res.cloudinary.com" ||
+      !delivery.pathname.includes("/video/upload/")) return null;
+
+  const authBlockedPlatforms = metadataPlatforms(metadata.authBlockedPlatforms);
+  const approvalDeferredPlatforms = metadataPlatforms(metadata.approvalDeferredPlatforms);
+  if (metadata.authBlocked === true || authBlockedPlatforms.includes("facebook_reels") ||
+      approvalDeferredPlatforms.includes("facebook_reels")) return null;
+
+  const results = normalizeSocialPlatformResults(metadata.platformResults);
+  const facebookResult = asRecord(results.facebook_reels);
+  if (!facebookResult || facebookResult.ok !== false || typeof facebookResult.error !== "string") return null;
+  if (typeof facebookResult.remoteId === "string" && facebookResult.remoteId.trim()) return null;
+  if (facebookResult.requiresReconciliation === true || isAuthBlocked("facebook_reels", facebookResult.error) ||
+      isAmbiguousProviderOutcome(facebookResult.error)) return null;
+
+  const error = facebookResult.error.toLowerCase();
+  if (!/http\s*422|unprocessable|source media|missing media|cooldown/i.test(error)) return null;
+
+  const permanentFailurePlatforms = Array.isArray(metadata.permanentFailurePlatforms)
+    ? metadata.permanentFailurePlatforms.filter((platform): platform is string => typeof platform === "string")
+    : null;
+  if (permanentFailurePlatforms === null && metadata.permanentFailure === true) return null;
+  const remainingPermanentFailurePlatforms = (permanentFailurePlatforms ?? [])
+    .filter(platform => platform !== "facebook_reels");
+  const nextResults = { ...results };
+  delete nextResults.facebook_reels;
+  const previousAttempts = asRecord(metadata.platformAttempts) ?? {};
+
+  const nextMetadata: Record<string, unknown> = {
+    ...metadata,
+    sourceMediaMissing: false,
+    sourceMediaMissingAt: null,
+    sourceMediaMissingReason: null,
+    mediaRecoveredAt: now,
+    platformResults: nextResults,
+    platformAttempts: { ...previousAttempts, facebook_reels: 0 },
+    attempts: 0,
+    permanentFailure: remainingPermanentFailurePlatforms.length > 0,
+    permanentFailurePlatforms: remainingPermanentFailurePlatforms,
+    nextRetryAt: null,
+    facebookReelsNextAllowedAt: null,
+  };
+
+  return {
+    status: "queued",
+    video_url: videoUrl,
+    scheduled_at: now,
+    published_at: null,
+    error_message: null,
+    updated_at: now,
+    metadata: nextMetadata,
+  };
 }

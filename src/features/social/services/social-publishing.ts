@@ -6,10 +6,11 @@ import { getYouTubeUploadRefreshToken } from "@/features/social/services/youtube
 import { getFacebookPageCredentials } from "@/features/social/services/facebook-credentials";
 import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError } from "@/features/social/services/facebook-reels-rate-limit";
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
+import { shouldRestorePurgedPublishedVideo } from "@/features/videos/services/video-media-contract";
 import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
-import { shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
+import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getUnavailableSocialPlatforms } from "@/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 export type SocialQueueStatus =
@@ -39,6 +40,7 @@ type PlatformResult = {
   remoteId?: string | null;
   videoId?: string;
   error?: string;
+  requiresReconciliation?: boolean;
   approvalBlocked?: boolean;
 };
 
@@ -117,11 +119,6 @@ function socialRetryDelayMinutes(attempt: number, itemId: string) {
   return Math.min(240, 2 ** Math.min(Math.max(0, attempt - 1), 7) + (seed % 6));
 }
 
-function isPermanentSocialFailure(message: string | undefined) {
-  const normalized = (message ?? "").toLowerCase();
-  return /no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|oauth|access token|publishing is disabled|not configured|automated qa check/i.test(normalized);
-}
-
 async function markQueueItem(
   itemId: string,
   status: SocialQueueStatus,
@@ -142,6 +139,7 @@ async function markQueueItem(
 }
 
 async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promise<boolean> {
+  if (item.metadata?.sourceMediaMissing === true) return false;
   if (!isVideoContentType(item.content_type)) return true;
   if (!item.content_id || !item.video_url) return false;
   try {
@@ -163,7 +161,7 @@ async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promi
 async function getApprovedVideoQueueItemIds(
   items: readonly SocialPublishQueueItem[],
 ): Promise<Set<string>> {
-  const videoItems = items.filter((item) => isVideoContentType(item.content_type));
+  const videoItems = items.filter((item) => isVideoContentType(item.content_type) && item.metadata?.sourceMediaMissing !== true);
   const contentIds = [...new Set(
     videoItems
       .map((item) => item.content_id)
@@ -484,10 +482,12 @@ async function publishPlatform(
 
     return { platform, ok: true, remoteId, ...(videoId ? { videoId } : {}) };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return {
       platform,
       ok: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: message,
+      ...(isAmbiguousProviderOutcome(message) ? { requiresReconciliation: true } : {}),
     };
   }
 }
@@ -658,12 +658,13 @@ async function syncYouTubeVideoReferenceToCatalog(
     const rows = await supabaseServerAdminRequest<Array<{
       id: string;
       youtube_id: string | null;
+      published: boolean | null;
       metadata: Record<string, unknown> | null;
       updated_at: string | null;
     }>>(
       "/rest/v1/videos?metadata->>videoGenerationRequestId=eq." +
         encodeURIComponent(item.content_id) +
-        "&select=id,youtube_id,metadata,updated_at&limit=2",
+        "&select=id,youtube_id,published,metadata,updated_at&limit=2",
     );
     if (!rows?.length) {
       console.warn("[social-publishing] YouTube upload succeeded but no matching public catalog record was found:", item.content_id);
@@ -679,27 +680,47 @@ async function syncYouTubeVideoReferenceToCatalog(
       return;
     }
     const metadata = row.metadata ?? {};
+    const updatedAt = new Date().toISOString();
+    const restorePurgedVideo = shouldRestorePurgedPublishedVideo(row);
+    const previousMediaRecovery = metadata.mediaRecovery && typeof metadata.mediaRecovery === "object" && !Array.isArray(metadata.mediaRecovery)
+      ? metadata.mediaRecovery as Record<string, unknown>
+      : {};
     const nextMetadata = {
       ...metadata,
       youtubePublishedVideoId: youtubeId,
       youtubePublishedUrl: "https://www.youtube.com/watch?v=" + youtubeId,
-      youtubePublishedAt: new Date().toISOString(),
+      youtubePublishedAt: updatedAt,
       mediaFallbackAvailable: true,
+      ...(restorePurgedVideo ? {
+        mediaState: "youtube_fallback",
+        mediaRecovery: {
+          ...previousMediaRecovery,
+          source: "confirmed_youtube_publish_remote_id",
+          restoredAt: updatedAt,
+          previousCloudinaryMasterRetired: true,
+        },
+      } : {}),
     };
-    const updatedAt = row.updated_at;
+    const expectedUpdatedAt = row.updated_at;
     const query = "/rest/v1/videos?id=eq." + encodeURIComponent(row.id) +
-      (updatedAt ? "&updated_at=eq." + encodeURIComponent(updatedAt) : "");
+      (expectedUpdatedAt ? "&updated_at=eq." + encodeURIComponent(expectedUpdatedAt) : "");
     const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(query, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify({
         youtube_id: youtubeId,
         metadata: nextMetadata,
-        updated_at: new Date().toISOString(),
+        ...(restorePurgedVideo ? {
+          published: true,
+          thumbnail_url: "https://i.ytimg.com/vi/" + youtubeId + "/hqdefault.jpg",
+        } : {}),
+        updated_at: updatedAt,
       }),
     });
     if (!updated?.length) {
       console.warn("[social-publishing] YouTube catalog pointer update was skipped after a concurrent catalog change:", item.content_id);
+    } else if (restorePurgedVideo) {
+      console.info("[social-publishing] Restored previously published video catalog from confirmed YouTube fallback:", item.content_id);
     }
   } catch (error) {
     // The daily media reconciliation worker retries this idempotently.
@@ -717,11 +738,10 @@ async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<bool
     "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id) + "&select=content&limit=1",
   );
   const existingContent = requestRows?.[0]?.content ?? {};
-  const publishedAt = item.published_at ?? new Date().toISOString();
-  const publishedTime = Date.parse(publishedAt);
-  const stagingCleanupEligibleAt = new Date(
-    (Number.isFinite(publishedTime) ? publishedTime : Date.now()) + 48 * 60 * 60 * 1000,
-  ).toISOString();
+  // Start the grace period when every requested platform has confirmed
+  // publication, not when an earlier partial attempt first succeeded.
+  const fullyPublishedAt = new Date().toISOString();
+  const stagingCleanupEligibleAt = getPublishedVideoStagingCleanupEligibleAt(fullyPublishedAt);
 
   await supabaseServerAdminRequest(
     "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id),
@@ -872,7 +892,8 @@ export async function retryPendingPublishedVideoCleanup(limit = 25): Promise<{
     const cutoff = new Date(process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z");
     if (!Number.isFinite(cutoff.getTime())) throw new Error("Invalid SOCIAL_PUBLISH_AFTER cutoff.");
     const rows = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-      "/rest/v1/social_publish_queue?status=eq.published&video_url=not.is.null&created_at=gte." +
+      "/rest/v1/social_publish_queue?status=eq.published&video_url=not.is.null&" +
+        PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER + "&created_at=gte." +
         encodeURIComponent(cutoff.toISOString()) +
         "&order=updated_at.asc&limit=" + Math.max(1, Math.min(100, Math.floor(limit))),
     );
@@ -917,9 +938,7 @@ export async function processSocialPublishItem(
   }
 
   const enabledPlatforms = options.enabledPlatforms ?? getEnabledSocialPlatforms(process.env);
-  const previous = item.metadata?.platformResults && typeof item.metadata.platformResults === "object" && !Array.isArray(item.metadata.platformResults)
-    ? item.metadata.platformResults as Record<string, unknown>
-    : {};
+  const previous = normalizeSocialPlatformResults(item.metadata?.platformResults);
   const previousMetadata = item.metadata ?? {};
   const maxAttempts = socialMaxAttempts(previousMetadata);
   const runnablePlatforms = platforms.filter(platform => canAttemptSocialPlatform({
@@ -939,14 +958,33 @@ export async function processSocialPublishItem(
       if (isVideoContentType(item.content_type)) await disposePublishedVideo({ ...item, metadata: previousMetadata });
       return "published";
     }
+    const manualReconciliationPlatforms = getManualReconciliationPlatforms(previousMetadata);
     if (unavailablePlatforms.length > 0) {
       const nextRetryAt = new Date(Date.now() + 15 * 60_000).toISOString();
+      const messages = [
+        manualReconciliationPlatforms.length
+          ? "Manual reconciliation required for uncertain provider outcome(s): " + manualReconciliationPlatforms.join(", ")
+          : "",
+        "Waiting for configured publishing channels: " + unavailablePlatforms.join(", "),
+      ].filter(Boolean);
       await markQueueItem(item.id, "queued", {
         scheduled_at: nextRetryAt,
-        error_message: "Waiting for configured publishing channels: " + unavailablePlatforms.join(", "),
+        error_message: messages.join("; "),
         metadata: { ...previousMetadata, unavailablePlatforms, nextRetryAt },
       });
       return "deferred";
+    }
+    if (manualReconciliationPlatforms.length > 0) {
+      const hasPriorSuccess = platforms.some(platform => {
+        const result = previous[platform] as PlatformResult | undefined;
+        return result?.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
+      });
+      await markQueueItem(item.id, hasPriorSuccess ? "partial" : "failed", {
+        scheduled_at: null,
+        error_message: "Manual reconciliation required before retry: provider outcome is unknown for " + manualReconciliationPlatforms.join(", ") + ". Check the destination channel for an existing post first.",
+        metadata: { ...previousMetadata, unavailablePlatforms: [] },
+      });
+      return "failed";
     }
     const blockedFacebook = platforms.some(platform => {
       const result = previous[platform] as PlatformResult | undefined;
@@ -1014,7 +1052,10 @@ export async function processSocialPublishItem(
     : Number(previousMetadata.attempts ?? 0) + (attemptedProviderCalls > 0 ? 1 : 0);
   const retryableOperationalFailures = operationalFailures.some(failure => {
     const currentPlatformAttempts = Number(maxAttemptsByPlatform[failure.platform] ?? 0);
-    return currentPlatformAttempts < maxAttempts && !isFacebookAuthFailure(failure.error) && !isPermanentSocialFailure(failure.error);
+    return currentPlatformAttempts < maxAttempts &&
+      !failure.requiresReconciliation &&
+      !isFacebookAuthFailure(failure.error) &&
+      !isPermanentSocialFailure(failure.error);
   });
   const hasDeferredTargets = unavailablePlatforms.length > 0 || approvalDeferredPlatforms.length > 0 || deferredFailures.length > 0;
   const shouldRetry = Boolean(facebookReelsNextAllowedAt) || hasDeferredTargets ||
@@ -1061,7 +1102,10 @@ export async function processSocialPublishItem(
     platformResults: mergedResults,
   };
 
-  const errorMessages = operationalFailures.map(failure => `${failure.platform}: ${failure.error ?? "unknown error"}`);
+  const errorMessages = operationalFailures.map(failure =>
+    `${failure.platform}: ${failure.error ?? "unknown error"}` +
+      (failure.requiresReconciliation ? " (remote outcome unknown; manual reconciliation required before retry)" : ""),
+  );
   if (unavailablePlatforms.length) errorMessages.push("Waiting for channel configuration: " + unavailablePlatforms.join(", "));
   if (approvalDeferredPlatforms.length) errorMessages.push("Video held for a fresh automated QA check: " + approvalDeferredPlatforms.join(", "));
   await markQueueItem(item.id, persistedStatus, {

@@ -15,12 +15,14 @@ on:
 
 permissions:
   contents: read
+  checks: read
+  statuses: read
 
 concurrency:
   group: zikr-finalization-production-release
-  # A queued release from an obsolete commit must never block the newest
-  # explicitly approved production deployment.
-  cancel-in-progress: true
+  # Never cancel an active production deployment between deploy and migration.
+  # A queued release revalidates the exact main SHA before it can make changes.
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -42,6 +44,58 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
+
+      - name: Verify the approved main commit and required CI gates
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch origin main --no-tags
+          current_main="$(git rev-parse origin/main)"
+          if [[ "${current_main}" != "${GITHUB_SHA}" ]]; then
+            echo "::error::Refusing stale production release. Approved SHA ${GITHUB_SHA} is not current main ${current_main}."
+            exit 1
+          fi
+          api="${GITHUB_API_URL:-https://api.github.com}"
+          status_json="$(curl -fsS -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "${api}/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status")"
+          checks_json="$(curl -fsS -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "${api}/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100")"
+          export STATUS_JSON="${status_json}" CHECKS_JSON="${checks_json}"
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          status = json.loads(os.environ["STATUS_JSON"])
+          checks = json.loads(os.environ["CHECKS_JSON"])
+          required = {
+              "ci/circleci: config-guard",
+              "ci/circleci: source-verify",
+              "ci/circleci: application-build-docs",
+              "ci/circleci: android-release-draft",
+          }
+          statuses = {item.get("context"): item.get("state") for item in status.get("statuses", [])}
+          missing = sorted(required - statuses.keys())
+          failing = sorted(context for context in required if statuses.get(context) != "success")
+          if status.get("state") != "success" or missing or failing:
+              print("Required commit statuses are not all successful.", file=sys.stderr)
+              print("Missing: " + ", ".join(missing), file=sys.stderr)
+              print("Not successful: " + ", ".join(failing), file=sys.stderr)
+              sys.exit(1)
+
+          quality_runs = [
+              run for run in checks.get("check_runs", [])
+              if run.get("name") == "ZIKR / Quality Gate" and run.get("head_sha") == os.environ["GITHUB_SHA"]
+          ]
+          if not quality_runs:
+              print("The exact release commit has no ZIKR / Quality Gate check run.", file=sys.stderr)
+              sys.exit(1)
+          latest = max(quality_runs, key=lambda run: run.get("started_at") or "")
+          if latest.get("status") != "completed" or latest.get("conclusion") != "success":
+              print("The latest ZIKR / Quality Gate run is not successful.", file=sys.stderr)
+              sys.exit(1)
+          print("PASS: current main SHA, CircleCI required contexts, and ZIKR Quality Gate are successful.")
+          PY
 
 # Prefer the dedicated rotated token, but accept common GitHub secret names too. These are GitHub Actions secrets, not Vercel project environment variables.
       - name: Verify Vercel deployment credential is available
@@ -180,6 +234,17 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.ZIKR_VERCEL_TOKEN || secrets.VERCEL_DEPLOY_TOKEN || secrets.VERCEL_TOKEN }}
         run: vercel build --prod --scope "${VERCEL_ORG_ID}"
+
+      - name: Recheck approved main SHA immediately before production deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --no-tags
+          current_main="$(git rev-parse origin/main)"
+          if [[ "${current_main}" != "${GITHUB_SHA}" ]]; then
+            echo "::error::Refusing production deployment because main advanced during the build. Approved SHA ${GITHUB_SHA}; current main ${current_main}."
+            exit 1
+          fi
 
       - name: Deploy prebuilt artifact to production
         id: deploy

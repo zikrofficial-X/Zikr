@@ -113,8 +113,14 @@ const offlineWorkflow = read(offlineWorkflowPath);
 // Vercel intentionally excludes .github from deployment uploads; validate this workflow in repository CI when present.
 if (existsSync(offlineWorkflowPath) &&
     (!offlineWorkflow.includes('push:') || !offlineWorkflow.includes('branches: [main]') ||
-      !offlineWorkflow.includes('"scripts/export-offline-content.mjs"'))) {
-  failures.push('Offline snapshot must rerun after exporter or validation contract changes reach main');
+      !offlineWorkflow.includes('"scripts/export-offline-content.mjs"') ||
+      !offlineWorkflow.includes('pull-requests: write') ||
+      !offlineWorkflow.includes('automation/offline-content-snapshot') ||
+      !offlineWorkflow.includes('gh pr create') ||
+      !offlineWorkflow.includes('gh workflow run quality-gate.yml') ||
+      !offlineWorkflow.includes("if: github.ref == 'refs/heads/main'") ||
+      offlineWorkflow.includes('git push origin HEAD:main'))) {
+  failures.push('Offline snapshot refresh must publish through a reviewable PR and dispatch the full Quality Gate; it must never push generated content directly to main');
 }
 try { execFileSync(process.execPath, ['--check', exporterPath], { stdio: 'pipe' }); }
 catch (error) { failures.push(`Offline exporter syntax check failed: ${error instanceof Error ? error.message : 'unknown error'}`); }

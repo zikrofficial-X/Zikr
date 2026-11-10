@@ -14,6 +14,8 @@ import { listVideoSources, resolveVideoSource } from "../../src/features/videos/
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
 import { buildKidsSeriesEpisode, validateCanonicalKidsEpisodeSnapshot, validateGeneratedKidsEpisode } from "../../src/features/videos/data/kids-story-factory";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
+import { buildDuplicateVideoOwnerVideoUrlFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
+import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoTemplateAssetAllowedForAudience, parseVideoTemplateConfig, videoTemplateAssetPath, videoTemplateScene, type VideoTemplateAudience } from "../../src/features/videos/services/template-config";
@@ -530,6 +532,12 @@ async function findByAutomationKey(table: string, key: string) {
   );
   return rows?.[0] ?? null;
 }
+function isContentHashConflict(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("video_generation_requests_content_hash_unique") ||
+    message.includes("duplicate key value violates unique constraint") && message.includes("content_hash");
+}
+
 export const KIDS_SERIES_START_DAY_INDEX = dayIndex(new Date("2026-10-21T00:00:00.000Z"));
 
 export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
@@ -823,12 +831,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
       });
       created += 1;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const isContentHashConflict =
-        message.includes("video_generation_requests_content_hash_unique") ||
-        message.includes("duplicate key value violates unique constraint") &&
-          message.includes("content_hash");
-      if (!isContentHashConflict) throw error;
+      if (!isContentHashConflict(error)) throw error;
       console.warn(
         `[template-video] Skipping duplicate content hash for ${key} (${contentHash.slice(0, 12)}); an equivalent video request already exists.`,
       );
@@ -1728,6 +1731,7 @@ async function registerGeneratedVideoOnSite(
     contentHash: string;
     templateVersion: string;
   },
+  options: { recoverPurgedRecord?: boolean } = {},
 ) {
   const slug = "zikr-" + request.id.toLowerCase().replace(/[^a-z0-9-]/g, "");
   const existingRows = await supabaseServerAdminRequest<Array<{
@@ -1880,9 +1884,13 @@ async function registerGeneratedVideoOnSite(
         updated_at: now,
       }),
     });
-  } else if (existingQueue.status === "failed") {
+  } else if (
+    existingQueue.status === "failed" ||
+    (options.recoverPurgedRecord === true && existingQueue.status === "published")
+  ) {
     await supabaseServerAdminRequest(
-      "/rest/v1/content_publish_queue?id=eq." + encodeURIComponent(existingQueue.id) + "&status=eq.failed",
+      "/rest/v1/content_publish_queue?id=eq." + encodeURIComponent(existingQueue.id) +
+        "&status=eq." + encodeURIComponent(existingQueue.status),
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
@@ -1897,6 +1905,60 @@ async function registerGeneratedVideoOnSite(
   }
 
   return { videoId, published: false, queued: true };
+}
+
+type MissingMediaSocialQueueRow = {
+  id: string;
+  status: string;
+  target_platforms: string[] | null;
+  metadata: Record<string, unknown> | null;
+};
+
+async function restoreMissingMediaSocialQueueItems(
+  requestId: string,
+  videoUrl: string,
+  now: string,
+): Promise<{ recovered: number; failedUpdates: number }> {
+  const pageSize = 100;
+  let lastSeenId: string | null = null;
+  let recovered = 0;
+  let failedUpdates = 0;
+
+  while (true) {
+    const cursorFilter: string = lastSeenId === null ? "" : "&id=gt." + encodeURIComponent(lastSeenId);
+    const rows: MissingMediaSocialQueueRow[] = await supabaseServerAdminRequest<MissingMediaSocialQueueRow[]>(
+      "/rest/v1/social_publish_queue?content_id=eq." + encodeURIComponent(requestId) +
+        "&metadata->>sourceMediaMissing=eq.true&status=in.(failed,partial)&select=id,status,target_platforms,metadata&order=id.asc&limit=" +
+        pageSize + cursorFilter,
+    );
+    if (!Array.isArray(rows) || rows.length === 0) break;
+
+    for (const item of rows) {
+      lastSeenId = item.id;
+      const patch = buildMissingMediaQueueRecoveryPatch({ item, videoUrl, now });
+      if (!patch) continue;
+      try {
+        const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/social_publish_queue?id=eq." + encodeURIComponent(item.id) +
+            "&status=eq." + encodeURIComponent(item.status) +
+            "&metadata->>sourceMediaMissing=eq.true",
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+            body: JSON.stringify(patch),
+          },
+        );
+        if (updated?.[0]?.id) recovered += 1;
+      } catch (error) {
+        failedUpdates += 1;
+        console.error("[template-video] Could not release a source-media-held social queue row after verified recovery:", item.id, error);
+      }
+    }
+
+    if (rows.length < pageSize) break;
+  }
+
+  return { recovered, failedUpdates };
 }
 
 async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueRow | null> {
@@ -2175,6 +2237,163 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
               engagement,
             },
           };
+      // Atomically claim the final rendered hash before creating a public site record.
+      // A unique conflict means equivalent content already exists; retain this render on
+      // its request row for review, but never publish or retry the duplicate.
+      try {
+        const hashClaimRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+          `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({
+              content_hash: rendered.contentHash,
+              updated_at: new Date().toISOString(),
+            }),
+          },
+        );
+        if (!hashClaimRows?.[0]?.id) {
+          throw new Error(`Could not claim the rendered content hash for ${request.id}.`);
+        }
+      } catch (hashError) {
+        if (!isContentHashConflict(hashError)) throw hashError;
+        const duplicateRows = await supabaseServerAdminRequest<GeneratedRequest[]>(
+          `/rest/v1/video_generation_requests?content_hash=eq.${encodeURIComponent(rendered.contentHash)}&id=neq.${encodeURIComponent(request.id)}&select=id,title,description,category,content,status,automation_key,video_url,generation_attempts,next_retry_at,duration,source_hash,content_hash,template_version,scene,render_duration_ms&limit=1`,
+        );
+        const duplicate = duplicateRows?.[0];
+        if (!duplicate) throw hashError;
+
+        const duplicateSlug = "zikr-" + duplicate.id.toLowerCase().replace(/[^a-z0-9-]/g, "");
+        const duplicateSiteRows = await supabaseServerAdminRequest<Array<{
+          published: boolean | null;
+          metadata: Record<string, unknown> | null;
+        }>>(
+          `/rest/v1/videos?slug=eq.${encodeURIComponent(duplicateSlug)}&select=published,metadata&limit=1`,
+        );
+        const duplicateSiteRecord = duplicateSiteRows?.[0] ?? null;
+        const canRecover = canRecoverDuplicateVideoRender({
+          owner: duplicate,
+          candidate: {
+            category: request.category,
+            contentHash: rendered.contentHash,
+            sourceHash: rendered.sourceHash,
+            templateVersion: rendered.templateVersion,
+          },
+          qaApproved: Boolean(qaApproval),
+          siteRecord: duplicateSiteRecord,
+        });
+        const duplicateAt = new Date().toISOString();
+        const attempts = (request.generation_attempts ?? 0) + 1;
+
+        if (canRecover && qaApproval) {
+          const recoveredContent = {
+            ...(duplicate.content ?? {}),
+            ...qaApproval,
+            automatedVideoQa: {
+              ...(qaApproval.automatedVideoQa as Record<string, unknown>),
+              engagement,
+            },
+          };
+          const recoveredRequest: GeneratedRequest = {
+            ...duplicate,
+            content: recoveredContent,
+          };
+          const recoveryResult = await registerGeneratedVideoOnSite(
+            recoveredRequest,
+            rendered,
+            { recoverPurgedRecord: true },
+          );
+
+          if (!recoveryResult.published) {
+            const restoredOwnerRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+              `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(duplicate.id)}&status=eq.completed&${buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)}`,
+              {
+                method: "PATCH",
+                headers: { Prefer: "return=representation" },
+                body: JSON.stringify({
+                  status: "completed",
+                  video_url: rendered.videoUrl,
+                  scene: rendered.scene,
+                  render_duration_ms: rendered.renderDurationMs,
+                  source_hash: rendered.sourceHash,
+                  content_hash: rendered.contentHash,
+                  template_version: rendered.templateVersion,
+                  content: recoveredContent,
+                  next_retry_at: null,
+                  last_attempt_at: duplicateAt,
+                  error_message: null,
+                  error_details: null,
+                  updated_at: duplicateAt,
+                }),
+              },
+            );
+            if (!restoredOwnerRows?.[0]?.id) {
+              throw new Error(`Canonical duplicate request ${duplicate.id} changed during media recovery; the render remains unapproved for distribution.`);
+            }
+
+            const cancelledDuplicateRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+              `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
+              {
+                method: "PATCH",
+                headers: { Prefer: "return=representation" },
+                body: JSON.stringify({
+                  status: "cancelled",
+                  video_url: null,
+                  scene: null,
+                  render_duration_ms: null,
+                  generation_attempts: attempts,
+                  next_retry_at: null,
+                  last_attempt_at: duplicateAt,
+                  error_message: "Duplicate render recovered into the canonical request",
+                  error_details: `Verified media was restored to canonical request ${duplicate.id}; no second video or social queue item was created.`,
+                  updated_at: duplicateAt,
+                }),
+              },
+            );
+            if (!cancelledDuplicateRows?.[0]?.id) {
+              throw new Error(`Duplicate request ${request.id} could not be cancelled after canonical media recovery; social publishing remains held.`);
+            }
+
+            let socialQueueRecovery = { recovered: 0, failedUpdates: 0 };
+            try {
+              socialQueueRecovery = await restoreMissingMediaSocialQueueItems(duplicate.id, rendered.videoUrl, duplicateAt);
+            } catch (queueRecoveryError) {
+              console.error(`[template-video] Canonical media was restored, but held social queue rows need reconciliation for ${duplicate.id}:`, queueRecoveryError);
+            }
+            if (socialQueueRecovery.recovered > 0 || socialQueueRecovery.failedUpdates > 0) {
+              console.info(`[template-video] Recovered ${socialQueueRecovery.recovered} held social queue row(s); ${socialQueueRecovery.failedUpdates} update(s) need reconciliation for ${duplicate.id}.`);
+            }
+
+            succeeded += 1;
+            console.info(`[template-video] Recovered purged media for canonical request ${duplicate.id} from duplicate render ${request.id}.`);
+            continue;
+          }
+        }
+
+        await supabaseServerAdminRequest(
+          `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=minimal" },
+            body: JSON.stringify({
+              status: "cancelled",
+              video_url: rendered.videoUrl,
+              scene: rendered.scene,
+              render_duration_ms: rendered.renderDurationMs,
+              generation_attempts: attempts,
+              next_retry_at: null,
+              last_attempt_at: duplicateAt,
+              error_message: "Duplicate generated content; publication skipped",
+              error_details: `Rendered content hash already belongs to request ${duplicate.id} (${duplicate.status}); this render was retained for review.`,
+              updated_at: duplicateAt,
+            }),
+          },
+        );
+        failed += 1;
+        console.warn(`[template-video] Skipped duplicate rendered content for ${request.id}; existing request ${duplicate.id}.`);
+        continue;
+      }
+
       if (!qaApproval) {
         console.warn(`[template-video] Automated QA blocked external distribution for ${request.id}: ${missingQaChecks.join(", ")}`);
       }
@@ -2192,7 +2411,6 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           scene: rendered.scene,
           render_duration_ms: rendered.renderDurationMs,
           source_hash: rendered.sourceHash,
-          content_hash: rendered.contentHash,
           template_version: rendered.templateVersion,
           provider:
             typeof request.content.aiProvider === "string"

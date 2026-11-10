@@ -23,39 +23,29 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  sync:
+    name: Sync published-post insights
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 20
     env:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
-      NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       BACKGROUND_JOB_TARGET: "insights"
       SOCIAL_PUBLISH_ENABLED: "false"
       SOCIAL_SYNC_INSIGHTS: "true"
       # Analytics-only worker reads published records; it never claims queue rows.
-      FACEBOOK_PUBLISHING_REQUESTED: ${{ vars.FACEBOOK_PUBLISHING_ENABLED || 'true' }}
-      YOUTUBE_PUBLISHING_REQUESTED: ${{ vars.YOUTUBE_PUBLISHING_ENABLED || 'true' }}
       FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
-      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-      ADMIN_QUEUE_ALERT_WEBHOOK_URL: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_URL }}
-      ADMIN_QUEUE_ALERT_WEBHOOK_SECRET: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_SECRET || secrets.WEBHOOK_SECRET }}
-      ADMIN_QUEUE_ALERT_EMAIL_TO: ${{ vars.ADMIN_QUEUE_ALERT_EMAIL_TO || secrets.ADMIN_QUEUE_ALERT_EMAIL_TO }}
-      ADMIN_QUEUE_ALERT_EMAIL_FROM: ${{ vars.ADMIN_QUEUE_ALERT_EMAIL_FROM || secrets.ADMIN_QUEUE_ALERT_EMAIL_FROM }}
-      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
 
     steps:
       - name: Record trigger
         shell: bash
         run: |
           echo "Social insights sync triggered by: ${GITHUB_EVENT_NAME}"
-          echo "Queue cutoff: ${SOCIAL_PUBLISH_AFTER}"
-          echo "Batch size: ${SOCIAL_PUBLISH_BATCH_SIZE}"
+          echo "Background job target: ${BACKGROUND_JOB_TARGET}"
+          echo "Social publishing policy: ${SOCIAL_PUBLISH_ENABLED}"
 
       - name: Checkout main
         uses: actions/checkout@v7
@@ -74,56 +64,6 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-
-      - name: Validate production credentials and isolate enabled providers
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing Supabase service-role secret." >&2; exit 1; }
-          facebook_ready=false
-          if [[ "${FACEBOOK_PUBLISHING_REQUESTED,,}" == "true" ]]; then
-            facebook_json="$(curl -fsS \
-              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-              "$SUPABASE_URL/rest/v1/social_platform_credentials?platform=eq.facebook&select=is_enabled,connection_status,page_id,expires_at,granted_permissions&limit=1")"
-            facebook_ready="$(node -e '
-              const rows = JSON.parse(process.argv[1]);
-              const row = Array.isArray(rows) ? rows[0] : null;
-              const expires = row?.expires_at ? Date.parse(row.expires_at) : null;
-              const fresh = expires === null || (Number.isFinite(expires) && expires > Date.now());
-              const scopes = Array.isArray(row?.granted_permissions) ? row.granted_permissions : [];
-              const required = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "read_insights"];
-              const scopesOkay = required.every(scope => scopes.includes(scope));
-              process.stdout.write(String(Boolean(row?.is_enabled === true && row?.connection_status === "connected" && row?.page_id && fresh && scopesOkay)));
-            ' "$facebook_json")"
-          fi
-          echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_ready" >> "$GITHUB_ENV"
-
-          youtube_ready=false
-          if [[ "${YOUTUBE_PUBLISHING_REQUESTED,,}" == "true" && -n "${YOUTUBE_CLIENT_ID:-}" && -n "${YOUTUBE_CLIENT_SECRET:-}" ]]; then
-            youtube_json="$(curl -fsS \
-              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-              "$SUPABASE_URL/rest/v1/youtube_oauth_credentials?provider=eq.youtube&select=granted_scopes&limit=1")"
-            youtube_ready="$(node -e '
-              const rows = JSON.parse(process.argv[1]);
-              const scopes = Array.isArray(rows?.[0]?.granted_scopes) ? rows[0].granted_scopes : [];
-              const required = [
-                "https://www.googleapis.com/auth/youtube.upload",
-                "https://www.googleapis.com/auth/youtube.readonly",
-                "https://www.googleapis.com/auth/yt-analytics.readonly"
-              ];
-              process.stdout.write(String(required.every(scope => scopes.includes(scope))));
-            ' "$youtube_json")"
-          fi
-          echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=$youtube_ready" >> "$GITHUB_ENV"
-
-          echo "Facebook publishing readiness: $facebook_ready"
-          echo "YouTube upload-scope readiness: $youtube_ready"
-          if [[ "$facebook_ready" != "true" && "$youtube_ready" != "true" ]]; then
-            echo "::notice::No social provider has a verified publishing credential. No queue item will be claimed."
-            echo "SOCIAL_PUBLISH_ENABLED=false" >> "$GITHUB_ENV"
-          fi
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prod=false

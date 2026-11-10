@@ -25,6 +25,7 @@ export function selectEligibleSocialPublishItems<T extends SocialQueueSelectionC
 
   const eligible: T[] = [];
   for (const item of candidates) {
+    if (item.metadata?.sourceMediaMissing === true) continue;
     const maxAttempts = options.maxAttemptsFor(item.metadata);
     const hasRunnableTarget = item.target_platforms.some((platform) =>
       canAttemptSocialPlatform({
@@ -43,8 +44,18 @@ export function selectEligibleSocialPublishItems<T extends SocialQueueSelectionC
     }
 
     eligible.push(item);
-    if (eligible.length >= limit) break;
   }
 
-  return eligible;
+  // Reserve one slot for an eligible non-video post when video retries fill
+  // the front of the queue. This prevents written Facebook posts from being
+  // perpetually deferred behind a recurring Reels cooldown backlog.
+  const firstNonVideoIndex = eligible.findIndex(
+    (item) => !isVideoContentType(item.content_type),
+  );
+  if (firstNonVideoIndex >= limit) {
+    const [nonVideoItem] = eligible.splice(firstNonVideoIndex, 1);
+    if (nonVideoItem) eligible.unshift(nonVideoItem);
+  }
+
+  return eligible.slice(0, limit);
 }

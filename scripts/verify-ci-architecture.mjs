@@ -14,12 +14,44 @@ const english = read(".github/workflows/english-content-sync.yml");
 const release = read(".github/workflows/release-finalization.yml");
 const smoke = read(".github/workflows/release-vercel.yml");
 const androidPublish = read(".github/workflows/publish-android-release-assets.yml");
+const insightsWorkflow = read(".github/workflows/sync-social-insights.yml");
+const backgroundRunner = read("scripts/run-background-jobs.ts");
+const socialWorker = read("scripts/jobs/social-publishing.ts");
 assert.ok(!androidPublish.includes("branches:\n      - main"), "Android asset publishing must not trigger directly from main");
 assert.ok(androidPublish.includes("workflow_dispatch:"), "Android asset publishing must retain explicit manual recovery");
 assert.ok(androidPublish.includes("inputs.retry"), "Android manual recovery must require an explicit retry input");
 assert.ok(androidPublish.includes("github.ref_type == 'tag'"), "Android publishing must support release tags");
+assert.ok(
+  androidPublish.includes("github.event_name == 'workflow_dispatch'") &&
+    androidPublish.includes("inputs.retry == true") &&
+    androidPublish.includes("startsWith(github.ref_name, 'android-release-v')"),
+  "Android recovery branches must require an explicit workflow_dispatch retry",
+);
+assert.ok(
+  androidPublish.includes("TAG_TARGET_SHA") &&
+    androidPublish.includes("ci/circleci: source-verify") &&
+    androidPublish.includes("ci/circleci: supabase-production-gate") &&
+    androidPublish.includes("ci/circleci: android-rebuild") &&
+    androidPublish.includes("ci/circleci: application-build-docs") &&
+    androidPublish.includes("ci/circleci: config-guard") &&
+    androidPublish.includes("ci/circleci: android-release-draft") &&
+    androidPublish.includes("ci/circleci: android-release-dispatch") &&
+    androidPublish.includes("ZIKR / Quality Gate") &&
+    !androidPublish.includes("github.event_name != 'workflow_dispatch'"),
+  "Every Android publish/retry path must verify the exact tag source commit and all CI gates",
+);
 
 const circle = read(".circleci/config.yml");
+const sourceVerifyJob = circle.slice(circle.indexOf("  source-verify:"), circle.indexOf("  application-build-docs:"));
+for (const contract of [
+  "NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app",
+  "NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY:",
+  "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID:",
+  "AUTH_CALLBACK_URL: https://zikrmediaofficial.vercel.app/auth/callback",
+]) {
+  assert.ok(sourceVerifyJob.includes(contract), "CircleCI source-verify must receive the canonical non-secret verification environment: " + contract);
+}
 const ownership = read("docs/AUTOMATION_OWNERSHIP_2026-10-08.md");
 const supabaseConfig = read("supabase/config.toml");
 const articleTranslation = read("scripts/translate-published-articles-en.ts");
@@ -122,6 +154,38 @@ assert.ok(!social.includes("if: false"), "Social publishing must not retain the 
 const socialEnvironment = social.slice(social.indexOf("    env:"), social.indexOf("    steps:"));
 assert.ok(!socialEnvironment.includes("YOUTUBE_REFRESH_TOKEN"), "Stored OAuth refresh tokens must never be injected into GitHub Actions");
 assert.ok(social.includes("workflow_dispatch:"), "Social publisher must retain explicit manual recovery");
+assert.ok(
+  insightsWorkflow.includes('BACKGROUND_JOB_TARGET: "insights"') &&
+    insightsWorkflow.includes('SOCIAL_PUBLISH_ENABLED: "false"') &&
+    insightsWorkflow.includes('SOCIAL_SYNC_INSIGHTS: "true"') &&
+    insightsWorkflow.includes("run: pnpm background:jobs") &&
+    !insightsWorkflow.includes("FACEBOOK_PUBLISHING_REQUESTED") &&
+    !insightsWorkflow.includes("YOUTUBE_PUBLISHING_REQUESTED") &&
+    !insightsWorkflow.includes("YOUTUBE_CLIENT_SECRET") &&
+    !insightsWorkflow.includes("ADMIN_QUEUE_ALERT_WEBHOOK_URL") &&
+    !insightsWorkflow.includes("RESEND_API_KEY") &&
+    !insightsWorkflow.includes("pages_manage_posts") &&
+    !insightsWorkflow.includes("youtube.upload"),
+  "Daily insights workflow must use the isolated insights target, disable publishing, and receive no unused publishing-only credentials or upload scopes",
+);
+assert.ok(
+  backgroundRunner.includes('const videos = target === "all" || target === "videos"') &&
+    backgroundRunner.includes('const sitePublishing = target === "all" || target === "videos"') &&
+    backgroundRunner.includes('const social = target === "all" || target === "social"') &&
+    backgroundRunner.includes('const insights = target === "insights" ? await syncSocialInsights() : null'),
+  "The insights target must not invoke video generation, site-content publishing, or social queue processing",
+);
+const insightsService = socialWorker.slice(
+  socialWorker.indexOf("export async function syncSocialInsights()"),
+  socialWorker.indexOf("export async function processSocialPublishQueue"),
+);
+assert.ok(
+  insightsService.includes("syncFacebookReelsInsights") &&
+    insightsService.includes("syncYoutubePublishedPostInsights") &&
+    !insightsService.includes("claimPendingSocialPublishItems") &&
+    !insightsService.includes("processSocialPublishItem"),
+  "The analytics-only service must update published-post insights without claiming or publishing queue rows",
+);
 assert.ok(!english.includes("\n  schedule:"), "GitHub English sync must not own an automatic schedule");
 assert.ok(english.includes("environment: production"), "English sync must use protected production environment");
 assert.ok(english.includes("github.ref == 'refs/heads/main'"), "English sync must be main-only");
@@ -139,6 +203,22 @@ assert.ok(release.includes("pnpm production:smoke"), "Controlled release must us
 assert.ok(!release.includes("--token"), "Controlled Vercel release must not pass credentials through CLI arguments");
 assert.ok(release.includes("environment:\n      name: production"), "Controlled release must use the protected production environment");
 assert.ok(release.includes("workflow_dispatch:"), "Production release must remain manually triggerable");
+assert.ok(release.includes("cancel-in-progress: false"), "An active production release must never be cancelled between deploy and schema migration");
+assert.ok(release.includes("checks: read") && release.includes("statuses: read"), "Production release must have read-only permission to verify CI gates");
+assert.ok(
+  release.includes("ci/circleci: config-guard") &&
+    release.includes("ci/circleci: source-verify") &&
+    release.includes("ci/circleci: application-build-docs") &&
+    release.includes("ci/circleci: android-release-draft") &&
+    release.includes("ZIKR / Quality Gate"),
+  "Production release must verify the exact commit's required CircleCI contexts and GitHub Quality Gate",
+);
+assert.ok(
+  release.includes("git rev-parse origin/main") &&
+    release.includes("Verify the approved main commit and required CI gates") &&
+    release.includes("Recheck approved main SHA immediately before production deployment"),
+  "Production release must reject stale queued commits and recheck main before deploying",
+);
 assert.ok(!release.includes("\n  push:"), "Production release must not be enqueued on ordinary source pushes");
 assert.ok(release.includes("github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RELEASE'"), "Manual production deployment must retain explicit RELEASE confirmation");
 assert.ok(release.includes("Missing Vercel deployment credential"), "Controlled release must fail before build when VERCEL_TOKEN is missing");
@@ -147,7 +227,13 @@ const reconciliationWorkflow = read(".github/workflows/reconcile-supabase-migrat
 assert.ok(reconciliationWorkflow.includes("python3 scripts/verify-supabase-db-url.py"), "Migration-history reconciliation must validate the effective Supabase URL user before connecting");
 assert.ok(reconciliationWorkflow.includes("PGSSLMODE: require"), "Migration-history reconciliation must require TLS for PostgreSQL connections");
 const dbUrlValidator = read("scripts/verify-supabase-db-url.py");
-assert.ok(dbUrlValidator.includes("zikr_seed_loader") && dbUrlValidator.includes("sslmode"), "Supabase connection validation must block the retired role and weak TLS settings");
+assert.ok(
+  dbUrlValidator.includes('effective_user not in {"postgres", f"postgres.{expected_ref}"}') &&
+    dbUrlValidator.includes('effective_user != f"postgres.{expected_ref}"') &&
+    dbUrlValidator.includes("ssl_mode is None") &&
+    dbUrlValidator.includes('not in {"require", "verify-ca", "verify-full"}'),
+  "Supabase connection validation must allow only the expected postgres roles and require TLS, thereby rejecting the retired role and weak TLS settings",
+);
 assert.ok(release.indexOf("Fail fast on missing or unsafe production credentials") < release.indexOf("Install dependencies"), "Production credential checks must run before dependency installation");
 assert.ok(!release.includes("\n  push:"), "The release workflow must not enqueue guarded skipped jobs on ordinary pushes");
 assert.ok(release.includes("bash scripts/reconcile-supabase-migration-history.sh"), "Production release must audit and reconcile Supabase migration history against the checked schema baseline and again after applying pending SQL");
@@ -276,4 +362,39 @@ assert.ok(productionSmoke.includes("sort((left, right) => right.length - left.le
 assert.ok(productionSmoke.includes("return extractText(withoutNonContent);"), "Production smoke must account for streamed content emitted outside the first main block");
 assert.ok(productionSmoke.includes("bestMain.length >= 35"), "Production smoke must use full document text when the main element is only a streaming fallback");
 assert.ok(productionSmoke.includes("expectedMain: /نتعلم|الأطفال|الاطفال/i"), "Kids smoke check must accept the actual localized page title");
+const backfillSafetyWorkflow = read(".github/workflows/backfill-legacy-video-qa.yml");
+assert.ok(
+  backfillSafetyWorkflow.includes("inputs.confirmation == 'APPLY_QA_BACKFILL'") &&
+    !backfillSafetyWorkflow.includes("[apply-legacy-kids-qa]") &&
+    !backfillSafetyWorkflow.includes("github.event.head_commit.message"),
+  "Production legacy QA backfill must require manual typed confirmation and never use a commit-message apply trigger",
+);
+const storageSafetyWorkflow = read(".github/workflows/storage-retention.yml");
+assert.ok(
+  storageSafetyWorkflow.includes("if: github.ref == 'refs/heads/main'") &&
+    storageSafetyWorkflow.includes("ref: main"),
+  "Storage retention must run only from canonical main and check out that exact branch before reading production credentials",
+);
+assert.ok(
+  storageSafetyWorkflow.includes("inputs.confirmation == 'DELETE_STAGING_COPIES'") &&
+    !storageSafetyWorkflow.includes("github.event_name == 'schedule' ||"),
+  "Scheduled storage retention must remain dry-run and deletion must require typed manual confirmation",
+);
+const offlineSafetyWorkflow = read(".github/workflows/refresh-offline-content.yml");
+assert.ok(
+  offlineSafetyWorkflow.includes("if: github.ref == 'refs/heads/main'") &&
+  offlineSafetyWorkflow.includes("pull-requests: write") &&
+    offlineSafetyWorkflow.includes("automation/offline-content-snapshot") &&
+    offlineSafetyWorkflow.includes("gh pr create") &&
+    offlineSafetyWorkflow.includes("gh workflow run quality-gate.yml") &&
+    !offlineSafetyWorkflow.includes("git push origin HEAD:main"),
+  "Offline snapshot automation must publish through a reviewable PR, never directly to main",
+);
+const circleSafetyBranches = read(".circleci/config.yml");
+assert.ok(
+  circleSafetyBranches.includes("comprehensive-repair-safety-20261110") &&
+    circleSafetyBranches.includes("offline-content-snapshot"),
+  "CircleCI source and application build gates must cover the safety remediation and generated offline snapshot branches",
+);
+
 console.log("✅ CI/CD architecture checks passed");

@@ -33,46 +33,29 @@ jobs:
     env:
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
+      PGSSLMODE: require
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
 
-      - name: Verify the target database
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
-            echo "SUPABASE_DB_URL is not configured." >&2
-            exit 1
-          fi
-          if [[ "$SUPABASE_DB_URL" != *"$EXPECTED_PROJECT_REF"* ]]; then
-            echo "SUPABASE_DB_URL does not point to project $EXPECTED_PROJECT_REF; refusing to continue." >&2
-            exit 1
-          fi
+      - name: Verify the exact production database endpoint and TLS
+        run: python3 scripts/verify-supabase-db-url.py
 
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update -y
           sudo apt-get install -y postgresql-client
 
-      - name: Apply tafsir seed migrations in order
-        shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t files < <(grep -l "INSERT INTO public.quran_tafsir" supabase/migrations/*.sql | sort)
-          echo "Applying ${#files[@]} tafsir seed files"
-          for file in "${files[@]}"; do
-            echo "-> $file"
-            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction -q -f "$file"
-          done
+      - name: Run the canonical guarded and atomic tafsir restore
+        run: bash scripts/restore-quran-tafsir.sh
 
-      - name: Verify restored row count
+      - name: Verify the complete tafsir corpus
         shell: bash
         run: |
           set -euo pipefail
-          count="$(psql "$SUPABASE_DB_URL" -At -c "select count(*) from public.quran_tafsir")"
-          echo "quran_tafsir rows: $count"
-          if [[ "$count" -le 0 ]]; then
-            echo "Tafsir restore produced no rows." >&2
+          count="$(psql "$SUPABASE_DB_URL" -At -c "select count(*) from public.quran_tafsir where author = 'التفسير الميسر'")"
+          echo "Source-verified quran_tafsir rows: $count"
+          [[ "$count" == "6236" ]] || {
+            echo "Expected exactly 6,236 source-verified tafsir rows; found $count." >&2
             exit 1
-          fi
+          }

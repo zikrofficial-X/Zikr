@@ -18,6 +18,11 @@ on:
         required: true
         type: boolean
         default: false
+      confirmation:
+        description: "Type APPLY_QA_BACKFILL to authorize production QA metadata updates"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -37,13 +42,25 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      # One-time apply is authorized by this exact merge commit marker; ordinary pushes stay dry-run.
-      BACKFILL_APPLY: ${{ (github.event_name == 'workflow_dispatch' && inputs.apply == true) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[apply-legacy-kids-qa]')) }}
+      # Production row updates require an explicit manual dispatch and typed owner confirmation.
+      BACKFILL_APPLY: ${{ github.event_name == 'workflow_dispatch' && inputs.apply == true && inputs.confirmation == 'APPLY_QA_BACKFILL' }}
     steps:
       - name: Checkout exact main revision
         uses: actions/checkout@v7
         with:
           ref: main
+
+      - name: Require explicit owner confirmation before production updates
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == true
+        shell: bash
+        env:
+          BACKFILL_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "${BACKFILL_CONFIRMATION}" = "APPLY_QA_BACKFILL" || {
+            echo "::error::Production QA backfill requires typed confirmation APPLY_QA_BACKFILL." >&2
+            exit 1
+          }
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -86,4 +103,4 @@ jobs:
 
       - name: Report completion
         if: always()
-        run: echo "Automatic runs are read-only dry-runs. Production row updates require a manual workflow dispatch with apply=true; the backfill verifies current sources and Cloudinary media and never creates or republishes social queue items."
+        run: echo "Automatic runs are read-only dry-runs. Production row updates require a manual workflow dispatch with apply=true and typed confirmation APPLY_QA_BACKFILL; the backfill verifies current sources and Cloudinary media and never creates or republishes social queue items."

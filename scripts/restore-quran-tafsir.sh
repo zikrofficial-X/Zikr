@@ -4,10 +4,7 @@ set -euo pipefail
 : "${SUPABASE_DB_URL:?SUPABASE_DB_URL is required}"
 : "${EXPECTED_PROJECT_REF:?EXPECTED_PROJECT_REF is required}"
 
-if [[ "${SUPABASE_DB_URL}" != *"${EXPECTED_PROJECT_REF}"* ]]; then
-  echo "Refusing Quran tafsir restore: SUPABASE_DB_URL does not target ${EXPECTED_PROJECT_REF}." >&2
-  exit 1
-fi
+python3 scripts/verify-supabase-db-url.py
 
 migration_dir="supabase/migrations"
 migration_files=(

@@ -4,8 +4,11 @@ import { selectEligibleSocialPublishItems } from "../../src/features/social/serv
 const videos = Array.from({ length: 74 }, (_, index) => ({
   id: `video-${index}`,
   content_type: "video",
-  target_platforms: ["youtube"] as const,
-  metadata: null,
+  target_platforms: ["youtube", "facebook_reels"] as const,
+  metadata: {
+    platformResults: { facebook_reels: { ok: false, error: "Facebook Reel upload failed (HTTP 422)" } },
+    platformAttempts: { facebook_reels: 4 },
+  },
 }));
 const writtenPosts = [
   { id: "post-1", content_type: "written_post", target_platforms: ["facebook"] as const, metadata: null },
@@ -14,6 +17,20 @@ const writtenPosts = [
 ];
 const candidates = [...videos, ...writtenPosts];
 const enabledPlatforms = ["facebook", "facebook_reels", "youtube"] as const;
+
+const missingSourceMedia = {
+  id: "missing-source-media",
+  content_type: "video",
+  target_platforms: ["youtube", "facebook_reels"] as const,
+  metadata: { sourceMediaMissing: true },
+};
+const missingMediaSelection = selectEligibleSocialPublishItems([missingSourceMedia], {
+  enabledPlatforms,
+  approvedVideoQueueItemIds: new Set([missingSourceMedia.id]),
+  maxAttemptsFor: () => 5,
+  limit: 1,
+});
+assert.deepEqual(missingMediaSelection, [], "source-media-missing videos must stay out of the worker queue even when QA approval exists");
 
 const selectedPosts = selectEligibleSocialPublishItems(candidates, {
   enabledPlatforms,
@@ -27,13 +44,35 @@ assert.deepEqual(
   "unapproved videos must not starve later eligible written posts",
 );
 
-const approvedVideo = selectEligibleSocialPublishItems(candidates, {
+const approvedVideo = selectEligibleSocialPublishItems(videos, {
   enabledPlatforms,
   approvedVideoQueueItemIds: new Set(["video-0"]),
   maxAttemptsFor: () => 5,
   limit: 1,
 });
-assert.equal(approvedVideo[0]?.id, "video-0", "approved videos remain eligible");
+assert.equal(approvedVideo[0]?.id, "video-0", "approved videos remain eligible when no written post competes");
+
+const approvedVideoBacklog = videos.slice(0, 10);
+const fairBatch = selectEligibleSocialPublishItems(
+  [...approvedVideoBacklog, ...writtenPosts],
+  {
+    enabledPlatforms,
+    approvedVideoQueueItemIds: new Set(approvedVideoBacklog.map((item) => item.id)),
+    maxAttemptsFor: () => 5,
+    limit: 5,
+  },
+);
+assert.equal(
+  fairBatch[0]?.id,
+  "post-1",
+  "one due written post must receive a reserved batch slot ahead of eligible YouTube/Reels retry candidates",
+);
+assert.equal(
+  fairBatch.filter((item) => item.content_type === "written_post").length,
+  1,
+  "the fairness reserve must not consume the entire video batch",
+);
+assert.equal(fairBatch.length, 5, "the fairness reserve must preserve the configured batch limit");
 
 const facebookOnly = selectEligibleSocialPublishItems(candidates, {
   enabledPlatforms: ["facebook"],

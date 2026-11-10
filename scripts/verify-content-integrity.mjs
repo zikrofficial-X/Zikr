@@ -4,7 +4,8 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const root = process.cwd();
-const scanDirs = ["src/features", "src/app"];
+// Scan the complete application source tree, including shared components and libraries.
+const scanDirs = ["src"];
 const extensions = new Set([".ts", ".tsx", ".js", ".jsx", ".md", ".json"]);
 const failures = [];
 
