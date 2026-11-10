@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
-import { buildWrittenBackfillQueuePayload, buildWrittenPost, buildWrittenSocialQueuePayload, chooseWrittenSourceKind, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
+import { buildWrittenBackfillQueuePayload, buildWrittenPost, buildWrittenSocialQueuePayload, chooseWrittenSourceKind, shouldBackfillKidsWrittenPost, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
 
 type Row = Record<string, unknown>;
 const str=(v:unknown)=>typeof v==="string"?v.trim():"";
@@ -238,6 +238,7 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
   const articleId=str(article.id),title=str(article.title),body=str(article.content);
   const publicPath=str(metadata.publicPath);
   const sourceType=str(source.type),sourceId=str(source.id);
+  if(!shouldBackfillKidsWrittenPost(sourceType,hasKidsPostToday))continue;
   if(!articleId||title.length<8||!body||body.length>12000||quality.passed!==true||source.verified!==true||
      !sourceType||!sourceId||!publicPath.startsWith("/")||publicPath.startsWith("//"))continue;
   const automationKey=createWrittenSocialAutomationKey(sourceType,sourceId);
@@ -274,6 +275,7 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
    body:JSON.stringify(queuePayload),
   });
   created++;
+  if(sourceType==="kids_story")hasKidsPostToday=true;
   slot++;
  }
  return created;
