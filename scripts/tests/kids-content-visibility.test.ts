@@ -66,6 +66,7 @@ assert.match(
   migration,
   /using\s*\(\s*published\s+is\s+true\s+and\s+is_active\s+is\s+true\s+and\s*\(\s*type\s*<>\s*'story'\s+or\s+metadata->>'age_appropriate'\s*=\s*'true'\s*\)\s*\)/i,
   "public Kids RLS must hide unpublished, inactive, and age-unapproved stories while preserving other content types",
+);
 assert.match(
   migration,
   /and\s*\(\s*type\s*<>\s*'story'\s+or\s+metadata->>'age_appropriate'\s*=\s*'true'\s*\)/i,
@@ -75,8 +76,6 @@ assert.match(
   migration,
   /kids_content\.type\s*<>\s*'story'\s+or\s+kids_content\.metadata->>'age_appropriate'\s*=\s*'true'/i,
   "the share counter must apply the same age-approval gate to stories",
-);
-
 );
 
 console.log("Kids content visibility and fallback contracts passed.");
