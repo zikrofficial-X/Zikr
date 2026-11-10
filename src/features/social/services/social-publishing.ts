@@ -424,7 +424,7 @@ async function publishYoutubeItem(item: SocialPublishQueueItem): Promise<string 
   const env = getServerEnv();
   const refreshToken = await getYouTubeUploadRefreshToken();
   if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET || !refreshToken) {
-    throw new Error("YouTube OAuth is not configured: a stored credential with youtube.upload, youtube.readonly and yt-analytics.readonly scopes is required.");
+    throw new Error("YouTube OAuth is not configured: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET and a stored credential with youtube.upload, youtube.readonly and yt-analytics.readonly scopes are required.");
   }
   const disclosure = await getYouTubeVideoDisclosure(item);
   return publishToYoutube(
