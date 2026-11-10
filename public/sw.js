@@ -45,7 +45,7 @@ async function purgeNativeAdvertisingMarkup() {
         if (!response?.headers.get("content-type")?.includes("text/html")) return;
 
         const html = await response.clone().text();
-        if (/(?:al5sm\.com|5gvci\.com|uplcm\.com|name=["']monetag["']|fundingchoicesmessages\.google\.com|googletagmanager\.com\/gtm\.js|pagead2\.googlesyndication\.com|googleads\.g\.doubleclick\.net|tpc\.googlesyndication\.com|google-adsense-account)/i.test(html)) {
+        if (/(?:al5sm\.com|5gvci\.com|uplcm\.com|name=["']monetag["']|fundingchoicesmessages\.google\.com|googletagmanager\.com\/gtm\.js|pagead2\.googlesyndication\.com|googleads\.g\.doubleclick\.net|tpc\.googlesyndication\.com|google-adsense-account|adsbygoogle)/i.test(html)) {
           await cache.delete(request);
         }
       } catch {

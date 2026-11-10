@@ -93,12 +93,21 @@ for (const providerMarker of [
   "pagead2",
   "googleads",
   "tpc\\.googlesyndication",
+  "google-adsense-account",
+  "adsbygoogle",
 ]) {
   requireCondition(
     serviceWorker.includes(providerMarker),
     `The native worker must purge cached HTML containing legacy ${providerMarker} markup.`,
   );
 }
+
+requireCondition(
+  layout.includes("window.adsbygoogle") &&
+    advertisingRuntime.includes('meta[name="google-adsense-account"]') &&
+    advertisingRuntime.includes("delete windowWithAds.adsbygoogle"),
+  "The native runtime must clear the SSR AdSense queue and account metadata.",
+);
 requireCondition(
   adsenseSlot.includes("Capacitor.isNativePlatform()"),
   "The existing AdSense slot must continue to reject native Capacitor runtimes.",
