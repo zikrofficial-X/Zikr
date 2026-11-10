@@ -212,6 +212,8 @@ assert.match(writtenFactory, /liveMetadata\.age_appropriate !== true/);
 assert.match(writtenFactory, /kidsContentId !== source\.id/);
 assert.match(writtenFactory, /sourceMetadata\.id !== source\.id/);
 assert.match(kidsApi, /buildPublicKidsWrittenPost/);
+assert.match(kidsApi, /order=published_at\.desc&limit=60/, "the public Kids feed must fetch extra candidates before filtering stale sources");
+assert.match(kidsApi, /items\.slice\(0, 12\)/, "the public Kids feed must return up to twelve currently eligible posts after source filtering");
 assert.match(kidsApi, /getServerEnv\(\)\.SUPABASE_SERVICE_ROLE_KEY/);
 assert.match(kidsApi, /return NextResponse\.json\(\[\],/);
 assert.match(kidsApi, /\/rest\/v1\/kids_content\?id=in\.\(/);
