@@ -186,11 +186,11 @@ function validateRequiredEnv() {
 async function processVideos(settings: VideoAutomationSettings) {
   if (!settings.enabled || await isVideoGenerationPaused()) {
     console.log("[background-jobs] Video automation disabled from Admin settings.");
-    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
+    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, skipped: 0, seeded: 0 };
   }
   if (VIDEO_DRY_RUN) {
     console.log("[background-jobs] VIDEO_AUTOMATION_DRY_RUN=true; planning only.");
-    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
+    return { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, skipped: 0, seeded: 0 };
   }
 
   applyVideoAutomationSettings(settings);
@@ -211,6 +211,7 @@ async function processVideos(settings: VideoAutomationSettings) {
     let processed = 0;
     let succeeded = 0;
     let failed = 0;
+    let skipped = 0;
     let remaining = Math.max(0, capacity);
 
     while (remaining > 0) {
@@ -226,16 +227,18 @@ async function processVideos(settings: VideoAutomationSettings) {
       const waveProcessed = wave.reduce((sum, result) => sum + (result.processed || 0), 0);
       const waveSucceeded = wave.reduce((sum, result) => sum + (result.succeeded || 0), 0);
       const waveFailed = wave.reduce((sum, result) => sum + (result.failed || 0), 0);
+      const waveSkipped = wave.reduce((sum, result) => sum + (result.skipped || 0), 0);
 
       processed += waveProcessed;
       succeeded += waveSucceeded;
       failed += waveFailed;
+      skipped += waveSkipped;
 
       if (waveProcessed === 0) break;
       remaining = Math.max(0, capacity - processed);
     }
 
-    return { processed, succeeded, failed };
+    return { processed, succeeded, failed, skipped };
   };
 
   // Seed first so an old backlog cannot indefinitely starve today's scheduled requests.
@@ -247,12 +250,14 @@ async function processVideos(settings: VideoAutomationSettings) {
   const processed = result.processed;
   const succeeded = result.succeeded;
   const failed = result.failed;
+  const skipped = result.skipped;
 
   return {
     processed,
     succeeded,
     authBlocked: 0,
     failed,
+    skipped,
     seeded,
   };
 }
@@ -292,6 +297,7 @@ async function recordAutomationRun(summary: {
   processed: number;
   completed: number;
   failed: number;
+  skipped: number;
   socialProcessed: number;
   socialSucceeded: number;
   siteContentPublished: number;
@@ -321,6 +327,7 @@ async function recordAutomationRun(summary: {
           socialProcessed: summary.socialProcessed,
           socialSucceeded: summary.socialSucceeded,
           siteContentPublished: summary.siteContentPublished,
+          skipped: summary.skipped,
           generator: "multi-provider-free-ai",
           urgentRunRequestedAt: summary.urgentRunRequestedAt,
         },
@@ -348,7 +355,7 @@ async function main() {
   const startedAt = Date.now();
   const videos = target === "all" || target === "videos"
     ? await processVideos(videoSettings)
-    : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, seeded: 0 };
+    : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, skipped: 0, seeded: 0 };
 
   if (runNowRequestedAt && shouldClearRunNowRequest({
     hasRequest: true,
@@ -391,6 +398,7 @@ async function main() {
       processed: videos.processed + social.processed,
       completed: videos.succeeded + social.succeeded,
       failed,
+      skipped: videos.skipped || 0,
       socialProcessed: social.processed,
       socialSucceeded: social.succeeded,
       siteContentPublished: sitePublishing.published,
