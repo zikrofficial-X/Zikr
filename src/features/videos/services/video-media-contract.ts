@@ -156,3 +156,25 @@ export function resolveVideoThumbnail(
   }
   return fallbackImage;
 }
+
+/**
+ * A purge may hide a video before its already-successful YouTube upload has
+ * been reconciled. Restore it only when it was public before that purge and
+ * the applicable automated QA gates still pass.
+ */
+export function shouldRestorePurgedPublishedVideo(row: Record<string, unknown>): boolean {
+  const metadata = metadataFor(row);
+  const qa = metadata.automatedVideoQa && typeof metadata.automatedVideoQa === "object" && !Array.isArray(metadata.automatedVideoQa)
+    ? metadata.automatedVideoQa as Record<string, unknown>
+    : {};
+  const audience = metadata.audience;
+  const audienceEligible = audience === "general" ||
+    (audience === "kids" && metadata.kidsVideoQaStatus === "passed");
+
+  return row.published === false &&
+    metadata.generator === "zikr_internal_video_factory" &&
+    metadata.mediaState === "purged" &&
+    metadata.mediaPurgedFromPublished === true &&
+    qa.status === "passed" &&
+    audienceEligible;
+}
