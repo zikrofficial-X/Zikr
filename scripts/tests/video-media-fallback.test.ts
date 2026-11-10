@@ -5,6 +5,7 @@ import {
   resolveVideoThumbnail,
   resolveVideoYoutubeId,
   shouldKeepPublishedVideoAfterMediaPurge,
+  shouldRestorePurgedPublishedVideo,
 } from "../../src/features/videos/services/video-media-contract";
 
 const id = "5pob7O7rLnU";
@@ -83,6 +84,59 @@ const nonYoutubeUrl = {
   },
 };
 assert.equal(getConfirmedYoutubeFallbackId(nonYoutubeUrl), null);
+
+const restorableGeneral = {
+  published: false,
+  metadata: {
+    generator: "zikr_internal_video_factory",
+    mediaState: "purged",
+    mediaPurgedFromPublished: true,
+    audience: "general",
+    automatedVideoQa: { status: "passed" },
+  },
+};
+assert.equal(shouldRestorePurgedPublishedVideo(restorableGeneral), true);
+
+const restorableKids = {
+  published: false,
+  metadata: {
+    ...restorableGeneral.metadata,
+    audience: "kids",
+    kidsVideoQaStatus: "passed",
+  },
+};
+assert.equal(shouldRestorePurgedPublishedVideo(restorableKids), true);
+
+const kidsQaBlocked = {
+  published: false,
+  metadata: {
+    ...restorableKids.metadata,
+    kidsVideoQaStatus: "revalidation_required",
+  },
+};
+assert.equal(shouldRestorePurgedPublishedVideo(kidsQaBlocked), false, "kids videos without passed kids QA must remain hidden");
+
+assert.equal(
+  shouldRestorePurgedPublishedVideo({
+    published: false,
+    metadata: { ...restorableGeneral.metadata, mediaPurgedFromPublished: false },
+  }),
+  false,
+  "videos that were not public before purge must not be auto-restored",
+);
+assert.equal(
+  shouldRestorePurgedPublishedVideo({ published: true, metadata: restorableGeneral.metadata }),
+  false,
+  "already-public catalog rows do not need a restoration transition",
+);
+assert.equal(
+  shouldRestorePurgedPublishedVideo({
+    published: false,
+    metadata: { ...restorableGeneral.metadata, audience: "unknown" },
+  }),
+  false,
+  "unknown audience classifications must fail closed",
+);
 
 const generatedMustWin = {
   metadata: {
