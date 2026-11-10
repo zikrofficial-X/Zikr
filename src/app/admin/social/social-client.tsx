@@ -677,6 +677,12 @@ export default function AdminSocialPage() {
             >
               مراجعة الفيديوهات ({readiness.approvalPending})
             </Link>
+            <Link
+              href="/admin/social/written-studio"
+              className="inline-flex items-center justify-center rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-3 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/15"
+            >
+              مصنع المنشورات المكتوبة ({items.filter(item => item.content_type === "written_post" && item.status !== "published").length})
+            </Link>
             <Button variant="outline" disabled={busy || loading} onClick={() => void load()}>
               تحديث البيانات
             </Button>
