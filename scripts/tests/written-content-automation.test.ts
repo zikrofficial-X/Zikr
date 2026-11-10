@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {buildPublicKidsWrittenPost,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,shouldBackfillKidsWrittenPost,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,isKidsWrittenPostCandidate,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
+import {buildPublicKidsWrittenPost,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,shouldBackfillKidsWrittenPost,scheduleKidsBackfillWithinUtcDay,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,isKidsWrittenPostCandidate,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
 const source:WrittenContentSource={kind:"quran",id:"ayah-1",title:"آية",sourceText:"إِنَّ مَعَ الْعُسْرِ يُسْرًا",reference:"سورة الشرح، الآية 6",publicPath:"/quran/ash-sharh",categoryLabel:"القرآن الكريم",sourceVerified:true,quoteRequired:true};
 const draft:WrittenPostDraft={eligible:true,title:"مع كل عسر يسر",hook:"قد تمر بلحظة تظن فيها أن الطريق انتهى، لكن الأمل يظل حاضرًا.",reflection:"تدعونا الآية إلى ألا نستسلم لليأس، وأن نتذكر أن الشدة لا تدوم وأن الأمل باب للعمل والصبر.",question:"ما المعنى الذي تستحضره عندما تمر بوقت صعب؟"};
 assert.equal(normalizeWrittenCategory("hadith"),"hadith");assert.equal(normalizeWrittenCategory("other"),"auto");assert.equal(normalizeWrittenCategory("companions"),"companions");assert.equal(normalizeWrittenCategory("kids"),"kids");
@@ -13,6 +13,8 @@ assert.equal(chooseWrittenSourceKind([],"auto",false,0),null,"empty source kinds
 assert.equal(shouldBackfillKidsWrittenPost("kids_story",false),true,"the first Kids backfill may reserve today's slot");
 assert.equal(shouldBackfillKidsWrittenPost("kids_story",true),false,"a second Kids backfill must wait until another UTC day");
 assert.equal(shouldBackfillKidsWrittenPost("quran",true),true,"general written-post backfill must remain unaffected by the Kids daily slot");
+assert.equal(scheduleKidsBackfillWithinUtcDay(new Date("2026-11-11T18:00:00.000Z")),"2026-11-11T18:05:00.000Z","Kids backfill must schedule within the current UTC day");
+assert.equal(scheduleKidsBackfillWithinUtcDay(new Date("2026-11-11T23:58:00.000Z")),"2026-11-11T23:59:59.999Z","Kids backfill must not spill into a day already reserved by another Kids post");
 assert.notEqual(createWrittenAutomationKey("quran","1"),createWrittenAutomationKey("quran","2"));
 assert.deepEqual(validateWrittenPostDraft(draft),{ok:true});assert.equal(validateWrittenPostDraft({...draft,reflection:"قال رسول الله كذا"}).ok,false);assert.equal(validateWrittenPostDraft({...draft,eligible:false}).ok,false);
 const post=buildWrittenPost(source,draft);assert.ok(post.body.includes(source.sourceText));assert.ok(post.body.includes(source.reference));assert.equal(post.publicPath,source.publicPath);
@@ -189,6 +191,7 @@ assert.match(worker, /metadata\.age_appropriate!==true/);
 assert.match(worker, /readRequired<Row>\(\s*"\/rest\/v1\/kids_content\?/, "Kids source lookup must fail closed instead of silently bypassing daily prioritization");
 assert.match(worker, /metadata->>audience=eq\.kids&or=\$\{kidsDayFilter\}/, "Kids backfill must inspect all UTC-day reservation timestamps");
 assert.match(worker, /shouldBackfillKidsWrittenPost\(sourceType,hasKidsPostToday\)/, "Kids backfill must stop after one daily reservation");
+assert.match(worker, /scheduleKidsBackfillWithinUtcDay\(new Date\(\)\)/, "Kids backfill must not schedule its reserved slot into a future UTC day");
 assert.match(worker, /if\(sourceType==="kids_story"\)hasKidsPostToday=true/, "a successful Kids backfill must reserve the current UTC day for later rows");
 assert.match(worker, /source\.kind==="kids_story"/);
 assert.match(worker, /chooseWrittenSourceKind\(/);
