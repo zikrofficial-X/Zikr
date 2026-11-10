@@ -674,6 +674,7 @@ workflows:
                 - /^fix\/worker-audit-run-now-release-docs-20261107$/
                 - /^fix\/quran-tafsir-backfill-release-preflight-20261107$/
                 - /^fix\/quality-gate-full-main-scope-20261107$/
+                - /^fix\/video-purge-queue-preflight-20261110$/
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
       - application-build-docs:
@@ -686,6 +687,7 @@ workflows:
                 - /^fix\/worker-audit-run-now-release-docs-20261107$/
                 - /^fix\/quran-tafsir-backfill-release-preflight-20261107$/
                 - /^fix\/quality-gate-full-main-scope-20261107$/
+                - /^fix\/video-purge-queue-preflight-20261110$/
             tags:
               ignore: /.*/
       - android-release-draft:
