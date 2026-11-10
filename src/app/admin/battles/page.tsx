@@ -12,6 +12,7 @@ import {
 } from '@/features/admin/services/battles';
 import { parseYouTubeVideoId } from '@/features/admin/services/youtube';
 import { revalidatePath } from 'next/cache';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
@@ -49,9 +50,8 @@ async function toggleBattlePublishAction(formData: FormData) {
 export default async function AdminBattlesPage() {
   await requireAdminPermission("battles.manage");
 
-  const battles = await getAdminBattles();
-
-  const hasBattles = battles.length > 0;
+  const { rows: battles, ok: loaded } = await getAdminBattles();
+  const hasBattles = loaded && battles.length > 0;
 
   return (
     <Container className="max-w-5xl space-y-8 py-8 text-right">
@@ -74,6 +74,11 @@ export default async function AdminBattlesPage() {
         </ol>
       </Card>
 
+      {!loaded && (
+        <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-6 text-red-100">
+          تعذر قراءة سجلات الغزوات من قاعدة البيانات. لم يتم اعتبار فشل القراءة قائمة فارغة.
+        </div>
+      )}
       {hasBattles ? (
         <section className="space-y-4">
           <p className="text-xs text-brand-cream/35 mr-1">{battles.length} غزوة في قاعدة البيانات</p>
@@ -141,12 +146,12 @@ export default async function AdminBattlesPage() {
             );
           })}
         </section>
-      ) : (
+      ) : loaded ? (
         <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-center space-y-2">
           <h2 className="font-semibold text-amber-300">لا توجد سجلات غزوات في قاعدة البيانات</h2>
           <p className="text-sm text-brand-cream/50">لن يعرض مركز الإدارة بيانات ثابتة أو وهمية. أضف السجلات إلى قاعدة البيانات أولًا ثم ستظهر هنا.</p>
         </section>
-      )}
+      ) : null}
     </Container>
   );
 }
