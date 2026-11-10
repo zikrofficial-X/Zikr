@@ -6,7 +6,7 @@
 - Repository `zikrofficial-X/Zikr`, branch `main`, commit `ab0bd0e7ad5e5dd2d86250ed0b63ae257dc237b4`.
 - Recursive tree: 2,152 entries, 1,661 files, 491 directories; 100% inventory coverage, 132 documented full source reads, 1,508 files still `REVIEW_REQUIRED`, 0 modules closed.
 - Vercel production deployment `dpl_6CgDFtWmoVaArSRbS5JM3iX8BKzm` is READY on the exact main SHA and aliases `zikrmediaofficial.vercel.app`. The root page responds with version 1.1.15. Git auto-deploy is disabled in `vercel.json`; no production promotion was initiated in this run.
-- Current production error-log window (15 minutes) is empty. A single earlier `fetch failed` event at 17:32 UTC is associated with the previous deployment, not the current READY deployment.
+- Current production error-log window (15 minutes) is empty. Vercel retains a `fetch failed` error group of 7 events across 6 users, last seen 17:32 UTC on the previous deployment `dpl_4ZyKHwS2rStF3MDURJ3E2rLxDM7h`; one trace shows an upstream Supabase TLS/socket reset. The upstream caller is not fully proven.
 - Main CI contexts all pass. PR #306 is merged; the offline snapshot workflow run 42868794278 succeeded after the permission-fallback repair.
 
 ### Database and security
