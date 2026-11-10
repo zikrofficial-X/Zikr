@@ -13,6 +13,7 @@ import {
 } from '@/features/admin/services/prophets';
 import { parseYouTubeVideoId } from '@/features/admin/services/youtube';
 import { revalidatePath } from 'next/cache';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 
 type Prophet = AdminProphet;
 
@@ -71,9 +72,8 @@ function Field({ name, label, placeholder, defaultValue }: { name: string; label
 export default async function AdminProphetsPage() {
   await requireAdminPermission("prophets.manage");
 
-  const prophets: Prophet[] = await getAdminProphets();
-
-  const hasProphets = prophets.length > 0;
+  const { rows: prophets, ok: loaded } = await getAdminProphets();
+  const hasProphets = loaded && prophets.length > 0;
 
   return (
     <Container className="max-w-5xl space-y-8 py-8 text-right">
@@ -166,12 +166,12 @@ export default async function AdminProphetsPage() {
             );
           })}
         </section>
-      ) : (
+      ) : loaded ? (
         <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-center space-y-2">
           <h2 className="font-semibold text-amber-300">لا توجد سجلات أنبياء في قاعدة البيانات</h2>
           <p className="text-sm text-brand-cream/50">لن يعرض مركز الإدارة بيانات ثابتة أو وهمية. أضف السجلات إلى قاعدة البيانات أولًا ثم ستظهر هنا تلقائيًا.</p>
         </section>
-      )}
+      ) : null}
     </Container>
   );
 }
