@@ -6,6 +6,8 @@ export type KidsQuizQuestion = {
   text: string;
   options: string[];
   correctAnswer: number;
+  textEn?: string;
+  optionsEn?: string[];
 };
 
 export type KidsMemoryPair = {
