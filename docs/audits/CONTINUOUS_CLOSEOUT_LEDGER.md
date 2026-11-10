@@ -561,7 +561,7 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 
 ### Safe source repair prepared
 - Live Supabase generated types contain 92 public tables; `src/lib/types/supabase.ts` on main contained 91. The only missing table was `youtube_oauth_credentials`.
-- Draft PR #312 regenerates `src/lib/types/supabase.ts` from the live schema, adds that table to `verify-generated-supabase-types.mjs`, and includes the repair branch in CircleCI source/build filters.
+- Draft PR #312 adds only the missing `youtube_oauth_credentials` table block from the live generated schema to `src/lib/types/supabase.ts` (preserving the existing order of all other table/function types), adds that table to `verify-generated-supabase-types.mjs`, and includes the repair branch in CircleCI source/build filters.
 - PR: https://github.com/zikrofficial-X/Zikr/pull/312
 - Current PR head at checkpoint: `a22d826cf2b1a8c91b7dbc3cda09f95186285b81`. CircleCI config-guard passed; source-verify and application-build-docs were pending. GitHub Quality Gate was still running on the immediately preceding head `8b0a9707d9a384f85bdac287952c6787624752ec`; a fresh final-head Quality Gate result and Vercel Preview deployment had not yet been observed. Do not merge until checks complete on the exact latest head.
 
