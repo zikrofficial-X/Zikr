@@ -682,6 +682,7 @@ workflows:
                 - /^fix\/quality-gate-full-main-scope-20261107$/
                 - /^codex\/zikr-comprehensive-repair-safety-20261110$/
                 - /^automation\/offline-content-snapshot$/
+                - /^fix\/preserve-quran-audio-cache-mainline-4-20261110$/
                 - /^fix\/search-console-contract-mainline-3-20261110$/
                 - /^fix\/content-integrity-scan-mainline-2-20261110$/
                 - /^fix\/preview-facebook-feed-optional-config-mainline-20261110$/
@@ -700,6 +701,7 @@ workflows:
                 - /^fix\/quality-gate-full-main-scope-20261107$/
                 - /^codex\/zikr-comprehensive-repair-safety-20261110$/
                 - /^automation\/offline-content-snapshot$/
+                - /^fix\/preserve-quran-audio-cache-mainline-4-20261110$/
                 - /^fix\/search-console-contract-mainline-3-20261110$/
                 - /^fix\/content-integrity-scan-mainline-2-20261110$/
                 - /^fix\/preview-facebook-feed-optional-config-mainline-20261110$/
