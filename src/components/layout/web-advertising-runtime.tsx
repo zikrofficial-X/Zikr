@@ -41,6 +41,9 @@ function removeAdvertisingElements() {
   document.querySelectorAll(selectors.join(",")).forEach(element => {
     element.remove();
   });
+
+  const windowWithAds = window as Window & { adsbygoogle?: unknown[] };
+  delete windowWithAds.adsbygoogle;
 }
 
 /**
