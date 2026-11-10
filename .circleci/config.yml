@@ -716,6 +716,7 @@ workflows:
                 - /^fix\/content-integrity-scan-mainline-2-20261110$/
                 - /^fix\/preview-facebook-feed-optional-config-mainline-20261110$/
                 - /^fix\/video-catalog-purge-provenance-recovery-20261110$/
+                - /^fix\/sync-youtube-oauth-supabase-types-20261110$/
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
       - application-build-docs:
@@ -741,6 +742,7 @@ workflows:
                 - /^fix\/content-integrity-scan-mainline-2-20261110$/
                 - /^fix\/preview-facebook-feed-optional-config-mainline-20261110$/
                 - /^fix\/video-catalog-purge-provenance-recovery-20261110$/
+                - /^fix\/sync-youtube-oauth-supabase-types-20261110$/
             tags:
               ignore: /.*/
       - android-release-draft:
