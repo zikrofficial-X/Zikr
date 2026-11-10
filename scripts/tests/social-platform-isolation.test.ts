@@ -98,6 +98,18 @@ assert.deepEqual(
   ["youtube"],
   "legacy Facebook auth blocks must not block an independent YouTube retry",
 );
+assert.deepEqual(
+  getRetryableSocialPlatforms(
+    ["youtube"],
+    {
+      approvalDeferredPlatforms: ["youtube"],
+      platformResults: { youtube: { ok: false, error: "Editorial approval is required" } },
+    },
+    true,
+  ),
+  [],
+  "even explicit no-remote-publication confirmation must not bypass editorial or scholarly approval deferrals",
+);
 
 
 const legacyArrayResults = {
@@ -184,6 +196,7 @@ const adminSocialRoute = readFileSync(
 );
 assert.match(adminSocialRoute, /normalizeSocialPlatformResults\(item\.metadata\?\.platformResults\)/);
 assert.match(adminSocialRoute, /getRetryableSocialPlatforms\(item\.target_platforms, item\.metadata, allowAmbiguous\)/);
+assert.ok(adminSocialRoute.includes("approvalDeferredPlatforms: preservedApprovalDeferredPlatforms"), "admin retries must preserve all outstanding approval gates.");
 assert.match(adminSocialRoute, /authBlockedPlatforms\(item\.metadata, item\.target_platforms\)/);
 assert.match(adminSocialRoute, /authBlocked: remainingAuthBlockedPlatforms\.length > 0/);
 
