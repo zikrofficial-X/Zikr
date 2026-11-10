@@ -316,7 +316,7 @@ export async function runWrittenContentAutomation(options:{category?:string;batc
  const kidsDayFilter = encodeURIComponent(
   `(and(created_at.gte.${dayStartIso},created_at.lt.${dayEndIso}),and(scheduled_at.gte.${dayStartIso},scheduled_at.lt.${dayEndIso}),and(published_at.gte.${dayStartIso},published_at.lt.${dayEndIso}))`,
  );
- const todaysKidsPosts = category === "auto"
+ const todaysKidsPosts = category === "auto" || category === "kids"
   ? await readRequired<Row>(
    `/rest/v1/social_publish_queue?content_type=eq.written_post&metadata->>audience=eq.kids&or=${kidsDayFilter}&select=id&limit=1`,
   )
