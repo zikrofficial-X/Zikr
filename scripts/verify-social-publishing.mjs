@@ -222,6 +222,7 @@ if (!writtenWorker.includes('"articles"') ||
     !writtenWorker.includes("social_publish_queue") ||
     !writtenWorker.includes("buildWrittenSocialQueuePayload") ||
     !writtenWorker.includes("createWrittenSocialAutomationKey") ||
+    !writtenWorker.includes("enqueueExistingWrittenArticlesForFacebook") ||
     !writtenPostService.includes('content_type: "written_post"') ||
     !writtenPostService.includes('target_platforms: ["facebook"]')) {
   failures.push("written-content factory must preserve the internal article queue and idempotently enqueue a Facebook-only text post");
