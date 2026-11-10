@@ -69,7 +69,7 @@
     "voice:factory:check": "node scripts/verify-voice-factory.mjs",
     "video:factory:check": "node scripts/verify-video-factory.mjs && pnpm video:purge:check",
     "ai:visual:check": "node scripts/verify-ai-visual-factory.mjs",
-    "video:qa:check": "node scripts/verify-video-qa.mjs",
+    "video:qa:check": "node scripts/verify-video-qa.mjs && pnpm video:qa:backfill:check",
     "scheduler:check": "node scripts/verify-scheduler.mjs",
     "social:publish:check": "node scripts/verify-social-publishing.mjs",
     "admin:video:check": "node scripts/verify-admin-video-factory.mjs",
@@ -105,7 +105,9 @@
     "video:providers:check": "tsx scripts/tests/video-custom-provider-registry.test.ts",
     "error:boundaries:check": "node scripts/verify-error-boundaries.mjs",
     "video:purge:check": "node scripts/tests/video-purge-contract.test.mjs",
-    "quran:tafsir:check": "node scripts/verify-quran-tafsir-backfill.mjs"
+    "quran:tafsir:check": "node scripts/verify-quran-tafsir-backfill.mjs",
+    "video:qa:backfill": "tsx scripts/jobs/backfill-legacy-video-qa.ts",
+    "video:qa:backfill:check": "node scripts/verify-video-qa-backfill.mjs"
   },
   "dependencies": {
     "@capacitor/android": "7.6.10",
