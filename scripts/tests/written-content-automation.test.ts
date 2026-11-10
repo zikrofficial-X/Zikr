@@ -6,6 +6,8 @@ const draft:WrittenPostDraft={eligible:true,title:"مع كل عسر يسر",hook
 assert.equal(normalizeWrittenCategory("hadith"),"hadith");assert.equal(normalizeWrittenCategory("other"),"auto");assert.equal(normalizeWrittenCategory("companions"),"companions");assert.equal(normalizeWrittenCategory("kids"),"kids");
 assert.equal(chooseWrittenSourceKind(["quran","kids_story"],"auto",false,0),"kids_story","auto generation should prioritize one approved Kids post when none exists today");
 assert.equal(chooseWrittenSourceKind(["quran","kids_story"],"auto",true,0),"quran","a second Kids post should not be prioritized after today's Kids slot is filled");
+assert.equal(chooseWrittenSourceKind(["quran","kids_story"],"auto",true,1),"quran","auto generation must exclude Kids even when random selection would otherwise choose it");
+assert.equal(chooseWrittenSourceKind(["kids_story"],"auto",true,0),null,"auto generation must stop rather than create a second Kids post when no general source remains");
 assert.equal(chooseWrittenSourceKind(["kids_story"],"kids",false,0),"kids_story","manual Kids category must keep selecting Kids sources");
 assert.equal(chooseWrittenSourceKind([],"auto",false,0),null,"empty source kinds must stop cleanly");
 assert.notEqual(createWrittenAutomationKey("quran","1"),createWrittenAutomationKey("quran","2"));
