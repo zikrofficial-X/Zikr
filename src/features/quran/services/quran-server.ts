@@ -8,6 +8,7 @@ import {
 } from "@/lib/supabase/server";
 import type { Surah, Ayah, Reciter, QuranTafsirSource } from "@/features/quran/types/quran";
 import { normalizeArabicSearchText } from "@/lib/search/arabic-normalization";
+import { getServerEnv } from "@/lib/env";
 import {
   reciters as fallbackReciters,
   surahs as fallbackSurahs,
@@ -23,23 +24,27 @@ import {
   type Locale,
 } from "./quran";
 
-/** Prefer the server-only read path, then retain anon access for local previews. */
+/** Prefer server-only reads in Production; Preview/Development intentionally use the public read path. */
 const quranDbRequest = async <T>(path: string): Promise<T> => {
+  const options = {
+    timeoutMs: 15_000,
+    retries: 1,
+    cache: "force-cache" as const,
+    next: { revalidate: 86400 },
+  };
+
+  if (!getServerEnv().SUPABASE_SERVICE_ROLE_KEY) {
+    return supabaseServerAnonRequest<T>(path, options);
+  }
+
   try {
-    return await supabaseServerAdminRequest<T>(path, {
-      timeoutMs: 15_000,
-      retries: 1,
-      cache: "force-cache",
-      next: { revalidate: 86400 },
-    });
+    return await supabaseServerAdminRequest<T>(path, options);
   } catch (adminError) {
-    console.warn("[quran-server] admin read unavailable; trying public read:", adminError);
-    return supabaseServerAnonRequest<T>(path, {
-      timeoutMs: 15_000,
-      retries: 1,
-      cache: "force-cache",
-      next: { revalidate: 86400 },
-    });
+    console.warn(
+      "[quran-server] admin read unavailable; trying public read:",
+      adminError instanceof Error ? adminError.message : "unknown error",
+    );
+    return supabaseServerAnonRequest<T>(path, options);
   }
 };
 

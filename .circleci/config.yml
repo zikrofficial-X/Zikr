@@ -698,6 +698,7 @@ workflows:
               only:
                 - main
                 - /^fix\/facebook-profile-metrics-refresh-20261110$/
+                - /^feat\/kids-written-social-posts-20261110$/
                 - /^android-release-v[0-9]+\.[0-9]+\.[0-9]+$/
                 - /^feat\/autonomous-video-qa-publishing-20261107$/
                 - /^fix\/video-worker-partial-success-and-kids-validation-20261107$/
@@ -726,6 +727,7 @@ workflows:
               only:
                 - main
                 - /^fix\/facebook-profile-metrics-refresh-20261110$/
+                - /^feat\/kids-written-social-posts-20261110$/
                 - /^feat\/autonomous-video-qa-publishing-20261107$/
                 - /^fix\/video-worker-partial-success-and-kids-validation-20261107$/
                 - /^fix\/worker-audit-run-now-release-docs-20261107$/

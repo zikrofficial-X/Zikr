@@ -23,6 +23,7 @@ const CATEGORY_OPTIONS = [
   { value: "prophets", label: "قصص الأنبياء" },
   { value: "companions", label: "قصص الصحابة" },
   { value: "knowledge", label: "المقالات والمعرفة" },
+  { value: "kids", label: "قصص الأطفال المعتمدة" },
 ] as const;
 
 const STATUS_LABELS: Record<string, string> = {

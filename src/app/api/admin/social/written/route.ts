@@ -16,6 +16,7 @@ const categories = new Set([
   "prophets",
   "companions",
   "knowledge",
+  "kids",
 ]);
 
 type WrittenQueueItem = {
