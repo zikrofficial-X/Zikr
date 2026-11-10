@@ -15,15 +15,7 @@ concurrency:
 
 jobs:
   publish:
-    if: >-
-      ${{ (github.event_name == 'schedule' &&
-            github.ref == 'refs/heads/main') ||
-           (github.event_name == 'workflow_run' &&
-            github.event.workflow_run.conclusion == 'success' &&
-            github.event.workflow_run.head_branch == 'main') ||
-           (github.event_name == 'workflow_dispatch' &&
-            github.ref == 'refs/heads/main' &&
-            inputs.operation == 'publish_queue') }}
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 20
@@ -31,9 +23,6 @@ jobs:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       BACKGROUND_JOB_TARGET: "insights"
       SOCIAL_PUBLISH_ENABLED: "false"
@@ -84,10 +73,6 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing Supabase service-role secret." >&2; exit 1; }
-          test -n "${CLOUDINARY_CLOUD_NAME:-}" || { echo "::error::Missing Cloudinary cloud name." >&2; exit 1; }
-          test -n "${CLOUDINARY_API_KEY:-}" || { echo "::error::Missing Cloudinary API key." >&2; exit 1; }
-          test -n "${CLOUDINARY_API_SECRET:-}" || { echo "::error::Missing Cloudinary API secret." >&2; exit 1; }
-
           facebook_ready=false
           if [[ "${FACEBOOK_PUBLISHING_REQUESTED,,}" == "true" ]]; then
             facebook_json="$(curl -fsS \
