@@ -402,11 +402,12 @@ assert.ok(
   "CircleCI source and application build gates must cover the safety remediation and generated offline snapshot branches",
 );
 
+const circleWorkflow = circleSafetyBranches.split("\nworkflows:\n")[1] ?? "";
 const circleSourceFilter =
-  circleSafetyBranches.split("  source-verify:")[1]?.split("  application-build-docs:")[0] ?? "";
+  circleWorkflow.split("      - source-verify:")[1]?.split("      - application-build-docs:")[0] ?? "";
 const circleBuildFilter =
-  circleSafetyBranches.split("  application-build-docs:")[1]?.split("  android-release-draft:")[0] ?? "";
-const auditBranchPattern = "/^audit\\/zikr-.*$/";
+  circleWorkflow.split("      - application-build-docs:")[1]?.split("\n      - ")[0] ?? "";
+const auditBranchPattern = String.raw`- /^audit\/zikr-.*$/`;
 assert.ok(
   circleSourceFilter.includes(auditBranchPattern) &&
     circleBuildFilter.includes(auditBranchPattern),
