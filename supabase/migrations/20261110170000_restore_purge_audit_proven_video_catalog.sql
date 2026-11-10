@@ -42,15 +42,24 @@ confirmed as (
     and v.metadata->>'mediaState' = 'purged'
     and v.updated_at between purge_event.created_at - interval '15 seconds'
                          and purge_event.created_at + interval '15 seconds'
-    and (v.metadata->>'mediaPurgedAt')::timestamptz
-        between purge_event.created_at - interval '15 seconds'
-            and purge_event.created_at + interval '15 seconds'
+    and pg_input_is_valid(v.metadata->>'mediaPurgedAt', 'timestamp with time zone')
+    and case
+      when pg_input_is_valid(v.metadata->>'mediaPurgedAt', 'timestamp with time zone')
+        then (v.metadata->>'mediaPurgedAt')::timestamptz
+      else null
+    end between purge_event.created_at - interval '15 seconds'
+              and purge_event.created_at + interval '15 seconds'
     and q.status = 'published'
     and (q.content_type = 'video' or q.content_type like '%_video')
     and q.published_at is not null
     and q.published_at <= purge_event.created_at
     and q.metadata ? 'videoDisposedAt'
-    and (q.metadata->>'videoDisposedAt')::timestamptz <= purge_event.created_at
+    and pg_input_is_valid(q.metadata->>'videoDisposedAt', 'timestamp with time zone')
+    and case
+      when pg_input_is_valid(q.metadata->>'videoDisposedAt', 'timestamp with time zone')
+        then (q.metadata->>'videoDisposedAt')::timestamptz
+      else null
+    end <= purge_event.created_at
     and q.metadata->'platformResults'->'youtube'->>'ok' = 'true'
     and q.metadata->'platformResults'->'youtube'->>'remoteId' ~ '^[A-Za-z0-9_-]{11}$'
     and (v.youtube_id is null or v.youtube_id = q.metadata->'platformResults'->'youtube'->>'remoteId')
@@ -87,6 +96,7 @@ declare
   already_restored_count integer;
   already_restored_general integer;
   already_restored_kids integer;
+  updated_count integer;
 begin
   select
     count(*),
@@ -124,8 +134,9 @@ begin
       and v.published is false
       and v.metadata->>'mediaState' = 'purged';
 
-    if not found then
-      raise exception 'Purge-proven video recovery expected 58 catalog updates but updated none.';
+    get diagnostics updated_count = row_count;
+    if updated_count <> 58 then
+      raise exception 'Purge-proven video recovery expected 58 catalog updates, updated %.', updated_count;
     end if;
   elsif candidate_count = 0 then
     select
