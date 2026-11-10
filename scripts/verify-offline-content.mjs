@@ -11,6 +11,7 @@ const guardPath = 'src/components/layout/offline-navigation-guard.tsx';
 const exporterPath = 'scripts/export-offline-content.mjs';
 const offlineWorkflowPath = '.github/workflows/refresh-offline-content.yml';
 const offlineDbPath = 'src/lib/offline-db.ts';
+const offlineAudioPath = 'src/features/quran/services/offline-audio.ts';
 
 const read = file => (existsSync(file) ? readFileSync(file, 'utf8') : '');
 const failures = [];
@@ -32,6 +33,7 @@ for (const file of [
   guardPath,
   exporterPath,
   offlineDbPath,
+  offlineAudioPath,
 ]) {
   if (!existsSync(file)) failures.push(`Missing ${file}`);
 }
@@ -108,6 +110,7 @@ try {
 
 const offlinePack = read(offlinePackPath);
 const offlineDb = read(offlineDbPath);
+const offlineAudio = read(offlineAudioPath);
 const exporter = read(exporterPath);
 const offlineWorkflow = read(offlineWorkflowPath);
 // Vercel intentionally excludes .github from deployment uploads; validate this workflow in repository CI when present.
@@ -163,7 +166,8 @@ const serviceWorker = read(serviceWorkerPath);
 for (const token of [
   'CACHE_NAME = "zikr-v15"',
   'credentials: "omit"',
-  'CACHE_PREFIX = "zikr-"',
+  'APP_SHELL_CACHE_PATTERN = /^zikr-v\\d+$/',
+  'APP_SHELL_CACHE_PATTERN.test(cacheName)',
   'OFFLINE_CONTENT_PREFIX',
   '"/settings"',
   'CACHE_OFFLINE_ROUTES',
@@ -182,6 +186,9 @@ const coreMatch = serviceWorker.match(/const CORE_INSTALL_ASSETS = \[([\s\S]*?)\
 if (coreMatch && coreMatch[1].includes('"/"')) failures.push('Service worker must not pre-cache the root HTML route');
 if (serviceWorker.includes('const CACHE_NAME = "zikr-v10"')) failures.push('Legacy service worker cache version zikr-v10 must not remain');
 if (!offlinePack.includes('const OFFLINE_CACHE_NAME = "zikr-v15"')) failures.push('Offline pack cache name must match Service Worker cache zikr-v15');
+const quranAudioCacheName = offlineAudio.match(/const CACHE_NAME = ["']([^"']+)["']/)?.[1] ?? "";
+if (quranAudioCacheName !== "zikr-quran-audio-v1") failures.push("Quran audio downloads must use their dedicated persistent cache");
+if (/^zikr-v\\d+$/.test(quranAudioCacheName)) failures.push("Quran audio cache must never match the app-shell cache cleanup pattern");
 
 const offlineLibrary = read(offlineLibraryPath);
 const offlineLibraryClient = read(offlineLibraryClientPath);
