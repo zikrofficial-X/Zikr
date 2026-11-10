@@ -29,7 +29,7 @@ jobs:
     env:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
     steps:
       - name: Checkout canonical main branch
         uses: actions/checkout@v7
@@ -106,15 +106,23 @@ jobs:
 
           pr_number="$(gh pr list --base main --head "${OFFLINE_CONTENT_BRANCH}" --state open --json number --jq '.[0].number // empty')"
           if [[ -z "${pr_number}" ]]; then
-            gh pr create \
+            if gh pr create \
               --base main \
               --head "${OFFLINE_CONTENT_BRANCH}" \
               --title "chore(content): refresh public offline snapshot" \
-              --body "Automated refresh of the validated public offline-content snapshot from canonical Supabase tables. The exporter enforces dataset floors and retains only the integrity-checked tafsir fallback. This PR changes public JSON snapshots only; it does not apply migrations or modify database/storage records. Merge only after the Quality Gate passes."
+              --body "Automated refresh of the validated public offline-content snapshot from canonical Supabase tables. The exporter enforces dataset floors and retains only the integrity-checked tafsir fallback. This PR changes public JSON snapshots only; it does not apply migrations or modify database/storage records. Merge only after the Quality Gate passes."; then
+              echo "Created offline snapshot pull request."
+            else
+              echo "::warning::GitHub Actions token cannot create pull requests in this repository. The validated snapshot branch was pushed; create the PR through the trusted GitHub integration or configure a write-scoped GH_TOKEN secret."
+              {
+                echo "### Offline snapshot PR creation blocked"
+                echo "The snapshot branch was pushed and validated, but the current GitHub Actions token is not allowed to create pull requests."
+                echo "Branch: ${OFFLINE_CONTENT_BRANCH}"
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
           else
             echo "Updated existing offline snapshot PR #${pr_number}."
           fi
 
-          # GITHUB_TOKEN-created PRs do not reliably trigger pull_request workflows.
-          # Dispatch the full Quality Gate explicitly against the exact review branch.
+          # Explicitly run the complete Quality Gate against the exact snapshot branch.
           gh workflow run quality-gate.yml --ref "${OFFLINE_CONTENT_BRANCH}"
