@@ -371,6 +371,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const pendingSocialGenerationRefs = includeMemory
+      ? await supabaseServerAdminRequest<Array<{ content_id: string }>>(
+          "/rest/v1/social_publish_queue?status=neq.published&content_type=like.*video*&content_id=not.is.null&select=content_id&limit=1000",
+        )
+      : [];
+    if (includeMemory && (pendingSocialGenerationRefs ?? []).length >= 1000) {
+      await restoreVideoAutomation(automationWasEnabled);
+      await setPurgeLock(false);
+      purgeLockAttempted = false;
+      return NextResponse.json(
+        {
+          error: "تعذر التحقق من جميع مراجع طلبات الفيديو في طابور النشر. لم يبدأ حذف سجل التوليد.",
+          protectedGenerationRequestCount: null,
+          deletionStarted: false,
+          paused: false,
+          retryRequired: true,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    if (includeMemory && (pendingSocialGenerationRefs ?? []).length > 0) {
+      await restoreVideoAutomation(automationWasEnabled);
+      await setPurgeLock(false);
+      purgeLockAttempted = false;
+      return NextResponse.json(
+        {
+          error: `يوجد ${pendingSocialGenerationRefs.length} عنصر فيديو غير مكتمل في طابور التواصل. تم الحفاظ على سجل التوليد ولم يبدأ الحذف.`,
+          protectedGenerationRequestCount: pendingSocialGenerationRefs.length,
+          deletionStarted: false,
+          paused: false,
+          retryRequired: true,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
     const assets = includeFiles ? await listGeneratedVideos() : [];
     const storagePaths = includeFiles ? await listAutomatedStorageObjects() : [];
     if (includeFiles && assets.length > 0) destructiveWorkStarted = true;
