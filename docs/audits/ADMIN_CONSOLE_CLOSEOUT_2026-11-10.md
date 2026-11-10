@@ -21,7 +21,7 @@ The current branch tree contains (after syncing the latest `main` changes):
 | HTTP handlers covered by the canonical permission matrix | 43 |
 | Server-action source modules under the audited roots | 11 |
 
-The page count reconciles as 47 canonical navigation pages + 18 compatibility redirects + 1 security step-up page. The 19 redirect pages remain for compatibility; they are not duplicate navigation entries.
+The page count reconciles as 47 canonical navigation pages + 18 compatibility redirects + 1 security step-up page. The 18 compatibility redirect pages remain for legacy paths; they are not duplicate navigation entries.
 
 ## 2. Canonical navigation domains
 
@@ -42,12 +42,18 @@ The page count reconciles as 47 canonical navigation pages + 18 compatibility re
 
 - Separated `/admin/social` from the audio/media group into its own Social Publishing group.
 - Kept `/admin/memory` as the canonical media library and internal generated-media workspace. `/admin/media` remains a compatibility redirect to it and is not shown as a separate menu item.
-- Registered the retired social written-studio and YouTube-import routes as explicit compatibility redirects.
+- Preserved `/admin/social/written-studio` as a fully operational page in the dedicated Social Publishing group. Only the retired YouTube-import route remains a compatibility redirect.
 - Aligned `ADMIN_MODULES.ownerRole` with the actual role-permission matrix: audio is owned by `super_admin`; growth/SEO by `seo_manager`; social publishing by `social_manager`.
 - Updated the governance document so the `social_manager` description matches its active `social.manage` and `social.publish` permissions.
 - Localized the audio hub title, navigation labels and descriptions in Arabic.
 - Replaced an unregistered memory navigation icon with a registered icon.
 - Corrected `/admin/kids/content`, which previously showed only a placeholder; both `/admin/kids` and `/admin/kids/content` now render the shared full content manager and use the correct `@/app/admin/kids/actions` Server Action import.
+- Added explicit unavailable states to the Battles, Prophets, Islamic Knowledge and Islamic Library pages so failed Supabase reads are not shown as empty tables or zero counts.
+- Hardened Battles and Prophets video/publish mutations: malformed YouTube URLs are rejected, writes are audited, and the configured MFA step-up policy is enforced.
+- Hardened the Android release manager by separating GitHub API failures from a valid empty release list and blocking saves when the persisted Android release setting could not be read; pinned release tags are format-validated.
+- Kept the Content Console available when content loads but the publishing queue is down; queue operations are disabled and unavailable counts are never shown as zero.
+- Updated central Admin Search to show partial-source failures instead of claiming there are no matches when one or more source tables were unavailable.
+- Restricted generated Facebook post links to HTTPS Facebook domains rather than trusting arbitrary metadata URLs.
 - Moved the Next.js 16 request proxy from repository root `proxy.ts` to `src/proxy.ts`, matching the `src/app` application root. Updated `tsconfig`, auth/OAuth contracts, project-integrity checks, local-import checks, and documentation. The root-level duplicate is now explicitly rejected.
 - Added governance checks for duplicate routes, domain separation, required groups, registered icon keys, documentation alignment and module ownership.
 - Strengthened the module-registry check to require exact navigation-route parity, permission coverage by the declared module, owner-role coverage for every module permission, and a real redirect page for every registered compatibility alias.
@@ -76,16 +82,17 @@ All 66 `src/app/admin/**/page.tsx` entrypoints were fetched and read in full. Ea
 
 ## 7. Validation state
 
-- GitHub tree inspection confirms 66 Admin page entrypoints, 27 API route files and 46 unique visible navigation links.
+- GitHub tree inspection confirms 66 Admin page entrypoints, 27 API route files and 47 unique visible navigation links across ten groups.
 - Source-level inventory confirms the 43 API HTTP methods all have entries in the canonical permission matrix.
+- Additional Admin read paths now carry explicit availability states for Android releases/settings, content-library sources, schedule queue, central search, knowledge tables, battles and prophets.
 - Source-level reconciliation confirms ten navigation groups match ten module keys and every group derives its routes from the corresponding navigation group.
-- `ZIKR Quality Gate` is running for the current PR head. Its final result must be checked before the PR is considered ready.
-- Browser/mobile role-by-role acceptance, authenticated production smoke tests and live Supabase/Vercel verification remain separate release gates. They must not be inferred from source inspection or a green static check.
+- The latest `ZIKR Quality Gate` succeeded on the current PR head at the time of this record; rerun/verify it again after any further code or documentation changes.
+- Browser/mobile role-by-role acceptance and authenticated production smoke tests remain separate release gates because they require an authenticated Admin session. The Vercel Preview must be checked against the final PR SHA; public/unauthenticated checks do not prove every role's access after login. They must not be inferred from source inspection or a green static check.
 
 ## 8. Closeout criteria
 
 Do not merge or deploy until:
-1. The Quality Gate for the latest PR head completes successfully after the final sync and changes.
+1. The Quality Gate for the latest PR head completes successfully after the final sync and all code/documentation changes.
 2. The governance, module-registry, page and API checks pass in that run.
 3. A Preview/browser pass confirms desktop and mobile navigation, search/command palette, all ten sections, and the canonical media/social destinations.
 4. Each role is checked against both visible navigation and direct page/API access.
