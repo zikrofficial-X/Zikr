@@ -59,7 +59,7 @@ jobs:
       VIDEO_DAILY_LIMIT: "24"
       VIDEO_AUTOMATION_DRY_RUN: "false"
       VIDEO_AI_ENABLED: "true"
-      VIDEO_AI_ATTEMPTS_PER_RUN: "2"
+      VIDEO_AI_ATTEMPTS_PER_RUN: "4"
       VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,template"
       FREE_VIDEO_PROVIDER_ENABLED: "false"
       COMFYUI_ENABLED: "false"
