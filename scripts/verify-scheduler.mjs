@@ -59,6 +59,9 @@ if (!publisher.includes("youtube.upload") || !publisher.includes("SOCIAL_PUBLISH
 if (socialRunner.includes("reconcileCompletedVideoSocialQueue")) failures.push("video worker must never reconcile historical completed requests into social queue rows");
 if (!socialRunner.includes("processSocialPublishQueue") || !socialRunner.includes('process.env.SOCIAL_PUBLISH_ENABLED !== "true"')) failures.push("background runner must execute social publishing only when the protected workflow and admin setting allow it");
 if (!socialRunner.includes('process.env.SOCIAL_SYNC_INSIGHTS === "true"')) failures.push("social insight sync must remain opt-in to protect Free-plan query usage");
+if (!socialRunner.includes('"insights"') || !socialRunner.includes('target === "insights"')) failures.push("social insights must have an isolated non-publishing worker target");
+const insightsWorkflow = read(".github/workflows/sync-social-insights.yml");
+if (!insightsWorkflow.includes('cron: "13 4 * * *"') || !insightsWorkflow.includes('BACKGROUND_JOB_TARGET: "insights"') || !insightsWorkflow.includes('SOCIAL_SYNC_INSIGHTS: "true"') || !insightsWorkflow.includes('SOCIAL_PUBLISH_ENABLED: "false"')) failures.push("daily insights workflow must run independently with publishing disabled");
 if (!socialService.includes("created_at=gte.${createdSince}") || !socialService.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff")) failures.push("social queue claims and stale recovery must respect the launch cutoff");
 if (publisher.includes("if: false")) failures.push("social publisher must not retain the retired workflow kill switch");
 const retentionWorkflow = read(".github/workflows/storage-retention.yml");
