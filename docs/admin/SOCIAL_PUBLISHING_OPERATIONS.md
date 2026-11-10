@@ -6,7 +6,7 @@ Facebook, Facebook Reels, and YouTube share the durable delivery queue but execu
 
 GitHub Actions checks readiness independently. Facebook requires an enabled OAuth-managed Page credential in Supabase; YouTube requires the three YouTube OAuth secrets. The worker claims a row only when at least one selected target is enabled and still needs delivery. A missing or expired connection for one provider does not disable the other provider.
 
-For Facebook Reels, the canonical analytics object is the START-phase `video_id`. The FINISH-phase `post_id` identifies the Page post and must not be sent to `/{video-id}/video_insights`. New publishes persist `video_id`; historical rows containing the old post ID are resolved through the Page post's `object_id` or attachment media ID before the Reel insights request.
+For Facebook Reels, the START-phase `video_id` is the analytics object and the FINISH-phase `post_id` is the Page post ID used for links and deletion. New queue results preserve both as `videoId` and `remoteId` respectively; only `videoId` is sent to `/{video-id}/video_insights`. Historical rows containing only the old post ID are resolved through the Page post's `object_id` or attachment media ID before the Reel insights request.
 
 ## Operator enable switches
 
