@@ -20,6 +20,10 @@ Only rows created on or after `SOCIAL_PUBLISH_AFTER` are eligible. Historical so
 
 Published Cloudinary video URLs are permanent playback masters referenced by `public.videos`. Social delivery never deletes them. Only a separate Supabase staging copy may be removed by the storage-retention worker after the 48-hour grace period and after verifying the published platform IDs and absence of other references.
 
+The video worker reads the Admin `video_automation_ai_attempts_per_run` budget at runtime (0–4) after settings are loaded. It uses only the configured free Hugging Face providers; when the attempt budget is exhausted or all providers fail, the deterministic FFmpeg template fallback remains available. The production default is four attempts per worker cycle; no paid provider is silently enabled.
+
+Child-directed videos are stored in the dedicated `kids-stories` category and queried only by the Kids video library through the explicit `metadata.audience = kids` filter. The general `/videos` route excludes the Kids category and audience. The one-time legacy QA backfill revalidates published source text, Kids story contracts, stored source/content fingerprints, the current QA checklist, and live Cloudinary media availability. It only records passed or blocked QA snapshots; it never republishes or enqueues historical items.
+
 A partial video batch is not a workflow-wide failure when at least one video passes all QA checks: failed items remain failed in the audit, while the successful rows stay eligible for the dependent social publisher. A wholly failed generation batch, a social provider failure, or an internal site-publishing failure still fails the workflow. The video generation worker stores verified MP4 files in Cloudinary and registers them in the ZIKR `videos` catalog. Internal site publication uses `content_publish_queue` with `content_table=videos`; external social delivery uses a separate `social_publish_queue` worker. Both paths are independent.
 
 ## Written internal site content generator
