@@ -36,7 +36,23 @@ if (!backfill.includes("process.argv.includes(\"--apply\")")) failures.push("Leg
 if (!backfill.includes("templateVersionId")) failures.push("Legacy QA backfill must block historical requests bound to mutable template IDs");
 if (!backfill.includes("videoUrl") || !backfill.includes("Cloudinary")) failures.push("Legacy QA backfill must check media ownership and live asset availability");
 
+const retryMigration = read("supabase/migrations/20261110031431_retry_false_blocked_legacy_qa_source_url_parity.sql");
+for (const token of [
+  "legacyVideoQaHistory",
+  "automatedVideoQa",
+  "approvalSnapshotHash",
+  "source_hash",
+  "content_hash",
+  "template_version",
+  "Revalidated current source text/URL no longer matches the original source hash.",
+  "status = 'completed'",
+]) {
+  if (!retryMigration.includes(token)) failures.push("Legacy QA retry migration must preserve prior review history and narrowly match verified false-blocked records: " + token);
+}
 const workflow = read(".github/workflows/backfill-legacy-video-qa.yml");
+if (!workflow.includes("20261110031431_retry_false_blocked_legacy_qa_source_url_parity.sql")) {
+  failures.push("Legacy QA workflow must rerun after the safe false-blocked history-preserving migration");
+}
 if (!workflow.includes("workflow_dispatch:") || !workflow.includes("push:") ||
     !workflow.includes("environment: production") ||
     !workflow.includes("SUPABASE_SERVICE_ROLE_KEY") ||
