@@ -48,6 +48,16 @@ const kidsDetailApi = readFileSync("src/app/api/kids/content/[slug]/route.ts", "
 const kidsContentData = readFileSync("src/features/kids/data/content.ts", "utf8");
 
 assert.match(adminAction, /age_appropriate: ageAppropriate/);
+const imageUploadPosition = adminAction.indexOf("await uploadCloudinaryImage");
+assert.ok(imageUploadPosition > 0, "Kids image upload path must remain present");
+assert.ok(
+  adminAction.indexOf("const quizData = parseQuizData(value(formData, \"quiz_data\"));") < imageUploadPosition,
+  "invalid quiz JSON must be rejected before uploading an image",
+);
+assert.ok(
+  adminAction.indexOf("if (type === \"game\" && !isRegisteredGameId(gameId))") < imageUploadPosition,
+  "an invalid game registry ID must be rejected before uploading an image",
+);
 assert.match(adminManager, /name="age_appropriate"/);
 assert.match(adminManager, /automationApprovalRequiredCount/);
 assert.match(adminManager, /اعتماد التوليد الآلي/);
