@@ -337,10 +337,10 @@ export async function GET() {
         automation: {
           enabled: socialPublishingEnabled,
           provider: "GitHub Actions",
-          trigger: "after_video_generation_or_manual",
+          trigger: "after_video_or_written_content_or_15m_schedule_or_manual",
           approvalRequired: true,
           note: socialPublishingEnabled
-            ? "يعمل العامل بعد نجاح توليد الفيديو أو التشغيل اليدوي. لا يُنشر أي فيديو قبل اجتياز موافقة الجودة."
+            ? "يعمل العامل بعد نجاح توليد الفيديو أو المحتوى المكتوب، وكذلك كل 15 دقيقة أو عند التشغيل اليدوي من الفرع الرئيسي. لا يُنشر أي فيديو قبل اجتياز موافقة الجودة."
             : "النشر متوقف؛ لا يتم تشغيل العامل ما لم تُفعّل صلاحيات القنوات وإعداد النشر.",
         },
       },
