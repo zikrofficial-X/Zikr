@@ -575,3 +575,38 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 3. Isolate Preview from production Supabase only after approval for the additional environment/project and its costs.
 4. Do not replay failed/held social items, expose credentials, or publish unverified Kids content.
 5. Do not delete branches, assets, files, tables, or rows; do not alter OAuth/domains/secrets or perform production release/rollback without explicit approval.
+
+
+## Verified execution checkpoint — 2026-11-10T19:19:51.066Z — post PR #314
+
+**State: latest main gates passed; current production rollout is being verified; full project certification remains IN PROGRESS.**
+
+### GitHub and generated Supabase types
+- Canonical main: `6e8010ef95616c01950ff5ef7d6f44b178da5132`.
+- PR #314 merged as `6e8010ef95616c01950ff5ef7d6f44b178da5132`, adding generated TypeScript contracts for `admin_set_primary_site_audio_asset` and `admin_update_user_role`, with both names required by `verify-generated-supabase-types.mjs`.
+- Exact PR head `984d9f61762cdcf0512897cfe88fd051b3286e80` passed GitHub Quality Gate, CircleCI `config-guard`, `source-verify`, and `application-build-docs`. Supabase Preview was skipped because preview-branch creation is disabled; the PR changes types/verification only, with no database migration or DDL change.
+- Main commit `6e8010ef95616c01950ff5ef7d6f44b178da5132` passed GitHub Quality Gate, CircleCI `config-guard`, `source-verify`, `application-build-docs`, and `android-release-draft`; Supabase Preview check succeeded.
+
+### Direct database contract verification
+- Live PostgreSQL confirms both admin RPCs are SECURITY INVOKER, use an empty search_path, return void, and are executable by service_role only. `anon` and `authenticated` lack EXECUTE.
+- The generated signatures match the applied migrations: `admin_update_user_role(p_user_id uuid, p_role text, p_actor_user_id uuid)` and `admin_set_primary_site_audio_asset(p_asset_id uuid, p_kind text, p_actor_user_id uuid)`.
+- Current Supabase reconciliation remains 92/92 public tables RLS-enabled, 211 public policies, 66 foreign keys, 45 distinct public triggers (53 event rows), and 418 migration versions exactly matching 418 local SQL files.
+
+### Video and social queue state — read-only
+- Published generated-video fallback state: 58 catalog videos are published with `mediaState=youtube_fallback` (50 general + 8 Kids). The production Kids videos API returned 10 items.
+- 47 internal generated videos remain hidden with `mediaState=purged` (33 general + 14 Kids). They remain hidden because explicit pre-purge publication provenance is absent; Kids also includes 9 records marked `revalidation_required`. Do not restore or republish these without new provenance and the dedicated Kids QA gate.
+- Social queue: 83 published records and 9 queued written posts; read-only query returned 0 `sourceMediaMissing` flags and 0 records with an error message. Content publish queue contains 113 published video rows and 11 published article rows.
+- Facebook profile connection is enabled/connected and was validated at 2026-11-10 18:40 UTC. YouTube sync state is `ok`, last success 2026-11-10 18:39 UTC, with no last_error. No OAuth token values were read.
+
+### Production deployment
+- Previous verified production deployment is `dpl_EpQK1pKTiYhxJGM6z8VpNW7pbXbV`, READY on `c75b921`; the latest `main@6e8010ef95616c01950ff5ef7d6f44b178da5132` production deployment was initiated after the full CI pass and must be confirmed READY on the exact SHA before its deployment gate is closed.
+- The immediately preceding current-main production routes returned HTTP 200 for `/`, `/videos`, `/kids`, `/api/health`, and `/api/kids/videos`.
+
+### Inventory and closeout scope
+- Recursive Git tree at `6e8010ef95616c01950ff5ef7d6f44b178da5132`: 2152 entries including the manifest; 1661 files; 491 directories; 139720105 file bytes; truncated: `false`.
+- The refreshed manifest excludes its own entry and records 2151 entries, 1660 files, 491 directories, and 139409432 bytes. It is inventory metadata, not proof of manual source review.
+- The previous file-status matrix remains historical until its per-file evidence is rebased and re-read against this main SHA. Source-by-source consumer tracing, browser/device acceptance, Android release validation, and module closure remain open.
+
+### Safety
+- No production migration, data mutation, Storage/Cloudinary deletion, social publication/replay, Android tag movement, signed artifact publication, secret change, OAuth mutation, or rollback was performed in this checkpoint.
+- Keep the 47 hidden purged videos hidden until independent provenance and QA gates are satisfied.
