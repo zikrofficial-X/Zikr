@@ -1845,7 +1845,7 @@ PRs #275, #317, #318 and #319 are merged. No other open PR was present when this
 
 ### Active repair branch — PR #320
 
-The PR branch is separate from the `main@c4560d9` manifest snapshot. These three source files contain the functional repair; audit documents in the same PR update the baseline and checkpoint only.
+The PR branch is separate from the `main@c4560d9` manifest snapshot. These three source files contain the functional repair: daily Kids prioritization plus Kids-safe article backfill identity; audit documents in the same PR update the baseline and checkpoint only.
 
 | Path | PR branch blob SHA-1 | Bytes | State |
 |---|---|---:|---|
@@ -1854,13 +1854,3 @@ The PR branch is separate from the `main@c4560d9` manifest snapshot. These three
 | `scripts/tests/written-content-automation.test.ts` | `46217d2d59752d28121143765d2440ae90d76e4c` | 11067 | Regression assertions added; exact-head CI pending |
 
 PR #320 remains Draft. The last observed pre-follow-up status was `config-guard SUCCESS` and `ZIKR Quality Gate IN_PROGRESS`; after these documentation changes, re-read all required contexts on the latest PR head before any readiness or merge decision. CODEOWNERS review remains mandatory.
-
-### PR #320 latest source blobs — `dbac27714c0e972da21c3ae02275d6fb6971d7b1`
-
-| Path | Branch Git blob SHA-1 | Bytes | State |
-|---|---|---:|---|
-| `scripts/jobs/written-content-automation.ts` | `d2200b6e641ee7ae1284fa91bd67ecc47978bb87` | 21839 | Backfill identity and daily Kids slot changes; exact-head CI pending |
-| `scripts/tests/written-content-automation.test.ts` | `b0fc8ba9fcfc3bcdb24544a8d70cabdd3039615c` | 13031 | Backfill identity and daily Kids slot changes; exact-head CI pending |
-| `src/features/social/services/written-content.ts` | `a7d1c9d06b1497ee3e551e5a31d825bf2c9e5b57` | 10902 | Backfill identity and daily Kids slot changes; exact-head CI pending |
-
-The latest PR has 18 commits and 7 changed files. It remains Draft and unmerged; do not merge until all required checks pass on the exact current head and CODEOWNERS review is satisfied.
