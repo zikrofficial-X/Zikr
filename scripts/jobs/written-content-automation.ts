@@ -163,14 +163,15 @@ export function buildWrittenArticlePayload(
 
 async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
  const automationKey=createWrittenAutomationKey(source.kind,source.id);
- const slug=writtenArticleSlug(automationKey);
- const existing=await readRequired<Row>(
+ const isKidsStory=source.kind==="kids_story";
+ const slug=isKidsStory?"":writtenArticleSlug(automationKey);
+ const existing=isKidsStory?[]:await readRequired<Row>(
   "/rest/v1/articles?slug=eq."+encodeURIComponent(slug)+"&select=id,published,metadata&limit=1",
  );
- let articleId=existing[0]?str(existing[0].id):"";
+ let articleId=isKidsStory?source.id:(existing[0]?str(existing[0].id):"");
  const now=new Date();
  const nowIso=now.toISOString();
- if(!articleId){
+ if(!isKidsStory&&!articleId){
   const payload=buildWrittenArticlePayload(source,draft,automationKey,slug,nowIso);
   const saved=await supabaseServerAdminRequest<Array<{id:string}>>("/rest/v1/articles",{
    method:"POST",
@@ -183,7 +184,7 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
 
  // Keep the existing internal ZIKR article workflow, but do not let it replace
  // the independent Facebook written-post delivery record.
- if(existing[0]?.published!==true){
+ if(!isKidsStory&&existing[0]?.published!==true){
   const contentQueue=await readRequired<Row>(
    "/rest/v1/content_publish_queue?content_table=eq.articles&content_id=eq."+encodeURIComponent(articleId)+"&select=id,status&limit=1",
   );
@@ -296,8 +297,10 @@ export async function runWrittenContentAutomation(options:{category?:string;batc
  const dailyTarget=clamp(process.env.WRITTEN_CONTENT_DAILY_TARGET,3,1,10),batchSize=clamp(options.batchSize??process.env.WRITTEN_CONTENT_BATCH_SIZE,1,1,3);
  const today=new Date();today.setUTCHours(0,0,0,0);
  const todays=await readRequired<Row>(`/rest/v1/articles?metadata->>automation=eq.written-content-v2&created_at=gte.${encodeURIComponent(today.toISOString())}&select=id&limit=100`);
- const remaining=Math.max(0,dailyTarget-todays.length);if(!remaining)return {enabled:true,created:0,duplicates:0,skipped:0,facebookBackfilled,dailyTarget,dailyUsed:todays.length};
- const category=normalizeWrittenCategory(options.category||process.env.WRITTEN_CONTENT_CATEGORY||"auto"),all=await loadSources(),pool=category==="auto"?[...all]:all.filter(x=>x.kind===category);
+ const todaysSocial=await readRequired<Row>(`/rest/v1/social_publish_queue?automation_key=like.written-social-v1:*&created_at=gte.${encodeURIComponent(today.toISOString())}&select=id&limit=100`);
+ const dailyUsed=Math.max(todays.length,todaysSocial.length);
+ const remaining=Math.max(0,dailyTarget-dailyUsed);if(!remaining)return {enabled:true,created:0,duplicates:0,skipped:0,facebookBackfilled,dailyTarget,dailyUsed};
+ const category=normalizeWrittenCategory(options.category||process.env.WRITTEN_CONTENT_CATEGORY||"auto"),all=await loadSources(),pool=category==="auto"?[...all]:category==="kids"?all.filter(x=>x.kind==="kids_story"):all.filter(x=>x.kind===category);
  if(!pool.length)throw new Error("No approved and published source for category "+category);
 
  const groups = new Map<WrittenContentSource["kind"], WrittenContentSource[]>();
@@ -314,7 +317,7 @@ export async function runWrittenContentAutomation(options:{category?:string;batc
   try{const draft=await makeDraft(source,apiKey),result=await enqueue(source,draft);if(result.status==="queued")ids.push(result.id);else duplicates++;}
   catch(error){skipped++;console.warn("[written-content] quarantined",source.kind,source.id,error instanceof Error?error.message:String(error));}
  }
- return {enabled:true,created:ids.length,duplicates,skipped,facebookBackfilled,dailyTarget,dailyUsed:todays.length+ids.length,ids};
+ return {enabled:true,created:ids.length,duplicates,skipped,facebookBackfilled,dailyTarget,dailyUsed:dailyUsed+ids.length,ids};
 }
 const args=process.argv.slice(2),c=args.indexOf("--category"),b=args.indexOf("--batch-size");
 runWrittenContentAutomation({category:c>=0?args[c+1]:undefined,batchSize:b>=0?Number(args[b+1]):undefined}).then(result=>{console.log("[written-content]",JSON.stringify(result));if(result.enabled&&result.created===0&&result.duplicates===0&&result.skipped>0)process.exitCode=1;}).catch(error=>{console.error("[written-content] failed",error instanceof Error?error.message:error);process.exitCode=1;});
