@@ -30,7 +30,7 @@ assert.equal(
     qaApproved: true,
     siteRecord: {
       published: false,
-      metadata: { mediaState: "purged", generatedVideoUrl: null, videoUrl: null },
+      metadata: { mediaState: "purged", mediaPurgedFromPublished: true, generatedVideoUrl: null, videoUrl: null },
     },
   }),
   true,
@@ -85,6 +85,18 @@ reject({
 reject({
   siteRecord: { published: false, metadata: { mediaState: "unpublished" } },
 }, "an intentionally unpublished record must not be republished");
+reject({
+  siteRecord: {
+    published: false,
+    metadata: { mediaState: "purged", mediaPurgedFromPublished: false, generatedVideoUrl: null, videoUrl: null },
+  },
+}, "a purged row that was intentionally unpublished before purge must not be republished");
+reject({
+  siteRecord: {
+    published: false,
+    metadata: { mediaState: "purged", generatedVideoUrl: null, videoUrl: null },
+  },
+}, "a purged row without prior-publication evidence must fail closed");
 reject({
   siteRecord: { published: false, metadata: { mediaState: "purged", videoUrl: "https://example.com/video.mp4" } },
 }, "a catalog record retaining a media URL must not be treated as purged");
