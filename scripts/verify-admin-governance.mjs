@@ -64,8 +64,8 @@ for (const group of groups) {
   }
 }
 const items = groups.flatMap((group) => group.items);
-if (groups.length !== 9) failures.push("expected exactly nine canonical admin navigation zones");
-for (const label of ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الذاكرة والمكتبة", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"]) {
+if (groups.length !== 10) failures.push("expected exactly ten canonical admin navigation zones");
+for (const label of ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الذاكرة والمكتبة", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان", "النشر والتواصل الاجتماعي"]) {
   if (!groups.some((group) => group.label === label)) failures.push("missing canonical admin navigation zone: " + label);
 }
 const routeInventorySection = docs.split("## 1. جرد المسارات والصلاحيات")[1]?.split("## 2. نطاق الأدوار")[0] ?? "";
@@ -78,6 +78,39 @@ if (!items.length) failures.push("no canonical navigation items were parsed");
 if (items.some((item) => !item.label.trim() || !item.permission.trim())) failures.push("navigation item has an empty label or permission");
 
 const hrefs = items.map((item) => item.href);
+const hrefSet = new Set(hrefs);
+for (const href of hrefs) {
+  if (hrefs.filter((candidate) => candidate === href).length > 1) {
+    failures.push("duplicate admin navigation route: " + href);
+  }
+}
+const socialGroup = groups.find((group) => group.key === "social-publishing");
+const mediaAudioGroup = groups.find((group) => group.key === "media-audio");
+if (!socialGroup || !socialGroup.items.some((item) => item.href === "/admin/social")) {
+  failures.push("social publishing must have a dedicated navigation group");
+}
+if (mediaAudioGroup?.items.some((item) => item.href === "/admin/social")) {
+  failures.push("social publishing must not be nested under media/audio navigation");
+}
+if (!mediaAudioGroup?.items.some((item) => item.href === "/admin/media")) {
+  failures.push("media library must be reachable from media/audio navigation");
+}
+const moduleDefinitions = [...moduleCatalog.matchAll(/key:\\s*"([^"]+)"[\\s\\S]*?routes:\\s*routesFor\\("([^"]+)"\\)/g)]
+  .map((match) => ({ key: match[1], routesKey: match[2] }));
+for (const group of groups) {
+  const definition = moduleDefinitions.find((module) => module.key === group.key);
+  if (!definition || definition.routesKey !== group.key) {
+    failures.push("admin module ownership is missing or mismatched for navigation group: " + group.key);
+  }
+}
+for (const group of groups) {
+  const seen = new Set();
+  for (const item of group.items) {
+    if (seen.has(item.href)) failures.push("duplicate route within navigation group " + group.key + ": " + item.href);
+    seen.add(item.href);
+  }
+}
+
 for (const href of new Set(hrefs.filter((value, index) => hrefs.indexOf(value) !== index))) {
   failures.push("duplicate admin navigation route: " + href);
 }
