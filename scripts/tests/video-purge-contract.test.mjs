@@ -91,9 +91,12 @@ for (const marker of [
   );
 }
 assert.ok(
-  route.includes("for (let offset = 0; offset <= 5000; offset += 1000)") &&
-    route.includes("limit: offset === 5000 ? 1 : 1000") &&
-    route.includes("Automated video Storage inventory exceeded the safe pagination limit."),
+  route.includes("const MAX_AUTOMATED_STORAGE_OBJECTS = 5000") &&
+    route.includes("const paths = new Set<string>()") &&
+    route.includes("paths.size > MAX_AUTOMATED_STORAGE_OBJECTS") &&
+    route.includes("for (let offset = 0; offset <= MAX_AUTOMATED_STORAGE_OBJECTS; offset += 1000)") &&
+    route.includes("limit: offset === MAX_AUTOMATED_STORAGE_OBJECTS ? 1 : 1000") &&
+    route.includes("Automated video Storage inventory exceeded the safe 5,000-object limit."),
   "automated Storage pagination must detect and reject inventories larger than the safe 5,000-object limit before deletion.",
 );
 assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical social queue records must be explicitly preserved.");
