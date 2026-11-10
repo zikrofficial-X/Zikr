@@ -23,7 +23,7 @@ async function isVideoPurgeInProgress(): Promise<boolean> {
 export async function syncSocialInsights() {
     const facebookInsights = await syncFacebookReelsInsights(25).catch((error: unknown) => {
       console.error("[social-worker] Facebook Reels insights sync unavailable:", error instanceof Error ? error.message : "Unknown Meta insights error");
-      return { configured: false, candidates: 0, fetched: 0, updated: 0, failed: 0 };
+      return { configured: false, candidates: 0, fetched: 0, updated: 0, failed: 1 };
     });
     if (!facebookInsights.configured || facebookInsights.updated > 0 || facebookInsights.failed > 0) {
       console.log("[social-worker] Facebook Reels insights sync:", JSON.stringify(facebookInsights));
@@ -31,14 +31,18 @@ export async function syncSocialInsights() {
 
     const insights = await syncYoutubePublishedPostInsights(100).catch((error: unknown) => {
       console.error("[social-worker] YouTube public insights sync unavailable:", error instanceof Error ? error.message : String(error));
-      return { configured: false, candidates: 0, fetched: 0, updated: 0 };
+      return { configured: false, candidates: 0, fetched: 0, updated: 0, failed: 1 };
     });
 
     if (insights.updated > 0) {
       console.log("[social-worker] YouTube public post statistics synced:", JSON.stringify(insights));
     }
 
-  return { facebookInsights, youtubeInsights: insights };
+  return {
+    facebookInsights,
+    youtubeInsights: insights,
+    failed: Number(facebookInsights.failed ?? 0) + Number(insights.failed ?? 0),
+  };
 }
 
 export async function processSocialPublishQueue(limit = 10) {
