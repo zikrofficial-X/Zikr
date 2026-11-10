@@ -49,6 +49,8 @@ for (const [token, message] of [
   ["r.template_version = v.metadata->>'templateVersion'", "the restored row must match its renderer version"],
   ["v.metadata->'automatedVideoQa'->>'status' = 'passed'", "automated video QA must have passed"],
   ["v.metadata->>'kidsVideoQaStatus' = 'passed'", "Kids rows require the dedicated QA gate"],
+  ["purge_event_count = 0", "local/preview migration replay without the production audit event must safely no-op"],
+  ["Exact production purge audit event is absent", "non-production databases must not attempt production-specific recovery"],
   ["candidate_count = 58 and general_count = 50 and kids_count = 8", "the migration must fail closed unless the exact 50 general and 8 Kids rows are present"],
   ["updated_count <> 58", "the migration must verify all 58 catalog rows were restored"],
   ["already_restored_count = 58", "a repeated migration execution must be a verified no-op"],
