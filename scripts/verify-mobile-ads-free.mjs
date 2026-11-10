@@ -61,6 +61,11 @@ requireCondition(
   "The Monetag service-worker import must be conditional and skipped for the native worker.",
 );
 requireCondition(
+  serviceWorker.includes("async function purgeNativeAdvertisingMarkup()") &&
+    serviceWorker.includes("await purgeNativeAdvertisingMarkup()"),
+  "The native worker must remove cached HTML containing previously published ad markup.",
+);
+requireCondition(
   adsenseSlot.includes("Capacitor.isNativePlatform()"),
   "The existing AdSense slot must continue to reject native Capacitor runtimes.",
 );
