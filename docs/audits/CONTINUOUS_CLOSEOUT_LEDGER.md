@@ -270,3 +270,11 @@ Read-only SQL against the active project returned:
 5. Continue from the first remaining REVIEW_REQUIRED operational files. Android/device and remaining product-module acceptance are still open.
 
 **State: IN PROGRESS. No modules closed. No FINAL BASELINE READY claim.**
+
+
+### Storage testability refinement — 2026-11-10 13:45 Africa/Cairo
+- Extracted the pure bucket/path/MIME/TTL contract to `src/lib/services/storage-contract.ts` so the contract test does not import the server-only Supabase client module. The server integration re-exports the same helpers; existing route imports remain compatible.
+- Commits: pure contract `8dbeebb0440ed9da62c0b973e94e40bac7c20d3c`; server integration `c7c78c22cf545ccbccddc3747171c9453235f7b0`; test import `93cdeb03f166ca8ecafed4c7c6d0939799d89699`.
+- PR tree is now 2,140 entries: 1,649 files and 491 directories. The main baseline remains 1,639 files; coverage remains 117/1,639 and 1,522 REVIEW_REQUIRED. The pure contract, forward migration and test are supplemental PR paths, not yet part of main.
+- PR #275 head at this refinement: `241840744a606e42519b7f0e9c9930363651c7e0`; draft/open/unmerged. CI must run against the final head.
+
