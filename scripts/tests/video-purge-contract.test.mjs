@@ -70,6 +70,30 @@ assert.ok(
   queueMediaGuardPosition >= 0 && queueMediaGuardPosition < cloudinaryInventoryPosition,
   "pending social media must be checked before the Cloudinary deletion inventory is processed.",
 );
+
+const firstDestructiveOperation = route.indexOf("const cloudinaryErrors = includeFiles");
+for (const marker of [
+  "const generatedCatalogRows = await",
+  "if ((generatedCatalogRows ?? []).length >= 1000)",
+  "const generatedRequests = includeMemory",
+  "if (includeMemory && (generatedRequests ?? []).length >= 1000)",
+  "const automationRuns = includeMemory",
+  "if (includeMemory && (automationRuns ?? []).length >= 1000)",
+  "const assets = includeFiles ? await listGeneratedVideos()",
+  "const storagePaths = includeFiles ? await listAutomatedStorageObjects()",
+]) {
+  const position = route.indexOf(marker);
+  assert.ok(
+    position >= 0 && position < firstDestructiveOperation,
+    "every bounded purge inventory and limit guard must complete before the first destructive operation: " + marker,
+  );
+}
+assert.ok(
+  route.includes("for (let offset = 0; offset <= 5000; offset += 1000)") &&
+    route.includes("limit: offset === 5000 ? 1 : 1000") &&
+    route.includes("Automated video Storage inventory exceeded the safe pagination limit."),
+  "automated Storage pagination must detect and reject inventories larger than the safe 5,000-object limit before deletion.",
+);
 assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical social queue records must be explicitly preserved.");
 assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active internal generation before deleting media.");
 assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");
