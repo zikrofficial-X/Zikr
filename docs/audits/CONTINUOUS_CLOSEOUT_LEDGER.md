@@ -755,3 +755,30 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 - All six PRs #320–#325 have no submitted review. CODEOWNERS owner `@Zikrmediaofficial` currently has no collaborator permission; no approval or branch-protection rule was bypassed.
 - No production SQL, data, Storage, Cloudinary, social provider, Gemini, Android/iOS release, or content-generation action was executed.
 - Remaining closeout: 1,525 `REVIEW_REQUIRED` main rows, untraced consumers/imports/contracts, owner review, production migration release, device/browser acceptance, live OAuth return-to-app testing, and AdSense editorial/account verification. No module is closed.
+
+
+## 2026-11-10T22:21:00Z — repository audit continuation and exact-head repair checkpoint
+
+### Defects discovered and repaired
+
+- **PR #320, Kids backfill daily-slot bypass:** the historical-article backfill loop could enqueue multiple `kids_story` rows in one run before the later automatic-generation reservation check. Added a UTC-day reservation query over `created_at`, `scheduled_at`, and `published_at`; the first successful Kids backfill reserves the day and subsequent Kids rows are deferred. Added a pure scheduling helper so Kids backfills do not cross the UTC-day boundary; when five minutes of lead time would spill into the next day, the row is deferred to the next run. Regression tests cover the first/second reservation, general-content unaffected behavior, and the near-midnight boundary.
+- **PR #320, Kids public feed underfill:** the endpoint previously fetched only 12 queue rows before checking that each source story remained published, active, and age-appropriate. Stale rows could occupy those 12 slots and hide valid older posts. It now reads 60 candidates, validates live sources, and returns the first 12 valid posts. Added a focused contract assertion.
+- **PR #324, recursive Storage overflow:** the 5,000-row guard was enforced per prefix, so a recursive inventory with many smaller subfolders could exceed the intended total safety cap. Replaced the array with a global path set and reject as soon as total unique objects exceed 5,000; the purge contract test now requires this global cap and shared pagination constant. The purge was not executed.
+
+### Exact-head verification
+
+- PR #320 code head: `2055be4678fb39275377f9eef21829bdb3b68c43`; 69 commits, 20 changed files. GitHub Quality Gate run #42915158933 is QUEUED. CircleCI `source-verify`, `application-build-docs`, and `config-guard` are PENDING. Earlier head `3ba9692958d3df9d243c6e7beda92343a59d3c40` passed GitHub Quality Gate #42914306307, but that does not verify the newer Kids backfill/feed changes.
+- PR #324 head: `f86010f1d97c0064699bca0aabdc34f126896a82`; GitHub Quality Gate #42914613560 SUCCESS and CircleCI config-guard SUCCESS. No purge, deletion, or production mutation occurred.
+- PR #320's 419-migration replay passed on the earlier code head in ephemeral PostgreSQL; the new changes do not add a migration. The migration `20261110212000_kids_content_public_read_respects_active_state.sql` is not applied to production.
+
+### Inventory, runtime, and platform state
+
+- Main baseline `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`: 1,662 files, 492 directories, 2,154 tree entries. Manifest `ae8849ca2127dd5ee1d6e327fb07405e3a05cbc2` contains 2,153 entries (1,661 blobs + 492 directories), excludes itself, and now matches every other main tree path/mode/SHA/blob-size. The `docs` and `docs/audits` ancestor directory SHA values are null by design to avoid self-reference. PR #320 branch tree: 1,667 files and 492 directories, including five branch-only files.
+- Supabase production is ACTIVE_HEALTHY with 418 migrations through `20261110170000`; no Preview branch exists. Security advisor: one warning for disabled leaked-password protection. Performance advisor: 86 unused-index INFO findings; indexes were not removed. Health advisor: no findings. Facebook and YouTube profile rows currently show `ok`; YouTube OAuth credential is connected.
+- Vercel Production remains READY at `main@c4560d9`, deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`. PR #320/#324 Preview deployments are absent. `SUPABASE_SERVICE_ROLE_KEY` is configured only for Production; the missing-key runtime event belonged to a Preview deployment. Recent Supabase socket resets and an older rejected social-token attempt were not reproduced on the latest production deployment.
+- No production SQL/data writes, Gemini generation, social dispatch/publication, video generation/purge, storage deletion, or Android release was triggered.
+
+### Approval and remaining scope
+
+- PRs #320–#325 remain open with no submitted review. CODEOWNERS `@Zikrmediaofficial` is not requestable under the connected GitHub identity. Protected-branch and review requirements remain intact.
+- The file-status matrix still has 1,525 main-baseline files at `REVIEW_REQUIRED`; modules closed remain 0. Manual Android/iOS device acceptance, live OAuth/YouTube confirmation, production migration, Vercel deployment, and owner approval remain outstanding. No claim of full repository closure is made.
