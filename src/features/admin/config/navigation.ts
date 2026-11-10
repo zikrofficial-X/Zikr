@@ -77,10 +77,10 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
   },
   {
     key: "memory",
-    label: "الذاكرة والمكتبة",
+    label: "الوسائط والذاكرة",
     icon: "brain",
     items: [
-      { href: "/admin/memory", label: "ذاكرة المشروع", permission: "media.manage", icon: "database" },
+      { href: "/admin/memory", label: "مكتبة الوسائط والذاكرة", permission: "media.manage", icon: "database" },
     ],
   },
   {
@@ -88,7 +88,6 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     label: "الوسائط والصوت",
     icon: "folder-open",
     items: [
-      { href: "/admin/media", label: "مكتبة الوسائط", permission: "media.manage", icon: "image" },
       { href: "/admin/audio", label: "مركز الصوت", permission: "audio.manage", icon: "volume-2" },
       { href: "/admin/audio/quran", label: "تلاوات القرآن", permission: "audio.manage", icon: "headphones" },
       { href: "/admin/audio/adhan", label: "الأذان", permission: "audio.manage", icon: "radio" },
