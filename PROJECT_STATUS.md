@@ -377,3 +377,13 @@ A read-only join of the video catalog, generation requests, social publishing qu
 - PR #275 remains Draft with 70 changed files (9,842 additions / 2,262 deletions). No merge is authorized until current-head checks, isolated Preview, and acceptance gates pass.
 
 No files or production data were deleted in this checkpoint. No Cloudinary assets were deleted, no social posts were published, and no production deployment was initiated. File-level review and browser/mobile acceptance remain incomplete; modules closed remains 0.
+
+
+## Verified current checkpoint — 2026-11-10T19:19:51.066Z
+
+- Current canonical `main`: `6e8010ef95616c01950ff5ef7d6f44b178da5132`. PR #314 added the missing generated Supabase TypeScript contracts for the two admin RPCs; exact PR-head Quality Gate and all CircleCI checks passed.
+- Main Quality Gate, CircleCI config/source/build/Android-release-draft checks, and Supabase Preview passed after merge.
+- Live database read-only checks confirm 92/92 public tables with RLS, 211 policies, 66 foreign keys, 45 distinct public triggers (53 trigger event rows), and 418/418 migration versions matching local files. The two admin RPCs are invoker-security, empty-search-path, service_role-only.
+- Video catalog: 58 provenance-confirmed videos are visible through YouTube fallback; 47 purged rows remain hidden because provenance is not established, including 9 Kids rows requiring revalidation. Social queue has 83 published and 9 queued records with zero current sourceMediaMissing flags or error-message rows. YouTube sync status is `ok`; Facebook Page connection is connected and recently validated.
+- Current tree inventory: 2152 entries including the manifest, 1661 files, 491 directories, no truncation. Updated Git manifest records this exact `main` baseline; manual source review and module-level certification remain IN PROGRESS.
+- Production deployment for this latest main SHA is still subject to final READY and route verification; do not describe it as released until its exact SHA is confirmed.
