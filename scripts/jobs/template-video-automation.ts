@@ -169,6 +169,11 @@ export type GeneratedRequest = {
   generation_attempts?: number | null;
   next_retry_at?: string | null;
   duration?: number | null;
+  source_hash?: string | null;
+  content_hash?: string | null;
+  template_version?: string | null;
+  scene?: string | null;
+  render_duration_ms?: number | null;
 };
 
 type AiVideoPlan = {
