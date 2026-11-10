@@ -167,6 +167,8 @@ export type GeneratedRequest = {
   content: Record<string, unknown>;
   status: string;
   automation_key: string | null;
+  error_message?: string | null;
+  error_details?: string | null;
   video_url?: string | null;
   generation_attempts?: number | null;
   next_retry_at?: string | null;
@@ -2116,6 +2118,10 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
     console.log(`[template-video] dry-run enabled; no video generation, upload, or publishing will occur (limit=${limit}).`);
     return { processed: 0, succeeded: 0, failed: 0 };
   }
+  if (await isVideoGenerationPaused()) {
+    console.log("[template-video] generation lock is active; no queue rows will be claimed.");
+    return { processed: 0, succeeded: 0, failed: 0, skipped: 0 };
+  }
   const staleBefore = new Date(Date.now() - engineConfig().staleAfterMinutes * 60_000).toISOString();
   const stale = await supabaseServerAdminRequest<Array<{ id: string; generation_attempts?: number | null }>>(
     `/rest/v1/video_generation_requests?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&video_url=is.null&select=id,generation_attempts&limit=50`,
@@ -2141,7 +2147,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
     );
   }
   const candidateLimit = Math.max(1, Math.min(10, limit));
-  const eligibleFilter = `status=in.(pending,retry_wait)&or=(status.eq.pending,next_retry_at.lte.${encodeURIComponent(new Date().toISOString())})&select=id,title,description,category,content,status,automation_key,generation_attempts,next_retry_at,duration&order=created_at.asc&limit=${candidateLimit}`;
+  const eligibleFilter = `status=in.(pending,retry_wait)&or=(status.eq.pending,next_retry_at.lte.${encodeURIComponent(new Date().toISOString())})&select=id,title,description,category,content,status,automation_key,error_message,error_details,generation_attempts,next_retry_at,duration&order=created_at.asc&limit=${candidateLimit}`;
   let rows: GeneratedRequest[] = [];
 
   if (Number.isInteger(priorityDay)) {
@@ -2173,11 +2179,36 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
   let failed = 0;
   let skipped = 0;
   for (const request of rows || []) {
+    if (await isVideoGenerationPaused()) {
+      console.log("[template-video] generation lock activated before the next queue claim; stopping this batch.");
+      break;
+    }
     const claimed = await supabaseServerAdminRequest<GeneratedRequest[]>(
       `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=in.(pending,retry_wait)`,
       { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ status: "processing", error_message: null, error_details: null, updated_at: new Date().toISOString() }) },
     );
     if (!claimed?.[0]) continue;
+    if (await isVideoGenerationPaused()) {
+      const restored = await supabaseServerAdminRequest<GeneratedRequest[]>(
+        `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=eq.processing&video_url=is.null`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify({
+            status: request.status,
+            error_message: request.error_message ?? null,
+            error_details: request.error_details ?? null,
+            updated_at: new Date().toISOString(),
+          }),
+        },
+      );
+      if (!restored?.[0]) {
+        throw new Error(`Could not release video request ${request.id} after the purge lock activated.`);
+      }
+      skipped += 1;
+      console.log(`[template-video] released unstarted queue claim ${request.id} because the generation lock activated.`);
+      continue;
+    }
     processed += 1;
     const attemptStartedAt = Date.now();
     try {
