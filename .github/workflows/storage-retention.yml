@@ -25,6 +25,7 @@ concurrency:
 
 jobs:
   cleanup:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 25
@@ -36,8 +37,10 @@ jobs:
       CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - name: Checkout
+      - name: Checkout canonical main
         uses: actions/checkout@v7
+        with:
+          ref: main
 
       - name: Require explicit owner confirmation before destructive cleanup
         if: github.event_name == 'workflow_dispatch' && inputs.apply == true
