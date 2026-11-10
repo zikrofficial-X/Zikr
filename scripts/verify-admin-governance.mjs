@@ -78,7 +78,6 @@ if (!items.length) failures.push("no canonical navigation items were parsed");
 if (items.some((item) => !item.label.trim() || !item.permission.trim())) failures.push("navigation item has an empty label or permission");
 
 const hrefs = items.map((item) => item.href);
-const hrefSet = new Set(hrefs);
 for (const href of hrefs) {
   if (hrefs.filter((candidate) => candidate === href).length > 1) {
     failures.push("duplicate admin navigation route: " + href);
@@ -109,10 +108,6 @@ for (const group of groups) {
     if (seen.has(item.href)) failures.push("duplicate route within navigation group " + group.key + ": " + item.href);
     seen.add(item.href);
   }
-}
-
-for (const href of new Set(hrefs.filter((value, index) => hrefs.indexOf(value) !== index))) {
-  failures.push("duplicate admin navigation route: " + href);
 }
 
 function routeFile(href) {
