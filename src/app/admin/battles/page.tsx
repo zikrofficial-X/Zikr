@@ -5,6 +5,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { requireAdminPermission } from '@/features/admin/services/admin';
+import { requireAdminStepUp } from '@/features/admin/services/security';
 import {
   getAdminBattles,
   saveAdminBattleVideo,
@@ -18,7 +19,7 @@ import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 
 async function saveBattleVideoAction(formData: FormData) {
   'use server';
-  await requireAdminPermission("battles.manage");
+  await requireAdminStepUp("battles.manage", "/admin/battles");
   const id = String(formData.get('id') ?? '').trim();
   const rawUrl = String(formData.get('youtube_url') ?? '').trim();
   if (!id) throw new Error("معرّف الغزوة مطلوب.");
@@ -41,7 +42,7 @@ async function saveBattleVideoAction(formData: FormData) {
 
 async function toggleBattlePublishAction(formData: FormData) {
   'use server';
-  await requireAdminPermission("battles.manage");
+  await requireAdminStepUp("battles.manage", "/admin/battles");
   const id = String(formData.get('id') ?? '').trim();
   const next = formData.get('next') === 'true';
   if (!id) throw new Error("معرّف الغزوة مطلوب.");
