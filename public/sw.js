@@ -1,9 +1,17 @@
-self.options = {
+// Keep the website's Monetag service-worker integration out of the native
+// Capacitor worker. The app registers this same file with ?native=1 so its
+// offline cache and notification handlers remain available without ad code.
+const isNativeCapacitorWorker =
+  new URL(self.location.href).searchParams.get("native") === "1";
+
+if (!isNativeCapacitorWorker) {
+  self.options = {
     "domain": "5gvci.com",
     "zoneId": 12171818
+  };
+  self.lary = "";
+  importScripts('https://5gvci.com/act/files/service-worker.min.js?r=sw');
 }
-self.lary = ""
-importScripts('https://5gvci.com/act/files/service-worker.min.js?r=sw')
 
 // Service Worker for Zikr PWA
 const CACHE_NAME = "zikr-v15";
