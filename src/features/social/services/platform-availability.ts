@@ -139,6 +139,7 @@ export function getRetryableSocialPlatforms(
   metadata: SocialPlatformMetadata,
   allowAmbiguous = false,
 ): SocialPlatform[] {
+  if (metadata?.sourceMediaMissing === true) return [];
   const results = normalizeSocialPlatformResults(metadata?.platformResults);
   const authBlockedPlatforms = metadataPlatforms(metadata?.authBlockedPlatforms);
   const permanentFailurePlatforms = metadataPlatforms(metadata?.permanentFailurePlatforms);

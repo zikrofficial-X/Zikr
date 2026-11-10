@@ -364,3 +364,10 @@ Read-only SQL against the active project returned:
 5. Keep the owner-scoped Storage migration, Preview secret isolation, Auth hardening, branch protection and all destructive cleanup behind their existing approval gates.
 
 **State: IN PROGRESS / CRITICAL. No production data, secrets, OAuth settings, domains, Storage objects, Cloudinary assets, branches or releases were modified.**
+
+
+## CI correction — 2026-11-10 16:28 Africa/Cairo
+
+- The new full-scope Quality Gate reached `social-platform-isolation.test.ts` and exposed one missed guard: `getRetryableSocialPlatforms()` still returned an independent YouTube target for a row flagged `sourceMediaMissing`. The failing assertion was explicit; the provider was not called.
+- Added the same fail-closed `sourceMediaMissing` guard directly to `getRetryableSocialPlatforms()`. This complements the worker selector, platform attempt gate, video approval, admin retry skip and Facebook reauthorization guard.
+- No production queue row, social provider, asset, secret, OAuth setting, database object or deployment was changed. The new commit must pass the complete Quality Gate and CircleCI checks before any merge decision.
