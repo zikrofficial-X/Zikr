@@ -7,7 +7,7 @@ import { getFacebookPageCredentials } from "@/features/social/services/facebook-
 import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError } from "@/features/social/services/facebook-reels-rate-limit";
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
-import { shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
+import { getPublishedVideoStagingCleanupEligibleAt, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getUnavailableSocialPlatforms, isPermanentSocialFailure } from "@/features/social/services/platform-availability";
 
@@ -712,11 +712,10 @@ async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<bool
     "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id) + "&select=content&limit=1",
   );
   const existingContent = requestRows?.[0]?.content ?? {};
-  const publishedAt = item.published_at ?? new Date().toISOString();
-  const publishedTime = Date.parse(publishedAt);
-  const stagingCleanupEligibleAt = new Date(
-    (Number.isFinite(publishedTime) ? publishedTime : Date.now()) + 48 * 60 * 60 * 1000,
-  ).toISOString();
+  // Start the grace period when every requested platform has confirmed
+  // publication, not when an earlier partial attempt first succeeded.
+  const fullyPublishedAt = new Date().toISOString();
+  const stagingCleanupEligibleAt = getPublishedVideoStagingCleanupEligibleAt(fullyPublishedAt);
 
   await supabaseServerAdminRequest(
     "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id),
