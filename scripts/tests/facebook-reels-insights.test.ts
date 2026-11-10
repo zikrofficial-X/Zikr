@@ -86,7 +86,21 @@ const videoAutomation = readFileSync(
   resolve("src/features/videos/services/video-automation.ts"),
   "utf8",
 );
-assert.ok(videoAutomation.includes("return startData.video_id;"));
-assert.ok(!videoAutomation.includes("return finishData.post_id ?? startData.video_id;"));
+assert.ok(videoAutomation.includes("remoteId: finishData.post_id ?? startData.video_id"));
+assert.ok(videoAutomation.includes("videoId: startData.video_id"));
+
+const socialPublisher = readFileSync(
+  resolve("src/features/social/services/social-publishing.ts"),
+  "utf8",
+);
+assert.ok(socialPublisher.includes("publishFacebookReelWithIds"));
+assert.ok(socialPublisher.includes("...(videoId ? { videoId } : {})"));
+
+const insightsService = readFileSync(
+  resolve("src/features/social/services/facebook-reels-insights.ts"),
+  "utf8",
+);
+assert.ok(insightsService.includes("typeof reel.videoId === \"string\""));
+assert.ok(insightsService.includes("resolveFacebookReelVideoIdFromPost"));
 
 console.log("Facebook Reels metric parsing and secure Page OAuth flow tests passed.");
