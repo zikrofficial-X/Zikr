@@ -179,7 +179,7 @@ if (!sidebar.includes("filteredMobileGroups") || !sidebar.includes("لا توج�
 if (!adminService.includes("admin_role_assignments") || !adminService.includes("requireAdminPermissionApi")) {
   failures.push("admin RBAC/API guard contract missing");
 }
-const proxy = read("proxy.ts");
+const proxy = read("src/proxy.ts");
 if (!proxy.includes('headers.set("x-zikr-pathname", pathname)')) {
   failures.push("admin route proxy must forward the requested pathname for safe post-login return navigation");
 }
