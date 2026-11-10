@@ -399,7 +399,7 @@ async function main() {
   }
 
   const insightsFailed = target === "insights" && insights
-    ? Number(insights.facebookInsights?.failed ?? 0) + Number(insights.youtubeInsights?.failed ?? 0)
+    ? Number(insights.failed ?? 0)
     : 0;
 
   console.log("[background-jobs] Summary:", JSON.stringify({
