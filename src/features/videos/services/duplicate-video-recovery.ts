@@ -19,6 +19,36 @@ export type DuplicateVideoSiteRecord = {
   metadata: Record<string, unknown> | null;
 } | null;
 
+function isGeneratedCloudinaryVideoUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com") return false;
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    const uploadIndex = parts.findIndex((part, index) => part === "video" && parts[index + 1] === "upload");
+    if (uploadIndex < 0) return false;
+    const assetParts = parts.slice(uploadIndex + 2);
+    if (/^v\\d+$/.test(assetParts[0] ?? "")) assetParts.shift();
+    const filename = assetParts.pop() ?? "";
+    const publicId = [...assetParts, filename.replace(/\\.[^.]+$/, "")].filter(Boolean).join("/");
+    return publicId.startsWith("auto-");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Build a compare-and-set PostgREST filter for replacing the canonical request's
+ * media pointer. A stale URL is included only for a generated Cloudinary asset;
+ * unexpected URLs cannot be overwritten by the recovery path.
+ */
+export function buildDuplicateVideoOwnerVideoUrlFilter(videoUrl: string | null | undefined): string {
+  const alternatives = ["video_url.is.null", "video_url.eq."];
+  if (typeof videoUrl === "string" && isGeneratedCloudinaryVideoUrl(videoUrl)) {
+    alternatives.push("video_url.eq." + encodeURIComponent(videoUrl));
+  }
+  return "or=(" + alternatives.join(",") + ")";
+}
+
 /**
  * Reuse a newly rendered asset only when the canonical completed request has
  * lost its media and its public catalog row is absent or explicitly marked as
