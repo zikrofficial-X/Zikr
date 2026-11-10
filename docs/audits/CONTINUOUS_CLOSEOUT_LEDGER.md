@@ -646,7 +646,7 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 ### Video, social, and runtime observations
 - `video_generation_requests`: 115 completed, 2 cancelled. The 64 completed rows with null `video_url` have the intentional `content.videoDisposedAt` marker recorded in the prior audit; they are not assumed to be missing outputs.
 - `videos`: 58 published `youtube_fallback`, 5 published `cloudinary_ready`, 20 other published rows, and 47 still hidden in purged state. No media or queue records were changed.
-- Social queue snapshot: 83 published video posts, 2 published written posts, 9 queued written posts. No blind retries, duplicate publishes, provider calls, or content dispatches were performed.
+- Social queue snapshot: 81 published video posts, 2 published written posts, 9 queued written posts. No blind retries, duplicate publishes, provider calls, or content dispatches were performed.
 - Vercel 24-hour errors: 8 intermittent `fetch failed` socket/TLS failures across `/`, `/admin/audio/adhan`, `/hadith/[book]/[id]`, `/admin/automation`, and `/admin/analytics`; latest at 19:51:46 UTC, including `ETIMEDOUT`/ `ECONNRESET` to Supabase. The last 30-minute production log query shows one such `write ETIMEDOUT` event. No safe root-cause code change is justified without reproducing the actual upstream failure.
 - Two missing-service-role errors are tied to older Preview deployment `dpl_9jg1eFabED8NUuv7jEcFVbQRdAFY`; do not attribute them to the current Preview without an exact-head reproduction. One historical rejected Meta server-token attempt remains in logs; it does not prove the connected Facebook Page credential is invalid.
 
@@ -671,3 +671,11 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 - PR #320 now also introduces `buildWrittenBackfillQueuePayload`: Kids backfills use `content_id=sourceId`, add `audience=kids`, `kidsContentId`, and `ageGroup`, and reject non-UUID source IDs or public paths outside `/kids/`. General backfills keep the article UUID and do not acquire a Kids audience marker. Regression tests cover both paths and invalid Kids identity.
 - Daily Kids selection remains conditional on remaining daily quota. The 11-row quota saturation means no new post should be forced today; the next UTC-day scheduled run can use the Kids-first slot if an approved source still exists and no Kids queue row is already queued/processing/publishing/partial/published.
 - Latest PR #320 head at this checkpoint: `dbac27714c0e972da21c3ae02275d6fb6971d7b1`, 18 commits, 7 files, 478 additions, 173 deletions. It remains Draft and unmerged. All exact-head CI contexts must be rechecked after these commits; CODEOWNERS review remains outstanding.
+
+
+## Social queue execution follow-up — 2026-11-10T20:22:00Z
+
+- Scheduled publisher run `42890675863` completed SUCCESS at 19:58:57 UTC. Its worker summary is `processed=0, succeeded=0, deferred=0, authBlocked=0, failed=0`; all three providers were enabled. This was a clean no-op, not an auth or publishing failure.
+- Current `social_publish_queue` snapshot: **81 published video rows**, **2 published written posts**, and **9 queued written posts**. No video rows are currently queued, partial, processing, publishing, or failed. The 9 written posts are Facebook-only and all are scheduled in the future: earliest 2026-11-10 23:19:07 UTC, latest 2026-11-13 15:19:07 UTC; **0 are due now**. This explains the publisher's zero-work result.
+- The scheduled written-content generator `42890589165` completed SUCCESS but created 0 because `dailyUsed=11` exceeded `dailyTarget=3`. The 11 are the 2 published plus 9 queued written posts created today. The daily cap was not bypassed, and no extra post was inserted.
+- Kids-specific written-post rows remain 0. Do not dispatch a manual generation or override the daily cap during this audit; the PR #320 selection/backfill repair can be evaluated on CI, then the next normal UTC-day run can use an available Kids slot.
