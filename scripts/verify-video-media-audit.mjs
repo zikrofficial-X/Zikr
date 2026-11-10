@@ -63,7 +63,7 @@ if (!workflow.includes('cron: "41 4 * * *"') ||
     !workflow.includes("pnpm video:media:audit")) {
   failures.push("Daily video media audit must run in the production environment with validated service-role credentials");
 }
-const migration = read("supabase/migrations/20261110025000_reconcile_published_youtube_ids_to_video_catalog.sql");
+const migration = read("supabase/migrations/20261110025303_reconcile_published_youtube_ids_to_video_catalog.sql");
 for (const token of [
   "platformResults",
   "youtube.remoteId",
