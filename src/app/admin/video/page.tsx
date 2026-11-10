@@ -41,7 +41,7 @@ export default async function VideoFactoryDashboardPage() {
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           ["طلبات الفيديو النشطة", videoPending, videoFailures === null ? "تعذر قراءة الطابور" : videoFailures ? "يوجد فشل يحتاج مراجعة" : "لا يوجد فشل مرئي", videoFailures ? "danger" : videoFailures === null ? "neutral" : "success"],
-          ["التشغيل الداخلي", "نشط", "التوليد والحفظ داخل ZIKR فقط", "neutral"],
+          ["التشغيل الداخلي", "نشط", "التوليد داخل ZIKR، ثم النشر للموقع والمنصات بعد اجتياز QA", "neutral"],
           ["المسودات والمراجعة", metricValue("drafts"), "محتوى يحتاج قرارًا تحريريًا", "warning"],
           ["تدقيق الإدارة", metricValue("auditFailures"), "آخر 12 عملية مدققة", "neutral"],
         ].map(([label, value, note, tone]) => (
