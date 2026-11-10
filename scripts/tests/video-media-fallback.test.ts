@@ -7,6 +7,7 @@ import {
   resolveVideoYoutubeId,
   shouldKeepPublishedVideoAfterMediaPurge,
   shouldRestorePurgedPublishedVideo,
+  wasPublishedBeforeMediaPurge,
 } from "../../src/features/videos/services/video-media-contract";
 
 const id = "5pob7O7rLnU";
@@ -41,6 +42,11 @@ assert.equal(
 );
 assert.equal(shouldKeepPublishedVideoAfterMediaPurge(confirmed, true), true);
 assert.equal(shouldKeepPublishedVideoAfterMediaPurge(confirmed, false), false);
+
+assert.equal(wasPublishedBeforeMediaPurge({ published: true, metadata: {} }), true);
+assert.equal(wasPublishedBeforeMediaPurge({ published: false, metadata: { mediaPurgedFromPublished: true } }), true,
+  "a repeated purge must preserve the original public state after the catalog row was hidden");
+assert.equal(wasPublishedBeforeMediaPurge({ published: false, metadata: { mediaPurgedFromPublished: false } }), false);
 
 const unconfirmed = {
   ...confirmed,
