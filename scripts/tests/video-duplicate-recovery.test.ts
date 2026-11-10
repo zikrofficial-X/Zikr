@@ -115,6 +115,13 @@ reject({
   },
 }, "a purged row without prior-publication evidence must fail closed");
 reject({
+  owner: { video_url: "https://example.com/video.mp4" },
+  siteRecord: {
+    published: false,
+    metadata: { mediaState: "purged", mediaPurgedFromPublished: true, generatedVideoUrl: null, videoUrl: null },
+  },
+}, "a non-Cloudinary URL must never be overwritten by generated-media recovery");
+reject({
   siteRecord: { published: false, metadata: { mediaState: "purged", videoUrl: "https://example.com/video.mp4" } },
 }, "a catalog record retaining a media URL must not be treated as purged");
 
@@ -205,6 +212,7 @@ assert.equal(buildMissingMediaQueueRecoveryPatch({
 
 assert.ok(worker.includes("canRecoverDuplicateVideoRender"), "the video worker must use the recovery decision contract");
 assert.ok(worker.includes("buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)"), "canonical recovery must compare-and-set the exact previously stored Cloudinary URL");
+assert.ok(worker.includes("&status=eq.completed&${buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)}"), "canonical recovery must retain the completed-state guard while matching the exact media pointer");
 assert.ok(worker.includes("recoverPurgedRecord: true"), "purged canonical records must use the controlled recovery queue path");
 assert.ok(worker.includes("restoreMissingMediaSocialQueueItems"), "restored canonical media must release only eligible held social queue rows");
 const duplicateCancelIndex = worker.indexOf("const cancelledDuplicateRows");
