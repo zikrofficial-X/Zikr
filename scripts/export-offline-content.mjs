@@ -123,12 +123,12 @@ for (const [dataset, table, ...filters] of datasets) {
     const previousPath = typeof previousDefinition?.path === 'string'
       ? previousDefinition.path
       : '';
-    if (!previousPath.startsWith('/offline-content/v1/tafsir.json') ||
+    if (!previousPath === '/offline-content/v1/tafsir.json' ||
         !Number.isInteger(previousDefinition?.count) ||
         previousDefinition.count < minimum) {
       throw new Error(`Offline export safety check failed for tafsir: live source returned ${rows.length} rows and no complete validated offline corpus is available.`);
     }
-    const previousRows = JSON.parse(await readFile(path.join(root, 'public', previousPath.replace(/^\\//, '')), 'utf8'));
+    const previousRows = JSON.parse(await readFile(path.join(root, 'public', previousPath.slice(1)), 'utf8'));
     if (!Array.isArray(previousRows) || previousRows.length !== previousDefinition.count || previousRows.length < minimum) {
       throw new Error('The previous offline tafsir corpus failed its integrity check; refusing to publish an incomplete snapshot.');
     }
