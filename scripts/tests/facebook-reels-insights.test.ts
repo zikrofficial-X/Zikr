@@ -8,13 +8,13 @@ import {
 
 const now = Date.parse("2026-11-06T00:00:00.000Z");
 assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload({
-  data: [{ id: "123456789012345", object_id: "987654321098765" }],
+  data: [{ id: "123456789012345", attachments: { data: [{ target: { id: "987654321098765" } }] } }],
 }, "123456789012345"), "987654321098765");
 assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload({
   data: [{ id: "111111111111111_123456789012345", attachments: { data: [{ media: { id: "987654321098765" } }] } }],
 }, "123456789012345"), "987654321098765");
 assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload({
-  data: [{ id: "123456789012345", object_id: "not-a-video-id" }],
+  data: [{ id: "123456789012345", attachments: { data: [{ target: { id: "not-a-video-id" } }] } }],
 }, "123456789012345"), null);
 assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload({ data: [] }, "123456789012345"), null);
 assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload(null, "123456789012345"), null);
@@ -108,6 +108,7 @@ const insightsService = readFileSync(
 assert.ok(insightsService.includes("typeof reel.videoId === \"string\""));
 assert.ok(insightsService.includes("resolveFacebookReelVideoIdFromPost"));
 assert.ok(insightsService.includes('"/posts"'));
-assert.ok(insightsService.includes('fields", "id,object_id,attachments{media}"'));
+assert.ok(insightsService.includes('fields", "id,attachments{media,target}"'));
+assert.ok(!insightsService.includes("object_id"));
 
 console.log("Facebook Reels metric parsing and secure Page OAuth flow tests passed.");
