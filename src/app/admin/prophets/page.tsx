@@ -5,6 +5,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { requireAdminPermission } from '@/features/admin/services/admin';
+import { requireAdminStepUp } from '@/features/admin/services/security';
 import {
   getAdminProphets,
   saveAdminProphetVideo,
@@ -22,7 +23,7 @@ type Prophet = AdminProphet;
 
 async function saveProphetVideoAction(formData: FormData) {
   'use server';
-  await requireAdminPermission("prophets.manage");
+  await requireAdminStepUp("prophets.manage", "/admin/prophets");
   const id = String(formData.get('id') ?? '').trim();
   const rawUrl = String(formData.get('youtube_url') ?? '').trim();
   if (!id) throw new Error("معرّف النبي مطلوب.");
@@ -45,7 +46,7 @@ async function saveProphetVideoAction(formData: FormData) {
 
 async function toggleProphetPublishAction(formData: FormData) {
   'use server';
-  await requireAdminPermission("prophets.manage");
+  await requireAdminStepUp("prophets.manage", "/admin/prophets");
   const id = String(formData.get('id') ?? '').trim();
   const next = formData.get('next') === 'true';
   if (!id) throw new Error("معرّف النبي مطلوب.");
