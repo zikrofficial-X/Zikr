@@ -1,5 +1,24 @@
 # ZIKR Project Release & Build Status
 
+## Current verified checkpoint — 2026-11-10T19:16:52.506Z
+
+**Current main:** `6e8010ef95616c01950ff5ef7d6f44b178da5132`  
+**Production Vercel:** `dpl_EpQK1pKTiYhxJGM6z8VpNW7pbXbV`, READY on older `main@c75b92111fa2391a2a09abf928669547a8bb112c`; canonical alias `https://zikrmediaofficial.vercel.app`. Live `/api/health` returns HTTP 200 with the deployed c75 SHA. Main 6e8010e is not deployed; no manual RELEASE action was invoked.
+
+### Current main verification
+- PR #314 merged at `6e8010ef95616c01950ff5ef7d6f44b178da5132`; exact PR head passed GitHub Quality Gate and CircleCI config-guard, source-verify and application-build-docs.
+- Main post-merge at this checkpoint: config-guard SUCCESS, source-verify SUCCESS, application-build-docs PENDING.
+- The merge adds generated Supabase type contracts and verifier assertions only; no runtime feature, database migration or release version changed.
+
+### Latest published Android release
+- Android v1.1.15 remains the latest published release: https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.15
+- Tag target: `faf16ea2450ab22f44c336161cd841806d97bbe6`; annotated tag is unsigned.
+- APK/AAB, `release-metadata.json` and `SHA256SUMS` remain published. Their sizes and GitHub-reported SHA-256 digests are recorded in the previous checkpoint below and `docs/releases/1.1.15.md`.
+- This audit did not independently download or verify APK/AAB signatures, and did not create or publish a new release.
+
+---
+
+
 Last reconciled (Android release): 2026-11-10 05:12:05 UTC. Production deployment details below retain their 2026-11-07 inspection snapshot.
 Repository: https://github.com/zikrofficial-X/Zikr  
 Production URL: https://zikrmediaofficial.vercel.app
