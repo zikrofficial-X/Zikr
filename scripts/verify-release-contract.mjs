@@ -98,8 +98,32 @@ assert.ok(!publish.includes("branches:\n      - main"), "Android publisher must 
 assert.ok(publish.includes("EXPECTED_TAG=\"v$(jq -r '.version' package.json)\""), "Android publisher must revalidate tag/version parity");
 assert.ok(publish.includes("com.zikr.app"), "Android publisher must verify the canonical application id");
 assert.ok(publish.includes(".sourceCommit"), "Android publisher must validate the artifact source commit");
-assert.ok(publish.includes('test "${SOURCE_COMMIT}" = "${GITHUB_SHA}"'), "Tag and branch publication must use artifacts from the exact release commit");
-assert.ok(publish.includes("source_status") && publish.includes("ci/circleci: android-rebuild"), "Manual retry must validate CircleCI success for the artifact source commit");
+assert.ok(
+  publish.includes('if [[ "${SOURCE_COMMIT}" != "${TAG_TARGET_SHA}" ]]') &&
+    publish.includes("Android artifact/tag provenance mismatch"),
+  "Every Android release path must bind signed artifact metadata to the immutable tag target commit",
+);
+assert.ok(
+  publish.includes("required_contexts=(") &&
+    publish.includes("ci/circleci: config-guard") &&
+    publish.includes("ci/circleci: source-verify") &&
+    publish.includes("ci/circleci: application-build-docs") &&
+    publish.includes("ci/circleci: android-release-draft") &&
+    publish.includes("ci/circleci: supabase-production-gate") &&
+    publish.includes("ci/circleci: android-rebuild") &&
+    publish.includes("ci/circleci: android-release-dispatch") &&
+    publish.includes("ZIKR / Quality Gate") &&
+    publish.includes("check-runs?per_page=100") &&
+    !publish.includes("github.event_name != 'workflow_dispatch'"),
+  "Every Android publish/retry path must wait for the exact tag source commit's complete CircleCI and GitHub Quality Gate results",
+);
+assert.ok(publish.includes("checks: read") && publish.includes("statuses: read"), "Android publisher must have read-only permissions for commit statuses and check runs");
+assert.ok(
+  publish.includes("github.event_name == 'workflow_dispatch'") &&
+    publish.includes("inputs.retry == true") &&
+    publish.includes("startsWith(github.ref_name, 'android-release-v')"),
+  "Android recovery branch dispatch must require an explicit retry input",
+);
 assert.ok(publish.includes("SHA256SUMS"), "Android publisher must verify and publish checksums");
 assert.ok(publish.includes("release-metadata.json"), "Android publisher must verify and publish release metadata");
 assert.ok(publish.includes('gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}"'), "Android publisher must publish the resolved GitHub release ID after asset verification");

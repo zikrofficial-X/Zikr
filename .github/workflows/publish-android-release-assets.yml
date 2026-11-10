@@ -219,10 +219,17 @@ jobs:
               pending=true
             fi
 
-            if [[ "$combined_state" != "success" ]]; then
-              echo "Waiting for combined commit status success on ${TAG_TARGET_SHA} (state='${combined_state}')."
-              pending=true
-            fi
+            case "$combined_state" in
+              success) ;;
+              failure|error)
+                echo "::error title=Combined release status failed::The source commit has a failing commit status; refusing to publish Android assets."
+                exit 1
+                ;;
+              *)
+                echo "Waiting for combined commit status success on ${TAG_TARGET_SHA} (state='${combined_state}')."
+                pending=true
+                ;;
+            esac
 
             if [[ "$pending" == "false" ]]; then
               echo "All required CircleCI contexts and the GitHub Quality Gate passed for ${TAG_TARGET_SHA}."

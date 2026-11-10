@@ -34,6 +34,8 @@ assert.ok(
     androidPublish.includes("ci/circleci: android-rebuild") &&
     androidPublish.includes("ci/circleci: application-build-docs") &&
     androidPublish.includes("ci/circleci: config-guard") &&
+    androidPublish.includes("ci/circleci: android-release-draft") &&
+    androidPublish.includes("ci/circleci: android-release-dispatch") &&
     androidPublish.includes("ZIKR / Quality Gate") &&
     !androidPublish.includes("github.event_name != 'workflow_dispatch'"),
   "Every Android publish/retry path must verify the exact tag source commit and all CI gates",
