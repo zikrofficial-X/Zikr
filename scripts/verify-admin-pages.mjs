@@ -82,6 +82,32 @@ for (const token of [
   if (!seoActions.includes(token)) failures.push(`SEO/Admin save action is missing safety/data wiring: ${token}`);
 }
 
+const kidsEntryPage = readFileSync("src/app/admin/kids/page.tsx", "utf8");
+const kidsContentPage = readFileSync("src/app/admin/kids/content/page.tsx", "utf8");
+const kidsContentManager = readFileSync("src/features/admin/components/kids-content-manager.tsx", "utf8");
+for (const [label, source] of [["Kids dashboard", kidsEntryPage], ["Kids content route", kidsContentPage]]) {
+  if (!source.includes("@/features/admin/components/kids-content-manager")) {
+    failures.push(`${label} must render the shared full content manager, not a placeholder route.`);
+  }
+  if (!source.includes('requireAdminPermission("kids.manage")')) {
+    failures.push(`${label} must enforce kids.manage before rendering the shared content manager.`);
+  }
+}
+for (const token of [
+  'import { saveKidsContentAction } from "@/app/admin/kids/actions"',
+  "CloudinaryImageUploadField",
+  'name="title_ar"',
+  'name="content_ar"',
+  'name="quiz_data"',
+  "GAME_REGISTRY",
+  'kids_content?select=',
+]) {
+  if (!kidsContentManager.includes(token)) failures.push(`Shared Kids content manager is missing required data/form wiring: ${token}`);
+}
+if (kidsContentManager.includes('from "./actions"')) {
+  failures.push("Shared Kids content manager must not use the stale page-relative actions import.");
+}
+
 const rootLayout = readFileSync("src/app/layout.tsx", "utf8");
 for (const token of ['getSiteSetting("seo")', 'getSiteSetting("social")', "openGraph:", "twitter:"]) {
   if (!rootLayout.includes(token)) failures.push(`Root SEO/social metadata contract missing: ${token}`);
