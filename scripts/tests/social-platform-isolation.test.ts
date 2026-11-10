@@ -98,6 +98,16 @@ assert.deepEqual(
   ["youtube"],
   "legacy Facebook auth blocks must not block an independent YouTube retry",
 );
+assert.equal(
+  canAttemptSocialPlatform({
+    platform: "youtube",
+    enabledPlatforms: both,
+    metadata: { approvalDeferredPlatforms: ["youtube"] },
+    maxAttempts: 5,
+  }),
+  false,
+  "the background publisher must respect editorial and scholarly approval deferrals",
+);
 assert.deepEqual(
   getRetryableSocialPlatforms(
     ["youtube"],
