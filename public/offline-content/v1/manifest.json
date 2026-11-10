@@ -1,6 +1,6 @@
 {
-  "version": "2026-10-30-20261110171705",
-  "generatedAt": "2026-11-10T17:17:05.738Z",
+  "version": "2026-10-30-20261110172140",
+  "generatedAt": "2026-11-10T17:21:40.651Z",
   "source": "Zikr Supabase public-content snapshot; the exporter retains the last validated tafsir corpus only if live quran_tafsir falls below its safety floor",
   "licenseNote": "Quran and hadith records retain source attribution. Editorial records are Zikr content. External audio remains a reference unless the file is explicitly packaged locally.",
   "staleDatasets": [],
