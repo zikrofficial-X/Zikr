@@ -123,7 +123,7 @@ for (const [dataset, table, ...filters] of datasets) {
     const previousPath = typeof previousDefinition?.path === 'string'
       ? previousDefinition.path
       : '';
-    if (!previousPath === '/offline-content/v1/tafsir.json' ||
+    if (previousPath !== '/offline-content/v1/tafsir.json' ||
         !Number.isInteger(previousDefinition?.count) ||
         previousDefinition.count < minimum) {
       throw new Error(`Offline export safety check failed for tafsir: live source returned ${rows.length} rows and no complete validated offline corpus is available.`);
