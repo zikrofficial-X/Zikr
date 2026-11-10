@@ -536,6 +536,14 @@ export async function POST(request: NextRequest) {
         const remainingPermanentFailurePlatforms = declaredPermanentFailures.filter(
           platform => !platforms.includes(platform),
         );
+        const remainingUnavailablePlatforms = Array.isArray(item.metadata?.unavailablePlatforms)
+          ? item.metadata.unavailablePlatforms.filter(
+              (platform): platform is string => typeof platform === "string" && !platforms.includes(platform),
+            )
+          : [];
+        const preservedApprovalDeferredPlatforms = Array.isArray(item.metadata?.approvalDeferredPlatforms)
+          ? item.metadata.approvalDeferredPlatforms.filter((platform): platform is string => typeof platform === "string")
+          : [];
         const legacyPermanentFailureRemains =
           !Array.isArray(item.metadata?.permanentFailurePlatforms) &&
           item.metadata?.permanentFailure === true &&
@@ -571,8 +579,9 @@ export async function POST(request: NextRequest) {
                 authBlockedPlatforms: remainingAuthBlockedPlatforms,
                 permanentFailure: remainingPermanentFailurePlatforms.length > 0 || legacyPermanentFailureRemains,
                 permanentFailurePlatforms: remainingPermanentFailurePlatforms,
-                unavailablePlatforms: [],
-                approvalDeferredPlatforms: [],
+                unavailablePlatforms: remainingUnavailablePlatforms,
+                // A retry must never clear a scholarly/editorial approval gate.
+                approvalDeferredPlatforms: preservedApprovalDeferredPlatforms,
                 nextRetryAt: null,
               },
             }),
