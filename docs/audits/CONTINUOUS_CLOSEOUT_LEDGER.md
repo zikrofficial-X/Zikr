@@ -98,13 +98,10 @@ No production data, storage objects, migrations, policies, indexes, OAuth creden
 
 ## 6. Open pull requests / decisions
 
-- #275 — current-main safety remediation; draft, CI/Preview pending.
-- #270 — social queue fairness; draft. Do not dispatch duplicate publishing while media failures remain.
-- #271 — fail-closed purge guard; draft. Required before any future destructive media cleanup.
-- #274 — production-only GitHub dispatch guard; draft; its own description records the Preview isolation blocker.
-- #269 — older audit branch is divergent from current main (20 commits ahead, 13 behind at the last comparison); do not force-push or merge its stale snapshot. Its useful safety changes are being ported into current-main PRs.
-- #272 — closed as superseded by merged #273 because the duplicate `hadiths.chapter` migration was already applied and present.
+- #275 — active current-main safety remediation; draft, Quality Gate/CircleCI/Preview checks pending.
+- #269, #270, #271, #272, #274 — closed as superseded after their useful changes were ported into #275 or confirmed applied by merged #273. Their branches were retained; no force-push or branch deletion was performed.
 - #273 — merged; includes the applied `20261110085520_add_hadith_chapter` migration.
+- GitHub code search found all current `dispatchGitHubWorkflow` call sites route through `src/lib/github/dispatch-workflow.ts`; no direct `actions/workflows/.../dispatches` REST call was found. PR #275 adds the environment guard at this shared entry point.
 
 ## 7. Explicit blockers and acceptance gaps
 
