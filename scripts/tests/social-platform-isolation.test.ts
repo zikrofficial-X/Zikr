@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, normalizeSocialPlatformResults } from "../../src/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, normalizeSocialPlatformResults } from "../../src/features/social/services/platform-availability";
 import { buildFacebookQueueRecoveryPatch } from "../../src/features/social/services/facebook-queue-recovery-policy";
 
 const both = getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true", SOCIAL_PUBLISH_YOUTUBE_ENABLED: "true" });
@@ -61,6 +61,42 @@ assert.equal(
   canAttemptSocialPlatform({ platform: "facebook_reels", enabledPlatforms: both, metadata: missingMediaFailure, maxAttempts: 5 }),
   false,
   "HTTP 422 media validation failures must not be retried against the same source asset",
+);
+assert.equal(
+  canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: { permanentFailure: true }, maxAttempts: 5 }),
+  false,
+  "legacy global permanent-failure metadata must fail closed when no per-platform list exists",
+);
+
+const mixedRetryMetadata = {
+  authBlocked: true,
+  permanentFailure: true,
+  permanentFailurePlatforms: ["facebook_reels"],
+  platformResults: {
+    facebook: { ok: false, error: "Facebook OAuthException: access token expired" },
+    facebook_reels: { ok: false, error: "HTTP 422 invalid media" },
+    youtube: { ok: false, requiresReconciliation: true, error: "YouTube upload timed out; remote outcome unknown" },
+  },
+};
+assert.deepEqual(
+  getRetryableSocialPlatforms(["facebook", "facebook_reels", "youtube"], mixedRetryMetadata, false),
+  [],
+  "normal retry must hold auth-blocked, permanent 422, and ambiguous provider outcomes",
+);
+assert.deepEqual(
+  getRetryableSocialPlatforms(["facebook", "facebook_reels", "youtube"], mixedRetryMetadata, true),
+  ["youtube"],
+  "explicit no-remote-publication confirmation may release only the ambiguous YouTube target, never permanent Facebook failures",
+);
+assert.deepEqual(
+  getRetryableSocialPlatforms(["facebook", "facebook_reels"], { authBlocked: true }, false),
+  [],
+  "legacy global Facebook auth blocks must remain held when no Facebook result ledger exists",
+);
+assert.deepEqual(
+  getRetryableSocialPlatforms(["youtube"], { authBlocked: true }, false),
+  ["youtube"],
+  "legacy Facebook auth blocks must not block an independent YouTube retry",
 );
 
 
@@ -147,6 +183,7 @@ const adminSocialRoute = readFileSync(
   "utf8",
 );
 assert.match(adminSocialRoute, /normalizeSocialPlatformResults\(item\.metadata\?\.platformResults\)/);
+assert.match(adminSocialRoute, /getRetryableSocialPlatforms\\(item\\.target_platforms, item\\.metadata, allowAmbiguous\\)/);
 assert.match(adminSocialRoute, /authBlockedPlatforms\(item\.metadata, item\.target_platforms\)/);
 assert.match(adminSocialRoute, /authBlocked: remainingAuthBlockedPlatforms\.length > 0/);
 
