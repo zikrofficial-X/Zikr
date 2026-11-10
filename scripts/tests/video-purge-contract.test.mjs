@@ -44,7 +44,7 @@ assert.ok(route.includes('generatedVideoUrl: null') && route.includes('videoUrl:
 assert.ok(route.includes("status=neq.published&video_url=not.is.null&select=video_url&limit=1000"), "file purge must inspect every non-published social queue media reference before deleting assets.");
 assert.ok(
   route.includes("pendingSocialGenerationRefs") &&
-    route.includes("status=neq.published&video_url=not.is.null&select=id&limit=1000") &&
+    route.includes("status=neq.published&or=(content_type.like.*video*,video_url.not.is.null)&select=id&limit=1000") &&
     route.includes("includeMemory && (pendingSocialGenerationRefs ?? []).length > 0"),
   "memory cleanup must preserve generation history while any unfinished social video media row remains",
 );
