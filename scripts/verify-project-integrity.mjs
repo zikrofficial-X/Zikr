@@ -222,7 +222,8 @@ for (const route of offlineManifest.routes || []) {
 
 requireText('public/sw.js', [
   'const CACHE_NAME = "zikr-v15"',
-  'CACHE_PREFIX = "zikr-"',
+  'APP_SHELL_CACHE_PATTERN = /^zikr-v\\d+$/',
+  'APP_SHELL_CACHE_PATTERN.test(cacheName)',
   'CACHE_OFFLINE_ROUTES',
   'OFFLINE_CONTENT_PREFIX',
   '"/settings"',
@@ -230,6 +231,11 @@ requireText('public/sw.js', [
   '"/dashboard"',
 ]);
 const serviceWorker = read('public/sw.js');
+if (serviceWorker.includes('cacheName.startsWith(CACHE_PREFIX)')) failures.push('public/sw.js must not delete unrelated zikr caches such as Quran audio');
+const offlineAudio = read('src/features/quran/services/offline-audio.ts');
+const quranAudioCacheName = offlineAudio.match(/const CACHE_NAME = ["']([^"']+)["']/)?.[1] ?? "";
+if (quranAudioCacheName !== "zikr-quran-audio-v1") failures.push('Quran audio must retain its dedicated persistent cache');
+
 const htmlHandlerStart = serviceWorker.indexOf('if (request.headers.get("accept")?.includes("text/html"))');
 if (htmlHandlerStart !== -1) {
   const htmlHandlerEnd = serviceWorker.indexOf("\n  event.respondWith(", htmlHandlerStart + 10);
