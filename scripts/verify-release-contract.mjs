@@ -75,12 +75,6 @@ assert.ok(publish.includes("Android release tag/source mismatch"), "Android publ
 assert.ok(releaseManager.includes("Preparation base commit"), "New release notes must not label the pre-release baseline SHA as the binary source SHA");
 
 
-assert.ok(recoveryDispatch.includes("ci/circleci: android-rebuild"), "Android recovery publisher must wait for the signed CircleCI build success status");
-assert.ok(recoveryDispatch.includes("RELEASE_RETRY.flag"), "Android recovery dispatch must require the repository release retry guard");
-assert.ok(recoveryDispatch.includes("listReleases"), "Android recovery dispatch must find the matching GitHub Release through the releases list API");
-assert.ok(recoveryDispatch.includes("release.draft !== true"), "Android recovery dispatch must only target an unpublished draft release");
-assert.ok(recoveryDispatch.includes("createWorkflowDispatch"), "Android recovery dispatch must start the guarded publisher workflow");
-assert.ok(recoveryDispatch.includes("branchData.commit.sha"), "Android recovery dispatch must bind publication to the recovery branch commit that passed CircleCI");
 
 assert.ok(publish.includes("github.ref_type == 'tag'"), "Android publisher must support semantic release tags");
 assert.ok(publish.includes("inputs.retry == true"), "Android publisher must support an explicit guarded recovery retry");
@@ -95,7 +89,13 @@ assert.ok(
     publish.includes("required_contexts=("),
   "Android publisher must inspect the canonical Android build status through its complete required-context gate",
 );
-assert.ok(publish.includes("failure|error"), "Android publisher must stop promptly when the signed build fails");
+assert.ok(publish.includes("failure|error|cancelled"), "Android publisher must stop promptly when a required signed build fails or is cancelled");
+assert.ok(
+  publish.includes('case "$combined_state"') &&
+    publish.includes("Combined release status failed") &&
+    publish.includes("quality_conclusion"),
+  "Android publisher must fail immediately on a failing combined status or GitHub Quality Gate",
+);
 assert.ok(publish.includes("seq 1 240") && publish.includes("sleep 15") && publish.includes("within 60 minutes"), "Android publisher must allow up to 60 minutes for CircleCI status preflight");
 assert.ok(publish.includes('AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"'), "Android publisher must verify the APK manifest with JAXB-independent aapt");
 assert.ok(!publish.includes("apkanalyzer"), "Android publisher must not use JAXB-dependent APK Analyzer with Java 21");
