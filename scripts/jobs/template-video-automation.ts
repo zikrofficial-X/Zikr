@@ -530,6 +530,12 @@ async function findByAutomationKey(table: string, key: string) {
   );
   return rows?.[0] ?? null;
 }
+function isContentHashConflict(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("video_generation_requests_content_hash_unique") ||
+    message.includes("duplicate key value violates unique constraint") && message.includes("content_hash");
+}
+
 export const KIDS_SERIES_START_DAY_INDEX = dayIndex(new Date("2026-10-21T00:00:00.000Z"));
 
 export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
@@ -823,12 +829,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
       });
       created += 1;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const isContentHashConflict =
-        message.includes("video_generation_requests_content_hash_unique") ||
-        message.includes("duplicate key value violates unique constraint") &&
-          message.includes("content_hash");
-      if (!isContentHashConflict) throw error;
+      if (!isContentHashConflict(error)) throw error;
       console.warn(
         `[template-video] Skipping duplicate content hash for ${key} (${contentHash.slice(0, 12)}); an equivalent video request already exists.`,
       );
@@ -2175,6 +2176,57 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
               engagement,
             },
           };
+      // Atomically claim the final rendered hash before creating a public site record.
+      // A unique conflict means equivalent content already exists; retain this render on
+      // its request row for review, but never publish or retry the duplicate.
+      try {
+        const hashClaimRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+          `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({
+                  updated_at: new Date().toISOString(),
+            }),
+          },
+        );
+        if (!hashClaimRows?.[0]?.id) {
+          throw new Error(`Could not claim the rendered content hash for ${request.id}.`);
+        }
+      } catch (hashError) {
+        if (!isContentHashConflict(hashError)) throw hashError;
+        const duplicateRows = await supabaseServerAdminRequest<Array<{ id: string; status: string }>>(
+          `/rest/v1/video_generation_requests?content_hash=eq.${encodeURIComponent(rendered.contentHash)}&id=neq.${encodeURIComponent(request.id)}&select=id,status&limit=1`,
+        );
+        const duplicate = duplicateRows?.[0];
+        if (!duplicate) throw hashError;
+
+        const duplicateAt = new Date().toISOString();
+        const attempts = (request.generation_attempts ?? 0) + 1;
+        await supabaseServerAdminRequest(
+          `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=minimal" },
+            body: JSON.stringify({
+              status: "cancelled",
+              video_url: rendered.videoUrl,
+              scene: rendered.scene,
+              render_duration_ms: rendered.renderDurationMs,
+              generation_attempts: attempts,
+              next_retry_at: null,
+              last_attempt_at: duplicateAt,
+              error_message: "Duplicate generated content; publication skipped",
+              error_details: `Rendered content hash already belongs to request ${duplicate.id} (${duplicate.status}); this render was retained for review.`,
+              updated_at: duplicateAt,
+            }),
+          },
+        );
+        failed += 1;
+        console.warn(`[template-video] Skipped duplicate rendered content for ${request.id}; existing request ${duplicate.id}.`);
+        continue;
+      }
+
       if (!qaApproval) {
         console.warn(`[template-video] Automated QA blocked external distribution for ${request.id}: ${missingQaChecks.join(", ")}`);
       }
