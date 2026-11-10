@@ -213,6 +213,20 @@ if (
   failures.push("Knowledge service must preserve Supabase query errors instead of silently converting them to empty arrays.");
 }
 
+const libraryPage = readFileSync("src/app/admin/library/page.tsx", "utf8");
+for (const token of [
+  "const itemsAvailable = !itemsResult.error",
+  "const sourcesAvailable = !sourcesResult.error",
+  "const mediaAvailable = !mediaResult.error",
+  "const gamesAvailable = !gamesResult.error",
+  "unavailableReads",
+  "itemsAvailable ? rows.length : 'غير متاح'",
+  "{itemsAvailable ? (",
+  "disabled={!sourcesAvailable}",
+]) {
+  if (!libraryPage.includes(token)) failures.push(`Admin library must distinguish unavailable reads from true empty data: ${token}`);
+}
+
 const pageCount = pages.length;
 if (pageCount < hrefs.length) failures.push(`admin route inventory mismatch: ${pageCount} page files for ${hrefs.length} canonical navigation routes`);
 
