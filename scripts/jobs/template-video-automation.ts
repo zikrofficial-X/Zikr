@@ -1705,7 +1705,8 @@ async function registerGeneratedVideoOnSite(
     return { videoId, published: true, queued: false };
   }
 
-  const categorySlug = INTERNAL_VIDEO_CATEGORY_SLUG[request.category] ?? "general-reminders";
+  const isKidsVideo = request.content.audience === "kids";
+  const categorySlug = isKidsVideo ? "kids-stories" : (INTERNAL_VIDEO_CATEGORY_SLUG[request.category] ?? "general-reminders");
   const categoryRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
     "/rest/v1/video_categories?slug=eq." + encodeURIComponent(categorySlug) + "&published=eq.true&select=id&limit=1",
   );
@@ -1719,7 +1720,7 @@ async function registerGeneratedVideoOnSite(
     sourceUrl: typeof request.content.sourceUrl === "string" ? request.content.sourceUrl : null,
     sourceLabel: typeof request.content.sourceLabel === "string" ? request.content.sourceLabel : null,
     sourceType: typeof request.content.sourceType === "string" ? request.content.sourceType : request.category,
-    publicPath: "/videos/" + slug,
+    publicPath: (isKidsVideo ? "/kids/videos/" : "/videos/") + slug,
     generatedAt: now,
     renderer: "template",
     templateVersion: rendered.templateVersion,
