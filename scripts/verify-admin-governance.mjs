@@ -77,12 +77,12 @@ if (documentedGroups.join("|") !== canonicalGroupLabels.join("|")) {
 if (!items.length) failures.push("no canonical navigation items were parsed");
 if (items.some((item) => !item.label.trim() || !item.permission.trim())) failures.push("navigation item has an empty label or permission");
 
-const iconMap = sidebar.match(/const ICONS: Record<string, LucideIcon> = \\{([\\s\\S]*?)\\n\\};/);
+const iconMap = sidebar.match(/const ICONS: Record<string, LucideIcon> = \{([\s\S]*?)\n\};/);
 const registeredIcons = new Set(
-  [...(iconMap?.[1] ?? "").matchAll(/(?:^|\\n)\\s*(?:"([^"]+)"|([a-z0-9-]+)): \\s*[A-Z][A-Za-z0-9]*,/g)]
+  [...(iconMap?.[1] ?? "").matchAll(/(?:^|\n)\s*(?:"([^"]+)"|([a-z0-9-]+)):\s*[A-Z][A-Za-z0-9]*,/g)]
     .map((match) => match[1] ?? match[2]),
 );
-const usedIcons = [...navigation.matchAll(/icon:\\s*"([^"]+)"/g)].map((match) => match[1]);
+const usedIcons = [...navigation.matchAll(/icon:\s*"([^"]+)"/g)].map((match) => match[1]);
 for (const icon of [...new Set(usedIcons)]) {
   if (!registeredIcons.has(icon)) failures.push("admin navigation references an unregistered sidebar icon: " + icon);
 }
