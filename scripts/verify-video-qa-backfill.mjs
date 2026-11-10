@@ -57,6 +57,10 @@ if (!dynamicWorker.includes("function getAiAttemptsPerRunLimit()") ||
     dynamicWorker.includes("const AI_ATTEMPTS_PER_RUN")) {
   failures.push("AI retry budget must be dynamically read after runtime settings injection");
 }
+const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
+if (!generationWorkflow.includes('VIDEO_AI_ATTEMPTS_PER_RUN: "4"')) {
+  failures.push("video generation workflow default must use the approved four-attempt free-provider budget");
+}
 const runtimeSettings = read("src/app/admin/automation/page.tsx");
 if (!runtimeSettings.includes('? "4"')) failures.push("Admin AI-attempt fallback must match the four-attempt production setting");
 
