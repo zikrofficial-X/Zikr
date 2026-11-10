@@ -682,6 +682,7 @@ workflows:
                 - /^fix\/quality-gate-full-main-scope-20261107$/
                 - /^codex\/zikr-comprehensive-repair-safety-20261110$/
                 - /^automation\/offline-content-snapshot$/
+                - /^fix\/search-console-web-analytics-mainline-20261110$/
                 - /^fix\/video-catalog-purge-provenance-recovery-20261110$/
             tags:
               only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
@@ -697,6 +698,7 @@ workflows:
                 - /^fix\/quality-gate-full-main-scope-20261107$/
                 - /^codex\/zikr-comprehensive-repair-safety-20261110$/
                 - /^automation\/offline-content-snapshot$/
+                - /^fix\/search-console-web-analytics-mainline-20261110$/
                 - /^fix\/video-catalog-purge-provenance-recovery-20261110$/
             tags:
               ignore: /.*/
