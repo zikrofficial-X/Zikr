@@ -63,6 +63,16 @@ if (!workflow.includes('cron: "41 4 * * *"') ||
     !workflow.includes("pnpm video:media:audit")) {
   failures.push("Daily video media audit must run in the production environment with validated service-role credentials");
 }
+const migration = read("supabase/migrations/20261110025000_reconcile_published_youtube_ids_to_video_catalog.sql");
+for (const token of [
+  "platformResults",
+  "youtube.remoteId",
+  "youtubePublishedVideoId",
+  "metadata->>'videoGenerationRequestId'",
+  "v.youtube_id is null",
+]) {
+  if (!migration.includes(token)) failures.push("Confirmed YouTube catalog reconciliation migration is missing: " + token);
+}
 const pkg = JSON.parse(read("package.json"));
 if (!pkg.scripts["video:media:audit"] || !pkg.scripts["video:media:check"]) {
   failures.push("Video media audit and its contract check must be registered in package scripts");
