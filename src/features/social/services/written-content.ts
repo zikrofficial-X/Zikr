@@ -14,10 +14,14 @@ export function chooseWrittenSourceKind(
  if (category === "auto" && !hasKidsPostToday && availableKinds.includes("kids_story")) {
   return "kids_story";
  }
+ const eligibleKinds = category === "auto" && hasKidsPostToday
+  ? availableKinds.filter((kind) => kind !== "kids_story")
+  : availableKinds;
+ if (eligibleKinds.length === 0) return null;
  const index = Number.isFinite(randomIndex)
-  ? Math.max(0, Math.min(availableKinds.length - 1, Math.floor(randomIndex)))
+  ? Math.max(0, Math.min(eligibleKinds.length - 1, Math.floor(randomIndex)))
   : 0;
- return availableKinds[index] ?? null;
+ return eligibleKinds[index] ?? null;
 }
 
 export function containsKidsPersonalDataSolicitation(value: string): boolean {
