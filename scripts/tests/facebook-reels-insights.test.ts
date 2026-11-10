@@ -21,7 +21,10 @@ assert.equal(shouldRefreshFacebookReelsInsights({
 const parsed = parseFacebookReelsInsights([
   { name: "fb_reels_total_plays", period: "lifetime", values: [{ value: 1250 }] },
   { name: "blue_reels_play_count", period: "lifetime", values: [{ value: 1100 }] },
+  { name: "fb_reels_replay_count", period: "lifetime", values: [{ value: 150 }] },
   { name: "post_video_avg_time_watched", period: "lifetime", values: [{ value: 4200 }] },
+  { name: "post_video_view_time", period: "lifetime", values: [{ value: 84000 }] },
+  { name: "post_video_followers", period: "lifetime", values: [{ value: 18 }] },
   { name: "post_video_social_actions", period: "lifetime", values: [{ value: { reactions: 12, comments: 3, shares: 2 } }] },
   { name: "post_video_likes_by_reaction_type", period: "lifetime", values: [{ value: { like: 9, love: 3 } }] },
   { name: "post_impressions_unique", period: "lifetime", values: [{ value: 900 }] },
@@ -31,14 +34,18 @@ const parsed = parseFacebookReelsInsights([
 
 assert.equal(parsed.fb_reels_total_plays, 1250);
 assert.equal(parsed.blue_reels_play_count, 1100);
+assert.equal(parsed.fb_reels_replay_count, 150);
 assert.equal(parsed.post_video_avg_time_watched, 4200);
+assert.equal(parsed.post_video_view_time, 84000);
+assert.equal(parsed.post_video_followers, 18);
 assert.deepEqual(parsed.post_video_social_actions, { reactions: 12, comments: 3, shares: 2 });
-assert.deepEqual(parsed.post_video_likes_by_reaction_type, { like: 9, love: 3 });
+assert.equal("post_video_likes_by_reaction_type" in parsed, false, "unsupported metric must not be requested or stored");
 assert.equal("post_impressions_unique" in parsed, false, "deprecated unique-impressions metric must not be requested or stored");
 assert.equal("unknown_metric" in parsed, false);
-assert.equal("fb_reels_replay_count" in parsed, false);
 assert.ok(FACEBOOK_REELS_INSIGHT_METRICS.includes("fb_reels_total_plays"));
 assert.ok(FACEBOOK_REELS_INSIGHT_METRICS.includes("post_video_avg_time_watched"));
+assert.ok(FACEBOOK_REELS_INSIGHT_METRICS.includes("post_video_social_actions"));
+assert.ok(!FACEBOOK_REELS_INSIGHT_METRICS.includes("post_video_likes_by_reaction_type" as never));
 assert.ok(!FACEBOOK_REELS_INSIGHT_METRICS.includes("post_impressions_unique" as never));
 
 console.log("Facebook Reels insights permission and metric tests passed.");
