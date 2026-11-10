@@ -1052,10 +1052,34 @@ export async function validateSourceContent(request: GeneratedRequest) {
     const source = (await resolveVideoSource(request.category, sourceId)) ?? resolveCuratedVideoSource(sourceId);
     if (!source || source.category !== request.category) throw new Error(`${request.category} video rejected: source is missing, unpublished, unreferenced, or has no recorded grade.`);
     if (comparableSourceText(text) !== comparableSourceText(source.text)) throw new Error(`${request.category} video rejected: narration does not exactly match the current published source text.`);
+    const isCanonicalKidsSeriesSource =
+      source.category === "story" &&
+      "audience" in source &&
+      "generationMode" in source &&
+      source.audience === "kids" &&
+      source.generationMode === "free_deterministic_story_factory" &&
+      typeof source.seriesId === "string" &&
+      typeof source.seriesTitle === "string" &&
+      Number.isInteger(Number(source.seasonNumber)) &&
+      Number.isInteger(Number(source.episodeNumber)) &&
+      typeof source.learningObjective === "string";
+
     request.content = {
       ...content,
       ...(request.content.curatedSourceId ? { curatedSourceId: source.id } : { sourceId: source.id }),
-      sourceType: request.category,
+      ...(isCanonicalKidsSeriesSource ? {
+        audience: "kids",
+        aiMode: "original_kids_story",
+        sourceType: "original_kids_fiction",
+        seriesId: source.seriesId,
+        seriesTitle: source.seriesTitle,
+        seasonNumber: Number(source.seasonNumber),
+        episodeNumber: Number(source.episodeNumber),
+        episodeTitle: source.episodeTitle,
+        learningObjective: source.learningObjective,
+        ageGroup: source.ageGroup,
+        visualTheme: source.visualTheme,
+      } : { sourceType: request.category }),
       sourceUrl: source.sourceUrl,
       sourceLabel: source.sourceLabel,
       textAr: source.text,

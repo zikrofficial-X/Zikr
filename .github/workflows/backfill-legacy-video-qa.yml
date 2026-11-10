@@ -12,6 +12,12 @@ on:
       - "supabase/migrations/20261110031431_retry_false_blocked_legacy_qa_source_url_parity.sql"
       - "src/features/videos/providers/ai-visual-policy.ts"
   workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply verified QA updates to production rows (manual approval only)"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -31,6 +37,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+      BACKFILL_APPLY: ${{ github.event_name == 'workflow_dispatch' && inputs.apply == true }}
     steps:
       - name: Checkout exact main revision
         uses: actions/checkout@v7
@@ -63,10 +70,19 @@ jobs:
         run: pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
         timeout-minutes: 15
 
-      - name: Revalidate and backfill legacy automated QA
-        run: pnpm video:qa:backfill -- --apply
+      - name: Revalidate legacy automated QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${BACKFILL_APPLY:-false}" = "true" ]; then
+            echo "Mode: manual apply of source-verified QA updates."
+            pnpm video:qa:backfill -- --apply
+          else
+            echo "Mode: dry-run only; no production rows will be updated."
+            pnpm video:qa:backfill
+          fi
         timeout-minutes: 15
 
       - name: Report completion
         if: always()
-        run: echo "Legacy QA backfill is idempotent, verifies current sources and Cloudinary media, and never creates or republishes social queue items."
+        run: echo "Automatic runs are read-only dry-runs. Production row updates require a manual workflow dispatch with apply=true; the backfill verifies current sources and Cloudinary media and never creates or republishes social queue items."
