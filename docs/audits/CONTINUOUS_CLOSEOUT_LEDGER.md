@@ -525,3 +525,53 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 3. Keep the 6 kids revalidation_required rows hidden pending a passed kids QA result; do not bypass this gate.
 4. Only after the explicit production release gate, apply the new migration once, then verify 58 restored / 6 still hidden with read-only SQL and production route smoke tests.
 5. Continue file-level consumer tracing and route/browser/mobile acceptance. The project is not at FINAL BASELINE READY; modules closed remains 0.
+
+
+---
+
+## Checkpoint — 2026-11-10 20:40 Africa/Cairo — current production reconciliation and generated-type drift
+
+**State: DEGRADED / IN PROGRESS. Production is reachable and aligned with main; source-level and product acceptance remain incomplete.**
+
+### Canonical identity and downstream release
+- Repository: `zikrofficial-X/Zikr`; production branch: `main`; current main SHA: `a637558965b10c52ae1c9a8bf17a0948155e5725`.
+- Recursive Git tree: 2,152 entries, 1,661 files, 491 directories; API response was not truncated.
+- Vercel project `zikr` / `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`, team `team_RxPjmgZoSFmKGjScefYmwIVv`, Node 22.x. Latest Production deployment `dpl_8SDdkrR2AutQBe8fXLTkJEK9dAD8` is READY on the exact main SHA above; all three canonical aliases are attached and aliasError is null.
+- Read-only production smoke requests to `/`, `/videos`, and `/kids` each returned HTTP 200.
+- Main checks: CircleCI source-verify, application-build-docs, config-guard, Android release draft, and Vercel deployment status all SUCCESS. No production release or rollback was initiated by this checkpoint.
+
+### Supabase migration and schema reconciliation
+- Supabase project `zqtssvlvmkzeeyqghqfk` remains ACTIVE_HEALTHY, PostgreSQL 17.11.
+- GitHub main contains 418 migration files; live `supabase_migrations.schema_migrations` contains 418 versions. Exact version-set comparison found no local-only, remote-only, or duplicate migration versions. Latest version: `20261110170000`.
+- Public schema: 92 tables, 92/92 RLS enabled, 0 disabled; 211 public policies; 10 Storage policies; 280 public indexes; 40 public routines; 53 public triggers. Storage has 9 buckets and 0 objects.
+- Security Advisor still reports only `auth_leaked_password_protection` (WARN). Performance Advisor reports 86 unused-index candidates (INFO); Health Advisor has no findings. No Auth setting, index, policy, bucket, table, or production row was changed.
+- Ten PostgREST `permission denied` events for `content_translation_queue` were observed under SQLSTATE 42501 and database role `authenticator`. This is expected private-table isolation: the repository's production verification explicitly expects this client-facing endpoint to be denied. No grant or RLS weakening is warranted.
+
+### OAuth, social publishing, and video state
+- Facebook's stored credential is enabled/connected, with required Page and insights permissions; last validation was `2026-11-10 18:40:14 UTC`. YouTube's server-side OAuth row is present with readonly, upload, and analytics scopes. No token or secret value was read.
+- The exact purge-audit recovery migration restored 58 evidence-qualified videos. Current read-only counts: 58 restored from the exact purge event, 58 published YouTube fallbacks, 47 still hidden as purged, 10 published Kids-audience videos with Kids QA passed, and 9 Kids-audience videos still hidden pending revalidation. No further rows were changed.
+- Current video-generation request statuses: 115 completed, 2 cancelled. Latest worker run at 16:00 UTC processed 5 items (3 completed, 2 run-level failures); its stored error summary is generic. There are no request rows currently in failed state. The next scheduled worker cycle must be checked rather than assumed successful.
+- Social queue currently has 83 published rows and 9 queued written posts. Two written posts are published. The 9 queued posts are Facebook-only, scheduled from 2026-11-10 23:19 UTC through 2026-11-13 15:19 UTC; none has an explicit Kids audience marker.
+- The Kids video API enriches Kids videos with story text and linked video-post captions/publication metadata, but it does not query standalone `written_post` rows. No Kids-audience written-post rows were found in the current social queue. This is a feature/data-classification gap, not evidence of a lost child-directed post; do not relabel general posts as Kids content.
+
+### Runtime errors and environment isolation
+- Vercel's 24-hour error clusters include 7 intermittent `fetch failed`/socket-reset events on an older deployment, 2 Preview `/videos` errors caused by a missing Preview service-role key on an older Codex deployment, and one historical Facebook token rejection. Current Facebook validation is connected; current Production returned no error-level runtime records in the latest 30-minute window.
+- Vercel Hobby runtime-log retention rejected the 24-hour detailed-log request; only the recent 30-minute query was available. Do not interpret unavailable older logs as zero errors.
+- Environment-variable names and targets were inventoried with decryption disabled. Production has the required Supabase server key; Preview intentionally does not. The current `facebook-public-posts.ts` returns an empty optional feed when the service-role key is absent, addressing the older Preview error without exposing credentials. Preview still shares the production Supabase URL/public key; creating a separate Preview database or changing environment variables remains an explicit-approval gate.
+
+### Safe source repair prepared
+- Live Supabase generated types contain 92 public tables; `src/lib/types/supabase.ts` on main contained 91. The only missing table was `youtube_oauth_credentials`.
+- Draft PR #312 regenerates `src/lib/types/supabase.ts` from the live schema, adds that table to `verify-generated-supabase-types.mjs`, and includes the repair branch in CircleCI source/build filters.
+- PR: https://github.com/zikrofficial-X/Zikr/pull/312
+- Current PR head at checkpoint: `a22d826cf2b1a8c91b7dbc3cda09f95186285b81`. CircleCI config-guard passed; source-verify and application-build-docs were pending. GitHub Quality Gate was still running on the immediately preceding head `8b0a9707d9a384f85bdac287952c6787624752ec`; a fresh final-head Quality Gate result and Vercel Preview deployment had not yet been observed. Do not merge until checks complete on the exact latest head.
+
+### Files reviewed in this checkpoint
+- `package.json`, `.circleci/config.yml`, `supabase/config.toml`, `scripts/validate-deployment-env.mjs`, `scripts/verify-private-table-grants.mjs`, `scripts/verify-generated-supabase-types.mjs`, `src/lib/types/supabase.ts`, `src/app/videos/page.tsx`, `src/app/api/kids/videos/route.ts`, `src/app/admin/queues/page.tsx`, `src/features/social/services/facebook-public-posts.ts`, `src/features/social/services/facebook-credentials.ts`, `src/features/admin/services/safe-read.ts`, `supabase/migrations/20261004190000_content_library_summary_en.sql`, and `supabase/migrations/20261110170000_restore_purge_audit_proven_video_catalog.sql`.
+- This is a targeted checkpoint, not full file-level review. The historical manifest is a baseline snapshot, not a current-tree manifest. No product module is certified closed; remaining routes, components, service modules, tests, mobile/device behavior, and admin role acceptance remain REVIEW_REQUIRED.
+
+### Approval gates
+1. Enable leaked-password protection only after the owner reviews the Auth policy and confirms the setting.
+2. Remove unused indexes only after query-workload evidence and explicit approval.
+3. Isolate Preview from production Supabase only after approval for the additional environment/project and its costs.
+4. Do not replay failed/held social items, expose credentials, or publish unverified Kids content.
+5. Do not delete branches, assets, files, tables, or rows; do not alter OAuth/domains/secrets or perform production release/rollback without explicit approval.
