@@ -182,6 +182,10 @@ gtag('config', '${googleAnalyticsId}', { send_page_view: true });`}
             </Script>
           </>
         )}
+        <meta
+          name="google-adsense-account"
+          content={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-2457467624248791"}
+        />
         <meta name="theme-color" content="#061322" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
