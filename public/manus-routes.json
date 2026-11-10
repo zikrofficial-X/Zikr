@@ -313,6 +313,12 @@
       "path": "/kids/puzzle"
     },
     {
+      "path": "/kids/videos"
+    },
+    {
+      "path": "/kids/videos/:slug"
+    },
+    {
       "path": "/knowledge"
     },
     {
