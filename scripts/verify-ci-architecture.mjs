@@ -139,8 +139,15 @@ assert.ok(
   insightsWorkflow.includes('BACKGROUND_JOB_TARGET: "insights"') &&
     insightsWorkflow.includes('SOCIAL_PUBLISH_ENABLED: "false"') &&
     insightsWorkflow.includes('SOCIAL_SYNC_INSIGHTS: "true"') &&
-    insightsWorkflow.includes("run: pnpm background:jobs"),
-  "Daily insights workflow must dispatch only the isolated insights target with social publishing explicitly disabled",
+    insightsWorkflow.includes("run: pnpm background:jobs") &&
+    !insightsWorkflow.includes("FACEBOOK_PUBLISHING_REQUESTED") &&
+    !insightsWorkflow.includes("YOUTUBE_PUBLISHING_REQUESTED") &&
+    !insightsWorkflow.includes("YOUTUBE_CLIENT_SECRET") &&
+    !insightsWorkflow.includes("ADMIN_QUEUE_ALERT_WEBHOOK_URL") &&
+    !insightsWorkflow.includes("RESEND_API_KEY") &&
+    !insightsWorkflow.includes("pages_manage_posts") &&
+    !insightsWorkflow.includes("youtube.upload"),
+  "Daily insights workflow must use the isolated insights target, disable publishing, and receive no unused publishing-only credentials or upload scopes",
 );
 assert.ok(
   backgroundRunner.includes('const videos = target === "all" || target === "videos"') &&
