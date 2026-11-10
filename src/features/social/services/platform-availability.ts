@@ -136,6 +136,7 @@ export function getRetryableSocialPlatforms(
   const results = normalizeSocialPlatformResults(metadata?.platformResults);
   const authBlockedPlatforms = metadataPlatforms(metadata?.authBlockedPlatforms);
   const permanentFailurePlatforms = metadataPlatforms(metadata?.permanentFailurePlatforms);
+  const approvalDeferredPlatforms = metadataPlatforms(metadata?.approvalDeferredPlatforms);
   const hasPermanentFailureList = Array.isArray(metadata?.permanentFailurePlatforms);
   const manualReconciliation = new Set(getManualReconciliationPlatforms(metadata));
   const hasFacebookResult = Object.keys(results).some((target) => target.startsWith("facebook"));
@@ -146,7 +147,11 @@ export function getRetryableSocialPlatforms(
     const platform = target as SocialPlatform;
     const previous = asRecord(results[platform]);
     if (hasSuccessfulDelivery(previous)) return false;
-    if (authBlockedPlatforms.includes(platform) || permanentFailurePlatforms.includes(platform)) return false;
+    if (
+      authBlockedPlatforms.includes(platform) ||
+      permanentFailurePlatforms.includes(platform) ||
+      approvalDeferredPlatforms.includes(platform)
+    ) return false;
     if (!hasPermanentFailureList && metadata?.permanentFailure === true) return false;
     if (isAuthBlocked(platform, previous?.error) || isPermanentSocialFailure(previous?.error)) return false;
     if (!allowAmbiguous && manualReconciliation.has(platform)) return false;
