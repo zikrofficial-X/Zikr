@@ -83,11 +83,21 @@ for (const token of [
 }
 
 const plist = read("ios/App/App/Info.plist");
+if (plist.includes("<key>NSFaceIDUsageDescription</key>")) {
+  failures.push("Do not request Face ID permission until a supported native biometric feature is implemented.");
+}
+const mobileReadme = read("mobile/README.md");
+if (!mobileReadme.includes("does not request Face ID permission")) {
+  failures.push("The mobile runtime guide must state that no Face ID permission is requested while biometric UI is unavailable.");
+}
+const biometricDependencies = Object.keys(capacitorDeps.dependencies ?? {}).filter(name => /biometric/i.test(name));
+if (biometricDependencies.length > 0) {
+  failures.push("Do not add a biometric plugin until the native biometric feature is implemented and reviewed.");
+}
 for (const token of [
   "<string>com.zikr.app</string>",
   "<key>NSCameraUsageDescription</key>",
   "<key>NSMicrophoneUsageDescription</key>",
-  "<key>NSFaceIDUsageDescription</key>",
   "<string>audio</string>",
   "<string>remote-notification</string>",
   "<key>WKAppBoundDomains</key>",
