@@ -1,11 +1,9 @@
-export const dynamic = "force-dynamic";
-
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
-import { saveKidsContentAction } from "./actions";
+import { saveKidsContentAction } from "@/app/admin/kids/actions";
 import { CloudinaryImageUploadField } from "@/features/admin/components/cloudinary-image-upload-field";
 import { GAME_REGISTRY } from "@/lib/games/registry";
 
