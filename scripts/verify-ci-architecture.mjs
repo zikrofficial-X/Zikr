@@ -135,6 +135,7 @@ assert.ok(
     quality.includes("github.event_name == 'push' && github.ref == 'refs/heads/main'") &&
     quality.includes("startsWith(github.head_ref, 'codex/zikr-comprehensive-repair-')") &&
     quality.includes("startsWith(github.head_ref, 'codex/zikr-final-cleanup-')") &&
+    quality.includes("startsWith(github.head_ref, 'audit/zikr-')") &&
     quality.includes('if [[ "${QUALITY_GATE_FULL_SCOPE}" == "true" ]]') &&
     quality.includes("pnpm verify") &&
     quality.includes("pnpm verify:pr"),
