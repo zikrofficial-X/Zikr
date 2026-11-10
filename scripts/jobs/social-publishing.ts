@@ -1,6 +1,7 @@
 import { syncYoutubePublishedPostInsights } from "../../src/features/social/services/youtube-post-insights";
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 import { syncFacebookReelsInsights } from "../../src/features/social/services/facebook-reels-insights";
+import { getFacebookPageProfile } from "../../src/features/social/integrations/facebook";
 import { getEnabledSocialPlatforms } from "../../src/features/social/services/platform-availability";
 import {
   claimPendingSocialPublishItems,
@@ -21,27 +22,52 @@ async function isVideoPurgeInProgress(): Promise<boolean> {
 }
 
 export async function syncSocialInsights() {
-    const facebookInsights = await syncFacebookReelsInsights(25).catch((error: unknown) => {
-      console.error("[social-worker] Facebook Reels insights sync unavailable:", error instanceof Error ? error.message : "Unknown Meta insights error");
-      return { configured: false, candidates: 0, fetched: 0, updated: 0, failed: 1 };
-    });
-    if (!facebookInsights.configured || facebookInsights.updated > 0 || facebookInsights.failed > 0) {
-      console.log("[social-worker] Facebook Reels insights sync:", JSON.stringify(facebookInsights));
-    }
+  const facebookProfile = await getFacebookPageProfile().catch((error: unknown) => {
+    console.error(
+      "[social-worker] Facebook Page profile refresh unavailable:",
+      error instanceof Error ? error.message : "Unknown Facebook profile error",
+    );
+    return null;
+  });
+  const facebookProfileSync = {
+    configured: facebookProfile?.configured ?? false,
+    stale: facebookProfile?.stale ?? true,
+    syncedAt: facebookProfile?.syncedAt ?? null,
+    hasLikesCount: facebookProfile?.likesCount !== null && facebookProfile?.likesCount !== undefined,
+    hasFollowersCount: facebookProfile?.followersCount !== null && facebookProfile?.followersCount !== undefined,
+    error: facebookProfile?.error ?? null,
+  };
+  console.log("[social-worker] Facebook Page profile sync:", JSON.stringify(facebookProfileSync));
 
-    const insights = await syncYoutubePublishedPostInsights(100).catch((error: unknown) => {
-      console.error("[social-worker] YouTube public insights sync unavailable:", error instanceof Error ? error.message : String(error));
-      return { configured: false, candidates: 0, fetched: 0, updated: 0, failed: 1 };
-    });
+  const facebookInsights = await syncFacebookReelsInsights(25).catch((error: unknown) => {
+    console.error(
+      "[social-worker] Facebook Reels insights sync unavailable:",
+      error instanceof Error ? error.message : "Unknown Meta insights error",
+    );
+    return { configured: false, candidates: 0, fetched: 0, updated: 0, failed: 1 };
+  });
+  if (!facebookInsights.configured || facebookInsights.updated > 0 || facebookInsights.failed > 0) {
+    console.log("[social-worker] Facebook Reels insights sync:", JSON.stringify(facebookInsights));
+  }
 
-    if (insights.updated > 0) {
-      console.log("[social-worker] YouTube public post statistics synced:", JSON.stringify(insights));
-    }
+  const insights = await syncYoutubePublishedPostInsights(100).catch((error: unknown) => {
+    console.error(
+      "[social-worker] YouTube public insights sync unavailable:",
+      error instanceof Error ? error.message : "Unknown YouTube insights error",
+    );
+    return { configured: false, candidates: 0, fetched: 0, updated: 0, failed: 1 };
+  });
 
+  if (insights.updated > 0) {
+    console.log("[social-worker] YouTube public post statistics synced:", JSON.stringify(insights));
+  }
+
+  const facebookProfileFailed = facebookProfileSync.configured && facebookProfileSync.stale ? 1 : 0;
   return {
+    facebookProfileSync,
     facebookInsights,
     youtubeInsights: insights,
-    failed: Number(facebookInsights.failed ?? 0) + Number(insights.failed ?? 0),
+    failed: facebookProfileFailed + Number(facebookInsights.failed ?? 0) + Number(insights.failed ?? 0),
   };
 }
 
