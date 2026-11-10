@@ -18,7 +18,7 @@ async function readRequired<T extends Row>(path:string):Promise<T[]> {
 async function loadSources():Promise<WrittenContentSource[]>{
  const ayahOffset=Math.floor(Math.random()*5900);
  const hadithOffset=Math.floor(Math.random()*1450);
- const [ayahs,surahs,hadiths,books,duas,stories,sections,prophets,library,articles,companionStories,companions]=await Promise.all([
+ const [ayahs,surahs,hadiths,books,duas,stories,sections,prophets,library,articles,companionStories,companions,kidsStories]=await Promise.all([
   read<Row>("/rest/v1/quran_ayahs?select=id,surah_id,ayah_number,text_ar,text_uthmani&order=id.asc&limit=250&offset="+ayahOffset),
   read<Row>("/rest/v1/quran_surahs?select=id,name_ar,slug&limit=114"),
   read<Row>("/rest/v1/hadiths?select=id,text_ar,narrator_ar,grade_ar,ref,hadith_number,book_id&published=eq.true&grade_ar=not.is.null&order=created_at.desc&limit=150&offset="+hadithOffset),
@@ -31,6 +31,7 @@ async function loadSources():Promise<WrittenContentSource[]>{
   read<Row>("/rest/v1/articles?select=id,title,title_ar,summary,summary_ar,content,content_ar,slug,author,published&published=eq.true&limit=200"),
   read<Row>("/rest/v1/companion_stories?select=id,companion_id,title_ar,content_ar,story_type&order=order_num.asc&limit=200"),
   read<Row>("/rest/v1/companions?select=id,name_ar,slug,published&published=eq.true&limit=200"),
+  read<Row>("/rest/v1/kids_content?select=id,title_ar,content_ar,summary_ar,slug,age_group,metadata,published,is_active&type=eq.story&published=eq.true&is_active=eq.true&metadata->>age_appropriate=eq.true&order=created_at.desc&limit=100"),
  ]);
  const surahMap=new Map(surahs.map(x=>[String(x.id),x]));
  const bookMap=new Map(books.map(x=>[String(x.id),x]));
@@ -77,6 +78,12 @@ async function loadSources():Promise<WrittenContentSource[]>{
   if(!companion||!text)continue;
   out.push({kind:"companions",id:String(x.id),title:str(companion.name_ar)+": "+str(x.title_ar),sourceText:text.slice(0,6000),reference:"قصة منشورة في ملف الصحابي "+str(companion.name_ar)+" على ZIKR",publicPath:"/companions/"+str(companion.slug),categoryLabel:"قصص الصحابة",sourceVerified:true,quoteRequired:false});
  }
+ for(const x of kidsStories){
+  const metadata=x.metadata&&typeof x.metadata==="object"&&!Array.isArray(x.metadata)?x.metadata as Row:{};
+  const title=str(x.title_ar),text=str(x.content_ar)||str(x.summary_ar),slug=str(x.slug),ageGroup=str(x.age_group);
+  if(!title||!text||!slug||metadata.age_appropriate!==true)continue;
+  out.push({kind:"kids_story",id:String(x.id),title,sourceText:text.slice(0,6000),reference:"قصة أطفال منشورة ومعتمدة في عالم ZIKR للأطفال",publicPath:"/kids/"+slug,categoryLabel:"قصص الأطفال",sourceVerified:true,quoteRequired:false,ageGroup});
+ }
  for(const x of articles){
   const title=str(x.title_ar)||str(x.title);
   const text=str(x.content_ar)||str(x.summary_ar)||str(x.content)||str(x.summary);
@@ -88,7 +95,8 @@ async function loadSources():Promise<WrittenContentSource[]>{
 async function makeDraft(source:WrittenContentSource,key:string):Promise<WrittenPostDraft>{
  const model=process.env.GEMINI_MODEL?.trim()||"gemini-3.1-flash-lite";
  const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
- const policy=source.quoteRequired?"النص المصدر ديني موثق: لا تعيد صياغته أو تغير حرفًا منه. لا تضف حديثًا أو آية أو حكمًا أو فضلًا غير وارد بالمصدر. اكتب تأملًا عامًا وليس تفسيرًا متخصصًا أو فتوى.":"لخص المصدر كما هو دون اختراع أحداث أو أقوال أو أحكام أو اقتباسات. إذا لم يكف المصدر أعد eligible=false.";
+ const kidsPolicy=source.kind==="kids_story"?("هذا منشور مخصص للأطفال من الفئة العمرية "+(source.ageGroup||"غير محددة")+". استخدم لغة بسيطة جدًا ودافئة، وفكرة واحدة إيجابية من القصة فقط. لا تطلب من الطفل اسمه أو صورته أو رقم هاتفه أو عنوانه أو اسم مدرسته أو موقعه. لا تذكر مقابلة أو مراسلة خاصة أو مشاركة أسرار. لا تضف أحداثًا أو شخصيات أو أحكامًا غير موجودة في المصدر. إذا كان المصدر لا يسمح بمنشور آمن ومناسب للعمر فأعد eligible=false."):"";
+ const policy=source.quoteRequired?"النص المصدر ديني موثق: لا تعيد صياغته أو تغير حرفًا منه. لا تضف حديثًا أو آية أو حكمًا أو فضلًا غير وارد بالمصدر. اكتب تأملًا عامًا وليس تفسيرًا متخصصًا أو فتوى.":kidsPolicy||"لخص المصدر كما هو دون اختراع أحداث أو أقوال أو أحكام أو اقتباسات. إذا لم يكف المصدر أعد eligible=false.";
  const prompt=["أنت محرر محتوى عربي لمنصة إسلامية موثوقة اسمها ZIKR.","أنشئ منشور Facebook واحدًا بالعربية الفصحى السهلة، جذابًا دون مبالغة أو تفاعل مضلل.",policy,"أعد JSON فقط بالمفاتيح eligible boolean, title, hook, reflection, question.","العنوان 8-90 حرفًا، المقدمة 12-260، reflection 70-900. لا تنسب كلامًا لله أو النبي أو العلماء.","لا تضع نص المصدر داخل reflection؛ سيضاف كما هو في موضع مستقل.","التصنيف: "+source.categoryLabel,"العنوان: "+source.title,"المرجع: "+source.reference,"النص المعتمد:\n"+source.sourceText].join("\n\n");
  const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{temperature:0.45,responseMimeType:"application/json"}}),signal:AbortSignal.timeout(60000)});
  if(!res.ok)throw new Error("Gemini HTTP "+res.status+": "+(await res.text().catch(()=>"")).slice(0,350));
@@ -97,6 +105,7 @@ async function makeDraft(source:WrittenContentSource,key:string):Promise<Written
  if(!text)throw new Error("Gemini returned empty text.");
  const draft=JSON.parse(text.replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,"")) as WrittenPostDraft;
  const valid=validateWrittenPostDraft(draft);if(!valid.ok)throw new Error("Quality gate: "+valid.reason);
+ if(source.kind==="kids_story"&&/(رقم هاتفك|عنوان بيتك|اسم مدرستك|أرسل صورتك|أرسل صورة|قابلني|راسلني|كلمة المرور|كلمة السر|موقعك الحالي)/u.test([draft.title,draft.hook,draft.reflection,draft.question||""].join(" ")))throw new Error("Kids safety gate: personal-data solicitation or unsafe contact language.");
  return draft;
 }
 function writtenArticleSlug(automationKey: string) {
