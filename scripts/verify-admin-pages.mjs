@@ -191,6 +191,28 @@ for (const [label, page] of [["battles", battlesPage], ["prophets", prophetsPage
   }
 }
 
+const knowledgePage = readFileSync("src/app/admin/knowledge/page.tsx", "utf8");
+const knowledgeService = readFileSync("src/features/admin/services/knowledge.ts", "utf8");
+for (const token of [
+  "data.availability.companions",
+  "data.availability.scholars",
+  "data.availability.surahs",
+  "data.availability.hadiths",
+  "data.availability.books",
+  "unavailableSources",
+  "غير متاح — فشل تحميل البيانات",
+]) {
+  if (!knowledgePage.includes(token)) failures.push(`Knowledge dashboard must expose per-source read failures: ${token}`);
+}
+if (
+  !knowledgeService.includes("availability:") ||
+  !knowledgeService.includes("companions: !companions.error") ||
+  !knowledgeService.includes("hadiths: !hadiths.error") ||
+  !knowledgeService.includes("books: !books.error")
+) {
+  failures.push("Knowledge service must preserve Supabase query errors instead of silently converting them to empty arrays.");
+}
+
 const pageCount = pages.length;
 if (pageCount < hrefs.length) failures.push(`admin route inventory mismatch: ${pageCount} page files for ${hrefs.length} canonical navigation routes`);
 
