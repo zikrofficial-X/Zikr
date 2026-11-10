@@ -75,7 +75,7 @@ export default async function KidsAssetsPage() {
       )}
 
       <section className="flex flex-wrap gap-3">
-        <Link href="/admin/media" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold">فتح مكتبة الوسائط</Link>
+        <Link href="/admin/memory" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold">فتح مكتبة الوسائط والذاكرة</Link>
         <Link href="/admin/kids" className="rounded-xl border border-brand-gold/15 px-4 py-2 text-sm text-brand-cream/70">محتوى الأطفال</Link>
       </section>
 
