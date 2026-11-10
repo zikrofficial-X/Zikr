@@ -78,7 +78,7 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
   {
     key: "memory",
     label: "الوسائط والذاكرة",
-    icon: "brain",
+    icon: "database",
     items: [
       { href: "/admin/memory", label: "مكتبة الوسائط والذاكرة", permission: "media.manage", icon: "database" },
     ],
