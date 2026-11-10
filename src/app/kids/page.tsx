@@ -61,6 +61,7 @@ export default function KidsPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Link href="/kids/games" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-gold px-4 py-3 text-sm font-bold text-black shadow-lg shadow-brand-gold/15 transition hover:-translate-y-0.5 hover:bg-[#e1c27d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold sm:rounded-2xl sm:px-6 sm:text-base">{isEnglish ? "Start playing 🎮" : "ابدأ اللعب 🎮"}</Link>
+              <Link href="/kids/videos" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-brand-gold/30 bg-brand-gold/10 px-4 py-3 text-sm font-bold text-brand-gold transition hover:border-brand-gold sm:rounded-2xl sm:px-6 sm:text-base">{isEnglish ? "Watch story videos" : "شاهد قصص الفيديو"}</Link>
               <Link href="#learning" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-brand-cream/20 bg-white/5 px-4 py-3 text-sm font-bold text-brand-cream transition hover:border-brand-gold hover:text-brand-gold sm:rounded-2xl sm:px-6 sm:text-base">{isEnglish ? "Explore the learning path" : "اكتشف مسار التعلم"}</Link>
             </div>
           </div>
