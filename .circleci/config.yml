@@ -356,7 +356,11 @@ jobs:
             // allow draft creation only when every release-defining file is byte-identical
             // between the pinned tag target and current main. The signed build still runs
             // against the exact tag commit, never against a newer main commit.
-            const releaseMetadataPaths = [".release-tag", "package.json", "android/app/build.gradle", "docs/releases/" + version + ".md"];
+            const releaseMetadataPaths = [".release-tag", "android/app/build.gradle", "docs/releases/" + version + ".md"];
+            const tagPackage = await api("/contents/package.json?ref=" + encodeURIComponent(tagTargetSha));
+            if (tagPackage.status !== 200 || !tagPackage.data.content) throw new Error("Could not verify package version at the immutable release tag.");
+            const tagPackageVersion = JSON.parse(Buffer.from(tagPackage.data.content, "base64").toString("utf8")).version;
+            if (tagPackageVersion !== version) throw new Error("Immutable release tag package version does not match the current release version.");
             if (tagTargetSha !== sourceSha) {
               for (const file of releaseMetadataPaths) {
                 const apiPath = "/contents/" + file.split("/").map(encodeURIComponent).join("/");
@@ -703,7 +707,7 @@ workflows:
                 - /^fix\/quality-gate-full-main-scope-20261107$/
                 - /^codex\/zikr-comprehensive-repair-safety-20261110$/
                 - /^automation\/offline-content-snapshot$/
-                - /^fix\\/android-release-draft-immutable-tag-mainline-3-20261110$/
+                - /^fix\/android-release-draft-immutable-tag-mainline-3-20261110$/
                 - /^fix\/search-console-contract-mainline-3-20261110$/
                 - /^fix\/content-integrity-scan-mainline-2-20261110$/
                 - /^fix\/preview-facebook-feed-optional-config-mainline-20261110$/
@@ -722,7 +726,7 @@ workflows:
                 - /^fix\/quality-gate-full-main-scope-20261107$/
                 - /^codex\/zikr-comprehensive-repair-safety-20261110$/
                 - /^automation\/offline-content-snapshot$/
-                - /^fix\\/android-release-draft-immutable-tag-mainline-3-20261110$/
+                - /^fix\/android-release-draft-immutable-tag-mainline-3-20261110$/
                 - /^fix\/search-console-contract-mainline-3-20261110$/
                 - /^fix\/content-integrity-scan-mainline-2-20261110$/
                 - /^fix\/preview-facebook-feed-optional-config-mainline-20261110$/
