@@ -67,7 +67,7 @@ export async function GET() {
       .filter((id): id is string => typeof id === "string" && id.length > 0))];
 
     let requestContentById = new Map<string, Record<string, unknown>>();
-    let socialQueueByRequestId = new Map<string, SocialQueueRow>();
+    const socialQueueByRequestId = new Map<string, SocialQueueRow>();
     if (requestIds.length > 0) {
       const filter = requestIds.map(encodeURIComponent).join(",");
       const [requests, socialRows] = await Promise.all([
