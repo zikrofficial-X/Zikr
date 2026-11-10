@@ -30,7 +30,7 @@ const requiredFiles = [
   'package.json',
   'pnpm-lock.yaml',
   'next.config.ts',
-  'proxy.ts',
+  'src/proxy.ts',
   'src/app/layout.tsx',
   'src/app/manifest.ts',
   'public/sw.js',

@@ -10,6 +10,7 @@ ZIKR uses Supabase Auth for email/password and Google OAuth. Browser OAuth uses 
 - `src/features/auth/components/google-oauth-button.tsx`
 - `src/features/auth/integrations/google-oauth.ts`
 - `src/app/auth/callback/route.ts`
+- `src/proxy.ts`
 - `src/components/layout/native-google-oauth-handler.tsx`
 - `src/lib/auth-enhanced.ts`
 - `src/lib/supabase/client.ts`
@@ -45,7 +46,7 @@ The custom scheme is an application redirect target, not Google's provider callb
 
 The callback exchanges the authorization code through Supabase SSR, then performs a service-side profile upsert. The profile write is deliberately best-effort so a database-side profile issue does not turn a valid authentication into a false login failure.
 
-Protected application areas are guarded by `proxy.ts` and Supabase's authenticated-user lookup.
+Protected application areas are guarded by `src/proxy.ts` and Supabase's authenticated-user lookup.
 
 ## Security properties
 
