@@ -1,3 +1,5 @@
+import { URL } from "node:url";
+
 export type DuplicateVideoHashOwner = {
   status: string;
   video_url?: string | null;
