@@ -241,7 +241,7 @@ export default function KidsPage() {
                     <p className="whitespace-pre-wrap text-sm leading-7 text-brand-cream/75">{item.body}</p>
                     {item.sourceTitle && <p className="text-xs text-brand-cream/50">{isEnglish ? "From: " : "من قصة: "}{item.sourceTitle}</p>}
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-brand-cream/10 pt-3">
-                      <span className="text-xs font-bold text-brand-emerald">{isEnglish ? "Published on" : "نُشر على"} {item.platforms.join("، ")}</span>
+                      <span className="text-xs font-bold text-brand-emerald">{isEnglish ? "Published on" : "نُشر على"} {item.platforms.map((platform) => socialPlatformLabel(platform, isEnglish)).join("، ")}</span>
                       <span className="text-xs font-bold text-brand-gold">{isEnglish ? "Open story →" : "افتح القصة ←"}</span>
                     </div>
                   </Card>
