@@ -1671,6 +1671,20 @@ function buildAutomatedSocialCaption(request: GeneratedRequest, publicUrl: strin
   ).join("\n\n").slice(0, 4500);
 }
 
+function resolveCloudinaryVideoPoster(videoUrl: string): string | null {
+  try {
+    const parsed = new URL(videoUrl);
+    if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com" ||
+        !parsed.pathname.includes("/video/upload/")) return null;
+    const posterPath = parsed.pathname
+      .replace("/video/upload/", "/video/upload/so_0/")
+      .replace(/\.(mp4|webm|mov|m4v)$/i, ".jpg");
+    return parsed.origin + posterPath;
+  } catch {
+    return null;
+  }
+}
+
 const INTERNAL_VIDEO_CATEGORY_SLUG: Record<string, string> = {
   quran: "quran-verified",
   hadith: "sunnah-verified",
@@ -1716,6 +1730,7 @@ async function registerGeneratedVideoOnSite(
     videoGenerationRequestId: request.id,
     generatedVideoUrl: rendered.videoUrl,
     videoUrl: rendered.videoUrl,
+    thumbnailUrl: resolveCloudinaryVideoPoster(rendered.videoUrl),
     caption: request.description ?? "",
     sourceUrl: typeof request.content.sourceUrl === "string" ? request.content.sourceUrl : null,
     sourceLabel: typeof request.content.sourceLabel === "string" ? request.content.sourceLabel : null,
@@ -1754,7 +1769,7 @@ async function registerGeneratedVideoOnSite(
     slug,
     description: request.description ?? null,
     youtube_id: null,
-    thumbnail_url: null,
+    thumbnail_url: resolveCloudinaryVideoPoster(rendered.videoUrl),
     duration: Math.max(1, Number(request.content.durationSeconds ?? request.duration ?? TARGET_VIDEO_SECONDS) || TARGET_VIDEO_SECONDS),
     views: 0,
     published: false,
