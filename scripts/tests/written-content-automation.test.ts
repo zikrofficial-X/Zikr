@@ -18,6 +18,7 @@ assert.equal(chooseWrittenSourceKind(["quran","kids_story"],"auto",true,0),"qura
 assert.equal(chooseWrittenSourceKind(["quran","kids_story"],"auto",true,1),"quran","auto generation must exclude Kids even when random selection would otherwise choose it");
 assert.equal(chooseWrittenSourceKind(["kids_story"],"auto",true,0),null,"auto generation must stop rather than create a second Kids post when no general source remains");
 assert.equal(chooseWrittenSourceKind(["kids_story"],"kids",false,0),"kids_story","manual Kids category must keep selecting Kids sources");
+assert.equal(chooseWrittenSourceKind(["kids_story"],"kids",true,0),null,"manual Kids generation must stop when the UTC-day Kids slot is already reserved");
 assert.equal(chooseWrittenSourceKind([],"auto",false,0),null,"empty source kinds must stop cleanly");
 assert.equal(shouldBackfillKidsWrittenPost("kids_story",false),true,"the first Kids backfill may reserve today's slot");
 assert.equal(shouldBackfillKidsWrittenPost("kids_story",true),false,"a second Kids backfill must wait until another UTC day");
@@ -225,6 +226,7 @@ assert.match(worker, /scheduleKidsBackfillWithinUtcDay\(now\)/, "Kids backfill m
 assert.match(worker, /if\(sourceType==="kids_story"\)hasKidsPostToday=true/, "a successful Kids backfill must reserve the current UTC day for later rows");
 assert.match(worker, /source\.kind==="kids_story"/);
 assert.match(worker, /chooseWrittenSourceKind\(/);
+assert.match(worker, /const todaysKidsPosts = category === "auto" \|\| category === "kids"/, "explicit Kids generation must inspect the same UTC-day reservation before selecting a source");
 assert.match(worker, /metadata->>audience=eq\.kids/);
 assert.match(worker, /scheduled_at\.gte\.\$\{dayStartIso\}/, "daily Kids reservation must include posts scheduled for the current UTC day");
 assert.match(worker, /published_at\.gte\.\$\{dayStartIso\}/, "daily Kids reservation must include posts published during the current UTC day");
