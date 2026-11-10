@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
@@ -8,6 +9,29 @@ import { GAME_REGISTRY } from "@/lib/games/registry";
 import { KidsGameArt } from "@/features/kids/components/games/kids-game-art";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
+
+type KidsGeneratedItem = {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  thumbnailUrl: string | null;
+  createdAt: string;
+  storyText: string | null;
+  socialCaption: string | null;
+  seriesTitle: string | null;
+  seasonNumber: number | null;
+  episodeNumber: number | null;
+  learningObjective: string | null;
+  socialPublication: { status: "published" | "partial" | null; platforms: string[]; publishedAt: string | null } | null;
+};
+
+function socialPlatformLabel(platform: string, isEnglish: boolean) {
+  if (platform === "youtube") return "YouTube";
+  if (platform === "facebook_reels") return isEnglish ? "Facebook Reels" : "ريلز فيسبوك";
+  if (platform === "facebook") return "Facebook";
+  return platform;
+}
 
 const journeys = [
   { icon: "📖", titleAr: "حكاية اليوم", titleEn: "Story of the day", descriptionAr: "اقرأ قصة قصيرة، ثم اكتشف قيمة عملية يمكنك تجربتها اليوم.", descriptionEn: "Read a short story, then discover one practical value to try today.", href: "/kids/story-ibrahim", color: "from-amber-400/25 to-orange-500/5" },
@@ -33,12 +57,19 @@ const contentTypeIcons: Record<string, string> = {
 export default function KidsPage() {
   const { isEnglish } = useLanguage();
   const [contentItems, setContentItems] = useState(kidsContent);
+  const [generatedKidsItems, setGeneratedKidsItems] = useState<KidsGeneratedItem[]>([]);
   useEffect(() => {
     let active = true;
     fetch("/api/kids/content", { credentials: "include", cache: "no-store" })
       .then((response) => response.ok ? response.json() : [])
       .then((data) => {
         if (active && Array.isArray(data)) setContentItems(data);
+      })
+      .catch(() => undefined);
+    fetch("/api/kids/videos", { credentials: "include", cache: "no-store" })
+      .then((response) => response.ok ? response.json() : [])
+      .then((data) => {
+        if (active && Array.isArray(data)) setGeneratedKidsItems(data);
       })
       .catch(() => undefined);
     return () => { active = false; };
@@ -84,6 +115,87 @@ export default function KidsPage() {
           <div><p className="text-sm font-bold text-brand-emerald">{isEnglish ? "A simple choice" : "اختيار بسيط"}</p><h2 id="journeys-heading" className="mt-2 break-words text-2xl font-black text-brand-cream sm:text-3xl">{isEnglish ? "What would you like to do today?" : "ما الذي تحب أن تفعله اليوم؟"}</h2></div>
           <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">{journeys.map((journey) => <Link key={journey.titleAr} href={journey.href} className="group"><Card className={`h-full border-brand-cream/10 bg-gradient-to-br ${journey.color} p-4 transition duration-200 hover:-translate-y-1 hover:border-brand-gold/50 sm:p-6`}><span className="text-4xl" aria-hidden="true">{journey.icon}</span><h3 className="mt-5 text-xl font-bold text-brand-gold">{isEnglish ? journey.titleEn : journey.titleAr}</h3><p className="mt-2 leading-8 text-brand-cream/70">{isEnglish ? journey.descriptionEn : journey.descriptionAr}</p><span className="mt-5 inline-block text-sm font-bold text-brand-cream underline decoration-brand-gold/50 underline-offset-4 group-hover:text-brand-gold">{isEnglish ? "Open path →" : "افتح المسار ←"}</span></Card></Link>)}</div>
         </section>
+
+        {generatedKidsItems.length > 0 && (
+          <>
+            <section aria-labelledby="kids-generated-stories-heading" className="space-y-5">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-brand-emerald">{isEnglish ? "New stories and videos" : "جديد عالم الأطفال"}</p>
+                  <h2 id="kids-generated-stories-heading" className="mt-2 text-2xl font-black text-brand-cream sm:text-3xl">
+                    {isEnglish ? "Fresh stories made for Kids" : "فيديوهات وحكايات الأطفال"}
+                  </h2>
+                  <p className="mt-2 max-w-2xl leading-7 text-brand-cream/60">
+                    {isEnglish ? "Approved stories and videos appear here automatically after Kids quality checks." : "كل قصة وفيديو للأطفال بيجتاز فحص الجودة والنشر الداخلي بيظهر هنا تلقائيًا."}
+                  </p>
+                </div>
+                <Link href="/kids/videos" className="text-sm font-bold text-brand-gold underline underline-offset-4">
+                  {isEnglish ? "All Kids videos →" : "كل فيديوهات الأطفال ←"}
+                </Link>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {generatedKidsItems.map((item) => (
+                  <Link key={item.id} href={"/kids/videos/" + encodeURIComponent(item.slug)} className="group block h-full">
+                    <Card className="h-full overflow-hidden border-brand-cream/10 bg-black/20 transition hover:-translate-y-1 hover:border-brand-gold/50">
+                      <div className="relative aspect-video bg-black/40">
+                        {item.thumbnailUrl ? (
+                          <Image src={item.thumbnailUrl} alt={item.title} fill unoptimized sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 33vw" className="object-cover" />
+                        ) : <div className="grid h-full place-items-center text-4xl" aria-hidden="true">📖</div>}
+                        <span className="absolute bottom-3 start-3 rounded-full bg-black/75 px-3 py-1 text-xs font-bold text-brand-gold">
+                          {isEnglish ? "Kids story" : "قصة أطفال"}
+                        </span>
+                      </div>
+                      <div className="space-y-2 p-4">
+                        <h3 className="font-bold text-brand-cream group-hover:text-brand-gold">{item.title}</h3>
+                        {item.seriesTitle && <p className="text-xs text-brand-emerald">{item.seriesTitle}{item.seasonNumber ? " — " + (isEnglish ? "Season " : "الموسم ") + item.seasonNumber : ""}{item.episodeNumber ? " · " + (isEnglish ? "Episode " : "الحلقة ") + item.episodeNumber : ""}</p>}
+                        <p className="line-clamp-3 text-sm leading-7 text-brand-cream/65">{item.storyText || item.description || (isEnglish ? "An approved new Kids story." : "حكاية جديدة اجتازت فحص الجودة.")}</p>
+                        {item.learningObjective && <p className="text-xs text-brand-cream/55">{isEnglish ? "We learn: " : "هنتعلم: "}{item.learningObjective}</p>}
+                        <span className="inline-block pt-2 text-sm font-bold text-brand-gold">{isEnglish ? "Watch and read the story" : "شاهد الفيديو واقرأ الحكاية"} ←</span>
+                      </div>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </section>
+
+            {generatedKidsItems.some((item) => item.socialCaption?.trim()) && (
+              <section aria-labelledby="kids-social-posts-heading" className="space-y-5">
+                <div>
+                  <p className="text-sm font-bold text-brand-emerald">{isEnglish ? "Social media posts" : "منشورات السوشيال ميديا"}</p>
+                  <h2 id="kids-social-posts-heading" className="mt-2 text-2xl font-black text-brand-cream sm:text-3xl">
+                    {isEnglish ? "Posts made for Kids" : "بوستات الأطفال"}
+                  </h2>
+                  <p className="mt-2 max-w-2xl leading-7 text-brand-cream/60">
+                    {isEnglish ? "The generated copy is linked to its approved story; publishing status is shown only after platform confirmation." : "نص البوست المولّد بيظهر مع القصة المرتبط بيها، وحالة النشر بتتحدّث بعد تأكيد المنصة."}
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {generatedKidsItems.filter((item) => item.socialCaption?.trim()).map((item) => (
+                    <Link key={item.id} href={"/kids/videos/" + encodeURIComponent(item.slug)} className="block">
+                      <Card className="h-full space-y-3 border-brand-emerald/20 bg-brand-emerald/[.04] p-5 transition hover:border-brand-gold/40">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <h3 className="font-bold text-brand-gold">{item.title}</h3>
+                          {item.socialPublication?.platforms.length ? (
+                            <span className="rounded-full border border-brand-emerald/30 bg-brand-emerald/10 px-3 py-1 text-xs font-bold text-brand-emerald">
+                              {item.socialPublication.status === "published" ? (isEnglish ? "Published on" : "اتنشر على") : (isEnglish ? "Partly published on" : "اتنشر جزئيًا على")}{" "}
+                              {item.socialPublication.platforms.map((platform) => socialPlatformLabel(platform, isEnglish)).join("، ")}
+                            </span>
+                          ) : (
+                            <span className="rounded-full border border-brand-gold/20 bg-brand-gold/10 px-3 py-1 text-xs text-brand-gold">
+                              {isEnglish ? "Generated post copy" : "نص بوست مولّد"}
+                            </span>
+                          )}
+                        </div>
+                        <p className="line-clamp-5 whitespace-pre-wrap text-sm leading-7 text-brand-cream/75">{item.socialCaption}</p>
+                        <span className="text-xs font-bold text-brand-gold">{isEnglish ? "Open related story →" : "افتح القصة والفيديو المرتبطين ←"}</span>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        )}
 
         <section id="learning" aria-labelledby="learning-heading" className="space-y-5 scroll-mt-6">
           <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-bold text-brand-emerald">{isEnglish ? "Age-appropriate content" : "محتوى مناسب للعمر"}</p><h2 id="learning-heading" className="mt-2 break-words text-2xl font-black text-brand-cream sm:text-3xl">{isEnglish ? "Learn together" : "نتعلم معًا"}</h2></div><Link href="/kids/adventures" className="text-sm font-bold text-brand-gold underline underline-offset-4">{isEnglish ? "All activities →" : "كل الأنشطة ←"}</Link></div>

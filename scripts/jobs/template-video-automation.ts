@@ -1765,6 +1765,21 @@ async function registerGeneratedVideoOnSite(
     : kidsSeriesMetadataComplete && qaSnapshot.status === "passed"
       ? "passed"
       : "blocked";
+  const kidsStoryText = isKidsVideo
+    ? (typeof request.content.textAr === "string"
+        ? request.content.textAr
+        : typeof request.content.script === "string" ? request.content.script : "")
+        .trim()
+        .slice(0, 3000)
+    : null;
+  const kidsSocialCaption = isKidsVideo && kidsVideoQaStatus === "passed" && request.content.approvalStatus === "approved"
+    ? [
+        buildAutomatedSocialCaption(request, `${siteUrl()}/kids/videos/${slug}`),
+        typeof request.content.seriesTitle === "string" && request.content.seriesTitle.trim()
+          ? `سلسلة أطفال: ${request.content.seriesTitle} — الموسم ${Number(request.content.seasonNumber) || 1}، الحلقة ${Number(request.content.episodeNumber) || 1}. الهدف: ${String(request.content.learningObjective || "قيمة تربوية")}`
+          : "",
+      ].filter(Boolean).join("\n\n").slice(0, 4500)
+    : null;
   const metadata = {
     generator: "zikr_internal_video_factory",
     videoGenerationRequestId: request.id,
@@ -1772,6 +1787,8 @@ async function registerGeneratedVideoOnSite(
     videoUrl: rendered.videoUrl,
     thumbnailUrl: resolveCloudinaryVideoPoster(rendered.videoUrl),
     caption: request.description ?? "",
+    storyText: kidsStoryText,
+    socialCaption: kidsSocialCaption,
     sourceUrl: typeof request.content.sourceUrl === "string" ? request.content.sourceUrl : null,
     sourceLabel: typeof request.content.sourceLabel === "string" ? request.content.sourceLabel : null,
     sourceType: typeof request.content.sourceType === "string" ? request.content.sourceType : request.category,
@@ -1906,6 +1923,21 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
     console.log(`[template-video] Automated QA did not pass for ${request.id}; no external queue item was created.`);
     return;
   }
+  const isKidsVideo = content.audience === "kids";
+  const kidsSocialStoryContractPassed = !isKidsVideo || (
+    content.aiMode === "original_kids_story" &&
+    content.sourceType === "original_kids_fiction" &&
+    content.contentFormat === "series_episode" &&
+    typeof content.seriesId === "string" && Boolean(content.seriesId.trim()) &&
+    typeof content.seriesTitle === "string" && Boolean(content.seriesTitle.trim()) &&
+    typeof content.learningObjective === "string" && Boolean(content.learningObjective.trim()) &&
+    Number.isInteger(Number(content.seasonNumber)) && Number(content.seasonNumber) > 0 &&
+    Number.isInteger(Number(content.episodeNumber)) && Number(content.episodeNumber) > 0
+  );
+  if (!kidsSocialStoryContractPassed) {
+    console.warn(`[template-video] Kids story contract did not pass for ${request.id}; no Kids social post was queued.`);
+    return;
+  }
   if (content.skipSocialPublish === true) {
     console.log(`[template-video] Social publishing skipped for test request ${request.id}`);
     return;
@@ -1961,6 +1993,8 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
           maxAttempts: 5,
           nextRetryAt: null,
           ai: content.ai && typeof content.ai === "object" ? content.ai : null,
+          audience: content.audience === "kids" ? "kids" : "general",
+          kidsContentQaStatus: content.audience === "kids" ? "passed" : null,
           automatedVideoQa: content.automatedVideoQa,
           automatedVideoQaVersion: AUTOMATED_VIDEO_QA_VERSION,
         },

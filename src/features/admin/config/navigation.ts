@@ -101,6 +101,7 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     icon: "send",
     items: [
       { href: "/admin/social", label: "مركز النشر الاجتماعي", permission: "social.manage", icon: "send" },
+      { href: "/admin/social/written-studio", label: "مصنع المنشورات المكتوبة", permission: "social.manage", icon: "file-text" },
     ],
   },
   {
