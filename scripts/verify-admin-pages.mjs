@@ -164,6 +164,30 @@ const runNowAction = readFileSync("src/app/admin/system-actions.ts", "utf8");
 if (!runNowAction.includes("queuedForScheduledWorker")) failures.push("Run Now must save a truthful scheduled-worker fallback when GitHub dispatch is not configured");
 if (!runNowAction.includes("أتمتة الفيديو متوقفة")) failures.push("Run Now must reject requests when video automation is disabled");
 
+const battlesPage = readFileSync("src/app/admin/battles/page.tsx", "utf8");
+const prophetsPage = readFileSync("src/app/admin/prophets/page.tsx", "utf8");
+const battlesService = readFileSync("src/features/admin/services/battles.ts", "utf8");
+const prophetsService = readFileSync("src/features/admin/services/prophets.ts", "utf8");
+for (const [label, page, service] of [
+  ["battles", battlesPage, battlesService],
+  ["prophets", prophetsPage, prophetsService],
+]) {
+  if (!page.includes("const { rows:") || !page.includes("ok: loaded") || !page.includes("{!loaded &&")) {
+    failures.push(`Admin ${label} page must distinguish failed reads from genuinely empty tables.`);
+  }
+  if (!service.includes("if (error)") || !service.includes("ok: false") || !service.includes("ok: true")) {
+    failures.push(`Admin ${label} service must surface Supabase query errors as unavailable, not empty data.`);
+  }
+  if (!page.includes("rawUrl && !videoId") || !page.includes("recordAdminAuditEvent")) {
+    failures.push(`Admin ${label} mutations must reject malformed YouTube URLs and record audit events.`);
+  }
+}
+for (const [label, page] of [["battles", battlesPage], ["prophets", prophetsPage]]) {
+  if (!page.includes(`"${label}.youtube_video.update"`) || !page.includes(`"${label}.publish"`) || !page.includes(`"${label}.unpublish"`)) {
+    failures.push(`Admin ${label} video-link and publication mutations must be auditable separately.`);
+  }
+}
+
 const pageCount = pages.length;
 if (pageCount < hrefs.length) failures.push(`admin route inventory mismatch: ${pageCount} page files for ${hrefs.length} canonical navigation routes`);
 
