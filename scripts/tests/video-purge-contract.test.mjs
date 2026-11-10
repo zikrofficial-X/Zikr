@@ -98,7 +98,21 @@ assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical s
 assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active internal generation before deleting media.");
 assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");
 assert.ok(route.includes("getVideoAutomationEnabled") && route.includes("restoreVideoAutomation(automationWasEnabled)"), "cleanup must restore the previous automation state after the temporary lock");
-assert.ok(route.includes("purgeLockAttempted") && route.includes("await setPurgeLock(false)"), "purge failures must attempt to release the temporary worker lock");
+assert.ok(
+  route.includes("async function acquirePurgeLock(token: string)") &&
+    route.includes("async function releasePurgeLock(token: string)") &&
+    route.includes("value=eq.false") &&
+    route.includes("resolution=ignore-duplicates,return=representation") &&
+    route.includes("description=eq.\\${encodeURIComponent(description)}"),
+  "purge lock acquisition must be atomic and release must be limited to the owning request token.",
+);
+const lockAcquisitionPosition = route.indexOf("const lockToken = randomUUID()");
+const pausePosition = route.indexOf("await pauseVideoAutomation()");
+assert.ok(
+  lockAcquisitionPosition >= 0 && lockAcquisitionPosition < pausePosition && route.includes("if (!lockAcquired)"),
+  "the purge lock must be acquired before automation is paused, and concurrent purge requests must be rejected.",
+);
+assert.ok(route.includes("if (purgeLockToken)") && route.includes("await releasePurgeLock(purgeLockToken)"), "purge failures must attempt to release only the lock owned by this request.");
 assert.ok(route.includes("partialPurge: destructiveWorkStarted && !dataCleanupFinished"), "partial destructive failure must be explicitly reported");
 assert.ok(route.includes("metadata->>generator=eq.multi-provider-free-ai"), "purge must select only run records created by the internal video worker");
 assert.ok(!route.includes('deleteRows("video_automation_runs", "id=not.is.null")'), "purge must not delete unrelated or unclassified automation-run records");
