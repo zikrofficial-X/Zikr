@@ -27,13 +27,14 @@ export async function GET() {
     const items = (rows ?? []).flatMap((row) => {
       const metadata = asRecord(row.metadata);
       const source = asRecord(metadata.source);
+      const kidsContentId = typeof metadata.kidsContentId === "string" ? metadata.kidsContentId : "";
       const ageGroup = typeof metadata.ageGroup === "string" ? metadata.ageGroup : null;
       const rawPath = typeof metadata.publicPath === "string" ? metadata.publicPath : "";
       const publicPath = /^\/kids\/[a-z0-9-]+$/i.test(rawPath) ? rawPath : null;
       const platforms = (row.target_platforms ?? []).filter((platform) =>
         platform === "facebook" || platform === "facebook_reels" || platform === "youtube",
       );
-      if (!row.title?.trim() || !row.body?.trim() || !row.published_at || !publicPath) return [];
+      if (source.type !== "kids_story" || !kidsContentId || kidsContentId !== source.id || !row.title?.trim() || !row.body?.trim() || !row.published_at || !publicPath) return [];
       return [{
         id: row.id,
         title: row.title,
