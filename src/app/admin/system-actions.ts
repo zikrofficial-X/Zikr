@@ -65,7 +65,8 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
 
   if (
     key === "video_automation_enabled" ||
-    key === "video_automation_ai_enabled"
+    key === "video_automation_ai_enabled" ||
+    key === "video_automation_auto_publish"
   ) {
     if (rawValue !== "true" && rawValue !== "false") {
       throw new Error("قيمة منطقية غير صالحة لإعداد أتمتة الفيديو.");
@@ -119,6 +120,8 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
   });
 
   revalidatePath("/admin/automation");
+  revalidatePath("/admin/social");
+  revalidatePath("/admin/health");
 }
 
 export async function requestVideoAutomationRunAction() {

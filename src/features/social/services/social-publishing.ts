@@ -570,60 +570,38 @@ async function deleteManagedVideoUrl(
  * Failed cleanup is retried by the social publishing worker.
  */
 async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<boolean> {
-  if (!item.video_url) return true;
-  const env = getServerEnv();
-  const backupUrl =
-    typeof item.metadata?.supabaseOriginalVideoUrl === "string"
-      ? item.metadata.supabaseOriginalVideoUrl
-      : null;
-  // Remove the Supabase staging copy first. Keep the public Cloudinary URL alive
-  // until the staging delete succeeds, so a retry never strands a live queue row.
-  const candidates = [...new Set([backupUrl, item.video_url].filter((value): value is string => Boolean(value)))];
-  const failures: string[] = [];
+  if (!item.video_url || !item.content_id) return true;
 
-  for (const candidate of candidates) {
-    try {
-      await deleteManagedVideoUrl(candidate, env);
-    } catch (error) {
-      failures.push((candidate.includes("cloudinary.com") ? "Cloudinary: " : "Supabase: ") +
-        (error instanceof Error ? error.message : String(error)));
-      break;
-    }
-  }
+  // Social delivery is not permission to delete either the public playback master
+  // or its staging backup. The public catalog depends on the master, while the
+  // retention worker owns the staging copy after the 48-hour grace period.
+  const requestRows = await supabaseServerAdminRequest<Array<{ content: Record<string, unknown> | null }>>(
+    "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id) + "&select=content&limit=1",
+  );
+  const existingContent = requestRows?.[0]?.content ?? {};
+  const publishedAt = item.published_at ?? new Date().toISOString();
+  const publishedTime = Date.parse(publishedAt);
+  const stagingCleanupEligibleAt = new Date(
+    (Number.isFinite(publishedTime) ? publishedTime : Date.now()) + 48 * 60 * 60 * 1000,
+  ).toISOString();
 
-  if (failures.length) {
-    console.error("[social-publishing] Published video cleanup incomplete:", item.id, failures);
-    await markQueueItem(item.id, "published", {
-      metadata: { ...(item.metadata ?? {}), videoCleanupPending: true, videoCleanupErrors: failures },
-    });
-    return false;
-  }
-
-  if (item.content_id) {
-    const requestRows = await supabaseServerAdminRequest<Array<{ content: Record<string, unknown> | null }>>(
-      "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id) + "&select=content&limit=1",
-    );
-    const existingContent = requestRows?.[0]?.content ?? {};
-    await supabaseServerAdminRequest(
-      "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id),
-      {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({
-          video_url: null,
-          content: { ...existingContent, supabaseOriginalVideoUrl: null, videoDisposedAt: new Date().toISOString() },
-          updated_at: new Date().toISOString(),
-        }),
-      },
-    );
-  }
+  await supabaseServerAdminRequest(
+    "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id),
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        content: { ...existingContent, stagingCleanupDeferred: true, stagingCleanupEligibleAt },
+        updated_at: new Date().toISOString(),
+      }),
+    },
+  );
 
   await markQueueItem(item.id, "published", {
-    video_url: null,
     metadata: {
       ...(item.metadata ?? {}),
-      supabaseOriginalVideoUrl: null,
-      videoDisposedAt: new Date().toISOString(),
+      stagingCleanupDeferred: true,
+      stagingCleanupEligibleAt,
       videoCleanupPending: false,
       videoCleanupErrors: [],
     },

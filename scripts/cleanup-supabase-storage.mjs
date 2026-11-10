@@ -75,39 +75,23 @@ export function extractCloudinaryVideoPublicId(value, cloudName) {
   }
 }
 
-async function deleteCloudinaryVideo(publicId) {
-  const cloudName = asString(process.env.CLOUDINARY_CLOUD_NAME);
-  const apiKey = asString(process.env.CLOUDINARY_API_KEY);
-  const apiSecret = asString(process.env.CLOUDINARY_API_SECRET);
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error("Cloudinary credentials are required to remove a published generated video.");
-  }
-
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const signatureBase = "public_id=" + publicId + "&timestamp=" + timestamp + apiSecret;
-  const signature = createHash("sha1").update(signatureBase).digest("hex");
-  const form = new URLSearchParams({ public_id: publicId, timestamp, api_key: apiKey, signature });
-  const response = await fetch(
-    "https://api.cloudinary.com/v1_1/" + encodeURIComponent(cloudName) + "/video/destroy",
-    { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form, signal: AbortSignal.timeout(20_000) },
-  );
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok || (result.result !== "ok" && result.result !== "not found")) {
-    throw new Error(result.error?.message || "Cloudinary generated-video deletion failed.");
-  }
-}
-
 function getSupabaseBackupUrl(queue, request, supabaseUrl) {
   return asString(asObject(queue?.metadata).supabaseOriginalVideoUrl)
     || asString(asObject(request?.content).supabaseOriginalVideoUrl)
     || (extractManagedVideoPath(queue?.video_url, supabaseUrl) ? asString(queue?.video_url) : "");
 }
 
-export function isEligiblePublishedQueueItem(item, cutoffIso, supabaseUrl) {
+export function isEligiblePublishedQueueItem(item, cutoffIso, supabaseUrl, cloudName = asString(process.env.CLOUDINARY_CLOUD_NAME)) {
   if (!item || item.status !== "published") return false;
   if (!item.published_at || !(Date.parse(item.published_at) < Date.parse(cutoffIso))) return false;
   if (!hasConfirmedPlatformResults(item.target_platforms, item.metadata)) return false;
-  return Boolean(extractManagedVideoPath(item.video_url, supabaseUrl));
+  const backupUrl = asString(asObject(item.metadata).supabaseOriginalVideoUrl);
+  // Only the redundant Supabase staging object is eligible. The public Cloudinary
+  // master remains the durable playback source and is never deleted by retention.
+  return Boolean(
+    extractCloudinaryVideoPublicId(item.video_url, cloudName) &&
+    extractManagedVideoPath(backupUrl, supabaseUrl)
+  );
 }
 
 export function compareSemverTags(a, b) {
@@ -664,8 +648,10 @@ async function main() {
       skipped.push({ id: row.id, reason: "No verified managed Supabase backup path." });
       continue;
     }
-    if (!directSupabasePath && !cloudinaryPublicId) {
-      skipped.push({ id: row.id, reason: "Video URL is neither a managed Supabase video nor an approved ZIKR Cloudinary auto-video." });
+    if (directSupabasePath || !cloudinaryPublicId) {
+      skipped.push({ id: row.id, reason: directSupabasePath
+        ? "Queue URL is the primary Supabase playback asset; retaining it to protect the public catalog."
+        : "No verified Cloudinary playback master; refusing to purge the only known video asset." });
       continue;
     }
     if (sourcePathCounts.get(path) !== 1) {
@@ -738,7 +724,7 @@ async function main() {
     androidDeletes.push({ version, paths, verification: verification.reason });
   }
 
-  console.log(`Cloudinary generated videos eligible: ${candidates.filter((item) => item.cloudinaryPublicId).length}.`);
+  console.log(`Cloudinary playback masters retained: ${candidates.filter((item) => item.cloudinaryPublicId).length}.`);
   console.log(videosOnly ? "Android release files: untouched (videos-only run)." : `Android copies eligible: ${androidDeletes.map((item) => item.version).join(", ") || "none"}.`);
   console.log(`Active Android tag: ${pinnedTag || "unset"}; protected: ${[...protectedTags].join(", ")}.`);
   console.log(
@@ -748,13 +734,6 @@ async function main() {
   if (!apply) {
     console.log("DRY RUN COMPLETE: no Cloudinary assets, Storage objects, or database rows were changed.");
     return;
-  }
-
-  if (candidates.some((item) => item.cloudinaryPublicId) &&
-      (!asString(process.env.CLOUDINARY_CLOUD_NAME) ||
-       !asString(process.env.CLOUDINARY_API_KEY) ||
-       !asString(process.env.CLOUDINARY_API_SECRET))) {
-    throw new Error("Cloudinary secrets are required before applying cleanup for migrated published videos.");
   }
 
   // Video files are deleted only after every target platform has a confirmed remote ID,
@@ -772,7 +751,7 @@ async function main() {
         path: item.path,
         pendingSince: new Date().toISOString(),
         publishedAt: item.publishedAt,
-        reason: "Every target platform confirmed publication; waiting for Storage object removal.",
+        reason: "Every target platform confirmed publication; waiting for Supabase staging-copy removal. The Cloudinary playback master is retained.",
         bytes: item.bytes,
         confirmedPlatforms: item.queue.target_platforms.map((platform) => ({
           platform,
@@ -789,12 +768,8 @@ async function main() {
       if (error) throw new Error(`Video Storage remove failed for batch ${offset / 100 + 1}: ${error.message}`);
     }
 
-    // Remove only managed auto-generated Cloudinary assets paired to the same
-    // published queue row and Supabase backup. Failures leave purge_pending
-    // markers so the next scheduled run can safely retry.
-    for (const item of batch) {
-      if (item.cloudinaryPublicId) await deleteCloudinaryVideo(item.cloudinaryPublicId);
-    }
+    // The Cloudinary URL is the permanent playback master referenced by public.videos.
+    // Never destroy it here. Only the verified Supabase staging backup is disposable.
 
     // One database function updates queue + generation rows in a single transaction.
     // If this step fails, both rows remain marked purge_pending and the next daily
@@ -805,7 +780,7 @@ async function main() {
         ...pending,
         state: "purged",
         purgedAt: new Date().toISOString(),
-        reason: "All target platforms confirmed publication; local Storage copy removed after the 48-hour grace period.",
+        reason: "All target platforms confirmed publication; only the redundant Supabase staging copy was removed after the 48-hour grace period. The public playback master remains intact.",
       }, true);
     }
     console.log(`Purged and reconciled video batch ${offset / 100 + 1}: ${batch.length} objects.`);

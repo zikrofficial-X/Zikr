@@ -86,6 +86,15 @@ if (!socialPublishingService.includes("hasVideoApprovalForQueueItem") ||
     !socialPublishingService.includes("Automated QA lookup failed; holding video item")) {
   failures.push("the social worker must fail closed and revalidate the automated QA snapshot before provider calls");
 }
+const mediaDisposalStart = socialPublishingService.indexOf("async function disposePublishedVideo");
+const mediaDisposalEnd = socialPublishingService.indexOf("export async function resetQueuedSocialVideoMedia", mediaDisposalStart);
+const mediaDisposal = socialPublishingService.slice(mediaDisposalStart, mediaDisposalEnd);
+if (!mediaDisposal.includes("stagingCleanupEligibleAt") ||
+    !mediaDisposal.includes("stagingCleanupDeferred: true") ||
+    mediaDisposal.includes("deleteManagedVideoUrl") ||
+    mediaDisposal.includes("video_url: null")) {
+  failures.push("social publishing must preserve both media pointers and defer staging-copy deletion to the 48-hour retention worker");
+}
 if (!socialPublishingService.includes("created_at=gte.${createdSince}") ||
     !socialPublishingService.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff") ||
     !socialPublishingService.includes("stale recovery is disabled")) {

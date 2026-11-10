@@ -10,6 +10,7 @@ import {
 
 const supabaseUrl = "https://zqtssvlvmkzeeyqghqfk.supabase.co";
 const publicUrl = `${supabaseUrl}/storage/v1/object/public/videos/automated/story:20750:11.mp4`;
+const cloudinaryMaster = "https://res.cloudinary.com/dcuveyab9/video/upload/v1793575328/auto-story-20756-18-97cca8e1.mp4";
 const now = new Date("2026-10-30T12:00:00.000Z");
 const cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
 
@@ -93,28 +94,28 @@ assert.equal(
 const publishedCandidate = {
   status: "published",
   published_at: "2026-10-27T00:00:00.000Z",
-  video_url: publicUrl,
+  video_url: cloudinaryMaster,
   target_platforms: targets,
-  metadata: goodMetadata,
+  metadata: { ...goodMetadata, supabaseOriginalVideoUrl: publicUrl },
 };
-assert.equal(isEligiblePublishedQueueItem(publishedCandidate, cutoff, supabaseUrl), true);
+assert.equal(isEligiblePublishedQueueItem(publishedCandidate, cutoff, supabaseUrl, "dcuveyab9"), true);
 assert.equal(
-  isEligiblePublishedQueueItem({ ...publishedCandidate, status: "partial" }, cutoff, supabaseUrl),
+  isEligiblePublishedQueueItem({ ...publishedCandidate, status: "partial" }, cutoff, supabaseUrl, "dcuveyab9"),
   false,
   "Partial social publishing must retain its source video",
 );
 assert.equal(
-  isEligiblePublishedQueueItem({ ...publishedCandidate, status: "queued" }, cutoff, supabaseUrl),
+  isEligiblePublishedQueueItem({ ...publishedCandidate, status: "queued" }, cutoff, supabaseUrl, "dcuveyab9"),
   false,
   "Queued posts must retain their source video",
 );
 assert.equal(
-  isEligiblePublishedQueueItem({ ...publishedCandidate, published_at: "2026-10-30T11:00:00.000Z" }, cutoff, supabaseUrl),
+  isEligiblePublishedQueueItem({ ...publishedCandidate, published_at: "2026-10-30T11:00:00.000Z" }, cutoff, supabaseUrl, "dcuveyab9"),
   false,
   "Videos younger than 48 hours are retained",
 );
 assert.equal(
-  isEligiblePublishedQueueItem({ ...publishedCandidate, video_url: null }, cutoff, supabaseUrl),
+  isEligiblePublishedQueueItem({ ...publishedCandidate, video_url: null }, cutoff, supabaseUrl, "dcuveyab9"),
   false,
   "Missing media URLs are not eligible",
 );

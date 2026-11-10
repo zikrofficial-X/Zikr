@@ -13,7 +13,9 @@ Optional GitHub Actions repository variables:
 - `FACEBOOK_PUBLISHING_ENABLED`: `true` to allow Facebook Page/Reels delivery, `false` to hold Facebook targets while YouTube continues.
 - `YOUTUBE_PUBLISHING_ENABLED`: `true` to allow YouTube delivery, `false` to hold YouTube targets while Facebook continues.
 
-Both default to `true` when absent. They do not replace OAuth readiness. A provider target is enabled only when its operator switch and its own credential checks both pass. `SOCIAL_PUBLISH_ENABLED=false` remains the global emergency stop.
+Both default to `true` when absent. They do not replace OAuth readiness. A provider target is enabled only when its operator switch and its own credential checks both pass.
+
+The global external-publishing emergency stop is the Admin → Automation setting `video_automation_auto_publish`. Turn it off to stop all external video delivery while leaving internal generation and website publishing enabled. The social worker reads this database setting before claiming queue rows.
 
 ## Automated video QA
 
@@ -27,7 +29,8 @@ Successful provider post IDs are retained and never republished. An unavailable 
 
 - Admin → Social Publishing shows independent connection health cards, a read-only YouTube channel test, Facebook Page test/reconnect, per-channel status totals, and queue filters for YouTube, Facebook, and Facebook Reels.
 - YouTube channel profile reads prefer OAuth. When the OAuth token lacks channel-read scope, the health check falls back to the server-only `YOUTUBE_API_KEY` + exact `YOUTUBE_CHANNEL_ID` and reports `public_data_only`; it only displays fields that YouTube exposes publicly. This does not grant private Analytics reports. For owner metrics, reauthorize with `youtube.readonly` and `yt-analytics.readonly`, then rotate the refresh token in Vercel and GitHub Actions.
-- The scheduled GitHub Actions worker runs every 15 minutes and syncs YouTube public post metrics and Facebook Reels Insights independently.
+- The social publisher retries eligible/deferred targets every 15 minutes and after successful generation. It does not sync insights during publishing runs.
+- A separate GitHub Actions workflow, `sync-social-insights.yml`, refreshes YouTube public post metrics and Facebook Reels Insights daily; its target is analytics-only and external publishing is disabled.
 - Admin analytics reports GA4 site traffic separately from owner-authorized YouTube Analytics and Facebook Reels post insights. Missing provider data is shown as unavailable, not zero.
 - A read-only connection test never uploads, edits, or publishes a post.
 

@@ -27,7 +27,8 @@ type VideoAutomationRun = {
 };
 
 const VIDEO_SETTINGS = [
-  ["video_automation_enabled", "توليد الفيديوهات تلقائيًا داخل الموقع", "boolean"],
+  ["video_automation_enabled", "توليد الفيديوهات تلقائيًا", "boolean"],
+  ["video_automation_auto_publish", "النشر التلقائي على منصات التواصل بعد اجتياز QA", "boolean"],
   ["video_automation_batch_size", "عدد الطلبات في كل دورة", "number"],
   ["video_automation_ai_enabled", "توليد المشاهد بالـAI", "boolean"],
   ["video_automation_daily_target", "الهدف اليومي للفيديوهات", "number"],
@@ -64,7 +65,7 @@ export default async function AdminAutomationPage() {
   );
 
   const settingsRes = await readRows<{ key: string; value: unknown }>(
-    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_daily_target,video_automation_ai_attempts_per_run,video_automation_video_seconds,video_automation_run_now)&select=key,value",
+    "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_auto_publish,video_automation_batch_size,video_automation_ai_enabled,video_automation_daily_target,video_automation_ai_attempts_per_run,video_automation_video_seconds,video_automation_run_now)&select=key,value",
   );
   const settings = Object.fromEntries(settingsRes.rows.map((row) => [row.key, row.value]));
   const latestRes = await readRows<VideoAutomationRun>(
@@ -165,12 +166,12 @@ export default async function AdminAutomationPage() {
                       typeof value === "number" || typeof value === "string"
                         ? String(value)
                         : key === "video_automation_daily_target"
-                          ? "12"
+                          ? "20"
                           : key === "video_automation_ai_attempts_per_run"
-                            ? "3"
+                            ? "2"
                             : key === "video_automation_video_seconds"
-                              ? "18"
-                              : "3"
+                              ? "25"
+                              : "10"
                     }
                     className="w-full rounded-xl border border-brand-gold/15 bg-black/20 px-3 py-2 text-sm text-brand-cream"
                   />
@@ -185,7 +186,7 @@ export default async function AdminAutomationPage() {
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded-xl border border-sky-500/15 bg-sky-500/5 p-4 text-sm leading-7 text-sky-100/75">
-            التوليد الداخلي يعمل عبر GitHub Actions وفق الجدول المحدد. لا يتم إرسال أي فيديو أو محتوى إلى منصات التواصل؛ النشر داخل صفحات ZIKR فقط.
+            التوليد الداخلي يعمل عبر GitHub Actions. عند تفعيل النشر التلقائي، تُرسل الفيديوهات التي اجتازت فحوص QA فقط إلى المنصات المتصلة والمفعّلة. إيقاف هذا المفتاح يوقف النشر الخارجي مع استمرار التوليد والنشر داخل ZIKR.
           </div>
           <div className="rounded-xl border border-brand-gold/10 bg-black/10 p-4 text-sm leading-7 text-brand-cream/55">
             جودة الصوت: <Link href="/admin/video/voices" className="text-brand-gold hover:underline">ملفات الأصوات</Link> · ضبط النص: <Link href="/admin/video/scripts" className="text-brand-gold hover:underline">النصوص</Link> · فحوصات ما قبل النشر: <Link href="/admin/video/qa" className="text-brand-gold hover:underline">QA</Link>
@@ -202,7 +203,7 @@ export default async function AdminAutomationPage() {
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-semibold text-brand-gold">النشر داخل ZIKR</h2>
-            <span className="text-xs text-brand-cream/35">لا يعتمد على منصات خارجية</span>
+            <span className="text-xs text-brand-cream/35">طابور النشر الداخلي</span>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             {[[ "queued", "في الانتظار" ], [ "processing", "قيد التنفيذ" ], [ "published", "نُشر بالموقع" ], [ "failed", "فشل" ]].map(([status, label]) => (
