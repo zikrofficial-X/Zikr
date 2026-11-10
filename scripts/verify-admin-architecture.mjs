@@ -51,11 +51,10 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/video/templates", "استوديو القوالب", "video.manage"],
     ["/admin/video/qa", "ضبط الجودة", "video.manage"],
   ],
-  "الذاكرة والمكتبة": [
-    ["/admin/memory", "ذاكرة المشروع", "media.manage"],
+  "الوسائط والذاكرة": [
+    ["/admin/memory", "مكتبة الوسائط والذاكرة", "media.manage"],
   ],
   "الوسائط والصوت": [
-    ["/admin/media", "مكتبة الوسائط", "media.manage"],
     ["/admin/audio", "مركز الصوت", "audio.manage"],
     ["/admin/audio/quran", "تلاوات القرآن", "audio.manage"],
     ["/admin/audio/adhan", "الأذان", "audio.manage"],
@@ -141,6 +140,7 @@ for (const label of visibleLabels) {
 
 const legacyRedirects = {
   "src/app/admin/videos/page.tsx": "/admin/video/requests",
+  "src/app/admin/media/page.tsx": "/admin/memory",
   "src/app/admin/video-factory/page.tsx": "/admin/video",
   "src/app/admin/video-factory/sources/page.tsx": "/admin/video/sources",
   "src/app/admin/video-factory/scripts/page.tsx": "/admin/video/scripts",
