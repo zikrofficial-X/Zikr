@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(path, "utf8");
 const route = read("src/app/api/admin/video-purge/route.ts");
+const videoMediaContract = read("src/features/videos/services/video-media-contract.ts");
+const videosService = read("src/features/videos/services/videos.ts");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
 const videoWorker = read("scripts/jobs/template-video-automation.ts");
 const videoQueuePage = read("src/features/admin/video-requests/components/admin-video-requests-client.tsx");
@@ -32,7 +34,12 @@ assert.ok(!/drop\s+table|supabase_migrations|android-releases/i.test(route), "Pu
 assert.ok(!route.includes('deleteRows("videos", "id=not.is.null")'), "Purge must preserve unrelated/manual video records.");
 assert.ok(route.includes('metadata->>generator=eq.zikr_internal_video_factory'), "Purge must select only internally generated video catalog rows.");
 assert.ok(route.includes('mediaState: "purged"'), "Purge must mark removed generated media records.");
-assert.ok(route.includes('published: false'), "Purge must hide generated records whose Cloudinary media was deleted.");
+assert.ok(videoMediaContract.includes('"cloudinary_missing", "unavailable", "purged"'), "purged internal media must never fall through to stale Cloudinary source URLs.");
+assert.ok(videoMediaContract.includes("metadata.mediaFallbackAvailable !== true"), "YouTube fallback must require the explicit publisher-confirmed flag.");
+assert.ok(videosService.includes("resolveVideoYoutubeId"), "all public video adapters must expose only the validated YouTube fallback ID.");
+assert.ok(route.includes("published: keepPublishedFallback"), "Purge must preserve an already-published catalog row only when a verified YouTube fallback exists.");
+assert.ok(route.includes("getConfirmedYoutubeFallbackId") && route.includes("shouldKeepPublishedVideoAfterMediaPurge"), "Purge must rely on a verified YouTube publication fallback, not an untrusted row.youtube_id.");
+assert.ok(route.includes("catalogFallbackRowsKeptPublished"), "Purge audit metadata must report the fallback rows it kept public.");
 assert.ok(route.includes('generatedVideoUrl: null') && route.includes('videoUrl: null'), "Purge must clear dead media URLs.");
 assert.ok(route.includes("status=neq.published&video_url=not.is.null&select=video_url&limit=1000"), "file purge must inspect every non-published social queue media reference before deleting assets.");
 assert.ok(route.includes("isGeneratedCloudinaryVideoUrl") && route.includes("protectedSocialQueueMedia.size > 0"), "file purge must protect generated Cloudinary media referenced by unfinished social posts.");
