@@ -208,6 +208,12 @@ if (!facebookCallback.includes('requireAdminApi("social.manage")') ||
     facebookCallback.includes("FACEBOOK_INTEGRATION_RETIRED")) {
   failures.push("Facebook OAuth callback must validate state, required Page permissions, and the selected managed Page before storing credentials");
 }
+if (!facebookCallback.includes("unblockFacebookAuthBlockedQueue") ||
+    facebookCallback.indexOf("await saveFacebookPageCredential(") < 0 ||
+    facebookCallback.indexOf("await unblockFacebookAuthBlockedQueue(") <= facebookCallback.indexOf("await saveFacebookPageCredential(") ||
+    facebookCallback.includes('dispatchGitHubWorkflow("publish-social.yml"')) {
+  failures.push("a successful Facebook OAuth reconnect must release only auth-blocked queue rows after storing the verified Page credential and leave dispatch to the scheduled publisher");
+}
 if (!youtubeCallback.includes('requireAdminApi("social.manage")') ||
     !youtubeCallback.includes("canUpload") ||
     !youtubeCallback.includes("flags.canUpload") ||
