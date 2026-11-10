@@ -90,6 +90,16 @@ assert.equal(
   "analytics and publishing credential reads must load the provider channel ID",
 );
 
+const callbackSource = readFileSync(
+  new URL("../../src/app/api/admin/social/youtube/callback/route.ts", import.meta.url),
+  "utf8",
+);
+assert.match(
+  callbackSource,
+  /saveYouTubeOAuthCredential\(\{[\s\S]*?\},\s*auth\.profile\.id\s*\)/,
+  "YouTube OAuth credentials must record the authenticated admin who connected the channel",
+);
+
 const socialPublisherSource = readFileSync(
   new URL("../../src/features/social/services/social-publishing.ts", import.meta.url),
   "utf8",
