@@ -41,6 +41,8 @@ assert.match(worker, /metadata\.age_appropriate!==true/);
 assert.match(worker, /source\.kind==="kids_story"/);
 assert.match(worker, /Kids safety gate/);
 assert.match(kidsApi, /status=eq\.published&metadata->>audience=eq\.kids/);
+assert.match(kidsApi, /source\.type !== "kids_story"/);
+assert.match(kidsApi, /kidsContentId !== source\.id/);
 assert.match(kidsPage, /\/api\/kids\/social-posts/);
 assert.match(kidsPage, /kidsWrittenPosts\.map/);
 assert.match(writtenApi, /"kids"/);
