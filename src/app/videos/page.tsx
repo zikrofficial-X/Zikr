@@ -10,6 +10,7 @@ import { getInternalGeneratedVideos } from "@/features/videos/services/videos";
 import { getYoutubeChannelFeed } from "@/features/videos/integrations/youtube";
 import { YoutubeFeedCard } from "@/features/videos/components/youtube-feed-card";
 import { getFacebookPublicProfile } from "@/features/social/services/facebook-credentials";
+import { getFacebookPublishedPosts } from "@/features/social/services/facebook-public-posts";
 import { getServerEnv } from "@/lib/env";
 import { pageMetadata } from "@/lib/site";
 import { getRequestLocale } from "@/lib/i18n/server";
@@ -60,17 +61,15 @@ function resolveFacebookPageUrl(profileUrl: string | null, pageIdValue: string |
 export default async function VideosPage() {
   const locale = await getRequestLocale();
   const isEnglish = locale === "en";
-  const [videos, youtubeFeed, facebookProfile] = await Promise.all([
+  const [videos, youtubeFeed, facebookProfile, facebookPosts] = await Promise.all([
     getInternalGeneratedVideos(60),
     getYoutubeChannelFeed(24),
     getFacebookPublicProfile(),
+    getFacebookPublishedPosts(6),
   ]);
   const facebookPageUrl = resolveFacebookPageUrl(facebookProfile?.pageUrl ?? null, getServerEnv().FACEBOOK_PAGE_ID);
   const youtubeChannelUrl = youtubeFeed.channel?.pageUrl
     ?? (youtubeFeed.channelId ? "https://www.youtube.com/channel/" + encodeURIComponent(youtubeFeed.channelId) : null);
-  const facebookPluginUrl = facebookPageUrl
-    ? "https://www.facebook.com/plugins/page.php?href=" + encodeURIComponent(facebookPageUrl) + "&tabs=timeline&width=500&height=520&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=true"
-    : null;
 
   return (
     <Container className="space-y-10 py-10">
@@ -135,22 +134,35 @@ export default async function VideosPage() {
               </Card>
             ) : null}
           </div>
-          {facebookPluginUrl ? (
-            <Card className="overflow-hidden p-3">
-              <h2 className="mb-3 font-semibold text-brand-cream">{isEnglish ? "Facebook Page posts" : "منشورات صفحة ذِكر على Facebook"}</h2>
-              <iframe
-                title={isEnglish ? "ZIKR Facebook Page" : "صفحة ذِكر على Facebook"}
-                src={facebookPluginUrl}
-                width="500"
-                height="520"
-                style={{ border: "none", overflow: "hidden", width: "100%", maxWidth: "500px" }}
-                scrolling="no"
-                frameBorder="0"
-                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                loading="lazy"
-              />
-            </Card>
-          ) : null}
+          <Card className="space-y-4 p-4">
+            <h2 className="font-semibold text-brand-cream">{isEnglish ? "Latest Facebook Page posts" : "أحدث منشورات صفحة ذِكر على Facebook"}</h2>
+            {facebookPosts.length ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {facebookPosts.map((post) => (
+                  <article key={post.id} className="overflow-hidden rounded-xl border border-brand-gold/10 bg-black/20">
+                    {post.imageUrl ? (
+                      <div className="relative aspect-video bg-black/30">
+                        <Image src={post.imageUrl} alt={post.title} fill unoptimized sizes="(max-width: 767px) 100vw, 50vw" className="object-cover" />
+                      </div>
+                    ) : null}
+                    <div className="space-y-3 p-4">
+                      <h3 className="font-semibold leading-7 text-brand-gold">{post.title}</h3>
+                      {post.body ? <p className="whitespace-pre-line text-sm leading-7 text-brand-cream/65 line-clamp-6">{post.body}</p> : null}
+                      {post.videoUrl ? <a href={post.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex text-sm text-brand-gold underline">{isEnglish ? "Watch attached video" : "مشاهدة الفيديو المرفق"}</a> : null}
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-brand-gold/10 pt-3 text-xs text-brand-cream/45">
+                        <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
+                        <a href={post.facebookUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-gold underline">{isEnglish ? "Open on Facebook" : "عرض المنشور على Facebook"}</a>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-brand-gold/10 bg-black/20 p-4 text-sm leading-7 text-brand-cream/55">
+                {isEnglish ? "No confirmed Facebook publications are available yet. Open the official page to see its latest activity." : "لا توجد منشورات مؤكدة من سجل النشر حاليًا. افتح الصفحة الرسمية لمشاهدة أحدث نشاطها."}
+              </p>
+            )}
+          </Card>
         </section>
       ) : null}
 
