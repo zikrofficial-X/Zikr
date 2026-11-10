@@ -14,7 +14,7 @@ const audit = read("scripts/jobs/audit-video-media.ts");
 for (const token of [
   "social_publish_queue",
   "platformResults",
-  "youtube.remoteId",
+  "->\'youtube\'->>\'remoteId\'",
   "metadata.videoGenerationRequestId",
   "probeCloudinary",
   'method: "HEAD"',
