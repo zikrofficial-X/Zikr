@@ -34,7 +34,7 @@ assert.ok(!/drop\s+table|supabase_migrations|android-releases/i.test(route), "Pu
 assert.ok(!route.includes('deleteRows("videos", "id=not.is.null")'), "Purge must preserve unrelated/manual video records.");
 assert.ok(route.includes('metadata->>generator=eq.zikr_internal_video_factory'), "Purge must select only internally generated video catalog rows.");
 assert.ok(route.includes('mediaState: "purged"'), "Purge must mark removed generated media records.");
-assert.ok(route.includes("mediaPurgedFromPublished: row.published === true"), "Purge must retain the prior public state so a late confirmed YouTube fallback can be restored safely.");
+assert.ok(route.includes("mediaPurgedFromPublished: wasPublishedBeforeMediaPurge(row)"), "Purge must preserve prior-publication evidence across repeated purges.");
 assert.ok(videoMediaContract.includes('"cloudinary_missing", "unavailable", "purged"'), "purged internal media must never fall through to stale Cloudinary source URLs.");
 assert.ok(videoMediaContract.includes("metadata.mediaFallbackAvailable !== true"), "YouTube fallback must require the explicit publisher-confirmed flag.");
 assert.ok(videosService.includes("resolveVideoYoutubeId"), "all public video adapters must expose only the validated YouTube fallback ID.");
