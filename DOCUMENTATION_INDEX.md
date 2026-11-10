@@ -14,6 +14,12 @@
 - [`docs/background-jobs.md`](./docs/background-jobs.md) — shared worker and production automation runbook.
 - [`docs/VIDEO_PUBLISHING_GUIDE.md`](./docs/VIDEO_PUBLISHING_GUIDE.md) — canonical video generation and social publishing runbook.
 
+## Project audit
+
+- [Continuous closeout ledger](./docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md) — cumulative evidence, fixes, tests, open blockers, and checkpoints.
+- [File status matrix](./docs/audits/FILE_STATUS_MATRIX_2026-11-01.md) — current main-baseline file inventory and per-file review state.
+- [Repository manifest](./docs/audits/REPO_MANIFEST_2026-11-10.jsonl) — recursive tracked-file and directory paths, types, Git object hashes, and byte sizes.
+
 ## Android releases
 
 - [`docs/releases/1.1.14.md`](./docs/releases/1.1.14.md) — current published v1.1.14 release notes, APK/AAB downloads, SHA-256 evidence, application identity, tag target, artifact source commit, and provenance checks.
