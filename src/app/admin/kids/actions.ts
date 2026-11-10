@@ -6,29 +6,11 @@ import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { uploadCloudinaryImage } from "@/features/media/services/cloudinary";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { isRegisteredGameId } from "@/lib/games/registry";
+import { parseKidsQuizData } from "@/features/kids/services/kids-content-validation";
 
 function value(formData: FormData, key: string) {
   const raw = String(formData.get(key) ?? "").trim();
   return raw || null;
-}
-
-function parseQuizData(raw: string | null) {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (
-      !parsed ||
-      typeof parsed !== "object" ||
-      !Array.isArray((parsed as { questions?: unknown }).questions)
-    ) {
-      throw new Error();
-    }
-    return parsed;
-  } catch {
-    throw new Error(
-      "بيانات اللعبة / الاختبار يجب أن تكون JSON صحيحًا ويحتوي على questions."
-    );
-  }
 }
 
 function normalizeSlug(slug: string) {
@@ -61,7 +43,7 @@ export async function saveKidsContentAction(formData: FormData) {
   }
 
   // Validate structured form data before uploading media so rejected forms do not leave orphaned Cloudinary assets.
-  const quizData = parseQuizData(value(formData, "quiz_data"));
+  const quizData = parseKidsQuizData(value(formData, "quiz_data"));
   const existingSlug = await supabaseServerAdminRequest<Array<{ id: string }>>(
     "/rest/v1/kids_content?select=id&slug=eq." + encodeURIComponent(slug) + "&limit=1",
     { method: "GET" },
