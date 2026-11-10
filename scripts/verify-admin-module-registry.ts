@@ -1,12 +1,10 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { ADMIN_MODULES, ADMIN_ROUTE_ALIASES } from "../src/features/admin/config/modules";
 import { ADMIN_NAVIGATION } from "../src/features/admin/config/navigation";
 import { ADMIN_ROLE_PERMISSIONS } from "../src/features/admin/services/permissions";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const failures: string[] = [];
-const navigationByKey = new Map(ADMIN_NAVIGATION.map((group) => [group.key, group]));
 if (ADMIN_MODULES.length !== ADMIN_NAVIGATION.length) {
   failures.push("Admin module catalog and canonical navigation must have the same number of groups.");
 }
