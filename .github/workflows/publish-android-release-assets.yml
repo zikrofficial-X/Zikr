@@ -117,11 +117,11 @@ jobs:
             if [[ -n "$RELEASES_JSON" ]]; then
               MATCH_COUNT="$(jq -r --arg tag "$TAG" '[.[] | select(.tag_name == $tag)] | length' <<< "$RELEASES_JSON" 2>/dev/null || printf '0')"
               if [[ ! "$MATCH_COUNT" =~ ^[0-9]+$ ]]; then
-                echo "::error title=Invalid Android release list::Could not count release records for \${TAG}." >&2
+                echo "::error title=Invalid Android release list::Could not count release records for ${TAG}." >&2
                 exit 1
               fi
               if (( MATCH_COUNT > 1 )); then
-                echo "::error title=Ambiguous Android release draft::Found \${MATCH_COUNT} GitHub releases for \${TAG}. Resolve duplicate release records before publishing; no release was modified." >&2
+                echo "::error title=Ambiguous Android release draft::Found ${MATCH_COUNT} GitHub releases for ${TAG}. Resolve duplicate release records before publishing; no release was modified." >&2
                 exit 1
               fi
               if (( MATCH_COUNT == 1 )); then
