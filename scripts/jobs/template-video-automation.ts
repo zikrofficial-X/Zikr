@@ -1933,7 +1933,7 @@ async function restoreMissingMediaSocialQueueItems(
     );
     if (!Array.isArray(rows) || rows.length === 0) break;
 
-    for (const item: MissingMediaSocialQueueRow of rows) {
+    for (const item of rows) {
       lastSeenId = item.id;
       const patch = buildMissingMediaQueueRecoveryPatch({ item, videoUrl, now });
       if (!patch) continue;
