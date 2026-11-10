@@ -85,6 +85,7 @@ if (!insightsWorker.includes("getFacebookPageProfile()") ||
   failures.push("analytics-only worker must refresh Facebook Page profile metrics through the Node-safe admin REST client and report stale profile data");
 }
 if (!runner.includes('const insightsFailed = target === "insights"') ||
+    !runner.includes("Number(insights.failed ?? 0)") ||
     !runner.includes("if (insightsFailed > 0)") ||
     !socialWorker.includes("Number(facebookInsights.failed ?? 0) + Number(insights.failed ?? 0)")) {
   failures.push("analytics-only worker must expose provider failures and fail CI instead of reporting false success");
