@@ -34,7 +34,11 @@ assert.ok(route.includes('metadata->>generator=eq.zikr_internal_video_factory'),
 assert.ok(route.includes('mediaState: "purged"'), "Purge must mark removed generated media records.");
 assert.ok(route.includes('published: false'), "Purge must hide generated records whose Cloudinary media was deleted.");
 assert.ok(route.includes('generatedVideoUrl: null') && route.includes('videoUrl: null'), "Purge must clear dead media URLs.");
-assert.ok(!route.includes("social_publish_queue"), "memory purge must not query or mutate the retired social queue.");
+assert.ok(route.includes("social_publish_queue"), "purge must inspect the active social publish queue before deleting generated media.");
+assert.ok(route.includes("isGeneratedCloudinaryVideoUrl"), "purge must recognize generated Cloudinary media references.");
+assert.ok(route.includes("pendingSocialQueueMedia") && route.includes("protectedSocialQueueMedia"), "purge must hold generated media referenced by unfinished social posts.");
+assert.ok(route.includes("pendingSocialGenerationRefs"), "memory purge must hold generation records referenced by unfinished social posts.");
+assert.ok(route.includes("deletionStarted: false"), "blocked preflight must prove that destructive work did not start.");
 assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical social queue records must be explicitly preserved.");
 assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active internal generation before deleting media.");
 assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");
