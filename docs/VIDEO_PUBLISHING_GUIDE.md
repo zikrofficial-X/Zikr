@@ -43,7 +43,7 @@ Video generation may enqueue a new row in `social_publish_queue`, but it must no
 
 ## Internal ZIKR video publication
 
-Completed MP4s are uploaded to Cloudinary and registered in the ZIKR `videos` table with the `zikr_internal_video_factory` metadata marker. Each record is initially unpublished. The site-owned `content_publish_queue` then publishes the video to the ZIKR website after verifying that its media URL is HTTPS on `res.cloudinary.com` and that the record has not been purged. The public `/videos` page displays only internally generated ZIKR videos; individual video pages play the verified Cloudinary MP4.
+Completed MP4s are uploaded to Cloudinary and registered in the ZIKR `videos` table with the `zikr_internal_video_factory` metadata marker. Each record is initially unpublished. The site-owned `content_publish_queue` then publishes the video to the ZIKR website after verifying that its media URL is HTTPS on `res.cloudinary.com` and that the record has not been purged. General-audience internal videos appear in `/videos`; child-directed videos with `metadata.audience=kids` are assigned to the dedicated `kids-stories` category and the separate `/kids/videos` library. Kids media is excluded from the general feed, while the Kids library enforces an explicit audience and generator filter.
 
 This queue is not a social queue. No video-generation step may enqueue `social_publish_queue`, call a provider upload endpoint, or require a social publishing permission. Template previews are explicitly excluded from public publication.
 
