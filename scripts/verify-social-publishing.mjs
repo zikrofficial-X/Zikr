@@ -89,9 +89,11 @@ if (!socialPublishingService.includes("hasVideoApprovalForQueueItem") ||
 const mediaDisposalStart = socialPublishingService.indexOf("async function disposePublishedVideo");
 const mediaDisposalEnd = socialPublishingService.indexOf("export async function resetQueuedSocialVideoMedia", mediaDisposalStart);
 const mediaDisposal = socialPublishingService.slice(mediaDisposalStart, mediaDisposalEnd);
-if (!mediaDisposal.includes("const candidates = backupUrl ? [backupUrl] : [];") ||
+if (!mediaDisposal.includes("stagingCleanupEligibleAt") ||
+    !mediaDisposal.includes("stagingCleanupDeferred: true") ||
+    mediaDisposal.includes("deleteManagedVideoUrl") ||
     mediaDisposal.includes("video_url: null")) {
-  failures.push("social cleanup must preserve the canonical video master and delete only the temporary Supabase staging copy");
+  failures.push("social publishing must preserve both media pointers and defer staging-copy deletion to the 48-hour retention worker");
 }
 if (!socialPublishingService.includes("created_at=gte.${createdSince}") ||
     !socialPublishingService.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff") ||
