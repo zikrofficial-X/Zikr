@@ -6,7 +6,9 @@ export type SocialPlatformMetadata = {
   platformResults?: unknown;
   platformAttempts?: unknown;
   authBlocked?: unknown;
+  authBlockedPlatforms?: unknown;
   permanentFailure?: unknown;
+  permanentFailurePlatforms?: unknown;
   attempts?: unknown;
 } | null | undefined;
 
@@ -14,6 +16,29 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+}
+
+/** Normalize both the current keyed object and legacy array-shaped result ledger. */
+export function normalizeSocialPlatformResults(value: unknown): Record<string, unknown> {
+  if (Array.isArray(value)) {
+    const entries: Array<[string, unknown]> = [];
+    for (const item of value) {
+      const row = asRecord(item);
+      if (row && typeof row.platform === "string" && row.platform.trim()) {
+        entries.push([row.platform, row]);
+      }
+    }
+    return Object.fromEntries(entries);
+  }
+  return asRecord(value) ?? {};
+}
+
+function metadataPlatforms(value: unknown): SocialPlatform[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (platform): platform is SocialPlatform =>
+      platform === "facebook" || platform === "facebook_reels" || platform === "youtube",
+  );
 }
 
 export function getEnabledSocialPlatforms(env: SocialPlatformEnvironment): SocialPlatform[] {
@@ -49,25 +74,11 @@ export function isAmbiguousProviderOutcome(error: unknown): boolean {
 }
 
 export function getManualReconciliationPlatforms(metadata: SocialPlatformMetadata): SocialPlatform[] {
-  const values = metadata?.platformResults;
+  const results = normalizeSocialPlatformResults(metadata?.platformResults);
   const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
-  const manual = new Set<SocialPlatform>();
-
-  if (Array.isArray(values)) {
-    for (const value of values) {
-      const row = asRecord(value);
-      if (row?.requiresReconciliation === true && supported.includes(row.platform as SocialPlatform)) {
-        manual.add(row.platform as SocialPlatform);
-      }
-    }
-  } else {
-    const results = asRecord(values);
-    for (const platform of supported) {
-      if (asRecord(results?.[platform])?.requiresReconciliation === true) manual.add(platform);
-    }
-  }
-
-  return [...manual];
+  return supported.filter(
+    (platform) => asRecord(results[platform])?.requiresReconciliation === true,
+  );
 }
 
 export function canAttemptSocialPlatform(input: {
@@ -78,19 +89,26 @@ export function canAttemptSocialPlatform(input: {
 }): boolean {
   const { platform, enabledPlatforms, metadata, maxAttempts } = input;
   if (!enabledPlatforms.includes(platform)) return false;
-  const results = asRecord(metadata?.platformResults);
-  const previous = asRecord(results?.[platform]);
+  const rawResults = metadata?.platformResults;
+  const hasPlatformResults = rawResults !== null && typeof rawResults === "object";
+  const results = normalizeSocialPlatformResults(rawResults);
+  const previous = asRecord(results[platform]);
   if (hasSuccessfulDelivery(previous)) return false;
   if (getManualReconciliationPlatforms(metadata).includes(platform)) return false;
 
+  const authBlockedPlatforms = metadataPlatforms(metadata?.authBlockedPlatforms);
+  const permanentFailurePlatforms = metadataPlatforms(metadata?.permanentFailurePlatforms);
+  if (authBlockedPlatforms.includes(platform) || permanentFailurePlatforms.includes(platform)) return false;
+
   // Legacy global authBlocked was emitted only by the Facebook adapter. It must
   // not prevent an independent YouTube target from being published.
-  if (!results && metadata?.authBlocked === true && platform.startsWith("facebook")) return false;
+  if (!hasPlatformResults && authBlockedPlatforms.length === 0 &&
+      metadata?.authBlocked === true && platform.startsWith("facebook")) return false;
   if (isAuthBlocked(platform, previous?.error) || isPermanentSocialFailure(previous?.error)) return false;
 
   const attempts = asRecord(metadata?.platformAttempts);
   const legacyAttempts = Number(metadata?.attempts ?? 0);
-  const fallbackAttempts = !results && !(metadata?.authBlocked === true && platform === "youtube") ? legacyAttempts : 0;
+  const fallbackAttempts = !hasPlatformResults && !(metadata?.authBlocked === true && platform === "youtube") ? legacyAttempts : 0;
   const currentAttempts = Number(attempts?.[platform] ?? fallbackAttempts);
   return Number.isFinite(currentAttempts) && currentAttempts < Math.max(1, maxAttempts);
 }

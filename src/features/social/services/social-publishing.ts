@@ -9,7 +9,7 @@ import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPu
 import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isPermanentSocialFailure } from "@/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 export type SocialQueueStatus =
@@ -915,9 +915,7 @@ export async function processSocialPublishItem(
   }
 
   const enabledPlatforms = options.enabledPlatforms ?? getEnabledSocialPlatforms(process.env);
-  const previous = item.metadata?.platformResults && typeof item.metadata.platformResults === "object" && !Array.isArray(item.metadata.platformResults)
-    ? item.metadata.platformResults as Record<string, unknown>
-    : {};
+  const previous = normalizeSocialPlatformResults(item.metadata?.platformResults);
   const previousMetadata = item.metadata ?? {};
   const maxAttempts = socialMaxAttempts(previousMetadata);
   const runnablePlatforms = platforms.filter(platform => canAttemptSocialPlatform({

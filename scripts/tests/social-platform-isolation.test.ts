@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome } from "../../src/features/social/services/platform-availability";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, normalizeSocialPlatformResults } from "../../src/features/social/services/platform-availability";
 import { buildFacebookQueueRecoveryPatch } from "../../src/features/social/services/facebook-queue-recovery-policy";
 
 const both = getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true", SOCIAL_PUBLISH_YOUTUBE_ENABLED: "true" });
@@ -60,6 +62,70 @@ assert.equal(
   false,
   "HTTP 422 media validation failures must not be retried against the same source asset",
 );
+
+
+const legacyArrayResults = {
+  platformResults: [
+    { platform: "youtube", ok: true, remoteId: "youtube-legacy-remote" },
+    { platform: "facebook_reels", ok: false, error: "Facebook OAuthException: access token expired" },
+  ],
+  authBlocked: true,
+  authBlockedPlatforms: ["facebook_reels"],
+  permanentFailure: true,
+  permanentFailurePlatforms: ["facebook"],
+};
+assert.deepEqual(
+  normalizeSocialPlatformResults(legacyArrayResults.platformResults),
+  {
+    youtube: { platform: "youtube", ok: true, remoteId: "youtube-legacy-remote" },
+    facebook_reels: { platform: "facebook_reels", ok: false, error: "Facebook OAuthException: access token expired" },
+  },
+  "legacy array-shaped platform results must normalize without losing remote IDs",
+);
+assert.equal(
+  canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: legacyArrayResults, maxAttempts: 5 }),
+  false,
+  "legacy array-shaped successful provider IDs must prevent duplicate publication",
+);
+assert.equal(
+  canAttemptSocialPlatform({ platform: "facebook_reels", enabledPlatforms: both, metadata: legacyArrayResults, maxAttempts: 5 }),
+  false,
+  "explicit per-platform auth blocks must survive when results use the legacy array shape",
+);
+assert.equal(
+  canAttemptSocialPlatform({ platform: "facebook", enabledPlatforms: both, metadata: legacyArrayResults, maxAttempts: 5 }),
+  false,
+  "explicit permanent-failure platforms must remain blocked independently",
+);
+
+const explicitBlocksWithoutResults = {
+  authBlocked: false,
+  authBlockedPlatforms: ["facebook_reels"],
+  permanentFailurePlatforms: ["facebook"],
+};
+assert.equal(
+  canAttemptSocialPlatform({ platform: "facebook_reels", enabledPlatforms: both, metadata: explicitBlocksWithoutResults, maxAttempts: 5 }),
+  false,
+  "per-platform auth block lists must be honored even when platformResults is absent",
+);
+assert.equal(
+  canAttemptSocialPlatform({ platform: "facebook", enabledPlatforms: both, metadata: explicitBlocksWithoutResults, maxAttempts: 5 }),
+  false,
+  "per-platform permanent-failure lists must be honored even when platformResults is absent",
+);
+assert.equal(
+  canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: explicitBlocksWithoutResults, maxAttempts: 5 }),
+  true,
+  "a Facebook-only block must not prevent an independent YouTube target",
+);
+
+const adminSocialRoute = readFileSync(
+  resolve(process.cwd(), "src/app/api/admin/social/route.ts"),
+  "utf8",
+);
+assert.match(adminSocialRoute, /normalizeSocialPlatformResults\(item\.metadata\?\.platformResults\)/);
+assert.match(adminSocialRoute, /authBlockedPlatforms\(item\.metadata, item\.target_platforms\)/);
+assert.match(adminSocialRoute, /authBlocked: remainingAuthBlockedPlatforms\.length > 0/);
 
 console.log("Social platform isolation and independent readiness tests passed.");
 

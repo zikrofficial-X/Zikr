@@ -14,7 +14,7 @@ import { getFacebookPageAudienceSnapshot } from "@/features/social/services/face
 import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
 import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
-import { getManualReconciliationPlatforms } from "@/features/social/services/platform-availability";
+import { getManualReconciliationPlatforms, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -97,13 +97,19 @@ function successfulPlatforms(
 }
 
 function authBlockedPlatforms(
-  metadata: Record<string, unknown> | null | undefined
+  metadata: Record<string, unknown> | null | undefined,
+  targets: readonly string[] = [],
 ): Set<string> {
-  const values = metadata?.platformResults;
   const result = new Set<string>();
-  if (!values || typeof values !== "object" || Array.isArray(values))
-    return result;
+  const declared = Array.isArray(metadata?.authBlockedPlatforms)
+    ? metadata.authBlockedPlatforms.filter(
+        (platform): platform is string =>
+          typeof platform === "string" && platform.startsWith("facebook"),
+      )
+    : [];
+  for (const platform of declared) result.add(platform);
 
+  const values = normalizeSocialPlatformResults(metadata?.platformResults);
   for (const [platform, value] of Object.entries(values)) {
     if (!value || typeof value !== "object") continue;
     const row = value as { ok?: unknown; error?: unknown };
@@ -113,10 +119,21 @@ function authBlockedPlatforms(
         platform.startsWith("facebook") &&
         (error.includes("access token") ||
           error.includes("session has expired") ||
-          error.includes("oauth"))
+          error.includes("oauth") ||
+          error.includes("reauthorization_required") ||
+          error.includes("reconnect the page"))
       ) {
         result.add(platform);
       }
+    }
+  }
+
+  // Old rows may carry only a global Facebook auth flag. Expand it to the
+  // row's Facebook targets so a partial retry cannot release another blocked
+  // target merely because the per-platform result ledger is absent.
+  if (metadata?.authBlocked === true && declared.length === 0 && result.size === 0) {
+    for (const platform of targets) {
+      if (platform.startsWith("facebook")) result.add(platform);
     }
   }
   return result;
@@ -124,7 +141,7 @@ function authBlockedPlatforms(
 
 function retryPlatforms(item: QueueItem, allowAmbiguous = false): string[] {
   const succeeded = successfulPlatforms(item.metadata);
-  const blocked = authBlockedPlatforms(item.metadata);
+  const blocked = authBlockedPlatforms(item.metadata, item.target_platforms);
   const manual = new Set<string>(getManualReconciliationPlatforms(item.metadata));
   return item.target_platforms.filter(
     platform => !succeeded.has(platform) && !blocked.has(platform) && (allowAmbiguous || !manual.has(platform))
@@ -512,12 +529,22 @@ export async function POST(request: NextRequest) {
           // Leave partial/failed records unchanged if any target is still blocked.
           continue;
         }
-        const previousResults = item.metadata?.platformResults && typeof item.metadata.platformResults === "object" && !Array.isArray(item.metadata.platformResults)
-          ? item.metadata.platformResults as Record<string, unknown>
-          : {};
+        const previousResults = normalizeSocialPlatformResults(item.metadata?.platformResults);
         const nextPlatformResults = Object.fromEntries(
           Object.entries(previousResults).filter(([platform]) => !platforms.includes(platform)),
         );
+        const remainingAuthBlockedPlatforms = [...authBlockedPlatforms(item.metadata, item.target_platforms)]
+          .filter(platform => !platforms.includes(platform));
+        const declaredPermanentFailures = Array.isArray(item.metadata?.permanentFailurePlatforms)
+          ? item.metadata.permanentFailurePlatforms.filter((platform): platform is string => typeof platform === "string")
+          : [];
+        const remainingPermanentFailurePlatforms = declaredPermanentFailures.filter(
+          platform => !platforms.includes(platform),
+        );
+        const legacyPermanentFailureRemains =
+          !Array.isArray(item.metadata?.permanentFailurePlatforms) &&
+          item.metadata?.permanentFailure === true &&
+          platforms.length < item.target_platforms.length;
         await supabaseServerAdminRequest(
           `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}`,
           {
@@ -545,14 +572,10 @@ export async function POST(request: NextRequest) {
                   ...Object.fromEntries(platforms.map(platform => [platform, 0])),
                 },
                 platformResults: nextPlatformResults,
-                authBlocked: false,
-                authBlockedPlatforms: (Array.isArray(item.metadata?.authBlockedPlatforms)
-                  ? item.metadata.authBlockedPlatforms
-                  : []).filter(platform => !platforms.includes(String(platform))),
-                permanentFailure: false,
-                permanentFailurePlatforms: (Array.isArray(item.metadata?.permanentFailurePlatforms)
-                  ? item.metadata.permanentFailurePlatforms
-                  : []).filter(platform => !platforms.includes(String(platform))),
+                authBlocked: remainingAuthBlockedPlatforms.length > 0,
+                authBlockedPlatforms: remainingAuthBlockedPlatforms,
+                permanentFailure: remainingPermanentFailurePlatforms.length > 0 || legacyPermanentFailureRemains,
+                permanentFailurePlatforms: remainingPermanentFailurePlatforms,
                 unavailablePlatforms: [],
                 approvalDeferredPlatforms: [],
                 nextRetryAt: null,
