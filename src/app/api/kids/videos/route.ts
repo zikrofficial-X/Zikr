@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getKidsGeneratedVideos } from "@/features/videos/services/videos";
+import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 
 export const dynamic = "force-dynamic";
 
@@ -70,26 +71,23 @@ export async function GET() {
     if (requestIds.length > 0) {
       const filter = requestIds.map(encodeURIComponent).join(",");
       const [requests, socialRows] = await Promise.all([
-        import("@/lib/supabase/admin-rest").then(({ supabaseServerAdminRequest }) =>
-          supabaseServerAdminRequest<Array<{ id: string; content: unknown }>>(
-            "/rest/v1/video_generation_requests?id=in.(" + filter + ")&select=id,content",
-          ),
+        supabaseServerAdminRequest<Array<{ id: string; content: unknown }>>(
+          "/rest/v1/video_generation_requests?id=in.(" + filter + ")&select=id,content",
         ).catch((error) => {
           console.warn("[api/kids/videos] Could not load linked story text:", error);
           return [];
         }),
-        import("@/lib/supabase/admin-rest").then(({ supabaseServerAdminRequest }) =>
-          supabaseServerAdminRequest<SocialQueueRow[]>(
-            "/rest/v1/social_publish_queue?content_id=in.(" + filter +
-              ")&select=content_id,content_type,body,target_platforms,status,published_at,created_at,metadata&order=created_at.desc&limit=300",
-          ),
+        supabaseServerAdminRequest<SocialQueueRow[]>(
+          "/rest/v1/social_publish_queue?content_id=in.(" + filter +
+            ")&select=content_id,content_type,body,target_platforms,status,published_at,created_at,metadata&order=created_at.desc&limit=300",
         ).catch((error) => {
           console.warn("[api/kids/videos] Could not load linked social posts:", error);
           return [];
         }),
       ]);
 
-      requestContentById = new Map((requests ?? []).map((row) => [row.id, asRecord(row.content)]));
+      requestContentById = new Map<string, Record<string, unknown>>();
+      for (const row of requests ?? []) requestContentById.set(row.id, asRecord(row.content));
       for (const row of socialRows ?? []) {
         if (
           !row.content_id ||
