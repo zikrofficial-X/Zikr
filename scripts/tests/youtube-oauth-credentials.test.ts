@@ -60,6 +60,21 @@ assert.equal(
   "credential-store errors must fail closed",
 );
 
+const credentialSource = readFileSync(
+  new URL("../../src/features/social/services/youtube-oauth-credentials.ts", import.meta.url),
+  "utf8",
+);
+assert.equal(
+  (credentialSource.match(/matchesConfiguredYouTubeChannel\\(row\\?\\.channel_id\\)/g) ?? []).length,
+  2,
+  "analytics and publishing credentials must both validate the stored channel identity",
+);
+assert.equal(
+  (credentialSource.match(/select=refresh_token,granted_scopes,channel_id/g) ?? []).length,
+  2,
+  "analytics and publishing credential reads must load the provider channel ID",
+);
+
 const socialPublisherSource = readFileSync(
   new URL("../../src/features/social/services/social-publishing.ts", import.meta.url),
   "utf8",
