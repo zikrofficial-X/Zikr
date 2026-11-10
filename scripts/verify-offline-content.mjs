@@ -9,6 +9,7 @@ const offlineLibraryPath = 'src/app/offline-library/page.tsx';
 const offlineLibraryClientPath = 'src/app/offline-library/offline-library-client.tsx';
 const guardPath = 'src/components/layout/offline-navigation-guard.tsx';
 const exporterPath = 'scripts/export-offline-content.mjs';
+const offlineWorkflowPath = '.github/workflows/refresh-offline-content.yml';
 const offlineDbPath = 'src/lib/offline-db.ts';
 
 const read = file => (existsSync(file) ? readFileSync(file, 'utf8') : '');
@@ -30,6 +31,7 @@ for (const file of [
   offlineLibraryClientPath,
   guardPath,
   exporterPath,
+  offlineWorkflowPath,
   offlineDbPath,
 ]) {
   if (!existsSync(file)) failures.push(`Missing ${file}`);
@@ -108,6 +110,11 @@ try {
 const offlinePack = read(offlinePackPath);
 const offlineDb = read(offlineDbPath);
 const exporter = read(exporterPath);
+const offlineWorkflow = read(offlineWorkflowPath);
+if (!offlineWorkflow.includes('push:') || !offlineWorkflow.includes('branches: [main]') ||
+    !offlineWorkflow.includes('"scripts/export-offline-content.mjs"')) {
+  failures.push('Offline snapshot must rerun after exporter or validation contract changes reach main');
+}
 try { execFileSync(process.execPath, ['--check', exporterPath], { stdio: 'pipe' }); }
 catch (error) { failures.push(`Offline exporter syntax check failed: ${error instanceof Error ? error.message : 'unknown error'}`); }
 for (const dataset of ['surahs','ayahs','tafsir','hadith_books','hadith','prophets','prophet_sections','battles','battle_events','conquests','conquest_events','articles','duas','kids','companions','stories','article_categories','companion_stories','scholars','tawasheeh','quran_reciters','quran_audio','kids_games','kids_game_levels','dua_categories']) {
