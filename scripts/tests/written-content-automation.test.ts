@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {buildPublicKidsWrittenPost,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
+import {buildPublicKidsWrittenPost,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
 const source:WrittenContentSource={kind:"quran",id:"ayah-1",title:"آية",sourceText:"إِنَّ مَعَ الْعُسْرِ يُسْرًا",reference:"سورة الشرح، الآية 6",publicPath:"/quran/ash-sharh",categoryLabel:"القرآن الكريم",sourceVerified:true,quoteRequired:true};
 const draft:WrittenPostDraft={eligible:true,title:"مع كل عسر يسر",hook:"قد تمر بلحظة تظن فيها أن الطريق انتهى، لكن الأمل يظل حاضرًا.",reflection:"تدعونا الآية إلى ألا نستسلم لليأس، وأن نتذكر أن الشدة لا تدوم وأن الأمل باب للعمل والصبر.",question:"ما المعنى الذي تستحضره عندما تمر بوقت صعب؟"};
 assert.equal(normalizeWrittenCategory("hadith"),"hadith");assert.equal(normalizeWrittenCategory("other"),"auto");assert.equal(normalizeWrittenCategory("companions"),"companions");assert.equal(normalizeWrittenCategory("kids"),"kids");
@@ -99,6 +99,20 @@ const liveKidsStory: CurrentKidsStory = {
  is_active: true,
  metadata: { age_appropriate: true },
 };
+const kidsPublishCandidate = {
+ content_type: queueRow.content_type,
+ content_id: queueRow.content_id,
+ title: queueRow.title,
+ body: queueRow.body,
+ metadata: queueRow.metadata,
+};
+assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, liveKidsStory), true, "Kids written posts require a currently approved live story before provider delivery");
+assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, { ...liveKidsStory, published: false }), false, "unpublished Kids sources must be held before provider delivery");
+assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, { ...liveKidsStory, is_active: false }), false, "inactive Kids sources must be held before provider delivery");
+assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, { ...liveKidsStory, metadata: { age_appropriate: false } }), false, "non-age-appropriate Kids sources must be held before provider delivery");
+assert.equal(isEligibleKidsWrittenPostForPublishing({ ...kidsPublishCandidate, content_id: "different-source" }, liveKidsStory), false, "queue identity must match the live Kids source before provider delivery");
+assert.equal(isEligibleKidsWrittenPostForPublishing({ ...kidsPublishCandidate, metadata: { ...queueRow.metadata, publicPath: "/kids/other-story" } }, liveKidsStory), false, "stale Kids paths must be held before provider delivery");
+assert.equal(isEligibleKidsWrittenPostForPublishing({ ...kidsPublishCandidate, metadata: { ...queueRow.metadata, source: { type: "kids_story", id: "kids-story-1", verified: false } } }, liveKidsStory), false, "unverified Kids source metadata must be held before provider delivery");
 const publicKidsPost = buildPublicKidsWrittenPost(queueRow, liveKidsStory);
 assert.ok(publicKidsPost, "a published post with a currently approved Kids source may be displayed");
 assert.equal(publicKidsPost?.publicPath, "/kids/story-kind-word");
@@ -121,6 +135,7 @@ assert.equal(containsKidsPersonalDataSolicitation("لا تشارك رقم هات
 assert.equal(containsKidsPersonalDataSolicitation("ما الدرس الذي تعلمته من القصة؟"), false, "ordinary educational questions must remain allowed");
 
 const worker = readFileSync("scripts/jobs/written-content-automation.ts", "utf8");
+const socialPublishing = readFileSync("src/features/social/services/social-publishing.ts", "utf8");
 const writtenFactory = readFileSync("src/features/social/services/written-content.ts", "utf8");
 const kidsApi = readFileSync("src/app/api/kids/social-posts/route.ts", "utf8");
 const kidsPage = readFileSync("src/app/kids/page.tsx", "utf8");
@@ -140,6 +155,9 @@ assert.match(worker, /readRequired<Row>\(\s*"\/rest\/v1\/kids_content\?/, "Kids 
 assert.match(worker, /source\.kind==="kids_story"/);
 assert.match(worker, /chooseWrittenSourceKind\(/);
 assert.match(worker, /metadata->>audience=eq\.kids/);
+assert.match(worker, /scheduled_at\.gte\.\$\{dayStartIso\}/, "daily Kids reservation must include posts scheduled for the current UTC day");
+assert.match(worker, /published_at\.gte\.\$\{dayStartIso\}/, "daily Kids reservation must include posts published during the current UTC day");
+assert.match(worker, /created_at\.gte\.\$\{dayStartIso\}/, "daily Kids reservation must include rows created during the current UTC day");
 assert.match(worker, /content_type=eq\.written_post&metadata->>audience=eq\.kids/);
 assert.match(worker, /if\(kind==="kids_story"\)hasKidsPostToday=true/);
 assert.match(worker, /Kids safety gate/);
@@ -165,6 +183,14 @@ assert.match(writtenWorkflow, /knowledge, kids/);
 assert.match(writtenStudio, /value: "kids", label: "قصص الأطفال المعتمدة"/);
 assert.match(writtenFactory, /content_type:\s*"written_post"/);
 assert.match(writtenFactory, /target_platforms:\s*\["facebook"\]/);
+assert.match(socialPublishing, /checkKidsWrittenPostApproval\(item\)/, "social publishing must revalidate the live Kids source before provider delivery");
+assert.match(socialPublishing, /isEligibleKidsWrittenPostForPublishing\(item, rows\[0\]\)/);
+assert.ok(
+  socialPublishing.indexOf("checkKidsWrittenPostApproval(item)") < socialPublishing.indexOf("publishPlatform(item, platform)"),
+  "Kids source validation must run before any external social provider call",
+);
+assert.match(socialPublishing, /kidsSourceApprovalBlocked/);
+assert.match(socialPublishing, /kidsSourceApprovalPending/);
 assert.match(worker, /published:\s*false/);
 assert.match(worker, /content_table:\s*"articles"/);
 console.log("Written-content source-lock, quality, idempotency, website scheduling, and Facebook queue tests passed.");
