@@ -220,3 +220,15 @@ Read-only SQL against the active project returned:
 4. Keep owner-gated items open: leaked-password protection, invalid/revoked provider token reauthorization, browser/admin acceptance, mobile device acceptance and any irreversible storage/data action.
 
 **State: IN PROGRESS. No modules closed.**
+
+  
+## Additional checkpoint — 2026-11-10 13:35 Africa/Cairo
+
+- **Admin health defect fixed in PR #275:** `src/lib/services/api-health.ts` awaited `assertSupabaseConnection()` but discarded its boolean return, so a false data-plane probe was incorrectly reported as `ok`. Commit `32606b903c4628226a8ef4cbf60a940d055dc61a` adds a pure status mapper and unit test; `fe5112dae122b038c5e90dc0cd8a4c4da33bb665` removes an unused type import. The test is added to `pnpm test`, and `scripts/verify-admin-health.mjs` enforces propagation. No live health probe was triggered by this edit.
+- **Supabase auth boundary traced:** all seven discovered `requireSupabaseAuth()` route consumers delegate to feature services that call `supabase.auth.getUser()` and scope user data by that identity. The helper itself is only a provider-availability check, not an authentication guard; PR #275 clarifies this, and clarifies that `requireSupabaseAdmin()` is not RBAC. No authorization bypass was found in those seven traced routes. The admin helper has no discovered consumer; it is retained pending dynamic-reference review.
+- **Supabase client ownership traced:** `src/lib/supabase/server.ts` is the Next server module (Next headers, service-role REST, validated table/filter names); `src/lib/supabase/admin-rest.ts` is a distinct Node/worker-safe client used by jobs. They are not duplicate implementations. No Edge-runtime route importing `server.ts` was found in the code search. The worker-safe `supabaseServerAdminCount` export has no discovered external consumer but is not deleted.
+- **Storage helper remains open:** `src/lib/services/storage.ts` is server-only and relies on Storage RLS for owner-path enforcement. Storage-schema policies and every signed-URL caller still need a full audit before changing this path.
+- **Current PR head:** `fe5112dae122b038c5e90dc0cd8a4c4da33bb665`, PR #275 remains draft/open and unmerged. Earlier head `1a522cd` passed GitHub Quality Gate, but CircleCI `source-verify` failed; later commits have not yet reported final CI results. Do not infer success from the earlier head.
+- **Progress:** inventory 1,639 files / 491 directories; full source-content evidence remains 92/1,639; 1547 REVIEW_REQUIRED; modules closed 0. New helper/test files in this PR are supplemental and do not alter the main-baseline manifest until merged.
+
+**State: IN PROGRESS.**
