@@ -96,6 +96,39 @@ const missingTlsUrl = runDatabaseUrlValidation(
   `postgresql://postgres:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres`,
 );
 assert.notEqual(missingTlsUrl.status, 0, "a production database URL without an explicit secure TLS mode must fail");
+const hostOverrideUrl = runDatabaseUrlValidation(
+  `postgresql://postgres:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres?host=db.attacker.supabase.co&sslmode=require`,
+);
+assert.notEqual(hostOverrideUrl.status, 0, "a libpq host query override must not bypass the validated authority hostname");
+const hostAddressOverrideUrl = runDatabaseUrlValidation(
+  `postgresql://postgres:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres?hostaddr=203.0.113.10&sslmode=require`,
+);
+assert.notEqual(hostAddressOverrideUrl.status, 0, "a hostaddr override must not bypass DNS endpoint validation");
+const portOverrideUrl = runDatabaseUrlValidation(
+  `postgresql://postgres:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres?port=6543&sslmode=require`,
+);
+assert.notEqual(portOverrideUrl.status, 0, "a conflicting port query parameter must not replace the validated authority port");
+const databaseOverrideUrl = runDatabaseUrlValidation(
+  `postgresql://postgres:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres?dbname=attacker&sslmode=require`,
+);
+assert.notEqual(databaseOverrideUrl.status, 0, "a database-name query override must not replace the postgres database");
+const queryUserOverrideUrl = runDatabaseUrlValidation(
+  `postgresql://postgres:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres?user=zikr_seed_loader&sslmode=require`,
+);
+assert.notEqual(queryUserOverrideUrl.status, 0, "the effective query-string user must be checked against the retired-role denylist");
+const doubleEncodedUser = `postgres.%25${expectedProjectRef.charCodeAt(0).toString(16)}${expectedProjectRef.slice(1)}`;
+const doubleEncodedUserUrl = runDatabaseUrlValidation(
+  `postgresql://postgres:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres?user=${doubleEncodedUser}&sslmode=require`,
+);
+assert.notEqual(doubleEncodedUserUrl.status, 0, "query credentials must be percent-decoded exactly once");
+const duplicateUserUrl = runDatabaseUrlValidation(
+  `postgresql://postgres:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres?user=postgres&user=attacker&sslmode=require`,
+);
+assert.notEqual(duplicateUserUrl.status, 0, "duplicate user parameters must fail closed");
+const duplicateTlsUrl = runDatabaseUrlValidation(
+  `postgresql://postgres:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres?sslmode=disable&sslmode=require`,
+);
+assert.notEqual(duplicateTlsUrl.status, 0, "duplicate TLS parameters must fail closed");
 const retiredRoleUrl = runDatabaseUrlValidation(
   `postgresql://zikr_seed_loader:test-only-secret@db.${expectedProjectRef}.supabase.co:5432/postgres?sslmode=require`,
 );
