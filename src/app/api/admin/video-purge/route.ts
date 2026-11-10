@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
@@ -201,19 +201,48 @@ async function deleteAutomatedStorageObjects(paths: string[]): Promise<number> {
   return removed;
 }
 
-async function setPurgeLock(enabled: boolean): Promise<void> {
-  await supabaseServerAdminRequest(
-    "/rest/v1/admin_settings?on_conflict=key",
+const PURGE_LOCK_DESCRIPTION = "Temporary lock preventing internal video generation while ZIKR-owned generated media is being purged.";
+
+async function acquirePurgeLock(token: string): Promise<boolean> {
+  const description = `${PURGE_LOCK_DESCRIPTION} (${token})`;
+  const updated = await supabaseServerAdminRequest<Array<{ key: string }>>(
+    "/rest/v1/admin_settings?key=eq.video_purge_in_progress&value=eq.false&select=key",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ value: true, description, updated_at: new Date().toISOString() }),
+    },
+  );
+  if ((updated ?? []).length > 0) return true;
+
+  // If the row does not exist, insert it without overwriting a concurrent
+  // request. The unique key plus ignore-duplicates makes this a compare-and-set.
+  const inserted = await supabaseServerAdminRequest<Array<{ key: string }>>(
+    "/rest/v1/admin_settings?on_conflict=key&select=key",
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal",
-      },
+      headers: { "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates,return=representation" },
       body: JSON.stringify({
         key: "video_purge_in_progress",
-        value: enabled,
-        description: "Temporary lock preventing internal video generation while ZIKR-owned generated media is being purged.",
+        value: true,
+        description,
+        updated_at: new Date().toISOString(),
+      }),
+    },
+  );
+  return (inserted ?? []).length > 0;
+}
+
+async function releasePurgeLock(token: string): Promise<void> {
+  const description = `${PURGE_LOCK_DESCRIPTION} (${token})`;
+  await supabaseServerAdminRequest(
+    `/rest/v1/admin_settings?key=eq.video_purge_in_progress&description=eq.${encodeURIComponent(description)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({
+        value: false,
+        description: PURGE_LOCK_DESCRIPTION,
         updated_at: new Date().toISOString(),
       }),
     },
@@ -301,7 +330,7 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   let automationWasEnabled: boolean | undefined;
-  let purgeLockAttempted = false;
+  let purgeLockToken: string | null = null;
   let destructiveWorkStarted = false;
   let dataCleanupFinished = false;
   try {
@@ -319,19 +348,26 @@ export async function POST(request: NextRequest) {
     const includeMemory = scope === "memory" || scope === "both";
 
     const cloudinary = includeFiles ? cloudinaryConfig() : null;
+    const lockToken = randomUUID();
+    const lockAcquired = await acquirePurgeLock(lockToken);
+    if (!lockAcquired) {
+      return NextResponse.json(
+        { error: "يوجد تنظيف آخر قيد التنفيذ. لم يبدأ أي حذف؛ أعد المحاولة بعد انتهائه.", deletionStarted: false, retryRequired: true },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    purgeLockToken = lockToken;
     automationWasEnabled = await getVideoAutomationEnabled();
-
     await pauseVideoAutomation();
-    purgeLockAttempted = true;
-    await setPurgeLock(true);
 
     const processing = await getActiveVideoWork();
     if (processing.generation > 0) {
-      // Current claims may finish, but the automation settings remain disabled.
-      // Release the claim lock so an administrator can resume/settle them safely.
+      // No destructive work started; restore the prior setting and release our lock.
       await restoreVideoAutomation(automationWasEnabled);
-      await setPurgeLock(false);
-      purgeLockAttempted = false;
+      if (purgeLockToken) {
+        await releasePurgeLock(purgeLockToken);
+        purgeLockToken = null;
+      }
       return NextResponse.json(
         {
           error: `يوجد ${processing.generation} طلب توليد قيد التنفيذ. لم يبدأ الحذف؛ استمر التشغيل التلقائي، وأعد المحاولة بعد انتهاء العامل الحالي.`,
@@ -351,8 +387,10 @@ export async function POST(request: NextRequest) {
       : [];
     if (includeFiles && (pendingSocialQueueMedia ?? []).length >= 1000) {
       await restoreVideoAutomation(automationWasEnabled);
-      await setPurgeLock(false);
-      purgeLockAttempted = false;
+      if (purgeLockToken) {
+        await releasePurgeLock(purgeLockToken);
+        purgeLockToken = null;
+      }
       return NextResponse.json(
         {
           error: "تعذر التحقق من جميع عناصر طابور النشر بأمان. لم يبدأ الحذف؛ قلّص الطابور أو عالج العناصر ثم أعد المحاولة.",
@@ -371,8 +409,10 @@ export async function POST(request: NextRequest) {
     );
     if (includeFiles && protectedSocialQueueMedia.size > 0) {
       await restoreVideoAutomation(automationWasEnabled);
-      await setPurgeLock(false);
-      purgeLockAttempted = false;
+      if (purgeLockToken) {
+        await releasePurgeLock(purgeLockToken);
+        purgeLockToken = null;
+      }
       return NextResponse.json(
         {
           error: `يوجد ${protectedSocialQueueMedia.size} فيديو مرتبط بعناصر نشر لم تكتمل بعد. لم يبدأ حذف أي ملف؛ أعد محاولة النشر أو عالج العناصر أولًا.`,
@@ -392,8 +432,10 @@ export async function POST(request: NextRequest) {
       : [];
     if ((includeFiles || includeMemory) && (pendingSocialGenerationRefs ?? []).length >= 1000) {
       await restoreVideoAutomation(automationWasEnabled);
-      await setPurgeLock(false);
-      purgeLockAttempted = false;
+      if (purgeLockToken) {
+        await releasePurgeLock(purgeLockToken);
+        purgeLockToken = null;
+      }
       return NextResponse.json(
         {
           error: "تعذر التحقق من جميع مراجع طلبات الفيديو في طابور النشر. لم يبدأ حذف سجل التوليد.",
@@ -407,8 +449,10 @@ export async function POST(request: NextRequest) {
     }
     if ((includeFiles || includeMemory) && (pendingSocialGenerationRefs ?? []).length > 0) {
       await restoreVideoAutomation(automationWasEnabled);
-      await setPurgeLock(false);
-      purgeLockAttempted = false;
+      if (purgeLockToken) {
+        await releasePurgeLock(purgeLockToken);
+        purgeLockToken = null;
+      }
       return NextResponse.json(
         {
           error: `يوجد ${pendingSocialGenerationRefs.length} عنصر نشر اجتماعي غير مكتمل مرتبط بوسيط فيديو. تم الحفاظ على سجل التوليد ولم يبدأ الحذف.`,
@@ -544,8 +588,10 @@ export async function POST(request: NextRequest) {
 
     dataCleanupFinished = true;
     await restoreVideoAutomation(automationWasEnabled);
-    await setPurgeLock(false);
-    purgeLockAttempted = false;
+    if (purgeLockToken) {
+      await releasePurgeLock(purgeLockToken);
+      purgeLockToken = null;
+    }
     await recordAdminAuditEvent({
       action: "video.library.purge",
       permission: "video.delete",
@@ -615,10 +661,11 @@ export async function POST(request: NextRequest) {
         recoveryErrors.push("automation state: " + (recoveryError instanceof Error ? recoveryError.message : String(recoveryError)));
       }
     }
-    let purgeLockCleared = !purgeLockAttempted;
-    if (purgeLockAttempted) {
+    let purgeLockCleared = !purgeLockToken;
+    if (purgeLockToken) {
       try {
-        await setPurgeLock(false);
+        await releasePurgeLock(purgeLockToken);
+        purgeLockToken = null;
         purgeLockCleared = true;
       } catch (recoveryError) {
         recoveryErrors.push("purge lock: " + (recoveryError instanceof Error ? recoveryError.message : String(recoveryError)));
