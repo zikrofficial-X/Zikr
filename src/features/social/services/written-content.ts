@@ -24,6 +24,10 @@ export function chooseWrittenSourceKind(
  return eligibleKinds[index] ?? null;
 }
 
+export function shouldBackfillKidsWrittenPost(sourceType: string, hasKidsPostToday: boolean): boolean {
+ return sourceType !== "kids_story" || !hasKidsPostToday;
+}
+
 export function containsKidsPersonalDataSolicitation(value: string): boolean {
  const normalized = value
   .normalize("NFKC")
