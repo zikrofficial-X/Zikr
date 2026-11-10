@@ -14,6 +14,8 @@ type PurgeResult = {
   storageObjectsDeleted: number;
   socialQueueRowsPreserved: boolean;
   publicVideoCatalogPreserved: boolean;
+  manualPublicVideoCatalogPreserved: boolean;
+  generatedCatalogRecordsHidden: number;
   catalogRecordsHidden: number;
   generationRowsDeleted: number;
   automationRunsDeleted: number;
@@ -69,6 +71,8 @@ export function PurgeGeneratedVideosControl({
         storageObjectsDeleted?: number;
         socialQueueRowsPreserved?: boolean;
         publicVideoCatalogPreserved?: boolean;
+        manualPublicVideoCatalogPreserved?: boolean;
+        generatedCatalogRecordsHidden?: number;
         catalogRecordsHidden?: number;
         generationRowsDeleted?: number;
         automationRunsDeleted?: number;
@@ -91,6 +95,8 @@ export function PurgeGeneratedVideosControl({
         storageObjectsDeleted: payload.storageObjectsDeleted ?? 0,
         socialQueueRowsPreserved: payload.socialQueueRowsPreserved === true,
         publicVideoCatalogPreserved: payload.publicVideoCatalogPreserved === true,
+        manualPublicVideoCatalogPreserved: payload.manualPublicVideoCatalogPreserved === true || payload.publicVideoCatalogPreserved === true,
+        generatedCatalogRecordsHidden: payload.generatedCatalogRecordsHidden ?? payload.catalogRecordsHidden ?? 0,
         catalogRecordsHidden: payload.catalogRecordsHidden ?? 0,
         generationRowsDeleted: payload.generationRowsDeleted ?? 0,
         automationRunsDeleted: payload.automationRunsDeleted ?? 0,
@@ -223,7 +229,7 @@ export function PurgeGeneratedVideosControl({
             ملفات Cloudinary: {result.cloudinaryAssetsDeleted} · المساحة المحررة: {(result.cloudinaryBytesDeleted / (1024 * 1024)).toFixed(1)} MiB · عناصر Storage: {result.storageObjectsDeleted}
           </p>
           <p>
-            طلبات التوليد: {result.generationRowsDeleted} · سجل المنصات التاريخي: {result.socialQueueRowsPreserved ? "محفوظ" : "غير مؤكد"} · سجلات الفيديو الداخلية المخفية: {result.catalogRecordsHidden} · الكتالوج اليدوي: {result.publicVideoCatalogPreserved ? "محفوظ" : "غير مؤكد"} · سجلات التشغيل: {result.automationRunsDeleted}
+            طلبات التوليد: {result.generationRowsDeleted} · سجل المنصات التاريخي: {result.socialQueueRowsPreserved ? "محفوظ" : "غير مؤكد"} · سجلات الفيديوهات المولّدة المخفية: {result.generatedCatalogRecordsHidden} · الكتالوج اليدوي: {result.manualPublicVideoCatalogPreserved ? "محفوظ" : "غير مؤكد"} · سجلات التشغيل: {result.automationRunsDeleted}
           </p>
           <p className="mt-1 text-amber-100/90">
             لم يتم إرسال أي طلب حذف إلى منصات خارجية.
