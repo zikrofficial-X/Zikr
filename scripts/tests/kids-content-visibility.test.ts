@@ -65,6 +65,7 @@ assert.match(adminManager, /name="published" type="checkbox" defaultChecked=\{fa
 const service = readFileSync("src/features/kids/services/kids-content.ts", "utf8");
 assert.match(service, /published=eq\.true&is_active=eq\.true/, "public Kids queries must include active state");
 assert.match(service, /select=\*&published=eq\.true&is_active=eq\.true/, "the Kids page must preserve every active published content type");
+assert.match(service, /isKidsContentPublishable\(item\.type, item\.metadata\?\.age_appropriate === true\)/, "the Kids service must fail closed for unapproved stories even before the production RLS migration is applied");
 assert.doesNotMatch(service, /type=eq\.story/, "the Kids page must not regress to a story-only database feed");
 assert.match(service, /supabaseServerAdminRequest[\s\S]*?select=slug/, "fallback visibility must consult database-owned slugs");
 assert.match(service, /mergeKidsContentWithFallback\(database\.items, FALLBACK_KIDS_CONTENT, database\.knownSlugs\)/);
