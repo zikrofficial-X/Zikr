@@ -1,5 +1,3 @@
-import "server-only";
-
 import { getServerEnv } from "../../src/lib/env";
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 import { sourceHash, videoContentHash } from "../../src/features/videos/providers/content-hash";
