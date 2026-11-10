@@ -159,7 +159,7 @@ async function listAutomatedStorageObjects(): Promise<string[]> {
       });
       if (error) throw new Error(`Supabase video Storage inventory failed: ${error.message}`);
       const objects = data ?? [];
-      if (offset === 5000) {
+      if (offset === MAX_AUTOMATED_STORAGE_OBJECTS) {
         if (objects.length > 0) {
           throw new Error("Automated video Storage inventory exceeded the safe pagination limit.");
         }
