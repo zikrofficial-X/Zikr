@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {buildPublicKidsWrittenPost,countUniqueWrittenContentReservations,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,shouldBackfillKidsWrittenPost,scheduleKidsBackfillWithinUtcDay,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,isKidsWrittenPostCandidate,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
+import {buildPublicKidsWrittenPost,countUniqueWrittenContentReservations,parseWrittenGenerationRequest,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,shouldBackfillKidsWrittenPost,scheduleKidsBackfillWithinUtcDay,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,isKidsWrittenPostCandidate,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
 const source:WrittenContentSource={kind:"quran",id:"ayah-1",title:"آية",sourceText:"إِنَّ مَعَ الْعُسْرِ يُسْرًا",reference:"سورة الشرح، الآية 6",publicPath:"/quran/ash-sharh",categoryLabel:"القرآن الكريم",sourceVerified:true,quoteRequired:true};
 const draft:WrittenPostDraft={eligible:true,title:"مع كل عسر يسر",hook:"قد تمر بلحظة تظن فيها أن الطريق انتهى، لكن الأمل يظل حاضرًا.",reflection:"تدعونا الآية إلى ألا نستسلم لليأس، وأن نتذكر أن الشدة لا تدوم وأن الأمل باب للعمل والصبر.",question:"ما المعنى الذي تستحضره عندما تمر بوقت صعب؟"};
 assert.equal(normalizeWrittenCategory("hadith"),"hadith");assert.equal(normalizeWrittenCategory("other"),"auto");assert.equal(normalizeWrittenCategory("companions"),"companions");assert.equal(normalizeWrittenCategory("kids"),"kids");
+assert.deepEqual(parseWrittenGenerationRequest({}), { ok: true, value: { category: "auto", batchSize: 1 } });
+assert.deepEqual(parseWrittenGenerationRequest({ category: "kids", batchSize: "2" }), { ok: true, value: { category: "kids", batchSize: 2 } });
+assert.equal(parseWrittenGenerationRequest(null).reason, "invalid_body");
+assert.equal(parseWrittenGenerationRequest([]).reason, "invalid_body");
+assert.equal(parseWrittenGenerationRequest({ category: "unknown" }).reason, "invalid_category");
+assert.equal(parseWrittenGenerationRequest({ batchSize: 4 }).reason, "invalid_batch_size");
+assert.equal(parseWrittenGenerationRequest({ batchSize: true }).reason, "invalid_batch_size");
+
 assert.equal(chooseWrittenSourceKind(["quran","kids_story"],"auto",false,0),"kids_story","auto generation should prioritize one approved Kids post when none exists today");
 assert.equal(chooseWrittenSourceKind(["quran","kids_story"],"auto",true,0),"quran","a second Kids post should not be prioritized after today's Kids slot is filled");
 assert.equal(chooseWrittenSourceKind(["quran","kids_story"],"auto",true,1),"quran","auto generation must exclude Kids even when random selection would otherwise choose it");
@@ -192,6 +200,10 @@ const writtenFactory = readFileSync("src/features/social/services/written-conten
 const kidsApi = readFileSync("src/app/api/kids/social-posts/route.ts", "utf8");
 const kidsPage = readFileSync("src/app/kids/page.tsx", "utf8");
 const writtenApi = readFileSync("src/app/api/admin/social/written/route.ts", "utf8");
+assert.match(writtenApi, /request\.json\(\)/);
+assert.match(writtenApi, /Invalid JSON request body\./, "malformed JSON must be rejected instead of silently dispatching automatic generation");
+assert.match(writtenApi, /parseWrittenGenerationRequest\(requestBody\)/, "admin generation inputs must pass strict validation before workflow dispatch");
+
 const writtenWorkflow = readFileSync(".github/workflows/generate-written-content.yml", "utf8");
 const writtenStudio = readFileSync("src/app/admin/social/written-studio/written-studio-client.tsx", "utf8");
 assert.match(worker, /\/rest\/v1\/articles/);

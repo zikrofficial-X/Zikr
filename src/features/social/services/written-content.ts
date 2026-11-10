@@ -1,3 +1,36 @@
+export type WrittenGenerationRequest = {
+ category: WrittenCategory;
+ batchSize: number;
+};
+
+export function parseWrittenGenerationRequest(value: unknown):
+ { ok: true; value: WrittenGenerationRequest } |
+ { ok: false; reason: "invalid_body" | "invalid_category" | "invalid_batch_size" } {
+ if (!value || typeof value !== "object" || Array.isArray(value)) {
+  return { ok: false, reason: "invalid_body" };
+ }
+ const body = value as Record<string, unknown>;
+ const rawCategory = body.category === undefined ? "auto" : body.category;
+ const allowedCategories: readonly WrittenCategory[] = [
+  "auto", "quran", "hadith", "dua", "adhkar", "story", "prophets", "companions", "knowledge", "kids",
+ ];
+ if (typeof rawCategory !== "string" || !allowedCategories.includes(rawCategory as WrittenCategory)) {
+  return { ok: false, reason: "invalid_category" };
+ }
+ const rawBatchSize = body.batchSize ?? 1;
+ if (typeof rawBatchSize !== "number" && typeof rawBatchSize !== "string") {
+  return { ok: false, reason: "invalid_batch_size" };
+ }
+ if (typeof rawBatchSize === "string" && !/^\\d+$/.test(rawBatchSize.trim())) {
+  return { ok: false, reason: "invalid_batch_size" };
+ }
+ const batchSize = Number(rawBatchSize);
+ if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 3) {
+  return { ok: false, reason: "invalid_batch_size" };
+ }
+ return { ok: true, value: { category: rawCategory as WrittenCategory, batchSize } };
+}
+
 export type WrittenCategory = "auto" | "quran" | "hadith" | "dua" | "adhkar" | "story" | "prophets" | "companions" | "knowledge" | "kids";
 export type WrittenSourceKind = Exclude<WrittenCategory, "auto" | "kids"> | "kids_story";
 export type WrittenContentSource = { kind: WrittenSourceKind; id:string; title:string; sourceText:string; reference:string; publicPath:string; categoryLabel:string; sourceVerified:boolean; quoteRequired:boolean; ageGroup?: string };

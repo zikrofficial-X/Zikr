@@ -3,6 +3,7 @@ import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { parseWrittenGenerationRequest } from "@/features/social/services/written-content";
 
 export const dynamic = "force-dynamic";
 
@@ -68,17 +69,22 @@ export async function POST(request: NextRequest) {
   if (!publishAuth.ok) return NextResponse.json({ error: publishAuth.error }, { status: publishAuth.status });
 
   try {
-    const body = (await request.json().catch(() => ({}))) as {
-      category?: unknown;
-      batchSize?: unknown;
-    };
-    const category = typeof body.category === "string" && categories.has(body.category)
-      ? body.category
-      : "auto";
-    const requestedBatchSize = Number(body.batchSize ?? 1);
-    if (!Number.isInteger(requestedBatchSize) || requestedBatchSize < 1 || requestedBatchSize > 3) {
-      return NextResponse.json({ error: "عدد المنشورات يجب أن يكون من 1 إلى 3." }, { status: 400 });
+    let requestBody: unknown;
+    try {
+      requestBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON request body." }, { status: 400 });
     }
+    const parsedRequest = parseWrittenGenerationRequest(requestBody);
+    if (!parsedRequest.ok) {
+      const message = parsedRequest.reason === "invalid_category"
+        ? "تصنيف المحتوى غير صالح."
+        : parsedRequest.reason === "invalid_batch_size"
+          ? "عدد المنشورات يجب أن يكون من 1 إلى 3."
+          : "بيانات الطلب غير صالحة.";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+    const { category, batchSize: requestedBatchSize } = parsedRequest.value;
 
     const dispatch = await dispatchGitHubWorkflow("generate-written-content.yml", {
       category,
