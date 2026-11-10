@@ -92,7 +92,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     permission: "audio.manage",
     permissions: ["audio.manage"],
     sourceTables: ["quran_audio", "site_audio_assets", "tawasheeh"],
-    ownerRole: "video_manager",
+    ownerRole: "super_admin",
     status: "active",
   },
   {
@@ -128,7 +128,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     permission: "analytics.read",
     permissions: ["analytics.read", "settings.manage"],
     sourceTables: ["articles", "videos", "video_generation_requests", "content_publish_queue"],
-    ownerRole: "analyst",
+    ownerRole: "seo_manager",
     status: "active",
   },
   {
