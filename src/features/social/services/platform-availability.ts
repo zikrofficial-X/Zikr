@@ -43,6 +43,33 @@ export function isPermanentSocialFailure(error: unknown): boolean {
   return /http\s+422|unprocessable entity|source media unavailable|no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|oauth|access token|publishing is disabled|not configured|human qa approval/i.test(error);
 }
 
+export function isAmbiguousProviderOutcome(error: unknown): boolean {
+  if (typeof error !== "string") return false;
+  return /http\s+(?:408|425|500|502|503|504)\b|\b(?:aborterror|fetch failed|und_err_socket|socket hang up|econnreset|etimedout|econnaborted|network error|timeout|timed out)\b/i.test(error);
+}
+
+export function getManualReconciliationPlatforms(metadata: SocialPlatformMetadata): SocialPlatform[] {
+  const values = metadata?.platformResults;
+  const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
+  const manual = new Set<SocialPlatform>();
+
+  if (Array.isArray(values)) {
+    for (const value of values) {
+      const row = asRecord(value);
+      if (row?.requiresReconciliation === true && supported.includes(row.platform as SocialPlatform)) {
+        manual.add(row.platform as SocialPlatform);
+      }
+    }
+  } else {
+    const results = asRecord(values);
+    for (const platform of supported) {
+      if (asRecord(results?.[platform])?.requiresReconciliation === true) manual.add(platform);
+    }
+  }
+
+  return [...manual];
+}
+
 export function canAttemptSocialPlatform(input: {
   platform: SocialPlatform;
   enabledPlatforms: readonly SocialPlatform[];
@@ -54,6 +81,7 @@ export function canAttemptSocialPlatform(input: {
   const results = asRecord(metadata?.platformResults);
   const previous = asRecord(results?.[platform]);
   if (hasSuccessfulDelivery(previous)) return false;
+  if (getManualReconciliationPlatforms(metadata).includes(platform)) return false;
 
   // Legacy global authBlocked was emitted only by the Facebook adapter. It must
   // not prevent an independent YouTube target from being published.

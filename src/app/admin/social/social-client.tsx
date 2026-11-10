@@ -10,6 +10,7 @@ import type {
   SocialPublishQueueItem,
   SocialQueueStatus,
 } from "@/features/social/services/social-publishing";
+import { getManualReconciliationPlatforms } from "@/features/social/services/platform-availability";
 
 type Status = SocialQueueStatus;
 type QueueItem = SocialPublishQueueItem & {
@@ -496,6 +497,9 @@ export default function AdminSocialPage() {
   }), [filter, queueOpenItems, platformFilter]);
   const retryable = items.filter(item => item.status === "failed" || item.status === "partial");
   const selectedRetryableCount = selected.filter(id => retryable.some(item => item.id === id)).length;
+  const selectedManualReconciliationCount = items.filter(item =>
+    selected.includes(item.id) && getManualReconciliationPlatforms(item.metadata).length > 0,
+  ).length;
   const visibleSelectable = filtered.filter(item =>
     item.status === "failed" || item.status === "partial" ||
     (item.status === "queued" && (!isVideoQueueItem(item) || item.videoApproval?.approved === true))
@@ -511,6 +515,12 @@ export default function AdminSocialPage() {
 
   const runAction = useCallback(
     async (action: "retry" | "retry_all_failed" | "delete" | "delete_failed" | "publish_now") => {
+      let confirmedNoRemotePublication = false;
+      if (action === "retry" && selectedManualReconciliationCount > 0) {
+        const confirmation = `تحذير: نتيجة النشر غير مؤكدة في ${selectedManualReconciliationCount} عنصر. افتح Facebook/YouTube وتأكد يدويًا من عدم وجود المنشور قبل المتابعة؛ إعادة المحاولة دون هذا التحقق قد تنشئ منشورًا مكررًا. هل تؤكد أنك تحققت من عدم النشر؟`;
+        if (!window.confirm(confirmation)) return;
+        confirmedNoRemotePublication = true;
+      }
       if (action !== "retry") {
         const confirmation = action === "publish_now"
           ? "سيتم إرسال العناصر المؤهلة للنشر فورًا. الفيديو غير المعتمد سيظل محجوبًا ولن يتم تجاوز فحص الجودة."
@@ -535,11 +545,12 @@ export default function AdminSocialPage() {
         const response = await fetch("/api/admin/social", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action, ids }),
+          body: JSON.stringify({ action, ids, confirmedNoRemotePublication }),
         });
         const payload = (await response.json().catch(() => ({}))) as {
           error?: string;
           affected?: number;
+          manualReconciliationSkipped?: number;
           blocked?: Array<{ id: string; title?: string | null; reason: string }>;
         };
         if (!response.ok) throw new Error(payload.error || "تعذر تنفيذ الإجراء.");
@@ -549,7 +560,11 @@ export default function AdminSocialPage() {
             setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
           }
         } else {
-          setMessage(`تم تنفيذ الإجراء بنجاح${typeof payload.affected === "number" ? ` (${payload.affected})` : ""}.`);
+          const skipped = payload.manualReconciliationSkipped ?? 0;
+          setMessage(
+            `تم تنفيذ الإجراء بنجاح${typeof payload.affected === "number" ? ` (${payload.affected})` : ""}.` +
+              (skipped > 0 ? ` تم تجاوز ${skipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.` : ""),
+          );
         }
         await load();
       } catch (cause) {
@@ -558,7 +573,7 @@ export default function AdminSocialPage() {
         setBusy(false);
       }
     },
-    [load, retryable.length, selected, selectedPublishNowCount]
+    [load, retryable.length, selected, selectedManualReconciliationCount, selectedPublishNowCount]
   );
 
   const deletePublished = useCallback(async (ids: string[], platforms?: string[]) => {

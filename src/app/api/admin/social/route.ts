@@ -14,6 +14,7 @@ import { getFacebookPageAudienceSnapshot } from "@/features/social/services/face
 import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
 import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
+import { getManualReconciliationPlatforms } from "@/features/social/services/platform-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -121,11 +122,12 @@ function authBlockedPlatforms(
   return result;
 }
 
-function retryPlatforms(item: QueueItem): string[] {
+function retryPlatforms(item: QueueItem, allowAmbiguous = false): string[] {
   const succeeded = successfulPlatforms(item.metadata);
   const blocked = authBlockedPlatforms(item.metadata);
+  const manual = new Set(getManualReconciliationPlatforms(item.metadata));
   return item.target_platforms.filter(
-    platform => !succeeded.has(platform) && !blocked.has(platform)
+    platform => !succeeded.has(platform) && !blocked.has(platform) && (allowAmbiguous || !manual.has(platform))
   );
 }
 
@@ -365,8 +367,10 @@ export async function POST(request: NextRequest) {
       action?: unknown;
       ids?: unknown;
       platforms?: unknown;
+      confirmedNoRemotePublication?: unknown;
     };
     const action = typeof body.action === "string" ? body.action : "";
+    const confirmedNoRemotePublication = body.confirmedNoRemotePublication === true;
     if (["retry", "retry_all_failed", "run_worker", "publish_now", "delete_published", "adopt_server_facebook_token"].includes(action)) {
       const executionAuth = await requireAdminApi("social.publish");
       if (!executionAuth.ok) {
@@ -462,14 +466,19 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
 
-    const retryItems = async (filter: string, includeQueued = false) => {
+    const retryItems = async (filter: string, includeQueued = false, allowAmbiguous = false) => {
       const items = await supabaseServerAdminRequest<QueueItem[]>(
         `/rest/v1/social_publish_queue?${filter}&select=id,target_platforms,metadata,status`
       );
       let affected = 0;
+      let manualReconciliationSkipped = 0;
       for (const item of items ?? []) {
         if (!retryableStatuses.has(item.status) && !(includeQueued && item.status === "queued")) continue;
-        const eligiblePlatforms = retryPlatforms(item);
+        const manualPlatforms = getManualReconciliationPlatforms(item.metadata);
+        if (!allowAmbiguous && manualPlatforms.some(platform => requestedPlatforms.length === 0 || requestedPlatforms.includes(platform))) {
+          manualReconciliationSkipped += 1;
+        }
+        const eligiblePlatforms = retryPlatforms(item, allowAmbiguous);
         const platforms = requestedPlatforms.length > 0
           ? eligiblePlatforms.filter(platform => requestedPlatforms.includes(platform))
           : eligiblePlatforms;
@@ -503,6 +512,12 @@ export async function POST(request: NextRequest) {
           // Leave partial/failed records unchanged if any target is still blocked.
           continue;
         }
+        const previousResults = item.metadata?.platformResults && typeof item.metadata.platformResults === "object" && !Array.isArray(item.metadata.platformResults)
+          ? item.metadata.platformResults as Record<string, unknown>
+          : {};
+        const nextPlatformResults = Object.fromEntries(
+          Object.entries(previousResults).filter(([platform]) => !platforms.includes(platform)),
+        );
         await supabaseServerAdminRequest(
           `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}`,
           {
@@ -513,8 +528,9 @@ export async function POST(request: NextRequest) {
             },
             body: JSON.stringify({
               status: "queued",
-              // Preserve the original target set. Successful channels remain in the
-              // ledger and the worker retries only the failed platform(s).
+              // Preserve successful provider IDs; only the explicitly selected
+              // unresolved targets are cleared after the administrator confirms
+              // that no corresponding remote post exists.
               error_message: null,
               updated_at: new Date().toISOString(),
               scheduled_at: new Date().toISOString(),
@@ -528,11 +544,7 @@ export async function POST(request: NextRequest) {
                     : {}),
                   ...Object.fromEntries(platforms.map(platform => [platform, 0])),
                 },
-                platformResults: Object.fromEntries(
-                  Object.entries(item.metadata?.platformResults && typeof item.metadata.platformResults === "object" && !Array.isArray(item.metadata.platformResults)
-                    ? item.metadata.platformResults as Record<string, unknown>
-                    : {}).filter(([platform]) => !platforms.includes(platform)),
-                ),
+                platformResults: nextPlatformResults,
                 authBlocked: false,
                 authBlockedPlatforms: (Array.isArray(item.metadata?.authBlockedPlatforms)
                   ? item.metadata.authBlockedPlatforms
@@ -550,7 +562,7 @@ export async function POST(request: NextRequest) {
         );
         affected += 1;
       }
-      return affected;
+      return { affected, manualReconciliationSkipped };
     };
 
     if (action === "publish_now") {
@@ -570,9 +582,10 @@ export async function POST(request: NextRequest) {
           id, title: null, reason: "العنصر غير موجود في الطابور أو لم يعد في حالة تسمح بالنشر الفوري.",
         })),
       ];
-      const affected = approvedIds.length
-        ? await retryItems("id=in.(" + approvedIds.map(encodeURIComponent).join(",") + ")&status=in.(queued,partial,failed)", true)
-        : 0;
+      const retryResult = approvedIds.length
+        ? await retryItems("id=in.(" + approvedIds.map(encodeURIComponent).join(",") + ")&status=in.(queued,partial,failed)", true, false)
+        : { affected: 0, manualReconciliationSkipped: 0 };
+      const affected = retryResult.affected;
       const worker = affected > 0 ? await triggerSocialWorker() : null;
       await recordAdminAuditEvent({
         action: "social.queue.publish_now",
@@ -580,34 +593,44 @@ export async function POST(request: NextRequest) {
         resourceType: "social_publish_queue",
         metadata: { requestedIds: ids.length, affected, approvalBlocked: blocked.length, workerDispatched: affected > 0 },
       });
-      return NextResponse.json({ ok: true, affected, blocked, worker });
+      return NextResponse.json({ ok: true, affected, blocked, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, worker });
     }
 
     if (action === "retry_all_failed") {
-      const affected = await retryItems("status=in.(failed,partial)");
+      const retryResult = await retryItems("status=in.(failed,partial)", false, false);
+      const affected = retryResult.affected;
       const worker = affected > 0 ? await triggerSocialWorker() : null;
       await recordAdminAuditEvent({
         action: "social.queue.retry_all_failed",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { affected, workerDispatched: affected > 0 },
+        metadata: { affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, workerDispatched: affected > 0 },
       });
-      return NextResponse.json({ ok: true, affected, worker });
+      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, worker });
     }
 
     const filter = ids.map(encodeURIComponent).join(",");
     if (action === "retry") {
-      const affected = await retryItems(
-        `id=in.(${filter})&status=in.(failed,partial)`
+      const retryResult = await retryItems(
+        `id=in.(${filter})&status=in.(failed,partial)`,
+        false,
+        confirmedNoRemotePublication,
       );
+      const affected = retryResult.affected;
       const worker = affected > 0 ? await triggerSocialWorker() : null;
       await recordAdminAuditEvent({
         action: "social.queue.retry",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { requestedIds: ids.length, affected, workerDispatched: affected > 0 },
+        metadata: {
+          requestedIds: ids.length,
+          affected,
+          manualReconciliationSkipped: retryResult.manualReconciliationSkipped,
+          confirmedNoRemotePublication,
+          workerDispatched: affected > 0,
+        },
       });
-      return NextResponse.json({ ok: true, affected, worker });
+      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, worker });
     }
 
     if (action === "delete") {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getUnavailableSocialPlatforms } from "../../src/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome } from "../../src/features/social/services/platform-availability";
 import { buildFacebookQueueRecoveryPatch } from "../../src/features/social/services/facebook-queue-recovery-policy";
 
 const both = getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true", SOCIAL_PUBLISH_YOUTUBE_ENABLED: "true" });
@@ -15,6 +15,21 @@ assert.deepEqual(getUnavailableSocialPlatforms(["facebook_reels", "youtube"], yo
 
 assert.deepEqual(getEnabledSocialPlatforms({}), [], "missing flags must fail closed");
 assert.deepEqual(getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true" }), ["facebook", "facebook_reels"], "one configured channel must not require the other");
+
+assert.equal(isAmbiguousProviderOutcome("Facebook Reel upload timed out"), true, "provider timeouts have an uncertain remote outcome");
+assert.equal(isAmbiguousProviderOutcome("fetch failed: UND_ERR_SOCKET / ECONNRESET"), true, "connection resets must be held for reconciliation");
+assert.equal(isAmbiguousProviderOutcome("HTTP 503 provider unavailable"), true, "provider 5xx responses must not be retried blindly");
+assert.equal(isAmbiguousProviderOutcome("HTTP 429 rate limit"), false, "rate limits remain safely deferrable");
+assert.equal(isAmbiguousProviderOutcome("HTTP 422 invalid media"), false, "confirmed media validation failures remain permanent failures");
+
+const ambiguousOutcome = {
+  platformResults: {
+    youtube: { platform: "youtube", ok: false, requiresReconciliation: true, error: "YouTube upload timed out; remote outcome unknown" },
+  },
+};
+assert.deepEqual(getManualReconciliationPlatforms(ambiguousOutcome), ["youtube"]);
+assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: ambiguousOutcome, maxAttempts: 5 }), false, "uncertain provider outcomes must not be retried automatically");
+assert.equal(canAttemptSocialPlatform({ platform: "facebook_reels", enabledPlatforms: both, metadata: ambiguousOutcome, maxAttempts: 5 }), true, "an uncertain YouTube result must not block an independent Facebook target");
 
 const metadata = {
   platformResults: {

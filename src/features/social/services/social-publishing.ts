@@ -9,7 +9,7 @@ import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPu
 import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getUnavailableSocialPlatforms, isPermanentSocialFailure } from "@/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isPermanentSocialFailure } from "@/features/social/services/platform-availability";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 export type SocialQueueStatus =
@@ -39,6 +39,7 @@ type PlatformResult = {
   remoteId?: string | null;
   videoId?: string;
   error?: string;
+  requiresReconciliation?: boolean;
   approvalBlocked?: boolean;
 };
 
@@ -479,10 +480,12 @@ async function publishPlatform(
 
     return { platform, ok: true, remoteId, ...(videoId ? { videoId } : {}) };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return {
       platform,
       ok: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: message,
+      ...(isAmbiguousProviderOutcome(message) ? { requiresReconciliation: true } : {}),
     };
   }
 }
@@ -934,14 +937,33 @@ export async function processSocialPublishItem(
       if (isVideoContentType(item.content_type)) await disposePublishedVideo({ ...item, metadata: previousMetadata });
       return "published";
     }
+    const manualReconciliationPlatforms = getManualReconciliationPlatforms(previousMetadata);
     if (unavailablePlatforms.length > 0) {
       const nextRetryAt = new Date(Date.now() + 15 * 60_000).toISOString();
+      const messages = [
+        manualReconciliationPlatforms.length
+          ? "Manual reconciliation required for uncertain provider outcome(s): " + manualReconciliationPlatforms.join(", ")
+          : "",
+        "Waiting for configured publishing channels: " + unavailablePlatforms.join(", "),
+      ].filter(Boolean);
       await markQueueItem(item.id, "queued", {
         scheduled_at: nextRetryAt,
-        error_message: "Waiting for configured publishing channels: " + unavailablePlatforms.join(", "),
+        error_message: messages.join("; "),
         metadata: { ...previousMetadata, unavailablePlatforms, nextRetryAt },
       });
       return "deferred";
+    }
+    if (manualReconciliationPlatforms.length > 0) {
+      const hasPriorSuccess = platforms.some(platform => {
+        const result = previous[platform] as PlatformResult | undefined;
+        return result?.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
+      });
+      await markQueueItem(item.id, hasPriorSuccess ? "partial" : "failed", {
+        scheduled_at: null,
+        error_message: "Manual reconciliation required before retry: provider outcome is unknown for " + manualReconciliationPlatforms.join(", ") + ". Check the destination channel for an existing post first.",
+        metadata: { ...previousMetadata, unavailablePlatforms: [] },
+      });
+      return "failed";
     }
     const blockedFacebook = platforms.some(platform => {
       const result = previous[platform] as PlatformResult | undefined;
@@ -1009,7 +1031,10 @@ export async function processSocialPublishItem(
     : Number(previousMetadata.attempts ?? 0) + (attemptedProviderCalls > 0 ? 1 : 0);
   const retryableOperationalFailures = operationalFailures.some(failure => {
     const currentPlatformAttempts = Number(maxAttemptsByPlatform[failure.platform] ?? 0);
-    return currentPlatformAttempts < maxAttempts && !isFacebookAuthFailure(failure.error) && !isPermanentSocialFailure(failure.error);
+    return currentPlatformAttempts < maxAttempts &&
+      !failure.requiresReconciliation &&
+      !isFacebookAuthFailure(failure.error) &&
+      !isPermanentSocialFailure(failure.error);
   });
   const hasDeferredTargets = unavailablePlatforms.length > 0 || approvalDeferredPlatforms.length > 0 || deferredFailures.length > 0;
   const shouldRetry = Boolean(facebookReelsNextAllowedAt) || hasDeferredTargets ||
@@ -1056,7 +1081,10 @@ export async function processSocialPublishItem(
     platformResults: mergedResults,
   };
 
-  const errorMessages = operationalFailures.map(failure => `${failure.platform}: ${failure.error ?? "unknown error"}`);
+  const errorMessages = operationalFailures.map(failure =>
+    `${failure.platform}: ${failure.error ?? "unknown error"}` +
+      (failure.requiresReconciliation ? " (remote outcome unknown; manual reconciliation required before retry)" : ""),
+  );
   if (unavailablePlatforms.length) errorMessages.push("Waiting for channel configuration: " + unavailablePlatforms.join(", "));
   if (approvalDeferredPlatforms.length) errorMessages.push("Video held for a fresh automated QA check: " + approvalDeferredPlatforms.join(", "));
   await markQueueItem(item.id, persistedStatus, {
