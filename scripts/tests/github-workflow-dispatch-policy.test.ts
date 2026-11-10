@@ -67,10 +67,16 @@ const dispatchSource = readFileSync(
   "utf8",
 );
 const guardIndex = dispatchSource.indexOf(
-  "isGitHubWorkflowDispatchAllowed(process.env)",
+  "isGitHubWorkflowDispatchAllowed({",
 );
 const tokenIndex = dispatchSource.indexOf("const token = githubToken();");
 assert.ok(guardIndex >= 0, "dispatch helper must enforce the environment policy");
+for (const field of ["VERCEL", "VERCEL_URL", "VERCEL_ENV", "VERCEL_GIT_COMMIT_REF"]) {
+  assert.ok(
+    dispatchSource.includes(`${field}: process.env.${field}`),
+    `dispatch helper must pass ${field} explicitly to the environment policy`,
+  );
+}
 assert.ok(
   tokenIndex > guardIndex,
   "the environment guard must run before reading a write-capable token",
