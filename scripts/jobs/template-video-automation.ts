@@ -1773,7 +1773,12 @@ async function registerGeneratedVideoOnSite(
         .slice(0, 3000)
     : null;
   const kidsSocialCaption = isKidsVideo && kidsVideoQaStatus === "passed" && request.content.approvalStatus === "approved"
-    ? buildAutomatedSocialCaption(request, `${siteUrl()}/kids/videos/${slug}`).slice(0, 4500)
+    ? [
+        buildAutomatedSocialCaption(request, `${siteUrl()}/kids/videos/${slug}`),
+        typeof request.content.seriesTitle === "string" && request.content.seriesTitle.trim()
+          ? `سلسلة أطفال: ${request.content.seriesTitle} — الموسم ${Number(request.content.seasonNumber) || 1}، الحلقة ${Number(request.content.episodeNumber) || 1}. الهدف: ${String(request.content.learningObjective || "قيمة تربوية")}`
+          : "",
+      ].filter(Boolean).join("\n\n").slice(0, 4500)
     : null;
   const metadata = {
     generator: "zikr_internal_video_factory",
