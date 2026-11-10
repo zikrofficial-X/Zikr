@@ -31,7 +31,6 @@ for (const file of [
   offlineLibraryClientPath,
   guardPath,
   exporterPath,
-  offlineWorkflowPath,
   offlineDbPath,
 ]) {
   if (!existsSync(file)) failures.push(`Missing ${file}`);
@@ -111,8 +110,10 @@ const offlinePack = read(offlinePackPath);
 const offlineDb = read(offlineDbPath);
 const exporter = read(exporterPath);
 const offlineWorkflow = read(offlineWorkflowPath);
-if (!offlineWorkflow.includes('push:') || !offlineWorkflow.includes('branches: [main]') ||
-    !offlineWorkflow.includes('"scripts/export-offline-content.mjs"')) {
+// Vercel intentionally excludes .github from deployment uploads; validate this workflow in repository CI when present.
+if (existsSync(offlineWorkflowPath) &&
+    (!offlineWorkflow.includes('push:') || !offlineWorkflow.includes('branches: [main]') ||
+      !offlineWorkflow.includes('"scripts/export-offline-content.mjs"'))) {
   failures.push('Offline snapshot must rerun after exporter or validation contract changes reach main');
 }
 try { execFileSync(process.execPath, ['--check', exporterPath], { stdio: 'pipe' }); }
