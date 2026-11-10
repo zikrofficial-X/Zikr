@@ -846,7 +846,7 @@ export function contentText(request: GeneratedRequest) {
   if (typeof request.description === "string" && request.description.trim()) return request.description.trim();
   return "";
 }
-function contentSourceUrl(request: GeneratedRequest) {
+export function contentSourceUrl(request: GeneratedRequest) {
   const value = request.content?.sourceUrl;
   return typeof value === "string" && /^https?:\/\//i.test(value) ? value : siteUrl();
 }
