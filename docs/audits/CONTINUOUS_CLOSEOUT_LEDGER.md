@@ -611,3 +611,45 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 3. Verify the Kids written-post API returns only rows with `status=published`, audience `kids`, matching live `kids_content` source, `age_appropriate=true`, and a valid `/kids/<slug>` path. No Kids post is currently in the production queue.
 4. Verify the next video worker run records intentional duplicate suppression in `metadata.skipped` and does not increase `failed_count` for those cancellations.
 5. Continue the file-by-file and route-by-route audit from this baseline; do not mark modules closed without evidence and acceptance tests.
+
+
+## Checkpoint — 2026-11-10T20:12:00Z
+
+**Audit state: IN PROGRESS. This is a cumulative checkpoint, not a final certification.**
+
+### Canonical source and deployment identity
+- GitHub repository: `zikrofficial-X/Zikr`; default branch `main`; exact audited baseline: `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- Vercel Git context confirms project `zikr` (`prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`) on team `zikr3` is linked to `zikrofficial-X/Zikr`. Supabase project `zqtssvlvmkzeeyqghqfk` remains `ACTIVE_HEALTHY` on PostgreSQL 17.11.
+- Production deployment `dpl_74gc2BQnQXTjZam5L6sSstsheLHo` is READY on `6e8010ef95616c01950ff5ef7d6f44b178da5132`, three commits behind audited main (`cb6c328`, `021c00b`, `c4560d9`). Production `/ `, `/kids`, `/videos`, `/api/health`, and `/api/kids/social-posts` returned HTTP 200; the Kids social-post API currently returns an empty array because there are no eligible Kids written-post queue rows. The existing manual `RELEASE` gate was not dispatched or changed.
+- Latest inspected Preview `dpl_25sw675uDZaMKZGt4b4xKukRNsVw` is READY for the Kids feature branch commit `c8725483d1a57008a8fe40449f2f3acf553ac529`. `/kids`, `/videos`, and `/api/kids/social-posts` return HTTP 200; the API's empty list is the intended safe response when Preview omits the production service-role key, not positive-feed acceptance.
+
+### Recursive inventory and matrix reconciliation
+- GitHub recursive tree for main: **2,154 entries — 1,662 files, 492 directories, 139,748,929 file bytes**; response not truncated.
+- The previous manifest had 2,153 records (self-entry excluded) and was stale for the current ledger blob. This checkpoint refreshes it against the exact `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` tree, excluding the manifest itself and leaving the two ancestor directory hashes (`docs`, `docs/audits`) null to avoid a self-referential hash.
+- Compared with the prior matrix baseline `035ea456`: **58 existing file blobs changed, 5 new files and 1 new directory were added, and no paths were removed**. The matrix now records this delta explicitly; changed files require revalidation rather than inheriting stale prior status.
+- Automated inventory coverage is **1,662/1,662 (100%)**. The minimum previously documented full source-content reads remain 129; this is not manual review coverage. At least 1,502 older rows remain `REVIEW_REQUIRED`; **modules closed: 0**. No file deletion is justified by this pass.
+
+### Main CI, database, and Android
+- Exact main commit `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` has all four required contexts SUCCESS: CircleCI `config-guard`, `source-verify`, `application-build-docs`, and `android-release-draft`.
+- Supabase local migration files: **418**; live migration ledger: **418**, unique versions: **418**. Public schema: 92 tables, all 92 RLS-enabled; 211 policies; 45 public triggers; 40 public functions; 280 public indexes; 9 Storage buckets and 0 Storage objects.
+- Security Advisor: one warning, leaked-password protection disabled (owner/plan decision). Performance Advisor: 86 unused-index candidates; none dropped. Health Advisor: no findings. No production migration, Auth setting, index, policy, bucket, or row was changed.
+- Live purge-recovery provenance is verified: exactly 50 general and 8 Kids rows (58 total), each with a distinct YouTube ID, are linked to the exact audit event. The other 47 purged catalog rows remain hidden. No new recovery migration was applied in this run.
+- Android v1.1.14 remains the latest verified published release. `docs/releases/1.1.15.md` is a release candidate document only; no v1.1.15 tag, signed APK/AAB, or published release was verified in this checkpoint.
+
+### Kids written-post gap and source repair
+- Live `kids_content`: 65 rows; all 65 are published and active; 26 are stories; 6 stories meet the explicit age-appropriate gate.
+- Live social queue: 2 published written posts and 9 queued written posts, all general audience; **0** written-post rows have `metadata.audience=kids`. Two Kids-audience `other_video` rows are separate video records, not written posts.
+- The Kids page already renders the Kids written-post section only for confirmed-published records. The API rechecks the live story's published/active/age-appropriate state and exact source ID before returning a card. The section is empty because no Kids written post has been generated/published yet, not because the UI section is missing.
+- Root cause: automatic written-content generation randomly selects a source kind from all categories, so eligible Kids stories can be skipped repeatedly. Draft repair PR #320 (branch `audit/zikr-kids-daily-priority-20261110`, initial head `a44b2462dbd532ee24525af970b32861c036f072`) reserves one daily Kids slot when none is queued/partial/published and at least one approved Kids story exists; it retains the daily quota, batch cap, child-safety checks, and deterministic idempotency. Pure selection tests and static worker/API assertions were added. PR remains Draft pending exact-head CI and CODEOWNERS review.
+- The generator was not dispatched, no Gemini request was made, no queue row was inserted, and no social post was published during this audit.
+
+### Video, social, and runtime observations
+- `video_generation_requests`: 115 completed, 2 cancelled. The 64 completed rows with null `video_url` have the intentional `content.videoDisposedAt` marker recorded in the prior audit; they are not assumed to be missing outputs.
+- `videos`: 58 published `youtube_fallback`, 5 published `cloudinary_ready`, 20 other published rows, and 47 still hidden in purged state. No media or queue records were changed.
+- Social queue snapshot: 83 published video posts, 2 published written posts, 9 queued written posts. No blind retries, duplicate publishes, provider calls, or content dispatches were performed.
+- Vercel 24-hour errors: 8 intermittent `fetch failed` socket/TLS failures across `/`, `/admin/audio/adhan`, `/hadith/[book]/[id]`, `/admin/automation`, and `/admin/analytics`; latest at 19:51:46 UTC, including `ETIMEDOUT`/ `ECONNRESET` to Supabase. The last 30-minute production log query shows one such `write ETIMEDOUT` event. No safe root-cause code change is justified without reproducing the actual upstream failure.
+- Two missing-service-role errors are tied to older Preview deployment `dpl_9jg1eFabED8NUuv7jEcFVbQRdAFY`; do not attribute them to the current Preview without an exact-head reproduction. One historical rejected Meta server-token attempt remains in logs; it does not prove the connected Facebook Page credential is invalid.
+
+### Acceptance and safety gates
+- Full browser/device acceptance, every route journey, authenticated positive-case Kids feed, all admin roles, Android/iOS runtime, and complete source review remain open. The Preview has no production service-role key, while production has no Kids written-post queue row to display; a positive live feed cannot yet be verified without creating real content.
+- No production deployment, social post, media purge, user-data deletion, schema deletion, index deletion, secret read, or Android release was performed. No module is marked closed.
