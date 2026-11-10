@@ -44,6 +44,12 @@ for (const host of ["al5sm.com", "5gvci.com", "uplcm.com"]) {
   );
 }
 requireCondition(
+  layout.includes("window.adsbygoogle") &&
+    advertisingRuntime.includes('meta[name="google-adsense-account"]') &&
+    advertisingRuntime.includes("delete windowWithAds.adsbygoogle"),
+  "The native runtime must clear the SSR AdSense queue and account metadata.",
+);
+requireCondition(
   footer.includes("showSmartLink && isWebRuntime"),
   "The shared footer SmartLink placement must render only on the website.",
 );
@@ -93,6 +99,8 @@ for (const providerMarker of [
   "pagead2",
   "googleads",
   "tpc\\.googlesyndication",
+  "google-adsense-account",
+  "adsbygoogle",
 ]) {
   requireCondition(
     serviceWorker.includes(providerMarker),
