@@ -177,6 +177,12 @@ assert.equal(buildMissingMediaQueueRecoveryPatch({
 assert.ok(worker.includes("canRecoverDuplicateVideoRender"), "the video worker must use the recovery decision contract");
 assert.ok(worker.includes("recoverPurgedRecord: true"), "purged canonical records must use the controlled recovery queue path");
 assert.ok(worker.includes("restoreMissingMediaSocialQueueItems"), "restored canonical media must release only eligible held social queue rows");
+const duplicateCancelIndex = worker.indexOf("const cancelledDuplicateRows");
+const socialQueueReleaseIndex = worker.indexOf("socialQueueRecovery = await restoreMissingMediaSocialQueueItems");
+assert.ok(
+  duplicateCancelIndex >= 0 && socialQueueReleaseIndex > duplicateCancelIndex,
+  "the duplicate request must be cancelled before previously held social queue rows are released",
+);
 assert.ok(
   worker.includes('existingQueue.status === "published"'),
   "a previously published internal queue row must be re-queued only for explicit purged-record recovery",
