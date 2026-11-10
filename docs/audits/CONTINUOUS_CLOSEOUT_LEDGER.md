@@ -70,7 +70,8 @@ Both are snapshots of the exact parent baseline `c91f64ccd6162e5107b3edb8be3c7aa
 - Nine installed extensions: `pg_cron`, `pg_net`, `pg_stat_statements`, `pg_trgm`, `pgcrypto`, `plpgsql`, `supabase_vault`, `unaccent`, `uuid-ossp`.
 - Four Edge Functions are active: `source-verified-content-agent`, `prayer-notification-worker`, `spiritual-ai`, `health`.
 - Four cron jobs: three active, one disabled. The disabled legacy `zikr-youtube-facebook-sync` job references a retired project host and must stay disabled until separately reconciled.
-- Nine Storage buckets; current `storage.objects` count is zero in every bucket.
+- Nine Storage buckets; current `storage.objects` count is zero in every bucket. This is expected for the current delivery architecture: 19,608 Quran audio rows are external MP3Quran URLs with `storage_status='external'` and no storage paths; 30 site-audio rows use `curated:` keys resolved through the Cloudinary curated library; Android download routes use GitHub Releases and explicitly prohibit Supabase Storage binary redirects. Cloudinary verification found all 30 curated audio assets under `zikr/audio/` (30 expected, 30 found).
+- Scheduled storage-retention run `42746805266` completed with zero video candidates and zero Android copies; it performed no deletions in the current project. The older 148-object snapshot belongs to the retired project ref `ymxdswkaxafakugktsim`; that project is not accessible through the current connector, and no migration/restore/delete was attempted.
 - Security Advisor warning: leaked-password protection is disabled. This is a dashboard/Auth configuration action and was not changed.
 - Performance Advisor reports 91 unused indexes. These are informational candidates only; no index was dropped because usage history and workload impact have not been proven.
 
@@ -85,6 +86,7 @@ Both are snapshots of the exact parent baseline `c91f64ccd6162e5107b3edb8be3c7aa
 | ROUTE-001 | New Kids videos API route was missing from the shared 79-handler baseline and required-route list | P1 | PR #275 updates expected handler count to 80 and adds `src/app/api/kids/videos/route.ts` to required routes | `eece9ea5eea08b2b31fef40ce8b9b60445e8cea1`, `804edee88edc475fd8e33c4216136cb05fd47d4f` | `routes:check` pending |
 | SAFE-006 | Written Facebook posts could starve behind a full batch of video retries | P1 | PR #275 reserves one batch slot for an eligible non-video post while preserving the configured batch limit | `148c5d5ee12577520b30d1959338afcad8753c99`, `6cc8893d445ddd62dc8dbd16b28c3a2727c60298` | `social-queue-selection.test.ts` via `pnpm test` pending |
 | SAFE-007 | Vercel Preview/Development could call the GitHub workflow dispatcher with production repository credentials | P0 | PR #275 rejects Vercel non-production or non-main runtime before reading the write-capable GitHub token; local development remains allowed | `2ffe84422043501de434f2f24b2bda289244efaa`, `76dd38f8f647ec69e5ef97948ee73479d4ba3346`, `87bd7b0c71971ef808dd9d6c524a902f86737ffa`, `67f1dbb9477e42fa02a7c5dfbd6fdc45503c5069` | `github-workflow-dispatch-policy.test.ts` via `pnpm test` pending |
+| SAFE-008 | Stored YouTube refresh tokens were selected by provider/scopes without matching the persisted channel ID to configured `YOUTUBE_CHANNEL_ID` | P1 | PR #275 loads `channel_id` in both analytics and publishing reads and fails closed when the configured provider ID differs or the stored ID is missing | `809bbda5d08a4a32e540e210eb899681ea3c76af`, `568a4d790af57a6211617514aebe8e0c1848b48f`, `97bc37205e474a17b71e2612c896cd3af78ebcc4` | `youtube-oauth-credentials.test.ts` pending |
 | SAFE-005 | Admin video purge could delete generated Cloudinary MP4s still referenced by non-published social queue rows | P0 | PR #275 checks pending queue media before Cloudinary inventory and fails closed on protected references or an incomplete 1,000-row scan | `eb58c09d55ff32f9cb9fbc3dd1dcb95936a2e736`, `ca0b86ac8d1597af05d1ae03f70c2433634a48a7`, `f5c55566cfc0407c4958ee897e8acaf85e36a099`, `5abc544906543ba8369a8dd772ec95890e8e3fb2` | `video:purge:check` pending |
 
 No production data, storage objects, migrations, policies, indexes, OAuth credentials, or social content were changed. No file deletion was performed.
@@ -93,12 +95,13 @@ No production data, storage objects, migrations, policies, indexes, OAuth creden
 
 - Scheduled publisher run `42792340735` processed five items and recorded five Facebook Reels HTTP 422 failures; the batch ended with zero successes, zero deferrals, and five failures.
 - Live queue inventory shows nine non-published video rows with Cloudinary URLs: four `failed`, three `partial`, two `queued`.
-- Prior purge audit evidence in PR #271 records 44 Cloudinary MP4 deletions (212,392,150 bytes), 105 generated catalog rows hidden, zero social queue rows deleted, and zero external posts deleted.
-- The nine queue references remain unresolved. Do not retry, requeue, regenerate, purge, or publish them until media existence and remote delivery state are reconciled. PR #271's fail-closed purge guard remains a draft and does not restore already-deleted assets.
+- The live `admin_audit_events` record at 2026-11-10 08:35:56 UTC confirms 44 Cloudinary MP4 deletions (212,392,150 bytes), 105 generated catalog rows hidden, social queue rows preserved, and no external posts deleted.
+- Cloudinary `list_videos(prefix='auto-')` returns zero assets. The nine non-published queue URLs resolve to nine distinct `auto-*` public IDs, and none exists in the current Cloudinary inventory. This confirms the HTTP 422 root cause is missing media, not cooldown or a transient provider outage.
+- The nine queue references remain unresolved. Do not retry, requeue, regenerate, purge, or publish them until media recovery and remote delivery state are reconciled. PR #275 adds a fail-closed purge guard, but it does not restore already-deleted assets.
 
 ## 6. Open pull requests / decisions
 
-- #275 — active current-main safety remediation; draft, Quality Gate/CircleCI/Preview checks pending.
+- #275 — active current-main safety remediation; draft, Quality Gate/CircleCI/Preview checks pending. It includes typed production workflow gates, preview dispatch isolation, OAuth provider-ID checks, video-purge protection, queue fairness, route baseline, manifest, matrix and ledger.
 - #269, #270, #271, #272, #274 — closed as superseded after their useful changes were ported into #275 or confirmed applied by merged #273. Their branches were retained; no force-push or branch deletion was performed.
 - #273 — merged; includes the applied `20261110085520_add_hadith_chapter` migration.
 - GitHub code search found all current `dispatchGitHubWorkflow` call sites route through `src/lib/github/dispatch-workflow.ts`; no direct `actions/workflows/.../dispatches` REST call was found. PR #275 adds the environment guard at this shared entry point.
