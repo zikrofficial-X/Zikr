@@ -28,7 +28,7 @@ def query_values(query: str, name: str) -> list[str]:
             continue
         key, separator, value = pair.partition("=")
         try:
-            decoded_key = unquote(key, errors="strict")
+            decoded_key = unquote(key, errors="strict").lower()
             decoded_value = unquote(value if separator else "", errors="strict")
         except UnicodeDecodeError:
             fail("SUPABASE_DB_URL contains invalid percent-encoded query data.")
@@ -93,7 +93,7 @@ if effective_database != "postgres":
     fail("SUPABASE_DB_URL must target the postgres database explicitly.")
 
 direct_host = f"db.{expected_ref}.supabase.co"
-pooler_host = re.fullmatch(r"aws-\\d+-[a-z0-9-]+\\.pooler\\.supabase\\.com", hostname)
+pooler_host = re.fullmatch(r"aws-\d+-[a-z0-9-]+\.pooler\.supabase\.com", hostname)
 
 if hostname == direct_host:
     if effective_user not in {"postgres", f"postgres.{expected_ref}"}:
