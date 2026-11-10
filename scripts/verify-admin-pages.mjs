@@ -234,6 +234,8 @@ for (const token of [
   "const settingAvailable = settingResult.ok",
   "const releases = releasesResult.rows",
   "disabled={!settingAvailable}",
+  "disabled={!settingAvailable || !releasesResult.ok || releases.length === 0}",
+  "إصدار Android",
   "تعذر قراءة إعداد إصدار Android المحفوظ",
   "تعذر الاتصال بواجهة GitHub",
 ]) {
@@ -276,9 +278,10 @@ for (const token of [
 if (
   !platformService.includes("unavailableSources: string[]") ||
   !platformService.includes("results.filter((result) => !result.ok)") ||
-  !platformService.includes("[admin/search] failed to search source")
+  !platformService.includes("[admin/search] failed to search source") ||
+  !platformService.includes("select=id,text_ar,grade_ar,published,updated_at")
 ) {
-  failures.push("Admin search service must preserve failed source status rather than silently treating it as no matches.");
+  failures.push("Admin search service must preserve failed source status and select the publication state for hadith matches.");
 }
 
 const pageCount = pages.length;
