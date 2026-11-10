@@ -66,6 +66,13 @@ if (!insightsWorkflow.includes("YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}"
 if (!insightsWorkflow.includes("push:") || !insightsWorkflow.includes('branches: [main]') || !insightsWorkflow.includes('"scripts/jobs/social-publishing.ts"')) failures.push("daily insights worker must refresh after relevant main-branch updates");
 if (!socialService.includes("created_at=gte.${createdSince}") || !socialService.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff")) failures.push("social queue claims and stale recovery must respect the launch cutoff");
 if (publisher.includes("if: false")) failures.push("social publisher must not retain the retired workflow kill switch");
+const mediaAuditWorkflow = read(".github/workflows/audit-video-media.yml");
+if (!mediaAuditWorkflow.includes('cron: "41 4 * * *"') ||
+    !mediaAuditWorkflow.includes("workflow_dispatch:") ||
+    !mediaAuditWorkflow.includes('environment: production') ||
+    !mediaAuditWorkflow.includes("pnpm video:media:audit")) {
+  failures.push("published video media audit must run daily in the production environment with a manual recovery trigger");
+}
 const retentionWorkflow = read(".github/workflows/storage-retention.yml");
 if (retentionWorkflow.includes("\n  push:")) failures.push("Supabase Storage cleanup must not be triggered by source pushes");
 if (!retentionWorkflow.includes("workflow_dispatch:") || !retentionWorkflow.includes("inputs:") || !retentionWorkflow.includes("apply:")) failures.push("Storage retention must retain an explicit manual approval control");
