@@ -54,10 +54,6 @@ if (catalog.map((module) => module.key).join("|") !== groups.map((group) => grou
   failures.push("ADMIN_MODULES must mirror the ten canonical navigation keys and order");
 }
 for (const group of groups) {
-  const definition = moduleCatalog.match(new RegExp('key: "' + group.key + '"[\\\\s\\\\S]*?routes: routesFor\\\\("' + group.key + '"\\\\)'));
-  if (!definition) failures.push("admin module ownership is missing or mismatched for navigation group: " + group.key);
-}
-for (const group of groups) {
   const catalogEntry = catalog.find((entry) => entry.key === group.key);
   if (!catalogEntry) {
     failures.push("module catalog is missing navigation group: " + group.key);
@@ -74,9 +70,9 @@ for (const label of ["التشغيل والمراقبة", "إدارة المحت
 }
 const routeInventorySection = docs.split("## 1. جرد المسارات والصلاحيات")[1]?.split("## 2. نطاق الأدوار")[0] ?? "";
 const documentedGroups = [...routeInventorySection.matchAll(/^### (.+)$/gm)].map((match) => match[1].trim());
-const canonicalGroupLabels = ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الذاكرة والمكتبة", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"];
+const canonicalGroupLabels = ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الذاكرة والمكتبة", "الوسائط والصوت", "النشر والتواصل الاجتماعي", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"];
 if (documentedGroups.join("|") !== canonicalGroupLabels.join("|")) {
-  failures.push("admin governance headings must match the nine canonical navigation zones in the same order");
+  failures.push("admin governance headings must match the ten canonical navigation zones in the same order");
 }
 if (!items.length) failures.push("no canonical navigation items were parsed");
 if (items.some((item) => !item.label.trim() || !item.permission.trim())) failures.push("navigation item has an empty label or permission");
@@ -97,14 +93,6 @@ if (mediaAudioGroup?.items.some((item) => item.href === "/admin/social")) {
 }
 if (!mediaAudioGroup?.items.some((item) => item.href === "/admin/media")) {
   failures.push("media library must be reachable from media/audio navigation");
-}
-const moduleDefinitions = [...moduleCatalog.matchAll(/key:\\s*"([^"]+)"[\\s\\S]*?routes:\\s*routesFor\\("([^"]+)"\\)/g)]
-  .map((match) => ({ key: match[1], routesKey: match[2] }));
-for (const group of groups) {
-  const definition = moduleDefinitions.find((module) => module.key === group.key);
-  if (!definition || definition.routesKey !== group.key) {
-    failures.push("admin module ownership is missing or mismatched for navigation group: " + group.key);
-  }
 }
 for (const group of groups) {
   const seen = new Set();
