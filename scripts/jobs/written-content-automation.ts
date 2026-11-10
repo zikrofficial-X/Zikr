@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
-import { buildWrittenBackfillQueuePayload, buildWrittenPost, buildWrittenSocialQueuePayload, chooseWrittenSourceKind, shouldBackfillKidsWrittenPost, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
+import { buildWrittenBackfillQueuePayload, buildWrittenPost, buildWrittenSocialQueuePayload, chooseWrittenSourceKind, shouldBackfillKidsWrittenPost, scheduleKidsBackfillWithinUtcDay, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
 
 type Row = Record<string, unknown>;
 const str=(v:unknown)=>typeof v==="string"?v.trim():"";
@@ -259,7 +259,9 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
   );
   if(existing[0]){slot++;continue;}
   const nowIso=new Date().toISOString();
-  const scheduledAt=new Date(Date.now()+5*60*1000+slot*8*60*60*1000).toISOString();
+  const scheduledAt=sourceType==="kids_story"
+   ? scheduleKidsBackfillWithinUtcDay(new Date())
+   : new Date(Date.now()+5*60*1000+slot*8*60*60*1000).toISOString();
   let queuePayload: ReturnType<typeof buildWrittenBackfillQueuePayload>;
   try {
    queuePayload=buildWrittenBackfillQueuePayload({
