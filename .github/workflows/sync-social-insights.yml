@@ -36,16 +36,13 @@ jobs:
       BACKGROUND_JOB_TARGET: "insights"
       SOCIAL_PUBLISH_ENABLED: "false"
       SOCIAL_SYNC_INSIGHTS: "true"
-      SOCIAL_PUBLISH_BATCH_SIZE: "1"
-      # Do not touch the 101 historical queued rows or any pre-launch retries.
-      SOCIAL_PUBLISH_AFTER: "2026-11-06T20:00:00Z"
+      # Analytics-only worker reads published records; it never claims queue rows.
       FACEBOOK_PUBLISHING_REQUESTED: ${{ vars.FACEBOOK_PUBLISHING_ENABLED || 'true' }}
       YOUTUBE_PUBLISHING_REQUESTED: ${{ vars.YOUTUBE_PUBLISHING_ENABLED || 'true' }}
       FACEBOOK_GRAPH_API_VERSION: ${{ vars.FACEBOOK_GRAPH_API_VERSION || 'v26.0' }}
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-      YOUTUBE_UPLOAD_PRIVACY: "public"
       ADMIN_QUEUE_ALERT_WEBHOOK_URL: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_URL }}
       ADMIN_QUEUE_ALERT_WEBHOOK_SECRET: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_SECRET || secrets.WEBHOOK_SECRET }}
       ADMIN_QUEUE_ALERT_EMAIL_TO: ${{ vars.ADMIN_QUEUE_ALERT_EMAIL_TO || secrets.ADMIN_QUEUE_ALERT_EMAIL_TO }}

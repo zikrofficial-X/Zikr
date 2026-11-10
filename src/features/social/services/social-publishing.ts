@@ -7,6 +7,7 @@ import { getFacebookPageCredentials } from "@/features/social/services/facebook-
 import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError } from "@/features/social/services/facebook-reels-rate-limit";
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
+import { shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getUnavailableSocialPlatforms } from "@/features/social/services/platform-availability";
 
@@ -288,7 +289,6 @@ export async function claimPendingSocialPublishItems(
   limit = 10,
   enabledPlatforms: readonly SocialPlatform[] = getEnabledSocialPlatforms(process.env),
 ): Promise<SocialPublishQueueItem[]> {
-  await retryPendingPublishedVideoCleanup(25);
   await recoverStaleSocialPublishItems();
   const normalItems = await getPendingSocialPublishItems(limit, enabledPlatforms);
   // Failed Facebook-auth items are intentionally not auto-retried. An expired
@@ -809,6 +809,7 @@ export async function retryPendingPublishedVideoCleanup(limit = 25): Promise<{
     );
     for (const item of rows ?? []) {
       if (!isVideoContentType(item.content_type)) continue;
+      if (!shouldRetryPublishedVideoCleanup(item.metadata)) continue;
       attempted += 1;
       if (await disposePublishedVideo(item)) cleaned += 1;
     }
