@@ -14,7 +14,7 @@ const audit = read("scripts/jobs/audit-video-media.ts");
 for (const token of [
   "social_publish_queue",
   "platformResults",
-  "->\'youtube\'->>\'remoteId\'",
+  "youtube.remoteId",
   "metadata.videoGenerationRequestId",
   "probeCloudinary",
   'method: "HEAD"',
@@ -66,7 +66,7 @@ if (!workflow.includes('cron: "41 4 * * *"') ||
 const migration = read("supabase/migrations/20261110025303_reconcile_published_youtube_ids_to_video_catalog.sql");
 for (const token of [
   "platformResults",
-  "youtube.remoteId",
+  "->'youtube'->>'remoteId'",
   "youtubePublishedVideoId",
   "metadata->>'videoGenerationRequestId'",
   "v.youtube_id is null",
