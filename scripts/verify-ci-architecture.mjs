@@ -20,6 +20,16 @@ assert.ok(androidPublish.includes("inputs.retry"), "Android manual recovery must
 assert.ok(androidPublish.includes("github.ref_type == 'tag'"), "Android publishing must support release tags");
 
 const circle = read(".circleci/config.yml");
+const sourceVerifyJob = circle.slice(circle.indexOf("  source-verify:"), circle.indexOf("  application-build-docs:"));
+for (const contract of [
+  "NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app",
+  "NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY:",
+  "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID:",
+  "AUTH_CALLBACK_URL: https://zikrmediaofficial.vercel.app/auth/callback",
+]) {
+  assert.ok(sourceVerifyJob.includes(contract), "CircleCI source-verify must receive the canonical non-secret verification environment: " + contract);
+}
 const ownership = read("docs/AUTOMATION_OWNERSHIP_2026-10-08.md");
 const supabaseConfig = read("supabase/config.toml");
 const articleTranslation = read("scripts/translate-published-articles-en.ts");
