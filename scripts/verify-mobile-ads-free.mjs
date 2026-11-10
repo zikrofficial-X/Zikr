@@ -17,6 +17,8 @@ const serviceWorkerRegister = read(
   "src/components/layout/service-worker-register.tsx",
 );
 const serviceWorker = read("public/sw.js");
+const offlineAudio = read("src/features/quran/services/offline-audio.ts");
+const offlinePack = read("src/lib/offline-pack.ts");
 const adsenseSlot = read("src/components/layout/adsense-slot.tsx");
 
 requireCondition(
@@ -64,6 +66,26 @@ requireCondition(
   serviceWorker.includes("async function purgeNativeAdvertisingMarkup()") &&
     serviceWorker.includes("await purgeNativeAdvertisingMarkup()"),
   "The native worker must remove cached HTML containing previously published ad markup.",
+);
+const appShellCachePattern = /^zikr-v\\d+$/;
+const appShellCacheName = serviceWorker.match(/const CACHE_NAME = ["']([^"']+)["']/)?.[1] ?? "";
+const offlinePackCacheName = offlinePack.match(/const OFFLINE_CACHE_NAME = ["']([^"']+)["']/)?.[1] ?? "";
+const quranAudioCacheName = offlineAudio.match(/const CACHE_NAME = ["']([^"']+)["']/)?.[1] ?? "";
+requireCondition(
+  serviceWorker.includes("const APP_SHELL_CACHE_PATTERN = /^zikr-v\\d+$/;") &&
+    serviceWorker.includes("APP_SHELL_CACHE_PATTERN.test(cacheName)") &&
+    !serviceWorker.includes("cacheName.startsWith(CACHE_PREFIX)"),
+  "Service-worker updates must delete only versioned app-shell caches, never every cache with the zikr- prefix.",
+);
+requireCondition(
+  appShellCachePattern.test(appShellCacheName) &&
+    appShellCachePattern.test(offlinePackCacheName),
+  "The versioned service-worker and offline-pack caches must match the app-shell cache pattern.",
+);
+requireCondition(
+  quranAudioCacheName === "zikr-quran-audio-v1" &&
+    !appShellCachePattern.test(quranAudioCacheName),
+  "The persistent Quran audio cache must remain outside app-shell cache cleanup.",
 );
 for (const providerMarker of [
   "fundingchoicesmessages",
