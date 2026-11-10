@@ -27,13 +27,35 @@ assert.deepEqual(
   "unapproved videos must not starve later eligible written posts",
 );
 
-const approvedVideo = selectEligibleSocialPublishItems(candidates, {
+const approvedVideo = selectEligibleSocialPublishItems(videos, {
   enabledPlatforms,
   approvedVideoQueueItemIds: new Set(["video-0"]),
   maxAttemptsFor: () => 5,
   limit: 1,
 });
-assert.equal(approvedVideo[0]?.id, "video-0", "approved videos remain eligible");
+assert.equal(approvedVideo[0]?.id, "video-0", "approved videos remain eligible when no written post competes");
+
+const approvedVideoBacklog = videos.slice(0, 10);
+const fairBatch = selectEligibleSocialPublishItems(
+  [...approvedVideoBacklog, ...writtenPosts],
+  {
+    enabledPlatforms,
+    approvedVideoQueueItemIds: new Set(approvedVideoBacklog.map((item) => item.id)),
+    maxAttemptsFor: () => 5,
+    limit: 5,
+  },
+);
+assert.equal(
+  fairBatch[0]?.id,
+  "post-1",
+  "one due written post must receive a reserved batch slot ahead of recurring approved-video retries",
+);
+assert.equal(
+  fairBatch.filter((item) => item.content_type === "written_post").length,
+  1,
+  "the fairness reserve must not consume the entire video batch",
+);
+assert.equal(fairBatch.length, 5, "the fairness reserve must preserve the configured batch limit");
 
 const facebookOnly = selectEligibleSocialPublishItems(candidates, {
   enabledPlatforms: ["facebook"],
