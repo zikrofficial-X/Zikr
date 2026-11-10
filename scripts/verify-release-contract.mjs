@@ -26,6 +26,12 @@ assert.ok(releaseAction.includes("prepareAndroidRelease"), "Admin release action
 assert.ok(!releaseManager.includes("buildTag"), "Android release manager must not create a redundant -build tag");
 
 const androidCircle = read(".circleci/config.yml");
+
+assert.ok(androidCircle.includes("  android-release-draft:"), "CircleCI main pipeline must prepare the canonical Android draft release");
+assert.ok(androidCircle.includes("git/tags") && androidCircle.includes("git/refs"), "CircleCI must create an annotated semantic tag through Git Data API");
+assert.ok(androidCircle.includes("gh release create") && androidCircle.includes("--draft") && androidCircle.includes("--verify-tag"), "CircleCI must create a draft GitHub Release only after creating/verifying the tag");
+assert.ok(androidCircle.includes("CURRENT_MAIN_SHA") && androidCircle.includes("CIRCLE_SHA1"), "Android draft release creation must refuse stale main commits");
+assert.ok(androidCircle.includes("TAG_TARGET_SHA") && androidCircle.includes("refusing to retarget"), "Android draft release creation must preserve exact tag provenance and never retarget an existing release");
 assert.ok(androidCircle.includes("Upload verified Android assets to GitHub Draft Release"), "CircleCI must upload signed Android assets to GitHub Draft Releases");
 assert.ok(androidCircle.includes("gh release upload"), "CircleCI Android artifacts must be uploaded with GitHub CLI");
 assert.ok(!androidCircle.includes("Upload verified Android assets to Supabase Storage"), "CircleCI must not upload Android release assets to Supabase Storage");

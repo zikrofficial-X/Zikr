@@ -272,6 +272,93 @@ jobs:
             fi
           no_output_timeout: 20m
 
+  android-release-draft:
+    docker:
+      - image: cimg/node:22.11.0
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Create annotated Android tag and draft release from the exact main commit
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            REPOSITORY="zikrofficial-X/Zikr"
+            test "${CIRCLE_BRANCH:-}" = "main"
+            test -n "${GH_TOKEN:-}" || { echo "Missing GH_TOKEN in the android-signing CircleCI context." >&2; exit 1; }
+            sudo apt-get update
+            sudo apt-get install -y gh jq
+
+            VERSION="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('package.json','utf8')).version)")"
+            RELEASE_TAG="$(tr -d '\r\n' < .release-tag)"
+            NOTES="docs/releases/${VERSION}.md"
+            test "${RELEASE_TAG}" = "v${VERSION}"
+            test -s "${NOTES}"
+            grep -F "Release tag: `${RELEASE_TAG}`" "${NOTES}" >/dev/null
+
+            CURRENT_MAIN_SHA="$(GH_TOKEN="${GH_TOKEN}" gh api "repos/${REPOSITORY}/commits/main" --jq .sha)"
+            if [[ "${CURRENT_MAIN_SHA}" != "${CIRCLE_SHA1}" ]]; then
+              echo "Skipping release preparation: main advanced beyond this CircleCI commit."
+              exit 0
+            fi
+
+            if RELEASE_JSON="$(GH_TOKEN="${GH_TOKEN}" gh release view "${RELEASE_TAG}" --repo "${REPOSITORY}" --json tagName,isDraft 2>/dev/null)"; then
+              echo "Release ${RELEASE_TAG} already exists. Leaving its source and assets untouched."
+              exit 0
+            fi
+
+            if TAG_REF="$(GH_TOKEN="${GH_TOKEN}" gh api "repos/${REPOSITORY}/git/ref/tags/${RELEASE_TAG}" 2>/dev/null)"; then
+              TAG_TYPE="$(jq -r '.object.type' <<< "${TAG_REF}")"
+              TAG_SHA="$(jq -r '.object.sha' <<< "${TAG_REF}")"
+              if [[ "${TAG_TYPE}" == "tag" ]]; then
+                TAG_OBJECT="$(GH_TOKEN="${GH_TOKEN}" gh api "repos/${REPOSITORY}/git/tags/${TAG_SHA}")"
+                TAG_TARGET_TYPE="$(jq -r '.object.type' <<< "${TAG_OBJECT}")"
+                TAG_TARGET_SHA="$(jq -r '.object.sha' <<< "${TAG_OBJECT}")"
+              else
+                TAG_TARGET_TYPE="${TAG_TYPE}"
+                TAG_TARGET_SHA="${TAG_SHA}"
+              fi
+              if [[ "${TAG_TARGET_TYPE}" != "commit" || "${TAG_TARGET_SHA}" != "${CIRCLE_SHA1}" ]]; then
+                echo "::error::Existing ${RELEASE_TAG} does not point to this exact source commit; refusing to retarget it."
+                exit 1
+              fi
+            else
+              TAG_OBJECT_SHA="$(GH_TOKEN="${GH_TOKEN}" gh api --method POST "repos/${REPOSITORY}/git/tags" \
+                -f "tag=${RELEASE_TAG}" \
+                -f "message=ZIKR Android ${RELEASE_TAG}" \
+                -f "object=${CIRCLE_SHA1}" \
+                -f "type=commit" --jq .sha)"
+              GH_TOKEN="${GH_TOKEN}" gh api --method POST "repos/${REPOSITORY}/git/refs" \
+                -f "ref=refs/tags/${RELEASE_TAG}" \
+                -f "sha=${TAG_OBJECT_SHA}" >/dev/null
+            fi
+
+            GH_TOKEN="${GH_TOKEN}" gh release create "${RELEASE_TAG}" \
+              --repo "${REPOSITORY}" \
+              --draft \
+              --verify-tag \
+              --title "ZIKR Android ${VERSION}" \
+              --notes-file "${NOTES}"
+
+            RELEASE_JSON="$(GH_TOKEN="${GH_TOKEN}" gh release view "${RELEASE_TAG}" --repo "${REPOSITORY}" --json tagName,isDraft)"
+            test "$(jq -r '.tagName' <<< "${RELEASE_JSON}")" = "${RELEASE_TAG}"
+            test "$(jq -r '.isDraft' <<< "${RELEASE_JSON}")" = "true"
+
+            TAG_REF="$(GH_TOKEN="${GH_TOKEN}" gh api "repos/${REPOSITORY}/git/ref/tags/${RELEASE_TAG}")"
+            TAG_TYPE="$(jq -r '.object.type' <<< "${TAG_REF}")"
+            TAG_SHA="$(jq -r '.object.sha' <<< "${TAG_REF}")"
+            if [[ "${TAG_TYPE}" == "tag" ]]; then
+              TAG_OBJECT="$(GH_TOKEN="${GH_TOKEN}" gh api "repos/${REPOSITORY}/git/tags/${TAG_SHA}")"
+              TAG_TARGET_SHA="$(jq -r '.object.sha' <<< "${TAG_OBJECT}")"
+              TAG_TARGET_TYPE="$(jq -r '.object.type' <<< "${TAG_OBJECT}")"
+            else
+              TAG_TARGET_SHA="${TAG_SHA}"
+              TAG_TARGET_TYPE="${TAG_TYPE}"
+            fi
+            test "${TAG_TARGET_TYPE}" = "commit"
+            test "${TAG_TARGET_SHA}" = "${CIRCLE_SHA1}"
+            echo "Draft ${RELEASE_TAG} created and verified against ${CIRCLE_SHA1}."
+
   android-rebuild:
     docker:
       - image: cimg/android:2026.08.1-node
@@ -600,6 +687,17 @@ workflows:
                 - /^fix\/worker-audit-run-now-release-docs-20261107$/
                 - /^fix\/quran-tafsir-backfill-release-preflight-20261107$/
                 - /^fix\/quality-gate-full-main-scope-20261107$/
+            tags:
+              ignore: /.*/
+      - android-release-draft:
+          context:
+            - android-signing
+          requires:
+            - source-verify
+            - application-build-docs
+          filters:
+            branches:
+              only: main
             tags:
               ignore: /.*/
       - supabase-production-gate:
