@@ -75,10 +75,21 @@ def main():
     if args.provider == "wan2_2_fast":
         if not args.image:
             raise RuntimeError("Wan2.2 fast requires an input image.")
+        # Current Wan Space UI input order:
+        # image, prompt, negative_prompt, duration_seconds, guidance_scale,
+        # guidance_scale_2, steps, seed, randomize_seed.
+        # The old adapter passed only three inputs and sent the step count as
+        # negative_prompt, causing every Wan request to fail.
         result = client.predict(
             handle_file(args.image),
             prompt,
+            "worst quality, inconsistent motion, blurry, jittery, distorted",
+            max(2.0, min(5.0, float(args.duration))),
+            1.0,
+            3.0,
             4,
+            min(2_147_483_647, max(0, int(args.seed))),
+            True,
             api_name="/generate_video",
         )
     else:
@@ -86,6 +97,8 @@ def main():
         # text_to_video(prompt, negative_prompt, input_image, input_video,
         #               height, width, mode, duration, frames_to_use,
         #               seed, randomize_seed, guidance_scale, improve_texture)
+        # Use a six-second single-pass visual layer to stay inside the Space's
+        # 60-second ZeroGPU budget; FFmpeg composes/loops it into the full reel.
         result = client.predict(
             prompt,
             "worst quality, inconsistent motion, blurry, jittery, distorted",
@@ -94,12 +107,12 @@ def main():
             512,
             704,
             "text-to-video",
-            max(2, min(8, int(round(args.duration)))),
+            max(2, min(6, int(round(args.duration)))),
             9,
-            args.seed,
+            min(4_294_967_295, max(0, int(args.seed))),
             True,
             3.0,
-            True,
+            False,
             api_name="/text_to_video",
         )
 
