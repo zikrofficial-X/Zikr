@@ -157,7 +157,7 @@ type SocialQueueRow = {
   target_platforms: string[] | null;
   metadata: Record<string, unknown> | null;
 };
-type GeneratedRequest = {
+export type GeneratedRequest = {
   id: string;
   title: string;
   description: string | null;
@@ -832,7 +832,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
 
   return created;
 }
-function contentText(request: GeneratedRequest) {
+export function contentText(request: GeneratedRequest) {
   const content = request.content || {};
   for (const key of ["textAr", "text", "script", "prompt", "narration"]) {
     const value = content[key];
@@ -976,7 +976,7 @@ function comparableSourceText(value: string) {
     .replace(/[\uFEFF\u200B-\u200D\u200E\u200F\u2060\u2066-\u2069\u202A-\u202E]/g, "");
 }
 
-function assertKidsStoryContract(request: GeneratedRequest) {
+export function assertKidsStoryContract(request: GeneratedRequest) {
   if (request.content?.templatePreview === true || request.content?.audience !== "kids") return;
   const content = request.content;
   const text = contentText(request);
@@ -1027,7 +1027,7 @@ function contentAudioKind(request: GeneratedRequest, audioUrl: string) {
   return "arabic_tts_narration";
 }
 
-async function validateSourceContent(request: GeneratedRequest) {
+export async function validateSourceContent(request: GeneratedRequest) {
   const content = request.content || {};
   const text = contentText(request);
   if (!text) throw new Error("Template video requires text/script/narration content.");
@@ -1516,7 +1516,7 @@ async function renderVideo(request: GeneratedRequest) {
   }
 }
 
-function buildAutomatedVideoQaChecklist(
+export function buildAutomatedVideoQaChecklist(
   request: GeneratedRequest,
   rendered: {
     videoUrl: string;
