@@ -32,10 +32,14 @@ if (!audit.includes('status: "unknown"')) failures.push("Transient media probe f
 if (!audit.includes("return null") || !audit.includes("unavailable")) failures.push("Video media audit must distinguish missing media from a valid YouTube fallback");
 
 const service = read("src/features/videos/services/videos.ts");
-if (!service.includes('["cloudinary_missing", "unavailable"].includes(mediaState)')) {
-  failures.push("Public video resolver must prefer YouTube when the Cloudinary playback master is confirmed missing");
+const mediaContract = read("src/features/videos/services/video-media-contract.ts");
+if (!mediaContract.includes('["cloudinary_missing", "unavailable", "purged"].includes(mediaState)')) {
+  failures.push("Public video media contract must prefer YouTube when the Cloudinary playback master is confirmed missing or purged");
 }
-if (!service.includes("youtubeUrl")) failures.push("Public video resolver must retain the canonical YouTube playback fallback");
+if (!mediaContract.includes("youtubeUrl")) failures.push("Public video media contract must retain the canonical YouTube playback fallback");
+if (!service.includes('from "./video-media-contract"') || !service.includes("resolveVideoMediaUrl(row)")) {
+  failures.push("Public video service must use the canonical media resolver contract");
+}
 
 const publisher = read("src/features/social/services/social-publishing.ts");
 for (const token of [
