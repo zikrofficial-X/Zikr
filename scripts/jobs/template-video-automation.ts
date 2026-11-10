@@ -2331,21 +2331,11 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
               throw new Error(`Canonical duplicate request ${duplicate.id} changed during media recovery; the render remains unapproved for distribution.`);
             }
 
-            let socialQueueRecovery = { recovered: 0, failedUpdates: 0 };
-            try {
-              socialQueueRecovery = await restoreMissingMediaSocialQueueItems(duplicate.id, rendered.videoUrl, duplicateAt);
-            } catch (queueRecoveryError) {
-              console.error(`[template-video] Canonical media was restored, but held social queue rows need reconciliation for ${duplicate.id}:`, queueRecoveryError);
-            }
-            if (socialQueueRecovery.recovered > 0 || socialQueueRecovery.failedUpdates > 0) {
-              console.info(`[template-video] Recovered ${socialQueueRecovery.recovered} held social queue row(s); ${socialQueueRecovery.failedUpdates} update(s) need reconciliation for ${duplicate.id}.`);
-            }
-
-            await supabaseServerAdminRequest(
+            const cancelledDuplicateRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
               `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
               {
                 method: "PATCH",
-                headers: { Prefer: "return=minimal" },
+                headers: { Prefer: "return=representation" },
                 body: JSON.stringify({
                   status: "cancelled",
                   video_url: null,
@@ -2360,6 +2350,20 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
                 }),
               },
             );
+            if (!cancelledDuplicateRows?.[0]?.id) {
+              throw new Error(`Duplicate request ${request.id} could not be cancelled after canonical media recovery; social publishing remains held.`);
+            }
+
+            let socialQueueRecovery = { recovered: 0, failedUpdates: 0 };
+            try {
+              socialQueueRecovery = await restoreMissingMediaSocialQueueItems(duplicate.id, rendered.videoUrl, duplicateAt);
+            } catch (queueRecoveryError) {
+              console.error(`[template-video] Canonical media was restored, but held social queue rows need reconciliation for ${duplicate.id}:`, queueRecoveryError);
+            }
+            if (socialQueueRecovery.recovered > 0 || socialQueueRecovery.failedUpdates > 0) {
+              console.info(`[template-video] Recovered ${socialQueueRecovery.recovered} held social queue row(s); ${socialQueueRecovery.failedUpdates} update(s) need reconciliation for ${duplicate.id}.`);
+            }
+
             succeeded += 1;
             console.info(`[template-video] Recovered purged media for canonical request ${duplicate.id} from duplicate render ${request.id}.`);
             continue;
