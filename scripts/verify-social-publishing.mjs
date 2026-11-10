@@ -46,6 +46,10 @@ if (!socialApi.includes("created_at=gte.") || !socialApi.includes("limit=200") |
     !socialApi.includes("limit=500") || !socialApi.includes("private, max-age=30")) {
   failures.push("social admin reads must be bounded, cached and isolated to the post-launch queue window");
 }
+if (!adminClient.includes('href="/admin/social/written-studio"') ||
+    !adminClient.includes('item.content_type === "written_post"')) {
+  failures.push("social dashboard must expose the written-post studio and its pending queue count");
+}
 if (!writtenApi.includes('requireAdminApi("social.manage")') ||
     !writtenApi.includes('requireAdminApi("social.publish")') ||
     !writtenApi.includes('dispatchGitHubWorkflow("generate-written-content.yml"') ||
