@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
+import { buildDuplicateVideoOwnerVideoUrlFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
 import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
 
 const owner = {
@@ -17,6 +17,23 @@ const candidate = {
   sourceHash: "source-hash-1",
   templateVersion: "renderer-v4",
 };
+
+assert.equal(
+  buildDuplicateVideoOwnerVideoUrlFilter(null),
+  "or=(video_url.is.null,video_url.eq.)",
+  "requests without a current media pointer may be claimed only while the pointer remains empty",
+);
+const staleCloudinaryUrl = "https://res.cloudinary.com/example/video/upload/v123/auto-stale.mp4";
+assert.equal(
+  buildDuplicateVideoOwnerVideoUrlFilter(staleCloudinaryUrl),
+  "or=(video_url.is.null,video_url.eq.,video_url.eq." + encodeURIComponent(staleCloudinaryUrl) + ")",
+  "recovery must compare-and-set the exact stale generated Cloudinary pointer",
+);
+assert.equal(
+  buildDuplicateVideoOwnerVideoUrlFilter("https://example.com/video.mp4"),
+  "or=(video_url.is.null,video_url.eq.)",
+  "unexpected non-Cloudinary URLs must never be included in recovery updates",
+);
 
 assert.equal(
   canRecoverDuplicateVideoRender({ owner, candidate, qaApproved: true, siteRecord: null }),
@@ -187,6 +204,7 @@ assert.equal(buildMissingMediaQueueRecoveryPatch({
 }), null, "ordinary queue rows must not be changed by missing-media recovery");
 
 assert.ok(worker.includes("canRecoverDuplicateVideoRender"), "the video worker must use the recovery decision contract");
+assert.ok(worker.includes("buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)"), "canonical recovery must compare-and-set the exact previously stored Cloudinary URL");
 assert.ok(worker.includes("recoverPurgedRecord: true"), "purged canonical records must use the controlled recovery queue path");
 assert.ok(worker.includes("restoreMissingMediaSocialQueueItems"), "restored canonical media must release only eligible held social queue rows");
 const duplicateCancelIndex = worker.indexOf("const cancelledDuplicateRows");
