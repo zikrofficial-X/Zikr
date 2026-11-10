@@ -51,6 +51,30 @@ function isGeneratedZikrVideo(asset: CloudinaryAsset): boolean {
     tags.has("automated");
 }
 
+function isGeneratedCloudinaryVideoUrl(value: unknown, cloudName: string): boolean {
+  if (typeof value !== "string" || !value.trim()) return false;
+  try {
+    const parsed = new URL(value.trim());
+    if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com") return false;
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (parts[0] !== cloudName || parts[1] !== "video" || parts[2] !== "upload") return false;
+
+    const publicParts = parts.slice(3);
+    const version = publicParts[0] ?? "";
+    if (/^v\d+$/.test(version)) publicParts.shift();
+    const fileName = publicParts.pop() ?? "";
+    const extensionIndex = fileName.lastIndexOf(".");
+    const extension = extensionIndex > 0 ? fileName.slice(extensionIndex + 1).toLowerCase() : "";
+    const publicId = [...publicParts, extensionIndex > 0 ? fileName.slice(0, extensionIndex) : fileName]
+      .filter(Boolean)
+      .join("/");
+    return extension === "mp4" && publicId.startsWith("auto-");
+  } catch {
+    return false;
+  }
+}
+
+
 async function listGeneratedVideos(): Promise<CloudinaryAsset[]> {
   const { cloudName, apiKey, apiSecret } = cloudinaryConfig();
   const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/resources/search`;
@@ -280,7 +304,7 @@ export async function POST(request: NextRequest) {
     const includeFiles = scope === "files" || scope === "both";
     const includeMemory = scope === "memory" || scope === "both";
 
-    if (includeFiles) cloudinaryConfig();
+    const cloudinary = includeFiles ? cloudinaryConfig() : null;
     automationWasEnabled = await getVideoAutomationEnabled();
 
     await pauseVideoAutomation();
@@ -300,6 +324,83 @@ export async function POST(request: NextRequest) {
           processing,
           paused: false,
           automationMustBeReenabled: false,
+          retryRequired: true,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
+    const pendingSocialQueueMedia = includeFiles
+      ? await supabaseServerAdminRequest<Array<{ video_url: string | null }>>(
+          "/rest/v1/social_publish_queue?status=neq.published&video_url=not.is.null&select=video_url&limit=1000",
+        )
+      : [];
+    if (includeFiles && (pendingSocialQueueMedia ?? []).length >= 1000) {
+      await restoreVideoAutomation(automationWasEnabled);
+      await setPurgeLock(false);
+      purgeLockAttempted = false;
+      return NextResponse.json(
+        {
+          error: "تعذر التحقق من جميع عناصر طابور النشر بأمان. لم يبدأ الحذف؛ قلّص الطابور أو عالج العناصر ثم أعد المحاولة.",
+          protectedSocialQueueItems: null,
+          deletionStarted: false,
+          paused: false,
+          retryRequired: true,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    const protectedSocialQueueMedia = new Set(
+      (pendingSocialQueueMedia ?? [])
+        .map((row) => row.video_url)
+        .filter((value): value is string => isGeneratedCloudinaryVideoUrl(value, cloudinary?.cloudName ?? "")),
+    );
+    if (includeFiles && protectedSocialQueueMedia.size > 0) {
+      await restoreVideoAutomation(automationWasEnabled);
+      await setPurgeLock(false);
+      purgeLockAttempted = false;
+      return NextResponse.json(
+        {
+          error: "يوجد " + protectedSocialQueueMedia.size + " فيديو مرتبط بعناصر نشر لم تكتمل بعد. لم يبدأ حذف أي ملف؛ أعد محاولة النشر أو عالج العناصر أولًا.",
+          protectedSocialQueueItems: protectedSocialQueueMedia.size,
+          deletionStarted: false,
+          paused: false,
+          retryRequired: true,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
+    const pendingSocialGenerationRefs = (includeFiles || includeMemory)
+      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/social_publish_queue?status=neq.published&or=(content_type.like.*video*,video_url.not.is.null)&select=id&limit=1000",
+        )
+      : [];
+    if ((includeFiles || includeMemory) && (pendingSocialGenerationRefs ?? []).length >= 1000) {
+      await restoreVideoAutomation(automationWasEnabled);
+      await setPurgeLock(false);
+      purgeLockAttempted = false;
+      return NextResponse.json(
+        {
+          error: "تعذر التحقق من جميع مراجع طلبات الفيديو في طابور النشر. لم يبدأ حذف سجل التوليد.",
+          protectedGenerationRequestCount: null,
+          deletionStarted: false,
+          paused: false,
+          retryRequired: true,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    if ((includeFiles || includeMemory) && (pendingSocialGenerationRefs ?? []).length > 0) {
+      await restoreVideoAutomation(automationWasEnabled);
+      await setPurgeLock(false);
+      purgeLockAttempted = false;
+      return NextResponse.json(
+        {
+          error: "يوجد " + pendingSocialGenerationRefs.length + " عنصر نشر اجتماعي غير مكتمل مرتبط بوسيط فيديو. تم الحفاظ على سجل التوليد ولم يبدأ الحذف.",
+          protectedGenerationRequestCount: pendingSocialGenerationRefs.length,
+          deletionStarted: false,
+          paused: false,
           retryRequired: true,
         },
         { status: 409, headers: { "Cache-Control": "no-store" } },
