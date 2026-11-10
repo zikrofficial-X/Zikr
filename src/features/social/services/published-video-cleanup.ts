@@ -1,3 +1,6 @@
+export const PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER =
+  "or=(metadata->>stagingCleanupDeferred.neq.true,metadata->>stagingCleanupDeferred.is.null,metadata->>videoCleanupPending.eq.true)";
+
 export function shouldRetryPublishedVideoCleanup(
   metadata: Record<string, unknown> | null | undefined,
 ): boolean {

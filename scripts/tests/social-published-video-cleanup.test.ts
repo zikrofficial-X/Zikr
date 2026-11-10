@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   getPublishedVideoStagingCleanupEligibleAt,
+  PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER,
   shouldRetryPublishedVideoCleanup,
 } from "../../src/features/social/services/published-video-cleanup";
 
@@ -24,4 +25,11 @@ assert.throws(
   () => getPublishedVideoStagingCleanupEligibleAt("not-a-timestamp"),
   /valid all-target publication timestamp/,
   "invalid publication timestamps must not create an immediate cleanup deadline",
+);
+
+
+assert.equal(
+  PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER,
+  "or=(metadata->>stagingCleanupDeferred.neq.true,metadata->>stagingCleanupDeferred.is.null,metadata->>videoCleanupPending.eq.true)",
+  "cleanup polling must filter retryable rows before applying its page limit so already-deferred rows cannot starve later items",
 );

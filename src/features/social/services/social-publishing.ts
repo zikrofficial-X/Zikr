@@ -7,7 +7,7 @@ import { getFacebookPageCredentials } from "@/features/social/services/facebook-
 import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError } from "@/features/social/services/facebook-reels-rate-limit";
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
-import { getPublishedVideoStagingCleanupEligibleAt, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
+import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getUnavailableSocialPlatforms, isPermanentSocialFailure } from "@/features/social/services/platform-availability";
 
@@ -866,7 +866,8 @@ export async function retryPendingPublishedVideoCleanup(limit = 25): Promise<{
     const cutoff = new Date(process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z");
     if (!Number.isFinite(cutoff.getTime())) throw new Error("Invalid SOCIAL_PUBLISH_AFTER cutoff.");
     const rows = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-      "/rest/v1/social_publish_queue?status=eq.published&video_url=not.is.null&created_at=gte." +
+      "/rest/v1/social_publish_queue?status=eq.published&video_url=not.is.null&" +
+        PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER + "&created_at=gte." +
         encodeURIComponent(cutoff.toISOString()) +
         "&order=updated_at.asc&limit=" + Math.max(1, Math.min(100, Math.floor(limit))),
     );
