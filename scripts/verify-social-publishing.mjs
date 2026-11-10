@@ -32,6 +32,7 @@ const adminClient = read("src/app/admin/social/social-client.tsx");
 const writtenWorker = read("scripts/jobs/written-content-automation.ts");
 const writtenPostService = read("src/features/social/services/written-content.ts");
 const videoCatalog = read("src/features/videos/services/videos.ts");
+const facebookPublicPosts = read("src/features/social/services/facebook-public-posts.ts");
 const sitePublisher = read("scripts/jobs/content-publishing.ts");
 
 if (!socialApi.includes('requireAdminApi("social.manage")') ||
@@ -256,6 +257,14 @@ if (!videoCatalog.includes("metadata.generatedVideoUrl") ||
     !videoCatalog.includes("isPubliclyRenderableVideo") ||
     !sitePublisher.includes('"videos"')) {
   failures.push("generated media must remain visible in the internal video catalog and site publication queue");
+}
+
+const facebookPublicPostsGuard = facebookPublicPosts.indexOf("if (!getServerEnv().SUPABASE_SERVICE_ROLE_KEY) return [];");
+const facebookPublicPostsQuery = facebookPublicPosts.indexOf("supabaseServerAdminRequest<SocialQueueRow[]>");
+if (!facebookPublicPosts.includes('import { getServerEnv } from "@/lib/env";') ||
+    facebookPublicPostsGuard < 0 || facebookPublicPostsQuery < 0 ||
+    facebookPublicPostsGuard > facebookPublicPostsQuery) {
+  failures.push("optional public Facebook feed must skip private queue reads when the Preview/Development service-role credential is intentionally absent");
 }
 
 if (failures.length) {
