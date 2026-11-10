@@ -78,7 +78,9 @@ function isQuizQuestion(value: unknown): value is QuizQuestion {
   return (
     typeof q.text === "string" &&
     Array.isArray(q.options) &&
+    q.options.length >= 2 &&
     q.options.every(o => typeof o === "string") &&
+    typeof q.correctAnswer === "number" &&
     Number.isInteger(q.correctAnswer) &&
     q.correctAnswer >= 0 &&
     q.correctAnswer < q.options.length
