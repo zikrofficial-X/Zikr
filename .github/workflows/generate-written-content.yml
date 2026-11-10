@@ -9,7 +9,7 @@ on:
         required: false
         default: "auto"
         type: choice
-        options: [auto, quran, hadith, dua, story, prophets, companions, knowledge]
+        options: [auto, quran, hadith, dua, story, prophets, companions, knowledge, kids]
       batch_size:
         description: "Number of ZIKR website articles to schedule (bounded)"
         required: false
