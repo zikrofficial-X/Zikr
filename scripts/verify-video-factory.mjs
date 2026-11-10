@@ -37,6 +37,11 @@ if (!template.includes("if (qaApproval)") ||
     !template.includes("automatedVideoQa: request.content.automatedVideoQa ?? null")) {
   failures.push("failed automated QA renders must remain in the generation audit and must not be published to site or social queues");
 }
+if (!template.includes("resolveCloudinaryVideoPoster") ||
+    !template.includes('"/video/upload/so_0/"') ||
+    !template.includes("thumbnail_url: resolveCloudinaryVideoPoster(rendered.videoUrl)")) {
+  failures.push("newly generated videos must persist a poster frame from the Cloudinary playback master");
+}
 if (!template.includes("assertPlayableOutput")) failures.push("rendered videos must pass media integrity QA");
 if (!template.includes("assertAudibleAudio")) failures.push("rendered videos must pass audible-audio QA");
 if (!template.includes("Rendered output resolution mismatch")) failures.push("rendered video resolution must be validated");
