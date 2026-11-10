@@ -36,10 +36,10 @@ assert.ok(route.includes('published: false'), "Purge must hide generated records
 assert.ok(route.includes('generatedVideoUrl: null') && route.includes('videoUrl: null'), "Purge must clear dead media URLs.");
 assert.ok(route.includes("status=neq.published&video_url=not.is.null&select=video_url&limit=1000"), "file purge must inspect every non-published social queue media reference before deleting assets.");
 assert.ok(route.includes("isGeneratedCloudinaryVideoUrl") && route.includes("protectedSocialQueueMedia.size > 0"), "file purge must protect generated Cloudinary media referenced by unfinished social posts.");
-assert.ok(route.includes("/^v\\\\d+$/"), "Cloudinary delivery URL parsing must strip version segments before protecting generated media.");
+assert.ok(route.includes("/^v\\d+$/"), "Cloudinary delivery URL parsing must strip version segments before protecting generated media.");
 assert.ok(route.includes("deletionStarted: false") && route.includes("retryRequired: true"), "a protected queue reference must stop purge before destructive work.");
 assert.ok(
-  !/social_publish_queue[^\\n]*method:\\s*["'](?:POST|PATCH|DELETE)/i.test(route),
+  !/social_publish_queue[^\n]*method:\s*["'](?:POST|PATCH|DELETE)/i.test(route),
   "purge must never mutate historical social queue rows.",
 );
 const queueMediaGuardPosition = route.indexOf("const pendingSocialQueueMedia");
