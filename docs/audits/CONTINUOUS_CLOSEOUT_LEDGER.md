@@ -12,8 +12,8 @@
 ### GitHub and CI
 
 - Main CI for `ab0bd0e7ad5e5dd2d86250ed0b63ae257dc237b4`: CircleCI config-guard, source-verify, application-build-docs and android-release-draft all SUCCESS; Vercel check SUCCESS.
-- PR #306 fixes the offline snapshot workflow when repository policy blocks automated PR creation. Two branch filters were over-escaped and prevented source/build jobs from matching the branch; both were corrected in `07e0a6ffa891cce8d8c24b5b595b9d33367c1199`. Exact-head config-guard, source-verify, application-build-docs and GitHub Quality Gate now all SUCCESS.
-- PR #306 remains open because `.github/CODEOWNERS` assigns the CI/workflow paths and repository-wide default to `@Zikrmediaofficial`. A reviewer request returned no registered reviewer. No merge or policy bypass was performed.
+- PR #306's offline snapshot workflow fix merged into main at `ab0bd0e7ad5e5dd2d86250ed0b63ae257dc237b4` after exact-head config-guard, source-verify, application-build-docs and GitHub Quality Gate passed. PR #307 is now the open Android release-draft single-owner repair. The audit added its branch to both CircleCI source/build filters in `bb4ceea1b4ce895a2cfdcc408f107dabd76fcc24`; current head `9a15b6d982b879170392f0b96c98e4de7e3cb149` has config-guard, source-verify and application-build-docs pending. The previous head failed because `verify-release-contract.mjs` still expected CircleCI to create the tag/draft; the current branch replaces that stale expectation with single-owner assertions.
+- PR #306 is merged; PR #304 is closed as superseded. PR #307 remains open pending its current CI results and the required `.github/CODEOWNERS` owner review. The reviewer request for the earlier PR #306 returned no registered reviewer; no review-policy bypass was performed.
 - PR #304 was closed as superseded; its offline manifest and immutable Android release-contract changes are already on main. PR #275, #279, #280 and #281 are merged. PR #278 and #283 are closed without merge; current main contains the optional Facebook feed credential guard and expanded content-integrity scan across `src`, `content`, `public`, and `supabase` including SQL.
 - Offline snapshot workflow run 42864006464 succeeded after run 42863154825 failed. The workflow warns and continues if automated PR creation is blocked after validating and pushing the stable snapshot branch; the Quality Gate dispatch remains explicit.
 
@@ -40,13 +40,13 @@
 
 ### Android release state
 
-- `v1.1.15` is still a draft. Annotated tag `v1.1.15` points to immutable commit `faf16ea2450ab22f44c336161cd841806d97bbe6`. Draft release 440588928 contains APK (41,498,367 bytes, SHA-256 `90140be1f44e81d9d93011e8c78c882c6e045ba35e61495077039b7e1e6faee9`), AAB (36,312,681 bytes, SHA-256 `ec611f1e3b643c0c80349ae6b3a41602950e92cf32f28a9e3d0ccbb7dbb15f1f`), release metadata and SHA256SUMS. A second empty draft release 440692934 exists for the same tag. No draft was published/deleted; v1.1.14 remains the latest published release.
+- `v1.1.15` is still a draft. Annotated tag `v1.1.15` points to immutable commit `faf16ea2450ab22f44c336161cd841806d97bbe6`. Draft release 440588928 contains APK (41,498,367 bytes, SHA-256 `90140be1f44e81d9d93011e8c78c882c6e045ba35e61495077039b7e1e6faee9`), AAB (36,312,681 bytes, SHA-256 `ec611f1e3b643c0c80349ae6b3a41602950e92cf32f28a9e3d0ccbb7dbb15f1f`), release metadata and SHA256SUMS. A second empty draft release 440692934 exists for the same tag. PR #307 makes Admin Release the sole creator and fails closed on duplicate drafts; the empty duplicate must be resolved by the release owner before the post-merge Android draft gate can pass. No draft was published/deleted; v1.1.14 remains the latest published release.
 - Main Android release-draft CI passed; no new APK/AAB was created by this run.
 
 ### Files read and actions taken
 
 - Full file bodies read this run: `.github/workflows/refresh-offline-content.yml`, `src/features/social/services/facebook-public-posts.ts`, `src/features/videos/services/video-media-contract.ts`, `src/features/social/services/published-video-cleanup.ts`, and `scripts/verify-content-integrity.mjs`. These are recorded as `CONTENT_READ_PENDING_TRACE` or `CONTENT_READ_TESTED_PASS`; no module is closed from a source read alone.
-- Fixed two malformed CircleCI regex filters on PR #306; exact-head CI now passes.
+- Fixed two malformed CircleCI regex filters on PR #306; PR #306 was then merged. Added the PR #307 branch to both CircleCI source/build filters and diagnosed the stale release-contract assertion failure on its previous head; the current branch contains the corrected single-owner assertion set.
 - Closed duplicate PR #304 as superseded; added validation comments to PR #306.
 - Files deleted: 0. Production migrations/data changes: 0. Storage object/bucket changes: 0. Cloudinary mutations: 0. Social posts/retries: 0. Production deployments: 0. Public release publications: 0.
 
@@ -54,7 +54,7 @@
 
 1. Exact source-media recovery for 64 retired Cloudinary masters is not proven; do not substitute unrelated new renders or blindly republish. Preserve 58 verified YouTube fallbacks and keep 6 rows hidden.
 2. Reconcile the 9 blocked social queue rows only after exact original media is recovered and per-platform provider IDs are checked.
-3. Obtain the required CODEOWNERS review for PR #306; do not bypass repository review policy.
+3. Complete PR #307's current CI and obtain the required CODEOWNERS review; do not bypass repository review policy.
 4. Trace the 8 current-production transport failures to their exact upstream/caller when trace/log detail is available; do not change retry policy speculatively.
 5. Resolve the duplicate empty v1.1.15 draft only after confirming release ownership; do not publish or delete it automatically.
 6. Complete authenticated owner-scoped Storage session acceptance, all remaining source/dependency tracing, exhaustive route/browser/device acceptance, and every `REVIEW_REQUIRED` file before declaring a module closed.
