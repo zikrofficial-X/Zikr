@@ -29,6 +29,11 @@ export function buildFacebookQueueRecoveryPatch(
       )
     : [];
   const oldResults = normalizeSocialPlatformResults(metadata.platformResults);
+  const declaredPermanent = Array.isArray(metadata.permanentFailurePlatforms)
+    ? metadata.permanentFailurePlatforms.filter((platform): platform is FacebookQueueRecoveryPlatform =>
+        platform === "facebook" || platform === "facebook_reels",
+      )
+    : [];
   const facebookResultTargets = facebookTargets.filter((platform) =>
     Object.prototype.hasOwnProperty.call(oldResults, platform),
   );
@@ -52,7 +57,7 @@ export function buildFacebookQueueRecoveryPatch(
     : inferredAuthBlockedTargets.length > 0
       ? inferredAuthBlockedTargets
       : facebookResultTargets.length === 0
-        ? facebookTargets
+        ? facebookTargets.filter((platform) => !declaredPermanent.includes(platform))
         : [];
   if (blockedTargets.length === 0) return null;
 
