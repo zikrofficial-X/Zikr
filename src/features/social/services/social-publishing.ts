@@ -570,61 +570,38 @@ async function deleteManagedVideoUrl(
  * Failed cleanup is retried by the social publishing worker.
  */
 async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<boolean> {
-  if (!item.video_url) return true;
-  const env = getServerEnv();
-  const backupUrl =
-    typeof item.metadata?.supabaseOriginalVideoUrl === "string"
-      ? item.metadata.supabaseOriginalVideoUrl
-      : null;
-  // The catalog and public video pages use item.video_url as their durable playback
-  // master. Never delete it after social delivery. Only remove the optional Supabase
-  // staging copy; retaining the master prevents published ZIKR pages from breaking.
-  const candidates = backupUrl ? [backupUrl] : [];
-  const failures: string[] = [];
+  if (!item.video_url || !item.content_id) return true;
 
-  for (const candidate of candidates) {
-    try {
-      await deleteManagedVideoUrl(candidate, env);
-    } catch (error) {
-      failures.push((candidate.includes("cloudinary.com") ? "Cloudinary: " : "Supabase: ") +
-        (error instanceof Error ? error.message : String(error)));
-      break;
-    }
-  }
+  // Social delivery is not permission to delete either the public playback master
+  // or its staging backup. The public catalog depends on the master, while the
+  // retention worker owns the staging copy after the 48-hour grace period.
+  const requestRows = await supabaseServerAdminRequest<Array<{ content: Record<string, unknown> | null }>>(
+    "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id) + "&select=content&limit=1",
+  );
+  const existingContent = requestRows?.[0]?.content ?? {};
+  const publishedAt = item.published_at ?? new Date().toISOString();
+  const publishedTime = Date.parse(publishedAt);
+  const stagingCleanupEligibleAt = new Date(
+    (Number.isFinite(publishedTime) ? publishedTime : Date.now()) + 48 * 60 * 60 * 1000,
+  ).toISOString();
 
-  if (failures.length) {
-    console.error("[social-publishing] Published video cleanup incomplete:", item.id, failures);
-    await markQueueItem(item.id, "published", {
-      metadata: { ...(item.metadata ?? {}), videoCleanupPending: true, videoCleanupErrors: failures },
-    });
-    return false;
-  }
-
-  if (item.content_id) {
-    const requestRows = await supabaseServerAdminRequest<Array<{ content: Record<string, unknown> | null }>>(
-      "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id) + "&select=content&limit=1",
-    );
-    const existingContent = requestRows?.[0]?.content ?? {};
-    await supabaseServerAdminRequest(
-      "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id),
-      {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({
-          // Keep video_url as the canonical playback master for the public catalog.
-          content: { ...existingContent, supabaseOriginalVideoUrl: null, stagingVideoDisposedAt: new Date().toISOString() },
-          updated_at: new Date().toISOString(),
-        }),
-      },
-    );
-  }
+  await supabaseServerAdminRequest(
+    "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id),
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        content: { ...existingContent, stagingCleanupDeferred: true, stagingCleanupEligibleAt },
+        updated_at: new Date().toISOString(),
+      }),
+    },
+  );
 
   await markQueueItem(item.id, "published", {
-    // Preserve the durable video_url for website playback and future re-publishing.
     metadata: {
       ...(item.metadata ?? {}),
-      supabaseOriginalVideoUrl: null,
-      stagingVideoDisposedAt: new Date().toISOString(),
+      stagingCleanupDeferred: true,
+      stagingCleanupEligibleAt,
       videoCleanupPending: false,
       videoCleanupErrors: [],
     },
