@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildDuplicateVideoOwnerVideoUrlFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
+import type { DuplicateVideoHashOwner } from "../../src/features/videos/services/duplicate-video-recovery";
 import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
 
-const owner = {
+const owner: DuplicateVideoHashOwner = {
   status: "completed",
   video_url: null,
   content_hash: "content-hash-1",
@@ -69,7 +70,7 @@ assert.equal(
 );
 
 const reject = (overrides: {
-  owner?: Partial<typeof owner>;
+  owner?: Partial<DuplicateVideoHashOwner>;
   candidate?: Partial<typeof candidate>;
   qaApproved?: boolean;
   siteRecord?: { published: boolean | null; metadata: Record<string, unknown> | null } | null;
