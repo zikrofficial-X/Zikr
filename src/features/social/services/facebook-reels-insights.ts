@@ -148,8 +148,15 @@ async function loadFacebookPagePostVideoIndex(
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || (isRecord(payload) && payload.error)) {
       const error = isRecord(payload) && isRecord(payload.error) ? payload.error : {};
+      const providerMessage = typeof error.message === "string"
+        ? error.message
+            .replaceAll(pageAccessToken, "[redacted]")
+            .replace(/\\b\\d{8,}\\b/g, "[id]")
+            .replace(/https?:\\/\\/\\S+/gi, "[url]")
+            .slice(0, 220)
+        : "No provider message returned.";
       throw new FacebookReelsInsightsApiError({
-        message: "Meta could not list Page posts to resolve historical Reel video IDs (HTTP " + response.status + ").",
+        message: "Meta could not list Page posts to resolve historical Reel video IDs (HTTP " + response.status + "): " + providerMessage,
         code: typeof error.code === "number" ? error.code : undefined,
         subcode: typeof error.error_subcode === "number" ? error.error_subcode : undefined,
         type: typeof error.type === "string" ? error.type : undefined,
