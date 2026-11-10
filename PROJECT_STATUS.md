@@ -1,11 +1,40 @@
 # ZIKR — Current Project Status
 
 **Production branch:** `main`  
-**Last reconciled:** 2026-10-30  
+**Last reconciled:** 2026-11-10  
 **Repository:** `zikrofficial-X/Zikr`  
 **Production origin:** `https://zikrmediaofficial.vercel.app`
 
-## Consolidated closeout checkpoint — 2026-10-30
+## Current verified checkpoint — 2026-11-10
+
+**Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
+
+- Canonical repository: `zikrofficial-X/Zikr`; production branch: `main`; audited source commit: `d05598035de7b51ba460a0c2424a58b22b4f4e81`.
+- Vercel project: `zikr` (`prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`), Node `22.x`; Supabase project: `zqtssvlvmkzeeyqghqfk`, status `ACTIVE_HEALTHY`, PostgreSQL 17.
+- Repository inventory at this commit: 2,121 tree entries (1,631 files and 490 directories), 142 `page.*` files, 79 `route.*` handlers, 47 component files, 19 GitHub Actions workflows, 55 test-file paths, and 414 versioned Supabase migration files. The 414 migration versions match the live ledger, with no duplicate version IDs.
+- Main GitHub Quality Gate run `42758477048` passed. CircleCI statuses for config guard, application build/docs, Android release draft, source verification, Supabase production gate, Android rebuild, and Android release dispatch all passed for this commit.
+- Android `v1.1.14` is published at https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.14. Its annotated tag targets this exact commit. GitHub Actions run `42758799773` passed all release checks, including release metadata, checksums, APK signature/manifest, AAB signature, and post-publication asset verification. Published assets: APK 41,277,148 bytes (SHA-256 `c982ad8449432ed3128ae97d1d69dbe48ab619159238443757d945958a39202f`); AAB 36,091,440 bytes (SHA-256 `bfd01d055cafd04a61d3bff1c06ba59d6143c4ded51d44b1044dc37327f828e6`); `release-metadata.json` and `SHA256SUMS` are also published.
+- Latest verified Vercel production deployment: `dpl_AK3uuUj4nAouG4tcNF9bNnsKpCDM`, state `READY`, source commit `6bcc456eb0977cd9688dc837fee3236bb43a2053`; canonical production aliases are attached. The audited `main` commit `d055980...` has no matching production deployment in the inspected production deployment list. Production deployment remains manual-only through `.github/workflows/release-finalization.yml` and requires explicit `RELEASE` confirmation.
+- Live HTTP smoke checks returned 200 for `/`, `/quran`, `/hadith`, `/adhkar`, `/prayer-times`, `/kids`, `/videos`, `/audio`, `/dua`, `/articles`, `/admin`, `/admin/audio/adhan`, `/api/quran/surahs`, and `/api/hadith/books`. These are sampled route checks, not an exhaustive interactive browser/E2E pass across all 142 pages.
+- Live Supabase inspection: 92 public tables, all with RLS enabled; 211 public policies; 53 public triggers; 20 public `SECURITY DEFINER` functions with pinned `search_path` and no direct `anon` or `authenticated` EXECUTE grants. Current data counts include 19,608 Quran audio rows, 172 reciters, 2,964 hadiths, 113 articles, 30 site-audio asset records, 122 videos, 107 video-generation requests, 83 social publishing queue rows, 142 social insight rows, and 116 content publishing queue rows.
+- All nine Supabase Storage buckets currently report zero objects in `storage.objects`. This differs from the October 30 inventory documented below; treat the old 409-object / 1.874 GB snapshot as historical, not live. Do not delete buckets or media metadata based on this empty-object result alone.
+- Supabase Security Advisor reports one warning: leaked-password protection is disabled. The organization is currently on the Free plan; this Auth-level setting is not a code migration and requires an owner-level plan/settings decision. Performance Advisor still flags unused-index candidates; do not bulk-drop indexes without query/workload evidence. Health Advisor returned no findings.
+- Vercel runtime error monitoring reported four recent `fetch failed` events across `/`, `/admin/audio/adhan`, and `/hadith/[book]/[id]`, with underlying `ETIMEDOUT` / `UND_ERR_SOCKET` transport errors. The shared Supabase REST helper already has bounded GET retries; no code change is justified until the failure is reproduced and its actual caller/upstream is identified. Hobby runtime-log retention prevented a full 24-hour raw-log read.
+- GitHub branch inventory returned only `main` at the start of this audit; no open PRs were returned then. The repository reported `main` as unprotected. Enabling required branch protections needs a deliberate owner decision because release and automation workflows must be checked for compatibility first.
+- Existing repository contracts passed on `main`, including route inventory, local-import, hygiene, architecture, security, migration, mobile-readiness, content, media/video, social publishing, and admin contracts through the successful `verify:pr` gate. This does not replace full visual QA, authenticated browser E2E, or physical-device acceptance.
+
+### Remaining closure gates
+
+- Decide whether to upgrade the Supabase organization or formally accept the leaked-password-protection warning, then rerun Security Advisor.
+- Reconcile the zero-object Storage inventory with the application’s active media/CDN references before considering any bucket or file cleanup.
+- Investigate the intermittent Vercel transport failures with retained runtime/request logs and a reproducible route-level trace.
+- Complete authenticated browser/mobile E2E and physical Android acceptance; complete qualified editorial/religious and Kids educator review where required by the project acceptance checklist.
+- The current `main` commit has not been verified as deployed to production. Keep production manual-only; deploy only through the protected finalization workflow after the release decision and production smoke checks.
+- No source files, database rows, storage buckets, indexes, or branches were deleted or moved during this checkpoint: the available remote inspection has not yet proven a safe orphan candidate across the complete dependency graph. Continue that analysis before destructive cleanup.
+
+Historical sections below are retained for audit trail. Their counters and deployment states are point-in-time snapshots and must not be treated as current unless reverified.
+
+## Historical consolidated closeout checkpoint — 2026-10-30
 
 This checkpoint supersedes the older deployment and schema snapshots below.
 
