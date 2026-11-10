@@ -276,4 +276,33 @@ assert.ok(productionSmoke.includes("sort((left, right) => right.length - left.le
 assert.ok(productionSmoke.includes("return extractText(withoutNonContent);"), "Production smoke must account for streamed content emitted outside the first main block");
 assert.ok(productionSmoke.includes("bestMain.length >= 35"), "Production smoke must use full document text when the main element is only a streaming fallback");
 assert.ok(productionSmoke.includes("expectedMain: /نتعلم|الأطفال|الاطفال/i"), "Kids smoke check must accept the actual localized page title");
+const backfillSafetyWorkflow = read(".github/workflows/backfill-legacy-video-qa.yml");
+assert.ok(
+  backfillSafetyWorkflow.includes("inputs.confirmation == 'APPLY_QA_BACKFILL'") &&
+    !backfillSafetyWorkflow.includes("[apply-legacy-kids-qa]") &&
+    !backfillSafetyWorkflow.includes("github.event.head_commit.message"),
+  "Production legacy QA backfill must require manual typed confirmation and never use a commit-message apply trigger",
+);
+const storageSafetyWorkflow = read(".github/workflows/storage-retention.yml");
+assert.ok(
+  storageSafetyWorkflow.includes("inputs.confirmation == 'DELETE_STAGING_COPIES'") &&
+    !storageSafetyWorkflow.includes("github.event_name == 'schedule' ||"),
+  "Scheduled storage retention must remain dry-run and deletion must require typed manual confirmation",
+);
+const offlineSafetyWorkflow = read(".github/workflows/refresh-offline-content.yml");
+assert.ok(
+  offlineSafetyWorkflow.includes("pull-requests: write") &&
+    offlineSafetyWorkflow.includes("automation/offline-content-snapshot") &&
+    offlineSafetyWorkflow.includes("gh pr create") &&
+    offlineSafetyWorkflow.includes("gh workflow run quality-gate.yml") &&
+    !offlineSafetyWorkflow.includes("git push origin HEAD:main"),
+  "Offline snapshot automation must publish through a reviewable PR, never directly to main",
+);
+const circleSafetyBranches = read(".circleci/config.yml");
+assert.ok(
+  circleSafetyBranches.includes("comprehensive-repair-safety-20261110") &&
+    circleSafetyBranches.includes("offline-content-snapshot"),
+  "CircleCI source and application build gates must cover the safety remediation and generated offline snapshot branches",
+);
+
 console.log("✅ CI/CD architecture checks passed");
