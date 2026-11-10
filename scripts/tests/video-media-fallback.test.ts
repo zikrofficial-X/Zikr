@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   getConfirmedYoutubeFallbackId,
   resolveVideoMediaUrl,
@@ -150,5 +151,9 @@ assert.equal(
   "https://res.cloudinary.com/dcuveyab9/video/upload/auto-final-render.mp4",
   "internal video playback must prefer the finished render over its source clip",
 );
+
+const socialPublisher = readFileSync("src/features/social/services/social-publishing.ts", "utf8");
+assert.ok(socialPublisher.includes("shouldRestorePurgedPublishedVideo(row)"), "confirmed YouTube sync must consult the prior-publication and QA recovery gate");
+assert.ok(socialPublisher.includes("published: true"), "eligible late YouTube fallback sync must restore the previously public catalog row");
 
 console.log("Purged video YouTube fallback contract tests passed.");
