@@ -120,6 +120,9 @@ if (existsSync(offlineWorkflowPath) &&
       !offlineWorkflow.includes('pull-requests: write') ||
       !offlineWorkflow.includes('automation/offline-content-snapshot') ||
       !offlineWorkflow.includes('gh pr create') ||
+      !offlineWorkflow.includes('secrets.GH_TOKEN || github.token') ||
+      !offlineWorkflow.includes('if gh pr create') ||
+      !offlineWorkflow.includes('::warning::GitHub Actions token cannot create pull requests') ||
       !offlineWorkflow.includes('gh workflow run quality-gate.yml') ||
       !offlineWorkflow.includes("if: github.ref == 'refs/heads/main'") ||
       offlineWorkflow.includes('git push origin HEAD:main'))) {
