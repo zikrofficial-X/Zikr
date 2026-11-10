@@ -377,3 +377,13 @@ A read-only join of the video catalog, generation requests, social publishing qu
 - PR #275 remains Draft with 70 changed files (9,842 additions / 2,262 deletions). No merge is authorized until current-head checks, isolated Preview, and acceptance gates pass.
 
 No files or production data were deleted in this checkpoint. No Cloudinary assets were deleted, no social posts were published, and no production deployment was initiated. File-level review and browser/mobile acceptance remain incomplete; modules closed remains 0.
+
+
+## Verified current checkpoint — 2026-11-10T19:09:48.336Z
+
+- Canonical `main`: `c75b92111fa2391a2a09abf928669547a8bb112c`; PR #312 merged, adding the missing `youtube_oauth_credentials` generated type and the corresponding contract guard.
+- Exact PR-head Quality Gate, CircleCI source/build/config checks, and Vercel Preview build passed. Main Quality Gate and all four CircleCI checks plus Supabase Preview passed after merge.
+- Vercel Production deployment `dpl_EpQK1pKTiYhxJGM6z8VpNW7pbXbV` is READY on this exact main SHA. The canonical alias returned HTTP 200 for `/`, `/videos`, `/kids`, `/api/health`, and `/api/kids/videos`.
+- Supabase read-only reconciliation: 92/92 public tables have RLS; 211 policies; 66 foreign keys; 45 distinct public triggers (53 event rows); 418 migration versions exactly match the 418 local migration files. YouTube OAuth credentials remain server-only by table grants.
+- Current recursive inventory is 2,152 entries including the manifest, 1,661 files, 491 directories, and 139,718,901 tracked bytes. The refreshed manifest records the same current main baseline with its own self-entry excluded.
+- **Audit is still IN PROGRESS.** The historical file-status matrix has not been fully rebased/read against this SHA. Automated inventory is not equivalent to manual source review. No module-level full certification, new Android release, or full-project closeout is claimed.
