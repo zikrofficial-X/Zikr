@@ -1923,6 +1923,21 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
     console.log(`[template-video] Automated QA did not pass for ${request.id}; no external queue item was created.`);
     return;
   }
+  const isKidsVideo = content.audience === "kids";
+  const kidsSocialStoryContractPassed = !isKidsVideo || (
+    content.aiMode === "original_kids_story" &&
+    content.sourceType === "original_kids_fiction" &&
+    content.contentFormat === "series_episode" &&
+    typeof content.seriesId === "string" && Boolean(content.seriesId.trim()) &&
+    typeof content.seriesTitle === "string" && Boolean(content.seriesTitle.trim()) &&
+    typeof content.learningObjective === "string" && Boolean(content.learningObjective.trim()) &&
+    Number.isInteger(Number(content.seasonNumber)) && Number(content.seasonNumber) > 0 &&
+    Number.isInteger(Number(content.episodeNumber)) && Number(content.episodeNumber) > 0
+  );
+  if (!kidsSocialStoryContractPassed) {
+    console.warn(`[template-video] Kids story contract did not pass for ${request.id}; no Kids social post was queued.`);
+    return;
+  }
   if (content.skipSocialPublish === true) {
     console.log(`[template-video] Social publishing skipped for test request ${request.id}`);
     return;
