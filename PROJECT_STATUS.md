@@ -215,3 +215,18 @@ The current Vercel Production deployment remains `dpl_9d8LhBw1xDjNfWWcnTkv46sfdV
 - Current inventory evidence remains 92/1,639 source-content reads; 1547 REVIEW_REQUIRED; modules closed 0. Earlier GitHub Quality Gate success belongs to commit `1a522cd`, not the current head; latest checks remain pending.
 
 **State: IN PROGRESS — do not mark FINAL BASELINE READY.**
+
+
+## Continuous closeout checkpoint — 2026-11-10 13:45 Africa/Cairo
+
+- **Source of truth:** GitHub repository `zikrofficial-X/Zikr`, main baseline `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; Vercel project `zikr` is linked to that repository. Production remains READY on the same main SHA. Connected Supabase project: `zqtssvlvmkzeeyqghqfk`.
+- **Inventory:** main baseline 1,639 files / 491 directories / 2,130 tracked entries; 100% automated inventory coverage. Full source-content reads 117/1,639; 1,522 REVIEW_REQUIRED; 99 CONTENT_READ_PENDING_TRACE; 10 FIXED_PENDING_CI; 8 TEST_UPDATED_PENDING_CI. Modules closed: 0.
+- **PR #275:** draft/open/unmerged; head at checkpoint `46a8b66c27c9b5c7c771c3e97794854e3b3f1ac7`; 48 changed files. Branch tree: 1,648 files / 491 directories. Current CircleCI config-guard passed; source-verify and application-build-docs pending; full ZIKR Quality Gate in progress. Earlier source-verify failure on head `6e1845a` still needs a detailed cause.
+- **Storage repair:** live Storage RLS lacked owner policies for avatars, media, audio and documents. PR adds a forward migration with authenticated owner-path policies, fixes MIME allowlists, corrects the signed-upload TTL to 7,200 seconds, and adds a contract test. Migration remains unapplied; live migrations remain 415/415.
+- **Social containment:** nine approved queue rows referencing missing Cloudinary assets are held from retry. Three queued became failed; three partial and three failed remain held. Audit event `5de18dd5-8bcc-4784-a471-e1c7821405dc`. Existing YouTube remote IDs preserved. No provider call, generation or post was triggered.
+- **Written posts:** ten written Facebook posts are queued and one is published. The dedicated page is `/admin/social/written-studio`; a direct link and pending count were added to the main social dashboard. The page requires `social.manage`; generation requires `social.publish` as well.
+- **Supabase:** 92/92 public tables RLS-enabled; 89 unused-index candidates remain untouched; leaked-password protection remains an owner setting; health advisor returned no findings. No index, data, bucket or Storage object was deleted.
+- **Vercel/Android:** no PR Preview deployment; production not redeployed. Vercel sandbox creation was blocked by storage quota and local GitHub DNS was unavailable, so no local build is claimed. No APK/AAB build or signature verification was performed.
+- **No module is closed.** Browser/device acceptance, migration replay, current CI, missing-media restoration, and the remaining REVIEW_REQUIRED inventory are still open.
+
+**State: IN PROGRESS — do not mark FINAL BASELINE READY.**
