@@ -51,7 +51,11 @@ const moduleCatalog = read("src/features/admin/config/modules.ts");
 const moduleKeys = [...moduleCatalog.matchAll(/\{\s*key:\s*"([^"]+)"/g)].map((match) => match[1]);
 const catalog = moduleKeys.map((key) => ({ key }));
 if (catalog.map((module) => module.key).join("|") !== groups.map((group) => group.key).join("|")) {
-  failures.push("ADMIN_MODULES must mirror the nine canonical navigation keys and order");
+  failures.push("ADMIN_MODULES must mirror the ten canonical navigation keys and order");
+}
+for (const group of groups) {
+  const definition = moduleCatalog.match(new RegExp('key: "' + group.key + '"[\\\\s\\\\S]*?routes: routesFor\\\\("' + group.key + '"\\\\)'));
+  if (!definition) failures.push("admin module ownership is missing or mismatched for navigation group: " + group.key);
 }
 for (const group of groups) {
   const catalogEntry = catalog.find((entry) => entry.key === group.key);
