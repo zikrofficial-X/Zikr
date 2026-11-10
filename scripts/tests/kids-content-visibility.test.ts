@@ -48,6 +48,12 @@ const kidsDetailApi = readFileSync("src/app/api/kids/content/[slug]/route.ts", "
 const kidsContentData = readFileSync("src/features/kids/data/content.ts", "utf8");
 
 assert.match(adminAction, /age_appropriate: ageAppropriate/);
+const duplicateSlugCheckPosition = adminAction.indexOf("/rest/v1/kids_content?select=id&slug=eq.");
+assert.ok(
+  duplicateSlugCheckPosition > 0 && duplicateSlugCheckPosition < imageUploadPosition,
+  "duplicate Kids slugs must be rejected before uploading media",
+);
+assert.doesNotMatch(adminAction, /on_conflict=slug|resolution=merge-duplicates/, "the add-only Kids form must never silently overwrite an existing published slug");
 const imageUploadPosition = adminAction.indexOf("await uploadCloudinaryImage");
 assert.ok(imageUploadPosition > 0, "Kids image upload path must remain present");
 assert.ok(
