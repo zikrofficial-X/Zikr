@@ -285,12 +285,18 @@ assert.ok(
 );
 const storageSafetyWorkflow = read(".github/workflows/storage-retention.yml");
 assert.ok(
+  storageSafetyWorkflow.includes("if: github.ref == 'refs/heads/main'") &&
+    storageSafetyWorkflow.includes("ref: main"),
+  "Storage retention must run only from canonical main and check out that exact branch before reading production credentials",
+);
+assert.ok(
   storageSafetyWorkflow.includes("inputs.confirmation == 'DELETE_STAGING_COPIES'") &&
     !storageSafetyWorkflow.includes("github.event_name == 'schedule' ||"),
   "Scheduled storage retention must remain dry-run and deletion must require typed manual confirmation",
 );
 const offlineSafetyWorkflow = read(".github/workflows/refresh-offline-content.yml");
 assert.ok(
+  offlineSafetyWorkflow.includes("if: github.ref == 'refs/heads/main'") &&
   offlineSafetyWorkflow.includes("pull-requests: write") &&
     offlineSafetyWorkflow.includes("automation/offline-content-snapshot") &&
     offlineSafetyWorkflow.includes("gh pr create") &&
