@@ -30,10 +30,23 @@ for (const token of ["prophets or sacred figures", "invented Arabic scripture", 
 const hf = read("src/features/videos/providers/hf-space-provider.ts");
 if (!hf.includes("Verified source text:")) failures.push("HF provider prompt must receive verified source text");
 if (!hf.includes("aiVisualPolicyPromptLine()")) failures.push("HF provider must consume the shared visual policy");
+if (!hf.includes("freeZeroGpuQuotaExhausted") ||
+    !hf.includes("Free ZeroGPU quota exhausted; skipping remaining Hugging Face providers")) {
+  failures.push("HF providers must stop retrying all Spaces after the account's free ZeroGPU quota is exhausted");
+}
+const hfAdapter = read("scripts/jobs/hf-space-video.py");
+for (const token of ["negative_prompt", "duration_seconds", "guidance_scale_2", "randomize_seed", 'api_name="/generate_video"', 'api_name="/text_to_video"']) {
+  if (!hfAdapter.includes(token)) failures.push("HF Gradio adapter is missing the current provider input contract: " + token);
+}
+if (!hfAdapter.includes("max(2.0, min(5.0, float(args.duration)))") ||
+    !hfAdapter.includes("max(2, min(6, int(round(args.duration)))")) {
+  failures.push("HF video adapters must cap short visual clips to the verified Space runtime limits");
+}
 
 const router = read("src/features/videos/providers/provider-router.ts");
 if (!router.includes("preferredProvider")) failures.push("AI provider preference routing is missing");
 if (!router.includes("hf_wan") || !router.includes("hf_ltx_fast")) failures.push("HF AI providers are not registered in the router");
+if (!router.includes("providerErrors.join")) failures.push("AI fallback metadata must preserve individual provider error details");
 
 const q = read("src/features/videos/providers/types.ts");
 if (!q.includes("VIDEO_AI_ENABLED")) failures.push("AI generation must remain environment-gated");
