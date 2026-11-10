@@ -32,6 +32,7 @@ const androidRebuildJob = androidCircle.split("  android-rebuild:")[1]?.split("\
 assert.ok(androidDraftJob.length > 0, "CircleCI main pipeline must verify the canonical Android draft release");
 assert.ok(androidDraftJob.includes('"/releases?per_page=100&page=1"'), "CircleCI must inspect the complete GitHub release collection");
 assert.ok(androidDraftJob.includes("matchingReleases.length > 1"), "CircleCI must reject ambiguous duplicate releases before a release build");
+assert.ok(androidDraftJob.includes("if (isReleasePreparationCommit)") && androidDraftJob.includes("Android release preparation is blocked until an owner resolves the duplicate drafts.") && androidDraftJob.includes("process.exit(0)"), "Legacy duplicate drafts must warn but not fail ordinary main CI; explicit release preparation must fail closed.");
 assert.ok(androidDraftJob.includes("isReleasePreparationCommit") && androidDraftJob.includes('commitMessage.startsWith("release: prepare Android ")'), "CircleCI must distinguish atomic Admin Release preparation commits from ordinary main updates");
 assert.ok(androidDraftJob.includes("existingTargetSha !== sourceSha") && androidDraftJob.includes("refusing to publish mismatched Android artifacts"), "Release-preparation artifacts must remain pinned to the exact immutable tag commit");
 assert.ok(androidDraftJob.includes("maxAttempts") && androidDraftJob.includes("setTimeout"), "CircleCI must allow the Admin Release manager a bounded window to create the tag/draft before verification");
