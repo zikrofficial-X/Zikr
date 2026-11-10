@@ -6,6 +6,7 @@ import { getYouTubeUploadRefreshToken } from "@/features/social/services/youtube
 import { getFacebookPageCredentials } from "@/features/social/services/facebook-credentials";
 import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError } from "@/features/social/services/facebook-reels-rate-limit";
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
+import { shouldRestorePurgedPublishedVideo } from "@/features/videos/services/video-media-contract";
 import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
@@ -657,12 +658,13 @@ async function syncYouTubeVideoReferenceToCatalog(
     const rows = await supabaseServerAdminRequest<Array<{
       id: string;
       youtube_id: string | null;
+      published: boolean | null;
       metadata: Record<string, unknown> | null;
       updated_at: string | null;
     }>>(
       "/rest/v1/videos?metadata->>videoGenerationRequestId=eq." +
         encodeURIComponent(item.content_id) +
-        "&select=id,youtube_id,metadata,updated_at&limit=2",
+        "&select=id,youtube_id,published,metadata,updated_at&limit=2",
     );
     if (!rows?.length) {
       console.warn("[social-publishing] YouTube upload succeeded but no matching public catalog record was found:", item.content_id);
@@ -678,12 +680,26 @@ async function syncYouTubeVideoReferenceToCatalog(
       return;
     }
     const metadata = row.metadata ?? {};
+    const updatedAt = new Date().toISOString();
+    const restorePurgedVideo = shouldRestorePurgedPublishedVideo(row);
+    const previousMediaRecovery = metadata.mediaRecovery && typeof metadata.mediaRecovery === "object" && !Array.isArray(metadata.mediaRecovery)
+      ? metadata.mediaRecovery as Record<string, unknown>
+      : {};
     const nextMetadata = {
       ...metadata,
       youtubePublishedVideoId: youtubeId,
       youtubePublishedUrl: "https://www.youtube.com/watch?v=" + youtubeId,
-      youtubePublishedAt: new Date().toISOString(),
+      youtubePublishedAt: updatedAt,
       mediaFallbackAvailable: true,
+      ...(restorePurgedVideo ? {
+        mediaState: "youtube_fallback",
+        mediaRecovery: {
+          ...previousMediaRecovery,
+          source: "confirmed_youtube_publish_remote_id",
+          restoredAt: updatedAt,
+          previousCloudinaryMasterRetired: true,
+        },
+      } : {}),
     };
     const updatedAt = row.updated_at;
     const query = "/rest/v1/videos?id=eq." + encodeURIComponent(row.id) +
@@ -694,11 +710,17 @@ async function syncYouTubeVideoReferenceToCatalog(
       body: JSON.stringify({
         youtube_id: youtubeId,
         metadata: nextMetadata,
-        updated_at: new Date().toISOString(),
+        ...(restorePurgedVideo ? {
+          published: true,
+          thumbnail_url: "https://i.ytimg.com/vi/" + youtubeId + "/hqdefault.jpg",
+        } : {}),
+        updated_at: updatedAt,
       }),
     });
     if (!updated?.length) {
       console.warn("[social-publishing] YouTube catalog pointer update was skipped after a concurrent catalog change:", item.content_id);
+    } else if (restorePurgedVideo) {
+      console.info("[social-publishing] Restored previously published video catalog from confirmed YouTube fallback:", item.content_id);
     }
   } catch (error) {
     // The daily media reconciliation worker retries this idempotently.
