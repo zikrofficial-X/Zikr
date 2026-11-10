@@ -1920,21 +1920,21 @@ async function restoreMissingMediaSocialQueueItems(
   now: string,
 ): Promise<{ recovered: number; failedUpdates: number }> {
   const pageSize = 100;
-  let cursor: string | null = null;
+  let lastSeenId: string | null = null;
   let recovered = 0;
   let failedUpdates = 0;
 
   while (true) {
-    const cursorFilter = cursor === null ? "" : "&id=gt." + encodeURIComponent(cursor);
-    const rows = await supabaseServerAdminRequest<MissingMediaSocialQueueRow[]>(
+    const cursorFilter: string = lastSeenId === null ? "" : "&id=gt." + encodeURIComponent(lastSeenId);
+    const rows: MissingMediaSocialQueueRow[] = await supabaseServerAdminRequest<MissingMediaSocialQueueRow[]>(
       "/rest/v1/social_publish_queue?content_id=eq." + encodeURIComponent(requestId) +
         "&metadata->>sourceMediaMissing=eq.true&status=in.(failed,partial)&select=id,status,target_platforms,metadata&order=id.asc&limit=" +
         pageSize + cursorFilter,
     );
     if (!Array.isArray(rows) || rows.length === 0) break;
 
-    for (const item of rows) {
-      cursor = item.id;
+    for (const item: MissingMediaSocialQueueRow of rows) {
+      lastSeenId = item.id;
       const patch = buildMissingMediaQueueRecoveryPatch({ item, videoUrl, now });
       if (!patch) continue;
       try {
