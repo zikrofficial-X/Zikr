@@ -90,7 +90,7 @@ export function shouldRefreshFacebookReelsInsights(
   return !Number.isFinite(timestamp) || now - timestamp >= REFRESH_INTERVAL_MS;
 }
 
-export function resolveFacebookReelVideoIdFromPageVideosPayload(
+export function resolveFacebookReelVideoIdFromPagePostsPayload(
   payload: unknown,
   postId: string,
 ): string | null {
@@ -98,11 +98,21 @@ export function resolveFacebookReelVideoIdFromPageVideosPayload(
   const normalize = (value: string) => value.trim().split("_").pop() ?? value.trim();
   const target = normalize(postId);
   for (const row of payload.data) {
-    if (!isRecord(row) || typeof row.id !== "string") continue;
-    const candidatePostId = typeof row.post_id === "string" ? row.post_id : "";
-    if (!candidatePostId || normalize(candidatePostId) !== target) continue;
-    const videoId = row.id.trim();
-    if (/^[0-9]{8,}$/.test(videoId)) return videoId;
+    if (!isRecord(row) || typeof row.id !== "string" || normalize(row.id) !== target) continue;
+    const candidates: unknown[] = [row.object_id];
+    const attachments = row.attachments;
+    if (isRecord(attachments) && Array.isArray(attachments.data)) {
+      for (const attachment of attachments.data) {
+        if (!isRecord(attachment)) continue;
+        const media = attachment.media;
+        if (isRecord(media)) candidates.push(media.id);
+      }
+    }
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && /^[0-9]{8,}$/.test(candidate.trim())) {
+        return candidate.trim();
+      }
+    }
   }
   return null;
 }
@@ -114,14 +124,14 @@ async function resolveFacebookReelVideoIdFromPost(
 ): Promise<string | null> {
   const version = getServerEnv().FACEBOOK_GRAPH_API_VERSION?.trim() || "v26.0";
   let after: string | null = null;
-  // Page videos is the supported collection edge. A legacy FINISH post_id
-  // cannot be queried as a singular Status object (Meta error #12); enumerate
-  // the Page's video objects and match their post_id to obtain the video ID.
+  // A FINISH post_id is a Page post, not a Video node. Resolve it from the
+  // supported Page posts collection and read the attached media/object ID.
+  // Querying /{post-id} directly invokes Meta's deprecated singular Status API.
   for (let page = 0; page < 5; page += 1) {
     const url = new URL(
-      "https://graph.facebook.com/" + version + "/" + encodeURIComponent(pageId) + "/videos",
+      "https://graph.facebook.com/" + version + "/" + encodeURIComponent(pageId) + "/posts",
     );
-    url.searchParams.set("fields", "id,post_id,permalink_url");
+    url.searchParams.set("fields", "id,object_id,attachments{media}");
     url.searchParams.set("limit", "100");
     url.searchParams.set("access_token", pageAccessToken);
     if (after) url.searchParams.set("after", after);
@@ -134,13 +144,13 @@ async function resolveFacebookReelVideoIdFromPost(
     if (!response.ok || (isRecord(payload) && payload.error)) {
       const error = isRecord(payload) && isRecord(payload.error) ? payload.error : {};
       throw new FacebookReelsInsightsApiError({
-        message: "Meta could not list Page video objects to resolve a historical Reel ID (HTTP " + response.status + ").",
+        message: "Meta could not list Page posts to resolve a historical Reel video ID (HTTP " + response.status + ").",
         code: typeof error.code === "number" ? error.code : undefined,
         subcode: typeof error.error_subcode === "number" ? error.error_subcode : undefined,
         type: typeof error.type === "string" ? error.type : undefined,
       });
     }
-    const resolved = resolveFacebookReelVideoIdFromPageVideosPayload(payload, postId);
+    const resolved = resolveFacebookReelVideoIdFromPagePostsPayload(payload, postId);
     if (resolved) return resolved;
     const paging = isRecord(payload) && isRecord(payload.paging) ? payload.paging : {};
     const cursors = isRecord(paging.cursors) ? paging.cursors : {};
