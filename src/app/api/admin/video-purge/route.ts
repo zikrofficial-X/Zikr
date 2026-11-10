@@ -500,6 +500,10 @@ export async function POST(request: NextRequest) {
 
     const assets = includeFiles ? await listGeneratedVideos() : [];
     const storagePaths = includeFiles ? await listAutomatedStorageObjects() : [];
+    const processingAfterPreflight = await getActiveVideoWork();
+    if (processingAfterPreflight.generation > 0) {
+      throw new Error(`Video generation became active during purge preflight (${processingAfterPreflight.generation} request(s)); no deletion started.`);
+    }
     if (includeFiles && assets.length > 0) destructiveWorkStarted = true;
     const cloudinaryErrors = includeFiles
       ? await mapWithConcurrency(assets, 6, async asset => {
