@@ -97,7 +97,17 @@ declare
   already_restored_general integer;
   already_restored_kids integer;
   updated_count integer;
+  purge_event_count integer;
 begin
+  select count(*) into purge_event_count
+  from public.admin_audit_events
+  where id = 'b97b0756-3e4c-4a43-aec8-a42686ab1682';
+
+  if purge_event_count = 0 then
+    raise notice 'Exact production purge audit event is absent; no catalog rows restored in this environment.';
+    return;
+  end if;
+
   select
     count(*),
     count(*) filter (where audience = 'general'),
