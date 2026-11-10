@@ -118,7 +118,7 @@ const claimBody = socialPublishingService.slice(claimStart, claimEnd);
 if (claimBody.includes("retryPendingPublishedVideoCleanup")) {
   failures.push("published-video cleanup must not be invoked a second time from the queue-claim path");
 }
-if ((socialWorker.match(/retryPendingPublishedVideoCleanup\\(/g) ?? []).length !== 1) {
+if ((socialWorker.match(/retryPendingPublishedVideoCleanup\(/g) ?? []).length !== 1) {
   failures.push("the social worker must run published-video cleanup exactly once per queue poll");
 }
 if (!socialPublishingService.includes("shouldRetryPublishedVideoCleanup(item.metadata)") ||
