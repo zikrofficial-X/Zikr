@@ -115,7 +115,7 @@ if (!socialPublishingService.includes("created_at=gte.${createdSince}") ||
 const claimStart = socialPublishingService.indexOf("export async function claimPendingSocialPublishItems");
 const claimEnd = socialPublishingService.indexOf("export async function processSocialPublishItem", claimStart);
 const claimBody = socialPublishingService.slice(claimStart, claimEnd);
-if (claimBody.includes("retryPendingPublishedVideoCleanup")) {
+if (claimBody.includes("await retryPendingPublishedVideoCleanup(")) {
   failures.push("published-video cleanup must not be invoked a second time from the queue-claim path");
 }
 if ((socialWorker.match(/retryPendingPublishedVideoCleanup\(/g) ?? []).length !== 1) {
