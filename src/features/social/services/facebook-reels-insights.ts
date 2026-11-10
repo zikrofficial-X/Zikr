@@ -90,51 +90,64 @@ export function shouldRefreshFacebookReelsInsights(
   return !Number.isFinite(timestamp) || now - timestamp >= REFRESH_INTERVAL_MS;
 }
 
-export function resolveFacebookReelVideoIdFromPostPayload(payload: unknown): string | null {
-  if (!isRecord(payload)) return null;
-  const candidates: unknown[] = [payload.object_id];
-  const attachments = payload.attachments;
-  if (isRecord(attachments) && Array.isArray(attachments.data)) {
-    for (const attachment of attachments.data) {
-      if (!isRecord(attachment)) continue;
-      const media = attachment.media;
-      if (isRecord(media)) candidates.push(media.id);
-    }
-  }
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && /^[0-9]{8,}$/.test(candidate.trim())) {
-      return candidate.trim();
-    }
+export function resolveFacebookReelVideoIdFromPageVideosPayload(
+  payload: unknown,
+  postId: string,
+): string | null {
+  if (!isRecord(payload) || !Array.isArray(payload.data)) return null;
+  const normalize = (value: string) => value.trim().split("_").pop() ?? value.trim();
+  const target = normalize(postId);
+  for (const row of payload.data) {
+    if (!isRecord(row) || typeof row.id !== "string") continue;
+    const candidatePostId = typeof row.post_id === "string" ? row.post_id : "";
+    if (!candidatePostId || normalize(candidatePostId) !== target) continue;
+    const videoId = row.id.trim();
+    if (/^[0-9]{8,}$/.test(videoId)) return videoId;
   }
   return null;
 }
 
 async function resolveFacebookReelVideoIdFromPost(
   postId: string,
+  pageId: string,
   pageAccessToken: string,
 ): Promise<string | null> {
   const version = getServerEnv().FACEBOOK_GRAPH_API_VERSION?.trim() || "v26.0";
-  const url = new URL(
-    "https://graph.facebook.com/" + version + "/" + encodeURIComponent(postId),
-  );
-  url.searchParams.set("fields", "object_id,attachments{media}");
-  url.searchParams.set("access_token", pageAccessToken);
-  const response = await fetch(url, {
-    method: "GET",
-    cache: "no-store",
-    signal: AbortSignal.timeout(GRAPH_TIMEOUT_MS),
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || (isRecord(payload) && payload.error)) {
-    const error = isRecord(payload) && isRecord(payload.error) ? payload.error : {};
-    throw new FacebookReelsInsightsApiError({
-      message: "Meta could not resolve the published Reel post to its video object (HTTP " + response.status + ").",
-      code: typeof error.code === "number" ? error.code : undefined,
-      subcode: typeof error.error_subcode === "number" ? error.error_subcode : undefined,
-      type: typeof error.type === "string" ? error.type : undefined,
+  let after: string | null = null;
+  // Page videos is the supported collection edge. A legacy FINISH post_id
+  // cannot be queried as a singular Status object (Meta error #12); enumerate
+  // the Page's video objects and match their post_id to obtain the video ID.
+  for (let page = 0; page < 5; page += 1) {
+    const url = new URL(
+      "https://graph.facebook.com/" + version + "/" + encodeURIComponent(pageId) + "/videos",
+    );
+    url.searchParams.set("fields", "id,post_id,permalink_url");
+    url.searchParams.set("limit", "100");
+    url.searchParams.set("access_token", pageAccessToken);
+    if (after) url.searchParams.set("after", after);
+    const response = await fetch(url, {
+      method: "GET",
+      cache: "no-store",
+      signal: AbortSignal.timeout(GRAPH_TIMEOUT_MS),
     });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || (isRecord(payload) && payload.error)) {
+      const error = isRecord(payload) && isRecord(payload.error) ? payload.error : {};
+      throw new FacebookReelsInsightsApiError({
+        message: "Meta could not list Page video objects to resolve a historical Reel ID (HTTP " + response.status + ").",
+        code: typeof error.code === "number" ? error.code : undefined,
+        subcode: typeof error.error_subcode === "number" ? error.error_subcode : undefined,
+        type: typeof error.type === "string" ? error.type : undefined,
+      });
+    }
+    const resolved = resolveFacebookReelVideoIdFromPageVideosPayload(payload, postId);
+    if (resolved) return resolved;
+    const paging = isRecord(payload) && isRecord(payload.paging) ? payload.paging : {};
+    const cursors = isRecord(paging.cursors) ? paging.cursors : {};
+    after = typeof cursors.after === "string" ? cursors.after : null;
+    if (!after) break;
   }
-  return resolveFacebookReelVideoIdFromPostPayload(payload);
+  return null;
 }
 
 function safeMetricValue(value: unknown): number | Record<string, number> | null {
@@ -289,6 +302,7 @@ export async function syncFacebookReelsInsights(limit = MAX_BATCH): Promise<Face
           if (!isPostIdMismatch) throw error;
           const resolvedVideoId = await resolveFacebookReelVideoIdFromPost(
             candidate.videoId,
+            credential.page_id,
             credential.page_access_token,
           );
           if (!resolvedVideoId || resolvedVideoId === candidate.videoId) throw error;
