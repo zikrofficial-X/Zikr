@@ -9,6 +9,10 @@ const migration = readFileSync(
 );
 
 assert.match(route, /consumeKidsShareRateLimit\(getClientAddress\(request\)\)/);
+assert.ok(
+  route.indexOf("consumeKidsShareRateLimit") < route.indexOf("request.json()"),
+  "the shared limiter must run before parsing untrusted request bodies",
+);
 assert.doesNotMatch(route, /rateLimitBuckets|RATE_LIMIT_WINDOW_MS/, "share throttling must not depend on per-instance memory");
 assert.match(route, /status: 429/, "exhausted shared quotas must return HTTP 429");
 assert.match(route, /status: 503/, "a failed shared limiter must fail closed");
@@ -19,6 +23,11 @@ assert.match(
   migration,
   /kids_content\.published is true\s+and kids_content\.is_active is true/i,
   "inactive Kids content must not accept share-counter updates",
+);
+assert.match(
+  migration,
+  /coalesce\(kids_content\.shares,\s*0\)\s*\+\s*1/i,
+  "share increments must preserve the existing null-safe counter behavior",
 );
 assert.match(migration, /revoke execute on function public\.increment_kids_content_shares\(text\) from anon, authenticated/i);
 
