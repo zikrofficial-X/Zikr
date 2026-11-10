@@ -60,8 +60,13 @@ if (!workflow.includes("20261110031431_retry_false_blocked_legacy_qa_source_url_
 if (!workflow.includes("workflow_dispatch:") || !workflow.includes("push:") ||
     !workflow.includes("environment: production") ||
     !workflow.includes("SUPABASE_SERVICE_ROLE_KEY") ||
+    !workflow.includes("inputs.apply == true") ||
+    !workflow.includes("default: false") ||
+    !workflow.includes("BACKFILL_APPLY") ||
+    !workflow.includes("Mode: dry-run only; no production rows will be updated.") ||
+    !workflow.includes("pnpm video:qa:backfill") ||
     !workflow.includes("pnpm video:qa:backfill -- --apply")) {
-  failures.push("Legacy QA backfill workflow must be production-scoped, credential-checked, and explicitly apply the idempotent backfill");
+  failures.push("Legacy QA workflow must default to read-only dry-run and require a manual apply=true dispatch before production writes");
 }
 
 const videoService = read("src/features/videos/services/videos.ts");
