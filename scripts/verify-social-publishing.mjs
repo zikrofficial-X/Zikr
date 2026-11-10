@@ -19,6 +19,7 @@ const runner = read("scripts/run-background-jobs.ts");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
 const videoGenerator = read("scripts/jobs/template-video-automation.ts");
 const socialPublishingService = read("src/features/social/services/social-publishing.ts");
+const cleanupPolicy = read("src/features/social/services/published-video-cleanup.ts");
 const youtubeCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
 const videoAutomation = read("src/features/videos/services/video-automation.ts");
 const socialWorkflow = read(".github/workflows/publish-social.yml");
@@ -110,6 +111,20 @@ if (!socialPublishingService.includes("created_at=gte.${createdSince}") ||
     !socialPublishingService.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff") ||
     !socialPublishingService.includes("stale recovery is disabled")) {
   failures.push("social queue reads, stale recovery, and cleanup must be restricted to the explicit post-launch cutoff");
+}
+const claimStart = socialPublishingService.indexOf("export async function claimPendingSocialPublishItems");
+const claimEnd = socialPublishingService.indexOf("export async function processSocialPublishItem", claimStart);
+const claimBody = socialPublishingService.slice(claimStart, claimEnd);
+if (claimBody.includes("await retryPendingPublishedVideoCleanup(")) {
+  failures.push("published-video cleanup must not be invoked a second time from the queue-claim path");
+}
+if ((socialWorker.match(/retryPendingPublishedVideoCleanup\(/g) ?? []).length !== 1) {
+  failures.push("the social worker must run published-video cleanup exactly once per queue poll");
+}
+if (!socialPublishingService.includes("shouldRetryPublishedVideoCleanup(item.metadata)") ||
+    !cleanupPolicy.includes("metadata?.stagingCleanupDeferred !== true") ||
+    !cleanupPolicy.includes("metadata.videoCleanupPending === true")) {
+  failures.push("published-video cleanup must skip rows already deferred and retry only missing or explicitly pending cleanup metadata");
 }
 if (!socialWorkflow.includes("workflow_run:") ||
     !socialWorkflow.includes('workflows: ["ZIKR Autonomous AI Video Worker"]') ||

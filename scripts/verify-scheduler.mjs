@@ -121,6 +121,7 @@ if (!env.includes("VIDEO_STALE_AFTER_MINUTES=30")) failures.push("video stale ti
 const scheduling = read("docs/production-scheduling.md");
 if (!scheduling.includes("GitHub Actions is the authoritative automatic video generation worker")) failures.push("production scheduler ownership documentation is stale");
 if (!scheduling.includes("GitHub Actions is the authoritative automatic social publisher")) failures.push("social publisher ownership documentation is stale");
+if (!scheduling.includes("bounded 15-minute poll") || scheduling.includes("There is no periodic social polling.")) failures.push("social scheduling documentation must describe the active bounded retry poll without contradicting the workflow");
 if (scheduling.includes("GitHub Actions is the authoritative automatic video/social worker")) failures.push("stale GitHub-owned scheduler documentation remains");
 if (scheduling.includes("GitHub Actions are not the active scheduler in the current repository.")) failures.push("stale contradictory scheduler documentation remains");
 
