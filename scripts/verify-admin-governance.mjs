@@ -96,11 +96,25 @@ for (const href of hrefs) {
 const socialGroup = groups.find((group) => group.key === "social-publishing");
 const mediaAudioGroup = groups.find((group) => group.key === "media-audio");
 const memoryGroup = groups.find((group) => group.key === "memory");
-if (!socialGroup || !socialGroup.items.some((item) => item.href === "/admin/social")) {
-  failures.push("social publishing must have a dedicated navigation group");
+if (
+  !socialGroup ||
+  !socialGroup.items.some((item) => item.href === "/admin/social" && item.permission === "social.manage") ||
+  !socialGroup.items.some((item) => item.href === "/admin/social/written-studio" && item.permission === "social.manage")
+) {
+  failures.push("social center and written-content studio must both have a dedicated social.manage navigation group");
 }
-if (mediaAudioGroup?.items.some((item) => item.href === "/admin/social")) {
+if (
+  mediaAudioGroup?.items.some((item) =>
+    item.href === "/admin/social" || item.href === "/admin/social/written-studio"
+  )
+) {
   failures.push("social publishing must not be nested under media/audio navigation");
+}
+if (
+  !docs.includes("`/admin/social/written-studio`") ||
+  !docs.includes("مصنع المنشورات المكتوبة لفيسبوك")
+) {
+  failures.push("admin governance must document the active written-content studio route");
 }
 if (!memoryGroup?.items.some((item) => item.href === "/admin/memory" && item.permission === "media.manage")) {
   failures.push("media library and internal memory must use the canonical /admin/memory route with media.manage");
