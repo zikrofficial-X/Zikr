@@ -22,7 +22,7 @@ assert.match(
 );
 assert.match(
   profileService,
-  /resolveAdminRole\(\s*profileRes\.data\?\.\[0\]\?\.role,\s*assignmentRes\.data\?\.role,\s*Boolean\(assignmentRes\.error\)\s*\)/,
+  /resolveAdminRole\(\s*profileRes\.data\?\.\[0\]\?\.role,\s*assignmentRes\.data\?\.role,\s*Boolean\(assignmentRes\.error\),?\s*\)/,
   "profile UI data must use the same fail-closed role resolver",
 );
 assert.match(
