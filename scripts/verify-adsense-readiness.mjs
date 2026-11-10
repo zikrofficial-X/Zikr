@@ -96,8 +96,8 @@ if (
   !webAdvertisingRuntime.includes('import { PRODUCTION_URL } from "@/lib/site";') ||
   !webAdvertisingRuntime.includes("isCanonicalProductionHost") ||
   !webAdvertisingRuntime.includes("if (!isCanonicalProductionHost())") ||
-  !runtimeEffects.includes('import { PRODUCTION_URL } from "@/lib/site";') ||
-  !runtimeEffects.includes("window.location.hostname.toLowerCase()")
+  !read('src/components/layout/runtime-effects.tsx').includes('import { PRODUCTION_URL } from "@/lib/site";') ||
+  !read('src/components/layout/runtime-effects.tsx').includes("window.location.hostname.toLowerCase()")
 ) {
   fail('Monetization scripts must load only on the canonical production host, never on Vercel Preview aliases.');
 }
