@@ -15,6 +15,11 @@ for (const file of requiredFiles) {
 
 const readText = (path) => readFileSync(path, "utf8");
 
+const quranServer = readText("src/features/quran/services/quran-server.ts");
+if (!quranServer.includes('getServerEnv().SUPABASE_SERVICE_ROLE_KEY')) {
+  failures.push("Quran server must use the public read path directly when the optional Preview service-role key is absent");
+}
+
 const offlineAudio = readText("src/features/quran/services/offline-audio.ts");
 if (offlineAudio.includes('from("storage")') || offlineAudio.includes("Supabase Storage")) {
   failures.push("offline Quran audio manager must not use Supabase Storage");
