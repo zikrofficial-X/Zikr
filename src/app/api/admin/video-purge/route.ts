@@ -455,6 +455,7 @@ export async function POST(request: NextRequest) {
               videoUrl: null,
               mediaState: "purged",
               mediaFallbackAvailable: fallbackId !== null,
+              mediaPurgedFromPublished: row.published === true,
             }
           : { mediaState: "unlinked" }),
         mediaPurgedAt: includeFiles ? new Date().toISOString() : previousMetadata.mediaPurgedAt ?? null,
