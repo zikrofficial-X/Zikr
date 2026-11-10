@@ -84,4 +84,17 @@ const nonYoutubeUrl = {
 };
 assert.equal(getConfirmedYoutubeFallbackId(nonYoutubeUrl), null);
 
+const generatedMustWin = {
+  metadata: {
+    generator: "zikr_internal_video_factory",
+    generatedVideoUrl: "https://res.cloudinary.com/dcuveyab9/video/upload/auto-final-render.mp4",
+    sourceVideoUrl: "https://res.cloudinary.com/dcuveyab9/video/upload/source-clip.mp4",
+  },
+};
+assert.equal(
+  resolveVideoMediaUrl(generatedMustWin),
+  "https://res.cloudinary.com/dcuveyab9/video/upload/auto-final-render.mp4",
+  "internal video playback must prefer the finished render over its source clip",
+);
+
 console.log("Purged video YouTube fallback contract tests passed.");
