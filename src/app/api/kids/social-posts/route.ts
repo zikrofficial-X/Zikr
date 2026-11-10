@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import { getServerEnv } from "@/lib/env";
 import {
   buildPublicKidsWrittenPost,
   type CurrentKidsStory,
@@ -11,6 +12,14 @@ export const dynamic = "force-dynamic";
 const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
 export async function GET() {
+  // Preview and Development intentionally omit the production service-role key.
+  // This is an optional public feed: return an empty list instead of a 503 or noisy error.
+  if (!getServerEnv().SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json([], {
+      headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+    });
+  }
+
   try {
     const rows = await supabaseServerAdminRequest<KidsWrittenQueueRow[]>(
       "/rest/v1/social_publish_queue?content_type=eq.written_post&status=eq.published&metadata->>audience=eq.kids&select=id,content_type,content_id,title,body,target_platforms,status,published_at,metadata&order=published_at.desc&limit=12",
