@@ -1054,6 +1054,8 @@ export async function validateSourceContent(request: GeneratedRequest) {
     if (comparableSourceText(text) !== comparableSourceText(source.text)) throw new Error(`${request.category} video rejected: narration does not exactly match the current published source text.`);
     const isCanonicalKidsSeriesSource =
       source.category === "story" &&
+      "audience" in source &&
+      "generationMode" in source &&
       source.audience === "kids" &&
       source.generationMode === "free_deterministic_story_factory" &&
       typeof source.seriesId === "string" &&
