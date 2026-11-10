@@ -20,6 +20,18 @@ requireText(migrations, "source_id", "media_assets.source_id migration contract"
 requireRegex(types, /media_assets\s*:\s*\{/, "media_assets generated type contract");
 requireText(types, "media_assets_source_id_fkey", "media_assets.source_id relationship type contract");
 
+const hadithTypeStart = types.indexOf("      hadiths: {");
+const hadithTypeEnd = types.indexOf("      kids_achievements: {", hadithTypeStart);
+assert.ok(hadithTypeStart >= 0 && hadithTypeEnd > hadithTypeStart, "hadiths generated type block must exist");
+const hadithType = types.slice(hadithTypeStart, hadithTypeEnd);
+requireRegex(
+  migrations,
+  /ALTER TABLE public\\.hadiths\\s+ADD COLUMN IF NOT EXISTS chapter text/i,
+  "hadiths.chapter additive migration contract",
+);
+requireText(hadithType, "chapter: string | null", "hadiths.chapter row type contract");
+requireText(hadithType, "chapter?: string | null", "hadiths.chapter insert/update type contract");
+
 requireRegex(migrations, /quran_reciters[\s\S]{0,800}code\s+text\s+unique\s+not\s+null/i, "quran_reciters.code migration contract");
 requireRegex(types, /quran_reciters\s*:\s*\{[\s\S]{0,5000}?code:\s*string \| null/i, "quran_reciters.code generated type contract");
 requireRegex(migrations, /quran_audio[\s\S]{0,1200}reciter_id/i, "quran_audio.reciter_id migration contract");
