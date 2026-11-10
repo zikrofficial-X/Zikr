@@ -10,13 +10,11 @@ import {
   getAdminProphets,
   saveAdminProphetVideo,
   setAdminProphetPublished,
-  type AdminProphet,
 } from '@/features/admin/services/prophets';
 import { parseYouTubeVideoId } from '@/features/admin/services/youtube';
 import { revalidatePath } from 'next/cache';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 
-type Prophet = AdminProphet;
 
 
 // ── Server Actions ────────────────────────────────────────────────────────────
