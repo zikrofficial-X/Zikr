@@ -527,7 +527,6 @@ export async function POST(request: NextRequest) {
     const socialQueueRowsPreserved = true;
     let generationRowsDeleted = 0;
     if ((generatedRequests ?? []).length > 0) destructiveWorkStarted = true;
-    if ((generatedRequests ?? []).length > 0) destructiveWorkStarted = true;
     for (const generatedRequest of generatedRequests ?? []) {
       generationRowsDeleted += await deleteRows(
         "video_generation_requests",
@@ -535,7 +534,6 @@ export async function POST(request: NextRequest) {
       );
     }
     let automationRunsDeleted = 0;
-    if ((automationRuns ?? []).length > 0) destructiveWorkStarted = true;
     if ((automationRuns ?? []).length > 0) destructiveWorkStarted = true;
     for (const run of automationRuns ?? []) {
       automationRunsDeleted += await deleteRows(
