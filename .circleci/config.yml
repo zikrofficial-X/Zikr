@@ -285,7 +285,7 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Create and verify annotated Android tag and GitHub draft release
+          name: Verify the Admin Release manager tag and unique GitHub draft
           shell: /bin/bash
           command: |
             set -euo pipefail
@@ -315,79 +315,69 @@ jobs:
                 return { status: response.status, data };
               };
               const currentMain = await api("/commits/main");
-              if (currentMain.data.sha !== sourceSha) { console.log("main advanced beyond this source commit; newer main pipeline must prepare the release."); process.exit(0); }
-              const existingRelease = await api("/releases/tags/" + encodeURIComponent(releaseTag));
-            if (existingRelease.status !== 404) {
-              if (existingRelease.data.tag_name !== releaseTag) throw new Error("GitHub returned a different existing release tag.");
-              const existingTagRef = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
-              if (existingTagRef.status === 404) throw new Error("An existing GitHub release has no matching Git tag.");
-              let existingTargetSha = existingTagRef.data.object?.sha;
-              let existingTargetType = existingTagRef.data.object?.type;
-              if (existingTargetType === "tag") {
-                const existingTagObject = await api("/git/tags/" + existingTargetSha);
-                existingTargetSha = existingTagObject.data.object?.sha;
-                existingTargetType = existingTagObject.data.object?.type;
+              if (currentMain.data.sha !== sourceSha) {
+                console.log("main advanced beyond this source commit; newer main pipeline must verify the release.");
+                process.exit(0);
               }
-              if (existingTargetType !== "commit" || !/^[0-9a-f]{40}$/.test(existingTargetSha || "")) {
-                throw new Error("Existing release tag does not resolve to a commit; refusing to alter it.");
-              }
-              console.log("Release " + releaseTag + " already exists (" + (existingRelease.data.draft ? "draft" : "published") + "). Preserving its original tag target " + existingTargetSha + "; no new release is required for this main update.");
-              process.exit(0);
-            }
+              const commitMessage = String(currentMain.data.commit?.message || "").split("\n")[0];
+              const isReleasePreparationCommit = commitMessage.startsWith("release: prepare Android ");
+              const maxAttempts = isReleasePreparationCommit ? 24 : 1;
 
-            let tagRef = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
-            if (tagRef.status === 404) {
-              const tagObject = await api("/git/tags", "POST", { tag: releaseTag, message: "ZIKR Android " + releaseTag, object: sourceSha, type: "commit" });
-              if (!tagObject.data.sha) throw new Error("GitHub did not return the annotated tag object SHA.");
-              await api("/git/refs", "POST", { ref: "refs/tags/" + releaseTag, sha: tagObject.data.sha });
-              tagRef = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
-            }
-            let tagTargetSha = tagRef.data.object?.sha;
-            let tagTargetType = tagRef.data.object?.type;
-            if (tagTargetType === "tag") {
-              const annotatedTag = await api("/git/tags/" + tagTargetSha);
-              tagTargetSha = annotatedTag.data.object?.sha;
-              tagTargetType = annotatedTag.data.object?.type;
-            }
-            if (tagTargetType !== "commit" || !/^[0-9a-f]{40}$/.test(tagTargetSha || "")) {
-              throw new Error("Release tag does not resolve to a full commit SHA; refusing to create a draft.");
-            }
-            // Tags are immutable. If main has advanced since this release tag was created,
-            // allow draft creation only when every release-defining file is byte-identical
-            // between the pinned tag target and current main. The signed build still runs
-            // against the exact tag commit, never against a newer main commit.
-            const releaseMetadataPaths = [".release-tag", "android/app/build.gradle", "docs/releases/" + version + ".md"];
-            const tagPackage = await api("/contents/package.json?ref=" + encodeURIComponent(tagTargetSha));
-            if (tagPackage.status !== 200 || !tagPackage.data.content) throw new Error("Could not verify package version at the immutable release tag.");
-            const tagPackageVersion = JSON.parse(Buffer.from(tagPackage.data.content, "base64").toString("utf8")).version;
-            if (tagPackageVersion !== version) throw new Error("Immutable release tag package version does not match the current release version.");
-            if (tagTargetSha !== sourceSha) {
-              for (const file of releaseMetadataPaths) {
-                const apiPath = "/contents/" + file.split("/").map(encodeURIComponent).join("/");
-                const [tagFile, currentFile] = await Promise.all([
-                  api(apiPath + "?ref=" + encodeURIComponent(tagTargetSha)),
-                  api(apiPath + "?ref=" + encodeURIComponent(sourceSha))
-                ]);
-                if (tagFile.status !== 200 || currentFile.status !== 200 || tagFile.data.sha !== currentFile.data.sha) {
-                  throw new Error("Release metadata changed after the immutable tag target; refusing to retarget or rebuild under an older release tag: " + file);
+              // The Admin Release service is the sole owner of tag and draft creation.
+              // CircleCI only verifies the immutable tag and the unique matching release.
+              for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+                const releaseList = await api("/releases?per_page=100&page=1");
+                if (releaseList.status !== 200 || !Array.isArray(releaseList.data)) {
+                  throw new Error("Could not inspect GitHub releases before Android release verification.");
+                }
+                const matchingReleases = releaseList.data.filter((item) => item?.tag_name === releaseTag);
+                if (matchingReleases.length > 1) {
+                  const releaseIds = matchingReleases.map((item) => String(item.id || "unknown")).join(", ");
+                  throw new Error("Multiple GitHub releases exist for " + releaseTag + " (IDs: " + releaseIds + "). Refusing to select or create an ambiguous release.");
+                }
+
+                if (matchingReleases.length === 1) {
+                  const existingRelease = matchingReleases[0];
+                  const existingTagRef = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
+                  if (existingTagRef.status === 404) {
+                    if (isReleasePreparationCommit && attempt < maxAttempts) {
+                      console.log("Waiting for the Admin Release service to finish creating the immutable tag (attempt " + attempt + "/" + maxAttempts + ").");
+                      await new Promise((resolve) => setTimeout(resolve, 5000));
+                      continue;
+                    }
+                    throw new Error("An existing GitHub release has no matching Git tag.");
+                  }
+
+                  let existingTargetSha = existingTagRef.data.object?.sha;
+                  let existingTargetType = existingTagRef.data.object?.type;
+                  if (existingTargetType === "tag") {
+                    const existingTagObject = await api("/git/tags/" + existingTargetSha);
+                    existingTargetSha = existingTagObject.data.object?.sha;
+                    existingTargetType = existingTagObject.data.object?.type;
+                  }
+                  if (existingTargetType !== "commit" || !/^[0-9a-f]{40}$/.test(existingTargetSha || "")) {
+                    throw new Error("Existing release tag does not resolve to a commit; refusing to alter it.");
+                  }
+                  if (isReleasePreparationCommit && existingTargetSha !== sourceSha) {
+                    throw new Error("The Admin Release tag does not point to the exact release-preparation commit; refusing to publish mismatched Android artifacts.");
+                  }
+
+                  console.log("Verified the single " + (existingRelease.draft ? "draft" : "published") + " release " + releaseTag + " against immutable tag commit " + existingTargetSha + ". CircleCI did not create or modify a release.");
+                  process.exit(0);
+                }
+
+                if (!isReleasePreparationCommit) {
+                  console.log("No Android release-preparation commit is being verified. The Admin Release service owns tag and draft creation; CircleCI will not create a release.");
+                  process.exit(0);
+                }
+
+                if (attempt < maxAttempts) {
+                  console.log("Waiting for the Admin Release service to create the unique draft for " + releaseTag + " (attempt " + attempt + "/" + maxAttempts + ").");
+                  await new Promise((resolve) => setTimeout(resolve, 5000));
                 }
               }
-              console.log("Main advanced, but all release metadata is identical to the immutable tag target " + tagTargetSha + "; preparing the draft for that pinned commit.");
-            }
-            const expectedTagTargetSha = tagTargetSha;
-            const release = await api("/releases", "POST", { tag_name: releaseTag, name: "ZIKR Android " + version, body: notes, draft: true, prerelease: false });
-            if (release.data.tag_name !== releaseTag) throw new Error("GitHub returned a different release tag.");
-            if (release.data.draft !== true) throw new Error("New Android release was not created as a draft.");
-            const verifyTag = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
-            let verifySha = verifyTag.data.object?.sha;
-            let verifyType = verifyTag.data.object?.type;
-            if (verifyType === "tag") {
-              const verifyObject = await api("/git/tags/" + verifySha);
-              verifySha = verifyObject.data.object?.sha;
-              verifyType = verifyObject.data.object?.type;
-            }
-            if (verifyType !== "commit" || verifySha !== expectedTagTargetSha) throw new Error("Final tag-to-commit verification failed; the immutable tag was changed.");
-            console.log("Verified " + releaseTag + " draft against immutable tag commit " + expectedTagTargetSha + ".");
+
+              throw new Error("The Admin Release service did not create exactly one verified draft for " + releaseTag + " within the 2-minute verification window.");
             '
   android-rebuild:
     docker:
