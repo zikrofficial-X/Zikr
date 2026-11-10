@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { createAdminClient, supabaseServerAdminRequest } from "@/lib/supabase/server";
-import { getConfirmedYoutubeFallbackId, shouldKeepPublishedVideoAfterMediaPurge } from "@/features/videos/services/video-media-contract";
+import { getConfirmedYoutubeFallbackId, shouldKeepPublishedVideoAfterMediaPurge, wasPublishedBeforeMediaPurge } from "@/features/videos/services/video-media-contract";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -455,7 +455,7 @@ export async function POST(request: NextRequest) {
               videoUrl: null,
               mediaState: "purged",
               mediaFallbackAvailable: fallbackId !== null,
-              mediaPurgedFromPublished: row.published === true,
+              mediaPurgedFromPublished: wasPublishedBeforeMediaPurge(row),
             }
           : { mediaState: "unlinked" }),
         mediaPurgedAt: includeFiles ? new Date().toISOString() : previousMetadata.mediaPurgedAt ?? null,
