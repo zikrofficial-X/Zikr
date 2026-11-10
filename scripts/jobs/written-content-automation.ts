@@ -258,9 +258,10 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
    "/rest/v1/social_publish_queue?automation_key=eq."+encodeURIComponent(automationKey)+"&select=id&limit=1",
   );
   if(existing[0]){slot++;continue;}
-  const nowIso=new Date().toISOString();
+  const now=new Date();
+  const nowIso=now.toISOString();
   const scheduledAt=sourceType==="kids_story"
-   ? scheduleKidsBackfillWithinUtcDay(new Date())
+   ? scheduleKidsBackfillWithinUtcDay(now)
    : new Date(Date.now()+5*60*1000+slot*8*60*60*1000).toISOString();
   if(!scheduledAt){slot++;continue;}
   let queuePayload: ReturnType<typeof buildWrittenBackfillQueuePayload>;
