@@ -62,6 +62,13 @@ export async function saveKidsContentAction(formData: FormData) {
 
   // Validate structured form data before uploading media so rejected forms do not leave orphaned Cloudinary assets.
   const quizData = parseQuizData(value(formData, "quiz_data"));
+  const existingSlug = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    "/rest/v1/kids_content?select=id&slug=eq." + encodeURIComponent(slug) + "&limit=1",
+    { method: "GET" },
+  );
+  if (existingSlug[0]?.id) {
+    throw new Error("الرابط المختصر مستخدم بالفعل. اختر رابطًا جديدًا.");
+  }
   if (type === "game" && !isRegisteredGameId(gameId)) {
     throw new Error("معرف اللعبة غير مسجل أو غير صالح.");
   }
@@ -79,9 +86,9 @@ export async function saveKidsContentAction(formData: FormData) {
         ).secureUrl
       : value(formData, "featured_image_url");
 
-  const saved = await supabaseServerAdminRequest<Array<{ id: string; slug: string }>>("/rest/v1/kids_content?on_conflict=slug&select=id,slug", {
+  const saved = await supabaseServerAdminRequest<Array<{ id: string; slug: string }>>("/rest/v1/kids_content?select=id,slug", {
     method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+    headers: { Prefer: "return=representation" },
     body: JSON.stringify({
       title_ar,
       title_en: value(formData, "title_en") ?? title_ar,
