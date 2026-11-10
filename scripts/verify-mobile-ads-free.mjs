@@ -70,7 +70,7 @@ for (const providerMarker of [
   "googletagmanager",
   "pagead2",
   "googleads",
-  "tpc.googlesyndication",
+  "tpc\\.googlesyndication",
 ]) {
   requireCondition(
     serviceWorker.includes(providerMarker),
