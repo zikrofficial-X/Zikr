@@ -1,5 +1,46 @@
 # ZIKR Continuous Closeout Ledger
 
+## Checkpoint — 2026-11-10T19:16:52.506Z (main 6e8010e, PR #314 merged, RPC type drift reconciled)
+
+### Canonical identity and current baseline
+- Canonical GitHub repository: `zikrofficial-X/Zikr`; production branch `main`; exact main SHA `6e8010ef95616c01950ff5ef7d6f44b178da5132`.
+- Vercel project `zikr` / `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs` remains linked to `zikrofficial-X/Zikr` under team `team_RxPjmgZoSFmKGjScefYmwIVv`. Supabase project `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY.
+- Recursive Git tree: 2,152 entries, 1,661 files, 491 directories, 139720105 file bytes; response not truncated. Main has 142 page files, 80 route handlers and 418 SQL migration files.
+
+### PR #314 — generated RPC type drift fixed on main
+- PR #314 merged at `6e8010ef95616c01950ff5ef7d6f44b178da5132` on 2026-11-10 19:12:50 UTC.
+- Its exact head `984d9f61762cdcf0512897cfe88fd051b3286e80` passed GitHub Quality Gate and CircleCI config-guard, source-verify and application-build-docs.
+- The live Supabase type generator and main source now both expose 92 table names and 16 function names. The previously missing `admin_set_primary_site_audio_asset` and `admin_update_user_role` signatures are present in `src/lib/types/supabase.ts`.
+- `scripts/verify-generated-supabase-types.mjs` now asserts both required function names in addition to required/retired tables and PostgREST version. This closes the previously confirmed missing-RPC-name defect on main; full field-level generated schema parity and downstream consumer tracing remain open.
+- Post-merge main CI at this checkpoint: config-guard SUCCESS, source-verify SUCCESS, application-build-docs PENDING. Do not call the main CI set fully complete until the final pending context passes.
+
+### Vercel production
+- Latest Production deployment remains `dpl_EpQK1pKTiYhxJGM6z8VpNW7pbXbV`, READY on `main@c75b92111fa2391a2a09abf928669547a8bb112c`. Canonical alias `https://zikrmediaofficial.vercel.app` is attached.
+- Live `/api/health` returns HTTP 200, `ok=true`, commit `c75b92111fa2391a2a09abf928669547a8bb112c`. Main `6e8010e` is not deployed. The merge changes generated TypeScript types, the type verifier and CI filters; no runtime feature code or production schema changed. No manual RELEASE action was invoked.
+
+### Supabase live reconciliation
+- Supabase project remains ACTIVE_HEALTHY, PostgreSQL 17.11.
+- Live migration ledger and main source both contain 418 versions; exact version-set comparison is 418/418, no duplicate versions.
+- Public schema: 92 tables, all with RLS enabled; 211 policies; 53 triggers; 40 public routines. Storage: 9 buckets, 0 objects, 10 storage-object policies.
+- Both admin RPCs are SECURITY INVOKER, have an empty search_path and EXECUTE only for service_role; anon/authenticated EXECUTE remains false. No SQL, grant, Auth setting or production data was modified.
+- Security Advisor still warns leaked-password protection is disabled; Health Advisor is clear; Performance Advisor lists 86 unused-index candidates. No indexes were dropped.
+
+### Video and social data integrity
+- Social queue currently has 83 published rows and 9 queued written posts (2 written posts published, 9 queued); none of the 9 queued written posts carries an explicit Kids audience marker. The written-content generator currently creates general Facebook posts without an audience field, and the Kids page consumes `/api/kids/content` and `/api/kids/videos`, not written social posts. This is a confirmed feature gap; do not relabel general posts as Kids content. A separate explicit Kids-audience authoring/feed path is required.
+- All 64 completed generation requests with null `video_url` have a matching `videos` row and a matching social queue row; all 64 linked queue rows are already `published` and none is marked `sourceMediaMissing`. 58 linked site videos are published and 14 are Kids-audience records. Do not regenerate or republish these rows; missing source URLs alone are not evidence that content was never delivered.
+- Kids API returned 10 records; sampled entries include story text and confirmed YouTube/Facebook Reels publication metadata. No Kids audience data was altered.
+- Content publish queue currently has 124 published rows. No external provider call, retry, or post was triggered.
+
+### Runtime and Android
+- Runtime aggregation reports seven intermittent Supabase transport/socket failures, last at 17:32 UTC on an older deployment; two missing-service-role errors belong to an older Preview; one Meta token rejection is historical. No current production runtime failure tied to main 6e8010 is proven.
+- Android v1.1.15 remains the latest published release. Its annotated tag is unsigned; APK/AAB and checksum/metadata assets remain published. This run did not download or re-verify binary signatures and did not create a release.
+
+### Audit progress and safety
+- Manifest and matrix are being refreshed to main 6e8010: automated inventory 1,661/1,661 (100%); 106 rows have a CONTENT_READ status; 1,519 remain REVIEW_REQUIRED; modules closed 0.
+- No files or branches were deleted, no migration was applied, no production data/Storage/Cloudinary asset was changed, and no social post or production deployment was initiated.
+- PR #315 remains Draft pending CODEOWNERS review. PR #313 remains closed unmerged and was not reopened.
+
+
 
 ## Checkpoint — 2026-11-10T16:01:46.706Z (main merge, live database reconciliation, and active repair PRs)
 
