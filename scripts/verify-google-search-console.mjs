@@ -36,14 +36,25 @@ if (!layout.includes(approvedGaId)) failures.push(`معرّف GA4 المعتمد
 if (layout.includes(approvedGtmId) || layout.includes('NEXT_PUBLIC_GTM_ID') || layout.includes('googletagmanager.com/gtm.js')) {
   failures.push('يجب إبقاء GTM خارج root layout حتى لا يُحقن في HTML الخاص بتطبيق Capacitor.');
 }
+if (!layout.includes('import { WebAdvertisingRuntime } from "@/components/layout/web-advertising-runtime";')) failures.push('استيراد WebAdvertisingRuntime غير موجود في root layout.');
 if (!layout.includes('<WebAdvertisingRuntime />')) failures.push('WebAdvertisingRuntime غير مركّب في root layout.');
 if (!webAdvertisingRuntime.includes(approvedGtmId)) failures.push(`معرّف GTM المعتمد غير موجود في web-only runtime: ${approvedGtmId}`);
 if (!webAdvertisingRuntime.includes('NEXT_PUBLIC_GTM_ID')) failures.push('متغير GTM canonical غير موجود في web-only runtime.');
 if (!webAdvertisingRuntime.includes('https://www.googletagmanager.com/gtm.js?id=')) failures.push('مصدر GTM غير موجود في web-only runtime.');
 const nativeGuardIndex = webAdvertisingRuntime.indexOf('if (Capacitor.isNativePlatform())');
 const gtmInjectionIndex = webAdvertisingRuntime.indexOf('"google-tag-manager"');
-if (nativeGuardIndex < 0 || gtmInjectionIndex < 0 || nativeGuardIndex > gtmInjectionIndex) {
-  failures.push('يجب أن يسبق خروج Capacitor native أي حقن فعلي لسكريبت GTM.');
+const monetagInjectionIndex = webAdvertisingRuntime.indexOf('document.head.appendChild(primary)');
+const fundingChoicesInjectionIndex = webAdvertisingRuntime.indexOf('"google-funding-choices"');
+if (
+  nativeGuardIndex < 0 ||
+  gtmInjectionIndex < 0 ||
+  monetagInjectionIndex < 0 ||
+  fundingChoicesInjectionIndex < 0 ||
+  nativeGuardIndex > gtmInjectionIndex ||
+  nativeGuardIndex > monetagInjectionIndex ||
+  nativeGuardIndex > fundingChoicesInjectionIndex
+) {
+  failures.push('يجب أن يسبق خروج Capacitor native كل حقن فعلي لإعلانات الويب وGTM وFunding Choices.');
 }
 if (layout.includes('G-G9DPYTK78')) failures.push('المعرّف القديم G-G9DPYTK78 ما زال موجودًا في root layout.');
 if (!layout.includes('strategy="lazyOnload"')) failures.push('GA4 لا يستخدم lazyOnload في root layout.');
