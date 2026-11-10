@@ -679,3 +679,30 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 - Current `social_publish_queue` snapshot: **81 published video rows**, **2 published written posts**, and **9 queued written posts**. No video rows are currently queued, partial, processing, publishing, or failed. The 9 written posts are Facebook-only and all are scheduled in the future: earliest 2026-11-10 23:19:07 UTC, latest 2026-11-13 15:19:07 UTC; **0 are due now**. This explains the publisher's zero-work result.
 - The scheduled written-content generator `42890589165` completed SUCCESS but created 0 because `dailyUsed=11` exceeded `dailyTarget=3`. The 11 are the 2 published plus 9 queued written posts created today. The daily cap was not bypassed, and no extra post was inserted.
 - Kids-specific written-post rows remain 0. Do not dispatch a manual generation or override the daily cap during this audit; the PR #320 selection/backfill repair can be evaluated on CI, then the next normal UTC-day run can use an available Kids slot.
+
+
+## Checkpoint — 2026-11-10T21:01:15Z — Kids written-post delivery guard and inventory reconciliation
+
+**Audit state: IN PROGRESS. Code repair is committed and its exact code head passed checks; the documentation/manifest refresh below must receive its own exact-head CI verification.**
+
+### Newly confirmed code defects and repairs
+- The automatic Kids daily-slot query previously looked only at `created_at`. A Kids written-post row created on a prior day but scheduled or published on the current UTC day could therefore be missed, allowing a second Kids post to be selected for the same day. The worker now reserves the slot when any-status Kids written-post rows have `created_at`, `scheduled_at`, or `published_at` within the UTC day window. It does not filter by queue status, preserving fail-closed treatment of queued, processing, partial, failed, and published rows.
+- The social publisher previously applied live automated-QA eligibility only to video rows. Kids written-post rows could proceed to Facebook without rechecking whether the live `kids_content` story remained published, active, age-appropriate, correctly identified, verified, and linked to the exact `/kids/<slug>` path. The publisher now revalidates the live source before any provider call. A source that is missing or no longer eligible is marked failed for review; a transient source lookup error is deferred for 15 minutes. No external provider call occurs before this gate.
+- Focused regression assertions cover the UTC-day queue window, current source eligibility, inactive/unpublished/age-inappropriate source rejection, mismatched IDs/paths, verified-source metadata, and validation ordering before provider dispatch.
+
+### Verification evidence
+- Exact code head before this documentation-only refresh: `937e408c6607fe08503dbc4be0a5252f2442943a`.
+- GitHub Quality Gate: SUCCESS; CircleCI `config-guard`, `source-verify`, and `application-build-docs`: SUCCESS; CircleCI configuration validation: SUCCESS. Supabase Preview was SKIPPED because no database migration is part of this PR.
+- Local Node 24.22.1 sandbox: `pnpm written-content:check`, `pnpm test`, `pnpm check` (TypeScript), and `pnpm lint` all exited 0. The sandbox emitted the expected Node engine warning because the repository targets Node 22.x; GitHub CI is the authoritative Node 22 verification.
+- Vercel Preview lookup for branch `audit/zikr-kids-daily-priority-20261110` returned zero deployments. No Preview smoke test is claimed.
+
+### Inventory and manifest reconciliation
+- The recursive `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` tree is still 2,154 entries (1,662 files, 492 directories), not truncated. The 2,153-record manifest excludes its own file.
+- A blob-by-blob comparison found exactly one stale manifest entry: `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md`. The manifest snapshot is corrected to the exact main blob SHA `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` and size 99,259 bytes. The `docs` and `docs/audits` directory hashes remain null because the manifest is self-excluded. Re-run the comparison against the corrected branch snapshot before calling the manifest reconciled.
+- No tracked file, directory, production row, storage object, secret, index, migration, or release was deleted or mutated.
+
+### Remaining gates and scope
+- PR #320 is open and not Draft. The code head above passed checks, but the manifest/status/ledger checkpoint commit changes the head and requires another exact-head CI run.
+- CODEOWNERS assigns review to `@Zikrmediaofficial`; owner review is still outstanding. No review request has been submitted yet.
+- No Vercel Preview deployment exists for the branch at this checkpoint. No merge, production deployment, content generation, Gemini request, social publish, Android release, or production database mutation was triggered.
+- This is a targeted continuation of the file-by-file audit, not a full repository certification. The matrix still contains more than 1,500 historical `REVIEW_REQUIRED` rows; no module is marked closed. Android/iOS device acceptance, complete admin-role browser acceptance, full public-route journeys, and production runtime-error visibility remain open.

@@ -1839,18 +1839,25 @@ PR #275 was merged at `035ea4568572eea36c82b79b1e9cd212113e8e32`. Its former 18 
 
 | PR | Scope | Exact-head CI | Remaining gate |
 |---|---|---|---|
-| [#320](https://github.com/zikrofficial-X/Zikr/pull/320) | Reserve one daily source-verified Kids written-post slot when eligible Kids stories exist and no Kids post is already any-status Kids written-post queue row that day | Pending after latest audit-document updates | Exact-head Quality Gate/CircleCI and CODEOWNERS review; do not merge while Draft or checks are pending |
+| [#320](https://github.com/zikrofficial-X/Zikr/pull/320) | Kids-first daily written-post selection, safe Kids backfill identity, UTC queue-day reservation, and live Kids-source revalidation before social provider delivery | Code head `937e408c6607fe08503dbc4be0a5252f2442943a` passed GitHub Quality Gate, CircleCI config-guard/source-verify/application-build-docs, and CircleCI configuration validation; Supabase Preview was skipped because this PR contains no migration | Documentation reconciliation commit below changes the head and must pass exact-head CI again; CODEOWNERS review and Preview acceptance remain outstanding |
 
-PRs #275, #317, #318 and #319 are merged. No other open PR was present when this checkpoint began.
+PRs #275, #317, #318 and #319 are merged. PR #320 is open and **not Draft**. No merge or production release is authorized until the final head has green required checks, owner review, and the remaining Preview/acceptance gates.
 
 ### Active repair branch — PR #320
 
-The PR branch is separate from the `main@c4560d9` manifest snapshot. These three source files contain the functional repair: daily Kids prioritization plus Kids-safe article backfill identity; audit documents in the same PR update the baseline and checkpoint only.
+The PR branch is separate from the `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` manifest snapshot. The following files contain the functional changes or their focused verification:
 
 | Path | PR branch blob SHA-1 | Bytes | State |
 |---|---|---:|---|
-| `src/features/social/services/written-content.ts` | `0215398e4e94b2805e8f44b2f2d8a43272c000e9` | 9241 | Read; pure selection helper added; exact-head CI pending |
-| `scripts/jobs/written-content-automation.ts` | `60500d598965a16e178457c79174465e62b918bd` | 22195 | Read; daily Kids slot guard added; exact-head CI pending |
-| `scripts/tests/written-content-automation.test.ts` | `46217d2d59752d28121143765d2440ae90d76e4c` | 11067 | Regression assertions added; exact-head CI pending |
+| `.circleci/config.yml` | `e05272c698aec33f64e436b86d1478820f8e7e56` | 37564 | Audit branch filter includes `audit/zikr-.*`; CircleCI config-guard passed on code head |
+| `scripts/verify-ci-architecture.mjs` | `e3f84bbc768e39d8bd932a7930d5f94e0594c024` | 29402 | Architecture contract reviewed; exact-head Quality Gate passed |
+| `scripts/jobs/written-content-automation.ts` | `9e84cf8c149251ab8cc049972ac1c5a45774764e` | 22150 | Daily Kids slot checks created, scheduled, and published UTC-day timestamps across all queue statuses |
+| `src/features/social/services/written-content.ts` | `8e0f34816156eccbbfa5ec882f2499de87d4e09d` | 12526 | Kids source identity and live approval predicate shared by public feed and publisher |
+| `src/features/social/services/social-publishing.ts` | `8a477f36efb92fcd08b49bd86f286e5f758007ba` | 54014 | Live Kids source is revalidated before any external provider call; invalid source fails closed, lookup errors are deferred |
+| `scripts/tests/written-content-automation.test.ts` | `d7b9511719d3c78c7606daf162888ce37066eb4a` | 16376 | Regression coverage for UTC-day reservation, Kids source status/identity/path and provider-call ordering |
 
-PR #320 remains Draft. The last observed pre-follow-up status was `config-guard SUCCESS` and `ZIKR Quality Gate IN_PROGRESS`; after these documentation changes, re-read all required contexts on the latest PR head before any readiness or merge decision. CODEOWNERS review remains mandatory.
+The code head `937e408c6607fe08503dbc4be0a5252f2442943a` passed local `pnpm written-content:check`, `pnpm test`, `pnpm check`, and `pnpm lint`. The local sandbox reported Node v24.22.1 against the repository's Node 22.x engine; the GitHub Quality Gate is the canonical CI result. This documentation/manifest refresh changes the branch head, so all required contexts must be checked again.
+
+The main-baseline manifest had exactly one stale file record: the ledger entry referenced `057c5b9ffb16691abfc6e245e583c908a0dbe73d` / 93,248 bytes instead of the exact `main@c4560d9` blob `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` / 99,259 bytes. The manifest record is corrected in this PR branch; its self-entry remains excluded and the `docs` ancestor hashes remain null.
+
+No Vercel Preview deployment was returned for this audit branch at the time of this checkpoint. CODEOWNERS assigns review to `@Zikrmediaofficial`; the review request has not yet been submitted.
