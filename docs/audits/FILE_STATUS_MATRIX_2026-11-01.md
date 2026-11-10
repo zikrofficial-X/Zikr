@@ -1,11 +1,11 @@
-# ZIKR file status matrix — refreshed 2026-11-10T20:12:00Z
+# ZIKR file status matrix — refreshed 2026-11-10T22:05:00Z
 
 **Current baseline:** `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`  
 **Manifest:** `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` (recursive snapshot of this exact main baseline; self-entry excluded; `docs` and `docs/audits` directory hashes are null because they contain the manifest)  
 **Inventory:** 2,154 tracked entries — 1,662 files and 492 directories; 139,748,929 file bytes; recursive GitHub tree response not truncated.  
-**Coverage:** automated inventory 1,662/1,662 main files (100%); minimum previously documented full source-content reads 129/1,662; at least 1,502 older rows remain `REVIEW_REQUIRED`; modules closed 0. Inventory coverage is not manual review coverage.  
+**Coverage:** automated inventory 1,662/1,662 main files (100%); minimum previously documented full source-content reads 129/1,662; 1,525 current-main rows remain `REVIEW_REQUIRED` (effective status applies the current-main delta over historical rows); modules closed 0. Inventory coverage is not manual review coverage.  
 **Current main CI:** CircleCI config-guard, source-verify, application-build-docs and Android release-draft all SUCCESS on this exact SHA.  
-**Production lag:** Vercel production is READY on `6e8010ef95616c01950ff5ef7d6f44b178da5132`; main is ahead by three commits. The existing manual `RELEASE` gate was not dispatched or changed.  
+**Production:** Vercel production is READY on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` at deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`; main and production are aligned. The existing manual `RELEASE` gate was not dispatched or changed.  
 **Supabase:** 418/418 migration versions match; 92/92 public tables have RLS; 211 public policies; 45 public triggers; 40 public functions; 9 buckets / 0 objects. Security warning: leaked-password protection disabled; Performance Advisor: 86 unused-index candidates; no schema/index/data change performed.  
 **Historical detail:** the original file-by-file table below records the earlier `035ea456` snapshot. The current-main delta at the end revalidates every changed blob and adds all five new files; prior statuses are not carried forward for changed blobs.
 ## Historical inventory delta — baseline 035ea456
@@ -897,8 +897,8 @@ Removed paths:
 | `src/components/content/editorial-depth.tsx` | `8ea60eaf8c952bb71f3d32ad74e253689e3afa21` | `83580` | FIXED_PENDING_CI | Tree metadata only | `c91f64ccd6162e5107b3edb8be3c7aa521865c2f` / Git blob SHA-1 | Full content, references, runtime and test evidence pending | P2 | Retain; trace dependencies before change | — | —  Current blob differs from the prior checkpoint; current-head review/CI remains open. |
 | `src/components/content/editorial-utility-depth.tsx` | `4a4da1c3ce4b5558bcde47c54a97568811e577b6` | `18115` | REVIEW_REQUIRED | Tree metadata only | `c91f64ccd6162e5107b3edb8be3c7aa521865c2f` / Git blob SHA-1 | Full content, references, runtime and test evidence pending | P2 | Retain; trace dependencies before change | — | — |
 | `src/components/layout/adsense-slot.tsx` | `68525fb27325c7363c791d9caaebe33153aed7a4` | `1847` | REVIEW_REQUIRED | Tree metadata only | `c91f64ccd6162e5107b3edb8be3c7aa521865c2f` / Git blob SHA-1 | Full content, references, runtime and test evidence pending | P2 | Retain; trace dependencies before change | — | — |
-| `src/components/layout/adsense.tsx` | `f706b388ce50fb66e549907263fbd2dd99d0351c` | `1065` | REVIEW_REQUIRED | Tree metadata only | `c91f64ccd6162e5107b3edb8be3c7aa521865c2f` / Git blob SHA-1 | Full content, references, runtime and test evidence pending | P2 | Retain; trace dependencies before change | — | — |
-| `src/components/layout/analytics.tsx` | `08c097892db0afff55cf9731a3a3ae8622383b92` | `413` | REVIEW_REQUIRED | Tree metadata only | `c91f64ccd6162e5107b3edb8be3c7aa521865c2f` / Git blob SHA-1 | Full content, references, runtime and test evidence pending | P2 | Retain; trace dependencies before change | — | — |
+| `src/components/layout/adsense.tsx` | `f706b388ce50fb66e549907263fbd2dd99d0351c` | `1065` | CONTENT_READ_PENDING_TRACE | Tree metadata only | `c91f64ccd6162e5107b3edb8be3c7aa521865c2f` / Git blob SHA-1 | Full content, references, runtime and test evidence pending | P2 | Retain; trace dependencies before change | — | — |
+| `src/components/layout/analytics.tsx` | `08c097892db0afff55cf9731a3a3ae8622383b92` | `413` | CONTENT_READ_PENDING_TRACE | Tree metadata only | `c91f64ccd6162e5107b3edb8be3c7aa521865c2f` / Git blob SHA-1 | Full content, references, runtime and test evidence pending | P2 | Retain; trace dependencies before change | — | — |
 | `src/components/layout/app-update-checker.tsx` | `98856477ae04324db00d8058b919a91f019dcd8c` | `6110` | REVIEW_REQUIRED | Tree metadata only | `c91f64ccd6162e5107b3edb8be3c7aa521865c2f` / Git blob SHA-1 | Full content, references, runtime and test evidence pending | P2 | Retain; trace dependencies before change | — | — |
 | `src/components/layout/auth-nav-actions.tsx` | `aaa8dccc9b40e397ebc390b212a04b3f59291e06` | `4213` | REVIEW_REQUIRED | Tree metadata only | `c91f64ccd6162e5107b3edb8be3c7aa521865c2f` / Git blob SHA-1 | Full content, references, runtime and test evidence pending | P2 | Retain; trace dependencies before change | — | — |
 | `src/components/layout/deferred-analytics.tsx` | `073ec059458214972525495e7957338ee52ced81` | `1241` | REVIEW_REQUIRED | Tree metadata only | `c91f64ccd6162e5107b3edb8be3c7aa521865c2f` / Git blob SHA-1 | Full content, references, runtime and test evidence pending | P2 | Retain; trace dependencies before change | — | — |
@@ -1800,7 +1800,7 @@ PR #275 was merged at `035ea4568572eea36c82b79b1e9cd212113e8e32`. Its former 18 
 | `scripts/verify-adsense-readiness.mjs` | `75dbf8d935ad4b659f36684f05ba9766d488022a` | 8911 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
 | `scripts/verify-ci-architecture.mjs` | `014c94c3242c7cedbcc35babfc24b9f5e615c388` | 28794 | FIXED_PENDING_CI | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
 | `scripts/verify-consent-mode.mjs` | `83347233532a4c2b7cefbc8645223c376678b7e9` | 2287 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
-| `scripts/verify-content-integrity.mjs` | `872fb57f2d9b81ccb6839206c9a0c20605dddc26` | 1234 | REVIEWED_SCOPE_EXPANSION_PR_283_PENDING_CI | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `scripts/verify-content-integrity.mjs` | `872fb57f2d9b81ccb6839206c9a0c20605dddc26` | 1234 | REVIEWED_SCOPE_EXPANSION_PR_283_PENDING_CI | CONTENT_READ_PENDING_TRACE | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
 | `scripts/verify-generated-supabase-types.mjs` | `8afbf4e776ad367d3ff7afc8f21053fddbd0b38d` | 2461 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
 | `scripts/verify-google-search-console.mjs` | `539d378443c0ce793ad8f54059443a39f690461c` | 4453 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
 | `scripts/verify-mobile-readiness.mjs` | `f9bc60a3042007f1d55aa096a1c3b7a365b4b500` | 11952 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
@@ -1819,10 +1819,10 @@ PR #275 was merged at `035ea4568572eea36c82b79b1e9cd212113e8e32`. Its former 18 
 | `src/components/layout/footer.tsx` | `5e56ab8189228eefdb4bc869704354e2c8941384` | 9491 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
 | `src/components/layout/service-worker-register.tsx` | `7410258270ae9da2317a0a9c5f1c28018037913c` | 6675 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
 | `src/components/smartlink-promo.tsx` | `3a5c6ada7d5b9628c3873fbbb4b8a4abf8d5ee8a` | 2722 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
-| `src/features/admin/components/purge-generated-videos-control.tsx` | `35830b67241880e37d2a8ea3e93d5e33ef7cb914` | 12148 | REVIEWED_FIX_PR_281_PENDING_OWNER_REVIEW | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/features/admin/components/purge-generated-videos-control.tsx` | `35830b67241880e37d2a8ea3e93d5e33ef7cb914` | 12148 | REVIEWED_FIX_PR_281_PENDING_OWNER_REVIEW | CONTENT_READ_PENDING_TRACE | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
 | `src/features/quran/services/quran-server.ts` | `fd89af40cf84dd844f354879e6c9937ff03c0c9f` | 17041 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
 | `src/features/social/integrations/facebook.ts` | `57f6fc02e5886c2fd7ef46083cea8cc2e648fdb6` | 8620 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
-| `src/features/social/services/facebook-public-posts.ts` | `791b72cc852d20add76f6b81a091d76538007bad` | 4100 | REVIEWED_FIX_PR_278_PENDING_PREVIEW | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
+| `src/features/social/services/facebook-public-posts.ts` | `791b72cc852d20add76f6b81a091d76538007bad` | 4100 | REVIEWED_FIX_PR_278_PENDING_PREVIEW | CONTENT_READ_PENDING_TRACE | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
 | `src/features/social/services/written-content.ts` | `179cceeda212667f4f37f91dc5075061ee150b8a` | 8712 | REVIEW_REQUIRED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
 | `src/lib/types/supabase.ts` | `564d2d6220c4d83097a25e8de02f0c4f1bd19c58` | 142964 | CONTENT_READ_PENDING_TRACE | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
 | `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` | 99259 | AUDIT_CHECKPOINT_RECORDED | REVIEW_REQUIRED | Blob changed since baseline 035ea456; revalidate references, consumers and acceptance before closing. |
@@ -1832,35 +1832,63 @@ PR #275 was merged at `035ea4568572eea36c82b79b1e9cd212113e8e32`. Its former 18 
 | `docs/releases/1.1.15.md` | `ee5666490b8f3c180a642054b955c5a81fa21655` | 1956 | NEW | REVIEW_REQUIRED | Candidate release notes only; no v1.1.15 tag/assets verified. |
 | `scripts/verify-mobile-ads-free.mjs` | `41afead16ccc1ddcf86559d4b13b109977bb3deb` | 5116 | NEW | CONTENT_READ_TESTED_PASS | Read in this run; main source-verify includes mobile:check and passed. |
 | `src/app/api/kids/social-posts/route.ts` | `cf792bcf62907a8e390a80aaff6a46391c210cc7` | 2703 | NEW | CONTENT_READ_TESTED_PENDING_LIVE_ACCEPTANCE | Source and contract test read; production API returns [], with no Kids written-post rows. |
-| `src/components/layout/web-advertising-runtime.tsx` | `5069c82f8ecb7452584d9f47f93ed7512333d1e3` | 3699 | NEW | CONTENT_READ_TESTED_PASS | Read in this run; mobile:check on current main passed. |
+| `src/components/layout/web-advertising-runtime.tsx` | `5069c82f8ecb7452584d9f47f93ed7512333d1e3` | 3699 | NEW | REVIEW_REQUIRED | Read in this run; mobile:check on current main passed. |
 | `supabase/migrations/20261110170000_restore_purge_audit_proven_video_catalog.sql` | `21b9a1ed66f27fcebeae67b68c99a5d4cc7be4c9` | 9319 | NEW | APPLIED_LIVE_VERIFIED | 418/418 migration versions; live recovery provenance confirms 50 general + 8 Kids rows. |
 
-### Current open repair PRs
+### Current open repair PRs — exact code-head checkpoints
 
-| PR | Scope | Exact-head CI | Remaining gate |
-|---|---|---|---|
-| [#320](https://github.com/zikrofficial-X/Zikr/pull/320) | Kids-first daily written-post selection, safe Kids backfill identity, UTC queue-day reservation, and live Kids-source revalidation before social provider delivery | Code head `937e408c6607fe08503dbc4be0a5252f2442943a` passed GitHub Quality Gate, CircleCI config-guard/source-verify/application-build-docs, and CircleCI configuration validation; Supabase Preview was skipped because this PR contains no migration | Documentation reconciliation commit below changes the head and must pass exact-head CI again; CODEOWNERS review and Preview acceptance remain outstanding |
+| PR | Branch | Verified code head | Changed files | GitHub Quality Gate | CircleCI | Remaining gate |
+|---|---|---|---:|---|---|---|
+| [#320](https://github.com/zikrofficial-X/Zikr/pull/320) | `audit/zikr-kids-daily-priority-20261110` | `9d8d3164ebcdfe059dfa6117d9bef7f1cbf684ad` | 19 | #2042 SUCCESS | config-guard, source-verify, application-build-docs, config validation SUCCESS | Supabase Preview unavailable (only main branch); migration not applied; CODEOWNERS review missing; documentation checkpoint changes branch head and requires rerun |
+| [#321](https://github.com/zikrofficial-X/Zikr/pull/321) | `audit/zikr-ios-permission-contract-20261110` | `5022e609842a7ef208560772c9cba235bedb58c3` | 3 | #2028 SUCCESS | config-guard SUCCESS; source/build not scheduled until #320 filter merge | Physical iOS/device acceptance and CODEOWNERS review |
+| [#322](https://github.com/zikrofficial-X/Zikr/pull/322) | `audit/zikr-youtube-oauth-actor-20261110` | `40e693d48e86bc2a2c7ab3f61c86d1c6d52316c7` | 2 | #2030 SUCCESS | config-guard SUCCESS; source/build not scheduled until #320 filter merge | Live OAuth/return-to-app acceptance and CODEOWNERS review |
+| [#323](https://github.com/zikrofficial-X/Zikr/pull/323) | `audit/zikr-admin-role-fail-closed-20261110` | `4c740f596426c693dfd7f401bb9630f9677e6ee9` | 5 | #2041 SUCCESS | config-guard SUCCESS; source/build not scheduled until #320 filter merge | CODEOWNERS review |
+| [#324](https://github.com/zikrofficial-X/Zikr/pull/324) | `audit/zikr-video-purge-preflight-20261110` | `7f8504e35fc04ee66c06f67ad02f6a532c2b410a` | 3 | #2048 SUCCESS | config-guard SUCCESS; source/build not scheduled until #320 filter merge | No purge execution; CODEOWNERS review |
+| [#325](https://github.com/zikrofficial-X/Zikr/pull/325) | `audit/zikr-canonical-ads-host-20261110` | `8e3a73d81968e0c5fa17c739f7172b8a40ade383` | 3 | #2049 IN PROGRESS | config-guard SUCCESS; source/build not scheduled until #320 filter merge | Exact-head Quality Gate and CODEOWNERS review |
 
-PRs #275, #317, #318 and #319 are merged. PR #320 is open and **not Draft**. No merge or production release is authorized until the final head has green required checks, owner review, and the remaining Preview/acceptance gates.
+All six PRs are open and unmerged with empty review lists. The configured CODEOWNERS account `@Zikrmediaofficial` currently has no collaborator permission. PR #320 is the only branch carrying the CircleCI audit-branch source/build filter; the other branches inherit the old route-baseline warning until that repair reaches main.
 
-### Active repair branch — PR #320
+### Active audit branch overlays — exact file blobs
 
-The PR branch is separate from the `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` manifest snapshot. The following files contain the functional changes or their focused verification:
+These entries are branch overlays, not part of the `main@c4560d9` manifest baseline. The matrix file itself is omitted from its own overlay to avoid a self-referential blob SHA; its exact blob is in the Git tree for the documentation commit. PR #320 code blobs are from verified code head `9d8d3164ebcdfe059dfa6117d9bef7f1cbf684ad`; the status and ledger blob SHAs below are from this reconciliation commit.
 
-| Path | PR branch blob SHA-1 | Bytes | State |
-|---|---|---:|---|
-| `.circleci/config.yml` | `e05272c698aec33f64e436b86d1478820f8e7e56` | 37564 | Audit branch filter includes `audit/zikr-.*`; CircleCI config-guard passed on code head |
-| `scripts/verify-ci-architecture.mjs` | `e3f84bbc768e39d8bd932a7930d5f94e0594c024` | 29402 | Architecture contract reviewed; exact-head Quality Gate passed |
-| `scripts/jobs/written-content-automation.ts` | `9e84cf8c149251ab8cc049972ac1c5a45774764e` | 22150 | Daily Kids slot checks created, scheduled, and published UTC-day timestamps across all queue statuses |
-| `src/features/social/services/written-content.ts` | `8e0f34816156eccbbfa5ec882f2499de87d4e09d` | 12526 | Kids source identity and live approval predicate shared by public feed and publisher |
-| `src/features/social/services/social-publishing.ts` | `8a477f36efb92fcd08b49bd86f286e5f758007ba` | 54014 | Live Kids source is revalidated before any external provider call; invalid source fails closed, lookup errors are deferred |
-| `scripts/tests/written-content-automation.test.ts` | `d7b9511719d3c78c7606daf162888ce37066eb4a` | 16376 | Regression coverage for UTC-day reservation, Kids source status/identity/path and provider-call ordering |
+| PR | Path | Branch blob SHA-1 | Bytes | State |
+|---|---|---|---:|---|
+| #320 | `.circleci/config.yml` | `e05272c698aec33f64e436b86d1478820f8e7e56` | 37564 | TESTED_PASS |
+| #320 | `PROJECT_STATUS.md` | `ca6112feaeceb4551e4742ab3ada1dc45285bf12` | 87346 | AUDIT_CHECKPOINT_RECORDED |
+| #320 | `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | `0e782c504c2187c0aec58ca165366c0ec9fe7fb9` | 122888 | AUDIT_CHECKPOINT_RECORDED |
+| #320 | `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` | `ae8849ca2127dd5ee1d6e327fb07405e3a05cbc2` | 311031 | MANIFEST_CAPTURED_MAIN_BASELINE |
+| #320 | `package.json` | `66b90f8f474004b8fe2186e89ff490cbaf04c0ea` | 15789 | TESTED_PASS |
+| #320 | `scripts/jobs/written-content-automation.ts` | `46ca4262e171472b3c98934737d162797335eb4a` | 22420 | TESTED_PASS |
+| #320 | `scripts/platform-route-baseline.mjs` | `f26237b693b59c6e5daf484637ec212abe8b541f` | 380 | TESTED_PASS |
+| #320 | `scripts/tests/kids-content-visibility.test.ts` | `ee9fb271b4126c007473c780a26eb0c479c91398` | 2508 | TESTED_PASS |
+| #320 | `scripts/tests/kids-share-rate-limit.test.ts` | `d65b4ca3c07020c315202b15f01a4382f3232a38` | 1738 | TESTED_PASS |
+| #320 | `scripts/tests/written-content-automation.test.ts` | `3ab6fa1fee773c451413c95cc7fc9706f1dfa958` | 18281 | TESTED_PASS |
+| #320 | `scripts/verify-ci-architecture.mjs` | `e3f84bbc768e39d8bd932a7930d5f94e0594c024` | 29402 | TESTED_PASS |
+| #320 | `src/app/api/kids/track-share/route.ts` | `05051d159c4b0f18dac301594c6ecc0a61663a07` | 3087 | TESTED_PASS |
+| #320 | `src/features/kids/services/kids-content-visibility.ts` | `84502847ba52bfeb10f10c3b22ede8c898b0c820` | 1225 | TESTED_PASS |
+| #320 | `src/features/kids/services/kids-content.ts` | `b6373b0e7787a1d1dc4af707dacc339c46b4d380` | 5993 | TESTED_PASS |
+| #320 | `src/features/kids/services/share-rate-limit.ts` | `c7550eae6bd1f2ca1ce46e061161e58d664a7775` | 1165 | TESTED_PASS |
+| #320 | `src/features/social/services/social-publishing.ts` | `a6c9bd96ccdb65993078ecaa72cc7dba8ef7bb43` | 54101 | TESTED_PASS |
+| #320 | `src/features/social/services/written-content.ts` | `27404e8742b559b289d7d75619c16079b23ce8e8` | 13302 | TESTED_PASS |
+| #320 | `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql` | `367fa2443a393dd591e469da98a904a57751536f` | 1132 | FIXED_TESTED_PENDING_LIVE_APPLY |
+| #321 | `ios/App/App/Info.plist` | `aec6e05bc4cf08d9f38dc7a40021ff5771c7f2f8` | 2136 | TESTED_PASS_PENDING_DEVICE_ACCEPTANCE |
+| #321 | `mobile/README.md` | `59c10a45f122ec59250fa1456f1eb7439fee1507` | 3061 | DOC_REVIEWED |
+| #321 | `scripts/verify-mobile-readiness.mjs` | `c8bbcac5d450a5cff995f2e3ecb17efe46028770` | 12609 | TESTED_PASS |
+| #322 | `scripts/tests/youtube-oauth-credentials.test.ts` | `c0d303a53705559346ca41622dfcb545641f3c37` | 4840 | TESTED_PASS |
+| #322 | `src/app/api/admin/social/youtube/callback/route.ts` | `94006383d1dc686d0893a993c462989bc0c73e19` | 7778 | TESTED_PASS_PENDING_LIVE_OAUTH |
+| #323 | `package.json` | `38d089219045e9533d91a95f28808a7052172f15` | 15736 | TESTED_PASS |
+| #323 | `scripts/tests/admin-role-resolution.test.ts` | `879d06449c072f363d46d24ab6dae577e34c6dd1` | 2028 | TESTED_PASS |
+| #323 | `src/features/admin/services/admin.ts` | `b48cea6d914650825a396af9ffc875be8202e8d0` | 3064 | TESTED_PASS |
+| #323 | `src/features/admin/services/permissions.ts` | `476bdb4b401b540558f0ac6cedc3ce007c1c5140` | 4720 | TESTED_PASS |
+| #323 | `src/features/profile/services/profile.ts` | `222746e96e84559ba8d88840c31585f92749efba` | 11836 | TESTED_PASS |
+| #324 | `scripts/jobs/template-video-automation.ts` | `02404dda5d059447a91fe0e5645c9cbe5449e304` | 117780 | TESTED_PASS |
+| #324 | `scripts/tests/video-purge-contract.test.mjs` | `d431a2edb3de67ddbd145f3f8541d0047b4dd86d` | 12788 | TESTED_PASS |
+| #324 | `src/app/api/admin/video-purge/route.ts` | `d490e4c1802a4afcaf1961d259b3ca0ad903a0a0` | 29438 | TESTED_PASS_NO_PURGE_EXECUTED |
+| #325 | `scripts/verify-adsense-readiness.mjs` | `78368625d8b1404ce5747b635b7338e11116154d` | 9478 | PENDING_CI |
+| #325 | `src/components/layout/runtime-effects.tsx` | `09943f804591f0d09b4fe029fd18172580ae5506` | 1710 | PENDING_CI |
+| #325 | `src/components/layout/web-advertising-runtime.tsx` | `3dda4c3fb912ce7d9900c2f77f780f3175a6ee73` | 4213 | PENDING_CI |
 
-The code head `937e408c6607fe08503dbc4be0a5252f2442943a` passed local `pnpm written-content:check`, `pnpm test`, `pnpm check`, and `pnpm lint`. The local sandbox reported Node v24.22.1 against the repository's Node 22.x engine; the GitHub Quality Gate is the canonical CI result. This documentation/manifest refresh changes the branch head, so all required contexts must be checked again.
-
-The main-baseline manifest had exactly one stale file record: the ledger entry referenced `057c5b9ffb16691abfc6e245e583c908a0dbe73d` / 93,248 bytes instead of the exact `main@c4560d9` blob `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` / 99,259 bytes. The manifest record is corrected in this PR branch; its self-entry remains excluded and the `docs` ancestor hashes remain null.
-
-No Vercel Preview deployment was returned for this audit branch at the time of this checkpoint. CODEOWNERS assigns review to `@Zikrmediaofficial`, but GitHub returned no collaborator permission (`null`) and did not register the review request. The owner must add an eligible collaborator or correct CODEOWNERS before merge.
 ## Supplemental file-by-file review — 2026-11-10
 
 ### PR #320 — Kids/social/content visibility batch
@@ -1891,3 +1919,30 @@ No Vercel Preview deployment was returned for this audit branch at the time of t
 | `package.json` | Updated test registration on PR #323 | New resolver suite runs in `pnpm test` |
 
 **Not closed:** remaining repository files and consumer paths outside these reviewed batches; owner-only review; Supabase Preview; physical Android/iOS acceptance; OAuth return-to-app testing; and production release validation.
+
+
+## Latest audit continuation — 2026-11-10T22:05:00Z
+
+### Main-baseline full content reads in this batch
+| File | Matrix status after this read | Notes |
+|---|---|---|
+| `scripts/verify-content-integrity.mjs` | `CONTENT_READ_PENDING_TRACE` | Full source read; import/consumer trace remains open |
+| `src/features/social/services/facebook-public-posts.ts` | `CONTENT_READ_PENDING_TRACE` | Full source read; provider-result and public-feed consumer trace remains open |
+| `src/features/admin/components/purge-generated-videos-control.tsx` | `CONTENT_READ_PENDING_TRACE` | Full UI read; destructive route contract is tracked separately in PR #324 |
+| `src/components/layout/adsense.tsx` | `CONTENT_READ_PENDING_TRACE` | Full component read; canonical-host runtime gate is tracked in PR #325 |
+| `src/components/layout/analytics.tsx` | `CONTENT_READ_PENDING_TRACE` | Full component read; analytics/provider consumer trace remains open |
+
+### New defects found in main and repair branches
+- `src/app/api/admin/video-purge/route.ts`: batch-limit checks previously occurred after external media or database mutations, Storage pagination could silently truncate at 5,000 objects, and the purge lock was an unconditional upsert. PR #324 moves every bounded inventory before deletion, rejects overflow, acquires/releases a request-owned lock, rechecks active work, and adds worker claim checks. Exact-head Quality Gate #2048 passed; no purge was executed.
+- `src/components/layout/web-advertising-runtime.tsx` and `src/components/layout/runtime-effects.tsx`: production-mode Preview builds could load Monetag/Funding Choices/GTM and AdSense because `NODE_ENV=production` also applies to Vercel Preview. Main matrix status was downgraded to `REVIEW_REQUIRED`; PR #325 adds canonical-host gates. Quality Gate #2049 was still running at this checkpoint.
+- `scripts/platform-route-baseline.mjs`: expected API count 80 disagreed with the exact main tree count 81. PR #320 updates the baseline and its exact-head `project:check` passes.
+
+### Exact-head review state
+- PR #320 code head `9d8d3164ebcdfe059dfa6117d9bef7f1cbf684ad`: Quality Gate #2042 and all three CircleCI contexts passed; documentation reconciliation follows and requires exact-head rerun.
+- PR #321 head `5022e609842a7ef208560772c9cba235bedb58c3`: Quality Gate #2028 passed; device acceptance pending.
+- PR #322 head `40e693d48e86bc2a2c7ab3f61c86d1c6d52316c7`: Quality Gate #2030 passed; live OAuth acceptance pending.
+- PR #323 head `4c740f596426c693dfd7f401bb9630f9677e6ee9`: Quality Gate #2041 passed; owner review pending.
+- PR #324 head `7f8504e35fc04ee66c06f67ad02f6a532c2b410a`: Quality Gate #2048 passed; no production purge; owner review pending.
+- PR #325 head `8e3a73d81968e0c5fa17c739f7172b8a40ade383`: Quality Gate #2049 in progress; CircleCI config-guard passed.
+
+**Not closed:** 1,525 main-baseline files remain `REVIEW_REQUIRED`; all six PRs await owner review; Supabase Preview is unavailable; production migration is not applied; physical Android/iOS acceptance, OAuth return-to-app, public-route browser journeys, and AdSense account/editorial gates remain manual.

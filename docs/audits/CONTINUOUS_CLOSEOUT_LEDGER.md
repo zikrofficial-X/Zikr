@@ -728,3 +728,30 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 - Production Vercel remains on READY deployment from `main@c4560d9`; audit branch preview was not available.
 - Required CODEOWNERS approval is still outstanding. The owner account could not be requested through the current GitHub identity; protected-branch rules were not bypassed.
 - Manual Android/iOS device acceptance and production owner approval remain open.
+
+
+## 2026-11-11 00:05 — repository audit continuation and repair reconciliation
+
+| Workstream / PR | Exact code head | Verification evidence | Current state |
+|---|---|---|---|
+| Kids written-content priority, source fail-closed behavior, public visibility, share-rate limiting, route inventory | `9d8d3164ebcdfe059dfa6117d9bef7f1cbf684ad` (PR #320) | GitHub Quality Gate #2042 SUCCESS; CircleCI config-guard/source-verify/application-build-docs and config validation SUCCESS; 419 SQL migrations replayed in ephemeral PostgreSQL; `project:check` no longer reports 142/81 versus 142/80 | Code verified; PR open; migration not applied; owner review and Preview acceptance blocked |
+| iOS Face ID permission contract | `5022e609842a7ef208560772c9cba235bedb58c3` (PR #321) | Quality Gate #2028 SUCCESS; CircleCI config-guard SUCCESS | Static contract verified; physical device acceptance and owner review pending |
+| YouTube OAuth credential actor | `40e693d48e86bc2a2c7ab3f61c86d1c6d52316c7` (PR #322) | Quality Gate #2030 SUCCESS; CircleCI config-guard SUCCESS | Code verified; live OAuth and owner review pending |
+| Admin delegated-role fail-closed resolution | `4c740f596426c693dfd7f401bb9630f9677e6ee9` (PR #323) | Quality Gate #2041 SUCCESS; CircleCI config-guard SUCCESS; read-only DB function/RLS contract verified | Code verified; owner review pending |
+| Video purge preflight, atomic lock, and worker claim gate | `7f8504e35fc04ee66c06f67ad02f6a532c2b410a` (PR #324) | Quality Gate #2048 SUCCESS; CircleCI config-guard SUCCESS; generated-video purge contract passed | Code verified; no purge executed; owner review pending |
+| Canonical-host monetization gate | `8e3a73d81968e0c5fa17c739f7172b8a40ade383` (PR #325) | CircleCI config-guard SUCCESS; GitHub Quality Gate #2049 IN PROGRESS at checkpoint | CI pending; owner review pending |
+| Main manifest and matrix reconciliation | `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` | 2,154 Git tree entries; 2,153 manifest records; 1,661 blob records; zero path/SHA/size mismatches; matrix effective status count 1,525 `REVIEW_REQUIRED` | Inventory reconciled; manual file/code-path review remains open |
+
+### Defects discovered and repaired on review branches
+- The canonical route baseline expected 80 API handlers while the main tree contained 81. PR #320 updates it to 81 and exact-head `project:check` passes.
+- The video purge route performed some 1,000-row limit checks after Cloudinary/Storage/catalog/history mutations and silently stopped Storage pagination at 5,000 objects. PR #324 moves every bounded inventory and guard before deletion, rejects overflow, acquires a request-owned lock atomically, verifies lock release, rechecks active work, and closes the worker claim race. No production purge was run.
+- The advertising runtime used `NODE_ENV=production` as its only web guard; Vercel Preview builds also use production mode. PR #325 adds a canonical-host gate to Monetag/Funding Choices/GTM and AdSense loading, with a source verifier. Exact-head Quality Gate was still running at this checkpoint.
+- Five additional main files were read in full and moved to `CONTENT_READ_PENDING_TRACE`: `scripts/verify-content-integrity.mjs`, `src/features/social/services/facebook-public-posts.ts`, `src/features/admin/components/purge-generated-videos-control.tsx`, `src/components/layout/adsense.tsx`, and `src/components/layout/analytics.tsx`. Their import/consumer traces are not marked complete.
+- `src/components/layout/web-advertising-runtime.tsx` was downgraded from a previous pass to `REVIEW_REQUIRED` because the canonical-host defect was found in the main baseline. The fix exists only on PR #325 until merge.
+
+### Production and safety record
+- Supabase production remains at 418 migrations (latest `20261110170000`); PR #320's migration `20261110212000_kids_content_public_read_respects_active_state.sql` is not applied. Supabase Preview is unavailable because only `main` exists.
+- Vercel production remains READY on `main@c4560d9` at deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`. No Preview or production deployment was initiated by this audit.
+- All six PRs #320–#325 have no submitted review. CODEOWNERS owner `@Zikrmediaofficial` currently has no collaborator permission; no approval or branch-protection rule was bypassed.
+- No production SQL, data, Storage, Cloudinary, social provider, Gemini, Android/iOS release, or content-generation action was executed.
+- Remaining closeout: 1,525 `REVIEW_REQUIRED` main rows, untraced consumers/imports/contracts, owner review, production migration release, device/browser acceptance, live OAuth return-to-app testing, and AdSense editorial/account verification. No module is closed.

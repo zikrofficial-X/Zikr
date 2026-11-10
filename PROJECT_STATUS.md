@@ -502,3 +502,35 @@ No files or production data were deleted in this checkpoint. No Cloudinary asset
 - No Supabase Preview branch exists, no migration was applied to production, and no Vercel preview or production deployment was created for these branches.
 - Android/iOS acceptance on physical devices, Google OAuth return-to-app testing, and owner-side production approval remain manual.
 - The repository-wide file/code-path audit is still open. This run covered the active Kids/social paths, 19 GitHub workflows, CircleCI/Vercel configuration, Capacitor Android/iOS and native Google OAuth paths, the relevant Supabase RLS/functions, and the admin role resolver; it does not close the remaining inventory.
+
+
+## Latest audit checkpoint — 2026-11-11 00:05 Africa/Cairo
+
+**Audit state: IN PROGRESS. This is not a full-project closure or an error-free certification.**
+
+- Canonical production source remains `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. Its recursive tree is 2,154 entries: 1,662 files and 492 directories. Main CI contexts `config-guard`, `source-verify`, `application-build-docs`, `android-release-draft`, and Vercel are all SUCCESS on this exact SHA.
+- Vercel production is READY on deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` (`zikr-232iamzh2-zikr3.vercel.app`) for `main@c4560d9`. No production deployment was started by this audit; no Vercel Preview deployment was returned for PR #320.
+- The main-baseline manifest contains 2,153 records: 1,661 blob records plus 492 directory records. A fresh blob-by-blob comparison found zero path/SHA/size mismatches. The two ancestor directory hashes remain null by design because the manifest is self-excluded. The PR #320 branch tree has 2,159 entries: 1,667 files and 492 directories, five files more than main.
+- The file-status matrix covers all 1,661 manifest blob records. After this batch's status reconciliation, 1,525 current-main rows remain `REVIEW_REQUIRED`; five additional main files are recorded as `CONTENT_READ_PENDING_TRACE`, one previously passing advertising-runtime row is downgraded to `REVIEW_REQUIRED` after a Preview-host defect was found, and modules closed remain 0. The prior minimum of 129 fully read main files is retained; this batch read five additional full main files but did not claim their consumer traces complete.
+- The main route tree contains 142 App Router pages and 81 API handlers. The main baseline verifier expected 80 APIs; PR #320 changes the expected count to 81, and its exact-head `project:check` passes without the former inventory warning. Other open PRs based directly on main still inherit the old warning until PR #320 merges.
+
+### Open repair PRs — exact code heads and verification
+
+- **PR #320** — Kids daily written-post priority, fail-closed source loading, public active/published visibility, share-rate limiting, CI architecture correction, and route inventory correction. Code head `9d8d3164ebcdfe059dfa6117d9bef7f1cbf684ad`; GitHub Quality Gate #2042 SUCCESS; CircleCI config-guard, source-verify, application-build-docs and config validation SUCCESS. The 419-migration replay passed in ephemeral PostgreSQL. Supabase Preview was SKIPPED because the linked project exposes only its `main` branch, not because the PR has no migration. Production remains at 418 applied migrations; `20261110212000_kids_content_public_read_respects_active_state.sql` is not applied. No Preview deployment was returned.
+- **PR #321** — Remove unused iOS Face ID permission and enforce the mobile-readiness contract. Code head `5022e609842a7ef208560772c9cba235bedb58c3`; Quality Gate #2028 SUCCESS; CircleCI config-guard SUCCESS. Physical iOS/device acceptance remains manual.
+- **PR #322** — Record the authenticated actor in the YouTube OAuth credential row. Code head `40e693d48e86bc2a2c7ab3f61c86d1c6d52316c7`; Quality Gate #2030 SUCCESS; CircleCI config-guard SUCCESS. No live OAuth exchange or credential write was performed; Google consent/test-user and return-to-app acceptance remain external gates.
+- **PR #323** — Fail-closed delegated admin role resolution. Code head `4c740f596426c693dfd7f401bb9630f9677e6ee9`; Quality Gate #2041 SUCCESS; CircleCI config-guard SUCCESS. A previous test-only failure caused by a valid trailing comma was corrected. Read-only checks confirmed the assignment table's self-read policy and the database `private.current_admin_role()` behavior; no role rows were changed.
+- **PR #324** — Video purge safety. Code head `7f8504e35fc04ee66c06f67ad02f6a532c2b410a`; Quality Gate #2048 SUCCESS; CircleCI config-guard SUCCESS. All bounded inventories and caps now precede destructive work, Storage pagination overflow is detected, purge-lock acquisition/release is request-owned, and the worker checks the lock around queue claims. No purge was executed. Its `project:check` still reports the inherited 80-versus-81 route baseline warning because it is based on main; PR #320 contains the separate correction.
+- **PR #325** — Restrict monetization scripts and AdSense to the canonical production host, preventing Vercel Preview aliases from loading publisher scripts. Code head `8e3a73d81968e0c5fa17c739f7172b8a40ade383`; CircleCI config-guard SUCCESS; GitHub Quality Gate #2049 was IN PROGRESS at this checkpoint. Exact-head CI must complete before this repair can be called tested.
+
+### Live Supabase and owner gates
+
+- Supabase `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY with 418 applied migration versions (latest `20261110170000`); the project exposes only the `main` branch. No migration was applied, no production rows or policies were mutated, and no PR preview branch exists.
+- Read-only inventory remains 92/92 public tables with RLS, 211 public policies, 45 public triggers, 40 public functions, 9 buckets and 0 Storage objects. Security Advisor still reports leaked-password protection disabled; unused-index advisories require measured usage review before any index removal.
+- All six PRs #320–#325 are open and unmerged, and each currently has an empty review list. CODEOWNERS assigns review to `@Zikrmediaofficial`; GitHub reports no collaborator permission for that account. No review gate was bypassed.
+- AdSense/editorial gates remain: 16 long-form articles versus the internal 20–30 page plan, third-party Monetag compatibility, shared `vercel.app` origin, and account-level verification. PR #325 only addresses Preview-host script injection; it does not close these owner/editorial requirements.
+
+### Safety and remaining work
+
+- No production database mutation, migration, storage/media deletion, content generation, Gemini request, social publishing, Android/iOS release, or production deployment was triggered.
+- Repository-wide review is still open: 1,525 main-baseline rows remain `REVIEW_REQUIRED`, many consumer/import/API/database traces remain outstanding, and 0 modules are closed. Manual owner approval, Supabase migration release, physical Android/iOS acceptance, YouTube OAuth return-to-app testing, public-route browser journeys, and AdSense account/editorial checks remain outstanding.
