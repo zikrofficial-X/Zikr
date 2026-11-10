@@ -215,13 +215,13 @@ const duplicateSkipMarker = 'error_message: "Duplicate generated content; public
 const duplicateSkipIndex = worker.indexOf(duplicateSkipMarker);
 assert.notEqual(duplicateSkipIndex, -1, "duplicate generated renders must retain a distinct cancellation reason");
 const duplicateSkipBlock = worker.slice(duplicateSkipIndex, worker.indexOf("continue;", duplicateSkipIndex));
-assert.match(duplicateSkipBlock, /skipped\\s*\\+=\\s*1/);
-assert.doesNotMatch(duplicateSkipBlock, /failed\\s*\\+=\\s*1/);
-assert.match(worker, /return \\{ processed, succeeded, failed, skipped \\}/);
+assert.match(duplicateSkipBlock, /skipped\s*\+=\s*1/);
+assert.doesNotMatch(duplicateSkipBlock, /failed\s*\+=\s*1/);
+assert.match(worker, /return \{ processed, succeeded, failed, skipped \}/);
 const runner = readFileSync("scripts/run-background-jobs.ts", "utf8");
 assert.match(runner, /waveSkipped/);
-assert.match(runner, /skipped \\+= waveSkipped/);
-assert.match(runner, /skipped: summary\\.skipped/);
+assert.match(runner, /skipped \+= waveSkipped/);
+assert.match(runner, /skipped: summary\.skipped/);
 
 assert.ok(worker.includes("canRecoverDuplicateVideoRender"), "the video worker must use the recovery decision contract");
 assert.ok(worker.includes("buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)"), "canonical recovery must compare-and-set the exact previously stored Cloudinary URL");
