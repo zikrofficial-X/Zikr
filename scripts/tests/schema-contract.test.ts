@@ -26,7 +26,7 @@ assert.ok(hadithTypeStart >= 0 && hadithTypeEnd > hadithTypeStart, "hadiths gene
 const hadithType = types.slice(hadithTypeStart, hadithTypeEnd);
 requireRegex(
   migrations,
-  /ALTER TABLE public\\.hadiths\\s+ADD COLUMN IF NOT EXISTS chapter text/i,
+  /ALTER TABLE public\.hadiths\s+ADD COLUMN IF NOT EXISTS chapter text/i,
   "hadiths.chapter additive migration contract",
 );
 requireText(hadithType, "chapter: string | null", "hadiths.chapter row type contract");
