@@ -14,7 +14,7 @@ assert.equal(shouldBackfillKidsWrittenPost("kids_story",false),true,"the first K
 assert.equal(shouldBackfillKidsWrittenPost("kids_story",true),false,"a second Kids backfill must wait until another UTC day");
 assert.equal(shouldBackfillKidsWrittenPost("quran",true),true,"general written-post backfill must remain unaffected by the Kids daily slot");
 assert.equal(scheduleKidsBackfillWithinUtcDay(new Date("2026-11-11T18:00:00.000Z")),"2026-11-11T18:05:00.000Z","Kids backfill must schedule within the current UTC day");
-assert.equal(scheduleKidsBackfillWithinUtcDay(new Date("2026-11-11T23:58:00.000Z")),"2026-11-11T23:59:59.999Z","Kids backfill must not spill into a day already reserved by another Kids post");
+assert.equal(scheduleKidsBackfillWithinUtcDay(new Date("2026-11-11T23:58:00.000Z")),null,"Kids backfill must defer when its lead time would spill into the next UTC day");
 assert.notEqual(createWrittenAutomationKey("quran","1"),createWrittenAutomationKey("quran","2"));
 assert.deepEqual(validateWrittenPostDraft(draft),{ok:true});assert.equal(validateWrittenPostDraft({...draft,reflection:"قال رسول الله كذا"}).ok,false);assert.equal(validateWrittenPostDraft({...draft,eligible:false}).ok,false);
 const post=buildWrittenPost(source,draft);assert.ok(post.body.includes(source.sourceText));assert.ok(post.body.includes(source.reference));assert.equal(post.publicPath,source.publicPath);
