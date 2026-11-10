@@ -43,9 +43,10 @@ export function parseKidsQuizData(raw: string | null): KidsQuizData | null {
       !text ||
       options.length < 2 ||
       options.some((option) => !option) ||
+      typeof correctAnswer !== "number" ||
       !Number.isInteger(correctAnswer) ||
-      Number(correctAnswer) < 0 ||
-      Number(correctAnswer) >= options.length
+      correctAnswer < 0 ||
+      correctAnswer >= options.length
     ) {
       return invalidQuiz();
     }
@@ -66,7 +67,7 @@ export function parseKidsQuizData(raw: string | null): KidsQuizData | null {
     normalized.push({
       text,
       options,
-      correctAnswer: Number(correctAnswer),
+      correctAnswer,
       ...(typeof textEn === "string" ? { textEn: textEn.trim() } : {}),
       ...(Array.isArray(optionsEn)
         ? { optionsEn: optionsEn.map((option) => String(option).trim()) }
