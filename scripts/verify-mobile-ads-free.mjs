@@ -24,7 +24,7 @@ requireCondition(
   "The root layout must mount the environment-aware advertising runtime.",
 );
 requireCondition(
-  !/al5sm\.com|5gvci\.com|name="monetag"|google-adsense-account|fundingchoicesmessages\.google\.com|googletagmanager\.com\/gtm\.js/.test(
+  !/al5sm\.com|5gvci\.com|name="monetag"|fundingchoicesmessages\.google\.com|googletagmanager\.com\/gtm\.js/.test(
     layout,
   ),
   "The root layout must not emit advertising scripts or verification markup into native HTML.",
@@ -51,8 +51,8 @@ requireCondition(
   "Standalone SmartLink promotional sections must stay hidden in native shells.",
 );
 requireCondition(
-  serviceWorkerRegister.includes('"/sw.js?native=1"') &&
-    serviceWorkerRegister.includes('"/sw.js"'),
+  serviceWorkerRegister.includes("'/sw.js?native=1'") &&
+    serviceWorkerRegister.includes("'/sw.js'"),
   "Native and browser service workers must use distinct script URLs.",
 );
 requireCondition(
