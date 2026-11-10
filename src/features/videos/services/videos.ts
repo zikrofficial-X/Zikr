@@ -199,6 +199,15 @@ export async function getVideoBySlug(slug: string): Promise<Video | null> {
 }
 
 
+function hasPassedKidsVideoQa(metadata: Record<string, unknown>): boolean {
+  const qa = metadata.automatedVideoQa && typeof metadata.automatedVideoQa === "object" && !Array.isArray(metadata.automatedVideoQa)
+    ? metadata.automatedVideoQa as Record<string, unknown>
+    : {};
+  return metadata.audience === "kids" &&
+    metadata.kidsVideoQaStatus === "passed" &&
+    qa.status === "passed";
+}
+
 export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
   const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
   if (!isSupabaseConfigured()) return [];
@@ -212,7 +221,7 @@ export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
       const metadata = row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
         ? row.metadata as Record<string, unknown>
         : {};
-      return metadata.audience === "kids" &&
+      return hasPassedKidsVideoQa(metadata) &&
         metadata.generator === "zikr_internal_video_factory" &&
         isPubliclyRenderableVideo(row);
     })
@@ -245,7 +254,7 @@ export async function getKidsGeneratedVideoBySlug(slug: string): Promise<Video |
   const metadata = row?.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
     ? row.metadata as Record<string, unknown>
     : {};
-  if (!row || metadata.audience !== "kids" ||
+  if (!row || !hasPassedKidsVideoQa(metadata) ||
       metadata.generator !== "zikr_internal_video_factory" ||
       !isPubliclyRenderableVideo(row)) return null;
   return {
