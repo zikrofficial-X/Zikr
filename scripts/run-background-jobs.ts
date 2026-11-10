@@ -90,7 +90,7 @@ async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
     ),
     videoSeconds: parseBoundedNumberSetting(
       values.video_automation_video_seconds,
-      Math.max(10, Number(process.env.AUTO_VIDEO_SECONDS ?? 18) || 18),
+      Math.max(10, Number(process.env.AUTO_VIDEO_SECONDS ?? 25) || 25),
       10,
       45,
     ),
