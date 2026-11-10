@@ -70,7 +70,7 @@ for (const label of ["التشغيل والمراقبة", "إدارة المحت
 }
 const routeInventorySection = docs.split("## 1. جرد المسارات والصلاحيات")[1]?.split("## 2. نطاق الأدوار")[0] ?? "";
 const documentedGroups = [...routeInventorySection.matchAll(/^### (.+)$/gm)].map((match) => match[1].trim());
-const canonicalGroupLabels = ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الذاكرة والمكتبة", "الوسائط والصوت", "النشر والتواصل الاجتماعي", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"];
+const canonicalGroupLabels = ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الوسائط والذاكرة", "الوسائط والصوت", "النشر والتواصل الاجتماعي", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"];
 if (documentedGroups.join("|") !== canonicalGroupLabels.join("|")) {
   failures.push("admin governance headings must match the ten canonical navigation zones in the same order");
 }
