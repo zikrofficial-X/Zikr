@@ -11,6 +11,7 @@ for (const [token, message] of [
   ["q.metadata ? 'videoDisposedAt'", "the temporary media must have been disposed by the publishing flow"],
   ["q.metadata->'platformResults'->'youtube'->>'ok' = 'true'", "YouTube success must be confirmed"],
   ["q.metadata->'platformResults'->'youtube'->>'remoteId' ~ '^[A-Za-z0-9_-]{11}$'", "the provider ID must be a valid YouTube video ID"],
+  ["v.youtube_id is null or v.youtube_id = q.metadata->'platformResults'->'youtube'->>'remoteId'", "a confirmed provider ID must not overwrite a conflicting catalog ID"],
   ["cp.status = 'published'", "the video must have been published on the ZIKR site before purge"],
   ["r.status = 'completed'", "the canonical generation request must be completed"],
   ["r.content_hash = v.metadata->>'contentHash'", "the content hash must match the canonical request"],
