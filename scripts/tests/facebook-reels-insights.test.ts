@@ -2,17 +2,22 @@ import assert from "node:assert/strict";
 import {
   FACEBOOK_REELS_INSIGHT_METRICS,
   parseFacebookReelsInsights,
-  resolveFacebookReelVideoIdFromPostPayload,
+  resolveFacebookReelVideoIdFromPagePostsPayload,
   shouldRefreshFacebookReelsInsights,
 } from "../../src/features/social/services/facebook-reels-insights";
 
 const now = Date.parse("2026-11-06T00:00:00.000Z");
-assert.equal(resolveFacebookReelVideoIdFromPostPayload({ object_id: "123456789012345" }), "123456789012345");
-assert.equal(resolveFacebookReelVideoIdFromPostPayload({
-  attachments: { data: [{ media: { id: "987654321098765" } }] },
-}), "987654321098765");
-assert.equal(resolveFacebookReelVideoIdFromPostPayload({ id: "123456789012345" }), null);
-assert.equal(resolveFacebookReelVideoIdFromPostPayload(null), null);
+assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload({
+  data: [{ id: "123456789012345", object_id: "987654321098765" }],
+}, "123456789012345"), "987654321098765");
+assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload({
+  data: [{ id: "111111111111111_123456789012345", attachments: { data: [{ media: { id: "987654321098765" } }] } }],
+}, "123456789012345"), "987654321098765");
+assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload({
+  data: [{ id: "123456789012345", object_id: "not-a-video-id" }],
+}, "123456789012345"), null);
+assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload({ data: [] }, "123456789012345"), null);
+assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload(null, "123456789012345"), null);
 
 assert.equal(shouldRefreshFacebookReelsInsights(null, now), true);
 assert.equal(shouldRefreshFacebookReelsInsights({
@@ -102,5 +107,7 @@ const insightsService = readFileSync(
 );
 assert.ok(insightsService.includes("typeof reel.videoId === \"string\""));
 assert.ok(insightsService.includes("resolveFacebookReelVideoIdFromPost"));
+assert.ok(insightsService.includes('"/posts"'));
+assert.ok(insightsService.includes('fields", "id,object_id,attachments{media}"'));
 
 console.log("Facebook Reels metric parsing and secure Page OAuth flow tests passed.");

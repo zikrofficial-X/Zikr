@@ -16,6 +16,7 @@ const socialPage = read("src/app/admin/social/page.tsx");
 const writtenPage = read("src/app/admin/social/written-studio/page.tsx");
 const navigation = read("src/features/admin/config/navigation.ts");
 const runner = read("scripts/run-background-jobs.ts");
+const socialWorker = read("scripts/jobs/social-publishing.ts");
 const videoGenerator = read("scripts/jobs/template-video-automation.ts");
 const socialPublishingService = read("src/features/social/services/social-publishing.ts");
 const youtubeCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
@@ -60,6 +61,11 @@ if (!runner.includes("processSocialPublishQueue") ||
     !runner.includes('process.env.SOCIAL_PUBLISH_ENABLED !== "true"') ||
     !runner.includes('process.env.SOCIAL_SYNC_INSIGHTS === "true"')) {
   failures.push("background runner must process social only when enabled and must make insights sync opt-in");
+}
+if (!runner.includes('const insightsFailed = target === "insights"') ||
+    !runner.includes("if (insightsFailed > 0)") ||
+    !socialWorker.includes("Number(facebookInsights.failed ?? 0) + Number(insights.failed ?? 0)")) {
+  failures.push("analytics-only worker must expose provider failures and fail CI instead of reporting false success");
 }
 if (!runner.includes('"social"') || runner.includes("reconcileCompletedVideoSocialQueue")) {
   failures.push("social execution must remain a separate target and never reconcile historical completed videos");

@@ -31,6 +31,7 @@ export type YoutubePostInsightsSyncResult = {
   candidates: number;
   fetched: number;
   updated: number;
+  failed: number;
 };
 
 const INSIGHTS_REFRESH_MS = 6 * 60 * 60 * 1000;
@@ -113,12 +114,12 @@ export async function syncYoutubePublishedPostInsights(
   limit = MAX_INSIGHTS_BATCH,
 ): Promise<YoutubePostInsightsSyncResult> {
   const apiKey = getServerEnv().YOUTUBE_API_KEY?.trim();
-  if (!apiKey) return { configured: false, candidates: 0, fetched: 0, updated: 0 };
+  if (!apiKey) return { configured: false, candidates: 0, fetched: 0, updated: 0, failed: 0 };
 
   const boundedLimit = Math.max(1, Math.min(250, Math.floor(limit) || 1));
   const candidates = await getCandidates(boundedLimit);
   if (candidates.length === 0) {
-    return { configured: true, candidates: 0, fetched: 0, updated: 0 };
+    return { configured: true, candidates: 0, fetched: 0, updated: 0, failed: 0 };
   }
 
   let fetched = 0;
@@ -184,5 +185,5 @@ export async function syncYoutubePublishedPostInsights(
     }
   }
 
-  return { configured: true, candidates: candidates.length, fetched, updated };
+  return { configured: true, candidates: candidates.length, fetched, updated, failed: 0 };
 }
