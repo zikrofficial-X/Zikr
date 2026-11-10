@@ -12,7 +12,7 @@ export function parseWrittenGenerationRequest(value: unknown):
  const body = value as Record<string, unknown>;
  const rawCategory = body.category === undefined ? "auto" : body.category;
  const allowedCategories: readonly WrittenCategory[] = [
-  "auto", "quran", "hadith", "dua", "adhkar", "story", "prophets", "companions", "knowledge", "kids",
+  "auto", "quran", "hadith", "dua", "story", "prophets", "companions", "knowledge", "kids",
  ];
  if (typeof rawCategory !== "string" || !allowedCategories.includes(rawCategory as WrittenCategory)) {
   return { ok: false, reason: "invalid_category" };

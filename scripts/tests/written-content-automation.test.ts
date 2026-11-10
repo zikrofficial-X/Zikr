@@ -6,11 +6,12 @@ const draft:WrittenPostDraft={eligible:true,title:"مع كل عسر يسر",hook
 assert.equal(normalizeWrittenCategory("hadith"),"hadith");assert.equal(normalizeWrittenCategory("other"),"auto");assert.equal(normalizeWrittenCategory("companions"),"companions");assert.equal(normalizeWrittenCategory("kids"),"kids");
 assert.deepEqual(parseWrittenGenerationRequest({}), { ok: true, value: { category: "auto", batchSize: 1 } });
 assert.deepEqual(parseWrittenGenerationRequest({ category: "kids", batchSize: "2" }), { ok: true, value: { category: "kids", batchSize: 2 } });
-assert.equal(parseWrittenGenerationRequest(null).reason, "invalid_body");
-assert.equal(parseWrittenGenerationRequest([]).reason, "invalid_body");
-assert.equal(parseWrittenGenerationRequest({ category: "unknown" }).reason, "invalid_category");
-assert.equal(parseWrittenGenerationRequest({ batchSize: 4 }).reason, "invalid_batch_size");
-assert.equal(parseWrittenGenerationRequest({ batchSize: true }).reason, "invalid_batch_size");
+assert.deepEqual(parseWrittenGenerationRequest(null), { ok: false, reason: "invalid_body" });
+assert.deepEqual(parseWrittenGenerationRequest([]), { ok: false, reason: "invalid_body" });
+assert.deepEqual(parseWrittenGenerationRequest({ category: "unknown" }), { ok: false, reason: "invalid_category" });
+assert.deepEqual(parseWrittenGenerationRequest({ category: "adhkar" }), { ok: false, reason: "invalid_category" }, "categories disabled in the studio must not dispatch an unsupported workflow input");
+assert.deepEqual(parseWrittenGenerationRequest({ batchSize: 4 }), { ok: false, reason: "invalid_batch_size" });
+assert.deepEqual(parseWrittenGenerationRequest({ batchSize: true }), { ok: false, reason: "invalid_batch_size" });
 
 assert.equal(chooseWrittenSourceKind(["quran","kids_story"],"auto",false,0),"kids_story","auto generation should prioritize one approved Kids post when none exists today");
 assert.equal(chooseWrittenSourceKind(["quran","kids_story"],"auto",true,0),"quran","a second Kids post should not be prioritized after today's Kids slot is filled");

@@ -7,19 +7,6 @@ import { parseWrittenGenerationRequest } from "@/features/social/services/writte
 
 export const dynamic = "force-dynamic";
 
-const categories = new Set([
-  "auto",
-  "quran",
-  "hadith",
-  "dua",
-  "adhkar",
-  "story",
-  "prophets",
-  "companions",
-  "knowledge",
-  "kids",
-]);
-
 type WrittenQueueItem = {
   id: string;
   title: string;
