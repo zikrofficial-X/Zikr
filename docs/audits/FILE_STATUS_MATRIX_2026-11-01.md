@@ -3,8 +3,8 @@
 **Baseline:** `main@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`  
 **Manifest:** `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` (recursive Git tree snapshot; Git object SHA-1)  
 **Inventory:** 2130 tracked entries — 1639 files and 491 directories; 138209705 file bytes; API response not truncated.  
-**Coverage:** automated inventory 1639/1639 files (100%); full source-content reads 129/1639; 1510 files remain `REVIEW_REQUIRED`; no file or module is marked complete from static presence alone. Consumer tracing, dynamic-reference analysis, runtime verification and acceptance testing remain open; modules closed 0.
-**PR head (not the main baseline):** PR #275 current documentation head 436c2fce13c9ad51a1c7ec99fe2e455df3c5f562 follows code snapshot 0d4744948c0d96cfd04f0d60a1d7364b7b624524. The branch contains 1,657 files and 491 directories, with 18 additional paths, no removed paths, and 70 changed files (9,842 additions / 2,262 deletions). The refreshed PR manifest records the code snapshot at 0d474494 and excludes itself; all PR-only paths remain outside the main baseline manifest until merge.
+**Coverage:** automated inventory 1639/1639 files (100%); full source-content reads 129/1639; 1509 files remain `REVIEW_REQUIRED`; no file or module is marked complete from static presence alone. Consumer tracing, dynamic-reference analysis, runtime verification and acceptance testing remain open; modules closed 0.
+**PR head (not the main baseline):** PR #275 current head 519b62f3913d218785ce7b20b8809c1ee626308f follows code snapshot 0d4744948c0d96cfd04f0d60a1d7364b7b624524. The branch contains 1,657 files and 491 directories, with 18 additional paths, no removed paths, and 70 changed files (9,953 additions / 2,262 deletions). The refreshed PR manifest records the code snapshot at 0d474494 and excludes itself; all PR-only paths remain outside the main baseline manifest until merge.
 **Previous matrix:** 1631 file rows. Delta: 9 new paths, 1 removed paths, net +8 files.
 
 ## Inventory delta
