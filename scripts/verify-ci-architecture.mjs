@@ -21,6 +21,23 @@ assert.ok(!androidPublish.includes("branches:\n      - main"), "Android asset pu
 assert.ok(androidPublish.includes("workflow_dispatch:"), "Android asset publishing must retain explicit manual recovery");
 assert.ok(androidPublish.includes("inputs.retry"), "Android manual recovery must require an explicit retry input");
 assert.ok(androidPublish.includes("github.ref_type == 'tag'"), "Android publishing must support release tags");
+assert.ok(
+  androidPublish.includes("github.event_name == 'workflow_dispatch'") &&
+    androidPublish.includes("inputs.retry == true") &&
+    androidPublish.includes("startsWith(github.ref_name, 'android-release-v')"),
+  "Android recovery branches must require an explicit workflow_dispatch retry",
+);
+assert.ok(
+  androidPublish.includes("TAG_TARGET_SHA") &&
+    androidPublish.includes("ci/circleci: source-verify") &&
+    androidPublish.includes("ci/circleci: supabase-production-gate") &&
+    androidPublish.includes("ci/circleci: android-rebuild") &&
+    androidPublish.includes("ci/circleci: application-build-docs") &&
+    androidPublish.includes("ci/circleci: config-guard") &&
+    androidPublish.includes("ZIKR / Quality Gate") &&
+    !androidPublish.includes("github.event_name != 'workflow_dispatch'"),
+  "Every Android publish/retry path must verify the exact tag source commit and all CI gates",
+);
 
 const circle = read(".circleci/config.yml");
 const sourceVerifyJob = circle.slice(circle.indexOf("  source-verify:"), circle.indexOf("  application-build-docs:"));
