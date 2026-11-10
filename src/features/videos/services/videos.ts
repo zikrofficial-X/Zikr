@@ -261,6 +261,8 @@ export async function getInternalGeneratedVideos(limit = 24): Promise<Video[]> {
   return rows.filter((video) => {
     const metadata = video.metadata ?? {};
     return metadata.generator === "zikr_internal_video_factory" &&
-      (typeof metadata.generatedVideoUrl === "string" || typeof metadata.sourceVideoUrl === "string");
+      (typeof metadata.generatedVideoUrl === "string" ||
+        typeof metadata.sourceVideoUrl === "string" ||
+        Boolean(video.youtubeId));
   });
 }
