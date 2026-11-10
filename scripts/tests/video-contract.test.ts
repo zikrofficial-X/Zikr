@@ -30,7 +30,9 @@ assert.ok(voice.includes("ar-SA-HamedNeural"), "male MSA profile required");
 const videoCatalog = readFileSync("src/features/videos/services/videos.ts", "utf8");
 const videoDetailPage = readFileSync("src/app/videos/[slug]/page.tsx", "utf8");
 assert.ok(videoCatalog.includes('metadata.generator === "zikr_internal_video_factory"'), "internal generated video catalog must use a distinct generator marker");
-assert.ok(videoCatalog.includes('parsed.hostname !== "res.cloudinary.com"'), "internal generated media must be served only from HTTPS Cloudinary URLs");
+const videoMediaContract = readFileSync("src/features/videos/services/video-media-contract.ts", "utf8");
+assert.ok(videoCatalog.includes("resolveVideoMediaUrl(row)"), "video catalog must delegate media URL validation to the shared media contract");
+assert.ok(videoMediaContract.includes('parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com"'), "internal generated media must be served only from HTTPS Cloudinary URLs");
 assert.ok(videoDetailPage.includes('parsed.hostname === "res.cloudinary.com"'), "public internal video player must enforce the Cloudinary host allowlist");
 
 const worker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
