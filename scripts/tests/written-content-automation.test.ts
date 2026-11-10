@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {buildPublicKidsWrittenPost,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
+import {buildPublicKidsWrittenPost,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,isKidsWrittenPostCandidate,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
 const source:WrittenContentSource={kind:"quran",id:"ayah-1",title:"آية",sourceText:"إِنَّ مَعَ الْعُسْرِ يُسْرًا",reference:"سورة الشرح، الآية 6",publicPath:"/quran/ash-sharh",categoryLabel:"القرآن الكريم",sourceVerified:true,quoteRequired:true};
 const draft:WrittenPostDraft={eligible:true,title:"مع كل عسر يسر",hook:"قد تمر بلحظة تظن فيها أن الطريق انتهى، لكن الأمل يظل حاضرًا.",reflection:"تدعونا الآية إلى ألا نستسلم لليأس، وأن نتذكر أن الشدة لا تدوم وأن الأمل باب للعمل والصبر.",question:"ما المعنى الذي تستحضره عندما تمر بوقت صعب؟"};
 assert.equal(normalizeWrittenCategory("hadith"),"hadith");assert.equal(normalizeWrittenCategory("other"),"auto");assert.equal(normalizeWrittenCategory("companions"),"companions");assert.equal(normalizeWrittenCategory("kids"),"kids");
@@ -70,6 +70,28 @@ assert.throws(() => buildWrittenBackfillQueuePayload({
  now: "2026-11-10T08:00:00.000Z",
  scheduledAt: "2026-11-10T08:05:00.000Z",
 }), /Kids backfill must retain a valid Kids source ID and \/kids\/ public path/);
+assert.throws(() => buildWrittenBackfillQueuePayload({
+ articleId: "article-kids-invalid-path",
+ title: "قصة",
+ body: "نص مناسب للأطفال",
+ publicPath: "/kids/../admin",
+ sourceType: "kids_story",
+ sourceId: "123e4567-e89b-12d3-a456-426614174000",
+ automationKey: "written-v1:kids_story:123e4567-e89b-12d3-a456-426614174000",
+ now: "2026-11-10T08:00:00.000Z",
+ scheduledAt: "2026-11-10T08:05:00.000Z",
+}), /Kids backfill must retain a valid Kids source ID and \/kids\/ public path/);
+assert.throws(() => buildWrittenBackfillQueuePayload({
+ articleId: "article-kids-unsafe",
+ title: "قصة آمنة",
+ body: "أرسل رقم هاتفك لي",
+ publicPath: "/kids/story-safe",
+ sourceType: "kids_story",
+ sourceId: "123e4567-e89b-12d3-a456-426614174000",
+ automationKey: "written-v1:kids_story:123e4567-e89b-12d3-a456-426614174000",
+ now: "2026-11-10T08:00:00.000Z",
+ scheduledAt: "2026-11-10T08:05:00.000Z",
+}), /child-safety content check/);
 
 assert.equal(kidsMetadata.ageGroup, "6-8");
 
@@ -106,6 +128,15 @@ const kidsPublishCandidate = {
  body: queueRow.body,
  metadata: queueRow.metadata,
 };
+assert.equal(isKidsWrittenPostCandidate(kidsPublishCandidate), true, "properly labeled Kids written posts must be recognized as Kids candidates");
+assert.equal(isKidsWrittenPostCandidate({
+ ...kidsPublishCandidate,
+ metadata: { ...queueRow.metadata, audience: "general" },
+}), true, "Kids source identity/path markers must still trigger the safety gate when the audience marker is inconsistent");
+assert.equal(isKidsWrittenPostCandidate({
+ ...kidsPublishCandidate,
+ metadata: { audience: "general", source: { type: "quran" }, publicPath: "/quran/ash-sharh" },
+}), false, "general written posts must not be classified as Kids candidates");
 assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, liveKidsStory), true, "Kids written posts require a currently approved live story before provider delivery");
 assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, { ...liveKidsStory, published: false }), false, "unpublished Kids sources must be held before provider delivery");
 assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, { ...liveKidsStory, is_active: false }), false, "inactive Kids sources must be held before provider delivery");
@@ -147,6 +178,7 @@ assert.match(worker, /\/rest\/v1\/content_publish_queue/);
 assert.match(worker, /\/rest\/v1\/social_publish_queue/);
 assert.match(worker, /buildWrittenSocialQueuePayload/);
 assert.match(worker, /buildWrittenBackfillQueuePayload/);
+assert.match(worker, /skipped invalid written-post backfill/, "one malformed or unsafe historical row must not abort the entire backfill batch");
 assert.match(worker, /createWrittenSocialAutomationKey/);
 assert.match(worker, /enqueueExistingWrittenArticlesForFacebook/);
 assert.match(worker, /\/rest\/v1\/kids_content/);
@@ -184,6 +216,7 @@ assert.match(writtenStudio, /value: "kids", label: "قصص الأطفال الم
 assert.match(writtenFactory, /content_type:\s*"written_post"/);
 assert.match(writtenFactory, /target_platforms:\s*\["facebook"\]/);
 assert.match(socialPublishing, /checkKidsWrittenPostApproval\(item\)/, "social publishing must revalidate the live Kids source before provider delivery");
+assert.match(socialPublishing, /isKidsWrittenPostCandidate\(item\)/, "malformed Kids metadata must not bypass live source approval");
 assert.match(socialPublishing, /isEligibleKidsWrittenPostForPublishing\(item, rows\[0\]\)/);
 assert.ok(
   socialPublishing.indexOf("checkKidsWrittenPostApproval(item)") < socialPublishing.indexOf("publishPlatform(item, platform)"),

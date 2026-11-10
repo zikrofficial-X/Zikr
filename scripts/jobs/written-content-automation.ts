@@ -247,21 +247,27 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
   if(existing[0]){slot++;continue;}
   const nowIso=new Date().toISOString();
   const scheduledAt=new Date(Date.now()+5*60*1000+slot*8*60*60*1000).toISOString();
-  const queuePayload=buildWrittenBackfillQueuePayload({
-   articleId,
-   title,
-   body,
-   publicPath,
-   sourceType,
-   sourceId,
-   sourceTitle:str(source.title)||title,
-   sourceReference:str(source.reference),
-   ageGroup:str(source.ageGroup)||null,
-   originalCreatedAt:str(article.created_at),
-   automationKey,
-   now:nowIso,
-   scheduledAt,
-  });
+  let queuePayload: ReturnType<typeof buildWrittenBackfillQueuePayload>;
+  try {
+   queuePayload=buildWrittenBackfillQueuePayload({
+    articleId,
+    title,
+    body,
+    publicPath,
+    sourceType,
+    sourceId,
+    sourceTitle:str(source.title)||title,
+    sourceReference:str(source.reference),
+    ageGroup:str(source.ageGroup)||null,
+    originalCreatedAt:str(article.created_at),
+    automationKey,
+    now:nowIso,
+    scheduledAt,
+   });
+  } catch (error) {
+   console.warn("[written-content] skipped invalid written-post backfill", articleId, error instanceof Error ? error.message : String(error));
+   continue;
+  }
   await supabaseServerAdminRequest("/rest/v1/social_publish_queue",{
    method:"POST",
    headers:{"Content-Type":"application/json",Prefer:"return=minimal"},

@@ -131,9 +131,12 @@ export function buildWrittenBackfillQueuePayload(input: {
  const isKidsStory = input.sourceType === "kids_story";
  if (isKidsStory && (
   !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(input.sourceId) ||
-  !input.publicPath.startsWith("/kids/")
+  !/^\/kids\/[a-z0-9-]+$/i.test(input.publicPath)
  )) {
   throw new Error("Kids backfill must retain a valid Kids source ID and /kids/ public path.");
+ }
+ if (isKidsStory && containsKidsPersonalDataSolicitation([input.title, input.body].join("\n"))) {
+  throw new Error("Kids backfill must pass the child-safety content check.");
  }
  return {
   content_type: "written_post",
@@ -219,6 +222,20 @@ export type KidsWrittenPublishQueueItem = Pick<
   KidsWrittenQueueRow,
   "content_type" | "content_id" | "title" | "body" | "metadata"
 >;
+
+export function isKidsWrittenPostCandidate(
+  row: Pick<KidsWrittenPublishQueueItem, "content_type" | "metadata">,
+): boolean {
+  if (row.content_type !== "written_post") return false;
+  const metadata = asWrittenRecord(row.metadata);
+  const sourceMetadata = asWrittenRecord(metadata.source);
+  const publicPath = typeof metadata.publicPath === "string" ? metadata.publicPath : "";
+  return metadata.audience === "kids" ||
+    typeof metadata.kidsContentId === "string" ||
+    sourceMetadata.type === "kids_story" ||
+    publicPath === "/kids" ||
+    publicPath.startsWith("/kids/");
+}
 
 export function isEligibleKidsWrittenPostForPublishing(
   row: KidsWrittenPublishQueueItem,

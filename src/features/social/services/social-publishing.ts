@@ -9,7 +9,7 @@ import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPu
 import { shouldRestorePurgedPublishedVideo } from "@/features/videos/services/video-media-contract";
 import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
-import { isEligibleKidsWrittenPostForPublishing, type CurrentKidsStory } from "@/features/social/services/written-content";
+import { isEligibleKidsWrittenPostForPublishing, isKidsWrittenPostCandidate, type CurrentKidsStory } from "@/features/social/services/written-content";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
 
@@ -165,9 +165,10 @@ async function checkKidsWrittenPostApproval(
   item: SocialPublishQueueItem,
 ): Promise<KidsWrittenApproval> {
   const metadata = item.metadata ?? {};
-  if (item.content_type !== "written_post" || metadata.audience !== "kids") {
+  if (item.content_type !== "written_post" || !isKidsWrittenPostCandidate(item)) {
     return "not_applicable";
   }
+  if (metadata.audience !== "kids") return "blocked";
 
   const sourceId = item.content_id;
   if (!sourceId || metadata.kidsContentId !== sourceId) return "blocked";
