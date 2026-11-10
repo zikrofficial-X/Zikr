@@ -310,27 +310,53 @@ jobs:
               };
               const currentMain = await api("/commits/main");
               if (currentMain.data.sha !== sourceSha) { console.log("main advanced beyond this source commit; newer main pipeline must prepare the release."); process.exit(0); }
-              let tagRef = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
-              if (tagRef.status === 404) {
-                const tagObject = await api("/git/tags", "POST", { tag: releaseTag, message: "ZIKR Android " + releaseTag, object: sourceSha, type: "commit" });
-                if (!tagObject.data.sha) throw new Error("GitHub did not return the annotated tag object SHA.");
-                await api("/git/refs", "POST", { ref: "refs/tags/" + releaseTag, sha: tagObject.data.sha });
-                tagRef = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
+              const existingRelease = await api("/releases/tags/" + encodeURIComponent(releaseTag));
+            if (existingRelease.status !== 404) {
+              if (existingRelease.data.tag_name !== releaseTag) throw new Error("GitHub returned a different existing release tag.");
+              const existingTagRef = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
+              if (existingTagRef.status === 404) throw new Error("An existing GitHub release has no matching Git tag.");
+              let existingTargetSha = existingTagRef.data.object?.sha;
+              let existingTargetType = existingTagRef.data.object?.type;
+              if (existingTargetType === "tag") {
+                const existingTagObject = await api("/git/tags/" + existingTargetSha);
+                existingTargetSha = existingTagObject.data.object?.sha;
+                existingTargetType = existingTagObject.data.object?.type;
               }
-              let tagTargetSha = tagRef.data.object?.sha;
-              let tagTargetType = tagRef.data.object?.type;
-              if (tagTargetType === "tag") { const annotatedTag = await api("/git/tags/" + tagTargetSha); tagTargetSha = annotatedTag.data.object?.sha; tagTargetType = annotatedTag.data.object?.type; }
-              if (tagTargetType !== "commit" || tagTargetSha !== sourceSha) throw new Error("Release tag provenance mismatch; refusing to retarget an existing tag.");
-              let release = await api("/releases/tags/" + encodeURIComponent(releaseTag));
-              if (release.status === 404) release = await api("/releases", "POST", { tag_name: releaseTag, name: "ZIKR Android " + version, body: notes, draft: true, prerelease: false });
-              if (release.data.tag_name !== releaseTag) throw new Error("GitHub returned a different release tag.");
-              if (release.data.draft !== true) throw new Error("A published release already exists; refusing to rewrite it.");
-              const verifyTag = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
-              let verifySha = verifyTag.data.object?.sha;
-              let verifyType = verifyTag.data.object?.type;
-              if (verifyType === "tag") { const verifyObject = await api("/git/tags/" + verifySha); verifySha = verifyObject.data.object?.sha; verifyType = verifyObject.data.object?.type; }
-              if (verifyType !== "commit" || verifySha !== sourceSha) throw new Error("Final tag-to-commit verification failed.");
-              console.log("Verified " + releaseTag + " draft against exact source commit " + sourceSha + ".");
+              if (existingTargetType !== "commit" || !/^[0-9a-f]{40}$/.test(existingTargetSha || "")) {
+                throw new Error("Existing release tag does not resolve to a commit; refusing to alter it.");
+              }
+              console.log("Release " + releaseTag + " already exists (" + (existingRelease.data.draft ? "draft" : "published") + "). Preserving its original tag target " + existingTargetSha + "; no new release is required for this main update.");
+              process.exit(0);
+            }
+
+            let tagRef = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
+            if (tagRef.status === 404) {
+              const tagObject = await api("/git/tags", "POST", { tag: releaseTag, message: "ZIKR Android " + releaseTag, object: sourceSha, type: "commit" });
+              if (!tagObject.data.sha) throw new Error("GitHub did not return the annotated tag object SHA.");
+              await api("/git/refs", "POST", { ref: "refs/tags/" + releaseTag, sha: tagObject.data.sha });
+              tagRef = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
+            }
+            let tagTargetSha = tagRef.data.object?.sha;
+            let tagTargetType = tagRef.data.object?.type;
+            if (tagTargetType === "tag") {
+              const annotatedTag = await api("/git/tags/" + tagTargetSha);
+              tagTargetSha = annotatedTag.data.object?.sha;
+              tagTargetType = annotatedTag.data.object?.type;
+            }
+            if (tagTargetType !== "commit" || tagTargetSha !== sourceSha) throw new Error("Release tag provenance mismatch; refusing to retarget an existing tag.");
+            const release = await api("/releases", "POST", { tag_name: releaseTag, name: "ZIKR Android " + version, body: notes, draft: true, prerelease: false });
+            if (release.data.tag_name !== releaseTag) throw new Error("GitHub returned a different release tag.");
+            if (release.data.draft !== true) throw new Error("New Android release was not created as a draft.");
+            const verifyTag = await api("/git/ref/tags/" + encodeURIComponent(releaseTag));
+            let verifySha = verifyTag.data.object?.sha;
+            let verifyType = verifyTag.data.object?.type;
+            if (verifyType === "tag") {
+              const verifyObject = await api("/git/tags/" + verifySha);
+              verifySha = verifyObject.data.object?.sha;
+              verifyType = verifyObject.data.object?.type;
+            }
+            if (verifyType !== "commit" || verifySha !== sourceSha) throw new Error("Final tag-to-commit verification failed.");
+            console.log("Verified " + releaseTag + " draft against exact source commit " + sourceSha + ".");
             '
   android-rebuild:
     docker:

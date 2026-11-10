@@ -32,6 +32,8 @@ assert.ok(androidCircle.includes("/git/tags") && androidCircle.includes("/git/re
 assert.ok(androidCircle.includes("/releases") && androidCircle.includes("draft: true"), "CircleCI must create a GitHub Draft Release after creating/verifying the tag");
 assert.ok(androidCircle.includes("process.env.CIRCLE_SHA1") && androidCircle.includes("/commits/main"), "Android draft release creation must refuse stale main commits");
 assert.ok(androidCircle.includes("tagTargetSha !== sourceSha") && androidCircle.includes("refusing to retarget"), "Android draft release creation must preserve exact tag provenance and never retarget an existing release");
+assert.ok(androidCircle.includes("const existingRelease = await api(\"/releases/tags/\"") && androidCircle.includes("existingRelease.status !== 404"), "CircleCI must skip release creation when the semantic release already exists");
+assert.ok(androidCircle.includes("existingTargetSha") && androidCircle.includes("Preserving its original tag target") && androidCircle.includes("process.exit(0)"), "A documentation-only main update must preserve an existing release and its original tag target without failing or retargeting");
 assert.ok(androidCircle.includes("node --input-type=module -e") && androidCircle.includes("Authorization:") && androidCircle.includes("Bearer"), "Android draft release creation must use Node 22 built-in fetch and the protected GitHub token without external CLI installation");
 assert.ok(!androidCircle.includes("sudo apt-get install -y gh jq"), "Android draft release creation must not depend on apt-installed GitHub CLI or jq");
 assert.ok(androidCircle.includes("Upload verified Android assets to GitHub Draft Release"), "CircleCI must upload signed Android assets to GitHub Draft Releases");
