@@ -30,7 +30,7 @@ assert.equal(
   "recovery must compare-and-set the exact stale generated Cloudinary pointer",
 );
 assert.equal(
-  buildDuplicateVideoOwnerVideoUrlFilter("https://example.com/video.mp4"),
+  buildDuplicateVideoOwnerVideoUrlFilter("https://not-cloudinary.test/video.mp4"),
   "or=(video_url.is.null,video_url.eq.)",
   "unexpected non-Cloudinary URLs must never be included in recovery updates",
 );
@@ -115,14 +115,14 @@ reject({
   },
 }, "a purged row without prior-publication evidence must fail closed");
 reject({
-  owner: { video_url: "https://example.com/video.mp4" },
+  owner: { video_url: "https://not-cloudinary.test/video.mp4" },
   siteRecord: {
     published: false,
     metadata: { mediaState: "purged", mediaPurgedFromPublished: true, generatedVideoUrl: null, videoUrl: null },
   },
 }, "a non-Cloudinary URL must never be overwritten by generated-media recovery");
 reject({
-  siteRecord: { published: false, metadata: { mediaState: "purged", videoUrl: "https://example.com/video.mp4" } },
+  siteRecord: { published: false, metadata: { mediaState: "purged", videoUrl: "https://not-cloudinary.test/video.mp4" } },
 }, "a catalog record retaining a media URL must not be treated as purged");
 
 const worker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
