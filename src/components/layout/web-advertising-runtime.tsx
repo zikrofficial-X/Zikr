@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
+import { PRODUCTION_URL } from "@/lib/site";
 
 const MONETAG_VERIFICATION = "8dc00be3e026b336f3aa64f60373941e";
 const MONETAG_PRIMARY_ZONE = "12171820";
@@ -20,6 +21,14 @@ function appendScript(id: string, src: string, options?: { cfasync?: boolean }) 
   script.async = true;
   if (options?.cfasync === false) script.dataset.cfasync = "false";
   document.head.appendChild(script);
+}
+
+function isCanonicalProductionHost(): boolean {
+  try {
+    return window.location.hostname.toLowerCase() === new URL(PRODUCTION_URL).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
 }
 
 function removeAdvertisingElements() {
@@ -57,7 +66,17 @@ export function WebAdvertisingRuntime() {
       return;
     }
 
-    if (process.env.NODE_ENV !== "production") return;
+    if (process.env.NODE_ENV !== "production") {
+      removeAdvertisingElements();
+      return;
+    }
+
+    // Vercel Preview deployments are production builds too. Never inject
+    // publisher scripts outside the canonical origin.
+    if (!isCanonicalProductionHost()) {
+      removeAdvertisingElements();
+      return;
+    }
 
     const monetagMeta = document.querySelector('meta[name="monetag"]');
     if (!monetagMeta) {
