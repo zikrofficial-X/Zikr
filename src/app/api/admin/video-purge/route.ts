@@ -372,8 +372,8 @@ export async function POST(request: NextRequest) {
     }
 
     const pendingSocialGenerationRefs = includeMemory
-      ? await supabaseServerAdminRequest<Array<{ content_id: string }>>(
-          "/rest/v1/social_publish_queue?status=neq.published&content_type=like.*video*&content_id=not.is.null&select=content_id&limit=1000",
+      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/social_publish_queue?status=neq.published&video_url=not.is.null&select=id&limit=1000",
         )
       : [];
     if (includeMemory && (pendingSocialGenerationRefs ?? []).length >= 1000) {
@@ -397,7 +397,7 @@ export async function POST(request: NextRequest) {
       purgeLockAttempted = false;
       return NextResponse.json(
         {
-          error: `يوجد ${pendingSocialGenerationRefs.length} عنصر فيديو غير مكتمل في طابور التواصل. تم الحفاظ على سجل التوليد ولم يبدأ الحذف.`,
+          error: `يوجد ${pendingSocialGenerationRefs.length} عنصر نشر اجتماعي غير مكتمل مرتبط بوسيط فيديو. تم الحفاظ على سجل التوليد ولم يبدأ الحذف.`,
           protectedGenerationRequestCount: pendingSocialGenerationRefs.length,
           deletionStarted: false,
           paused: false,
