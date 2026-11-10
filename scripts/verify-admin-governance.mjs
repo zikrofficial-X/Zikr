@@ -65,7 +65,7 @@ for (const group of groups) {
 }
 const items = groups.flatMap((group) => group.items);
 if (groups.length !== 10) failures.push("expected exactly ten canonical admin navigation zones");
-for (const label of ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الذاكرة والمكتبة", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان", "النشر والتواصل الاجتماعي"]) {
+for (const label of ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الوسائط والذاكرة", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان", "النشر والتواصل الاجتماعي"]) {
   if (!groups.some((group) => group.label === label)) failures.push("missing canonical admin navigation zone: " + label);
 }
 const routeInventorySection = docs.split("## 1. جرد المسارات والصلاحيات")[1]?.split("## 2. نطاق الأدوار")[0] ?? "";
@@ -85,14 +85,18 @@ for (const href of hrefs) {
 }
 const socialGroup = groups.find((group) => group.key === "social-publishing");
 const mediaAudioGroup = groups.find((group) => group.key === "media-audio");
+const memoryGroup = groups.find((group) => group.key === "memory");
 if (!socialGroup || !socialGroup.items.some((item) => item.href === "/admin/social")) {
   failures.push("social publishing must have a dedicated navigation group");
 }
 if (mediaAudioGroup?.items.some((item) => item.href === "/admin/social")) {
   failures.push("social publishing must not be nested under media/audio navigation");
 }
-if (!mediaAudioGroup?.items.some((item) => item.href === "/admin/media")) {
-  failures.push("media library must be reachable from media/audio navigation");
+if (!memoryGroup?.items.some((item) => item.href === "/admin/memory" && item.permission === "media.manage")) {
+  failures.push("media library and internal memory must use the canonical /admin/memory route with media.manage");
+}
+if (mediaAudioGroup?.items.some((item) => item.href === "/admin/media")) {
+  failures.push("legacy /admin/media redirect must not be exposed as a canonical navigation link");
 }
 for (const group of groups) {
   const seen = new Set();
