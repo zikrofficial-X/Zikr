@@ -1,5 +1,5 @@
 import { getServerEnv } from '@/lib/env';
-import { createAdminClient } from '@/lib/supabase/server';
+import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
 import { readStoredFacebookCredential } from '@/features/social/services/facebook-credentials';
 
 export type FacebookPageProfile = {
@@ -46,14 +46,11 @@ function toProfile(row: CachedRow | null, pageId: string): FacebookPageProfile |
 }
 
 async function readCachedProfile(pageId: string): Promise<FacebookPageProfile | null> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from('social_platform_profiles')
-    .select('*')
-    .eq('platform', 'facebook')
-    .maybeSingle();
-  if (error) throw error;
-  return toProfile((data ?? null) as CachedRow | null, pageId);
+  const rows = await supabaseServerAdminRequest<CachedRow[]>(
+    "/rest/v1/social_platform_profiles?platform=eq.facebook&select=*&limit=1",
+  );
+  const row = Array.isArray(rows) ? rows[0] ?? null : null;
+  return toProfile(row, pageId);
 }
 
 type FacebookGraphProfileResponse = {
@@ -173,9 +170,17 @@ export async function getFacebookPageProfile(): Promise<FacebookPageProfile | nu
       last_error: null,
     };
 
-    const supabase = createAdminClient();
-    const { error } = await supabase.from('social_platform_profiles').upsert(profile, { onConflict: 'platform' });
-    if (error) throw error;
+    await supabaseServerAdminRequest(
+      "/rest/v1/social_platform_profiles?on_conflict=platform",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify(profile),
+      },
+    );
 
     return {
       id: profile.external_id,
