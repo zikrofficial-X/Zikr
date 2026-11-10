@@ -47,7 +47,7 @@ export default async function KidsVideosPage() {
                 <Card className="h-full overflow-hidden transition hover:border-brand-gold/50">
                   <div className="relative aspect-video bg-black/40">
                     <Image
-                      src={video.thumbnailUrl}
+                      src={video.thumbnailUrl || "/branding/og-image.jpg"}
                       alt={video.title}
                       fill
                       unoptimized
