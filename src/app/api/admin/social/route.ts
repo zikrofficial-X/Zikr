@@ -14,7 +14,7 @@ import { getFacebookPageAudienceSnapshot } from "@/features/social/services/face
 import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
 import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
-import { getManualReconciliationPlatforms, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
+import { getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -140,12 +140,7 @@ function authBlockedPlatforms(
 }
 
 function retryPlatforms(item: QueueItem, allowAmbiguous = false): string[] {
-  const succeeded = successfulPlatforms(item.metadata);
-  const blocked = authBlockedPlatforms(item.metadata, item.target_platforms);
-  const manual = new Set<string>(getManualReconciliationPlatforms(item.metadata));
-  return item.target_platforms.filter(
-    platform => !succeeded.has(platform) && !blocked.has(platform) && (allowAmbiguous || !manual.has(platform))
-  );
+  return getRetryableSocialPlatforms(item.target_platforms, item.metadata, allowAmbiguous);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
