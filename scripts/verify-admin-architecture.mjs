@@ -181,8 +181,8 @@ if (
 }
 if (
   !writtenSocialClient.includes('fetch("/api/admin/social/written"') ||
-  !writtenSocialClient.includes('method:"POST"') ||
-  !writtenSocialClient.includes("معاينة المنشور")
+  !/method:\s*"POST"/.test(writtenSocialClient) ||
+  !writtenSocialClient.includes("معاينة نص المنشور")
 ) {
   failures.push("written Facebook studio must retain generation, queue loading and post preview UI");
 }
