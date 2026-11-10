@@ -84,7 +84,7 @@ Worker/runtime configuration includes:
 - `VIDEO_DAILY_LIMIT`
 - `VIDEO_AUTOMATION_DRY_RUN`
 - `VIDEO_AI_ENABLED`
-- `VIDEO_AI_ATTEMPTS_PER_RUN`
+- `VIDEO_AI_ATTEMPTS_PER_RUN` (fallback only; the Admin `video_automation_ai_attempts_per_run` database setting takes precedence after runtime settings are loaded, bounded from 0 to 4)
 - `VIDEO_PROVIDER_ORDER`
 - `HF_WAN_VIDEO_ENABLED`
 - `HF_LTX_FAST_VIDEO_ENABLED`
