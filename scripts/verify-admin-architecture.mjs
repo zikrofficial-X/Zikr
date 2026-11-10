@@ -55,11 +55,14 @@ const CANONICAL_ARCHITECTURE = {
     ["/admin/memory", "ذاكرة المشروع", "media.manage"],
   ],
   "الوسائط والصوت": [
+    ["/admin/media", "مكتبة الوسائط", "media.manage"],
     ["/admin/audio", "مركز الصوت", "audio.manage"],
     ["/admin/audio/quran", "تلاوات القرآن", "audio.manage"],
     ["/admin/audio/adhan", "الأذان", "audio.manage"],
     ["/admin/audio/tts", "تحويل النص إلى صوت", "audio.manage"],
     ["/admin/site-audio", "صوت الموقع والتذكيرات", "audio.manage"],
+  ],
+  "النشر والتواصل الاجتماعي": [
     ["/admin/social", "مركز النشر الاجتماعي", "social.manage"],
   ],
   "عالم الأطفال": [
@@ -167,8 +170,9 @@ if (!socialPage.includes('requireAdminPermission("social.manage")') || !socialPa
 if (!writtenSocialPage.includes('redirect("/admin/memory")')) {
   failures.push("retired external written-social studio must redirect to internal project memory");
 }
-if (!navigation.includes('href: "/admin/social"') || !navigation.includes('key: "media-audio"')) {
-  failures.push("social publishing must appear inside the canonical media/audio group and require social.manage");
+const socialNavigationGroup = navigation.match(/key:\s*"social-publishing"[\s\S]*?items:\s*\[([\s\S]*?)\]/);
+if (!socialNavigationGroup?.[1].includes('href: "/admin/social"') || !socialNavigationGroup[1].includes('permission: "social.manage"')) {
+  failures.push("social publishing must appear inside its dedicated canonical navigation group and require social.manage");
 }
 for (const canonicalPath of [
   "src/app/admin/video/page.tsx",
