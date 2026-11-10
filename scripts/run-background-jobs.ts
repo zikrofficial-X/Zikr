@@ -398,15 +398,24 @@ async function main() {
     });
   }
 
+  const insightsFailed = target === "insights" && insights
+    ? Number(insights.facebookInsights?.failed ?? 0) + Number(insights.youtubeInsights?.failed ?? 0)
+    : 0;
+
   console.log("[background-jobs] Summary:", JSON.stringify({
     target,
     videos,
     sitePublishing,
     social,
     insights,
+    insightsFailed,
     queueAlerts,
     durationMs: Date.now() - startedAt,
   }, null, 2));
+
+  if (insightsFailed > 0) {
+    throw new Error(`Social insights sync completed with ${insightsFailed} provider failure(s); details are recorded in the worker log.`);
+  }
 
   const outcome = evaluateBackgroundJobOutcome({
     videoSucceeded: videos.succeeded,
