@@ -23,7 +23,12 @@ export async function dispatchGitHubWorkflow(
   workflowFile: string,
   inputs: WorkflowInputs = {},
 ) {
-  if (!isGitHubWorkflowDispatchAllowed(process.env)) {
+  if (!isGitHubWorkflowDispatchAllowed({
+    VERCEL: process.env.VERCEL,
+    VERCEL_URL: process.env.VERCEL_URL,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    VERCEL_GIT_COMMIT_REF: process.env.VERCEL_GIT_COMMIT_REF,
+  })) {
     throw new Error(
       "GitHub workflow dispatch is disabled outside the Vercel production deployment of main.",
     );
