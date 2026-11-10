@@ -91,7 +91,7 @@ function isPubliclyRenderableVideo(row: Record<string, unknown>): boolean {
 export async function getVideoCategories(): Promise<VideoCategory[]> {
   if (!isSupabaseConfigured()) return FALLBACK_VIDEO_CATEGORIES;
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
-    "/rest/v1/video_categories?select=id,name_ar,name_en,slug,icon&published=eq.true&order=name_ar.asc"
+    "/rest/v1/video_categories?select=id,name_ar,name_en,slug,icon&published=eq.true&slug=neq.kids-stories&order=name_ar.asc"
   ).catch(error => {
     console.error("[content] Failed to fetch video categories:", error);
     return [];
@@ -190,6 +190,84 @@ export async function getVideoBySlug(slug: string): Promise<Video | null> {
   };
 }
 
+
+export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
+  const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
+  if (!isSupabaseConfigured()) return [];
+
+  const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
+    "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&published=eq.true&metadata->>audience=eq.kids&category_id=eq." +
+      encodeURIComponent("kids-stories") +
+      "&order=created_at.desc&limit=" + safeLimit,
+  ).catch(async () => {
+    // Category IDs are UUIDs; resolve by the canonical Kids-only slug before retrying.
+    const categories = await supabaseServerAnonRequest<Array<{ id: string }>>(
+      "/rest/v1/video_categories?slug=eq.kids-stories&select=id&limit=1",
+    ).catch(() => []);
+    const categoryId = categories?.[0]?.id;
+    if (!categoryId) return [];
+    return supabaseServerAnonRequest<Array<Record<string, unknown>>>(
+      "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&published=eq.true&metadata->>audience=eq.kids&category_id=eq." +
+        encodeURIComponent(categoryId) + "&order=created_at.desc&limit=" + safeLimit,
+    ).catch(() => []);
+  });
+
+  return (rows ?? [])
+    .filter((row) => {
+      const metadata = row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+        ? row.metadata as Record<string, unknown>
+        : {};
+      return metadata.audience === "kids" &&
+        metadata.generator === "zikr_internal_video_factory" &&
+        isPubliclyRenderableVideo(row);
+    })
+    .slice(0, safeLimit)
+    .map((row) => ({
+      id: row.id as string,
+      title: row.title as string,
+      slug: row.slug as string,
+      description: row.description as string | undefined,
+      youtubeId: row.youtube_id as string | undefined,
+      thumbnailUrl: resolveVideoThumbnail(row),
+      duration: (row.duration as number) || undefined,
+      views: (row.views as number) || 0,
+      published: row.published as boolean,
+      categoryId: row.category_id as string | undefined,
+      metadata: row.metadata as Record<string, unknown> | undefined,
+      createdAt: row.created_at as string,
+    }));
+}
+
+export async function getKidsGeneratedVideoBySlug(slug: string): Promise<Video | null> {
+  const safeSlug = encodeURIComponent(slug?.trim() ?? "");
+  if (!safeSlug || !isSupabaseConfigured()) return null;
+  const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
+    "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&slug=eq." +
+      safeSlug + "&published=eq.true&metadata->>audience=eq.kids&limit=1",
+    { timeoutMs: 8000, retries: 1, cache: "no-store" },
+  ).catch(() => []);
+  const row = rows?.[0];
+  const metadata = row?.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+    ? row.metadata as Record<string, unknown>
+    : {};
+  if (!row || metadata.audience !== "kids" ||
+      metadata.generator !== "zikr_internal_video_factory" ||
+      !isPubliclyRenderableVideo(row)) return null;
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    slug: row.slug as string,
+    description: row.description as string | undefined,
+    youtubeId: row.youtube_id as string | undefined,
+    thumbnailUrl: resolveVideoThumbnail(row),
+    duration: (row.duration as number) || undefined,
+    views: (row.views as number) || 0,
+    published: row.published as boolean,
+    categoryId: row.category_id as string | undefined,
+    metadata: row.metadata as Record<string, unknown>,
+    createdAt: row.created_at as string,
+  };
+}
 
 export async function getInternalGeneratedVideos(limit = 24): Promise<Video[]> {
   const rows = await getVideos(undefined, Math.max(1, Math.min(100, Math.trunc(limit))));
