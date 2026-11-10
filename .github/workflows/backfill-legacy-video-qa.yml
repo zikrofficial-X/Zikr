@@ -1,0 +1,71 @@
+name: ZIKR Legacy Video QA Backfill
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/backfill-legacy-video-qa.yml"
+      - "scripts/jobs/backfill-legacy-video-qa.ts"
+      - "scripts/jobs/template-video-automation.ts"
+      - "src/features/videos/services/video-publish-approval.ts"
+      - "src/features/videos/providers/content-hash.ts"
+      - "src/features/videos/providers/ai-visual-policy.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-legacy-video-qa-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+    steps:
+      - name: Checkout exact main revision
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Validate production database credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
+            echo "::error::Missing Supabase service-role secret for legacy QA backfill." >&2
+            exit 1
+          }
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+        timeout-minutes: 15
+
+      - name: Revalidate and backfill legacy automated QA
+        run: pnpm video:qa:backfill -- --apply
+        timeout-minutes: 15
+
+      - name: Report completion
+        if: always()
+        run: echo "Legacy QA backfill is idempotent, verifies current sources and Cloudinary media, and never creates or republishes social queue items."
