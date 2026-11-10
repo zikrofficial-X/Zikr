@@ -235,11 +235,11 @@ async function acquirePurgeLock(token: string): Promise<boolean> {
 
 async function releasePurgeLock(token: string): Promise<void> {
   const description = `${PURGE_LOCK_DESCRIPTION} ${token}`;
-  await supabaseServerAdminRequest(
+  const released = await supabaseServerAdminRequest<Array<{ key: string }>>(
     `/rest/v1/admin_settings?key=eq.video_purge_in_progress&description=eq.${encodeURIComponent(description)}`,
     {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      headers: { "Content-Type": "application/json", Prefer: "return=representation" },
       body: JSON.stringify({
         value: false,
         description: PURGE_LOCK_DESCRIPTION,
@@ -247,6 +247,9 @@ async function releasePurgeLock(token: string): Promise<void> {
       }),
     },
   );
+  if ((released ?? []).length === 0) {
+    throw new Error("Purge lock ownership changed before release; leaving the worker lock enabled.");
+  }
 }
 
 async function getVideoAutomationEnabled(): Promise<boolean> {
