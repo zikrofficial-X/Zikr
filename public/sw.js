@@ -33,6 +33,24 @@ const PUBLIC_CONTENT_API_PREFIXES = [
   "/api/kids/games/verse",
 ];
 
+async function purgeNativeAdvertisingMarkup() {
+  if (!isNativeCapacitorWorker) return;
+
+  const cache = await caches.open(CACHE_NAME);
+  const requests = await cache.keys();
+  await Promise.all(
+    requests.map(async request => {
+      const response = await cache.match(request);
+      if (!response?.headers.get("content-type")?.includes("text/html")) return;
+
+      const html = await response.clone().text();
+      if (/(?:al5sm\\.com|5gvci\\.com|uplcm\\.com|name=["']monetag["'])/i.test(html)) {
+        await cache.delete(request);
+      }
+    })
+  );
+}
+
 function isPublicContentApi(url) {
   return PUBLIC_CONTENT_API_PREFIXES.some(
     prefix => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`)
@@ -212,16 +230,19 @@ self.addEventListener("install", event => {
 
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(cacheNames =>
-      Promise.all(
+    caches.keys().then(async cacheNames => {
+      await Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName.startsWith(CACHE_PREFIX) && cacheName !== CACHE_NAME) {
             return caches.delete(cacheName);
           }
           return undefined;
         })
-      )
-    )
+      );
+      // Remove only previously cached HTML containing ad markup. Keep the
+      // user's Quran/audio/offline data and the current cache intact.
+      await purgeNativeAdvertisingMarkup();
+    })
   );
   self.clients.claim();
 });
