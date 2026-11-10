@@ -1,7 +1,20 @@
 # ZIKR — Current Project Status
 
+## Current verified checkpoint — 2026-11-10 15:08 Africa/Cairo
+
+**Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
+
+- Main production source remains `zikrofficial-X/Zikr@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`. Vercel project `zikr` is READY on the exact main SHA; Supabase `zqtssvlvmkzeeyqghqfk` is `ACTIVE_HEALTHY`.
+- Recursive main inventory: 2,130 entries (1,639 files, 491 directories), not truncated. The matrix classifies 128/1,639 files; 1,511 remain `REVIEW_REQUIRED`. No module is closed. PR #275 has 1,649 files, 491 directories, 10 added paths, no removals and 56 changed files; it remains Draft.
+- PR #275 now contains three safety hardening commits: `c93eae7` (strict Supabase DB endpoint/role/TLS validation and canonical guarded tafsir restore), `73a5e99` (least-privilege analytics-only social insights workflow), and `695aacf` (CI-gated, stale-SHA-safe production release that cannot be cancelled mid-migration).
+- Exact current PR CI is not complete: CircleCI source-verify 4448 and application-build-docs 4447 pending; config-guard 4449 pending; GitHub Quality Gate 42823397094 pending. PR must remain unmerged until all checks pass on the same head.
+- Supabase: 415 migrations (latest `20261110085520`), 92/92 public tables with RLS, 211 policies, 45 triggers, 9 buckets, 0 Storage objects. Security Advisor: leaked-password protection disabled. Performance Advisor: 89 unused-index candidates. Health Advisor: no findings. No production DB writes or migrations were made.
+- Live content snapshot: 6,236 Quran ayahs/tafsir rows, 2,964 hadiths, 113 articles. Video catalog 127 rows (22 published, 105 hidden); 112 completed generation requests, 64 without a recorded video URL. Social queue 98 rows: 79 published, 6 failed and 3 partial video items with missing source media, and 10 queued written posts. Content queue 121 published; insights 148 (72 Facebook Reels, 76 YouTube).
+- Android `v1.1.14` is still the published release from older SHA `d055980...`; no signed APK/AAB from current main was produced in this run. No production deployment or external social post was made.
+- Remaining blockers: missing source media for 9 video queue rows; 64 completed requests without video URLs need reconciliation; CI pending; no isolated safe Preview; Storage owner-policy migration awaits controlled release; leaked-password protection needs owner-level decision; current-main Android release pending.
+
 **Production branch:** `main`  
-**Last reconciled:** 2026-11-10 14:59 Africa/Cairo  
+**Last reconciled:** 2026-11-10 15:08 Africa/Cairo  
 **Repository:** `zikrofficial-X/Zikr`  
 **Production origin:** `https://zikrmediaofficial.vercel.app`
 
