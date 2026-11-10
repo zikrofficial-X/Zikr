@@ -794,3 +794,29 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 - Read-only production smoke `GET /api/health` returned HTTP 200 on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. Vercel runtime error query for the last hour returned none. Current production Facebook/YouTube profile rows remain `ok`.
 - Production ACL and advisor checks were read-only. Security advisor still reports leaked-password protection disabled; 86 unused-index INFO findings remain untouched. No production migrations, data writes, deployment, content generation, Gemini request, social publishing, video purge, or storage deletion occurred.
 - All six audit PRs remain open without owner review. CODEOWNERS owner `@Zikrmediaofficial` has no collaborator permission under the connected identity. The repository audit remains open with 1,525 main-baseline files `REVIEW_REQUIRED` and zero modules closed.
+
+
+## 2026-11-10T23:28:50.972Z — PR #320 Kids/social automation and visibility audit continuation
+
+### Reproducible defects fixed on the audit branch
+
+- **Daily written-post quota undercount:** `Math.max(articleCount, socialQueueCount)` could undercount disjoint reservations when a general article row existed without its social queue row while a Kids-only queue row existed. Replaced it with unique source/automation-key reservation counting across both sets; a regression test proves the article/queue pair deduplicates while the orphan article and Kids-only queue each count.
+- **Religious attribution validation gap:** only the reflection field was screened for unsupported religious attributions. Validation now scans title, hook, reflection, and question; regression tests cover the non-reflection fields.
+- **Accidental generation dispatch:** malformed JSON and invalid admin generation inputs previously fell through to automatic category defaults. A strict pure parser now rejects malformed/non-object bodies, unsupported categories, and invalid batch sizes; the route returns HTTP 400 before dispatch. The disabled `adhkar` option is rejected consistently with the current workflow/studio choices.
+- **Kids detail fallback resurrection:** the client detail page previously substituted a static fallback after any non-OK API response, and metadata generation independently preferred static fallback/anon reads. It now stays unavailable on a hidden/unknown response, while SEO metadata uses the same visibility-aware server resolver. Detail API caching is disabled to prevent stale content after visibility changes.
+- **Kids admin publication defaults and automation eligibility:** new records now default to draft; type and age-group values are validated; the optional `age_appropriate` metadata flag is written for automated Kids social eligibility and the admin list surfaces stories lacking that flag. Public visibility remains governed by published + active state; the automation flag does not hide otherwise published Kids stories.
+- **Kids public-read/share contract:** migration `20261110212000` now requires `published=true` and `is_active=true` for public reads and share-counter updates, while retaining all active published content types. No production migration or data mutation was run.
+
+### Production evidence and remaining blockers
+
+- Read-only Supabase counts: 6 published stories with the automation age flag, 20 published stories without it, 35 games, 3 quizzes, and 1 wudu row; all grouped records are active and published. The flag is not a claim that the 20 stories are unsafe. A sample published story endpoint returned HTTP 200.
+- The live RLS policy is still `published=true` only, and migration `20261110212000` remains unapplied. There are no currently inactive published rows, but the policy does not yet prevent future inactive rows from public REST reads.
+- Production Vercel is READY on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; `/api/health` and `/kids` returned 200, and the Kids social-post feed returned `[]`. No production generation, Gemini call, social dispatch, migration, or deploy occurred.
+- iOS AASA currently returns an empty app association because `IOS_ASSOCIATED_DOMAIN_APP_ID` and Apple Team ID are absent from Vercel configuration and the repository has no `DEVELOPMENT_TEAM` value. Android assetlinks is populated. iOS HTTPS OAuth return-to-app remains owner/device blocked.
+- The stored YouTube credential has `connected_by=null`; PR #322 covers future authorization attribution, but the existing row cannot be backfilled without evidence of the original authorizing admin.
+
+### Exact-head verification and governance
+
+- Code checkpoint: `cfc1f9c6b0b5881384dbe1441c414ba3643b0107`; PR #320: 89 commits, 26 changed files, 2,159 tree entries. CircleCI `config-guard` SUCCESS; `source-verify` and `application-build-docs` PENDING. No GitHub Quality Gate run is attached to this exact checkpoint. Earlier superseded-head failures were corrected, but current-head verification is still open.
+- CODEOWNERS owner `@Zikrmediaofficial` remains unavailable to request under the connected GitHub identity; no owner review is submitted. PR remains open and unmerged. No checks, approvals, or protection rules were bypassed.
+- Main-baseline repository audit remains open: 1,525 files are `REVIEW_REQUIRED`, modules closed remain 0. Manual owner review, Supabase migration apply, Apple Team ID configuration, YouTube reconnection attribution, and physical Android/iOS acceptance remain outstanding.

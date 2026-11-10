@@ -567,3 +567,35 @@ No files or production data were deleted in this checkpoint. No Cloudinary asset
 - PR #320 head `74fa73d507c30cec433b894692af573cb79e6659` passed GitHub Quality Gate #42916076863 and all three CircleCI contexts. PR #324 head `f86010f1d97c0064699bca0aabdc34f126896a82` passed Quality Gate #42914613560 and config-guard.
 - Read-only production smoke: `GET https://zikrmediaofficial.vercel.app/api/health` returned HTTP 200 with `commit=c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` and `environment=production`. Vercel reported no runtime errors in the last hour.
 - Production ACL was only inspected, not changed. No production migration, role update, content generation, social publication, purge, storage deletion, or deployment was performed.
+
+
+## Audit continuation — 2026-11-11 01:27 Africa/Cairo (2026-11-10T23:28:50.972Z)
+
+### PR #320 code checkpoint and repairs
+
+- Reviewed the actual contents of all 26 changed paths in [PR #320](https://github.com/zikrofficial-X/Zikr/pull/320), tracing the Kids page/detail API, admin save action, social queue, generator, publisher gate, Supabase policy/RPC, GitHub workflow, and tests. Code checkpoint before this documentation reconciliation: `cfc1f9c6b0b5881384dbe1441c414ba3643b0107`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 89 commits ahead, 0 behind; 26 changed files. Recursive branch inventory: 2,159 entries (1,667 files, 492 directories).
+- Written-content automation now counts unique source reservations across article rows and social-only Kids queue rows. This avoids the daily target undercount when an article insert succeeds but its social queue insert fails while a Kids-only queue row is created.
+- Religious-attribution screening now covers title, hook, reflection, and question, not reflection alone. The admin written-generation endpoint rejects malformed JSON, invalid categories, and invalid batch sizes with HTTP 400 instead of silently dispatching an automatic generation.
+- Kids content management now defaults new records to draft, validates type and age-group values, records the optional `metadata.age_appropriate` flag for automated Kids social-content eligibility, and shows the number of stories not yet approved for that automation. This flag is not a public-page visibility rule: published active Kids content of every supported type remains visible.
+- Kids detail routes no longer resurrect a same-slug static fallback after the visibility-aware API returns 404. SEO metadata uses the same server-side visibility resolver, and detail API responses are `private, no-store` so deactivation changes are not masked by stale CDN content.
+- The Kids public-read policy and share-counter RPC migration now require both `published=true` and `is_active=true`, while preserving all published active content types. No production migration or row mutation was executed.
+
+### Read-only production evidence
+
+- Supabase `kids_content` currently has 6 published stories with `metadata.age_appropriate=true`, 20 published stories without that automation flag, 35 games, 3 quizzes, and 1 wudu record; all returned groups are active and published. The flag is an automation eligibility signal, not an assertion that the 20 existing stories are unsafe. A read-only production request for `/api/kids/content/zikr-kids-01` returned HTTP 200 for a published active story without that flag.
+- The live `kids_content_public_read` policy still checks `published=true` only; the 20261110212000 migration is not applied. The new migration adds the missing active-state condition. Current data contains no inactive published rows, but the policy gap is latent until the migration is applied.
+- Supabase production remains ACTIVE_HEALTHY with 418 applied migrations through `20261110170000`. Migration `20261110212000_kids_content_public_read_respects_active_state.sql` is pending.
+- Vercel Production remains READY on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` at deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`. Read-only smoke checks: `/api/health` HTTP 200, `/kids` HTTP 200, and `/api/kids/social-posts` returned an empty array (no published Kids written-post queue rows). No preview deployment exists for PR #320.
+- Production `/.well-known/apple-app-site-association` returns HTTP 200 but an empty `details`/apps list because Vercel has no `IOS_ASSOCIATED_DOMAIN_APP_ID` (nor Apple Team ID variable). iOS Associated Domains are present in the Xcode entitlements, but HTTPS browser OAuth return-to-app cannot be verified until the actual Apple Team ID + bundle App ID are supplied and the variable is configured. Android `assetlinks.json` is populated.
+- The connected YouTube OAuth credential row has `connected_by=null`; PR #322 records the authenticated admin for future connections. No backfill or reconnection was performed.
+
+### Exact-head CI and approval state
+
+- On code checkpoint `cfc1f9c6b0b5881384dbe1441c414ba3643b0107`, CircleCI `config-guard` is SUCCESS; `source-verify` and `application-build-docs` are PENDING. No GitHub Quality Gate run is currently attached to this exact code checkpoint. Earlier superseded heads exposed a stale static assertion and a test syntax error; both were corrected in later commits, but neither earlier pass nor failure is treated as verification of this head.
+- PR #320 remains open. CODEOWNERS requires `@Zikrmediaofficial`; the connected GitHub identity cannot request that owner as a collaborator and no owner review is submitted. No protected-branch or review gate was bypassed. No merge or deployment was attempted.
+- No production SQL/data writes, content generation, Gemini requests, social publication, storage deletion, video purge, Android release, or Vercel deployment were triggered.
+
+### Remaining scope
+
+- The repository-wide audit is still IN PROGRESS. The main-baseline matrix still has 1,525 `REVIEW_REQUIRED` rows and zero modules closed. This checkpoint closes neither the whole repository nor the manual/device/owner acceptance gates.
+- Manual work still required: CODEOWNERS owner review; apply the pending Supabase migration through the approved release path; review the 20 published stories for optional automation eligibility without bulk-changing their metadata; supply the real Apple Team ID/App ID and verify iOS Universal Link return on device; verify YouTube OAuth reconnection/audit attribution; complete Android/iOS device acceptance and public-route browser journeys.

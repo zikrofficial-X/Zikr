@@ -1970,3 +1970,42 @@ These entries are branch overlays, not part of the `main@c4560d9` manifest basel
 - Read-only production `/api/health` smoke returned HTTP 200 on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; no Vercel runtime errors were found in the last hour. Production Facebook/YouTube profile status remains `ok`.
 - Supabase still has 418 applied migrations through `20261110170000`; the Kids migration and anonymous-wrapper grant migration remain unapplied. Security advisor reports disabled leaked-password protection; 86 unused-index INFO findings remain untouched.
 - CODEOWNERS owner `@Zikrmediaofficial` remains unavailable as a requestable collaborator. All six PRs remain open without owner review; 1,525 main-baseline files remain `REVIEW_REQUIRED`; modules closed remain 0.
+
+
+## PR #320 exact-head overlay — 2026-11-10T23:28:50.972Z
+
+- Reviewed code checkpoint: `cfc1f9c6b0b5881384dbe1441c414ba3643b0107`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; PR #320 has 89 commits, 0 behind, and 26 changed paths.
+- Recursive branch inventory: 2,159 entries (1,667 blobs and 492 trees), not truncated.
+- All 26 changed paths were read from their actual branch contents and traced through the relevant Kids, social automation, admin, database, workflow, and detail-page consumers. The exact-head CI state is not closed: CircleCI config-guard SUCCESS; source-verify/application-build-docs PENDING; no GitHub Quality Gate run attached to this exact code checkpoint.
+- The baseline manifest was reconciled: its ledger record now points to the exact main-baseline ledger blob `057c5b9ffb16691abfc6e245e583c908a0dbe73d` (size 93248), not a stale intermediate branch ledger blob. The manifest continues to exclude itself and leaves `docs` and `docs/audits` ancestor directory SHA values null to avoid self-reference. Every other record is checked against `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` path/mode/blob-SHA/blob-size.
+- Current code findings: daily written-post reservations are deduplicated by source; religious attribution screening covers every generated draft field; malformed admin generation requests fail with 400; Kids detail/SEO no longer resurrect hidden database slugs; detail API is no-store; Kids admin defaults to draft and exposes automation eligibility; public Kids visibility remains published + active for all content types; the pending migration applies the active-state condition to RLS and share counting.
+- Main-baseline status remains 1,525 `REVIEW_REQUIRED` rows and zero modules closed. This overlay does not claim repository-wide completion.
+
+| Changed path | Exact blob SHA | Bytes | Status |
+|---|---|---:|---|
+| `.circleci/config.yml` | `e05272c698aec33f64e436b86d1478820f8e7e56` | 37564 | reviewed; exact-head CI pending |
+| `PROJECT_STATUS.md` | `650be49493b158127dbad4fe1317c8243b3cb3e2` | 99200 | reconciled |
+| `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | `d1f6bdb52888c23b062e99174c559366eb382445` | 134225 | reconciled |
+| `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | `SELF (not embedded)` | — | reconciled in this commit |
+| `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` | `cee0e56dced2769e3d9b73701713122c70e10e92` | 311031 | main-baseline manifest corrected |
+| `package.json` | `66b90f8f474004b8fe2186e89ff490cbaf04c0ea` | 15789 | reviewed; exact-head CI pending |
+| `scripts/jobs/written-content-automation.ts` | `da4338def6cfa1350e4b5c549b04bf5fae0da158` | 23524 | reviewed; exact-head CI pending |
+| `scripts/platform-route-baseline.mjs` | `f26237b693b59c6e5daf484637ec212abe8b541f` | 380 | reviewed; exact-head CI pending |
+| `scripts/tests/kids-content-visibility.test.ts` | `98ebe12271476ea39bb6ed4da764bcfcbdf0da23` | 4513 | reviewed; exact-head CI pending |
+| `scripts/tests/kids-share-rate-limit.test.ts` | `d65b4ca3c07020c315202b15f01a4382f3232a38` | 1738 | reviewed; exact-head CI pending |
+| `scripts/tests/written-content-automation.test.ts` | `19a8deb15c78e9068963c462f573b9b826b7f57e` | 23071 | reviewed; exact-head CI pending |
+| `scripts/verify-ci-architecture.mjs` | `e3f84bbc768e39d8bd932a7930d5f94e0594c024` | 29402 | reviewed; exact-head CI pending |
+| `src/app/admin/kids/actions.ts` | `40598863277ade6b21515e8703e228990d04118d` | 4466 | reviewed; exact-head CI pending |
+| `src/app/api/admin/social/written/route.ts` | `d051950fa907dd78e9d988927bf8bfc5c9e60414` | 4305 | reviewed; exact-head CI pending |
+| `src/app/api/kids/content/[slug]/route.ts` | `1ef60bf34de0032082cd91ec59261b71853a6831` | 927 | reviewed; exact-head CI pending |
+| `src/app/api/kids/social-posts/route.ts` | `04f162aa598144f9c531deb299dc3883af7b04ac` | 2716 | reviewed; exact-head CI pending |
+| `src/app/api/kids/track-share/route.ts` | `05051d159c4b0f18dac301594c6ecc0a61663a07` | 3087 | reviewed; exact-head CI pending |
+| `src/app/kids/[slug]/layout.tsx` | `7d75600016902edf9bf9857c329bcf01db58fdbc` | 1114 | reviewed; exact-head CI pending |
+| `src/app/kids/[slug]/page.tsx` | `1c18beb4267ab5690c4f376398a60794d83e561d` | 23556 | reviewed; exact-head CI pending |
+| `src/features/admin/components/kids-content-manager.tsx` | `c187cbd2e9e6482d65eae477d88480637f8bc8a3` | 11991 | reviewed; exact-head CI pending |
+| `src/features/kids/services/kids-content-visibility.ts` | `84502847ba52bfeb10f10c3b22ede8c898b0c820` | 1225 | reviewed; exact-head CI pending |
+| `src/features/kids/services/kids-content.ts` | `020205da1846277e68366fd0c2e03e8fa567ecdf` | 5993 | reviewed; exact-head CI pending |
+| `src/features/kids/services/share-rate-limit.ts` | `c7550eae6bd1f2ca1ce46e061161e58d664a7775` | 1165 | reviewed; exact-head CI pending |
+| `src/features/social/services/social-publishing.ts` | `a6c9bd96ccdb65993078ecaa72cc7dba8ef7bb43` | 54101 | reviewed; exact-head CI pending |
+| `src/features/social/services/written-content.ts` | `6cfa1dfd8d3945f73c35012c6330a9742060e74e` | 16640 | reviewed; exact-head CI pending |
+| `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql` | `3fc6d98a1107be2c64033f69b4bbcb8b059b6295` | 1138 | reviewed; exact-head CI pending |
