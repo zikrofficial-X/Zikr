@@ -45,6 +45,7 @@ export function validateLegacyCloudinaryMaster(videoUrl: string, content: Record
     assetPath = assetPath.replace(/^v\d+\//, "");
     if (!/\.(mp4|webm|mov|m4v)$/i.test(assetPath)) return null;
     const publicId = assetPath.replace(/\.(mp4|webm|mov|m4v)$/i, "");
+    if (!publicId.startsWith("auto-")) return null;
     const storage = asRecord(content.mediaStorage);
     if (storage.provider !== "cloudinary") return null;
     if (typeof storage.publicId !== "string" || storage.publicId !== publicId) return null;
