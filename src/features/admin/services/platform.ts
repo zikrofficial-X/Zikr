@@ -366,15 +366,27 @@ export async function getAdminSettings(): Promise<Record<string, unknown>> {
   return Object.fromEntries(rows.map((row) => [row.key, row.value]));
 }
 
-export async function searchAdminContent(query: string) {
+export type AdminSearchResult = {
+  type: string;
+  id: string;
+  title: string;
+  slug: string | null;
+  published: boolean;
+  updated_at: string;
+};
+
+export async function searchAdminContent(query: string): Promise<{
+  items: AdminSearchResult[];
+  unavailableSources: string[];
+}> {
   const term = query.trim();
-  if (!term) return [];
+  if (!term) return { items: [], unavailableSources: [] };
   const pattern = encodeURIComponent(`%${term}%`);
   const requests = [
     ["مقال", "/rest/v1/articles?select=id,title,slug,published,updated_at&or=(title.ilike." + pattern + ",content.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
     ["قصة", "/rest/v1/stories?select=id,title,slug,published,updated_at&or=(title.ilike." + pattern + ",content.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
     ["فيديو", "/rest/v1/videos?select=id,title,slug,published,updated_at&or=(title.ilike." + pattern + ",description.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
-    ["حديث", "/rest/v1/hadiths?select=id,text_ar,grade_ar,updated_at&or=(text_ar.ilike." + pattern + ",grade_ar.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
+    ["حديث", "/rest/v1/hadiths?select=id,text_ar,grade_ar,published,updated_at&or=(text_ar.ilike." + pattern + ",grade_ar.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
     ["دعاء", "/rest/v1/duas?select=id,title_ar,text_ar,published,updated_at&or=(title_ar.ilike." + pattern + ",text_ar.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
     ["مكتبة", "/rest/v1/content_library?select=id,title_ar,title_en,slug,published,updated_at&or=(title_ar.ilike." + pattern + ",title_en.ilike." + pattern + ",body_ar.ilike." + pattern + ")&order=updated_at.desc&limit=10"],
   ] as const;
@@ -383,19 +395,29 @@ export async function searchAdminContent(query: string) {
     requests.map(async ([type, path]) => {
       try {
         const rows = await supabaseServerAdminRequest<Array<Record<string, unknown>>>(path, { method: "GET" });
-        return rows.map((row) => ({
+        return {
           type,
-          id: String(row.id ?? ""),
-          title: String(row.title ?? row.title_ar ?? row.title_en ?? "بدون عنوان"),
-          slug: typeof row.slug === "string" ? row.slug : null,
-          published: Boolean(row.published),
-          updated_at: String(row.updated_at ?? ""),
-        }));
-      } catch {
-        return [];
+          ok: true,
+          rows: rows.map((row) => ({
+            type,
+            id: String(row.id ?? ""),
+            title: String(row.title ?? row.title_ar ?? row.title_en ?? row.text_ar ?? "بدون عنوان"),
+            slug: typeof row.slug === "string" ? row.slug : null,
+            published: Boolean(row.published),
+            updated_at: String(row.updated_at ?? ""),
+          })),
+        };
+      } catch (error) {
+        console.error("[admin/search] failed to search source:", type, error);
+        return { type, ok: false, rows: [] as AdminSearchResult[] };
       }
     }),
   );
 
-  return results.flat().sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  return {
+    items: results.flatMap((result) => result.rows).sort(
+      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+    ),
+    unavailableSources: results.filter((result) => !result.ok).map((result) => result.type),
+  };
 }

@@ -26,6 +26,8 @@ const analyticsDashboard = read("src/app/admin/analytics/analytics-dashboard.tsx
 const securityService = read("src/features/admin/services/security.ts");
 const auditService = read("src/features/admin/services/audit.ts");
 const editorialActions = read("src/app/admin/editorial-actions.ts");
+const knowledgeActions = read("src/app/admin/knowledge/actions.ts");
+const androidActions = read("src/app/admin/android/actions.ts");
 const docs = read("docs/admin/ADMIN_CONSOLE_GOVERNANCE.md");
 const packageJson = JSON.parse(read("package.json"));
 
@@ -36,6 +38,25 @@ const groups = [...navigation.matchAll(/key:\s*"([^"]+)",\s*label:\s*"([^"]+)"[\
     items: [...group[3].matchAll(/href:\s*"([^"]+)",\s*label:\s*"([^"]+)",\s*permission:\s*"([^"]+)"/g)]
       .map((item) => ({ href: item[1], label: item[2], permission: item[3] })),
   }));
+const knowledgeAuditCalls = [...knowledgeActions.matchAll(/recordAdminAuditEvent\s*\(/g)];
+if (
+  !knowledgeActions.includes('import { recordAdminAuditEvent }') ||
+  knowledgeAuditCalls.length !== 4 ||
+  !knowledgeActions.includes('"knowledge.companion.save"') ||
+  !knowledgeActions.includes('"knowledge.scholar.save"') ||
+  !knowledgeActions.includes('"knowledge.surah.update"') ||
+  !knowledgeActions.includes('"knowledge.hadith.save"')
+) {
+  failures.push("all four Islamic knowledge mutations must append an admin audit event after a successful write");
+}
+if (
+  !androidActions.includes('import { recordAdminAuditEvent }') ||
+  !androidActions.includes('"android.release_setting.update"') ||
+  !androidActions.includes('permission: "android.manage"')
+) {
+  failures.push("Android release-setting mutations must append a permission-scoped admin audit event");
+}
+
 const socialManagerRole = permissions.match(/social_manager:\s*\[([\s\S]*?)\],/);
 const videoManagerRole = permissions.match(/video_manager:\s*\[([\s\S]*?)\],/);
 if (!socialManagerRole || !socialManagerRole[1].includes("'social.manage'") || !socialManagerRole[1].includes("'social.publish'")) {
@@ -51,7 +72,7 @@ const moduleCatalog = read("src/features/admin/config/modules.ts");
 const moduleKeys = [...moduleCatalog.matchAll(/\{\s*key:\s*"([^"]+)"/g)].map((match) => match[1]);
 const catalog = moduleKeys.map((key) => ({ key }));
 if (catalog.map((module) => module.key).join("|") !== groups.map((group) => group.key).join("|")) {
-  failures.push("ADMIN_MODULES must mirror the nine canonical navigation keys and order");
+  failures.push("ADMIN_MODULES must mirror the ten canonical navigation keys and order");
 }
 for (const group of groups) {
   const catalogEntry = catalog.find((entry) => entry.key === group.key);
@@ -64,22 +85,70 @@ for (const group of groups) {
   }
 }
 const items = groups.flatMap((group) => group.items);
-if (groups.length !== 9) failures.push("expected exactly nine canonical admin navigation zones");
-for (const label of ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الذاكرة والمكتبة", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"]) {
+if (groups.length !== 10) failures.push("expected exactly ten canonical admin navigation zones");
+for (const label of ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الوسائط والذاكرة", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان", "النشر والتواصل الاجتماعي"]) {
   if (!groups.some((group) => group.label === label)) failures.push("missing canonical admin navigation zone: " + label);
 }
 const routeInventorySection = docs.split("## 1. جرد المسارات والصلاحيات")[1]?.split("## 2. نطاق الأدوار")[0] ?? "";
 const documentedGroups = [...routeInventorySection.matchAll(/^### (.+)$/gm)].map((match) => match[1].trim());
-const canonicalGroupLabels = ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الذاكرة والمكتبة", "الوسائط والصوت", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"];
+const canonicalGroupLabels = ["التشغيل والمراقبة", "إدارة المحتوى", "المصادر والمعرفة", "مصنع الفيديوهات", "الوسائط والذاكرة", "الوسائط والصوت", "النشر والتواصل الاجتماعي", "عالم الأطفال", "النمو والتحليلات", "النظام والأمان"];
 if (documentedGroups.join("|") !== canonicalGroupLabels.join("|")) {
-  failures.push("admin governance headings must match the nine canonical navigation zones in the same order");
+  failures.push("admin governance headings must match the ten canonical navigation zones in the same order");
 }
 if (!items.length) failures.push("no canonical navigation items were parsed");
 if (items.some((item) => !item.label.trim() || !item.permission.trim())) failures.push("navigation item has an empty label or permission");
 
+const iconMap = sidebar.match(/const ICONS: Record<string, LucideIcon> = \{([\s\S]*?)\n\};/);
+const registeredIcons = new Set(
+  [...(iconMap?.[1] ?? "").matchAll(/(?:^|\n)\s*(?:"([^"]+)"|([a-z0-9-]+)):\s*[A-Z][A-Za-z0-9]*,/g)]
+    .map((match) => match[1] ?? match[2]),
+);
+const usedIcons = [...navigation.matchAll(/icon:\s*"([^"]+)"/g)].map((match) => match[1]);
+for (const icon of [...new Set(usedIcons)]) {
+  if (!registeredIcons.has(icon)) failures.push("admin navigation references an unregistered sidebar icon: " + icon);
+}
+
 const hrefs = items.map((item) => item.href);
-for (const href of new Set(hrefs.filter((value, index) => hrefs.indexOf(value) !== index))) {
-  failures.push("duplicate admin navigation route: " + href);
+for (const href of hrefs) {
+  if (hrefs.filter((candidate) => candidate === href).length > 1) {
+    failures.push("duplicate admin navigation route: " + href);
+  }
+}
+const socialGroup = groups.find((group) => group.key === "social-publishing");
+const mediaAudioGroup = groups.find((group) => group.key === "media-audio");
+const memoryGroup = groups.find((group) => group.key === "memory");
+if (
+  !socialGroup ||
+  !socialGroup.items.some((item) => item.href === "/admin/social" && item.permission === "social.manage") ||
+  !socialGroup.items.some((item) => item.href === "/admin/social/written-studio" && item.permission === "social.manage")
+) {
+  failures.push("social center and written-content studio must both have a dedicated social.manage navigation group");
+}
+if (
+  mediaAudioGroup?.items.some((item) =>
+    item.href === "/admin/social" || item.href === "/admin/social/written-studio"
+  )
+) {
+  failures.push("social publishing must not be nested under media/audio navigation");
+}
+if (
+  !docs.includes("`/admin/social/written-studio`") ||
+  !docs.includes("مصنع المنشورات المكتوبة لفيسبوك")
+) {
+  failures.push("admin governance must document the active written-content studio route");
+}
+if (!memoryGroup?.items.some((item) => item.href === "/admin/memory" && item.permission === "media.manage")) {
+  failures.push("media library and internal memory must use the canonical /admin/memory route with media.manage");
+}
+if (mediaAudioGroup?.items.some((item) => item.href === "/admin/media")) {
+  failures.push("legacy /admin/media redirect must not be exposed as a canonical navigation link");
+}
+for (const group of groups) {
+  const seen = new Set();
+  for (const item of group.items) {
+    if (seen.has(item.href)) failures.push("duplicate route within navigation group " + group.key + ": " + item.href);
+    seen.add(item.href);
+  }
 }
 
 function routeFile(href) {
@@ -144,6 +213,18 @@ if (!sidebar.includes("filteredMobileGroups") || !sidebar.includes("لا توج�
 }
 if (!adminService.includes("admin_role_assignments") || !adminService.includes("requireAdminPermissionApi")) {
   failures.push("admin RBAC/API guard contract missing");
+}
+const proxy = read("src/proxy.ts");
+if (!proxy.includes('headers.set("x-zikr-pathname", pathname)')) {
+  failures.push("admin route proxy must forward the requested pathname for safe post-login return navigation");
+}
+if (
+  !adminService.includes("import { headers } from 'next/headers'") ||
+  !adminService.includes("requestHeaders.get('x-zikr-pathname')") ||
+  !adminService.includes("requestedPath?.startsWith('/admin/')") ||
+  !adminService.includes("encodeURIComponent(nextPath)")
+) {
+  failures.push("unauthenticated admin deep links must return to their original /admin path without allowing external redirects");
 }
 if (!/catch \(error\) \{[\s\S]*return true;[\s\S]*\}/.test(securityService)) {
   failures.push("destructive-action MFA policy must fail closed when settings cannot be read");

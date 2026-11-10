@@ -57,7 +57,7 @@ for (const sourceDir of sourceDirs) {
   const absoluteDir = join(root, sourceDir);
   if (existsSync(absoluteDir)) filesToScan.push(...walk(absoluteDir));
 }
-for (const rootFile of ['proxy.ts', 'next.config.ts']) {
+for (const rootFile of ['src/proxy.ts', 'next.config.ts']) {
   const absoluteFile = join(root, rootFile);
   if (existsSync(absoluteFile)) filesToScan.push(absoluteFile);
 }

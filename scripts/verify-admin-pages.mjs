@@ -82,6 +82,32 @@ for (const token of [
   if (!seoActions.includes(token)) failures.push(`SEO/Admin save action is missing safety/data wiring: ${token}`);
 }
 
+const kidsEntryPage = readFileSync("src/app/admin/kids/page.tsx", "utf8");
+const kidsContentPage = readFileSync("src/app/admin/kids/content/page.tsx", "utf8");
+const kidsContentManager = readFileSync("src/features/admin/components/kids-content-manager.tsx", "utf8");
+for (const [label, source] of [["Kids dashboard", kidsEntryPage], ["Kids content route", kidsContentPage]]) {
+  if (!source.includes("@/features/admin/components/kids-content-manager")) {
+    failures.push(`${label} must render the shared full content manager, not a placeholder route.`);
+  }
+  if (!source.includes('requireAdminPermission("kids.manage")')) {
+    failures.push(`${label} must enforce kids.manage before rendering the shared content manager.`);
+  }
+}
+for (const token of [
+  'import { saveKidsContentAction } from "@/app/admin/kids/actions"',
+  "CloudinaryImageUploadField",
+  'name="title_ar"',
+  'name="content_ar"',
+  'name="quiz_data"',
+  "GAME_REGISTRY",
+  'kids_content?select=',
+]) {
+  if (!kidsContentManager.includes(token)) failures.push(`Shared Kids content manager is missing required data/form wiring: ${token}`);
+}
+if (kidsContentManager.includes('from "./actions"')) {
+  failures.push("Shared Kids content manager must not use the stale page-relative actions import.");
+}
+
 const rootLayout = readFileSync("src/app/layout.tsx", "utf8");
 for (const token of ['getSiteSetting("seo")', 'getSiteSetting("social")', "openGraph:", "twitter:"]) {
   if (!rootLayout.includes(token)) failures.push(`Root SEO/social metadata contract missing: ${token}`);
@@ -137,6 +163,126 @@ if (videoPage.includes("ResilientProfileImage")) {
 const runNowAction = readFileSync("src/app/admin/system-actions.ts", "utf8");
 if (!runNowAction.includes("queuedForScheduledWorker")) failures.push("Run Now must save a truthful scheduled-worker fallback when GitHub dispatch is not configured");
 if (!runNowAction.includes("أتمتة الفيديو متوقفة")) failures.push("Run Now must reject requests when video automation is disabled");
+
+const battlesPage = readFileSync("src/app/admin/battles/page.tsx", "utf8");
+const prophetsPage = readFileSync("src/app/admin/prophets/page.tsx", "utf8");
+const battlesService = readFileSync("src/features/admin/services/battles.ts", "utf8");
+const prophetsService = readFileSync("src/features/admin/services/prophets.ts", "utf8");
+for (const [label, page, service] of [
+  ["battles", battlesPage, battlesService],
+  ["prophets", prophetsPage, prophetsService],
+]) {
+  if (!page.includes("const { rows:") || !page.includes("ok: loaded") || !page.includes("{!loaded &&")) {
+    failures.push(`Admin ${label} page must distinguish failed reads from genuinely empty tables.`);
+  }
+  if (!service.includes("if (error)") || !service.includes("ok: false") || !service.includes("ok: true")) {
+    failures.push(`Admin ${label} service must surface Supabase query errors as unavailable, not empty data.`);
+  }
+  if (!page.includes("rawUrl && !videoId") || !page.includes("recordAdminAuditEvent")) {
+    failures.push(`Admin ${label} mutations must reject malformed YouTube URLs and record audit events.`);
+  }
+  if (!page.includes("requireAdminStepUp")) {
+    failures.push(`Admin ${label} video and publication mutations must honor the configured MFA step-up policy.`);
+  }
+}
+for (const [label, page] of [["battles", battlesPage], ["prophets", prophetsPage]]) {
+  if (!page.includes(`"${label}.youtube_video.update"`) || !page.includes(`"${label}.publish"`) || !page.includes(`"${label}.unpublish"`)) {
+    failures.push(`Admin ${label} video-link and publication mutations must be auditable separately.`);
+  }
+}
+
+const knowledgePage = readFileSync("src/app/admin/knowledge/page.tsx", "utf8");
+const knowledgeService = readFileSync("src/features/admin/services/knowledge.ts", "utf8");
+for (const token of [
+  "data.availability.companions",
+  "data.availability.scholars",
+  "data.availability.surahs",
+  "data.availability.hadiths",
+  "data.availability.books",
+  "unavailableSources",
+  "غير متاح — فشل تحميل البيانات",
+]) {
+  if (!knowledgePage.includes(token)) failures.push(`Knowledge dashboard must expose per-source read failures: ${token}`);
+}
+if (
+  !knowledgeService.includes("availability:") ||
+  !knowledgeService.includes("companions: !companions.error") ||
+  !knowledgeService.includes("hadiths: !hadiths.error") ||
+  !knowledgeService.includes("books: !books.error")
+) {
+  failures.push("Knowledge service must preserve Supabase query errors instead of silently converting them to empty arrays.");
+}
+
+const libraryPage = readFileSync("src/app/admin/library/page.tsx", "utf8");
+for (const token of [
+  "const itemsAvailable = !itemsResult.error",
+  "const sourcesAvailable = !sourcesResult.error",
+  "const mediaAvailable = !mediaResult.error",
+  "const gamesAvailable = !gamesResult.error",
+  "unavailableReads",
+  "itemsAvailable ? rows.length : 'غير متاح'",
+  "{itemsAvailable ? (",
+  "disabled={!sourcesAvailable}",
+]) {
+  if (!libraryPage.includes(token)) failures.push(`Admin library must distinguish unavailable reads from true empty data: ${token}`);
+}
+
+const androidReleasePage = readFileSync("src/app/admin/android/page.tsx", "utf8");
+const androidReleaseAction = readFileSync("src/app/admin/android/actions.ts", "utf8");
+for (const token of [
+  "readAdminRows",
+  "const settingAvailable = settingResult.ok",
+  "const releases = releasesResult.rows",
+  "disabled={!settingAvailable}",
+  "disabled={!settingAvailable || !releasesResult.ok || releases.length === 0}",
+  "إصدار Android",
+  "تعذر قراءة إعداد إصدار Android المحفوظ",
+  "تعذر الاتصال بواجهة GitHub",
+]) {
+  if (!androidReleasePage.includes(token)) failures.push(`Android release page must distinguish saved-setting and GitHub read failures: ${token}`);
+}
+if (!androidReleaseAction.includes("releaseTag))") || !androidReleaseAction.includes("صيغة وسم إصدار Android غير صالحة")) {
+  failures.push("Android release action must validate manually submitted release tags before saving.");
+}
+
+const contentPage = readFileSync("src/app/admin/content/page.tsx", "utf8");
+const contentConsole = readFileSync("src/app/admin/content/content-console.tsx", "utf8");
+for (const token of [
+  "Promise.allSettled",
+  "contentAvailable",
+  "scheduledAvailable",
+  "scheduledAvailable ? scheduled.length : \"غير متاح\"",
+  "scheduledAvailable={scheduledAvailable}",
+]) {
+  if (!contentPage.includes(token)) failures.push(`Admin content page must isolate content and queue read failures: ${token}`);
+}
+for (const token of [
+  "scheduledAvailable?: boolean",
+  "طابور جدولة المحتوى غير متاح",
+  "scheduledAvailable && !item.published",
+  "scheduledAvailable && queued",
+  "scheduledAvailable && selected",
+]) {
+  if (!contentConsole.includes(token)) failures.push(`Admin content console must disable schedule operations when the queue is unavailable: ${token}`);
+}
+
+const searchPage = readFileSync("src/app/admin/search/page.tsx", "utf8");
+const platformService = readFileSync("src/features/admin/services/platform.ts", "utf8");
+for (const token of [
+  "unavailableSources",
+  "نتائج جزئية",
+  "بعض المصادر لم تنجح قراءتها",
+]) {
+  if (!searchPage.includes(token)) failures.push(`Admin central search must identify partial-source failures: ${token}`);
+}
+if (
+  !platformService.includes("unavailableSources: string[]") ||
+  !platformService.includes("results.filter((result) => !result.ok)") ||
+  !platformService.includes("[admin/search] failed to search source") ||
+  !platformService.includes("select=id,text_ar,grade_ar,published,updated_at")
+) {
+  failures.push("Admin search service must preserve failed source status and select the publication state for hadith matches.");
+}
 
 const pageCount = pages.length;
 if (pageCount < hrefs.length) failures.push(`admin route inventory mismatch: ${pageCount} page files for ${hrefs.length} canonical navigation routes`);

@@ -89,7 +89,7 @@ const runtimeFiles = [
   "src/lib/env.ts",
   "src/lib/auth-enhanced.ts",
   "next.config.ts",
-  "proxy.ts",
+  "src/proxy.ts",
   "src/features/auth/actions.ts",
   "src/features/auth/integrations/google-oauth.ts",
   "src/app/auth/callback/route.ts",

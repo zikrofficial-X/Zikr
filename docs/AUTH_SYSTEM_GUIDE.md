@@ -10,6 +10,7 @@ ZIKR uses Supabase Auth for email/password and Google OAuth. Browser OAuth uses 
 - `src/features/auth/components/google-oauth-button.tsx`
 - `src/features/auth/integrations/google-oauth.ts`
 - `src/app/auth/callback/route.ts`
+- `src/proxy.ts` (Next.js 16 request proxy beside the `src/app` router)
 - `src/components/layout/native-google-oauth-handler.tsx`
 - `src/lib/auth-enhanced.ts`
 - `src/lib/supabase/client.ts`

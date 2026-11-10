@@ -2,6 +2,7 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 export async function saveAndroidReleaseAction(formData: FormData) {
@@ -17,6 +18,9 @@ export async function saveAndroidReleaseAction(formData: FormData) {
   if (mode === "pinned" && !releaseTag) {
     throw new Error("اختر إصدار Android محددًا أو استخدم الوضع التلقائي.");
   }
+  if (mode === "pinned" && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(releaseTag)) {
+    throw new Error("صيغة وسم إصدار Android غير صالحة.");
+  }
 
   await supabaseServerAdminRequest("/rest/v1/site_settings?on_conflict=key", {
     method: "POST",
@@ -30,6 +34,14 @@ export async function saveAndroidReleaseAction(formData: FormData) {
       },
       updated_at: new Date().toISOString(),
     }),
+  });
+
+  await recordAdminAuditEvent({
+    action: "android.release_setting.update",
+    permission: "android.manage",
+    resourceType: "site_settings",
+    resourceId: "android_release",
+    metadata: { mode, releaseTag: mode === "pinned" ? releaseTag : null },
   });
 
   updateTag("site-setting:android_release");

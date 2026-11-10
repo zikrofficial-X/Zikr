@@ -6,7 +6,7 @@ const button = read("src/features/auth/components/google-oauth-button.tsx");
 const activity = read("android/app/src/main/java/com/zikr/app/MainActivity.java");
 const pkg = JSON.parse(read("package.json"));
 const lock = read("pnpm-lock.yaml");
-const proxy = read("proxy.ts");
+const proxy = read("src/proxy.ts");
 
 assert.ok(pkg.dependencies?.["@capgo/capacitor-social-login"], "Capgo Social Login dependency is required");
 assert.ok(lock.includes("@capgo/capacitor-social-login@7.20.0"), "pnpm lockfile must include the resolved native plugin");

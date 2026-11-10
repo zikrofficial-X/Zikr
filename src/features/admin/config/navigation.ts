@@ -77,10 +77,10 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
   },
   {
     key: "memory",
-    label: "الذاكرة والمكتبة",
-    icon: "brain",
+    label: "الوسائط والذاكرة",
+    icon: "database",
     items: [
-      { href: "/admin/memory", label: "ذاكرة المشروع", permission: "media.manage", icon: "database" },
+      { href: "/admin/memory", label: "مكتبة الوسائط والذاكرة", permission: "media.manage", icon: "database" },
     ],
   },
   {
@@ -93,8 +93,15 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
       { href: "/admin/audio/adhan", label: "الأذان", permission: "audio.manage", icon: "radio" },
       { href: "/admin/audio/tts", label: "تحويل النص إلى صوت", permission: "audio.manage", icon: "mic-2" },
       { href: "/admin/site-audio", label: "صوت الموقع والتذكيرات", permission: "audio.manage", icon: "bell" },
+    ],
+  },
+  {
+    key: "social-publishing",
+    label: "النشر والتواصل الاجتماعي",
+    icon: "send",
+    items: [
       { href: "/admin/social", label: "مركز النشر الاجتماعي", permission: "social.manage", icon: "send" },
-      { href: "/admin/social/written-studio", label: "مصنع المنشورات المكتوبة", permission: "social.manage", icon: "file-pen-line" },
+      { href: "/admin/social/written-studio", label: "مصنع المنشورات المكتوبة", permission: "social.manage", icon: "file-text" },
     ],
   },
   {

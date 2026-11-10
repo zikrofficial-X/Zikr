@@ -5,6 +5,7 @@ import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { requireAdminPermission } from '@/features/admin/services/admin';
+import { requireAdminStepUp } from '@/features/admin/services/security';
 import {
   getAdminBattles,
   saveAdminBattleVideo,
@@ -12,19 +13,28 @@ import {
 } from '@/features/admin/services/battles';
 import { parseYouTubeVideoId } from '@/features/admin/services/youtube';
 import { revalidatePath } from 'next/cache';
+import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
 async function saveBattleVideoAction(formData: FormData) {
   'use server';
-  await requireAdminPermission("battles.manage");
+  await requireAdminStepUp("battles.manage", "/admin/battles");
   const id = String(formData.get('id') ?? '').trim();
   const rawUrl = String(formData.get('youtube_url') ?? '').trim();
-  if (!id) return;
+  if (!id) throw new Error("معرّف الغزوة مطلوب.");
 
   const videoId = parseYouTubeVideoId(rawUrl);
+  if (rawUrl && !videoId) throw new Error("رابط YouTube غير صالح. أدخل رابطًا صحيحًا أو اترك الحقل فارغًا لإزالة الربط.");
   const ok = await saveAdminBattleVideo(id, videoId);
   if (!ok) throw new Error("تعذر حفظ فيديو الغزوة. راجع صلاحيات قاعدة البيانات وسجل الأخطاء.");
+  await recordAdminAuditEvent({
+    action: "battles.youtube_video.update",
+    permission: "battles.manage",
+    resourceType: "battles",
+    resourceId: id,
+    metadata: { hasYoutubeVideo: Boolean(videoId) },
+  });
 
   revalidatePath('/admin/battles');
   revalidatePath('/battles');
@@ -32,13 +42,20 @@ async function saveBattleVideoAction(formData: FormData) {
 
 async function toggleBattlePublishAction(formData: FormData) {
   'use server';
-  await requireAdminPermission("battles.manage");
+  await requireAdminStepUp("battles.manage", "/admin/battles");
   const id = String(formData.get('id') ?? '').trim();
   const next = formData.get('next') === 'true';
-  if (!id) return;
+  if (!id) throw new Error("معرّف الغزوة مطلوب.");
 
   const ok = await setAdminBattlePublished(id, next);
   if (!ok) throw new Error("تعذر تحديث حالة نشر الغزوة.");
+  await recordAdminAuditEvent({
+    action: next ? "battles.publish" : "battles.unpublish",
+    permission: "battles.manage",
+    resourceType: "battles",
+    resourceId: id,
+    metadata: { published: next },
+  });
 
   revalidatePath('/admin/battles');
   revalidatePath('/battles');
@@ -49,9 +66,8 @@ async function toggleBattlePublishAction(formData: FormData) {
 export default async function AdminBattlesPage() {
   await requireAdminPermission("battles.manage");
 
-  const battles = await getAdminBattles();
-
-  const hasBattles = battles.length > 0;
+  const { rows: battles, ok: loaded } = await getAdminBattles();
+  const hasBattles = loaded && battles.length > 0;
 
   return (
     <Container className="max-w-5xl space-y-8 py-8 text-right">
@@ -74,6 +90,11 @@ export default async function AdminBattlesPage() {
         </ol>
       </Card>
 
+      {!loaded && (
+        <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-6 text-red-100">
+          تعذر قراءة سجلات الغزوات من قاعدة البيانات. لم يتم اعتبار فشل القراءة قائمة فارغة.
+        </div>
+      )}
       {hasBattles ? (
         <section className="space-y-4">
           <p className="text-xs text-brand-cream/35 mr-1">{battles.length} غزوة في قاعدة البيانات</p>
@@ -141,12 +162,12 @@ export default async function AdminBattlesPage() {
             );
           })}
         </section>
-      ) : (
+      ) : loaded ? (
         <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-center space-y-2">
           <h2 className="font-semibold text-amber-300">لا توجد سجلات غزوات في قاعدة البيانات</h2>
           <p className="text-sm text-brand-cream/50">لن يعرض مركز الإدارة بيانات ثابتة أو وهمية. أضف السجلات إلى قاعدة البيانات أولًا ثم ستظهر هنا.</p>
         </section>
-      )}
+      ) : null}
     </Container>
   );
 }

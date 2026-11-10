@@ -13,17 +13,26 @@ export type AdminProphet = {
   metadata: Record<string, string> | null;
 };
 
-export async function getAdminProphets(): Promise<AdminProphet[]> {
+export type AdminProphetsReadResult = {
+  rows: AdminProphet[];
+  ok: boolean;
+};
+
+export async function getAdminProphets(): Promise<AdminProphetsReadResult> {
   try {
     const supabase = await createClient();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("prophets")
       .select("id,name_ar,name_en,slug,order_num,published,bio_ar,metadata")
       .order("order_num", { ascending: true });
-    return data ?? [];
+    if (error) {
+      console.error("[admin/prophets] failed to load prophets:", error);
+      return { rows: [], ok: false };
+    }
+    return { rows: data ?? [], ok: true };
   } catch (error) {
     console.error("[admin/prophets] failed to load prophets:", error);
-    return [];
+    return { rows: [], ok: false };
   }
 }
 

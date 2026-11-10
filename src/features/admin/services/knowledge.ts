@@ -68,6 +68,13 @@ export type KnowledgeAdminData = {
   surahs: KnowledgeSurah[];
   hadiths: KnowledgeHadith[];
   books: KnowledgeBook[];
+  availability: {
+    companions: boolean;
+    scholars: boolean;
+    surahs: boolean;
+    hadiths: boolean;
+    books: boolean;
+  };
 };
 
 export async function getKnowledgeAdminData(): Promise<KnowledgeAdminData> {
@@ -116,5 +123,12 @@ export async function getKnowledgeAdminData(): Promise<KnowledgeAdminData> {
     surahs: (surahs.data ?? []) as KnowledgeSurah[],
     hadiths: (hadiths.data ?? []) as KnowledgeHadith[],
     books: (books.data ?? []) as KnowledgeBook[],
+    availability: {
+      companions: !companions.error,
+      scholars: !scholars.error,
+      surahs: !surahs.error,
+      hadiths: !hadiths.error,
+      books: !books.error,
+    },
   };
 }
