@@ -75,39 +75,23 @@ export function extractCloudinaryVideoPublicId(value, cloudName) {
   }
 }
 
-async function deleteCloudinaryVideo(publicId) {
-  const cloudName = asString(process.env.CLOUDINARY_CLOUD_NAME);
-  const apiKey = asString(process.env.CLOUDINARY_API_KEY);
-  const apiSecret = asString(process.env.CLOUDINARY_API_SECRET);
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error("Cloudinary credentials are required to remove a published generated video.");
-  }
-
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const signatureBase = "public_id=" + publicId + "&timestamp=" + timestamp + apiSecret;
-  const signature = createHash("sha1").update(signatureBase).digest("hex");
-  const form = new URLSearchParams({ public_id: publicId, timestamp, api_key: apiKey, signature });
-  const response = await fetch(
-    "https://api.cloudinary.com/v1_1/" + encodeURIComponent(cloudName) + "/video/destroy",
-    { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form, signal: AbortSignal.timeout(20_000) },
-  );
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok || (result.result !== "ok" && result.result !== "not found")) {
-    throw new Error(result.error?.message || "Cloudinary generated-video deletion failed.");
-  }
-}
-
 function getSupabaseBackupUrl(queue, request, supabaseUrl) {
   return asString(asObject(queue?.metadata).supabaseOriginalVideoUrl)
     || asString(asObject(request?.content).supabaseOriginalVideoUrl)
     || (extractManagedVideoPath(queue?.video_url, supabaseUrl) ? asString(queue?.video_url) : "");
 }
 
-export function isEligiblePublishedQueueItem(item, cutoffIso, supabaseUrl) {
+export function isEligiblePublishedQueueItem(item, cutoffIso, supabaseUrl, cloudName = asString(process.env.CLOUDINARY_CLOUD_NAME)) {
   if (!item || item.status !== "published") return false;
   if (!item.published_at || !(Date.parse(item.published_at) < Date.parse(cutoffIso))) return false;
   if (!hasConfirmedPlatformResults(item.target_platforms, item.metadata)) return false;
-  return Boolean(extractManagedVideoPath(item.video_url, supabaseUrl));
+  const backupUrl = asString(asObject(item.metadata).supabaseOriginalVideoUrl);
+  // Only the redundant Supabase staging object is eligible. The public Cloudinary
+  // master remains the durable playback source and is never deleted by retention.
+  return Boolean(
+    extractCloudinaryVideoPublicId(item.video_url, cloudName) &&
+    extractManagedVideoPath(backupUrl, supabaseUrl)
+  );
 }
 
 export function compareSemverTags(a, b) {
