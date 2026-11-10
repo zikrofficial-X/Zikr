@@ -29,6 +29,21 @@ assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: f
 assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: { platformAttempts: { youtube: 5 } }, maxAttempts: 5 }), false, "retry ceiling is tracked per platform");
 assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: { platformResults: { youtube: { ok: true, remoteId: "yt-1" } } }, maxAttempts: 5 }), false, "successful channel must never be republished");
 assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: { platformResults: { youtube: { ok: false, error: "missing OAuth configuration" } } }, maxAttempts: 5 }), false, "permanent platform failure is isolated");
+const missingMediaFailure = {
+  platformResults: {
+    facebook_reels: {
+      platform: "facebook_reels",
+      ok: false,
+      error: "Facebook Reel upload failed (HTTP 422): Meta upload response did not confirm success",
+    },
+  },
+  platformAttempts: { facebook_reels: 4 },
+};
+assert.equal(
+  canAttemptSocialPlatform({ platform: "facebook_reels", enabledPlatforms: both, metadata: missingMediaFailure, maxAttempts: 5 }),
+  false,
+  "HTTP 422 media validation failures must not be retried against the same source asset",
+);
 
 console.log("Social platform isolation and independent readiness tests passed.");
 

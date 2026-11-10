@@ -9,7 +9,7 @@ import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPu
 import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
 import { shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getUnavailableSocialPlatforms } from "@/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getUnavailableSocialPlatforms, isPermanentSocialFailure } from "@/features/social/services/platform-availability";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 export type SocialQueueStatus =
@@ -115,11 +115,6 @@ function socialMaxAttempts(metadata: Record<string, unknown> | null) {
 function socialRetryDelayMinutes(attempt: number, itemId: string) {
   const seed = [...itemId].reduce((sum, character) => sum + character.charCodeAt(0), 0);
   return Math.min(240, 2 ** Math.min(Math.max(0, attempt - 1), 7) + (seed % 6));
-}
-
-function isPermanentSocialFailure(message: string | undefined) {
-  const normalized = (message ?? "").toLowerCase();
-  return /no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|oauth|access token|publishing is disabled|not configured|automated qa check/i.test(normalized);
 }
 
 async function markQueueItem(

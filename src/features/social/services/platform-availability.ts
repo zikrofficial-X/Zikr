@@ -38,9 +38,9 @@ function isAuthBlocked(platform: SocialPlatform, error: unknown): boolean {
     value.includes("reconnect the page");
 }
 
-function isPermanentFailure(error: unknown): boolean {
+export function isPermanentSocialFailure(error: unknown): boolean {
   if (typeof error !== "string") return false;
-  return /no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|oauth|access token|publishing is disabled|not configured|human qa approval/i.test(error);
+  return /http\s+422|unprocessable entity|source media unavailable|no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|oauth|access token|publishing is disabled|not configured|human qa approval/i.test(error);
 }
 
 export function canAttemptSocialPlatform(input: {
@@ -58,7 +58,7 @@ export function canAttemptSocialPlatform(input: {
   // Legacy global authBlocked was emitted only by the Facebook adapter. It must
   // not prevent an independent YouTube target from being published.
   if (!results && metadata?.authBlocked === true && platform.startsWith("facebook")) return false;
-  if (isAuthBlocked(platform, previous?.error) || isPermanentFailure(previous?.error)) return false;
+  if (isAuthBlocked(platform, previous?.error) || isPermanentSocialFailure(previous?.error)) return false;
 
   const attempts = asRecord(metadata?.platformAttempts);
   const legacyAttempts = Number(metadata?.attempts ?? 0);
