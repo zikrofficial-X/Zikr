@@ -1,0 +1,67 @@
+name: ZIKR Published Video Media Audit
+
+on:
+  schedule:
+    - cron: "41 4 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-video-media.yml"
+      - "scripts/jobs/audit-video-media.ts"
+      - "src/features/social/services/social-publishing.ts"
+      - "src/features/videos/services/videos.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-video-media-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
+      NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
+      NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Validate production database credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
+            echo "::error::Missing Supabase service-role secret for video media audit." >&2
+            exit 1
+          }
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
+        timeout-minutes: 15
+
+      - name: Audit Cloudinary playback masters and reconcile published YouTube IDs
+        run: pnpm video:media:audit
+        timeout-minutes: 10
