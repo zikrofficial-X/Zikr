@@ -17,7 +17,7 @@ security definer
 set search_path to public
 as $function$
   update public.kids_content
-  set shares = shares + 1,
+  set shares = coalesce(kids_content.shares, 0) + 1,
       updated_at = now()
   where kids_content.slug = p_slug
     and kids_content.published is true
