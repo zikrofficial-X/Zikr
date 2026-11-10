@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { createAdminClient, supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { getConfirmedYoutubeFallbackId, shouldKeepPublishedVideoAfterMediaPurge } from "@/features/videos/services/video-media-contract";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -387,23 +388,39 @@ export async function POST(request: NextRequest) {
 
     if (includeFiles && storagePaths.length > 0) destructiveWorkStarted = true;
     const storageObjectsDeleted = includeFiles ? await deleteAutomatedStorageObjects(storagePaths) : 0;
-    // The site catalog is treated as project memory. It is always hidden during
-    // a purge; links are cleared only when the physical generated files are removed.
+    // Remove Cloudinary masters without hiding videos that already have a
+    // verified YouTube publication fallback. Unconfirmed IDs are never treated
+    // as a playback fallback, and unpublished records remain unpublished.
     const generatedCatalogRows = await supabaseServerAdminRequest<Array<{
       id: string;
       metadata: Record<string, unknown> | null;
+      published: boolean | null;
+      youtube_id: string | null;
     }>>(
-      "/rest/v1/videos?metadata->>generator=eq.zikr_internal_video_factory&select=id,metadata&limit=1000",
+      "/rest/v1/videos?metadata->>generator=eq.zikr_internal_video_factory&select=id,metadata,published,youtube_id&limit=1000",
     );
     if ((generatedCatalogRows ?? []).length >= 1000) {
       throw new Error("Generated video catalog exceeded the safe purge batch; no catalog rows were changed.");
     }
     if ((generatedCatalogRows ?? []).length > 0) destructiveWorkStarted = true;
+    let catalogRecordsHidden = 0;
+    let catalogFallbackRowsKeptPublished = 0;
     const catalogUpdateErrors = await mapWithConcurrency(generatedCatalogRows ?? [], 6, async row => {
       const previousMetadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+      const fallbackId = includeFiles ? getConfirmedYoutubeFallbackId(row) : null;
+      const keepPublishedFallback = shouldKeepPublishedVideoAfterMediaPurge(row, includeFiles);
+      if (keepPublishedFallback) catalogFallbackRowsKeptPublished += 1;
+      else catalogRecordsHidden += 1;
       const nextMetadata = {
         ...previousMetadata,
-        ...(includeFiles ? { generatedVideoUrl: null, videoUrl: null, mediaState: "purged" } : { mediaState: "unlinked" }),
+        ...(includeFiles
+          ? {
+              generatedVideoUrl: null,
+              videoUrl: null,
+              mediaState: "purged",
+              mediaFallbackAvailable: fallbackId !== null,
+            }
+          : { mediaState: "unlinked" }),
         mediaPurgedAt: includeFiles ? new Date().toISOString() : previousMetadata.mediaPurgedAt ?? null,
         memoryUnlinkedAt: new Date().toISOString(),
       };
@@ -411,7 +428,8 @@ export async function POST(request: NextRequest) {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify({
-          published: false,
+          published: keepPublishedFallback,
+          ...(keepPublishedFallback && fallbackId ? { youtube_id: fallbackId } : {}),
           metadata: nextMetadata,
           updated_at: new Date().toISOString(),
         }),
@@ -424,7 +442,9 @@ export async function POST(request: NextRequest) {
           headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
           body: JSON.stringify({
             status: "failed",
-            error_message: "Internal video publication was stopped by the administrator's project-memory cleanup.",
+            error_message: keepPublishedFallback
+              ? "No internal upload is required; the already-published YouTube fallback remains public."
+              : "Internal video publication was stopped by the administrator project-memory cleanup.",
             updated_at: new Date().toISOString(),
           }),
         },
@@ -433,8 +453,7 @@ export async function POST(request: NextRequest) {
     if (catalogUpdateErrors.length) {
       throw new Error("Some internal catalog records or scheduled publication entries could not be safely unlinked: " + catalogUpdateErrors.slice(0, 3).join(" | "));
     }
-    const catalogRecordsHidden = generatedCatalogRows?.length ?? 0;
-    // Historical external platform queue records are never read or modified.
+        // Historical external platform queue records are never read or modified.
     const socialQueueRowsPreserved = true;
     const generatedRequests = includeMemory
       ? await supabaseServerAdminRequest<Array<{ id: string }>>(
@@ -485,6 +504,7 @@ export async function POST(request: NextRequest) {
         socialQueueRowsPreserved,
         publicVideoCatalogPreserved: true,
         catalogRecordsHidden,
+        catalogFallbackRowsKeptPublished,
         generationMemoryDeleted: includeMemory,
         physicalFilesDeleted: includeFiles,
         generationRowsDeleted,
