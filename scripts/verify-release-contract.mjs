@@ -139,6 +139,7 @@ assert.ok(publish.includes("SHA256SUMS"), "Android publisher must verify and pub
 assert.ok(publish.includes("release-metadata.json"), "Android publisher must verify and publish release metadata");
 assert.ok(publish.includes('gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}"'), "Android publisher must publish the resolved GitHub release ID after asset verification");
 assert.ok(publish.includes('repos/${GITHUB_REPOSITORY}/releases?per_page=100'), "Android publisher must resolve draft releases from the releases list API");
+assert.ok(publish.includes("MATCH_COUNT > 1") && publish.includes("Ambiguous Android release draft"), "Android publisher must refuse to select an arbitrary release when duplicate drafts share a tag");
 assert.ok(publish.includes('releases/413815658'), "Android publisher must recover the existing v1.1.4 draft by ID if the release list omits it");
 assert.ok(publish.includes('gh release upload "$TAG" "$asset"') && publish.includes('--repo "$GITHUB_REPOSITORY"'), "Android publisher must upload verified binaries to the canonical repository and release tag through GitHub CLI");
 assert.ok(!publish.includes('https://uploads.github.com/'), "Android publisher must not use the legacy direct upload endpoint that caused the 404 race");
@@ -167,6 +168,12 @@ assert.ok(androidReleaseService.includes("hasApk(release) &&\n        hasAab(rel
 assert.ok(androidReleaseService.includes("!hasApk(release) || !hasAab(release)"), "Pinned Android releases missing either APK or AAB must be rejected");
 
 const circle = read(".circleci/config.yml");
+const androidDraftJob = circle.split("  android-release-draft:")[1]?.split("\n  android-rebuild:")[0] ?? "";
+assert.ok(androidDraftJob.includes('"/releases?per_page=100&page=1"'), "CircleCI must inspect all draft and published release records for the canonical tag");
+assert.ok(androidDraftJob.includes("matchingReleases.length > 1"), "CircleCI must fail closed when multiple release drafts share one tag");
+assert.ok(androidDraftJob.includes("isReleasePreparationCommit"), "CircleCI must wait for the Admin Release service only on its atomic release-preparation commit");
+assert.ok(!androidDraftJob.includes('api("/releases", "POST"'), "CircleCI must not create a second GitHub draft release");
+assert.ok(!androidDraftJob.includes('api("/git/tags", "POST"'), "CircleCI must not race the Admin Release service to create immutable tags");
 const androidDispatchJob = circle.split("  android-release-dispatch:")[1]?.split("\nworkflows:")[0] ?? "";
 assert.ok(androidDispatchJob.includes("GH_TOKEN"), "Android recovery dispatch must use a protected GitHub token");
 assert.ok(androidDispatchJob.includes("actions/workflows/dispatch-android-release-recovery.yml/dispatches"), "CircleCI must dispatch the guarded recovery workflow after the signed build");
