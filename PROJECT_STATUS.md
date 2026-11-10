@@ -5,35 +5,70 @@
 **Repository:** `zikrofficial-X/Zikr`  
 **Production origin:** `https://zikrmediaofficial.vercel.app`
 
-## Current verified checkpoint — 2026-11-10
+## Current verified checkpoint — 2026-11-10 (continuous closeout)
 
-**Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
+**Audit state: IN PROGRESS. This is not a FINAL BASELINE READY certification.**
 
-- Canonical repository: `zikrofficial-X/Zikr`; production branch: `main`; audited application source commit: `d05598035de7b51ba460a0c2424a58b22b4f4e81`. The latest `main` tip observed during documentation closeout is `33596bb3b952263c6258433c2dffd3b2b631ce8a` (`fix(ci): skip existing Android releases on later main updates`), which changes only `.circleci/config.yml` and `scripts/verify-release-contract.mjs`.
-- Vercel project: `zikr` (`prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`), Node `22.x`; Supabase project: `zqtssvlvmkzeeyqghqfk`, status `ACTIVE_HEALTHY`, PostgreSQL 17.
-- Repository inventory at this commit: 2,121 tree entries (1,631 files and 490 directories), 142 `page.*` files, 79 `route.*` handlers, 47 component files, 19 GitHub Actions workflows, 55 test-file paths, and 414 versioned Supabase migration files. The 414 migration versions match the live ledger, with no duplicate version IDs.
-- Main GitHub Quality Gate run `42758477048` passed. CircleCI statuses for config guard, application build/docs, Android release draft, source verification, Supabase production gate, Android rebuild, and Android release dispatch all passed for this commit.
-- Android `v1.1.14` is published at https://github.com/zikrofficial-X/Zikr/releases/tag/v1.1.14. Its annotated tag targets this exact commit. GitHub Actions run `42758799773` passed all release checks, including release metadata, checksums, APK signature/manifest, AAB signature, and post-publication asset verification. Published assets: APK 41,277,148 bytes (SHA-256 `c982ad8449432ed3128ae97d1d69dbe48ab619159238443757d945958a39202f`); AAB 36,091,440 bytes (SHA-256 `bfd01d055cafd04a61d3bff1c06ba59d6143c4ded51d44b1044dc37327f828e6`); `release-metadata.json` and `SHA256SUMS` are also published.
-- Latest verified Vercel production deployment: `dpl_AK3uuUj4nAouG4tcNF9bNnsKpCDM`, state `READY`, source commit `6bcc456eb0977cd9688dc837fee3236bb43a2053`; canonical production aliases are attached. The audited `main` commit `d055980...` has no matching production deployment in the inspected production deployment list. Production deployment remains manual-only through `.github/workflows/release-finalization.yml` and requires explicit `RELEASE` confirmation.
-- Live HTTP smoke checks returned 200 for `/`, `/quran`, `/hadith`, `/adhkar`, `/prayer-times`, `/kids`, `/videos`, `/audio`, `/dua`, `/articles`, `/admin`, `/admin/audio/adhan`, `/api/quran/surahs`, and `/api/hadith/books`. These are sampled route checks, not an exhaustive interactive browser/E2E pass across all 142 pages.
-- Live Supabase inspection: 92 public tables, all with RLS enabled; 211 public policies; 53 public triggers; 20 public `SECURITY DEFINER` functions with pinned `search_path` and no direct `anon` or `authenticated` EXECUTE grants. Current data counts include 19,608 Quran audio rows, 172 reciters, 2,964 hadiths, 113 articles, 30 site-audio asset records, 122 videos, 107 video-generation requests, 83 social publishing queue rows, 142 social insight rows, and 116 content publishing queue rows.
-- Video/social delivery snapshot from the live queue: 113/122 website videos are published; all 107 generation requests are completed. Of 83 social queue rows, 69 are published to both YouTube and Facebook Reels, 4 are partial (YouTube succeeded while Facebook Reels was deferred by provider cooldown), and 10 remain queued (7 Facebook-only, 3 targeting both platforms). The site-content publishing queue has 113 published and 3 queued. Recent autonomous video-worker and social-publisher runs succeeded; the latest insights sync fetched and updated 19 Facebook Reels records successfully. One earlier analytics-only run failed for 25 historical Facebook Reel candidates because Meta Graph API returned HTTP 400 OAuthException code 12 while listing Page posts; a subsequent scheduled sync succeeded. Do not force replay the partial/queued rows or publish duplicates; let the configured cooldown-aware publisher retry them and monitor exact per-platform outcomes.
-- All nine Supabase Storage buckets currently report zero objects in `storage.objects`. This differs from the October 30 inventory documented below; treat the old 409-object / 1.874 GB snapshot as historical, not live. Do not delete buckets or media metadata based on this empty-object result alone.
-- Supabase Security Advisor reports one warning: leaked-password protection is disabled. The organization is currently on the Free plan; this Auth-level setting is not a code migration and requires an owner-level plan/settings decision. Performance Advisor still flags unused-index candidates; do not bulk-drop indexes without query/workload evidence. Health Advisor returned no findings.
-- Vercel runtime error monitoring reported four recent `fetch failed` events across `/`, `/admin/audio/adhan`, and `/hadith/[book]/[id]`, with underlying `ETIMEDOUT` / `UND_ERR_SOCKET` transport errors. The shared Supabase REST helper already has bounded GET retries; no code change is justified until the failure is reproduced and its actual caller/upstream is identified. Hobby runtime-log retention prevented a full 24-hour raw-log read.
-- GitHub branch inventory returned only `main` at the start of this audit; no open PRs were returned then. The repository reported `main` as unprotected. Enabling required branch protections needs a deliberate owner decision because release and automation workflows must be checked for compatibility first.
-- Existing repository contracts passed on `main`, including route inventory, local-import, hygiene, architecture, security, migration, mobile-readiness, content, media/video, social publishing, and admin contracts through the successful `verify:pr` gate. This does not replace full visual QA, authenticated browser E2E, or physical-device acceptance.
+### Source of truth and deployment
 
-### Remaining closure gates
+- The GitHub repository attached to the Vercel production deployment is `zikrofficial-X/Zikr`, branch `main`. Current main SHA: `2bfedae38e3818d076d9f1eb8a36132c3b8d0a79` — “Fix written Facebook post generation and admin studio (#268)”.
+- Vercel project `zikr` belongs to team `zikr3` (project `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`). Latest production deployment `dpl_EnVi4cmLBN6G2R34rUgRmCKhVyty` is `READY` and built from this exact main SHA. Verified production domain: `zikrmediaofficial.vercel.app`.
+- Supabase target is `zqtssvlvmkzeeyqghqfk`, status `ACTIVE_HEALTHY`, PostgreSQL 17. This run did not change project settings, secrets, schema or data.
+- Main is currently unprotected in GitHub. No protection setting was changed. A merge to main has been observed to create a Vercel production deployment automatically; the proposed code fix therefore remains PR-only pending the release gate.
 
-- Decide whether to upgrade the Supabase organization or formally accept the leaked-password-protection warning, then rerun Security Advisor.
-- Reconcile the zero-object Storage inventory with the application’s active media/CDN references before considering any bucket or file cleanup.
-- Investigate the intermittent Vercel transport failures with retained runtime/request logs and a reproducible route-level trace.
-- Complete authenticated browser/mobile E2E and physical Android acceptance; complete qualified editorial/religious and Kids educator review where required by the project acceptance checklist.
-- The current `main` commit has not been verified as deployed to production. Keep production manual-only; deploy only through the protected finalization workflow after the release decision and production smoke checks.
-- No source files, database rows, storage buckets, indexes, or branches were deleted or moved during this checkpoint: the available remote inspection has not yet proven a safe orphan candidate across the complete dependency graph. Continue that analysis before destructive cleanup.
+### Inventory and measurable progress
 
-Historical sections below are retained for audit trail. Their counters and deployment states are point-in-time snapshots and must not be treated as current unless reverified.
+- Main recursive Git tree: **2125 entries, 1634 files, 491 directories**, untruncated; tracked file bytes: **138,150,372**.
+- Route inventory: **142 pages and 80 API handlers**. The current route-baseline source still expects 79; correction is proposed on the audit branch.
+- Other inventory: **19 GitHub Actions workflows, 56 test-file paths, 414 active Supabase migration files**.
+- Previous matrix contained **1631 file rows** at baseline `84deeb994a9f33bd0b685adfe081c09ccbf86861`; it is refreshed to 1634 rows against main `2bfedae38e3818d076d9f1eb8a36132c3b8d0a79`. Stale prior file paths: 0; new current paths: 3.
+- Full recursive manifest: `docs/audits/REPO_MANIFEST_2026-11-10.jsonl`. It records path, type, mode, Git object hash and size for all 2125 entries in the main baseline, including tracked dotfiles.
+- File-status ledger: `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` (same central file, refreshed rather than duplicated). Status counts: REVIEW_REQUIRED=1628, FIX_PROPOSED=3, VERIFIED_BY_CI=2, VERIFIED_RUNTIME=1.
+- Evidence-backed classification covers 6/1634 files (0.37%); 5 files were read in full, and the route-checker change was scoped to its exact required-path declaration. Two cleanup helper/test files passed main CI; the Kids feed API passed a live GET smoke test; three routing files have confirmed issues with a proposed fix. **No whole product module is closed.**
+- The three new main paths are `src/app/api/kids/videos/route.ts`, `src/features/social/services/published-video-cleanup.ts`, and `scripts/tests/social-published-video-cleanup.test.ts`. No deletion candidate was proven safe.
+
+### Code repair in progress
+
+- Created stable branch `audit/continuous-closeout` from main `2bfedae38e3818d076d9f1eb8a36132c3b8d0a79`.
+- Commit `300f9c43632050040f6c69cba71165c335aaf76a` relocates the Next.js 16 Proxy entrypoint from root `proxy.ts` to `src/proxy.ts`, updates active consumers, changes the expected API route count to 80, and adds the Kids feed route to the required route list.
+- Next.js requires Proxy beside `src/app` when using the `src` directory. References: https://nextjs.org/docs/app/api-reference/file-conventions/src-folder and https://nextjs.org/docs/app/getting-started/proxy.
+- This commit has not yet passed branch CI or Preview checks. It is not merged, and this run did not trigger production deployment.
+
+### GitHub, CI and Android
+
+- Main Quality Gate run `42773328668` succeeded on `2bfedae38e3818d076d9f1eb8a36132c3b8d0a79`. CircleCI `config-guard`, `source-verify`, `application-build-docs`, and `android-release-draft` statuses all succeeded; the Vercel commit check succeeded.
+- The superseded Quality Gate run `42771714082` was cancelled; the subsequent run `42771744803` succeeded. No failed Quality Gate result was observed for the current main head.
+- Android release `v1.1.14` is published. Its tag points to `d05598035de7b51ba460a0c2424a58b22b4f4e81`, not the newer main SHA. Release workflow `42758799773` succeeded, including APK/AAB signature and manifest checks. The annotated Git tag object itself is unsigned. Assets: APK 41,277,148 bytes; AAB 36,091,440 bytes.
+- This does not prove newer main-only social/admin changes are in a new Android artifact. Physical-device acceptance remains open.
+
+### Supabase schema and security
+
+- Live migration ledger: **414** versions. Local `supabase/migrations/*.sql`: **414**. Exact version-set parity, no duplicates, no local-only or live-only versions. No migration was applied or replayed.
+- Public schema: **92/92 tables have RLS enabled**, 211 public policies, 53 public triggers, 20 public SECURITY DEFINER functions, and 9 extensions.
+- Four cron jobs exist: three active (history cleanup, prayer push dispatch, source-verified content agent) and the YouTube/Facebook sync cron is inactive. Four deployed Edge Functions are ACTIVE.
+- Storage: 9 buckets (7 public), **0 objects**. No bucket, object, row or metadata was deleted.
+- Supabase health advisor returned no health lints. Security advisor reports one owner-setting warning: leaked-password protection is disabled. Enablement is an account/security-owner decision and was not changed here.
+
+### Video and social operations
+
+- Live counts: 107 video-generation requests (all completed), 122 video catalog rows, 94 social queue rows (72 published, 4 partial, 18 queued), and 116 content-publish rows (113 published, 3 queued).
+- All 4 partial social rows are YouTube successes with Facebook Reels not successful and cooldown metadata present. This is provider rate limiting, not evidence of a code failure; no duplicate publish was attempted.
+- Confirmed remote IDs are unique: 72 Facebook Reels IDs and 76 YouTube IDs, with zero duplicates in queue metadata.
+- Facebook and YouTube each have one connected credential record. Facebook has the required page permissions and a non-expired connection; YouTube has a refresh token, channel ID and upload/read/analytics scopes. No token values were read or exposed; no OAuth refresh was forced.
+- Latest observed successful social publisher run: `42768521252` on `f314ffba187a292b063def1b8c4779bd2e30d368`, before current main. Latest video worker run: `42753189127` (success); written-content generator run: `42753982582` (success). No worker was manually dispatched because it can publish externally.
+- Production `GET /api/kids/videos` returned HTTP 200 with 13 approved items; sampled items include story text, social captions and confirmed publication metadata. This was read-only; no test content was generated or published.
+- Storage cleanup is not authorized by the zero-object count. Retention behavior remains under review; public Cloudinary masters and user content must remain protected.
+
+### Vercel runtime findings
+
+- Production error aggregation shows one `TypeError: fetch failed` cluster with 4 occurrences across `/`, `/hadith/[book]/[id]`, and `/admin/audio/adhan`. Last occurrence: 2026-11-10 03:54 UTC on an older deployment; causes include socket-close and `ETIMEDOUT`.
+- No production error/fatal log entries were returned for the latest 50-minute window. The older fetch cluster remains open for upstream/dependency tracing; it was not misclassified as a deterministic application defect.
+
+### Existing pull request and blockers
+
+- Existing PR #265 (`codex/admin-console-full-audit-20261110`) remains open, 21 files changed, 42 commits. Its base is `f314ffba187a292b063def1b8c4779bd2e30d368`, while current main is `2bfedae38e3818d076d9f1eb8a36132c3b8d0a79`; GitHub reports `mergeable_state=dirty`. Its head has only a CircleCI config-guard success and no Quality Gate run. It is not safe to merge without resolving conflicts and rerunning CI.
+- Remaining gates: branch CI and Preview for the Proxy/route fix; role-by-role authenticated browser checks; Android physical-device checks; OAuth refresh and live provider read-only validation; editorial/religious review of Kids and Islamic content; owner decision on leaked-password protection; trace of the old upstream fetch errors.
+- No public social post, production data deletion, migration, bucket deletion, or production deployment was initiated by this audit.
 
 ## Historical consolidated closeout checkpoint — 2026-10-30
 
