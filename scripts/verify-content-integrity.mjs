@@ -5,8 +5,8 @@ import { join, relative } from "node:path";
 
 const root = process.cwd();
 // Scan the complete application source tree, including shared components and libraries.
-const scanDirs = ["src"];
-const extensions = new Set([".ts", ".tsx", ".js", ".jsx", ".md", ".json"]);
+const scanDirs = ["src", "content", "public", "supabase"];
+const extensions = new Set([".ts", ".tsx", ".js", ".jsx", ".md", ".json", ".sql"]);
 const failures = [];
 
 function walk(dir) {
