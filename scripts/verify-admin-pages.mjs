@@ -227,6 +227,60 @@ for (const token of [
   if (!libraryPage.includes(token)) failures.push(`Admin library must distinguish unavailable reads from true empty data: ${token}`);
 }
 
+const androidReleasePage = readFileSync("src/app/admin/android/page.tsx", "utf8");
+const androidReleaseAction = readFileSync("src/app/admin/android/actions.ts", "utf8");
+for (const token of [
+  "readAdminRows",
+  "const settingAvailable = settingResult.ok",
+  "const releases = releasesResult.rows",
+  "disabled={!settingAvailable}",
+  "تعذر قراءة إعداد إصدار Android المحفوظ",
+  "تعذر الاتصال بواجهة GitHub",
+]) {
+  if (!androidReleasePage.includes(token)) failures.push(`Android release page must distinguish saved-setting and GitHub read failures: ${token}`);
+}
+if (!androidReleaseAction.includes("releaseTag))") || !androidReleaseAction.includes("صيغة وسم إصدار Android غير صالحة")) {
+  failures.push("Android release action must validate manually submitted release tags before saving.");
+}
+
+const contentPage = readFileSync("src/app/admin/content/page.tsx", "utf8");
+const contentConsole = readFileSync("src/app/admin/content/content-console.tsx", "utf8");
+for (const token of [
+  "Promise.allSettled",
+  "contentAvailable",
+  "scheduledAvailable",
+  "scheduledAvailable ? scheduled.length : \"غير متاح\"",
+  "scheduledAvailable={scheduledAvailable}",
+]) {
+  if (!contentPage.includes(token)) failures.push(`Admin content page must isolate content and queue read failures: ${token}`);
+}
+for (const token of [
+  "scheduledAvailable?: boolean",
+  "طابور جدولة المحتوى غير متاح",
+  "scheduledAvailable && !item.published",
+  "scheduledAvailable && queued",
+  "scheduledAvailable && selected",
+]) {
+  if (!contentConsole.includes(token)) failures.push(`Admin content console must disable schedule operations when the queue is unavailable: ${token}`);
+}
+
+const searchPage = readFileSync("src/app/admin/search/page.tsx", "utf8");
+const platformService = readFileSync("src/features/admin/services/platform.ts", "utf8");
+for (const token of [
+  "unavailableSources",
+  "نتائج جزئية",
+  "بعض المصادر لم تنجح قراءتها",
+]) {
+  if (!searchPage.includes(token)) failures.push(`Admin central search must identify partial-source failures: ${token}`);
+}
+if (
+  !platformService.includes("unavailableSources: string[]") ||
+  !platformService.includes("results.filter((result) => !result.ok)") ||
+  !platformService.includes("[admin/search] failed to search source")
+) {
+  failures.push("Admin search service must preserve failed source status rather than silently treating it as no matches.");
+}
+
 const pageCount = pages.length;
 if (pageCount < hrefs.length) failures.push(`admin route inventory mismatch: ${pageCount} page files for ${hrefs.length} canonical navigation routes`);
 
