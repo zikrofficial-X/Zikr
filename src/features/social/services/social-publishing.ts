@@ -701,9 +701,9 @@ async function syncYouTubeVideoReferenceToCatalog(
         },
       } : {}),
     };
-    const updatedAt = row.updated_at;
+    const expectedUpdatedAt = row.updated_at;
     const query = "/rest/v1/videos?id=eq." + encodeURIComponent(row.id) +
-      (updatedAt ? "&updated_at=eq." + encodeURIComponent(updatedAt) : "");
+      (expectedUpdatedAt ? "&updated_at=eq." + encodeURIComponent(expectedUpdatedAt) : "");
     const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(query, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },
