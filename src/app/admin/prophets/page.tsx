@@ -119,6 +119,19 @@ export default async function AdminProphetsPage() {
       </Card>
 
       {/* Prophets list */}
+      {!loaded && (
+        <section
+          role="alert"
+          aria-live="polite"
+          className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center space-y-2"
+        >
+          <h2 className="font-semibold text-red-300">تعذر تحميل بيانات الأنبياء</h2>
+          <p className="text-sm text-brand-cream/60">
+            تعذر قراءة بيانات الأنبياء من قاعدة البيانات. لم يتم التعامل مع فشل القراءة على أنه جدول فارغ.
+            أعد تحميل الصفحة، وإذا استمرت المشكلة فراجع سجل الأخطاء.
+          </p>
+        </section>
+      )}
       {hasProphets ? (
         <section className="space-y-4">
           <p className="text-xs text-brand-cream/35 mr-1">{prophets.length} نبي في قاعدة البيانات</p>
