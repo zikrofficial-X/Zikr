@@ -18,3 +18,49 @@ export function buildWrittenPost(source:WrittenContentSource,draft:WrittenPostDr
  const reflection=source.quoteRequired?draft.reflection.trim():"";
  return {title:draft.title.trim(),body:[draft.hook.trim(),quote,reflection,draft.question?.trim()||"",source.reference.trim()].filter(Boolean).join("\n\n"),publicPath:source.publicPath};
 }
+
+export function createWrittenSocialAutomationKey(kind: string, id: string) {
+ return `written-social-v1:${kind}:${id}`;
+}
+
+export function buildWrittenSocialQueuePayload(
+ source: WrittenContentSource,
+ draft: WrittenPostDraft,
+ articleId: string,
+ automationKey: string,
+ now: string,
+) {
+ const post = buildWrittenPost(source, draft);
+ return {
+  content_type: "written_post",
+  content_id: articleId,
+  title: post.title,
+  body: post.body,
+  image_url: null,
+  video_url: null,
+  target_platforms: ["facebook"],
+  status: "queued",
+  scheduled_at: now,
+  published_at: null,
+  error_message: null,
+  metadata: {
+   contentType: "written_post",
+   publicPath: post.publicPath,
+   source: {
+    type: source.kind,
+    id: source.id,
+    title: source.title,
+    reference: source.reference,
+    verified: source.sourceVerified,
+   },
+   generation: {
+    provider: "gemini",
+    version: "written-facebook-v1",
+    generatedAt: now,
+   },
+  },
+  automation_key: automationKey,
+  created_at: now,
+  updated_at: now,
+ };
+}
