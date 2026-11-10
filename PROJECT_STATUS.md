@@ -1,11 +1,23 @@
 # ZIKR — Current Project Status
 
 **Production branch:** `main`  
-**Last reconciled:** 2026-11-10 11:38 Africa/Cairo  
+**Last reconciled:** 2026-11-10 14:48 Africa/Cairo  
 **Repository:** `zikrofficial-X/Zikr`  
 **Production origin:** `https://zikrmediaofficial.vercel.app`
 
-## Current verified checkpoint — 2026-11-10 11:38 Africa/Cairo
+## Current verified checkpoint — 2026-11-10 14:48 Africa/Cairo
+
+**Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
+
+- GitHub main remains `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; active PR #275 is Draft at `8f835e824bb4f848e0304294a04464d8c08903bf`. The PR-only test fix isolates `YOUTUBE_CHANNEL_ID` for the no-override test; CircleCI 4415/4414/4416 and GitHub Quality Gate 42818371121 all passed on this exact head. No runtime OAuth code changed.
+- The PR remains unmerged. No matching Vercel Preview exists; Preview uses production-backed integrations. Vercel Sandbox creation was blocked by the team's exhausted Snapshots Storage quota (HTTP 402), so no isolated sandbox run was possible. Do not merge until an isolated/read-only Preview strategy and full diff review are complete.
+- Production Vercel deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` is READY on main. `/api/health` reports the same main SHA. Ten sampled routes/APIs returned HTTP 200: `/`, `/quran`, `/hadith`, `/adhkar`, `/prayer-times`, `/kids`, `/videos`, `/api/kids/videos`, `/api/quran/surahs`, and `/api/hadith/books`.
+- Supabase remains `ACTIVE_HEALTHY`. Live migration ledger is 415/415 unique versions. Security Advisor: one warning for disabled leaked-password protection; Performance Advisor: 89 unused-index candidates; Health Advisor: no findings. No database or Auth changes were made.
+- Video/social queue now reports 78 published, 6 failed, 3 partial video rows. All 9 non-published rows carry `sourceMediaMissing` and remain held; no media recovery, retry, regeneration, or public publishing was attempted.
+- Current inventory baseline remains 1,639 files / 491 directories; full content reads advanced from 3 to 5/1,639 for this ledger's manually reviewed set (the manifest and file matrix still cover the full tracked tree automatically). Modules closed: 0. No files deleted.
+
+
+## Historical checkpoint — 2026-11-10 11:38 Africa/Cairo
 
 **Audit state: IN PROGRESS. This checkpoint is not a FINAL BASELINE READY certification.**
 
