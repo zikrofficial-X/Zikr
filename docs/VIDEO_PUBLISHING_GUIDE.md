@@ -100,7 +100,7 @@ The written-content factory runs through `.github/workflows/generate-written-con
 
 ## Generated media lifecycle
 
-Generated video binaries are temporary publishing assets. The publisher removes eligible source media only after every requested platform has a confirmed remote ID. On partial publication it retains the source for unfinished targets and retries only targets without a confirmed remote ID. Queue records, remote IDs, source references, and audit metadata remain available after media cleanup.
+The Cloudinary video URL stored in `public.videos` is the permanent playback master for the ZIKR website and must never be deleted by social publishing or storage retention. Social delivery does not delete media masters. If a separate Supabase staging copy exists, only that redundant copy may be removed after the 48-hour grace period, confirmed remote IDs for all requested platforms, and a reference check. Partial publication retains staging media for unfinished targets and retries only targets without a confirmed remote ID. Queue records, remote IDs, source references, and audit metadata remain available.
 
 ## Optional additional Hugging Face Spaces
 
