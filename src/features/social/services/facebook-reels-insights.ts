@@ -17,8 +17,26 @@ type GraphInsight = {
 
 type GraphInsightsResponse = {
   data?: GraphInsight[];
-  error?: { message?: string; code?: number };
+  error?: {
+    message?: string;
+    code?: number;
+    error_subcode?: number;
+    type?: string;
+  };
 };
+
+export class FacebookReelsInsightsApiError extends Error {
+  readonly code: number | null;
+  readonly subcode: number | null;
+  readonly type: string | null;
+  constructor(input: { message: string; code?: number; subcode?: number; type?: string }) {
+    super(input.message);
+    this.name = "FacebookReelsInsightsApiError";
+    this.code = Number.isInteger(input.code) ? input.code! : null;
+    this.subcode = Number.isInteger(input.subcode) ? input.subcode! : null;
+    this.type = typeof input.type === "string" ? input.type.slice(0, 80) : null;
+  }
+}
 
 export type FacebookReelsInsightsSyncResult = {
   configured: boolean;
@@ -105,10 +123,21 @@ async function fetchReelInsights(videoId: string, pageAccessToken: string): Prom
   });
   const payload = (await response.json().catch(() => ({}))) as GraphInsightsResponse;
   if (!response.ok || payload.error) {
-    // Keep useful provider diagnostics without logging the request URL, token,
-    // full payload, Page ID, or other potentially identifying response data.
-    const code = Number.isInteger(payload.error?.code) ? " Meta code " + payload.error?.code : "";
-    throw new Error("Meta Facebook Reels insights request failed (HTTP " + response.status + code + ").");
+    // Meta's message is useful for API migrations. Redact credentials and numeric
+    // object IDs before surfacing a short diagnostic to worker logs.
+    const providerMessage = typeof payload.error?.message === "string"
+      ? payload.error.message
+          .replaceAll(pageAccessToken, "[redacted]")
+          .replace(/\b\d{8,}\b/g, "[id]")
+          .replace(/https?:\/\/\S+/gi, "[url]")
+          .slice(0, 220)
+      : "No provider message returned.";
+    throw new FacebookReelsInsightsApiError({
+      message: "Meta Facebook Reels insights request failed (HTTP " + response.status + "): " + providerMessage,
+      code: payload.error?.code,
+      subcode: payload.error?.error_subcode,
+      type: payload.error?.type,
+    });
   }
   return parseFacebookReelsInsights(Array.isArray(payload.data) ? payload.data : []);
 }
@@ -201,9 +230,13 @@ export async function syncFacebookReelsInsights(limit = MAX_BATCH): Promise<Face
         const metrics = await fetchReelInsights(candidate.videoId, credential.page_access_token);
         return { candidate, metrics, error: false };
       } catch (error) {
+        const providerError = error instanceof FacebookReelsInsightsApiError ? error : null;
         console.error(
           "[social-worker] Facebook Reels insights unavailable:",
           error instanceof Error ? error.message : "Unknown Meta insights error",
+          providerError?.code ? "code=" + providerError.code : "",
+          providerError?.subcode ? "subcode=" + providerError.subcode : "",
+          providerError?.type ? "type=" + providerError.type : "",
         );
         return { candidate, metrics: {}, error: true };
       }
