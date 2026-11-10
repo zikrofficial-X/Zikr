@@ -9,6 +9,7 @@ on:
       - "scripts/jobs/template-video-automation.ts"
       - "src/features/videos/services/video-publish-approval.ts"
       - "src/features/videos/providers/content-hash.ts"
+      - "supabase/migrations/20261110031431_retry_false_blocked_legacy_qa_source_url_parity.sql"
       - "src/features/videos/providers/ai-visual-policy.ts"
   workflow_dispatch:
 
