@@ -1,6 +1,6 @@
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
-export type AdminRead<T> = { rows: T[]; ok: boolean };
+export type AdminRead<T> = { rows: T[]; ok: boolean; error: string | null };
 
 type AdminRequestInit = Parameters<typeof supabaseServerAdminRequest>[1];
 
@@ -12,9 +12,10 @@ type AdminRequestInit = Parameters<typeof supabaseServerAdminRequest>[1];
 export async function readAdminRows<T>(path: string, init?: AdminRequestInit): Promise<AdminRead<T>> {
   try {
     const rows = await supabaseServerAdminRequest<T[]>(path, init ?? { method: "GET" });
-    return { rows: rows ?? [], ok: true };
+    return { rows: rows ?? [], ok: true, error: null };
   } catch (error) {
-    console.error("[admin] read failed:", path.split("?")[0], error);
-    return { rows: [], ok: false };
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[admin] read failed:", path.split("?")[0], message);
+    return { rows: [], ok: false, error: message };
   }
 }

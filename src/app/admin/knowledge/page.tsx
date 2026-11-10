@@ -28,11 +28,18 @@ export default async function KnowledgeAdminPage() {
     !data.availability.hadiths && "الأحاديث",
     !data.availability.books && "كتب الأحاديث",
   ].filter(Boolean) as string[];
+  const sourceErrors = [
+    data.errors.companions && `الصحابة: ${data.errors.companions.slice(0, 220)}`,
+    data.errors.scholars && `العلماء: ${data.errors.scholars.slice(0, 220)}`,
+    data.errors.surahs && `السور القرآنية: ${data.errors.surahs.slice(0, 220)}`,
+    data.errors.hadiths && `الأحاديث: ${data.errors.hadiths.slice(0, 220)}`,
+    data.errors.books && `كتب الأحاديث: ${data.errors.books.slice(0, 220)}`,
+  ].filter(Boolean) as string[];
   return <Container className="space-y-10 py-8 text-right" dir="rtl">
     <header className="space-y-2"><Link href="/admin" className="text-xs text-brand-gold/60 hover:text-brand-gold">← العودة إلى لوحة التحكم</Link><h1 className="text-3xl font-bold text-brand-gold">إدارة المعرفة الإسلامية</h1><p className="max-w-3xl text-sm leading-7 text-brand-cream/55">نماذج موحّدة لإضافة وتحرير الصحابة والعلماء والسور والأحاديث. لا تُنشئ نصوصًا دينية تلقائيًا؛ أدخل النص الموثق ومصدره ثم راجعه قبل النشر.</p></header>
     {unavailableSources.length > 0 && (
       <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm leading-7 text-red-100">
-        تعذر تحميل مصادر المعرفة التالية: {unavailableSources.join("، ")}. لن يتم عرض فشل القراءة على أنه عدم وجود سجلات؛ تتوفر بقية الأقسام التي اكتمل تحميلها.
+        تعذر تحميل مصادر المعرفة التالية: {unavailableSources.join("، ")}. لن يتم عرض فشل القراءة على أنه عدم وجود سجلات؛ تتوفر بقية الأقسام التي اكتمل تحميلها. {sourceErrors.length ? `تفاصيل القراءة: ${sourceErrors.join(" | ")}` : ""}
       </div>
     )}
 

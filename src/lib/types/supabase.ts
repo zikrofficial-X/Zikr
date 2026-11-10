@@ -1464,6 +1464,7 @@ export type Database = {
       hadiths: {
         Row: {
           book_id: string
+          chapter: string | null
           created_at: string
           grade_ar: string | null
           grade_en: string | null
@@ -1481,6 +1482,7 @@ export type Database = {
         }
         Insert: {
           book_id: string
+          chapter?: string | null
           created_at?: string
           grade_ar?: string | null
           grade_en?: string | null
@@ -1498,6 +1500,7 @@ export type Database = {
         }
         Update: {
           book_id?: string
+          chapter?: string | null
           created_at?: string
           grade_ar?: string | null
           grade_en?: string | null

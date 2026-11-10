@@ -13,7 +13,7 @@ async function loadQueue(path: string) {
 }
 
 function statusLabel(status: string) {
-  return ({ pending: "انتظار", queued: "انتظار", processing: "معالجة", retry_wait: "إعادة المحاولة", partial: "جزئي", failed: "فشل", published: "منشور", completed: "مكتمل" } as Record<string, string>)[status] ?? status;
+  return ({ pending: "انتظار", queued: "انتظار", processing: "معالجة", retry_wait: "إعادة المحاولة", partial: "جزئي", failed: "فشل", published: "منشور", completed: "مكتمل", generated: "تم التوليد", approved: "معتمد", cancelled: "ملغى" } as Record<string, string>)[status] ?? status;
 }
 
 function QueueCard({ queue }: { queue: QueueCard }) {
@@ -32,7 +32,7 @@ function QueueCard({ queue }: { queue: QueueCard }) {
         <div role="alert" className="mt-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-3 text-sm text-amber-100/80">البيانات غير متاحة حاليًا، ولم يتم تحويلها إلى أصفار.</div>
       ) : (
         <>
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
             {counts.map(([status, count]) => <div key={status} className={`rounded-xl border p-3 ${status === "failed" ? "border-red-400/25 bg-red-400/[0.06] text-red-100" : "border-brand-gold/8 bg-black/10 text-brand-cream"}`}><p className="text-[11px] opacity-60">{statusLabel(status)}</p><p className="mt-1 text-2xl font-bold tabular-nums">{count.toLocaleString("ar-EG-u-nu-latn")}</p></div>)}
           </div>
           <p className={`mt-4 text-xs ${failed ? "text-red-200" : "text-emerald-200/75"}`}>{failed ? `${failed} عنصر يحتاج إلى تدخل` : "لا يوجد فشل مسجل في القراءة الحالية"}</p>
@@ -59,10 +59,10 @@ export default async function AdminQueuesPage() {
   ]);
 
   const queues: QueueCard[] = [
-    ...(video ? [{ key: "video", title: "طابور الفيديو", href: "/admin/video/requests", rows: video.rows, ok: video.ok, statuses: ["pending", "processing", "retry_wait", "failed"] }] : []),
-    ...(social ? [{ key: "social", title: "طابور النشر الاجتماعي", href: "/admin/social", rows: social.rows, ok: social.ok, statuses: ["queued", "processing", "partial", "failed"] }] : []),
-    ...(content ? [{ key: "content", title: "طابور نشر المحتوى", href: "/admin/editorial", rows: content.rows, ok: content.ok, statuses: ["queued", "processing", "published", "failed"] }] : []),
-    ...(translation ? [{ key: "translation", title: "طابور الترجمة", href: "/admin/content", rows: translation.rows, ok: translation.ok, statuses: ["queued", "processing", "completed", "failed"] }] : []),
+    ...(video ? [{ key: "video", title: "طابور الفيديو", href: "/admin/video/requests", rows: video.rows, ok: video.ok, statuses: ["pending", "processing", "completed", "retry_wait", "failed"] }] : []),
+    ...(social ? [{ key: "social", title: "طابور النشر الاجتماعي", href: "/admin/social", rows: social.rows, ok: social.ok, statuses: ["queued", "processing", "published", "partial", "failed"] }] : []),
+    ...(content ? [{ key: "content", title: "طابور نشر المحتوى", href: "/admin/editorial", rows: content.rows, ok: content.ok, statuses: ["queued", "processing", "published", "cancelled", "failed"] }] : []),
+    ...(translation ? [{ key: "translation", title: "طابور الترجمة", href: "/admin/content", rows: translation.rows, ok: translation.ok, statuses: ["queued", "processing", "generated", "approved", "published", "completed", "failed"] }] : []),
   ];
   return <div className="mx-auto max-w-[1800px] space-y-6 p-4 md:p-8" dir="rtl">
     <AdminBreadcrumbs current="مركز الطوابير" />
