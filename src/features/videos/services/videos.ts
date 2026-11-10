@@ -5,91 +5,7 @@ import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/
 import type { VideoCategory, Video } from "@/features/videos/types/videos";
 import { FALLBACK_VIDEO_CATEGORIES, FALLBACK_VIDEOS } from "@/features/videos/data/fallback";
 import { defaultOgImage } from "@/lib/site";
-
-function resolveVideoMediaUrl(row: Record<string, unknown>): string | null {
-  const metadata =
-    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
-      ? (row.metadata as Record<string, unknown>)
-      : {};
-  const mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "";
-  const youtubeId = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
-  const youtubeUrl = /^[A-Za-z0-9_-]{6,20}$/.test(youtubeId)
-    ? `https://www.youtube.com/watch?v=${encodeURIComponent(youtubeId)}`
-    : null;
-
-  // When the Cloudinary master has been confirmed missing, do not return its
-  // stale pointer ahead of the already-published YouTube playback fallback.
-  if (metadata.generator === "zikr_internal_video_factory" &&
-      ["cloudinary_missing", "unavailable"].includes(mediaState)) {
-    return youtubeUrl;
-  }
-
-  const candidates = [
-    metadata.sourceVideoUrl,
-    metadata.generatedVideoUrl,
-    metadata.videoUrl,
-    metadata.video_url,
-  ];
-
-  for (const value of candidates) {
-    if (typeof value !== "string") continue;
-    try {
-      const parsed = new URL(value.trim());
-      if (metadata.generator === "zikr_internal_video_factory") {
-        if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com") continue;
-      } else if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-        continue;
-      }
-      return parsed.toString();
-    } catch {
-      continue;
-    }
-  }
-
-  if (youtubeUrl) return youtubeUrl;
-  return null;
-}
-
-function resolveVideoThumbnail(row: Record<string, unknown>): string {
-  const direct = typeof row.thumbnail_url === "string" ? row.thumbnail_url.trim() : "";
-  if (direct) return direct;
-
-  const metadata =
-    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
-      ? (row.metadata as Record<string, unknown>)
-      : {};
-
-  for (const key of ["thumbnailUrl", "thumbnail_url", "sourceThumbnailUrl", "generatedThumbnailUrl"]) {
-    const value = metadata[key];
-    if (typeof value === "string" && /^https?:\/\//i.test(value.trim())) return value.trim();
-  }
-
-  // Cloudinary can render a poster frame directly from the durable video master.
-  // This avoids a generic OG image when a generated video has no stored thumbnail.
-  for (const key of ["generatedVideoUrl", "videoUrl", "video_url"]) {
-    const value = metadata[key];
-    if (typeof value !== "string") continue;
-    try {
-      const parsed = new URL(value.trim());
-      if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com") continue;
-      if (!parsed.pathname.includes("/video/upload/")) continue;
-      const posterPath = parsed.pathname
-        .replace("/video/upload/", "/video/upload/so_0/")
-        .replace(/\.(mp4|webm|mov|m4v)$/i, ".jpg");
-      return parsed.origin + posterPath;
-    } catch {
-      continue;
-    }
-  }
-
-  const youtubeId = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
-  if (/^[A-Za-z0-9_-]{6,20}$/.test(youtubeId)) {
-    return `https://i.ytimg.com/vi/${encodeURIComponent(youtubeId)}/hqdefault.jpg`;
-  }
-
-  return defaultOgImage;
-}
-
+import { resolveVideoMediaUrl, resolveVideoThumbnail, resolveVideoYoutubeId } from "./video-media-contract";
 
 function isPubliclyRenderableVideo(row: Record<string, unknown>): boolean {
   return Boolean(resolveVideoMediaUrl(row));
@@ -153,8 +69,8 @@ export async function getVideos(
     title: r.title as string,
     slug: r.slug as string,
     description: r.description as string | undefined,
-    youtubeId: r.youtube_id as string | undefined,
-    thumbnailUrl: resolveVideoThumbnail(r),
+    youtubeId: resolveVideoYoutubeId(r) ?? undefined,
+    thumbnailUrl: resolveVideoThumbnail(r, defaultOgImage),
     duration: (r.duration as number) || undefined,
     views: (r.views as number) || 0,
     published: r.published as boolean,
@@ -187,8 +103,8 @@ export async function getVideoBySlug(slug: string): Promise<Video | null> {
     title: r.title as string,
     slug: r.slug as string,
     description: r.description as string | undefined,
-    youtubeId: r.youtube_id as string | undefined,
-    thumbnailUrl: resolveVideoThumbnail(r),
+    youtubeId: resolveVideoYoutubeId(r) ?? undefined,
+    thumbnailUrl: resolveVideoThumbnail(r, defaultOgImage),
     duration: (r.duration as number) || undefined,
     views: (r.views as number) || 0,
     published: r.published as boolean,
@@ -231,8 +147,8 @@ export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
       title: row.title as string,
       slug: row.slug as string,
       description: row.description as string | undefined,
-      youtubeId: row.youtube_id as string | undefined,
-      thumbnailUrl: resolveVideoThumbnail(row),
+      youtubeId: resolveVideoYoutubeId(row) ?? undefined,
+      thumbnailUrl: resolveVideoThumbnail(row, defaultOgImage),
       duration: (row.duration as number) || undefined,
       views: (row.views as number) || 0,
       published: row.published as boolean,
@@ -262,8 +178,8 @@ export async function getKidsGeneratedVideoBySlug(slug: string): Promise<Video |
     title: row.title as string,
     slug: row.slug as string,
     description: row.description as string | undefined,
-    youtubeId: row.youtube_id as string | undefined,
-    thumbnailUrl: resolveVideoThumbnail(row),
+    youtubeId: resolveVideoYoutubeId(row) ?? undefined,
+    thumbnailUrl: resolveVideoThumbnail(row, defaultOgImage),
     duration: (row.duration as number) || undefined,
     views: (row.views as number) || 0,
     published: row.published as boolean,
