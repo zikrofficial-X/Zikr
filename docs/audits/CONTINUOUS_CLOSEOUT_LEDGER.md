@@ -1,5 +1,69 @@
 # ZIKR Continuous Closeout Ledger
 
+
+## Checkpoint — 2026-11-10T16:01:46.706Z (main merge, live database reconciliation, and active repair PRs)
+
+### Canonical baseline and deployment
+
+- Canonical repository: `zikrofficial-X/Zikr`; production branch: `main`; current main baseline: `035ea4568572eea36c82b79b1e9cd212113e8e32` (PR #275 merge commit).
+- Recursive Git tree: 2148 entries, 1657 files, 491 directories, 139372949 file bytes; API response not truncated. Main contains 417 versioned Supabase migration files with no duplicate version IDs.
+- PR #275 is merged. PRs #276 and #277 were closed as superseded; no files or branches were deleted.
+- Vercel project `zikr` remains linked to the canonical repository. Production deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` is READY but serves commit `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`, behind main `035ea4568572eea36c82b79b1e9cd212113e8e32`. The manual `RELEASE` gate was not invoked and no production deployment was created by this run.
+- Main CI for `035ea4568572eea36c82b79b1e9cd212113e8e32`: config-guard, source-verify, application-build-docs, and android-release-draft all SUCCESS. Android v1.1.14 remains the latest published release; no new APK/AAB was created.
+
+### Supabase live reconciliation
+
+- Project `zqtssvlvmkzeeyqghqfk` remains `ACTIVE_HEALTHY`.
+- Live migration ledger: 417 versions, matching the 417 migration files on main; no duplicate versions. PR #281 adds a proposed 418th migration, not applied.
+- Public schema: 92 tables, all 92 with RLS enabled; 211 public policies, 66 foreign keys, 45 public triggers, 40 public functions. All 20 SECURITY DEFINER functions have a pinned `search_path`; no direct anon/authenticated EXECUTE grants were found.
+- Storage: 9 buckets, 0 objects, 10 `storage.objects` policies. The PR #275 owner-scoped user-storage migration is applied and its four new policies are present; authenticated owner upload/read/delete session acceptance remains pending.
+- Security Advisor: leaked-password protection remains disabled (owner/plan decision). Performance Advisor: 89 unused-index candidates; no indexes were dropped. No production data, bucket, index, or schema deletion was performed in this run.
+
+### Video purge incident — new evidence and repair prepared
+
+- Current `videos` table: 127 generated rows, 22 published and 105 hidden; no `youtube_fallback` rows and no historical `mediaPurgedFromPublished` flags.
+- The exact purge audit event is `b97b0756-3e4c-4a43-aec8-a42686ab1682` at `2026-11-10 08:35:56.529728+00`. It records file scope, 105 catalog rows hidden, 44 Cloudinary assets deleted, and physical file deletion.
+- The old production purge route explicitly set `published=false` and `mediaState=purged` for all internal generated rows. A read-only join against the event, `content_publish_queue`, `social_publish_queue`, `video_generation_requests`, YouTube provider IDs, generation hashes, and automated/Kids QA identifies exactly 58 rows (50 general, 8 Kids) whose site and social publication and Cloudinary disposal timestamps predate the purge and whose row/media-purge timestamps fall within the event's 15-second window.
+- The already-applied migration `20261110150000_restore_confirmed_purged_video_catalog.sql` restored zero rows because the legacy purge did not set the newer provenance flag. The exact 58-row forward recovery is prepared in PR #281; it is fail-closed, idempotent, no-ops outside the exact production audit context, changes only `public.videos`, and leaves 47 other purged rows untouched. It is not applied; production release remains manual.
+- PR #281 also clarifies the admin purge response: manual public catalog preserved, generated catalog rows hidden, and verified YouTube fallback rows retained are separate fields. CircleCI config-guard/source-verify/application-build-docs all pass on its current head; owner review and Preview acceptance remain.
+
+### Video/social delivery state
+
+- `video_generation_requests`: 112 completed; 64 rows have no `video_url`.
+- `social_publish_queue`: 80 published, 9 queued, 3 partial, 6 failed. The 9 queued records are written-content jobs; the 3 partial and 6 failed records must not be blindly replayed because provider IDs and prior publication outcomes may exist.
+- `content_publish_queue`: 110 video rows and 11 article rows are marked published. This historical site-publishing evidence was used only as one of several checks for the 58 recovery candidates.
+- No social publish, provider retry, or external post was triggered by this run.
+
+### Offline content
+
+- Live `public.quran_tafsir` contains 6,236 rows (the table is `quran_tafsir`, not `tafsir`). A read-only count comparison confirms all 25 datasets in PR #280 exactly match the current live published dataset counts, including Quran, tafsir, hadith, Kids, articles, audio, and games.
+- PR #280's exporter now describes the tafsir fallback policy without implying the live table is currently empty, and its verifier checks `staleDatasets` against per-dataset source/stale flags. Latest source/build CI is pending after these changes.
+
+### Runtime and web acceptance
+
+- Sampled production HTTP routes `/api/health`, `/`, `/videos`, `/kids`, and `/hadith` returned HTTP 200 on the existing production deployment; the health endpoint identifies the old production SHA, not the current main SHA.
+- The PR #275 Preview returned HTTP 200 for `/api/health`, `/`, `/videos`, `/kids`, `/hadith`, and `/api/kids/videos`. The protected `/admin/social` route redirected to authentication as expected.
+- Runtime error aggregation still contains seven Supabase transport `fetch failed` events on production and two missing-service-role events on the old PR #275 Preview, plus one rejected Meta token attempt. The Preview-only missing-key error is addressed by PR #278; all three CircleCI checks pass, but no Preview for its exact head has been verified yet. Do not treat the old deployment's logs as evidence that the new guard failed.
+- The Meta token rejection is an observed failed validation attempt, not proof that the connected Facebook Page credential is invalid.
+
+### Open repair PRs and gates
+
+- #278 — optional Facebook feed configuration guard: 3 CircleCI checks SUCCESS; exact-head Preview not yet available.
+- #279 — native advertising exclusion / candidate Android 1.1.15: config-guard SUCCESS; source/build CI and Preview remain pending.
+- #280 — offline snapshot refresh: config-guard SUCCESS; source/build CI pending; 25 live dataset counts match.
+- #281 — exact purge-proven 58-video recovery and admin metadata clarification: 3 CircleCI checks SUCCESS; migration not applied and Preview/owner review pending.
+- #283 — full tracked text/SQL encoding scan: config-guard SUCCESS; source/build CI pending.
+- `.github/CODEOWNERS` assigns all files to `@Zikrmediaofficial`. No requested reviewer is registered. The review-request connector did not return a registered reviewer; do not bypass owner review or the manual production release gate.
+- Branch protection details could not be read with the available GitHub permission; the CODEOWNERS policy remains the explicit review constraint.
+
+### Cumulative progress and remaining work
+
+- Automated inventory coverage: 1,657/1,657 files (100%) at main baseline `035ea4568572eea36c82b79b1e9cd212113e8e32`.
+- Minimum documented full source-content reads: 129/1,657. The refreshed matrix carries 1,507 `REVIEW_REQUIRED` files. No module is certified closed.
+- The 18 files previously listed as PR #275-only are now part of the main matrix. The historical PR manifest remains retained.
+- No files were deleted. No production migration from PR #281 was applied. No production deploy, Android release, or social publication was performed.
+- Continue from the first `REVIEW_REQUIRED` file in the refreshed matrix; prioritize runtime-critical services, auth/RLS, API routes, background workers, video/social recovery, and all routes not yet covered by browser/device acceptance.
+
 ## Latest execution checkpoint — 2026-11-10 17:18 Africa/Cairo
 
 - **Verified identities:** GitHub `zikrofficial-X/Zikr`; production `main@c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; Vercel project `zikr` / `prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs`; production deployment `dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E` is READY on that exact main SHA; Supabase `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY (PostgreSQL 17.11).

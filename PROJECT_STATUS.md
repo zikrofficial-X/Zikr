@@ -1,5 +1,22 @@
 # ZIKR — Current Project Status
 
+
+## Current verified checkpoint — 2026-11-10T16:01:46.706Z
+
+**Audit state: IN PROGRESS. This is not a FINAL BASELINE READY certification.**
+
+- Canonical main: `035ea4568572eea36c82b79b1e9cd212113e8e32` (PR #275 merged). Recursive inventory: 2148 entries, 1657 files, 491 directories, 139372949 file bytes. The refreshed matrix and manifest record this exact pre-documentation main baseline.
+- Vercel production is READY on older commit `c91f64ccd6162e5107b3edb8be3c7aa521865c2f`; main is ahead and the manual `RELEASE` gate remains untouched. Main CI has all four required contexts passing.
+- Supabase `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY with 417/417 applied migrations matching main, 92/92 public tables RLS-enabled, 211 public policies, 45 public triggers, 40 public functions, 20/20 SECURITY DEFINER functions with pinned search_path, 10 storage-object policies, 9 buckets and 0 storage objects.
+- The PR #275 owner-scoped storage migration is live; its four new policies are present, but authenticated owner upload/read/delete acceptance is still pending. The PR #275 video-catalog restore migration is also live but restored zero rows because the old purge lacked explicit provenance.
+- New read-only production evidence proves 58 of 105 purged generated videos (50 general, 8 Kids) were site-published and socially published before the exact purge event, had Cloudinary media disposed before it, were updated inside its timestamp window, match request hashes/provider IDs, and passed QA. PR #281 prepares a fail-closed, idempotent forward migration to restore only those 58; it is not applied. The other 47 remain hidden.
+- Live offline datasets: all 25 PR #280 dataset counts exactly match Supabase, including `public.quran_tafsir=6236`. PR #280 corrects source metadata and adds stale/source consistency validation.
+- Video/social queue: 112 generation requests completed (64 lack `video_url`); 80 social jobs published, 9 written-content jobs queued, 3 partial, 6 failed. No provider retries or external posts were triggered.
+- PR #278's optional Facebook feed guard has all three CircleCI checks passing; exact-head Preview is pending. PR #279 native-ad exclusion and PR #280 offline snapshot are awaiting remaining source/build checks. PR #281 has all three CircleCI checks passing; PR #283's full content/SQL scan has config-guard passing with source/build pending.
+- Production runtime logs still show seven Supabase transport failures and two missing-service-role errors on the old PR #275 Preview, plus one rejected Meta token attempt. The Preview-only missing-key case is addressed in PR #278 but not yet revalidated on a new Preview.
+- Android v1.1.14 remains the latest published release. No new APK/AAB, production deployment, social post, production data deletion, or file deletion was performed.
+- Progress: 100% automated inventory coverage; at least 129/1,657 full source-content reads; 1,507 files still `REVIEW_REQUIRED`; 0 modules closed. The cumulative audit remains open.
+
 ## Latest execution checkpoint — 2026-11-10 17:18 Africa/Cairo
 
 **Audit state: IN PROGRESS. Not a final certification.**
