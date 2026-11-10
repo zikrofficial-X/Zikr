@@ -576,9 +576,10 @@ async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<bool
     typeof item.metadata?.supabaseOriginalVideoUrl === "string"
       ? item.metadata.supabaseOriginalVideoUrl
       : null;
-  // Remove the Supabase staging copy first. Keep the public Cloudinary URL alive
-  // until the staging delete succeeds, so a retry never strands a live queue row.
-  const candidates = [...new Set([backupUrl, item.video_url].filter((value): value is string => Boolean(value)))];
+  // The catalog and public video pages use item.video_url as their durable playback
+  // master. Never delete it after social delivery. Only remove the optional Supabase
+  // staging copy; retaining the master prevents published ZIKR pages from breaking.
+  const candidates = backupUrl ? [backupUrl] : [];
   const failures: string[] = [];
 
   for (const candidate of candidates) {
@@ -610,8 +611,8 @@ async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<bool
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({
-          video_url: null,
-          content: { ...existingContent, supabaseOriginalVideoUrl: null, videoDisposedAt: new Date().toISOString() },
+          // Keep video_url as the canonical playback master for the public catalog.
+          content: { ...existingContent, supabaseOriginalVideoUrl: null, stagingVideoDisposedAt: new Date().toISOString() },
           updated_at: new Date().toISOString(),
         }),
       },
@@ -619,11 +620,11 @@ async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<bool
   }
 
   await markQueueItem(item.id, "published", {
-    video_url: null,
+    // Preserve the durable video_url for website playback and future re-publishing.
     metadata: {
       ...(item.metadata ?? {}),
       supabaseOriginalVideoUrl: null,
-      videoDisposedAt: new Date().toISOString(),
+      stagingVideoDisposedAt: new Date().toISOString(),
       videoCleanupPending: false,
       videoCleanupErrors: [],
     },
