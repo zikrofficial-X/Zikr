@@ -167,15 +167,43 @@ for (const [path, target] of Object.entries(legacyRedirects)) {
 }
 const socialPage = read("src/app/admin/social/page.tsx");
 const writtenSocialPage = read("src/app/admin/social/written-studio/page.tsx");
+const writtenSocialClient = read("src/app/admin/social/written-studio/written-studio-client.tsx");
+const writtenSocialApi = read("src/app/api/admin/social/written/route.ts");
 if (!socialPage.includes('requireAdminPermission("social.manage")') || !socialPage.includes("AdminSocialClient")) {
   failures.push("social publishing center must remain protected by social.manage");
 }
-if (!writtenSocialPage.includes('redirect("/admin/memory")')) {
-  failures.push("retired external written-social studio must redirect to internal project memory");
+if (
+  !writtenSocialPage.includes('requireAdminPermission("social.manage")') ||
+  !writtenSocialPage.includes("WrittenStudioClient") ||
+  !writtenSocialPage.includes("./written-studio-client")
+) {
+  failures.push("written Facebook studio must remain an operational social.manage page");
+}
+if (
+  !writtenSocialClient.includes('fetch("/api/admin/social/written"') ||
+  !writtenSocialClient.includes('method:"POST"') ||
+  !writtenSocialClient.includes("معاينة المنشور")
+) {
+  failures.push("written Facebook studio must retain generation, queue loading and post preview UI");
+}
+if (
+  !writtenSocialApi.includes('requireAdminApi("social.manage")') ||
+  !writtenSocialApi.includes('requireAdminApi("social.publish")') ||
+  !writtenSocialApi.includes('dispatchGitHubWorkflow("generate-written-content.yml"')
+) {
+  failures.push("written Facebook API must enforce management and publishing permissions before controlled workflow dispatch");
 }
 const socialNavigationGroup = navigation.match(/key:\s*"social-publishing"[\s\S]*?items:\s*\[([\s\S]*?)\]/);
-if (!socialNavigationGroup?.[1].includes('href: "/admin/social"') || !socialNavigationGroup[1].includes('permission: "social.manage"')) {
-  failures.push("social publishing must appear inside its dedicated canonical navigation group and require social.manage");
+if (
+  !socialNavigationGroup?.[1].includes('href: "/admin/social"') ||
+  !socialNavigationGroup[1].includes('permission: "social.manage"') ||
+  !socialNavigationGroup[1].includes('href: "/admin/social/written-studio"')
+) {
+  failures.push("social center and written-content studio must appear in the dedicated social navigation group");
+}
+const audioNavigationGroup = navigation.match(/key:\s*"media-audio"[\s\S]*?items:\s*\[([\s\S]*?)\]/);
+if (audioNavigationGroup?.[1].includes('href: "/admin/social/written-studio"')) {
+  failures.push("written social publishing must not be nested under media/audio navigation");
 }
 for (const canonicalPath of [
   "src/app/admin/video/page.tsx",
