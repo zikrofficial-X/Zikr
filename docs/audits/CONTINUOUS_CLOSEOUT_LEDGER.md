@@ -371,3 +371,61 @@ Read-only SQL against the active project returned:
 - The new full-scope Quality Gate reached `social-platform-isolation.test.ts` and exposed one missed guard: `getRetryableSocialPlatforms()` still returned an independent YouTube target for a row flagged `sourceMediaMissing`. The failing assertion was explicit; the provider was not called.
 - Added the same fail-closed `sourceMediaMissing` guard directly to `getRetryableSocialPlatforms()`. This complements the worker selector, platform attempt gate, video approval, admin retry skip and Facebook reauthorization guard.
 - No production queue row, social provider, asset, secret, OAuth setting, database object or deployment was changed. The new commit must pass the complete Quality Gate and CircleCI checks before any merge decision.
+
+---
+
+## Checkpoint — 2026-11-10 16:59 Africa/Cairo — late YouTube fallback recovery
+
+**State: IN PROGRESS. No production mutation or release was performed.**
+
+### Canonical source and inventory
+
+- main remains SHA c91f64ccd6162e5107b3edb8be3c7aa521865c2f.
+- PR #275 remains Draft; reviewed code head for this checkpoint: 0d4744948c0d96cfd04f0d60a1d7364b7b624524. The subsequent manifest-only commit is 4a6b4841f789c0545a440b4e19c607371fff0814.
+- Main recursive tree: 2,130 entries, 1,639 files, 491 directories, not truncated.
+- PR tree at the code snapshot: 2,148 entries, 1,657 files, 491 directories; 18 paths are PR-only, no paths removed. The refreshed PR manifest excludes itself and records 2,147 entries, 1,656 files, 491 directories, 139,023,215 file bytes, and Git blob SHA-1s.
+- PR #275 currently changes 70 files (9,842 additions / 2,262 deletions). It remains Draft and must not merge until current-head CI and isolated Preview/acceptance gates pass.
+- The main file matrix remains 1,639 rows; last reconciled full source-content read count is 129/1,639, with 1,509 REVIEW_REQUIRED. The new source/test reads and PR-only delta are recorded in this checkpoint; no module is certified closed. Automated tree inventory is not equivalent to manual review of every source line.
+
+### Production identity and read-only verification
+
+- Vercel project zikr / prj_bnBQb7DIXB5iE2mZJAghtAoZuKGs, team team_RxPjmgZoSFmKGjScefYmwIVv, Node 22.x. Production deployment dpl_7Czpzb6ckFDezvMbAFaih8WYuk9E is READY and is built from the unchanged main SHA c91f64c; canonical alias remains zikrmediaofficial.vercel.app.
+- Supabase zqtssvlvmkzeeyqghqfk remains ACTIVE_HEALTHY, PostgreSQL 17.11.
+- Direct SQL comparison: local main has 415 migration files and the live supabase_migrations.schema_migrations ledger has 415 unique versions; no local-only or remote-only version. A table-list row estimate showed 420 for the migration ledger, but the direct ordered SQL query returned 415 and is treated as authoritative.
+- Public RLS: 92/92 tables enabled, 0 disabled. Security Advisor still reports only the owner-level leaked-password-protection warning; no Auth setting was changed.
+
+### New live finding — 64 previously published videos hidden after media purge
+
+Read-only joins across videos, video_generation_requests, social_publish_queue, and content_publish_queue established:
+
+- 105 internal generated catalog rows are currently published=false with mediaState=purged; 5 internal generated rows remain published and 17 manual rows are published.
+- 64 hidden internal rows have all of the following: a completed canonical generation request; matching content/source/template hashes; automated QA passed; a published site-content queue record; a published social queue record with videoDisposedAt; and a valid successful YouTube remote ID matching the catalog ID.
+- The exact candidate query further splits those 64 into 50 general videos and 14 kids videos. Only 8 of the kids videos have kidsVideoQaStatus=passed; 6 are revalidation_required.
+- The safe restoration set is therefore 58 rows (50 general + 8 kids QA-passed). The 6 kids rows remain excluded. Other purged rows without the full evidence set are untouched.
+- Root cause: the already-applied migration 20261110013832_restore_published_video_catalog_from_youtube_20261110.sql only updated rows when the YouTube ID differed, the thumbnail was null, or a stale media URL key still existed. It skipped rows where the YouTube ID and thumbnail were already present even though mediaState remained purged and mediaFallbackAvailable was false. It also did not restore the previously public catalog flag.
+- No production rows were changed during this audit.
+
+### Implemented repair in PR #275
+
+- Added shouldRestorePurgedPublishedVideo to src/features/videos/services/video-media-contract.ts. It restores only a previously public, explicitly purged internal video with automated QA passed and an allowed audience; kids require their dedicated QA to be passed.
+- Updated the purge route to persist mediaPurgedFromPublished from the pre-purge published state, so future late provider confirmations can distinguish previously public content from intentionally unpublished records.
+- Updated YouTube catalog reconciliation in social-publishing.ts: when a confirmed upload arrives after purge, it restores the site catalog only through the above gate, records youtube_fallback, stores the confirmed YouTube ID/URL, and sets the YouTube poster. Non-eligible and intentionally unpublished rows are not republished.
+- Added migration 20261110150000_restore_confirmed_purged_video_catalog.sql. It is idempotent and read-only with respect to unrelated records: it requires the published site queue, published social queue, videoDisposedAt, successful valid YouTube ID, no catalog-ID conflict, completed matching request hashes/template, automated QA passed, and either general audience or kids QA passed. It restores only the 58 evidence-qualified rows; it does not delete rows, queue entries, assets, or migration history.
+- Added/updated regression tests for the restore gate, purge-state capture, migration guards, and the social sync integration; the package test command now runs the migration contract.
+- Also fixed the earlier stale CI architecture assertion (commit 81c3050...) to validate the actual Supabase database URL allowlist/TLS contract rather than searching for a retired-role literal. Added direct/pooler, role, host, TLS, override, duplicate-parameter, and credential-redaction tests; that new Supabase URL test passed in the subsequent Quality Gate run.
+
+### CI and release gates
+
+- Quality Gate run 42839488376 on the earlier PR head 8a3829b... passed toolchain, dependency installation, PostgreSQL Kids trigger integration, PostgreSQL Admin role integration, and the Supabase URL regression test, then failed in the newly added migration contract because the migration text was malformed by an intermediate patch.
+- Rewrote the migration cleanly in commit 0d474494...; added a catalog-ID conflict guard and retained the static migration contract. This is a code correction, not a production migration apply.
+- Current-head CircleCI source-verify, application-build-docs, and config-guard were pending when this checkpoint was recorded. A fresh Quality Gate for 0d474494... had not yet completed. Do not merge or apply the migration until the current head passes all checks and the controlled production release gate is satisfied.
+- The 9 social queue entries flagged sourceMediaMissing=true remain held (6 failed + 3 partial); do not replay them. Current social queue snapshot: 78 published video rows, 1 published written post, and 10 queued written posts. All 112 generation requests are completed.
+- No files were deleted, no migrations applied to production, no Cloudinary assets deleted, no social posts published, and no production deployment was initiated.
+
+### Open gates
+
+1. Re-run and pass current-head GitHub Quality Gate, CircleCI source-verify, application-build-docs, and config-guard after the migration rewrite.
+2. Complete migration replay and schema checks in CI; verify the migration's candidate count against the 58-row read-only production query.
+3. Keep the 6 kids revalidation_required rows hidden pending a passed kids QA result; do not bypass this gate.
+4. Only after the explicit production release gate, apply the new migration once, then verify 58 restored / 6 still hidden with read-only SQL and production route smoke tests.
+5. Continue file-level consumer tracing and route/browser/mobile acceptance. The project is not at FINAL BASELINE READY; modules closed remains 0.
