@@ -9,6 +9,7 @@ import { DeferredRuntime } from "@/components/layout/deferred-runtime";
 import { DeferredAnalytics } from "@/components/layout/deferred-analytics";
 import { OfflineNavigationGuard } from "@/components/layout/offline-navigation-guard";
 import { NativeCapacitorBridgeLoader } from "@/components/layout/native-capacitor-bridge-loader";
+import { WebAdvertisingRuntime } from "@/components/layout/web-advertising-runtime";
 import { getRequestLocaleContext } from "@/lib/i18n/server";
 import { getSiteSetting } from "@/features/site-content/services/site-content";
 import { Noto_Naskh_Arabic } from "next/font/google";
@@ -23,9 +24,7 @@ const notoNaskhArabic = Noto_Naskh_Arabic({
 // canonical deployment configuration; the verified production IDs are safe
 // fallbacks so a missing Vercel build variable cannot silently disable tags.
 const googleAnalyticsId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-W30Z9JW0VF";
-const googleTagManagerId = process.env.NEXT_PUBLIC_GTM_ID || "GTM-PVQCFKCB";
 const isValidGoogleAnalyticsId = /^G-[A-Z0-9]+$/i.test(googleAnalyticsId ?? "");
-const isValidGoogleTagManagerId = /^GTM-[A-Z0-9]+$/i.test(googleTagManagerId ?? "");
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -168,12 +167,6 @@ gtag('consent', 'default', {
 });
 gtag('set', 'ads_data_redaction', true);`}
         </Script>
-        <Script
-          id="google-funding-choices"
-          async
-          src="https://fundingchoicesmessages.google.com/i/fundingchoicesmessages.js"
-          strategy="beforeInteractive"
-        />
         {process.env.NODE_ENV === "production" && isValidGoogleAnalyticsId && (
           <>
             <Script
@@ -189,31 +182,11 @@ gtag('config', '${googleAnalyticsId}', { send_page_view: true });`}
             </Script>
           </>
         )}
-        {process.env.NODE_ENV === "production" && isValidGoogleTagManagerId && (
-          <Script id="google-tag-manager" strategy="lazyOnload">
-            {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${googleTagManagerId}');`}
-          </Script>
-        )}
-        <meta name="monetag" content="8dc00be3e026b336f3aa64f60373941e" />
-        {process.env.NODE_ENV === "production" && (
-          <>
-            <script
-              dangerouslySetInnerHTML={{
-                __html: "(function(s){s.dataset.zone='12171820',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))",
-              }}
-            />
-            <script
-              src="https://5gvci.com/act/files/tag.min.js?z=12171818"
-              data-cfasync="false"
-              async
-            />
-          </>
-        )}
-        <meta name="theme-color" content="#061322" />
         <meta
           name="google-adsense-account"
           content={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-2457467624248791"}
         />
+        <meta name="theme-color" content="#061322" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
@@ -228,6 +201,7 @@ gtag('config', '${googleAnalyticsId}', { send_page_view: true });`}
         <link rel="manifest" href="/manifest.webmanifest" />
       </head>
       <body className={locale === "ar" ? "font-arabic antialiased" : "font-sans antialiased"}>
+        <WebAdvertisingRuntime />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

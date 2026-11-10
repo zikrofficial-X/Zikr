@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
@@ -10,7 +13,7 @@ import { MONETAG_SMARTLINK_DISCLOSURE_AR, MONETAG_SMARTLINK_DISCLOSURE_EN, MONET
 
 const FACEBOOK_PAGE_URL = "https://www.facebook.com/zikrmediaofficial1";
 const YOUTUBE_CHANNEL_URL = "https://www.youtube.com/@zikrmediaofficial";
-const APP_VERSION = "1.1.14";
+const APP_VERSION = "1.1.15";
 
 type FooterSocialLinks = {
   facebookPageUrl?: string | null;
@@ -81,6 +84,11 @@ const legalLinks: FooterLink[] = [
 
 export function Footer({ socialLinks, showSmartLink = false }: { socialLinks?: FooterSocialLinks; showSmartLink?: boolean }) {
   const { isEnglish } = useLanguage();
+  const [isWebRuntime, setIsWebRuntime] = useState(false);
+
+  useEffect(() => {
+    setIsWebRuntime(!Capacitor.isNativePlatform());
+  }, []);
   const facebookUrl = safeExternalUrl(socialLinks?.facebookPageUrl) ?? FACEBOOK_PAGE_URL;
   const youtubeUrl = safeExternalUrl(socialLinks?.youtubeChannelUrl) ?? YOUTUBE_CHANNEL_URL;
   const instagramUrl = safeExternalUrl(socialLinks?.instagramUrl);
@@ -147,7 +155,7 @@ export function Footer({ socialLinks, showSmartLink = false }: { socialLinks?: F
         <FooterColumn title={copy.legal} links={legalLinks} isEnglish={isEnglish} />
       </Container>
 
-      {showSmartLink ? (
+      {showSmartLink && isWebRuntime ? (
         <Container className="relative mt-10 border-t border-brand-gold/10 pt-6">
           <div className="flex flex-col gap-2 text-center sm:flex-row sm:items-center sm:justify-between sm:text-start">
             <div>

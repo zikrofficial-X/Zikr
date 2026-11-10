@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { hydrateOfflineContent } from '@/lib/offline-pack';
 
 export function ServiceWorkerRegister() {
@@ -89,7 +90,10 @@ export function ServiceWorkerRegister() {
 
     const registerServiceWorker = async () => {
       try {
-        registration = await navigator.serviceWorker.register('/sw.js', {
+        const serviceWorkerUrl = Capacitor.isNativePlatform()
+          ? '/sw.js?native=1'
+          : '/sw.js';
+        registration = await navigator.serviceWorker.register(serviceWorkerUrl, {
           scope: '/',
           updateViaCache: 'none'
         });

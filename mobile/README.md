@@ -2,6 +2,14 @@
 
 This repository keeps one Next.js codebase and runs the production web app inside Capacitor for Android and iOS. The canonical web deployment remains `https://zikrmediaofficial.vercel.app`; native shells use that origin so SSR, API routes, Supabase auth callbacks, SEO, sitemap, robots, PWA and Vercel deployment behavior stay intact.
 
+## Advertising policy
+
+The native Android/iOS application is ad-free. Monetag tags and SmartLinks,
+Google Funding Choices, Google Tag Manager, and AdSense ad slots are loaded
+only in the website runtime and are not requested by Capacitor. The app keeps
+offline caching, Quran/audio storage, prayer notifications, authentication,
+and other native capabilities.
+
 ## Required store values
 
 - Android package: `com.zikr.app`

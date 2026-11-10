@@ -1,9 +1,17 @@
-self.options = {
+// Keep the website's Monetag service-worker integration out of the native
+// Capacitor worker. The app registers this same file with ?native=1 so its
+// offline cache and notification handlers remain available without ad code.
+const isNativeCapacitorWorker =
+  new URL(self.location.href).searchParams.get("native") === "1";
+
+if (!isNativeCapacitorWorker) {
+  self.options = {
     "domain": "5gvci.com",
     "zoneId": 12171818
+  };
+  self.lary = "";
+  importScripts('https://5gvci.com/act/files/service-worker.min.js?r=sw');
 }
-self.lary = ""
-importScripts('https://5gvci.com/act/files/service-worker.min.js?r=sw')
 
 // Service Worker for Zikr PWA
 const CACHE_NAME = "zikr-v15";
@@ -24,6 +32,28 @@ const PUBLIC_CONTENT_API_PREFIXES = [
   "/api/tawasheeh",
   "/api/kids/games/verse",
 ];
+
+async function purgeNativeAdvertisingMarkup() {
+  if (!isNativeCapacitorWorker) return;
+
+  const cache = await caches.open(CACHE_NAME);
+  const requests = await cache.keys();
+  await Promise.allSettled(
+    requests.map(async request => {
+      try {
+        const response = await cache.match(request);
+        if (!response?.headers.get("content-type")?.includes("text/html")) return;
+
+        const html = await response.clone().text();
+        if (/(?:al5sm\.com|5gvci\.com|uplcm\.com|name=["']monetag["']|fundingchoicesmessages\.google\.com|googletagmanager\.com\/gtm\.js|pagead2\.googlesyndication\.com|googleads\.g\.doubleclick\.net|tpc\.googlesyndication\.com|google-adsense-account)/i.test(html)) {
+          await cache.delete(request);
+        }
+      } catch {
+        // A damaged legacy cache entry must never block worker activation.
+      }
+    })
+  );
+}
 
 function isPublicContentApi(url) {
   return PUBLIC_CONTENT_API_PREFIXES.some(
@@ -204,16 +234,19 @@ self.addEventListener("install", event => {
 
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(cacheNames =>
-      Promise.all(
+    caches.keys().then(async cacheNames => {
+      await Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName.startsWith(CACHE_PREFIX) && cacheName !== CACHE_NAME) {
             return caches.delete(cacheName);
           }
           return undefined;
         })
-      )
-    )
+      );
+      // Remove only previously cached HTML containing ad markup. Keep the
+      // user's Quran/audio/offline data and the current cache intact.
+      await purgeNativeAdvertisingMarkup();
+    })
   );
   self.clients.claim();
 });

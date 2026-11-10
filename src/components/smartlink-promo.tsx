@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import {
   MONETAG_SMARTLINK_DISCLOSURE_AR,
   MONETAG_SMARTLINK_DISCLOSURE_EN,
@@ -13,6 +17,14 @@ export function SmartLinkPromo({
   isEnglish = false,
   compact = false,
 }: SmartLinkPromoProps) {
+  const [isWebRuntime, setIsWebRuntime] = useState(false);
+
+  useEffect(() => {
+    setIsWebRuntime(!Capacitor.isNativePlatform());
+  }, []);
+
+  if (!isWebRuntime) return null;
+
   return (
     <section
       aria-label={isEnglish ? 'External advertising link' : 'رابط إعلاني خارجي'}

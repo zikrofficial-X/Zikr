@@ -19,6 +19,25 @@ The footer placement is suppressed on administration/authentication, child-direc
 
 The link opens a new tab and uses `rel="nofollow sponsored noopener noreferrer"`. Its disclosure explains that the destination may be a third-party offer or website.
 
+## Native Android/iOS applications
+
+Monetag is website-only. Native Capacitor shells must not load Monetag tag scripts,
+the Monetag service-worker import, or Monetag SmartLink placements. The shared
+root layout contains no Monetag loader; `WebAdvertisingRuntime` exits immediately
+when `Capacitor.isNativePlatform()` is true. SmartLink promotional components
+and the shared footer link are hidden in native shells.
+
+The native app registers `/sw.js?native=1`. That worker keeps ZIKR offline
+content and notification handlers but skips Monetag's third-party
+`importScripts` integration. On activation it removes cached HTML containing
+legacy Monetag markup without deleting the user's offline Quran/audio library.
+AdSense remains separately disabled in Capacitor through its existing native
+runtime guard. These exclusions apply to newly rebuilt APK/AAB artifacts; a
+previously installed build must receive the updated app/web runtime and worker
+before its old advertising integration can be removed.
+
+The website continues to use its approved, disclosed Monetag placements.
+
 ## Social video metadata
 
 Social captions use approved platform metadata. Monetag SmartLinks remain website-only and are not appended to YouTube descriptions, Facebook/Reels captions, or any external platform metadata. Existing historical posts are not edited or republished.
