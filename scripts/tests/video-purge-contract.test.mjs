@@ -96,6 +96,7 @@ assert.ok(
     route.includes("paths.size > MAX_AUTOMATED_STORAGE_OBJECTS") &&
     route.includes("for (let offset = 0; offset <= MAX_AUTOMATED_STORAGE_OBJECTS; offset += 1000)") &&
     route.includes("limit: offset === MAX_AUTOMATED_STORAGE_OBJECTS ? 1 : 1000") &&
+    route.includes("if (offset === MAX_AUTOMATED_STORAGE_OBJECTS)") &&
     route.includes("Automated video Storage inventory exceeded the safe 5,000-object limit."),
   "automated Storage pagination must detect and reject inventories larger than the safe 5,000-object limit before deletion.",
 );
