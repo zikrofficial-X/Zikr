@@ -86,6 +86,13 @@ if (!socialPublishingService.includes("hasVideoApprovalForQueueItem") ||
     !socialPublishingService.includes("Automated QA lookup failed; holding video item")) {
   failures.push("the social worker must fail closed and revalidate the automated QA snapshot before provider calls");
 }
+const mediaDisposalStart = socialPublishingService.indexOf("async function disposePublishedVideo");
+const mediaDisposalEnd = socialPublishingService.indexOf("export async function resetQueuedSocialVideoMedia", mediaDisposalStart);
+const mediaDisposal = socialPublishingService.slice(mediaDisposalStart, mediaDisposalEnd);
+if (!mediaDisposal.includes("const candidates = backupUrl ? [backupUrl] : [];") ||
+    mediaDisposal.includes("video_url: null")) {
+  failures.push("social cleanup must preserve the canonical video master and delete only the temporary Supabase staging copy");
+}
 if (!socialPublishingService.includes("created_at=gte.${createdSince}") ||
     !socialPublishingService.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff") ||
     !socialPublishingService.includes("stale recovery is disabled")) {
