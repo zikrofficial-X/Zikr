@@ -227,7 +227,13 @@ const reconciliationWorkflow = read(".github/workflows/reconcile-supabase-migrat
 assert.ok(reconciliationWorkflow.includes("python3 scripts/verify-supabase-db-url.py"), "Migration-history reconciliation must validate the effective Supabase URL user before connecting");
 assert.ok(reconciliationWorkflow.includes("PGSSLMODE: require"), "Migration-history reconciliation must require TLS for PostgreSQL connections");
 const dbUrlValidator = read("scripts/verify-supabase-db-url.py");
-assert.ok(dbUrlValidator.includes("zikr_seed_loader") && dbUrlValidator.includes("sslmode"), "Supabase connection validation must block the retired role and weak TLS settings");
+assert.ok(
+  dbUrlValidator.includes('effective_user not in {"postgres", f"postgres.{expected_ref}"}') &&
+    dbUrlValidator.includes('effective_user != f"postgres.{expected_ref}"') &&
+    dbUrlValidator.includes("ssl_mode is None") &&
+    dbUrlValidator.includes('not in {"require", "verify-ca", "verify-full"}'),
+  "Supabase connection validation must allow only the expected postgres roles and require TLS, thereby rejecting the retired role and weak TLS settings",
+);
 assert.ok(release.indexOf("Fail fast on missing or unsafe production credentials") < release.indexOf("Install dependencies"), "Production credential checks must run before dependency installation");
 assert.ok(!release.includes("\n  push:"), "The release workflow must not enqueue guarded skipped jobs on ordinary pushes");
 assert.ok(release.includes("bash scripts/reconcile-supabase-migration-history.sh"), "Production release must audit and reconcile Supabase migration history against the checked schema baseline and again after applying pending SQL");
