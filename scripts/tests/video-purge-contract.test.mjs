@@ -23,13 +23,16 @@ for (const token of [
   'asset.format === "mp4"',
   "video_generation_requests",
   "video_automation_runs",
-  "publicVideoCatalogPreserved: true",
+  "catalogRecordsRetained: true",
   "socialQueueRowsPreserved,",
   'action: "video.library.purge"',
   "externalSocialPostsDeleted: false",
 ]) {
   assert.ok(route.includes(token), "Missing purge route safety contract: " + token);
 }
+assert.ok(route.includes("publicVideoCatalogPreserved: catalogRecordsHidden === 0"), "public catalog visibility must be false whenever purge hides any catalog row.");
+assert.ok(!route.includes("publicVideoCatalogPreserved: true"), "purge must not claim public visibility is preserved when rows are hidden.");
+assert.ok(route.includes("catalogFallbackRowsKeptPublished"), "purge audit/response must report verified YouTube fallback rows retained in public view.");
 assert.ok(!/drop\s+table|supabase_migrations|android-releases/i.test(route), "Purge must not alter schema, migration history, or Android releases.");
 assert.ok(!route.includes('deleteRows("videos", "id=not.is.null")'), "Purge must preserve unrelated/manual video records.");
 assert.ok(route.includes('metadata->>generator=eq.zikr_internal_video_factory'), "Purge must select only internally generated video catalog rows.");
