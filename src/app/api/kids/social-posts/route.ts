@@ -1,54 +1,47 @@
 import { NextResponse } from "next/server";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import {
+  buildPublicKidsWrittenPost,
+  type CurrentKidsStory,
+  type KidsWrittenQueueRow,
+} from "@/features/social/services/written-content";
 
 export const dynamic = "force-dynamic";
 
-type KidsWrittenPostRow = {
-  id: string;
-  title: string;
-  body: string | null;
-  target_platforms: string[] | null;
-  published_at: string | null;
-  metadata: Record<string, unknown> | null;
-};
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
-}
+const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
 export async function GET() {
   try {
-    const rows = await supabaseServerAdminRequest<KidsWrittenPostRow[]>(
-      "/rest/v1/social_publish_queue?content_type=eq.written_post&status=eq.published&metadata->>audience=eq.kids&select=id,title,body,target_platforms,published_at,metadata&order=published_at.desc&limit=12",
+    const rows = await supabaseServerAdminRequest<KidsWrittenQueueRow[]>(
+      "/rest/v1/social_publish_queue?content_type=eq.written_post&status=eq.published&metadata->>audience=eq.kids&select=id,content_type,content_id,title,body,target_platforms,status,published_at,metadata&order=published_at.desc&limit=12",
     );
+    const candidateIds = [...new Set(
+      (rows ?? [])
+        .map((row) => row.content_id)
+        .filter((id): id is string => typeof id === "string" && UUID_PATTERN.test(id)),
+    )];
+    if (candidateIds.length === 0) {
+      return NextResponse.json([], {
+        headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+      });
+    }
 
+    // A post can remain in the social queue after its source story is unpublished.
+    // Re-check the live source state so removed or no-longer-age-appropriate stories
+    // cannot continue appearing in the public Kids feed.
+    const sources = await supabaseServerAdminRequest<CurrentKidsStory[]>(
+      "/rest/v1/kids_content?id=in.(" + candidateIds.join(",") + ")&type=eq.story&published=eq.true&is_active=eq.true&metadata->>age_appropriate=eq.true&select=id,slug,title_ar,age_group,type,published,is_active,metadata",
+    );
+    const sourceById = new Map((sources ?? []).map((source) => [source.id, source]));
     const items = (rows ?? []).flatMap((row) => {
-      const metadata = asRecord(row.metadata);
-      const source = asRecord(metadata.source);
-      const kidsContentId = typeof metadata.kidsContentId === "string" ? metadata.kidsContentId : "";
-      const ageGroup = typeof metadata.ageGroup === "string" ? metadata.ageGroup : null;
-      const rawPath = typeof metadata.publicPath === "string" ? metadata.publicPath : "";
-      const publicPath = /^\/kids\/[a-z0-9-]+$/i.test(rawPath) ? rawPath : null;
-      const platforms = (row.target_platforms ?? []).filter((platform) =>
-        platform === "facebook" || platform === "facebook_reels" || platform === "youtube",
-      );
-      if (source.type !== "kids_story" || !kidsContentId || kidsContentId !== source.id || !row.title?.trim() || !row.body?.trim() || !row.published_at || !publicPath) return [];
-      return [{
-        id: row.id,
-        title: row.title,
-        body: row.body.slice(0, 4500),
-        publishedAt: row.published_at,
-        ageGroup,
-        publicPath,
-        sourceTitle: typeof source.title === "string" ? source.title : null,
-        platforms,
-      }];
+      const source = row.content_id ? sourceById.get(row.content_id) : undefined;
+      if (!source) return [];
+      const item = buildPublicKidsWrittenPost(row, source);
+      return item ? [item] : [];
     });
 
     return NextResponse.json(items, {
-      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+      headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
     });
   } catch (error) {
     console.error("[api/kids/social-posts] GET error:", error);
