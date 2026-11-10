@@ -19,6 +19,11 @@ const DEFAULT_SPACES: Record<HuggingFaceVariant, string> = {
 const PYTHON_TIMEOUT_MS =
   Math.max(120_000, Number(process.env.HF_VIDEO_PROVIDER_TIMEOUT_MS ?? 900_000) || 900_000);
 
+// Hugging Face ZeroGPU quota errors apply to the authenticated account, not a
+// single Space. Once observed, stop trying every HF provider for the rest of
+// this worker process and let the deterministic FFmpeg renderer continue.
+let freeZeroGpuQuotaExhausted = false;
+
 function configuredSpace(variant: HuggingFaceVariant) {
   const value =
     variant === "wan2_2_fast" ? process.env.HF_WAN_SPACE : process.env.HF_LTX_FAST_SPACE;
@@ -101,6 +106,7 @@ export class HuggingFaceSpaceVideoProvider implements VideoProvider {
   }
 
   async isAvailable() {
+    if (freeZeroGpuQuotaExhausted) return false;
     if (this.customSpace ? !this.explicitlyEnabled : !configuredEnabled(this.variant)) return false;
     try {
       await execFileAsync(
@@ -170,10 +176,15 @@ export class HuggingFaceSpaceVideoProvider implements VideoProvider {
         audioPresent: false,
       };
     } catch (error) {
+      const message = (error instanceof Error ? error.message : String(error)).slice(0, 2000);
+      if (/free ZeroGPU quota|ZeroGPU quota.*exceeded|exceeded.*ZeroGPU quota/i.test(message)) {
+        freeZeroGpuQuotaExhausted = true;
+        console.warn("[hf-video] Free ZeroGPU quota exhausted; skipping remaining Hugging Face providers for this worker process.");
+      }
       return {
         ok: false,
         provider: this.name,
-        error: (error instanceof Error ? error.message : String(error)).slice(0, 2000),
+        error: message,
       };
     } finally {
       await rm(promptPath, { force: true }).catch(() => undefined);
