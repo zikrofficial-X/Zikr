@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   addCalendarDays,
   formatDateInTimeZone,
+  getPrayerAlertDateKey,
   getZonedDateTime,
 } from "../../src/features/prayer/services/prayer-notification-schedule";
 
@@ -70,6 +71,25 @@ assert.equal(
   "the selected location's calendar date must be used instead of the device date",
 );
 assert.equal(addCalendarDays("2026-06-14", 1), "2026-06-15");
+
+const localDateKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+assert.equal(
+  getPrayerAlertDateKey(selectedCityNow),
+  localDateKey(selectedCityNow),
+  "alert deduplication must safely default to the device timezone when no location timezone is available",
+);
+assert.equal(
+  getPrayerAlertDateKey(selectedCityNow, "America/Los_Angeles"),
+  "2026-06-15",
+  "alert deduplication must honor an explicitly selected timezone",
+);
+assert.equal(
+  getPrayerAlertDateKey(selectedCityNow, "Invalid/Timezone"),
+  localDateKey(selectedCityNow),
+  "an invalid saved timezone must fall back to the device calendar date",
+);
+
 assert.equal(
   getZonedDateTime("2026-06-15", "America/New_York", "12:00")?.toISOString(),
   "2026-06-15T16:00:00.000Z",
