@@ -170,9 +170,9 @@ assert.match(kidsVideoDetailPage, /referrerPolicy="strict-origin-when-cross-orig
 assert.match(kidsVideoDetailPage, /loading="lazy"/, "the public Kids video detail iframe must load lazily");
 
 assert.ok(kidsVideosApi.includes("metadata->>audience=eq.kids"), "the Kids video feed must never attach a general-audience social queue caption");
-assert.ok(kidsVideosApi.includes('row.content_type.endsWith("_video")'), "the Kids video feed must ignore non-video queue rows even when they share a source ID");
+assert.ok(kidsVideosApi.includes("isPublicKidsVideoSocialQueueRow(row)"), "the Kids video feed must only use confirmed public social queue rows");
 assert.ok(kidsVideosApi.includes("status=in.(published,partial)"), "the public Kids video feed must not select queued, processing, or failed social posts");
-assert.match(kidsVideosApi, /isPublicKidsVideoSocialQueueRow\\(row\\)/, "the Kids video feed must revalidate social queue visibility before using a queue body");
+
 assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status: "published", metadata: { audience: "kids" } }), true);
 assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status: "partial", metadata: { audience: "kids" } }), true, "partial rows are public only when the publisher has confirmed at least one target");
 for (const status of ["queued", "processing", "failed"]) {
