@@ -25,12 +25,28 @@ assert.equal(sanitizeInternalPath(null), "/profile");
 assert.equal(sanitizeInternalPath({}), "/profile");
 
 const originalRedirect = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL;
+const originalNodeEnv = process.env.NODE_ENV;
 const originalVercelEnv = process.env.VERCEL_ENV;
 const originalPublicVercelEnv = process.env.NEXT_PUBLIC_VERCEL_ENV;
 const originalVercelUrl = process.env.VERCEL_URL;
 const originalVercelBranchUrl = process.env.VERCEL_BRANCH_URL;
 try {
   process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL = "https://preview.zikr.v0.app/auth/callback";
+  process.env.NODE_ENV = "production";
+  process.env.VERCEL_ENV = "production";
+  assert.equal(
+    getCanonicalAuthBaseUrl("http://localhost:3000"),
+    PRODUCTION_URL,
+    "production registration and auth redirects must not trust a client-supplied localhost Origin",
+  );
+  process.env.NODE_ENV = "development";
+  process.env.VERCEL_ENV = "development";
+  assert.equal(
+    getCanonicalAuthBaseUrl("http://localhost:3000"),
+    "http://localhost:3000",
+    "local development must continue to support localhost auth redirects",
+  );
+  process.env.NODE_ENV = "production";
   process.env.VERCEL_ENV = "preview";
   delete process.env.NEXT_PUBLIC_VERCEL_ENV;
   assert.equal(isV0PreviewHost("preview.zikr.v0.app"), true);
@@ -74,6 +90,8 @@ try {
 } finally {
   if (originalRedirect === undefined) delete process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL;
   else process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL = originalRedirect;
+  if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = originalNodeEnv;
   if (originalVercelEnv === undefined) delete process.env.VERCEL_ENV;
   else process.env.VERCEL_ENV = originalVercelEnv;
   if (originalPublicVercelEnv === undefined) delete process.env.NEXT_PUBLIC_VERCEL_ENV;
