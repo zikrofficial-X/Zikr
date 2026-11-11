@@ -27,7 +27,10 @@ export function resolveYouTubeVideoDisclosure(input: YouTubeVideoDisclosureInput
     ? input.contentType.trim().toLowerCase()
     : "";
   const isKidsContentType = contentType === "kids" || contentType.startsWith("kids_");
-  const audience = content.audience === "kids" || queueMetadata.audience === "kids" || isKidsContentType
+  const isKidsPublicPath = [content.publicPath, queueMetadata.publicPath].some((value) =>
+    typeof value === "string" && (value === "/kids" || value.startsWith("/kids/")),
+  );
+  const audience = content.audience === "kids" || queueMetadata.audience === "kids" || isKidsContentType || isKidsPublicPath
     ? "kids"
     : content.audience === "general" || queueMetadata.audience === "general"
       ? "general"

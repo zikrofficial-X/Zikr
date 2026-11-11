@@ -118,6 +118,16 @@ assert.deepEqual(
 );
 assert.deepEqual(
   resolveYouTubeVideoDisclosure({
+    content: {},
+    provider: "template",
+    queueMetadata: { publicPath: "/kids/series-one" },
+    contentType: "other_video",
+  }),
+  { selfDeclaredMadeForKids: true, containsSyntheticMedia: false },
+  "the canonical Kids public path must protect legacy Kids series videos whose audience marker is absent",
+);
+assert.deepEqual(
+  resolveYouTubeVideoDisclosure({
     content: { audience: "general", aiProvider: "template" },
     provider: "template",
     queueMetadata: { audience: "general" },
