@@ -9,6 +9,7 @@ import { GAME_REGISTRY } from "@/lib/games/registry";
 import { KidsGameArt } from "@/features/kids/components/games/kids-game-art";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
+import { isKidsContentType } from "@/features/kids/services/kids-content-validation";
 
 type KidsWrittenPost = {
   id: string;
@@ -52,8 +53,14 @@ const journeys = [
 ];
 
 const contentTypeLabels = {
-  ar: { story: "قصة", prayer: "دعاء", wudu: "تعلم", quiz: "اختبار", memorize: "حفظ", puzzle: "لغز" },
-  en: { story: "Story", prayer: "Dua", wudu: "Learning", quiz: "Quiz", memorize: "Memorization", puzzle: "Puzzle" },
+  ar: {
+    story: "قصة", prayer: "دعاء", wudu: "تعلم", quiz: "اختبار", game: "لعبة",
+    video: "فيديو", memorize: "حفظ", puzzle: "لغز", coloring: "تلوين", matching: "توصيل",
+  },
+  en: {
+    story: "Story", prayer: "Dua", wudu: "Learning", quiz: "Quiz", game: "Game",
+    video: "Video", memorize: "Memorization", puzzle: "Puzzle", coloring: "Coloring", matching: "Matching",
+  },
 } as const;
 
 const contentTypeIcons: Record<string, string> = {
@@ -61,8 +68,12 @@ const contentTypeIcons: Record<string, string> = {
   prayer: "🤲",
   wudu: "💧",
   quiz: "🧠",
+  game: "🎮",
+  video: "🎬",
   memorize: "🌟",
   puzzle: "🧩",
+  coloring: "🎨",
+  matching: "🔗",
 };
 
 export default function KidsPage() {
@@ -71,6 +82,7 @@ export default function KidsPage() {
   const [contentStatus, setContentStatus] = useState<"loading" | "ready" | "error">("loading");
   const [generatedKidsItems, setGeneratedKidsItems] = useState<KidsGeneratedItem[]>([]);
   const [kidsWrittenPosts, setKidsWrittenPosts] = useState<KidsWrittenPost[]>([]);
+  const [visibleContentCount, setVisibleContentCount] = useState(12);
   useEffect(() => {
     let active = true;
     setContentStatus("loading");
@@ -81,6 +93,7 @@ export default function KidsPage() {
         if (!Array.isArray(data)) throw new Error("Kids content response was not a list.");
         if (active) {
           setContentItems(data as KidsItem[]);
+          setVisibleContentCount(12);
           setContentStatus("ready");
         }
       })
@@ -104,7 +117,8 @@ export default function KidsPage() {
       .catch(() => undefined);
     return () => { active = false; };
   }, [isEnglish]);
-  const featuredContent = contentItems.filter((item) => ["story", "prayer", "wudu", "quiz"].includes(item.type)).slice(0, 6);
+  const featuredContent = contentItems.filter((item) => isKidsContentType(item.type));
+  const visibleContent = featuredContent.slice(0, visibleContentCount);
   const typeLabels = isEnglish ? contentTypeLabels.en : contentTypeLabels.ar;
   const featuredGames = [GAME_REGISTRY["zikr-runner"], GAME_REGISTRY["zikr-memory"], GAME_REGISTRY["wudu-challenge"], GAME_REGISTRY["mosque-adventure"], GAME_REGISTRY["good-deeds"], GAME_REGISTRY["zikr-coloring"]];
 
@@ -264,12 +278,25 @@ export default function KidsPage() {
         )}
 
         <section id="learning" aria-labelledby="learning-heading" className="space-y-5 scroll-mt-6">
-          <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-bold text-brand-emerald">{isEnglish ? "Age-appropriate content" : "محتوى مناسب للعمر"}</p><h2 id="learning-heading" className="mt-2 break-words text-2xl font-black text-brand-cream sm:text-3xl">{isEnglish ? "Learn together" : "نتعلم معًا"}</h2></div><Link href="/kids/adventures" className="text-sm font-bold text-brand-gold underline underline-offset-4">{isEnglish ? "All activities →" : "كل الأنشطة ←"}</Link></div>
+          <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-bold text-brand-emerald">{isEnglish ? "Age-appropriate content" : "محتوى مناسب للعمر"}</p><h2 id="learning-heading" className="mt-2 break-words text-2xl font-black text-brand-cream sm:text-3xl">{isEnglish ? "Learn together" : "نتعلم معًا"}</h2></div><Link href="/kids/adventures" className="text-sm font-bold text-brand-gold underline underline-offset-4">{isEnglish ? "Interactive adventures →" : "مغامرات تفاعلية ←"}</Link></div>
           {contentStatus === "loading" && <p role="status" className="text-sm text-brand-cream/60">{isEnglish ? "Loading activities..." : "جاري تحميل الأنشطة..."}</p>}
           {contentStatus === "error" && <p role="alert" className="text-sm text-amber-200">{isEnglish ? "Activities are temporarily unavailable." : "تعذر تحميل الأنشطة الآن."}</p>}
           {contentStatus === "ready" && featuredContent.length === 0 && <p role="status" className="text-sm text-brand-cream/60">{isEnglish ? "No published activities are available right now." : "لا توجد أنشطة منشورة حالياً."}</p>}
           {contentStatus === "ready" && featuredContent.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{featuredContent.map((item) => <Link key={item.slug} href={`/kids/${item.slug}`} className="group"><Card className="h-full min-w-0 border-brand-cream/10 bg-black/20 p-4 transition hover:-translate-y-1 hover:border-brand-emerald/50 sm:p-5"><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-emerald/10 text-2xl" aria-hidden="true">{contentTypeIcons[item.type] ?? "✨"}</span><span className="rounded-full border border-brand-gold/20 bg-brand-gold/10 px-3 py-1 text-xs font-bold text-brand-gold">{typeLabels[item.type as keyof typeof typeLabels] ?? (isEnglish ? "Activity" : "نشاط")}</span></div><h3 className="mt-4 break-words text-lg font-bold text-brand-cream group-hover:text-brand-gold sm:mt-5 sm:text-xl">{isEnglish ? item.title_en : item.title_ar}</h3><p className="mt-2 line-clamp-3 text-sm leading-7 text-brand-cream/65">{isEnglish ? (item.content_en?.split("\n")[0] ?? "English content is not available for this activity yet.") : (item.content_ar?.split("\n")[0] ?? "نشاط تعليمي قصير وممتع.")}</p><p className="mt-4 text-sm font-bold text-brand-emerald">{isEnglish ? "Age " : "مناسب لعمر "} {item.age_group} {isEnglish ? "years" : "سنوات"} ←</p></Card></Link>)}</div>
+          <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{visibleContent.map((item) => <Link key={item.slug} href={`/kids/${item.slug}`} className="group"><Card className="h-full min-w-0 border-brand-cream/10 bg-black/20 p-4 transition hover:-translate-y-1 hover:border-brand-emerald/50 sm:p-5"><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-emerald/10 text-2xl" aria-hidden="true">{contentTypeIcons[item.type] ?? "✨"}</span><span className="rounded-full border border-brand-gold/20 bg-brand-gold/10 px-3 py-1 text-xs font-bold text-brand-gold">{typeLabels[item.type as keyof typeof typeLabels] ?? (isEnglish ? "Activity" : "نشاط")}</span></div><h3 className="mt-4 break-words text-lg font-bold text-brand-cream group-hover:text-brand-gold sm:mt-5 sm:text-xl">{isEnglish ? item.title_en : item.title_ar}</h3><p className="mt-2 line-clamp-3 text-sm leading-7 text-brand-cream/65">{isEnglish ? (item.content_en?.split("\n")[0] ?? "English content is not available for this activity yet.") : (item.content_ar?.split("\n")[0] ?? "نشاط تعليمي قصير وممتع.")}</p><p className="mt-4 text-sm font-bold text-brand-emerald">{isEnglish ? "Age " : "مناسب لعمر "} {item.age_group} {isEnglish ? "years" : "سنوات"} ←</p></Card></Link>)}</div>
+          {visibleContent.length < featuredContent.length && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => setVisibleContentCount((count) => Math.min(count + 12, featuredContent.length))}
+                className="min-h-11 rounded-xl border border-brand-gold/40 px-5 py-3 text-sm font-bold text-brand-gold transition hover:bg-brand-gold hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold"
+              >
+                {isEnglish ? "Show more activities" : "عرض المزيد من الأنشطة"}
+              </button>
+            </div>
+          )}
+          </>
           )}
         </section>
 

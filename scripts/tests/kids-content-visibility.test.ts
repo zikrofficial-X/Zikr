@@ -190,6 +190,23 @@ assert.ok(kidsHomePage.includes("useState<KidsItem[]>([])"), "the public Kids ho
 assert.equal(kidsHomePage.includes("useState(kidsContent)"), false, "static fallback data must come through the visibility-aware server resolver");
 assert.ok(kidsHomePage.includes('setContentStatus("error")'), "the Kids home page must fail closed when its visibility-aware list request fails");
 assert.ok(kidsHomePage.includes("contentStatus === \"ready\" && featuredContent.length > 0"), "the Kids home page must wait for the verified list before rendering content cards");
+const homeTypeLabelsStart = kidsHomePage.indexOf("const contentTypeLabels = {");
+const homeTypeLabelsEnd = kidsHomePage.indexOf("} as const;", homeTypeLabelsStart);
+const homeTypeLabelsSource = kidsHomePage.slice(homeTypeLabelsStart, homeTypeLabelsEnd);
+const homeIconStart = kidsHomePage.indexOf("const contentTypeIcons:");
+const homeIconEnd = kidsHomePage.indexOf("\n};", homeIconStart);
+const homeIconSource = kidsHomePage.slice(homeIconStart, homeIconEnd);
+for (const type of KIDS_CONTENT_TYPES) {
+  assert.ok(homeTypeLabelsSource.includes(type + ":"), "the Kids home page must label every supported content type");
+  assert.ok(homeIconSource.includes(type + ":"), "the Kids home page must provide an icon for every supported content type");
+}
+assert.match(kidsHomePage, /contentItems\.filter\(\(item\) => isKidsContentType\(item\.type\)\)/, "the Kids home page must include every supported published content type");
+assert.match(kidsHomePage, /const visibleContent = featuredContent\.slice\(0, visibleContentCount\)/, "the Kids home page must page through the full published content list");
+assert.match(kidsHomePage, /visibleContent\.map\(/, "the Kids home page must render the currently visible database-backed content");
+assert.match(kidsHomePage, /visibleContent\.length < featuredContent\.length/, "the Kids home page must expose a continuation while content remains");
+assert.match(kidsHomePage, /setVisibleContentCount\(\(count\) => Math\.min\(count \+ 12, featuredContent\.length\)\)/, "the Kids home page must reveal the next bounded content batch");
+assert.doesNotMatch(kidsHomePage, /featuredContent\.map\(/, "the Kids home page must not bypass its bounded visible-content slice");
+assert.doesNotMatch(kidsHomePage, /\.slice\(0,\s*6\)/, "the Kids home page must not silently hide all but six database records");
 assert.ok(kidsGamesAdminPage.includes('gamesResult.status === "fulfilled" && missingRuntime.length > 0'), "runtime mismatch warnings must not be inferred from a failed games query");
 assert.ok(kidsGamesAdminPage.includes('gamesResult.status === "fulfilled" && missingDatabase.length > 0'), "missing database game warnings must only appear after a successful read");
 assert.ok(kidsLevelsAdminPage.includes('gamesResult.status === "fulfilled" ? gameNames.get(level.game_id) ?? "لعبة غير معروفة" : "غير متاح"'), "level rows must distinguish unavailable game metadata from a real missing game");
