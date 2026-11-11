@@ -54,3 +54,17 @@ export function shouldClearRunNowRequest(input: RunNowConsumptionInput): boolean
     Number.isFinite(input.videosProcessed) &&
     input.videosProcessed > 0;
 }
+
+export type RunNowRequestIdentity = {
+  requestedAt: string;
+  requestId?: string | null;
+};
+
+/** A worker may consume only the exact Run Now request it started with. */
+export function isSameRunNowRequest(
+  current: RunNowRequestIdentity,
+  expected: RunNowRequestIdentity,
+): boolean {
+  return current.requestedAt === expected.requestedAt &&
+    (current.requestId ?? null) === (expected.requestId ?? null);
+}

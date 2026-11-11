@@ -9,6 +9,7 @@ import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
 import { notifyNewQueueFailures } from "./jobs/admin-queue-alerts";
 type VideoAutomationRunNow = {
   requestedAt: string;
+  requestId?: string | null;
   requestedBy?: string | null;
   dispatchedAt?: string | null;
 };
@@ -46,10 +47,12 @@ function parseRunNowRequest(value: unknown): VideoAutomationRunNow | null {
   if (!value || typeof value !== "object") return null;
   const requestedAt = (value as { requestedAt?: unknown }).requestedAt;
   if (typeof requestedAt !== "string" || !requestedAt.trim()) return null;
+  const requestId = (value as { requestId?: unknown }).requestId;
   const requestedBy = (value as { requestedBy?: unknown }).requestedBy;
   const dispatchedAt = (value as { dispatchedAt?: unknown }).dispatchedAt;
   return {
     requestedAt: requestedAt.trim(),
+    requestId: typeof requestId === "string" ? requestId : null,
     requestedBy: typeof requestedBy === "string" ? requestedBy : null,
     dispatchedAt: typeof dispatchedAt === "string" ? dispatchedAt : null,
   };
@@ -98,19 +101,27 @@ async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
   };
 }
 
-async function clearRunNowRequest(requestedAt: string) {
-  const current = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
-    "/rest/v1/admin_settings?key=eq.video_automation_run_now&select=key,value&limit=1",
+async function clearRunNowRequest(request: VideoAutomationRunNow) {
+  const current = await supabaseServerAdminRequest<Array<{
+    key: string;
+    value: unknown;
+    updated_at: string | null;
+  }>>(
+    "/rest/v1/admin_settings?key=eq.video_automation_run_now&select=key,value,updated_at&limit=1",
   ).catch(() => []);
 
-  const parsed = parseRunNowRequest(current?.[0]?.value);
-  if (!parsed || parsed.requestedAt !== requestedAt) return;
+  const row = current?.[0];
+  const parsed = parseRunNowRequest(row?.value);
+  if (!row?.updated_at || !parsed || !isSameRunNowRequest(parsed, request)) return;
 
+  // The request identity protects same-millisecond writes; updated_at is the
+  // database compare-and-set so a newer Run Now request cannot be deleted.
   await supabaseServerAdminRequest(
-    "/rest/v1/admin_settings?key=eq.video_automation_run_now",
+    "/rest/v1/admin_settings?key=eq.video_automation_run_now&updated_at=eq." +
+      encodeURIComponent(row.updated_at),
     {
       method: "DELETE",
-      headers: { Prefer: "return=minimal" },
+      headers: { Prefer: "return=representation" },
     },
   );
 }
@@ -344,7 +355,8 @@ async function main() {
   validateRequiredEnv();
   const target = process.env.BACKGROUND_JOB_TARGET ?? "videos";
   const videoSettings = await getVideoAutomationSettings();
-  const runNowRequestedAt = videoSettings.runNowRequest?.requestedAt ?? null;
+  const runNowRequest = videoSettings.runNowRequest;
+  const runNowRequestedAt = runNowRequest?.requestedAt ?? null;
   applyVideoAutomationSettings(videoSettings);
   console.log("[background-jobs] Admin video settings:", JSON.stringify(videoSettings));
   if (!["all", "videos", "social", "insights"].includes(target)) {
@@ -357,13 +369,13 @@ async function main() {
     ? await processVideos(videoSettings)
     : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, skipped: 0, seeded: 0 };
 
-  if (runNowRequestedAt && shouldClearRunNowRequest({
+  if (runNowRequest && shouldClearRunNowRequest({
     hasRequest: true,
     target,
     automationEnabled: videoSettings.enabled,
     videosProcessed: videos.processed,
   })) {
-    await clearRunNowRequest(runNowRequestedAt);
+    await clearRunNowRequest(runNowRequest);
     console.log(`[background-jobs] Cleared completed urgent video run request ${runNowRequestedAt}.`);
   }
 

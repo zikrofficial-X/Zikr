@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { evaluateBackgroundJobOutcome, shouldClearRunNowRequest } from "../../src/features/videos/services/background-job-outcome";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../../src/features/videos/services/background-job-outcome";
 
 assert.deepEqual(evaluateBackgroundJobOutcome({
   videoSucceeded: 10,
@@ -78,3 +80,29 @@ assert.equal(shouldClearRunNowRequest({
   automationEnabled: false,
   videosProcessed: 10,
 }), false, "disabled video automation must not consume Run Now");
+
+const originalRunNow = {
+  requestId: "run-request-a",
+  requestedAt: "2026-11-11T19:00:00.000Z",
+};
+assert.equal(isSameRunNowRequest(originalRunNow, originalRunNow), true);
+assert.equal(
+  isSameRunNowRequest(
+    { requestId: "run-request-b", requestedAt: originalRunNow.requestedAt },
+    originalRunNow,
+  ),
+  false,
+  "a newer Run Now request created in the same millisecond must not be consumed by the previous worker",
+);
+assert.equal(
+  isSameRunNowRequest({ requestedAt: "legacy-request" }, { requestedAt: "legacy-request" }),
+  true,
+  "legacy requests without a request ID remain consumable when their timestamp matches",
+);
+
+const backgroundRunnerSource = readFileSync(resolve(process.cwd(), "scripts/run-background-jobs.ts"), "utf8");
+assert.match(backgroundRunnerSource, /select=key,value,updated_at/, "Run Now consumption must read the row version");
+assert.match(backgroundRunnerSource, /updated_at=eq\.\$\{encodeURIComponent\(row\.updated_at\)\}/, "Run Now deletion must compare-and-set the exact row version");
+assert.match(backgroundRunnerSource, /isSameRunNowRequest\(parsed, request\)/, "Run Now deletion must match the exact request identity");
+const adminSystemActionsSource = readFileSync(resolve(process.cwd(), "src/app/admin/system-actions.ts"), "utf8");
+assert.match(adminSystemActionsSource, /requestId: randomUUID\(\)/, "each Run Now request must have a unique identity");

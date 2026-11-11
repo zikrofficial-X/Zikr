@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { requireAdminStepUp } from "@/features/admin/services/security";
@@ -152,7 +153,7 @@ export async function requestVideoAutomationRunAction() {
   }
   const key = "video_automation_run_now";
   const requestedAt = new Date().toISOString();
-  const request = { requestedAt, requestedBy: profile.id, dispatchedAt: null as string | null, failedAt: null as string | null, error: null as string | null };
+  const request = { requestId: randomUUID(), requestedAt, requestedBy: profile.id, dispatchedAt: null as string | null, failedAt: null as string | null, error: null as string | null };
 
   try {
     await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
