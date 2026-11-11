@@ -139,6 +139,7 @@ export function useDhikrReminder(): DhikrReminderReturn {
               dhikr_interval_minutes: next.intervalMinutes,
               quiet_hours_start: next.quietHours.enabled ? next.quietHours.from : null,
               quiet_hours_end: next.quietHours.enabled ? next.quietHours.to : null,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
             }),
           }).catch(() => undefined);
         });
