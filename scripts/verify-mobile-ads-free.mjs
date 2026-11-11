@@ -20,6 +20,7 @@ const serviceWorker = read("public/sw.js");
 const offlineAudio = read("src/features/quran/services/offline-audio.ts");
 const offlinePack = read("src/lib/offline-pack.ts");
 const adsenseSlot = read("src/components/layout/adsense-slot.tsx");
+const runtimeEffects = read("src/components/layout/runtime-effects.tsx");
 
 requireCondition(
   layout.includes("<WebAdvertisingRuntime />"),
@@ -111,6 +112,11 @@ requireCondition(
 requireCondition(
   adsenseSlot.includes("Capacitor.isNativePlatform()"),
   "The existing AdSense slot must continue to reject native Capacitor runtimes.",
+);
+requireCondition(
+  runtimeEffects.includes("Capacitor.isNativePlatform()") &&
+    runtimeEffects.includes("isWebRuntime && ADSENSE_CONFIGURED"),
+  "The AdSense script loader itself must be gated to web runtime, not only the empty ad slot.",
 );
 
 if (failures.length) {

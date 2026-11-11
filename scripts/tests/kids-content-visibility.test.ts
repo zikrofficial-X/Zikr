@@ -118,6 +118,7 @@ assert.equal(imageField.includes("fetch("), false, "Kids media must not upload b
 const kidsDetailPage = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
 const kidsQuizValidation = readFileSync("src/features/kids/services/kids-content-validation.ts", "utf8");
 const kidsDetailLayout = readFileSync("src/app/kids/[slug]/layout.tsx", "utf8");
+const kidsSitemap = readFileSync("src/app/sitemap.ts", "utf8");
 const kidsDetailApi = readFileSync("src/app/api/kids/content/[slug]/route.ts", "utf8");
 const kidsContentApi = readFileSync("src/app/api/kids/content/route.ts", "utf8");
 const kidsVideosApi = readFileSync("src/app/api/kids/videos/route.ts", "utf8");
@@ -172,6 +173,10 @@ assert.match(kidsDetailPage, /setContent\(null\)/, "a hidden or unavailable data
 assert.match(kidsQuizValidation, /Number\.isInteger\(correctAnswer\)[\s\S]*?correctAnswer >= options\.length/, "the shared Kids quiz validator must reject out-of-range answers");
 assert.match(kidsDetailPage, /getKidsQuizQuestions/, "the detail page must use the tested localized quiz validator");
 assert.match(kidsDetailLayout, /getKidsContentBySlug\(slug, "ar"\)/, "SEO metadata must use the same visibility-aware resolver");
+assert.ok(kidsDetailLayout.includes("robots: { index: false, follow: false }"), "hidden or unavailable Kids slugs must not be indexed as generic 200 pages");
+assert.ok(kidsDetailLayout.includes("if (!item) notFound()"), "hidden or unavailable Kids slugs must resolve as 404s before rendering the client page");
+assert.ok(kidsSitemap.includes("getKidsContent()"), "the sitemap must source Kids URLs through the visibility-aware content resolver");
+assert.ok(kidsSitemap.includes("`/kids/${item.slug}`"), "active published Kids content must have discoverable sitemap entries");
 assert.match(kidsContentData, /content_ar:\s*row\.content_ar\s*\?\?\s*row\.summary_ar/, "Kids metadata must map the live summary_ar field into the shared content model");
 assert.doesNotMatch(kidsDetailLayout, /supabaseServerAnonRequest/, "SEO metadata must not bypass database visibility checks");
 assert.match(kidsDetailApi, /private, no-store/, "Kids detail responses must not serve stale content after deactivation or age-review changes");

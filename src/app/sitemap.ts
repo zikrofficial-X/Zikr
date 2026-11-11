@@ -6,6 +6,7 @@ import { getArticles } from "@/features/articles/services/articles";
 import { getDuas } from "@/features/dua/services/dua";
 import { getProphets } from "@/features/prophets/services/prophets";
 import { getPublicContentLibrary } from "@/features/content-library/services/content-library";
+import { getKidsContent } from "@/features/kids/services/kids-content";
 import { surahs as fallbackSurahs } from "@/features/quran/data/fallback";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { appRoutes, siteConfig } from "@/lib/site";
@@ -64,7 +65,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
   }));
 
   try {
-    const [surahs, scholars, hadithBooks, stories, articles, prophets, battles, duas, companions, conquests, competitions, publicContent] = await Promise.all([
+    const [surahs, scholars, hadithBooks, stories, articles, prophets, battles, duas, companions, conquests, competitions, publicContent, kidsContentItems] = await Promise.all([
       Promise.resolve(fallbackSurahs.map(surah => ({ number: surah.id, name: surah.nameAr, englishName: surah.nameEn, englishNameTranslation: "", numberOfAyahs: surah.ayahCount, revelationType: surah.revelationPlace === "meccan" ? "Meccan" : "Medinan" }) satisfies Surah)),
       getAllScholars().catch((error): Scholar[] => { console.error("[sitemap] Scholars fetch failed:", error); return []; }),
       getHadithBooks().catch((error): HadithBook[] => { console.error("[sitemap] Hadith fetch failed:", error); return []; }),
@@ -77,6 +78,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       getPublishedSlugs("conquests"),
       supabaseServerAnonRequest<{ id: string }[]>("/rest/v1/competitions?select=id&published=eq.true&limit=1").catch(() => []),
       getPublicContentLibrary(100).catch(() => []),
+      getKidsContent().catch(() => []),
     ]);
 
     const dynamicRoutes: MetadataRoute.Sitemap = [
@@ -100,6 +102,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           changeFrequency: "monthly",
           priority: 0.6,
         })),
+      ...kidsContentItems.map((item) => route(`/kids/${item.slug}`, { lastModified: now, changeFrequency: "weekly", priority: 0.65 })),
     ];
 
     const safeEntries = uniqueRoutes([...staticRoutes, ...dynamicRoutes]).slice(0, SITEMAP_URL_LIMIT);

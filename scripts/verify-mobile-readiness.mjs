@@ -81,11 +81,16 @@ for (const token of [
 ]) {
   if (!androidManifest.includes(token)) failures.push(`Android manifest missing ${token}`);
 }
+for (const permission of ["android.permission.READ_MEDIA_AUDIO", "android.permission.WRITE_EXTERNAL_STORAGE"]) {
+  if (androidManifest.includes(permission)) failures.push(`Android manifest must not request unused broad storage permission ${permission}`);
+}
 
 const plist = read("ios/App/App/Info.plist");
 for (const token of [
   "<string>com.zikr.app</string>",
   "<key>NSCameraUsageDescription</key>",
+  "<key>NSPhotoLibraryUsageDescription</key>",
+  "<key>NSPhotoLibraryAddUsageDescription</key>",
   "<key>NSMicrophoneUsageDescription</key>",
   "<key>NSFaceIDUsageDescription</key>",
   "<string>audio</string>",

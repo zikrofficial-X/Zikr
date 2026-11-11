@@ -1,27 +1,43 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { pageMetadata } from '@/lib/site';
 import { getKidsContentBySlug } from '@/features/kids/services/kids-content';
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  let title = 'محتوى الأطفال';
-  let description = 'قصص وأنشطة إسلامية تعليمية ممتعة للأطفال.';
-
-  // Use the same visibility-aware resolver as the page API. A database
-  // slug that is unpublished, inactive, or age-unapproved must not inherit
-  // metadata from a same-slug static fallback.
-  try {
-    const item = await getKidsContentBySlug(slug, "ar");
-    if (item) {
-      title = item.title_ar;
-      if (item.content_ar) description = item.content_ar.replace(/\s+/g, " ").slice(0, 160);
-    }
-  } catch {
-    // Keep generic metadata when visibility cannot be verified.
+  const item = await getKidsContentBySlug(slug, "ar").catch(() => null);
+  if (!item) {
+    return {
+      ...pageMetadata({
+        title: 'محتوى الأطفال',
+        description: 'قصص وأنشطة إسلامية تعليمية ممتعة للأطفال.',
+        path: `/kids/${slug}`,
+      }),
+      robots: { index: false, follow: false },
+    };
   }
-  return pageMetadata({ title, description, path: `/kids/${slug}` });
+
+  const description = item.content_ar
+    ? item.content_ar.replace(/\s+/g, " ").slice(0, 160)
+    : 'قصص وأنشطة إسلامية تعليمية ممتعة للأطفال.';
+  return pageMetadata({
+    title: item.title_ar || item.title,
+    description,
+    path: `/kids/${slug}`,
+  });
 }
 
-export default function KidsSlugLayout({ children }: { children: React.ReactNode }) {
-  return children;
+export default async function KidsSlugLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const item = await getKidsContentBySlug(slug, "ar").catch(() => null);
+  if (!item) notFound();
+  return <>{children}</>;
 }
