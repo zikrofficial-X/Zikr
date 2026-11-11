@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { getKidsQuizQuestions, isKidsContentType, KIDS_CONTENT_TYPES, parseKidsQuizData } from "../../src/features/kids/services/kids-content-validation";
+import { getKidsQuizQuestions, isKidsContentType, KIDS_CONTENT_TYPES, normalizeKidsVideoEmbedUrl, parseKidsQuizData } from "../../src/features/kids/services/kids-content-validation";
 import { readFileSync } from "node:fs";
 import {
   getFallbackKidsContentBySlug,
@@ -25,6 +25,19 @@ for (const type of KIDS_CONTENT_TYPES) {
   assert.equal(isKidsContentType(type), true, `supported Kids type ${type} must pass validation`);
 }
 assert.equal(isKidsContentType("unsupported"), false, "unknown Kids content types must fail validation");
+assert.equal(normalizeKidsVideoEmbedUrl("https://www.youtube.com/embed/dQw4w9WgXcQ"), "https://www.youtube.com/embed/dQw4w9WgXcQ", "standard HTTPS YouTube embed URLs must remain supported");
+assert.equal(normalizeKidsVideoEmbedUrl("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"), "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", "privacy-enhanced YouTube embeds must remain supported");
+for (const unsafeUrl of [
+  "javascript:alert(1)",
+  "http://www.youtube.com/embed/dQw4w9WgXcQ",
+  "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "https://www.youtube.com.evil.test/embed/dQw4w9WgXcQ",
+  "https://evil.test/embed/dQw4w9WgXcQ",
+  "https://user@www.youtube.com/embed/dQw4w9WgXcQ",
+  "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1",
+]) {
+  assert.equal(normalizeKidsVideoEmbedUrl(unsafeUrl), null, `unsafe Kids video URL must be rejected: ${unsafeUrl}`);
+}
 
 const databaseItems = [
   { slug: "story-live", source: "database" },
