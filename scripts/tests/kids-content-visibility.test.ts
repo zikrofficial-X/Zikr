@@ -350,6 +350,8 @@ assert.deepEqual(
 );
 const kidsHomeOfflineSource = readFileSync("src/app/kids/page.tsx", "utf8");
 const kidsDetailOfflineSource = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
+assert.match(kidsHomeOfflineSource, /if \(!response\.ok\) \{[\s\S]*?setContentStatus\("error"\)[\s\S]*?return;/,
+  "an explicit HTTP error must not fall back to a potentially stale offline Kids snapshot");
 assert.match(kidsHomeOfflineSource, /getOfflineKidsContent\(isEnglish \? "en" : "ar"\)/,
   "the Kids home page must use the validated offline snapshot after a network failure");
 assert.match(kidsDetailOfflineSource, /getOfflineKidsContentBySlug\(contentSlug, isEnglish \? "en" : "ar"\)/,

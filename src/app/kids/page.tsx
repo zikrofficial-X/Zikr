@@ -89,7 +89,13 @@ export default function KidsPage() {
     setContentStatus("loading");
     fetch("/api/kids/content", { cache: "no-store" })
       .then(async (response) => {
-        if (!response.ok) throw new Error("Kids content request failed.");
+        if (!response.ok) {
+          if (active) {
+            setContentItems([]);
+            setContentStatus("error");
+          }
+          return;
+        }
         const data: unknown = await response.json();
         if (!Array.isArray(data)) throw new Error("Kids content response was not a list.");
         if (active) {
